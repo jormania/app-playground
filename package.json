@@ -1,0 +1,28 @@
+{
+  "name": "app-playground",
+  "version": "1.0.0",
+  "description": "Personal playground for standalone web apps built with Claude",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "preview": "python3 -m http.server 8000"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jormania/app-playground.git"
+  },
+  "keywords": [
+    "vercel",
+    "speed-insights",
+    "static-site"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jormania/app-playground/issues"
+  },
+  "homepage": "https://github.com/jormania/app-playground#readme",
+  "dependencies": {
+    "@vercel/speed-insights": "^2.0.0"
+  }
+}
