@@ -7,7 +7,7 @@
     <style>
         :root {
             --haring-yellow: #FFFF00;
-            --haring-red: #FF0000;
+            --haring-red: #E60000; /* Darkened slightly for WCAG AA compliance on white */
             --haring-blue: #0000FF;
             --haring-white: #FFFFFF;
             --haring-black: #000000;
@@ -22,48 +22,94 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
             font-family: system-ui, -apple-system, sans-serif;
             background-color: var(--haring-yellow);
             color: var(--haring-black);
-            padding: 16px;
-            padding-bottom: 64px;
+            padding: 0 16px 64px 16px;
             line-height: 1.5;
         }
 
         header {
-            text-align: center;
-            padding: 20px 0;
-            border-bottom: var(--border-heavy);
-            margin-bottom: 24px;
+            position: sticky;
+            top: 0;
+            left: 0;
+            width: calc(100% + 32px);
+            margin-left: -16px;
+            z-index: 100;
             background: var(--haring-white);
-            border: var(--border-heavy);
-            box-shadow: 6px 6px 0px var(--haring-black);
+            border-bottom: var(--border-heavy);
+            box-shadow: 0px 6px 0px rgba(0,0,0,0.2);
+            text-align: center;
         }
 
         header h1 {
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             text-transform: uppercase;
             font-weight: 900;
             letter-spacing: -1px;
+            padding: 12px 0 8px 0;
+        }
+
+        nav {
+            display: flex;
+            overflow-x: auto;
+            overscroll-behavior-x: contain;
+            scroll-snap-type: x mandatory;
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--haring-yellow);
+            border-top: var(--border-medium);
+            scrollbar-width: none;
+        }
+        
+        nav::-webkit-scrollbar {
+            display: none;
+        }
+
+        nav a {
+            scroll-snap-align: start;
+            flex: 0 0 auto;
+            text-decoration: none;
+            color: var(--haring-black);
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.95rem;
+            padding: 12px 16px;
+            min-height: 48px; /* Material Design standard tap target */
+            display: flex;
+            align-items: center;
+            background: var(--haring-white);
+            border: var(--border-medium);
+            transition: background 0.1s;
+        }
+
+        nav a:active {
+            background: var(--haring-red);
+            color: var(--haring-white);
+        }
+
+        /* Spacer for initial load below sticky header */
+        .header-spacer {
+            height: 24px;
         }
 
         .card {
             background: var(--haring-white);
             border: var(--border-heavy);
             padding: 20px;
-            margin-bottom: 24px;
+            margin-bottom: 32px;
             box-shadow: 8px 8px 0px var(--haring-black);
             position: relative;
+            scroll-margin-top: 160px; /* Prevents sticky header from covering card on anchor jump */
         }
 
-        .card:nth-child(even) .visual-box {
-            background: var(--haring-yellow);
-        }
-        
-        .card:nth-child(odd) .visual-box {
-            background: var(--haring-blue);
-        }
+        .card:nth-child(even) .visual-box { background: var(--haring-yellow); }
+        .card:nth-child(odd) .visual-box { background: var(--haring-blue); }
 
         .tagline {
             font-size: 1.2rem;
@@ -97,10 +143,7 @@
             gap: 4px;
         }
 
-        .rating svg {
-            width: 32px;
-            height: 32px;
-        }
+        .rating svg { width: 32px; height: 32px; }
 
         .visual-box {
             border: var(--border-heavy);
@@ -108,23 +151,20 @@
             display: flex;
             justify-content: center;
             gap: 16px;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
         }
 
-        .pose {
-            width: 100px;
-            height: 100px;
-        }
+        .pose { width: 100px; height: 100px; }
 
         .steps {
             list-style: none;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
         }
 
         .steps li {
             position: relative;
             padding-left: 32px;
-            margin-bottom: 12px;
+            margin-bottom: 14px;
             font-weight: 600;
             font-size: 1.05rem;
         }
@@ -133,7 +173,7 @@
             content: "";
             position: absolute;
             left: 0;
-            top: 4px;
+            top: 6px;
             width: 16px;
             height: 16px;
             background: var(--haring-red);
@@ -145,7 +185,7 @@
             display: inline-block;
             background: var(--haring-black);
             color: var(--haring-white);
-            padding: 6px 12px;
+            padding: 8px 12px;
             font-weight: 800;
             text-transform: uppercase;
             font-size: 0.85rem;
@@ -154,89 +194,63 @@
 </head>
 <body>
 
-    <!-- SVG Library -->
     <svg style="display: none;">
         <defs>
-            <!-- Strongman Rating Icon -->
             <g id="icon-strongman">
                 <circle cx="16" cy="8" r="5" fill="#FFFF00" stroke="#000" stroke-width="3"/>
                 <path d="M 6 22 L 16 14 L 26 22" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
                 <path d="M 4 14 C 8 8, 24 8, 28 14" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/>
-                <circle cx="4" cy="14" r="3" fill="#FF0000" stroke="#000" stroke-width="2"/>
-                <circle cx="28" cy="14" r="3" fill="#FF0000" stroke="#000" stroke-width="2"/>
+                <circle cx="4" cy="14" r="3" fill="#E60000" stroke="#000" stroke-width="2"/>
+                <circle cx="28" cy="14" r="3" fill="#E60000" stroke="#000" stroke-width="2"/>
                 <path d="M 12 2 L 12 4 M 20 2 L 20 4 M 16 0 L 16 3" stroke="#000" stroke-width="2" stroke-linecap="round"/>
             </g>
-
-            <!-- Vector Poses -->
-            <!-- 1. Hinge / Down -->
             <g id="pose-hinge">
                 <rect width="100" height="100" fill="none"/>
-                <!-- Floor -->
                 <line x1="10" y1="90" x2="90" y2="90" stroke="#000" stroke-width="4" stroke-linecap="round"/>
-                <!-- Body -->
                 <circle cx="35" cy="35" r="8" fill="#FFF" stroke="#000" stroke-width="4"/>
                 <path d="M 35 43 L 25 65 L 40 85 L 30 90 M 40 85 L 50 90" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-                <!-- Arms -->
                 <path d="M 32 46 L 55 60 L 70 75" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-                <!-- Kettlebell -->
-                <circle cx="70" cy="83" r="7" fill="#FF0000" stroke="#000" stroke-width="3"/>
+                <circle cx="70" cy="83" r="7" fill="#E60000" stroke="#000" stroke-width="3"/>
                 <path d="M 65 77 C 70 73, 75 73, 75 77" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"/>
-                <!-- Motion -->
                 <path d="M 15 60 C 10 70, 20 80, 25 80" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"/>
             </g>
-
-            <!-- 2. Standing / Lockout -->
             <g id="pose-stand">
                 <rect width="100" height="100" fill="none"/>
                 <line x1="10" y1="90" x2="90" y2="90" stroke="#000" stroke-width="4" stroke-linecap="round"/>
                 <circle cx="50" cy="20" r="8" fill="#FFF" stroke="#000" stroke-width="4"/>
                 <path d="M 50 28 L 50 60 L 40 90 M 50 60 L 60 90" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
                 <path d="M 50 35 L 70 35 L 85 35" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-                <!-- Kettlebell Flying -->
-                <circle cx="93" cy="35" r="7" fill="#FF0000" stroke="#000" stroke-width="3"/>
+                <circle cx="93" cy="35" r="7" fill="#E60000" stroke="#000" stroke-width="3"/>
                 <path d="M 88 32 C 93 28, 98 28, 98 32" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"/>
-                <!-- Radiance -->
                 <path d="M 30 15 L 20 10 M 70 15 L 80 10 M 50 5 L 50 0" stroke="#000" stroke-width="3" stroke-linecap="round"/>
             </g>
-
-            <!-- 3. Overhead Press -->
             <g id="pose-press">
                 <rect width="100" height="100" fill="none"/>
                 <line x1="10" y1="90" x2="90" y2="90" stroke="#000" stroke-width="4" stroke-linecap="round"/>
                 <circle cx="50" cy="40" r="8" fill="#FFF" stroke="#000" stroke-width="4"/>
                 <path d="M 50 48 L 50 70 L 40 90 M 50 70 L 60 90" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-                <!-- Arm Up -->
                 <path d="M 50 50 L 70 35 L 70 15" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-                <!-- Kettlebell -->
-                <circle cx="70" cy="8" r="7" fill="#FF0000" stroke="#000" stroke-width="3"/>
+                <circle cx="70" cy="8" r="7" fill="#E60000" stroke="#000" stroke-width="3"/>
                 <path d="M 65 14 C 70 18, 75 18, 75 14" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"/>
-                <!-- Motion Lines -->
                 <path d="M 60 20 L 60 30 M 80 20 L 80 30" stroke="#000" stroke-width="3" stroke-linecap="round"/>
             </g>
-
-            <!-- 4. Squat -->
             <g id="pose-squat">
                 <rect width="100" height="100" fill="none"/>
                 <line x1="10" y1="90" x2="90" y2="90" stroke="#000" stroke-width="4" stroke-linecap="round"/>
                 <circle cx="50" cy="30" r="8" fill="#FFF" stroke="#000" stroke-width="4"/>
                 <path d="M 50 38 L 50 65 L 30 80 L 35 90 M 50 65 L 70 80 L 65 90" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-                <!-- Holding bell -->
                 <path d="M 40 45 C 50 55, 60 45, 60 45" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round"/>
-                <circle cx="50" cy="48" r="7" fill="#FF0000" stroke="#000" stroke-width="3"/>
+                <circle cx="50" cy="48" r="7" fill="#E60000" stroke="#000" stroke-width="3"/>
                 <path d="M 20 60 L 25 70 M 80 60 L 75 70" stroke="#000" stroke-width="3" stroke-linecap="round"/>
             </g>
-
-            <!-- 5. Floor / Plank -->
             <g id="pose-plank">
                 <rect width="100" height="100" fill="none"/>
                 <line x1="10" y1="80" x2="90" y2="80" stroke="#000" stroke-width="4" stroke-linecap="round"/>
                 <circle cx="20" cy="50" r="8" fill="#FFF" stroke="#000" stroke-width="4"/>
                 <path d="M 28 50 L 55 55 L 85 75" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-                <!-- Arm down -->
                 <path d="M 35 52 L 30 75" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round"/>
-                <!-- Arm rowing -->
                 <path d="M 35 52 L 45 40" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round"/>
-                <circle cx="45" cy="33" r="7" fill="#FF0000" stroke="#000" stroke-width="3"/>
+                <circle cx="45" cy="33" r="7" fill="#E60000" stroke="#000" stroke-width="3"/>
                 <path d="M 50 40 C 45 45, 45 45, 40 40" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"/>
             </g>
         </defs>
@@ -244,167 +258,41 @@
 
     <header>
         <h1>KB Pop Art</h1>
+        <nav id="menu"></nav>
     </header>
 
+    <div class="header-spacer"></div>
     <main id="app"></main>
 
     <script>
         const exercises = [
-            {
-                title: "Kettlebell Swing",
-                tagline: "Swinging: Like throwing a tantrum, but productive.",
-                difficulty: 1,
-                poses: ["pose-hinge", "pose-stand"],
-                target: "Back & Core",
-                steps: [
-                    "Hike the kettlebell between your legs like a football snap.",
-                    "Explode the hips forward; lock out your knees and glutes.",
-                    "Let the weight float to chest height. Do not use your arms to pull."
-                ]
-            },
-            {
-                title: "Goblet Squat",
-                tagline: "Drop it like a squat.",
-                difficulty: 1,
-                poses: ["pose-stand", "pose-squat"],
-                target: "Core & Upper Body",
-                steps: [
-                    "Hold the kettlebell by the horns securely at chest level.",
-                    "Sink hips back and down, driving knees outward.",
-                    "Push through the floor to return to a full standing plank."
-                ]
-            },
-            {
-                title: "Turkish Get-Up",
-                tagline: "Getting up is hard. Doing it with 16kg is a lifestyle choice.",
-                difficulty: 3,
-                poses: ["pose-plank", "pose-press"],
-                target: "Core & Arms",
-                steps: [
-                    "Start supine. Press the kettlebell straight up, locking the elbow.",
-                    "Transition weight to the opposite elbow, then hand.",
-                    "Sweep the leg under into a lunge, then stand up completely."
-                ]
-            },
-            {
-                title: "Strict Press",
-                tagline: "Pressing issues require pressing solutions.",
-                difficulty: 2,
-                poses: ["pose-stand", "pose-press"],
-                target: "Arms & Upper Body",
-                steps: [
-                    "Start in the rack position, kettlebell resting between forearm and bicep.",
-                    "Brace core tightly and press the weight in a straight vertical line.",
-                    "Lock the elbow completely at the top, bicep aligned with the ear."
-                ]
-            },
-            {
-                title: "Renegade Row",
-                tagline: "Row, row, row your boat gently down the floor.",
-                difficulty: 3,
-                poses: ["pose-plank", "pose-plank"],
-                target: "Back & Core",
-                steps: [
-                    "Assume a rigid plank position holding the handles of two kettlebells.",
-                    "Row one kettlebell toward your hip, keeping the elbow tucked.",
-                    "Resist rotational forces; keep your hips perfectly square to the floor."
-                ]
-            },
-            {
-                title: "Kettlebell Halo",
-                tagline: "An angelic move for devilish shoulders.",
-                difficulty: 1,
-                poses: ["pose-stand", "pose-stand"],
-                target: "Arms & Core",
-                steps: [
-                    "Hold the kettlebell upside down (by the horns) at chest height.",
-                    "Orbit the weight closely around your head in a tight circle.",
-                    "Keep your neck neutral and your core fully engaged to prevent swaying."
-                ]
-            },
-            {
-                title: "Kettlebell Snatch",
-                tagline: "Snatch victory from the jaws of gravity.",
-                difficulty: 3,
-                poses: ["pose-hinge", "pose-press"],
-                target: "Back & Arms",
-                steps: [
-                    "Initiate a powerful one-armed swing from the hips.",
-                    "At chest height, pull the kettlebell toward you and punch upward.",
-                    "Catch the weight softly overhead with a fully locked arm."
-                ]
-            },
-            {
-                title: "Windmill",
-                tagline: "Tilting at windmills, building real core.",
-                difficulty: 2,
-                poses: ["pose-press", "pose-hinge"],
-                target: "Core & Back",
-                steps: [
-                    "Press the kettlebell overhead and angle your feet 45 degrees away.",
-                    "Hinge at the hip, sliding your free hand down the inside of your leg.",
-                    "Keep your eyes locked on the kettlebell throughout the movement."
-                ]
-            },
-            {
-                title: "Farmer's Walk",
-                tagline: "Carrying all the groceries in one trip.",
-                difficulty: 1,
-                poses: ["pose-stand", "pose-stand"],
-                target: "Upper Body & Core",
-                steps: [
-                    "Deadlift heavy kettlebells in each hand.",
-                    "Pack your shoulders down and back, maintaining a tall posture.",
-                    "Walk with deliberate, measured steps without lateral sway."
-                ]
-            },
-            {
-                title: "The Clean",
-                tagline: "Keep it clean, keep it heavy.",
-                difficulty: 2,
-                poses: ["pose-hinge", "pose-stand"],
-                target: "Back & Arms",
-                steps: [
-                    "Swing the kettlebell back between your legs.",
-                    "Drive hips forward, keeping the upper arm tight against the ribs.",
-                    "Guide the kettlebell softly into the rack position without bruising the forearm."
-                ]
-            },
-            {
-                title: "Figure 8",
-                tagline: "Infinity loops for finite abs.",
-                difficulty: 1,
-                poses: ["pose-squat", "pose-squat"],
-                target: "Core",
-                steps: [
-                    "Hold a wide quarter-squat position.",
-                    "Pass the kettlebell between your legs from one hand to the other.",
-                    "Trace a continuous figure-8 pattern, keeping the chest up."
-                ]
-            },
-            {
-                title: "Kettlebell Pullover",
-                tagline: "Pulling the covers over your head, but heavy.",
-                difficulty: 2,
-                poses: ["pose-plank", "pose-press"],
-                target: "Upper Body & Core",
-                steps: [
-                    "Lie supine on the floor, holding the kettlebell by the horns over your chest.",
-                    "Lower the weight slowly behind your head with straight arms.",
-                    "Engage the lats to pull the weight back to the starting position."
-                ]
-            }
+            { id: "ex-swing", title: "Kettlebell Swing", tagline: "Swinging: Like throwing a tantrum, but productive.", difficulty: 1, poses: ["pose-hinge", "pose-stand"], target: "Back & Core", steps: ["Set up behind the bell (one foot length away). Adopt a wide stance.", "Hinge at the hips, pack the shoulders down and back, and grip the handle with both hands.", "Hike the bell back forcefully between the upper thighs, keeping the handle above the knees.", "Explode the hips forward; lock out your knees and squeeze the glutes aggressively.", "Let the weight float to chest height. Do not use your shoulders or arms to pull the weight up.", "Allow gravity to pull the bell down, actively hinging only at the last second to absorb the weight."] },
+            { id: "ex-goblet", title: "Goblet Squat", tagline: "Drop it like a squat.", difficulty: 1, poses: ["pose-stand", "pose-squat"], target: "Core & Upper Body", steps: ["Clean the bell or carefully pick it up by the horns. Hold it securely at chest level.", "Lock your elbows tightly against your ribs and crush the handle to engage the lats.", "Sink hips back and straight down, actively driving the knees outward over the toes.", "Maintain a proud, vertical chest. Lower until the elbows brush the inside of the thighs.", "Pause momentarily at the deepest point without losing core tension.", "Push uniformly through the floor to return to a full standing plank, squeezing glutes at the top."] },
+            { id: "ex-tgu", title: "Turkish Get-Up", tagline: "Getting up is hard. Doing it with 16kg is a lifestyle choice.", difficulty: 3, poses: ["pose-plank", "pose-press"], target: "Core & Arms", steps: ["Start in a fetal position, roll onto your back, and press the bell straight up, locking the elbow.", "Bend the same-side leg; extend the opposite arm and leg out at a 45-degree angle.", "Drive through the bent foot to roll onto the opposite elbow, then transition to the hand.", "Execute a high hip bridge, then sweep the straight leg straight back into a kneeling lunge position.", "Windshield wiper the back lower leg so it is parallel to the front, bringing the torso fully erect.", "Stand up to attention. Reverse the exact sequence methodically to return to the floor."] },
+            { id: "ex-press", title: "Strict Press", tagline: "Pressing issues require pressing solutions.", difficulty: 2, poses: ["pose-stand", "pose-press"], target: "Arms & Upper Body", steps: ["Clean the bell to a tight rack position: fist under the chin, kettlebell resting between forearm and bicep, elbow resting on the hip crest.", "Brace the abs tightly and squeeze the glutes to create an immovable foundation.", "Press the weight in a straight vertical path, allowing the palm to rotate slightly forward.", "Lock the elbow completely at the top apex; the bicep should be aligned closely with the ear.", "Shrug the shoulder slightly at the absolute top to ensure structural lockout.", "Actively pull (do not just drop) the weight back down into the starting rack position."] },
+            { id: "ex-renegade", title: "Renegade Row", tagline: "Row, row, row your boat gently down the floor.", difficulty: 3, poses: ["pose-plank", "pose-plank"], target: "Back & Core", steps: ["Assume a strict push-up plank position gripping the handles of two kettlebells.", "Widen your foot stance beyond shoulder width to establish anti-rotational stability.", "Drive one hand aggressively into the bell on the floor while rowing the other bell toward the hip.", "Keep the rowing elbow tucked tight to the ribcage; squeeze the shoulder blade at the top.", "Lower the weight under complete muscular control—do not let gravity drop it.", "Resist rotational forces; hips must remain perfectly square to the floor as you alternate sides."] },
+            { id: "ex-halo", title: "Kettlebell Halo", tagline: "An angelic move for devilish shoulders.", difficulty: 1, poses: ["pose-stand", "pose-stand"], target: "Arms & Core", steps: ["Stand tall, holding the kettlebell upside down (by the horns, bell facing up) at chest height.", "Keep the glutes squeezed and the core fully braced to prevent any lumbar extension.", "Bring the bell to the right ear, rotating it smoothly around the back of the neck.", "Pass it closely by the left ear and return it to the starting position at the sternum.", "Keep the circular path as tight to the skull as mechanically possible.", "Ensure the torso remains completely rigid; alternate rotational directions per rep."] },
+            { id: "ex-snatch", title: "Kettlebell Snatch", tagline: "Snatch victory from the jaws of gravity.", difficulty: 3, poses: ["pose-hinge", "pose-press"], target: "Back & Arms", steps: ["Set up for a one-armed swing. Hike the bell deeply and drive the hips explosively.", "As the bell passes waist height, execute a high pull, keeping the elbow slightly bent (taming the arc).", "Do not let the bell cast out away from the body; keep the trajectory vertical.", "Punch the hand sharply through the handle an instant before the bell flips over the wrist.", "Catch the weight softly overhead with a fully locked arm, avoiding forearm slap.", "Turn the wrist and drop the bell smoothly back down between the legs to initiate the next rep."] },
+            { id: "ex-windmill", title: "Windmill", tagline: "Tilting at windmills, building real core.", difficulty: 2, poses: ["pose-press", "pose-hinge"], target: "Core & Back", steps: ["Clean and strictly press the kettlebell overhead with one arm.", "Turn both feet out 45 degrees away from the arm holding the weight.", "Push the hip out aggressively on the loaded side, keeping that leg entirely straight.", "Hinge at the hips, letting the empty hand slide down the inside of the front leg.", "Keep your eyes permanently fixed on the kettlebell throughout the entire range of motion.", "Squeeze the glutes and drive through the back leg to return to a standing position."] },
+            { id: "ex-farmers", title: "Farmer's Walk", tagline: "Carrying all the groceries in one trip.", difficulty: 1, poses: ["pose-stand", "pose-stand"], target: "Upper Body & Core", steps: ["Stand directly between two heavy kettlebells.", "Hinge down with a flat back, grip the handles tightly, and deadlift them to a standing position.", "Pack the shoulders firmly down and back; crush the handles to engage the grip and lats.", "Stand perfectly vertical, eyes looking straight ahead.", "Walk forward using deliberate, measured heel-to-toe steps without side-to-side sway.", "Hinge back down with strict form to park the bells safely on the floor."] },
+            { id: "ex-clean", title: "The Clean", tagline: "Keep it clean, keep it heavy.", difficulty: 2, poses: ["pose-hinge", "pose-stand"], target: "Back & Arms", steps: ["Set up for a standard one-arm kettlebell swing.", "Hike the bell back between the legs and snap the hips forward forcefully.", "Keep the upper arm and elbow glued to the ribcage; pull the bell straight up (like zipping a jacket).", "Slide the hand quickly around the outside of the handle to catch the bell softly.", "Terminate in the rack position: fist below chin, bell resting in the V of the forearm and bicep.", "Roll the bell off the chest and guide it back into the downswing without casting it forward."] },
+            { id: "ex-figure8", title: "Figure 8", tagline: "Infinity loops for finite abs.", difficulty: 1, poses: ["pose-squat", "pose-squat"], target: "Core", steps: ["Assume a stance significantly wider than shoulder-width and drop into a quarter-squat.", "Hold the kettlebell in the right hand in front of the body.", "Pass the bell outside and around the back of the right leg.", "Reach behind the right leg with the left hand to intercept the handle.", "Bring the bell around to the front of the left leg and pass it back to the right hand.", "Maintain a flat back, proud chest, and continuous, fluid motion without rising from the squat."] },
+            { id: "ex-pullover", title: "Kettlebell Pullover", tagline: "Pulling the covers over your head, but heavy.", difficulty: 2, poses: ["pose-plank", "pose-press"], target: "Upper Body & Core", steps: ["Lie supine flat on the floor, knees bent securely and feet flat on the ground.", "Hold a single kettlebell tightly by the horns directly over the center of the chest.", "Maintain a slight, fixed bend in both elbows.", "Slowly lower the weight backward behind the head until the lats are fully stretched or the bell hovers over the floor.", "Keep the lower back pressed hard into the floor; do not let the ribcage flare upwards.", "Engage the lats and core to pull the weight smoothly back to the vertical starting position over the chest."] }
         ];
 
         const app = document.getElementById('app');
+        const menu = document.getElementById('menu');
         
         let html = '';
+        let menuHtml = '';
+
         exercises.forEach(ex => {
+            menuHtml += `<a href="#${ex.id}">${ex.title}</a>`;
             let stars = Array(ex.difficulty).fill('<svg><use href="#icon-strongman"/></svg>').join('');
             let poses = ex.poses.map(pose => `<svg class="pose"><use href="#${pose}"/></svg>`).join('');
             
             html += `
-            <article class="card">
+            <article class="card" id="${ex.id}">
                 <div class="tagline">${ex.tagline}</div>
                 <div class="header-row">
                     <h2 class="exercise-title">${ex.title}</h2>
@@ -420,6 +308,8 @@
             </article>
             `;
         });
+
+        menu.innerHTML = menuHtml;
         app.innerHTML = html;
     </script>
 </body>
