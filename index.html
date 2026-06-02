@@ -6,7 +6,6 @@
 <meta name="description" content="Cone of Cold — tools, apps, and experiments built with Claude.">
 <title>Cone of Cold</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script type="module" src="./speed-insights.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -25,7 +24,6 @@
   --mono:      'JetBrains Mono', monospace;
 }
 
-/* ── Base ── */
 body {
   font-family: 'Inter', system-ui, sans-serif;
   background: var(--bg);
@@ -101,135 +99,114 @@ nav {
   border-bottom: 1px solid var(--border);
 }
 .hero-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
   font-size: 11.5px;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--accent2);
-  margin-bottom: 20px;
-}
-.hero-eyebrow::before {
-  content: '';
-  display: block;
-  width: 20px;
-  height: 1.5px;
-  background: var(--accent2);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+  font-family: var(--mono);
 }
 .hero h1 {
-  font-size: clamp(32px, 5vw, 48px);
+  font-size: clamp(2.1rem, 5.5vw, 3.4rem);
   font-weight: 700;
-  letter-spacing: -1px;
-  line-height: 1.12;
-  color: #f0f4ff;
-  margin-bottom: 18px;
+  color: var(--text);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  margin-bottom: 20px;
 }
-.hero h1 span { color: var(--accent); }
+.hero h1 span {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
 .hero-desc {
-  font-size: 16px;
-  color: var(--muted);
   max-width: 520px;
-  line-height: 1.7;
-  margin-bottom: 32px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.65;
+  margin-bottom: 36px;
 }
 .hero-stats {
   display: flex;
   gap: 32px;
-  font-size: 13px;
+  flex-wrap: wrap;
+}
+.stat { display: flex; flex-direction: column; gap: 3px; }
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.03em;
+}
+.stat-label {
+  font-size: 12px;
   color: var(--faint);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
-.hero-stats .stat strong { color: var(--muted); font-weight: 500; }
 
-/* ── Sections shared ── */
-.section { padding: 64px 0; }
-.section + .section { border-top: 1px solid var(--border); }
-
-.section-header {
-  margin-bottom: 32px;
-}
+/* ── Apps section ── */
+#apps { padding: 64px 0 80px; }
 .section-label {
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0.12em;
   color: var(--faint);
-  margin-bottom: 6px;
-}
-.section-title-text {
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: -0.3px;
-  color: var(--text);
-}
-.section-subtitle {
-  font-size: 13.5px;
-  color: var(--muted);
-  margin-top: 4px;
+  text-transform: uppercase;
+  font-family: var(--mono);
+  margin-bottom: 28px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
 }
 
-/* ── App Cards ── */
-.app-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.app-card {
+/* ── Cards ── */
+.card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 28px;
-  transition: border-color 0.18s, background 0.18s;
-  position: relative;
+  border-radius: 12px;
   overflow: hidden;
+  margin-bottom: 20px;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
-.app-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0;
-  width: 3px; height: 100%;
-  background: linear-gradient(180deg, var(--accent), var(--accent2));
-  opacity: 0;
-  transition: opacity 0.18s;
-}
-.app-card:hover {
+.card:hover {
   border-color: var(--border2);
-  background: var(--surface2);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
 }
-.app-card:hover::before { opacity: 1; }
+.card-inner { padding: 24px; }
 
 .card-top {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 16px;
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
-.card-title-group { flex: 1; }
-.card-name {
-  font-size: 17px;
+.card-icon {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+.card-meta { flex: 1; min-width: 0; }
+.card-title {
+  font-size: 16px;
   font-weight: 600;
-  letter-spacing: -0.2px;
-  color: #f0f4ff;
-  margin-bottom: 3px;
+  color: var(--text);
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
 }
 .card-subtitle {
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--muted);
-}
-.card-version {
   font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--accent2);
-  background: rgba(79,195,161,0.1);
-  border: 1px solid rgba(79,195,161,0.22);
-  padding: 3px 10px;
-  border-radius: 20px;
-  white-space: nowrap;
-  flex-shrink: 0;
 }
+
 .card-tags {
   display: flex;
   flex-wrap: wrap;
@@ -237,42 +214,44 @@ nav {
   margin-bottom: 16px;
 }
 .tag {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 500;
-  padding: 3px 9px;
-  border-radius: 5px;
-  background: #191d2a;
+  background: var(--surface2);
   border: 1px solid var(--border);
   color: var(--muted);
+  padding: 3px 9px;
+  border-radius: 4px;
+  font-family: var(--mono);
 }
-.tag-accent { background: rgba(124,111,255,0.1); border-color: rgba(124,111,255,0.28); color: var(--accent); }
-.tag-green  { background: rgba(79,195,161,0.1);  border-color: rgba(79,195,161,0.28);  color: var(--accent2); }
-.tag-amber  { background: rgba(255,186,82,0.1);  border-color: rgba(255,186,82,0.28);  color: #ffba52; }
 
 .card-desc {
-  font-size: 13.5px;
-  color: #8d9ab5;
-  line-height: 1.68;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.65;
   margin-bottom: 18px;
 }
+
 .card-features {
   list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
   margin-bottom: 22px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
 }
 .card-features li {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--muted);
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
 }
+.card-features li:last-child { border-bottom: none; }
 .card-features li::before {
-  content: '›';
-  color: var(--accent);
-  font-size: 14px;
+  content: '→';
+  color: var(--accent2);
+  font-size: 11px;
   flex-shrink: 0;
 }
 
@@ -283,36 +262,31 @@ nav {
   gap: 12px;
   padding-top: 18px;
   border-top: 1px solid var(--border);
-  flex-wrap: wrap;
 }
-.card-meta {
-  font-family: var(--mono);
-  font-size: 11px;
+.sync-note {
+  font-size: 11.5px;
   color: var(--faint);
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
+  font-family: var(--mono);
+  line-height: 1.4;
 }
-.card-meta span { display: flex; align-items: center; gap: 4px; }
-.card-actions {
-  display: flex;
-  gap: 8px;
-}
+.sync-note a { color: var(--accent2); }
+.sync-note a:hover { text-decoration: underline; }
+.card-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
 .btn-launch {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   font-size: 13px;
   font-weight: 600;
   padding: 7px 16px;
   border-radius: 7px;
   background: var(--accent);
-  color: #fff;
+  color: white;
   transition: all 0.15s;
   white-space: nowrap;
 }
-.btn-launch:hover { background: #6b5eee; transform: translateY(-1px); }
-.btn-launch svg { width: 13px; height: 13px; }
+.btn-launch:hover { background: #6b5eee; }
 .btn-source {
   display: inline-flex;
   align-items: center;
@@ -329,11 +303,14 @@ nav {
 }
 .btn-source:hover { border-color: var(--accent); color: var(--accent); }
 
+/* per-card icon bg */
+.icon-codex { background: rgba(255,180,50,0.15); }
+.icon-kb    { background: rgba(255,215,0,0.15); }
+
 /* ── Footer ── */
 footer {
   border-top: 1px solid var(--border);
   padding: 32px 0;
-  margin-top: 0;
 }
 .footer-inner {
   display: flex;
@@ -356,21 +333,18 @@ footer {
 @media (max-width: 600px) {
   .nav-links { gap: 14px; }
   .hero { padding: 52px 0 48px; }
-  .card-top { flex-direction: column; gap: 10px; }
+  .hero-stats { gap: 20px; }
+  .card-top { flex-wrap: wrap; }
   .card-footer { flex-direction: column; align-items: flex-start; }
   .card-actions { width: 100%; }
   .btn-launch, .btn-source { flex: 1; justify-content: center; }
-  .hero-stats { flex-wrap: wrap; gap: 16px; }
   .footer-inner { flex-direction: column; align-items: flex-start; }
 }
 </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════
-     NAV
-     Add new nav links in .nav-links
-══════════════════════════════════ -->
+<!-- ══ NAV ══════════════════════════════════════════ -->
 <nav>
   <div class="nav-inner">
     <a href="/" class="nav-logo">
@@ -386,10 +360,7 @@ footer {
   </div>
 </nav>
 
-<!-- ══════════════════════════════════
-     HERO
-     Edit tagline, description, stats
-══════════════════════════════════ -->
+<!-- ══ HERO ══════════════════════════════════════════ -->
 <section class="hero">
   <div class="container">
     <div class="hero-eyebrow">Personal playground</div>
@@ -400,154 +371,133 @@ footer {
       Each one a real tool for a real need.
     </p>
     <div class="hero-stats">
-      <div class="stat"><strong>1</strong> app live</div>
-      <div class="stat">Updated <strong>June 2026</strong></div>
-      <div class="stat">Hosted on <strong>Vercel</strong></div>
+      <div class="stat">
+        <span class="stat-value">2</span>
+        <span class="stat-label">Apps live</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">100%</span>
+        <span class="stat-label">Vanilla HTML</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">0</span>
+        <span class="stat-label">Dependencies</span>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- ══════════════════════════════════
-     APPS SECTION
-     Add new .app-card divs below
-══════════════════════════════════ -->
-<section id="apps" class="section">
+<!-- ══ APPS ══════════════════════════════════════════ -->
+<section id="apps">
   <div class="container">
-    <div class="section-header">
-      <div class="section-label">Applications</div>
-      <div class="section-title-text">Live apps</div>
-      <div class="section-subtitle">Standalone HTML — open, use, done.</div>
-    </div>
+    <div class="section-label">// apps — 2 deployed</div>
 
-    <div class="app-grid">
-
-      <!-- ── APP: Codex Alchymicus ── -->
-      <div class="app-card">
+    <!-- ─ CODEX ALCHYMICUS ─────────────────────── -->
+    <article class="card">
+      <div class="card-inner">
         <div class="card-top">
-          <div class="card-title-group">
-            <div class="card-name">Codex Alchymicus — KCD II</div>
-            <div class="card-subtitle">Kingdom Come: Deliverance II · Alchemy Recipe Manager</div>
+          <div class="card-icon icon-codex">⚗️</div>
+          <div class="card-meta">
+            <div class="card-title">Codex Alchymicus — KCD2</div>
+            <div class="card-subtitle">28 recipes · 6 categories · parchment UI</div>
           </div>
-          <div class="card-version">v3</div>
         </div>
+
         <div class="card-tags">
-          <span class="tag tag-accent">HTML / CSS / JS</span>
-          <span class="tag tag-green">Gaming</span>
-          <span class="tag">Reference Tool</span>
-          <span class="tag">Mobile Responsive</span>
-          <span class="tag tag-amber">WCAG AA</span>
-          <span class="tag">No Dependencies</span>
+          <span class="tag">gaming</span>
+          <span class="tag">alchemy</span>
+          <span class="tag">KCD2</span>
+          <span class="tag">offline-ready</span>
         </div>
+
         <p class="card-desc">
-          A medieval-styled interactive codex for tracking alchemy recipes in KCD II.
-          Parchment-and-candlelight aesthetic, split-panel layout: browsable recipe index
-          with category filtering on the left, detailed step-by-step preparation view on the right.
+          A parchment-styled recipe manager for Kingdom Come: Deliverance II alchemy.
+          All 28 learnable recipes pre-loaded, searchable by name and ingredient,
+          filterable by category. Track what you've mastered, add custom brews.
         </p>
+
         <ul class="card-features">
-          <li>28 pre-loaded recipes across 7 categories — Potions, Decoctions, Poisons, Perfumes, Powder, Special</li>
-          <li>Animated SVG candle flames, parchment texture, corner ornaments</li>
-          <li>Herb icons drawn in inline SVG (nettle, belladonna, marigold, poppy, chamomile…)</li>
-          <li>Category tabs, ingredient search, difficulty pips, Mastered toggle</li>
-          <li>Custom recipe modal with ingredient and step parsing</li>
-          <li>Full WCAG AA contrast compliance — v3 overhaul fixed all dark-panel failures</li>
+          <li>Animated SVG candle flames and layered parchment textures</li>
+          <li>Hand-drawn herb icons: nettle, belladonna, marigold, mint, valerian…</li>
+          <li>Category filtering, difficulty pips, mastery toggle, recipe deletion</li>
+          <li>Custom recipe input modal with ingredient + step parsing</li>
+          <li>Mobile layout with panel-switching navigation</li>
         </ul>
+
         <div class="card-footer">
-          <div class="card-meta">
-            <span>77 KB</span>
-            <span>June 2026</span>
-            <span>Vanilla JS</span>
+          <div class="sync-note">
+            🌐 <a href="https://coneofcold.vercel.app/kcd2-codex-v3.html" target="_blank">coneofcold.vercel.app/kcd2-codex-v3.html</a><br>
+            Deployed June 2026
           </div>
           <div class="card-actions">
-            <a class="btn-source" href="https://drive.google.com/drive/folders/1jgPJ4UD1f0C7cKWZSZW2LXJHFj9rFj8t" target="_blank">
-              Drive ↗
-            </a>
-            <a class="btn-launch" href="https://coneofcold.vercel.app/kcd2-codex-v3.html" target="_blank">
-              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <path d="M2 7h10M7 2l5 5-5 5"/>
-              </svg>
-              Launch App
-            </a>
+            <a class="btn-launch" href="https://coneofcold.vercel.app/kcd2-codex-v3.html" target="_blank">Launch ↗</a>
           </div>
         </div>
       </div>
-      <!-- ── END APP ── -->
+    </article>
 
-      <!--
-      ══════════════════════════════════
-      ADD NEW APP CARDS HERE
-      Copy the block above and edit.
-      ══════════════════════════════════
-
-      <div class="app-card">
+    <!-- ─ KETTLEBELL TRAINING ──────────────────── -->
+    <article class="card">
+      <div class="card-inner">
         <div class="card-top">
-          <div class="card-title-group">
-            <div class="card-name">App Name</div>
-            <div class="card-subtitle">Short description</div>
-          </div>
-          <div class="card-version">v1</div>
-        </div>
-        <div class="card-tags">
-          <span class="tag tag-accent">HTML / CSS / JS</span>
-        </div>
-        <p class="card-desc">Description here.</p>
-        <ul class="card-features">
-          <li>Feature one</li>
-        </ul>
-        <div class="card-footer">
+          <div class="card-icon icon-kb">🏋️</div>
           <div class="card-meta">
-            <span>Size</span>
-            <span>Date</span>
+            <div class="card-title">Kettlebell Training</div>
+            <div class="card-subtitle">12 exercises · Keith Haring style · mobile-first</div>
+          </div>
+        </div>
+
+        <div class="card-tags">
+          <span class="tag">fitness</span>
+          <span class="tag">training</span>
+          <span class="tag">SVG</span>
+          <span class="tag">mobile-optimised</span>
+        </div>
+
+        <p class="card-desc">
+          12 essential kettlebell exercises — rated by difficulty, illustrated with
+          vectorial Keith Haring-style figures. Sticky nav, 6 steps per exercise,
+          and a running commentary that takes itself exactly as seriously as it should.
+        </p>
+
+        <ul class="card-features">
+          <li>Swing, Turkish Get-Up, Goblet Squat, Clean &amp; Press, Windmill and more</li>
+          <li>1–3 strongman difficulty icons per exercise (Haring style)</li>
+          <li>Reusable SVG symbol library — 6 figures, 0 image requests</li>
+          <li>Sticky nav with IntersectionObserver active-link tracking</li>
+          <li>Optimised for Samsung S24 (412 px Android viewport)</li>
+        </ul>
+
+        <div class="card-footer">
+          <div class="sync-note">
+            🌐 <a href="https://coneofcold.vercel.app/kettlebell.html" target="_blank">coneofcold.vercel.app/kettlebell.html</a><br>
+            Deployed June 2026
           </div>
           <div class="card-actions">
-            <a class="btn-launch" href="https://coneofcold.vercel.app/your-app.html" target="_blank">Launch App</a>
+            <a class="btn-launch" href="https://coneofcold.vercel.app/kettlebell.html" target="_blank">Launch ↗</a>
           </div>
         </div>
       </div>
-      -->
+    </article>
 
-    </div>
+    <!--
+    ═══════════════════════════════════════════════
+    ADD NEW APP CARD HERE — copy the block above,
+    update: card-icon emoji, card-title, card-subtitle,
+    card-tags, card-desc, card-features, sync-note URL,
+    and btn-launch href.
+    ═══════════════════════════════════════════════
+    -->
+
   </div>
 </section>
 
-<!-- ══════════════════════════════════
-     ADD NEW SECTIONS HERE
-     Example sections to build later:
-
-<section id="experiments" class="section">
-  <div class="container">
-    <div class="section-header">
-      <div class="section-label">Experiments</div>
-      <div class="section-title-text">Works in progress</div>
-    </div>
-    ...
-  </div>
-</section>
-
-<section id="notes" class="section">
-  <div class="container">
-    <div class="section-header">
-      <div class="section-label">Notes</div>
-      <div class="section-title-text">Short writes</div>
-    </div>
-    ...
-  </div>
-</section>
-
-<section id="about" class="section">
-  <div class="container">
-    ...
-  </div>
-</section>
-══════════════════════════════════ -->
-
-<!-- ══════════════════════════════════
-     FOOTER
-══════════════════════════════════ -->
+<!-- ══ FOOTER ════════════════════════════════════════ -->
 <footer>
   <div class="container">
     <div class="footer-inner">
       <div class="footer-left">
-        Built with <strong>Claude</strong> · Hosted on <strong>Vercel</strong>
+        <strong>Cone of Cold</strong> · built with Claude · hosted on Vercel
       </div>
       <div class="footer-links">
         <a href="https://github.com/jormania/app-playground" target="_blank">GitHub</a>
