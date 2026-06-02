@@ -61,16 +61,16 @@ body{font-family:'IM Fell English',Georgia,serif;background:#140804;color:#1a080
 /* ─── Category tabs ─────────────────────────────────────────── 
    v3: min-height 44px (WCAG 2.5.5), 11px font (was 7px), dark-on-light
    ──────────────────────────────────────────────────────────── */
-.cat-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;padding:6px;background:#ece0c4;border-bottom:1.5px solid #c8a860}
+.cat-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;padding:6px;background:#ece0c4;border-bottom:1.5px solid #c8a860}
 .cat-tab{
-  min-height:44px;padding:6px 4px;
+  min-height:44px;padding:6px 2px;
   background:#f0e4c6;border:1.5px solid #c8a860;
-  /* #3a1808 on #f0e4c6 = ~13:1 contrast ✅ */
   color:#3a1808;
   font-family:'Cinzel',Georgia,serif;font-size:11px;font-weight:600;
-  letter-spacing:.04em;text-transform:uppercase;
+  letter-spacing:.03em;text-transform:uppercase;
   cursor:pointer;text-align:center;border-radius:1px;
-  transition:all .18s;display:flex;align-items:center;justify-content:center
+  transition:all .18s;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;min-width:0
 }
 .cat-tab:hover{background:#dfc888;border-color:#9a6820;color:#1e0c04}
 /* Active: #1e0c04 on #7a3010 = 7.4:1 ✅ */
