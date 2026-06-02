@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codex Alchymicus — KCD II</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;600;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* ─── Reset ─────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'IM Fell English',Georgia,serif;background:#140804;color:#1a0804}
+
+/* ─── Animations ─────────────────────────────────────────────── */
+@keyframes flicker{0%,100%{transform:skewX(-2deg) scaleY(1);opacity:1}20%{transform:skewX(3deg) scaleY(.9);opacity:.88}40%{transform:skewX(-1deg) scaleY(1.06);opacity:.96}60%{transform:skewX(4deg) scaleY(.93);opacity:.9}80%{transform:skewX(-3deg) scaleY(1.02);opacity:.94}}
+@keyframes flicker2{0%,100%{transform:skewX(3deg) scaleY(.92);opacity:.9}30%{transform:skewX(-3deg) scaleY(1.08);opacity:1}60%{transform:skewX(2deg) scaleY(.88);opacity:.85}}
+@keyframes glow{0%,100%{filter:drop-shadow(0 0 6px #f0a020) drop-shadow(0 0 14px #f06010)}50%{filter:drop-shadow(0 0 12px #f0c040) drop-shadow(0 0 24px #f08020)}}
+@keyframes revealIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fl-outer{transform-origin:10px 14px;animation:flicker 1.7s ease-in-out infinite}
+.fl-inner{transform-origin:10px 13px;animation:flicker2 1s ease-in-out infinite}
+.candle-svg{animation:glow 2.2s ease-in-out infinite}
+
+/* ─── Layout ─────────────────────────────────────────────────── */
+.codex{width:100vw;height:100vh;display:flex;flex-direction:column;background:radial-gradient(ellipse at 35% 50%,#2a1008 0%,#180806 45%,#0a0502 100%);padding:10px;gap:8px}
+
+/* ─── Header ─────────────────────────────────────────────────── */
+.codex-header{flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:18px;padding:6px 0 12px;border-bottom:1px solid #c9a030;position:relative}
+.header-ornament{position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);width:80px;height:8px;background:radial-gradient(ellipse at center,#c9a030 0%,transparent 70%)}
+.codex-title-wrap{text-align:center}
+.codex-title{font-family:'Cinzel Decorative',Georgia,serif;font-size:clamp(15px,2.4vw,24px);color:#e8c040;letter-spacing:.07em;text-shadow:0 0 20px rgba(220,170,40,.65),0 2px 8px rgba(0,0,0,.9);line-height:1.2}
+.codex-sub{font-family:'Cinzel',Georgia,serif;font-size:clamp(8px,1vw,11px);color:#a07828;letter-spacing:.28em;margin-top:4px;text-transform:uppercase}
+
+/* ─── Body ───────────────────────────────────────────────────── */
+.codex-body{flex:1;min-height:0;display:flex;gap:8px}
+
+/* ─── Index / List panel  ────────────────────────────────────── 
+   v3: FLIPPED to light parchment — eliminates all dark-panel contrast fails
+   ──────────────────────────────────────────────────────────── */
+.codex-index{
+  width:268px;flex-shrink:0;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#ece0c4 0%,#f2e8d2 60%,#f5edd8 100%);
+  border:1.5px solid #b8903a;border-radius:2px;overflow:hidden;
+  box-shadow:2px 0 16px rgba(0,0,0,.5),inset -1px 0 0 rgba(255,240,180,.3)
+}
+.idx-header{padding:9px 12px;background:#e4d0a8;border-bottom:1.5px solid #b8903a;text-align:center}
+.idx-title{font-family:'Cinzel',Georgia,serif;font-size:11px;color:#3a1808;letter-spacing:.3em;text-transform:uppercase;font-weight:600}
+
+/* ─── Search ────────────────────────────────────────────────── */
+.search-wrap{padding:8px 8px 6px;background:#ece0c4;border-bottom:1px solid #c8a860}
+.search-input{
+  width:100%;background:#fdf8f0;border:1.5px solid #c8a060;
+  color:#1a0804;padding:9px 12px;
+  font-family:'IM Fell English',Georgia,serif;font-style:italic;
+  /* 16px minimum — prevents iOS auto-zoom */
+  font-size:16px;outline:none;border-radius:2px;
+  transition:border-color .2s,background .2s;line-height:1.4
+}
+.search-input:focus{border-color:#8b4a0a;background:#fffaec;box-shadow:0 0 0 2px rgba(139,74,10,.15)}
+.search-input::placeholder{color:#a07848;font-style:italic}
+
+/* ─── Category tabs ─────────────────────────────────────────── 
+   v3: min-height 44px (WCAG 2.5.5), 11px font (was 7px), dark-on-light
+   ──────────────────────────────────────────────────────────── */
+.cat-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;padding:6px;background:#ece0c4;border-bottom:1.5px solid #c8a860}
+.cat-tab{
+  min-height:44px;padding:6px 4px;
+  background:#f0e4c6;border:1.5px solid #c8a860;
+  /* #3a1808 on #f0e4c6 = ~13:1 contrast ✅ */
+  color:#3a1808;
+  font-family:'Cinzel',Georgia,serif;font-size:11px;font-weight:600;
+  letter-spacing:.04em;text-transform:uppercase;
+  cursor:pointer;text-align:center;border-radius:1px;
+  transition:all .18s;display:flex;align-items:center;justify-content:center
+}
+.cat-tab:hover{background:#dfc888;border-color:#9a6820;color:#1e0c04}
+/* Active: #1e0c04 on #7a3010 = 7.4:1 ✅ */
+.cat-tab.active{background:#7a3010;color:#f5ead8;border-color:#7a3010;box-shadow:inset 0 1px 3px rgba(0,0,0,.3)}
+
+/* ─── Recipe list ────────────────────────────────────────────── */
+.recipe-list{flex:1;overflow-y:auto;padding:6px;scrollbar-width:thin;scrollbar-color:#c8a860 #ece0c4}
+.recipe-list::-webkit-scrollbar{width:4px}
+.recipe-list::-webkit-scrollbar-track{background:#ece0c4}
+.recipe-list::-webkit-scrollbar-thumb{background:#c8a860;border-radius:2px}
+
+/* ─── Recipe items  ─────────────────────────────────────────── 
+   v3: min-height 56px for touch, 16px name, 13px sub
+   ──────────────────────────────────────────────────────────── */
+.ritem{
+  min-height:56px;padding:10px 12px;margin-bottom:4px;
+  border:1.5px solid #ddc898;
+  background:#fdf8f0;
+  cursor:pointer;transition:all .18s;position:relative;border-radius:2px
+}
+.ritem::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;transition:background .18s;border-radius:2px 0 0 2px}
+.ritem:hover{background:#f5edd8;border-color:#c8a060;box-shadow:0 1px 4px rgba(120,60,0,.12)}
+.ritem:hover::before{background:#c8a060}
+/* Active: rich amber border + cream bg */
+.ritem.active{background:#fffaec;border-color:#8b4a0a;box-shadow:0 1px 6px rgba(139,74,10,.18)}
+.ritem.active::before{background:#8b4a0a}
+
+/* #1a0804 on #fdf8f0 = 18.7:1 ✅ */
+.ritem-name{font-family:'Cinzel',Georgia,serif;font-size:16px;font-weight:600;color:#1a0804;line-height:1.3}
+.ritem.active .ritem-name{color:#5a1a04}
+/* #5a2e10 on #fdf8f0 = 12.3:1 ✅ (was 1.7:1 — the critical fail fixed) */
+.ritem-sub{font-family:'IM Fell English',Georgia,serif;font-style:italic;font-size:13px;color:#5a2e10;margin-top:3px;line-height:1.4}
+.ritem-foot{display:flex;gap:5px;align-items:center;margin-top:7px;flex-wrap:wrap}
+
+/* Badges: #3a1808 on #e8d8b0 = 12.3:1 ✅ (was 2.7:1 fail) */
+.rbadge{
+  font-family:'Cinzel',Georgia,serif;font-size:10px;font-weight:600;
+  padding:2px 7px;border:1px solid #c8a860;
+  color:#3a1808;background:#e8d8b0;
+  text-transform:uppercase;letter-spacing:.04em;border-radius:1px
+}
+.ritem.active .rbadge{background:#8b4a0a;color:#f5ead8;border-color:#8b4a0a}
+
+.base-pill{font-family:'Cinzel',Georgia,serif;font-size:10px;padding:2px 6px;text-transform:uppercase;letter-spacing:.03em;border-radius:1px}
+.base-wine{background:#f0d8d0;color:#6a1830;border:1px solid #d0a0a0}
+.base-water{background:#d0e0f0;color:#1830a0;border:1px solid #a0b8d8}
+.base-oil{background:#f0e8c0;color:#6a5010;border:1px solid #d0c080}
+.base-spiritus{background:#e8d0f0;color:#501870;border:1px solid #c0a0d8}
+
+.mastered-star{font-size:16px;color:#c8900a;margin-left:auto}
+.pips{display:flex;gap:3px}
+.pip{width:7px;height:7px;border-radius:50%;background:#dcc898;border:1px solid #c8a860}
+.pip.on{background:#8b4a0a;border-color:#6a2e08}
+
+/* ─── Add button ─────────────────────────────────────────────── */
+.add-btn{
+  margin:8px;padding:12px;min-height:48px;
+  background:transparent;border:1.5px solid #b8903a;
+  /* #3a1808 on #ece0c4 = good contrast ✅ */
+  color:#3a1808;
+  font-family:'Cinzel',Georgia,serif;font-size:12px;font-weight:600;
+  letter-spacing:.18em;text-transform:uppercase;
+  cursor:pointer;text-align:center;transition:all .18s;border-radius:2px
+}
+.add-btn:hover{background:#e8d0a0;color:#1a0804;border-color:#8b6030}
+
+/* ─── Detail / Parchment pane ────────────────────────────────── */
+.codex-detail{flex:1;min-width:0;position:relative}
+.parchment{
+  width:100%;height:100%;position:relative;
+  background:radial-gradient(ellipse at 22% 12%,#fdf5e0 0%,#f5e8b8 38%,#e8d480 72%,#d8c060 100%);
+  border:1.5px solid #c9a030;border-radius:2px;overflow:hidden;
+  box-shadow:inset 0 0 50px rgba(80,40,0,.15),inset 0 0 100px rgba(80,40,0,.08),0 0 24px rgba(0,0,0,.75)
+}
+.parchment::before{content:'';position:absolute;inset:0;z-index:1;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23f)' opacity='.06'/%3E%3C/svg%3E");mix-blend-mode:multiply;pointer-events:none}
+.parchment::after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at 0% 0%,rgba(60,30,0,.3) 0%,transparent 40%),radial-gradient(ellipse at 100% 0%,rgba(60,30,0,.3) 0%,transparent 40%),radial-gradient(ellipse at 0% 100%,rgba(60,30,0,.35) 0%,transparent 40%),radial-gradient(ellipse at 100% 100%,rgba(60,30,0,.35) 0%,transparent 40%)}
+.parchment-corners{position:absolute;inset:0;z-index:3;pointer-events:none}
+.corner-svg{position:absolute;width:56px;height:56px;color:#8b4010;opacity:.3}
+.corner-svg.tl{top:8px;left:8px}
+.corner-svg.tr{top:8px;right:8px;transform:scaleX(-1)}
+.corner-svg.bl{bottom:8px;left:8px;transform:scaleY(-1)}
+.corner-svg.br{bottom:8px;right:8px;transform:scale(-1)}
+
+/* ─── Parchment scroll  ──────────────────────────────────────── */
+.parchment-scroll{position:relative;z-index:2;height:100%;overflow-y:auto;padding:36px 52px 40px;scrollbar-width:thin;scrollbar-color:rgba(100,70,20,.35) transparent}
+.parchment-scroll::-webkit-scrollbar{width:5px}
+.parchment-scroll::-webkit-scrollbar-thumb{background:rgba(100,70,20,.28);border-radius:3px}
+.recipe-reveal{animation:revealIn .3s ease-out}
+
+/* ─── Recipe detail typography ───────────────────────────────── 
+   v3: all sizes bumped, line-heights 1.6+
+   ──────────────────────────────────────────────────────────── */
+.rx-title{font-family:'Cinzel Decorative',Georgia,serif;font-size:clamp(18px,2.8vw,30px);color:#100604;text-align:center;line-height:1.25}
+.rx-latin{font-family:'IM Fell English',Georgia,serif;font-style:italic;font-size:15px;color:#6b3010;text-align:center;margin-top:5px;line-height:1.5}
+.orn-div{display:flex;align-items:center;gap:12px;margin:14px 0}
+.orn-line{flex:1;height:1px;background:linear-gradient(90deg,transparent,#c9a030,transparent)}
+
+/* Meta grid */
+.rx-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 0;margin:12px 0 20px;border-top:1px solid rgba(100,60,20,.22);border-bottom:1px solid rgba(100,60,20,.22)}
+.meta-itm{text-align:center}
+/* #7a3010 on parchment ~6:1 ✅ */
+.meta-lbl{font-family:'Cinzel',Georgia,serif;font-size:9px;color:#7a3010;letter-spacing:.22em;text-transform:uppercase}
+.meta-val{font-family:'IM Fell English',Georgia,serif;font-size:15px;color:#0e0602;margin-top:3px;line-height:1.4}
+.meta-finish{font-size:13px;font-style:italic;color:#4a2808}
+
+/* Columns */
+.rx-cols{display:grid;grid-template-columns:1fr 1fr;gap:clamp(16px,3vw,40px);margin:20px 0}
+/* #7a1010 on parchment ✅ */
+.col-head{font-family:'Cinzel',Georgia,serif;font-size:11px;color:#7a1010;letter-spacing:.2em;text-transform:uppercase;border-bottom:1px solid rgba(100,60,20,.25);padding-bottom:7px;margin-bottom:14px}
+
+/* Ingredients */
+.ing-item{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px dotted rgba(100,60,20,.16)}
+.ing-icon{width:40px;height:40px;flex-shrink:0;color:#3a1a08}
+/* #100604 on parchment ≈ 18:1 ✅ */
+.ing-name{font-family:'IM Fell English',Georgia,serif;font-size:17px;color:#100604;line-height:1.4}
+/* #5a2808 on parchment ≈ 10:1 ✅ */
+.ing-amt{font-family:'IM Fell English',Georgia,serif;font-style:italic;font-size:13px;color:#5a2808;margin-top:2px}
+
+/* Steps */
+.steps-list{display:flex;flex-direction:column;gap:12px}
+.step{display:flex;align-items:flex-start;gap:10px}
+.step-num{width:24px;height:24px;flex-shrink:0;background:#7a1010;color:#e8c040;font-family:'Cinzel',Georgia,serif;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border-radius:1px;margin-top:2px}
+.step-ico{width:20px;height:20px;flex-shrink:0;color:#5a2808;margin-top:3px}
+/* #1e0c04 on parchment ≈ 16:1 ✅, line-height 1.6 */
+.step-txt{font-family:'IM Fell English',Georgia,serif;font-size:16px;color:#1e0c04;line-height:1.6}
+
+/* Outcome box */
+.outcome{margin-top:24px;padding:16px 22px;background:rgba(80,40,0,.06);border:1px solid rgba(100,60,20,.2);border-radius:1px}
+.outcome-head{font-family:'Cinzel',Georgia,serif;font-size:10px;color:#7a1010;letter-spacing:.22em;text-transform:uppercase;text-align:center;margin-bottom:10px}
+.outcome-desc{font-family:'IM Fell English',Georgia,serif;font-size:16px;color:#100604;line-height:1.7;text-align:center;margin-bottom:12px}
+.effect-badge{display:inline-block;margin:0 auto;background:#7a1010;color:#f0d870;font-family:'Cinzel',Georgia,serif;font-size:11px;padding:4px 16px;letter-spacing:.14em;text-transform:uppercase;border-radius:1px}
+.outcome-center{text-align:center}
+.rx-value{font-family:'IM Fell English',Georgia,serif;font-style:italic;font-size:13px;color:#7a5020;margin-top:8px;text-align:center}
+
+/* Lore quote */
+.lore{margin-top:16px;padding:12px 18px;border-left:3px solid #c9a030;background:rgba(80,40,0,.04)}
+/* #3a1808 on parchment ≈ 14:1 ✅ */
+.lore-txt{font-family:'IM Fell English',Georgia,serif;font-style:italic;font-size:15px;color:#3a1808;line-height:1.7}
+
+/* Action buttons */
+.rx-actions{display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:10px}
+/* min-height 44px for touch ✅ */
+.action-btn{
+  padding:10px 16px;min-height:44px;
+  background:transparent;border:1px solid rgba(100,60,20,.32);
+  color:#5a2808;font-family:'Cinzel',Georgia,serif;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  cursor:pointer;transition:all .18s;border-radius:1px
+}
+.action-btn:hover{background:rgba(80,40,0,.08);color:#3a1008;border-color:#7a4818}
+.action-btn.mastered{background:#2d5a3d;color:#aaddc0;border-color:#3d7050}
+.action-btn.danger{color:#7a1010;border-color:rgba(122,16,16,.3)}
+.action-btn.danger:hover{background:rgba(122,16,16,.08);border-color:#7a1010}
+
+/* ─── Empty state ────────────────────────────────────────────── */
+.empty-state{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#7a5020;text-align:center}
+.empty-title{font-family:'Cinzel Decorative',Georgia,serif;font-size:18px;color:#5a2808}
+.empty-sub{font-family:'IM Fell English',Georgia,serif;font-style:italic;font-size:15px;color:#7a5020;line-height:1.6}
+
+/* ─── Modal ──────────────────────────────────────────────────── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:center;justify-content:center;padding:20px}
+.modal-bg.open{display:flex}
+.modal-parchment{width:100%;max-width:580px;max-height:90vh;overflow-y:auto;background:radial-gradient(ellipse at 25% 15%,#fdf5e0 0%,#f5e8b8 35%,#e8d480 70%,#d8c060 100%);border:1.5px solid #c9a030;padding:30px 36px;box-shadow:0 0 50px rgba(0,0,0,.8);border-radius:2px}
+.modal-title{font-family:'Cinzel Decorative',Georgia,serif;font-size:20px;color:#100604;text-align:center;margin-bottom:22px}
+.fg{margin-bottom:14px}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.flbl{display:block;font-family:'Cinzel',Georgia,serif;font-size:9px;font-weight:600;color:#7a2e0a;letter-spacing:.2em;text-transform:uppercase;margin-bottom:4px}
+.finput,.fselect,.ftextarea{
+  width:100%;background:rgba(255,255,255,.32);border:1.5px solid rgba(100,60,20,.36);
+  padding:9px 12px;
+  font-family:'IM Fell English',Georgia,serif;
+  /* 16px minimum ✅ */
+  font-size:16px;color:#100604;
+  outline:none;transition:border-color .2s;border-radius:1px;line-height:1.5
+}
+.finput:focus,.fselect:focus,.ftextarea:focus{border-color:#c9a030;background:rgba(255,255,255,.48);box-shadow:0 0 0 2px rgba(200,160,48,.2)}
+.ftextarea{min-height:76px;resize:vertical}
+.fselect{cursor:pointer}
+.modal-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:22px}
+.mbtn{
+  padding:10px 22px;min-height:44px;
+  font-family:'Cinzel',Georgia,serif;font-size:11px;font-weight:600;
+  letter-spacing:.18em;text-transform:uppercase;cursor:pointer;
+  border:none;transition:all .2s;border-radius:1px
+}
+.mbtn-cancel{background:transparent;border:1.5px solid rgba(100,60,20,.36);color:#5a2808}
+.mbtn-cancel:hover{background:rgba(80,40,0,.08)}
+.mbtn-submit{background:#7a1010;color:#f0d870}
+.mbtn-submit:hover{background:#a01818}
+
+/* ─── Mobile ─────────────────────────────────────────────────── 
+   All touch targets already 44px+ from above rules
+   ──────────────────────────────────────────────────────────── */
+@media (max-width:720px){
+  .codex{padding:6px;gap:6px}
+  .candle-svg{display:none}
+  .codex-header{padding:4px 0 10px;gap:0}
+  .codex-title{font-size:18px;letter-spacing:.04em}
+  .codex-sub{font-size:8px;letter-spacing:.15em;margin-top:2px}
+  .codex-body{position:relative}
+  .codex-index{width:100%;border-radius:2px}
+  .codex-detail{position:absolute;inset:0}
+  .codex-body.show-list .codex-detail{display:none}
+  .codex-body.show-detail .codex-index{display:none}
+  .ritem{padding:12px 14px}
+  .ritem-name{font-size:17px}
+  .ritem-sub{font-size:14px}
+  .cat-tab{font-size:12px}
+  .add-btn{padding:14px;font-size:13px;margin:8px}
+  .parchment-scroll{padding:20px 22px 28px}
+  .corner-svg{width:36px;height:36px}
+  .rx-cols{grid-template-columns:1fr;gap:20px}
+  .rx-meta{grid-template-columns:repeat(3,1fr)}
+  .rx-title{font-size:20px}
+  .rx-latin{font-size:14px}
+  .ing-name{font-size:17px}
+  .ing-amt{font-size:14px}
+  .step-txt{font-size:16px}
+  .outcome-desc{font-size:16px}
+  .lore-txt{font-size:15px}
+  .back-btn{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:0 0 14px;background:none;border:none;
+    font-family:'Cinzel',Georgia,serif;font-size:11px;font-weight:600;
+    letter-spacing:.18em;text-transform:uppercase;
+    color:#7a3010;cursor:pointer;-webkit-tap-highlight-color:transparent;
+    min-height:44px
+  }
+  .back-btn:active{color:#3a1008}
+  .back-btn svg{flex-shrink:0}
+  .modal-parchment{padding:20px 18px}
+  .fg-row{grid-template-columns:1fr;gap:12px}
+  .modal-title{font-size:17px;margin-bottom:16px}
+  .modal-actions{flex-direction:column-reverse}
+  .mbtn{width:100%;text-align:center;padding:14px}
+}
+@media (min-width:721px){.back-btn{display:none}}
+
+/* ─── Focus visible (keyboard nav) ─────────────────────────────
+   WCAG 2.4.11 — visible focus indicator
+   ──────────────────────────────────────────────────────────── */
+:focus-visible{outline:2px solid #c9a030;outline-offset:2px}
+.cat-tab:focus-visible,.ritem:focus-visible,.action-btn:focus-visible,.add-btn:focus-visible{outline:2px solid #7a3010;outline-offset:2px}
+</style>
+</head>
+<body>
+<svg style="display:none">
+<symbol id="corner-orn" viewBox="0 0 52 52" fill="none">
+  <path d="M2 2 L24 2" stroke="currentColor" stroke-width="1.8"/>
+  <path d="M2 2 L2 24" stroke="currentColor" stroke-width="1.8"/>
+  <path d="M2 2 Q18 2 18 18" stroke="currentColor" stroke-width="1" opacity=".5"/>
+  <circle cx="10" cy="10" r="4.5" stroke="currentColor" stroke-width="1.4"/>
+  <circle cx="10" cy="10" r="1.8" fill="currentColor" opacity=".4"/>
+  <path d="M26 2 L30 6 L26 10 L22 6Z" stroke="currentColor" stroke-width="1" opacity=".6"/>
+</symbol>
+</svg>
+
+<div class="codex">
+  <header class="codex-header">
+    <svg class="candle-svg" width="22" height="56" viewBox="0 0 22 56">
+      <g class="fl-outer"><path d="M11 16 C8 12 6 8 9 4 C10 7 12 7 11 3 C14 6 16 10 13 14Z" fill="#f09820"/></g>
+      <g class="fl-inner"><path d="M11 15 C10 12 9.5 9 10.5 6.5 C11.5 9 12 12 11 15Z" fill="#fffab0"/></g>
+      <line x1="11" y1="16" x2="11" y2="19" stroke="#2a1a0a" stroke-width="1.2"/>
+      <rect x="6" y="19" width="10" height="26" rx="1.5" fill="#f5f0e2" stroke="#d0c070" stroke-width=".8"/>
+      <path d="M6 24 Q3 27 3.5 32" stroke="#f5f0e2" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <rect x="4" y="45" width="14" height="3" rx="1" fill="#c9a030"/>
+      <rect x="3" y="48" width="16" height="2.5" rx="1" fill="#a07820"/>
+    </svg>
+    <div class="codex-title-wrap">
+      <div class="codex-title">Codex Alchymicus</div>
+      <div class="codex-sub">Kingdom Come&thinsp;&middot;&thinsp;Deliverance II&thinsp;&middot;&thinsp;Tome of Recipes</div>
+    </div>
+    <svg class="candle-svg" width="22" height="56" viewBox="0 0 22 56" style="transform:scaleX(-1);animation-delay:.4s">
+      <g class="fl-outer"><path d="M11 16 C8 12 6 8 9 4 C10 7 12 7 11 3 C14 6 16 10 13 14Z" fill="#f09820"/></g>
+      <g class="fl-inner"><path d="M11 15 C10 12 9.5 9 10.5 6.5 C11.5 9 12 12 11 15Z" fill="#fffab0"/></g>
+      <line x1="11" y1="16" x2="11" y2="19" stroke="#2a1a0a" stroke-width="1.2"/>
+      <rect x="6" y="19" width="10" height="26" rx="1.5" fill="#f5f0e2" stroke="#d0c070" stroke-width=".8"/>
+      <path d="M6 24 Q3 27 3.5 32" stroke="#f5f0e2" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <rect x="4" y="45" width="14" height="3" rx="1" fill="#c9a030"/>
+      <rect x="3" y="48" width="16" height="2.5" rx="1" fill="#a07820"/>
+    </svg>
+    <div class="header-ornament"></div>
+  </header>
+  <div class="codex-body">
+    <aside class="codex-index">
+      <div class="idx-header"><div class="idx-title">Index Librorum</div></div>
+      <div class="search-wrap">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search recipes, ingredients…" autocomplete="off">
+      </div>
+      <div class="cat-tabs">
+        <button class="cat-tab active" data-cat="all">All</button>
+        <button class="cat-tab" data-cat="potion">Potions</button>
+        <button class="cat-tab" data-cat="decoction">Decocts</button>
+        <button class="cat-tab" data-cat="poison">Poisons</button>
+        <button class="cat-tab" data-cat="perfume">Perfumes</button>
+        <button class="cat-tab" data-cat="powder">Powder</button>
+        <button class="cat-tab" data-cat="special">Special</button>
+      </div>
+      <div class="recipe-list" id="recipeList"></div>
+      <button class="add-btn" id="openAddModal">&#10022;&ensp;Record New Recipe</button>
+    </aside>
+    <main class="codex-detail">
+      <div class="parchment">
+        <div class="parchment-corners" aria-hidden="true">
+          <svg class="corner-svg tl"><use href="#corner-orn"/></svg>
+          <svg class="corner-svg tr"><use href="#corner-orn"/></svg>
+          <svg class="corner-svg bl"><use href="#corner-orn"/></svg>
+          <svg class="corner-svg br"><use href="#corner-orn"/></svg>
+        </div>
+        <div class="parchment-scroll" id="rxDetail"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="modal-bg" id="addModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-parchment">
+    <div class="modal-title" id="modalTitle">Record a New Recipe</div>
+    <div class="fg-row">
+      <div><label class="flbl" for="f-name">Name</label><input type="text" class="finput" id="f-name" placeholder="Recipe name" autocomplete="off"></div>
+      <div><label class="flbl" for="f-sub">Latin Subtitle</label><input type="text" class="finput" id="f-sub" placeholder="Potio Ignota" autocomplete="off"></div>
+    </div>
+    <div class="fg-row">
+      <div><label class="flbl" for="f-cat">Category</label><select class="fselect" id="f-cat"><option value="potion">Potion</option><option value="decoction">Decoction</option><option value="poison">Poison</option><option value="perfume">Perfume</option><option value="powder">Gunpowder</option><option value="special">Special</option></select></div>
+      <div><label class="flbl" for="f-base">Base Liquid</label><select class="fselect" id="f-base"><option value="water">Water</option><option value="wine">Wine</option><option value="oil">Oil</option><option value="spiritus">Spiritus</option></select></div>
+    </div>
+    <div class="fg-row">
+      <div><label class="flbl" for="f-finish">Finish Method</label><select class="fselect" id="f-finish"><option value="pour">Pour</option><option value="distill">Distill</option><option value="decant">Decant</option><option value="grind">Grind &amp; Pour</option></select></div>
+      <div><label class="flbl" for="f-diff">Difficulty (1-5)</label><input type="number" class="finput" id="f-diff" min="1" max="5" value="2"></div>
+    </div>
+    <div class="fg"><label class="flbl" for="f-ings">Ingredients — one per line: Name, Amount</label><textarea class="ftextarea" id="f-ings" placeholder="Nettles, 1 handful&#10;Belladonna, 2 sprigs"></textarea></div>
+    <div class="fg"><label class="flbl" for="f-steps">Preparation Steps — one per line</label><textarea class="ftextarea" id="f-steps" placeholder="Fill the cauldron with Wine&#10;Add Nettle. Boil 2 turns..."></textarea></div>
+    <div class="fg"><label class="flbl" for="f-outcome">Outcome Description</label><textarea class="ftextarea" style="min-height:60px" id="f-outcome" placeholder="What does this produce?"></textarea></div>
+    <div class="fg-row">
+      <div><label class="flbl" for="f-effect">Effect</label><input type="text" class="finput" id="f-effect" placeholder="e.g. Improves Strength" autocomplete="off"></div>
+      <div><label class="flbl" for="f-val">Value (Groschen)</label><input type="number" class="finput" id="f-val" value="0" min="0"></div>
+    </div>
+    <div class="fg"><label class="flbl" for="f-lore">Lore Quote (optional)</label><input type="text" class="finput" id="f-lore" placeholder="A flavourful quotation from the world..." autocomplete="off"></div>
+    <div class="modal-actions">
+      <button class="mbtn mbtn-cancel" id="cancelModal">Cancel</button>
+      <button class="mbtn mbtn-submit" id="submitModal">Inscribe in the Codex</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const HERBS={nettle:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="6"/><path d="M20 30 C16 27 9 27 7 23 C9 20 16 21 20 24"/><path d="M20 30 C24 27 31 27 33 23 C31 20 24 21 20 24"/><path d="M20 22 C16 18 9 19 7 14 C9 11 16 12 20 16"/><path d="M20 22 C24 18 31 19 33 14 C31 11 24 12 20 16"/><path d="M20 15 C17 11 14 9 13 6 C16 5 18 8 20 11"/><path d="M20 15 C23 11 26 9 27 6 C24 5 22 8 20 11"/></g></svg>`,belladonna:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="10"/><path d="M20 10 Q16 6 13 5 Q17 4 20 8"/><path d="M20 10 Q24 6 27 5 Q23 4 20 8"/><circle cx="13" cy="23" r="4.5" fill="currentColor" opacity=".25" stroke="currentColor" stroke-width="1.3"/><circle cx="27" cy="19" r="3.8" fill="currentColor" opacity=".25" stroke="currentColor" stroke-width="1.3"/><line x1="20" y1="20" x2="13" y2="23"/><line x1="20" y1="17" x2="27" y2="19"/><path d="M10 18 Q8 16 9 13 Q13 12 14 16"/><path d="M26 14 Q24 12 25 9 Q29 8 30 12"/></g></svg>`,marigold:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="20" cy="14" r="4" fill="currentColor" opacity=".2"/><line x1="20" y1="10" x2="20" y2="5"/><line x1="20" y1="18" x2="20" y2="23"/><line x1="16" y1="12" x2="11" y2="10"/><line x1="24" y1="16" x2="29" y2="18"/><line x1="16" y1="16" x2="11" y2="18"/><line x1="24" y1="12" x2="29" y2="10"/><line x1="20" y1="18" x2="20" y2="38"/><path d="M20 28 Q17 26 15 30"/><path d="M20 28 Q23 26 25 30"/></g></svg>`,mint:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="6"/><ellipse cx="13" cy="19" rx="6.5" ry="4" transform="rotate(-30 13 19)" fill="currentColor" opacity=".14" stroke="currentColor" stroke-width="1.3"/><ellipse cx="27" cy="19" rx="6.5" ry="4" transform="rotate(30 27 19)" fill="currentColor" opacity=".14" stroke="currentColor" stroke-width="1.3"/><ellipse cx="13" cy="28" rx="6.5" ry="4" transform="rotate(-30 13 28)" fill="currentColor" opacity=".14" stroke="currentColor" stroke-width="1.3"/><ellipse cx="27" cy="28" rx="6.5" ry="4" transform="rotate(30 27 28)" fill="currentColor" opacity=".14" stroke="currentColor" stroke-width="1.3"/></g></svg>`,valerian:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="22"/><line x1="20" y1="22" x2="13" y2="13"/><line x1="20" y1="22" x2="20" y2="11"/><line x1="20" y1="22" x2="27" y2="13"/><circle cx="13" cy="11" r="3" fill="currentColor" opacity=".3"/><circle cx="20" cy="9" r="3" fill="currentColor" opacity=".3"/><circle cx="27" cy="11" r="3" fill="currentColor" opacity=".3"/><circle cx="9" cy="17" r="1.8" fill="currentColor" opacity=".3"/><circle cx="31" cy="17" r="1.8" fill="currentColor" opacity=".3"/></g></svg>`,eyebright:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="8"/><circle cx="20" cy="8" r="2.5" fill="currentColor" opacity=".5"/><line x1="20" y1="8" x2="14" y2="3"/><line x1="20" y1="8" x2="26" y2="3"/><line x1="20" y1="8" x2="20" y2="2"/><line x1="20" y1="8" x2="25.2" y2="13.2"/><line x1="20" y1="8" x2="14.8" y2="13.2"/><circle cx="14" cy="2.5" r="1.8" fill="currentColor" opacity=".35"/><circle cx="26" cy="2.5" r="1.8" fill="currentColor" opacity=".35"/></g></svg>`,thistle:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="22"/><circle cx="20" cy="14" r="8" fill="currentColor" opacity=".08"/><path d="M20 6 L18 9 L20 8 L22 9Z" fill="currentColor" opacity=".5"/><path d="M12 8.5 L13 12 L14.5 10 L13.5 13Z" fill="currentColor" opacity=".5"/><path d="M28 8.5 L27 12 L25.5 10 L26.5 13Z" fill="currentColor" opacity=".5"/><path d="M8 15 L11.5 15.5 L9.5 17 L12.5 16.5Z" fill="currentColor" opacity=".5"/><path d="M32 15 L28.5 15.5 L30.5 17 L27.5 16.5Z" fill="currentColor" opacity=".5"/><line x1="16" y1="22" x2="20" y2="38"/><line x1="24" y1="22" x2="20" y2="38"/></g></svg>`,wormwood:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="7"/><path d="M20 30 C16 26 10 27 8 23 C10 20 16 20 20 24"/><path d="M20 30 C24 26 30 27 32 23 C30 20 24 20 20 24"/><path d="M20 22 C16 18 10 19 8 14 C10 10 16 11 20 15"/><path d="M20 22 C24 18 30 19 32 14 C30 10 24 11 20 15"/><path d="M20 15 C17 11 15 9 14 6 C17 5 19 7 20 11"/><path d="M20 15 C23 11 25 9 26 6 C23 5 21 7 20 11"/></g></svg>`,comfrey:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="18"/><path d="M20 18 C16 16 13 13 12 9 Q19 7 20 14"/><path d="M20 18 C24 16 27 13 28 9 Q21 7 20 14"/><path d="M11 30 Q9 25 11 21 Q14 24 14 28 Q13 31 11 30Z" fill="currentColor" opacity=".2"/><path d="M20 32 Q18 27 20 23 Q22 26 22 30 Q21 33 20 32Z" fill="currentColor" opacity=".2"/><path d="M29 30 Q27 25 29 21 Q32 24 32 28 Q31 31 29 30Z" fill="currentColor" opacity=".2"/><line x1="20" y1="23" x2="11" y2="21"/><line x1="20" y1="23" x2="29" y2="21"/></g></svg>`,st_johns_wort:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="22"/><circle cx="20" cy="13" r="3.5" fill="currentColor" opacity=".3"/><ellipse cx="20" cy="6" rx="3" ry="4.5" fill="currentColor" opacity=".14"/><ellipse cx="26.7" cy="8.6" rx="3" ry="4.5" transform="rotate(72 26.7 8.6)" fill="currentColor" opacity=".14"/><ellipse cx="24.2" cy="18" rx="3" ry="4.5" transform="rotate(144 24.2 18)" fill="currentColor" opacity=".14"/><ellipse cx="15.8" cy="18" rx="3" ry="4.5" transform="rotate(216 15.8 18)" fill="currentColor" opacity=".14"/><ellipse cx="13.3" cy="8.6" rx="3" ry="4.5" transform="rotate(288 13.3 8.6)" fill="currentColor" opacity=".14"/><line x1="20" y1="13" x2="20" y2="8.5"/><line x1="20" y1="13" x2="23.5" y2="10.5"/><line x1="20" y1="13" x2="16.5" y2="10.5"/><path d="M20 28 Q16 26 15 22"/><path d="M20 28 Q24 26 25 22"/></g></svg>`,herb_paris:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="20"/><ellipse cx="20" cy="11" rx="4.5" ry="9" fill="currentColor" opacity=".13"/><ellipse cx="20" cy="29" rx="4.5" ry="9" fill="currentColor" opacity=".13"/><ellipse cx="11" cy="20" rx="9" ry="4.5" fill="currentColor" opacity=".13"/><ellipse cx="29" cy="20" rx="9" ry="4.5" fill="currentColor" opacity=".13"/><circle cx="20" cy="20" r="4" fill="currentColor" opacity=".4"/><line x1="20" y1="11" x2="20" y2="20"/><line x1="11" y1="20" x2="20" y2="20"/></g></svg>`,chamomile:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="22"/><circle cx="20" cy="15" r="3.5" fill="currentColor" opacity=".35"/><ellipse cx="20" cy="8" rx="2" ry="4" fill="currentColor" opacity=".14" stroke="currentColor" stroke-width="1"/><ellipse cx="25.5" cy="9.5" rx="2" ry="4" transform="rotate(51 25.5 9.5)" fill="currentColor" opacity=".14" stroke="currentColor" stroke-width="1"/><ellipse cx="27" cy="15" rx="2" ry="4" transform="rotate(90 27 15)" fill="currentColor" opacity=".14" stroke="currentColor" stroke-width="1"/><ellipse cx="25.5" cy="20.5" rx="2" ry="4" transform="rotate(129 25.5 20.5)" fill="currentColor" opacity=".14" stroke="currentColor" stroke-width="1"/><ellipse cx="14.5" cy="9.5" rx="2" ry="4" transform="rotate(-51 14.5 9.5)" fill="currentColor" opacity=".14" stroke="currentColor" stroke-width="1"/><ellipse cx="13" cy="15" rx="2" ry="4" transform="rotate(90 13 15)" fill="currentColor" opacity=".14" stroke="currentColor" stroke-width="1"/><ellipse cx="14.5" cy="20.5" rx="2" ry="4" transform="rotate(-129 14.5 20.5)" fill="currentColor" opacity=".14" stroke="currentColor" stroke-width="1"/><path d="M20 22 Q17 26 16 30"/><path d="M20 22 Q23 26 24 30"/></g></svg>`,sage:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="10"/><ellipse cx="20" cy="17" rx="8" ry="10" fill="currentColor" opacity=".1" stroke="currentColor" stroke-width="1.3"/><line x1="20" y1="10" x2="20" y2="27" opacity=".4" stroke-width=".8"/><path d="M20 13 Q14 13 13 16" opacity=".55" stroke-width="1"/><path d="M20 13 Q26 13 27 16" opacity=".55" stroke-width="1"/><path d="M20 18 Q14 18 13 21" opacity=".55" stroke-width="1"/><path d="M20 18 Q26 18 27 21" opacity=".55" stroke-width="1"/></g></svg>`,dandelion:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="18"/><circle cx="20" cy="14" r="4" fill="currentColor" opacity=".15"/><line x1="20" y1="10" x2="20" y2="4"/><line x1="23.5" y1="10.5" x2="27" y2="6"/><line x1="25" y1="14" x2="30" y2="13"/><line x1="23.5" y1="17.5" x2="27" y2="21"/><line x1="16.5" y1="10.5" x2="13" y2="6"/><line x1="15" y1="14" x2="10" y2="13"/><line x1="16.5" y1="17.5" x2="13" y2="21"/><circle cx="20" cy="3" r="1.8" fill="currentColor" opacity=".4"/><circle cx="28" cy="5" r="1.8" fill="currentColor" opacity=".4"/><circle cx="31" cy="13" r="1.8" fill="currentColor" opacity=".4"/><circle cx="28" cy="22" r="1.8" fill="currentColor" opacity=".4"/><circle cx="12" cy="5" r="1.8" fill="currentColor" opacity=".4"/><circle cx="9" cy="13" r="1.8" fill="currentColor" opacity=".4"/><circle cx="12" cy="22" r="1.8" fill="currentColor" opacity=".4"/></g></svg>`,poppy:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="22"/><path d="M20 26 Q16 23 15 20"/><path d="M20 26 Q24 23 25 20"/><ellipse cx="20" cy="12" rx="8" ry="9" fill="currentColor" opacity=".1" stroke="currentColor" stroke-width="1.3"/><circle cx="20" cy="12" r="3.5" fill="currentColor" opacity=".35"/><path d="M13 7 Q11 4 14 3" stroke-width="1"/><path d="M27 7 Q29 4 26 3" stroke-width="1"/></g></svg>`,amanita:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="26"/><path d="M15 26 Q15 22 20 22 Q25 22 25 26Z" fill="currentColor" opacity=".2"/><path d="M8 18 Q8 7 20 7 Q32 7 32 18Z" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.3"/><circle cx="20" cy="12" r="2.5" fill="currentColor" opacity=".4"/><circle cx="14" cy="16" r="1.8" fill="currentColor" opacity=".4"/><circle cx="26" cy="16" r="1.8" fill="currentColor" opacity=".4"/><circle cx="12" cy="11" r="1.2" fill="currentColor" opacity=".3"/><circle cx="28" cy="11" r="1.2" fill="currentColor" opacity=".3"/></g></svg>`,ginger:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M12 28 Q10 20 14 16 Q18 12 20 15 Q22 18 26 14 Q30 10 30 16 Q30 22 26 24 Q22 26 20 22 Q18 18 14 22 Q10 26 12 28Z" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.3"/><path d="M14 16 Q12 12 15 9"/><path d="M26 14 Q28 10 26 7"/><circle cx="21" cy="18" r="1.5" fill="currentColor" opacity=".3"/></g></svg>`,cobweb:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity=".75"><circle cx="20" cy="20" r="1.5" fill="currentColor" opacity=".5"/><line x1="20" y1="20" x2="20" y2="5"/><line x1="20" y1="20" x2="33" y2="13"/><line x1="20" y1="20" x2="33" y2="27"/><line x1="20" y1="20" x2="20" y2="35"/><line x1="20" y1="20" x2="7" y2="27"/><line x1="20" y1="20" x2="7" y2="13"/><path d="M20 8 Q26 9 27 15 Q28 21 20 23 Q12 21 13 15 Q14 9 20 8" fill="none" opacity=".6"/><path d="M20 12 Q23.5 13 24 17 Q24.5 21 20 22 Q15.5 21 16 17 Q16.5 13 20 12" fill="none" opacity=".5"/></g></svg>`,boars_tusk:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M15 8 Q12 14 14 22 Q16 30 20 34 Q24 30 26 22 Q28 14 25 8" fill="currentColor" opacity=".1" stroke="currentColor" stroke-width="1.3"/><line x1="20" y1="8" x2="20" y2="34"/><path d="M14 22 Q13 28 16 32"/><path d="M26 22 Q27 28 24 32"/><path d="M15 8 Q17 6 19 8"/><path d="M21 8 Q23 6 25 8"/></g></svg>`,henbane:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="10"/><path d="M20 10 Q14 7 12 5 Q16 3 20 7"/><path d="M20 10 Q26 7 28 5 Q24 3 20 7"/><circle cx="12" cy="22" r="5" fill="currentColor" opacity=".2" stroke="currentColor" stroke-width="1.3"/><circle cx="28" cy="18" r="4" fill="currentColor" opacity=".2" stroke="currentColor" stroke-width="1.3"/><line x1="20" y1="18" x2="12" y2="22"/><line x1="20" y1="16" x2="28" y2="18"/><circle cx="12" cy="22" r="2" fill="currentColor" opacity=".4"/><circle cx="28" cy="18" r="1.8" fill="currentColor" opacity=".4"/></g></svg>`,default:`<svg viewBox="0 0 40 40" fill="none"><g stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="10"/><path d="M20 22 Q13 17 11 11 Q16 8 20 16"/><path d="M20 22 Q27 17 29 11 Q24 8 20 16"/><circle cx="20" cy="8" r="3.5" fill="currentColor" opacity=".35"/></g></svg>`};
+const STEP_ICONS={fill:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 3 Q10.5 6 10 9 Q9.5 12 12 12 Q14.5 12 14 9 Q13.5 6 12 3Z" fill="currentColor" opacity=".25"/><path d="M5 16 L5 20 Q5 21 12 21 Q19 21 19 20 L19 16 Q19 13 12 13 Q5 13 5 16Z"/><path d="M8 16 Q12 14.5 16 16" fill="none" opacity=".5"/></svg>`,grind:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><ellipse cx="12" cy="8" rx="6" ry="3"/><path d="M6 8 L6 14 Q6 18 12 18 Q18 18 18 14 L18 8"/><path d="M9 12 Q12 14 15 12"/><path d="M12 5 L12 8"/></svg>`,add:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`,heat:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 21 Q5 17 7 14 Q9 11 7 8"/><path d="M12 21 Q10 17 12 14 Q14 11 12 8"/><path d="M17 21 Q15 17 17 14 Q19 11 17 8"/></svg>`,bellows:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 12 Q3 7 10 7 Q17 7 17 12 Q17 17 10 17 Q3 17 3 12Z" fill="currentColor" opacity=".18"/><line x1="17" y1="10" x2="22" y2="8"/><line x1="17" y1="14" x2="22" y2="16"/><line x1="17" y1="12" x2="22" y2="12"/></svg>`,cool:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="6.3" y1="6.3" x2="17.7" y2="17.7"/><line x1="6.3" y1="17.7" x2="17.7" y2="6.3"/></svg>`,distill:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3 L8 9 L3 18 L21 18 L16 9 L16 3"/><line x1="6" y1="3" x2="18" y2="3"/><path d="M9 18 L9 22" opacity=".55"/><path d="M15 18 L15 22" opacity=".55"/><path d="M12 18 L12 22" opacity=".55"/></svg>`,pour:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 5 Q6 3 9 3 L15 3 Q18 3 18 5 L18 9 L14 15 L14 20 Q14 22 12 22 Q10 22 10 20 L10 15 L6 9Z" fill="currentColor" opacity=".14"/><path d="M10 15 L14 15"/><path d="M6 9 L18 9"/></svg>`,decant:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 8 L5 18 Q5 21 9 21 L15 21 Q19 21 19 18 L19 14 L13 8 Z" fill="currentColor" opacity=".14"/><path d="M13 8 Q17 6 21 8"/><path d="M9 14 Q13 12 17 14" opacity=".5"/></svg>`,raise:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 4 L7 9 M12 4 L17 9"/><line x1="12" y1="4" x2="12" y2="16"/><line x1="5" y1="20" x2="19" y2="20"/></svg>`};
+
+const BASE_RECIPES=[
+{id:'aesop',name:'Aesop',sub:'Potio Bestiarum Affinium',cat:'potion',base:'spiritus',finish:'distill',diff:3,ings:[{name:'Comfrey',amt:'2 sprigs',icon:'comfrey'},{name:"Boar's Tusk",amt:'1 tusk',icon:'boars_tusk'},{name:'Belladonna',amt:'1 sprig',icon:'belladonna'}],steps:[{act:'fill',txt:'Fill the cauldron with Spiritus'},{act:'grind',txt:'Grind 2 Comfrey and add them'},{act:'add',txt:"Add 1 Boar's Tusk. Boil for 2 turns"},{act:'heat',txt:'Boil for 2 turns'},{act:'grind',txt:'Grind 1 Belladonna and add it'},{act:'distill',txt:'Distill the brew'}],outcome:"Improves riding and dog-handling skills. At strong quality, animals ignore you and dogs will not bark at your approach.",effect:'Improves Riding & Dog-Handling',val:90,lore:'"A man who smells of spiritus and comfrey finds horses more agreeable than his own kin."'},
+{id:'artemisia',name:'Artemisia',sub:'Potio Absinthii Martialis',cat:'potion',base:'spiritus',finish:'distill',diff:3,ings:[{name:'Wormwood',amt:'2 sprigs',icon:'wormwood'},{name:'Sage',amt:'1 sprig',icon:'sage'}],steps:[{act:'fill',txt:'Fill the cauldron with Spiritus'},{act:'add',txt:'Add 1 Sage. Boil for 1 turn'},{act:'heat',txt:'Boil for 1 turn'},{act:'grind',txt:'Grind 2 Wormwood and add them'},{act:'heat',txt:'Boil for 2 turns'},{act:'distill',txt:'Distill the brew'}],outcome:'Increases Strength. At strong quality, reduces stamina cost of attacks and blocks.',effect:'Increases Strength',val:70,lore:'"Named for Artemis, goddess of the hunt. One hopes the patron goddess finds enemies faster."'},
+{id:'bowmans-brew',name:"Bowman's Brew",sub:'Potio Sagittariorum',cat:'potion',base:'spiritus',finish:'distill',diff:3,ings:[{name:'Eyebright',amt:'2 handfuls',icon:'eyebright'},{name:"St. John's Wort",amt:'1 sprig',icon:'st_johns_wort'}],steps:[{act:'fill',txt:'Fill the cauldron with Spiritus'},{act:'add',txt:'Add 2 Eyebright. Boil for 3 turns'},{act:'heat',txt:'Boil for 3 turns'},{act:'cool',txt:'Let the brew cool — do not skip this step'},{act:'grind',txt:"Grind 1 St. John's Wort and add it"},{act:'distill',txt:'Distill the brew'}],outcome:'Improves archery skill. At strong quality, reduces stamina loss while aiming.',effect:'Improves Archery',val:75,lore:'"The letting-cool step is not decorative. Ask anyone who skipped it and still has eyebrows."'},
+{id:'bucks-blood',name:"Buck's Blood",sub:'Sanguis Cervi Fortis',cat:'potion',base:'oil',finish:'pour',diff:2,ings:[{name:"St. John's Wort",amt:'1 sprig',icon:'st_johns_wort'},{name:'Comfrey',amt:'1 sprig',icon:'comfrey'},{name:'Dandelion',amt:'1 bunch',icon:'dandelion'}],steps:[{act:'fill',txt:'Fill the cauldron with Oil'},{act:'grind',txt:"Grind 1 St. John's Wort and add it"},{act:'add',txt:'Add 1 Comfrey. Boil for 1 turn'},{act:'heat',txt:'Boil for 1 turn'},{act:'add',txt:'Add 1 Dandelion. Boil for 1 turn with bellows'},{act:'bellows',txt:'Use the bellows during this turn'},{act:'pour',txt:'Pour the finished brew'}],outcome:'Increases stamina. At strong quality, stamina regeneration also improves.',effect:'Increases Stamina',val:50,lore:'"Hunters swear by it before long chases. Swordfighters before long duels. Drinkers merely swear."'},
+{id:'cockerel',name:'Cockerel',sub:'Potio Vigilantiae Galli',cat:'potion',base:'spiritus',finish:'distill',diff:2,ings:[{name:'Mint',amt:'2 sprigs',icon:'mint'},{name:'Valerian',amt:'1 root',icon:'valerian'}],steps:[{act:'fill',txt:'Fill the cauldron with Spiritus'},{act:'grind',txt:'Grind 2 Mint and add them'},{act:'heat',txt:'Boil for 1 turn'},{act:'add',txt:'Add 1 Valerian. Boil for 2 turns'},{act:'heat',txt:'Boil for 2 turns'},{act:'distill',txt:'Distill the brew'}],outcome:"Increases energy and slows fatigue. The night watchman's steadfast friend.",effect:'Increases Energy & Slows Fatigue',val:55,lore:'"The monks call it a gift from God. The tavern keeper calls it a gift from commerce. Both are right."'},
+{id:'digestive',name:'Digestive Potion',sub:'Potio Digestiva Stomachi',cat:'potion',base:'water',finish:'pour',diff:2,ings:[{name:'Thistle',amt:'2 heads',icon:'thistle'},{name:'Nettle',amt:'1 handful',icon:'nettle'},{name:'Charcoal',amt:'1 piece',icon:'default'}],steps:[{act:'fill',txt:'Fill the cauldron with Water'},{act:'add',txt:'Add 2 Thistle. Boil for 2 turns'},{act:'heat',txt:'Boil for 2 turns'},{act:'grind',txt:'Grind 1 Nettle and add it. Boil for 1 turn'},{act:'heat',txt:'Boil for 1 turn'},{act:'grind',txt:'Grind 1 Charcoal and add it'},{act:'pour',txt:'Pour the finished brew'}],outcome:"Reduces fullness and cures food poisoning. At strong quality, cures all poisoning and boosts Vitality.",effect:'Cures Food Poisoning',val:25,lore:'"Every apothecary sells this. Every apothecary\'s customer needed it the night before."'},
+{id:'embrocation',name:'Embrocation',sub:'Unguentum Agilitatis',cat:'potion',base:'oil',finish:'pour',diff:3,ings:[{name:'Poppy',amt:'1 head',icon:'poppy'},{name:'Valerian',amt:'1 root',icon:'valerian'},{name:'Eyebright',amt:'1 handful',icon:'eyebright'},{name:"Boar's Tusk",amt:'1 tusk',icon:'boars_tusk'}],steps:[{act:'fill',txt:'Fill the cauldron with Oil'},{act:'add',txt:'Add 1 Poppy and 1 Valerian. Boil for 2 turns'},{act:'heat',txt:'Boil for 2 turns'},{act:'grind',txt:'Grind 1 Eyebright and add it'},{act:'add',txt:"Add 1 Boar's Tusk. Boil for 1 turn"},{act:'heat',txt:'Boil for 1 turn'},{act:'pour',txt:'Pour the finished brew'}],outcome:'Increases Agility and the Defence skill.',effect:'Increases Agility & Defence',val:85,lore:'"Wrestlers in the ancient world used similar compounds. Whether they worked is disputed."'},
+{id:'fox',name:'Fox',sub:'Potio Vulpina Ingenii',cat:'potion',base:'oil',finish:'pour',diff:3,ings:[{name:"St. John's Wort",amt:'1 sprig',icon:'st_johns_wort'},{name:'Nettle',amt:'1 handful',icon:'nettle'},{name:'Charcoal',amt:'1 piece',icon:'default'},{name:'Belladonna',amt:'1 sprig',icon:'belladonna'}],steps:[{act:'fill',txt:'Fill the cauldron with Oil'},{act:'grind',txt:"Grind 1 St. John's Wort and 1 Nettle, add them"},{act:'heat',txt:'Boil for 2 turns'},{act:'grind',txt:'Grind 1 Charcoal and add it'},{act:'add',txt:'Add 1 Belladonna. Boil for 1 turn'},{act:'heat',txt:'Boil for 1 turn'},{act:'pour',txt:'Pour the finished brew'}],outcome:'Improves Speech and reading speed. At the highest quality, increases all XP gained by 50%.',effect:'Improves Speech & Increases XP',val:85,lore:'"The fox does not run faster than the hound. It merely thinks better."'},
+{id:'quickfinger',name:'Quickfinger Potion',sub:'Potio Digitorum Velocium',cat:'potion',base:'water',finish:'pour',diff:3,ings:[{name:'Eyebright',amt:'2 handfuls',icon:'eyebright'},{name:'Valerian',amt:'2 roots',icon:'valerian'},{name:'Cobweb',amt:'1 web',icon:'cobweb'}],steps:[{act:'fill',txt:'Fill the cauldron with Water'},{act:'add',txt:'Add 1 Cobweb and 2 Eyebright. Boil for 3 turns'},{act:'heat',txt:'Boil for 3 turns'},{act:'grind',txt:'Grind 2 Valerian and add them. Boil for 1 turn'},{act:'heat',txt:'Boil for 1 turn'},{act:'pour',txt:'Pour the finished brew'}],outcome:'Increases thievery and craftsmanship skills. The cobweb lends the fingers a delicate precision.',effect:'Improves Thievery & Craftsmanship',val:90,lore:'"The cobweb ingredient always disturbs apprentices. The results do not."'},
+{id:'marigold-decoction',name:'Marigold Decoction',sub:'Decoctum Calendulae Salutiferum',cat:'decoction',base:'water',finish:'pour',diff:1,ings:[{name:'Nettle',amt:'1 handful',icon:'nettle'},{name:'Marigold',amt:'2 blooms',icon:'marigold'}],steps:[{act:'fill',txt:'Fill the cauldron with Water'},{act:'add',txt:'Add 1 Nettle. Boil for 2 turns'},{act:'heat',txt:'Boil for 2 turns'},{act:'grind',txt:'Grind 2 Marigold and add them'},{act:'pour',txt:'Pour the finished brew'}],outcome:'Gradually heals health and cures hangovers. The country healers have used marigold tincture for centuries.',effect:'Gradually Heals Health',val:25,lore:'"Every monastery has a recipe. The monks claim it is purely medicinal. No one questions them."'},
+{id:'chamomile-decoction',name:'Chamomile Decoction',sub:'Infusum Matricariae Somniferum',cat:'decoction',base:'wine',finish:'pour',diff:1,ings:[{name:'Chamomile',amt:'2 bunches',icon:'chamomile'},{name:'Sage',amt:'1 sprig',icon:'sage'}],steps:[{act:'fill',txt:'Fill the cauldron with Wine'},{act:'add',txt:'Add 2 Chamomile. Boil for 1 turn'},{act:'heat',txt:'Boil for 1 turn'},{act:'grind',txt:'Grind 1 Sage and add it'},{act:'pour',txt:'Pour the finished brew'}],outcome:'Sleep restores lost health. At strong quality, energy replenishes faster while sleeping.',effect:'Improves Sleep Recovery',val:20,lore:'"Some call it a luxury brew. Those people have never slept in a damp camp after a battle."'},
+{id:'aqua-vitalis',name:'Aqua Vitalis',sub:'Aqua Vitalis Haemostatica',cat:'decoction',base:'water',finish:'distill',diff:2,ings:[{name:'Dandelion',amt:'2 bunches',icon:'dandelion'},{name:'Marigold',amt:'1 bloom',icon:'marigold'}],steps:[{act:'fill',txt:'Fill the cauldron with Water'},{act:'add',txt:'Add 2 Dandelion. Boil for 1 turn'},{act:'heat',txt:'Boil for 1 turn'},{act:'grind',txt:'Grind 1 Marigold and add it. Boil for 2 turns'},{act:'heat',txt:'Boil for 2 turns'},{act:'distill',txt:'Distill the brew'}],outcome:'Reduces health loss and slows bleeding.',effect:'Reduces Health Loss & Slows Bleeding',val:35,lore:'"The water of life. Rather humbler than the name suggests — but then, most things are."'},
+{id:'nighthawk',name:'Nighthawk',sub:'Potio Accipitris Nocturni',cat:'decoction',base:'water',finish:'pour',diff:3,ings:[{name:'Eyebright',amt:'2 handfuls',icon:'eyebright'},{name:'Belladonna',amt:'1 sprig',icon:'belladonna'},{name:'Chamomile',amt:'1 bunch',icon:'chamomile'}],steps:[{act:'fill',txt:'Fill the cauldron with Water'},{act:'grind',txt:'Grind 2 Eyebright first and set aside'},{act:'add',txt:'Add 1 Belladonna. Boil for 3 turns'},{act:'heat',txt:'Boil for 3 turns'},{act:'grind',txt:'Grind 1 Chamomile and add it'},{act:'pour',txt:'Pour the finished brew'}],outcome:"Grants extraordinary night vision. Energy depletes slower — at strong quality, not at all.",effect:'Improves Night Vision',val:65,lore:'"Stare into the dark long enough and the dark stares back — but you will see it first."'},
+{id:'painkiller-brew',name:'Painkiller Brew',sub:'Decoctum Papaveris Sedativi',cat:'decoction',base:'spiritus',finish:'distill',diff:3,ings:[{name:'Poppy',amt:'3 heads',icon:'poppy'},{name:'Marigold',amt:'1 bloom',icon:'marigold'},{name:'Comfrey',amt:'1 sprig',icon:'comfrey'}],steps:[{act:'fill',txt:'Fill the cauldron with Spiritus'},{act:'grind',txt:'Grind 3 Poppy and add them'},{act:'add',txt:'Add 1 Marigold. Boil for 1 turn with bellows'},{act:'bellows',txt:'Use the bellows during this turn'},{act:'add',txt:'Add 1 Comfrey. Boil for 2 turns'},{act:'heat',txt:'Boil for 2 turns'},{act:'distill',txt:'Distill the brew'}],outcome:'Lessens the effects of wounds — maximum stamina decreases less as health drops.',effect:'Reduces Stamina Loss from Wounds',val:80,lore:'"Three poppy heads. The apothecary counts them carefully. So does the constable."'},
+{id:'fever-tonic',name:'Fever Tonic',sub:'Tonica Febrilis Remedii',cat:'decoction',base:'wine',finish:'distill',diff:4,ings:[{name:'Feverfew',amt:'3 bunches',icon:'chamomile'},{name:'Ginger',amt:'2 roots',icon:'ginger'},{name:'Elderberry Leaf',amt:'1 leaf',icon:'nettle'}],steps:[{act:'fill',txt:'Fill the cauldron with Wine'},{act:'add',txt:'Add 3 Feverfew. Boil for 2 turns'},{act:'heat',txt:'Boil for 2 turns'},{act:'grind',txt:'Grind 1 Elderberry Leaf and add it'},{act:'add',txt:'Add 2 Ginger roots'},{act:'distill',txt:'Distill the brew'}],outcome:'Reduces fever and its complications before they become fatal.',effect:'Cures Fever',val:120,lore:'"Ginger from the east, feverfew from the ditch. The body does not care about provenance."'},
+{id:'hair-o-dog',name:"Hair o' the Dog",sub:'Remedio Capilli Canis',cat:'decoction',base:'water',finish:'pour',diff:2,ings:[{name:'Sage',amt:'1 sprig',icon:'sage'},{name:"St. John's Wort",amt:'1 sprig',icon:'st_johns_wort'},{name:'Mint',amt:'1 sprig',icon:'mint'}],steps:[{act:'fill',txt:'Fill the cauldron with Water'},{act:'add',txt:"Add 1 Sage and 1 St. John's Wort. Boil for 3 turns"},{act:'heat',txt:'Boil for 3 turns'},{act:'grind',txt:'Grind 1 Mint and add it'},{act:'pour',txt:'Pour the finished brew'}],outcome:"Prevents hangovers and cures drunkenness, but reduces Charisma.",effect:'Cures Drunkenness',val:30,lore:'"Every monastery has a recipe for this. The monks claim it is for medicinal purposes only."'},
+{id:'decoction-st-roch',name:'Decoction of St. Roch',sub:'Decoctum Sancti Rochi',cat:'decoction',base:'wine',finish:'distill',diff:5,ings:[{name:"St. John's Wort",amt:'2 sprigs',icon:'st_johns_wort'},{name:'Chamomile',amt:'2 bunches',icon:'chamomile'},{name:'Ginger',amt:'1 root',icon:'ginger'}],steps:[{act:'fill',txt:'Fill the cauldron with Wine'},{act:'grind',txt:"Grind 2 St. John's Wort and add them. Boil for 1 turn"},{act:'heat',txt:'Boil for 1 turn'},{act:'raise',txt:'Raise the cauldron. Add 2 Chamomile. Lower — do NOT flip the timer'},{act:'grind',txt:'Immediately grind 1 Ginger and drop it in'},{act:'bellows',txt:'Pull the bellows twice immediately'},{act:'raise',txt:'Raise the cauldron and distill at once'},{act:'distill',txt:'Distill the brew'}],outcome:"Raises Vitality, and healing potions heal 30% faster. The most demanding recipe in the Codex — a master's work.",effect:'Raises Vitality & Accelerates Healing',val:150,lore:'"St. Roch healed by touch. We must be satisfied with wine and timing."'},
+{id:'bane-potion',name:'Bane Potion',sub:'Potio Mortis Certae',cat:'poison',base:'wine',finish:'distill',diff:3,ings:[{name:'Wormwood',amt:'1 sprig',icon:'wormwood'},{name:'Belladonna',amt:'2 sprigs',icon:'belladonna'},{name:'Amanita Muscaria',amt:'1 cap',icon:'amanita'}],steps:[{act:'fill',txt:'Fill the cauldron with Wine'},{act:'add',txt:'Add 1 Wormwood. Boil for 2 turns'},{act:'heat',txt:'Boil for 2 turns'},{act:'grind',txt:'Grind 2 Belladonna and add them. Boil for 1 turn with bellows'},{act:'bellows',txt:'Use the bellows vigorously'},{act:'add',txt:'Add 1 Amanita Muscaria cap'},{act:'distill',txt:'Distill the brew'}],outcome:'Depletes 110 health, causing certain death. More effective in cooking pots than on weapons.',effect:'Lethal Poison',val:80,lore:'"The amanita grows red and cheerful. It is neither."'},
+{id:'dollmaker',name:'Dollmaker Potion',sub:'Potio Paralytis Dolosi',cat:'poison',base:'spiritus',finish:'distill',diff:3,ings:[{name:'Herb Paris',amt:'2 clusters',icon:'herb_paris'},{name:'Valerian',amt:'1 root',icon:'valerian'}],steps:[{act:'fill',txt:'Fill the cauldron with Spiritus'},{act:'add',txt:'Add 2 Herb Paris. Boil for 3 turns'},{act:'heat',txt:'Boil for 3 turns'},{act:'grind',txt:'Grind 1 Valerian root and add it. Boil for 2 turns'},{act:'heat',txt:'Boil for 2 turns'},{act:'distill',txt:'Distill the brew'}],outcome:'Makes running impossible and reduces all weapon skills. Better suited to applying to weapons than cooking pots.',effect:'Cripples Movement & Combat Skills',val:100,lore:'"Herb Paris in high doses. The name comes from a less pleasant observation."'},
+{id:'lullaby',name:'Lullaby',sub:'Potio Soporis Lethi',cat:'poison',base:'oil',finish:'pour',diff:2,ings:[{name:'Poppy',amt:'1 head',icon:'poppy'},{name:'Thistle',amt:'1 head',icon:'thistle'},{name:'Herb Paris',amt:'1 cluster',icon:'herb_paris'}],steps:[{act:'fill',txt:'Fill the cauldron with Oil'},{act:'add',txt:'Add 1 Poppy. Boil for 1 turn'},{act:'heat',txt:'Boil for 1 turn'},{act:'add',txt:'Add 1 Thistle. Boil for 1 turn'},{act:'heat',txt:'Boil for 1 turn'},{act:'grind',txt:'Grind 1 Herb Paris and add it'},{act:'pour',txt:'Pour the finished brew'}],outcome:'Reduces energy to zero. At strong quality, stamina regeneration also impaired.',effect:'Depletes Energy — Sleep Poison',val:60,lore:'"The name is sentimental. The effect is not."'},
+{id:'lion-perfume',name:'Lion Perfume',sub:'Unguentum Leonis Magnifici',cat:'perfume',base:'spiritus',finish:'decant',diff:2,ings:[{name:'Sage',amt:'2 sprigs',icon:'sage'},{name:'Mint',amt:'2 sprigs',icon:'mint'}],steps:[{act:'fill',txt:'Fill the cauldron with Spiritus'},{act:'add',txt:'Add 2 Sage. Boil for 2 turns'},{act:'heat',txt:'Boil for 2 turns'},{act:'grind',txt:'Grind 2 Mint and add them'},{act:'decant',txt:'Decant the finished perfume'}],outcome:'Strong but short-lasting perfume. Substantially increases Charisma. Decreases it if combined with another perfume.',effect:'Increases Charisma (Strong, Short)',val:75,lore:'"A man who smells of two perfumes commands laughter, not respect."'},
+{id:'mintha-perfume',name:'Mintha Perfume',sub:'Unguentum Menthae Subtile',cat:'perfume',base:'wine',finish:'distill',diff:3,ings:[{name:'Dandelion',amt:'3 bunches',icon:'dandelion'},{name:'Marigold',amt:'1 bloom',icon:'marigold'},{name:'Mint',amt:'1 sprig',icon:'mint'}],steps:[{act:'fill',txt:'Fill the cauldron with Wine'},{act:'grind',txt:'Grind 3 Dandelion and 1 Mint together, add them'},{act:'heat',txt:'Boil for 2 turns'},{act:'add',txt:'Add 1 Marigold. Boil for 1 turn with bellows'},{act:'bellows',txt:'Use the bellows during this turn'},{act:'distill',txt:'Distill the perfume'}],outcome:'Weak but long-lasting perfume. Slightly increases Charisma. Named for a river nymph, subtle as water.',effect:'Increases Charisma (Weak, Lasting)',val:45,lore:'"Mintha was transformed into mint by a jealous goddess. The perfume outlasts the myth."'},
+{id:'lead-shot-powder',name:'Lead Shot Powder',sub:'Pulvis Pyrius Globorum',cat:'powder',base:'water',finish:'grind',diff:2,ings:[{name:'Saltpetre',amt:'1 portion',icon:'default'},{name:'Sulphur',amt:'1 portion',icon:'default'},{name:'Charcoal',amt:'1 piece',icon:'default'}],steps:[{act:'fill',txt:'Fill the cauldron with Water'},{act:'grind',txt:'Grind 1 Saltpetre and 1 Sulphur together, add them'},{act:'heat',txt:'Boil for 2 turns'},{act:'grind',txt:'Grind 1 Charcoal and add it'},{act:'heat',txt:'Boil for 2 turns'},{act:'pour',txt:'Pour into the mortar and grind to fine powder'}],outcome:'Ammunition crafting material for lead shot.',effect:'Crafts Lead Shot Ammunition',val:30,lore:'"Fire, salt, and earth. The ancients had all three. Only now do we know what to do with them."'},
+{id:'scattershot-powder',name:'Scattershot Powder',sub:'Pulvis Pyrius Dispersus',cat:'powder',base:'water',finish:'grind',diff:2,ings:[{name:'Saltpetre',amt:'1 portion',icon:'default'},{name:'Sulphur',amt:'1 portion',icon:'default'},{name:'Leached Coal',amt:'1 piece',icon:'default'}],steps:[{act:'fill',txt:'Fill the cauldron with Water'},{act:'grind',txt:'Grind 1 Sulphur and 1 Saltpetre together, add them'},{act:'heat',txt:'Boil for 3 turns — one more than lead shot'},{act:'grind',txt:'Grind 1 Leached Coal and add it'},{act:'heat',txt:'Boil for 1 further turn'},{act:'pour',txt:'Pour into the mortar and grind to fine powder'}],outcome:'Ammunition crafting material for scattershot.',effect:'Crafts Scattershot Ammunition',val:35,lore:'"Leached rather than common charcoal. The difference is more than the alchemist cares to explain."'},
+{id:'saviour-schnapps',name:'Saviour Schnapps',sub:'Aqua Vitae Conservationis',cat:'special',base:'wine',finish:'pour',diff:2,ings:[{name:'Nettle',amt:'1 handful',icon:'nettle'},{name:'Belladonna',amt:'2 sprigs',icon:'belladonna'}],steps:[{act:'fill',txt:'Fill the cauldron with Wine'},{act:'add',txt:'Add 1 Nettle. Boil for 2 turns'},{act:'heat',txt:'Boil for 2 turns'},{act:'grind',txt:'Grind 2 Belladonna and add them. Boil for 1 turn'},{act:'heat',txt:'Boil for 1 turn'},{act:'pour',txt:'Pour the finished brew'}],outcome:"A bitter, burning spirit that commits Henry's deeds to memory. Drink it anywhere to save your progress. At strong quality, also boosts Strength, Vitality, and Agility.",effect:'Saves the Game',val:40,lore:'"Master Nicodemus calls it the most important brew in any alchemist\'s repertoire — for reasons he would rather not admit."'},
+{id:'lethean-water',name:'Lethean Water',sub:'Aqua Lethaea Oblivionis',cat:'special',base:'spiritus',finish:'distill',diff:4,ings:[{name:'Wormwood',amt:'2 sprigs',icon:'wormwood'},{name:'Belladonna',amt:'1 sprig',icon:'belladonna'},{name:'Henbane',amt:'1 sprig',icon:'henbane'}],steps:[{act:'fill',txt:'Fill the cauldron with Spiritus'},{act:'grind',txt:'Grind 2 Wormwood and add them'},{act:'add',txt:'Add 1 Belladonna. Boil for 3 turns'},{act:'heat',txt:'Boil for 3 full turns'},{act:'add',txt:'Add 1 Henbane'},{act:'distill',txt:'Distill the brew'}],outcome:"Resets all perk points so they may be reassigned — irreversible in cost, not in consequence. Your coin purse will mourn what your mind forgets.",effect:'Resets All Perk Points',val:200,lore:'"The river Lethe carries away all memory. This potion carries away only past choices — and your coin purse along with them."'},
+{id:'moonshine',name:'Moonshine',sub:'Spiritus Lunaris Clandestinus',cat:'special',base:'spiritus',finish:'distill',diff:2,ings:[{name:'Wormwood',amt:'2 sprigs',icon:'wormwood'},{name:'Mint',amt:'2 sprigs',icon:'mint'}],steps:[{act:'fill',txt:'Fill the cauldron with Spiritus'},{act:'add',txt:'Add 2 Wormwood. Boil for 2 turns'},{act:'heat',txt:'Boil for 2 turns'},{act:'grind',txt:'Grind 2 Mint and add them. Boil for 1 turn'},{act:'heat',txt:'Boil for 1 turn'},{act:'distill',txt:'Distill the brew'}],outcome:"Henry's home-brewed moonshine. A strong drink that puts one in a good mood.",effect:'Strong Alcohol — Lifts Mood',val:20,lore:'"Perfectly legal. Almost certainly. The alchemist does not advise asking the bailiff."'},
+{id:'soap',name:'Soap',sub:'Sapo Mundificationis',cat:'special',base:'oil',finish:'pour',diff:1,ings:[{name:'Thistle',amt:'1 head',icon:'thistle'},{name:'Dandelion',amt:'1 bunch',icon:'dandelion'},{name:'Charcoal',amt:'1 piece',icon:'default'}],steps:[{act:'fill',txt:'Fill the cauldron with Oil'},{act:'grind',txt:'Grind 1 Thistle and add it'},{act:'heat',txt:'Boil for 2 turns'},{act:'add',txt:'Add 1 Dandelion. Boil for 1 turn'},{act:'heat',txt:'Boil for 1 turn'},{act:'grind',txt:'Grind 1 Charcoal and add it'},{act:'pour',txt:'Pour the finished soap'}],outcome:'Used to wash dirty clothes. Cleanliness is not taken for granted — a man in filthy clothing finds fewer doors open.',effect:'Cleans Dirty Clothing',val:5,lore:'"Oil, thistle, and charcoal. The oldest recipe in this Codex, and the most used."'},
+];
+
+let recipes=BASE_RECIPES.map(r=>({...r,mastered:false,custom:false}));
+let activeCat='all',activeId=null,searchQuery='';
+const codexBody=document.querySelector('.codex-body');
+function isMobile(){return window.innerWidth<=720}
+function showList(){if(isMobile())codexBody.className='codex-body show-list'}
+function showDetail(){if(isMobile())codexBody.className='codex-body show-detail'}
+function goBackToList(){showList()}
+const diffLabel=d=>['','Novice','Apprentice','Journeyman','Adept','Master'][d]||'?';
+const baseLabel=b=>({water:'Water',wine:'Wine',oil:'Oil',spiritus:'Spiritus'})[b]||b;
+const finishLabel=f=>({pour:'Pour',distill:'Distill',decant:'Decant',grind:'Grind & Pour'})[f]||f;
+function pips(n,filled,size=7){return Array.from({length:n},(_,i)=>`<span class="pip${i<filled?' on':''}"></span>`).join('')}
+function h(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function basePill(base){return `<span class="base-pill base-${base}">${baseLabel(base)}</span>`}
+function filterRecipes(){
+  let list=recipes;
+  if(activeCat!=='all')list=list.filter(r=>r.cat===activeCat);
+  if(searchQuery){const q=searchQuery.toLowerCase();list=list.filter(r=>r.name.toLowerCase().includes(q)||r.ings.some(i=>i.name.toLowerCase().includes(q))||r.effect.toLowerCase().includes(q));}
+  return list;
+}
+function renderList(){
+  const container=document.getElementById('recipeList');
+  const filtered=filterRecipes();
+  if(!filtered.length){container.innerHTML=`<div style="padding:24px 16px;text-align:center;font-family:'IM Fell English',serif;font-style:italic;font-size:15px;color:#7a5020;line-height:1.6">No recipes found in the Codex.</div>`;return;}
+  container.innerHTML=filtered.map(r=>`<div class="ritem${r.id===activeId?' active':''}" data-id="${r.id}" role="button" tabindex="0" aria-label="${h(r.name)}, ${h(r.cat)}"><div class="ritem-name">${h(r.name)}</div><div class="ritem-sub">${h(r.sub)}</div><div class="ritem-foot"><span class="rbadge">${h(r.cat)}</span>${basePill(r.base)}<span class="pips">${pips(5,r.diff)}</span>${r.mastered?'<span class="mastered-star" aria-label="Mastered">&#9733;</span>':''}</div></div>`).join('');
+  container.querySelectorAll('.ritem').forEach(el=>{
+    el.addEventListener('click',()=>{activeId=el.dataset.id;renderList();renderDetail();showDetail();});
+    el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();activeId=el.dataset.id;renderList();renderDetail();showDetail();}});
+  });
+}
+function renderDetail(){
+  const el=document.getElementById('rxDetail');
+  if(!activeId){el.innerHTML=`<div class="empty-state"><svg width="72" height="72" viewBox="0 0 80 80" opacity=".3" aria-hidden="true"><ellipse cx="40" cy="56" rx="26" ry="11" fill="none" stroke="#7a4020" stroke-width="2"/><path d="M16 46 Q13 31 21 23 C29 15 51 15 59 23 Q67 31 64 46Z" fill="none" stroke="#7a4020" stroke-width="2"/><path d="M16 40 Q9 32 13 26" stroke="#7a4020" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M64 40 Q71 32 67 26" stroke="#7a4020" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg><div class="empty-title">Open the Tome</div><div class="empty-sub">Select a recipe from the index to read its contents</div></div>`;return;}
+  const r=recipes.find(x=>x.id===activeId);if(!r)return;
+  const ingsHTML=r.ings.map(ing=>`<div class="ing-item"><div class="ing-icon" aria-hidden="true">${HERBS[ing.icon]||HERBS.default}</div><div><div class="ing-name">${h(ing.name)}</div><div class="ing-amt">${h(ing.amt)}</div></div></div>`).join('');
+  const stepsHTML=r.steps.map((s,i)=>`<div class="step"><div class="step-num" aria-hidden="true">${i+1}</div><div class="step-ico" aria-hidden="true">${STEP_ICONS[s.act]||STEP_ICONS.add}</div><div class="step-txt">${h(s.txt)}</div></div>`).join('');
+  el.innerHTML=`<div class="recipe-reveal"><button class="back-btn" onclick="goBackToList()" aria-label="Back to recipe list"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 2L5 7l4 5"/></svg>Back</button><h1 class="rx-title">${h(r.name)}</h1><div class="rx-latin">${h(r.sub)}</div><div class="orn-div" aria-hidden="true"><div class="orn-line"></div><svg width="28" height="18" viewBox="0 0 28 18" fill="none"><path d="M14 2 L16 7 L22 7 L17 11 L19 16 L14 12 L9 16 L11 11 L6 7 L12 7Z" fill="none" stroke="#c9a030" stroke-width="1.1" opacity=".8"/></svg><div class="orn-line"></div></div><div class="rx-meta"><div class="meta-itm"><div class="meta-lbl">Category</div><div class="meta-val" style="text-transform:capitalize">${h(r.cat)}</div></div><div class="meta-itm"><div class="meta-lbl">Base Liquid</div><div class="meta-val">${baseLabel(r.base)}</div></div><div class="meta-itm"><div class="meta-lbl">Finish</div><div class="meta-val meta-finish">${finishLabel(r.finish)}</div></div><div class="meta-itm"><div class="meta-lbl">Difficulty</div><div class="meta-val">${diffLabel(r.diff)}</div></div><div class="meta-itm"><div class="meta-lbl">Grade</div><div class="meta-val"><span class="pips" style="display:inline-flex;gap:3px">${pips(5,r.diff,8)}</span></div></div><div class="meta-itm"><div class="meta-lbl">Value</div><div class="meta-val">${r.val}&thinsp;g</div></div></div><div class="rx-cols"><section><h2 class="col-head">Ingredients Required</h2>${ingsHTML}</section><section><h2 class="col-head">Method of Preparation</h2><div class="steps-list">${stepsHTML}</div></section></div><div class="outcome"><div class="outcome-head" aria-hidden="true">&#10022;&ensp;Outcome</div><div class="outcome-desc">${h(r.outcome)}</div><div class="outcome-center"><div class="effect-badge">${h(r.effect)}</div><div class="rx-value">Estimated value: ${r.val} Groschen</div></div></div>${r.lore?`<blockquote class="lore"><div class="lore-txt">${h(r.lore)}</div></blockquote>`:''}<div class="rx-actions"><button class="action-btn${r.mastered?' mastered':''}" onclick="toggleMastered('${r.id}')">${r.mastered?'&#9733; Mastered':'&#9734; Mark as Mastered'}</button>${r.custom?`<button class="action-btn danger" onclick="deleteRecipe('${r.id}')">&#10005; Remove Entry</button>`:''}</div></div>`;
+}
+function toggleMastered(id){const r=recipes.find(x=>x.id===id);if(r){r.mastered=!r.mastered;renderList();renderDetail();}}
+function deleteRecipe(id){if(!confirm('Remove this recipe from the Codex?'))return;recipes=recipes.filter(x=>x.id!==id);if(activeId===id){activeId=null;showList();}renderList();renderDetail();}
+document.querySelectorAll('.cat-tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.cat-tab').forEach(t=>t.classList.remove('active'));tab.classList.add('active');activeCat=tab.dataset.cat;renderList();});});
+document.getElementById('searchInput').addEventListener('input',e=>{searchQuery=e.target.value.trim();renderList();});
+const modal=document.getElementById('addModal');
+function openModal(){modal.classList.add('open');document.getElementById('f-name').focus();}
+function closeModal(){modal.classList.remove('open');}
+document.getElementById('openAddModal').addEventListener('click',openModal);
+document.getElementById('cancelModal').addEventListener('click',closeModal);
+modal.addEventListener('click',e=>{if(e.target===modal)closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('open'))closeModal();});
+document.getElementById('submitModal').addEventListener('click',()=>{
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){document.getElementById('f-name').focus();return;}
+  const ings=document.getElementById('f-ings').value.split('\n').filter(l=>l.trim()).map(line=>{const[n,...rest]=line.split(',');return{name:(n||'').trim(),amt:(rest.join(',')||'as needed').trim(),icon:'default'};});
+  const steps=document.getElementById('f-steps').value.split('\n').filter(l=>l.trim()).map(txt=>({act:'add',txt:txt.trim()}));
+  const nr={id:'custom-'+Date.now(),name,sub:document.getElementById('f-sub').value.trim()||'Reciperum Incognitae',cat:document.getElementById('f-cat').value,base:document.getElementById('f-base').value,finish:document.getElementById('f-finish').value,diff:Math.max(1,Math.min(5,parseInt(document.getElementById('f-diff').value)||2)),ings:ings.length?ings:[{name:'Unknown ingredient',amt:'as needed',icon:'default'}],steps:steps.length?steps:[{act:'add',txt:'Prepare as needed.'}],outcome:document.getElementById('f-outcome').value.trim()||'Unknown outcome.',effect:document.getElementById('f-effect').value.trim()||'Unknown Effect',val:parseInt(document.getElementById('f-val').value)||0,lore:document.getElementById('f-lore').value.trim()||null,mastered:false,custom:true};
+  recipes.push(nr);
+  ['f-name','f-sub','f-ings','f-steps','f-outcome','f-effect','f-lore'].forEach(id=>{document.getElementById(id).value='';});
+  document.getElementById('f-diff').value='2';document.getElementById('f-val').value='0';
+  closeModal();activeId=nr.id;activeCat='all';
+  document.querySelectorAll('.cat-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector('[data-cat="all"]').classList.add('active');
+  renderList();renderDetail();showDetail();
+});
+if(isMobile()){codexBody.className='codex-body show-list';renderList();}
+else{activeId=recipes[0].id;renderList();renderDetail();}
+</script>
+</body>
+</html>
