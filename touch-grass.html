@@ -172,7 +172,11 @@ input:focus { border-color:rgba(120,100,80,0.4); }
       <button class="shuffle" id="shuffle-btn" title="Random">↺</button>
     </div>
     <button class="btn" id="leave-btn">Head outside →</button>
-    <div class="link-row"><button class="btn-link" id="view-col-btn">Collection · <span id="col-count">0</span> found</button></div>
+    <div class="link-row" style="display:flex;align-items:center;justify-content:center;gap:10px;">
+      <span style="font-size:12px;color:var(--sc);"><span id="walk-count">0</span> walks</span>
+      <span style="color:var(--sc);font-size:12px;opacity:.4;">·</span>
+      <button class="btn-link" id="view-col-btn">Collection · <span id="col-count">0</span> found</button>
+    </div>
   </div>
 </div>
 
@@ -275,6 +279,7 @@ let depTime    = null;
 let elapsedSec = 0;
 let collection = [];
 let lastFinds  = [];
+let walks      = 0;
 let audioCtx   = null;
 let ambient    = null;
 
@@ -521,7 +526,8 @@ function show(id) { ALL_SCREENS.forEach(function(s) { $(s).classList.toggle('hid
 function loadCol()  { try { collection=JSON.parse(lsGet('tg_collection')||'[]'); } catch(e) { collection=[]; } updateCounts(); }
 function saveCol()  { lsSet('tg_collection', JSON.stringify(collection.slice(0,500))); }
 function updateCounts() {
-  $('col-count').textContent = collection.length;
+  $('col-count').textContent  = collection.length;
+  $('walk-count').textContent = walks;
   var r = $('res-col-count'); if (r) r.textContent = collection.length;
 }
 
@@ -611,6 +617,7 @@ async function doReturn() {
 
   lastFinds  = stamped;
   collection = stamped.concat(collection).slice(0, 500);
+  walks++; lsSet('tg_walks', walks);
   saveCol(); updateCounts(); lsDel('tg_departure');
 
   var hasLeg = stamped.some(function(f) { return f.rarity === 'legendary'; });
@@ -665,7 +672,9 @@ $('col-back-btn').addEventListener('click', function() { var f=$('col-back-btn')
 
 /* ── boot ── */
 (function boot() {
-  loadCol(); initWeather(); resize(); requestAnimationFrame(drawFrame);
+  loadCol();
+  walks = parseInt(lsGet('tg_walks')||'0', 10);
+  updateCounts(); initWeather(); resize(); requestAnimationFrame(drawFrame);
   applyTheme();
   setInterval(function() { tod=getTod(); applyTheme(); syncAmbient(); }, 30000);
 
