@@ -352,11 +352,32 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; }
 <script>
 // ─────────────────────────────────────────────────────
 // APP DATA — add new apps here
-// Category tags (get teal highlight): gaming, fitness
+// Category tags (get teal highlight): gaming, fitness, outdoor
 // ─────────────────────────────────────────────────────
-const CAT_TAGS = new Set(["gaming", "fitness"]);
+const CAT_TAGS = new Set(["gaming", "fitness", "outdoor"]);
 
 const APPS = [
+  {
+    emoji: "🌿",
+    iconBg: "rgba(100,160,80,0.15)",
+    title: "Touch Grass",
+    subtitle: "surreal finds · ambient audio · real-time weather",
+    version: "v4",
+    deployed: "Jun 2026",
+    size: "~14 KB",
+    tech: "Vanilla HTML",
+    tags: ["outdoor", "ambient"],
+    description: "Step outside, close the tab, come back when you're done. Touch Grass saves your departure so the browser can sleep, then generates surreal AI-powered discoveries on return — scaled to how long you were actually gone. Four rarity tiers, 1% legendary drop rate, synthetic ambient soundscape that varies by location and weather, and a persistent collection log.",
+    features: [
+      "Departure timestamp persists across tab close and device sleep",
+      "Surreal AI-generated finds scaled from mildly uncanny to mythic",
+      "4 rarity tiers — common, uncommon, rare, legendary at 1% drop rate",
+      "Synthetic Web Audio: wind, birds, rain, crickets, thunder",
+      "Real-time weather via Open-Meteo — affects sky, particles, and sound",
+      "Persistent collection log across sessions",
+    ],
+    file: "touch-grass.html",
+  },
   {
     emoji: "⚗️",
     iconBg: "rgba(255,180,50,0.15)",
