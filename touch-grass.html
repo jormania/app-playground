@@ -1,197 +1,481 @@
-import { useState, useEffect, useRef } from "react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="description" content="Touch Grass — go outside, come back, see what you found.">
+<title>Touch Grass</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── constants ─────────────────────────────── */
+:root {
+  --panel:        rgba(250,247,242,0.38);
+  --panel-border: rgba(120,100,80,0.12);
+  --tc:           #3d3530;
+  --sc:           #8a7e74;
+  --btn:          rgba(60,50,40,0.10);
+  --btn-h:        rgba(60,50,40,0.18);
+  --btn-b:        rgba(60,50,40,0.12);
+  --inp:          rgba(60,50,40,0.06);
+  --inp-b:        rgba(60,50,40,0.12);
+}
+[data-dark] {
+  --panel:        rgba(22,18,14,0.40);
+  --panel-border: rgba(255,240,220,0.08);
+  --tc:           #ede8e0;
+  --sc:           #a09080;
+  --btn:          rgba(255,240,220,0.10);
+  --btn-h:        rgba(255,240,220,0.18);
+  --btn-b:        rgba(255,240,220,0.12);
+  --inp:          rgba(255,240,220,0.06);
+  --inp-b:        rgba(255,240,220,0.10);
+}
+
+html, body { width:100%; height:100%; overflow:hidden; font-family:'Quicksand',sans-serif; -webkit-font-smoothing:antialiased; }
+
+canvas { position:fixed; inset:0; display:block; }
+
+.screen {
+  position:fixed; inset:0;
+  display:flex; align-items:center; justify-content:center; padding:16px;
+  transition:opacity 0.25s ease;
+}
+.screen.hidden  { opacity:0; pointer-events:none; }
+.screen.scrollable { overflow-y:auto; align-items:flex-start; }
+
+.panel {
+  background:var(--panel);
+  border:1px solid var(--panel-border);
+  backdrop-filter:blur(22px);
+  -webkit-backdrop-filter:blur(22px);
+  border-radius:24px;
+  padding:28px;
+  width:100%; max-width:340px;
+  box-shadow:0 8px 40px rgba(0,0,0,0.22);
+}
+.panel.wide { max-width:380px; }
+
+h1 { font-size:24px; font-weight:300; color:var(--tc); letter-spacing:-0.02em; }
+h2 { font-size:20px; font-weight:300; color:var(--tc); letter-spacing:-0.02em; }
+.muted { color:var(--sc); font-size:13px; font-weight:300; line-height:1.55; }
+
+.row-apart { display:flex; align-items:center; justify-content:space-between; }
+.row-center { display:flex; align-items:center; justify-content:center; gap:8px; }
+
+.input-wrap { position:relative; margin-bottom:14px; }
+input[type="text"], input[type="password"] {
+  width:100%; background:var(--inp); border:1px solid var(--inp-b);
+  border-radius:14px; padding:11px 40px 11px 18px;
+  font-family:'Quicksand',sans-serif; font-size:14px; font-weight:300;
+  color:var(--tc); text-align:center; outline:none; transition:border-color 0.15s;
+}
+input::placeholder { color:var(--sc); opacity:.7; }
+input:focus { border-color:rgba(120,100,80,0.4); }
+[data-dark] input:focus { border-color:rgba(255,240,220,0.25); }
+.shuffle { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--sc); font-size:18px; opacity:.7; transition:opacity .15s; padding:4px; line-height:1; }
+.shuffle:hover { opacity:1; }
+
+.btn {
+  display:block; width:100%; padding:14px; border-radius:16px;
+  background:var(--btn); border:1px solid var(--btn-b); color:var(--tc);
+  font-family:'Quicksand',sans-serif; font-size:16px; font-weight:500;
+  cursor:pointer; transition:all 0.2s; text-align:center;
+}
+.btn:hover { background:var(--btn-h); transform:translateY(-1px); }
+.btn:active { transform:translateY(0); }
+.btn-link {
+  background:none; border:none; cursor:pointer;
+  font-family:'Quicksand',sans-serif; font-size:12px; font-weight:400;
+  color:var(--sc); text-decoration:underline; text-underline-offset:2px;
+  transition:opacity .15s; padding:4px;
+}
+.btn-link:hover { opacity:.7; }
+.btn-icon { background:none; border:none; cursor:pointer; color:var(--sc); opacity:.6; transition:opacity .15s; padding:4px; line-height:1; }
+.btn-icon:hover { opacity:1; }
+.link-row { text-align:center; margin-top:10px; }
+
+.wx { display:flex; align-items:center; gap:5px; color:var(--sc); }
+.wx svg { width:15px; height:15px; flex-shrink:0; }
+.wx span { font-size:12px; }
+
+.spinner { width:34px; height:34px; border:2px solid var(--btn-b); border-top-color:var(--sc); border-radius:50%; animation:spin .8s linear infinite; margin:0 auto 18px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.find-card { padding:10px 12px; border-radius:12px; border:1px solid; margin-bottom:6px; }
+.find-card.common   { background:rgba(16,120,60,.08);  border-color:rgba(16,120,60,.22); }
+.find-card.uncommon { background:rgba(20,120,140,.08); border-color:rgba(20,120,140,.22); }
+.find-card.rare     { background:rgba(180,120,20,.08); border-color:rgba(180,120,20,.25); }
+.find-card.legendary { background:rgba(180,40,220,.08); border-color:rgba(200,100,240,.5); box-shadow:0 0 18px -4px rgba(200,100,240,.4); }
+.find-top { display:flex; align-items:center; gap:8px; margin-bottom:3px; }
+.find-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.dot-common   { background:#2d9e5a; }
+.dot-uncommon { background:#1aa8b8; }
+.dot-rare     { background:#d4960a; }
+.dot-legendary { background:#d060e8; }
+.find-name { font-size:13px; font-weight:500; color:var(--tc); flex:1; min-width:0; }
+.find-leg-tag { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:#c060e0; white-space:nowrap; }
+.find-note { font-size:12px; color:var(--sc); font-weight:300; line-height:1.45; padding-left:15px; }
+
+.finds-list { display:flex; flex-direction:column; max-height:260px; overflow-y:auto; margin-bottom:16px; padding-right:2px; }
+.col-list   { display:flex; flex-direction:column; max-height:calc(100vh - 240px); overflow-y:auto; padding-right:2px; }
+
+.leg-banner { padding:8px 12px; background:rgba(180,40,220,.12); border:1px solid rgba(200,100,240,.4); border-radius:10px; text-align:center; font-size:11px; font-weight:600; color:#c070e0; letter-spacing:.08em; margin-bottom:12px; }
+
+.tier-block { margin-bottom:20px; }
+.tier-hdr { display:flex; align-items:center; gap:7px; margin-bottom:8px; }
+.tier-label { font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:.1em; color:var(--sc); }
+.tier-count { font-size:11px; color:var(--sc); font-weight:300; }
+.tier-items { display:flex; flex-direction:column; }
+
+.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:16px; z-index:100; transition:opacity .25s; }
+.modal-bg.hidden { opacity:0; pointer-events:none; }
+.modal-box { background:var(--panel); border:1px solid var(--panel-border); backdrop-filter:blur(24px); border-radius:20px; padding:24px; max-width:320px; width:100%; }
+.modal-box h3 { font-size:16px; font-weight:500; color:var(--tc); margin-bottom:8px; }
+.modal-box p { font-size:12px; color:var(--sc); font-weight:300; line-height:1.55; margin-bottom:16px; }
+.modal-box a { color:var(--sc); }
+
+.empty { text-align:center; padding:40px 0; color:var(--sc); font-size:13px; font-weight:300; }
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--btn-b); border-radius:4px; }
+</style>
+</head>
+<body>
+<canvas id="cvs"></canvas>
+
+<!-- API KEY MODAL -->
+<div class="modal-bg hidden" id="key-modal">
+  <div class="modal-box">
+    <h3>Anthropic API Key</h3>
+    <p>Touch Grass uses Claude to generate surreal discoveries. Your key is stored only in this browser.<br><a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com →</a></p>
+    <div class="input-wrap"><input type="password" id="key-input" placeholder="sk-ant-api03-…"></div>
+    <button class="btn" id="key-save">Save &amp; continue</button>
+  </div>
+</div>
+
+<!-- WELCOME -->
+<div class="screen" id="s-welcome">
+  <div class="panel">
+    <div class="row-apart" style="margin-bottom:4px;">
+      <h1>Touch Grass</h1>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="wx" id="wx-welcome"></div>
+        <button class="btn-icon" id="settings-btn" title="API key">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </button>
+      </div>
+    </div>
+    <p class="muted" style="margin-bottom:24px;">Go outside. Come back. See what you found.</p>
+    <div class="input-wrap">
+      <input type="text" id="loc-input" placeholder="where are you going?">
+      <button class="shuffle" id="shuffle-btn" title="Random">↺</button>
+    </div>
+    <button class="btn" id="leave-btn">Head outside →</button>
+    <div class="link-row"><button class="btn-link" id="view-col-btn">Collection · <span id="col-count">0</span> found</button></div>
+  </div>
+</div>
+
+<!-- GONE -->
+<div class="screen hidden" id="s-gone">
+  <div class="panel" style="text-align:center;">
+    <div class="row-center" style="margin-bottom:12px;"><div class="wx" id="wx-gone"></div></div>
+    <div style="font-size:40px;margin-bottom:14px;">🌿</div>
+    <h2 style="margin-bottom:4px;">You're outside</h2>
+    <p class="muted" id="gone-loc" style="margin-bottom:2px;"></p>
+    <p class="muted" id="gone-time" style="margin-bottom:22px;"></p>
+    <p class="muted" style="margin-bottom:28px;font-size:12px;line-height:1.7;">Feel free to close this tab.<br>The timer is saved. Come back when done.</p>
+    <button class="btn" id="return-btn">I'm back</button>
+  </div>
+</div>
+
+<!-- GENERATING -->
+<div class="screen hidden" id="s-gen">
+  <div class="panel" style="text-align:center;">
+    <div class="spinner"></div>
+    <p class="muted" id="gen-msg">Checking your pockets…</p>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="screen hidden" id="s-results">
+  <div class="panel">
+    <div class="row-apart" style="margin-bottom:4px;"><h2 id="results-title">Your walk</h2></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <p class="muted" id="results-dur"></p>
+      <div class="wx" id="wx-results"></div>
+    </div>
+    <div class="leg-banner" id="leg-banner" style="display:none;">✦ Legendary find ✦</div>
+    <div class="finds-list" id="results-list"></div>
+    <button class="btn" id="again-btn">Go out again</button>
+    <div class="link-row"><button class="btn-link" id="results-col-btn">Full collection · <span id="res-col-count">0</span></button></div>
+  </div>
+</div>
+
+<!-- COLLECTION -->
+<div class="screen scrollable hidden" id="s-collection">
+  <div class="panel wide" style="margin:auto;">
+    <div class="row-apart" style="margin-bottom:16px;">
+      <h2>Collection log</h2>
+      <p class="muted" id="col-total"></p>
+    </div>
+    <div class="col-list" id="col-list"></div>
+    <button class="btn" id="col-back-btn" style="margin-top:16px;">← Back</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ── constants ── */
 const PLACES = [
-  "backyard","soccer field","golf course","school playground","city park",
-  "meadow","rooftop garden","botanical garden","dog park","riverside path",
-  "forest trail","neighborhood block","market square",
-  "Cișmigiu Garden","Herăstrău Park","IOR Park",
+  'backyard','soccer field','golf course','school playground','city park',
+  'meadow','rooftop garden','botanical garden','dog park','riverside path',
+  'forest trail','neighborhood block','market square',
+  'Cișmigiu Garden','Herăstrău Park','IOR Park',
 ];
+const DEF_LAT = 44.4268, DEF_LON = 26.1025;
+const MODEL   = 'claude-sonnet-4-6';
+const TIERS   = ['legendary','rare','uncommon','common'];
 
 const SKY = {
-  dawn:    [[0,"#b56b5a"],[.45,"#d49b78"],[.75,"#e3c89a"],[1,"#7e9b78"]],
-  morning: [[0,"#7aa7c4"],[.7,"#aecbd2"],[1,"#9fb88f"]],
-  day:     [[0,"#6f9fc4"],[.7,"#9cc0c9"],[1,"#94ad84"]],
-  dusk:    [[0,"#c47a4a"],[.4,"#bd8a6a"],[.7,"#7e8a8e"],[1,"#5e7058"]],
-  evening: [[0,"#3a4a5e"],[.4,"#54495e"],[.7,"#8a5e68"],[1,"#3d4e3e"]],
-  night:   [[0,"#10171f"],[.4,"#1a2632"],[.7,"#28384a"],[1,"#1c2a22"]],
+  dawn:    [[0,'#b56b5a'],[.45,'#d49b78'],[.75,'#e3c89a'],[1,'#7e9b78']],
+  morning: [[0,'#7aa7c4'],[.7,'#aecbd2'],[1,'#9fb88f']],
+  day:     [[0,'#6f9fc4'],[.7,'#9cc0c9'],[1,'#94ad84']],
+  dusk:    [[0,'#c47a4a'],[.4,'#bd8a6a'],[.7,'#7e8a8e'],[1,'#5e7058']],
+  evening: [[0,'#3a4a5e'],[.4,'#54495e'],[.7,'#8a5e68'],[1,'#3d4e3e']],
+  night:   [[0,'#10171f'],[.4,'#1a2632'],[.7,'#28384a'],[1,'#1c2a22']],
 };
 
-const TIERS = ["legendary","rare","uncommon","common"];
-const TIER_DOT = { common:"#2d9e5a", uncommon:"#1aa8b8", rare:"#d4960a", legendary:"#d060e8" };
-const TIER_BG  = { common:"rgba(16,120,60,.08)", uncommon:"rgba(20,120,140,.08)", rare:"rgba(180,120,20,.08)", legendary:"rgba(180,40,220,.08)" };
-const TIER_BD  = { common:"rgba(16,120,60,.22)", uncommon:"rgba(20,120,140,.22)", rare:"rgba(180,120,20,.25)", legendary:"rgba(200,100,240,.5)" };
+const WMO = function(c, t) {
+  if (t >= 35) return 'heat';
+  if ([95,96,99].includes(c)) return 'storm';
+  if ([71,73,75,77,85,86].includes(c)) return 'snow';
+  if ([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(c)) return 'rain';
+  if ([45,48].includes(c)) return 'fog';
+  if ([1,2,3].includes(c)) return 'cloudy';
+  return 'clear';
+};
 
-/* ── helpers ───────────────────────────────── */
-function getToD() {
-  const h = new Date().getHours();
-  if (h >= 5  && h < 7)  return "dawn";
-  if (h >= 7  && h < 10) return "morning";
-  if (h >= 10 && h < 17) return "day";
-  if (h >= 17 && h < 19) return "dusk";
-  if (h >= 19 && h < 21) return "evening";
-  return "night";
+const WX_ICON = {
+  clear:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>',
+  cloudy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 18h9a4 4 0 000-8 5 5 0 00-9.6 1.5A3.5 3.5 0 007 18z"/></svg>',
+  fog:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 10h14M5 14h15M4 18h12"/></svg>',
+  rain:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 15h9a4 4 0 000-8 5 5 0 00-9.6 1.5A3.5 3.5 0 007 15z"/><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2"/></svg>',
+  snow:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 15h9a4 4 0 000-8 5 5 0 00-9.6 1.5A3.5 3.5 0 007 15z"/><circle cx="8" cy="20" r=".8" fill="currentColor"/><circle cx="12" cy="21" r=".8" fill="currentColor"/><circle cx="16" cy="20" r=".8" fill="currentColor"/></svg>',
+  storm:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 14h9a4 4 0 000-8 5 5 0 00-9.6 1.5A3.5 3.5 0 007 14z"/><path d="M12 14l-2 4h3l-2 4"/></svg>',
+  heat:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="13" r="4"/><path d="M12 3v3M5.5 6.5L7 8M18.5 6.5L17 8"/></svg>',
+};
+
+/* ── state ── */
+let tod        = getTod();
+let weather    = null;
+let loc        = '';
+let depTime    = null;
+let elapsedSec = 0;
+let collection = [];
+let lastFinds  = [];
+let audioCtx   = null;
+let ambient    = null;
+
+/* ── utils ── */
+function getTod() {
+  var h = new Date().getHours();
+  if (h>=5&&h<7)   return 'dawn';
+  if (h>=7&&h<10)  return 'morning';
+  if (h>=10&&h<17) return 'day';
+  if (h>=17&&h<19) return 'dusk';
+  if (h>=19&&h<21) return 'evening';
+  return 'night';
 }
-
-function wmoToType(code, temp) {
-  if (temp >= 35)                                              return "heat";
-  if ([95,96,99].includes(code))                              return "storm";
-  if ([71,73,75,77,85,86].includes(code))                    return "snow";
-  if ([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(code)) return "rain";
-  if ([45,48].includes(code))                                 return "fog";
-  if ([1,2,3].includes(code))                                 return "cloudy";
-  return "clear";
-}
-
+function isDark() { return ['evening','night'].includes(tod); }
 function fmtDur(s) {
-  if (s < 60) return s + " sec";
-  const m = Math.floor(s / 60), r = s % 60;
-  if (m < 60) return r ? m + "m " + r + "s" : m + " min";
-  const h = Math.floor(m / 60), rm = m % 60;
-  return rm ? h + "h " + rm + "m" : h + "h";
+  if (s<60) return s+' sec';
+  var m=Math.floor(s/60), r=s%60;
+  if (m<60) return r ? m+'m '+r+'s' : m+' min';
+  var h=Math.floor(m/60), rm=m%60;
+  return rm ? h+'h '+rm+'m' : h+'h';
 }
-
-function fmtTime(ts) {
-  return new Date(ts).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
-}
+function fmtTime(ts) { return new Date(ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
+function lsGet(k)    { try { return localStorage.getItem(k); } catch(e) { return null; } }
+function lsSet(k,v)  { try { localStorage.setItem(k,v); } catch(e) {} }
+function lsDel(k)    { try { localStorage.removeItem(k); } catch(e) {} }
+function getKey()    { return lsGet('tg_api_key') || ''; }
+function $(id)       { return document.getElementById(id); }
 
 function rollTier() {
-  const r = Math.random();
-  if (r < 0.01) return "legendary";
-  if (r < 0.12) return "rare";
-  if (r < 0.40) return "uncommon";
-  return "common";
+  var r = Math.random();
+  if (r < 0.01) return 'legendary';
+  if (r < 0.12) return 'rare';
+  if (r < 0.40) return 'uncommon';
+  return 'common';
 }
 
-/* ── weather icons ─────────────────────────── */
-const WX_PATHS = {
-  clear:  <><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></>,
-  cloudy: <path d="M7 18h9a4 4 0 000-8 5 5 0 00-9.6 1.5A3.5 3.5 0 007 18z"/>,
-  fog:    <path d="M3 10h14M5 14h15M4 18h12"/>,
-  rain:   <><path d="M7 15h9a4 4 0 000-8 5 5 0 00-9.6 1.5A3.5 3.5 0 007 15z"/><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2"/></>,
-  snow:   <><path d="M7 15h9a4 4 0 000-8 5 5 0 00-9.6 1.5A3.5 3.5 0 007 15z"/><circle cx="8" cy="20" r="0.8" fill="currentColor"/><circle cx="12" cy="21" r="0.8" fill="currentColor"/><circle cx="16" cy="20" r="0.8" fill="currentColor"/></>,
-  storm:  <><path d="M7 14h9a4 4 0 000-8 5 5 0 00-9.6 1.5A3.5 3.5 0 007 14z"/><path d="M12 14l-2 4h3l-2 4"/></>,
-  heat:   <><circle cx="12" cy="13" r="4"/><path d="M12 3v3M5.5 6.5L7 8M18.5 6.5L17 8"/></>,
-};
-
-function WxIcon({ type, size = 15 }) {
-  const inner = WX_PATHS[type] || null;
-  if (!inner) return null;
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" strokeWidth="1.6"
-      strokeLinecap="round" strokeLinejoin="round">
-      {inner}
-    </svg>
-  );
+/* ── theme ── */
+function applyTheme() {
+  if (isDark()) document.body.setAttribute('data-dark','');
+  else document.body.removeAttribute('data-dark');
 }
 
-/* ── audio engine ──────────────────────────── */
+/* ── weather badges ── */
+function wxHTML() {
+  if (!weather) return '';
+  return (WX_ICON[weather.type] || WX_ICON.clear) + '<span>' + weather.tempC + '°C</span>';
+}
+function syncWxBadges() {
+  ['wx-welcome','wx-gone','wx-results'].forEach(function(id) {
+    var el = $(id);
+    if (el) el.innerHTML = wxHTML();
+  });
+}
+
+/* ── canvas ── */
+var cvs    = $('cvs');
+var cx     = cvs.getContext('2d');
+var blades = [], stars = [], drops = [];
+
+function resize() {
+  cvs.width  = window.innerWidth;
+  cvs.height = window.innerHeight;
+  initGeo();
+}
+window.addEventListener('resize', resize);
+
+function initGeo() {
+  var W = cvs.width, H = cvs.height, n = Math.floor(W * H / 600);
+  blades = Array.from({length:n}, function() {
+    return {
+      x:Math.random()*W, y:H-10-Math.random()*170,
+      ht:32+Math.random()*52, wd:2+Math.random()*3,
+      phase:Math.random()*Math.PI*2, freq:.8+Math.random()*.5, amp:.06+Math.random()*.05,
+      hue:92+Math.random()*32, sat:38+Math.random()*26, lit:20+Math.random()*20,
+    };
+  });
+  stars = Array.from({length:90}, function() {
+    return { x:Math.random()*W, y:Math.random()*H*.7, r:.5+Math.random()*1.1, base:.4+Math.random()*.5, phase:Math.random()*Math.PI*2 };
+  });
+  drops = Array.from({length:70}, function() {
+    return { x:Math.random()*W, y:Math.random()*H, spd:2+Math.random()*3, len:6+Math.random()*10, drift:.4+Math.random()*.6 };
+  });
+}
+
+function drawFrame(ts) {
+  var t = ts * .001, W = cvs.width, H = cvs.height;
+  var stops = SKY[tod] || SKY.day;
+  var wt = weather ? weather.type : null;
+  var storm = wt === 'storm';
+
+  cx.clearRect(0,0,W,H);
+
+  var g = cx.createLinearGradient(0,0,0,H);
+  stops.forEach(function(s) { g.addColorStop(s[0],s[1]); });
+  cx.fillStyle = g; cx.fillRect(0,0,W,H);
+
+  if (wt === 'fog') { cx.fillStyle='rgba(220,220,215,.28)'; cx.fillRect(0,0,W,H); }
+
+  if (['night','evening'].includes(tod) && wt !== 'fog') {
+    stars.forEach(function(s) {
+      var a = s.base * (Math.sin(t*1.3+s.phase)*.2+.8) * (tod==='night'?.85:.4);
+      cx.fillStyle = 'rgba(255,255,255,'+a+')';
+      cx.beginPath(); cx.arc(s.x,s.y,s.r,0,Math.PI*2); cx.fill();
+    });
+  }
+
+  blades.forEach(function(b) {
+    var sw = Math.sin(t*b.freq+b.phase)*b.amp*(storm?2.2:1);
+    cx.save(); cx.translate(b.x,b.y); cx.rotate(sw);
+    cx.beginPath(); cx.moveTo(0,0);
+    cx.quadraticCurveTo(b.wd/2,-b.ht/2,0,-b.ht);
+    cx.quadraticCurveTo(-b.wd/2,-b.ht/2,0,0);
+    cx.fillStyle = 'hsl('+b.hue+','+b.sat+'%,'+b.lit+'%)';
+    cx.fill(); cx.restore();
+  });
+
+  if (wt==='rain'||storm) {
+    cx.strokeStyle='rgba(200,210,225,.22)'; cx.lineWidth=1;
+    drops.forEach(function(d) {
+      cx.beginPath(); cx.moveTo(d.x,d.y); cx.lineTo(d.x-d.drift*2,d.y+d.len); cx.stroke();
+      d.y += d.spd*(storm?2.4:1.8); d.x -= d.drift;
+      if (d.y>H) { d.y=-d.len; d.x=Math.random()*W; }
+    });
+  } else if (wt==='snow') {
+    cx.fillStyle='rgba(255,255,255,.5)';
+    drops.forEach(function(d) {
+      cx.beginPath(); cx.arc(d.x,d.y,1.4,0,Math.PI*2); cx.fill();
+      d.y+=d.spd*.4; d.x+=Math.sin(d.y*.02)*.4;
+      if (d.y>H) { d.y=-4; d.x=Math.random()*W; }
+    });
+  }
+
+  requestAnimationFrame(drawFrame);
+}
+
+/* ── audio ── */
 function buildAmbient(actx) {
-  const master = actx.createGain();
-  master.gain.value = 0;
-  master.connect(actx.destination);
+  var master = actx.createGain(); master.gain.value=0; master.connect(actx.destination);
+  var nBuf = actx.createBuffer(1, actx.sampleRate*2, actx.sampleRate);
+  var nd = nBuf.getChannelData(0);
+  for (var i=0; i<nd.length; i++) nd[i] = Math.random()*2-1;
 
-  const nBuf = actx.createBuffer(1, actx.sampleRate * 2, actx.sampleRate);
-  const nd = nBuf.getChannelData(0);
-  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
-
-  const wSrc = actx.createBufferSource();
-  wSrc.buffer = nBuf; wSrc.loop = true;
-  const wLP = actx.createBiquadFilter();
-  wLP.type = "lowpass"; wLP.frequency.value = 450;
-  const wGn = actx.createGain(); wGn.gain.value = 0.18;
-  const lfo = actx.createOscillator(); lfo.frequency.value = 0.07;
-  const lfoG = actx.createGain(); lfoG.gain.value = 0.09;
+  var wSrc=actx.createBufferSource(); wSrc.buffer=nBuf; wSrc.loop=true;
+  var wLP=actx.createBiquadFilter(); wLP.type='lowpass'; wLP.frequency.value=450;
+  var wGn=actx.createGain(); wGn.gain.value=.18;
+  var lfo=actx.createOscillator(); lfo.frequency.value=.07;
+  var lfoG=actx.createGain(); lfoG.gain.value=.09;
   wSrc.connect(wLP); wLP.connect(wGn); wGn.connect(master);
   lfo.connect(lfoG); lfoG.connect(wGn.gain);
   wSrc.start(); lfo.start();
 
-  const rSrc = actx.createBufferSource();
-  rSrc.buffer = nBuf; rSrc.loop = true;
-  const rBP = actx.createBiquadFilter();
-  rBP.type = "bandpass"; rBP.frequency.value = 1400; rBP.Q.value = 0.6;
-  const rGn = actx.createGain(); rGn.gain.value = 0;
+  var rSrc=actx.createBufferSource(); rSrc.buffer=nBuf; rSrc.loop=true;
+  var rBP=actx.createBiquadFilter(); rBP.type='bandpass'; rBP.frequency.value=1400; rBP.Q.value=.6;
+  var rGn=actx.createGain(); rGn.gain.value=0;
   rSrc.connect(rBP); rBP.connect(rGn); rGn.connect(master); rSrc.start();
 
-  let prof = { tod: "day", weather: "clear", location: "" };
-  const timers = [];
+  var prof = {tod:'day',weather:'clear',location:''};
+  var timers = [];
 
   function bird() {
-    const o = actx.createOscillator();
-    const g = actx.createGain();
-    const f = actx.createBiquadFilter();
-    f.type = "bandpass"; f.frequency.value = 2600; f.Q.value = 8;
-    o.type = "sine";
-    const base = 1900 + Math.random() * 1100;
-    const t0 = actx.currentTime + Math.random() * 1.5;
-    o.frequency.setValueAtTime(base, t0);
-    o.frequency.linearRampToValueAtTime(base + 450, t0 + 0.05);
-    o.frequency.linearRampToValueAtTime(base, t0 + 0.1);
-    g.gain.setValueAtTime(0, t0);
-    g.gain.linearRampToValueAtTime(0.05, t0 + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.12);
-    o.connect(f); f.connect(g); g.connect(master);
-    o.start(t0); o.stop(t0 + 0.14);
+    var o=actx.createOscillator(), g=actx.createGain(), f=actx.createBiquadFilter();
+    f.type='bandpass'; f.frequency.value=2600; f.Q.value=8; o.type='sine';
+    var base=1900+Math.random()*1100, t0=actx.currentTime+Math.random()*1.5;
+    o.frequency.setValueAtTime(base,t0); o.frequency.linearRampToValueAtTime(base+450,t0+.05); o.frequency.linearRampToValueAtTime(base,t0+.1);
+    g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(.05,t0+.01); g.gain.exponentialRampToValueAtTime(.001,t0+.12);
+    o.connect(f); f.connect(g); g.connect(master); o.start(t0); o.stop(t0+.14);
   }
-
   function cricket() {
-    const o = actx.createOscillator();
-    const g = actx.createGain();
-    o.type = "square"; o.frequency.value = 4200;
-    const t0 = actx.currentTime;
-    for (let i = 0; i < 7; i++) {
-      g.gain.setValueAtTime(0, t0 + i * 0.09);
-      g.gain.linearRampToValueAtTime(0.016, t0 + i * 0.09 + 0.008);
-      g.gain.linearRampToValueAtTime(0, t0 + i * 0.09 + 0.04);
-    }
-    o.connect(g); g.connect(master);
-    o.start(t0); o.stop(t0 + 0.9);
+    var o=actx.createOscillator(), g=actx.createGain();
+    o.type='square'; o.frequency.value=4200;
+    var t0=actx.currentTime;
+    for (var i=0;i<7;i++) { g.gain.setValueAtTime(0,t0+i*.09); g.gain.linearRampToValueAtTime(.016,t0+i*.09+.008); g.gain.linearRampToValueAtTime(0,t0+i*.09+.04); }
+    o.connect(g); g.connect(master); o.start(t0); o.stop(t0+.9);
   }
-
   function thunder() {
-    const o = actx.createOscillator();
-    const g = actx.createGain();
-    const f = actx.createBiquadFilter();
-    o.type = "sawtooth"; o.frequency.value = 50;
-    f.type = "lowpass"; f.frequency.value = 180;
-    const t0 = actx.currentTime;
-    g.gain.setValueAtTime(0, t0);
-    g.gain.linearRampToValueAtTime(0.12, t0 + 0.15);
-    g.gain.exponentialRampToValueAtTime(0.001, t0 + 1.8);
-    o.connect(f); f.connect(g); g.connect(master);
-    o.start(t0); o.stop(t0 + 2);
+    var o=actx.createOscillator(), g=actx.createGain(), f=actx.createBiquadFilter();
+    o.type='sawtooth'; o.frequency.value=50; f.type='lowpass'; f.frequency.value=180;
+    var t0=actx.currentTime;
+    g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(.12,t0+.15); g.gain.exponentialRampToValueAtTime(.001,t0+1.8);
+    o.connect(f); f.connect(g); g.connect(master); o.start(t0); o.stop(t0+2);
   }
 
-  timers.push(setInterval(function tick() {
-    const tod = prof.tod;
-    const w   = prof.weather;
-    const l   = (prof.location || "").toLowerCase();
-    const wet = w === "rain" || w === "storm";
-    const dayish = ["dawn","morning","day","dusk"].includes(tod);
-    const green  = /park|forest|meadow|garden|trail|riverside/.test(l);
-    const urban  = /city|market|block|playground|rooftop/.test(l);
-    let bP = dayish && !wet ? 0.45 : 0.04;
-    if (green) bP *= 1.5;
-    if (urban) bP *= 0.5;
-    let cP = (tod === "night" || tod === "evening") ? 0.5 : 0.05;
-    if (urban) cP *= 0.5;
-    if (Math.random() < bP) bird();
-    if (Math.random() < cP) cricket();
-    if (w === "storm" && Math.random() < 0.18) thunder();
-    const rTarget = w === "storm" ? 0.16 : w === "rain" ? 0.1 : 0;
-    rGn.gain.linearRampToValueAtTime(rTarget, actx.currentTime + 1.2);
-    wLP.frequency.linearRampToValueAtTime(w === "storm" ? 700 : 450, actx.currentTime + 1.2);
-    wGn.gain.linearRampToValueAtTime(
-      w === "storm" ? 0.3 : w === "rain" ? 0.22 : urban ? 0.12 : 0.18,
-      actx.currentTime + 1.2
-    );
+  timers.push(setInterval(function() {
+    var t=prof.tod, w=prof.weather, l=(prof.location||'').toLowerCase();
+    var wet=['rain','storm'].includes(w), dayish=['dawn','morning','day','dusk'].includes(t);
+    var green=/park|forest|meadow|garden|trail|riverside/i.test(l);
+    var urban=/city|market|block|playground|rooftop/i.test(l);
+    var bP=dayish&&!wet?.45:.04; if(green)bP*=1.5; if(urban)bP*=.5;
+    var cP=(t==='night'||t==='evening')?.5:.05; if(urban)cP*=.5;
+    if(Math.random()<bP) bird();
+    if(Math.random()<cP) cricket();
+    if(w==='storm'&&Math.random()<.18) thunder();
+    rGn.gain.linearRampToValueAtTime(w==='storm'?.16:w==='rain'?.1:0, actx.currentTime+1.2);
+    wLP.frequency.linearRampToValueAtTime(w==='storm'?700:450, actx.currentTime+1.2);
+    wGn.gain.linearRampToValueAtTime(w==='storm'?.3:w==='rain'?.22:urban?.12:.18, actx.currentTime+1.2);
   }, 1600));
 
   return {
     setProfile: function(p) { prof = Object.assign({}, prof, p); },
-    fadeIn:  function() { master.gain.linearRampToValueAtTime(0.5, actx.currentTime + 1.5); },
-    fadeOut: function() { master.gain.linearRampToValueAtTime(0,   actx.currentTime + 1);   },
+    fadeIn:  function() { master.gain.linearRampToValueAtTime(.5, actx.currentTime+1.5); },
+    fadeOut: function() { master.gain.linearRampToValueAtTime(0,  actx.currentTime+1);   },
     stop: function() {
       timers.forEach(clearInterval);
       try { wSrc.stop(); } catch(e) {}
@@ -201,526 +485,202 @@ function buildAmbient(actx) {
   };
 }
 
-/* ── storage helpers ───────────────────────── */
-async function stGet(key) {
-  try { const r = await window.storage.get(key); return r ? r.value : null; }
-  catch(e) { return null; }
+function ensureAudio() {
+  if (!audioCtx) { audioCtx=new(window.AudioContext||window.webkitAudioContext)(); ambient=buildAmbient(audioCtx); }
+  if (audioCtx.state==='suspended') audioCtx.resume();
 }
-async function stSet(key, val) {
-  try { await window.storage.set(key, val); } catch(e) {}
+function syncAmbient() { if (ambient) ambient.setProfile({tod:tod,weather:weather?weather.type:'clear',location:loc}); }
+
+/* ── weather ── */
+function fetchWeather(lat, lon) {
+  fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&current=temperature_2m,weather_code')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var tempC = Math.round(d.current&&d.current.temperature_2m!=null ? d.current.temperature_2m : 18);
+      var code  = d.current&&d.current.weather_code!=null ? d.current.weather_code : 0;
+      weather = {tempC:tempC, type:WMO(code,tempC)};
+      syncWxBadges(); syncAmbient();
+    })
+    .catch(function() { weather={tempC:18,type:'clear'}; syncWxBadges(); });
 }
-async function stDel(key) {
-  try { await window.storage.delete(key); } catch(e) {}
-}
-
-/* ── find card ─────────────────────────────── */
-function FindCard({ f }) {
-  const leg = f.rarity === "legendary";
-  return (
-    <div style={{
-      padding:"10px 12px", borderRadius:12, marginBottom:6,
-      background: TIER_BG[f.rarity] || TIER_BG.common,
-      border: "1px solid " + (TIER_BD[f.rarity] || TIER_BD.common),
-      boxShadow: leg ? "0 0 18px -4px rgba(200,100,240,.4)" : "none",
-    }}>
-      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:f.note ? 3 : 0 }}>
-        <div style={{ width:7, height:7, borderRadius:"50%", flexShrink:0, background: TIER_DOT[f.rarity] || TIER_DOT.common }} />
-        <span style={{ fontSize:13, fontWeight:500, color:"var(--tc)", flex:1 }}>{f.name}</span>
-        {leg && <span style={{ fontSize:10, fontWeight:600, textTransform:"uppercase", letterSpacing:".08em", color:"#c060e0" }}>legendary</span>}
-      </div>
-      {f.note && <div style={{ fontSize:12, color:"var(--sc)", paddingLeft:15, lineHeight:1.45 }}>{f.note}</div>}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════ */
-export default function App() {
-  const cvsRef   = useRef(null);
-  const rafRef   = useRef(null);
-  const geoRef   = useRef({ blades:[], stars:[], drops:[] });
-  const actxRef  = useRef(null);
-  const ambRef   = useRef(null);
-
-  const [phase,   setPhase]   = useState("boot");
-  const [loc,     setLoc]     = useState("");
-  const [depTime, setDepTime] = useState(null);
-  const [elapsed, setElapsed] = useState(0);
-  const [finds,   setFinds]   = useState([]);
-  const [colItems,setColItems]= useState([]);
-  const [hasLeg,  setHasLeg]  = useState(false);
-  const [tod,     setTod]     = useState(getToD());
-  const [weather, setWeather] = useState(null);
-  const [genMsg,  setGenMsg]  = useState("Checking your pockets…");
-  const [sz,      setSz]      = useState({ w: window.innerWidth, h: window.innerHeight });
-
-  /* font */
-  useEffect(function() {
-    const el = document.createElement("link");
-    el.href = "https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600&display=swap";
-    el.rel  = "stylesheet";
-    document.head.appendChild(el);
-    return function() { try { document.head.removeChild(el); } catch(e) {} };
-  }, []);
-
-  /* resize */
-  useEffect(function() {
-    function onResize() { setSz({ w: window.innerWidth, h: window.innerHeight }); }
-    window.addEventListener("resize", onResize);
-    return function() { window.removeEventListener("resize", onResize); };
-  }, []);
-
-  /* time of day */
-  useEffect(function() {
-    const iv = setInterval(function() { setTod(getToD()); }, 30000);
-    return function() { clearInterval(iv); };
-  }, []);
-
-  /* boot: load storage */
-  useEffect(function() {
-    async function boot() {
-      const raw = await stGet("tg_collection");
-      if (raw) { try { setColItems(JSON.parse(raw)); } catch(e) {} }
-      const dep = await stGet("tg_departure");
-      if (dep) {
-        try {
-          const d = JSON.parse(dep);
-          setDepTime(d.time);
-          setLoc(d.location || "");
-          setPhase("gone");
-          return;
-        } catch(e) {}
-      }
-      setPhase("welcome");
-    }
-    boot();
-  }, []);
-
-  /* geometry */
-  useEffect(function() {
-    const W = sz.w, H = sz.h, n = Math.floor(W * H / 600);
-    geoRef.current.blades = Array.from({ length: n }, function() {
-      return {
-        x: Math.random() * W, y: H - 10 - Math.random() * 170,
-        ht: 32 + Math.random() * 52, wd: 2 + Math.random() * 3,
-        phase: Math.random() * Math.PI * 2, freq: 0.8 + Math.random() * 0.5,
-        amp: 0.06 + Math.random() * 0.05,
-        hue: 92 + Math.random() * 32, sat: 38 + Math.random() * 26, lit: 20 + Math.random() * 20,
-      };
-    });
-    geoRef.current.stars = Array.from({ length: 90 }, function() {
-      return {
-        x: Math.random() * W, y: Math.random() * H * 0.7,
-        r: 0.5 + Math.random() * 1.1, base: 0.4 + Math.random() * 0.5,
-        phase: Math.random() * Math.PI * 2,
-      };
-    });
-    geoRef.current.drops = Array.from({ length: 70 }, function() {
-      return {
-        x: Math.random() * W, y: Math.random() * H,
-        spd: 2 + Math.random() * 3, len: 6 + Math.random() * 10, drift: 0.4 + Math.random() * 0.6,
-      };
-    });
-  }, [sz]);
-
-  /* canvas loop */
-  useEffect(function() {
-    const canvas = cvsRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const W = sz.w, H = sz.h;
-    const stops = SKY[tod] || SKY.day;
-    const wt = weather ? weather.type : null;
-    const storm = wt === "storm";
-
-    function draw(ts) {
-      const t = ts * 0.001;
-      const { blades, stars, drops } = geoRef.current;
-      ctx.clearRect(0, 0, W, H);
-
-      const g = ctx.createLinearGradient(0, 0, 0, H);
-      stops.forEach(function(s) { g.addColorStop(s[0], s[1]); });
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-
-      if (wt === "fog") { ctx.fillStyle = "rgba(220,220,215,.28)"; ctx.fillRect(0, 0, W, H); }
-
-      if ((tod === "night" || tod === "evening") && wt !== "fog") {
-        stars.forEach(function(s) {
-          const a = s.base * (Math.sin(t * 1.3 + s.phase) * 0.2 + 0.8) * (tod === "night" ? 0.85 : 0.4);
-          ctx.fillStyle = "rgba(255,255,255," + a + ")";
-          ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
-        });
-      }
-
-      blades.forEach(function(b) {
-        const sw = Math.sin(t * b.freq + b.phase) * b.amp * (storm ? 2.2 : 1);
-        ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(sw);
-        ctx.beginPath(); ctx.moveTo(0, 0);
-        ctx.quadraticCurveTo(b.wd / 2, -b.ht / 2, 0, -b.ht);
-        ctx.quadraticCurveTo(-b.wd / 2, -b.ht / 2, 0, 0);
-        ctx.fillStyle = "hsl(" + b.hue + "," + b.sat + "%," + b.lit + "%)";
-        ctx.fill(); ctx.restore();
-      });
-
-      if (wt === "rain" || storm) {
-        ctx.strokeStyle = "rgba(200,210,225,.22)"; ctx.lineWidth = 1;
-        drops.forEach(function(d) {
-          ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.drift * 2, d.y + d.len); ctx.stroke();
-          d.y += d.spd * (storm ? 2.4 : 1.8); d.x -= d.drift;
-          if (d.y > H) { d.y = -d.len; d.x = Math.random() * W; }
-        });
-      } else if (wt === "snow") {
-        ctx.fillStyle = "rgba(255,255,255,.5)";
-        drops.forEach(function(d) {
-          ctx.beginPath(); ctx.arc(d.x, d.y, 1.4, 0, Math.PI * 2); ctx.fill();
-          d.y += d.spd * 0.4; d.x += Math.sin(d.y * 0.02) * 0.4;
-          if (d.y > H) { d.y = -4; d.x = Math.random() * W; }
-        });
-      }
-
-      rafRef.current = requestAnimationFrame(draw);
-    }
-
-    rafRef.current = requestAnimationFrame(draw);
-    return function() { cancelAnimationFrame(rafRef.current); };
-  }, [sz, tod, weather]);
-
-  /* weather */
-  useEffect(function() {
-    function fetchWx(lat, lon) {
-      fetch("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&current=temperature_2m,weather_code")
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-          const tempC = Math.round((d.current && d.current.temperature_2m != null) ? d.current.temperature_2m : 18);
-          const code  = (d.current && d.current.weather_code != null) ? d.current.weather_code : 0;
-          setWeather({ tempC: tempC, type: wmoToType(code, tempC) });
-        })
-        .catch(function() { setWeather({ tempC: 18, type: "clear" }); });
-    }
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        function(p) { fetchWx(p.coords.latitude, p.coords.longitude); },
-        function()  { fetchWx(44.4268, 26.1025); },
-        { timeout: 6000 }
-      );
-    } else {
-      fetchWx(44.4268, 26.1025);
-    }
-  }, []);
-
-  /* sync ambient profile */
-  useEffect(function() {
-    if (ambRef.current) {
-      ambRef.current.setProfile({ tod: tod, weather: weather ? weather.type : "clear", location: loc });
-    }
-  }, [tod, weather, loc]);
-
-  /* ambient on/off by phase */
-  useEffect(function() {
-    if (phase === "gone") {
-      if (ambRef.current) ambRef.current.fadeIn();
-    } else {
-      if (ambRef.current) ambRef.current.fadeOut();
-    }
-  }, [phase]);
-
-  /* cleanup audio */
-  useEffect(function() {
-    return function() {
-      if (ambRef.current)  { try { ambRef.current.stop(); }  catch(e) {} }
-      if (actxRef.current) { try { actxRef.current.close(); } catch(e) {} }
-    };
-  }, []);
-
-  /* actions */
-  function ensureAudio() {
-    if (!actxRef.current) {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      actxRef.current = ctx;
-      ambRef.current  = buildAmbient(ctx);
-    }
-    if (actxRef.current.state === "suspended") actxRef.current.resume();
-  }
-
-  async function doLeave(locVal) {
-    ensureAudio();
-    if (ambRef.current) ambRef.current.setProfile({ tod: tod, weather: weather ? weather.type : "clear", location: locVal });
-    const now = Date.now();
-    setDepTime(now);
-    setLoc(locVal);
-    await stSet("tg_departure", JSON.stringify({ time: now, location: locVal }));
-    setPhase("gone");
-  }
-
-  async function doReturn() {
-    const now  = Date.now();
-    const secs = Math.floor((now - depTime) / 1000);
-    setElapsed(secs);
-    setPhase("generating");
-
-    const msgs = ["Retracing your steps…","Cataloguing the impossible…","Checking your pockets…","Writing it all down…"];
-    let mi = 0;
-    setGenMsg(msgs[0]);
-    const msgIv = setInterval(function() { mi = (mi + 1) % msgs.length; setGenMsg(msgs[mi]); }, 1500);
-
-    const items = await genFinds(secs, loc, tod, weather);
-    clearInterval(msgIv);
-
-    const valid = ["common","uncommon","rare","legendary"];
-    const stamped = items.map(function(it) {
-      return Object.assign({}, it, {
-        rarity:   valid.includes(it.rarity) ? it.rarity : "common",
-        location: loc || "somewhere green",
-        when:     now,
-      });
-    });
-
-    const newCol = stamped.concat(colItems).slice(0, 500);
-    setFinds(stamped);
-    setHasLeg(stamped.some(function(f) { return f.rarity === "legendary"; }));
-    setColItems(newCol);
-    await stSet("tg_collection", JSON.stringify(newCol));
-    await stDel("tg_departure");
-    setPhase("results");
-  }
-
-  function doAgain() {
-    setLoc(""); setDepTime(null); setElapsed(0); setFinds([]); setHasLeg(false);
-    setPhase("welcome");
-  }
-
-  /* discovery generation */
-  async function genFinds(secs, locStr, currentTod, wx) {
-    const mins  = Math.floor(secs / 60);
-    const count = Math.min(15, Math.max(1, Math.ceil(mins / 8)));
-    const tiers = Array.from({ length: count }, rollTier);
-    const tally = tiers.reduce(function(a, t) { a[t] = (a[t] || 0) + 1; return a; }, {});
-    const where = locStr ? "a " + locStr : "a grassy outdoor area";
-    const wLabel = wx ? wx.type : "mild";
-
-    const prompt =
-      "Someone spent " + (mins || "under 1") + " minute" + (mins !== 1 ? "s" : "") +
-      " outside in " + where + " during " + currentTod + ", weather: " + wLabel + ". " +
-      "They returned with SURREAL discoveries — dreamlike, impossible, poetic things, never realistic litter. " +
-      "Return ONLY a raw JSON array, no markdown or backticks. " +
-      'Schema: [{"name":"2-6 word lowercase surreal object","rarity":"common|uncommon|rare|legendary","note":"one short evocative sentence"}]. ' +
-      "Provide EXACTLY " + (tally.common||0) + " common, " + (tally.uncommon||0) + " uncommon, " +
-      (tally.rare||0) + " rare, " + (tally.legendary||0) + " legendary. " +
-      "Scale strangeness by tier: common=mildly uncanny, uncommon=clearly impossible, rare=reality-bending, legendary=mythic and awe-inspiring. " +
-      "Weave in the location, time, and weather.";
-
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-5",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
-      const data = await res.json();
-      const raw  = (data.content || []).filter(function(b) { return b.type === "text"; }).map(function(b) { return b.text; }).join("");
-      return JSON.parse(raw.replace(/```json|```/g, "").trim());
-    } catch(e) {
-      const fb = { common:"a softly humming pebble", uncommon:"a cloud that fits in your palm", rare:"a doorway folded into the grass", legendary:"the first dream of the field" };
-      return tiers.map(function(t) { return { name: fb[t], rarity: t, note: "It should not exist, yet here it is." }; });
-    }
-  }
-
-  /* ── styles ─────────────────────────────── */
-  const dark  = tod === "night" || tod === "evening";
-  const tc    = dark ? "#ede8e0" : "#3d3530";
-  const sc    = dark ? "#a09080" : "#8a7e74";
-  const panBg = dark ? "rgba(22,18,14,.40)" : "rgba(250,247,242,.40)";
-  const panBd = dark ? "rgba(255,240,220,.08)" : "rgba(120,100,80,.12)";
-  const btnBg = dark ? "rgba(255,240,220,.10)" : "rgba(60,50,40,.10)";
-  const btnH  = dark ? "rgba(255,240,220,.18)" : "rgba(60,50,40,.18)";
-  const btnBd = dark ? "rgba(255,240,220,.12)" : "rgba(60,50,40,.12)";
-  const inpBg = dark ? "rgba(255,240,220,.06)" : "rgba(60,50,40,.06)";
-
-  const panel = {
-    background: panBg,
-    border: "1px solid " + panBd,
-    backdropFilter: "blur(22px)",
-    WebkitBackdropFilter: "blur(22px)",
-    borderRadius: 24,
-    padding: 28,
-    width: "100%",
-    maxWidth: 340,
-    boxShadow: "0 8px 40px rgba(0,0,0,.22)",
-    fontFamily: "Quicksand, sans-serif",
-  };
-
-  const btnStyle = {
-    display: "block", width: "100%", padding: 14,
-    borderRadius: 16, background: btnBg, border: "1px solid " + btnBd,
-    color: tc, fontFamily: "Quicksand, sans-serif", fontSize: 16, fontWeight: 500,
-    cursor: "pointer", textAlign: "center", transition: "all .2s",
-  };
-
-  const inputStyle = {
-    width: "100%", background: inpBg, border: "1px solid " + btnBd,
-    borderRadius: 14, padding: "11px 40px 11px 18px",
-    fontFamily: "Quicksand, sans-serif", fontSize: 14, fontWeight: 300,
-    color: tc, textAlign: "center", outline: "none",
-  };
-
-  const h1Style = { fontSize: 24, fontWeight: 300, color: tc, letterSpacing: "-.02em", margin: 0 };
-  const h2Style = { fontSize: 20, fontWeight: 300, color: tc, letterSpacing: "-.02em", margin: 0 };
-
-  function WxBadge() {
-    if (!weather) return null;
-    return (
-      <div style={{ display:"flex", alignItems:"center", gap:5, color: sc }}>
-        <WxIcon type={weather.type} />
-        <span style={{ fontSize:12 }}>{weather.tempC}°C</span>
-      </div>
+function initWeather() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function(p) { fetchWeather(p.coords.latitude, p.coords.longitude); },
+      function()  { fetchWeather(DEF_LAT, DEF_LON); },
+      {timeout:6000}
     );
-  }
-
-  const screen = {
-    position: "fixed", inset: 0, display: "flex",
-    alignItems: "center", justifyContent: "center", padding: 16,
-  };
-
-  if (phase === "boot") return null;
-
-  return (
-          <div style={{ position:"fixed", inset:0, fontFamily:"Quicksand, sans-serif", "--tc": tc, "--sc": sc }}>
-      {/* canvas */}
-      <canvas ref={cvsRef} width={sz.w} height={sz.h} style={{ position:"fixed", inset:0, display:"block" }} />
-
-      {/* WELCOME */}
-      {phase === "welcome" && (
-        <div style={screen}>
-          <div style={panel}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
-              <h1 style={h1Style}>Touch Grass</h1>
-              <WxBadge />
-            </div>
-            <p style={{ color:sc, fontSize:13, fontWeight:300, marginBottom:24 }}>Go outside. Come back. See what you found.</p>
-            <div style={{ position:"relative", marginBottom:14 }}>
-              <input
-                style={inputStyle}
-                value={loc}
-                onChange={function(e) { setLoc(e.target.value); }}
-                placeholder="where are you going?"
-              />
-              <button
-                onClick={function() { setLoc(PLACES[Math.floor(Math.random() * PLACES.length)]); }}
-                style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:sc, fontSize:18, opacity:.7, lineHeight:1 }}
-              >↺</button>
-            </div>
-            <button style={btnStyle} onClick={function() { doLeave(loc); }}>Head outside →</button>
-            <div style={{ textAlign:"center", marginTop:10 }}>
-              <button onClick={function() { setPhase("collection"); }}
-                style={{ background:"none", border:"none", cursor:"pointer", color:sc, fontSize:12, textDecoration:"underline", textUnderlineOffset:2, fontFamily:"Quicksand, sans-serif" }}>
-                Collection · {colItems.length} found
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* GONE */}
-      {phase === "gone" && (
-        <div style={screen}>
-          <div style={Object.assign({}, panel, { textAlign:"center" })}>
-            <div style={{ display:"flex", justifyContent:"center", marginBottom:12 }}><WxBadge /></div>
-            <div style={{ fontSize:40, marginBottom:14 }}>🌿</div>
-            <h2 style={Object.assign({}, h2Style, { marginBottom:4 })}>You're outside</h2>
-            {loc && <p style={{ color:sc, fontSize:13, marginBottom:2 }}>{loc}</p>}
-            <p style={{ color:sc, fontSize:13, marginBottom:22 }}>Left at {fmtTime(depTime)}</p>
-            <p style={{ color:sc, fontSize:12, lineHeight:1.7, marginBottom:28 }}>
-              Feel free to close this tab.<br />The timer is saved. Come back when done.
-            </p>
-            <button style={btnStyle} onClick={doReturn}>I'm back</button>
-          </div>
-        </div>
-      )}
-
-      {/* GENERATING */}
-      {phase === "generating" && (
-        <div style={screen}>
-          <div style={Object.assign({}, panel, { textAlign:"center" })}>
-            <div style={{
-              width:34, height:34, borderRadius:"50%", margin:"0 auto 18px",
-              border: "2px solid " + btnBd,
-              borderTopColor: sc,
-              animation: "spin .8s linear infinite",
-            }} />
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-            <p style={{ color:sc, fontWeight:300 }}>{genMsg}</p>
-          </div>
-        </div>
-      )}
-
-      {/* RESULTS */}
-      {phase === "results" && (
-        <div style={screen}>
-          <div style={panel}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
-              <h2 style={h2Style}>{loc ? "Your " + loc + " walk" : "Your walk"}</h2>
-            </div>
-            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
-              <span style={{ color:sc, fontSize:13 }}>{fmtDur(elapsed)}</span>
-              <WxBadge />
-            </div>
-            {hasLeg && (
-              <div style={{ padding:"8px 12px", background:"rgba(180,40,220,.12)", border:"1px solid rgba(200,100,240,.4)", borderRadius:10, textAlign:"center", fontSize:11, fontWeight:600, color:"#c070e0", letterSpacing:".08em", marginBottom:12 }}>
-                ✦ Legendary find ✦
-              </div>
-            )}
-            <div style={{ maxHeight:260, overflowY:"auto", marginBottom:16 }}>
-              {finds.map(function(f, i) { return <FindCard key={i} f={f} />; })}
-            </div>
-            <button style={btnStyle} onClick={doAgain}>Go out again</button>
-            <div style={{ textAlign:"center", marginTop:10 }}>
-              <button onClick={function() { setPhase("collection"); }}
-                style={{ background:"none", border:"none", cursor:"pointer", color:sc, fontSize:12, textDecoration:"underline", textUnderlineOffset:2, fontFamily:"Quicksand, sans-serif" }}>
-                Full collection · {colItems.length}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* COLLECTION */}
-      {phase === "collection" && (
-        <div style={Object.assign({}, screen, { overflowY:"auto", alignItems:"flex-start" })}>
-          <div style={Object.assign({}, panel, { maxWidth:380, margin:"auto" })}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
-              <h2 style={h2Style}>Collection log</h2>
-              <span style={{ color:sc, fontSize:12 }}>{colItems.length} total</span>
-            </div>
-            {colItems.length === 0
-              ? <p style={{ color:sc, textAlign:"center", padding:"40px 0", fontWeight:300 }}>Nothing yet. Go outside.</p>
-              : (
-                <div style={{ maxHeight:"calc(100vh - 240px)", overflowY:"auto" }}>
-                  {TIERS.map(function(tier) {
-                    const items = colItems.filter(function(f) { return f.rarity === tier; });
-                    if (!items.length) return null;
-                    return (
-                      <div key={tier} style={{ marginBottom:20 }}>
-                        <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:8 }}>
-                          <div style={{ width:7, height:7, borderRadius:"50%", background: TIER_DOT[tier] }} />
-                          <span style={{ fontSize:11, fontWeight:500, textTransform:"uppercase", letterSpacing:".1em", color:sc }}>{tier}</span>
-                          <span style={{ fontSize:11, color:sc, fontWeight:300 }}>· {items.length}</span>
-                        </div>
-                        {items.map(function(f, i) { return <FindCard key={i} f={f} />; })}
-                      </div>
-                    );
-                  })}
-                </div>
-              )
-            }
-            <button style={Object.assign({}, btnStyle, { marginTop:16 })}
-              onClick={function() { setPhase(finds.length ? "results" : "welcome"); }}>
-              ← Back
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  } else fetchWeather(DEF_LAT, DEF_LON);
 }
+
+/* ── screens ── */
+var ALL_SCREENS = ['s-welcome','s-gone','s-gen','s-results','s-collection'];
+function show(id) { ALL_SCREENS.forEach(function(s) { $(s).classList.toggle('hidden', s!==id); }); }
+
+/* ── collection ── */
+function loadCol()  { try { collection=JSON.parse(lsGet('tg_collection')||'[]'); } catch(e) { collection=[]; } updateCounts(); }
+function saveCol()  { lsSet('tg_collection', JSON.stringify(collection.slice(0,500))); }
+function updateCounts() {
+  $('col-count').textContent = collection.length;
+  var r = $('res-col-count'); if (r) r.textContent = collection.length;
+}
+
+/* ── find card HTML ── */
+function findCardHTML(f) {
+  var leg = f.rarity === 'legendary';
+  return '<div class="find-card '+(f.rarity||'common')+'">'
+    + '<div class="find-top">'
+    + '<div class="find-dot dot-'+(f.rarity||'common')+'"></div>'
+    + '<div class="find-name">'+f.name+'</div>'
+    + (leg ? '<div class="find-leg-tag">legendary</div>' : '')
+    + '</div>'
+    + (f.note ? '<div class="find-note">'+f.note+'</div>' : '')
+    + '</div>';
+}
+
+/* ── discovery generation ── */
+async function generateFinds(secs) {
+  var key   = getKey();
+  var mins  = Math.floor(secs / 60);
+  var count = Math.min(15, Math.max(1, Math.ceil(mins / 8)));
+  var tiers = Array.from({length:count}, rollTier);
+  var tally = tiers.reduce(function(a,t) { a[t]=(a[t]||0)+1; return a; }, {});
+  var where = loc ? 'a '+loc : 'a grassy outdoor area';
+  var curTod = getTod();
+  var wLabel = weather ? weather.type : 'mild';
+
+  var prompt = 'Someone spent '+(mins||'under 1')+' minute'+(mins!==1?'s':'')+' outside in '+where+' during '+curTod+', weather: '+wLabel+'. '
+    + 'They returned with SURREAL discoveries — dreamlike, impossible, poetic things, never realistic litter. '
+    + 'Return ONLY a raw JSON array, no markdown or backticks. '
+    + 'Schema: [{"name":"2-6 word lowercase surreal object","rarity":"common|uncommon|rare|legendary","note":"one short evocative sentence"}]. '
+    + 'Provide EXACTLY '+(tally.common||0)+' common, '+(tally.uncommon||0)+' uncommon, '+(tally.rare||0)+' rare, '+(tally.legendary||0)+' legendary. '
+    + 'Scale strangeness by tier: common=mildly uncanny, uncommon=clearly impossible, rare=reality-bending, legendary=mythic and awe-inspiring. '
+    + 'Weave in the location, time, and weather.';
+
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({model:MODEL, max_tokens:1000, messages:[{role:'user',content:prompt}]}),
+    });
+    var data = await res.json();
+    var raw  = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
+    return JSON.parse(raw.replace(/```json|```/g,'').trim());
+  } catch(e) {
+    var fb = {common:'a softly humming pebble',uncommon:'a cloud that fits in your palm',rare:'a doorway folded into the grass',legendary:'the first dream of the field'};
+    return tiers.map(function(t) { return {name:fb[t],rarity:t,note:'It should not exist, yet here it is.'}; });
+  }
+}
+
+/* ── phase actions ── */
+function doLeave() {
+  ensureAudio(); syncAmbient(); ambient.fadeIn();
+  var now = Date.now(); depTime = now;
+  lsSet('tg_departure', JSON.stringify({time:now, location:loc}));
+  $('gone-loc').textContent  = loc || '';
+  $('gone-time').textContent = 'Left at '+fmtTime(now);
+  show('s-gone');
+}
+
+async function doReturn() {
+  ambient.fadeOut();
+  var now  = Date.now();
+  elapsedSec = Math.floor((now - depTime) / 1000);
+  show('s-gen');
+
+  var msgs = ['Retracing your steps…','Cataloguing the impossible…','Checking your pockets…','Writing it all down…'];
+  var mi = 0; $('gen-msg').textContent = msgs[0];
+  var msgIv = setInterval(function() { mi=(mi+1)%msgs.length; $('gen-msg').textContent=msgs[mi]; }, 1500);
+
+  var items = await generateFinds(elapsedSec);
+  clearInterval(msgIv);
+
+  var valid = ['common','uncommon','rare','legendary'];
+  var stamped = items.map(function(it) {
+    return Object.assign({}, it, {
+      rarity:   valid.includes(it.rarity) ? it.rarity : 'common',
+      location: loc || 'somewhere green',
+      when:     now,
+    });
+  });
+
+  lastFinds  = stamped;
+  collection = stamped.concat(collection).slice(0, 500);
+  saveCol(); updateCounts(); lsDel('tg_departure');
+
+  var hasLeg = stamped.some(function(f) { return f.rarity === 'legendary'; });
+  $('results-title').textContent = loc ? 'Your '+loc+' walk' : 'Your walk';
+  $('results-dur').textContent   = fmtDur(elapsedSec);
+  $('leg-banner').style.display  = hasLeg ? '' : 'none';
+  $('results-list').innerHTML    = stamped.map(findCardHTML).join('');
+  syncWxBadges();
+  show('s-results');
+}
+
+function doAgain() { loc=''; depTime=null; elapsedSec=0; lastFinds=[]; $('loc-input').value=''; show('s-welcome'); }
+
+function doCollection(from) {
+  $('col-back-btn').dataset.from = from || 'welcome';
+  $('col-total').textContent     = collection.length+' total';
+  var el = $('col-list');
+  if (!collection.length) { el.innerHTML='<div class="empty">Nothing yet. Go outside.</div>'; }
+  else {
+    el.innerHTML = TIERS.map(function(tier) {
+      var items = collection.filter(function(f) { return f.rarity===tier; });
+      if (!items.length) return '';
+      return '<div class="tier-block">'
+        + '<div class="tier-hdr"><div class="find-dot dot-'+tier+'"></div><span class="tier-label">'+tier+'</span><span class="tier-count">· '+items.length+'</span></div>'
+        + '<div class="tier-items">'+items.map(findCardHTML).join('')+'</div>'
+        + '</div>';
+    }).join('');
+  }
+  show('s-collection');
+}
+
+/* ── API key modal ── */
+function showKeyModal(then) {
+  $('key-modal').classList.remove('hidden');
+  $('key-input').value = getKey();
+  $('key-save').onclick = function() {
+    var v = $('key-input').value.trim();
+    if (v) { lsSet('tg_api_key',v); $('key-modal').classList.add('hidden'); if(then) then(); }
+  };
+}
+
+/* ── events ── */
+$('shuffle-btn').addEventListener('click', function() { loc=PLACES[Math.floor(Math.random()*PLACES.length)]; $('loc-input').value=loc; });
+$('loc-input').addEventListener('input', function(e) { loc=e.target.value; });
+$('leave-btn').addEventListener('click', function() { loc=$('loc-input').value.trim(); if(!getKey()){showKeyModal(doLeave);return;} doLeave(); });
+$('return-btn').addEventListener('click', doReturn);
+$('again-btn').addEventListener('click', doAgain);
+$('settings-btn').addEventListener('click', function() { showKeyModal(); });
+$('view-col-btn').addEventListener('click', function() { doCollection('welcome'); });
+$('results-col-btn').addEventListener('click', function() { doCollection('results'); });
+$('col-back-btn').addEventListener('click', function() { var f=$('col-back-btn').dataset.from; show(f==='results'?'s-results':'s-welcome'); });
+
+/* ── boot ── */
+(function boot() {
+  loadCol(); initWeather(); resize(); requestAnimationFrame(drawFrame);
+  applyTheme();
+  setInterval(function() { tod=getTod(); applyTheme(); syncAmbient(); }, 30000);
+
+  var stored = lsGet('tg_departure');
+  if (stored) {
+    try {
+      var d = JSON.parse(stored);
+      depTime = d.time; loc = d.location||'';
+      $('gone-loc').textContent  = loc;
+      $('gone-time').textContent = 'Left at '+fmtTime(depTime);
+      show('s-gone'); return;
+    } catch(e) {}
+  }
+  show('s-welcome');
+})();
+</script>
+</body>
+</html>
