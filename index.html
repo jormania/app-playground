@@ -41,49 +41,38 @@ nav { position: sticky; top: 0; z-index: 100; background: rgba(12,14,20,0.9); ba
 #apps { padding: 64px 0 80px; }
 .section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: var(--faint); text-transform: uppercase; font-family: var(--mono); margin-bottom: 28px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
 
-/* comparison block */
-.compare-block { margin-bottom: 20px; border: 1px solid var(--border2); border-radius: 12px; overflow: hidden; }
-.compare-header { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
-.compare-icon { font-size: 22px; }
-.compare-title { font-size: 15px; font-weight: 600; color: var(--text); }
-.compare-sub { font-size: 12px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
-.compare-cards { display: grid; grid-template-columns: 1fr 1fr; }
-.compare-card { padding: 20px 24px; border-right: 1px solid var(--border); transition: background 0.15s; }
-.compare-card:last-child { border-right: none; }
-.compare-card:hover { background: var(--surface2); }
-.by-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; font-family: var(--mono); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 12px; }
-.by-claude { background: rgba(124,111,255,0.15); color: var(--accent); border: 1px solid rgba(124,111,255,0.3); }
-.by-gemini { background: rgba(66,133,244,0.12); color: #74b0ff; border: 1px solid rgba(66,133,244,0.3); }
-.compare-card h3 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
-.compare-card p { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 14px; }
-.btn-launch { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; padding: 6px 14px; border-radius: 7px; transition: all 0.15s; }
-.btn-claude { background: var(--accent); color: #fff; }
-.btn-claude:hover { background: #6b5eee; }
-.btn-gemini { background: rgba(66,133,244,0.15); color: #74b0ff; border: 1px solid rgba(66,133,244,0.3); }
-.btn-gemini:hover { background: rgba(66,133,244,0.25); }
+/* pair layout for two related apps */
+.card-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
 
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 20px; transition: border-color 0.2s, box-shadow 0.2s; }
+/* standard card */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s; }
 .card:hover { border-color: var(--border2); box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
-.card-inner { padding: 24px; }
+.card-inner { padding: 24px; height: 100%; display: flex; flex-direction: column; }
 .card-top { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
 .card-icon { width: 46px; height: 46px; flex-shrink: 0; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
 .icon-codex { background: rgba(255,180,50,0.15); }
+.icon-kb    { background: rgba(255,215,0,0.15); }
 .card-meta { flex: 1; min-width: 0; }
 .card-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 4px; }
 .card-subtitle { font-size: 12.5px; color: var(--muted); font-family: var(--mono); }
+
+.by-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 20px; font-family: var(--mono); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 14px; }
+.by-claude { background: rgba(124,111,255,0.12); color: var(--accent); border: 1px solid rgba(124,111,255,0.25); }
+.by-gemini { background: rgba(66,133,244,0.1); color: #74b0ff; border: 1px solid rgba(66,133,244,0.25); }
+
 .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
 .tag { font-size: 11px; font-weight: 500; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 3px 9px; border-radius: 4px; font-family: var(--mono); }
-.card-desc { font-size: 14px; color: var(--muted); line-height: 1.65; margin-bottom: 18px; }
+.card-desc { font-size: 14px; color: var(--muted); line-height: 1.65; margin-bottom: 18px; flex: 1; }
 .card-features { list-style: none; margin-bottom: 22px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .card-features li { font-size: 13px; color: var(--muted); padding: 9px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
 .card-features li:last-child { border-bottom: none; }
 .card-features li::before { content: '→'; color: var(--accent2); font-size: 11px; flex-shrink: 0; }
-.card-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 18px; border-top: 1px solid var(--border); }
+.card-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 18px; border-top: 1px solid var(--border); margin-top: auto; }
 .sync-note { font-size: 11.5px; color: var(--faint); font-family: var(--mono); line-height: 1.4; }
 .sync-note a { color: var(--accent2); }
 .card-actions { display: flex; gap: 8px; flex-shrink: 0; }
-.btn-launch-main { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; padding: 7px 16px; border-radius: 7px; background: var(--accent); color: white; transition: all 0.15s; white-space: nowrap; }
-.btn-launch-main:hover { background: #6b5eee; }
+.btn-launch { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; padding: 7px 16px; border-radius: 7px; background: var(--accent); color: white; transition: all 0.15s; white-space: nowrap; }
+.btn-launch:hover { background: #6b5eee; }
 
 footer { border-top: 1px solid var(--border); padding: 32px 0; }
 .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
@@ -92,16 +81,14 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; }
 .footer-links { display: flex; gap: 20px; font-size: 12.5px; color: var(--faint); }
 .footer-links a:hover { color: var(--muted); }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .nav-links { gap: 14px; }
   .hero { padding: 52px 0 48px; }
   .hero-stats { gap: 20px; }
-  .compare-cards { grid-template-columns: 1fr; }
-  .compare-card { border-right: none; border-bottom: 1px solid var(--border); }
-  .compare-card:last-child { border-bottom: none; }
+  .card-pair { grid-template-columns: 1fr; }
   .card-footer { flex-direction: column; align-items: flex-start; }
   .card-actions { width: 100%; }
-  .btn-launch-main { flex: 1; justify-content: center; }
+  .btn-launch { flex: 1; justify-content: center; }
   .footer-inner { flex-direction: column; align-items: flex-start; }
 }
 </style>
@@ -122,7 +109,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; }
   <div class="container">
     <div class="hero-eyebrow">Personal playground</div>
     <h1>Tools built to<br><span>actually get used.</span></h1>
-    <p class="hero-desc">Standalone web apps built with Claude — no frameworks, no dependencies, no fuss. Also: one head-to-head AI comparison.</p>
+    <p class="hero-desc">Standalone web apps built with Claude — no frameworks, no dependencies, no fuss. Each one a real tool for a real need.</p>
     <div class="hero-stats">
       <div class="stat"><span class="stat-value">4</span><span class="stat-label">Apps live</span></div>
       <div class="stat"><span class="stat-value">100%</span><span class="stat-label">Vanilla HTML</span></div>
@@ -135,32 +122,51 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; }
   <div class="container">
     <div class="section-label">// apps — 4 deployed</div>
 
-    <!-- COMPARISON BLOCK -->
-    <div class="compare-block">
-      <div class="compare-header">
-        <span class="compare-icon">🏋️</span>
-        <div>
-          <div class="compare-title">Kettlebell Training — AI Comparison</div>
-          <div class="compare-sub">Same prompt · Two models · Judge for yourself</div>
+    <!-- KETTLEBELL PAIR -->
+    <div class="card-pair">
+
+      <div class="card">
+        <div class="card-inner">
+          <div class="card-top">
+            <div class="card-icon icon-kb">🏋️</div>
+            <div class="card-meta">
+              <div class="card-title">Kettlebell Training</div>
+              <div class="card-subtitle">12 exercises · pop-art · mobile-first</div>
+            </div>
+          </div>
+          <div class="by-badge by-claude">by Claude Sonnet</div>
+          <div class="card-tags">
+            <span class="tag">fitness</span><span class="tag">Keith Haring</span><span class="tag">SVG</span>
+          </div>
+          <p class="card-desc">Twelve essential kettlebell movements illustrated in Keith Haring's bold pop-art style — thick outlines, bright fills, and speed lines that actually follow the arc of the swing. Each exercise comes with a six-step breakdown, a difficulty rating, and the muscles you'll be cursing the morning after.</p>
+          <div class="card-footer">
+            <div class="sync-note"><a href="https://coneofcold.vercel.app/kettlebell-claude.html" target="_blank">kettlebell-claude.html</a></div>
+            <div class="card-actions"><a class="btn-launch" href="kettlebell-claude.html">Launch ↗</a></div>
+          </div>
         </div>
       </div>
-      <div class="compare-cards">
 
-        <div class="compare-card">
-          <div class="by-badge by-claude">Built by Claude Sonnet</div>
-          <h3>Rebuilt with lessons learned</h3>
-          <p>100×100 SVG grid, primitives only, no Bezier curves on body parts. Proper action lines tracing the motion arc. Asymmetric head radiance clustered toward the direction of movement. Yellow background, hard box shadows, full-colour card headers.</p>
-          <a class="btn-launch btn-claude" href="kettlebell-claude.html">Launch Claude version ↗</a>
+      <div class="card">
+        <div class="card-inner">
+          <div class="card-top">
+            <div class="card-icon icon-kb">🏋️</div>
+            <div class="card-meta">
+              <div class="card-title">Kettlebell Training</div>
+              <div class="card-subtitle">12 exercises · pop-art · mobile-first</div>
+            </div>
+          </div>
+          <div class="by-badge by-gemini">by Gemini Pro Thinking</div>
+          <div class="card-tags">
+            <span class="tag">fitness</span><span class="tag">pop-art</span><span class="tag">SVG</span>
+          </div>
+          <p class="card-desc">The same twelve kettlebell fundamentals — from swing to snatch — rendered in a punchy yellow-and-black pop-art layout. Illustrated exercise poses, difficulty ratings, target muscle tags, and taglines that take the pain in exactly the right stride.</p>
+          <div class="card-footer">
+            <div class="sync-note"><a href="https://coneofcold.vercel.app/kettlebell-gemini.html" target="_blank">kettlebell-gemini.html</a></div>
+            <div class="card-actions"><a class="btn-launch" href="kettlebell-gemini.html">Launch ↗</a></div>
+          </div>
         </div>
-
-        <div class="compare-card">
-          <div class="by-badge by-gemini">Built by Gemini Pro Thinking</div>
-          <h3>The benchmark</h3>
-          <p>Standardised 100×100 viewBox from the start. Simple linear paths and primitives throughout. Modular components per body part — errors stay isolated. Cleaner SVG rendering as a result. The version that prompted the rethink.</p>
-          <a class="btn-launch btn-gemini" href="kettlebell-gemini.html">Launch Gemini version ↗</a>
-        </div>
-
       </div>
+
     </div>
 
     <!-- CODEX ALCHYMICUS -->
@@ -176,7 +182,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; }
         <div class="card-tags">
           <span class="tag">gaming</span><span class="tag">alchemy</span><span class="tag">KCD2</span><span class="tag">offline-ready</span>
         </div>
-        <p class="card-desc">A parchment-styled recipe manager for Kingdom Come: Deliverance II. All 28 learnable recipes pre-loaded, searchable and filterable by category, with mastery tracking and custom recipe input.</p>
+        <p class="card-desc">A parchment-styled recipe manager for Kingdom Come: Deliverance II alchemy. All 28 learnable recipes pre-loaded, searchable by name and ingredient, filterable by category. Track what you've mastered, add custom brews.</p>
         <ul class="card-features">
           <li>Animated SVG candle flames and layered parchment textures</li>
           <li>Hand-drawn herb icons: nettle, belladonna, marigold, mint, valerian…</li>
@@ -186,16 +192,13 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; }
         </ul>
         <div class="card-footer">
           <div class="sync-note">🌐 <a href="https://coneofcold.vercel.app/kcd2-codex-v3.html" target="_blank">coneofcold.vercel.app/kcd2-codex-v3.html</a><br>Deployed June 2026</div>
-          <div class="card-actions"><a class="btn-launch-main" href="kcd2-codex-v3.html" target="_blank">Launch ↗</a></div>
+          <div class="card-actions"><a class="btn-launch" href="kcd2-codex-v3.html">Launch ↗</a></div>
         </div>
       </div>
     </article>
 
     <!--
-    ═══════════════════════════════════
-    ADD NEW APP CARD HERE — copy the
-    article.card block above and update.
-    ═══════════════════════════════════
+    ADD NEW APP CARD HERE — copy article.card above and update.
     -->
 
   </div>
