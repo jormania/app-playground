@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Kettlebell Training — Claude</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:ital,wght@0,600;0,700;0,800;1,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --red:    #FF0000;
+      --yellow: #FFD700;
+      --blue:   #0033FF;
+      --green:  #00BB00;
+      --orange: #FF7700;
+      --black:  #000;
+      --white:  #fff;
+      --nav-h:  52px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Nunito', sans-serif; background: var(--yellow); color: var(--black); overflow-x: hidden; }
+
+    #top-nav {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--black); display: flex; align-items: center;
+      height: var(--nav-h); overflow-x: auto; scrollbar-width: none;
+      padding: 0 10px; gap: 4px; -webkit-overflow-scrolling: touch;
+    }
+    #top-nav::-webkit-scrollbar { display: none; }
+    .nav-brand { font-family: 'Fredoka One', cursive; color: var(--yellow); font-size: 1rem; white-space: nowrap; padding-right: 10px; margin-right: 4px; border-right: 2px solid #333; flex-shrink: 0; }
+    .nav-link { color: #555; text-decoration: none; font-size: 0.67rem; font-weight: 800; white-space: nowrap; padding: 5px 9px; border-radius: 14px; transition: background 0.15s, color 0.15s; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.04em; }
+    .nav-link:hover, .nav-link.active { background: var(--yellow); color: var(--black); }
+
+    #hero { background: var(--black); padding: 40px 20px 32px; text-align: center; border-bottom: 4px solid var(--black); }
+    .hero-title { font-family: 'Fredoka One', cursive; font-size: clamp(2.2rem, 9vw, 3.6rem); color: var(--yellow); text-shadow: 4px 4px 0 var(--red); line-height: 1; margin-bottom: 8px; }
+    .hero-sub { font-size: 0.88rem; font-weight: 800; font-style: italic; color: #666; margin-bottom: 20px; }
+    .hero-stats { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+    .stat-pill { background: var(--yellow); color: var(--black); font-family: 'Fredoka One', cursive; font-size: 0.78rem; padding: 5px 14px; border-radius: 20px; letter-spacing: 0.03em; border: 3px solid var(--black); }
+
+    .exercises { padding: 16px; }
+    .exercise-card { background: var(--white); border: 4px solid var(--black); box-shadow: 6px 6px 0 var(--black); margin-bottom: 28px; }
+
+    .card-header { background: var(--c, var(--red)); padding: 16px 18px 12px; border-bottom: 4px solid var(--black); }
+    .card-num { font-family: 'Fredoka One', cursive; font-size: 0.7rem; opacity: 0.7; display: block; margin-bottom: 2px; letter-spacing: 0.14em; color: var(--ct, #fff); }
+    .card-title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+    .card-title { font-family: 'Fredoka One', cursive; font-size: clamp(1.4rem, 5.5vw, 1.9rem); line-height: 1; color: var(--ct, #fff); }
+    .difficulty { display: flex; gap: 3px; align-items: center; flex-shrink: 0; padding-bottom: 4px; }
+    .difficulty svg { width: 22px; height: 30px; }
+
+    .tagline-bar { background: var(--black); padding: 10px 18px; border-bottom: 4px solid var(--black); font-size: 0.83rem; font-weight: 800; font-style: italic; color: var(--red); text-transform: uppercase; line-height: 1.3; }
+
+    .card-body { display: grid; grid-template-columns: 130px 1fr; }
+    .art-panel { background: var(--cb, #f9f9f9); border-right: 4px solid var(--black); display: flex; align-items: center; justify-content: center; padding: 14px 10px; min-height: 180px; }
+    .art-panel svg { width: 100%; height: auto; max-height: 160px; overflow: visible; }
+
+    .steps-panel { padding: 14px 16px; }
+    .steps-panel ol { list-style: none; counter-reset: s; }
+    .steps-panel li { counter-increment: s; position: relative; padding-left: 32px; margin-bottom: 10px; font-size: 0.8rem; font-weight: 700; line-height: 1.4; }
+    .steps-panel li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--black); color: var(--yellow); font-family: 'Fredoka One', cursive; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; }
+
+    .card-foot { background: var(--black); color: var(--yellow); font-family: 'Fredoka One', cursive; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 18px; border-top: 4px solid var(--black); }
+
+    footer { background: var(--black); color: #444; text-align: center; padding: 24px 20px; font-size: 0.8rem; font-style: italic; font-weight: 800; border-top: 4px solid var(--black); }
+    footer span { color: var(--yellow); }
+    footer a { color: #555; }
+
+    @media (max-width: 420px) { .card-body { grid-template-columns: 106px 1fr; } }
+    @media (min-width: 560px) { .card-body { grid-template-columns: 160px 1fr; } .art-panel { min-height: 210px; } .art-panel svg { max-height: 190px; } .steps-panel li { font-size: 0.87rem; } }
+    @media (min-width: 768px) { .exercises { padding: 24px 20px; } .card-body { grid-template-columns: 200px 1fr; } }
+  </style>
+</head>
+<body>
+
+<!-- SVG LIBRARY — 100×100 grid, primitives only, two-pass outlines, currentColor fills -->
+<svg style="display:none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<defs>
+
+  <!-- DIFFICULTY ICON: strongman flexing -->
+  <symbol id="icon-strong" viewBox="0 0 44 58">
+    <circle cx="22" cy="8" r="6" fill="#FF0000" stroke="#000" stroke-width="2.5"/>
+    <rect x="16" y="14" width="12" height="17" rx="5" fill="#FF0000" stroke="#000" stroke-width="2.5"/>
+    <line x1="28" y1="19" x2="37" y2="12" stroke="#000" stroke-width="4" stroke-linecap="round"/>
+    <line x1="37" y1="12" x2="35" y2="6"  stroke="#000" stroke-width="4" stroke-linecap="round"/>
+    <ellipse cx="33" cy="14" rx="4" ry="2.5" fill="#000" transform="rotate(-28 33 14)"/>
+    <line x1="16" y1="21" x2="8"  y2="29" stroke="#000" stroke-width="4" stroke-linecap="round"/>
+    <line x1="19" y1="31" x2="14" y2="48" stroke="#000" stroke-width="4" stroke-linecap="round"/>
+    <line x1="25" y1="31" x2="30" y2="48" stroke="#000" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="34" cy="4" r="4.5" fill="#000"/>
+    <path d="M30,6 Q34,1 38,6" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+  </symbol>
+
+  <!-- FIG-SWING: side view, arm extended forward, KB at chest. For: Swing, High Pull -->
+  <symbol id="fig-swing" viewBox="0 0 100 100">
+    <!-- head radiance: 5 lines asymmetric, clustered toward direction of motion (right) -->
+    <line x1="30" y1="3"  x2="31" y2="-5" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="34" y1="5"  x2="39" y2="-1" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="37" y1="9"  x2="44" y2="7"  stroke="#000" stroke-width="2"   stroke-linecap="round"/>
+    <line x1="22" y1="5"  x2="18" y2="1"  stroke="#000" stroke-width="2"   stroke-linecap="round"/>
+    <line x1="20" y1="11" x2="14" y2="9"  stroke="#000" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- head -->
+    <circle cx="28" cy="11" r="7" fill="currentColor" stroke="#000" stroke-width="3"/>
+    <!-- body -->
+    <line x1="28" y1="18" x2="30" y2="56" stroke="#000"          stroke-width="11" stroke-linecap="round"/>
+    <line x1="28" y1="18" x2="30" y2="56" stroke="currentColor"  stroke-width="7"  stroke-linecap="round"/>
+    <!-- arm extended forward -->
+    <line x1="29" y1="30" x2="68" y2="38" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="29" y1="30" x2="68" y2="38" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <!-- KB -->
+    <circle cx="77" cy="40" r="9" fill="#000"/>
+    <!-- speed lines: 3 arcs concentric to the pendulum arc, behind the KB, tapering -->
+    <path d="M66,52 Q60,62 52,68" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M62,56 Q55,66 46,72" fill="none" stroke="#000" stroke-width="2"   stroke-linecap="round"/>
+    <path d="M58,60 Q50,69 41,74" fill="none" stroke="#000" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- legs -->
+    <line x1="28" y1="56" x2="16" y2="90" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="28" y1="56" x2="16" y2="90" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <line x1="32" y1="56" x2="44" y2="90" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="32" y1="56" x2="44" y2="90" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+  </symbol>
+
+  <!-- FIG-HINGE: side view, bent at hip ~45°, KB hanging below. For: Row, RDL -->
+  <symbol id="fig-hinge" viewBox="0 0 100 100">
+    <!-- head radiance: clustered upper area, varied -->
+    <line x1="22" y1="7"  x2="22" y2="1"  stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="28" y1="9"  x2="33" y2="4"  stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="14" y1="10" x2="9"  y2="6"  stroke="#000" stroke-width="2"   stroke-linecap="round"/>
+    <line x1="13" y1="16" x2="7"  y2="14" stroke="#000" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="16" y1="21" x2="10" y2="23" stroke="#000" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- head -->
+    <circle cx="22" cy="15" r="7" fill="currentColor" stroke="#000" stroke-width="3"/>
+    <!-- body angled forward -->
+    <line x1="22" y1="22" x2="58" y2="50" stroke="#000"          stroke-width="11" stroke-linecap="round"/>
+    <line x1="22" y1="22" x2="58" y2="50" stroke="currentColor"  stroke-width="7"  stroke-linecap="round"/>
+    <!-- both arms hanging to KB -->
+    <line x1="36" y1="32" x2="44" y2="66" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="36" y1="32" x2="44" y2="66" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <line x1="45" y1="38" x2="52" y2="66" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="45" y1="38" x2="52" y2="66" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <!-- KB handle -->
+    <line x1="40" y1="66" x2="56" y2="66" stroke="#000" stroke-width="4" stroke-linecap="round"/>
+    <!-- KB body -->
+    <circle cx="48" cy="78" r="9" fill="#000"/>
+    <!-- speed lines on KB (motion downward-back) -->
+    <path d="M36,74 Q30,80 28,87" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M32,76 Q25,82 22,89" fill="none" stroke="#000" stroke-width="2"   stroke-linecap="round"/>
+    <!-- legs from hips -->
+    <line x1="58" y1="50" x2="42" y2="88" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="58" y1="50" x2="42" y2="88" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <line x1="58" y1="52" x2="68" y2="86" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="58" y1="52" x2="68" y2="86" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+  </symbol>
+
+  <!-- FIG-SQUAT: front view, deep squat, KB at chest. For: Goblet Squat, Figure-8 -->
+  <symbol id="fig-squat" viewBox="0 0 100 100">
+    <!-- head radiance: centered, energy upward, slight right cluster -->
+    <line x1="50" y1="2"  x2="50" y2="-4" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="56" y1="4"  x2="60" y2="0"  stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="44" y1="4"  x2="40" y2="0"  stroke="#000" stroke-width="2.2" stroke-linecap="round"/>
+    <line x1="59" y1="8"  x2="64" y2="5"  stroke="#000" stroke-width="2"   stroke-linecap="round"/>
+    <line x1="41" y1="8"  x2="36" y2="5"  stroke="#000" stroke-width="1.8" stroke-linecap="round"/>
+    <!-- head -->
+    <circle cx="50" cy="10" r="7" fill="currentColor" stroke="#000" stroke-width="3"/>
+    <!-- body compressed -->
+    <line x1="50" y1="17" x2="50" y2="48" stroke="#000"          stroke-width="11" stroke-linecap="round"/>
+    <line x1="50" y1="17" x2="50" y2="48" stroke="currentColor"  stroke-width="7"  stroke-linecap="round"/>
+    <!-- arms to KB handle -->
+    <line x1="46" y1="28" x2="38" y2="48" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="46" y1="28" x2="38" y2="48" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <line x1="54" y1="28" x2="62" y2="48" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="54" y1="28" x2="62" y2="48" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <!-- KB handle and body -->
+    <line x1="36" y1="48" x2="64" y2="48" stroke="#000" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="50" cy="59" r="9" fill="#000"/>
+    <!-- thighs wide -->
+    <line x1="46" y1="48" x2="24" y2="68" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="46" y1="48" x2="24" y2="68" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <line x1="54" y1="48" x2="76" y2="68" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="54" y1="48" x2="76" y2="68" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <!-- shins -->
+    <line x1="24" y1="68" x2="18" y2="90" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="24" y1="68" x2="18" y2="90" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <line x1="76" y1="68" x2="82" y2="90" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="76" y1="68" x2="82" y2="90" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+  </symbol>
+
+  <!-- FIG-PRESS: side view, arm overhead with KB. For: Clean & Press, Halo -->
+  <symbol id="fig-press" viewBox="0 0 100 100">
+    <!-- head radiance: clustered upper-right toward KB -->
+    <line x1="42" y1="4"  x2="45" y2="-2" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="36" y1="3"  x2="36" y2="-3" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="47" y1="8"  x2="53" y2="5"  stroke="#000" stroke-width="2.2" stroke-linecap="round"/>
+    <line x1="30" y1="5"  x2="25" y2="2"  stroke="#000" stroke-width="2"   stroke-linecap="round"/>
+    <line x1="28" y1="11" x2="22" y2="10" stroke="#000" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- head -->
+    <circle cx="36" cy="12" r="7" fill="currentColor" stroke="#000" stroke-width="3"/>
+    <!-- body upright -->
+    <line x1="36" y1="19" x2="36" y2="58" stroke="#000"          stroke-width="11" stroke-linecap="round"/>
+    <line x1="36" y1="19" x2="36" y2="58" stroke="currentColor"  stroke-width="7"  stroke-linecap="round"/>
+    <!-- right arm raised overhead -->
+    <line x1="40" y1="28" x2="64" y2="8"  stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="40" y1="28" x2="64" y2="8"  stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <!-- KB overhead -->
+    <circle cx="70" cy="6" r="8" fill="#000"/>
+    <!-- left arm slight angle -->
+    <line x1="32" y1="32" x2="18" y2="50" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="32" y1="32" x2="18" y2="50" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <!-- legs -->
+    <line x1="33" y1="58" x2="22" y2="90" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="33" y1="58" x2="22" y2="90" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <line x1="39" y1="58" x2="50" y2="90" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="39" y1="58" x2="50" y2="90" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+  </symbol>
+
+  <!-- FIG-WINDMILL: side bend, arm raised holding KB, other arm down. For: Windmill -->
+  <symbol id="fig-windmill" viewBox="0 0 100 100">
+    <!-- head radiance: upper-right, toward KB -->
+    <line x1="70" y1="8"  x2="75" y2="4"  stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="66" y1="7"  x2="68" y2="1"  stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="62" y1="9"  x2="57" y2="5"  stroke="#000" stroke-width="2.2" stroke-linecap="round"/>
+    <line x1="58" y1="15" x2="52" y2="13" stroke="#000" stroke-width="2"   stroke-linecap="round"/>
+    <line x1="72" y1="16" x2="78" y2="15" stroke="#000" stroke-width="1.8" stroke-linecap="round"/>
+    <!-- head -->
+    <circle cx="65" cy="16" r="7" fill="currentColor" stroke="#000" stroke-width="3"/>
+    <!-- body tilted left -->
+    <line x1="65" y1="23" x2="38" y2="58" stroke="#000"          stroke-width="11" stroke-linecap="round"/>
+    <line x1="65" y1="23" x2="38" y2="58" stroke="currentColor"  stroke-width="7"  stroke-linecap="round"/>
+    <!-- right arm raised with KB -->
+    <line x1="65" y1="26" x2="80" y2="6"  stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="65" y1="26" x2="80" y2="6"  stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <!-- KB overhead -->
+    <circle cx="85" cy="4" r="8" fill="#000"/>
+    <!-- left arm reaching down -->
+    <line x1="44" y1="46" x2="18" y2="74" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="44" y1="46" x2="18" y2="74" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <!-- hand dot on floor -->
+    <circle cx="15" cy="77" r="4" fill="currentColor" stroke="#000" stroke-width="2"/>
+    <!-- legs wide -->
+    <line x1="38" y1="58" x2="18" y2="90" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="38" y1="58" x2="18" y2="90" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <line x1="38" y1="58" x2="62" y2="88" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="38" y1="58" x2="62" y2="88" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+  </symbol>
+
+  <!-- FIG-PLANK: horizontal plank, one arm rowing. For: TGU, Renegade Row -->
+  <symbol id="fig-plank" viewBox="0 0 100 100">
+    <!-- head radiance -->
+    <line x1="11" y1="30" x2="11" y2="24" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="16" y1="32" x2="20" y2="27" stroke="#000" stroke-width="2.2" stroke-linecap="round"/>
+    <line x1="6"  y1="32" x2="2"  y2="27" stroke="#000" stroke-width="2"   stroke-linecap="round"/>
+    <line x1="18" y1="38" x2="24" y2="37" stroke="#000" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="4"  y1="38" x2="-2" y2="37" stroke="#000" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- head -->
+    <circle cx="11" cy="38" r="7" fill="currentColor" stroke="#000" stroke-width="3"/>
+    <!-- body horizontal -->
+    <line x1="18" y1="38" x2="74" y2="36" stroke="#000"          stroke-width="11" stroke-linecap="round"/>
+    <line x1="18" y1="38" x2="74" y2="36" stroke="currentColor"  stroke-width="7"  stroke-linecap="round"/>
+    <!-- left arm planted on KB -->
+    <line x1="36" y1="36" x2="36" y2="62" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="36" y1="36" x2="36" y2="62" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <!-- KB planted -->
+    <circle cx="36" cy="70" r="8" fill="#000"/>
+    <!-- right arm rowing upward -->
+    <line x1="56" y1="36" x2="50" y2="52" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="56" y1="36" x2="50" y2="52" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <!-- KB being rowed -->
+    <circle cx="46" cy="46" r="7" fill="#000"/>
+    <!-- speed lines on rowed KB — arcs curving upward -->
+    <path d="M38,40 Q34,35 36,29" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M42,38 Q38,32 40,26" fill="none" stroke="#000" stroke-width="2"   stroke-linecap="round"/>
+    <path d="M46,36 Q42,29 44,23" fill="none" stroke="#000" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- feet at right -->
+    <line x1="74" y1="36" x2="86" y2="52" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="74" y1="36" x2="86" y2="52" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <line x1="74" y1="34" x2="86" y2="20" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="74" y1="34" x2="86" y2="20" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+  </symbol>
+
+  <!-- FIG-CARRY: front view, upright, KBs at sides, walking. For: Farmer's Walk -->
+  <symbol id="fig-carry" viewBox="0 0 100 100">
+    <!-- head radiance: energetic, centered -->
+    <line x1="50" y1="2"  x2="50" y2="-4" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="56" y1="4"  x2="61" y2="0"  stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="44" y1="4"  x2="39" y2="0"  stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="59" y1="9"  x2="64" y2="7"  stroke="#000" stroke-width="2"   stroke-linecap="round"/>
+    <line x1="41" y1="9"  x2="36" y2="7"  stroke="#000" stroke-width="2"   stroke-linecap="round"/>
+    <!-- head -->
+    <circle cx="50" cy="10" r="7" fill="currentColor" stroke="#000" stroke-width="3"/>
+    <!-- body tall -->
+    <line x1="50" y1="17" x2="50" y2="56" stroke="#000"          stroke-width="11" stroke-linecap="round"/>
+    <line x1="50" y1="17" x2="50" y2="56" stroke="currentColor"  stroke-width="7"  stroke-linecap="round"/>
+    <!-- left arm straight down -->
+    <line x1="45" y1="28" x2="22" y2="58" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="45" y1="28" x2="22" y2="58" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <!-- right arm straight down -->
+    <line x1="55" y1="28" x2="78" y2="58" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="55" y1="28" x2="78" y2="58" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <!-- left KB -->
+    <circle cx="18" cy="66" r="8" fill="#000"/>
+    <line x1="22" y1="58" x2="18" y2="60" stroke="#000" stroke-width="3" stroke-linecap="round"/>
+    <!-- right KB -->
+    <circle cx="82" cy="66" r="8" fill="#000"/>
+    <line x1="78" y1="58" x2="82" y2="60" stroke="#000" stroke-width="3" stroke-linecap="round"/>
+    <!-- legs: walking stride -->
+    <line x1="46" y1="56" x2="34" y2="76" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="46" y1="56" x2="34" y2="76" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <line x1="34" y1="76" x2="28" y2="92" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="34" y1="76" x2="28" y2="92" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <line x1="54" y1="56" x2="66" y2="76" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="54" y1="56" x2="66" y2="76" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+    <line x1="66" y1="76" x2="72" y2="92" stroke="#000"          stroke-width="9"  stroke-linecap="round"/>
+    <line x1="66" y1="76" x2="72" y2="92" stroke="currentColor"  stroke-width="5"  stroke-linecap="round"/>
+  </symbol>
+
+</defs>
+</svg>
+
+<!-- NAV -->
+<nav id="top-nav">
+  <span class="nav-brand">🏋️ KB</span>
+  <a class="nav-link" href="#ex-01">01 Swing</a>
+  <a class="nav-link" href="#ex-02">02 Get-Up</a>
+  <a class="nav-link" href="#ex-03">03 Goblet</a>
+  <a class="nav-link" href="#ex-04">04 Row</a>
+  <a class="nav-link" href="#ex-05">05 Clean+Press</a>
+  <a class="nav-link" href="#ex-06">06 Windmill</a>
+  <a class="nav-link" href="#ex-07">07 RDL</a>
+  <a class="nav-link" href="#ex-08">08 Renegade</a>
+  <a class="nav-link" href="#ex-09">09 Halo</a>
+  <a class="nav-link" href="#ex-10">10 Figure-8</a>
+  <a class="nav-link" href="#ex-11">11 Farmer</a>
+  <a class="nav-link" href="#ex-12">12 High Pull</a>
+</nav>
+
+<!-- HERO -->
+<header id="hero">
+  <h1 class="hero-title">Kettlebell<br>Training</h1>
+  <p class="hero-sub">Keith Haring didn't skip leg day. Neither should you.</p>
+  <div class="hero-stats">
+    <span class="stat-pill">12 Exercises</span>
+    <span class="stat-pill">3 Difficulty Levels</span>
+    <span class="stat-pill">∞ Excuses Needed</span>
+  </div>
+</header>
+
+<!-- EXERCISES -->
+<div class="exercises">
+
+  <article class="exercise-card" id="ex-01" style="--c:#FF0000;--ct:#fff;--cb:#fff0f0;">
+    <div class="card-header"><span class="card-num">EXERCISE 01 — BACK &amp; CORE</span>
+      <div class="card-title-row"><h2 class="card-title">Kettlebell Swing</h2>
+        <div class="difficulty"><svg><use href="#icon-strong"/></svg><svg><use href="#icon-strong"/></svg></div></div></div>
+    <div class="tagline-bar">"This swings both ways — your spine says thanks, your ego might not survive."</div>
+    <div class="card-body">
+      <div class="art-panel"><svg viewBox="0 0 100 100" style="color:#FF0000"><use href="#fig-swing"/></svg></div>
+      <div class="steps-panel"><ol>
+        <li>Stand feet shoulder-width, KB on floor between feet.</li>
+        <li>Hinge at hips, grip with both hands, back neutral.</li>
+        <li>Drive hips forward explosively — KB floats to shoulder height.</li>
+        <li>Control the descent — pendulum back between legs.</li>
+        <li>Hips do the work. If your arms burn, start over.</li>
+        <li>Core braced, chest proud at the top of every rep.</li>
+      </ol></div>
+    </div>
+    <div class="card-foot">Target: Back · Core · Glutes · Hamstrings</div>
+  </article>
+
+  <article class="exercise-card" id="ex-02" style="--c:#000;--ct:#FFD700;--cb:#fffbde;">
+    <div class="card-header"><span class="card-num">EXERCISE 02 — FULL BODY</span>
+      <div class="card-title-row"><h2 class="card-title">Turkish Get-Up</h2>
+        <div class="difficulty"><svg><use href="#icon-strong"/></svg><svg><use href="#icon-strong"/></svg><svg><use href="#icon-strong"/></svg></div></div></div>
+    <div class="tagline-bar">"Half yoga. Half circus act. 100% regret in the morning."</div>
+    <div class="card-body">
+      <div class="art-panel"><svg viewBox="0 0 100 100" style="color:#CC7700"><use href="#fig-plank"/></svg></div>
+      <div class="steps-panel"><ol>
+        <li>Lie flat, KB in right hand locked to ceiling. Eyes on the bell.</li>
+        <li>Left palm flat; bend right knee, roll onto left elbow.</li>
+        <li>Push to left hand, lift hips off the floor.</li>
+        <li>Sweep left leg behind — come to a kneeling lunge.</li>
+        <li>Stand fully upright, KB locked overhead throughout.</li>
+        <li>Reverse every step exactly to return to floor. Same pace.</li>
+      </ol></div>
+    </div>
+    <div class="card-foot">Target: Shoulders · Core · Stability · Everything</div>
+  </article>
+
+  <article class="exercise-card" id="ex-03" style="--c:#0033FF;--ct:#fff;--cb:#eef0ff;">
+    <div class="card-header"><span class="card-num">EXERCISE 03 — LEGS &amp; CORE</span>
+      <div class="card-title-row"><h2 class="card-title">Goblet Squat</h2>
+        <div class="difficulty"><svg><use href="#icon-strong"/></svg></div></div></div>
+    <div class="tagline-bar">"Drink from the chalice of gains. Your thighs will be smashed."</div>
+    <div class="card-body">
+      <div class="art-panel"><svg viewBox="0 0 100 100" style="color:#0033FF"><use href="#fig-squat"/></svg></div>
+      <div class="steps-panel"><ol>
+        <li>Hold KB by the horns at chest height, elbows pointing down.</li>
+        <li>Feet shoulder-width or wider, toes slightly out.</li>
+        <li>Push knees out as you descend — tracking over toes.</li>
+        <li>Go below parallel if mobility allows; chest stays tall.</li>
+        <li>Drive through heels to stand, squeeze glutes at top.</li>
+        <li>The KB is a counterweight — use it to stay upright.</li>
+      </ol></div>
+    </div>
+    <div class="card-foot">Target: Quads · Glutes · Core · Mobility</div>
+  </article>
+
+  <article class="exercise-card" id="ex-04" style="--c:#00BB00;--ct:#fff;--cb:#edfff0;">
+    <div class="card-header"><span class="card-num">EXERCISE 04 — BACK &amp; ARMS</span>
+      <div class="card-title-row"><h2 class="card-title">Single-Arm Row</h2>
+        <div class="difficulty"><svg><use href="#icon-strong"/></svg><svg><use href="#icon-strong"/></svg></div></div></div>
+    <div class="tagline-bar">"Row, row, row your gains. Gently down the stream of sweat."</div>
+    <div class="card-body">
+      <div class="art-panel"><svg viewBox="0 0 100 100" style="color:#00BB00"><use href="#fig-hinge"/></svg></div>
+      <div class="steps-panel"><ol>
+        <li>Left hand and knee on a bench, back flat and parallel.</li>
+        <li>KB in right hand, arm hanging straight down.</li>
+        <li>Brace core — no twisting, no wiggling, no excuses.</li>
+        <li>Pull elbow up and back like starting a chainsaw.</li>
+        <li>Squeeze shoulder blade hard at the top. Hold 1 second.</li>
+        <li>Lower slowly — the descent is where gains live.</li>
+      </ol></div>
+    </div>
+    <div class="card-foot">Target: Lats · Rhomboids · Biceps · Core</div>
+  </article>
+
+  <article class="exercise-card" id="ex-05" style="--c:#FF7700;--ct:#fff;--cb:#fff4ea;">
+    <div class="card-header"><span class="card-num">EXERCISE 05 — UPPER BODY</span>
+      <div class="card-title-row"><h2 class="card-title">Clean &amp; Press</h2>
+        <div class="difficulty"><svg><use href="#icon-strong"/></svg><svg><use href="#icon-strong"/></svg><svg><use href="#icon-strong"/></svg></div></div></div>
+    <div class="tagline-bar">"Clean conscience. Dirty muscles. Press on regardless."</div>
+    <div class="card-body">
+      <div class="art-panel"><svg viewBox="0 0 100 100" style="color:#FF7700"><use href="#fig-press"/></svg></div>
+      <div class="steps-panel"><ol>
+        <li>Hinge, swing KB up with a hip thrust — one arm.</li>
+        <li>At shoulder height, rotate to rack: KB on forearm, fist at chin.</li>
+        <li>From rack, press straight overhead — arm locks out fully.</li>
+        <li>Core tight throughout. No banana back on the press.</li>
+        <li>Lower to rack, swing back down in a controlled arc.</li>
+        <li>One side per set — both sides deserve the suffering equally.</li>
+      </ol></div>
+    </div>
+    <div class="card-foot">Target: Shoulders · Traps · Triceps · Core</div>
+  </article>
+
+  <article class="exercise-card" id="ex-06" style="--c:#FF0000;--ct:#fff;--cb:#fff0f0;">
+    <div class="card-header"><span class="card-num">EXERCISE 06 — CORE &amp; MOBILITY</span>
+      <div class="card-title-row"><h2 class="card-title">Windmill</h2>
+        <div class="difficulty"><svg><use href="#icon-strong"/></svg><svg><use href="#icon-strong"/></svg><svg><use href="#icon-strong"/></svg></div></div></div>
+    <div class="tagline-bar">"Tilting at windmills was never this painful. Thanks, Don Quixote."</div>
+    <div class="card-body">
+      <div class="art-panel"><svg viewBox="0 0 100 100" style="color:#FF0000"><use href="#fig-windmill"/></svg></div>
+      <div class="steps-panel"><ol>
+        <li>Press KB overhead with right arm locked. Eyes on the bell.</li>
+        <li>Feet wide, toes angled left. Push right hip out to the right.</li>
+        <li>Hinge sideways — left hand trails down left leg.</li>
+        <li>Right arm stays locked. Left leg straight. Back flat.</li>
+        <li>Drive through right hip to return upright.</li>
+        <li>Be humble with the weight. Mobility wearing a strength costume.</li>
+      </ol></div>
+    </div>
+    <div class="card-foot">Target: Obliques · Glutes · Shoulder Stability</div>
+  </article>
+
+  <article class="exercise-card" id="ex-07" style="--c:#000;--ct:#FFD700;--cb:#fffbde;">
+    <div class="card-header"><span class="card-num">EXERCISE 07 — POSTERIOR CHAIN</span>
+      <div class="card-title-row"><h2 class="card-title">Romanian Deadlift</h2>
+        <div class="difficulty"><svg><use href="#icon-strong"/></svg><svg><use href="#icon-strong"/></svg></div></div></div>
+    <div class="tagline-bar">"Dracula never skipped deadlift day. Be as undying as your gains."</div>
+    <div class="card-body">
+      <div class="art-panel"><svg viewBox="0 0 100 100" style="color:#00BB00"><use href="#fig-hinge"/></svg></div>
+      <div class="steps-panel"><ol>
+        <li>Stand with KB(s), feet hip-width, soft bend in knees.</li>
+        <li>Hinge at hips — push them straight back, not the waist.</li>
+        <li>Let KB slide down legs as you descend, back stays neutral.</li>
+        <li>Feel the hamstring stretch when KB reaches mid-shin.</li>
+        <li>Drive hips forward to stand — squeeze glutes at top.</li>
+        <li>The slow descent is where the hamstring magic happens.</li>
+      </ol></div>
+    </div>
+    <div class="card-foot">Target: Hamstrings · Glutes · Lower Back</div>
+  </article>
+
+  <article class="exercise-card" id="ex-08" style="--c:#0033FF;--ct:#fff;--cb:#eef0ff;">
+    <div class="card-header"><span class="card-num">EXERCISE 08 — BACK &amp; CORE</span>
+      <div class="card-title-row"><h2 class="card-title">Renegade Row</h2>
+        <div class="difficulty"><svg><use href="#icon-strong"/></svg><svg><use href="#icon-strong"/></svg><svg><use href="#icon-strong"/></svg></div></div></div>
+    <div class="tagline-bar">"A plank. A row. A small sob. This is the way."</div>
+    <div class="card-body">
+      <div class="art-panel"><svg viewBox="0 0 100 100" style="color:#0033FF"><use href="#fig-plank"/></svg></div>
+      <div class="steps-panel"><ol>
+        <li>Push-up position, both hands gripping KBs on the floor.</li>
+        <li>Brace your entire body like a steel beam — rigid head to heels.</li>
+        <li>Row one KB to hip, elbow tracking back. Core fights rotation.</li>
+        <li>Lower it, repeat on the other side. Alternate every rep.</li>
+        <li>Optional: add a push-up between rows for bonus suffering.</li>
+        <li>Wider feet = easier to balance. Narrow feet = you enjoy pain.</li>
+      </ol></div>
+    </div>
+    <div class="card-foot">Target: Back · Core · Shoulders · Stabilisers</div>
+  </article>
+
+  <article class="exercise-card" id="ex-09" style="--c:#00BB00;--ct:#fff;--cb:#edfff0;">
+    <div class="card-header"><span class="card-num">EXERCISE 09 — SHOULDERS &amp; CORE</span>
+      <div class="card-title-row"><h2 class="card-title">Halo</h2>
+        <div class="difficulty"><svg><use href="#icon-strong"/></svg></div></div></div>
+    <div class="tagline-bar">"You are basically a saint. The halo is just the proof."</div>
+    <div class="card-body">
+      <div class="art-panel"><svg viewBox="0 0 100 100" style="color:#00BB00"><use href="#fig-press"/></svg></div>
+      <div class="steps-panel"><ol>
+        <li>Stand or kneel, hold KB upside-down by the bell at chest.</li>
+        <li>Rotate KB around your head in one wide, smooth circle.</li>
+        <li>Keep it tight to your skull — not a lazy orbit.</li>
+        <li>Shoulders down and back. Core braced. No bowing at waist.</li>
+        <li>Complete all reps in one direction, then reverse.</li>
+        <li>Great for shoulder mobility and feeling oddly transcendent.</li>
+      </ol></div>
+    </div>
+    <div class="card-foot">Target: Shoulders · Rotator Cuff · Mobility</div>
+  </article>
+
+  <article class="exercise-card" id="ex-10" style="--c:#FF7700;--ct:#fff;--cb:#fff4ea;">
+    <div class="card-header"><span class="card-num">EXERCISE 10 — CORE &amp; GRIP</span>
+      <div class="card-title-row"><h2 class="card-title">Figure-8</h2>
+        <div class="difficulty"><svg><use href="#icon-strong"/></svg><svg><use href="#icon-strong"/></svg></div></div></div>
+    <div class="tagline-bar">"Your hips don't lie. Your grip might give out first."</div>
+    <div class="card-body">
+      <div class="art-panel"><svg viewBox="0 0 100 100" style="color:#FF7700"><use href="#fig-squat"/></svg></div>
+      <div class="steps-panel"><ol>
+        <li>Stand wide, soft bend in knees, hips hinged slightly forward.</li>
+        <li>KB in right hand — pass it between left leg from the front.</li>
+        <li>Left hand grabs behind left leg, passes under to the right.</li>
+        <li>Right hand catches from front, between right leg.</li>
+        <li>One continuous loop — try not to hit yourself (you will).</li>
+        <li>Core tight, hips low, rhythm is the goal.</li>
+      </ol></div>
+    </div>
+    <div class="card-foot">Target: Core · Grip · Coordination · Hip Flexors</div>
+  </article>
+
+  <article class="exercise-card" id="ex-11" style="--c:#FF0000;--ct:#fff;--cb:#fff0f0;">
+    <div class="card-header"><span class="card-num">EXERCISE 11 — FULL BODY</span>
+      <div class="card-title-row"><h2 class="card-title">Farmer's Walk</h2>
+        <div class="difficulty"><svg><use href="#icon-strong"/></svg></div></div></div>
+    <div class="tagline-bar">"Be the farmer. Carry the weight. Question nothing."</div>
+    <div class="card-body">
+      <div class="art-panel"><svg viewBox="0 0 100 100" style="color:#FF0000"><use href="#fig-carry"/></svg></div>
+      <div class="steps-panel"><ol>
+        <li>Stand between two KBs, deadlift setup, core tight.</li>
+        <li>Pick them up — brace hard, neutral spine throughout.</li>
+        <li>Walk forward with short, controlled steps. No waddling.</li>
+        <li>Shoulders packed back and down — not shrugged up around ears.</li>
+        <li>Walk a set distance or time, then set down with full control.</li>
+        <li>Simple in concept. Brutal in execution. Welcome to real strength.</li>
+      </ol></div>
+    </div>
+    <div class="card-foot">Target: Traps · Forearms · Core · Legs · Everything</div>
+  </article>
+
+  <article class="exercise-card" id="ex-12" style="--c:#000;--ct:#FFD700;--cb:#fffbde;">
+    <div class="card-header"><span class="card-num">EXERCISE 12 — POWER</span>
+      <div class="card-title-row"><h2 class="card-title">High Pull</h2>
+        <div class="difficulty"><svg><use href="#icon-strong"/></svg><svg><use href="#icon-strong"/></svg></div></div></div>
+    <div class="tagline-bar">"Pull yourself up by the kettlebell handle. Growth is pain."</div>
+    <div class="card-body">
+      <div class="art-panel"><svg viewBox="0 0 100 100" style="color:#FF0000"><use href="#fig-swing"/></svg></div>
+      <div class="steps-panel"><ol>
+        <li>Start with KB on floor — hinge and grip with one hand.</li>
+        <li>Drive from hips — explosive thrust, same mechanics as swing.</li>
+        <li>At shoulder height, pull elbow high and wide.</li>
+        <li>KB floats briefly at shoulder level, elbow tops out above it.</li>
+        <li>Control the descent back between legs with your hips.</li>
+        <li>Explosive up, controlled down. Power without chaos.</li>
+      </ol></div>
+    </div>
+    <div class="card-foot">Target: Traps · Upper Back · Shoulders · Power</div>
+  </article>
+
+</div>
+
+<footer>
+  Made with <span>pain</span>. Also with love. <span>Mostly with pain.</span><br>
+  <span style="font-size:0.72rem;color:#555;">↑ <a href="/">Cone of Cold</a> — back to all apps</span>
+</footer>
+
+<script>
+(function(){
+  var links = document.querySelectorAll('.nav-link');
+  var cards = document.querySelectorAll('.exercise-card');
+  var nav = document.getElementById('top-nav');
+  if (!('IntersectionObserver' in window)) return;
+  var obs = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (!e.isIntersecting) return;
+      var id = e.target.id;
+      links.forEach(function(l){
+        var active = l.getAttribute('href') === '#'+id;
+        l.classList.toggle('active', active);
+        if (active) {
+          var lr = l.getBoundingClientRect(), nr = nav.getBoundingClientRect();
+          if (lr.left < nr.left || lr.right > nr.right)
+            l.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+        }
+      });
+    });
+  }, {rootMargin:'-52px 0px -60% 0px', threshold:0});
+  cards.forEach(function(c){ obs.observe(c); });
+})();
+</script>
+</body>
+</html>

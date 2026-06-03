@@ -8,391 +8,162 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 :root {
-  --bg:        #0c0e14;
-  --surface:   #13161f;
-  --surface2:  #1a1e2b;
-  --border:    #222636;
-  --border2:   #2d3348;
-  --accent:    #7c6fff;
-  --accent2:   #4fc3a1;
-  --accent-dim:rgba(124,111,255,0.12);
-  --text:      #dde2ee;
-  --muted:     #7a8499;
-  --faint:     #404660;
-  --mono:      'JetBrains Mono', monospace;
+  --bg:       #0c0e14; --surface:  #13161f; --surface2: #1a1e2b;
+  --border:   #222636; --border2:  #2d3348;
+  --accent:   #7c6fff; --accent2:  #4fc3a1; --accent-dim: rgba(124,111,255,0.12);
+  --text:     #dde2ee; --muted:    #7a8499; --faint:    #404660;
+  --mono: 'JetBrains Mono', monospace;
 }
-
-body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  line-height: 1.6;
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-}
+body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; -webkit-font-smoothing: antialiased; }
 a { color: inherit; text-decoration: none; }
 .container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
 
-/* ── Navigation ── */
-nav {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: rgba(12, 14, 20, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
-}
-.nav-inner {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 0 24px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.nav-logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-  color: var(--text);
-}
-.nav-logo-icon {
-  width: 28px;
-  height: 28px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
-  border-radius: 7px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-}
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 28px;
-  font-size: 13.5px;
-  color: var(--muted);
-}
+nav { position: sticky; top: 0; z-index: 100; background: rgba(12,14,20,0.9); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+.nav-inner { max-width: 900px; margin: 0 auto; padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+.nav-logo { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+.nav-logo-icon { width: 28px; height: 28px; background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.nav-links { display: flex; align-items: center; gap: 28px; font-size: 13.5px; color: var(--muted); }
 .nav-links a:hover { color: var(--text); transition: color 0.15s; }
-.nav-links .nav-cta {
-  background: var(--accent-dim);
-  color: var(--accent);
-  border: 1px solid rgba(124,111,255,0.25);
-  padding: 5px 14px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.15s;
-}
-.nav-links .nav-cta:hover { background: rgba(124,111,255,0.2); }
+.nav-cta { background: var(--accent-dim); color: var(--accent) !important; border: 1px solid rgba(124,111,255,0.25); padding: 5px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+.nav-cta:hover { background: rgba(124,111,255,0.2) !important; }
 
-/* ── Hero ── */
-.hero {
-  padding: 80px 0 72px;
-  border-bottom: 1px solid var(--border);
-}
-.hero-eyebrow {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--accent2);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-bottom: 18px;
-  font-family: var(--mono);
-}
-.hero h1 {
-  font-size: clamp(2.1rem, 5.5vw, 3.4rem);
-  font-weight: 700;
-  color: var(--text);
-  line-height: 1.08;
-  letter-spacing: -0.03em;
-  margin-bottom: 20px;
-}
-.hero h1 span {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-.hero-desc {
-  max-width: 520px;
-  color: var(--muted);
-  font-size: 16px;
-  line-height: 1.65;
-  margin-bottom: 36px;
-}
-.hero-stats {
-  display: flex;
-  gap: 32px;
-  flex-wrap: wrap;
-}
+.hero { padding: 80px 0 72px; border-bottom: 1px solid var(--border); }
+.hero-eyebrow { font-size: 11.5px; font-weight: 600; color: var(--accent2); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 18px; font-family: var(--mono); }
+.hero h1 { font-size: clamp(2.1rem, 5.5vw, 3.4rem); font-weight: 700; line-height: 1.08; letter-spacing: -0.03em; margin-bottom: 20px; }
+.hero h1 span { background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.hero-desc { max-width: 520px; color: var(--muted); font-size: 16px; line-height: 1.65; margin-bottom: 36px; }
+.hero-stats { display: flex; gap: 32px; flex-wrap: wrap; }
 .stat { display: flex; flex-direction: column; gap: 3px; }
-.stat-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: -0.03em;
-}
-.stat-label {
-  font-size: 12px;
-  color: var(--faint);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
+.stat-value { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; }
+.stat-label { font-size: 12px; color: var(--faint); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; }
 
-/* ── Apps section ── */
 #apps { padding: 64px 0 80px; }
-.section-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  color: var(--faint);
-  text-transform: uppercase;
-  font-family: var(--mono);
-  margin-bottom: 28px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
-}
+.section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: var(--faint); text-transform: uppercase; font-family: var(--mono); margin-bottom: 28px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
 
-/* ── Cards ── */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  margin-bottom: 20px;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.card:hover {
-  border-color: var(--border2);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
-}
+/* comparison block */
+.compare-block { margin-bottom: 20px; border: 1px solid var(--border2); border-radius: 12px; overflow: hidden; }
+.compare-header { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+.compare-icon { font-size: 22px; }
+.compare-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.compare-sub { font-size: 12px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
+.compare-cards { display: grid; grid-template-columns: 1fr 1fr; }
+.compare-card { padding: 20px 24px; border-right: 1px solid var(--border); transition: background 0.15s; }
+.compare-card:last-child { border-right: none; }
+.compare-card:hover { background: var(--surface2); }
+.by-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; font-family: var(--mono); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 12px; }
+.by-claude { background: rgba(124,111,255,0.15); color: var(--accent); border: 1px solid rgba(124,111,255,0.3); }
+.by-gemini { background: rgba(66,133,244,0.12); color: #74b0ff; border: 1px solid rgba(66,133,244,0.3); }
+.compare-card h3 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.compare-card p { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 14px; }
+.btn-launch { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; padding: 6px 14px; border-radius: 7px; transition: all 0.15s; }
+.btn-claude { background: var(--accent); color: #fff; }
+.btn-claude:hover { background: #6b5eee; }
+.btn-gemini { background: rgba(66,133,244,0.15); color: #74b0ff; border: 1px solid rgba(66,133,244,0.3); }
+.btn-gemini:hover { background: rgba(66,133,244,0.25); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 20px; transition: border-color 0.2s, box-shadow 0.2s; }
+.card:hover { border-color: var(--border2); box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
 .card-inner { padding: 24px; }
-
-.card-top {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-.card-icon {
-  width: 46px;
-  height: 46px;
-  flex-shrink: 0;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-}
-.card-meta { flex: 1; min-width: 0; }
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 4px;
-  letter-spacing: -0.01em;
-}
-.card-subtitle {
-  font-size: 12.5px;
-  color: var(--muted);
-  font-family: var(--mono);
-}
-
-.card-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 16px;
-}
-.tag {
-  font-size: 11px;
-  font-weight: 500;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--muted);
-  padding: 3px 9px;
-  border-radius: 4px;
-  font-family: var(--mono);
-}
-
-.card-desc {
-  font-size: 14px;
-  color: var(--muted);
-  line-height: 1.65;
-  margin-bottom: 18px;
-}
-
-.card-features {
-  list-style: none;
-  margin-bottom: 22px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-.card-features li {
-  font-size: 13px;
-  color: var(--muted);
-  padding: 9px 14px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.card-features li:last-child { border-bottom: none; }
-.card-features li::before {
-  content: '→';
-  color: var(--accent2);
-  font-size: 11px;
-  flex-shrink: 0;
-}
-
-.card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 18px;
-  border-top: 1px solid var(--border);
-}
-.sync-note {
-  font-size: 11.5px;
-  color: var(--faint);
-  font-family: var(--mono);
-  line-height: 1.4;
-}
-.sync-note a { color: var(--accent2); }
-.sync-note a:hover { text-decoration: underline; }
-.card-actions { display: flex; gap: 8px; flex-shrink: 0; }
-
-.btn-launch {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 7px 16px;
-  border-radius: 7px;
-  background: var(--accent);
-  color: white;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-.btn-launch:hover { background: #6b5eee; }
-.btn-source {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12.5px;
-  font-weight: 500;
-  padding: 7px 12px;
-  border-radius: 7px;
-  background: transparent;
-  border: 1px solid var(--border2);
-  color: var(--muted);
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-.btn-source:hover { border-color: var(--accent); color: var(--accent); }
-
-/* per-card icon bg */
+.card-top { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+.card-icon { width: 46px; height: 46px; flex-shrink: 0; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
 .icon-codex { background: rgba(255,180,50,0.15); }
-.icon-kb    { background: rgba(255,215,0,0.15); }
+.card-meta { flex: 1; min-width: 0; }
+.card-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 4px; }
+.card-subtitle { font-size: 12.5px; color: var(--muted); font-family: var(--mono); }
+.card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.tag { font-size: 11px; font-weight: 500; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 3px 9px; border-radius: 4px; font-family: var(--mono); }
+.card-desc { font-size: 14px; color: var(--muted); line-height: 1.65; margin-bottom: 18px; }
+.card-features { list-style: none; margin-bottom: 22px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.card-features li { font-size: 13px; color: var(--muted); padding: 9px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.card-features li:last-child { border-bottom: none; }
+.card-features li::before { content: '→'; color: var(--accent2); font-size: 11px; flex-shrink: 0; }
+.card-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 18px; border-top: 1px solid var(--border); }
+.sync-note { font-size: 11.5px; color: var(--faint); font-family: var(--mono); line-height: 1.4; }
+.sync-note a { color: var(--accent2); }
+.card-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.btn-launch-main { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; padding: 7px 16px; border-radius: 7px; background: var(--accent); color: white; transition: all 0.15s; white-space: nowrap; }
+.btn-launch-main:hover { background: #6b5eee; }
 
-/* ── Footer ── */
-footer {
-  border-top: 1px solid var(--border);
-  padding: 32px 0;
-}
-.footer-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
+footer { border-top: 1px solid var(--border); padding: 32px 0; }
+.footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .footer-left { font-size: 12.5px; color: var(--faint); }
 .footer-left strong { color: var(--muted); font-weight: 500; }
-.footer-links {
-  display: flex;
-  gap: 20px;
-  font-size: 12.5px;
-  color: var(--faint);
-}
+.footer-links { display: flex; gap: 20px; font-size: 12.5px; color: var(--faint); }
 .footer-links a:hover { color: var(--muted); }
 
-/* ── Responsive ── */
 @media (max-width: 600px) {
   .nav-links { gap: 14px; }
   .hero { padding: 52px 0 48px; }
   .hero-stats { gap: 20px; }
-  .card-top { flex-wrap: wrap; }
+  .compare-cards { grid-template-columns: 1fr; }
+  .compare-card { border-right: none; border-bottom: 1px solid var(--border); }
+  .compare-card:last-child { border-bottom: none; }
   .card-footer { flex-direction: column; align-items: flex-start; }
   .card-actions { width: 100%; }
-  .btn-launch, .btn-source { flex: 1; justify-content: center; }
+  .btn-launch-main { flex: 1; justify-content: center; }
   .footer-inner { flex-direction: column; align-items: flex-start; }
 }
 </style>
 </head>
 <body>
 
-<!-- ══ NAV ══════════════════════════════════════════ -->
 <nav>
   <div class="nav-inner">
-    <a href="/" class="nav-logo">
-      <div class="nav-logo-icon">❄</div>
-      Cone of Cold
-    </a>
+    <a href="/" class="nav-logo"><div class="nav-logo-icon">❄</div>Cone of Cold</a>
     <div class="nav-links">
       <a href="#apps">Apps</a>
-      <!-- <a href="#notes">Notes</a> -->
-      <!-- <a href="#about">About</a> -->
       <a class="nav-cta" href="https://github.com/jormania/app-playground" target="_blank">GitHub ↗</a>
     </div>
   </div>
 </nav>
 
-<!-- ══ HERO ══════════════════════════════════════════ -->
 <section class="hero">
   <div class="container">
     <div class="hero-eyebrow">Personal playground</div>
     <h1>Tools built to<br><span>actually get used.</span></h1>
-    <p class="hero-desc">
-      A collection of standalone web apps built with Claude —
-      no frameworks, no dependencies, no fuss.
-      Each one a real tool for a real need.
-    </p>
+    <p class="hero-desc">Standalone web apps built with Claude — no frameworks, no dependencies, no fuss. Also: one head-to-head AI comparison.</p>
     <div class="hero-stats">
-      <div class="stat">
-        <span class="stat-value">2</span>
-        <span class="stat-label">Apps live</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value">100%</span>
-        <span class="stat-label">Vanilla HTML</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value">0</span>
-        <span class="stat-label">Dependencies</span>
-      </div>
+      <div class="stat"><span class="stat-value">4</span><span class="stat-label">Apps live</span></div>
+      <div class="stat"><span class="stat-value">100%</span><span class="stat-label">Vanilla HTML</span></div>
+      <div class="stat"><span class="stat-value">0</span><span class="stat-label">Dependencies</span></div>
     </div>
   </div>
 </section>
 
-<!-- ══ APPS ══════════════════════════════════════════ -->
 <section id="apps">
   <div class="container">
-    <div class="section-label">// apps — 2 deployed</div>
+    <div class="section-label">// apps — 4 deployed</div>
 
-    <!-- ─ CODEX ALCHYMICUS ─────────────────────── -->
+    <!-- COMPARISON BLOCK -->
+    <div class="compare-block">
+      <div class="compare-header">
+        <span class="compare-icon">🏋️</span>
+        <div>
+          <div class="compare-title">Kettlebell Training — AI Comparison</div>
+          <div class="compare-sub">Same prompt · Two models · Judge for yourself</div>
+        </div>
+      </div>
+      <div class="compare-cards">
+
+        <div class="compare-card">
+          <div class="by-badge by-claude">Built by Claude Sonnet</div>
+          <h3>Rebuilt with lessons learned</h3>
+          <p>100×100 SVG grid, primitives only, no Bezier curves on body parts. Proper action lines tracing the motion arc. Asymmetric head radiance clustered toward the direction of movement. Yellow background, hard box shadows, full-colour card headers.</p>
+          <a class="btn-launch btn-claude" href="kettlebell-claude.html">Launch Claude version ↗</a>
+        </div>
+
+        <div class="compare-card">
+          <div class="by-badge by-gemini">Built by Gemini Pro Thinking</div>
+          <h3>The benchmark</h3>
+          <p>Standardised 100×100 viewBox from the start. Simple linear paths and primitives throughout. Modular components per body part — errors stay isolated. Cleaner SVG rendering as a result. The version that prompted the rethink.</p>
+          <a class="btn-launch btn-gemini" href="kettlebell-gemini.html">Launch Gemini version ↗</a>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CODEX ALCHYMICUS -->
     <article class="card">
       <div class="card-inner">
         <div class="card-top">
@@ -402,20 +173,10 @@ footer {
             <div class="card-subtitle">28 recipes · 6 categories · parchment UI</div>
           </div>
         </div>
-
         <div class="card-tags">
-          <span class="tag">gaming</span>
-          <span class="tag">alchemy</span>
-          <span class="tag">KCD2</span>
-          <span class="tag">offline-ready</span>
+          <span class="tag">gaming</span><span class="tag">alchemy</span><span class="tag">KCD2</span><span class="tag">offline-ready</span>
         </div>
-
-        <p class="card-desc">
-          A parchment-styled recipe manager for Kingdom Come: Deliverance II alchemy.
-          All 28 learnable recipes pre-loaded, searchable by name and ingredient,
-          filterable by category. Track what you've mastered, add custom brews.
-        </p>
-
+        <p class="card-desc">A parchment-styled recipe manager for Kingdom Come: Deliverance II. All 28 learnable recipes pre-loaded, searchable and filterable by category, with mastery tracking and custom recipe input.</p>
         <ul class="card-features">
           <li>Animated SVG candle flames and layered parchment textures</li>
           <li>Hand-drawn herb icons: nettle, belladonna, marigold, mint, valerian…</li>
@@ -423,82 +184,27 @@ footer {
           <li>Custom recipe input modal with ingredient + step parsing</li>
           <li>Mobile layout with panel-switching navigation</li>
         </ul>
-
         <div class="card-footer">
-          <div class="sync-note">
-            🌐 <a href="https://coneofcold.vercel.app/kcd2-codex-v3.html" target="_blank">coneofcold.vercel.app/kcd2-codex-v3.html</a><br>
-            Deployed June 2026
-          </div>
-          <div class="card-actions">
-            <a class="btn-launch" href="https://coneofcold.vercel.app/kcd2-codex-v3.html" target="_blank">Launch ↗</a>
-          </div>
-        </div>
-      </div>
-    </article>
-
-    <!-- ─ KETTLEBELL TRAINING ──────────────────── -->
-    <article class="card">
-      <div class="card-inner">
-        <div class="card-top">
-          <div class="card-icon icon-kb">🏋️</div>
-          <div class="card-meta">
-            <div class="card-title">Kettlebell Training</div>
-            <div class="card-subtitle">12 exercises · Keith Haring style · mobile-first</div>
-          </div>
-        </div>
-
-        <div class="card-tags">
-          <span class="tag">fitness</span>
-          <span class="tag">training</span>
-          <span class="tag">SVG</span>
-          <span class="tag">mobile-optimised</span>
-        </div>
-
-        <p class="card-desc">
-          12 essential kettlebell exercises — rated by difficulty, illustrated with
-          vectorial Keith Haring-style figures. Sticky nav, 6 steps per exercise,
-          and a running commentary that takes itself exactly as seriously as it should.
-        </p>
-
-        <ul class="card-features">
-          <li>Swing, Turkish Get-Up, Goblet Squat, Clean &amp; Press, Windmill and more</li>
-          <li>1–3 strongman difficulty icons per exercise (Haring style)</li>
-          <li>Reusable SVG symbol library — 6 figures, 0 image requests</li>
-          <li>Sticky nav with IntersectionObserver active-link tracking</li>
-          <li>Optimised for Samsung S24 (412 px Android viewport)</li>
-        </ul>
-
-        <div class="card-footer">
-          <div class="sync-note">
-            🌐 <a href="https://coneofcold.vercel.app/kettlebell.html" target="_blank">coneofcold.vercel.app/kettlebell.html</a><br>
-            Deployed June 2026
-          </div>
-          <div class="card-actions">
-            <a class="btn-launch" href="https://coneofcold.vercel.app/kettlebell.html" target="_blank">Launch ↗</a>
-          </div>
+          <div class="sync-note">🌐 <a href="https://coneofcold.vercel.app/kcd2-codex-v3.html" target="_blank">coneofcold.vercel.app/kcd2-codex-v3.html</a><br>Deployed June 2026</div>
+          <div class="card-actions"><a class="btn-launch-main" href="kcd2-codex-v3.html" target="_blank">Launch ↗</a></div>
         </div>
       </div>
     </article>
 
     <!--
-    ═══════════════════════════════════════════════
-    ADD NEW APP CARD HERE — copy the block above,
-    update: card-icon emoji, card-title, card-subtitle,
-    card-tags, card-desc, card-features, sync-note URL,
-    and btn-launch href.
-    ═══════════════════════════════════════════════
+    ═══════════════════════════════════
+    ADD NEW APP CARD HERE — copy the
+    article.card block above and update.
+    ═══════════════════════════════════
     -->
 
   </div>
 </section>
 
-<!-- ══ FOOTER ════════════════════════════════════════ -->
 <footer>
   <div class="container">
     <div class="footer-inner">
-      <div class="footer-left">
-        <strong>Cone of Cold</strong> · built with Claude · hosted on Vercel
-      </div>
+      <div class="footer-left"><strong>Cone of Cold</strong> · built with Claude · hosted on Vercel</div>
       <div class="footer-links">
         <a href="https://github.com/jormania/app-playground" target="_blank">GitHub</a>
         <a href="#apps">Apps</a>
