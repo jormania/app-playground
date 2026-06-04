@@ -143,7 +143,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
     <a href="/" class="nav-back">← Cone of Cold</a>
     <div style="display:flex;align-items:center;gap:8px;">
       <span class="nav-brand">Touch Grass</span>
-      <span class="nav-version">v5</span>
+      <span class="nav-version">v6</span>
     </div>
   </div>
 </nav>
@@ -160,11 +160,10 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
   <section class="how-to">
     <h2>// how to use</h2>
     <ol class="steps">
-      <li><div>Tap <strong>↺</strong> to pull a nearby green space, or type any location.</div></li>
-      <li><div>Tap <strong>Head outside</strong> — your departure is saved immediately.</div></li>
-      <li><div>Close the tab, lock your screen, walk. The timer runs in localStorage.</div></li>
-      <li><div>Come back and open the app. Tap <strong>I'm back</strong>.</div></li>
-      <li><div>See what the walk generated. Check your collection over time.</div></li>
+      <li><div>Tap <strong>↺</strong> to pick a nearby green space, or type any location.</div></li>
+      <li><div>Tap <strong>Head outside</strong> and go. The timer saves immediately — close the tab, lock your screen, it doesn't matter.</div></li>
+      <li><div>Come back, open the app, tap <strong>I'm back</strong>.</div></li>
+      <li><div>See what you found.</div></li>
     </ol>
   </section>
 
@@ -174,10 +173,9 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
     <div class="feature">
       <div class="feature-header">
         <span class="feature-tag">location</span>
-        <h3>Live nearby places</h3>
+        <h3>Nearby places</h3>
       </div>
-      <p>On load, the app fetches your GPS position and queries OpenStreetMap's Overpass API for parks, forests, gardens, and nature reserves within 6 km. Results include named <code>way</code>, <code>node</code>, and <code>relation</code> types — so large forests mapped as polygon relations (like Vlăsia) are included.</p>
-      <p>Tap <strong>↺</strong> to pick a random place from the list. The list is cached per session so subsequent taps are instant. If GPS is unavailable, the query falls back to central Bucharest coordinates.</p>
+      <p>Tap ↺ and the app suggests a real green space near you — parks, forests, gardens, nature reserves. The list is pulled fresh from your GPS each session. If nothing's found nearby, you can always type a location manually.</p>
     </div>
 
     <div class="feature">
@@ -185,42 +183,29 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">finds</span>
         <h3>Surreal discoveries</h3>
       </div>
-      <p>When you return, Claude generates discoveries scaled to your walk duration — roughly 2 finds per 15 minutes, capped at 15. The prompt specifies location, time of day, and current weather, and instructs Claude to generate dreamlike, impossible objects — never realistic litter.</p>
-      <p>Four rarity tiers, each with a defined aesthetic:</p>
+      <p>Every walk generates a set of impossible things you might have found — dreamlike, poetic, never realistic litter. The longer you stay out, the more you bring back. Four tiers of strangeness:</p>
       <ul>
         <li><span class="pill common">common</span> Mildly uncanny. Something real that feels slightly wrong.</li>
         <li><span class="pill uncommon">uncommon</span> Clearly impossible. Physical laws politely ignored.</li>
         <li><span class="pill rare">rare</span> Reality-bending. The ground doesn't behave as expected.</li>
-        <li><span class="pill leg">legendary</span> Mythic, awe-inspiring. 1% drop rate. When it happens, you'll know.</li>
+        <li><span class="pill leg">legendary</span> Mythic. Awe-inspiring. Rare enough to feel like an event.</li>
       </ul>
     </div>
 
     <div class="feature">
       <div class="feature-header">
         <span class="feature-tag">audio</span>
-        <h3>Synthetic ambient soundscape</h3>
+        <h3>Ambient soundscape</h3>
       </div>
-      <p>All audio is generated in real time via the Web Audio API — no samples, no files. It plays when you're on the "You're outside" screen and fades on return. Toggle with the speaker icon in the welcome screen header; preference is saved across sessions.</p>
-      <ul>
-        <li><strong>Wind</strong> — always present, intensity varies with weather. Storm mode raises it significantly.</li>
-        <li><strong>Birds</strong> — dawn, morning, day, dusk. More frequent in parks and forests, reduced in urban locations.</li>
-        <li><strong>Crickets</strong> — evening and night. Reduced in urban locations.</li>
-        <li><strong>Rain</strong> — layered bandpass noise, triggered when weather is rain or storm.</li>
-        <li><strong>Thunder</strong> — rare random bursts during storm conditions.</li>
-      </ul>
+      <p>While you're "outside", the app plays a generative ambient mix that adapts to where you said you're going, the time of day, and the weather. Birds in parks during daylight. Crickets at night. Rain when it's raining. Toggle the speaker icon to mute.</p>
     </div>
 
     <div class="feature">
       <div class="feature-header">
         <span class="feature-tag">weather</span>
-        <h3>Real-time weather integration</h3>
+        <h3>Live weather</h3>
       </div>
-      <p>Current conditions are fetched from Open-Meteo using your GPS on every app load. No API key required. Weather affects three layers simultaneously:</p>
-      <ul>
-        <li><strong>Sky gradient</strong> — the colour palette shifts for clear, cloudy, storm, and fog conditions.</li>
-        <li><strong>Canvas particles</strong> — rain streaks and snow dots are drawn directly on the canvas, tuned to intensity.</li>
-        <li><strong>Ambient mix</strong> — rain layer volume and wind intensity track the weather state in real time.</li>
-      </ul>
+      <p>The app fetches current conditions from your location on load. Rain adds streaks to the canvas. Storm intensifies the wind. Fog softens everything. The ambient sound mix follows along. No API key needed for this.</p>
     </div>
 
     <div class="feature">
@@ -228,8 +213,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">sky</span>
         <h3>Celestial body</h3>
       </div>
-      <p>A sun or moon appears in the upper-right sky — never both. The sun is shown at dawn, morning, day, and dusk with a warm or golden tint matching the time. The moon appears at evening and night, drawn with the actual current lunar phase using a canvas clip technique.</p>
-      <p>Clouds drift in front of the celestial body at partial opacity for cloudy and snow conditions. The body is hidden entirely for rain and storm. Barely visible through fog.</p>
+      <p>The sky shows a sun or moon based on the time — never both. The sun shifts warm at dawn and dusk. The moon reflects the actual current lunar phase. Clouds pass in front depending on conditions.</p>
     </div>
 
     <div class="feature">
@@ -237,48 +221,36 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">canvas</span>
         <h3>Seasonal grass</h3>
       </div>
-      <p>The grass hue, saturation, and brightness shift by calendar month — derived from the current date, no API needed. Each blade is individually randomised within the seasonal palette, so the field reads as a natural mix rather than a flat fill.</p>
-      <ul>
-        <li><strong>Spring (Mar–May)</strong> — vivid, bright green, high saturation.</li>
-        <li><strong>Summer (Jun–Aug)</strong> — full and lush, the default rich palette.</li>
-        <li><strong>Autumn (Sep–Nov)</strong> — yellowed and warm, reduced saturation.</li>
-        <li><strong>Winter (Dec–Feb)</strong> — pale, sparse, heavily desaturated.</li>
-      </ul>
+      <p>The grass colour shifts with the calendar. Vivid green in spring, lush in summer, yellowed in autumn, pale and sparse in winter.</p>
     </div>
 
     <div class="feature">
       <div class="feature-header">
         <span class="feature-tag">stats</span>
-        <h3>Stats row, streak &amp; longest walk</h3>
+        <h3>Streak, walks &amp; collection</h3>
       </div>
-      <p>Three icon boxes sit below the "Head outside" button on the welcome screen, each labelled below its count: 🔥 streak, 👣 walks, 🎁 found. The streak box dims to 38% opacity when no active streak. Tap any box to open the full stats screen.</p>
-      <p>The stats screen breaks walks down by rolling 7-day week, current calendar month, current year, and all time. Your personal longest walk appears below the table.</p>
-      <p>The streak counter increments for each consecutive calendar day you complete at least one walk. Miss a day and it resets. Sessions are stored per-device — if you use both a laptop and a phone, track from one device for accurate counts.</p>
-    </div>
-
-    <div class="feature">
-      <div class="feature-header">
-        <span class="feature-tag">history</span>
-        <h3>Collection log</h3>
-      </div>
-      <p>Every find from every walk is stored in localStorage, grouped by rarity tier. Stored finds are capped at 500 entries. Access via the 🎁 box on the welcome screen or the link on the results screen.</p>
+      <p>Three boxes at the bottom of the welcome screen track your activity at a glance. All three dim when empty and brighten as you use the app.</p>
+      <ul>
+        <li><strong>🔥 Streak</strong> — tap to see your current streak, best ever, and total days walked.</li>
+        <li><strong>👣 Walks</strong> — tap to see walk counts and time outside by week, month, year, and all time. Includes your longest walk.</li>
+        <li><strong>🎁 Found</strong> — tap to browse everything you've collected, sorted by rarity.</li>
+      </ul>
     </div>
 
     <div class="feature">
       <div class="feature-header">
         <span class="feature-tag">setup</span>
-        <h3>API key &amp; settings</h3>
+        <h3>API key</h3>
       </div>
-      <p>Tap ⚙ on the welcome screen to set your Anthropic API key. It's stored in localStorage and sent directly to Anthropic's API from your browser — nothing passes through a server. A $5 credit covers several thousand walks. The app uses <code>claude-sonnet-4-6</code>.</p>
+      <p>Tap ⚙ to add your Anthropic API key. It stays in your browser and is never sent anywhere except directly to Anthropic when generating finds. A small credit goes a long way.</p>
     </div>
 
     <div class="feature">
       <div class="feature-header">
         <span class="feature-tag">install</span>
-        <h3>Installing as an app (Android)</h3>
+        <h3>Install on Android</h3>
       </div>
-      <p>Touch Grass is a Progressive Web App. Open it in Chrome on Android, tap the three-dot menu, choose Add to Home Screen, then Install app (not just "Add shortcut"). It launches full-screen with no browser bar and the 🌿 icon. Works with Minimalist Phone and similar launchers.</p>
-      <p>Requires <code>manifest.json</code>, <code>sw.js</code>, and icon files to be present in the repo root — all are included in the <a href="https://github.com/jormania/app-playground" target="_blank" rel="noopener">app-playground repo</a>.</p>
+      <p>Open the app in Chrome, tap the three-dot menu, choose <strong>Add to Home Screen</strong>, then <strong>Install app</strong>. It launches full-screen with no browser bar, like a native app. Works with Minimalist Phone and similar launchers.</p>
     </div>
 
   </section>
