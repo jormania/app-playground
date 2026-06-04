@@ -243,6 +243,7 @@ input:focus { border-color:rgba(120,100,80,0.4); }
       <thead><tr><th>Period</th><th>Walks</th><th>Time outside</th></tr></thead>
       <tbody id="stats-body"></tbody>
     </table>
+    <p id="stats-best" class="muted" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--btn-b);font-size:12px;"></p>
     <button class="btn" id="stats-back-btn" style="margin-top:20px;">← Back</button>
   </div>
 </div>
@@ -555,6 +556,18 @@ function getStats(){
   var som=new Date(now.getFullYear(),now.getMonth(),1),soy=new Date(now.getFullYear(),0,1);
   return [{label:'This week',since:sow.getTime()},{label:'This month',since:som.getTime()},{label:'This year',since:soy.getTime()},{label:'All time',since:0}]
     .map(function(p){var f=sessions.filter(function(s){return s.start>=p.since;});return{label:p.label,count:f.length,duration:f.reduce(function(a,s){return a+s.duration;},0)};});
+}
+function computeStreak(){
+  if(!sessions.length) return 0;
+  var days={};
+  sessions.forEach(function(s){ days[new Date(s.start).toISOString().slice(0,10)]=1; });
+  var streak=0, d=new Date();
+  while(true){ var key=d.toISOString().slice(0,10); if(days[key]){streak++;d.setDate(d.getDate()-1);}else break; }
+  return streak;
+}
+function longestWalk(){
+  if(!sessions.length) return 0;
+  return sessions.reduce(function(mx,s){return Math.max(mx,s.duration);},0);
 }
 function showStats(){
   var rows=getStats();
