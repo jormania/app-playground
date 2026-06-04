@@ -548,7 +548,13 @@ function loadCol(){try{collection=JSON.parse(lsGet('tg_collection')||'[]');}catc
 function saveCol(){lsSet('tg_collection',JSON.stringify(collection.slice(0,500)));}
 function loadSessions(){try{sessions=JSON.parse(lsGet('tg_sessions')||'[]');}catch(e){sessions=[];}}
 function saveSessions(){lsSet('tg_sessions',JSON.stringify(sessions.slice(0,2000)));}
-function updateCounts(){$('col-count').textContent=collection.length;$('walk-count').textContent=sessions.length;var r=$('res-col-count');if(r)r.textContent=collection.length;}
+function updateCounts(){
+  $('col-count').textContent=collection.length;
+  $('walk-count').textContent=sessions.length;
+  var r=$('res-col-count');if(r)r.textContent=collection.length;
+  var s=computeStreak(),badge=$('streak-badge');
+  if(badge) badge.textContent=s>=1?'🔥 '+s:'';
+}
 
 /* ── stats ── */
 function getStats(){
@@ -572,6 +578,8 @@ function longestWalk(){
 function showStats(){
   var rows=getStats();
   $('stats-body').innerHTML=rows.map(function(r){var z=r.count===0;return'<tr class="'+(z?'stats-zero':'')+'">'+'<td class="period">'+r.label+'</td><td class="val-big">'+(z?'—':r.count)+'</td><td>'+fmtDur(r.duration)+'</td></tr>';}).join('');
+  var best=longestWalk();
+  $('stats-best').innerHTML=best?'Longest walk · <strong style="color:var(--tc)">'+fmtDur(best)+'</strong>':'';
   show('s-stats');
 }
 
