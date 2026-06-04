@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Touch Grass — full feature guide.">
+<title>Touch Grass · Feature Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #0c0e14;
+  --surface: #13161f;
+  --border:  #222636;
+  --border2: #2d3348;
+  --accent:  #7c6fff;
+  --accent2: #4fc3a1;
+  --text:    #dde2ee;
+  --muted:   #7a8499;
+  --faint:   #404660;
+  --mono:    'JetBrains Mono', monospace;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.container { max-width: 680px; margin: 0 auto; padding: 0 24px; }
+
+/* ── nav ── */
+nav {
+  position: sticky; top: 0; z-index: 10;
+  background: rgba(12,14,20,0.9);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-inner {
+  max-width: 680px; margin: 0 auto; padding: 0 24px;
+  height: 52px; display: flex; align-items: center; justify-content: space-between;
+}
+.nav-back {
+  font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px;
+  transition: color 0.15s;
+}
+.nav-back:hover { color: var(--text); text-decoration: none; }
+.nav-brand { font-size: 13px; font-weight: 500; color: var(--text); }
+.nav-version {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  padding: 2px 7px; border-radius: 5px;
+  background: rgba(79,195,161,0.12); color: var(--accent2);
+  border: 1px solid rgba(79,195,161,0.2);
+}
+
+/* ── hero ── */
+.hero { padding: 52px 0 40px; border-bottom: 1px solid var(--border); margin-bottom: 48px; }
+.hero-eyebrow {
+  font-size: 11px; font-weight: 600; color: var(--accent2);
+  letter-spacing: 0.12em; text-transform: uppercase;
+  font-family: var(--mono); margin-bottom: 14px;
+}
+.hero h1 {
+  font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 700;
+  letter-spacing: -0.03em; margin-bottom: 14px; color: var(--text);
+}
+.hero p { color: var(--muted); font-size: 15px; max-width: 520px; line-height: 1.65; }
+
+/* ── how to use ── */
+.how-to { margin-bottom: 52px; }
+.how-to h2 { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: var(--faint); text-transform: uppercase; margin-bottom: 16px; }
+.steps { counter-reset: step; list-style: none; }
+.steps li {
+  counter-increment: step;
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+  font-size: 14px; color: var(--muted);
+}
+.steps li:last-child { border-bottom: none; }
+.steps li::before {
+  content: counter(step);
+  font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--accent2);
+  background: rgba(79,195,161,0.1); border: 1px solid rgba(79,195,161,0.2);
+  width: 22px; height: 22px; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  margin-top: 2px;
+}
+.steps li strong { color: var(--text); font-weight: 500; }
+
+/* ── feature sections ── */
+.features { display: flex; flex-direction: column; gap: 0; }
+.feature {
+  padding: 28px 0;
+  border-bottom: 1px solid var(--border);
+}
+.feature:last-child { border-bottom: none; }
+.feature-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.feature-tag {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  color: var(--faint); text-transform: uppercase; letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+.feature h3 { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+.feature p { font-size: 13.5px; color: var(--muted); line-height: 1.7; margin-bottom: 10px; }
+.feature p:last-child { margin-bottom: 0; }
+.feature ul { list-style: none; margin-top: 10px; }
+.feature ul li {
+  font-size: 13px; color: var(--muted);
+  padding: 7px 0 7px 0; border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.feature ul li:last-child { border-bottom: none; }
+.feature ul li::before { content: '›'; color: var(--accent2); flex-shrink: 0; }
+.pill {
+  display: inline-block; font-family: var(--mono); font-size: 10px;
+  padding: 1px 6px; border-radius: 4px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--muted); vertical-align: middle; margin: 0 2px;
+}
+.pill.rare     { background: rgba(180,120,20,.1);   border-color: rgba(180,120,20,.25); color: #c49830; }
+.pill.uncommon { background: rgba(20,120,140,.1);   border-color: rgba(20,120,140,.25); color: #3ab0c0; }
+.pill.common   { background: rgba(16,120,60,.1);    border-color: rgba(16,120,60,.25);  color: #3aaa60; }
+.pill.leg      { background: rgba(180,40,220,.1);   border-color: rgba(200,100,240,.4); color: #c060e0; }
+
+/* ── footer ── */
+footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px; }
+.footer-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.footer-left  { font-size: 12px; color: var(--faint); }
+.footer-right { font-size: 12px; color: var(--faint); }
+
+/* ── responsive ── */
+@media (max-width: 600px) {
+  .hero { padding: 36px 0 28px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-back">← Cone of Cold</a>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="nav-brand">Touch Grass</span>
+      <span class="nav-version">v4</span>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+
+  <section class="hero">
+    <div class="hero-eyebrow">// feature guide</div>
+    <h1>Everything Touch Grass does.</h1>
+    <p>A complete reference for the app. The app itself is intentionally minimal — this page is where the details live.</p>
+  </section>
+
+  <!-- How to use -->
+  <section class="how-to">
+    <h2>// how to use</h2>
+    <ol class="steps">
+      <li><div>Tap <strong>↺</strong> to pull a nearby green space, or type any location.</div></li>
+      <li><div>Tap <strong>Head outside</strong> — your departure is saved immediately.</div></li>
+      <li><div>Close the tab, lock your screen, walk. The timer runs in localStorage.</div></li>
+      <li><div>Come back and open the app. Tap <strong>I'm back</strong>.</div></li>
+      <li><div>Write one thing you actually noticed — or skip it.</div></li>
+      <li><div>See what the walk generated. Check your collection over time.</div></li>
+    </ol>
+  </section>
+
+  <!-- Features -->
+  <section class="features">
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">location</span>
+        <h3>Live nearby places</h3>
+      </div>
+      <p>On load, the app fetches your GPS position and queries OpenStreetMap's Overpass API for parks, forests, gardens, and nature reserves within 6km. Results include named <code>way</code>, <code>node</code>, and <code>relation</code> types — so large forests mapped as polygon relations (like Vlăsia) are included.</p>
+      <p>Tap <strong>↺</strong> to pick a random place from the list. The list is cached per session so subsequent taps are instant.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">finds</span>
+        <h3>Surreal discoveries</h3>
+      </div>
+      <p>When you return, Claude generates discoveries scaled to your walk duration — roughly 2 finds per 15 minutes, capped at 15. The prompt specifies location, time of day, and current weather, and instructs Claude to generate dreamlike, impossible objects — never realistic litter.</p>
+      <p>Four rarity tiers, each with a defined aesthetic:</p>
+      <ul>
+        <li><span class="pill common">common</span> Mildly uncanny. Something real that feels slightly wrong.</li>
+        <li><span class="pill uncommon">uncommon</span> Clearly impossible. Physical laws politely ignored.</li>
+        <li><span class="pill rare">rare</span> Reality-bending. The ground doesn't behave as expected.</li>
+        <li><span class="pill leg">legendary</span> Mythic, awe-inspiring. 1% drop rate. When it happens, you'll know.</li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">audio</span>
+        <h3>Synthetic ambient soundscape</h3>
+      </div>
+      <p>All audio is generated in real time via the Web Audio API — no samples, no files. It plays when you're on the "You're outside" screen and fades on return.</p>
+      <ul>
+        <li><strong>Wind</strong> — always present, intensity varies with weather. Storm mode raises it significantly.</li>
+        <li><strong>Birds</strong> — dawn, morning, day, dusk. More frequent in parks and forests, reduced in urban locations.</li>
+        <li><strong>Crickets</strong> — evening and night. Reduced in urban locations.</li>
+        <li><strong>Rain</strong> — layered bandpass noise, triggered when weather is rain or storm.</li>
+        <li><strong>Thunder</strong> — rare random bursts during storm conditions.</li>
+      </ul>
+      <p>Toggle with the speaker icon on the welcome screen. State persists across sessions.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">weather</span>
+        <h3>Real-time weather integration</h3>
+      </div>
+      <p>Current conditions are fetched from Open-Meteo using your GPS on every app load. No API key required. Weather affects three layers simultaneously:</p>
+      <ul>
+        <li><strong>Sky gradient</strong> — the colour palette shifts for clear, cloudy, storm, and fog conditions.</li>
+        <li><strong>Canvas particles</strong> — rain streaks and snow dots are drawn directly on the canvas, tuned to intensity.</li>
+        <li><strong>Ambient mix</strong> — rain layer volume and wind intensity track the weather state in real time.</li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">sky</span>
+        <h3>Celestial body</h3>
+      </div>
+      <p>A sun or moon appears in the upper-right sky — never both. The sun is shown at dawn, morning, day, and dusk with a warm or golden tint matching the time. The moon appears at evening and night, drawn with the actual current lunar phase using a canvas clip technique.</p>
+      <p>Clouds drift in front of the celestial body at partial opacity for cloudy and snow conditions. The body is hidden entirely for rain and storm. Barely visible through fog.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">canvas</span>
+        <h3>Seasonal grass</h3>
+      </div>
+      <p>The grass hue, saturation, and brightness shift by calendar month — derived from the current date, no API needed.</p>
+      <ul>
+        <li><strong>Spring (Mar–May)</strong> — vivid, bright green, high saturation.</li>
+        <li><strong>Summer (Jun–Aug)</strong> — full and lush, default palette.</li>
+        <li><strong>Autumn (Sep–Nov)</strong> — yellowed and warm, reduced saturation.</li>
+        <li><strong>Winter (Dec–Feb)</strong> — pale, sparse, desaturated.</li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">note</span>
+        <h3>A note on return</h3>
+      </div>
+      <p>After finds are generated, a screen prompts for one thing you actually noticed on the walk. Entirely optional — tap Skip to go straight to results. If you write something, it attaches to the first find in that session and appears in the collection log in italics with a left border. If the app closes before you complete this step, it resumes there on next open.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">history</span>
+        <h3>Collection log</h3>
+      </div>
+      <p>Every find from every walk is stored in localStorage, grouped by rarity tier. Stored finds are capped at 500 entries. Access via the Collection link on the welcome screen or results screen. Your notes appear inline under each find they belong to.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">stats</span>
+        <h3>Walk stats, streak &amp; longest walk</h3>
+      </div>
+      <p>Tap the walk counter on the welcome screen to open stats. Walks are broken down by rolling 7-day week, current calendar month, current year, and all time. Your personal longest walk appears below the table.</p>
+      <p>The streak counter (🔥 + number) appears on the welcome screen when you've walked on consecutive calendar days. Miss a day and it resets. Sessions are stored per-device — if you use both a laptop and a phone, track from one device for accurate counts.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">setup</span>
+        <h3>API key &amp; settings</h3>
+      </div>
+      <p>Tap ⚙ on the welcome screen to set your Anthropic API key. It's stored in localStorage and sent directly to Anthropic's API from your browser — nothing passes through a server. A $5 credit covers several thousand walks. The app uses <code>claude-sonnet-4-6</code>.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">install</span>
+        <h3>Installing as an app (Android)</h3>
+      </div>
+      <p>Touch Grass is a Progressive Web App. Open it in Chrome on Android, tap the three-dot menu, choose Add to Home Screen, then Install app (not just "Add shortcut"). It launches full-screen with no browser bar and the 🌿 icon. Works with Minimalist Phone and similar launchers.</p>
+      <p>Requires <code>manifest.json</code>, <code>sw.js</code>, and icon files to be present in the repo root — all are included in the <a href="https://github.com/jormania/app-playground" target="_blank" rel="noopener">app-playground repo</a>.</p>
+    </div>
+
+  </section>
+</div>
+
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <span class="footer-left"><a href="/">Cone of Cold</a> · built with Claude</span>
+      <span class="footer-right"><a href="touch-grass.html" target="_blank">Launch app ↗</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
