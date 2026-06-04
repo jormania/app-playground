@@ -8,20 +8,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 :root {
-  --bg:      #0c0e14;
+  --bg: #0c0e14;
   --surface: #13161f;
-  --border:  #222636;
+  --border: #222636;
   --border2: #2d3348;
-  --accent:  #7c6fff;
+  --accent: #7c6fff;
   --accent2: #4fc3a1;
-  --text:    #dde2ee;
-  --muted:   #7a8499;
-  --faint:   #404660;
-  --mono:    'JetBrains Mono', monospace;
+  --text: #dde2ee;
+  --muted: #7a8499;
+  --faint: #404660;
+  --mono: 'JetBrains Mono', monospace;
 }
-
 body {
   font-family: 'Inter', system-ui, sans-serif;
   background: var(--bg);
@@ -30,10 +28,8 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
-
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
-
 .container { max-width: 680px; margin: 0 auto; padding: 0 24px; }
 
 /* ── nav ── */
@@ -124,10 +120,10 @@ nav {
   background: var(--surface); border: 1px solid var(--border);
   color: var(--muted); vertical-align: middle; margin: 0 2px;
 }
-.pill.rare     { background: rgba(180,120,20,.1);   border-color: rgba(180,120,20,.25); color: #c49830; }
-.pill.uncommon { background: rgba(20,120,140,.1);   border-color: rgba(20,120,140,.25); color: #3ab0c0; }
-.pill.common   { background: rgba(16,120,60,.1);    border-color: rgba(16,120,60,.25);  color: #3aaa60; }
-.pill.leg      { background: rgba(180,40,220,.1);   border-color: rgba(200,100,240,.4); color: #c060e0; }
+.pill.rare     { background: rgba(180,120,20,.1);  border-color: rgba(180,120,20,.25); color: #c49830; }
+.pill.uncommon { background: rgba(20,120,140,.1);  border-color: rgba(20,120,140,.25); color: #3ab0c0; }
+.pill.common   { background: rgba(16,120,60,.1);   border-color: rgba(16,120,60,.25);  color: #3aaa60; }
+.pill.leg      { background: rgba(180,40,220,.1);  border-color: rgba(200,100,240,.4); color: #c060e0; }
 
 /* ── footer ── */
 footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px; }
@@ -135,7 +131,6 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
 .footer-left  { font-size: 12px; color: var(--faint); }
 .footer-right { font-size: 12px; color: var(--faint); }
 
-/* ── responsive ── */
 @media (max-width: 600px) {
   .hero { padding: 36px 0 28px; }
 }
@@ -148,7 +143,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
     <a href="/" class="nav-back">← Cone of Cold</a>
     <div style="display:flex;align-items:center;gap:8px;">
       <span class="nav-brand">Touch Grass</span>
-      <span class="nav-version">v4</span>
+      <span class="nav-version">v5</span>
     </div>
   </div>
 </nav>
@@ -169,7 +164,6 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
       <li><div>Tap <strong>Head outside</strong> — your departure is saved immediately.</div></li>
       <li><div>Close the tab, lock your screen, walk. The timer runs in localStorage.</div></li>
       <li><div>Come back and open the app. Tap <strong>I'm back</strong>.</div></li>
-      <li><div>Write one thing you actually noticed — or skip it.</div></li>
       <li><div>See what the walk generated. Check your collection over time.</div></li>
     </ol>
   </section>
@@ -182,8 +176,8 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">location</span>
         <h3>Live nearby places</h3>
       </div>
-      <p>On load, the app fetches your GPS position and queries OpenStreetMap's Overpass API for parks, forests, gardens, and nature reserves within 6km. Results include named <code>way</code>, <code>node</code>, and <code>relation</code> types — so large forests mapped as polygon relations (like Vlăsia) are included.</p>
-      <p>Tap <strong>↺</strong> to pick a random place from the list. The list is cached per session so subsequent taps are instant.</p>
+      <p>On load, the app fetches your GPS position and queries OpenStreetMap's Overpass API for parks, forests, gardens, and nature reserves within 6 km. Results include named <code>way</code>, <code>node</code>, and <code>relation</code> types — so large forests mapped as polygon relations (like Vlăsia) are included.</p>
+      <p>Tap <strong>↺</strong> to pick a random place from the list. The list is cached per session so subsequent taps are instant. If GPS is unavailable, the query falls back to central Bucharest coordinates.</p>
     </div>
 
     <div class="feature">
@@ -206,7 +200,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">audio</span>
         <h3>Synthetic ambient soundscape</h3>
       </div>
-      <p>All audio is generated in real time via the Web Audio API — no samples, no files. It plays when you're on the "You're outside" screen and fades on return.</p>
+      <p>All audio is generated in real time via the Web Audio API — no samples, no files. It plays when you're on the "You're outside" screen and fades on return. Toggle with the speaker icon in the welcome screen header; preference is saved across sessions.</p>
       <ul>
         <li><strong>Wind</strong> — always present, intensity varies with weather. Storm mode raises it significantly.</li>
         <li><strong>Birds</strong> — dawn, morning, day, dusk. More frequent in parks and forests, reduced in urban locations.</li>
@@ -214,7 +208,6 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <li><strong>Rain</strong> — layered bandpass noise, triggered when weather is rain or storm.</li>
         <li><strong>Thunder</strong> — rare random bursts during storm conditions.</li>
       </ul>
-      <p>Toggle with the speaker icon on the welcome screen. State persists across sessions.</p>
     </div>
 
     <div class="feature">
@@ -241,24 +234,12 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
 
     <div class="feature">
       <div class="feature-header">
-        <span class="feature-tag">canvas</span>
-        <h3>Seasonal grass</h3>
+        <span class="feature-tag">stats</span>
+        <h3>Stats row, streak &amp; longest walk</h3>
       </div>
-      <p>The grass hue, saturation, and brightness shift by calendar month — derived from the current date, no API needed.</p>
-      <ul>
-        <li><strong>Spring (Mar–May)</strong> — vivid, bright green, high saturation.</li>
-        <li><strong>Summer (Jun–Aug)</strong> — full and lush, default palette.</li>
-        <li><strong>Autumn (Sep–Nov)</strong> — yellowed and warm, reduced saturation.</li>
-        <li><strong>Winter (Dec–Feb)</strong> — pale, sparse, desaturated.</li>
-      </ul>
-    </div>
-
-    <div class="feature">
-      <div class="feature-header">
-        <span class="feature-tag">note</span>
-        <h3>A note on return</h3>
-      </div>
-      <p>After finds are generated, a screen prompts for one thing you actually noticed on the walk. Entirely optional — tap Skip to go straight to results. If you write something, it attaches to the first find in that session and appears in the collection log in italics with a left border. If the app closes before you complete this step, it resumes there on next open.</p>
+      <p>Three icon boxes sit below the "Head outside" button on the welcome screen: 🔥 streak, 👣 total walks, 🎁 collection size. The streak box dims to 38% opacity when no active streak. Tap any box to open the full stats screen.</p>
+      <p>The stats screen breaks walks down by rolling 7-day week, current calendar month, current year, and all time. Your personal longest walk appears below the table.</p>
+      <p>The streak counter increments for each consecutive calendar day you complete at least one walk. Miss a day and it resets. Sessions are stored per-device — if you use both a laptop and a phone, track from one device for accurate counts.</p>
     </div>
 
     <div class="feature">
@@ -266,16 +247,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">history</span>
         <h3>Collection log</h3>
       </div>
-      <p>Every find from every walk is stored in localStorage, grouped by rarity tier. Stored finds are capped at 500 entries. Access via the Collection link on the welcome screen or results screen. Your notes appear inline under each find they belong to.</p>
-    </div>
-
-    <div class="feature">
-      <div class="feature-header">
-        <span class="feature-tag">stats</span>
-        <h3>Walk stats, streak &amp; longest walk</h3>
-      </div>
-      <p>Tap the walk counter on the welcome screen to open stats. Walks are broken down by rolling 7-day week, current calendar month, current year, and all time. Your personal longest walk appears below the table.</p>
-      <p>The streak counter (🔥 + number) appears on the welcome screen when you've walked on consecutive calendar days. Miss a day and it resets. Sessions are stored per-device — if you use both a laptop and a phone, track from one device for accurate counts.</p>
+      <p>Every find from every walk is stored in localStorage, grouped by rarity tier. Stored finds are capped at 500 entries. Access via the 🎁 box on the welcome screen or the link on the results screen.</p>
     </div>
 
     <div class="feature">
