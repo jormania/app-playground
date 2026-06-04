@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Touch Grass · Nora — a Japan-themed walking companion. Full feature guide.">
+<title>Touch Grass · Nora — Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:      #04000e;
+  --surface: #0c0420;
+  --border:  #1e0a38;
+  --border2: #300c54;
+  --accent:  #ff2d78;
+  --accent2: #ff6ea3;
+  --text:    #ffeeff;
+  --muted:   #a870b8;
+  --faint:   #482060;
+  --mono:    'JetBrains Mono', monospace;
+}
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.container { max-width: 680px; margin: 0 auto; padding: 0 24px; }
+
+nav {
+  position: sticky; top: 0; z-index: 10;
+  background: rgba(4,0,14,0.94);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-inner {
+  max-width: 680px; margin: 0 auto; padding: 0 24px;
+  height: 52px; display: flex; align-items: center; justify-content: space-between;
+}
+.nav-back { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; transition: color 0.15s; }
+.nav-back:hover { color: var(--text); text-decoration: none; }
+.nav-brand { font-size: 13px; font-weight: 500; color: var(--text); }
+.nav-version {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  padding: 2px 7px; border-radius: 5px;
+  background: rgba(255,45,120,0.14); color: var(--accent);
+  border: 1px solid rgba(255,45,120,0.28);
+}
+
+.hero { padding: 52px 0 40px; border-bottom: 1px solid var(--border); margin-bottom: 48px; }
+.hero-eyebrow {
+  font-size: 11px; font-weight: 600; color: var(--accent2);
+  letter-spacing: 0.12em; text-transform: uppercase;
+  font-family: var(--mono); margin-bottom: 14px;
+}
+.hero h1 {
+  font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 700;
+  letter-spacing: -0.03em; margin-bottom: 14px; color: var(--text);
+}
+.hero p { color: var(--muted); font-size: 15px; max-width: 520px; line-height: 1.65; }
+
+.how-to { margin-bottom: 52px; }
+.how-to h2 { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: var(--faint); text-transform: uppercase; margin-bottom: 16px; }
+.steps { counter-reset: step; list-style: none; }
+.steps li {
+  counter-increment: step;
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+  font-size: 14px; color: var(--muted);
+}
+.steps li:last-child { border-bottom: none; }
+.steps li::before {
+  content: counter(step);
+  font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--accent);
+  background: rgba(255,45,120,0.10); border: 1px solid rgba(255,45,120,0.25);
+  width: 22px; height: 22px; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  margin-top: 2px;
+}
+.steps li strong { color: var(--text); font-weight: 500; }
+
+.features { display: flex; flex-direction: column; }
+.feature { padding: 28px 0; border-bottom: 1px solid var(--border); }
+.feature:last-child { border-bottom: none; }
+.feature-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.feature-tag {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  color: var(--faint); text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap;
+}
+.feature h3 { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+.feature p { font-size: 13.5px; color: var(--muted); line-height: 1.7; margin-bottom: 10px; }
+.feature p:last-child { margin-bottom: 0; }
+.feature ul { list-style: none; margin-top: 10px; }
+.feature ul li {
+  font-size: 13px; color: var(--muted);
+  padding: 7px 0; border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.feature ul li:last-child { border-bottom: none; }
+.feature ul li::before { content: '›'; color: var(--accent2); flex-shrink: 0; }
+.pill {
+  display: inline-block; font-family: var(--mono); font-size: 10px;
+  padding: 1px 6px; border-radius: 4px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--muted); vertical-align: middle; margin: 0 2px;
+}
+.pill.rare     { background: rgba(180,120,20,.1);  border-color: rgba(180,120,20,.25); color: #c49830; }
+.pill.uncommon { background: rgba(20,120,140,.1);  border-color: rgba(20,120,140,.25); color: #3ab0c0; }
+.pill.common   { background: rgba(16,120,60,.1);   border-color: rgba(16,120,60,.25);  color: #3aaa60; }
+.pill.leg      { background: rgba(180,40,220,.1);  border-color: rgba(200,100,240,.4); color: #c060e0; }
+.season-row {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px;
+}
+.season-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 12px; font-size: 12px;
+}
+.season-card .s-name { font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.season-card .s-desc { color: var(--muted); line-height: 1.5; }
+
+footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px; }
+.footer-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.footer-left  { font-size: 12px; color: var(--faint); }
+.footer-right { font-size: 12px; color: var(--faint); }
+
+@media (max-width: 600px) {
+  .hero { padding: 36px 0 28px; }
+  .season-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-back">← Cone of Cold</a>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="nav-brand">Touch Grass · Nora</span>
+      <span class="nav-version">v1</span>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+
+  <section class="hero">
+    <div class="hero-eyebrow">// guide</div>
+    <h1>Japan is out there. Go find it.</h1>
+    <p>Touch Grass · Nora is a walking app with a theory: every time you go outside, Japan leaves something behind for you. Capsule toys in the grass. A floating manga panel. Sometimes, if the walk is long enough, something that shouldn't exist at all. Mount Fuji watches from the sky — its shape and colour shift with the seasons.</p>
+  </section>
+
+  <section class="how-to">
+    <h2>// how to use</h2>
+    <ol class="steps">
+      <li><div>Tap <strong>↺</strong> to find a nearby green space, or type where you're going.</div></li>
+      <li><div>Tap <strong>Head outside</strong> — the timer saves immediately. Close the app, lock your screen, it keeps running.</div></li>
+      <li><div>Come back when you're done. The longer the walk, the more you bring back.</div></li>
+      <li><div>Tap <strong>I'm back</strong> and see what Japan left for you.</div></li>
+    </ol>
+  </section>
+
+  <section class="features">
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">finds</span>
+        <h3>Japan in every walk</h3>
+      </div>
+      <p>Every walk generates a small set of finds — objects and moments drawn from Japanese culture, from convenience store shelves to Edo-period legend. They're intentionally rare: a 20-minute walk returns one find, an hour returns two or three. Each is designed to be genuinely different from the others.</p>
+      <p>Four tiers of strangeness:</p>
+      <ul>
+        <li><span class="pill common">common</span> Everyday Japan, unexpectedly found — a lost game card, a wrapped daifuku, a capsule toy left in the grass.</li>
+        <li><span class="pill uncommon">uncommon</span> Something magical or physically strange — a bento that refills itself, a manga panel floating in the air mid-panel.</li>
+        <li><span class="pill rare">rare</span> Genuinely weird and wonderful — an origami crane that already knows your name; a pixel from a 1986 Famicom cartridge embedded in the soil.</li>
+        <li><span class="pill leg">legendary</span> Mythic Japan meets impossible magic — an Edo shrine that appears only once per century; a sword still warm from a Kurosawa film.</li>
+      </ul>
+      <p>A solo short walk always returns at least an uncommon find. Legendaries are approximately 1-in-100.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">fuji</span>
+        <h3>Mount Fuji — live and seasonal</h3>
+      </div>
+      <p>Mount Fuji is painted across the sky every time you open the app, positioned in the classic Hokusai composition: the sun or moon appears to the upper right, Fuji rises in the center-left. Its silhouette, snow cap, and slope colours change with the real calendar season.</p>
+      <div class="season-row">
+        <div class="season-card">
+          <div class="s-name">🌸 Spring (Mar–May)</div>
+          <div class="s-desc">Green slopes with pink cherry blossom dots. A rose-tinged snow cap, still melting at the edges.</div>
+        </div>
+        <div class="season-card">
+          <div class="s-name">☀️ Summer (Jun–Aug)</div>
+          <div class="s-desc">Deep vivid green all the way up. A small, bright snow cap at the very tip — almost gone.</div>
+        </div>
+        <div class="season-card">
+          <div class="s-name">🍂 Autumn (Sep–Nov)</div>
+          <div class="s-desc">Ochre and warm brown slopes. A medium snow cap returning as the air gets cold.</div>
+        </div>
+        <div class="season-card">
+          <div class="s-name">❄️ Winter (Dec–Feb)</div>
+          <div class="s-desc">Cool blue-grey stone under heavy snow. The mountain is mostly white, quiet, and enormous.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">spring</span>
+        <h3>Cherry blossom petals</h3>
+      </div>
+      <p>In spring (March through May), cherry blossom petals drift slowly down through the sky — pink ellipses spinning in a gentle breeze, catching the light. They appear independently of weather and keep falling even if it's raining. Very spring, very Japan.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">location</span>
+        <h3>Nearby places</h3>
+      </div>
+      <p>Tap ↺ and the app suggests a real green space near you — parks, forests, gardens, nature reserves. Pulled from GPS each session. You can also type any location, or leave it blank and just walk.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">audio</span>
+        <h3>Ambient soundscape</h3>
+      </div>
+      <p>While you're outside, the app plays a generative ambient mix that adapts to location, time of day, and weather. Birds in parks during daylight. Crickets at night. Rain when it's raining. Toggle sound with the speaker icon on both the welcome and away screens.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">away</span>
+        <h3>Away screen</h3>
+      </div>
+      <p>Once you head out, a minimal "away" screen appears and gently sways. Your location and departure time are shown. Close the app and come back when you're ready — the timer keeps running in the background.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">stats</span>
+        <h3>Streak, walks &amp; collection</h3>
+      </div>
+      <p>Three boxes track your activity. All three dim when empty and light up as your collection grows.</p>
+      <ul>
+        <li><strong>🔥 Streak</strong> — consecutive days walked. Tap to see your current streak, personal best, and total days walked.</li>
+        <li><strong>👣 Walks</strong> — tap to see walk counts and time outside by week, month, year, and all time. Includes your longest walk.</li>
+        <li><strong>🎁 Found</strong> — tap to browse everything collected from your walks, sorted by rarity tier.</li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">setup</span>
+        <h3>API key</h3>
+      </div>
+      <p>Tap ⚙ to add your Anthropic API key. It stays in your browser. The app uses Claude to generate your Japan finds — each walk produces a unique set based on where you went, how long you were out, and what the weather was like.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">install</span>
+        <h3>Install on Android</h3>
+      </div>
+      <p>Open in Chrome, tap the three-dot menu, choose <strong>Add to Home Screen</strong>, then <strong>Install app</strong>. It launches full-screen, no browser bar — just the sky, Mount Fuji, and whatever Japan left behind today.</p>
+    </div>
+
+  </section>
+</div>
+
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <span class="footer-left"><a href="/">Cone of Cold</a> · built with Claude</span>
+      <span class="footer-right"><a href="touch-grass-nora.html" target="_blank">Launch app ↗</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
