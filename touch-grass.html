@@ -61,12 +61,12 @@ h2 { font-size:20px; font-weight:500; color:var(--tc); letter-spacing:-0.02em; }
 
 .input-wrap { position:relative; margin-bottom:14px; }
 input[type="text"], input[type="password"] {
-  width:100%; background:var(--inp); border:1px solid var(--inp-b);
+  width:100%; background:var(--btn); border:1px solid var(--btn-b);
   border-radius:14px; padding:11px 40px 11px 18px;
   font-family:'Quicksand',sans-serif; font-size:14px; font-weight:300;
   color:var(--tc); text-align:center; outline:none; transition:border-color 0.15s;
 }
-input::placeholder { color:var(--sc); opacity:1; }
+input::placeholder { color:var(--tc); opacity:.55; }
 input:focus { border-color:rgba(120,100,80,0.4); }
 [data-dark] input:focus { border-color:rgba(255,240,220,0.25); }
 .shuffle { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--sc); font-size:18px; opacity:.7; transition:opacity .15s; padding:4px; line-height:1; }
@@ -124,7 +124,13 @@ input:focus { border-color:rgba(120,100,80,0.4); }
 .dot-legendary { background:#d060e8; }
 .find-name { font-size:13px; font-weight:500; color:var(--tc); flex:1; min-width:0; }
 .find-leg-tag { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:#c060e0; white-space:nowrap; }
-.find-note { font-size:12px; color:var(--sc); font-weight:300; line-height:1.45; padding-left:15px; }
+.find-note { font-size:12px; color:var(--sc); font-weight:300; line-height:1.5; padding-left:10px; margin-top:5px; border-left:2px solid var(--btn-b); }
+
+@keyframes pendulum {
+  0%,100% { transform:rotate(-0.8deg); }
+  50%     { transform:rotate(0.8deg);  }
+}
+#s-gone .panel { transform-origin:top center; animation:pendulum 5s ease-in-out infinite; }
 
 .finds-list { display:flex; flex-direction:column; max-height:260px; overflow-y:auto; margin-bottom:16px; padding-right:2px; }
 .col-list   { display:flex; flex-direction:column; max-height:calc(100vh - 240px); overflow-y:auto; padding-right:2px; }
@@ -221,12 +227,23 @@ input:focus { border-color:rgba(120,100,80,0.4); }
 <!-- GONE -->
 <div class="screen hidden" id="s-gone">
   <div class="panel" style="text-align:center;">
-    <div class="row-center" style="margin-bottom:12px;"><div class="wx" id="wx-gone"></div></div>
-    <div style="font-size:40px;margin-bottom:14px;">🌿</div>
-    <h2 style="margin-bottom:4px;">You're outside</h2>
+    <div class="row-apart" style="margin-bottom:22px;">
+      <span style="font-size:10px;font-weight:600;color:var(--sc);letter-spacing:0.12em;text-transform:uppercase;opacity:.65;">away</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="wx" id="wx-gone"></div>
+        <button class="btn-icon" id="sound-btn-gone" title="Toggle sound">
+          <svg id="sound-icon-gone" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div style="font-size:48px;margin-bottom:16px;">🌿</div>
+    <h2 style="margin-bottom:6px;">You're outside.</h2>
     <p class="muted" id="gone-loc" style="margin-bottom:2px;"></p>
-    <p class="muted" id="gone-time" style="margin-bottom:22px;"></p>
-    <p class="muted" style="margin-bottom:28px;font-size:12px;line-height:1.7;">Feel free to close this tab.<br>The timer is saved. Come back when done.</p>
+    <p class="muted" id="gone-time" style="margin-bottom:24px;"></p>
+    <p class="muted" style="margin-bottom:32px;font-size:12px;line-height:1.8;">The timer is running.<br>Come back when you're ready.</p>
     <button class="btn" id="return-btn">I'm back</button>
   </div>
 </div>
@@ -364,7 +381,7 @@ function lsSet(k,v)  { try{localStorage.setItem(k,v);}catch(e){} }
 function lsDel(k)    { try{localStorage.removeItem(k);}catch(e){} }
 function getKey()    { return lsGet('tg_api_key')||''; }
 function $(id)       { return document.getElementById(id); }
-function rollTier()  { var r=Math.random(); if(r<.01)return'legendary'; if(r<.12)return'rare'; if(r<.40)return'uncommon'; return'common'; }
+function rollTier()  { var r=Math.random(); if(r<.01)return'legendary'; if(r<.16)return'rare'; if(r<.50)return'uncommon'; return'common'; }
 
 /* ── theme ── */
 function applyTheme() {
@@ -376,17 +393,15 @@ function applyTheme() {
 function loadSound()  { soundOn = lsGet('tg_sound') !== '0'; }
 function saveSound()  { lsSet('tg_sound', soundOn ? '1' : '0'); }
 function updateSoundIcon() {
-  var btn  = $('sound-btn');
-  var icon = $('sound-icon');
-  if(soundOn) {
-    icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/>';
-    btn.classList.remove('muted-state');
-    btn.title = 'Mute sound';
-  } else {
-    icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
-    btn.classList.add('muted-state');
-    btn.title = 'Unmute sound';
-  }
+  var onInner  = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/>';
+  var offInner = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
+  var lbl = soundOn ? 'Mute sound' : 'Unmute sound';
+  [['sound-btn','sound-icon'],['sound-btn-gone','sound-icon-gone']].forEach(function(pair){
+    var btn=$(pair[0]), icon=$(pair[1]); if(!btn||!icon) return;
+    icon.innerHTML = soundOn ? onInner : offInner;
+    btn.classList.toggle('muted-state', !soundOn);
+    btn.title = lbl;
+  });
 }
 
 /* ── weather badges ── */
@@ -654,7 +669,7 @@ function showStreak(){
   $('streak-body').innerHTML=
     '<div style="text-align:center;padding:14px 0 24px;">'
     +'<div style="font-size:44px;margin-bottom:8px;">'+flame+'</div>'
-    +'<div style="font-size:40px;font-weight:600;color:var(--tc);line-height:1;">'+cur+'</div>'
+    +'<div style="font-size:52px;font-weight:300;color:var(--tc);line-height:1;letter-spacing:-0.03em;">'+cur+'</div>'
     +'<div style="font-size:11px;color:var(--sc);margin-top:8px;text-transform:uppercase;letter-spacing:0.1em;font-weight:500;">'+(cur===1?'day in a row':'days in a row')+'</div>'
     +'</div>'
     +'<table class="stats-grid"><thead><tr><th>Stat</th><th></th></tr></thead><tbody>'
@@ -683,8 +698,10 @@ function findCardHTML(f){
 
 /* ── discovery generation ── */
 async function generateFinds(secs){
-  var key=getKey(),mins=Math.floor(secs/60),count=Math.min(15,Math.max(1,Math.ceil(mins/8)));
-  var tiers=Array.from({length:count},rollTier),tally=tiers.reduce(function(a,t){a[t]=(a[t]||0)+1;return a;},{});
+  var key=getKey(),mins=Math.floor(secs/60),count=Math.min(6,Math.max(1,Math.round(mins/20)));
+  var tiers=Array.from({length:count},rollTier);
+  if(count===1&&tiers[0]==='common') tiers[0]='uncommon';
+  var tally=tiers.reduce(function(a,t){a[t]=(a[t]||0)+1;return a;},{});
   var where=loc?'a '+loc:'a grassy outdoor area',curTod=getTod(),wLabel=weather?weather.type:'mild';
   var prompt='Someone spent '+(mins||'under 1')+' minute'+(mins!==1?'s':'')+' outside in '+where+' during '+curTod+', weather: '+wLabel+'. '
     +'They returned with SURREAL discoveries — dreamlike, impossible, poetic things, never realistic litter. '
@@ -692,15 +709,16 @@ async function generateFinds(secs){
     +'Schema: [{"name":"2-6 word lowercase surreal object","rarity":"common|uncommon|rare|legendary","note":"one short evocative sentence"}]. '
     +'Provide EXACTLY '+(tally.common||0)+' common, '+(tally.uncommon||0)+' uncommon, '+(tally.rare||0)+' rare, '+(tally.legendary||0)+' legendary. '
     +'Scale strangeness by tier: common=mildly uncanny, uncommon=clearly impossible, rare=reality-bending, legendary=mythic and awe-inspiring. '
-    +'Weave in the location, time, and weather.';
+    +'Weave in the location, time, and weather. '
+    +'CRITICAL: every item must be genuinely distinct — vary sensory modality (visual, auditory, tactile, spatial), scale, and emotional register. No two finds may share a theme, image, or type of object.';
   try{
     var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:MODEL,max_tokens:1000,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();
     var raw=(data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
     return JSON.parse(raw.replace(/```json|```/g,'').trim());
   }catch(e){
-    var fb={common:'a softly humming pebble',uncommon:'a cloud that fits in your palm',rare:'a doorway folded into the grass',legendary:'the first dream of the field'};
-    return tiers.map(function(t){return{name:fb[t],rarity:t,note:'It should not exist, yet here it is.'};});
+    var fb={common:'a stone that remembered the sun',uncommon:'a sound the wind made only once',rare:'the place where a thought used to live',legendary:'the exact moment the world forgot to perform'};
+    return tiers.map(function(t){return{name:fb[t],rarity:t,note:'You almost walked past it.'};});
   }
 }
 
@@ -759,6 +777,11 @@ $('return-btn').addEventListener('click',doReturn);
 $('again-btn').addEventListener('click',doAgain);
 $('settings-btn').addEventListener('click',function(){showKeyModal();});
 $('sound-btn').addEventListener('click',function(){
+  soundOn=!soundOn; saveSound(); updateSoundIcon();
+  if(soundOn&&ambient){ensureAudio();ambient.fadeIn();}
+  else if(ambient) ambient.fadeOut();
+});
+$('sound-btn-gone').addEventListener('click',function(){
   soundOn=!soundOn; saveSound(); updateSoundIcon();
   if(soundOn&&ambient){ensureAudio();ambient.fadeIn();}
   else if(ambient) ambient.fadeOut();
