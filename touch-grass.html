@@ -82,6 +82,15 @@ input:focus { border-color:rgba(120,100,80,0.4); }
 .btn-icon.muted-state { opacity:.35; }
 .link-row { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:10px; }
 
+/* ── stats row ── */
+.stats-row { display:flex; gap:8px; margin-top:16px; }
+.stat-box { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:12px 6px; background:var(--btn); border:1px solid var(--btn-b); border-radius:16px; cursor:pointer; transition:all 0.18s; color:var(--tc); min-height:66px; font-family:'Quicksand',sans-serif; }
+.stat-box:hover { background:var(--btn-h); transform:translateY(-1px); }
+.stat-box:active { transform:translateY(0); }
+.stat-icon { font-size:20px; line-height:1; }
+.stat-val { font-size:15px; font-weight:600; line-height:1; }
+.stat-box.streak-zero { opacity:.38; }
+
 .wx { display:flex; align-items:center; gap:5px; color:var(--sc); }
 .wx svg { width:15px; height:15px; flex-shrink:0; }
 .wx span { font-size:12px; }
@@ -176,11 +185,19 @@ input:focus { border-color:rgba(120,100,80,0.4); }
       <button class="shuffle" id="shuffle-btn" title="Random">↺</button>
     </div>
     <button class="btn" id="leave-btn">Head outside →</button>
-    <div class="link-row">
-      <span id="streak-badge" style="font-size:12px;color:var(--sc);font-weight:500;"></span>
-      <button class="btn-link" id="walks-btn"><span id="walk-count">0</span> walks</button>
-      <span style="color:var(--sc);font-size:12px;opacity:.4;">·</span>
-      <button class="btn-link" id="view-col-btn">Collection · <span id="col-count">0</span> found</button>
+    <div class="stats-row">
+      <button class="stat-box streak-zero" id="streak-box">
+        <span class="stat-icon">🔥</span>
+        <span class="stat-val" id="streak-count">0</span>
+      </button>
+      <button class="stat-box" id="walks-btn">
+        <span class="stat-icon">👣</span>
+        <span class="stat-val" id="walk-count">0</span>
+      </button>
+      <button class="stat-box" id="view-col-btn">
+        <span class="stat-icon">🎁</span>
+        <span class="stat-val" id="col-count">0</span>
+      </button>
     </div>
   </div>
 </div>
@@ -552,8 +569,9 @@ function updateCounts(){
   $('col-count').textContent=collection.length;
   $('walk-count').textContent=sessions.length;
   var r=$('res-col-count');if(r)r.textContent=collection.length;
-  var s=computeStreak(),badge=$('streak-badge');
-  if(badge) badge.textContent=s>=1?'🔥 '+s:'';
+  var s=computeStreak(),sc=$('streak-count'),sb=$('streak-box');
+  if(sc) sc.textContent=s;
+  if(sb){ if(s>0)sb.classList.remove('streak-zero'); else sb.classList.add('streak-zero'); }
 }
 
 /* ── stats ── */
@@ -674,6 +692,7 @@ $('sound-btn').addEventListener('click',function(){
   if(soundOn&&ambient){ensureAudio();ambient.fadeIn();}
   else if(ambient) ambient.fadeOut();
 });
+$('streak-box').addEventListener('click',showStats);
 $('walks-btn').addEventListener('click',showStats);
 $('view-col-btn').addEventListener('click',function(){doCollection('welcome');});
 $('results-col-btn').addEventListener('click',function(){doCollection('results');});
