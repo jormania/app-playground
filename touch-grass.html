@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="description" content="Touch Grass — go outside, come back, see what you found.">
 <title>Touch Grass</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#7e9b78">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Touch Grass">
-<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -60,28 +60,25 @@ h2 { font-size:20px; font-weight:500; color:var(--tc); letter-spacing:-0.02em; }
 .row-center { display:flex; align-items:center; justify-content:center; gap:8px; }
 
 .input-wrap { position:relative; margin-bottom:14px; }
-input[type="text"], input[type="password"], textarea {
+input[type="text"], input[type="password"] {
   width:100%; background:var(--inp); border:1px solid var(--inp-b);
-  border-radius:14px; padding:11px 18px;
-  font-family:'Quicksand',sans-serif; font-size:14px; font-weight:400;
-  color:var(--tc); outline:none; transition:border-color 0.15s;
+  border-radius:14px; padding:11px 40px 11px 18px;
+  font-family:'Quicksand',sans-serif; font-size:14px; font-weight:300;
+  color:var(--tc); text-align:center; outline:none; transition:border-color 0.15s;
 }
-input[type="text"], input[type="password"] { text-align:center; padding:11px 40px 11px 18px; }
-input::placeholder, textarea::placeholder { color:var(--sc); opacity:.7; }
-input:focus, textarea:focus { border-color:rgba(120,100,80,0.4); }
-[data-dark] input:focus, [data-dark] textarea:focus { border-color:rgba(255,240,220,0.25); }
-textarea { resize:none; text-align:left; line-height:1.5; }
+input::placeholder { color:var(--sc); opacity:.7; }
+input:focus { border-color:rgba(120,100,80,0.4); }
+[data-dark] input:focus { border-color:rgba(255,240,220,0.25); }
 .shuffle { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--sc); font-size:18px; opacity:.7; transition:opacity .15s; padding:4px; line-height:1; }
 .shuffle:hover { opacity:1; }
 
 .btn { display:block; width:100%; padding:14px; border-radius:16px; background:var(--btn); border:1px solid var(--btn-b); color:var(--tc); font-family:'Quicksand',sans-serif; font-size:16px; font-weight:500; cursor:pointer; transition:all 0.2s; text-align:center; }
 .btn:hover { background:var(--btn-h); transform:translateY(-1px); }
 .btn:active { transform:translateY(0); }
-.btn-link { background:none; border:none; cursor:pointer; font-family:'Quicksand',sans-serif; font-size:12px; font-weight:500; color:var(--sc); text-decoration:underline; text-underline-offset:2px; transition:opacity .15s; padding:4px; }
+.btn-link { background:none; border:none; cursor:pointer; font-family:'Quicksand',sans-serif; font-size:12px; font-weight:400; color:var(--sc); text-decoration:underline; text-underline-offset:2px; transition:opacity .15s; padding:4px; }
 .btn-link:hover { opacity:.7; }
-.btn-icon { background:none; border:none; cursor:pointer; color:var(--sc); opacity:.6; transition:opacity .15s; padding:4px; line-height:1; display:flex; align-items:center; }
+.btn-icon { background:none; border:none; cursor:pointer; color:var(--sc); opacity:.6; transition:opacity .15s; padding:4px; line-height:1; }
 .btn-icon:hover { opacity:1; }
-.btn-icon.active { opacity:1; color:var(--tc); }
 .link-row { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:10px; }
 
 .wx { display:flex; align-items:center; gap:5px; color:var(--sc); }
@@ -105,9 +102,8 @@ textarea { resize:none; text-align:left; line-height:1.5; }
 .find-name { font-size:13px; font-weight:500; color:var(--tc); flex:1; min-width:0; }
 .find-leg-tag { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:#c060e0; white-space:nowrap; }
 .find-note { font-size:12px; color:var(--sc); font-weight:300; line-height:1.45; padding-left:15px; }
-.find-user-note { font-size:12px; color:var(--sc); font-weight:400; font-style:italic; line-height:1.45; padding-left:15px; margin-top:4px; border-left:2px solid var(--btn-b); margin-left:4px; }
 
-.finds-list { display:flex; flex-direction:column; max-height:220px; overflow-y:auto; margin-bottom:12px; padding-right:2px; }
+.finds-list { display:flex; flex-direction:column; max-height:260px; overflow-y:auto; margin-bottom:16px; padding-right:2px; }
 .col-list   { display:flex; flex-direction:column; max-height:calc(100vh - 240px); overflow-y:auto; padding-right:2px; }
 
 .leg-banner { padding:8px 12px; background:rgba(180,40,220,.12); border:1px solid rgba(200,100,240,.4); border-radius:10px; text-align:center; font-size:11px; font-weight:600; color:#c070e0; letter-spacing:.08em; margin-bottom:12px; }
@@ -118,10 +114,7 @@ textarea { resize:none; text-align:left; line-height:1.5; }
 .tier-count { font-size:11px; color:var(--sc); font-weight:300; }
 .tier-items { display:flex; flex-direction:column; }
 
-/* streak */
-.streak-badge { display:flex; align-items:center; gap:4px; font-size:12px; font-weight:500; color:var(--sc); }
-
-/* stats table */
+/* ── stats table ── */
 .stats-grid { width:100%; border-collapse:collapse; margin-bottom:4px; }
 .stats-grid thead tr { border-bottom:1px solid var(--btn-b); }
 .stats-grid th { font-size:10px; font-weight:500; text-transform:uppercase; letter-spacing:.1em; color:var(--sc); padding:0 0 10px; text-align:left; }
@@ -130,13 +123,8 @@ textarea { resize:none; text-align:left; line-height:1.5; }
 .stats-grid td:not(:first-child) { text-align:right; font-variant-numeric:tabular-nums; }
 .stats-grid tr:last-child td { border-bottom:none; }
 .stats-grid .period { font-size:13px; color:var(--sc); }
+.stats-grid .val-big { font-size:15px; font-weight:500; color:var(--tc); }
 .stats-zero { opacity:.4; }
-.stats-best { font-size:12px; color:var(--sc); margin-top:14px; padding-top:14px; border-top:1px solid var(--btn-b); }
-.stats-best span { color:var(--tc); font-weight:500; }
-
-/* note area */
-.note-section { margin-bottom:14px; }
-.note-label { font-size:11px; color:var(--sc); font-weight:500; text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
 
 .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:16px; z-index:100; transition:opacity .25s; }
 .modal-bg.hidden { opacity:0; pointer-events:none; }
@@ -146,7 +134,9 @@ textarea { resize:none; text-align:left; line-height:1.5; }
 .modal-box a { color:var(--sc); }
 
 .empty { text-align:center; padding:40px 0; color:var(--sc); font-size:13px; font-weight:300; }
-::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:var(--btn-b); border-radius:4px; }
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--btn-b); border-radius:4px; }
 </style>
 </head>
 <body>
@@ -169,12 +159,6 @@ textarea { resize:none; text-align:left; line-height:1.5; }
       <h1>Touch Grass</h1>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="wx" id="wx-welcome"></div>
-        <button class="btn-icon" id="sound-btn" title="Toggle sound">
-          <svg id="sound-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-            <path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/>
-          </svg>
-        </button>
         <button class="btn-icon" id="settings-btn" title="API key">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         </button>
@@ -187,11 +171,9 @@ textarea { resize:none; text-align:left; line-height:1.5; }
     </div>
     <button class="btn" id="leave-btn">Head outside →</button>
     <div class="link-row">
-      <div class="streak-badge" id="streak-badge"></div>
-      <span style="color:var(--sc);font-size:12px;opacity:.4;">·</span>
       <button class="btn-link" id="walks-btn"><span id="walk-count">0</span> walks</button>
       <span style="color:var(--sc);font-size:12px;opacity:.4;">·</span>
-      <button class="btn-link" id="view-col-btn">Collection · <span id="col-count">0</span></button>
+      <button class="btn-link" id="view-col-btn">Collection · <span id="col-count">0</span> found</button>
     </div>
   </div>
 </div>
@@ -214,17 +196,6 @@ textarea { resize:none; text-align:left; line-height:1.5; }
   <div class="panel" style="text-align:center;">
     <div class="spinner"></div>
     <p class="muted" id="gen-msg">Checking your pockets…</p>
-  </div>
-</div>
-
-<!-- NOTE -->
-<div class="screen hidden" id="s-note">
-  <div class="panel">
-    <h2 style="margin-bottom:6px;">One thing you noticed</h2>
-    <p class="muted" style="margin-bottom:16px;">Optional. Something real, from the walk.</p>
-    <textarea id="note-input" rows="3" placeholder="a dog that looked like it had opinions…"></textarea>
-    <button class="btn" id="note-done-btn" style="margin-top:12px;">See what you found →</button>
-    <div class="link-row"><button class="btn-link" id="note-skip-btn">Skip</button></div>
   </div>
 </div>
 
@@ -260,12 +231,19 @@ textarea { resize:none; text-align:left; line-height:1.5; }
 <!-- STATS -->
 <div class="screen scrollable hidden" id="s-stats">
   <div class="panel" style="margin:auto;">
-    <div class="row-apart" style="margin-bottom:20px;"><h2>Walk stats</h2></div>
+    <div class="row-apart" style="margin-bottom:20px;">
+      <h2>Walk stats</h2>
+    </div>
     <table class="stats-grid">
-      <thead><tr><th>Period</th><th>Walks</th><th>Time outside</th></tr></thead>
+      <thead>
+        <tr>
+          <th>Period</th>
+          <th>Walks</th>
+          <th>Time outside</th>
+        </tr>
+      </thead>
       <tbody id="stats-body"></tbody>
     </table>
-    <div class="stats-best" id="stats-best"></div>
     <button class="btn" id="stats-back-btn" style="margin-top:20px;">← Back</button>
   </div>
 </div>
@@ -287,21 +265,13 @@ const SKY = {
   night:   [[0,'#10171f'],[.4,'#1a2632'],[.7,'#28384a'],[1,'#1c2a22']],
 };
 
-// Season grass tint applied on top of time-of-day hue
-const SEASON_GRASS = {
-  spring: { hueShift:5,  satMod:1.15, litMod:1.05 },
-  summer: { hueShift:0,  satMod:1.0,  litMod:1.0  },
-  autumn: { hueShift:-18,satMod:0.75, litMod:0.9  },
-  winter: { hueShift:-8, satMod:0.45, litMod:0.85 },
-};
-
-const WMO = function(c,t) {
-  if(t>=35) return 'heat';
-  if([95,96,99].includes(c)) return 'storm';
-  if([71,73,75,77,85,86].includes(c)) return 'snow';
-  if([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(c)) return 'rain';
-  if([45,48].includes(c)) return 'fog';
-  if([1,2,3].includes(c)) return 'cloudy';
+const WMO = function(c, t) {
+  if (t >= 35) return 'heat';
+  if ([95,96,99].includes(c)) return 'storm';
+  if ([71,73,75,77,85,86].includes(c)) return 'snow';
+  if ([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(c)) return 'rain';
+  if ([45,48].includes(c)) return 'fog';
+  if ([1,2,3].includes(c)) return 'cloudy';
   return 'clear';
 };
 
@@ -317,185 +287,159 @@ const WX_ICON = {
 
 /* ── state ── */
 var tod        = getTod();
-var season     = getSeason();
 var weather    = null;
 var loc        = '';
 var depTime    = null;
 var elapsedSec = 0;
 var collection = [];
-var sessions   = [];
-var pendingNote= '';
-var soundOn    = true;
-var nearbyPlaces = [];
+var sessions   = []; // {start, duration, location}
 var audioCtx   = null;
 var ambient    = null;
 
 /* ── utils ── */
 function getTod() {
-  var h=new Date().getHours();
-  if(h>=5&&h<7)   return 'dawn';
-  if(h>=7&&h<10)  return 'morning';
-  if(h>=10&&h<17) return 'day';
-  if(h>=17&&h<19) return 'dusk';
-  if(h>=19&&h<21) return 'evening';
+  var h = new Date().getHours();
+  if (h>=5&&h<7)   return 'dawn';
+  if (h>=7&&h<10)  return 'morning';
+  if (h>=10&&h<17) return 'day';
+  if (h>=17&&h<19) return 'dusk';
+  if (h>=19&&h<21) return 'evening';
   return 'night';
 }
-function getSeason() {
-  var m = new Date().getMonth(); // 0-11
-  if(m>=2&&m<=4)  return 'spring';
-  if(m>=5&&m<=7)  return 'summer';
-  if(m>=8&&m<=10) return 'autumn';
-  return 'winter';
-}
-function isDark()   { return ['evening','night'].includes(tod); }
+function isDark() { return ['evening','night'].includes(tod); }
 function fmtDur(s) {
-  if(!s||s<1) return '—';
-  if(s<60) return s+'s';
-  var m=Math.floor(s/60),r=s%60;
-  if(m<60) return r?m+'m '+r+'s':m+'m';
-  var h=Math.floor(m/60),rm=m%60;
-  return rm?h+'h '+rm+'m':h+'h';
+  if (!s || s < 1) return '—';
+  if (s < 60) return s+'s';
+  var m = Math.floor(s/60), r = s%60;
+  if (m < 60) return r ? m+'m '+r+'s' : m+'m';
+  var h = Math.floor(m/60), rm = m%60;
+  return rm ? h+'h '+rm+'m' : h+'h';
 }
 function fmtTime(ts) { return new Date(ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
-function today()     { return new Date().toISOString().slice(0,10); }
-function lsGet(k)    { try{return localStorage.getItem(k);}catch(e){return null;} }
-function lsSet(k,v)  { try{localStorage.setItem(k,v);}catch(e){} }
-function lsDel(k)    { try{localStorage.removeItem(k);}catch(e){} }
-function getKey()    { return lsGet('tg_api_key')||''; }
+function lsGet(k)    { try { return localStorage.getItem(k); } catch(e) { return null; } }
+function lsSet(k,v)  { try { localStorage.setItem(k,v); } catch(e) {} }
+function lsDel(k)    { try { localStorage.removeItem(k); } catch(e) {} }
+function getKey()    { return lsGet('tg_api_key') || ''; }
 function $(id)       { return document.getElementById(id); }
-function rollTier()  { var r=Math.random(); if(r<.01)return'legendary'; if(r<.12)return'rare'; if(r<.40)return'uncommon'; return'common'; }
+
+function rollTier() {
+  var r = Math.random();
+  if (r < 0.01) return 'legendary';
+  if (r < 0.12) return 'rare';
+  if (r < 0.40) return 'uncommon';
+  return 'common';
+}
 
 /* ── theme ── */
 function applyTheme() {
-  if(isDark()) document.body.setAttribute('data-dark','');
+  if (isDark()) document.body.setAttribute('data-dark','');
   else document.body.removeAttribute('data-dark');
-}
-
-/* ── sound toggle ── */
-function updateSoundIcon() {
-  var muted = !soundOn;
-  $('sound-icon').innerHTML = muted
-    ? '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>'
-    : '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/>';
-  $('sound-btn').classList.toggle('active', !muted);
-}
-
-/* ── streak ── */
-function computeStreak() {
-  if(!sessions.length) return 0;
-  var days = {};
-  sessions.forEach(function(s) { days[new Date(s.start).toISOString().slice(0,10)] = 1; });
-  var streak=0, d=new Date();
-  // check today and yesterday (allow same-day)
-  while(true) {
-    var key = d.toISOString().slice(0,10);
-    if(days[key]) { streak++; d.setDate(d.getDate()-1); }
-    else break;
-  }
-  return streak;
-}
-
-function updateStreak() {
-  var s = computeStreak();
-  var el = $('streak-badge');
-  if(s>=2) { el.innerHTML='🔥 '+s; el.title=s+' day streak'; }
-  else el.innerHTML='';
-}
-
-/* ── longest walk ── */
-function longestWalk() {
-  if(!sessions.length) return 0;
-  return sessions.reduce(function(mx,s){return Math.max(mx,s.duration);},0);
 }
 
 /* ── weather badges ── */
 function wxHTML() {
-  if(!weather) return '';
-  return (WX_ICON[weather.type]||WX_ICON.clear)+'<span>'+weather.tempC+'°C</span>';
+  if (!weather) return '';
+  return (WX_ICON[weather.type] || WX_ICON.clear) + '<span>' + weather.tempC + '°C</span>';
 }
 function syncWxBadges() {
-  ['wx-welcome','wx-gone','wx-results'].forEach(function(id){var el=$(id);if(el)el.innerHTML=wxHTML();});
+  ['wx-welcome','wx-gone','wx-results'].forEach(function(id) {
+    var el = $(id); if (el) el.innerHTML = wxHTML();
+  });
 }
 
-/* ── celestial ── */
+/* ── celestial body ── */
 function getMoonPhase() {
-  var knownNew=Date.UTC(2000,0,6,18,14), cycle=29.530588853*86400000;
-  return(((Date.now()-knownNew)%cycle)+cycle)%cycle/cycle;
+  var knownNew = Date.UTC(2000,0,6,18,14);
+  var cycle    = 29.530588853 * 86400000;
+  return (((Date.now()-knownNew) % cycle) + cycle) % cycle / cycle;
 }
-function drawMoonDisc(ctx,x,y,r,phase) {
-  var p=((phase%1)+1)%1;
-  ctx.save(); ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.clip();
-  ctx.fillStyle='rgba(15,22,40,0.92)'; ctx.fillRect(x-r-1,y-r-1,r*2+2,r*2+2);
+
+function drawMoonDisc(ctx, x, y, r, phase) {
+  var p = ((phase%1)+1)%1;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.clip();
+  ctx.fillStyle='rgba(15,22,40,0.92)';
+  ctx.fillRect(x-r-1,y-r-1,r*2+2,r*2+2);
   ctx.fillStyle='#dcd4b4';
-  var ex=Math.cos(2*Math.PI*p)*r;
-  if(p<0.5){
+  var ex = Math.cos(2*Math.PI*p)*r;
+  if (p<0.5) {
     ctx.save(); ctx.beginPath(); ctx.rect(x,y-r-1,r+2,r*2+2); ctx.clip();
     ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.restore();
-    if(ex>1){ctx.fillStyle='rgba(15,22,40,0.92)';ctx.beginPath();ctx.ellipse(x,y,ex,r,0,0,Math.PI*2);ctx.fill();}
-    else if(ex<-1){ctx.beginPath();ctx.ellipse(x,y,-ex,r,0,0,Math.PI*2);ctx.fill();}
+    if      (ex>1)  { ctx.fillStyle='rgba(15,22,40,0.92)'; ctx.beginPath(); ctx.ellipse(x,y,ex,-r,0,0,Math.PI*2); ctx.fill(); }
+    else if (ex<-1) { ctx.fillStyle='#dcd4b4';             ctx.beginPath(); ctx.ellipse(x,y,-ex,r,0,0,Math.PI*2); ctx.fill(); }
   } else {
     ctx.save(); ctx.beginPath(); ctx.rect(x-r-2,y-r-1,r+2,r*2+2); ctx.clip();
     ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.restore();
-    if(ex<-1){ctx.beginPath();ctx.ellipse(x,y,-ex,r,0,0,Math.PI*2);ctx.fill();}
-    else if(ex>1){ctx.fillStyle='rgba(15,22,40,0.92)';ctx.beginPath();ctx.ellipse(x,y,ex,r,0,0,Math.PI*2);ctx.fill();}
+    if      (ex<-1) { ctx.fillStyle='#dcd4b4';             ctx.beginPath(); ctx.ellipse(x,y,-ex,r,0,0,Math.PI*2); ctx.fill(); }
+    else if (ex>1)  { ctx.fillStyle='rgba(15,22,40,0.92)'; ctx.beginPath(); ctx.ellipse(x,y,ex,r,0,0,Math.PI*2); ctx.fill(); }
   }
   ctx.restore();
-  var grd=ctx.createRadialGradient(x,y,r*.8,x,y,r*2.4);
+  var grd=ctx.createRadialGradient(x,y,r*0.8,x,y,r*2.4);
   grd.addColorStop(0,'rgba(255,255,200,0.1)'); grd.addColorStop(1,'rgba(255,255,200,0)');
   ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(x,y,r*2.4,0,Math.PI*2); ctx.fill();
 }
-function drawSunDisc(ctx,x,y,r,tod) {
-  var col=(tod==='dawn'||tod==='dusk')?'#ff9a3c':'#ffd060';
-  var gc=(tod==='dawn'||tod==='dusk')?'rgba(255,110,30,0.2)':'rgba(255,210,40,0.15)';
-  var grd=ctx.createRadialGradient(x,y,r,x,y,r*2.8);
+
+function drawSunDisc(ctx, x, y, r, tod) {
+  var col = (tod==='dawn'||tod==='dusk') ? '#ff9a3c' : '#ffd060';
+  var gc  = (tod==='dawn'||tod==='dusk') ? 'rgba(255,110,30,0.2)' : 'rgba(255,210,40,0.15)';
+  var grd = ctx.createRadialGradient(x,y,r,x,y,r*2.8);
   grd.addColorStop(0,gc); grd.addColorStop(1,'rgba(255,200,0,0)');
   ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(x,y,r*2.8,0,Math.PI*2); ctx.fill();
   ctx.strokeStyle=col; ctx.lineWidth=2.5; ctx.lineCap='round';
-  for(var i=0;i<8;i++){var a=(i*Math.PI*2)/8;ctx.beginPath();ctx.moveTo(x+Math.cos(a)*(r+5),y+Math.sin(a)*(r+5));ctx.lineTo(x+Math.cos(a)*(r+15),y+Math.sin(a)*(r+15));ctx.stroke();}
+  for (var i=0;i<8;i++) {
+    var a=(i*Math.PI*2)/8;
+    ctx.beginPath(); ctx.moveTo(x+Math.cos(a)*(r+5),y+Math.sin(a)*(r+5)); ctx.lineTo(x+Math.cos(a)*(r+15),y+Math.sin(a)*(r+15)); ctx.stroke();
+  }
   ctx.fillStyle=col; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
 }
-function drawCloudShape(ctx,x,y,col,alpha,sc) {
+
+function drawCloudShape(ctx, x, y, col, alpha, sc) {
   ctx.save(); ctx.globalAlpha=alpha; ctx.fillStyle=col;
-  ctx.beginPath(); ctx.arc(x,y,13*sc,0,Math.PI*2); ctx.arc(x+20*sc,y-7*sc,17*sc,0,Math.PI*2); ctx.arc(x+43*sc,y,13*sc,0,Math.PI*2); ctx.fill(); ctx.restore();
+  ctx.beginPath();
+  ctx.arc(x,       y,       13*sc, 0, Math.PI*2);
+  ctx.arc(x+20*sc, y-7*sc,  17*sc, 0, Math.PI*2);
+  ctx.arc(x+43*sc, y,       13*sc, 0, Math.PI*2);
+  ctx.fill(); ctx.restore();
 }
-function drawCelestial(ctx,W,H,tod,wType) {
-  var x=W*.78,y=H*.12,r=26,sc=Math.max(.8,W/400);
+
+function drawCelestial(ctx, W, H, tod, wType) {
+  var x=W*0.78, y=H*0.12, r=26, sc=Math.max(0.8,W/400);
   var night=(tod==='evening'||tod==='night');
-  var bodyA=1,cloudA=0,cloudCol='#c8d2dc';
-  switch(wType){
-    case 'cloudy': bodyA=.5; cloudA=.65; break;
-    case 'rain':   bodyA=0;  cloudA=.82; cloudCol='#8a95a5'; break;
-    case 'storm':  bodyA=0;  cloudA=.95; cloudCol='#555e68'; break;
-    case 'fog':    bodyA=.2; break;
-    case 'snow':   bodyA=.6; cloudA=.5;  cloudCol='#d5dde8'; break;
+  var bodyA=1, cloudA=0, cloudCol='#c8d2dc';
+  switch(wType) {
+    case 'cloudy': bodyA=0.5; cloudA=0.65;                        break;
+    case 'rain':   bodyA=0;   cloudA=0.82; cloudCol='#8a95a5';   break;
+    case 'storm':  bodyA=0;   cloudA=0.95; cloudCol='#555e68';   break;
+    case 'fog':    bodyA=0.2;                                      break;
+    case 'snow':   bodyA=0.6; cloudA=0.50; cloudCol='#d5dde8';   break;
   }
-  if(bodyA>0){ctx.save();ctx.globalAlpha=bodyA;if(night)drawMoonDisc(ctx,x,y,r,getMoonPhase());else drawSunDisc(ctx,x,y,r,tod);ctx.restore();}
-  if(cloudA>0) drawCloudShape(ctx,x-26*sc,y+8*sc,cloudCol,cloudA,sc);
+  if (bodyA>0) {
+    ctx.save(); ctx.globalAlpha=bodyA;
+    if (night) drawMoonDisc(ctx,x,y,r,getMoonPhase());
+    else       drawSunDisc(ctx,x,y,r,tod);
+    ctx.restore();
+  }
+  if (cloudA>0) drawCloudShape(ctx,x-26*sc,y+8*sc,cloudCol,cloudA,sc);
 }
 
 /* ── canvas ── */
-var cvs=$('cvs'), cx=cvs.getContext('2d');
-var blades=[], stars=[], drops=[];
+var cvs = $('cvs'), cx = cvs.getContext('2d');
+var blades = [], stars = [], drops = [];
 
-function resize(){ cvs.width=window.innerWidth; cvs.height=window.innerHeight; initGeo(); }
-window.addEventListener('resize',resize);
+function resize() { cvs.width=window.innerWidth; cvs.height=window.innerHeight; initGeo(); }
+window.addEventListener('resize', resize);
 
 function initGeo() {
   var W=cvs.width, H=cvs.height, n=Math.floor(W*H/600);
-  var sg = SEASON_GRASS[season]||SEASON_GRASS.summer;
-  blades=Array.from({length:n},function(){
-    var baseHue=92+Math.random()*32, baseSat=38+Math.random()*26, baseLit=20+Math.random()*20;
-    return {
-      x:Math.random()*W, y:H-10-Math.random()*170,
-      ht:32+Math.random()*52, wd:2+Math.random()*3,
-      phase:Math.random()*Math.PI*2, freq:.8+Math.random()*.5, amp:.06+Math.random()*.05,
-      hue:  baseHue  + sg.hueShift,
-      sat:  Math.min(100, baseSat * sg.satMod),
-      lit:  Math.min(80,  baseLit * sg.litMod),
-    };
+  blades = Array.from({length:n}, function() {
+    return { x:Math.random()*W, y:H-10-Math.random()*170, ht:32+Math.random()*52, wd:2+Math.random()*3, phase:Math.random()*Math.PI*2, freq:.8+Math.random()*.5, amp:.06+Math.random()*.05, hue:92+Math.random()*32, sat:38+Math.random()*26, lit:20+Math.random()*20 };
   });
-  stars=Array.from({length:90},function(){return{x:Math.random()*W,y:Math.random()*H*.7,r:.5+Math.random()*1.1,base:.4+Math.random()*.5,phase:Math.random()*Math.PI*2};});
-  drops=Array.from({length:70},function(){return{x:Math.random()*W,y:Math.random()*H,spd:2+Math.random()*3,len:6+Math.random()*10,drift:.4+Math.random()*.6};});
+  stars = Array.from({length:90}, function() {
+    return { x:Math.random()*W, y:Math.random()*H*.7, r:.5+Math.random()*1.1, base:.4+Math.random()*.5, phase:Math.random()*Math.PI*2 };
+  });
+  drops = Array.from({length:70}, function() {
+    return { x:Math.random()*W, y:Math.random()*H, spd:2+Math.random()*3, len:6+Math.random()*10, drift:.4+Math.random()*.6 };
+  });
 }
 
 function drawFrame(ts) {
@@ -504,21 +448,24 @@ function drawFrame(ts) {
   var g=cx.createLinearGradient(0,0,0,H); stops.forEach(function(s){g.addColorStop(s[0],s[1]);}); cx.fillStyle=g; cx.fillRect(0,0,W,H);
   if(wt==='fog'){cx.fillStyle='rgba(220,220,215,.28)';cx.fillRect(0,0,W,H);}
   drawCelestial(cx,W,H,tod,wt);
-  if(['night','evening'].includes(tod)&&wt!=='fog'){
-    stars.forEach(function(s){var a=s.base*(Math.sin(t*1.3+s.phase)*.2+.8)*(tod==='night'?.85:.4);cx.fillStyle='rgba(255,255,255,'+a+')';cx.beginPath();cx.arc(s.x,s.y,s.r,0,Math.PI*2);cx.fill();});
+  if(['night','evening'].includes(tod)&&wt!=='fog') {
+    stars.forEach(function(s){
+      var a=s.base*(Math.sin(t*1.3+s.phase)*.2+.8)*(tod==='night'?.85:.4);
+      cx.fillStyle='rgba(255,255,255,'+a+')'; cx.beginPath(); cx.arc(s.x,s.y,s.r,0,Math.PI*2); cx.fill();
+    });
   }
   blades.forEach(function(b){
     var sw=Math.sin(t*b.freq+b.phase)*b.amp*(storm?2.2:1);
-    cx.save();cx.translate(b.x,b.y);cx.rotate(sw);cx.beginPath();cx.moveTo(0,0);
-    cx.quadraticCurveTo(b.wd/2,-b.ht/2,0,-b.ht);cx.quadraticCurveTo(-b.wd/2,-b.ht/2,0,0);
-    cx.fillStyle='hsl('+b.hue+','+b.sat+'%,'+b.lit+'%)';cx.fill();cx.restore();
+    cx.save(); cx.translate(b.x,b.y); cx.rotate(sw); cx.beginPath(); cx.moveTo(0,0);
+    cx.quadraticCurveTo(b.wd/2,-b.ht/2,0,-b.ht); cx.quadraticCurveTo(-b.wd/2,-b.ht/2,0,0);
+    cx.fillStyle='hsl('+b.hue+','+b.sat+'%,'+b.lit+'%)'; cx.fill(); cx.restore();
   });
   if(wt==='rain'||storm){
-    cx.strokeStyle='rgba(200,210,225,.22)';cx.lineWidth=1;
-    drops.forEach(function(d){cx.beginPath();cx.moveTo(d.x,d.y);cx.lineTo(d.x-d.drift*2,d.y+d.len);cx.stroke();d.y+=d.spd*(storm?2.4:1.8);d.x-=d.drift;if(d.y>H){d.y=-d.len;d.x=Math.random()*W;}});
+    cx.strokeStyle='rgba(200,210,225,.22)'; cx.lineWidth=1;
+    drops.forEach(function(d){ cx.beginPath(); cx.moveTo(d.x,d.y); cx.lineTo(d.x-d.drift*2,d.y+d.len); cx.stroke(); d.y+=d.spd*(storm?2.4:1.8); d.x-=d.drift; if(d.y>H){d.y=-d.len;d.x=Math.random()*W;} });
   } else if(wt==='snow'){
     cx.fillStyle='rgba(255,255,255,.5)';
-    drops.forEach(function(d){cx.beginPath();cx.arc(d.x,d.y,1.4,0,Math.PI*2);cx.fill();d.y+=d.spd*.4;d.x+=Math.sin(d.y*.02)*.4;if(d.y>H){d.y=-4;d.x=Math.random()*W;}});
+    drops.forEach(function(d){ cx.beginPath(); cx.arc(d.x,d.y,1.4,0,Math.PI*2); cx.fill(); d.y+=d.spd*.4; d.x+=Math.sin(d.y*.02)*.4; if(d.y>H){d.y=-4;d.x=Math.random()*W;} });
   }
   requestAnimationFrame(drawFrame);
 }
@@ -526,26 +473,26 @@ function drawFrame(ts) {
 /* ── audio ── */
 function buildAmbient(actx) {
   var master=actx.createGain(); master.gain.value=0; master.connect(actx.destination);
-  var nBuf=actx.createBuffer(1,actx.sampleRate*2,actx.sampleRate),nd=nBuf.getChannelData(0);
+  var nBuf=actx.createBuffer(1,actx.sampleRate*2,actx.sampleRate), nd=nBuf.getChannelData(0);
   for(var i=0;i<nd.length;i++) nd[i]=Math.random()*2-1;
   var wSrc=actx.createBufferSource(); wSrc.buffer=nBuf; wSrc.loop=true;
   var wLP=actx.createBiquadFilter(); wLP.type='lowpass'; wLP.frequency.value=450;
   var wGn=actx.createGain(); wGn.gain.value=.18;
   var lfo=actx.createOscillator(); lfo.frequency.value=.07;
   var lfoG=actx.createGain(); lfoG.gain.value=.09;
-  wSrc.connect(wLP);wLP.connect(wGn);wGn.connect(master);lfo.connect(lfoG);lfoG.connect(wGn.gain);wSrc.start();lfo.start();
+  wSrc.connect(wLP); wLP.connect(wGn); wGn.connect(master); lfo.connect(lfoG); lfoG.connect(wGn.gain); wSrc.start(); lfo.start();
   var rSrc=actx.createBufferSource(); rSrc.buffer=nBuf; rSrc.loop=true;
   var rBP=actx.createBiquadFilter(); rBP.type='bandpass'; rBP.frequency.value=1400; rBP.Q.value=.6;
   var rGn=actx.createGain(); rGn.gain.value=0;
-  rSrc.connect(rBP);rBP.connect(rGn);rGn.connect(master);rSrc.start();
-  var prof={tod:'day',weather:'clear',location:''},timers=[];
-  function bird(){var o=actx.createOscillator(),g=actx.createGain(),f=actx.createBiquadFilter();f.type='bandpass';f.frequency.value=2600;f.Q.value=8;o.type='sine';var base=1900+Math.random()*1100,t0=actx.currentTime+Math.random()*1.5;o.frequency.setValueAtTime(base,t0);o.frequency.linearRampToValueAtTime(base+450,t0+.05);o.frequency.linearRampToValueAtTime(base,t0+.1);g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.05,t0+.01);g.gain.exponentialRampToValueAtTime(.001,t0+.12);o.connect(f);f.connect(g);g.connect(master);o.start(t0);o.stop(t0+.14);}
-  function cricket(){var o=actx.createOscillator(),g=actx.createGain();o.type='square';o.frequency.value=4200;var t0=actx.currentTime;for(var i=0;i<7;i++){g.gain.setValueAtTime(0,t0+i*.09);g.gain.linearRampToValueAtTime(.016,t0+i*.09+.008);g.gain.linearRampToValueAtTime(0,t0+i*.09+.04);}o.connect(g);g.connect(master);o.start(t0);o.stop(t0+.9);}
-  function thunder(){var o=actx.createOscillator(),g=actx.createGain(),f=actx.createBiquadFilter();o.type='sawtooth';o.frequency.value=50;f.type='lowpass';f.frequency.value=180;var t0=actx.currentTime;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.12,t0+.15);g.gain.exponentialRampToValueAtTime(.001,t0+1.8);o.connect(f);f.connect(g);g.connect(master);o.start(t0);o.stop(t0+2);}
+  rSrc.connect(rBP); rBP.connect(rGn); rGn.connect(master); rSrc.start();
+  var prof={tod:'day',weather:'clear',location:''}, timers=[];
+  function bird(){ var o=actx.createOscillator(),g=actx.createGain(),f=actx.createBiquadFilter(); f.type='bandpass';f.frequency.value=2600;f.Q.value=8;o.type='sine'; var base=1900+Math.random()*1100,t0=actx.currentTime+Math.random()*1.5; o.frequency.setValueAtTime(base,t0);o.frequency.linearRampToValueAtTime(base+450,t0+.05);o.frequency.linearRampToValueAtTime(base,t0+.1); g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.05,t0+.01);g.gain.exponentialRampToValueAtTime(.001,t0+.12); o.connect(f);f.connect(g);g.connect(master);o.start(t0);o.stop(t0+.14); }
+  function cricket(){ var o=actx.createOscillator(),g=actx.createGain(); o.type='square';o.frequency.value=4200; var t0=actx.currentTime; for(var i=0;i<7;i++){g.gain.setValueAtTime(0,t0+i*.09);g.gain.linearRampToValueAtTime(.016,t0+i*.09+.008);g.gain.linearRampToValueAtTime(0,t0+i*.09+.04);} o.connect(g);g.connect(master);o.start(t0);o.stop(t0+.9); }
+  function thunder(){ var o=actx.createOscillator(),g=actx.createGain(),f=actx.createBiquadFilter(); o.type='sawtooth';o.frequency.value=50;f.type='lowpass';f.frequency.value=180; var t0=actx.currentTime; g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.12,t0+.15);g.gain.exponentialRampToValueAtTime(.001,t0+1.8); o.connect(f);f.connect(g);g.connect(master);o.start(t0);o.stop(t0+2); }
   timers.push(setInterval(function(){
     var t=prof.tod,w=prof.weather,l=(prof.location||'').toLowerCase();
     var wet=['rain','storm'].includes(w),dayish=['dawn','morning','day','dusk'].includes(t);
-    var green=/park|forest|meadow|garden|trail|riverside/i.test(l),urban=/city|market|block|playground|rooftop/i.test(l);
+    var green=/park|forest|meadow|garden|trail|riverside/i.test(l), urban=/city|market|block|playground|rooftop/i.test(l);
     var bP=dayish&&!wet?.45:.04; if(green)bP*=1.5; if(urban)bP*=.5;
     var cP=(t==='night'||t==='evening')?.5:.05; if(urban)cP*=.5;
     if(Math.random()<bP)bird(); if(Math.random()<cP)cricket(); if(w==='storm'&&Math.random()<.18)thunder();
@@ -555,107 +502,164 @@ function buildAmbient(actx) {
   },1600));
   return {
     setProfile:function(p){prof=Object.assign({},prof,p);},
-    fadeIn: function(){if(soundOn)master.gain.linearRampToValueAtTime(.5,actx.currentTime+1.5);},
+    fadeIn: function(){master.gain.linearRampToValueAtTime(.5,actx.currentTime+1.5);},
     fadeOut:function(){master.gain.linearRampToValueAtTime(0,actx.currentTime+1);},
     stop:function(){timers.forEach(clearInterval);try{wSrc.stop();}catch(e){}try{rSrc.stop();}catch(e){}try{lfo.stop();}catch(e){}},
   };
 }
-function ensureAudio(){if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)();ambient=buildAmbient(audioCtx);}if(audioCtx.state==='suspended')audioCtx.resume();}
-function syncAmbient(){if(ambient)ambient.setProfile({tod:tod,weather:weather?weather.type:'clear',location:loc});}
+function ensureAudio(){ if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)();ambient=buildAmbient(audioCtx);} if(audioCtx.state==='suspended')audioCtx.resume(); }
+function syncAmbient(){ if(ambient)ambient.setProfile({tod:tod,weather:weather?weather.type:'clear',location:loc}); }
 
-/* ── nearby places ── */
-function fetchNearbyPlaces(lat,lon,callback) {
-  var rad=6000;
-  var q='[out:json][timeout:25];('
-    +'node["name"]["leisure"~"park|garden|nature_reserve|recreation_ground|common|forest"](around:'+rad+','+lat+','+lon+');'
-    +'way["name"]["leisure"~"park|garden|nature_reserve|recreation_ground|common|forest"](around:'+rad+','+lat+','+lon+');'
-    +'way["name"]["landuse"~"forest|grass|recreation_ground|village_green"](around:'+rad+','+lat+','+lon+');'
-    +'way["name"]["natural"~"wood|grassland|heath|scrub"](around:'+rad+','+lat+','+lon+');'
-    +'relation["name"]["leisure"~"park|garden|nature_reserve|recreation_ground"](around:'+rad+','+lat+','+lon+');'
-    +'relation["name"]["landuse"~"forest"](around:'+rad+','+lat+','+lon+');'
-    +'relation["name"]["natural"~"wood|grassland"](around:'+rad+','+lat+','+lon+');'
-    +'relation["name"]["boundary"~"protected_area|national_park|forest"](around:'+rad+','+lat+','+lon+');'
-    +');out tags;';
-  fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:q})
-    .then(function(resp){return resp.json();})
-    .then(function(data){
-      var seen={},names=[];
-      (data.elements||[]).forEach(function(el){var n=el.tags&&el.tags.name;if(n&&!seen[n]){seen[n]=1;names.push(n);}});
-      nearbyPlaces=names;
-      if(callback)callback(names);
+/* ── nearby places (OpenStreetMap Overpass) ── */
+var nearbyPlaces = [];
+
+function fetchNearbyPlaces(lat, lon, callback) {
+  var rad = 6000; // 6km radius
+  var q = '[out:json][timeout:25];('
+    + 'node["name"]["leisure"~"park|garden|nature_reserve|recreation_ground|common|forest"](around:'+rad+','+lat+','+lon+');'
+    + 'way["name"]["leisure"~"park|garden|nature_reserve|recreation_ground|common|forest"](around:'+rad+','+lat+','+lon+');'
+    + 'way["name"]["landuse"~"forest|grass|recreation_ground|village_green"](around:'+rad+','+lat+','+lon+');'
+    + 'way["name"]["natural"~"wood|grassland|heath|scrub"](around:'+rad+','+lat+','+lon+');'
+    + 'relation["name"]["leisure"~"park|garden|nature_reserve|recreation_ground"](around:'+rad+','+lat+','+lon+');'
+    + 'relation["name"]["landuse"~"forest"](around:'+rad+','+lat+','+lon+');'
+    + 'relation["name"]["natural"~"wood|grassland"](around:'+rad+','+lat+','+lon+');'
+    + 'relation["name"]["boundary"~"protected_area|national_park|forest"](around:'+rad+','+lat+','+lon+');'
+    + ');out tags;';
+  fetch('https://overpass-api.de/api/interpreter', { method:'POST', body:q })
+    .then(function(resp) { return resp.json(); })
+    .then(function(data) {
+      var seen = {}, names = [];
+      (data.elements || []).forEach(function(el) {
+        var name = el.tags && el.tags.name;
+        if (name && !seen[name]) { seen[name]=1; names.push(name); }
+      });
+      nearbyPlaces = names;
+      if (callback) callback(names);
     })
-    .catch(function(){nearbyPlaces=[];if(callback)callback([]);});
+    .catch(function() { nearbyPlaces = []; if (callback) callback([]); });
 }
 
 function shuffleNearbyPlace() {
-  var pick=function(places){
-    if(!places.length){$('loc-input').placeholder='no places found nearby';return;}
-    var p=places[Math.floor(Math.random()*places.length)];
-    loc=p; $('loc-input').value=p;
+  var doShuffle = function(places) {
+    if (!places.length) {
+      $('loc-input').placeholder = 'no places found nearby';
+      return;
+    }
+    var pick = places[Math.floor(Math.random() * places.length)];
+    loc = pick;
+    $('loc-input').value = pick;
   };
-  if(nearbyPlaces.length){pick(nearbyPlaces);return;}
-  $('shuffle-btn').textContent='…';
-  var done=function(places){$('shuffle-btn').textContent='↺';pick(places);};
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(
-      function(p){fetchNearbyPlaces(p.coords.latitude,p.coords.longitude,done);},
-      function(){fetchNearbyPlaces(DEF_LAT,DEF_LON,done);},{timeout:5000}
-    );
-  } else fetchNearbyPlaces(DEF_LAT,DEF_LON,done);
-}
 
-/* ── weather ── */
+  if (nearbyPlaces.length) {
+    doShuffle(nearbyPlaces);
+    return;
+  }
+  // fetch fresh
+  $('shuffle-btn').textContent = '…';
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function(p) {
+        fetchNearbyPlaces(p.coords.latitude, p.coords.longitude, function(places) {
+          $('shuffle-btn').textContent = '↺';
+          doShuffle(places);
+        });
+      },
+      function() {
+        fetchNearbyPlaces(DEF_LAT, DEF_LON, function(places) {
+          $('shuffle-btn').textContent = '↺';
+          doShuffle(places);
+        });
+      },
+      { timeout: 5000 }
+    );
+  } else {
+    fetchNearbyPlaces(DEF_LAT, DEF_LON, function(places) {
+      $('shuffle-btn').textContent = '↺';
+      doShuffle(places);
+    });
+  }
+}
 function fetchWeather(lat,lon){
   fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&current=temperature_2m,weather_code')
     .then(function(r){return r.json();})
-    .then(function(d){var t=Math.round(d.current&&d.current.temperature_2m!=null?d.current.temperature_2m:18),c=d.current&&d.current.weather_code!=null?d.current.weather_code:0;weather={tempC:t,type:WMO(c,t)};syncWxBadges();syncAmbient();})
+    .then(function(d){
+      var tempC=Math.round(d.current&&d.current.temperature_2m!=null?d.current.temperature_2m:18);
+      var code=d.current&&d.current.weather_code!=null?d.current.weather_code:0;
+      weather={tempC:tempC,type:WMO(code,tempC)}; syncWxBadges(); syncAmbient();
+    })
     .catch(function(){weather={tempC:18,type:'clear'};syncWxBadges();});
 }
 function initWeather(){
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(
-      function(p){fetchWeather(p.coords.latitude,p.coords.longitude);fetchNearbyPlaces(p.coords.latitude,p.coords.longitude,null);},
-      function(){fetchWeather(DEF_LAT,DEF_LON);fetchNearbyPlaces(DEF_LAT,DEF_LON,null);},
-      {timeout:6000}
-    );
-  } else {fetchWeather(DEF_LAT,DEF_LON);fetchNearbyPlaces(DEF_LAT,DEF_LON,null);}
+  if(navigator.geolocation){ navigator.geolocation.getCurrentPosition(function(p){fetchWeather(p.coords.latitude,p.coords.longitude);},function(){fetchWeather(DEF_LAT,DEF_LON);},{timeout:6000}); }
+  else fetchWeather(DEF_LAT,DEF_LON);
 }
 
 /* ── screens ── */
-var ALL_SCREENS=['s-welcome','s-gone','s-gen','s-note','s-results','s-collection','s-stats'];
-function show(id){ALL_SCREENS.forEach(function(s){$(s).classList.toggle('hidden',s!==id);});}
+var ALL_SCREENS=['s-welcome','s-gone','s-gen','s-results','s-collection','s-stats'];
+function show(id){ ALL_SCREENS.forEach(function(s){$(s).classList.toggle('hidden',s!==id);}); }
 
-/* ── storage ── */
-function loadCol(){try{collection=JSON.parse(lsGet('tg_collection')||'[]');}catch(e){collection=[];}}
-function saveCol(){lsSet('tg_collection',JSON.stringify(collection.slice(0,500)));}
-function loadSessions(){try{sessions=JSON.parse(lsGet('tg_sessions')||'[]');}catch(e){sessions=[];}}
-function saveSessions(){lsSet('tg_sessions',JSON.stringify(sessions.slice(0,2000)));}
-function loadSound(){soundOn = lsGet('tg_sound')!=='0';}
-function saveSound(){lsSet('tg_sound', soundOn?'1':'0');}
+/* ── collection ── */
+function loadCol(){ try{collection=JSON.parse(lsGet('tg_collection')||'[]');}catch(e){collection=[];} }
+function saveCol(){ lsSet('tg_collection',JSON.stringify(collection.slice(0,500))); }
+
+/* ── sessions ── */
+function loadSessions(){ try{sessions=JSON.parse(lsGet('tg_sessions')||'[]');}catch(e){sessions=[];} }
+function saveSessions(){ lsSet('tg_sessions',JSON.stringify(sessions.slice(0,2000))); }
 
 function updateCounts(){
-  $('col-count').textContent=collection.length;
-  $('walk-count').textContent=sessions.length;
-  var r=$('res-col-count');if(r)r.textContent=collection.length;
-  updateStreak();
+  $('col-count').textContent  = collection.length;
+  $('walk-count').textContent = sessions.length;
+  var r=$('res-col-count'); if(r) r.textContent=collection.length;
+}
+
+/* ── stats ── */
+function getStats(){
+  var now   = new Date();
+  var sow   = new Date(now); sow.setDate(now.getDate()-7); sow.setHours(0,0,0,0);
+  var som   = new Date(now.getFullYear(), now.getMonth(), 1);
+  var soy   = new Date(now.getFullYear(), 0, 1);
+  var periods = [
+    {label:'This week',  since:sow.getTime()},
+    {label:'This month', since:som.getTime()},
+    {label:'This year',  since:soy.getTime()},
+    {label:'All time',   since:0},
+  ];
+  return periods.map(function(p){
+    var filtered = sessions.filter(function(s){return s.start>=p.since;});
+    var total    = filtered.reduce(function(a,s){return a+s.duration;},0);
+    return {label:p.label, count:filtered.length, duration:total};
+  });
+}
+
+function showStats(){
+  var rows = getStats();
+  $('stats-body').innerHTML = rows.map(function(r){
+    var zero = r.count===0;
+    return '<tr class="'+(zero?'stats-zero':'')+'">'
+      + '<td class="period">'+r.label+'</td>'
+      + '<td class="val-big">'+r.count+'</td>'
+      + '<td>'+fmtDur(r.duration)+'</td>'
+      + '</tr>';
+  }).join('');
+  show('s-stats');
 }
 
 /* ── find card ── */
 function findCardHTML(f){
   var leg=f.rarity==='legendary';
-  var noteHtml=f.userNote?'<div class="find-user-note">'+f.userNote+'</div>':'';
   return '<div class="find-card '+(f.rarity||'common')+'">'
     +'<div class="find-top"><div class="find-dot dot-'+(f.rarity||'common')+'"></div>'
     +'<div class="find-name">'+f.name+'</div>'+(leg?'<div class="find-leg-tag">legendary</div>':'')+'</div>'
-    +(f.note?'<div class="find-note">'+f.note+'</div>':'')
-    +noteHtml+'</div>';
+    +(f.note?'<div class="find-note">'+f.note+'</div>':'')+'</div>';
 }
 
-/* ── rarity roll ── */
+/* ── discovery generation ── */
 async function generateFinds(secs){
-  var key=getKey(),mins=Math.floor(secs/60),count=Math.min(15,Math.max(1,Math.ceil(mins/8)));
-  var tiers=Array.from({length:count},rollTier),tally=tiers.reduce(function(a,t){a[t]=(a[t]||0)+1;return a;},{});
-  var where=loc?'a '+loc:'a grassy outdoor area',curTod=getTod(),wLabel=weather?weather.type:'mild';
+  var key=getKey(), mins=Math.floor(secs/60);
+  var count=Math.min(15,Math.max(1,Math.ceil(mins/8)));
+  var tiers=Array.from({length:count},rollTier);
+  var tally=tiers.reduce(function(a,t){a[t]=(a[t]||0)+1;return a;},{});
+  var where=loc?'a '+loc:'a grassy outdoor area', curTod=getTod(), wLabel=weather?weather.type:'mild';
   var prompt='Someone spent '+(mins||'under 1')+' minute'+(mins!==1?'s':'')+' outside in '+where+' during '+curTod+', weather: '+wLabel+'. '
     +'They returned with SURREAL discoveries — dreamlike, impossible, poetic things, never realistic litter. '
     +'Return ONLY a raw JSON array, no markdown or backticks. '
@@ -674,24 +678,9 @@ async function generateFinds(secs){
   }
 }
 
-/* ── stats ── */
-function getStats(){
-  var now=new Date(),sow=new Date(now);sow.setDate(now.getDate()-7);sow.setHours(0,0,0,0);
-  var som=new Date(now.getFullYear(),now.getMonth(),1),soy=new Date(now.getFullYear(),0,1);
-  return [{label:'This week',since:sow.getTime()},{label:'This month',since:som.getTime()},{label:'This year',since:soy.getTime()},{label:'All time',since:0}]
-    .map(function(p){var f=sessions.filter(function(s){return s.start>=p.since;});return{label:p.label,count:f.length,duration:f.reduce(function(a,s){return a+s.duration;},0)};});
-}
-function showStats(){
-  var rows=getStats();
-  $('stats-body').innerHTML=rows.map(function(r){var z=r.count===0;return'<tr class="'+(z?'stats-zero')+'">'+'<td class="period">'+r.label+'</td><td>'+(z?'—':r.count)+'</td><td>'+fmtDur(r.duration)+'</td></tr>';}).join('');
-  var best=longestWalk();
-  $('stats-best').innerHTML=best?'Longest walk: <span>'+fmtDur(best)+'</span>':'No walks recorded yet.';
-  show('s-stats');
-}
-
 /* ── phase actions ── */
 function doLeave(){
-  ensureAudio(); syncAmbient(); if(ambient)ambient.fadeIn();
+  ensureAudio(); syncAmbient(); ambient.fadeIn();
   var now=Date.now(); depTime=now;
   lsSet('tg_departure',JSON.stringify({time:now,location:loc}));
   $('gone-loc').textContent=loc||''; $('gone-time').textContent='Left at '+fmtTime(now);
@@ -699,7 +688,7 @@ function doLeave(){
 }
 
 async function doReturn(){
-  if(ambient)ambient.fadeOut();
+  if(ambient) ambient.fadeOut();
   var now=Date.now(); elapsedSec=Math.floor((now-depTime)/1000);
   show('s-gen');
   var msgs=['Retracing your steps…','Cataloguing the impossible…','Checking your pockets…','Writing it all down…'];
@@ -708,22 +697,10 @@ async function doReturn(){
   var items=await generateFinds(elapsedSec);
   clearInterval(msgIv);
   var valid=['common','uncommon','rare','legendary'];
-  var stamped=items.map(function(it){return Object.assign({},it,{rarity:valid.includes(it.rarity)?it.rarity:'common',location:loc||'somewhere green',when:now,userNote:''});});
-  // store pending finds, show note screen
-  lsSet('tg_pending_finds',JSON.stringify(stamped));
-  lsDel('tg_departure');
-  $('note-input').value='';
-  show('s-note');
-}
-
-function finishReturn(userNote){
-  var stamped;
-  try{stamped=JSON.parse(lsGet('tg_pending_finds')||'[]');}catch(e){stamped=[];}
-  lsDel('tg_pending_finds');
-  if(userNote){stamped=stamped.map(function(it,i){return i===0?Object.assign({},it,{userNote:userNote}):it;});}
+  var stamped=items.map(function(it){return Object.assign({},it,{rarity:valid.includes(it.rarity)?it.rarity:'common',location:loc||'somewhere green',when:now});});
   collection=stamped.concat(collection).slice(0,500); saveCol();
   sessions.push({start:depTime,duration:elapsedSec,location:loc||''}); saveSessions();
-  updateCounts();
+  lsDel('tg_departure'); updateCounts();
   var hasLeg=stamped.some(function(f){return f.rarity==='legendary';});
   $('results-title').textContent=loc?'Your '+loc+' walk':'Your walk';
   $('results-dur').textContent=fmtDur(elapsedSec);
@@ -732,18 +709,24 @@ function finishReturn(userNote){
   syncWxBadges(); show('s-results');
 }
 
-function doAgain(){loc='';depTime=null;elapsedSec=0;$('loc-input').value='';show('s-welcome');}
+function doAgain(){ loc='';depTime=null;elapsedSec=0;$('loc-input').value='';show('s-welcome'); }
 
 function doCollection(from){
   $('col-back-btn').dataset.from=from||'welcome';
   $('col-total').textContent=collection.length+' total';
   var el=$('col-list');
   if(!collection.length){el.innerHTML='<div class="empty">Nothing yet. Go outside.</div>';}
-  else{el.innerHTML=TIERS.map(function(tier){var items=collection.filter(function(f){return f.rarity===tier;});if(!items.length)return'';return'<div class="tier-block"><div class="tier-hdr"><div class="find-dot dot-'+tier+'"></div><span class="tier-label">'+tier+'</span><span class="tier-count">· '+items.length+'</span></div><div class="tier-items">'+items.map(findCardHTML).join('')+'</div></div>';}).join('');}
+  else{
+    el.innerHTML=TIERS.map(function(tier){
+      var items=collection.filter(function(f){return f.rarity===tier;}); if(!items.length)return '';
+      return '<div class="tier-block"><div class="tier-hdr"><div class="find-dot dot-'+tier+'"></div><span class="tier-label">'+tier+'</span><span class="tier-count">· '+items.length+'</span></div>'
+        +'<div class="tier-items">'+items.map(findCardHTML).join('')+'</div></div>';
+    }).join('');
+  }
   show('s-collection');
 }
 
-/* ── key modal ── */
+/* ── API key modal ── */
 function showKeyModal(then){
   $('key-modal').classList.remove('hidden');
   $('key-input').value=getKey();
@@ -751,42 +734,34 @@ function showKeyModal(then){
 }
 
 /* ── events ── */
-$('shuffle-btn').addEventListener('click',shuffleNearbyPlace);
+$('shuffle-btn').addEventListener('click', shuffleNearbyPlace);
 $('loc-input').addEventListener('input',function(e){loc=e.target.value;});
 $('leave-btn').addEventListener('click',function(){loc=$('loc-input').value.trim();if(!getKey()){showKeyModal(doLeave);return;}doLeave();});
 $('return-btn').addEventListener('click',doReturn);
 $('again-btn').addEventListener('click',doAgain);
 $('settings-btn').addEventListener('click',function(){showKeyModal();});
-$('sound-btn').addEventListener('click',function(){
-  soundOn=!soundOn; saveSound(); updateSoundIcon();
-  if(soundOn&&ambient){ensureAudio();if(ambient)ambient.fadeIn();}
-  else if(ambient) ambient.fadeOut();
-});
 $('walks-btn').addEventListener('click',showStats);
 $('view-col-btn').addEventListener('click',function(){doCollection('welcome');});
 $('results-col-btn').addEventListener('click',function(){doCollection('results');});
 $('col-back-btn').addEventListener('click',function(){var f=$('col-back-btn').dataset.from;show(f==='results'?'s-results':'s-welcome');});
 $('stats-back-btn').addEventListener('click',function(){show('s-welcome');});
-$('note-done-btn').addEventListener('click',function(){finishReturn($('note-input').value.trim());});
-$('note-skip-btn').addEventListener('click',function(){finishReturn('');});
 
 /* ── boot ── */
 (function boot(){
-  loadCol(); loadSessions(); loadSound(); updateCounts(); updateSoundIcon();
+  loadCol(); loadSessions(); updateCounts();
   initWeather(); resize(); requestAnimationFrame(drawFrame);
   applyTheme();
-  setInterval(function(){tod=getTod();season=getSeason();applyTheme();syncAmbient();},30000);
+  setInterval(function(){tod=getTod();applyTheme();syncAmbient();},30000);
   var stored=lsGet('tg_departure');
   if(stored){try{var d=JSON.parse(stored);depTime=d.time;loc=d.location||'';$('gone-loc').textContent=loc;$('gone-time').textContent='Left at '+fmtTime(depTime);show('s-gone');return;}catch(e){}}
-  // check for pending finds (app closed mid-return)
-  var pending=lsGet('tg_pending_finds');
-  if(pending){try{JSON.parse(pending);show('s-note');return;}catch(e){lsDel('tg_pending_finds');}}
   show('s-welcome');
 })();
 </script>
 <script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').catch(function() {});
+  });
 }
 </script>
 </body>
