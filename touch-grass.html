@@ -6,6 +6,11 @@
 <meta name="description" content="Touch Grass — go outside, come back, see what you found.">
 <title>Touch Grass</title>
 <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#7e9b78">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Touch Grass">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -613,6 +618,13 @@ $('stats-back-btn').addEventListener('click',function(){show('s-welcome');});
   if(stored){try{var d=JSON.parse(stored);depTime=d.time;loc=d.location||'';$('gone-loc').textContent=loc;$('gone-time').textContent='Left at '+fmtTime(depTime);show('s-gone');return;}catch(e){}}
   show('s-welcome');
 })();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').catch(function() {});
+  });
+}
 </script>
 </body>
 </html>
