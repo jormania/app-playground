@@ -65,6 +65,8 @@ nav {
   padding: 5px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; transition: all 0.15s;
 }
 .nav-cta:hover { background: rgba(124,111,255,0.2); }
+.nav-guide { font-size:11px; color:var(--faint); transition:color 0.15s; }
+.nav-guide:hover { color:var(--muted); }
 
 /* ── Hero ── */
 .hero { padding: 80px 0 36px; border-bottom: 1px solid var(--border); }
@@ -277,6 +279,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; }
     </a>
     <div class="nav-links">
       <a href="#apps">Apps</a>
+      <a class="nav-guide" href="touch-grass-features.html" target="_blank" rel="noopener">guide ↗</a>
       <a class="nav-cta" href="https://github.com/jormania/app-playground" target="_blank" rel="noopener">GitHub ↗</a>
     </div>
   </div>
@@ -367,14 +370,13 @@ const APPS = [
     size: "~14 KB",
     tech: "Vanilla HTML",
     tags: ["outdoor", "ambient"],
-    description: "Step outside, close the tab, come back when you're done. Touch Grass saves your departure so the browser can sleep, then generates surreal AI-powered discoveries on return — scaled to how long you were actually gone. Four rarity tiers, 1% legendary drop rate, synthetic ambient soundscape that varies by location and weather, and a persistent collection log.",
+    description: "Step outside, close the tab, come back when you're done. Touch Grass saves your departure so the browser can sleep, then generates surreal AI-powered discoveries on return — scaled to how long you were actually gone.",
     features: [
       "Departure timestamp persists across tab close and device sleep",
-      "Surreal AI-generated finds scaled from mildly uncanny to mythic",
-      "4 rarity tiers — common, uncommon, rare, legendary at 1% drop rate",
+      "Surreal AI-generated finds: mildly uncanny to mythic",
       "Synthetic Web Audio: wind, birds, rain, crickets, thunder",
       "Real-time weather via Open-Meteo — affects sky, particles, and sound",
-      "Persistent collection log across sessions",
+      "Walk stats, streak counter, and persistent collection log",
     ],
     file: "touch-grass.html",
   },
