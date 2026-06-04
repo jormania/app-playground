@@ -43,7 +43,6 @@ canvas { position:fixed; inset:0; display:block; }
 .screen { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; transition:opacity 0.25s ease; }
 .screen.hidden  { opacity:0; pointer-events:none; }
 .screen.scrollable { overflow-y:auto; align-items:flex-start; }
-#s-welcome { align-items: flex-end; padding-bottom: 20px; }
 
 .panel {
   background:var(--panel); border:1px solid var(--panel-border);
@@ -471,115 +470,9 @@ function drawCelestial(ctx,W,H,tod,wType) {
 }
 
 
-// ── Fuji helper: cloud blob ──
-function drawFujiCloud(ctx,x,y,r){
-  ctx.beginPath();
-  ctx.arc(x,y,r,0,Math.PI*2);
-  ctx.arc(x+r*1.38,y-r*.42,r*1.22,0,Math.PI*2);
-  ctx.arc(x+r*2.88,y+r*.05,r*.92,0,Math.PI*2);
-  ctx.fill();
-}
-// ── Fuji helper: bush ──
-function drawFujiBush(ctx,x,y,r){
-  ctx.beginPath();
-  ctx.arc(x,y-r,r,0,Math.PI*2);
-  ctx.arc(x-r*.82,y-r*.58,r*.80,0,Math.PI*2);
-  ctx.arc(x+r*.82,y-r*.58,r*.80,0,Math.PI*2);
-  ctx.fill();
-}
-// ── Flat-design Fuji — celestial handled by drawCelestial ──
-function drawFuji(ctx,W,H,wt){
-  var fs=getFujiSeason();
-  // Wide gentle proportions matching real Fuji silhouette
-  var fcx=W*.50,peakY=H*.24,baseY=H*.68,hw=W*.42,h=baseY-peakY;
-  ctx.save();
-
-  // ── 1. Fuji body — wide gentle slopes ──
-  var bodyCol={spring:'#4a628a',summer:'#3a5878',autumn:'#485878',winter:'#384470'}[fs];
-  ctx.globalAlpha=.90;
-  ctx.beginPath();
-  ctx.moveTo(fcx-hw,baseY);
-  // Left slope: start almost horizontal, gradually steepens toward peak
-  ctx.bezierCurveTo(
-    fcx-hw*.68, baseY-h*.03,
-    fcx-hw*.22, peakY+h*.28,
-    fcx-6, peakY
-  );
-  ctx.lineTo(fcx+6,peakY);
-  // Right slope symmetric
-  ctx.bezierCurveTo(
-    fcx+hw*.22, peakY+h*.28,
-    fcx+hw*.68, baseY-h*.03,
-    fcx+hw, baseY
-  );
-  ctx.closePath();ctx.fillStyle=bodyCol;ctx.fill();
-
-  // ── 2. Snow cap with jagged natural bottom ──
-  var snowH={spring:.25,summer:.11,autumn:.20,winter:.52}[fs];
-  var snowCol={spring:'#eef4f8',summer:'#eaf0ff',autumn:'#f2ede4',winter:'#eaf2ff'}[fs];
-  var snowY=peakY+h*snowH;
-  ctx.globalAlpha=.96;
-  ctx.beginPath();
-  ctx.moveTo(fcx-6,peakY);ctx.lineTo(fcx+6,peakY);
-  ctx.bezierCurveTo(fcx+hw*.18,peakY+h*.09,fcx+hw*.24,snowY-7,fcx+hw*.22,snowY);
-  ctx.lineTo(fcx+hw*.14,snowY-9);ctx.lineTo(fcx+hw*.08,snowY+5);
-  ctx.lineTo(fcx+hw*.02,snowY-6);ctx.lineTo(fcx-hw*.03,snowY+7);
-  ctx.lineTo(fcx-hw*.10,snowY-8);ctx.lineTo(fcx-hw*.17,snowY+2);
-  ctx.lineTo(fcx-hw*.22,snowY);
-  ctx.bezierCurveTo(fcx-hw*.24,snowY-7,fcx-hw*.18,peakY+h*.09,fcx-6,peakY);
-  ctx.closePath();ctx.fillStyle=snowCol;ctx.fill();
-  // Striation shadows below snow line
-  ctx.globalAlpha=.36;ctx.fillStyle='#c8d8ea';
-  ctx.beginPath();
-  ctx.moveTo(fcx+hw*.08,snowY+5);ctx.lineTo(fcx+hw*.14,snowY-9);
-  ctx.lineTo(fcx+hw*.22,snowY);ctx.lineTo(fcx+hw*.26,snowY+14);
-  ctx.closePath();ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(fcx-hw*.10,snowY-8);ctx.lineTo(fcx-hw*.03,snowY+7);
-  ctx.lineTo(fcx-hw*.22,snowY);ctx.lineTo(fcx-hw*.27,snowY+12);
-  ctx.closePath();ctx.fill();
-
-  // ── 3. One decorative cloud left of Fuji ──
-  var cld=W*.026;
-  ctx.fillStyle='#b8cede';
-  ctx.globalAlpha=wt==='storm'?.80:wt==='cloudy'?.65:.48;
-  drawFujiCloud(ctx,fcx-hw*.92,peakY+h*.12,cld);
-
-  // ── 4. Bushes at Fuji base ──
-  var br=W*.024;
-  ctx.globalAlpha=.76;
-  ctx.fillStyle='#3d6e42';drawFujiBush(ctx,fcx-hw*.42,baseY,br);
-  ctx.fillStyle='#4a7a50';drawFujiBush(ctx,fcx-hw*.58,baseY,br*.82);
-  ctx.fillStyle='#4a7a50';drawFujiBush(ctx,fcx+hw*.40,baseY,br*.90);
-  ctx.fillStyle='#3d6e42';drawFujiBush(ctx,fcx+hw*.55,baseY,br*.78);
-
-  // ── 5. Spring blossom dots ──
-  if(fs==='spring'){
-    ctx.globalAlpha=.28;ctx.fillStyle='#ffb0cc';
-    for(var bi=0;bi<18;bi++){
-      var bx=fcx+(Math.sin(bi*2.31)*.48)*hw*1.10;
-      var by=snowY+(baseY-snowY)*(.18+Math.abs(Math.cos(bi*1.87))*.64);
-      ctx.beginPath();ctx.arc(bx,by,2.6,0,Math.PI*2);ctx.fill();
-    }
-  }
-  ctx.restore();
-}
-function drawPetals(ctx,t,H,W){
-  petals.forEach(function(p){
-    ctx.save();
-    ctx.globalAlpha=p.alpha*(.65+.35*Math.sin(t*1.4+p.phase));
-    ctx.translate(p.x,p.y);
-    ctx.rotate(t*.3*p.spin+p.phase);
-    ctx.beginPath();ctx.ellipse(0,0,p.size,p.size*.55,0,0,Math.PI*2);
-    ctx.fillStyle='#ffb0cc';ctx.fill();
-    ctx.restore();
-    p.y+=p.spd;p.x+=Math.sin(t*p.drift+p.phase)*.7;
-    if(p.y>H+10){p.y=-8;p.x=Math.random()*W;}
-  });
-}
 /* ── canvas ── */
 var cvs=$('cvs'), cx=cvs.getContext('2d');
-var blades=[],stars=[],drops=[],petals=[];
+var blades=[],stars=[],drops=[];
 function resize(){cvs.width=window.innerWidth;cvs.height=window.innerHeight;initGeo();}
 window.addEventListener('resize',resize);
 function getSeasonalGrass(){
@@ -589,19 +482,11 @@ function getSeasonalGrass(){
   if(m>=8&&m<=10)return{hue:58,hueR:26,sat:44,satR:16,lit:24,litR:10};  // autumn — golden
   return              {hue:200,hueR:20,sat:18,satR:12,lit:22,litR:8};   // winter — cool blue-grey
 }
-function getFujiSeason(){
-  var m=new Date().getMonth();
-  if(m>=2&&m<=4)return'spring';
-  if(m>=5&&m<=7)return'summer';
-  if(m>=8&&m<=10)return'autumn';
-  return'winter';
-}
 function initGeo(){
   var W=cvs.width,H=cvs.height,n=Math.floor(W*H/600),sg=getSeasonalGrass();
-  blades=Array.from({length:n},function(){return{x:Math.random()*W,y:H-10-Math.random()*170,ht:18+Math.random()*26,wd:2+Math.random()*3,phase:Math.random()*Math.PI*2,freq:.8+Math.random()*.5,amp:.06+Math.random()*.05,hue:sg.hue+Math.random()*sg.hueR,sat:sg.sat+Math.random()*sg.satR,lit:sg.lit+Math.random()*sg.litR};});
+  blades=Array.from({length:n},function(){return{x:Math.random()*W,y:H-10-Math.random()*170,ht:32+Math.random()*52,wd:2+Math.random()*3,phase:Math.random()*Math.PI*2,freq:.8+Math.random()*.5,amp:.06+Math.random()*.05,hue:sg.hue+Math.random()*sg.hueR,sat:sg.sat+Math.random()*sg.satR,lit:sg.lit+Math.random()*sg.litR};});
   stars=Array.from({length:90},function(){return{x:Math.random()*W,y:Math.random()*H*.7,r:.5+Math.random()*1.1,base:.4+Math.random()*.5,phase:Math.random()*Math.PI*2};});
   drops=Array.from({length:70},function(){return{x:Math.random()*W,y:Math.random()*H,spd:2+Math.random()*3,len:6+Math.random()*10,drift:.4+Math.random()*.6};});
-  petals=getFujiSeason()==='spring'?Array.from({length:22},function(){return{x:Math.random()*W,y:Math.random()*H*.75,spd:.22+Math.random()*.38,drift:.4+Math.random()*.8,phase:Math.random()*Math.PI*2,spin:(Math.random()-.5)*2,alpha:.32+Math.random()*.45,size:2.4+Math.random()*2};})  :[];
 }
 function drawFrame(ts){
   var t=ts*.001,W=cvs.width,H=cvs.height,stops=SKY[tod]||SKY.day,wt=weather?weather.type:null,storm=wt==='storm';
@@ -609,8 +494,6 @@ function drawFrame(ts){
   var g=cx.createLinearGradient(0,0,0,H);stops.forEach(function(s){g.addColorStop(s[0],s[1]);});cx.fillStyle=g;cx.fillRect(0,0,W,H);
   if(wt==='fog'){cx.fillStyle='rgba(220,220,215,.28)';cx.fillRect(0,0,W,H);}
   drawCelestial(cx,W,H,tod,wt);
-  drawFuji(cx,W,H,wt);
-  if(petals.length)drawPetals(cx,t,H,W);
   if(['night','evening'].includes(tod)&&wt!=='fog'){
     stars.forEach(function(s){var a=s.base*(Math.sin(t*1.3+s.phase)*.2+.8)*(tod==='night'?.85:.4);cx.fillStyle='rgba(255,255,255,'+a+')';cx.beginPath();cx.arc(s.x,s.y,s.r,0,Math.PI*2);cx.fill();});
   }
