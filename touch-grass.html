@@ -252,12 +252,6 @@ input:focus { border-color:rgba(120,100,80,0.4); }
 'use strict';
 
 /* ── constants ── */
-const PLACES = [
-  'backyard','soccer field','golf course','school playground','city park',
-  'meadow','rooftop garden','botanical garden','dog park','riverside path',
-  'forest trail','neighborhood block','market square',
-  'Cișmigiu Garden','Herăstrău Park','IOR Park',
-];
 const DEF_LAT = 44.4268, DEF_LON = 26.1025;
 const MODEL   = 'claude-sonnet-4-6';
 const TIERS   = ['legendary','rare','uncommon','common'];
@@ -440,7 +434,80 @@ function buildAmbient(actx) {
 function ensureAudio(){ if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)();ambient=buildAmbient(audioCtx);} if(audioCtx.state==='suspended')audioCtx.resume(); }
 function syncAmbient(){ if(ambient)ambient.setProfile({tod:tod,weather:weather?weather.type:'clear',location:loc}); }
 
-/* ── weather ── */
+/* ── nearby places (OpenStreetMap Overpass) ── */
+var nearbyPlaces = [];
+
+function fetchNearbyPlaces(lat, lon, callback) {
+  var r = 2000; // 2km radius
+  var query = '[out:json][timeout:10];('
+    + 'node["leisure"="park"](around:'+r+','+lat+','+lon+');'
+    + 'node["leisure"="garden"](around:'+r+','+lat+','+lon+');'
+    + 'node["leisure"="nature_reserve"](around:'+r+','+lat+','+lon+');'
+    + 'node["leisure"="recreation_ground"](around:'+r+','+lat+','+lon+');'
+    + 'node["landuse"="forest"](around:'+r+','+lat+','+lon+');'
+    + 'way["leisure"="park"](around:'+r+','+lat+','+lon+');'
+    + 'way["leisure"="garden"](around:'+r+','+lat+','+lon+');'
+    + 'way["leisure"="nature_reserve"](around:'+r+','+lat+','+lon+');'
+    + 'way["landuse"="forest"](around:'+r+','+lat+','+lon+');'
+    + 'way["natural"="wood"](around:'+r+','+lat+','+lon+');'
+    + ');out tags;';
+  fetch('https://overpass-api.de/api/interpreter', {
+    method: 'POST',
+    body: query,
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    var names = [];
+    (data.elements || []).forEach(function(el) {
+      var name = (el.tags && (el.tags.name || el.tags['name:en']));
+      if (name && !names.includes(name)) names.push(name);
+    });
+    nearbyPlaces = names.length ? names : [];
+    if (callback) callback(nearbyPlaces);
+  })
+  .catch(function() { nearbyPlaces = []; if (callback) callback([]); });
+}
+
+function shuffleNearbyPlace() {
+  var doShuffle = function(places) {
+    if (!places.length) {
+      $('loc-input').placeholder = 'no places found nearby';
+      return;
+    }
+    var pick = places[Math.floor(Math.random() * places.length)];
+    loc = pick;
+    $('loc-input').value = pick;
+  };
+
+  if (nearbyPlaces.length) {
+    doShuffle(nearbyPlaces);
+    return;
+  }
+  // fetch fresh
+  $('shuffle-btn').textContent = '…';
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function(p) {
+        fetchNearbyPlaces(p.coords.latitude, p.coords.longitude, function(places) {
+          $('shuffle-btn').textContent = '↺';
+          doShuffle(places);
+        });
+      },
+      function() {
+        fetchNearbyPlaces(DEF_LAT, DEF_LON, function(places) {
+          $('shuffle-btn').textContent = '↺';
+          doShuffle(places);
+        });
+      },
+      { timeout: 5000 }
+    );
+  } else {
+    fetchNearbyPlaces(DEF_LAT, DEF_LON, function(places) {
+      $('shuffle-btn').textContent = '↺';
+      doShuffle(places);
+    });
+  }
+}
 function fetchWeather(lat,lon){
   fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&current=temperature_2m,weather_code')
     .then(function(r){return r.json();})
@@ -596,7 +663,7 @@ function showKeyModal(then){
 }
 
 /* ── events ── */
-$('shuffle-btn').addEventListener('click',function(){loc=PLACES[Math.floor(Math.random()*PLACES.length)];$('loc-input').value=loc;});
+$('shuffle-btn').addEventListener('click', shuffleNearbyPlace);
 $('loc-input').addEventListener('input',function(e){loc=e.target.value;});
 $('leave-btn').addEventListener('click',function(){loc=$('loc-input').value.trim();if(!getKey()){showKeyModal(doLeave);return;}doLeave();});
 $('return-btn').addEventListener('click',doReturn);
