@@ -514,34 +514,29 @@ function syncAmbient(){ if(ambient)ambient.setProfile({tod:tod,weather:weather?w
 var nearbyPlaces = [];
 
 function fetchNearbyPlaces(lat, lon, callback) {
-  var r = 2000; // 2km radius
-  var query = '[out:json][timeout:10];('
-    + 'node["leisure"="park"](around:'+r+','+lat+','+lon+');'
-    + 'node["leisure"="garden"](around:'+r+','+lat+','+lon+');'
-    + 'node["leisure"="nature_reserve"](around:'+r+','+lat+','+lon+');'
-    + 'node["leisure"="recreation_ground"](around:'+r+','+lat+','+lon+');'
-    + 'node["landuse"="forest"](around:'+r+','+lat+','+lon+');'
-    + 'way["leisure"="park"](around:'+r+','+lat+','+lon+');'
-    + 'way["leisure"="garden"](around:'+r+','+lat+','+lon+');'
-    + 'way["leisure"="nature_reserve"](around:'+r+','+lat+','+lon+');'
-    + 'way["landuse"="forest"](around:'+r+','+lat+','+lon+');'
-    + 'way["natural"="wood"](around:'+r+','+lat+','+lon+');'
+  var rad = 6000; // 6km radius
+  var q = '[out:json][timeout:25];('
+    + 'node["name"]["leisure"~"park|garden|nature_reserve|recreation_ground|common|forest"](around:'+rad+','+lat+','+lon+');'
+    + 'way["name"]["leisure"~"park|garden|nature_reserve|recreation_ground|common|forest"](around:'+rad+','+lat+','+lon+');'
+    + 'way["name"]["landuse"~"forest|grass|recreation_ground|village_green"](around:'+rad+','+lat+','+lon+');'
+    + 'way["name"]["natural"~"wood|grassland|heath|scrub"](around:'+rad+','+lat+','+lon+');'
+    + 'relation["name"]["leisure"~"park|garden|nature_reserve|recreation_ground"](around:'+rad+','+lat+','+lon+');'
+    + 'relation["name"]["landuse"~"forest"](around:'+rad+','+lat+','+lon+');'
+    + 'relation["name"]["natural"~"wood|grassland"](around:'+rad+','+lat+','+lon+');'
+    + 'relation["name"]["boundary"~"protected_area|national_park|forest"](around:'+rad+','+lat+','+lon+');'
     + ');out tags;';
-  fetch('https://overpass-api.de/api/interpreter', {
-    method: 'POST',
-    body: query,
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    var names = [];
-    (data.elements || []).forEach(function(el) {
-      var name = (el.tags && (el.tags.name || el.tags['name:en']));
-      if (name && !names.includes(name)) names.push(name);
-    });
-    nearbyPlaces = names.length ? names : [];
-    if (callback) callback(nearbyPlaces);
-  })
-  .catch(function() { nearbyPlaces = []; if (callback) callback([]); });
+  fetch('https://overpass-api.de/api/interpreter', { method:'POST', body:q })
+    .then(function(resp) { return resp.json(); })
+    .then(function(data) {
+      var seen = {}, names = [];
+      (data.elements || []).forEach(function(el) {
+        var name = el.tags && el.tags.name;
+        if (name && !seen[name]) { seen[name]=1; names.push(name); }
+      });
+      nearbyPlaces = names;
+      if (callback) callback(names);
+    })
+    .catch(function() { nearbyPlaces = []; if (callback) callback([]); });
 }
 
 function shuffleNearbyPlace() {
