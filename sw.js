@@ -1,4 +1,4 @@
-const CACHE = 'touch-grass-v1';
+const CACHE = 'touch-grass-v2';
 const SHELL = ['/touch-grass.html', '/manifest.json'];
 
 self.addEventListener('install', function(e) {
