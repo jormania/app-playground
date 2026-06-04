@@ -550,7 +550,7 @@ function doLeave(){
 }
 
 async function doReturn(){
-  ambient.fadeOut();
+  if(ambient) ambient.fadeOut();
   var now=Date.now(); elapsedSec=Math.floor((now-depTime)/1000);
   show('s-gen');
   var msgs=['Retracing your steps…','Cataloguing the impossible…','Checking your pockets…','Writing it all down…'];
