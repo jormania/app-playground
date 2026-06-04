@@ -356,7 +356,7 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; }
 // APP DATA — add new apps here
 // Category tags (get teal highlight): gaming, fitness, outdoor
 // ─────────────────────────────────────────────────────
-const CAT_TAGS = new Set(["gaming", "fitness", "outdoor"]);
+const CAT_TAGS = new Set(["gaming", "fitness", "outdoor", "mindfulness"]);
 
 const APPS = [
   {
@@ -379,6 +379,27 @@ const APPS = [
     ],
     guide: "touch-grass-features.html",
     file: "touch-grass.html",
+  },
+  {
+    emoji: "🌸",
+    iconBg: "rgba(196,144,128,0.18)",
+    title: "Touch Grass · Thrive",
+    subtitle: "mindful finds · warm palette · presence practice",
+    version: "v1",
+    deployed: "Jun 2026",
+    size: "~35 KB",
+    tech: "Vanilla HTML",
+    tags: ["outdoor", "mindfulness"],
+    description: "A warm, personal version of Touch Grass built around self-care and mindful presence. Step outside without a goal, walk for however long you need, and come back to see what the walk quietly left behind — small moments of noticing, not surreal objects.",
+    features: [
+      "Finds are moments of presence — sensory, reflective, gently poetic, never heavy",
+      "Warm peach and rose palette: sky, panel, and grass all run softer and warmer",
+      "Same ambient soundscape, live weather, and seasonal canvas as the original",
+      "Separate collection and walk history — data stays distinct from the original app",
+      "Streak screen, walk stats, and collection — all local, all private",
+    ],
+    guide: "touch-grass-features-vio.html",
+    file: "touch-grass-vio.html",
   },
   {
     emoji: "⚗️",

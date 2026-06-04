@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Touch Grass · Thrive — a mindful walking companion. Full feature guide.">
+<title>Touch Grass · Thrive — Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #100e0c;
+  --surface: #1a1512;
+  --border: #2e2420;
+  --border2: #3d3028;
+  --accent: #c49080;
+  --accent2: #a87860;
+  --text: #f0e8e0;
+  --muted: #9a8070;
+  --faint: #5a4840;
+  --mono: 'JetBrains Mono', monospace;
+}
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.container { max-width: 680px; margin: 0 auto; padding: 0 24px; }
+
+nav {
+  position: sticky; top: 0; z-index: 10;
+  background: rgba(16,14,12,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-inner {
+  max-width: 680px; margin: 0 auto; padding: 0 24px;
+  height: 52px; display: flex; align-items: center; justify-content: space-between;
+}
+.nav-back { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; transition: color 0.15s; }
+.nav-back:hover { color: var(--text); text-decoration: none; }
+.nav-brand { font-size: 13px; font-weight: 500; color: var(--text); }
+.nav-version {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  padding: 2px 7px; border-radius: 5px;
+  background: rgba(196,144,128,0.14); color: var(--accent);
+  border: 1px solid rgba(196,144,128,0.25);
+}
+
+.hero { padding: 52px 0 40px; border-bottom: 1px solid var(--border); margin-bottom: 48px; }
+.hero-eyebrow {
+  font-size: 11px; font-weight: 600; color: var(--accent2);
+  letter-spacing: 0.12em; text-transform: uppercase;
+  font-family: var(--mono); margin-bottom: 14px;
+}
+.hero h1 {
+  font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 700;
+  letter-spacing: -0.03em; margin-bottom: 14px; color: var(--text);
+}
+.hero p { color: var(--muted); font-size: 15px; max-width: 520px; line-height: 1.65; }
+
+.how-to { margin-bottom: 52px; }
+.how-to h2 { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: var(--faint); text-transform: uppercase; margin-bottom: 16px; }
+.steps { counter-reset: step; list-style: none; }
+.steps li {
+  counter-increment: step;
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+  font-size: 14px; color: var(--muted);
+}
+.steps li:last-child { border-bottom: none; }
+.steps li::before {
+  content: counter(step);
+  font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--accent);
+  background: rgba(196,144,128,0.1); border: 1px solid rgba(196,144,128,0.22);
+  width: 22px; height: 22px; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  margin-top: 2px;
+}
+.steps li strong { color: var(--text); font-weight: 500; }
+
+.features { display: flex; flex-direction: column; gap: 0; }
+.feature { padding: 28px 0; border-bottom: 1px solid var(--border); }
+.feature:last-child { border-bottom: none; }
+.feature-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.feature-tag {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  color: var(--faint); text-transform: uppercase; letter-spacing: 0.1em; white-space: nowrap;
+}
+.feature h3 { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+.feature p { font-size: 13.5px; color: var(--muted); line-height: 1.7; margin-bottom: 10px; }
+.feature p:last-child { margin-bottom: 0; }
+.feature ul { list-style: none; margin-top: 10px; }
+.feature ul li {
+  font-size: 13px; color: var(--muted);
+  padding: 7px 0; border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.feature ul li:last-child { border-bottom: none; }
+.feature ul li::before { content: '›'; color: var(--accent2); flex-shrink: 0; }
+.pill {
+  display: inline-block; font-family: var(--mono); font-size: 10px;
+  padding: 1px 6px; border-radius: 4px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--muted); vertical-align: middle; margin: 0 2px;
+}
+.pill.rare     { background: rgba(180,120,20,.1);  border-color: rgba(180,120,20,.25); color: #c49830; }
+.pill.uncommon { background: rgba(20,120,140,.1);  border-color: rgba(20,120,140,.25); color: #3ab0c0; }
+.pill.common   { background: rgba(16,120,60,.1);   border-color: rgba(16,120,60,.25);  color: #3aaa60; }
+.pill.leg      { background: rgba(180,40,220,.1);  border-color: rgba(200,100,240,.4); color: #c060e0; }
+
+footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px; }
+.footer-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.footer-left  { font-size: 12px; color: var(--faint); }
+.footer-right { font-size: 12px; color: var(--faint); }
+
+@media (max-width: 600px) {
+  .hero { padding: 36px 0 28px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-back">← Cone of Cold</a>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="nav-brand">Touch Grass · Thrive</span>
+      <span class="nav-version">v1</span>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+
+  <section class="hero">
+    <div class="hero-eyebrow">// guide</div>
+    <h1>A mindful walking companion.</h1>
+    <p>Touch Grass · Thrive is a warm, personal version of the original — built around presence, self-care, and gentle noticing. Step outside without a goal, walk for however long you need, and come back to see what the walk quietly left behind.</p>
+  </section>
+
+  <section class="how-to">
+    <h2>// how to use</h2>
+    <ol class="steps">
+      <li><div>Tap <strong>↺</strong> to find a green space nearby, or type where you're going.</div></li>
+      <li><div>Tap <strong>Step outside</strong> — your departure saves immediately. Close the app, lock your screen, just walk.</div></li>
+      <li><div>Come back when you're ready. There's no minimum or maximum time.</div></li>
+      <li><div>Tap <strong>I'm back</strong> and see what the walk left behind.</div></li>
+    </ol>
+  </section>
+
+  <section class="features">
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">finds</span>
+        <h3>Mindful discoveries</h3>
+      </div>
+      <p>Every walk returns a small set of quiet gifts — sensory moments, fleeting insights, and gentle noticing. Never advice, never heavy. Finds are intentionally few: a short walk brings one, an hour brings two or three. Each is generated to be genuinely distinct in kind and register.</p>
+      <p>Four depths of presence:</p>
+      <ul>
+        <li><span class="pill common">common</span> A simple sensory noticing. Something already there that needed seeing.</li>
+        <li><span class="pill uncommon">uncommon</span> A small shift. A thought that arrives gently and doesn't insist.</li>
+        <li><span class="pill rare">rare</span> A moment of genuine release or unexpected clarity.</li>
+        <li><span class="pill leg">legendary</span> A profound sense of arriving, belonging, or being completely present.</li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">location</span>
+        <h3>Nearby places</h3>
+      </div>
+      <p>Tap ↺ and the app suggests a real green space near you — parks, forests, gardens, nature reserves. The list is pulled from your GPS each session. You can also type any location, or leave it blank and just walk.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">audio</span>
+        <h3>Ambient soundscape</h3>
+      </div>
+      <p>While you're outside, the app plays a soft generative ambient mix — wind, birdsong, rain, or crickets, depending on where you said you're going, the time of day, and the live weather. Toggle with the speaker icon on either the welcome or away screen.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">weather</span>
+        <h3>Live weather</h3>
+      </div>
+      <p>Current conditions are fetched automatically from your location. Rain adds streaks across the sky. Storm deepens the wind. The ambient sound follows. No API key needed for this.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">away</span>
+        <h3>Away screen</h3>
+      </div>
+      <p>Once you step outside, the app shows a minimal screen that gently sways — like a sign left on a door. Your location and departure time are visible. Feel free to close the tab or lock your screen; the timer persists until you return.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">sky</span>
+        <h3>Seasonal canvas</h3>
+      </div>
+      <p>The sky shows a sun or moon based on the time, drawn with the actual current lunar phase. The grass shifts warmer through the seasons — meadow-green in spring and summer, golden in autumn, pale in winter. Weather adds rain streaks, snow, or fog.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">stats</span>
+        <h3>Streak, walks &amp; collection</h3>
+      </div>
+      <p>Three boxes track your practice at a glance. All three dim when empty and brighten as you go.</p>
+      <ul>
+        <li><strong>🔥 Streak</strong> — tap to see your current streak, personal best, and total days walked.</li>
+        <li><strong>👣 Walks</strong> — tap to see time outside by week, month, year, and all time. Includes your longest walk.</li>
+        <li><strong>🎁 Found</strong> — tap to browse everything collected from your walks, sorted by depth of presence.</li>
+      </ul>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">setup</span>
+        <h3>API key</h3>
+      </div>
+      <p>Tap ⚙ to add your Anthropic API key. It stays in your browser and is never shared. A small credit goes a long way — a few dollars covers hundreds of walks. The app uses Claude to generate your finds.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">install</span>
+        <h3>Install on Android</h3>
+      </div>
+      <p>Open in Chrome, tap the three-dot menu, choose <strong>Add to Home Screen</strong>, then <strong>Install app</strong>. It launches full-screen with no browser bar, like a native app. Works with Minimalist Phone and similar launchers.</p>
+    </div>
+
+  </section>
+</div>
+
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <span class="footer-left"><a href="/">Cone of Cold</a> · built with Claude</span>
+      <span class="footer-right"><a href="touch-grass-vio.html" target="_blank">Launch app ↗</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
