@@ -9,7 +9,8 @@ A personal collection of standalone web apps built with Claude. No frameworks, n
 ## Apps
 
 | App | Tags | File |
-|-----|------|------|
+| --- | --- | --- |
+| [Touch Grass](https://coneofcold.vercel.app/touch-grass.html) | outdoor · ambient | `touch-grass.html` |
 | [Codex Alchymicus — KCD2](https://coneofcold.vercel.app/kcd2-codex-v3.html) | gaming | `kcd2-codex-v3.html` |
 | [Kettlebell Training](https://coneofcold.vercel.app/kettlebell-claude.html) — Claude Sonnet | fitness · svg | `kettlebell-claude.html` |
 | [Kettlebell Training](https://coneofcold.vercel.app/kettlebell-gemini.html) — Gemini Pro | fitness · svg | `kettlebell-gemini.html` |
@@ -20,10 +21,15 @@ A personal collection of standalone web apps built with Claude. No frameworks, n
 
 ```
 /
-├── index.html          ← landing page with search + tag filter
+├── index.html              ← landing page with search + tag filter
+├── touch-grass.html        ← go outside, come back, see what you found
 ├── kcd2-codex-v3.html
 ├── kettlebell-claude.html
 ├── kettlebell-gemini.html
+├── manifest.json           ← PWA manifest (Touch Grass)
+├── sw.js                   ← service worker (Touch Grass)
+├── icon-192.png            ← PWA icon
+├── icon-512.png            ← PWA icon
 └── README.md
 ```
 
@@ -44,7 +50,7 @@ A personal collection of standalone web apps built with Claude. No frameworks, n
   deployed: "Jun 2026",
   size: "34 KB",
   tech: "Vanilla JS",
-  tags: ["gaming"],                    // keep sparse: gaming · fitness · svg
+  tags: ["gaming"],                    // keep sparse: gaming · fitness · outdoor · svg
   description: "One paragraph.",
   features: [                          // optional bullet list
     "Feature one",
