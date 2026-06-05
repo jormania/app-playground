@@ -4,8 +4,9 @@
   "description": "Personal playground for standalone web apps built with Claude",
   "type": "module",
   "scripts": {
-    "dev": "python3 -m http.server 8000",
-    "preview": "python3 -m http.server 8000"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "repository": {
     "type": "git",
@@ -23,6 +24,13 @@
   },
   "homepage": "https://github.com/jormania/app-playground#readme",
   "dependencies": {
-    "@vercel/speed-insights": "^2.0.0"
+    "@vercel/speed-insights": "^2.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.0"
   }
 }
