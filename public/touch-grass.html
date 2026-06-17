@@ -427,7 +427,7 @@ function drawMoonDisc(ctx,x,y,r,phase) {
   if(p<0.5){
     ctx.save(); ctx.beginPath(); ctx.rect(x,y-r-1,r+2,r*2+2); ctx.clip();
     ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.restore();
-    if(ex>1){ctx.fillStyle='rgba(15,22,40,0.92)';ctx.beginPath();ctx.ellipse(x,y,ex,-r,0,0,Math.PI*2);ctx.fill();}
+    if(ex>1){ctx.fillStyle='rgba(15,22,40,0.92)';ctx.beginPath();ctx.ellipse(x,y,ex,r,0,0,Math.PI*2);ctx.fill();}
     else if(ex<-1){ctx.fillStyle='#dcd4b4';ctx.beginPath();ctx.ellipse(x,y,-ex,r,0,0,Math.PI*2);ctx.fill();}
   } else {
     ctx.save(); ctx.beginPath(); ctx.rect(x-r-2,y-r-1,r+2,r*2+2); ctx.clip();
@@ -472,14 +472,19 @@ function drawCelestial(ctx,W,H,tod,wType) {
 /* ── canvas ── */
 var cvs=$('cvs'), cx=cvs.getContext('2d');
 var blades=[],stars=[],drops=[];
-function resize(){cvs.width=window.innerWidth;cvs.height=window.innerHeight;initGeo();}
+function resize(){
+  var w=window.innerWidth||screen.width, h=window.innerHeight||screen.height;
+  if(!w||!h){setTimeout(resize,80);return;}
+  cvs.width=w; cvs.height=h; initGeo();
+}
+document.addEventListener('visibilitychange',function(){if(!document.hidden)resize();});
 window.addEventListener('resize',resize);
 function getSeasonalGrass(){
   var m=new Date().getMonth(); // 0=Jan
   if(m>=2&&m<=4) return{hue:95,hueR:22,sat:52,satR:20,lit:22,litR:12}; // spring — vivid, bright
-  if(m>=5&&m<=7) return{hue:92,hueR:28,sat:40,satR:18,lit:20,litR:10}; // summer — full, lush
+  if(m>=5&&m<=7) return{hue:92,hueR:28,sat:40,satR:18,lit:28,litR:12}; // summer — full, lush
   if(m>=8&&m<=10)return{hue:52,hueR:30,sat:34,satR:16,lit:22,litR:12}; // autumn — yellowed, warm
-  return              {hue:84,hueR:20,sat:16,satR:12,lit:18,litR: 8};  // winter — pale, sparse
+  return              {hue:84,hueR:20,sat:16,satR:12,lit:26,litR:10};  // winter — pale, sparse
 }
 function initGeo(){
   var W=cvs.width,H=cvs.height,n=Math.floor(W*H/600),sg=getSeasonalGrass();

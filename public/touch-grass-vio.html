@@ -427,7 +427,7 @@ function drawMoonDisc(ctx,x,y,r,phase) {
   if(p<0.5){
     ctx.save(); ctx.beginPath(); ctx.rect(x,y-r-1,r+2,r*2+2); ctx.clip();
     ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.restore();
-    if(ex>1){ctx.fillStyle='rgba(15,22,40,0.92)';ctx.beginPath();ctx.ellipse(x,y,ex,-r,0,0,Math.PI*2);ctx.fill();}
+    if(ex>1){ctx.fillStyle='rgba(15,22,40,0.92)';ctx.beginPath();ctx.ellipse(x,y,ex,r,0,0,Math.PI*2);ctx.fill();}
     else if(ex<-1){ctx.fillStyle='#dcd4b4';ctx.beginPath();ctx.ellipse(x,y,-ex,r,0,0,Math.PI*2);ctx.fill();}
   } else {
     ctx.save(); ctx.beginPath(); ctx.rect(x-r-2,y-r-1,r+2,r*2+2); ctx.clip();
