@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function SettingsPanel({ currentKey, onSave, onClose }) {
+export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSound, onClose }) {
   const [draft, setDraft] = useState(currentKey)
   const hasKey = !!currentKey
 
@@ -13,6 +13,13 @@ export default function SettingsPanel({ currentKey, onSave, onClose }) {
     <div>
       <h1>Settings</h1>
       <p>{hasKey ? '● Key saved — AI finds on.' : '○ No key yet — finds come from a built-in list.'}</p>
+
+      <label>Sound</label>
+      <button type="button" onClick={onToggleSound}>{soundOn ? '♪ On' : '♪ Off'}</button>
+      <p>{soundOn
+        ? 'Wind, water, the season\'s voices, and soft taps as you move through the app.'
+        : 'The world is quiet for now.'}</p>
+
       <form onSubmit={handleSubmit}>
         <label htmlFor="apikey">Anthropic API key</label>
         <input
@@ -24,7 +31,7 @@ export default function SettingsPanel({ currentKey, onSave, onClose }) {
           autoComplete="off"
           spellCheck="false"
         />
-        <p>Stays in your browser only. Sent directly to Anthropic each time you return from a walk. Leave it empty and finds come from a built-in list instead.</p>
+        <p>Leave it empty and finds come from a built-in list instead.</p>
         <button type="submit">Save</button>
         {hasKey && <button type="button" onClick={() => onSave('')}>Clear key</button>}
         <button type="button" onClick={onClose}>Cancel</button>

@@ -5,10 +5,12 @@ import ResultPanel from './ResultPanel.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
 import GeneratingPanel from './GeneratingPanel.jsx'
 import TarotCard from './TarotCard.jsx'
+import { useAmbientSound } from './useAmbientSound.js'
 import { rollTier, generateDiscovery } from './engine.js'
 
 const STORAGE_KEY = 'tg-react-state'
 const API_KEY_STORAGE = 'tg-react-apikey'
+const SOUND_STORAGE = 'tg-react-sound'
 
 function loadState() {
   try {
@@ -20,6 +22,10 @@ function loadState() {
 
 function loadApiKey() {
   return localStorage.getItem(API_KEY_STORAGE) || ''
+}
+
+function loadSound() {
+  return localStorage.getItem(SOUND_STORAGE) !== '0' // default on
 }
 
 function KeyIcon() {
@@ -38,9 +44,12 @@ function KeyIcon() {
 export default function App() {
   const [state, setState] = useState(loadState)
   const [apiKey, setApiKey] = useState(loadApiKey)
+  const [soundOn, setSoundOn] = useState(loadSound)
   const [showSettings, setShowSettings] = useState(false)
   const [showDeparture, setShowDeparture] = useState(false)
   const [departureKey, setDepartureKey] = useState(0)
+
+  const { reveal: playReveal, depart: playDepart } = useAmbientSound(soundOn)
 
   useEffect(() => {
     try {
@@ -51,6 +60,7 @@ export default function App() {
   function startWalk() {
     setShowDeparture(false)
     setState(prev => ({ ...prev, status: 'out', departedAt: Date.now(), pendingTier: null }))
+    playDepart()
   }
 
   async function returnFromWalk() {
@@ -59,6 +69,7 @@ export default function App() {
     setState(prev => ({ ...prev, status: 'generating', pendingTier: tier }))
     const { discovery, isStatic, apiAttempted } = await generateDiscovery(tier, durationMinutes, apiKey)
     setState(prev => ({ ...prev, status: 'idle', departedAt: null, pendingTier: null, lastWalk: { durationMinutes, tier, discovery, isStatic, apiAttempted } }))
+    playReveal()
   }
 
   function saveApiKey(key) {
@@ -68,12 +79,20 @@ export default function App() {
     setShowSettings(false)
   }
 
+  function toggleSound() {
+    setSoundOn(prev => {
+      const next = !prev
+      localStorage.setItem(SOUND_STORAGE, next ? '1' : '0')
+      return next
+    })
+  }
+
   const { status, departedAt, lastWalk } = state
 
   let panel, title
   if (showSettings) {
     title = 'The Keeper'
-    panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
+    panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} soundOn={soundOn} onToggleSound={toggleSound} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
   } else if (status === 'generating') {
     title = 'The Omen'
     panel = <GeneratingPanel tier={state.pendingTier} />

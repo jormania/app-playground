@@ -179,7 +179,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
     <div style="display:flex;align-items:center;gap:8px;">
       <span class="nav-brand">Touch Grass · React</span>
       <span class="nav-version">React</span>
-      <span class="nav-phase">Phase 4</span>
+      <span class="nav-phase">Phase 5</span>
     </div>
   </div>
 </nav>
@@ -190,7 +190,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
     <div class="hero-eyebrow">// feature guide</div>
     <h1>Everything the React rewrite does.</h1>
     <p>This is the living guide for the React version of Touch Grass — updated as each phase is completed. The app is intentionally minimal at each stage; this page is where the details live.</p>
-    <p>Current build: <strong style="color:var(--text)">Phase 4</strong> — AI-generated discoveries, a live tagline on the home screen, color-coded rarity, and a settings panel for your API key. The loop is complete. Visuals and audio come next.</p>
+    <p>Current build: <strong style="color:var(--text)">Phase 5</strong> — the whole app now lives inside an illustrated tarot card, with a sky that tracks the time of day and season, your zodiac constellation overhead, seasonal grass and small life, and a live, generative soundscape. The visuals and sound are here.</p>
   </section>
 
   <!-- How to use -->
@@ -315,10 +315,66 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
 
     <div class="feature">
       <div class="feature-header">
-        <span class="feature-tag">setup</span>
-        <h3>API key</h3>
+        <span class="feature-tag">scene</span>
+        <h3>A living tarot card</h3>
       </div>
-      <p>Tap <strong>settings</strong> in the bottom-right corner. Enter your Anthropic API key — it stays in your browser and is never sent anywhere except directly to Anthropic when generating a find or tagline. The panel shows whether a key is currently saved and lets you clear it at any time. Without a key, everything still works — finds and taglines come from built-in lists instead.</p>
+      <p>The whole app lives inside an illustrated tarot card — a parchment frame with gold corner flourishes, a full-bleed scene behind the words, and a title beneath each panel: <em>The Threshold</em>, <em>The Wandering</em>, <em>The Omen</em>, <em>The Discovery</em>, <em>The Keeper</em>. The art runs edge to edge; the text floats over a soft gradient scrim so it always stays readable.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">sky</span>
+        <h3>Sky, sun &amp; moon</h3>
+      </div>
+      <p>The sky is painted from the device clock and calendar — four moods (<em>dawn</em>, <em>day</em>, <em>dusk</em>, <em>night</em>) whose thresholds shift with the season, so a midsummer evening stays bright hours longer than a winter one. A faced sun presides over the day, a faced moon over the night — each with a calm expression, teal eyes, and rosy cheeks. The horizon never goes fully black: a warm glow and scattered city lights linger along it after dark.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">stars</span>
+        <h3>Your constellation overhead</h3>
+      </div>
+      <p>After dusk, the constellation of the current zodiac sign rises in the corner — connect-the-dot stars in their real, recognizable shapes. Around it a faint field of background stars drifts and twinkles, reseeded every calendar day, so the night sky is never quite the same twice.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">grass</span>
+        <h3>Grass, flowers &amp; small life</h3>
+      </div>
+      <p>A band of grass and wildflowers grows along the bottom, recolored each season — fresh greens in spring, gold in summer, russet in autumn, muted in winter. By day a few butterflies wander across; after dark, fireflies drift and pulse over the grass. In winter the insects give way to slowly falling snow.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">sound</span>
+        <h3>A living soundscape</h3>
+      </div>
+      <p>An ambient bed plays across every screen, synthesized live rather than looped from a clip. Wind and water drift up and down on their own slow, weather-like rhythms — never a repeating pattern. The mix follows the time of day: birdsong by day, with the occasional far-off cat, dog, or distant airplane; crickets by night; and in winter a colder wind with a lonely chime. Everything overlaps gently, tuned to stay serene.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">feedback</span>
+        <h3>Taps &amp; the reveal</h3>
+      </div>
+      <p>Buttons answer with a soft tap. Stepping outside plays a gentle descending breath; returning to a discovery is met with a warm ascending shimmer — a small <em>aha</em>, distinct from every other sound. On phones, each is paired with a light haptic tick. The first tap on the page is what wakes the audio (a browser requirement).</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">motion</span>
+        <h3>Respects reduced motion</h3>
+      </div>
+      <p>If your device is set to reduce motion, the drifting stars, fireflies, butterflies, and falling snow all freeze in place — the scene stays, the movement stops.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">setup</span>
+        <h3>The Keeper</h3>
+      </div>
+      <p>Tap the gold key in the bottom-right corner to open <em>The Keeper</em>. Enter your Anthropic API key — it stays in your browser and is only ever sent directly to Anthropic, when generating a find or tagline. Here you can also toggle <strong>Sound</strong> on or off. Without a key, everything still works — finds and taglines come from built-in lists instead.</p>
     </div>
 
     <div class="feature">
@@ -333,13 +389,13 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
 
   <!-- Coming in later phases -->
   <section class="coming">
-    <h2>// coming in phase 5</h2>
+    <h2>// coming in phase 6</h2>
     <ul>
-      <li>Visual canvas — seasonal sky, grass, and sun or moon shifting with time of day and calendar</li>
-      <li>Ambient soundscape — generative audio adapting to time of day and season, with a mute toggle</li>
+      <li>Location &amp; precise daylight — real sunrise and sunset from your coordinates, instead of seasonal estimates</li>
+      <li>Live weather — rain and snow that fall when it's actually raining or snowing, not just by season</li>
+      <li>True moon phase — the moon waxing and waning with the real lunar cycle</li>
       <li>Walk history and collection — browse everything you've found, sorted by rarity</li>
-      <li>Streak tracking — consecutive days walked, personal best, total days</li>
-      <li>Nearby places — GPS-suggested green spaces to walk to</li>
+      <li>A volume slider, and seasonal accents like drifting leaves</li>
     </ul>
   </section>
 

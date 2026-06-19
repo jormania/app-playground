@@ -1,0 +1,19 @@
+{
+  "name": "Touch Grass",
+  "short_name": "Touch Grass",
+  "description": "Step outside, come back, and find what the walk left behind.",
+  "start_url": "/touch-grass-react.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#161109",
+  "theme_color": "#161109",
+  "icons": [
+    {
+      "src": "/touch-grass-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

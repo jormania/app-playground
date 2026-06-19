@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1a2e"/>
+      <stop offset="0.6" stop-color="#1c3f5c"/>
+      <stop offset="1" stop-color="#2f5d7c"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#sky)"/>
+
+  <!-- scattered stars -->
+  <g fill="#f3ead4" opacity="0.9">
+    <path d="M104 120 Q107 134 120 138 Q107 142 104 156 Q101 142 88 138 Q101 134 104 120 Z"/>
+    <path d="M420 96 Q422 106 432 109 Q422 112 420 122 Q418 112 408 109 Q418 106 420 96 Z"/>
+    <path d="M398 210 Q400 218 408 220 Q400 222 398 230 Q396 222 388 220 Q396 218 398 210 Z"/>
+  </g>
+
+  <!-- moon -->
+  <g>
+    <circle cx="256" cy="236" r="150" fill="#f3ead4"/>
+    <!-- cheeks -->
+    <circle cx="188" cy="300" r="20" fill="#ecc24f" opacity="0.6"/>
+    <circle cx="324" cy="300" r="20" fill="#ecc24f" opacity="0.6"/>
+    <!-- brows -->
+    <path d="M170 196 Q200 180 230 196" fill="none" stroke="#1c4a47" stroke-width="7" stroke-linecap="round"/>
+    <path d="M282 196 Q312 180 342 196" fill="none" stroke="#1c4a47" stroke-width="7" stroke-linecap="round"/>
+    <!-- eyes -->
+    <path d="M168 224 Q200 200 232 224 Q200 248 168 224 Z" fill="#fdf7e6" stroke="#1c4a47" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M280 224 Q312 200 344 224 Q312 248 280 224 Z" fill="#fdf7e6" stroke="#1c4a47" stroke-width="7" stroke-linejoin="round"/>
+    <circle cx="200" cy="228" r="13" fill="#2f8a9a"/>
+    <circle cx="200" cy="228" r="6" fill="#16302e"/>
+    <circle cx="312" cy="228" r="13" fill="#2f8a9a"/>
+    <circle cx="312" cy="228" r="6" fill="#16302e"/>
+    <!-- nose -->
+    <path d="M256 232 Q272 262 256 280 Q248 282 242 274" fill="none" stroke="#1c4a47" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- smile -->
+    <path d="M226 304 Q256 330 286 304" fill="none" stroke="#1c4a47" stroke-width="7" stroke-linecap="round"/>
+  </g>
+
+  <!-- grass hint -->
+  <path d="M0 512 L0 486 Q40 452 64 488 Q92 448 120 488 Q150 450 180 488 Q212 452 240 488 Q272 448 300 488 Q332 452 360 488 Q392 450 420 488 Q450 452 480 488 Q500 466 512 486 L512 512 Z" fill="#3a7d3a"/>
+</svg>
