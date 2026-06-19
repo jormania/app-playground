@@ -5,12 +5,14 @@ import ResultPanel from './ResultPanel.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
 import GeneratingPanel from './GeneratingPanel.jsx'
 import TarotCard from './TarotCard.jsx'
+import Stage from './Stage.jsx'
 import { useAmbientSound } from './useAmbientSound.js'
 import { rollTier, generateDiscovery } from './engine.js'
 
 const STORAGE_KEY = 'tg-react-state'
 const API_KEY_STORAGE = 'tg-react-apikey'
 const SOUND_STORAGE = 'tg-react-sound'
+const SIGNS_STORAGE = 'tg-react-signs'
 
 function loadState() {
   try {
@@ -26,6 +28,10 @@ function loadApiKey() {
 
 function loadSound() {
   return localStorage.getItem(SOUND_STORAGE) !== '0' // default on
+}
+
+function loadSigns() {
+  return localStorage.getItem(SIGNS_STORAGE) !== '0' // default on
 }
 
 function KeyIcon() {
@@ -45,6 +51,7 @@ export default function App() {
   const [state, setState] = useState(loadState)
   const [apiKey, setApiKey] = useState(loadApiKey)
   const [soundOn, setSoundOn] = useState(loadSound)
+  const [signsOn, setSignsOn] = useState(loadSigns)
   const [showSettings, setShowSettings] = useState(false)
   const [showDeparture, setShowDeparture] = useState(false)
   const [departureKey, setDepartureKey] = useState(0)
@@ -87,12 +94,20 @@ export default function App() {
     })
   }
 
+  function toggleSigns() {
+    setSignsOn(prev => {
+      const next = !prev
+      localStorage.setItem(SIGNS_STORAGE, next ? '1' : '0')
+      return next
+    })
+  }
+
   const { status, departedAt, lastWalk } = state
 
   let panel, title
   if (showSettings) {
     title = 'The Keeper'
-    panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} soundOn={soundOn} onToggleSound={toggleSound} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
+    panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} soundOn={soundOn} onToggleSound={toggleSound} signsOn={signsOn} onToggleSigns={toggleSigns} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
   } else if (status === 'generating') {
     title = 'The Omen'
     panel = <GeneratingPanel tier={state.pendingTier} />
@@ -109,7 +124,8 @@ export default function App() {
 
   return (
     <>
-      <TarotCard title={title}>{panel}</TarotCard>
+      <Stage />
+      <TarotCard title={title} showSigns={signsOn}>{panel}</TarotCard>
       {!showSettings && (
         <button className="tg-settings-btn" onClick={() => setShowSettings(true)} title="The Keeper" aria-label="Settings">
           <KeyIcon />

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSound, onClose }) {
+export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSound, signsOn, onToggleSigns, onClose }) {
   const [draft, setDraft] = useState(currentKey)
   const hasKey = !!currentKey
 
@@ -10,15 +10,14 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
   }
 
   return (
-    <div>
+    <div className="tg-settings">
       <h1>Settings</h1>
-      <p>{hasKey ? '● Key saved — AI finds on.' : '○ No key yet — finds come from a built-in list.'}</p>
+      <p>{hasKey ? '● Key saved — AI finds on.' : '○ No key — built-in finds.'}</p>
 
-      <label>Sound</label>
-      <button type="button" onClick={onToggleSound}>{soundOn ? '♪ On' : '♪ Off'}</button>
-      <p>{soundOn
-        ? 'Wind, water, and the season\'s voices.'
-        : 'The world is quiet for now.'}</p>
+      <div className="tg-row">
+        <button type="button" onClick={onToggleSound}>{soundOn ? '♪ Sound on' : '♪ Sound off'}</button>
+        <button type="button" onClick={onToggleSigns}>{signsOn ? '✦ Signs on' : '✦ Signs off'}</button>
+      </div>
 
       <form onSubmit={handleSubmit}>
         <label htmlFor="apikey">Anthropic API key</label>
@@ -31,10 +30,12 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
           autoComplete="off"
           spellCheck="false"
         />
-        <p>Leave it empty and finds come from a built-in list instead.</p>
-        <button type="submit">Save</button>
-        {hasKey && <button type="button" onClick={() => onSave('')}>Clear</button>}
-        <button type="button" onClick={onClose}>Cancel</button>
+        <p className="tg-hint">Empty = finds from a built-in list.</p>
+        <div className="tg-row">
+          <button type="submit">Save</button>
+          {hasKey && <button type="button" onClick={() => onSave('')}>Clear</button>}
+          <button type="button" onClick={onClose}>Cancel</button>
+        </div>
       </form>
     </div>
   )

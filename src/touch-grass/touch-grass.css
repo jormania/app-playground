@@ -25,6 +25,14 @@ body {
   padding: 18px;
 }
 
+/* the surface the card rests on — gradient inverted against the card interior */
+.tg-stage {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  transition: background 3s ease;
+}
+
 /* ---- The tarot card ---- */
 .tg-card {
   position: relative;
@@ -33,7 +41,7 @@ body {
   max-height: 86vh;
   background: #f3ead4;
   border-radius: 18px;
-  padding: 12px;
+  padding: 16px;
   box-shadow: 0 26px 64px rgba(0, 0, 0, 0.72), 0 6px 16px rgba(0, 0, 0, 0.5), 0 2px 0 rgba(255,255,255,0.18) inset;
 }
 
@@ -72,14 +80,19 @@ body {
   z-index: 1;
   flex: 0 0 auto;
   text-align: center;
-  padding: 12px 8px 13px;
-  border-top: 1px solid rgba(243, 234, 212, 0.32);
+  padding: 18px 8px 9px;
   font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
   text-transform: uppercase;
-  letter-spacing: 0.24em;
-  font-size: 0.82rem;
-  color: #f3ead4;
-  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
+  letter-spacing: 0.22em;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #fbf6e6;
+  text-shadow:
+    1px 1px 0 rgba(10, 24, 14, 0.78),
+    -1px 1px 0 rgba(10, 24, 14, 0.78),
+    1px -1px 0 rgba(10, 24, 14, 0.7),
+    -1px -1px 0 rgba(10, 24, 14, 0.7),
+    0 2px 7px rgba(0, 0, 0, 0.55);
 }
 
 /* settings key — lives on the dark stage, outside the card */
@@ -100,18 +113,18 @@ body {
 .tg-settings-btn:hover { opacity: 1; transform: rotate(-10deg) scale(1.06); }
 .tg-settings-btn svg { width: 28px; height: 28px; display: block; }
 
-/* corner ornaments */
+/* corner ornaments — framing the card on the cream border corners */
 .tg-corner {
   position: absolute;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   z-index: 3;
   pointer-events: none;
 }
-.tg-corner.tl { top: 7px; left: 7px; }
-.tg-corner.tr { top: 7px; right: 7px; }
-.tg-corner.bl { bottom: 7px; left: 7px; }
-.tg-corner.br { bottom: 7px; right: 7px; }
+.tg-corner.tl { top: 4px; left: 4px; }
+.tg-corner.tr { top: 4px; right: 4px; }
+.tg-corner.bl { bottom: 4px; left: 4px; }
+.tg-corner.br { bottom: 4px; right: 4px; }
 
 /* ---- Content typography (cream ink over artwork) ---- */
 .tg-card-content h1 {
@@ -182,3 +195,21 @@ body {
   margin-bottom: 16px;
 }
 .tg-card-content input[type="password"]:focus { border-color: rgba(243, 234, 212, 0.85); }
+
+/* compact layout for the Keeper (settings) so it fits one screen */
+.tg-settings h1 { margin-bottom: 8px; }
+.tg-settings p { margin-bottom: 10px; font-size: 0.8rem; line-height: 1.5; }
+.tg-settings .tg-hint { font-size: 0.76rem; opacity: 0.85; margin-bottom: 12px; }
+.tg-settings label { margin-bottom: 5px; }
+.tg-settings input[type="password"] { margin-bottom: 6px; }
+.tg-settings .tg-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.tg-settings .tg-row button {
+  margin: 0;
+  padding: 7px 14px;
+  font-size: 0.78rem;
+}

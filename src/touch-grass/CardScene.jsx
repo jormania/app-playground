@@ -149,7 +149,7 @@ function starPath(s) {
 
 // sharp, slender four-point sparkle — for the constellation's "real" stars
 function sparkPath(r) {
-  const L = r * 3.1, w = r * 0.52
+  const L = r * 2.6, w = r * 0.5
   return `M 0 ${-L} Q ${w} ${-w} ${L} 0 Q ${w} ${w} 0 ${L} `
     + `Q ${-w} ${w} ${-L} 0 Q ${-w} ${-w} 0 ${-L} Z`
 }
@@ -159,12 +159,12 @@ function sparkPath(r) {
 function ConStar({ x, y, r, op, dur }) {
   return (
     <g transform={`translate(${x} ${y})`}>
-      <circle r={r * 2.9} fill="url(#tg-star)" opacity={op}>
+      <circle r={r * 2.4} fill="url(#tg-star)" opacity={op}>
         <animate attributeName="opacity" values={`${(op * 0.5).toFixed(2)};${op};${(op * 0.5).toFixed(2)}`}
           dur={`${dur}s`} repeatCount="indefinite" />
       </circle>
       <path d={sparkPath(r)} fill="#f6efda" opacity={op} />
-      <circle r={r * 0.48} fill="#fffdf3" opacity={op} />
+      <circle r={r * 0.5} fill="#fffdf3" opacity={op} />
     </g>
   )
 }
@@ -172,7 +172,7 @@ function ConStar({ x, y, r, op, dur }) {
 // constellation sits top-left; moon lives top-right, so they never collide
 const CON_BOX = { gx: 10, gy: 28, gw: 124, gh: 74 }
 
-function Sky({ bright, dayKey, date }) {
+function Sky({ bright, dayKey, date, signs }) {
   const con = CONSTELLATIONS[getZodiac(date)] || CONSTELLATIONS.aries
   const { gx, gy, gw, gh } = CON_BOX
   const pts = con.points.map(([px, py]) => ({ x: gx + px * gw, y: gy + py * gh }))
@@ -206,19 +206,23 @@ function Sky({ bright, dayKey, date }) {
 
   return (
     <g>
-      <g stroke={PARCHMENT} strokeWidth="0.6" opacity={op * 0.32}>
-        {con.lines.map(([a, b], i) => (
-          <line key={i} x1={pts[a].x} y1={pts[a].y} x2={pts[b].x} y2={pts[b].y} />
-        ))}
-      </g>
-      <g>
-        {pts.map((p, i) => (
-          <ConStar key={i} x={p.x} y={p.y}
-            r={i === 0 ? 3.6 : 2.3 + ((i * 41) % 6) * 0.3}
-            op={op}
-            dur={(3.6 + ((i * 53) % 5) * 0.7).toFixed(1)} />
-        ))}
-      </g>
+      {signs && (
+        <>
+          <g stroke={PARCHMENT} strokeWidth="0.45" opacity={op * 0.22}>
+            {con.lines.map(([a, b], i) => (
+              <line key={i} x1={pts[a].x} y1={pts[a].y} x2={pts[b].x} y2={pts[b].y} />
+            ))}
+          </g>
+          <g>
+            {pts.map((p, i) => (
+              <ConStar key={i} x={p.x} y={p.y}
+                r={1.5 + ((i * 29) % 4) * 0.4 + (i === 0 ? 0.6 : 0)}
+                op={op}
+                dur={(3.6 + ((i * 53) % 5) * 0.7).toFixed(1)} />
+            ))}
+          </g>
+        </>
+      )}
       <g fill={PARCHMENT}>
         {scatter.map((st, i) => {
           const faint = op * 0.55
@@ -507,7 +511,7 @@ function usePrefersReducedMotion() {
   return reduce
 }
 
-export default function CardScene() {
+export default function CardScene({ showSigns = true }) {
   const [ctx, setCtx] = useState(getCtx)
   const svgRef = useRef(null)
   const reduceMotion = usePrefersReducedMotion()
@@ -558,7 +562,7 @@ export default function CardScene() {
 
       <rect x="0" y="0" width={W} height={H} fill="url(#tg-sky)" />
       {glow && <rect x="0" y={H * 0.45} width={W} height={H * 0.55} fill="url(#tg-glow)" />}
-      {dim && <Sky bright={timeOfDay === 'night'} dayKey={dayKey} date={date} />}
+      {dim && <Sky bright={timeOfDay === 'night'} dayKey={dayKey} date={date} signs={showSigns} />}
       {showSun && <Sun cx={226} cy={82} r={41} dawn={timeOfDay === 'dawn'} />}
       {showMoon && <Moon cx={226} cy={82} r={43} />}
       {dim && <CityLights color={glow} />}
