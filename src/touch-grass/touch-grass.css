@@ -25,51 +25,68 @@ body {
   border-radius: 16px;
   padding: 13px;
   box-shadow: 0 20px 55px rgba(0, 0, 0, 0.6), 0 2px 0 rgba(255,255,255,0.15) inset;
-  display: flex;
-  flex-direction: column;
 }
 
 .tg-card-inner {
-  flex: 1;
+  position: relative;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  border: 1.5px solid #cdbb8f;
+  border: 1.5px solid rgba(243, 234, 212, 0.55);
   border-radius: 8px;
   overflow: hidden;
-  background: #f3ead4;
 }
 
+/* full-bleed artwork behind everything */
 .tg-card-scene {
-  position: relative;
-  flex: 0 0 auto;
-  height: 38%;
-  min-height: 158px;
-  border-bottom: 1.5px solid #cdbb8f;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
 }
 .tg-card-scene svg { display: block; width: 100%; height: 100%; }
 
+/* text floats over the lower half of the art */
 .tg-card-content {
   position: relative;
-  flex: 1;
-  min-height: 0;
-  padding: 22px 22px 12px;
-  display: flex;
-  flex-direction: column;
+  z-index: 1;
+  margin-top: auto;
+  max-height: 72%;
   overflow: auto;
-  color: #1c3f3d;
+  padding: 18px 22px 6px;
 }
 
 .tg-card-banner {
+  position: relative;
+  z-index: 1;
   flex: 0 0 auto;
   text-align: center;
-  padding: 11px 8px;
-  border-top: 1.5px solid #cdbb8f;
+  padding: 12px 8px 13px;
+  border-top: 1px solid rgba(243, 234, 212, 0.32);
   font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
   text-transform: uppercase;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.24em;
   font-size: 0.82rem;
-  color: #1c4a47;
+  color: #f3ead4;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
 }
+
+/* settings key — lives on the dark stage, outside the card */
+.tg-settings-btn {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 9999;
+  background: none;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  line-height: 0;
+  opacity: 0.62;
+  transition: opacity 0.18s, transform 0.18s;
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.5));
+}
+.tg-settings-btn:hover { opacity: 1; transform: rotate(-10deg); }
+.tg-settings-btn svg { width: 26px; height: 26px; display: block; }
 
 /* corner ornaments */
 .tg-corner {
@@ -79,7 +96,7 @@ body {
   background: #1c4a47;
   transform: rotate(45deg);
   border-radius: 2px;
-  z-index: 2;
+  z-index: 3;
 }
 .tg-corner::after {
   content: '';
@@ -93,28 +110,30 @@ body {
 .tg-corner.bl { bottom: 5px; left: 5px; }
 .tg-corner.br { bottom: 5px; right: 5px; }
 
-/* ---- Content typography (dark ink on parchment) ---- */
+/* ---- Content typography (cream ink over artwork) ---- */
 .tg-card-content h1 {
   font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
-  font-size: 1.5rem;
+  font-size: 1.55rem;
   font-weight: 600;
-  letter-spacing: 0;
   line-height: 1.2;
-  color: #173b39;
+  color: #f7f0de;
   margin-bottom: 14px;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6);
 }
 .tg-card-content h2 {
   font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
-  font-size: 1.15rem;
+  font-size: 1.18rem;
   font-weight: 600;
-  color: #173b39;
+  color: #f3ead4;
   margin: 4px 0 8px;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6);
 }
 .tg-card-content p {
   font-size: 0.84rem;
   line-height: 1.7;
-  color: #3a5a55;
+  color: #e8e1cd;
   margin-bottom: 16px;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
 }
 
 .tg-card-content button {
@@ -122,39 +141,41 @@ body {
   font-size: 0.82rem;
   font-variant: small-caps;
   letter-spacing: 0.06em;
-  color: #1c4a47;
-  background: transparent;
-  border: 1.5px solid #1c4a47;
+  color: #f3ead4;
+  background: rgba(20, 28, 30, 0.32);
+  border: 1.5px solid rgba(243, 234, 212, 0.75);
   padding: 8px 22px;
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   margin-right: 10px;
   margin-bottom: 8px;
+  backdrop-filter: blur(2px);
 }
 .tg-card-content button:hover {
-  background: #1c4a47;
-  color: #f3ead4;
+  background: #f3ead4;
+  color: #1c4a47;
 }
 
 .tg-card-content label {
   display: block;
   font-size: 0.78rem;
-  color: #5a7570;
+  color: #d8e0d2;
   letter-spacing: 0.05em;
   font-variant: small-caps;
   margin-bottom: 6px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 }
 .tg-card-content input[type="password"] {
   width: 100%;
-  background: rgba(28, 74, 71, 0.06);
-  border: 1.5px solid #cdbb8f;
+  background: rgba(10, 16, 18, 0.4);
+  border: 1.5px solid rgba(243, 234, 212, 0.4);
   border-radius: 6px;
   padding: 10px 12px;
   font-family: inherit;
   font-size: 0.84rem;
-  color: #1c3f3d;
+  color: #f3ead4;
   outline: none;
   margin-bottom: 16px;
 }
-.tg-card-content input[type="password"]:focus { border-color: #1c4a47; }
+.tg-card-content input[type="password"]:focus { border-color: rgba(243, 234, 212, 0.85); }

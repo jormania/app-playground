@@ -22,19 +22,17 @@ function loadApiKey() {
   return localStorage.getItem(API_KEY_STORAGE) || ''
 }
 
-const cornerStyle = {
-  position: 'fixed', bottom: '14px', right: '18px', zIndex: 9999,
-  display: 'flex', gap: '8px', alignItems: 'center',
-}
-
-const chipStyle = {
-  fontFamily: "'JetBrains Mono', monospace", fontSize: '11px',
-  fontVariant: 'small-caps', letterSpacing: '0.05em',
-  color: '#7a8499', textDecoration: 'none',
-  background: 'rgba(12,14,20,0.85)', border: '1px solid #222636',
-  padding: '3px 10px', borderRadius: '5px',
-  backdropFilter: 'blur(8px)', cursor: 'pointer',
-  appearance: 'none', lineHeight: '1.6', margin: 0,
+function KeyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="#e2a92f" strokeWidth="1.8"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="6.5" r="3.7" />
+      <circle cx="12" cy="6.5" r="0.6" fill="#e2a92f" stroke="none" />
+      <line x1="12" y1="10.2" x2="12" y2="20" />
+      <line x1="12" y1="15.5" x2="15.5" y2="15.5" />
+      <line x1="12" y1="18.3" x2="14.3" y2="18.3" />
+    </svg>
+  )
 }
 
 export default function App() {
@@ -93,10 +91,11 @@ export default function App() {
   return (
     <>
       <TarotCard title={title}>{panel}</TarotCard>
-      <div style={cornerStyle}>
-        <a href="/touch-grass-react-guide.html" style={chipStyle}>guide ↗</a>
-        <button onClick={() => setShowSettings(true)} style={chipStyle}>settings</button>
-      </div>
+      {!showSettings && (
+        <button className="tg-settings-btn" onClick={() => setShowSettings(true)} title="The Keeper" aria-label="Settings">
+          <KeyIcon />
+        </button>
+      )}
     </>
   )
 }
