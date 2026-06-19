@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Touch Grass React — feature guide.">
+<title>Touch Grass · React · Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0c0e14;
+  --surface: #13161f;
+  --border: #222636;
+  --border2: #2d3348;
+  --accent: #7c6fff;
+  --accent2: #4fc3a1;
+  --text: #dde2ee;
+  --muted: #7a8499;
+  --faint: #404660;
+  --mono: 'JetBrains Mono', monospace;
+}
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.container { max-width: 680px; margin: 0 auto; padding: 0 24px; }
+
+/* ── nav ── */
+nav {
+  position: sticky; top: 0; z-index: 10;
+  background: rgba(12,14,20,0.9);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-inner {
+  max-width: 680px; margin: 0 auto; padding: 0 24px;
+  height: 52px; display: flex; align-items: center; justify-content: space-between;
+}
+.nav-back {
+  font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px;
+  transition: color 0.15s;
+}
+.nav-back:hover { color: var(--text); text-decoration: none; }
+.nav-brand { font-size: 13px; font-weight: 500; color: var(--text); }
+.nav-version {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  padding: 2px 7px; border-radius: 5px;
+  background: rgba(124,111,255,0.12); color: var(--accent);
+  border: 1px solid rgba(124,111,255,0.22);
+}
+.nav-phase {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  padding: 2px 7px; border-radius: 5px;
+  background: rgba(79,195,161,0.12); color: var(--accent2);
+  border: 1px solid rgba(79,195,161,0.2);
+}
+
+/* ── hero ── */
+.hero { padding: 52px 0 40px; border-bottom: 1px solid var(--border); margin-bottom: 48px; }
+.hero-eyebrow {
+  font-size: 11px; font-weight: 600; color: var(--accent2);
+  letter-spacing: 0.12em; text-transform: uppercase;
+  font-family: var(--mono); margin-bottom: 14px;
+}
+.hero h1 {
+  font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 700;
+  letter-spacing: -0.03em; margin-bottom: 14px; color: var(--text);
+}
+.hero p { color: var(--muted); font-size: 15px; max-width: 520px; line-height: 1.65; }
+.hero p + p { margin-top: 10px; }
+
+/* ── how to use ── */
+.how-to { margin-bottom: 52px; }
+.how-to h2 { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: var(--faint); text-transform: uppercase; margin-bottom: 16px; }
+.steps { counter-reset: step; list-style: none; }
+.steps li {
+  counter-increment: step;
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+  font-size: 14px; color: var(--muted);
+}
+.steps li:last-child { border-bottom: none; }
+.steps li::before {
+  content: counter(step);
+  font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--accent2);
+  background: rgba(79,195,161,0.1); border: 1px solid rgba(79,195,161,0.2);
+  width: 22px; height: 22px; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  margin-top: 2px;
+}
+.steps li strong { color: var(--text); font-weight: 500; }
+
+/* ── feature sections ── */
+.features { display: flex; flex-direction: column; gap: 0; }
+.feature { padding: 28px 0; border-bottom: 1px solid var(--border); }
+.feature:last-child { border-bottom: none; }
+.feature-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.feature-tag {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  color: var(--faint); text-transform: uppercase; letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+.feature h3 { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+.feature p { font-size: 13.5px; color: var(--muted); line-height: 1.7; margin-bottom: 10px; }
+.feature p:last-child { margin-bottom: 0; }
+.feature ul { list-style: none; margin-top: 10px; }
+.feature ul li {
+  font-size: 13px; color: var(--muted);
+  padding: 7px 0; border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.feature ul li:last-child { border-bottom: none; }
+.feature ul li::before { content: '›'; color: var(--accent2); flex-shrink: 0; }
+
+/* ── pills ── */
+.pill {
+  display: inline-block; font-family: var(--mono); font-size: 10px;
+  padding: 1px 6px; border-radius: 4px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--muted); vertical-align: middle; margin: 0 2px;
+}
+.pill.rare     { background: rgba(180,120,20,.1);  border-color: rgba(180,120,20,.25); color: #c49830; }
+.pill.uncommon { background: rgba(20,120,140,.1);  border-color: rgba(20,120,140,.25); color: #3ab0c0; }
+.pill.common   { background: rgba(16,120,60,.1);   border-color: rgba(16,120,60,.25);  color: #3aaa60; }
+.pill.leg      { background: rgba(180,40,220,.1);  border-color: rgba(200,100,240,.4); color: #c060e0; }
+
+/* ── odds table ── */
+.odds-table {
+  width: 100%; border-collapse: collapse; margin-top: 14px;
+  font-size: 12.5px; font-family: var(--mono);
+}
+.odds-table th {
+  text-align: left; padding: 7px 10px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--faint); border-bottom: 1px solid var(--border);
+}
+.odds-table td {
+  padding: 8px 10px; color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.odds-table tr:last-child td { border-bottom: none; }
+.odds-table td:first-child { color: var(--text); }
+
+/* ── coming soon ── */
+.coming { margin-top: 52px; margin-bottom: 0; }
+.coming h2 { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: var(--faint); text-transform: uppercase; margin-bottom: 16px; }
+.coming ul { list-style: none; }
+.coming ul li {
+  font-size: 13px; color: var(--faint);
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.coming ul li:last-child { border-bottom: none; }
+.coming ul li::before { content: '·'; color: var(--faint); flex-shrink: 0; }
+
+/* ── footer ── */
+footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px; }
+.footer-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.footer-left  { font-size: 12px; color: var(--faint); }
+.footer-right { font-size: 12px; color: var(--faint); }
+
+@media (max-width: 600px) {
+  .hero { padding: 36px 0 28px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/touch-grass-react.html" class="nav-back">← Touch Grass</a>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="nav-brand">Touch Grass · React</span>
+      <span class="nav-version">React</span>
+      <span class="nav-phase">Phase 4</span>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+
+  <section class="hero">
+    <div class="hero-eyebrow">// feature guide</div>
+    <h1>Everything the React rewrite does.</h1>
+    <p>This is the living guide for the React version of Touch Grass — updated as each phase is completed. The app is intentionally minimal at each stage; this page is where the details live.</p>
+    <p>Current build: <strong style="color:var(--text)">Phase 4</strong> — AI-generated discoveries, a live tagline on the home screen, color-coded rarity, and a settings panel for your API key. The loop is complete. Visuals and audio come next.</p>
+  </section>
+
+  <!-- How to use -->
+  <section class="how-to">
+    <h2>// how to use</h2>
+    <ol class="steps">
+      <li><div>Open the app. A fresh tagline greets you — a quiet invitation, different every time.</div></li>
+      <li><div>Tap <strong>Head outside</strong> and go. The timer saves immediately — close the tab, lock your screen, it doesn't matter.</div></li>
+      <li><div>Walk for however long you like. Longer walks shift the odds toward rarer finds.</div></li>
+      <li><div>Come back, open the app, tap <strong>I'm back</strong>.</div></li>
+      <li><div>See what you found. Tap <strong>Step inside</strong> when you're ready to go again — a fresh tagline will be waiting.</div></li>
+    </ol>
+  </section>
+
+  <!-- Features -->
+  <section class="features">
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">tagline</span>
+        <h3>Home screen tagline</h3>
+      </div>
+      <p>Every time you arrive at the home screen — on first open, after stepping inside from a result, or after closing settings — a fresh tagline is generated by Claude. Dreamy, witty, a quiet play on words about leaving your screen behind. A thin animated line sweeps across while it loads, replaced by the text when ready. No two visits look quite the same.</p>
+      <p>If no API key is set, a tagline is picked at random from a built-in list instead — no loading, no delay.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">timer</span>
+        <h3>Departure timer</h3>
+      </div>
+      <p>Tap <strong>Head outside</strong> and the timer starts immediately — your departure timestamp is saved to localStorage the moment you tap. Close the tab, lock your screen, restart the browser entirely. When you come back, the app picks up exactly where you left off and uses the elapsed duration to determine what you found.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">away</span>
+        <h3>While you're out</h3>
+      </div>
+      <p>A minimal screen shows your time out and departure time on one line: <em>Out for 4m 32s · since 5:23 PM</em>. The elapsed time is color-coded as the walk grows:</p>
+      <ul>
+        <li>Under 30 min — plain</li>
+        <li style="color:#3ab0c0">30 min – 1 hour — <span class="pill uncommon">uncommon</span> teal</li>
+        <li style="color:#c49830">1 hour – 4 hours — <span class="pill rare">rare</span> amber</li>
+        <li style="color:#c060e0">4 hours and beyond — <span class="pill leg">legendary</span> purple</li>
+      </ul>
+      <p>Close the tab at any point — when you return and tap <strong>I'm back</strong>, the elapsed time is calculated from your saved departure timestamp regardless.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">finds</span>
+        <h3>Surreal discoveries</h3>
+      </div>
+      <p>Every walk returns exactly one discovery — always. Never more, never less. Walk duration affects the rarity of what you find, not the quantity. Discoveries are generated by Claude Haiku, unique to your walk's duration, time of day, and season. Short, poetic, precise — 25 words at most. Four tiers:</p>
+      <ul>
+        <li><span class="pill common">common</span> Mildly uncanny. Something real that feels slightly wrong.</li>
+        <li><span class="pill uncommon">uncommon</span> Clearly impossible. Physical laws politely ignored.</li>
+        <li><span class="pill rare">rare</span> Reality-bending. The ground doesn't behave as expected.</li>
+        <li><span class="pill leg">legendary</span> Mythic. Awe-inspiring. Rare enough to feel like an event.</li>
+      </ul>
+      <p>If no API key is set, finds come from a built-in list instead. If a key is set but the call fails, a built-in find is used and a quiet <em>⚠ couldn't reach Claude</em> note appears — bottom-right of the result screen.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">rarity</span>
+        <h3>Odds by walk length</h3>
+      </div>
+      <p>The longer you walk, the better your odds of finding something rare. Quantity never changes — just what you find.</p>
+      <table class="odds-table">
+        <thead>
+          <tr>
+            <th>Walk length</th>
+            <th><span class="pill common">common</span></th>
+            <th><span class="pill uncommon">uncommon</span></th>
+            <th><span class="pill rare">rare</span></th>
+            <th><span class="pill leg">legendary</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Under 30 min</td>
+            <td>60%</td>
+            <td>30%</td>
+            <td>8%</td>
+            <td>2%</td>
+          </tr>
+          <tr>
+            <td>30 – 59 min</td>
+            <td>48%</td>
+            <td>36%</td>
+            <td>13%</td>
+            <td>3%</td>
+          </tr>
+          <tr>
+            <td>60 min +</td>
+            <td>30%</td>
+            <td>42%</td>
+            <td>20%</td>
+            <td>8%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">generating</span>
+        <h3>Finding your discovery</h3>
+      </div>
+      <p>When you tap <strong>I'm back</strong>, your rarity tier is rolled immediately — before the API call is made. The screen shows the tier name while Claude generates your find, so you know what's coming before it arrives. Uncommon, rare, and legendary are color-coded. Common just says <em>Finding your discovery…</em> — no announcement for the everyday. A sweep line runs beneath while the call is in flight.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">loop</span>
+        <h3>The loop</h3>
+      </div>
+      <p>The app moves in a deliberate circle. Tap <strong>Step inside</strong> on the result screen and you return to the home screen — a fresh tagline loads, a new invitation. Tap <strong>Head outside</strong> when you're ready and the next loop begins. Nothing resets until you choose to start again.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">setup</span>
+        <h3>API key</h3>
+      </div>
+      <p>Tap <strong>settings</strong> in the bottom-right corner. Enter your Anthropic API key — it stays in your browser and is never sent anywhere except directly to Anthropic when generating a find or tagline. The panel shows whether a key is currently saved and lets you clear it at any time. Without a key, everything still works — finds and taglines come from built-in lists instead.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">persistence</span>
+        <h3>Survives everything</h3>
+      </div>
+      <p>Walk state — departure time, result, status — is saved under one localStorage key and written automatically after every change. Your API key is stored separately under its own key, since it has a different lifecycle and shouldn't reset when a new walk starts. Close the tab mid-walk, mid-result, or mid-tagline — the app picks up correctly every time.</p>
+    </div>
+
+  </section>
+
+  <!-- Coming in later phases -->
+  <section class="coming">
+    <h2>// coming in phase 5</h2>
+    <ul>
+      <li>Visual canvas — seasonal sky, grass, and sun or moon shifting with time of day and calendar</li>
+      <li>Ambient soundscape — generative audio adapting to time of day and season, with a mute toggle</li>
+      <li>Walk history and collection — browse everything you've found, sorted by rarity</li>
+      <li>Streak tracking — consecutive days walked, personal best, total days</li>
+      <li>Nearby places — GPS-suggested green spaces to walk to</li>
+    </ul>
+  </section>
+
+</div>
+
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <span class="footer-left"><a href="/">Cone of Cold</a> · built with Claude</span>
+      <span class="footer-right"><a href="/touch-grass-react.html">Launch app ↗</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

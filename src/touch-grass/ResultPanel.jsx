@@ -1,8 +1,8 @@
 const TIER_LABEL = {
-  common: 'Common',
-  uncommon: 'Uncommon',
-  rare: 'Rare',
-  legendary: 'Legendary',
+  common:    { text: 'Common',    color: null },
+  uncommon:  { text: 'Uncommon',  color: '#3ab0c0' },
+  rare:      { text: 'Rare',      color: '#c49830' },
+  legendary: { text: 'Legendary', color: '#c060e0' },
 }
 
 function formatDuration(minutes) {
@@ -13,16 +13,26 @@ function formatDuration(minutes) {
   return `${m}m`
 }
 
-export default function ResultPanel({ lastWalk, onDepart }) {
-  const { durationMinutes, tier, discovery } = lastWalk
+export default function ResultPanel({ lastWalk, onGoBack }) {
+  const { durationMinutes, tier, discovery, isStatic, apiAttempted } = lastWalk
+  const { text: tierText, color: tierColor } = TIER_LABEL[tier] ?? TIER_LABEL.common
 
   return (
-    <div>
+    <div style={{ position: 'relative' }}>
       <h1>You found something.</h1>
-      <p>Walk: {formatDuration(durationMinutes)} · {TIER_LABEL[tier]}</p>
+      <p>
+        {formatDuration(durationMinutes)} · {tierColor
+          ? <span style={{ color: tierColor }}>{tierText}</span>
+          : tierText}
+      </p>
       <h2>{discovery.name}</h2>
       <p>{discovery.description}</p>
-      <button onClick={onDepart}>Head outside again</button>
+      <button onClick={onGoBack}>Step inside</button>
+      {isStatic && apiAttempted && (
+        <p style={{ position: 'absolute', bottom: 0, right: 0, fontSize: '11px', opacity: 0.4 }}>
+          ⚠ couldn't reach Claude
+        </p>
+      )}
     </div>
   )
 }

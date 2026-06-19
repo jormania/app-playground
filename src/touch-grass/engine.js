@@ -69,6 +69,64 @@ const DISCOVERIES = {
   ],
 }
 
+function getTimeOfDay() {
+  const h = new Date().getHours()
+  if (h >= 5 && h < 12) return 'morning'
+  if (h >= 12 && h < 17) return 'afternoon'
+  if (h >= 17 && h < 21) return 'evening'
+  return 'night'
+}
+
+function getSeason() {
+  const m = new Date().getMonth()
+  if (m >= 2 && m <= 4) return 'spring'
+  if (m >= 5 && m <= 7) return 'summer'
+  if (m >= 8 && m <= 10) return 'autumn'
+  return 'winter'
+}
+
+function formatDuration(minutes) {
+  if (minutes < 1) return 'less than a minute'
+  if (minutes < 60) return `${Math.round(minutes)} minutes`
+  const h = Math.floor(minutes / 60)
+  return `${h} hour${h > 1 ? 's' : ''}`
+}
+
+async function fetchDiscovery(tier, durationMinutes, apiKey) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 200,
+      system: `You generate surreal discoveries for a walking app. A discovery is something impossible or dreamlike that the walker might have found outside. Respond with valid JSON only: {"name": "...", "description": "..."}. The name is 3–7 words. The description is one sentence only, 25 words maximum — poetic, precise, never whimsical or twee.`,
+      messages: [
+        {
+          role: 'user',
+          content: `Generate a ${tier} discovery. The walker was outside for ${formatDuration(durationMinutes)}. It is ${getTimeOfDay()} in ${getSeason()}.\n\nTier guide:\n- common: mildly uncanny. Something real that feels slightly wrong.\n- uncommon: clearly impossible. Physical laws politely ignored.\n- rare: reality-bending. The ground itself doesn't behave as expected.\n- legendary: mythic, awe-inspiring. The kind of thing that happens once.`,
+        },
+      ],
+    }),
+  })
+
+  if (!res.ok) throw new Error(`API ${res.status}`)
+
+  const data = await res.json()
+  const text = data.content[0].text.trim()
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start === -1 || end === -1) throw new Error('no JSON in response')
+  const parsed = JSON.parse(text.slice(start, end + 1))
+
+  if (!parsed.name || !parsed.description) throw new Error('bad shape')
+  return parsed
+}
+
 export function rollTier(durationMinutes) {
   let weights = { common: 60, uncommon: 30, rare: 8, legendary: 2 }
 
@@ -88,9 +146,17 @@ export function rollTier(durationMinutes) {
   return 'common'
 }
 
-// Async by design — swap body for a real API call in a later phase
-// without changing any caller.
-export async function generateDiscovery(tier) {
+export async function generateDiscovery(tier, durationMinutes, apiKey) {
+  if (apiKey) {
+    try {
+      const discovery = await fetchDiscovery(tier, durationMinutes, apiKey)
+      return { discovery, isStatic: false, apiAttempted: true }
+    } catch (err) {
+      console.warn('[touch-grass] API call failed, using static fallback:', err)
+      const pool = DISCOVERIES[tier]
+      return { discovery: pool[Math.floor(Math.random() * pool.length)], isStatic: true, apiAttempted: true }
+    }
+  }
   const pool = DISCOVERIES[tier]
-  return pool[Math.floor(Math.random() * pool.length)]
+  return { discovery: pool[Math.floor(Math.random() * pool.length)], isStatic: true, apiAttempted: false }
 }
