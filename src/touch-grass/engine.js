@@ -1,72 +1,76 @@
 import { getTimeOfDay, getSeason } from './context.js'
 
 const DISCOVERIES = {
+  // a small wrongness, a quiet omen — the world tilting half a degree
   common: [
     {
-      name: 'A perfectly dry stone',
-      description: 'A stone completely dry despite the surrounding soil being wet after yesterday\'s rain. You held it for a moment. It felt like it had been waiting.',
+      name: 'The Listening Stone',
+      description: 'A grey stone the size of a heart, faintly warm, that leans toward whatever you are about to say.',
     },
     {
-      name: 'A feather pointing north',
-      description: 'A single grey feather, stuck upright in the dirt. It rotates slowly to face magnetic north whenever you approach.',
+      name: 'The Ninefold Shadow',
+      description: 'Your shadow quietly divided into nine thin strands, each pointing toward a different, wrong noon.',
     },
     {
-      name: 'An echo that came second',
-      description: 'One of your footsteps echoed twice. The second echo was louder than the first.',
+      name: 'A Coin Minted in No Year',
+      description: 'A cold copper coin bearing a watching face on both sides and a date that has not happened.',
     },
     {
-      name: 'A shadow with no source',
-      description: 'A small, sharp shadow on the path. You looked up. Nothing overhead.',
+      name: 'The Door Drawn in Chalk',
+      description: 'Someone chalked a door onto the path; its handle had been worn smooth by hands that used it.',
     },
   ],
+  // an esoteric object or sign, clearly impossible, humming with hidden meaning
   uncommon: [
     {
-      name: 'A jar of Tuesday',
-      description: 'A small mason jar, sealed with wax, filled with what appears to be condensed Tuesday afternoon light. The label reads: best before never.',
+      name: 'Reliquary of a Borrowed Hour',
+      description: 'A glass vial sealed with wax, holding one hour you have not yet lived, already clouded with breath.',
     },
     {
-      name: 'A broken clock showing the right time',
-      description: 'A rusted pocket watch lying face-up in the grass. Both hands are missing, yet it shows exactly the correct time.',
+      name: 'The Sigil That Keeps Count',
+      description: 'A mark burned into bark adds a single stroke each time you blink, tallying something it will not name.',
     },
     {
-      name: 'Someone else\'s memory',
-      description: 'A vivid, involuntary recollection of riding a bicycle past lavender fields. You have never been to France. The bicycle is not yours.',
+      name: 'A Chart of Tomorrow\'s Rain',
+      description: 'Damp parchment maps storms not yet arrived, the ink still creeping toward the place where you stand.',
     },
     {
-      name: 'A window with no building',
-      description: 'A single pane of glass, frame and all, standing upright against nothing. Through it, the park looks slightly warmer than it actually is.',
+      name: 'The Mirror\'s Quiet Tenant',
+      description: 'A hand-mirror in the grass; your reflection arrives a moment late, and lingers a moment after you leave.',
     },
   ],
+  // a divinatory apparition that bends sense — the veil thinning, something looking back
   rare: [
     {
-      name: 'The gap between two seconds',
-      description: 'Time stopped at the seam between one second and the next. You were the only thing still moving. A bird hung frozen mid-flight beside you.',
+      name: 'The Veil Drawn Thin',
+      description: 'For three breaths the air parted like curtain-cloth, and something patient on the far side noted your name.',
     },
     {
-      name: 'An apology from the ground',
-      description: 'The earth beneath your left foot shifted apologetically, as if it had made a small error. A faint tremor. No geological explanation.',
+      name: 'A Procession of Pale Lanterns',
+      description: 'Lights without bearers drifted single-file across the field, pausing only where the dead are said to have paused.',
     },
     {
-      name: 'A door with no wall',
-      description: 'A wooden door stood in the middle of the path, hinged on nothing, slightly ajar. On the other side: more path, but the light was different.',
+      name: 'The Hour the Birds Knelt',
+      description: 'Every bird turned to face one empty point of sky and bowed, and the air dropped a single deliberate degree.',
     },
     {
-      name: 'Your name, written in bark',
-      description: 'Not carved — written, in a clear and unhurried hand, as though the tree had been practicing for years.',
+      name: 'Your Name in an Older Mouth',
+      description: 'From the treeline a voice spoke your name in a tongue that predates names, and waited, kindly, for reply.',
     },
   ],
+  // a cosmic, mythic revelation — vast, ancient, indifferent; the kind that rearranges you
   legendary: [
     {
-      name: 'The last thought of a tree',
-      description: 'You placed your palm on an oak and received its final thought from three centuries ago — something about the taste of October, expressed in rings.',
+      name: 'The Geometry Beneath the Field',
+      description: 'The ground turned briefly to glass, revealing vast wheels of stone and light that have always been dreaming us upward.',
     },
     {
-      name: 'A fold in the afternoon',
-      description: 'The park folded once, briefly, like a piece of paper. You found yourself on the inside of the crease, looking at both sides of the day simultaneously.',
+      name: 'The Sleeping Cartographer',
+      description: 'You glimpsed the immense, slow being that maps all walks ever taken; it added yours with a gesture older than the sun.',
     },
     {
-      name: 'Coordinates for something that doesn\'t exist yet',
-      description: 'Carved into a smooth stone: a set of GPS coordinates, a date 40 years from now, and the words: you\'ll understand then.',
+      name: 'A Star That Opened an Eye',
+      description: 'One point of the dusk unhooded itself, regarded the whole of your small life at once, and judged it worth continuing.',
     },
   ],
 }
@@ -91,11 +95,11 @@ async function fetchDiscovery(tier, durationMinutes, apiKey) {
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 200,
-      system: `You generate surreal discoveries for a walking app. A discovery is something impossible or dreamlike that the walker might have found outside. Respond with valid JSON only: {"name": "...", "description": "..."}. The name is 3–7 words. The description is one sentence only, 25 words maximum — poetic, precise, never whimsical or twee.`,
+      system: `You generate eldritch, dreamlike discoveries for a divination-themed walking app cast as a deck of unknown tarot cards. Each find is an impossible object, omen, or apparition the walker encountered outside — drawn from the surreal, the esoteric, divination and the occult, threaded with the macabre and with cosmic, Lovecraftian dread. Never mundane, never realistic, never ordinary comfort. Respond with valid JSON only: {"name": "...", "description": "..."}. The name is an evocative title of 2–6 words, like an entry in a grimoire or the face of a tarot card; use Title Case, no leading article unless it truly belongs. The description is a single sentence, 25 words maximum — hushed, precise, and strange; dread through implication, never gore for shock. No quotes.`,
       messages: [
         {
           role: 'user',
-          content: `Generate a ${tier} discovery. The walker was outside for ${formatDuration(durationMinutes)}. It is ${getTimeOfDay(new Date())} in ${getSeason(new Date())}.\n\nTier guide:\n- common: mildly uncanny. Something real that feels slightly wrong.\n- uncommon: clearly impossible. Physical laws politely ignored.\n- rare: reality-bending. The ground itself doesn't behave as expected.\n- legendary: mythic, awe-inspiring. The kind of thing that happens once.`,
+          content: `Conjure a ${tier} find. The walker was outside for ${formatDuration(durationMinutes)}. It is ${getTimeOfDay(new Date())} in ${getSeason(new Date())} — let the hour and season seep into its mood.\n\nTier guide (escalating strangeness):\n- common: a small wrongness, a quiet omen — the world tilting half a degree.\n- uncommon: an esoteric object or sign, clearly impossible, humming with hidden meaning.\n- rare: a divinatory apparition that bends sense — the veil thinning, something looking back.\n- legendary: a cosmic, mythic revelation — vast, ancient, indifferent; the kind of thing that rearranges you.`,
         },
       ],
     }),

@@ -15,6 +15,7 @@ body {
   color: #e4e8f0;
   font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
   -webkit-font-smoothing: antialiased;
+  overflow: hidden;
 }
 
 #root {
@@ -27,9 +28,9 @@ body {
 /* ---- The tarot card ---- */
 .tg-card {
   position: relative;
-  width: min(88vw, 380px);
+  width: min(84vw, 344px);
   aspect-ratio: 3 / 5;
-  max-height: 94vh;
+  max-height: 86vh;
   background: #f3ead4;
   border-radius: 18px;
   padding: 12px;
@@ -84,8 +85,8 @@ body {
 /* settings key — lives on the dark stage, outside the card */
 .tg-settings-btn {
   position: fixed;
-  bottom: 16px;
-  right: 16px;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  right: calc(14px + env(safe-area-inset-right, 0px));
   z-index: 9999;
   background: none;
   border: none;
@@ -97,7 +98,7 @@ body {
   filter: drop-shadow(0 1px 5px rgba(0, 0, 0, 0.7));
 }
 .tg-settings-btn:hover { opacity: 1; transform: rotate(-10deg) scale(1.06); }
-.tg-settings-btn svg { width: 30px; height: 30px; display: block; }
+.tg-settings-btn svg { width: 28px; height: 28px; display: block; }
 
 /* corner ornaments */
 .tg-corner {

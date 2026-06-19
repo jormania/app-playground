@@ -19,7 +19,7 @@ export default function ResultPanel({ lastWalk, onGoBack }) {
 
   return (
     <div style={{ position: 'relative' }}>
-      <h1>You found something.</h1>
+      <h1>Your find.</h1>
       <p>
         {formatDuration(durationMinutes)} · {tierColor
           ? <span style={{ color: tierColor }}>{tierText}</span>

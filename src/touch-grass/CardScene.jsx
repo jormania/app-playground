@@ -170,7 +170,7 @@ function ConStar({ x, y, r, op, dur }) {
 }
 
 // constellation sits top-left; moon lives top-right, so they never collide
-const CON_BOX = { gx: 10, gy: 36, gw: 128, gh: 96 }
+const CON_BOX = { gx: 10, gy: 28, gw: 124, gh: 74 }
 
 function Sky({ bright, dayKey, date }) {
   const con = CONSTELLATIONS[getZodiac(date)] || CONSTELLATIONS.aries
@@ -290,21 +290,47 @@ const STEM = { spring: '#4f8f56', summer: '#4a8030', autumn: '#7a6030' }
 const BUSH_COLOR = { spring: '#3f7d46', summer: '#3c7026', autumn: '#6f5226', winter: '#46685a' }
 const WEED_COLOR = { spring: '#5a7d40', summer: '#6a7a30', autumn: '#8a6a32', winter: '#5a6f60' }
 
-// varied mix: tall pop-outs, short ground blooms, different shapes
-const FLORA = [
-  { x: 20, h: 72, type: 'daisy', size: 1.25, ci: 0, lean: 5 },
-  { x: 48, h: 24, type: 'tiny', size: 0.8, ci: 2, lean: -3 },
-  { x: 86, h: 50, type: 'bud', size: 1.05, ci: 1, lean: 6 },
-  { x: 116, h: 16, type: 'cluster', size: 0.85, ci: 3, lean: 0 },
-  { x: 150, h: 78, type: 'daisy', size: 1.4, ci: 1, lean: -4 },
-  { x: 182, h: 28, type: 'tiny', size: 0.7, ci: 0, lean: 3 },
-  { x: 210, h: 44, type: 'bud', size: 1.0, ci: 2, lean: 4 },
-  { x: 244, h: 62, type: 'cluster', size: 1.15, ci: 3, lean: -5 },
-  { x: 270, h: 20, type: 'tiny', size: 0.85, ci: 1, lean: 2 },
-  { x: 292, h: 52, type: 'daisy', size: 1.05, ci: 2, lean: 3 },
-]
-const BUSHES = [{ x: 64, w: 30, h: 22 }, { x: 232, w: 36, h: 26 }]
-const WEEDS = [{ x: 104, h: 80, lean: 6 }, { x: 256, h: 72, lean: -5 }]
+const FLOWER_TYPES = ['daisy', 'bud', 'cluster', 'tiny']
+
+// Vegetation is regenerated each calendar day from the day seed, so its
+// arrangement shifts daily. Tall blooms/weeds are biased toward the edges,
+// keeping the center (under the text) short — so they don't crowd the words.
+function buildFlora(dayKey) {
+  const rand = rng((dayKey ^ 0x9e3779b1) >>> 0)
+  const n = 9 + Math.floor(rand() * 3)
+  return Array.from({ length: n }, (_, i) => {
+    const x = 14 + ((i + 0.2 + rand() * 0.6) / n) * 272
+    const dist = Math.abs(x - 150) / 150          // 0 center → 1 edge
+    const maxH = 24 + dist * 58                    // central stays short, edges can be tall
+    return {
+      x,
+      h: 14 + rand() * (maxH - 14),
+      type: FLOWER_TYPES[Math.floor(rand() * FLOWER_TYPES.length)],
+      size: 0.7 + rand() * 0.75,
+      ci: Math.floor(rand() * 4),
+      lean: (rand() - 0.5) * 12,
+    }
+  })
+}
+
+function buildBushes(dayKey) {
+  const rand = rng((dayKey ^ 0x2545f491) >>> 0)
+  const n = 1 + Math.floor(rand() * 2)
+  return Array.from({ length: n }, () => ({
+    x: 28 + rand() * 244,
+    w: 26 + rand() * 16,
+    h: 18 + rand() * 12,
+  }))
+}
+
+function buildWeeds(dayKey) {
+  const rand = rng((dayKey ^ 0x27d4eb2f) >>> 0)
+  const n = 1 + Math.floor(rand() * 2)
+  return Array.from({ length: n }, () => {
+    const x = rand() < 0.5 ? 18 + rand() * 70 : 212 + rand() * 70  // kept to the sides
+    return { x, h: 60 + rand() * 26, lean: (rand() - 0.5) * 12 }
+  })
+}
 
 function flowerHead(type, hx, hy, s, color) {
   if (type === 'daisy') {
@@ -334,13 +360,14 @@ function flowerHead(type, hx, hy, s, color) {
   return <g><circle cx={hx} cy={hy} r={2.4 * s} fill={color} /><circle cx={hx} cy={hy} r={1 * s} fill="#e7b23f" /></g>
 }
 
-function Flowers({ season }) {
+function Flowers({ season, dayKey }) {
+  const flora = useMemo(() => buildFlora(dayKey), [dayKey])
   if (season === 'winter') return null
   const palette = FLOWER_PALETTE[season]
   const stem = STEM[season]
   return (
     <g opacity="0.95">
-      {FLORA.map((f, i) => {
+      {flora.map((f, i) => {
         const hx = f.x + f.lean, hy = GROUND - f.h
         return (
           <g key={i}>
@@ -354,11 +381,12 @@ function Flowers({ season }) {
   )
 }
 
-function Bushes({ season }) {
+function Bushes({ season, dayKey }) {
+  const bushes = useMemo(() => buildBushes(dayKey), [dayKey])
   const color = BUSH_COLOR[season]
   return (
     <g opacity="0.9">
-      {BUSHES.map((b, i) => {
+      {bushes.map((b, i) => {
         const lumps = [[-b.w * 0.32, 0, b.h * 0.7], [0, b.h * 0.22, b.h * 0.95],
           [b.w * 0.32, 0, b.h * 0.7], [-b.w * 0.12, b.h * 0.05, b.h * 0.62], [b.w * 0.14, b.h * 0.05, b.h * 0.6]]
         return <g key={i}>{lumps.map(([dx, dy, r], k) =>
@@ -368,11 +396,12 @@ function Bushes({ season }) {
   )
 }
 
-function Weeds({ season }) {
+function Weeds({ season, dayKey }) {
+  const weeds = useMemo(() => buildWeeds(dayKey), [dayKey])
   const color = WEED_COLOR[season]
   return (
     <g opacity="0.85">
-      {WEEDS.map((w, i) => {
+      {weeds.map((w, i) => {
         const tx = w.x + w.lean, ty = GROUND - w.h
         return (
           <g key={i}>
@@ -534,10 +563,10 @@ export default function CardScene() {
       {showMoon && <Moon cx={226} cy={82} r={43} />}
       {dim && <CityLights color={glow} />}
       <rect x="0" y="0" width={W} height={H} fill="url(#tg-scrim)" />
-      <Bushes season={season} />
+      <Bushes season={season} dayKey={dayKey} />
       <Grass color={GRASS[season]} />
-      <Weeds season={season} />
-      <Flowers season={season} />
+      <Weeds season={season} dayKey={dayKey} />
+      <Flowers season={season} dayKey={dayKey} />
       <Bugs dim={dim} season={season} />
     </svg>
   )
