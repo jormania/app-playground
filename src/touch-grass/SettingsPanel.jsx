@@ -17,7 +17,7 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
       <label>Sound</label>
       <button type="button" onClick={onToggleSound}>{soundOn ? '♪ On' : '♪ Off'}</button>
       <p>{soundOn
-        ? 'Wind, water, the season\'s voices, and soft taps as you move through the app.'
+        ? 'Wind, water, and the season\'s voices.'
         : 'The world is quiet for now.'}</p>
 
       <form onSubmit={handleSubmit}>
@@ -33,7 +33,7 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
         />
         <p>Leave it empty and finds come from a built-in list instead.</p>
         <button type="submit">Save</button>
-        {hasKey && <button type="button" onClick={() => onSave('')}>Clear key</button>}
+        {hasKey && <button type="button" onClick={() => onSave('')}>Clear</button>}
         <button type="button" onClick={onClose}>Cancel</button>
       </form>
     </div>

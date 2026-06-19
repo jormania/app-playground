@@ -4,7 +4,7 @@
 
 const SCENES = {
   day:    { wind: 0.045, whistle: 0,    water: 0.065, crickets: 0,    birds: 0.6, chime: 0,   critters: true  },
-  night:  { wind: 0.028, whistle: 0,    water: 0.04,  crickets: 0.5,  birds: 0,   chime: 0,   critters: false },
+  night:  { wind: 0.028, whistle: 0,    water: 0.04,  crickets: 0.25, birds: 0,   chime: 0,   critters: false },
   winter: { wind: 0.15,  whistle: 0.12, water: 0.02,  crickets: 0,    birds: 0,   chime: 0.5, critters: false },
 }
 

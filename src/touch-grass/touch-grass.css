@@ -27,12 +27,13 @@ body {
 /* ---- The tarot card ---- */
 .tg-card {
   position: relative;
-  width: min(92vw, 360px);
-  height: min(90vh, 700px);
+  width: min(88vw, 380px);
+  aspect-ratio: 3 / 5;
+  max-height: 94vh;
   background: #f3ead4;
-  border-radius: 16px;
-  padding: 13px;
-  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.6), 0 2px 0 rgba(255,255,255,0.15) inset;
+  border-radius: 18px;
+  padding: 12px;
+  box-shadow: 0 26px 64px rgba(0, 0, 0, 0.72), 0 6px 16px rgba(0, 0, 0, 0.5), 0 2px 0 rgba(255,255,255,0.18) inset;
 }
 
 .tg-card-inner {
@@ -54,13 +55,15 @@ body {
 .tg-card-scene svg { display: block; width: 100%; height: 100%; }
 
 /* text floats over the lower half of the art */
+/* text block is anchored to the bottom, so the primary button lands at the
+   same height on every panel; longer copy simply grows upward */
 .tg-card-content {
   position: relative;
   z-index: 1;
   margin-top: auto;
-  max-height: 72%;
+  max-height: 80%;
   overflow: auto;
-  padding: 18px 22px 6px;
+  padding: 20px 24px 30px;
 }
 
 .tg-card-banner {
@@ -81,20 +84,20 @@ body {
 /* settings key — lives on the dark stage, outside the card */
 .tg-settings-btn {
   position: fixed;
-  bottom: 30px;
-  right: 32px;
+  bottom: 16px;
+  right: 16px;
   z-index: 9999;
   background: none;
   border: none;
-  padding: 6px;
+  padding: 4px;
   cursor: pointer;
   line-height: 0;
-  opacity: 0.62;
+  opacity: 0.95;
   transition: opacity 0.18s, transform 0.18s;
-  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 1px 5px rgba(0, 0, 0, 0.7));
 }
-.tg-settings-btn:hover { opacity: 1; transform: rotate(-10deg); }
-.tg-settings-btn svg { width: 26px; height: 26px; display: block; }
+.tg-settings-btn:hover { opacity: 1; transform: rotate(-10deg) scale(1.06); }
+.tg-settings-btn svg { width: 30px; height: 30px; display: block; }
 
 /* corner ornaments */
 .tg-corner {

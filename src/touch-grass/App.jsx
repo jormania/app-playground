@@ -30,10 +30,10 @@ function loadSound() {
 
 function KeyIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="#e2a92f" strokeWidth="1.8"
+    <svg viewBox="0 0 24 24" fill="none" stroke="#e0533a" strokeWidth="2"
       strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="12" cy="6.5" r="3.7" />
-      <circle cx="12" cy="6.5" r="0.6" fill="#e2a92f" stroke="none" />
+      <circle cx="12" cy="6.5" r="0.7" fill="#e0533a" stroke="none" />
       <line x1="12" y1="10.2" x2="12" y2="20" />
       <line x1="12" y1="15.5" x2="15.5" y2="15.5" />
       <line x1="12" y1="18.3" x2="14.3" y2="18.3" />
