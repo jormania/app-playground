@@ -1,0 +1,160 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root { height: 100%; }
+
+body {
+  background: radial-gradient(circle at 50% 32%, #2a2018 0%, #161109 78%);
+  color: #e4e8f0;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+/* ---- The tarot card ---- */
+.tg-card {
+  position: relative;
+  width: min(92vw, 360px);
+  height: min(90vh, 700px);
+  background: #f3ead4;
+  border-radius: 16px;
+  padding: 13px;
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.6), 0 2px 0 rgba(255,255,255,0.15) inset;
+  display: flex;
+  flex-direction: column;
+}
+
+.tg-card-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1.5px solid #cdbb8f;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f3ead4;
+}
+
+.tg-card-scene {
+  position: relative;
+  flex: 0 0 auto;
+  height: 38%;
+  min-height: 158px;
+  border-bottom: 1.5px solid #cdbb8f;
+}
+.tg-card-scene svg { display: block; width: 100%; height: 100%; }
+
+.tg-card-content {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 22px 22px 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  color: #1c3f3d;
+}
+
+.tg-card-banner {
+  flex: 0 0 auto;
+  text-align: center;
+  padding: 11px 8px;
+  border-top: 1.5px solid #cdbb8f;
+  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.82rem;
+  color: #1c4a47;
+}
+
+/* corner ornaments */
+.tg-corner {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  background: #1c4a47;
+  transform: rotate(45deg);
+  border-radius: 2px;
+  z-index: 2;
+}
+.tg-corner::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  background: #e2a92f;
+  border-radius: 50%;
+}
+.tg-corner.tl { top: 5px; left: 5px; }
+.tg-corner.tr { top: 5px; right: 5px; }
+.tg-corner.bl { bottom: 5px; left: 5px; }
+.tg-corner.br { bottom: 5px; right: 5px; }
+
+/* ---- Content typography (dark ink on parchment) ---- */
+.tg-card-content h1 {
+  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.2;
+  color: #173b39;
+  margin-bottom: 14px;
+}
+.tg-card-content h2 {
+  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #173b39;
+  margin: 4px 0 8px;
+}
+.tg-card-content p {
+  font-size: 0.84rem;
+  line-height: 1.7;
+  color: #3a5a55;
+  margin-bottom: 16px;
+}
+
+.tg-card-content button {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  color: #1c4a47;
+  background: transparent;
+  border: 1.5px solid #1c4a47;
+  padding: 8px 22px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  margin-right: 10px;
+  margin-bottom: 8px;
+}
+.tg-card-content button:hover {
+  background: #1c4a47;
+  color: #f3ead4;
+}
+
+.tg-card-content label {
+  display: block;
+  font-size: 0.78rem;
+  color: #5a7570;
+  letter-spacing: 0.05em;
+  font-variant: small-caps;
+  margin-bottom: 6px;
+}
+.tg-card-content input[type="password"] {
+  width: 100%;
+  background: rgba(28, 74, 71, 0.06);
+  border: 1.5px solid #cdbb8f;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 0.84rem;
+  color: #1c3f3d;
+  outline: none;
+  margin-bottom: 16px;
+}
+.tg-card-content input[type="password"]:focus { border-color: #1c4a47; }

@@ -4,7 +4,7 @@ import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [react()],
-  build: {
+build: {
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),

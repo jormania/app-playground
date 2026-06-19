@@ -1,3 +1,5 @@
+import { getTimeOfDay, getSeason } from './context.js'
+
 const DISCOVERIES = {
   common: [
     {
@@ -69,21 +71,6 @@ const DISCOVERIES = {
   ],
 }
 
-function getTimeOfDay() {
-  const h = new Date().getHours()
-  if (h >= 5 && h < 12) return 'morning'
-  if (h >= 12 && h < 17) return 'afternoon'
-  if (h >= 17 && h < 21) return 'evening'
-  return 'night'
-}
-
-function getSeason() {
-  const m = new Date().getMonth()
-  if (m >= 2 && m <= 4) return 'spring'
-  if (m >= 5 && m <= 7) return 'summer'
-  if (m >= 8 && m <= 10) return 'autumn'
-  return 'winter'
-}
 
 function formatDuration(minutes) {
   if (minutes < 1) return 'less than a minute'
@@ -108,7 +95,7 @@ async function fetchDiscovery(tier, durationMinutes, apiKey) {
       messages: [
         {
           role: 'user',
-          content: `Generate a ${tier} discovery. The walker was outside for ${formatDuration(durationMinutes)}. It is ${getTimeOfDay()} in ${getSeason()}.\n\nTier guide:\n- common: mildly uncanny. Something real that feels slightly wrong.\n- uncommon: clearly impossible. Physical laws politely ignored.\n- rare: reality-bending. The ground itself doesn't behave as expected.\n- legendary: mythic, awe-inspiring. The kind of thing that happens once.`,
+          content: `Generate a ${tier} discovery. The walker was outside for ${formatDuration(durationMinutes)}. It is ${getTimeOfDay(new Date())} in ${getSeason(new Date())}.\n\nTier guide:\n- common: mildly uncanny. Something real that feels slightly wrong.\n- uncommon: clearly impossible. Physical laws politely ignored.\n- rare: reality-bending. The ground itself doesn't behave as expected.\n- legendary: mythic, awe-inspiring. The kind of thing that happens once.`,
         },
       ],
     }),

@@ -4,6 +4,7 @@ import OutPanel from './OutPanel.jsx'
 import ResultPanel from './ResultPanel.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
 import GeneratingPanel from './GeneratingPanel.jsx'
+import TarotCard from './TarotCard.jsx'
 import { rollTier, generateDiscovery } from './engine.js'
 
 const STORAGE_KEY = 'tg-react-state'
@@ -33,7 +34,7 @@ const chipStyle = {
   background: 'rgba(12,14,20,0.85)', border: '1px solid #222636',
   padding: '3px 10px', borderRadius: '5px',
   backdropFilter: 'blur(8px)', cursor: 'pointer',
-  appearance: 'none', lineHeight: '1.6',
+  appearance: 'none', lineHeight: '1.6', margin: 0,
 }
 
 export default function App() {
@@ -71,19 +72,27 @@ export default function App() {
 
   const { status, departedAt, lastWalk } = state
 
+  let panel, title
   if (showSettings) {
-    return <SettingsPanel currentKey={apiKey} onSave={saveApiKey} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
+    title = 'The Keeper'
+    panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
+  } else if (status === 'generating') {
+    title = 'The Omen'
+    panel = <GeneratingPanel tier={state.pendingTier} />
+  } else if (status === 'out') {
+    title = 'The Wandering'
+    panel = <OutPanel departedAt={departedAt} onReturn={returnFromWalk} />
+  } else if (lastWalk && !showDeparture) {
+    title = 'The Discovery'
+    panel = <ResultPanel lastWalk={lastWalk} onGoBack={() => { setShowDeparture(true); setDepartureKey(k => k + 1) }} />
+  } else {
+    title = 'The Threshold'
+    panel = <DeparturePanel key={departureKey} onDepart={startWalk} apiKey={apiKey} />
   }
-
-  let panel
-  if (status === 'generating') panel = <GeneratingPanel tier={state.pendingTier} />
-  else if (status === 'out') panel = <OutPanel departedAt={departedAt} onReturn={returnFromWalk} />
-  else if (lastWalk && !showDeparture) panel = <ResultPanel lastWalk={lastWalk} onGoBack={() => { setShowDeparture(true); setDepartureKey(k => k + 1) }} />
-  else panel = <DeparturePanel key={departureKey} onDepart={startWalk} apiKey={apiKey} />
 
   return (
     <>
-      {panel}
+      <TarotCard title={title}>{panel}</TarotCard>
       <div style={cornerStyle}>
         <a href="/touch-grass-react-guide.html" style={chipStyle}>guide ↗</a>
         <button onClick={() => setShowSettings(true)} style={chipStyle}>settings</button>
