@@ -8,6 +8,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
+        touchGrass: resolve(__dirname, 'touch-grass-react.html'),
       }
     }
   }
