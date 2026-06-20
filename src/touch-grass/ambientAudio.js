@@ -21,10 +21,10 @@ const MASTER = 0.5
 // wind, leaf rustle. `swell` modulates the level (a slow breath); `tone` wanders
 // the filter so the bed never sits as one flat block; `verb` is its reverb send.
 const BIOME_BED = {
-  coast:    { type: 'lowpass',  freq: 420,  gain: 0.075, swell: 0.55, tone: 0,  rate: 0.85, verb: 0.20 },
-  city:     { type: 'lowpass',  freq: 200,  gain: 0.025, swell: 0.35, tone: 55, rate: 0.6,  verb: 0.12 },
-  mountain: { type: 'bandpass', freq: 950,  gain: 0.03,  swell: 0.20, tone: 35, rate: 1.2,  verb: 0.34 },
-  forest:   { type: 'bandpass', freq: 2200, gain: 0.022, swell: 0.12, tone: 0,  rate: 1.1,  verb: 0.22 },
+  coast:    { type: 'lowpass',  freq: 420,  gain: 0.075, swell: 0.40, tone: 0,  rate: 0.85, verb: 0.20 },
+  city:     { type: 'lowpass',  freq: 200,  gain: 0.025, swell: 0.18, tone: 55, rate: 0.6,  verb: 0.12 },
+  mountain: { type: 'bandpass', freq: 950,  gain: 0.03,  swell: 0.14, tone: 35, rate: 1.2,  verb: 0.34 },
+  forest:   { type: 'bandpass', freq: 2200, gain: 0.022, swell: 0.10, tone: 0,  rate: 1.1,  verb: 0.22 },
   plain:    { type: 'lowpass',  freq: 500,  gain: 0,     swell: 0,    tone: 0,  rate: 1.0,  verb: 0.10 },
 }
 const DEFAULT_VERB = 0.15
@@ -218,7 +218,7 @@ export function createAmbience() {
     bSrc.connect(bFilter).connect(biomeGain).connect(biomeSwell).connect(master)
     const biomeVerb = ctx.createGain(); biomeVerb.gain.value = 0.12
     biomeSwell.connect(biomeVerb).connect(convolver) // widen the bed through the room
-    const bLfo = ctx.createOscillator(); bLfo.frequency.value = 0.085
+    const bLfo = ctx.createOscillator(); bLfo.frequency.value = 0.055
     const bDepth = ctx.createGain(); bDepth.gain.value = 0
     bLfo.connect(bDepth).connect(biomeSwell.gain); bLfo.start()
     const bToneLfo = ctx.createOscillator(); bToneLfo.frequency.value = 0.05
@@ -239,8 +239,10 @@ export function createAmbience() {
     startSchedulers()
     startLiveliness()
 
-    walkers.push(makeWalker(windDrift.gain, { min: 0.28, max: 1.55, step: 0.32, minDur: 7, maxDur: 20 }))
-    walkers.push(makeWalker(waterDrift.gain, { min: 0.45, max: 1.30, step: 0.24, minDur: 9, maxDur: 24 }))
+    // gentle, slow breathing — narrow range over long spans, so the bed stays
+    // serene; real dynamism comes from gusts (which scale with the true wind)
+    walkers.push(makeWalker(windDrift.gain, { min: 0.62, max: 1.08, step: 0.12, minDur: 18, maxDur: 44 }))
+    walkers.push(makeWalker(waterDrift.gain, { min: 0.66, max: 1.05, step: 0.10, minDur: 20, maxDur: 48 }))
   }
 
   // ============================ bed levels ============================
@@ -559,8 +561,8 @@ export function createAmbience() {
       const gg = n.gustGain.gain
       gg.cancelScheduledValues(t)
       gg.setValueAtTime(gg.value, t)
-      gg.linearRampToValueAtTime(1 + 0.6 * level, t + 1.0 + Math.random())
-      gg.linearRampToValueAtTime(1, t + 2.6 + Math.random() * 1.4)
+      gg.linearRampToValueAtTime(1 + 0.4 * level, t + 1.4 + Math.random())
+      gg.linearRampToValueAtTime(1, t + 3.4 + Math.random() * 1.6)
     }
     const s = loopNoise(noiseBuf, 1.0)
     const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.7
@@ -723,11 +725,12 @@ export function createAmbience() {
     every(120000, 240000, () => { if (ready() && scene !== 'winter') airplane(ctx.currentTime, 1) })
     every(8000, 13000, () => { if (ready() && weatherCond === 'thunder') thunderClap(ctx.currentTime + 0.1) })
 
-    // wind gusts — likelier and stronger the windier it really is
-    every(7000, 20000, () => {
-      if (!ready() || weatherWind < 5) return
-      if (!lively(Math.min(1, weatherWind / 22))) return
-      gust(ctx.currentTime, Math.min(1, 0.3 + weatherWind / 30))
+    // wind gusts — only when it's genuinely breezy, and likelier/stronger the
+    // windier it really is. A calm clear day stays gust-free and serene.
+    every(16000, 38000, () => {
+      if (!ready() || weatherWind < 10) return
+      if (!lively(Math.min(0.85, weatherWind / 32))) return
+      gust(ctx.currentTime, Math.min(1, weatherWind / 38))
     })
 
     // biome- and time-aware voices (null = also when there's no location)
