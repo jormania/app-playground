@@ -39,6 +39,7 @@ body {
    whole group, which dropped the heavy card below centre and looked bottom-heavy. */
 .tg-shell {
   position: relative;
+  top: 28px; /* nudge the whole group down a touch so the masthead clears the top */
   display: flex;
   flex-direction: column;
   align-items: center;
