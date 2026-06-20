@@ -33,9 +33,42 @@ body {
   transition: background 3s ease;
 }
 
+/* masthead + card centred together, so empty space balances above and below */
+.tg-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+/* persistent masthead above the card — the app's name and its creed. Colour
+   inverts with the daily stage so it stays legible whatever surface the day rolls */
+.tg-masthead {
+  text-align: center;
+  line-height: 1.2;
+  color: #2a2118; /* dark ink for the pale dawn/dusk/night surfaces */
+  transition: color 1.5s ease;
+}
+.tg-masthead.on-dark { color: #f3ead4; } /* cream for the dark midday surface */
+.tg-masthead-title {
+  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.tg-masthead-sub {
+  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+  font-size: 0.74rem;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  opacity: 0.72;
+  margin-top: 3px;
+}
+
 /* ---- The tarot card ---- */
 .tg-card {
   position: relative;
+  flex-shrink: 0;
   width: min(84vw, 344px);
   aspect-ratio: 3 / 5;
   max-height: 86vh;

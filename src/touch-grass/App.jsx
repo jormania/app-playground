@@ -178,17 +178,27 @@ export default function App() {
     panel = <DeparturePanel key={departureKey} onDepart={startWalk} apiKey={apiKey} />
   }
 
+  // the masthead text inverts against the daily stage: cream on the dark midday
+  // surface, dark ink on the pale dawn/dusk/night surfaces — readable either way
+  const darkStage = world.timeOfDay === 'day'
+
   return (
     <>
       <Stage />
-      <TarotCard
-        title={title}
-        showSigns={signsOn}
-        motionOn={motionOn}
-        fill={showReliquary}
-        onSettings={(showSettings || showReliquary) ? null : () => setShowSettings(true)}
-        onReliquary={(showSettings || showReliquary) ? null : () => setShowReliquary(true)}
-      >{panel}</TarotCard>
+      <div className="tg-shell">
+        <header className={darkStage ? 'tg-masthead on-dark' : 'tg-masthead'}>
+          <div className="tg-masthead-title">Touch Grass</div>
+          <div className="tg-masthead-sub">A small rite for going outside</div>
+        </header>
+        <TarotCard
+          title={title}
+          showSigns={signsOn}
+          motionOn={motionOn}
+          fill={showReliquary}
+          onSettings={(showSettings || showReliquary) ? null : () => setShowSettings(true)}
+          onReliquary={(showSettings || showReliquary) ? null : () => setShowReliquary(true)}
+        >{panel}</TarotCard>
+      </div>
     </>
   )
 }
