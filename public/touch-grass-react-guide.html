@@ -163,6 +163,13 @@ nav {
 }
 .coming ul li:last-child { border-bottom: none; }
 .coming ul li::before { content: '·'; color: var(--faint); flex-shrink: 0; }
+.coming p { font-size: 14.5px; color: var(--muted); line-height: 1.75; max-width: 600px; }
+.coming ul li code { white-space: nowrap; }
+code {
+  font-family: var(--mono); font-size: 12px;
+  background: var(--surface); color: var(--accent2);
+  padding: 1px 6px; border-radius: 5px; border: 1px solid var(--border);
+}
 
 /* ── footer ── */
 footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px; }
@@ -248,7 +255,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">finds</span>
         <h3>The finds</h3>
       </div>
-      <p>Every walk returns exactly one find — always. Never more, never less. Walk duration affects its rarity, not the quantity. Each is conjured by Claude like an entry in a grimoire or the face of an unknown tarot card: surreal, esoteric, faintly macabre, with a thread of cosmic dread. Hushed and strange, kept brief — no more than twenty-two words — and coloured by the hour, season, weather, moon and the rare moments of the year you walked through. Its subject ranges widely from walk to walk — stone, water, a sound, a forgotten object, the occasional rare insect — never settling on one motif. Four tiers of escalating strangeness:</p>
+      <p>Every walk returns exactly one find — always. Never more, never less. Walk duration affects its rarity, not the quantity. Each is conjured by Claude like an entry in a grimoire or the face of an unknown tarot card: surreal, esoteric, faintly macabre, with a thread of cosmic dread. Hushed and strange, kept brief — no more than twenty-two words — and coloured by the hour, season, weather, moon, the lie of the land around you, and the rare moments of the year you walked through. Its subject ranges widely from walk to walk — stone, water, a sound, a forgotten object, the occasional rare insect — never settling on one motif. Four tiers of escalating strangeness:</p>
       <ul>
         <li><span class="pill common">common</span> A small wrongness, a quiet omen — the world tilting half a degree.</li>
         <li><span class="pill uncommon">uncommon</span> An esoteric object or sign, clearly impossible, humming with hidden meaning.</li>
@@ -353,7 +360,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">sound</span>
         <h3>A living soundscape</h3>
       </div>
-      <p>An ambient bed plays across every screen, synthesized live rather than looped from a clip. Wind and water drift up and down on their own slow, weather-like rhythms — never a repeating pattern. The mix follows the time of day: birdsong by day, with the occasional far-off cat, dog, or distant airplane; crickets by night; and in winter a colder wind with a lonely chime. Everything overlaps gently, tuned to stay serene.</p>
+      <p>An ambient bed plays across every screen, synthesized live rather than looped — there are no audio files at all. It's made for headphones and a long walk: every sound is placed across a <strong>stereo field</strong> inside a soft, warm room that grows from an intimate city street to vast mountain air, and the whole soundscape quietly <strong>breathes</strong> — swelling with life, then easing toward near-stillness, the way real outdoors does. Wind moves in <strong>gusts</strong> that rise and fall with the true wind; when rain stops you'll hear it drip away and the birds return. <strong>Dawn</strong> brings a fuller chorus, <strong>dusk</strong> hands the air to crickets, deep night keeps an owl or a far-off frog. Stay a while and rare, distant things drift past — a church bell on the hour, a spring cuckoo, a woodpecker, a wolf on a clear winter night, a foghorn in the mist, a shimmer when a star falls. And deep beneath it all: the roll of thunder, a city's low rumble. Nothing is loud; nothing repeats.</p>
     </div>
 
     <div class="feature">
@@ -378,6 +385,22 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <h3>Your real sky</h3>
       </div>
       <p>With your permission, the app reads your location once (and only your rough coordinates, kept in your browser). From it, daylight becomes exact — the real sunrise, sunset and twilight where you are, so a midsummer dusk lingers as long as it truly does. Deny it, or turn <strong>Place</strong> off in the Keeper, and everything falls back gracefully to the seasonal estimates. Your rough coordinates are only ever sent to the open services that answer back — weather, elevation, and a coarse reverse-geocode — never stored anywhere but your own browser.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">biome</span>
+        <h3>A sense of where you are</h3>
+      </div>
+      <p>From your rough location the app reads the lie of the land — <em>coast</em>, <em>forest</em>, <em>city</em>, <em>mountain</em> or open <em>plain</em> — and lets it colour both the finds and the sound. The oracle leans toward salt and tideline by the sea, stone and thin air on a mountain, brick and the hum of streets in a city. The soundscape follows: surf and gulls at the coast, a leaf-rustle and a woodpecker in forest, a low rumble and pigeons in the city, a thin keening wind and a raptor's cry on the heights. Kept deliberately coarse — a single word, never an address.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">light</span>
+        <h3>Golden hour &amp; blue hour</h3>
+      </div>
+      <p>The card mirrors not only the weather but the <em>quality of the light</em>. As the sun nears the horizon — at dawn and again at dusk — the sky warms through amber and rose, the sun deepens toward a sunset orange, and the grass catches the glow. In the brief blue hour after sundown the sky sinks to deep indigo with a thin band of warmth left along the horizon. It eases in and out with the sun's true angle, never a hard switch, and softens under cloud. (Location on; otherwise the plain seasonal sky.)</p>
     </div>
 
     <div class="feature">
@@ -415,6 +438,14 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
 
     <div class="feature">
       <div class="feature-header">
+        <span class="feature-tag">countdown</span>
+        <h3>The turning of the day</h3>
+      </div>
+      <p>While you're out, a quiet line beneath the timer counts down to the next turn of the day — <em>sunrise</em>, <em>noon</em>, <em>sunset</em> or <em>midnight</em>, whichever comes next, from the real solar times where you are. A gentle sense of where the light is going — never something to watch.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
         <span class="feature-tag">reliquary</span>
         <h3>The Reliquary — your kept finds</h3>
       </div>
@@ -426,7 +457,15 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">setup</span>
         <h3>The Keeper</h3>
       </div>
-      <p>Tap the red <strong>key</strong> in the bottom-right corner to open <em>The Keeper</em> (its companion, the lens, sits opposite in the bottom-left). Enter your Anthropic API key — it stays in your browser and is only ever sent directly to Anthropic, when generating a find or tagline. Here you can also toggle <strong>Sound</strong>, the constellation <strong>Signs</strong>, <strong>Place</strong> (real location), and <strong>Motion</strong> (freeze the scene) on or off — each shows its state, lit for on and dim for off. Without a key, everything still works — finds and taglines come from the old book instead.</p>
+      <p>Tap the red <strong>key</strong> in the bottom-right corner to open <em>The Keeper</em> (its companion, the lens, sits opposite in the bottom-left). Enter your Anthropic API key — it stays in your browser and is only ever sent directly to Anthropic, when generating a find or tagline. Here you can also toggle <strong>Sound</strong>, the constellation <strong>Signs</strong>, <strong>Place</strong> (real location), <strong>Motion</strong> (freeze the scene), and the <strong>Daily call</strong> on or off — each shows its state, lit for on and dim for off. Without a key, everything still works — finds and taglines come from the old book instead.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">daily call</span>
+        <h3>A daily call to go out</h3>
+      </div>
+      <p>Once a day, about two hours before sunset, the app can send a single soft notification in its own voice — a nudge to take today's walk while the light lasts, or, if you've already been out, a quiet acknowledgement and the find you brought home. Just one, never more. It's on by default (your browser asks permission the first time); switch it off any time with <strong>Daily call</strong> in the Keeper. Being a screen-free app with no server behind it, it reaches you best when you open the app around that hour — it won't chase you.</p>
     </div>
 
     <div class="feature">
@@ -439,15 +478,26 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
 
   </section>
 
-  <!-- Still to come -->
+  <!-- Complete -->
   <section class="coming">
-    <h2>// still to come</h2>
+    <h2>// the app is complete</h2>
+    <p>That's all of it. Touch Grass is finished — every screen, every sound, every quiet detail above is in your hands now. There's no next version waiting in the wings; the most fitting thing left to do is close the tab and go outside.</p>
+  </section>
+
+  <!-- Preview parameters -->
+  <section class="coming">
+    <h2>// preview parameters</h2>
+    <p>For the curious and the tinkerers: add any of these to the address bar to summon a condition without waiting for the world to provide it. Combine them freely — for instance <code>?tod=dusk&amp;light=golden</code>, or <code>?biome=coast&amp;solo</code>.</p>
     <ul>
-      <li>An almanac — the full calendar of special moments, so you can anticipate each one</li>
-      <li>A true sense of place — coast, forest, city or mountain flavouring the finds and sounds</li>
-      <li>Seasonal accents — drifting leaves in autumn, blossom in spring, a golden-hour glow</li>
-      <li>Walk history and collection — browse everything you've found, sorted by rarity</li>
-      <li>A volume slider for the soundscape</li>
+      <li><code>?tod=dawn|day|dusk|night</code> — force the time of day</li>
+      <li><code>?season=spring|summer|autumn|winter</code> — force the season</li>
+      <li><code>?light=golden|blue|day|night</code> — force the golden / blue hour</li>
+      <li><code>?wx=clear|cloudy|overcast|fog|rain|snow|thunder</code> — force the weather</li>
+      <li><code>?moon=0–1</code> — force the moon's phase (0 new · 0.5 full · 1 new)</li>
+      <li><code>?biome=coast|forest|city|mountain|plain</code> — force the sense of place</li>
+      <li><code>?event=&lt;key&gt;</code> — force an almanac moment, e.g. <code>?event=perseids</code></li>
+      <li><code>?solo</code> — mute all but the biome's own sounds, to audition them</li>
+      <li><code>?call=now</code> — fire the daily-call notification straight away</li>
     </ul>
   </section>
 
