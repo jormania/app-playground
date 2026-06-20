@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { getTimeOfDay, getSeason, getMoonPhase } from './context.js'
+import { getTimeOfDay, getSeason, getMoonPhase, getLight } from './context.js'
 import { fetchWeather } from './weather.js'
 import { getActiveMoments, getMomentByKey } from './moments.js'
+import { resolveBiome, BIOMES } from './place.js'
 
 const LOCATION_KEY = 'tg-react-location'
 const LOCATION_PREF_KEY = 'tg-react-location-on'
@@ -43,6 +44,19 @@ function loadForcedMoment() {
   }
 }
 
+// Preview override: append ?light=golden|blue|day|night to force the light.
+function loadForcedLight() {
+  try {
+    const l = new URLSearchParams(window.location.search).get('light')
+    if (l === 'golden') return { golden: 1, blue: 0 }
+    if (l === 'blue') return { golden: 0, blue: 1 }
+    if (l === 'day' || l === 'night') return { golden: 0, blue: 0 }
+    return null
+  } catch (_) {
+    return null
+  }
+}
+
 // Preview override: append ?tod=dawn|day|dusk|night to force the time of day.
 function loadForcedTod() {
   try {
@@ -60,6 +74,27 @@ function loadForcedSeason() {
     return ['spring', 'summer', 'autumn', 'winter'].includes(s) ? s : null
   } catch (_) {
     return null
+  }
+}
+
+// Preview override: append ?biome=coast|forest|city|mountain|plain.
+function loadForcedBiome() {
+  try {
+    const b = new URLSearchParams(window.location.search).get('biome')
+    return BIOMES.includes(b) ? b : null
+  } catch (_) {
+    return null
+  }
+}
+
+// Listening aid: append ?solo (or ?solo=1) to mute every ambient layer except
+// the biome bed, so each biome can be auditioned cleanly and separately.
+function loadForcedSolo() {
+  try {
+    const s = new URLSearchParams(window.location.search).get('solo')
+    return s != null && s !== '0'
+  } catch (_) {
+    return false
   }
 }
 
@@ -90,10 +125,14 @@ export function WorldProvider({ children }) {
   const [now, setNow] = useState(() => new Date())
   const [coords, setCoords] = useState(loadCoords)
   const [weather, setWeather] = useState(null)
+  const [biome, setBiome] = useState(null)
   const [locationEnabled, setLocationEnabled] = useState(loadLocationPref)
   const [forcedWeather] = useState(loadForcedWeather)
+  const [forcedBiome] = useState(loadForcedBiome)
+  const [soloBiome] = useState(loadForcedSolo)
   const [forcedMoon] = useState(loadForcedMoon)
   const [forcedTod] = useState(loadForcedTod)
+  const [forcedLight] = useState(loadForcedLight)
   const [forcedSeason] = useState(loadForcedSeason)
   const [forcedMoment] = useState(loadForcedMoment)
 
@@ -136,6 +175,16 @@ export function WorldProvider({ children }) {
     return () => { cancelled = true; clearInterval(id) }
   }, [effectiveCoords])
 
+  // resolve a coarse biome for the location (once, cached); degrade silently
+  useEffect(() => {
+    if (!effectiveCoords) { setBiome(null); return }
+    let cancelled = false
+    resolveBiome(effectiveCoords)
+      .then(b => { if (!cancelled) setBiome(b) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [effectiveCoords])
+
   function toggleLocation() {
     setLocationEnabled(prev => {
       const next = !prev
@@ -151,8 +200,11 @@ export function WorldProvider({ children }) {
     now,
     coords: effectiveCoords,
     timeOfDay: forcedTod || getTimeOfDay(now, effectiveCoords),
+    light: forcedLight || getLight(now, effectiveCoords),
     season: forcedSeason || getSeason(now),
     weather: forcedWeather || weather,
+    biome: forcedBiome || biome,
+    soloBiome,
     moon,
     moments,
     locationEnabled,

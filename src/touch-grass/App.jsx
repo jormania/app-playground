@@ -8,6 +8,7 @@ import ReliquaryPanel from './ReliquaryPanel.jsx'
 import TarotCard from './TarotCard.jsx'
 import Stage from './Stage.jsx'
 import { useAmbientSound } from './useAmbientSound.js'
+import { useDailyCall } from './useDailyCall.js'
 import { useWorld } from './world.jsx'
 import { rollTier, generateDiscovery } from './engine.js'
 
@@ -16,6 +17,7 @@ const API_KEY_STORAGE = 'tg-react-apikey'
 const SOUND_STORAGE = 'tg-react-sound'
 const SIGNS_STORAGE = 'tg-react-signs'
 const MOTION_STORAGE = 'tg-react-motion'
+const CALL_STORAGE = 'tg-react-call'
 const HISTORY_STORAGE = 'tg-react-history'
 const HISTORY_CAP = 300
 
@@ -49,6 +51,10 @@ function loadMotion() {
   return localStorage.getItem(MOTION_STORAGE) !== '0' // default on
 }
 
+function loadCall() {
+  return localStorage.getItem(CALL_STORAGE) !== '0' // default on
+}
+
 function loadHistory() {
   try {
     const raw = localStorage.getItem(HISTORY_STORAGE)
@@ -66,6 +72,7 @@ export default function App() {
   const [soundOn, setSoundOn] = useState(loadSound)
   const [signsOn, setSignsOn] = useState(loadSigns)
   const [motionOn, setMotionOn] = useState(loadMotion)
+  const [callOn, setCallOn] = useState(loadCall)
   const [history, setHistory] = useState(loadHistory)
   const [showSettings, setShowSettings] = useState(false)
   const [showReliquary, setShowReliquary] = useState(false)
@@ -74,6 +81,7 @@ export default function App() {
 
   const { reveal: playReveal, depart: playDepart } = useAmbientSound(soundOn)
   const world = useWorld()
+  useDailyCall(callOn, world.coords, history)
 
   useEffect(() => {
     try {
@@ -97,7 +105,7 @@ export default function App() {
     const durationMinutes = (Date.now() - state.departedAt) / 60000
     const tier = rollTier(durationMinutes)
     setState(prev => ({ ...prev, status: 'generating', pendingTier: tier }))
-    const ctx = { timeOfDay: world.timeOfDay, season: world.season, weather: world.weather, moon: world.moon, coords: world.coords, moments: world.moments }
+    const ctx = { timeOfDay: world.timeOfDay, season: world.season, weather: world.weather, moon: world.moon, coords: world.coords, biome: world.biome, moments: world.moments }
     const { discovery, isStatic, apiAttempted } = await generateDiscovery(tier, durationMinutes, apiKey, ctx)
     const walk = { ts: Date.now(), durationMinutes, tier, discovery, isStatic, apiAttempted }
     setState(prev => ({ ...prev, status: 'idle', departedAt: null, pendingTier: null, lastWalk: walk }))
@@ -136,6 +144,14 @@ export default function App() {
     })
   }
 
+  function toggleCall() {
+    setCallOn(prev => {
+      const next = !prev
+      localStorage.setItem(CALL_STORAGE, next ? '1' : '0')
+      return next
+    })
+  }
+
   function clearAllHistory() { setHistory([]) }
   function clearLastHistory() { setHistory(prev => prev.slice(1)) }
 
@@ -144,7 +160,7 @@ export default function App() {
   let panel, title
   if (showSettings) {
     title = 'The Keeper'
-    panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} soundOn={soundOn} onToggleSound={toggleSound} signsOn={signsOn} onToggleSigns={toggleSigns} motionOn={motionOn} onToggleMotion={toggleMotion} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
+    panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} soundOn={soundOn} onToggleSound={toggleSound} signsOn={signsOn} onToggleSigns={toggleSigns} motionOn={motionOn} onToggleMotion={toggleMotion} callOn={callOn} onToggleCall={toggleCall} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
   } else if (showReliquary) {
     title = 'The Reliquary'
     panel = <ReliquaryPanel history={history} onClearLast={clearLastHistory} onClearAll={clearAllHistory} onClose={() => { setShowReliquary(false); setDepartureKey(k => k + 1) }} />

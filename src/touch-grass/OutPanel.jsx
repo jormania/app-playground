@@ -1,4 +1,16 @@
 import { useState, useEffect } from 'react'
+import { useWorld } from './world.jsx'
+import { getNextSunAnchor } from './context.js'
+
+// time until the next turn of the day, in plain words
+function formatCountdown(ms) {
+  if (ms < 60000) return 'under a minute'
+  const totalMin = Math.round(ms / 60000)
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  if (h > 0) return `${h}h ${m}m`
+  return `${m}m`
+}
 
 function formatElapsed(ms) {
   const s = Math.floor(ms / 1000)
@@ -18,7 +30,10 @@ function elapsedColor(ms) {
   return null
 }
 
+const ANCHOR_LABEL = { sunrise: 'sunrise', noon: 'noon', sunset: 'sunset', midnight: 'midnight' }
+
 export default function OutPanel({ departedAt, onReturn }) {
+  const { coords } = useWorld()
   const [now, setNow] = useState(Date.now())
 
   useEffect(() => {
@@ -29,6 +44,9 @@ export default function OutPanel({ departedAt, onReturn }) {
   const elapsed = now - departedAt
   const color = elapsedColor(elapsed)
 
+  const anchor = getNextSunAnchor(new Date(now), coords)
+  const remaining = anchor.at.getTime() - now
+
   return (
     <div>
       <h1>You're outside.</h1>
@@ -37,6 +55,9 @@ export default function OutPanel({ departedAt, onReturn }) {
         <span style={color ? { color } : undefined}>{formatElapsed(elapsed)}</span>
         {' '}· since {new Date(departedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </p>
+      {remaining > 0 && (
+        <div className="tg-countdown">{ANCHOR_LABEL[anchor.key]} in {formatCountdown(remaining)}</div>
+      )}
       <button onClick={onReturn}>I'm back</button>
     </div>
   )

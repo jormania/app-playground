@@ -132,7 +132,6 @@ body {
   line-height: 0;
   opacity: 0.95;
   transition: opacity 0.18s, transform 0.18s;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45));
 }
 .tg-card-key:hover { opacity: 1; transform: rotate(-10deg) scale(1.06); }
 .tg-card-key svg { width: 26px; height: 26px; display: block; }
@@ -241,6 +240,18 @@ body {
   border-color: rgba(243, 234, 212, 0.32);
 }
 
+/* a quiet line on the Out panel — time until the next turn of the day */
+.tg-countdown {
+  margin-top: -10px;
+  margin-bottom: 18px;
+  font-size: 0.74rem;
+  color: #d2d7ca;
+  opacity: 0.82;
+  letter-spacing: 0.04em;
+  font-variant: small-caps;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+}
+
 /* ---- Threshold info: today's moment + forecast ---- */
 .tg-threshold-info { margin-bottom: 18px; }
 .tg-moment {
@@ -251,7 +262,7 @@ body {
 .tg-moment span span { font-weight: 700; }
 .tg-forecast { text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55); }
 .tg-forecast-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-.tg-fc-glyph { width: 27px; height: 27px; flex-shrink: 0; filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4)); }
+.tg-fc-glyph { width: 27px; height: 27px; flex-shrink: 0; }
 .tg-forecast-label {
   font-size: 0.72rem; letter-spacing: 0.14em; font-variant: small-caps;
   text-transform: lowercase; color: #e6dfcc; opacity: 0.92;
@@ -302,7 +313,6 @@ body {
 }
 .tg-relic-mark {
   width: 15px; height: 15px; flex-shrink: 0; margin-top: 2px;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 }
 .tg-relic-actions { flex: 0 0 auto; }
 .tg-confirm {
@@ -325,7 +335,6 @@ body {
   line-height: 0;
   opacity: 0.95;
   transition: opacity 0.18s, transform 0.18s;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45));
 }
 .tg-card-lens svg { width: 26px; height: 26px; display: block; }
 @media (hover: hover) {

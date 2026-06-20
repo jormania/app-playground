@@ -149,7 +149,7 @@ export default function DeparturePanel({ onDepart, apiKey }) {
       setLoading(false)
       return
     }
-    const ctx = { timeOfDay: world.timeOfDay, season: world.season, weather: world.weather, moon: world.moon, coords: world.coords, moments: world.moments }
+    const ctx = { timeOfDay: world.timeOfDay, season: world.season, weather: world.weather, moon: world.moon, coords: world.coords, biome: world.biome, moments: world.moments }
     fetchTagline(apiKey, ctx)
       .then(setTagline)
       .catch(() => setTagline(randomFallback()))

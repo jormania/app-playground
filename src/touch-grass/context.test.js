@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'vitest'
-import { getTimeOfDay, getSeason, getMoonPhase } from './context.js'
+import { getTimeOfDay, getSeason, getMoonPhase, getLight, getSunAltitude, getNextSunAnchor } from './context.js'
 
 function dateAt(hour, month = 5) {
   const d = new Date(2024, month, 15)
@@ -76,6 +76,65 @@ describe('getMoonPhase', () => {
     // 2024-06-22 was a full moon
     const { fraction } = getMoonPhase(new Date('2024-06-22T01:00:00Z'))
     expect(fraction).toBeGreaterThan(0.9)
+  })
+})
+
+describe('getLight — golden / blue hour', () => {
+  const equator = { lat: 0, lon: 0 }
+  test('is flat without coordinates', () => {
+    expect(getLight(new Date(), null)).toEqual({ golden: 0, blue: 0 })
+    expect(getLight(new Date(), { lat: 'x' })).toEqual({ golden: 0, blue: 0 })
+  })
+  test('strengths stay within 0..1', () => {
+    for (const h of [0, 6, 12, 18, 21]) {
+      const { golden, blue } = getLight(new Date(Date.UTC(2026, 2, 20, h)), equator)
+      expect(golden).toBeGreaterThanOrEqual(0); expect(golden).toBeLessThanOrEqual(1)
+      expect(blue).toBeGreaterThanOrEqual(0);   expect(blue).toBeLessThanOrEqual(1)
+    }
+  })
+  test('flat and dark at solar midnight', () => {
+    expect(getSunAltitude(new Date(Date.UTC(2026, 2, 20, 0)), equator)).toBeLessThan(-10)
+    expect(getLight(new Date(Date.UTC(2026, 2, 20, 0)), equator)).toEqual({ golden: 0, blue: 0 })
+  })
+  test('flat at high noon (sun above the golden band)', () => {
+    expect(getSunAltitude(new Date(Date.UTC(2026, 2, 20, 12)), equator)).toBeGreaterThan(60)
+    expect(getLight(new Date(Date.UTC(2026, 2, 20, 12)), equator)).toEqual({ golden: 0, blue: 0 })
+  })
+  test('reaches a golden peak somewhere in the day', () => {
+    let peak = 0
+    for (let m = 0; m < 24 * 60; m += 1) {
+      peak = Math.max(peak, getLight(new Date(Date.UTC(2026, 2, 20, 0, m)), equator).golden)
+    }
+    expect(peak).toBeGreaterThan(0.5)
+  })
+  test('reaches a blue-hour peak somewhere in the day', () => {
+    let peak = 0
+    for (let m = 0; m < 24 * 60; m += 1) {
+      peak = Math.max(peak, getLight(new Date(Date.UTC(2026, 2, 20, 0, m)), equator).blue)
+    }
+    expect(peak).toBeGreaterThan(0.3)
+  })
+})
+
+describe('getNextSunAnchor', () => {
+  const equator = { lat: 0, lon: 0 } // equinox: sunrise ~06:00, noon ~12:00, sunset ~18:00 UTC
+  const utc = (h) => new Date(Date.UTC(2026, 2, 20, h))
+
+  test('with coords, picks the next solar turn', () => {
+    expect(getNextSunAnchor(utc(3), equator).key).toBe('sunrise')
+    expect(getNextSunAnchor(utc(10), equator).key).toBe('noon')
+    expect(getNextSunAnchor(utc(15), equator).key).toBe('sunset')
+    expect(getNextSunAnchor(utc(22), equator).key).toBe('midnight')
+  })
+
+  test('the anchor time lies ahead of now', () => {
+    const d = utc(10)
+    expect(getNextSunAnchor(d, equator).at.getTime()).toBeGreaterThan(d.getTime())
+  })
+
+  test('without coords, falls back to clock noon / midnight', () => {
+    expect(getNextSunAnchor(new Date(2026, 2, 20, 9), null).key).toBe('noon')
+    expect(getNextSunAnchor(new Date(2026, 2, 20, 15), null).key).toBe('midnight')
   })
 })
 

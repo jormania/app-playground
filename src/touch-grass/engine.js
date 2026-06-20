@@ -136,6 +136,14 @@ function weatherPhrase(weather) {
   return s
 }
 
+const BIOME_PHRASE = {
+  coast: 'by the sea — salt air, the tideline, the cries of gulls',
+  forest: 'deep among trees — moss, bark, and green shade',
+  city: 'in a city — stone, brick, and the hum of streets',
+  mountain: 'high in the mountains — thin air, bare rock, and distance',
+  plain: 'out on open ground — fields, wind, and a wide sky',
+}
+
 function placePhrase(coords) {
   if (!coords) return null
   const lat = Math.abs(coords.lat)
@@ -163,8 +171,14 @@ export function describeSetting(ctx = {}) {
   if (w) parts.push(`under ${w}`)
   const moon = moonPhaseName(ctx.moon && ctx.moon.phase)
   if (moon && (time === 'night' || time === 'dusk')) parts.push(`with ${moon} overhead`)
-  const place = placePhrase(ctx.coords)
-  if (place) parts.push(`in ${place}`)
+  // a concrete biome (when known) is more evocative than the latitude band;
+  // fall back to the hemisphere/latitude estimate when there's no biome
+  if (ctx.biome && BIOME_PHRASE[ctx.biome]) {
+    parts.push(BIOME_PHRASE[ctx.biome])
+  } else {
+    const place = placePhrase(ctx.coords)
+    if (place) parts.push(`in ${place}`)
+  }
   return parts.join(', ') + '.'
 }
 

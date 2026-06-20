@@ -54,6 +54,23 @@ const SCRIM = {
 const INK = '#1c4a47'
 const PARCHMENT = '#f3ead4'
 
+// golden- & blue-hour palettes, overlaid on the base sky by their strength.
+// Golden keeps a touch of upper violet/rose over a warm horizon; blue is deep
+// twilight with a thin band of leftover warmth where the sun went down.
+const GOLDEN_SKY = [[0, '#6a5a8e'], [34, '#b06a78'], [64, '#e8915a'], [100, '#f6c46e']]
+const BLUE_SKY = [[0, '#141a3e'], [40, '#23386e'], [72, '#3a5c8e'], [88, '#86686e'], [100, '#caa06a']]
+const GRASS_WARM = '#e6a64e' // grass leans toward this in golden light
+
+function hexToRgb(h) {
+  const n = parseInt(h.slice(1), 16)
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+function lerpColor(a, b, t) {
+  const ca = hexToRgb(a), cb = hexToRgb(b)
+  const m = ca.map((v, i) => Math.round(v + (cb[i] - v) * t))
+  return `rgb(${m[0]}, ${m[1]}, ${m[2]})`
+}
+
 /* ---- One eye: almond white, teal iris with pupil + glint, heavy upper lid ---- */
 function Eye({ cx, cy, r, sw, iris }) {
   const w = r * 0.21, h = r * 0.14
@@ -110,9 +127,14 @@ function sunRays(r) {
   })
 }
 
-function Sun({ cx, cy, r, dawn }) {
-  const color = dawn ? '#ef9a3c' : '#f3cb3e'
-  const deep = dawn ? '#d97c2a' : '#e0ad28'
+function Sun({ cx, cy, r, dawn, golden = 0 }) {
+  let color = dawn ? '#ef9a3c' : '#f3cb3e'
+  let deep = dawn ? '#d97c2a' : '#e0ad28'
+  if (golden > 0) {
+    // sink the disc toward a deep sunset orange as the golden light strengthens
+    color = lerpColor(color, '#ec7a2e', golden * 0.55)
+    deep = lerpColor(deep, '#c2541c', golden * 0.55)
+  }
   const rays = useMemo(() => sunRays(r), [r])
   return (
     <g>
@@ -686,7 +708,7 @@ function usePrefersReducedMotion() {
 }
 
 export default function CardScene({ showSigns = true, motionOn = true }) {
-  const { timeOfDay, season, now, weather, moon, moments } = useWorld()
+  const { timeOfDay, season, now, weather, moon, moments, light } = useWorld()
   const svgRef = useRef(null)
   const reduceMotion = usePrefersReducedMotion()
 
@@ -721,6 +743,14 @@ export default function CardScene({ showSigns = true, motionOn = true }) {
   const meteorNight = dim && !skyObscured && (moments || []).some(m => m.meteor)
   const freeze = reduceMotion || !motionOn
 
+  // ---- golden / blue hour → warm the sky, grass and sun (muted under cloud) ----
+  const golden = light ? light.golden : 0
+  const blue = light ? light.blue : 0
+  const tintScale = 1 - Math.min(0.6, cloudFrac * 0.6) // overcast mutes the wash
+  const goldenOp = golden * tintScale
+  const blueOp = blue * tintScale
+  const grassColor = golden > 0.01 ? lerpColor(GRASS[season], GRASS_WARM, golden * 0.4) : GRASS[season]
+
   // freeze the whole SVG timeline for OS reduce-motion or the in-app Motion toggle
   useEffect(() => {
     const svg = svgRef.current
@@ -734,6 +764,12 @@ export default function CardScene({ showSigns = true, motionOn = true }) {
       <defs>
         <linearGradient id="tg-sky" x1="0" y1="0" x2="0" y2="1">
           {stops.map(([off, col]) => <stop key={off} offset={`${off}%`} stopColor={col} />)}
+        </linearGradient>
+        <linearGradient id="tg-golden" x1="0" y1="0" x2="0" y2="1">
+          {GOLDEN_SKY.map(([off, col]) => <stop key={off} offset={`${off}%`} stopColor={col} />)}
+        </linearGradient>
+        <linearGradient id="tg-blue" x1="0" y1="0" x2="0" y2="1">
+          {BLUE_SKY.map(([off, col]) => <stop key={off} offset={`${off}%`} stopColor={col} />)}
         </linearGradient>
         <radialGradient id="tg-star" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#f5dc9a" stopOpacity="0.75" />
@@ -752,10 +788,12 @@ export default function CardScene({ showSigns = true, motionOn = true }) {
       </defs>
 
       <rect x="0" y="0" width={W} height={H} fill="url(#tg-sky)" />
+      {goldenOp > 0.01 && <rect x="0" y="0" width={W} height={H} fill="url(#tg-golden)" opacity={goldenOp.toFixed(3)} />}
+      {blueOp > 0.01 && <rect x="0" y="0" width={W} height={H} fill="url(#tg-blue)" opacity={blueOp.toFixed(3)} />}
       {glow && <rect x="0" y={H * 0.45} width={W} height={H * 0.55} fill="url(#tg-glow)" />}
       {dim && !skyObscured && <Sky bright={timeOfDay === 'night'} dayKey={dayKey} date={now} signs={showSigns} />}
       <g opacity={celestialOpacity}>
-        {showSun && <Sun cx={226} cy={82} r={41} dawn={timeOfDay === 'dawn'} />}
+        {showSun && <Sun cx={226} cy={82} r={41} dawn={timeOfDay === 'dawn'} golden={golden} />}
         {showMoon && <Moon cx={226} cy={82} r={43} phase={moon ? moon.phase : 0.5} />}
       </g>
       {meteorNight && <Meteors />}
@@ -763,7 +801,7 @@ export default function CardScene({ showSigns = true, motionOn = true }) {
       {dim && !skyObscured && <CityLights color={glow} />}
       <rect x="0" y="0" width={W} height={H} fill="url(#tg-scrim)" />
       <Bushes season={season} dayKey={dayKey} />
-      <Grass color={GRASS[season]} />
+      <Grass color={grassColor} />
       <Weeds season={season} dayKey={dayKey} />
       <Flowers season={season} dayKey={dayKey} />
       {showBugs && <Bugs dim={dim} season={season} />}

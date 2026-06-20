@@ -13,7 +13,15 @@ const STAGE = {
   night: 'linear-gradient(165deg, #f6e8c6 0%, #ecca9c 50%, #d8ac7e 100%)',
 }
 
+// golden interior is warm → cool, light blue outside; blue-hour interior is deep
+// indigo → warm, light apricot outside (the 3s CSS transition smooths the swap)
+const GOLDEN_STAGE = 'linear-gradient(165deg, #d6e6ee 0%, #a8c6da 52%, #82a4c2 100%)'
+const BLUE_STAGE = 'linear-gradient(165deg, #f4e6c8 0%, #e8c89e 52%, #d4aa78 100%)'
+
 export default function Stage() {
-  const { timeOfDay } = useWorld()
-  return <div className="tg-stage" style={{ background: STAGE[timeOfDay] }} />
+  const { timeOfDay, light } = useWorld()
+  const golden = light ? light.golden : 0
+  const blue = light ? light.blue : 0
+  const bg = golden >= 0.5 ? GOLDEN_STAGE : blue >= 0.5 ? BLUE_STAGE : STAGE[timeOfDay]
+  return <div className="tg-stage" style={{ background: bg }} />
 }

@@ -4,7 +4,7 @@ import { useWorld } from './world.jsx'
 
 export function useAmbientSound(enabled) {
   const ref = useRef(null)
-  const { timeOfDay, season, weather } = useWorld()
+  const { timeOfDay, season, weather, biome, soloBiome } = useWorld()
 
   // create the engine once; resume + tap on gesture; dispose on unmount
   useEffect(() => {
@@ -34,6 +34,16 @@ export function useAmbientSound(enabled) {
   useEffect(() => {
     if (ref.current) ref.current.setWeather(weather)
   }, [weather])
+
+  // follow the coarse biome (surf, traffic, thin wind, leaf-rustle, gulls)
+  useEffect(() => {
+    if (ref.current) ref.current.setBiome(biome)
+  }, [biome])
+
+  // ?solo — mute everything but the biome bed, for auditioning each biome
+  useEffect(() => {
+    if (ref.current) ref.current.setSolo(soloBiome)
+  }, [soloBiome])
 
   // mute / unmute
   useEffect(() => {

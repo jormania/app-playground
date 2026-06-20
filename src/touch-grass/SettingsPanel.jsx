@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useWorld } from './world.jsx'
 
-export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSound, signsOn, onToggleSigns, motionOn, onToggleMotion, onClose }) {
+export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSound, signsOn, onToggleSigns, motionOn, onToggleMotion, callOn, onToggleCall, onClose }) {
   const [draft, setDraft] = useState(currentKey)
   const hasKey = !!currentKey
   const hasDraft = draft.trim().length > 0
   const { locationEnabled, toggleLocation } = useWorld()
+  const callBlocked = callOn && typeof Notification !== 'undefined' && Notification.permission === 'denied'
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -21,7 +22,9 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
         <button type="button" className="tg-toggle" aria-pressed={signsOn} onClick={onToggleSigns}>{signsOn ? '✦ Signs on' : '✦ Signs off'}</button>
         <button type="button" className="tg-toggle" aria-pressed={locationEnabled} onClick={toggleLocation}>{locationEnabled ? '⌖ Place on' : '⌖ Place off'}</button>
         <button type="button" className="tg-toggle" aria-pressed={motionOn} onClick={onToggleMotion}>{motionOn ? '⟳ Motion on' : '⟳ Motion off'}</button>
+        <button type="button" className="tg-toggle" aria-pressed={callOn} onClick={onToggleCall}>{callOn ? '✉ Daily call on' : '✉ Daily call off'}</button>
       </div>
+      {callBlocked && <p className="tg-hint">✉ Your browser is blocking notifications — the daily call can't reach you.</p>}
 
       <form onSubmit={handleSubmit}>
         <label htmlFor="apikey">Anthropic API key</label>

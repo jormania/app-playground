@@ -61,22 +61,18 @@ export default function ReliquaryPanel({ history, onClearLast, onClearAll, onClo
 
       {count > 0 && (
         <div className="tg-relics">
-          {history.map((w, i) => {
-            const t = TIER_LABEL[w.tier] || TIER_LABEL.common
-            return (
-              <div className="tg-relic" key={`${w.ts}-${i}`}>
-                <div className="tg-relic-meta">
-                  <span>{fmtDate(w.ts)}</span>
-                  <span>{fmtDur(w.durationMinutes)}</span>
-                  <span style={t.color ? { color: t.color } : undefined}>{t.text}</span>
-                </div>
-                <div className="tg-relic-name">
-                  <TierIcon tier={w.tier} />
-                  <span>{w.discovery.name}</span>
-                </div>
+          {history.map((w, i) => (
+            <div className="tg-relic" key={`${w.ts}-${i}`}>
+              <div className="tg-relic-meta">
+                <span>{fmtDate(w.ts)}</span>
+                <span>{fmtDur(w.durationMinutes)}</span>
               </div>
-            )
-          })}
+              <div className="tg-relic-name">
+                <TierIcon tier={w.tier} />
+                <span>{w.discovery.name}</span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

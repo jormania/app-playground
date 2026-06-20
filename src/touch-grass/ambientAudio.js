@@ -10,6 +10,16 @@ const SCENES = {
 
 const MASTER = 0.5
 
+// biome beds layered over the scene: surf swell, traffic rumble, thin alpine
+// wind, leaf rustle. `swell` drives a slow wave-like modulation (coast/mountain).
+const BIOME_BED = {
+  coast:    { type: 'lowpass',  freq: 420,  gain: 0.075, swell: 0.55, rate: 0.85 },
+  city:     { type: 'lowpass',  freq: 175,  gain: 0.05,  swell: 0,    rate: 0.6 },
+  mountain: { type: 'bandpass', freq: 950,  gain: 0.03,  swell: 0.18, rate: 1.2 },
+  forest:   { type: 'bandpass', freq: 2200, gain: 0.022, swell: 0,    rate: 1.1 },
+  plain:    { type: 'lowpass',  freq: 500,  gain: 0,     swell: 0,    rate: 1.0 },
+}
+
 export function sceneFor(timeOfDay, season) {
   if (season === 'winter') return 'winter'
   if (timeOfDay === 'day' || timeOfDay === 'dawn') return 'day'
@@ -35,6 +45,9 @@ export function createAmbience() {
   let weatherCond = null
   let weatherWind = 0
   let weatherIntensity = 0
+  let biome = null
+  let gullTimer = 0
+  let solo = false
 
   // Brownian-ish drift: nudge a param toward a new nearby target over a long,
   // randomized interval. Because each target builds on the last, it meanders
@@ -133,9 +146,20 @@ export function createAmbience() {
     const rainGain = ctx.createGain(); rainGain.gain.value = 0
     rSrc.connect(rHP).connect(rLP).connect(rainGain).connect(master)
 
-    n = { windGain, whGain, waterGain, rainGain }
+    // BIOME BED: a place-coloured noise layer (surf / traffic / thin wind / rustle)
+    const bSrc = loopNoise(noiseBuf, 1.0)
+    const bFilter = ctx.createBiquadFilter(); bFilter.type = 'lowpass'; bFilter.frequency.value = 500
+    const biomeGain = ctx.createGain(); biomeGain.gain.value = 0
+    const biomeSwell = ctx.createGain(); biomeSwell.gain.value = 1
+    bSrc.connect(bFilter).connect(biomeGain).connect(biomeSwell).connect(master)
+    const bLfo = ctx.createOscillator(); bLfo.frequency.value = 0.085 // slow wave swell
+    const bDepth = ctx.createGain(); bDepth.gain.value = 0
+    bLfo.connect(bDepth).connect(biomeSwell.gain); bLfo.start()
+
+    n = { windGain, whGain, waterGain, rainGain, biomeGain, bFilter, bDepth, bSrc }
     applyScene(true)
     applyWeather()
+    applyBiome()
     startSchedulers()
 
     // organic drift so wind & water swell and ebb over long, irregular spans
@@ -148,17 +172,45 @@ export function createAmbience() {
     const tg = SCENES[scene]
     const tc = immediate ? 0.01 : 1.6
     const windBoost = Math.min(0.3, weatherWind * 0.006) // real wind raises the bed
-    set(n.windGain.gain, tg.wind + windBoost, tc)
-    set(n.whGain.gain, tg.whistle, tc)
-    set(n.waterGain.gain, tg.water, tc)
+    set(n.windGain.gain, solo ? 0 : tg.wind + windBoost, tc)
+    set(n.whGain.gain, solo ? 0 : tg.whistle, tc)
+    set(n.waterGain.gain, solo ? 0 : tg.water, tc)
   }
 
   function applyWeather() {
     if (!ctx) return
     const raining = weatherCond === 'rain' || weatherCond === 'thunder'
-    const rainTarget = raining ? 0.10 + weatherIntensity * 0.20 : 0
+    const rainTarget = solo ? 0 : (raining ? 0.10 + weatherIntensity * 0.20 : 0)
     set(n.rainGain.gain, rainTarget, raining ? 1.2 : 2.0)
     applyScene(false) // refresh the wind boost
+  }
+
+  function applyBiome() {
+    if (!ctx || !n.biomeGain) return
+    const p = BIOME_BED[biome]
+    if (!p) { set(n.biomeGain.gain, 0, 2.0); set(n.bDepth.gain, 0, 2.0); return }
+    n.bFilter.type = p.type
+    set(n.bFilter.frequency, p.freq, 1.5)
+    set(n.bSrc.playbackRate, p.rate, 1.5)
+    set(n.biomeGain.gain, p.gain, 2.2)
+    set(n.bDepth.gain, p.swell, 2.2)
+  }
+
+  // a gull's two-tone cry — a coastal one-shot, sparse
+  function gull(t, level) {
+    const o = ctx.createOscillator(); o.type = 'sawtooth'
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1700; bp.Q.value = 5
+    const g = ctx.createGain(); g.gain.value = 0.0001
+    o.connect(bp).connect(g).connect(master)
+    const base = 1500 + Math.random() * 500
+    o.frequency.setValueAtTime(base, t)
+    o.frequency.linearRampToValueAtTime(base * 1.12, t + 0.05)
+    o.frequency.linearRampToValueAtTime(base * 0.62, t + 0.28)
+    const peak = 0.05 * level
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.linearRampToValueAtTime(peak, t + 0.04)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32)
+    o.start(t); o.stop(t + 0.36)
   }
 
   // a rolling thunder clap — low-passed noise rumble plus a deep boom
@@ -295,7 +347,7 @@ export function createAmbience() {
   }
 
   function startSchedulers() {
-    const ready = () => enabled && ctx.state === 'running'
+    const ready = () => enabled && ctx.state === 'running' && !solo
     const scheduleBird = () => {
       if (disposed) return
       const tg = SCENES[scene]
@@ -323,7 +375,7 @@ export function createAmbience() {
     const scheduleCricket = () => {
       if (disposed) return
       const tg = SCENES[scene]
-      if (enabled && tg.crickets > 0 && ctx.state === 'running') {
+      if (enabled && !solo && tg.crickets > 0 && ctx.state === 'running') {
         cricketTrill(ctx.currentTime, tg.crickets)
         if (Math.random() < 0.4) cricketTrill(ctx.currentTime + 0.2 + Math.random() * 0.4, tg.crickets * 0.7)
       }
@@ -332,13 +384,22 @@ export function createAmbience() {
     const scheduleChime = () => {
       if (disposed) return
       const tg = SCENES[scene]
-      if (enabled && tg.chime > 0 && ctx.state === 'running') chime(ctx.currentTime, tg.chime)
+      if (enabled && !solo && tg.chime > 0 && ctx.state === 'running') chime(ctx.currentTime, tg.chime)
       chimeTimer = setTimeout(scheduleChime, 10000 + Math.random() * 15000)
     }
     const scheduleThunder = () => {
       if (disposed) return
       if (ready() && weatherCond === 'thunder') thunderClap(ctx.currentTime + 0.1)
       thunderTimer = setTimeout(scheduleThunder, 8000 + Math.random() * 13000)
+    }
+    const scheduleGull = () => {
+      if (disposed) return
+      // part of the biome, so it plays in solo too (not gated by ready's !solo)
+      if (enabled && ctx.state === 'running' && biome === 'coast') {
+        const burst = 1 + Math.floor(Math.random() * 3)
+        for (let i = 0; i < burst; i++) gull(ctx.currentTime + i * (0.3 + Math.random() * 0.25), 0.8)
+      }
+      gullTimer = setTimeout(scheduleGull, 14000 + Math.random() * 26000)
     }
     scheduleBird()
     scheduleCricket()
@@ -347,6 +408,7 @@ export function createAmbience() {
     scheduleDog()
     schedulePlane()
     scheduleThunder()
+    scheduleGull()
   }
 
   function buzz(pattern) {
@@ -427,6 +489,17 @@ export function createAmbience() {
       weatherIntensity = w ? (w.intensity || 0) : 0
       applyWeather()
     },
+    setBiome(b) {
+      if (b === biome) return
+      biome = b
+      applyBiome()
+    },
+    setSolo(on) {
+      if (on === solo) return
+      solo = on
+      applyScene(false)
+      applyWeather()
+    },
     setEnabled(on) {
       enabled = on
       if (on) {
@@ -449,6 +522,7 @@ export function createAmbience() {
       clearTimeout(dogTimer)
       clearTimeout(planeTimer)
       clearTimeout(thunderTimer)
+      clearTimeout(gullTimer)
       walkers.forEach(stop => stop())
       walkers = []
       if (ctx) ctx.close().catch(() => {})
