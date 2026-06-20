@@ -4,7 +4,8 @@ import { useWorld } from './world.jsx'
 
 export function useAmbientSound(enabled) {
   const ref = useRef(null)
-  const { timeOfDay, season, weather, biome, soloBiome } = useWorld()
+  const { timeOfDay, season, weather, biome, soloBiome, moments } = useWorld()
+  const meteor = (moments || []).some(m => m.meteor)
 
   // create the engine once; resume + tap on gesture; dispose on unmount
   useEffect(() => {
@@ -29,6 +30,19 @@ export function useAmbientSound(enabled) {
   useEffect(() => {
     if (ref.current) ref.current.setScene(sceneFor(timeOfDay, season))
   }, [timeOfDay, season])
+
+  // exact phase (dawn chorus / dusk wind-down) and season (cuckoo, wolf…)
+  useEffect(() => {
+    if (ref.current) ref.current.setPhase(timeOfDay)
+  }, [timeOfDay])
+  useEffect(() => {
+    if (ref.current) ref.current.setSeason(season)
+  }, [season])
+
+  // meteor-shower nights unlock the shooting-star shimmer
+  useEffect(() => {
+    if (ref.current) ref.current.setMeteor(meteor)
+  }, [meteor])
 
   // follow live weather (rain bed, thunder, wind level)
   useEffect(() => {
