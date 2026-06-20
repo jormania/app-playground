@@ -117,24 +117,30 @@ describe('getLight — golden / blue hour', () => {
 })
 
 describe('getNextSunAnchor', () => {
-  const equator = { lat: 0, lon: 0 } // equinox: sunrise ~06:00, noon ~12:00, sunset ~18:00 UTC
-  const utc = (h) => new Date(Date.UTC(2026, 2, 20, h))
+  const equator = { lat: 0, lon: 0 } // equator: sunrise ~06:00, noon ~12:00, sunset ~18:00 UTC
+  const utc = (h) => new Date(Date.UTC(2026, 5, 21, h))
 
-  test('with coords, picks the next solar turn', () => {
-    expect(getNextSunAnchor(utc(3), equator).key).toBe('sunrise')
-    expect(getNextSunAnchor(utc(10), equator).key).toBe('noon')
-    expect(getNextSunAnchor(utc(15), equator).key).toBe('sunset')
-    expect(getNextSunAnchor(utc(22), equator).key).toBe('midnight')
+  test('always points to a turn that is ahead and within ~14h', () => {
+    // the regression guard: just-after-midnight must not return a 23h-away anchor
+    for (let h = 0; h < 24; h++) {
+      const d = utc(h)
+      const dt = getNextSunAnchor(d, equator).at.getTime() - d.getTime()
+      expect(dt).toBeGreaterThan(0)
+      expect(dt).toBeLessThanOrEqual(14 * 3600 * 1000)
+    }
   })
 
-  test('the anchor time lies ahead of now', () => {
-    const d = utc(10)
-    expect(getNextSunAnchor(d, equator).at.getTime()).toBeGreaterThan(d.getTime())
+  test('after midnight, before sunrise, points to sunrise', () => {
+    expect(getNextSunAnchor(utc(2), equator).key).toBe('sunrise')
+  })
+
+  test('mid-morning points to noon', () => {
+    expect(getNextSunAnchor(utc(10), equator).key).toBe('noon')
   })
 
   test('without coords, falls back to clock noon / midnight', () => {
-    expect(getNextSunAnchor(new Date(2026, 2, 20, 9), null).key).toBe('noon')
-    expect(getNextSunAnchor(new Date(2026, 2, 20, 15), null).key).toBe('midnight')
+    expect(getNextSunAnchor(new Date(2026, 5, 21, 9, 0), null).key).toBe('noon')
+    expect(getNextSunAnchor(new Date(2026, 5, 21, 15, 0), null).key).toBe('midnight')
   })
 })
 

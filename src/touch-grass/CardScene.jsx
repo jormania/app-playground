@@ -196,11 +196,13 @@ function ConStar({ x, y, r, op, dur }) {
 // constellation sits top-left; moon lives top-right, so they never collide
 const CON_BOX = { gx: 10, gy: 28, gw: 124, gh: 74 }
 
-function Sky({ bright, dayKey, date, signs }) {
+function Sky({ bright, clarity = 1, dayKey, date, signs }) {
   const con = CONSTELLATIONS[getZodiac(date)] || CONSTELLATIONS.aries
   const { gx, gy, gw, gh } = CON_BOX
   const pts = con.points.map(([px, py]) => ({ x: gx + px * gw, y: gy + py * gh }))
-  const op = bright ? 0.95 : 0.55
+  const base = bright ? 0.95 : 0.55
+  const conOp = base * (0.3 + 0.7 * clarity) // the sign lingers faintly through cloud
+  const scOp = base * clarity                // ambient scatter fades as cloud thickens
 
   // background scatter — reseeded per calendar day; small, faint, slowly drifting
   const scatter = useMemo(() => {
@@ -232,7 +234,7 @@ function Sky({ bright, dayKey, date, signs }) {
     <g>
       {signs && (
         <>
-          <g stroke={PARCHMENT} strokeWidth="0.45" opacity={op * 0.22}>
+          <g stroke={PARCHMENT} strokeWidth="0.45" opacity={conOp * 0.22}>
             {con.lines.map(([a, b], i) => (
               <line key={i} x1={pts[a].x} y1={pts[a].y} x2={pts[b].x} y2={pts[b].y} />
             ))}
@@ -241,7 +243,7 @@ function Sky({ bright, dayKey, date, signs }) {
             {pts.map((p, i) => (
               <ConStar key={i} x={p.x} y={p.y}
                 r={1.5 + ((i * 29) % 4) * 0.4 + (i === 0 ? 0.6 : 0)}
-                op={op}
+                op={conOp}
                 dur={(3.6 + ((i * 53) % 5) * 0.7).toFixed(1)} />
             ))}
           </g>
@@ -249,7 +251,7 @@ function Sky({ bright, dayKey, date, signs }) {
       )}
       <g fill={PARCHMENT}>
         {scatter.map((st, i) => {
-          const faint = op * 0.55
+          const faint = scOp * 0.55
           return (
             <g key={i}>
               <animateTransform attributeName="transform" type="translate" values={st.drift}
@@ -727,6 +729,10 @@ export default function CardScene({ showSigns = true, motionOn = true }) {
   }
   const intensity = weather ? weather.intensity : 0.5
   const skyObscured = foggy || thunder || cond === 'overcast' || cloudFrac >= 0.6 || precip === 'rain'
+  // the named constellation lingers (faintly) through mere cloud — it's only the
+  // truly opaque sky (fog, storm, falling rain/snow) that blots it out entirely
+  const starsHidden = foggy || thunder || precip === 'rain' || precip === 'snow'
+  const clarity = Math.max(0, Math.min(1, 1 - cloudFrac * 1.1))
   const celestialOpacity = (foggy || thunder) ? 0.22 : 1 - Math.min(0.78, cloudFrac * 0.82)
   const cloudFill = (timeOfDay === 'night' || timeOfDay === 'dusk')
     ? '#39414f'
@@ -778,7 +784,7 @@ export default function CardScene({ showSigns = true, motionOn = true }) {
       {goldenOp > 0.01 && <rect x="0" y="0" width={W} height={H} fill="url(#tg-golden)" opacity={goldenOp.toFixed(3)} />}
       {blueOp > 0.01 && <rect x="0" y="0" width={W} height={H} fill="url(#tg-blue)" opacity={blueOp.toFixed(3)} />}
       {glow && <rect x="0" y={H * 0.45} width={W} height={H * 0.55} fill="url(#tg-glow)" />}
-      {dim && !skyObscured && <Sky bright={timeOfDay === 'night'} dayKey={dayKey} date={now} signs={showSigns} />}
+      {dim && !starsHidden && <Sky bright={timeOfDay === 'night'} clarity={clarity} dayKey={dayKey} date={now} signs={showSigns} />}
       <g opacity={celestialOpacity}>
         {showSun && <Sun cx={226} cy={82} r={41} dawn={timeOfDay === 'dawn'} golden={golden} />}
         {showMoon && <Moon cx={226} cy={82} r={43} phase={moon ? moon.phase : 0.5} />}

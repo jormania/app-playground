@@ -117,24 +117,40 @@ export function getLight(date, coords) {
 // falls back to clock noon and midnight (no solar anchors). Returns { key, at }.
 export function getNextSunAnchor(date, coords) {
   const t = date.getTime()
-  const nextMidnight = new Date(date)
-  nextMidnight.setHours(24, 0, 0, 0) // the upcoming local midnight
+  const cands = []
+
+  // the upcoming local midnights
+  for (const off of [1, 2]) {
+    const m = new Date(date)
+    m.setHours(0, 0, 0, 0)
+    m.setDate(m.getDate() + off)
+    cands.push({ key: 'midnight', at: m })
+  }
 
   if (coords && typeof coords.lat === 'number' && typeof coords.lon === 'number') {
-    const s = getTimes(date, coords.lat, coords.lon)
-    const sunrise = s.sunrise.getTime()
-    const noon = s.solarNoon.getTime()
-    const sunset = s.sunset.getTime()
-    if ([sunrise, noon, sunset].every(Number.isFinite)) {
-      if (t < sunrise) return { key: 'sunrise', at: s.sunrise }
-      if (t < noon) return { key: 'noon', at: s.solarNoon }
-      if (t < sunset) return { key: 'sunset', at: s.sunset }
-      return { key: 'midnight', at: nextMidnight }
+    // gather real solar turns across neighbouring days — SunCalc anchors on the
+    // nearest solar noon, so just after midnight today's call returns yesterday's
+    // events; spanning ±days and picking the soonest future one avoids that trap
+    for (const off of [-1, 0, 1, 2]) {
+      const d = new Date(date)
+      d.setDate(d.getDate() + off)
+      const s = getTimes(d, coords.lat, coords.lon)
+      if (Number.isFinite(s.sunrise.getTime())) cands.push({ key: 'sunrise', at: s.sunrise })
+      if (Number.isFinite(s.solarNoon.getTime())) cands.push({ key: 'noon', at: s.solarNoon })
+      if (Number.isFinite(s.sunset.getTime())) cands.push({ key: 'sunset', at: s.sunset })
+    }
+  } else {
+    // no location → clock noon and midnight only
+    for (const off of [0, 1]) {
+      const noon = new Date(date)
+      noon.setHours(12, 0, 0, 0)
+      noon.setDate(noon.getDate() + off)
+      cands.push({ key: 'noon', at: noon })
     }
   }
 
-  const noonClock = new Date(date)
-  noonClock.setHours(12, 0, 0, 0)
-  if (t < noonClock.getTime()) return { key: 'noon', at: noonClock }
-  return { key: 'midnight', at: nextMidnight }
+  const future = cands
+    .filter(c => c.at.getTime() > t)
+    .sort((a, b) => a.at.getTime() - b.at.getTime())
+  return future[0] || cands[0]
 }
