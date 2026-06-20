@@ -44,13 +44,6 @@ const HORIZON_GLOW = {
 
 const GRASS = { spring: '#6fae72', summer: '#5f9c3e', autumn: '#b7853e', winter: '#5f7d6e' }
 
-const SCRIM = {
-  dawn:  ['#1a1230', 0.52],
-  day:   ['#173040', 0.50],
-  dusk:  ['#160f28', 0.56],
-  night: ['#06101e', 0.58],
-}
-
 const INK = '#1c4a47'
 const PARCHMENT = '#f3ead4'
 
@@ -714,7 +707,6 @@ export default function CardScene({ showSigns = true, motionOn = true }) {
 
   const stops = SKY[timeOfDay]
   const glow = HORIZON_GLOW[timeOfDay]
-  const [scrimColor, scrimAlpha] = SCRIM[timeOfDay]
   const showSun = timeOfDay === 'dawn' || timeOfDay === 'day'
   const showMoon = timeOfDay === 'dusk' || timeOfDay === 'night'
   const dim = timeOfDay === 'dusk' || timeOfDay === 'night'
@@ -780,11 +772,6 @@ export default function CardScene({ showSigns = true, motionOn = true }) {
           <stop offset="55%" stopColor={glow || '#ffffff'} stopOpacity="0.16" />
           <stop offset="100%" stopColor={glow || '#ffffff'} stopOpacity="0" />
         </radialGradient>
-        <linearGradient id="tg-scrim" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={scrimColor} stopOpacity="0" />
-          <stop offset="40%" stopColor={scrimColor} stopOpacity="0" />
-          <stop offset="100%" stopColor={scrimColor} stopOpacity={scrimAlpha} />
-        </linearGradient>
       </defs>
 
       <rect x="0" y="0" width={W} height={H} fill="url(#tg-sky)" />
@@ -799,7 +786,6 @@ export default function CardScene({ showSigns = true, motionOn = true }) {
       {meteorNight && <Meteors />}
       {cloudFrac > 0.05 && <Clouds frac={cloudFrac} wind={wind} fill={cloudFill} />}
       {dim && !skyObscured && <CityLights color={glow} />}
-      <rect x="0" y="0" width={W} height={H} fill="url(#tg-scrim)" />
       <Bushes season={season} dayKey={dayKey} />
       <Grass color={grassColor} />
       <Weeds season={season} dayKey={dayKey} />

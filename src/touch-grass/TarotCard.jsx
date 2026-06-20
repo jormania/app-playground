@@ -75,6 +75,7 @@ export default function TarotCard({ title, showSigns = true, motionOn = true, fi
         <div className="tg-card-scene">
           <CardScene showSigns={showSigns} motionOn={motionOn} />
         </div>
+        <div className="tg-readscrim" />
         <div className={fill ? 'tg-card-content tg-fill' : 'tg-card-content'}>{children}</div>
         <div className="tg-card-banner">{title}</div>
         {onReliquary && (
