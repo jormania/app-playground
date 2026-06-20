@@ -53,6 +53,16 @@ function loadForcedTod() {
   }
 }
 
+// Preview override: append ?season=spring|summer|autumn|winter.
+function loadForcedSeason() {
+  try {
+    const s = new URLSearchParams(window.location.search).get('season')
+    return ['spring', 'summer', 'autumn', 'winter'].includes(s) ? s : null
+  } catch (_) {
+    return null
+  }
+}
+
 // Preview override: append ?moon=0.1 (0 new … 0.5 full … 1 new) to the URL.
 function loadForcedMoon() {
   try {
@@ -84,6 +94,7 @@ export function WorldProvider({ children }) {
   const [forcedWeather] = useState(loadForcedWeather)
   const [forcedMoon] = useState(loadForcedMoon)
   const [forcedTod] = useState(loadForcedTod)
+  const [forcedSeason] = useState(loadForcedSeason)
   const [forcedMoment] = useState(loadForcedMoment)
 
   // single clock for the whole app — drives time-of-day / season everywhere
@@ -140,7 +151,7 @@ export function WorldProvider({ children }) {
     now,
     coords: effectiveCoords,
     timeOfDay: forcedTod || getTimeOfDay(now, effectiveCoords),
-    season: getSeason(now),
+    season: forcedSeason || getSeason(now),
     weather: forcedWeather || weather,
     moon,
     moments,

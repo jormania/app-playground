@@ -53,12 +53,47 @@ export function parseWeather(current) {
   }
 }
 
+// Gentle, non-alarming descriptors for today's outlook.
+export function buildAlerts({ code, maxWind, precipSum, precipProb }) {
+  const out = []
+  if (maxWind >= 50) out.push('blustery out there later')
+  else if (maxWind >= 32) out.push('a breeze picks up later')
+  const cond = conditionFromCode(code)
+  if (cond === 'thunder') out.push('storms brewing')
+  else if (cond === 'snow') out.push('snow on the way')
+  else if ((precipProb ?? 0) >= 55 || (precipSum ?? 0) > 1.5) out.push('a chance of rain')
+  else if (cond === 'fog') out.push('fog may settle in')
+  return out
+}
+
+// Today's forecast from the Open-Meteo `daily` arrays (index 0 = today).
+export function parseToday(daily) {
+  if (!daily || !daily.weather_code) return null
+  const at = (k) => Array.isArray(daily[k]) ? daily[k][0] : undefined
+  const code = at('weather_code')
+  const maxWind = at('wind_speed_10m_max')
+  const precipSum = at('precipitation_sum')
+  const precipProb = at('precipitation_probability_max')
+  return {
+    high: at('temperature_2m_max'),
+    low: at('temperature_2m_min'),
+    code,
+    condition: conditionFromCode(code),
+    maxWind, precipSum, precipProb,
+    alerts: buildAlerts({ code, maxWind, precipSum, precipProb }),
+  }
+}
+
 export async function fetchWeather(coords) {
-  const params = 'temperature_2m,weather_code,cloud_cover,wind_speed_10m,precipitation,is_day'
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=${params}`
+  const current = 'temperature_2m,weather_code,cloud_cover,wind_speed_10m,precipitation,is_day'
+  const daily = 'temperature_2m_max,temperature_2m_min,weather_code,wind_speed_10m_max,precipitation_sum,precipitation_probability_max'
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}`
+    + `&current=${current}&daily=${daily}&timezone=auto&forecast_days=1`
   const res = await fetch(url)
   if (!res.ok) throw new Error(`weather ${res.status}`)
   const data = await res.json()
   if (!data || !data.current) throw new Error('weather: no current data')
-  return parseWeather(data.current)
+  const w = parseWeather(data.current)
+  w.today = parseToday(data.daily)
+  return w
 }

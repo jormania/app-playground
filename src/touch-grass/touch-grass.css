@@ -240,3 +240,74 @@ body {
   color: #cdd3c6;
   border-color: rgba(243, 234, 212, 0.32);
 }
+
+/* ---- Threshold info: today's moment + forecast ---- */
+.tg-threshold-info { margin-bottom: 18px; }
+.tg-moment {
+  font-size: 0.8rem; color: #ece6d6; line-height: 1.5;
+  letter-spacing: 0.02em; margin-bottom: 9px;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+}
+.tg-moment span span { font-weight: 700; }
+.tg-forecast {
+  font-size: 0.8rem; color: #d6d0bf; line-height: 1.5;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+}
+.tg-fc-now { color: #f5efdd; font-weight: 600; }
+.tg-fc-range { color: #cfc9b8; }
+.tg-fc-alerts {
+  display: flex; flex-direction: column; gap: 1px;
+  margin-top: 5px; font-size: 0.74rem; font-style: italic; opacity: 0.82;
+}
+
+/* ---- The Reliquary (walk history) ---- */
+.tg-reliquary h1 { margin-bottom: 6px; }
+.tg-relics {
+  max-height: 46vh;
+  overflow-y: auto;
+  margin: 8px 0 14px;
+  display: flex; flex-direction: column; gap: 12px;
+  padding-right: 4px;
+}
+.tg-relic { border-left: 2px solid rgba(243, 234, 212, 0.28); padding-left: 11px; }
+.tg-relic-meta {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  font-size: 0.7rem; color: #bfc6b8; font-variant: small-caps;
+  letter-spacing: 0.04em; margin-bottom: 3px;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
+}
+.tg-relic-name {
+  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+  font-size: 1rem; color: #f3ead4; line-height: 1.25;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+}
+.tg-relic-desc {
+  font-size: 0.78rem; color: #d4cdba; line-height: 1.5; margin-top: 2px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+.tg-confirm {
+  font-size: 0.8rem; color: #ece6d6; display: flex; align-items: center; gap: 8px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+.tg-reliquary .tg-row button { margin: 0; padding: 7px 14px; font-size: 0.78rem; }
+.tg-confirm button { margin: 0; padding: 4px 12px; font-size: 0.76rem; }
+
+/* lens — opens the Reliquary, tucked into the bottom-left grass */
+.tg-card-lens {
+  position: absolute;
+  bottom: 4px;
+  left: 5px;
+  z-index: 4;
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  line-height: 0;
+  opacity: 0.95;
+  transition: opacity 0.18s, transform 0.18s;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45));
+}
+.tg-card-lens svg { width: 26px; height: 26px; display: block; }
+@media (hover: hover) {
+  .tg-card-lens:hover { opacity: 1; transform: rotate(8deg) scale(1.06); }
+}

@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'vitest'
-import { conditionFromCode, intensityFromCode, parseWeather } from './weather.js'
+import { conditionFromCode, intensityFromCode, parseWeather, buildAlerts, parseToday } from './weather.js'
 
 describe('conditionFromCode', () => {
   test('0 → clear', () => expect(conditionFromCode(0)).toBe('clear'))
@@ -44,4 +44,33 @@ describe('parseWeather', () => {
     expect(w.condition).toBe('clear')
     expect(w.intensity).toBe(0)
   })
+})
+
+describe('buildAlerts', () => {
+  test('calm clear day → no alerts', () => {
+    expect(buildAlerts({ code: 0, maxWind: 10, precipSum: 0, precipProb: 0 })).toHaveLength(0)
+  })
+  test('strong wind → breeze descriptor', () => {
+    expect(buildAlerts({ code: 0, maxWind: 38, precipSum: 0, precipProb: 0 })).toContain('a breeze picks up later')
+  })
+  test('high rain probability → rain descriptor', () => {
+    expect(buildAlerts({ code: 3, maxWind: 10, precipSum: 0, precipProb: 70 })).toContain('a chance of rain')
+  })
+  test('thunder code → storms', () => {
+    expect(buildAlerts({ code: 95, maxWind: 10, precipSum: 2, precipProb: 80 })).toContain('storms brewing')
+  })
+})
+
+describe('parseToday', () => {
+  test('maps the daily arrays', () => {
+    const t = parseToday({
+      temperature_2m_max: [27], temperature_2m_min: [15], weather_code: [61],
+      wind_speed_10m_max: [12], precipitation_sum: [3], precipitation_probability_max: [80],
+    })
+    expect(t.high).toBe(27)
+    expect(t.low).toBe(15)
+    expect(t.condition).toBe('rain')
+    expect(t.alerts).toContain('a chance of rain')
+  })
+  test('returns null without data', () => expect(parseToday(null)).toBe(null))
 })

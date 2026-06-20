@@ -4,6 +4,7 @@ import OutPanel from './OutPanel.jsx'
 import ResultPanel from './ResultPanel.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
 import GeneratingPanel from './GeneratingPanel.jsx'
+import ReliquaryPanel from './ReliquaryPanel.jsx'
 import TarotCard from './TarotCard.jsx'
 import Stage from './Stage.jsx'
 import { useAmbientSound } from './useAmbientSound.js'
@@ -15,6 +16,8 @@ const API_KEY_STORAGE = 'tg-react-apikey'
 const SOUND_STORAGE = 'tg-react-sound'
 const SIGNS_STORAGE = 'tg-react-signs'
 const MOTION_STORAGE = 'tg-react-motion'
+const HISTORY_STORAGE = 'tg-react-history'
+const HISTORY_CAP = 300
 
 function loadState() {
   try {
@@ -46,13 +49,26 @@ function loadMotion() {
   return localStorage.getItem(MOTION_STORAGE) !== '0' // default on
 }
 
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_STORAGE)
+    if (raw) {
+      const h = JSON.parse(raw)
+      if (Array.isArray(h)) return h
+    }
+  } catch (_) {}
+  return []
+}
+
 export default function App() {
   const [state, setState] = useState(loadState)
   const [apiKey, setApiKey] = useState(loadApiKey)
   const [soundOn, setSoundOn] = useState(loadSound)
   const [signsOn, setSignsOn] = useState(loadSigns)
   const [motionOn, setMotionOn] = useState(loadMotion)
+  const [history, setHistory] = useState(loadHistory)
   const [showSettings, setShowSettings] = useState(false)
+  const [showReliquary, setShowReliquary] = useState(false)
   const [showDeparture, setShowDeparture] = useState(false)
   const [departureKey, setDepartureKey] = useState(0)
 
@@ -64,6 +80,12 @@ export default function App() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
     } catch (_) {}
   }, [state])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(HISTORY_STORAGE, JSON.stringify(history))
+    } catch (_) {}
+  }, [history])
 
   function startWalk() {
     setShowDeparture(false)
@@ -77,7 +99,9 @@ export default function App() {
     setState(prev => ({ ...prev, status: 'generating', pendingTier: tier }))
     const ctx = { timeOfDay: world.timeOfDay, season: world.season, weather: world.weather, moon: world.moon, coords: world.coords, moments: world.moments }
     const { discovery, isStatic, apiAttempted } = await generateDiscovery(tier, durationMinutes, apiKey, ctx)
-    setState(prev => ({ ...prev, status: 'idle', departedAt: null, pendingTier: null, lastWalk: { durationMinutes, tier, discovery, isStatic, apiAttempted } }))
+    const walk = { ts: Date.now(), durationMinutes, tier, discovery, isStatic, apiAttempted }
+    setState(prev => ({ ...prev, status: 'idle', departedAt: null, pendingTier: null, lastWalk: walk }))
+    setHistory(prev => [walk, ...prev].slice(0, HISTORY_CAP))
     playReveal()
   }
 
@@ -112,12 +136,18 @@ export default function App() {
     })
   }
 
+  function clearAllHistory() { setHistory([]) }
+  function clearLastHistory() { setHistory(prev => prev.slice(1)) }
+
   const { status, departedAt, lastWalk } = state
 
   let panel, title
   if (showSettings) {
     title = 'The Keeper'
     panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} soundOn={soundOn} onToggleSound={toggleSound} signsOn={signsOn} onToggleSigns={toggleSigns} motionOn={motionOn} onToggleMotion={toggleMotion} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
+  } else if (showReliquary) {
+    title = 'The Reliquary'
+    panel = <ReliquaryPanel history={history} onClearLast={clearLastHistory} onClearAll={clearAllHistory} onClose={() => { setShowReliquary(false); setDepartureKey(k => k + 1) }} />
   } else if (status === 'generating') {
     title = 'The Omen'
     panel = <GeneratingPanel tier={state.pendingTier} />
@@ -135,7 +165,13 @@ export default function App() {
   return (
     <>
       <Stage />
-      <TarotCard title={title} showSigns={signsOn} motionOn={motionOn} onSettings={showSettings ? null : () => setShowSettings(true)}>{panel}</TarotCard>
+      <TarotCard
+        title={title}
+        showSigns={signsOn}
+        motionOn={motionOn}
+        onSettings={(showSettings || showReliquary) ? null : () => setShowSettings(true)}
+        onReliquary={(showSettings || showReliquary) ? null : () => setShowReliquary(true)}
+      >{panel}</TarotCard>
     </>
   )
 }

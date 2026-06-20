@@ -625,6 +625,52 @@ function Bugs({ dim, season }) {
   return <g>{BUTTERFLIES.map((b, i) => <Butterfly key={i} {...b} />)}</g>
 }
 
+/* ---- Seasonal accents: tumbling leaves (autumn), drifting petals (spring) ---- */
+const AUTUMN_COLORS = ['#c96a2e', '#d9a441', '#b5503a', '#a8642a']
+const SPRING_COLORS = ['#f3cdd9', '#f7e6ee', '#e9b8cb']
+
+function SeasonAccents({ season }) {
+  const leaf = season === 'autumn'
+  const items = useMemo(() => {
+    if (season !== 'autumn' && season !== 'spring') return []
+    const colors = leaf ? AUTUMN_COLORS : SPRING_COLORS
+    const n = leaf ? 8 : 9
+    return Array.from({ length: n }, (_, i) => ({
+      x: ((i * 71) % 280) + 10,
+      c: colors[i % colors.length],
+      dur: 9 + (i % 5) * 1.7,
+      delay: -(i * 1.5),
+      sway: 11 + (i % 3) * 7,
+      swayDur: 3 + (i % 4) * 0.7,
+      s: 0.8 + (i % 3) * 0.25,
+    }))
+  }, [season, leaf])
+  if (!items.length) return null
+  return (
+    <g opacity="0.85">
+      {items.map((p, i) => (
+        <g key={i}>
+          <animateTransform attributeName="transform" type="translate" additive="sum"
+            values={`${p.x} -16; ${p.x} ${H + 16}`} dur={`${p.dur}s`} begin={`${p.delay}s`} repeatCount="indefinite" />
+          <animateTransform attributeName="transform" type="translate" additive="sum"
+            values={`0 0; ${p.sway} 0; 0 0; ${-p.sway} 0; 0 0`} dur={`${p.swayDur * 2}s`} repeatCount="indefinite" />
+          <g transform={`scale(${p.s})`}>
+            {leaf ? (
+              <g>
+                <animateTransform attributeName="transform" type="rotate" values="0;360" dur={`${p.swayDur * 3}s`} repeatCount="indefinite" />
+                <path d="M0 -5 Q4.2 -0.5 0 6 Q-4.2 -0.5 0 -5 Z" fill={p.c} />
+                <path d="M0 -4 L0 5" stroke="rgba(0,0,0,0.18)" strokeWidth="0.5" />
+              </g>
+            ) : (
+              <ellipse cx="0" cy="0" rx="2.6" ry="4" fill={p.c} />
+            )}
+          </g>
+        </g>
+      ))}
+    </g>
+  )
+}
+
 function usePrefersReducedMotion() {
   const [reduce, setReduce] = useState(
     () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -721,6 +767,7 @@ export default function CardScene({ showSigns = true, motionOn = true }) {
       <Weeds season={season} dayKey={dayKey} />
       <Flowers season={season} dayKey={dayKey} />
       {showBugs && <Bugs dim={dim} season={season} />}
+      {!precip && <SeasonAccents season={season} />}
       {precip === 'rain' && <Rain intensity={intensity} wind={wind} />}
       {precip === 'snow' && <Snow count={Math.round(10 + intensity * 28)} />}
       {foggy && <Fog />}

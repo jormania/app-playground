@@ -53,7 +53,18 @@ function KeyIcon() {
   )
 }
 
-export default function TarotCard({ title, showSigns = true, motionOn = true, onSettings, children }) {
+function LensIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="#3a9fb0" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="10" cy="10" r="6" />
+      <circle cx="10" cy="10" r="2.2" fill="#3a9fb0" stroke="none" opacity="0.5" />
+      <line x1="14.5" y1="14.5" x2="20" y2="20" />
+    </svg>
+  )
+}
+
+export default function TarotCard({ title, showSigns = true, motionOn = true, onSettings, onReliquary, children }) {
   return (
     <div className="tg-card">
       <CornerGlyph pos="tl" />
@@ -66,6 +77,11 @@ export default function TarotCard({ title, showSigns = true, motionOn = true, on
         </div>
         <div className="tg-card-content">{children}</div>
         <div className="tg-card-banner">{title}</div>
+        {onReliquary && (
+          <button className="tg-card-lens" onClick={onReliquary} title="The Reliquary" aria-label="Walk history">
+            <LensIcon />
+          </button>
+        )}
         {onSettings && (
           <button className="tg-card-key" onClick={onSettings} title="The Keeper" aria-label="Settings">
             <KeyIcon />
