@@ -267,13 +267,11 @@ body {
   color: #d6d0bf;
 }
 
-/* a menu panel that fills the card height, so only its inner list scrolls
-   (no double scrollbar) */
+/* a menu panel anchored to the lower part of the card (below the sun/moon and
+   clouds), a fixed height so only its inner list scrolls — no double scrollbar */
 .tg-card-content.tg-fill {
-  margin-top: 0;
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: none;
+  height: 58%;
+  max-height: 58%;
   overflow: hidden;
 }
 

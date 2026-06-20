@@ -39,14 +39,14 @@ function tempColor(t) {
   return '#e0894a'
 }
 
-const CONDITION_PROSE = {
-  clear: 'the sky bare and bright',
-  'partly-cloudy': 'a few clouds drifting, unhurried',
-  overcast: 'a grey lid drawn over everything',
-  fog: 'a fog keeping its counsel close',
-  rain: 'rain threading down',
-  snow: 'snow settling in silence',
-  thunder: 'a storm muttering somewhere overhead',
+const CONDITION_PHRASE = {
+  clear: 'under a bare, bright sky',
+  'partly-cloudy': 'beneath a few unhurried clouds',
+  overcast: 'under a grey lid',
+  fog: 'wrapped in close fog',
+  rain: 'in threading rain',
+  snow: 'in falling snow',
+  thunder: 'under a muttering storm',
 }
 
 function Cloud({ y = 13 }) {
@@ -93,16 +93,16 @@ function Temp({ value }) {
 
 function ForecastReading({ weather }) {
   const t = Math.round(weather.temp)
-  const cond = CONDITION_PROSE[weather.condition] || 'the sky keeping its counsel'
+  const phrase = CONDITION_PHRASE[weather.condition] || 'under an uncertain sky'
   const td = weather.today
   const hi = td && td.high != null ? Math.round(td.high) : null
   const lo = td && td.low != null ? Math.round(td.low) : null
   return (
     <p className="tg-forecast-body">
-      The air holds at <Temp value={t} />, {cond}.
-      {hi != null && lo != null && (hi > t + 1
-        ? <> It will climb toward <Temp value={hi} /> before the night draws it down to <Temp value={lo} />.</>
-        : <> It rests here, then the dark will draw it down to <Temp value={lo} />.</>)}
+      <Temp value={t} /> {phrase}
+      {lo == null ? '.' : (hi != null && hi > t + 1
+        ? <> — climbing toward <Temp value={hi} /> before the dark draws it to <Temp value={lo} />.</>
+        : <> — it holds, then the dark draws it down to <Temp value={lo} />.</>)}
     </p>
   )
 }

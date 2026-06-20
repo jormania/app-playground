@@ -82,11 +82,19 @@ nav {
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
 }
-.hero-desc { max-width: 520px; color: var(--muted); font-size: 16px; line-height: 1.65; margin-bottom: 36px; }
-.hero-stats { display: flex; gap: 32px; flex-wrap: wrap; }
-.stat { display: flex; flex-direction: column; gap: 3px; }
-.stat-value { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -0.03em; }
-.stat-label { font-size: 12px; color: var(--faint); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; }
+.hero-desc { max-width: 540px; color: var(--muted); font-size: 16px; line-height: 1.7; margin-bottom: 40px; }
+.hero-stats {
+  display: flex; gap: 0; flex-wrap: wrap;
+  border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+  width: fit-content; background: var(--surface);
+}
+.stat {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 16px 26px;
+}
+.stat + .stat { border-left: 1px solid var(--border); }
+.stat-value { font-size: 24px; font-weight: 700; color: var(--text); letter-spacing: -0.03em; line-height: 1; }
+.stat-label { font-size: 11.5px; color: var(--faint); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; }
 
 /* ── Apps section ── */
 #apps { padding: 28px 0 80px; }
@@ -144,16 +152,27 @@ nav {
 /* ── Cards ── */
 .card {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 12px; overflow: hidden; margin-bottom: 16px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  border-radius: 12px; overflow: hidden; margin-bottom: 20px;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
   animation: cardIn 0.18s ease both;
 }
 @keyframes cardIn {
   from { opacity: 0; transform: translateY(5px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.card:hover { border-color: var(--border2); box-shadow: 0 4px 24px rgba(0,0,0,0.35); }
+.card:hover { border-color: var(--border2); box-shadow: 0 6px 28px rgba(0,0,0,0.4); transform: translateY(-2px); }
+.card.is-latest {
+  border-color: rgba(124,111,255,0.32);
+  box-shadow: 0 0 0 1px rgba(124,111,255,0.12), 0 4px 24px rgba(124,111,255,0.06);
+}
+.card.is-latest:hover { border-color: rgba(124,111,255,0.5); }
 .card-inner { padding: 24px; }
+.card-latest {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  padding: 2px 8px; border-radius: 5px; white-space: nowrap;
+  background: rgba(124,111,255,0.14); color: var(--accent);
+  border: 1px solid rgba(124,111,255,0.3);
+}
 
 .card-top {
   display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px;
@@ -258,7 +277,9 @@ footer { border-top: 1px solid var(--border); padding: 32px 0; }
 @media (max-width: 600px) {
   .nav-links { gap: 14px; }
   .hero { padding: 52px 0 44px; }
-  .hero-stats { gap: 20px; }
+  .hero-stats { width: 100%; }
+  .stat { flex: 1; padding: 14px 14px; }
+  .stat-value { font-size: 21px; }
   .card-top { flex-wrap: wrap; }
   .card-footer { flex-direction: column; align-items: flex-start; }
   .card-actions { width: 100%; }
@@ -365,7 +386,8 @@ const APPS = [
     iconBg: "rgba(124,111,255,0.16)",
     title: "Touch Grass, a React Journey",
     subtitle: "tarot cards · live sky & weather · ai divination",
-    version: "v6",
+    version: "v7",
+    latest: true,
     deployed: "Jun 2026",
     size: "Vite bundle",
     tech: "React + Vite",
@@ -585,13 +607,15 @@ function renderCard(app) {
     ? `<span class="card-version">${app.version}</span>`
     : "";
 
+  const latestHtml = app.latest
+    ? `<span class="card-latest">✦ Latest</span>`
+    : "";
+
   const metaParts = [app.size, app.deployed, app.tech].filter(Boolean);
-  const metaHtml  = metaParts.map((p, i) =>
-    `<span${i > 0 ? "" : ""}>${p}</span>`
-  ).join("");
+  const metaHtml  = metaParts.map((p) => `<span>${p}</span>`).join("");
 
   return `
-    <article class="card">
+    <article class="card${app.latest ? " is-latest" : ""}">
       <div class="card-inner">
         <div class="card-top">
           <div class="card-icon" style="background:${app.iconBg || "rgba(124,111,255,0.12)"}">
@@ -600,6 +624,7 @@ function renderCard(app) {
           <div class="card-meta">
             <div class="card-title-row">
               <span class="card-title">${app.title}</span>
+              ${latestHtml}
               ${versionHtml}
               ${guideHtml}
             </div>
