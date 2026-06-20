@@ -143,6 +143,8 @@ export default function DeparturePanel({ onDepart, apiKey }) {
 
   return (
     <div>
+      <h1>Touch Grass</h1>
+      {loading ? <LoadingLine /> : <p>{tagline}</p>}
       {(moments.length > 0 || today) && (
         <div className="tg-threshold-info">
           {moments.length > 0 && (
@@ -164,8 +166,6 @@ export default function DeparturePanel({ onDepart, apiKey }) {
           )}
         </div>
       )}
-      <h1>Touch Grass</h1>
-      {loading ? <LoadingLine /> : <p>{tagline}</p>}
       <button onClick={onDepart}>Head outside</button>
     </div>
   )
