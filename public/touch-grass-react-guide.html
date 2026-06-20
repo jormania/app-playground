@@ -104,6 +104,14 @@ nav {
   white-space: nowrap;
 }
 .feature h3 { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+.guide-cta {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 14px;
+  font-size: 13.5px; font-weight: 600;
+  padding: 9px 16px; border-radius: 8px;
+  background: rgba(124,111,255,0.12); color: var(--accent);
+  border: 1px solid rgba(124,111,255,0.3); transition: all 0.15s;
+}
+.guide-cta:hover { background: rgba(124,111,255,0.2); text-decoration: none; }
 .feature p { font-size: 13.5px; color: var(--muted); line-height: 1.7; margin-bottom: 10px; }
 .feature p:last-child { margin-bottom: 0; }
 .feature ul { list-style: none; margin-top: 10px; }
@@ -337,7 +345,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">grass</span>
         <h3>Grass, flowers &amp; small life</h3>
       </div>
-      <p>A band of grass, wildflowers, the odd bush and weed grows along the bottom, recolored each season — fresh greens in spring, gold in summer, russet in autumn, muted in winter (no blooms then). The whole patch is regrown each calendar day, so its shapes and placement shift daily and never sit the same way twice. By day a few butterflies wander across; after dark, fireflies drift and pulse over the grass. In winter the insects give way to slowly falling snow.</p>
+      <p>A band of grass, wildflowers, the odd bush and weed grows along the bottom, recolored each season — fresh greens in spring, gold in summer, russet in autumn, muted in winter (no blooms then). The whole patch is regrown each calendar day, so its shapes and placement shift daily and never sit the same way twice. By day a few butterflies wander across; after dark, fireflies drift and pulse over the grass. And the season drifts through the air: tumbling leaves in autumn, blossom petals in spring.</p>
     </div>
 
     <div class="feature">
@@ -393,7 +401,24 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">moments</span>
         <h3>Rare moments through the year</h3>
       </div>
-      <p>On certain days the sky and the finds turn special — the solstices and equinoxes, the old cross-quarter festivals, the great meteor showers, the night of a full or new moon, the Sun's passage into each zodiac sign, and more. On those days the find and the home-screen tagline are coloured by the moment, and on meteor-shower nights real shooting stars streak the clear sky. See the full <a href="/touch-grass-react-almanac.html">Almanac of Moments ↗</a> for every date and what it stirs — so you can anticipate them.</p>
+      <p>On certain days the sky and the finds turn special — the solstices and equinoxes, the old cross-quarter festivals, the great meteor showers, the night of a full or new moon, the Sun's passage into each zodiac sign, and more. On those days the find and the home-screen tagline are coloured by the moment (its name glows in its own colour on the home screen), and on meteor-shower nights real shooting stars streak the clear sky.</p>
+      <a class="guide-cta" href="/touch-grass-react-almanac.html">📜 Open the Almanac of Moments — every date and what it stirs ↗</a>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">forecast</span>
+        <h3>A glance at the day ahead</h3>
+      </div>
+      <p>When location is on, the home screen carries a quiet forecast above the title — the temperature now, the day's high and low, and a soft line or two flagging anything worth knowing before you set out: <em>a breeze picks up later</em>, <em>a chance of rain</em>, <em>storms brewing</em>. They're descriptors, not warnings — never panicky, never red. Turn Place off and the forecast simply isn't there.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">reliquary</span>
+        <h3>The Reliquary — your kept finds</h3>
+      </div>
+      <p>Every find is kept. Tap the small teal <strong>lens</strong> tucked into the bottom-left grass (opposite the key) to open <em>The Reliquary</em> — a scrollable log of every walk, newest first, each with its date, duration, rarity and the discovery it brought back. When you've gathered a great many, the list scrolls within the card and counts itself at the top. You can clear the most recent entry or the whole log, each behind a one-tap confirmation. It all lives in your browser, nowhere else.</p>
     </div>
 
     <div class="feature">
@@ -401,7 +426,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">setup</span>
         <h3>The Keeper</h3>
       </div>
-      <p>Tap the red key in the bottom-right corner to open <em>The Keeper</em>. Enter your Anthropic API key — it stays in your browser and is only ever sent directly to Anthropic, when generating a find or tagline. Here you can also toggle <strong>Sound</strong>, the constellation <strong>Signs</strong>, <strong>Place</strong> (real location), and <strong>Motion</strong> (freeze the scene) on or off. Without a key, everything still works — finds and taglines come from built-in lists instead.</p>
+      <p>Tap the red <strong>key</strong> in the bottom-right corner to open <em>The Keeper</em> (its companion, the lens, sits opposite in the bottom-left). Enter your Anthropic API key — it stays in your browser and is only ever sent directly to Anthropic, when generating a find or tagline. Here you can also toggle <strong>Sound</strong>, the constellation <strong>Signs</strong>, <strong>Place</strong> (real location), and <strong>Motion</strong> (freeze the scene) on or off — each shows its state, lit for on and dim for off. Without a key, everything still works — finds and taglines come from the old book instead.</p>
     </div>
 
     <div class="feature">

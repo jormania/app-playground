@@ -64,7 +64,7 @@ function LensIcon() {
   )
 }
 
-export default function TarotCard({ title, showSigns = true, motionOn = true, onSettings, onReliquary, children }) {
+export default function TarotCard({ title, showSigns = true, motionOn = true, fill = false, onSettings, onReliquary, children }) {
   return (
     <div className="tg-card">
       <CornerGlyph pos="tl" />
@@ -75,7 +75,7 @@ export default function TarotCard({ title, showSigns = true, motionOn = true, on
         <div className="tg-card-scene">
           <CardScene showSigns={showSigns} motionOn={motionOn} />
         </div>
-        <div className="tg-card-content">{children}</div>
+        <div className={fill ? 'tg-card-content tg-fill' : 'tg-card-content'}>{children}</div>
         <div className="tg-card-banner">{title}</div>
         {onReliquary && (
           <button className="tg-card-lens" onClick={onReliquary} title="The Reliquary" aria-label="Walk history">

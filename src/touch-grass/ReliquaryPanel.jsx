@@ -42,7 +42,6 @@ export default function ReliquaryPanel({ history, onClearLast, onClearAll, onClo
                   <span style={t.color ? { color: t.color } : undefined}>{t.text}</span>
                 </div>
                 <div className="tg-relic-name">{w.discovery.name}</div>
-                <div className="tg-relic-desc">{w.discovery.description}</div>
               </div>
             )
           })}

@@ -249,42 +249,59 @@ body {
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
 }
 .tg-moment span span { font-weight: 700; }
-.tg-forecast {
-  font-size: 0.8rem; color: #d6d0bf; line-height: 1.5;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+.tg-forecast { text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55); }
+.tg-forecast-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.tg-fc-glyph { width: 27px; height: 27px; flex-shrink: 0; filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4)); }
+.tg-forecast-label {
+  font-size: 0.72rem; letter-spacing: 0.14em; font-variant: small-caps;
+  text-transform: lowercase; color: #e6dfcc; opacity: 0.92;
 }
-.tg-fc-now { color: #f5efdd; font-weight: 600; }
-.tg-fc-range { color: #cfc9b8; }
+.tg-forecast-body {
+  font-size: 0.82rem; line-height: 1.6; color: #e2dcc9; margin: 0;
+  text-shadow: 0 1px 7px rgba(0, 0, 0, 0.55);
+}
+.tg-forecast-body b { font-weight: 700; }
 .tg-fc-alerts {
   display: flex; flex-direction: column; gap: 1px;
-  margin-top: 5px; font-size: 0.74rem; font-style: italic; opacity: 0.82;
+  margin-top: 6px; font-size: 0.75rem; font-style: italic; opacity: 0.82;
+  color: #d6d0bf;
+}
+
+/* a menu panel that fills the card height, so only its inner list scrolls
+   (no double scrollbar) */
+.tg-card-content.tg-fill {
+  margin-top: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
 }
 
 /* ---- The Reliquary (walk history) ---- */
-.tg-reliquary h1 { margin-bottom: 6px; }
+.tg-reliquary { display: flex; flex-direction: column; height: 100%; }
+.tg-reliquary h1 { flex: 0 0 auto; margin-bottom: 4px; }
+.tg-reliquary > .tg-hint { flex: 0 0 auto; }
 .tg-relics {
-  max-height: 46vh;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  margin: 8px 0 14px;
-  display: flex; flex-direction: column; gap: 12px;
+  margin: 6px 0 10px;
+  display: flex; flex-direction: column; gap: 8px;
   padding-right: 4px;
 }
-.tg-relic { border-left: 2px solid rgba(243, 234, 212, 0.28); padding-left: 11px; }
+.tg-relic { border-left: 2px solid rgba(243, 234, 212, 0.28); padding-left: 9px; }
 .tg-relic-meta {
-  display: flex; flex-wrap: wrap; gap: 10px;
-  font-size: 0.7rem; color: #bfc6b8; font-variant: small-caps;
-  letter-spacing: 0.04em; margin-bottom: 3px;
+  display: flex; flex-wrap: wrap; gap: 8px;
+  font-size: 0.64rem; color: #bfc6b8; font-variant: small-caps;
+  letter-spacing: 0.03em; margin-bottom: 1px;
   text-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
 }
 .tg-relic-name {
   font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
-  font-size: 1rem; color: #f3ead4; line-height: 1.25;
+  font-size: 0.86rem; color: #f3ead4; line-height: 1.2;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
 }
-.tg-relic-desc {
-  font-size: 0.78rem; color: #d4cdba; line-height: 1.5; margin-top: 2px;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
-}
+.tg-relic-actions { flex: 0 0 auto; }
 .tg-confirm {
   font-size: 0.8rem; color: #ece6d6; display: flex; align-items: center; gap: 8px;
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
