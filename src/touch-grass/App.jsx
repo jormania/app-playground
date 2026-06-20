@@ -19,6 +19,7 @@ const SIGNS_STORAGE = 'tg-react-signs'
 const MOTION_STORAGE = 'tg-react-motion'
 const CALL_STORAGE = 'tg-react-call'
 const HISTORY_STORAGE = 'tg-react-history'
+const VIEW_STORAGE = 'tg-react-view'
 const HISTORY_CAP = 300
 
 function loadState() {
@@ -66,6 +67,19 @@ function loadHistory() {
   return []
 }
 
+// which panel was open (Keeper / Reliquary / stepped-back Threshold), so closing
+// and reopening the PWA returns to the exact screen
+function loadView() {
+  try {
+    const raw = localStorage.getItem(VIEW_STORAGE)
+    if (raw) {
+      const v = JSON.parse(raw)
+      return { settings: !!v.settings, reliquary: !!v.reliquary, departure: !!v.departure }
+    }
+  } catch (_) {}
+  return { settings: false, reliquary: false, departure: false }
+}
+
 export default function App() {
   const [state, setState] = useState(loadState)
   const [apiKey, setApiKey] = useState(loadApiKey)
@@ -74,9 +88,9 @@ export default function App() {
   const [motionOn, setMotionOn] = useState(loadMotion)
   const [callOn, setCallOn] = useState(loadCall)
   const [history, setHistory] = useState(loadHistory)
-  const [showSettings, setShowSettings] = useState(false)
-  const [showReliquary, setShowReliquary] = useState(false)
-  const [showDeparture, setShowDeparture] = useState(false)
+  const [showSettings, setShowSettings] = useState(() => loadView().settings)
+  const [showReliquary, setShowReliquary] = useState(() => loadView().reliquary)
+  const [showDeparture, setShowDeparture] = useState(() => loadView().departure)
   const [departureKey, setDepartureKey] = useState(0)
 
   const { reveal: playReveal, depart: playDepart } = useAmbientSound(soundOn)
@@ -94,6 +108,12 @@ export default function App() {
       localStorage.setItem(HISTORY_STORAGE, JSON.stringify(history))
     } catch (_) {}
   }, [history])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(VIEW_STORAGE, JSON.stringify({ settings: showSettings, reliquary: showReliquary, departure: showDeparture }))
+    } catch (_) {}
+  }, [showSettings, showReliquary, showDeparture])
 
   function startWalk() {
     setShowDeparture(false)
