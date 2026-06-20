@@ -53,11 +53,11 @@ export default function OutPanel({ departedAt, onReturn }) {
       <p>
         Out for{' '}
         <span style={color ? { color } : undefined}>{formatElapsed(elapsed)}</span>
-        {' '}· since {new Date(departedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </p>
-      {remaining > 0 && (
-        <div className="tg-countdown">{ANCHOR_LABEL[anchor.key]} in {formatCountdown(remaining)}</div>
-      )}
+      <div className="tg-walkmeta">
+        <div>Left at {new Date(departedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+        {remaining > 0 && <div>{ANCHOR_LABEL[anchor.key]} in {formatCountdown(remaining)}</div>}
+      </div>
       <button onClick={onReturn}>I'm back</button>
     </div>
   )
