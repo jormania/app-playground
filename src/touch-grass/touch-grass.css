@@ -45,22 +45,13 @@ body {
   box-shadow: 0 26px 64px rgba(0, 0, 0, 0.72), 0 6px 16px rgba(0, 0, 0, 0.5), 0 2px 0 rgba(255,255,255,0.18) inset;
 }
 
-/* bold double keyline tracing the card on the cream frame */
-.tg-card::before {
-  content: '';
-  position: absolute;
-  inset: 9px;
-  border: 2.2px solid #241812;
-  border-radius: 12px;
-  pointer-events: none;
-  z-index: 2;
-}
+/* single dark keyline tracing the card on the cream frame */
 .tg-card::after {
   content: '';
   position: absolute;
   inset: 14px;
-  border: 1.5px solid #241812;
-  border-radius: 8px;
+  border: 1.8px solid #241812;
+  border-radius: 9px;
   pointer-events: none;
   z-index: 2;
 }
