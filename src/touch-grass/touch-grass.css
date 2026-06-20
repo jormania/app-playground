@@ -298,9 +298,13 @@ body {
 }
 .tg-relic { border-left: 2px solid rgba(243, 234, 212, 0.28); padding-left: 9px; }
 .tg-relic-meta {
-  display: flex; flex-wrap: wrap; gap: 8px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
   font-size: 0.64rem; color: #e3dcc7; font-variant: small-caps;
   letter-spacing: 0.03em; margin-bottom: 2px;
+}
+.tg-relic-sep {
+  width: 6px; height: 6px; flex-shrink: 0;
+  color: #cdb079; opacity: 0.75;
 }
 .tg-relic-name {
   display: flex; align-items: flex-start; gap: 7px;

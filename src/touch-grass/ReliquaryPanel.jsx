@@ -7,10 +7,11 @@ const TIER_LABEL = {
   legendary: { text: 'Legendary', color: '#c060e0' },
 }
 
-function fmtDate(ts) {
-  const d = new Date(ts)
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
-    + ' · ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+function fmtDay(ts) {
+  return new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' })
+}
+function fmtTime(ts) {
+  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
 function fmtDur(min) {
@@ -48,6 +49,16 @@ function TierIcon({ tier }) {
   )
 }
 
+// a slender sparkle that sets date · time · duration apart
+const SEP_GLYPH = starPath(4, 6, 1.5)
+function Sep() {
+  return (
+    <svg className="tg-relic-sep" viewBox="0 0 16 16" aria-hidden="true">
+      <path d={SEP_GLYPH} fill="currentColor" />
+    </svg>
+  )
+}
+
 export default function ReliquaryPanel({ history, onClearLast, onClearAll, onClose }) {
   const [confirm, setConfirm] = useState(null)
   const count = history.length
@@ -64,7 +75,10 @@ export default function ReliquaryPanel({ history, onClearLast, onClearAll, onClo
           {history.map((w, i) => (
             <div className="tg-relic" key={`${w.ts}-${i}`}>
               <div className="tg-relic-meta">
-                <span>{fmtDate(w.ts)}</span>
+                <span>{fmtDay(w.ts)}</span>
+                <Sep />
+                <span>{fmtTime(w.ts)}</span>
+                <Sep />
                 <span>{fmtDur(w.durationMinutes)}</span>
               </div>
               <div className="tg-relic-name">
