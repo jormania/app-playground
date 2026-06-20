@@ -20,6 +20,28 @@ function randomFallback() {
   return FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)]
 }
 
+// Two-word invitations to step outside — the card's heading. A different way of
+// saying "touch grass" without those words (the masthead already carries them).
+// Used as fallbacks when there's no API key, and as a safety net for the AI.
+const INVITES = [
+  'Wander Out', 'Step Outside', 'Slip Away', 'Head Out', 'Roam Free',
+  'Venture Forth', 'Drift Away', 'Go Seek', 'Find Sky', 'Stray Far',
+  'Chase Dusk', 'Breathe Deeper', 'Get Lost', 'Outside Waits', 'Walk Somewhere',
+]
+
+function randomInvite() {
+  return INVITES[Math.floor(Math.random() * INVITES.length)]
+}
+
+// keep only a clean two-word, Title-Case invite that avoids touch/grass
+function cleanInvite(s) {
+  if (!s || typeof s !== 'string') return null
+  if (/touch|grass/i.test(s)) return null
+  const words = s.trim().replace(/["'.]/g, '').split(/\s+/)
+  if (words.length !== 2) return null
+  return words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+}
+
 // a varied, stable colour per moment (so the event "pops" unpredictably)
 const MOMENT_PALETTE = ['#e2a92f', '#3ab0c0', '#c060e0', '#df5b3f', '#6fae72', '#5a9fd4', '#d4738f', '#c49830']
 function momentColor(key) {
@@ -87,7 +109,7 @@ function Temp({ value }) {
   return <b style={{ color: tempColor(v) }}>{v}°</b>
 }
 
-async function fetchTagline(apiKey, ctx) {
+async function fetchThreshold(apiKey, ctx) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -98,27 +120,40 @@ async function fetchTagline(apiKey, ctx) {
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 50,
-      system: 'You write short poetic taglines for a walking app. Return plain text only — no quotes, no punctuation at the end.',
+      max_tokens: 80,
+      temperature: 1,
+      system: `You write the home screen of a walking app whose whole purpose is to get the user to put the phone down and go outside. Respond with valid JSON only: {"invite": "...", "tagline": "..."}.
+"invite": exactly two words, Title Case — a fresh, compelling imperative to step outside (e.g. "Wander Out", "Slip Away", "Chase Dusk"). It is really an invitation to touch grass, said another way. Never use the words "touch" or "grass". Vary it; surprise me.
+"tagline": one line under 12 words — dreamy, witty, a quiet play on leaving the screen for the world. No quotes, no trailing punctuation.`,
       messages: [{
         role: 'user',
-        content: `Write one tagline under 12 words. Dreamy, witty, a quiet play on words about leaving your screen and going outside. ${describeSetting(ctx)}${(ctx.moments && ctx.moments.length) ? ` Today is ${describeMoments(ctx.moments)} — you may nod to it.` : ''} You may let the hour, weather or moon tint it, lightly. Avoid clichés.`,
+        content: `Compose the invite and tagline. ${describeSetting(ctx)}${(ctx.moments && ctx.moments.length) ? ` Today is ${describeMoments(ctx.moments)} — you may nod to it.` : ''} You may let the hour, weather, place or moon lightly tint both.`,
       }],
     }),
   })
   if (!res.ok) throw new Error(`API ${res.status}`)
   const data = await res.json()
-  return data.content[0].text.trim().replace(/^["']|["'.]$/g, '')
+  const text = data.content[0].text.trim()
+  const start = text.indexOf('{'), end = text.lastIndexOf('}')
+  if (start === -1 || end === -1) throw new Error('no JSON in response')
+  const parsed = JSON.parse(text.slice(start, end + 1))
+  const tagline = (parsed.tagline || '').trim().replace(/^["']|["'.]+$/g, '')
+  return {
+    invite: cleanInvite(parsed.invite) || randomInvite(),
+    tagline: tagline || randomFallback(),
+  }
 }
 
 export default function DeparturePanel({ onDepart, apiKey }) {
   const world = useWorld()
+  const [invite, setInvite] = useState(randomInvite)
   const [tagline, setTagline] = useState(null)
   const [loading, setLoading] = useState(true)
 
   // Runs synchronously before the browser paints — prevents any flash
   // of previous content regardless of how the component was re-entered.
   useLayoutEffect(() => {
+    setInvite(randomInvite())
     setTagline(null)
     setLoading(true)
   }, [])
@@ -130,8 +165,8 @@ export default function DeparturePanel({ onDepart, apiKey }) {
       return
     }
     const ctx = { timeOfDay: world.timeOfDay, season: world.season, weather: world.weather, moon: world.moon, coords: world.coords, biome: world.biome, moments: world.moments }
-    fetchTagline(apiKey, ctx)
-      .then(setTagline)
+    fetchThreshold(apiKey, ctx)
+      .then(({ invite, tagline }) => { setInvite(invite); setTagline(tagline) })
       .catch(() => setTagline(randomFallback()))
       .finally(() => setLoading(false))
   }, [])
@@ -143,7 +178,7 @@ export default function DeparturePanel({ onDepart, apiKey }) {
 
   return (
     <div>
-      <h1>Touch Grass</h1>
+      <h1>{invite}</h1>
       {loading ? <LoadingLine /> : <p>{tagline}</p>}
       {(moments.length > 0 || today) && (
         <div className="tg-threshold-info">
