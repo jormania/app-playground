@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'vitest'
-import { getTimeOfDay, getSeason } from './context.js'
+import { getTimeOfDay, getSeason, getMoonPhase } from './context.js'
 
 function dateAt(hour, month = 5) {
   const d = new Date(2024, month, 15)
@@ -42,6 +42,41 @@ describe('getTimeOfDay — autumn (October)', () => {
   test('8am is day',    () => expect(getTimeOfDay(dateAt(8, 9))).toBe('day'))
   test('6pm is day',    () => expect(getTimeOfDay(dateAt(18, 9))).toBe('day'))
   test('9pm is night',  () => expect(getTimeOfDay(dateAt(21, 9))).toBe('night'))
+})
+
+describe('getTimeOfDay — with coordinates (SunCalc)', () => {
+  const bucharest = { lat: 44.43, lon: 26.10 }
+  test('summer noon is day', () => {
+    const d = new Date('2024-06-21T12:00:00')
+    expect(getTimeOfDay(d, bucharest)).toBe('day')
+  })
+  test('summer 3am is night', () => {
+    const d = new Date('2024-06-21T03:00:00')
+    expect(getTimeOfDay(d, bucharest)).toBe('night')
+  })
+  test('returns a valid bucket for any hour', () => {
+    const buckets = ['dawn', 'day', 'dusk', 'night']
+    for (let h = 0; h < 24; h++) {
+      const d = new Date('2024-06-21T00:00:00')
+      d.setHours(h)
+      expect(buckets).toContain(getTimeOfDay(d, bucharest))
+    }
+  })
+})
+
+describe('getMoonPhase', () => {
+  test('returns phase in [0,1) and fraction in [0,1]', () => {
+    const { phase, fraction } = getMoonPhase(new Date('2024-06-21T22:00:00'))
+    expect(phase).toBeGreaterThanOrEqual(0)
+    expect(phase).toBeLessThan(1)
+    expect(fraction).toBeGreaterThanOrEqual(0)
+    expect(fraction).toBeLessThanOrEqual(1)
+  })
+  test('a known full moon is near fraction 1', () => {
+    // 2024-06-22 was a full moon
+    const { fraction } = getMoonPhase(new Date('2024-06-22T01:00:00Z'))
+    expect(fraction).toBeGreaterThan(0.9)
+  })
 })
 
 describe('getSeason', () => {

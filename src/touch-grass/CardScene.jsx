@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { getTimeOfDay, getSeason } from './context.js'
 import { getZodiac, CONSTELLATIONS } from './zodiac.js'
+import { useWorld } from './world.jsx'
 
 const W = 300, H = 500, GROUND = 500
 
@@ -53,11 +53,6 @@ const SCRIM = {
 
 const INK = '#1c4a47'
 const PARCHMENT = '#f3ead4'
-
-function getCtx() {
-  const now = new Date()
-  return { timeOfDay: getTimeOfDay(now), season: getSeason(now), date: now }
-}
 
 /* ---- One eye: almond white, teal iris with pupil + glint, heavy upper lid ---- */
 function Eye({ cx, cy, r, sw, iris }) {
@@ -131,13 +126,27 @@ function Sun({ cx, cy, r, dawn }) {
   )
 }
 
-function Moon({ cx, cy, r }) {
+// the unlit portion of the disc for a given phase (0 new … 0.5 full … 1 new).
+// A translucent overlay on the full faced disc — never a thin crescent — so the
+// artwork stays the strong central element; full moon yields a zero-area path.
+function moonShadowPath(cx, cy, r, phase) {
+  const cos = Math.cos(2 * Math.PI * phase)
+  const rx = Math.abs(cos) * r
+  const waxing = phase < 0.5
+  const sweepOuter = waxing ? 0 : 1
+  const innerSweep = ((cos > 0) === waxing) ? 1 : 0
+  return `M ${cx} ${cy - r} A ${r} ${r} 0 0 ${sweepOuter} ${cx} ${cy + r} `
+    + `A ${rx.toFixed(2)} ${r} 0 0 ${innerSweep} ${cx} ${cy - r} Z`
+}
+
+function Moon({ cx, cy, r, phase = 0.5 }) {
   return (
     <g>
       <circle cx={cx} cy={cy} r={r + 12} fill="rgba(243,234,212,0.07)" />
       <circle cx={cx} cy={cy} r={r + 6} fill="rgba(243,234,212,0.06)" />
       <circle cx={cx} cy={cy} r={r} fill={PARCHMENT} stroke="rgba(28,74,71,0.18)" strokeWidth="1" />
       <Face cx={cx} cy={cy} r={r} cheek="#ecc24f" lip="#e08a46" iris="#2f8a9a" />
+      <path d={moonShadowPath(cx, cy, r, phase)} fill="rgba(20,28,50,0.5)" />
     </g>
   )
 }
@@ -428,23 +437,142 @@ const FIREFLIES = [
   { x: 30, y: GROUND - 46, dur: 3.8 },
 ]
 
-const SNOW = Array.from({ length: 14 }, (_, i) => ({
-  x: ((i * 53) % 288) + 6,
-  r: 0.9 + (i % 3) * 0.4,
-  dur: 6 + (i % 5),
-  delay: -(i * 0.8),
-}))
+/* ---- Weather layers (driven by world.weather) ---- */
 
-function Snow() {
+// falling snow — count scales with intensity
+function Snow({ count = 14 }) {
+  const flakes = useMemo(() => Array.from({ length: count }, (_, i) => ({
+    x: ((i * 53) % 288) + 6,
+    r: 0.9 + (i % 3) * 0.4,
+    dur: 6 + (i % 5),
+    delay: -(i * 0.8),
+  })), [count])
   return (
     <g fill="#eef2f4">
-      {SNOW.map((s, i) => (
+      {flakes.map((s, i) => (
         <circle key={i} cx={s.x} cy={40} r={s.r}>
           <animate attributeName="cy" values={`40;${GROUND - 12}`} dur={`${s.dur}s`} begin={`${s.delay}s`} repeatCount="indefinite" />
           <animate attributeName="opacity" values="0;0.85;0.85;0" dur={`${s.dur}s`} begin={`${s.delay}s`} repeatCount="indefinite" />
         </circle>
       ))}
     </g>
+  )
+}
+
+// falling rain — density by intensity, slant by wind
+function Rain({ intensity, wind }) {
+  const count = Math.round(24 + intensity * 60)
+  const slant = Math.min(11, wind * 0.4)
+  const drops = useMemo(() => Array.from({ length: count }, (_, i) => ({
+    x: (i * 37) % W,
+    len: 7 + (i % 3) * 4,
+    dur: (0.42 + (i % 5) * 0.08).toFixed(2),
+    delay: (-(i * 0.05)).toFixed(2),
+  })), [count])
+  return (
+    <g stroke="#c4d6e4" strokeWidth="1" strokeLinecap="round" opacity="0.5">
+      {drops.map((d, i) => (
+        <line key={i} x1={d.x} y1="-14" x2={d.x - slant * 0.4} y2={-14 + d.len}>
+          <animateTransform attributeName="transform" type="translate"
+            values={`0 0; ${slant} ${H + 18}`} dur={`${d.dur}s`} begin={`${d.delay}s`} repeatCount="indefinite" />
+        </line>
+      ))}
+    </g>
+  )
+}
+
+// drifting clouds — count by cloud cover, colour by time/cover. Each cloud has
+// its own size, speed, height, opacity and a gentle vertical bob, so the field
+// flows naturally instead of marching in lockstep.
+function Clouds({ frac, wind, fill }) {
+  const n = Math.min(7, Math.round(frac * 6) + 1)
+  const base = Math.max(38, 96 - wind * 1.4) // windier → faster overall
+  const clouds = useMemo(() => Array.from({ length: n }, (_, i) => {
+    const r1 = ((i * 73 + 13) % 100) / 100
+    const r2 = ((i * 137 + 41) % 100) / 100
+    const r3 = ((i * 191 + 7) % 100) / 100
+    const scale = 0.55 + r1 * 0.75
+    return {
+      y: 16 + r2 * 142,
+      scale,
+      // bigger clouds drift slower; ±45% random spread so no two match
+      dur: (base * (0.65 + r3 * 0.9) / scale).toFixed(1),
+      begin: (-(r1 + r3) * base).toFixed(1),
+      op: (0.55 + r2 * 0.32).toFixed(2),
+      bob: (4 + r3 * 7).toFixed(1),
+      bobDur: (8 + r1 * 9).toFixed(1),
+    }
+  }), [n, base])
+  return (
+    <g fill={fill}>
+      {clouds.map((c, i) => (
+        <g key={i} opacity={c.op}>
+          <animateTransform attributeName="transform" type="translate" additive="sum"
+            values={`-84 ${c.y}; ${W + 84} ${c.y}`} dur={`${c.dur}s`} begin={`${c.begin}s`} repeatCount="indefinite" />
+          <animateTransform attributeName="transform" type="translate" additive="sum"
+            values={`0 0; 0 ${c.bob}; 0 0; 0 ${-c.bob}; 0 0`} dur={`${c.bobDur}s`} repeatCount="indefinite" />
+          <g transform={`scale(${c.scale})`}>
+            <ellipse cx="0" cy="2" rx="26" ry="12" />
+            <circle cx="-15" cy="0" r="11" />
+            <circle cx="-2" cy="-7" r="13" />
+            <circle cx="12" cy="-4" r="11" />
+            <circle cx="21" cy="1" r="9" />
+          </g>
+        </g>
+      ))}
+    </g>
+  )
+}
+
+// fog — a desaturating veil plus slow drifting banks
+function Fog() {
+  return (
+    <g>
+      <rect x="0" y="0" width={W} height={H} fill="#cdd2d4" opacity="0.32" />
+      {[0.34, 0.54, 0.72].map((yf, i) => (
+        <g key={i} opacity="0.22">
+          <animateTransform attributeName="transform" type="translate"
+            values={i % 2 ? `-60 0; 0 0` : `0 0; -60 0`} dur={`${24 + i * 8}s`} repeatCount="indefinite" />
+          <ellipse cx={W / 2} cy={H * yf} rx={W * 0.85} ry="20" fill="#e8eced" />
+        </g>
+      ))}
+    </g>
+  )
+}
+
+// shooting stars on meteor-shower nights — each darts across briefly, then waits
+const METEORS = [
+  { x: 36, y: 38, len: 14, begin: 0, cycle: 11 },
+  { x: 150, y: 26, len: 12, begin: 3.5, cycle: 13 },
+  { x: 88, y: 66, len: 16, begin: 7, cycle: 9 },
+  { x: 206, y: 48, len: 12, begin: 5, cycle: 12 },
+]
+function Meteors() {
+  return (
+    <g stroke="#f6efda" strokeWidth="1.2" strokeLinecap="round">
+      {METEORS.map((m, i) => (
+        <g key={i} opacity="0">
+          <line x1="0" y1="0" x2={-m.len} y2={-m.len * 0.42} />
+          <animateTransform attributeName="transform" type="translate"
+            values={`${m.x} ${m.y}; ${m.x} ${m.y}; ${m.x + 96} ${m.y + 40}; ${m.x + 96} ${m.y + 40}`}
+            keyTimes="0;0.86;0.95;1" dur={`${m.cycle}s`} begin={`${m.begin}s`} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0;0;0.95;0;0"
+            keyTimes="0;0.86;0.905;0.95;1" dur={`${m.cycle}s`} begin={`${m.begin}s`} repeatCount="indefinite" />
+        </g>
+      ))}
+    </g>
+  )
+}
+
+// occasional lightning flash
+function Lightning() {
+  return (
+    <rect x="0" y="0" width={W} height={H} fill="#eef0ff" opacity="0">
+      <animate attributeName="opacity"
+        values="0;0;0.65;0.12;0.42;0;0;0;0;0;0;0"
+        keyTimes="0;0.74;0.76;0.78;0.80;0.82;0.86;0.9;0.93;0.96;0.98;1"
+        dur="8s" repeatCount="indefinite" />
+    </rect>
   )
 }
 
@@ -492,7 +620,7 @@ function Butterfly({ flight, dur, begin, s, up, lo }) {
 }
 
 function Bugs({ dim, season }) {
-  if (season === 'winter') return <Snow />
+  if (season === 'winter') return null // winter snow is now weather-driven, not seasonal
   if (dim) return <g>{FIREFLIES.map((f, i) => <Firefly key={i} {...f} i={i} />)}</g>
   return <g>{BUTTERFLIES.map((b, i) => <Butterfly key={i} {...b} />)}</g>
 }
@@ -512,16 +640,39 @@ function usePrefersReducedMotion() {
 }
 
 export default function CardScene({ showSigns = true }) {
-  const [ctx, setCtx] = useState(getCtx)
+  const { timeOfDay, season, now, weather, moon, moments } = useWorld()
   const svgRef = useRef(null)
   const reduceMotion = usePrefersReducedMotion()
 
-  useEffect(() => {
-    const id = setInterval(() => setCtx(getCtx()), 60_000)
-    return () => clearInterval(id)
-  }, [])
+  const stops = SKY[timeOfDay]
+  const glow = HORIZON_GLOW[timeOfDay]
+  const [scrimColor, scrimAlpha] = SCRIM[timeOfDay]
+  const showSun = timeOfDay === 'dawn' || timeOfDay === 'day'
+  const showMoon = timeOfDay === 'dusk' || timeOfDay === 'night'
+  const dim = timeOfDay === 'dusk' || timeOfDay === 'night'
+  const dayKey = now.getFullYear() * 1000 + dayOfYear(now)
 
-  const { timeOfDay, season, date } = ctx
+  // ---- weather → scene ----
+  const cond = weather ? weather.condition : null
+  const cloudFrac = weather ? weather.cloud : 0
+  const wind = weather ? weather.wind : 0
+  const foggy = cond === 'fog'
+  const thunder = cond === 'thunder'
+  let precip = null
+  if (weather) {
+    if (cond === 'snow') precip = 'snow'
+    else if (cond === 'rain' || thunder) precip = 'rain'
+  } else if (season === 'winter') {
+    precip = 'snow' // fallback when no live weather (Phase 5 behaviour)
+  }
+  const intensity = weather ? weather.intensity : 0.5
+  const skyObscured = foggy || thunder || cond === 'overcast' || cloudFrac >= 0.6 || precip === 'rain'
+  const celestialOpacity = (foggy || thunder) ? 0.22 : 1 - Math.min(0.78, cloudFrac * 0.82)
+  const cloudFill = (timeOfDay === 'night' || timeOfDay === 'dusk')
+    ? '#39414f'
+    : (cloudFrac > 0.7 ? '#c9cdd4' : '#eef0f2')
+  const showBugs = !precip && !foggy && !thunder
+  const meteorNight = dim && !skyObscured && (moments || []).some(m => m.meteor)
 
   // honour the OS "reduce motion" setting by freezing the whole SVG timeline
   useEffect(() => {
@@ -529,14 +680,7 @@ export default function CardScene({ showSigns = true }) {
     if (!svg || typeof svg.pauseAnimations !== 'function') return
     if (reduceMotion) svg.pauseAnimations()
     else svg.unpauseAnimations()
-  }, [reduceMotion, timeOfDay, season])
-  const stops = SKY[timeOfDay]
-  const glow = HORIZON_GLOW[timeOfDay]
-  const [scrimColor, scrimAlpha] = SCRIM[timeOfDay]
-  const showSun = timeOfDay === 'dawn' || timeOfDay === 'day'
-  const showMoon = timeOfDay === 'dusk' || timeOfDay === 'night'
-  const dim = timeOfDay === 'dusk' || timeOfDay === 'night'
-  const dayKey = date.getFullYear() * 1000 + dayOfYear(date)
+  }, [reduceMotion, timeOfDay, season, weather, meteorNight])
 
   return (
     <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice">
@@ -562,16 +706,24 @@ export default function CardScene({ showSigns = true }) {
 
       <rect x="0" y="0" width={W} height={H} fill="url(#tg-sky)" />
       {glow && <rect x="0" y={H * 0.45} width={W} height={H * 0.55} fill="url(#tg-glow)" />}
-      {dim && <Sky bright={timeOfDay === 'night'} dayKey={dayKey} date={date} signs={showSigns} />}
-      {showSun && <Sun cx={226} cy={82} r={41} dawn={timeOfDay === 'dawn'} />}
-      {showMoon && <Moon cx={226} cy={82} r={43} />}
-      {dim && <CityLights color={glow} />}
+      {dim && !skyObscured && <Sky bright={timeOfDay === 'night'} dayKey={dayKey} date={now} signs={showSigns} />}
+      <g opacity={celestialOpacity}>
+        {showSun && <Sun cx={226} cy={82} r={41} dawn={timeOfDay === 'dawn'} />}
+        {showMoon && <Moon cx={226} cy={82} r={43} phase={moon ? moon.phase : 0.5} />}
+      </g>
+      {meteorNight && <Meteors />}
+      {cloudFrac > 0.05 && <Clouds frac={cloudFrac} wind={wind} fill={cloudFill} />}
+      {dim && !skyObscured && <CityLights color={glow} />}
       <rect x="0" y="0" width={W} height={H} fill="url(#tg-scrim)" />
       <Bushes season={season} dayKey={dayKey} />
       <Grass color={GRASS[season]} />
       <Weeds season={season} dayKey={dayKey} />
       <Flowers season={season} dayKey={dayKey} />
-      <Bugs dim={dim} season={season} />
+      {showBugs && <Bugs dim={dim} season={season} />}
+      {precip === 'rain' && <Rain intensity={intensity} wind={wind} />}
+      {precip === 'snow' && <Snow count={Math.round(10 + intensity * 28)} />}
+      {foggy && <Fog />}
+      {thunder && <Lightning />}
     </svg>
   )
 }

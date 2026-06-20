@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useWorld } from './world.jsx'
 
 export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSound, signsOn, onToggleSigns, onClose }) {
   const [draft, setDraft] = useState(currentKey)
   const hasKey = !!currentKey
+  const { locationEnabled, toggleLocation } = useWorld()
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -12,11 +14,12 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
   return (
     <div className="tg-settings">
       <h1>Settings</h1>
-      <p>{hasKey ? '● Key saved — AI finds on.' : '○ No key — built-in finds.'}</p>
+      <p>{hasKey ? '● Key saved — the oracle answers.' : '○ No key — finds from the old book.'}</p>
 
       <div className="tg-row">
         <button type="button" onClick={onToggleSound}>{soundOn ? '♪ Sound on' : '♪ Sound off'}</button>
         <button type="button" onClick={onToggleSigns}>{signsOn ? '✦ Signs on' : '✦ Signs off'}</button>
+        <button type="button" onClick={toggleLocation}>{locationEnabled ? '⌖ Place on' : '⌖ Place off'}</button>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -30,7 +33,7 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
           autoComplete="off"
           spellCheck="false"
         />
-        <p className="tg-hint">Empty = finds from a built-in list.</p>
+        <p className="tg-hint">Leave it empty and finds rise from the old book.</p>
         <div className="tg-row">
           <button type="submit">Save</button>
           {hasKey && <button type="button" onClick={() => onSave('')}>Clear</button>}

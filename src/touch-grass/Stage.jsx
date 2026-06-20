@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import { getTimeOfDay } from './context.js'
+import { useWorld } from './world.jsx'
 
 // The "table" the card rests on — a gradient inverted against the card's
 // interior sky: pale when the scene is dark, dark when the scene is bright.
@@ -15,12 +14,6 @@ const STAGE = {
 }
 
 export default function Stage() {
-  const [tod, setTod] = useState(() => getTimeOfDay(new Date()))
-
-  useEffect(() => {
-    const id = setInterval(() => setTod(getTimeOfDay(new Date())), 60_000)
-    return () => clearInterval(id)
-  }, [])
-
-  return <div className="tg-stage" style={{ background: STAGE[tod] }} />
+  const { timeOfDay } = useWorld()
+  return <div className="tg-stage" style={{ background: STAGE[timeOfDay] }} />
 }

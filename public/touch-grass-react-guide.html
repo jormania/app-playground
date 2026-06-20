@@ -179,7 +179,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
     <div style="display:flex;align-items:center;gap:8px;">
       <span class="nav-brand">Touch Grass · React</span>
       <span class="nav-version">React</span>
-      <span class="nav-phase">Phase 5</span>
+      <span class="nav-phase">Phase 6</span>
     </div>
   </div>
 </nav>
@@ -190,7 +190,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
     <div class="hero-eyebrow">// feature guide</div>
     <h1>Everything the React rewrite does.</h1>
     <p>This is the living guide for the React version of Touch Grass — updated as each phase is completed. The app is intentionally minimal at each stage; this page is where the details live.</p>
-    <p>Current build: <strong style="color:var(--text)">Phase 5</strong> — the whole app now lives inside an illustrated tarot card, with a sky that tracks the time of day and season, your zodiac constellation overhead, seasonal grass and small life, and a live, generative soundscape. The visuals and sound are here.</p>
+    <p>Current build: <strong style="color:var(--text)">Phase 6</strong> — the card now reaches out to the real world. With your permission it reads your location, so daylight, weather, the moon's phase and rare almanac moments are all true to where and when you actually are. The scene mirrors the sky outside; the finds are coloured by it.</p>
   </section>
 
   <!-- How to use -->
@@ -366,7 +366,39 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">motion</span>
         <h3>Respects reduced motion</h3>
       </div>
-      <p>If your device is set to reduce motion, the drifting stars, fireflies, butterflies, and falling snow all freeze in place — the scene stays, the movement stops.</p>
+      <p>If your device is set to reduce motion, the drifting stars, fireflies, butterflies, falling snow, drifting clouds, rain and shooting stars all freeze in place — the scene stays, the movement stops.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">place</span>
+        <h3>Your real sky</h3>
+      </div>
+      <p>With your permission, the app reads your location once (and only your rough coordinates, kept in your browser). From it, daylight becomes exact — the real sunrise, sunset and twilight where you are, so a midsummer dusk lingers as long as it truly does. Deny it, or turn <strong>Place</strong> off in the Keeper, and everything falls back gracefully to the seasonal estimates. Location is never sent anywhere but to the open weather service.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">weather</span>
+        <h3>The weather outside, on the card</h3>
+      </div>
+      <p>The scene mirrors the real sky. Clouds gather to the true cloud cover (a few drifting puffs, or a full grey overcast that veils the sun and hides the stars). Rain falls when it's raining, snow when it's snowing — never by guesswork. Fog rolls in as a soft, desaturating bank; thunderstorms darken the sky and flash. Wind speeds the clouds and stirs the air. The soundscape follows too — rain patter, distant thunder, a wind that rises with the real gusts.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">moon</span>
+        <h3>The true moon</h3>
+      </div>
+      <p>The moon shows tonight's real phase. The faced disc stays whole and central — never a thin sliver — with a soft shadow drawn along the terminator across the unlit side. At full moon it's the bare, bright face; new and crescent nights wear more of the shadow, the face still watching through it.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-header">
+        <span class="feature-tag">moments</span>
+        <h3>Rare moments through the year</h3>
+      </div>
+      <p>On certain days the sky and the finds turn special — the solstices and equinoxes, the old cross-quarter festivals, the great meteor showers, the night of a full or new moon, the Sun's passage into each zodiac sign, and more. On those days the find and the home-screen tagline are coloured by the moment, and on meteor-shower nights real shooting stars streak the clear sky. A full almanac of these dates — so you can anticipate them — is coming to this guide.</p>
     </div>
 
     <div class="feature">
@@ -374,7 +406,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">setup</span>
         <h3>The Keeper</h3>
       </div>
-      <p>Tap the red key in the bottom-right corner to open <em>The Keeper</em>. Enter your Anthropic API key — it stays in your browser and is only ever sent directly to Anthropic, when generating a find or tagline. Here you can also toggle <strong>Sound</strong> and the constellation <strong>Signs</strong> on or off. Without a key, everything still works — finds and taglines come from built-in lists instead.</p>
+      <p>Tap the red key in the bottom-right corner to open <em>The Keeper</em>. Enter your Anthropic API key — it stays in your browser and is only ever sent directly to Anthropic, when generating a find or tagline. Here you can also toggle <strong>Sound</strong>, the constellation <strong>Signs</strong>, and <strong>Place</strong> (real location) on or off. Without a key, everything still works — finds and taglines come from built-in lists instead.</p>
     </div>
 
     <div class="feature">
@@ -389,13 +421,13 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
 
   <!-- Coming in later phases -->
   <section class="coming">
-    <h2>// coming in phase 6</h2>
+    <h2>// still to come</h2>
     <ul>
-      <li>Location &amp; precise daylight — real sunrise and sunset from your coordinates, instead of seasonal estimates</li>
-      <li>Live weather — rain and snow that fall when it's actually raining or snowing, not just by season</li>
-      <li>True moon phase — the moon waxing and waning with the real lunar cycle</li>
+      <li>An almanac — the full calendar of special moments, so you can anticipate each one</li>
+      <li>A true sense of place — coast, forest, city or mountain flavouring the finds and sounds</li>
+      <li>Seasonal accents — drifting leaves in autumn, blossom in spring, a golden-hour glow</li>
       <li>Walk history and collection — browse everything you've found, sorted by rarity</li>
-      <li>A volume slider, and seasonal accents like drifting leaves</li>
+      <li>A volume slider for the soundscape</li>
     </ul>
   </section>
 

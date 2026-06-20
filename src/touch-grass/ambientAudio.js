@@ -28,9 +28,13 @@ export function createAmbience() {
   let catTimer = 0
   let dogTimer = 0
   let planeTimer = 0
+  let thunderTimer = 0
   let noiseBuf = null
   let walkers = []
   let disposed = false
+  let weatherCond = null
+  let weatherWind = 0
+  let weatherIntensity = 0
 
   // Brownian-ish drift: nudge a param toward a new nearby target over a long,
   // randomized interval. Because each target builds on the last, it meanders
@@ -122,8 +126,16 @@ export function createAmbience() {
     const waterDrift = ctx.createGain(); waterDrift.gain.value = 0.85
     wSrc.connect(wHP).connect(wBP).connect(waterGain).connect(waterDrift).connect(master)
 
-    n = { windGain, whGain, waterGain }
+    // RAIN: a brighter noise bed, gated by live weather (gain 0 when dry)
+    const rSrc = loopNoise(noiseBuf, 1.07)
+    const rHP = ctx.createBiquadFilter(); rHP.type = 'highpass'; rHP.frequency.value = 900
+    const rLP = ctx.createBiquadFilter(); rLP.type = 'lowpass'; rLP.frequency.value = 5500
+    const rainGain = ctx.createGain(); rainGain.gain.value = 0
+    rSrc.connect(rHP).connect(rLP).connect(rainGain).connect(master)
+
+    n = { windGain, whGain, waterGain, rainGain }
     applyScene(true)
+    applyWeather()
     startSchedulers()
 
     // organic drift so wind & water swell and ebb over long, irregular spans
@@ -135,9 +147,39 @@ export function createAmbience() {
     if (!ctx) return
     const tg = SCENES[scene]
     const tc = immediate ? 0.01 : 1.6
-    set(n.windGain.gain, tg.wind, tc)
+    const windBoost = Math.min(0.3, weatherWind * 0.006) // real wind raises the bed
+    set(n.windGain.gain, tg.wind + windBoost, tc)
     set(n.whGain.gain, tg.whistle, tc)
     set(n.waterGain.gain, tg.water, tc)
+  }
+
+  function applyWeather() {
+    if (!ctx) return
+    const raining = weatherCond === 'rain' || weatherCond === 'thunder'
+    const rainTarget = raining ? 0.10 + weatherIntensity * 0.20 : 0
+    set(n.rainGain.gain, rainTarget, raining ? 1.2 : 2.0)
+    applyScene(false) // refresh the wind boost
+  }
+
+  // a rolling thunder clap — low-passed noise rumble plus a deep boom
+  function thunderClap(t) {
+    if (!noiseBuf) return
+    const dur = 2.4 + Math.random() * 2.6
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.playbackRate.value = 0.35
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 190
+    const g = ctx.createGain(); g.gain.value = 0.0001
+    s.connect(lp).connect(g).connect(master)
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.linearRampToValueAtTime(0.22, t + 0.04 + Math.random() * 0.12)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 44 + Math.random() * 16
+    const og = ctx.createGain(); og.gain.value = 0.0001
+    o.connect(og).connect(master)
+    og.gain.setValueAtTime(0.0001, t)
+    og.gain.linearRampToValueAtTime(0.10, t + 0.05)
+    og.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.8)
+    s.start(t, Math.random() * noiseBuf.duration); s.stop(t + dur + 0.2)
+    o.start(t); o.stop(t + dur + 0.2)
   }
 
   function chirp(t, level) {
@@ -293,12 +335,18 @@ export function createAmbience() {
       if (enabled && tg.chime > 0 && ctx.state === 'running') chime(ctx.currentTime, tg.chime)
       chimeTimer = setTimeout(scheduleChime, 10000 + Math.random() * 15000)
     }
+    const scheduleThunder = () => {
+      if (disposed) return
+      if (ready() && weatherCond === 'thunder') thunderClap(ctx.currentTime + 0.1)
+      thunderTimer = setTimeout(scheduleThunder, 8000 + Math.random() * 13000)
+    }
     scheduleBird()
     scheduleCricket()
     scheduleChime()
     scheduleCat()
     scheduleDog()
     schedulePlane()
+    scheduleThunder()
   }
 
   function buzz(pattern) {
@@ -373,6 +421,12 @@ export function createAmbience() {
       scene = s
       applyScene(false)
     },
+    setWeather(w) {
+      weatherCond = w ? w.condition : null
+      weatherWind = w ? (w.wind || 0) : 0
+      weatherIntensity = w ? (w.intensity || 0) : 0
+      applyWeather()
+    },
     setEnabled(on) {
       enabled = on
       if (on) {
@@ -394,6 +448,7 @@ export function createAmbience() {
       clearTimeout(catTimer)
       clearTimeout(dogTimer)
       clearTimeout(planeTimer)
+      clearTimeout(thunderTimer)
       walkers.forEach(stop => stop())
       walkers = []
       if (ctx) ctx.close().catch(() => {})

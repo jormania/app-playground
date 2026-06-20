@@ -29,8 +29,8 @@ export default function ResultPanel({ lastWalk, onGoBack }) {
       <p>{discovery.description}</p>
       <button onClick={onGoBack}>Step inside</button>
       {isStatic && apiAttempted && (
-        <p style={{ position: 'absolute', bottom: 0, right: 0, fontSize: '11px', opacity: 0.4 }}>
-          ⚠ couldn't reach Claude
+        <p style={{ position: 'absolute', bottom: 0, right: 0, fontSize: '11px', opacity: 0.4, margin: 0, whiteSpace: 'nowrap' }}>
+          ⚠ the oracle was silent
         </p>
       )}
     </div>

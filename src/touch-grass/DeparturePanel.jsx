@@ -1,5 +1,7 @@
 import { useState, useEffect, useLayoutEffect } from 'react'
 import LoadingLine from './LoadingLine.jsx'
+import { useWorld } from './world.jsx'
+import { describeSetting, describeMoments } from './engine.js'
 
 const FALLBACKS = [
   'The world is larger than this screen',
@@ -18,7 +20,7 @@ function randomFallback() {
   return FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)]
 }
 
-async function fetchTagline(apiKey) {
+async function fetchTagline(apiKey, ctx) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -33,7 +35,7 @@ async function fetchTagline(apiKey) {
       system: 'You write short poetic taglines for a walking app. Return plain text only — no quotes, no punctuation at the end.',
       messages: [{
         role: 'user',
-        content: 'Write one tagline under 12 words. Dreamy, witty, a quiet play on words about leaving your screen and going outside. Avoid clichés.',
+        content: `Write one tagline under 12 words. Dreamy, witty, a quiet play on words about leaving your screen and going outside. ${describeSetting(ctx)}${(ctx.moments && ctx.moments.length) ? ` Today is ${describeMoments(ctx.moments)} — you may nod to it.` : ''} You may let the hour, weather or moon tint it, lightly. Avoid clichés.`,
       }],
     }),
   })
@@ -43,6 +45,7 @@ async function fetchTagline(apiKey) {
 }
 
 export default function DeparturePanel({ onDepart, apiKey }) {
+  const world = useWorld()
   const [tagline, setTagline] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -59,7 +62,8 @@ export default function DeparturePanel({ onDepart, apiKey }) {
       setLoading(false)
       return
     }
-    fetchTagline(apiKey)
+    const ctx = { timeOfDay: world.timeOfDay, season: world.season, weather: world.weather, moon: world.moon, coords: world.coords, moments: world.moments }
+    fetchTagline(apiKey, ctx)
       .then(setTagline)
       .catch(() => setTagline(randomFallback()))
       .finally(() => setLoading(false))

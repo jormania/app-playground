@@ -7,6 +7,7 @@ import GeneratingPanel from './GeneratingPanel.jsx'
 import TarotCard from './TarotCard.jsx'
 import Stage from './Stage.jsx'
 import { useAmbientSound } from './useAmbientSound.js'
+import { useWorld } from './world.jsx'
 import { rollTier, generateDiscovery } from './engine.js'
 
 const STORAGE_KEY = 'tg-react-state'
@@ -17,7 +18,13 @@ const SIGNS_STORAGE = 'tg-react-signs'
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw)
+    if (raw) {
+      const s = JSON.parse(raw)
+      // a generation that was interrupted by a reload would be stuck forever —
+      // fall back to "out" so the walker can simply return again
+      if (s.status === 'generating') return { ...s, status: 'out', pendingTier: null }
+      return s
+    }
   } catch (_) {}
   return { status: 'idle', departedAt: null, lastWalk: null, pendingTier: null }
 }
@@ -44,6 +51,7 @@ export default function App() {
   const [departureKey, setDepartureKey] = useState(0)
 
   const { reveal: playReveal, depart: playDepart } = useAmbientSound(soundOn)
+  const world = useWorld()
 
   useEffect(() => {
     try {
@@ -61,7 +69,8 @@ export default function App() {
     const durationMinutes = (Date.now() - state.departedAt) / 60000
     const tier = rollTier(durationMinutes)
     setState(prev => ({ ...prev, status: 'generating', pendingTier: tier }))
-    const { discovery, isStatic, apiAttempted } = await generateDiscovery(tier, durationMinutes, apiKey)
+    const ctx = { timeOfDay: world.timeOfDay, season: world.season, weather: world.weather, moon: world.moon, coords: world.coords, moments: world.moments }
+    const { discovery, isStatic, apiAttempted } = await generateDiscovery(tier, durationMinutes, apiKey, ctx)
     setState(prev => ({ ...prev, status: 'idle', departedAt: null, pendingTier: null, lastWalk: { durationMinutes, tier, discovery, isStatic, apiAttempted } }))
     playReveal()
   }

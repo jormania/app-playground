@@ -12,9 +12,9 @@ export default function GeneratingPanel({ tier }) {
   return (
     <div>
       <h1>
-        Finding your{style
+        Divining your{style
           ? <> <span style={style}>{tier}</span></>
-          : ''} discovery…
+          : ''} find…
       </h1>
       <LoadingLine />
     </div>

@@ -109,7 +109,66 @@ const ANCHORS = [
   'cloth, thread, a garment, or something woven',
 ]
 
-async function fetchDiscovery(tier, durationMinutes, apiKey) {
+function moonPhaseName(phase) {
+  if (phase == null) return null
+  const p = ((phase % 1) + 1) % 1
+  if (p < 0.03 || p > 0.97) return 'a new moon'
+  if (p < 0.22) return 'a waxing crescent moon'
+  if (p < 0.28) return 'a first-quarter moon'
+  if (p < 0.47) return 'a waxing gibbous moon'
+  if (p < 0.53) return 'a full moon'
+  if (p < 0.72) return 'a waning gibbous moon'
+  if (p < 0.78) return 'a last-quarter moon'
+  return 'a waning crescent moon'
+}
+
+const WEATHER_PHRASE = {
+  clear: 'clear skies', 'partly-cloudy': 'a partly cloudy sky', overcast: 'an overcast sky',
+  fog: 'fog', rain: 'rain', snow: 'snow', thunder: 'a thunderstorm',
+}
+function weatherPhrase(weather) {
+  if (!weather) return null
+  let s = WEATHER_PHRASE[weather.condition] || null
+  if (typeof weather.temp === 'number') {
+    const t = `${Math.round(weather.temp)}°C`
+    s = s ? `${s} around ${t}` : t
+  }
+  return s
+}
+
+function placePhrase(coords) {
+  if (!coords) return null
+  const lat = Math.abs(coords.lat)
+  const band = lat < 23.5 ? 'the tropics'
+    : lat < 50 ? 'temperate latitudes'
+    : lat < 66.5 ? 'far northern or southern latitudes'
+    : 'the polar circle'
+  return `${coords.lat >= 0 ? 'the northern hemisphere' : 'the southern hemisphere'}, ${band}`
+}
+
+// Esoteric "moments" active today (solstice, meteor shower, full moon …).
+export function describeMoments(moments) {
+  if (!moments || !moments.length) return ''
+  const names = moments.map(m => m.name).join(' and ')
+  const themes = moments.map(m => m.theme).join('; ')
+  return `${names} — ${themes}`
+}
+
+// A one-line "where & when" for the prompts, woven from the live world state.
+export function describeSetting(ctx = {}) {
+  const time = ctx.timeOfDay || getTimeOfDay(new Date())
+  const season = ctx.season || getSeason(new Date())
+  const parts = [`It is ${time} in ${season}`]
+  const w = weatherPhrase(ctx.weather)
+  if (w) parts.push(`under ${w}`)
+  const moon = moonPhaseName(ctx.moon && ctx.moon.phase)
+  if (moon && (time === 'night' || time === 'dusk')) parts.push(`with ${moon} overhead`)
+  const place = placePhrase(ctx.coords)
+  if (place) parts.push(`in ${place}`)
+  return parts.join(', ') + '.'
+}
+
+async function fetchDiscovery(tier, durationMinutes, apiKey, ctx = {}) {
   const anchor = ANCHORS[Math.floor(Math.random() * ANCHORS.length)]
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -127,7 +186,7 @@ async function fetchDiscovery(tier, durationMinutes, apiKey) {
       messages: [
         {
           role: 'user',
-          content: `Conjure a ${tier} find. The walker was outside for ${formatDuration(durationMinutes)}. It is ${getTimeOfDay(new Date())} in ${getSeason(new Date())} — let the hour and season seep into its mood.\n\nAnchor the imagery in ${anchor}. Reach for something you would not usually choose; surprise me.\n\nTier guide (escalating strangeness):\n- common: a small wrongness, a quiet omen — the world tilting half a degree.\n- uncommon: an esoteric object or sign, clearly impossible, humming with hidden meaning.\n- rare: a divinatory apparition that bends sense — the veil thinning, something looking back.\n- legendary: a cosmic, mythic revelation — vast, ancient, indifferent; the kind of thing that rearranges you.`,
+          content: `Conjure a ${tier} find. The walker was outside for ${formatDuration(durationMinutes)}. ${describeSetting(ctx)} Let the setting — the hour, season, weather and sky — seep into its mood.${(ctx.moments && ctx.moments.length) ? `\n\nToday is a rare moment: ${describeMoments(ctx.moments)}. Let it strongly shape the find, like an omen of the day.` : ''}\n\nAnchor the imagery in ${anchor}. Reach for something you would not usually choose; surprise me.\n\nTier guide (escalating strangeness):\n- common: a small wrongness, a quiet omen — the world tilting half a degree.\n- uncommon: an esoteric object or sign, clearly impossible, humming with hidden meaning.\n- rare: a divinatory apparition that bends sense — the veil thinning, something looking back.\n- legendary: a cosmic, mythic revelation — vast, ancient, indifferent; the kind of thing that rearranges you.`,
         },
       ],
     }),
@@ -165,10 +224,10 @@ export function rollTier(durationMinutes) {
   return 'common'
 }
 
-export async function generateDiscovery(tier, durationMinutes, apiKey) {
+export async function generateDiscovery(tier, durationMinutes, apiKey, ctx = {}) {
   if (apiKey) {
     try {
-      const discovery = await fetchDiscovery(tier, durationMinutes, apiKey)
+      const discovery = await fetchDiscovery(tier, durationMinutes, apiKey, ctx)
       return { discovery, isStatic: false, apiAttempted: true }
     } catch (err) {
       console.warn('[touch-grass] API call failed, using static fallback:', err)

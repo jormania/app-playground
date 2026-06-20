@@ -1,9 +1,10 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { getTimeOfDay, getSeason } from './context.js'
 import { createAmbience, sceneFor } from './ambientAudio.js'
+import { useWorld } from './world.jsx'
 
 export function useAmbientSound(enabled) {
   const ref = useRef(null)
+  const { timeOfDay, season, weather } = useWorld()
 
   // create the engine once; resume + tap on gesture; dispose on unmount
   useEffect(() => {
@@ -24,18 +25,15 @@ export function useAmbientSound(enabled) {
     }
   }, [])
 
-  // follow the time-of-day / season scene, re-checked once a minute
+  // follow the world's time-of-day / season scene
   useEffect(() => {
-    const eng = ref.current
-    if (!eng) return
-    const update = () => {
-      const now = new Date()
-      eng.setScene(sceneFor(getTimeOfDay(now), getSeason(now)))
-    }
-    update()
-    const id = setInterval(update, 60_000)
-    return () => clearInterval(id)
-  }, [])
+    if (ref.current) ref.current.setScene(sceneFor(timeOfDay, season))
+  }, [timeOfDay, season])
+
+  // follow live weather (rain bed, thunder, wind level)
+  useEffect(() => {
+    if (ref.current) ref.current.setWeather(weather)
+  }, [weather])
 
   // mute / unmute
   useEffect(() => {
