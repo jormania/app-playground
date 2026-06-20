@@ -40,43 +40,43 @@ body {
   aspect-ratio: 3 / 5;
   max-height: 86vh;
   background: #f3ead4;
-  border-radius: 18px;
-  padding: 20px;
+  border-radius: 20px;
+  padding: 36px;
   box-shadow: 0 26px 64px rgba(0, 0, 0, 0.72), 0 6px 16px rgba(0, 0, 0, 0.5), 0 2px 0 rgba(255,255,255,0.18) inset;
 }
 
-/* double dark keyline tracing the card on the cream frame */
+/* bold double keyline tracing the card on the wide cream frame */
 .tg-card::before {
   content: '';
   position: absolute;
-  inset: 13px;
-  border: 1.5px solid #241812;
-  border-radius: 11px;
+  inset: 18px;
+  border: 2.4px solid #241812;
+  border-radius: 13px;
   pointer-events: none;
   z-index: 2;
 }
 .tg-card::after {
   content: '';
   position: absolute;
-  inset: 17px;
-  border: 1px solid #241812;
-  border-radius: 8px;
+  inset: 25px;
+  border: 1.6px solid #241812;
+  border-radius: 9px;
   pointer-events: none;
   z-index: 2;
 }
 
-/* small celestial glyph at each corner, sitting where the outer keyline meets */
+/* large celestial glyph at each corner, sitting where the outer keyline meets */
 .tg-glyph {
   position: absolute;
-  width: 16px;
-  height: 16px;
+  width: 30px;
+  height: 30px;
   z-index: 3;
   pointer-events: none;
 }
-.tg-glyph.tl { top: 2px; left: 2px; }
-.tg-glyph.tr { top: 2px; right: 2px; }
-.tg-glyph.bl { bottom: 2px; left: 2px; }
-.tg-glyph.br { bottom: 2px; right: 2px; }
+.tg-glyph.tl { top: 3px; left: 3px; }
+.tg-glyph.tr { top: 3px; right: 3px; }
+.tg-glyph.bl { bottom: 3px; left: 3px; }
+.tg-glyph.br { bottom: 3px; right: 3px; }
 
 .tg-card-inner {
   position: relative;
@@ -128,12 +128,12 @@ body {
     0 2px 7px rgba(0, 0, 0, 0.55);
 }
 
-/* settings key — lives on the dark stage, outside the card */
-.tg-settings-btn {
-  position: fixed;
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-  right: calc(14px + env(safe-area-inset-right, 0px));
-  z-index: 9999;
+/* settings key — inside the card, resting on the grass near the corner */
+.tg-card-key {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  z-index: 4;
   background: none;
   border: none;
   padding: 4px;
@@ -141,10 +141,10 @@ body {
   line-height: 0;
   opacity: 0.95;
   transition: opacity 0.18s, transform 0.18s;
-  filter: drop-shadow(0 1px 5px rgba(0, 0, 0, 0.7));
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45));
 }
-.tg-settings-btn:hover { opacity: 1; transform: rotate(-10deg) scale(1.06); }
-.tg-settings-btn svg { width: 28px; height: 28px; display: block; }
+.tg-card-key:hover { opacity: 1; transform: rotate(-10deg) scale(1.06); }
+.tg-card-key svg { width: 26px; height: 26px; display: block; }
 
 
 /* ---- Content typography (cream ink over artwork) ---- */

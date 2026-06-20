@@ -34,19 +34,6 @@ function loadSigns() {
   return localStorage.getItem(SIGNS_STORAGE) !== '0' // default on
 }
 
-function KeyIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="#e0533a" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="6.5" r="3.7" />
-      <circle cx="12" cy="6.5" r="0.7" fill="#e0533a" stroke="none" />
-      <line x1="12" y1="10.2" x2="12" y2="20" />
-      <line x1="12" y1="15.5" x2="15.5" y2="15.5" />
-      <line x1="12" y1="18.3" x2="14.3" y2="18.3" />
-    </svg>
-  )
-}
-
 export default function App() {
   const [state, setState] = useState(loadState)
   const [apiKey, setApiKey] = useState(loadApiKey)
@@ -125,12 +112,7 @@ export default function App() {
   return (
     <>
       <Stage />
-      <TarotCard title={title} showSigns={signsOn}>{panel}</TarotCard>
-      {!showSettings && (
-        <button className="tg-settings-btn" onClick={() => setShowSettings(true)} title="The Keeper" aria-label="Settings">
-          <KeyIcon />
-        </button>
-      )}
+      <TarotCard title={title} showSigns={signsOn} onSettings={showSettings ? null : () => setShowSettings(true)}>{panel}</TarotCard>
     </>
   )
 }

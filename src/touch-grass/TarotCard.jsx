@@ -19,15 +19,15 @@ const GLYPHS = {
     <g>
       <circle cx="8" cy="8" r="2.7" fill={DARK} />
       {SUN_RAYS.map((r, i) => (
-        <line key={i} x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2} stroke={DARK} strokeWidth="1.1" strokeLinecap="round" />
+        <line key={i} x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2} stroke={DARK} strokeWidth="1.4" strokeLinecap="round" />
       ))}
     </g>
   ),
   // watching eye
   br: (
     <g>
-      <path d="M1.4 8 Q8 3 14.6 8 Q8 13 1.4 8 Z" fill="none" stroke={DARK} strokeWidth="1.3" strokeLinejoin="round" />
-      <circle cx="8" cy="8" r="2.1" fill={DARK} />
+      <path d="M1.4 8 Q8 3 14.6 8 Q8 13 1.4 8 Z" fill="none" stroke={DARK} strokeWidth="1.6" strokeLinejoin="round" />
+      <circle cx="8" cy="8" r="2.2" fill={DARK} />
     </g>
   ),
 }
@@ -40,7 +40,20 @@ function CornerGlyph({ pos }) {
   )
 }
 
-export default function TarotCard({ title, showSigns = true, children }) {
+function KeyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="#e0533a" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="6.5" r="3.7" />
+      <circle cx="12" cy="6.5" r="0.7" fill="#e0533a" stroke="none" />
+      <line x1="12" y1="10.2" x2="12" y2="20" />
+      <line x1="12" y1="15.5" x2="15.5" y2="15.5" />
+      <line x1="12" y1="18.3" x2="14.3" y2="18.3" />
+    </svg>
+  )
+}
+
+export default function TarotCard({ title, showSigns = true, onSettings, children }) {
   return (
     <div className="tg-card">
       <CornerGlyph pos="tl" />
@@ -53,6 +66,11 @@ export default function TarotCard({ title, showSigns = true, children }) {
         </div>
         <div className="tg-card-content">{children}</div>
         <div className="tg-card-banner">{title}</div>
+        {onSettings && (
+          <button className="tg-card-key" onClick={onSettings} title="The Keeper" aria-label="Settings">
+            <KeyIcon />
+          </button>
+        )}
       </div>
     </div>
   )
