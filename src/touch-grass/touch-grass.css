@@ -122,8 +122,8 @@ body {
 /* settings key — inside the card, resting on the grass near the corner */
 .tg-card-key {
   position: absolute;
-  bottom: 8px;
-  right: 10px;
+  bottom: 4px;
+  right: 5px;
   z-index: 4;
   background: none;
   border: none;
@@ -180,9 +180,12 @@ body {
   margin-bottom: 8px;
   backdrop-filter: blur(2px);
 }
-.tg-card-content button:hover {
-  background: #f3ead4;
-  color: #1c4a47;
+/* only on real hover devices, so a tap on mobile doesn't leave a sticky highlight */
+@media (hover: hover) {
+  .tg-card-content button:hover {
+    background: #f3ead4;
+    color: #1c4a47;
+  }
 }
 
 .tg-card-content label {
@@ -224,4 +227,16 @@ body {
   margin: 0;
   padding: 7px 14px;
   font-size: 0.78rem;
+}
+
+/* toggle state shows clearly: lit (filled) = on, dim (outlined) = off */
+.tg-toggle[aria-pressed="true"] {
+  background: rgba(243, 234, 212, 0.92);
+  color: #1c4a47;
+  border-color: #f3ead4;
+}
+.tg-toggle[aria-pressed="false"] {
+  background: rgba(16, 22, 24, 0.32);
+  color: #cdd3c6;
+  border-color: rgba(243, 234, 212, 0.32);
 }

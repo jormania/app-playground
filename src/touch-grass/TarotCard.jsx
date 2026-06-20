@@ -53,7 +53,7 @@ function KeyIcon() {
   )
 }
 
-export default function TarotCard({ title, showSigns = true, onSettings, children }) {
+export default function TarotCard({ title, showSigns = true, motionOn = true, onSettings, children }) {
   return (
     <div className="tg-card">
       <CornerGlyph pos="tl" />
@@ -62,7 +62,7 @@ export default function TarotCard({ title, showSigns = true, onSettings, childre
       <CornerGlyph pos="br" />
       <div className="tg-card-inner">
         <div className="tg-card-scene">
-          <CardScene showSigns={showSigns} />
+          <CardScene showSigns={showSigns} motionOn={motionOn} />
         </div>
         <div className="tg-card-content">{children}</div>
         <div className="tg-card-banner">{title}</div>

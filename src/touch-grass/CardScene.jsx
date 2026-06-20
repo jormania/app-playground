@@ -639,7 +639,7 @@ function usePrefersReducedMotion() {
   return reduce
 }
 
-export default function CardScene({ showSigns = true }) {
+export default function CardScene({ showSigns = true, motionOn = true }) {
   const { timeOfDay, season, now, weather, moon, moments } = useWorld()
   const svgRef = useRef(null)
   const reduceMotion = usePrefersReducedMotion()
@@ -673,14 +673,15 @@ export default function CardScene({ showSigns = true }) {
     : (cloudFrac > 0.7 ? '#c9cdd4' : '#eef0f2')
   const showBugs = !precip && !foggy && !thunder
   const meteorNight = dim && !skyObscured && (moments || []).some(m => m.meteor)
+  const freeze = reduceMotion || !motionOn
 
-  // honour the OS "reduce motion" setting by freezing the whole SVG timeline
+  // freeze the whole SVG timeline for OS reduce-motion or the in-app Motion toggle
   useEffect(() => {
     const svg = svgRef.current
     if (!svg || typeof svg.pauseAnimations !== 'function') return
-    if (reduceMotion) svg.pauseAnimations()
+    if (freeze) svg.pauseAnimations()
     else svg.unpauseAnimations()
-  }, [reduceMotion, timeOfDay, season, weather, meteorNight])
+  }, [freeze, timeOfDay, season, weather, meteorNight])
 
   return (
     <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice">

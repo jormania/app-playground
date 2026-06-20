@@ -14,6 +14,7 @@ const STORAGE_KEY = 'tg-react-state'
 const API_KEY_STORAGE = 'tg-react-apikey'
 const SOUND_STORAGE = 'tg-react-sound'
 const SIGNS_STORAGE = 'tg-react-signs'
+const MOTION_STORAGE = 'tg-react-motion'
 
 function loadState() {
   try {
@@ -41,11 +42,16 @@ function loadSigns() {
   return localStorage.getItem(SIGNS_STORAGE) !== '0' // default on
 }
 
+function loadMotion() {
+  return localStorage.getItem(MOTION_STORAGE) !== '0' // default on
+}
+
 export default function App() {
   const [state, setState] = useState(loadState)
   const [apiKey, setApiKey] = useState(loadApiKey)
   const [soundOn, setSoundOn] = useState(loadSound)
   const [signsOn, setSignsOn] = useState(loadSigns)
+  const [motionOn, setMotionOn] = useState(loadMotion)
   const [showSettings, setShowSettings] = useState(false)
   const [showDeparture, setShowDeparture] = useState(false)
   const [departureKey, setDepartureKey] = useState(0)
@@ -98,12 +104,20 @@ export default function App() {
     })
   }
 
+  function toggleMotion() {
+    setMotionOn(prev => {
+      const next = !prev
+      localStorage.setItem(MOTION_STORAGE, next ? '1' : '0')
+      return next
+    })
+  }
+
   const { status, departedAt, lastWalk } = state
 
   let panel, title
   if (showSettings) {
     title = 'The Keeper'
-    panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} soundOn={soundOn} onToggleSound={toggleSound} signsOn={signsOn} onToggleSigns={toggleSigns} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
+    panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} soundOn={soundOn} onToggleSound={toggleSound} signsOn={signsOn} onToggleSigns={toggleSigns} motionOn={motionOn} onToggleMotion={toggleMotion} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
   } else if (status === 'generating') {
     title = 'The Omen'
     panel = <GeneratingPanel tier={state.pendingTier} />
@@ -121,7 +135,7 @@ export default function App() {
   return (
     <>
       <Stage />
-      <TarotCard title={title} showSigns={signsOn} onSettings={showSettings ? null : () => setShowSettings(true)}>{panel}</TarotCard>
+      <TarotCard title={title} showSigns={signsOn} motionOn={motionOn} onSettings={showSettings ? null : () => setShowSettings(true)}>{panel}</TarotCard>
     </>
   )
 }
