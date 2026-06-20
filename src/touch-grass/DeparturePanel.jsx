@@ -39,14 +39,10 @@ function tempColor(t) {
   return '#e0894a'
 }
 
-const CONDITION_PHRASE = {
-  clear: 'under a bare, bright sky',
-  'partly-cloudy': 'beneath a few unhurried clouds',
-  overcast: 'under a grey lid',
-  fog: 'wrapped in close fog',
-  rain: 'in threading rain',
-  snow: 'in falling snow',
-  thunder: 'under a muttering storm',
+// brief, glanceable words for the current sky — not a forecast
+const COND_WORD = {
+  clear: 'clear', 'partly-cloudy': 'a few clouds', overcast: 'overcast',
+  fog: 'fog', rain: 'rain', snow: 'snow', thunder: 'storms',
 }
 
 function Cloud({ y = 13 }) {
@@ -89,22 +85,6 @@ function ForecastGlyph({ condition }) {
 function Temp({ value }) {
   const v = Math.round(value)
   return <b style={{ color: tempColor(v) }}>{v}°</b>
-}
-
-function ForecastReading({ weather }) {
-  const t = Math.round(weather.temp)
-  const phrase = CONDITION_PHRASE[weather.condition] || 'under an uncertain sky'
-  const td = weather.today
-  const hi = td && td.high != null ? Math.round(td.high) : null
-  const lo = td && td.low != null ? Math.round(td.low) : null
-  return (
-    <p className="tg-forecast-body">
-      <Temp value={t} /> {phrase}
-      {lo == null ? '.' : (hi != null && hi > t + 1
-        ? <> — climbing toward <Temp value={hi} /> before the dark draws it to <Temp value={lo} />.</>
-        : <> — it holds, then the dark draws it down to <Temp value={lo} />.</>)}
-    </p>
-  )
 }
 
 async function fetchTagline(apiKey, ctx) {
@@ -158,6 +138,8 @@ export default function DeparturePanel({ onDepart, apiKey }) {
 
   const moments = world.moments || []
   const today = world.weather && world.weather.today
+  const wx = world.weather
+  const windy = wx && (wx.wind || 0) >= 28 && !['rain', 'snow', 'thunder'].includes(wx.condition)
 
   return (
     <div>
@@ -173,14 +155,11 @@ export default function DeparturePanel({ onDepart, apiKey }) {
           )}
           {today && (
             <div className="tg-forecast">
-              <div className="tg-forecast-head">
-                <ForecastGlyph condition={world.weather.condition} />
-                <span className="tg-forecast-label">the sky's augury</span>
-              </div>
-              <ForecastReading weather={world.weather} />
-              {today.alerts.length > 0 && (
-                <div className="tg-fc-alerts">{today.alerts.map((a, i) => <span key={i}>~ {a}</span>)}</div>
-              )}
+              <ForecastGlyph condition={world.weather.condition} />
+              <span className="tg-forecast-now">
+                <Temp value={world.weather.temp} /> · {COND_WORD[world.weather.condition] || world.weather.condition}
+                {windy ? ' · windy' : ''}
+              </span>
             </div>
           )}
         </div>
