@@ -20,26 +20,49 @@ function randomFallback() {
   return FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)]
 }
 
-// Two-word invitations to step outside — the card's heading. A different way of
+// Short invitations to step outside — the card's heading. A different way of
 // saying "touch grass" without those words (the masthead already carries them).
 // Used as fallbacks when there's no API key, and as a safety net for the AI.
 const INVITES = [
-  'Wander Out', 'Step Outside', 'Slip Away', 'Head Out', 'Roam Free',
-  'Venture Forth', 'Drift Away', 'Go Seek', 'Find Sky', 'Stray Far',
-  'Chase Dusk', 'Breathe Deeper', 'Get Lost', 'Outside Waits', 'Walk Somewhere',
+  'Wander Out',
+  'Slip Away',
+  'Roam Free',
+  'Venture Forth',
+  'Get Lost',
+  'Chase Dusk',
+  'Drift Away',
+  'Step Into the Open',
+  'Leave the Glow Behind',
+  'Go Where the Light Goes',
+  'Find the Edge of Here',
+  'Let the World Back In',
+  'Follow the First Bird',
+  'Trade Screen for Sky',
+  'Walk Until You Forget',
+  'Meet the Evening Air',
+  'Go Be Somewhere Real',
+  'Outside Is Waiting',
 ]
 
 function randomInvite() {
   return INVITES[Math.floor(Math.random() * INVITES.length)]
 }
 
-// keep only a clean two-word, Title-Case invite that avoids touch/grass
+const MINOR_WORDS = new Set(['a', 'an', 'the', 'to', 'of', 'and', 'in', 'into', 'on', 'by', 'with', 'for', 'at', 'from'])
+
+// keep only a clean 1–5 word invite that avoids touch/grass, in light title case
 function cleanInvite(s) {
   if (!s || typeof s !== 'string') return null
   if (/touch|grass/i.test(s)) return null
-  const words = s.trim().replace(/["'.]/g, '').split(/\s+/)
-  if (words.length !== 2) return null
-  return words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+  const words = s.trim().replace(/["'.]/g, '').split(/\s+/).filter(Boolean)
+  if (words.length < 1 || words.length > 5) return null
+  return words
+    .map((w, i) => {
+      const lw = w.toLowerCase()
+      if (i > 0 && MINOR_WORDS.has(lw)) return lw
+      return lw.charAt(0).toUpperCase() + lw.slice(1)
+    })
+    .join(' ')
 }
 
 // a varied, stable colour per moment (so the event "pops" unpredictably)
@@ -123,7 +146,7 @@ async function fetchThreshold(apiKey, ctx) {
       max_tokens: 80,
       temperature: 1,
       system: `You write the home screen of a walking app whose whole purpose is to get the user to put the phone down and go outside. Respond with valid JSON only: {"invite": "...", "tagline": "..."}.
-"invite": exactly two words, Title Case — a fresh, compelling imperative to step outside (e.g. "Wander Out", "Slip Away", "Chase Dusk"). It is really an invitation to touch grass, said another way. Never use the words "touch" or "grass". Vary it; surprise me.
+"invite": one to five words (lean short when you can), Title Case — a fresh, compelling call to step outside (e.g. "Slip Away", "Leave the Glow Behind", "Go Where the Light Goes"). It is really an invitation to touch grass, said another way. Never use the words "touch" or "grass". Vary it; surprise me.
 "tagline": one line under 12 words — dreamy, witty, a quiet play on leaving the screen for the world. No quotes, no trailing punctuation.`,
       messages: [{
         role: 'user',
