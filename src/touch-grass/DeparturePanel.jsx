@@ -23,29 +23,24 @@ function randomFallback() {
 // Short invitations to step outside — the card's heading. A different way of
 // saying "touch grass" without those words (the masthead already carries them).
 // Used as fallbacks when there's no API key, and as a safety net for the AI.
-const INVITES = [
-  'Wander Out',
-  'Slip Away',
-  'Roam Free',
-  'Venture Forth',
-  'Get Lost',
-  'Chase Dusk',
-  'Drift Away',
-  'Step Into the Open',
-  'Leave the Glow Behind',
-  'Go Where the Light Goes',
-  'Find the Edge of Here',
-  'Let the World Back In',
-  'Follow the First Bird',
-  'Trade Screen for Sky',
-  'Walk Until You Forget',
-  'Meet the Evening Air',
-  'Go Be Somewhere Real',
-  'Outside Is Waiting',
+// Time-neutral ones plus a set matched to the hour, so the fallback never says
+// "chase the light" at night or invokes the moon by day.
+const INVITES_ANY = [
+  'Wander Out', 'Slip Away', 'Roam Free', 'Venture Forth', 'Get Lost',
+  'Drift Away', 'Step Into the Open', 'Leave the Glow Behind',
+  'Find the Edge of Here', 'Let the World Back In', 'Trade Screen for Sky',
+  'Walk Until You Forget', 'Go Be Somewhere Real', 'Outside Is Waiting',
 ]
+const INVITES_BY_TOD = {
+  dawn:  ['Follow the First Bird', 'Meet the Morning Air', 'Greet the Early Sky', 'Go Where the Light Returns'],
+  day:   ['Chase the Sun', 'Go Where the Light Goes', 'Find the Warm Light', 'Follow the First Bird'],
+  dusk:  ['Chase Dusk', 'Catch the Last Light', 'Walk Into the Gold', 'Meet the Evening Air'],
+  night: ['Walk Under the Moon', 'Follow the Stars Out', 'Into the Cool Dark', 'Meet the Night Air'],
+}
 
-function randomInvite() {
-  return INVITES[Math.floor(Math.random() * INVITES.length)]
+function randomInvite(timeOfDay) {
+  const pool = INVITES_ANY.concat(INVITES_BY_TOD[timeOfDay] || [])
+  return pool[Math.floor(Math.random() * pool.length)]
 }
 
 const MINOR_WORDS = new Set(['a', 'an', 'the', 'to', 'of', 'and', 'in', 'into', 'on', 'by', 'with', 'for', 'at', 'from'])
@@ -147,10 +142,11 @@ async function fetchThreshold(apiKey, ctx) {
       temperature: 1,
       system: `You write the home screen of a walking app whose whole purpose is to get the user to put the phone down and go outside. Respond with valid JSON only: {"invite": "...", "tagline": "..."}.
 "invite": one to five words (lean short when you can), Title Case — a fresh, compelling call to step outside (e.g. "Slip Away", "Leave the Glow Behind", "Go Where the Light Goes"). It is really an invitation to touch grass, said another way. Never use the words "touch" or "grass". Vary it; surprise me.
-"tagline": one line under 12 words — dreamy, witty, a quiet play on leaving the screen for the world. No quotes, no trailing punctuation.`,
+"tagline": one line under 12 words — dreamy, witty, a quiet play on leaving the screen for the world. No quotes, no trailing punctuation.
+Both MUST fit the real time of day stated below. At night never invoke the sun, daylight, dawn, or "chasing the light"; by day never invoke the moon, stars, or the dark. Match what is actually outside right now.`,
       messages: [{
         role: 'user',
-        content: `Compose the invite and tagline. ${describeSetting(ctx)}${(ctx.moments && ctx.moments.length) ? ` Today is ${describeMoments(ctx.moments)} — you may nod to it.` : ''} You may let the hour, weather, place or moon lightly tint both.`,
+        content: `Compose the invite and tagline for right now. ${describeSetting(ctx)}${(ctx.moments && ctx.moments.length) ? ` Today is ${describeMoments(ctx.moments)} — you may nod to it.` : ''} Let the hour above guide the imagery — the light by day, the moon and dark by night.`,
       }],
     }),
   })
@@ -169,14 +165,14 @@ async function fetchThreshold(apiKey, ctx) {
 
 export default function DeparturePanel({ onDepart, apiKey }) {
   const world = useWorld()
-  const [invite, setInvite] = useState(randomInvite)
+  const [invite, setInvite] = useState(() => randomInvite(world.timeOfDay))
   const [tagline, setTagline] = useState(null)
   const [loading, setLoading] = useState(true)
 
   // Runs synchronously before the browser paints — prevents any flash
   // of previous content regardless of how the component was re-entered.
   useLayoutEffect(() => {
-    setInvite(randomInvite())
+    setInvite(randomInvite(world.timeOfDay))
     setTagline(null)
     setLoading(true)
   }, [])
