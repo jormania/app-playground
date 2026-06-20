@@ -19,6 +19,35 @@ function fmtDur(min) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`
 }
 
+// a star polygon centred in a 16×16 box, used to mark each find by rarity
+function starPath(points, outer, inner) {
+  let d = ''
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? outer : inner
+    const a = (i / (points * 2)) * Math.PI * 2 - Math.PI / 2
+    d += (i === 0 ? 'M' : 'L') + (8 + Math.cos(a) * r).toFixed(2) + ' ' + (8 + Math.sin(a) * r).toFixed(2) + ' '
+  }
+  return d + 'Z'
+}
+
+// rarity rises with the points: a seed, then 4-, 6- and 8-pointed stars
+const TIER_GLYPH = {
+  uncommon:  starPath(4, 6.6, 2.0),
+  rare:      starPath(6, 6.9, 2.7),
+  legendary: starPath(8, 7.0, 2.7),
+}
+
+function TierIcon({ tier }) {
+  const meta = TIER_LABEL[tier] || TIER_LABEL.common
+  const color = meta.color || '#c7cdba'
+  const glyph = TIER_GLYPH[tier]
+  return (
+    <svg className="tg-relic-mark" viewBox="0 0 16 16" aria-hidden="true">
+      {glyph ? <path d={glyph} fill={color} /> : <circle cx="8" cy="8" r="2.3" fill={color} />}
+    </svg>
+  )
+}
+
 export default function ReliquaryPanel({ history, onClearLast, onClearAll, onClose }) {
   const [confirm, setConfirm] = useState(null)
   const count = history.length
@@ -41,7 +70,10 @@ export default function ReliquaryPanel({ history, onClearLast, onClearAll, onClo
                   <span>{fmtDur(w.durationMinutes)}</span>
                   <span style={t.color ? { color: t.color } : undefined}>{t.text}</span>
                 </div>
-                <div className="tg-relic-name">{w.discovery.name}</div>
+                <div className="tg-relic-name">
+                  <TierIcon tier={w.tier} />
+                  <span>{w.discovery.name}</span>
+                </div>
               </div>
             )
           })}
