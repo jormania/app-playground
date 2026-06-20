@@ -4,10 +4,14 @@ import { getTimeOfDay } from './context.js'
 // The "table" the card rests on — a gradient inverted against the card's
 // interior sky: pale when the scene is dark, dark when the scene is bright.
 const STAGE = {
-  dawn:  'linear-gradient(160deg, #eaf0ec 0%, #dde6e4 55%, #cdd7d6 100%)',
-  day:   'linear-gradient(160deg, #232734 0%, #15171f 60%, #0c0e13 100%)',
-  dusk:  'linear-gradient(160deg, #efe9ee 0%, #ddd5e6 55%, #ccc4da 100%)',
-  night: 'linear-gradient(160deg, #e6ebf3 0%, #d2dbe8 55%, #c0cadd 100%)',
+  // dawn interior is warm & dim → cool, light periwinkle outside
+  dawn:  'linear-gradient(165deg, #eef0f6 0%, #d4d9ee 50%, #b9c0e0 100%)',
+  // day interior is bright & cool → deep, warm plum/aubergine outside
+  day:   'linear-gradient(165deg, #46324c 0%, #2e1f38 52%, #1a1024 100%)',
+  // dusk interior is warm ember → cool, light mint/teal outside
+  dusk:  'linear-gradient(165deg, #e9f2ea 0%, #c8e4dc 50%, #a9d0cb 100%)',
+  // night interior is cool & dark → warm, light apricot/gold outside
+  night: 'linear-gradient(165deg, #f6e8c6 0%, #ecca9c 50%, #d8ac7e 100%)',
 }
 
 export default function Stage() {

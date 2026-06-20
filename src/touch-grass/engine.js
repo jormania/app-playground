@@ -83,7 +83,34 @@ function formatDuration(minutes) {
   return `${h} hour${h > 1 ? 's' : ''}`
 }
 
+// Random "anchor" domains, one chosen per call, to force variety and stop the
+// model fixating on a single recurring motif (moths, butterflies, watching eyes…).
+const ANCHORS = [
+  'a stone, the soil, or something rooted',
+  'water, rain, frost, dew, or mist',
+  'light, shadow, or reflection',
+  'a sound, an echo, a hum, or sudden silence',
+  'a door, a threshold, a stair, a gate, or a path',
+  'bone, breath, hair, teeth, or the body',
+  'time, an hour, a date, or a clock',
+  'a written thing — a name, a map, a sigil, a page',
+  'glass, a lens, a window, or a mirror',
+  'wind, air, smoke, or breath made visible',
+  'a number, an angle, a knot, or a geometry',
+  'an old object — a coin, a key, a lantern, a jar, a bell',
+  'a plant, a seed, a root, a fungus, or a thorn',
+  'a bird, a fish, a hare, a fox, or some four-legged animal',
+  'an insect — a beetle, a spider, a moth, a dragonfly, or something winged',
+  'cold, heat, fever, or weather',
+  'a memory, a dream, a debt, or a voice',
+  'the moon, a star, a planet, or the distance overhead',
+  'a color, a smell, or a taste',
+  'a coincidence, a number repeating, or a pattern in chance',
+  'cloth, thread, a garment, or something woven',
+]
+
 async function fetchDiscovery(tier, durationMinutes, apiKey) {
+  const anchor = ANCHORS[Math.floor(Math.random() * ANCHORS.length)]
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -95,11 +122,12 @@ async function fetchDiscovery(tier, durationMinutes, apiKey) {
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 200,
-      system: `You generate eldritch, dreamlike discoveries for a divination-themed walking app cast as a deck of unknown tarot cards. Each find is an impossible object, omen, or apparition the walker encountered outside — drawn from the surreal, the esoteric, divination and the occult, threaded with the macabre and with cosmic, Lovecraftian dread. Never mundane, never realistic, never ordinary comfort. Respond with valid JSON only: {"name": "...", "description": "..."}. The name is an evocative title of 2–6 words, like an entry in a grimoire or the face of a tarot card; use Title Case, no leading article unless it truly belongs. The description is a single sentence, 25 words maximum — hushed, precise, and strange; dread through implication, never gore for shock. No quotes.`,
+      temperature: 1,
+      system: `You generate eldritch, dreamlike discoveries for a divination-themed walking app cast as a deck of unknown tarot cards. Each find is an impossible object, omen, or apparition the walker encountered outside — drawn from the surreal, the esoteric, divination and the occult, threaded with the macabre and with cosmic, Lovecraftian dread. Never mundane, never realistic, never ordinary comfort. Let the subject range widely across finds and rarely repeat — moths, butterflies and other insects are welcome but should be occasional guests, never your default. Respond with valid JSON only: {"name": "...", "description": "..."}. The name is an evocative title of 2–6 words, like an entry in a grimoire or the face of a tarot card; use Title Case, no leading article unless it truly belongs. The description is a single sentence, 25 words maximum — hushed, precise, and strange; dread through implication, never gore for shock. No quotes.`,
       messages: [
         {
           role: 'user',
-          content: `Conjure a ${tier} find. The walker was outside for ${formatDuration(durationMinutes)}. It is ${getTimeOfDay(new Date())} in ${getSeason(new Date())} — let the hour and season seep into its mood.\n\nTier guide (escalating strangeness):\n- common: a small wrongness, a quiet omen — the world tilting half a degree.\n- uncommon: an esoteric object or sign, clearly impossible, humming with hidden meaning.\n- rare: a divinatory apparition that bends sense — the veil thinning, something looking back.\n- legendary: a cosmic, mythic revelation — vast, ancient, indifferent; the kind of thing that rearranges you.`,
+          content: `Conjure a ${tier} find. The walker was outside for ${formatDuration(durationMinutes)}. It is ${getTimeOfDay(new Date())} in ${getSeason(new Date())} — let the hour and season seep into its mood.\n\nAnchor the imagery in ${anchor}. Reach for something you would not usually choose; surprise me.\n\nTier guide (escalating strangeness):\n- common: a small wrongness, a quiet omen — the world tilting half a degree.\n- uncommon: an esoteric object or sign, clearly impossible, humming with hidden meaning.\n- rare: a divinatory apparition that bends sense — the veil thinning, something looking back.\n- legendary: a cosmic, mythic revelation — vast, ancient, indifferent; the kind of thing that rearranges you.`,
         },
       ],
     }),

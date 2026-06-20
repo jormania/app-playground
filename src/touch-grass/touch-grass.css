@@ -41,9 +41,42 @@ body {
   max-height: 86vh;
   background: #f3ead4;
   border-radius: 18px;
-  padding: 16px;
+  padding: 20px;
   box-shadow: 0 26px 64px rgba(0, 0, 0, 0.72), 0 6px 16px rgba(0, 0, 0, 0.5), 0 2px 0 rgba(255,255,255,0.18) inset;
 }
+
+/* double dark keyline tracing the card on the cream frame */
+.tg-card::before {
+  content: '';
+  position: absolute;
+  inset: 13px;
+  border: 1.5px solid #241812;
+  border-radius: 11px;
+  pointer-events: none;
+  z-index: 2;
+}
+.tg-card::after {
+  content: '';
+  position: absolute;
+  inset: 17px;
+  border: 1px solid #241812;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* small celestial glyph at each corner, sitting where the outer keyline meets */
+.tg-glyph {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  z-index: 3;
+  pointer-events: none;
+}
+.tg-glyph.tl { top: 2px; left: 2px; }
+.tg-glyph.tr { top: 2px; right: 2px; }
+.tg-glyph.bl { bottom: 2px; left: 2px; }
+.tg-glyph.br { bottom: 2px; right: 2px; }
 
 .tg-card-inner {
   position: relative;
@@ -113,18 +146,6 @@ body {
 .tg-settings-btn:hover { opacity: 1; transform: rotate(-10deg) scale(1.06); }
 .tg-settings-btn svg { width: 28px; height: 28px; display: block; }
 
-/* corner ornaments — framing the card on the cream border corners */
-.tg-corner {
-  position: absolute;
-  width: 28px;
-  height: 28px;
-  z-index: 3;
-  pointer-events: none;
-}
-.tg-corner.tl { top: 4px; left: 4px; }
-.tg-corner.tr { top: 4px; right: 4px; }
-.tg-corner.bl { bottom: 4px; left: 4px; }
-.tg-corner.br { bottom: 4px; right: 4px; }
 
 /* ---- Content typography (cream ink over artwork) ---- */
 .tg-card-content h1 {

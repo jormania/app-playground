@@ -1,21 +1,41 @@
 import CardScene from './CardScene.jsx'
 
-const ROT = { tl: 0, tr: 90, br: 180, bl: 270 }
+const DARK = '#241812'
 
-function CornerMark({ pos }) {
+// sun rays: 8 short strokes around the disc
+const SUN_RAYS = Array.from({ length: 8 }, (_, i) => {
+  const a = (i / 8) * Math.PI * 2
+  const c = Math.cos(a), s = Math.sin(a)
+  return { x1: 8 + 3.7 * c, y1: 8 + 3.7 * s, x2: 8 + 5.7 * c, y2: 8 + 5.7 * s }
+})
+
+const GLYPHS = {
+  // crescent moon
+  tl: <path d="M10 2.4 A5.8 5.8 0 1 0 10 13.6 A4.4 5.6 0 1 1 10 2.4 Z" fill={DARK} />,
+  // four-point star
+  tr: <path d="M8 1.2 Q8.9 7.1 14.8 8 Q8.9 8.9 8 14.8 Q7.1 8.9 1.2 8 Q7.1 7.1 8 1.2 Z" fill={DARK} />,
+  // sun with rays
+  bl: (
+    <g>
+      <circle cx="8" cy="8" r="2.7" fill={DARK} />
+      {SUN_RAYS.map((r, i) => (
+        <line key={i} x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2} stroke={DARK} strokeWidth="1.1" strokeLinecap="round" />
+      ))}
+    </g>
+  ),
+  // watching eye
+  br: (
+    <g>
+      <path d="M1.4 8 Q8 3 14.6 8 Q8 13 1.4 8 Z" fill="none" stroke={DARK} strokeWidth="1.3" strokeLinejoin="round" />
+      <circle cx="8" cy="8" r="2.1" fill={DARK} />
+    </g>
+  ),
+}
+
+function CornerGlyph({ pos }) {
   return (
-    <svg className={`tg-corner ${pos}`} viewBox="0 0 34 34" aria-hidden="true">
-      <g transform={`rotate(${ROT[pos]} 17 17)`}>
-        {/* L-bracket arms with inward curls */}
-        <path d="M9 9 H27" stroke="#e0533a" strokeWidth="2.3" strokeLinecap="round" fill="none" />
-        <path d="M9 9 V27" stroke="#e0533a" strokeWidth="2.3" strokeLinecap="round" fill="none" />
-        <path d="M27 9 q4.5 0 4.5 4.5" stroke="#e0533a" strokeWidth="2" strokeLinecap="round" fill="none" />
-        <path d="M9 27 q0 4.5 4.5 4.5" stroke="#e0533a" strokeWidth="2" strokeLinecap="round" fill="none" />
-        {/* four-point star at the elbow, with a gold pip */}
-        <path d="M9 1.5 Q10.3 7.7 16.5 9 Q10.3 10.3 9 16.5 Q7.7 10.3 1.5 9 Q7.7 7.7 9 1.5 Z"
-          fill="#e0533a" />
-        <circle cx="9" cy="9" r="1.7" fill="#e2a92f" />
-      </g>
+    <svg className={`tg-glyph ${pos}`} viewBox="0 0 16 16" aria-hidden="true">
+      {GLYPHS[pos]}
     </svg>
   )
 }
@@ -23,10 +43,10 @@ function CornerMark({ pos }) {
 export default function TarotCard({ title, showSigns = true, children }) {
   return (
     <div className="tg-card">
-      <CornerMark pos="tl" />
-      <CornerMark pos="tr" />
-      <CornerMark pos="bl" />
-      <CornerMark pos="br" />
+      <CornerGlyph pos="tl" />
+      <CornerGlyph pos="tr" />
+      <CornerGlyph pos="bl" />
+      <CornerGlyph pos="br" />
       <div className="tg-card-inner">
         <div className="tg-card-scene">
           <CardScene showSigns={showSigns} />
