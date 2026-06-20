@@ -33,17 +33,25 @@ body {
   transition: background 3s ease;
 }
 
-/* masthead + card centred together, so empty space balances above and below */
+/* The card is the visual weight, so IT is centred; the masthead floats just
+   above it as a header (out of flow), which keeps the card's mass on the screen's
+   true centre and lifts the title out of the empty top — instead of centring the
+   whole group, which dropped the heavy card below centre and looked bottom-heavy. */
 .tg-shell {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
 }
 
 /* persistent masthead above the card — the app's name and its creed. Colour
    inverts with the daily stage so it stays legible whatever surface the day rolls */
 .tg-masthead {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 18px;
   text-align: center;
   line-height: 1.2;
   color: #2a2118; /* dark ink for the pale dawn/dusk/night surfaces */
