@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Touch Grass React — feature guide.">
-<title>Touch Grass · React · Guide</title>
+<title>Touch Grass · Guide</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -54,13 +54,9 @@ nav {
   padding: 2px 7px; border-radius: 5px;
   background: rgba(124,111,255,0.12); color: var(--accent);
   border: 1px solid rgba(124,111,255,0.22);
+  transition: background 0.15s;
 }
-.nav-phase {
-  font-family: var(--mono); font-size: 10px; font-weight: 500;
-  padding: 2px 7px; border-radius: 5px;
-  background: rgba(79,195,161,0.12); color: var(--accent2);
-  border: 1px solid rgba(79,195,161,0.2);
-}
+.nav-version:hover { background: rgba(124,111,255,0.2); text-decoration: none; }
 
 /* ── hero ── */
 .hero { padding: 52px 0 40px; border-bottom: 1px solid var(--border); margin-bottom: 48px; }
@@ -177,9 +173,8 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
   <div class="nav-inner">
     <a href="/touch-grass-react.html" class="nav-back">← Touch Grass</a>
     <div style="display:flex;align-items:center;gap:8px;">
-      <span class="nav-brand">Touch Grass · React</span>
-      <span class="nav-version">React</span>
-      <span class="nav-phase">Phase 6</span>
+      <span class="nav-brand">Touch Grass</span>
+      <a href="/touch-grass-react-almanac.html" class="nav-version" style="text-decoration:none;">Almanac ↗</a>
     </div>
   </div>
 </nav>
@@ -188,9 +183,9 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
 
   <section class="hero">
     <div class="hero-eyebrow">// feature guide</div>
-    <h1>Everything the React rewrite does.</h1>
-    <p>This is the living guide for the React version of Touch Grass — updated as each phase is completed. The app is intentionally minimal at each stage; this page is where the details live.</p>
-    <p>Current build: <strong style="color:var(--text)">Phase 6</strong> — the card now reaches out to the real world. With your permission it reads your location, so daylight, weather, the moon's phase and rare almanac moments are all true to where and when you actually are. The scene mirrors the sky outside; the finds are coloured by it.</p>
+    <h1>Everything Touch Grass does.</h1>
+    <p>The app itself is deliberately quiet — a card, a button, a find. This page is where the details live, for anyone curious about what's really going on.</p>
+    <p>At heart it's simple: step outside, come back, and a single strange find is waiting. Around that, the card reaches out to the real world — with your permission it reads your location, so the daylight, weather, the moon's phase and the rare moments of the year are all true to where and when you actually are. The scene mirrors the sky outside; the finds are coloured by it.</p>
   </section>
 
   <!-- How to use -->
@@ -245,14 +240,14 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">finds</span>
         <h3>The finds</h3>
       </div>
-      <p>Every walk returns exactly one find — always. Never more, never less. Walk duration affects its rarity, not the quantity. Each is conjured by Claude like an entry in a grimoire or the face of an unknown tarot card: surreal, esoteric, faintly macabre, with a thread of cosmic dread. Hushed and strange, 25 words at most, coloured by the hour and season you walked. Its subject ranges widely from walk to walk — stone, water, a sound, a forgotten object, the occasional rare insect — never settling on one motif. Four tiers of escalating strangeness:</p>
+      <p>Every walk returns exactly one find — always. Never more, never less. Walk duration affects its rarity, not the quantity. Each is conjured by Claude like an entry in a grimoire or the face of an unknown tarot card: surreal, esoteric, faintly macabre, with a thread of cosmic dread. Hushed and strange, kept brief — no more than twenty-two words — and coloured by the hour, season, weather, moon and the rare moments of the year you walked through. Its subject ranges widely from walk to walk — stone, water, a sound, a forgotten object, the occasional rare insect — never settling on one motif. Four tiers of escalating strangeness:</p>
       <ul>
         <li><span class="pill common">common</span> A small wrongness, a quiet omen — the world tilting half a degree.</li>
         <li><span class="pill uncommon">uncommon</span> An esoteric object or sign, clearly impossible, humming with hidden meaning.</li>
         <li><span class="pill rare">rare</span> A divinatory apparition — the veil thinning, something looking back.</li>
         <li><span class="pill leg">legendary</span> A cosmic, mythic revelation: vast, ancient, indifferent — the kind that rearranges you.</li>
       </ul>
-      <p>If no API key is set, finds come from a built-in list instead. If a key is set but the call fails, a built-in find is used and a quiet <em>⚠ couldn't reach Claude</em> note appears — bottom-right of the result screen.</p>
+      <p>If no API key is set, finds come from a built-in pool — the "old book" — instead. If a key is set but the call fails, a find from the old book is used and a quiet <em>⚠ the oracle was silent</em> note appears — bottom-right of the result screen.</p>
     </div>
 
     <div class="feature">
@@ -299,10 +294,10 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
 
     <div class="feature">
       <div class="feature-header">
-        <span class="feature-tag">generating</span>
-        <h3>Finding your discovery</h3>
+        <span class="feature-tag">divining</span>
+        <h3>Divining your find</h3>
       </div>
-      <p>When you tap <strong>I'm back</strong>, your rarity tier is rolled immediately — before the API call is made. The screen shows the tier name while Claude generates your find, so you know what's coming before it arrives. Uncommon, rare, and legendary are color-coded. Common just says <em>Finding your discovery…</em> — no announcement for the everyday. A sweep line runs beneath while the call is in flight.</p>
+      <p>When you tap <strong>I'm back</strong>, your rarity tier is rolled immediately — before the API call is made. The screen shows the tier name while the find is conjured, so you know what's coming before it arrives. Uncommon, rare, and legendary are color-coded. Common just says <em>Divining your find…</em> — no announcement for the everyday. A sweep line runs beneath while the call is in flight.</p>
     </div>
 
     <div class="feature">
@@ -419,7 +414,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
 
   </section>
 
-  <!-- Coming in later phases -->
+  <!-- Still to come -->
   <section class="coming">
     <h2>// still to come</h2>
     <ul>
