@@ -41,42 +41,42 @@ body {
   max-height: 86vh;
   background: #f3ead4;
   border-radius: 20px;
-  padding: 36px;
+  padding: 22px;
   box-shadow: 0 26px 64px rgba(0, 0, 0, 0.72), 0 6px 16px rgba(0, 0, 0, 0.5), 0 2px 0 rgba(255,255,255,0.18) inset;
 }
 
-/* bold double keyline tracing the card on the wide cream frame */
+/* bold double keyline tracing the card on the cream frame */
 .tg-card::before {
   content: '';
   position: absolute;
-  inset: 18px;
-  border: 2.4px solid #241812;
-  border-radius: 13px;
+  inset: 9px;
+  border: 2.2px solid #241812;
+  border-radius: 12px;
   pointer-events: none;
   z-index: 2;
 }
 .tg-card::after {
   content: '';
   position: absolute;
-  inset: 25px;
-  border: 1.6px solid #241812;
-  border-radius: 9px;
+  inset: 14px;
+  border: 1.5px solid #241812;
+  border-radius: 8px;
   pointer-events: none;
   z-index: 2;
 }
 
-/* large celestial glyph at each corner, sitting where the outer keyline meets */
+/* celestial glyph at each corner, pushed out toward the corner clear of the rounding */
 .tg-glyph {
   position: absolute;
-  width: 30px;
-  height: 30px;
+  width: 20px;
+  height: 20px;
   z-index: 3;
   pointer-events: none;
 }
-.tg-glyph.tl { top: 3px; left: 3px; }
-.tg-glyph.tr { top: 3px; right: 3px; }
-.tg-glyph.bl { bottom: 3px; left: 3px; }
-.tg-glyph.br { bottom: 3px; right: 3px; }
+.tg-glyph.tl { top: 2px; left: 2px; }
+.tg-glyph.tr { top: 2px; right: 2px; }
+.tg-glyph.bl { bottom: 2px; left: 2px; }
+.tg-glyph.br { bottom: 2px; right: 2px; }
 
 .tg-card-inner {
   position: relative;
