@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import DeparturePanel from './DeparturePanel.jsx'
 import OutPanel from './OutPanel.jsx'
 import ResultPanel from './ResultPanel.jsx'
@@ -9,6 +9,7 @@ import TarotCard from './TarotCard.jsx'
 import Stage from './Stage.jsx'
 import { useAmbientSound } from './useAmbientSound.js'
 import { useDailyCall } from './useDailyCall.js'
+import { showWalkNotice, clearWalkNotice } from './walkNotice.js'
 import { useWorld } from './world.jsx'
 import { rollTier, generateDiscovery } from './engine.js'
 
@@ -115,10 +116,40 @@ export default function App() {
     } catch (_) {}
   }, [showSettings, showReliquary, showDeparture])
 
+  // raise the standing reminder while out; take it down whenever we're not
+  useEffect(() => {
+    if (state.status !== 'out') clearWalkNotice()
+  }, [state.status])
+
+  // a notification tap reopens the app and asks to return — straight to the
+  // result. Handle both a cold open (?return=1) and a focus of the live app
+  // (a 'tg-return' message from the service worker). Kept in a ref so the
+  // handlers always see the current state.
+  const tryReturnRef = useRef(() => {})
+  tryReturnRef.current = () => { if (state.status === 'out') returnFromWalk() }
+
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search)
+      if (p.get('return') === '1') {
+        p.delete('return')
+        const qs = p.toString()
+        window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''))
+        tryReturnRef.current()
+      }
+    } catch (_) {}
+    const sw = navigator.serviceWorker
+    if (!sw) return
+    const onMsg = (e) => { if (e.data && e.data.type === 'tg-return') tryReturnRef.current() }
+    sw.addEventListener('message', onMsg)
+    return () => sw.removeEventListener('message', onMsg)
+  }, [])
+
   function startWalk() {
     setShowDeparture(false)
     setState(prev => ({ ...prev, status: 'out', departedAt: Date.now(), pendingTier: null }))
     playDepart()
+    showWalkNotice()
   }
 
   async function returnFromWalk() {

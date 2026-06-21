@@ -15,6 +15,26 @@ self.addEventListener('activate', function (e) {
   );
 });
 
+// Tapping a notification focuses the app (or opens it). The walk reminder
+// (tag 'tg-walk') also asks the app to return from the walk → the result panel.
+self.addEventListener('notificationclick', function (e) {
+  var wantReturn = e.notification.tag === 'tg-walk';
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      for (var i = 0; i < list.length; i++) {
+        var c = list[i];
+        if (c.url && c.url.indexOf('touch-grass-react') !== -1) {
+          c.focus();
+          if (wantReturn && c.postMessage) c.postMessage({ type: 'tg-return' });
+          return;
+        }
+      }
+      return self.clients.openWindow(wantReturn ? '/touch-grass-react.html?return=1' : '/touch-grass-react.html');
+    })
+  );
+});
+
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
