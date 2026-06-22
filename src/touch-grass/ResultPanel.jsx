@@ -8,9 +8,8 @@ const TIER_LABEL = {
 }
 
 // rarity rises with the star's points (a seed, then 4-, 6-, 8-pointed); the sigil
-// sits between the rarity and its esoteric auspice, doubling as the divider
+// sits before the rarity word, doubling as its divider
 const TIER_STAR = { uncommon: [4, 6.6, 2.0], rare: [6, 6.9, 2.7], legendary: [8, 7.0, 2.7] }
-const AUSPICE = { common: 'a faint omen', uncommon: 'a stirring', rare: 'a true sign', legendary: 'an omen of the deep' }
 function TierSigil({ tier }) {
   const color = (TIER_LABEL[tier] || TIER_LABEL.common).color || '#c7cdba'
   const s = TIER_STAR[tier]
@@ -39,7 +38,7 @@ export default function ResultPanel({ lastWalk, onGoBack }) {
       <p>
         {formatDuration(durationMinutes)}<TierSigil tier={tier} />{tierColor
           ? <span style={{ color: tierColor }}>{tierText}</span>
-          : tierText}<TierSigil tier={tier} /><span className="tg-auspice">{AUSPICE[tier] || AUSPICE.common}</span>
+          : tierText}
       </p>
       <h2>{discovery.name}</h2>
       <p>{discovery.description}</p>
