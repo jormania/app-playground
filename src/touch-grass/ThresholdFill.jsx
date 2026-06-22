@@ -192,17 +192,27 @@ function MoonDisc() {
   )
 }
 
-const ARC = { p0x: 8, p2x: 102, cx: 55, cy: -24, y0: 52 }
-function arcPoint(p) {
-  const q = 1 - p
-  return { x: q * q * ARC.p0x + 2 * q * p * ARC.cx + p * p * ARC.p2x, y: q * q * ARC.y0 + 2 * q * p * ARC.cy + p * p * ARC.y0 }
+// The arc's height tracks how high the body actually climbs at its peak (its
+// culmination altitude), so a high summer sun draws a tall dome and a low winter
+// sun a flat one — and the moon, riding its own declination, differs again. The
+// horizontal span stays fixed to keep the line clean; only the height varies.
+const ARC = { p0x: 8, p2x: 102, cx: 55, y0: 52 }
+function arcControlY(peakAlt) {
+  const a = Math.max(0, Math.min(90, peakAlt || 0))
+  const dome = 9 + (a / 90) * 31 // apex height above the horizon: ~9 (flat winter) … ~40 (tall summer)
+  return ARC.y0 - 2 * dome       // quadratic control y (apex sits at y0 - dome)
 }
-function Arc({ progress, marker }) {
-  const pt = progress == null ? null : arcPoint(progress)
+function arcPoint(p, cy) {
+  const q = 1 - p
+  return { x: q * q * ARC.p0x + 2 * q * p * ARC.cx + p * p * ARC.p2x, y: q * q * ARC.y0 + 2 * q * p * cy + p * p * ARC.y0 }
+}
+function Arc({ progress, marker, peakAlt }) {
+  const cy = arcControlY(peakAlt)
+  const pt = progress == null ? null : arcPoint(progress, cy)
   return (
     <svg className="tg-tf-arcsvg" viewBox="0 0 110 64" aria-hidden="true">
       <line x1="4" y1={ARC.y0} x2="106" y2={ARC.y0} stroke="currentColor" strokeWidth="1.8" opacity="0.5" />
-      <path d={`M${ARC.p0x} ${ARC.y0} Q${ARC.cx} ${ARC.cy} ${ARC.p2x} ${ARC.y0}`} fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" opacity="0.85" />
+      <path d={`M${ARC.p0x} ${ARC.y0} Q${ARC.cx} ${cy} ${ARC.p2x} ${ARC.y0}`} fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" opacity="0.85" />
       {pt && <svg x={pt.x - 12} y={pt.y - 12} width="24" height="24" viewBox="0 0 24 24">{marker}</svg>}
     </svg>
   )
@@ -233,7 +243,7 @@ function SunMoonArcs({ coords, now, moon }) {
     ? (now - t.sunrise.getTime()) / (t.sunset.getTime() - t.sunrise.getTime()) : null
   const sDec = sunDeclinationDeg(d)
   const sDir = riseSetDirections(sDec, coords.lat)
-  const noonAlt = 90 - Math.abs(coords.lat - sDec)
+  const sunPeak = 90 - Math.abs(coords.lat - sDec) // how high the sun climbs at noon
   const sunLines = [
     `rises ${sDir ? sDir.rise + ' · ' : ''}${fmt(t.sunrise)}`,
     `sets ${sDir ? sDir.set + ' · ' : ''}${fmt(t.sunset)}`,
@@ -242,6 +252,7 @@ function SunMoonArcs({ coords, now, moon }) {
   const mt = getMoonTimes(d, coords.lat, coords.lon)
   const upi = moonUpInterval(coords, now)
   const moonP = upi ? (now - upi.rise) / (upi.set - upi.rise) : null
+  const moonPeak = 90 - Math.abs(coords.lat - moonDeclinationDeg(d)) // the moon rides its own declination
   const moonLines = []
   if (mt.alwaysUp) moonLines.push('aloft all night')
   else if (mt.alwaysDown) moonLines.push('hidden all night')
@@ -254,12 +265,12 @@ function SunMoonArcs({ coords, now, moon }) {
     <div className="tg-tf tg-tf-arcs">
       <div className="tg-tf-arc-col">
         <div className="tg-tf-arc-title">the sun's road</div>
-        <Arc progress={sunP} marker={<SunDisc />} />
+        <Arc progress={sunP} marker={<SunDisc />} peakAlt={sunPeak} />
         <div className="tg-tf-arc-cap">{sunLines.map((l, i) => <div key={i}>{l}</div>)}</div>
       </div>
       <div className="tg-tf-arc-col">
         <div className="tg-tf-arc-title">the moon's road</div>
-        <Arc progress={moonP} marker={<MoonDisc />} />
+        <Arc progress={moonP} marker={<MoonDisc />} peakAlt={moonPeak} />
         <div className="tg-tf-arc-cap">{moonLines.map((l, i) => <div key={i}>{l}</div>)}</div>
       </div>
     </div>

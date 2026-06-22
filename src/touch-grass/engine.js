@@ -109,6 +109,20 @@ const ANCHORS = [
   'cloth, thread, a garment, or something woven',
 ]
 
+// a second, independent axis — HOW the find manifests — drawn per call alongside
+// the subject anchor, so even two finds on the same theme arrive in different forms
+const FORMS = [
+  'an object left behind, found in the open',
+  'a presence or apparition, witnessed',
+  'a mark, a trace, or a sign left on the world',
+  'a sound, a voice, or a wrong silence',
+  'a small structure, arrangement, or pattern',
+  'an aftermath — something has just happened here',
+  'a transformation caught mid-change',
+  'a doubling, a reflection, or a wrongness in the ordinary',
+  'a message or instruction that seems meant for you',
+]
+
 function moonPhaseName(phase) {
   if (phase == null) return null
   const p = ((phase % 1) + 1) % 1
@@ -184,6 +198,9 @@ export function describeSetting(ctx = {}) {
 
 async function fetchDiscovery(tier, durationMinutes, apiKey, ctx = {}) {
   const anchor = ANCHORS[Math.floor(Math.random() * ANCHORS.length)]
+  const form = FORMS[Math.floor(Math.random() * FORMS.length)]
+  const recent = Array.isArray(ctx.recent) ? ctx.recent.filter(Boolean).slice(0, 8) : []
+  const avoid = recent.length ? ` Do not repeat or echo any of these recent finds, in subject, object, or wording: ${recent.join('; ')}.` : ''
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -200,7 +217,7 @@ async function fetchDiscovery(tier, durationMinutes, apiKey, ctx = {}) {
       messages: [
         {
           role: 'user',
-          content: `Conjure a ${tier} find. The walker was outside for ${formatDuration(durationMinutes)}. ${describeSetting(ctx)} Let the setting — the hour, season, weather and sky — seep into its mood.${(ctx.moments && ctx.moments.length) ? `\n\nToday is a rare moment: ${describeMoments(ctx.moments)}. Let it strongly shape the find, like an omen of the day.` : ''}\n\nAnchor the imagery in ${anchor}. Reach for something you would not usually choose; surprise me.\n\nTier guide (escalating strangeness):\n- common: a small wrongness, a quiet omen — the world tilting half a degree.\n- uncommon: an esoteric object or sign, clearly impossible, humming with hidden meaning.\n- rare: a divinatory apparition that bends sense — the veil thinning, something looking back.\n- legendary: a cosmic, mythic revelation — vast, ancient, indifferent; the kind of thing that rearranges you.`,
+          content: `Conjure a ${tier} find. The walker was outside for ${formatDuration(durationMinutes)}. ${describeSetting(ctx)} Let the setting — the hour, season, weather and sky — seep into its mood.${(ctx.moments && ctx.moments.length) ? `\n\nToday is a rare moment: ${describeMoments(ctx.moments)}. Let it strongly shape the find, like an omen of the day.` : ''}\n\nAnchor the imagery in ${anchor}, and let it take the form of ${form}. Reach for something you would not usually choose; surprise me.${avoid}\n\nTier guide (escalating strangeness):\n- common: a small wrongness, a quiet omen — the world tilting half a degree.\n- uncommon: an esoteric object or sign, clearly impossible, humming with hidden meaning.\n- rare: a divinatory apparition that bends sense — the veil thinning, something looking back.\n- legendary: a cosmic, mythic revelation — vast, ancient, indifferent; the kind of thing that rearranges you.`,
         },
       ],
     }),

@@ -17,9 +17,21 @@ const FALLBACKS = [
   'Everything you\'re looking for is the wrong size to fit on this screen',
 ]
 
+// taglines read as quiet sentences, so they end with a full stop (like the finds
+// and the Tonight line); add one if it's missing
+const ensureStop = (s) => (s && !/[.!?…]$/.test(s) ? s + '.' : s)
+
 function randomFallback() {
-  return FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)]
+  return ensureStop(FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)])
 }
+
+// rotating creative lenses, one drawn at random per call, to keep each message
+// fresh and steer it down a different path than last time (scope/limits unchanged)
+const rand = (a) => a[Math.floor(Math.random() * a.length)]
+const INVITE_ANGLES = ['a soft beckon', 'a dare', 'a hush', 'a promise', 'a question', 'a quiet command', 'a lure', 'a small spell', 'a confidence']
+const TAGLINE_FLAVOURS = ['wry and modern', 'dreamy and hushed', 'a tiny paradox', 'gently teasing', 'plainspoken and warm', 'a wink at the screen-bound', 'wistful', 'sly']
+const TONIGHT_FACETS = ['the lie of the land — your biome', 'the season and the turning year', 'the hour and its quality of light', 'the place itself', 'a small living thing abroad right now', 'a sound or quiet of the night']
+const ALMANAC_SENSES = ['what you would HEAR out there now', 'what you would SMELL', 'what is MOVING — birds, insects, animals', 'what is in BLOOM or going over', 'the quality of the LIGHT', 'a creature or plant astir this week']
 
 // Short invitations to step outside — the card's heading. A different way of
 // saying "touch grass" without those words (the masthead already carries them).
@@ -73,13 +85,16 @@ function momentColor(key) {
 //   almanac → one bright, enticing line of nature's call (the living world now)
 //   arc     → none (it's pure data)
 function readingSpec(mode) {
-  if (mode === 'tonight') return `\n"reading": ONE short fragment beginning with "Tonight," and ending with a period — evocative and grounded, at most FIVE words after "Tonight,", never a second sentence. Each visit, lean on a DIFFERENT facet and vary widely: the lie of the land (coast, forest, city, mountain, plain), the season and the turning year, the hour, the place itself — and only now and then the weather. Do NOT default to warmth, stillness, exhaling, or the sky. Examples across facets: "Tonight, the tideline keeps glowing." (coast) · "Tonight, the pines stand close." (forest) · "Tonight, the streets cool slowly." (city) · "Tonight, thin air sharpens the dark." (mountain) · "Tonight, the meadow lies open." (plain) · "Tonight, midsummer lingers late." (season).`
+  if (mode === 'tonight') return `\n"reading": ONE short, COMPLETE fragment beginning with "Tonight," and ending with a period — at most FIVE words after "Tonight,", a whole image that never trails off and never ends on a word like "the", "a", "of", "to", "with", or "and". Never a second sentence. Each visit, lean on a DIFFERENT facet and vary widely: the lie of the land (coast, forest, city, mountain, plain), the season and the turning year, the hour and its light, the place itself, a living thing abroad now. Do NOT mention temperature — no warmth, heat, cold, "warm", or "holds the heat" — and do not default to stillness, exhaling, or the sky. Examples across facets: "Tonight, the tideline keeps glowing." (coast) · "Tonight, the pines stand close." (forest) · "Tonight, the streets empty out." (city) · "Tonight, thin air sharpens the dark." (mountain) · "Tonight, the meadow lies open." (plain) · "Tonight, midsummer lingers late." (season).`
   if (mode === 'almanac') return `\n"reading": one line under 14 words, no trailing punctuation — nature's call: paint what the living world just outside is doing right now in bright, enticing, sensory words, true to the season, hour, place and weather below. Inviting, never a forecast.`
   return ''
 }
 
 async function fetchThreshold(apiKey, ctx, mode) {
   const wantReading = mode === 'tonight' || mode === 'almanac'
+  const lens = ` This time, lean fresh — invite: ${rand(INVITE_ANGLES)}; tagline: ${rand(TAGLINE_FLAVOURS)}.`
+    + (mode === 'tonight' ? ` Reading: dwell on ${rand(TONIGHT_FACETS)}.`
+      : mode === 'almanac' ? ` Reading: foreground ${rand(ALMANAC_SENSES)}.` : '')
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -94,11 +109,11 @@ async function fetchThreshold(apiKey, ctx, mode) {
       temperature: 1,
       system: `You write the home screen of a walking app whose whole purpose is to get the user to put the phone down and go outside. Respond with valid JSON only: {"invite": "...", "tagline": "..."${wantReading ? ', "reading": "..."' : ''}}.
 "invite": one to three words (lean short when you can), Title Case — a fresh, compelling call to step outside (e.g. "Slip Away", "Leave the Glow", "Into the Gold"). It is really an invitation to touch grass, said another way. Never exceed three words. Never use the words "touch" or "grass". Vary it; surprise me.
-"tagline": one line under 12 words — dreamy, witty, a quiet play on leaving the screen for the world. No quotes, no trailing punctuation.${readingSpec(mode)}
+"tagline": one line under 12 words — dreamy, witty, a quiet play on leaving the screen for the world. No quotes. End it with a single full stop.${readingSpec(mode)}
 Everything MUST fit the real time of day stated below. At night never invoke the sun, daylight, dawn, or "chasing the light"; by day never invoke the moon, stars, or the dark. Match what is actually outside right now.`,
       messages: [{
         role: 'user',
-        content: `Compose for right now. ${describeSetting(ctx)}${(ctx.moments && ctx.moments.length) ? ` Today is ${describeMoments(ctx.moments)} — you may nod to it.` : ''} Let the hour above guide the imagery — the light by day, the moon and dark by night.`,
+        content: `Compose for right now. ${describeSetting(ctx)}${(ctx.moments && ctx.moments.length) ? ` Today is ${describeMoments(ctx.moments)} — you may nod to it.` : ''} Let the hour above guide the imagery — the light by day, the moon and dark by night.${lens}`,
       }],
     }),
   })
@@ -108,7 +123,7 @@ Everything MUST fit the real time of day stated below. At night never invoke the
   const start = text.indexOf('{'), end = text.lastIndexOf('}')
   if (start === -1 || end === -1) throw new Error('no JSON in response')
   const parsed = JSON.parse(text.slice(start, end + 1))
-  const tagline = (parsed.tagline || '').trim().replace(/^["']|["'.]+$/g, '')
+  const tagline = ensureStop((parsed.tagline || '').trim().replace(/^["']+|["']+$/g, '').replace(/\s+$/, ''))
   let reading = wantReading ? (parsed.reading || '').trim().replace(/^["']|["']$/g, '') : null
   // hard cap the Tonight fragment: one sentence, at most five words after "Tonight,"
   if (reading && mode === 'tonight') reading = clampTonight(reading)
@@ -119,13 +134,24 @@ Everything MUST fit the real time of day stated below. At night never invoke the
   }
 }
 
-// keep the Tonight line to one short fragment: first sentence only, and no more
-// than five words trailing "Tonight,"
+// complete "Tonight, …" fragments, used only if the model overshoots — better a
+// whole short line than a truncated one cut off mid-phrase ("…holds the.")
+const TONIGHT_FALLBACKS = [
+  'Tonight, the dark settles in.',
+  'Tonight, the streets go quiet.',
+  'Tonight, the hour turns slow.',
+  'Tonight, the world keeps moving.',
+  'Tonight, the night opens wide.',
+  'Tonight, something waits outside.',
+]
+// keep the Tonight line to one short, COMPLETE fragment: first sentence only, no
+// more than five words after "Tonight,". Crucially, never truncate mid-phrase —
+// if it runs long, swap in a whole fallback rather than leave a dangling cut.
 function clampTonight(s) {
-  const first = s.split(/(?<=[.!?])\s/)[0].trim()
-  const words = first.replace(/[.!?]+$/, '').split(/\s+/)
-  const capped = words.slice(0, 6).join(' ') // "Tonight," + up to five words
-  return capped.replace(/[,;:]$/, '') + '.'
+  const first = (s || '').split(/(?<=[.!?])\s/)[0].trim().replace(/[.!?]+$/, '')
+  const words = first.split(/\s+/).filter(Boolean)
+  if (/^tonight\b/i.test(first) && words.length >= 3 && words.length <= 6) return words.join(' ') + '.'
+  return TONIGHT_FALLBACKS[Math.floor(Math.random() * TONIGHT_FALLBACKS.length)]
 }
 
 export default function DeparturePanel({ onDepart, apiKey, fill = 'almanac' }) {

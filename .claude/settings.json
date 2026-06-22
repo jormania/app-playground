@@ -8,7 +8,11 @@
       "PowerShell(npm uninstall sharp 2>&1)",
       "Read(//c/Users/Gabriel/dev/app-playground/dist/**)",
       "Bash(git commit -q -m 'reliquary: drop the relic count line, give the list more room *)",
-      "Bash(git commit -q -m 'ticker: centre it when it fits \\(still scrolls when wider than screen\\) *)"
+      "Bash(git commit -q -m 'ticker: centre it when it fits \\(still scrolls when wider than screen\\) *)",
+      "Bash(npm test *)",
+      "Bash(git commit -q -m 'ui polish: drop dead ticker code, throttle ticker layout reads, refresh stale comments; reliquary heading -> What you'\\\\''ve found *)",
+      "Bash(git commit -q -m 'tonight: add current zodiac sign line — '\\\\''the wheel turns in X days'\\\\'' *)",
+      "Bash(git commit -q -m 'tonight: prompt the AI line to vary across biome/season/place, not default to weather *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Gabriel\\.claude\\projects\\c--Users-Gabriel-dev-app-playground\\memory"

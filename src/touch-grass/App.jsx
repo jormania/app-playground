@@ -188,7 +188,8 @@ export default function App() {
     const durationMinutes = (Date.now() - state.departedAt) / 60000
     const tier = rollTier(durationMinutes)
     setState(prev => ({ ...prev, status: 'generating', pendingTier: tier }))
-    const ctx = { timeOfDay: world.timeOfDay, season: world.season, weather: world.weather, moon: world.moon, coords: world.coords, biome: world.biome, moments: world.moments }
+    const recent = (history || []).slice(0, 8).map(w => w && w.discovery && w.discovery.name).filter(Boolean)
+    const ctx = { timeOfDay: world.timeOfDay, season: world.season, weather: world.weather, moon: world.moon, coords: world.coords, biome: world.biome, moments: world.moments, recent }
     const { discovery, isStatic, apiAttempted } = await generateDiscovery(tier, durationMinutes, apiKey, ctx)
     // the sky this find was kept under — a small memory carried by each relic
     const sky = {
