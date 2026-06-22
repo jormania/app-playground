@@ -73,7 +73,7 @@ function momentColor(key) {
 //   almanac → one bright, enticing line of nature's call (the living world now)
 //   arc     → none (it's pure data)
 function readingSpec(mode) {
-  if (mode === 'tonight') return `\n"reading": ONE short fragment that begins with "Tonight," and ends with a period — ecological and atmospheric (e.g. "Tonight, the lingering dusk." / "Tonight, warm shadows thicken." / "Tonight, the canopy rests.") — true to the hour, season, place and weather below. At most FIVE words after "Tonight,". Never a second sentence.`
+  if (mode === 'tonight') return `\n"reading": ONE short fragment beginning with "Tonight," and ending with a period — evocative and grounded, at most FIVE words after "Tonight,", never a second sentence. Each visit, lean on a DIFFERENT facet and vary widely: the lie of the land (coast, forest, city, mountain, plain), the season and the turning year, the hour, the place itself — and only now and then the weather. Do NOT default to warmth, stillness, exhaling, or the sky. Examples across facets: "Tonight, the tideline keeps glowing." (coast) · "Tonight, the pines stand close." (forest) · "Tonight, the streets cool slowly." (city) · "Tonight, thin air sharpens the dark." (mountain) · "Tonight, the meadow lies open." (plain) · "Tonight, midsummer lingers late." (season).`
   if (mode === 'almanac') return `\n"reading": one line under 14 words, no trailing punctuation — nature's call: paint what the living world just outside is doing right now in bright, enticing, sensory words, true to the season, hour, place and weather below. Inviting, never a forecast.`
   return ''
 }
