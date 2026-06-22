@@ -210,7 +210,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
       <li><div>Open the app. A fresh tagline greets you — a quiet invitation, different every time.</div></li>
       <li><div>Tap <strong>Head outside</strong> and go. The timer saves immediately — close the tab, lock your screen, it doesn't matter.</div></li>
       <li><div>Walk for however long you like. Longer walks shift the odds toward rarer finds.</div></li>
-      <li><div>Come back, open the app, tap <strong>I'm back</strong>.</div></li>
+      <li><div>Come back, open the app, tap <strong>Step back</strong>.</div></li>
       <li><div>See what you found. Tap <strong>Step inside</strong> when you're ready to go again — a fresh tagline will be waiting.</div></li>
     </ol>
   </section>
@@ -232,11 +232,11 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">the threshold reading</span>
         <h3>A quiet reading above the call</h3>
       </div>
-      <p>In the sky above the invitation sits one faint reading — light enough never to pull focus from the call to go out. Choose which from a dropdown in the Keeper; it's remembered, and shows just one at a time:</p>
+      <p>In the sky above the invitation sits one faint reading — light enough never to pull focus from the call to go out. Choose which from the <em>Display the…</em> dropdown in the Keeper; it's remembered, and shows just one at a time:</p>
       <ul>
-        <li><strong>Living-world almanac</strong> (the default) — a short seasonal note on what's alive out there this month: swifts at dusk in June, dew-strung webs in September, the longest nights in December.</li>
-        <li><strong>Tonight's sky</strong> — three live lines from your location: when the gold comes and the sun sets, the moon's phase and its next rise or set, and when it's dark enough for stars.</li>
-        <li><strong>Sun &amp; moon arcs</strong> — two small drawn arcs side by side, the sun's path and the moon's across today, each with a marker for where it is right now and its rise–set times.</li>
+        <li><strong>Living World</strong> (the default) — the month and its nickname (<em>June, Peak Daylight, Deepening Green</em>) over a line of nature's call written fresh by the oracle, true to the season, hour, place and weather. Without a key it falls back to a hand-written seasonal note.</li>
+        <li><strong>Tonight's Sky</strong> — an evocative <em>"Tonight, …"</em> line from the oracle, fresh each visit, over live readings: when the light turns to honey, the moon's phase and its next rise or set, and when the stars emerge — or, once it's already dark, when first light breaks.</li>
+        <li><strong>Sun &amp; Moon</strong> — the sun and the moon (the same faces the corner ticker wears) riding two arcs across the day, tucked to either edge, each captioned with where and when it rises and sets.</li>
       </ul>
     </div>
 
@@ -253,14 +253,14 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">away</span>
         <h3>While you're out</h3>
       </div>
-      <p>A minimal screen shows your time out and departure time on one line: <em>Out for 4m 32s · since 5:23 PM</em>. The elapsed time is color-coded as the walk grows:</p>
+      <p>A minimal screen shows your time out and departure, each on its own quiet line: <em>Wandering for 4m 32s</em> and <em>Set out at 17:23</em> (24-hour throughout). The elapsed time is color-coded as the walk grows:</p>
       <ul>
         <li>Under 30 min — plain</li>
         <li style="color:#3ab0c0">30 min – 1 hour — <span class="pill uncommon">uncommon</span> teal</li>
         <li style="color:#c49830">1 hour – 4 hours — <span class="pill rare">rare</span> amber</li>
         <li style="color:#c060e0">4 hours and beyond — <span class="pill leg">legendary</span> purple</li>
       </ul>
-      <p>Close the tab at any point — when you return and tap <strong>I'm back</strong>, the elapsed time is calculated from your saved departure timestamp regardless.</p>
+      <p>Close the tab at any point — when you return and tap <strong>Step back</strong>, the elapsed time is calculated from your saved departure timestamp regardless.</p>
     </div>
 
     <div class="feature">
@@ -268,7 +268,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">finds</span>
         <h3>The finds</h3>
       </div>
-      <p>Every walk returns exactly one find — always. Never more, never less. Walk duration affects its rarity, not the quantity. Each is conjured by Claude like an entry in a grimoire or the face of an unknown tarot card: surreal, esoteric, faintly macabre, with a thread of cosmic dread. Hushed and strange, kept brief — no more than twenty-two words — and coloured by the hour, season, weather, moon, the lie of the land around you, and the rare moments of the year you walked through. Its subject ranges widely from walk to walk — stone, water, a sound, a forgotten object, the occasional rare insect — never settling on one motif. Four tiers of escalating strangeness:</p>
+      <p>Every walk returns exactly one find — always. Never more, never less. Walk duration affects its rarity, not the quantity. Each is conjured by Claude like an entry in a grimoire or the face of an unknown tarot card: surreal, esoteric, faintly macabre, with a thread of cosmic dread. Hushed and strange, kept brief — no more than twenty words — and coloured by the hour, season, weather, moon, the lie of the land around you, and the rare moments of the year you walked through. On the result, the rarity wears a small sigil that grows with the tier — a seed for common, then four-, six- and eight-pointed stars. Its subject ranges widely from walk to walk — stone, water, a sound, a forgotten object, the occasional rare insect — never settling on one motif. Four tiers of escalating strangeness:</p>
       <ul>
         <li><span class="pill common">common</span> A small wrongness, a quiet omen — the world tilting half a degree.</li>
         <li><span class="pill uncommon">uncommon</span> An esoteric object or sign, clearly impossible, humming with hidden meaning.</li>
@@ -325,7 +325,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">divining</span>
         <h3>Divining your find</h3>
       </div>
-      <p>When you tap <strong>I'm back</strong>, your rarity tier is rolled immediately — before the API call is made. The screen shows the tier name while the find is conjured, so you know what's coming before it arrives. Uncommon, rare, and legendary are color-coded. Common just says <em>Divining your find…</em> — no announcement for the everyday. A sweep line runs beneath while the call is in flight.</p>
+      <p>When you tap <strong>Step back</strong>, your rarity tier is rolled immediately — before the API call is made. The screen shows the tier name while the find is conjured, so you know what's coming before it arrives. Uncommon, rare, and legendary are color-coded. Common just says <em>Divining your find…</em> — no announcement for the everyday. A sweep line runs beneath while the call is in flight.</p>
     </div>
 
     <div class="feature">
@@ -486,7 +486,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <span class="feature-tag">setup</span>
         <h3>The Keeper</h3>
       </div>
-      <p>Tap the red <strong>key</strong> in the bottom-right corner to open <em>The Keeper</em> (its companion, the lens, sits opposite in the bottom-left). Enter your Anthropic API key — it stays in your browser and is only ever sent directly to Anthropic, when generating a find or tagline. Here you can also toggle <strong>Sound</strong>, the constellation <strong>Signs</strong>, <strong>Place</strong> (real location), <strong>Motion</strong> (freeze the scene), and the <strong>Daily call</strong> on or off — each shows its state, lit for on and dim for off — and choose, from a dropdown, which reading sits on the Threshold (see below). Without a key, everything still works — finds and taglines come from the old book instead.</p>
+      <p>Tap the red <strong>key</strong> in the bottom-right corner to open <em>The Keeper</em> (its companion, the lens, sits opposite in the bottom-left). Enter your Anthropic API key — it stays in your browser and is only ever sent directly to Anthropic, when writing a find, a tagline, or a Threshold reading. Here you can also toggle <strong>Sound</strong>, the constellation <strong>Signs</strong>, <strong>Place</strong> (real location), <strong>Motion</strong> (freeze the scene), and <strong>Notifications</strong> on or off — each shows its state, lit for on and dim for off — and choose, from the <em>Display the…</em> dropdown, which reading sits on the Threshold (see below). Without a key, everything still works — finds and taglines come from the old book instead.</p>
     </div>
 
     <div class="feature">
@@ -500,7 +500,7 @@ footer { border-top: 1px solid var(--border); padding: 28px 0; margin-top: 52px;
         <li><strong>Golden hour</strong> — roughly half an hour before the light turns to honey, a heads-up to step out and stand in it. It comes whether or not you've walked. (Location on — it's reckoned from the real sun.)</li>
         <li><strong>The almanac</strong> — on the special days (a meteor shower, a solstice, a full moon…), a word that the sky is marking the day. It comes whether or not you've walked, and may sit alongside the golden-hour call.</li>
       </ul>
-      <p>Each fires at most once a day. They're on by default (your browser asks permission the first time); switch them off any time with <strong>Daily call</strong> in the Keeper. Being a screen-free app with no server behind it, an installed copy can still be woken in the background to deliver them even while fully closed (on browsers that allow it); otherwise they reach you when you next open the app near their hour. Either way, they won't chase you.</p>
+      <p>Each fires at most once a day. They're on by default (your browser asks permission the first time); switch them off any time with <strong>Notifications</strong> in the Keeper. Being a screen-free app with no server behind it, an installed copy can still be woken in the background to deliver them even while fully closed (on browsers that allow it); otherwise they reach you when you next open the app near their hour. Either way, they won't chase you.</p>
     </div>
 
     <div class="feature">
