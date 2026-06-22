@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Sparkle, { starPath } from './Sparkle.jsx'
 
 const TIER_LABEL = {
   common:    { text: 'Common',    color: null },
@@ -20,17 +21,6 @@ function fmtDur(min) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`
 }
 
-// a star polygon centred in a 16×16 box, used to mark each find by rarity
-function starPath(points, outer, inner) {
-  let d = ''
-  for (let i = 0; i < points * 2; i++) {
-    const r = i % 2 === 0 ? outer : inner
-    const a = (i / (points * 2)) * Math.PI * 2 - Math.PI / 2
-    d += (i === 0 ? 'M' : 'L') + (8 + Math.cos(a) * r).toFixed(2) + ' ' + (8 + Math.sin(a) * r).toFixed(2) + ' '
-  }
-  return d + 'Z'
-}
-
 // rarity rises with the points: a seed, then 4-, 6- and 8-pointed stars
 const TIER_GLYPH = {
   uncommon:  starPath(4, 6.6, 2.0),
@@ -50,17 +40,13 @@ function TierIcon({ tier }) {
 }
 
 // a slender sparkle that sets date · time · duration apart
-const SEP_GLYPH = starPath(4, 6, 1.5)
 function Sep() {
-  return (
-    <svg className="tg-relic-sep" viewBox="0 0 16 16" aria-hidden="true">
-      <path d={SEP_GLYPH} fill="currentColor" />
-    </svg>
-  )
+  return <Sparkle className="tg-relic-sep" />
 }
 
 export default function ReliquaryPanel({ history, onClearLast, onClearAll, onClose }) {
   const [confirm, setConfirm] = useState(null)
+  const [open, setOpen] = useState(null) // which relic is expanded (by key)
   const count = history.length
 
   return (
@@ -72,21 +58,42 @@ export default function ReliquaryPanel({ history, onClearLast, onClearAll, onClo
 
       {count > 0 && (
         <div className="tg-relics">
-          {history.map((w, i) => (
-            <div className="tg-relic" key={`${w.ts}-${i}`}>
-              <div className="tg-relic-meta">
-                <span>{fmtDay(w.ts)}</span>
-                <Sep />
-                <span>{fmtTime(w.ts)}</span>
-                <Sep />
-                <span>{fmtDur(w.durationMinutes)}</span>
-              </div>
-              <div className="tg-relic-name">
-                <TierIcon tier={w.tier} />
-                <span>{w.discovery.name}</span>
-              </div>
-            </div>
-          ))}
+          {history.map((w, i) => {
+            const key = `${w.ts}-${i}`
+            const isOpen = open === key
+            const tier = TIER_LABEL[w.tier] || TIER_LABEL.common
+            const skyLine = w.sky && [w.sky.moon, w.sky.weather, w.sky.biome].filter(Boolean).join(' · ')
+            return (
+              <button
+                type="button"
+                className="tg-relic"
+                key={key}
+                aria-expanded={isOpen}
+                onClick={() => setOpen(isOpen ? null : key)}
+              >
+                <div className="tg-relic-meta">
+                  <span>{fmtDay(w.ts)}</span>
+                  <Sep />
+                  <span>{fmtTime(w.ts)}</span>
+                  <Sep />
+                  <span>{fmtDur(w.durationMinutes)}</span>
+                </div>
+                <div className="tg-relic-name">
+                  <TierIcon tier={w.tier} />
+                  <span>{w.discovery.name}</span>
+                </div>
+                {isOpen && (
+                  <div className="tg-relic-detail">
+                    <p className="tg-relic-desc">{w.discovery.description}</p>
+                    <div className="tg-relic-foot">
+                      <span style={tier.color ? { color: tier.color } : undefined}>{tier.text}</span>
+                      {skyLine && <span className="tg-relic-sky"> · kept under {skyLine}</span>}
+                    </div>
+                  </div>
+                )}
+              </button>
+            )
+          })}
         </div>
       )}
 

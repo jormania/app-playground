@@ -18,7 +18,7 @@ export default function ResultPanel({ lastWalk, onGoBack }) {
   const { text: tierText, color: tierColor } = TIER_LABEL[tier] ?? TIER_LABEL.common
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative' }} role="status" aria-live="polite">
       <h1>Your find.</h1>
       <p>
         {formatDuration(durationMinutes)} · {tierColor

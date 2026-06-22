@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useWorld } from './world.jsx'
-import { getNextSunAnchor } from './context.js'
+import { getGoldenHourStart } from './context.js'
 
 // a small rite for the walk — the card is an oracle, after all. One is chosen
 // per departure (stable for the walk) and sends you outward, not back to the screen.
@@ -45,8 +45,6 @@ function elapsedColor(ms) {
   return null
 }
 
-const ANCHOR_LABEL = { sunrise: 'sunrise', noon: 'noon', sunset: 'sunset', midnight: 'midnight' }
-
 export default function OutPanel({ departedAt, onReturn }) {
   const { coords } = useWorld()
   const [now, setNow] = useState(Date.now())
@@ -59,8 +57,10 @@ export default function OutPanel({ departedAt, onReturn }) {
   const elapsed = now - departedAt
   const color = elapsedColor(elapsed)
 
-  const anchor = getNextSunAnchor(new Date(now), coords)
-  const remaining = anchor.at.getTime() - now
+  // a honey-coloured whisper when the evening golden hour is nearly here
+  const goldenStart = getGoldenHourStart(new Date(now), coords)
+  const untilGolden = goldenStart ? goldenStart.getTime() - now : -1
+  const goldenSoon = untilGolden > 0 && untilGolden <= 35 * 60000
 
   // a slowly rotating rite — a new one every ~40s, seeded by the departure
   const wanderIdx = (Math.floor(departedAt / 1000) + Math.floor(elapsed / 40000)) % WANDER.length
@@ -71,8 +71,10 @@ export default function OutPanel({ departedAt, onReturn }) {
       <div className="tg-walkmeta">
         <div className="tg-walkmeta-main">Out for <span style={color ? { color } : undefined}>{formatElapsed(elapsed)}</span></div>
         <div>Left at {new Date(departedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-        {remaining > 0 && <div>{ANCHOR_LABEL[anchor.key]} in {formatCountdown(remaining)}</div>}
       </div>
+      {goldenSoon && (
+        <div className="tg-golden-whisper">the light turns to honey in {formatCountdown(untilGolden)}</div>
+      )}
       <div className="tg-wander">
         <div className="tg-wander-head">while you wander</div>
         <div className="tg-wander-text" key={wanderIdx}>{WANDER[wanderIdx]}</div>

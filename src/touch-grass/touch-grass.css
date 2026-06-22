@@ -74,6 +74,64 @@ body {
   margin-top: 3px;
 }
 
+/* A faint "you are here" ticker in the bottom-right of the stage. One line that
+   hugs the right edge and never wraps; when it's wider than the screen it scrolls
+   (drag with a finger, and it drifts on its own — see Locus.jsx). Same ink as the
+   masthead, inverted with the daily ground, with an opposite-tone halo so the
+   text and glyphs read over any surface. Sits below the card in the DOM. */
+.tg-locus {
+  position: fixed;
+  right: 15px;
+  bottom: 13px;
+  /* above the card's drop shadow (which is painted later in the DOM and would
+     otherwise dim the ticker); they never overlap spatially, so the card body
+     is never covered */
+  z-index: 1;
+  width: max-content;
+  max-width: calc(100vw - 30px);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  touch-action: pan-x;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  font-variant: small-caps;
+  text-transform: lowercase;
+  color: #2a2118; /* dark ink for the pale dawn/dusk/night grounds */
+  opacity: 0.5;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.45);
+  transition: color 1.5s ease;
+}
+.tg-locus::-webkit-scrollbar { display: none; }
+.tg-locus.on-dark {
+  color: #f3ead4; /* cream for the dark midday ground */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+.tg-locus-item { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+/* the readings now wear little COLOURED pictures, so a soft dark halo (rather than
+   an inverting one) keeps them crisp over any ground — pale or dark */
+.tg-locus svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.55));
+}
+/* ---- separator styles (preview live with ?sep=) ---- */
+/* hairline (default): a faint vertical rule that inverts with the ground */
+.tg-locus-rule { width: 1px; height: 12px; background: currentColor; opacity: 0.3; flex: 0 0 auto; }
+/* a faded middot or slash */
+.tg-locus-mark { opacity: 0.5; flex: 0 0 auto; }
+/* extra breathing space, beyond the base gap */
+.tg-locus-gap { width: 7px; flex: 0 0 auto; }
+/* the sparkle separator — a small warm star between readings */
+.tg-locus .tg-locus-sep { width: 7px; height: 7px; color: #cdb079; opacity: 0.85; flex: 0 0 auto; }
+
 /* ---- The tarot card ---- */
 .tg-card {
   position: relative;
@@ -255,6 +313,43 @@ body {
 }
 .tg-card-content input[type="password"]:focus { border-color: rgba(243, 234, 212, 0.85); }
 
+/* The Threshold reading — a faint, small element above the invitation. Light by
+   design: it must never pull focus from the invitation and tagline below it. */
+.tg-tf {
+  margin-bottom: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  line-height: 1.65;
+  font-variant: small-caps;
+  color: #ece5d2;
+  opacity: 0.6;
+  max-width: 30ch;
+}
+.tg-tf-head {
+  font-size: 0.62rem; letter-spacing: 0.18em; color: #cdb079;
+  opacity: 0.9; margin-bottom: 3px;
+}
+.tg-tf-arcsvg { display: block; width: 158px; height: 57px; color: #ece5d2; }
+.tg-tf-arc-times { display: flex; justify-content: space-between; width: 158px; font-size: 0.6rem; opacity: 0.85; margin-top: 1px; }
+.tg-tf-signsvg { display: block; width: 116px; height: 68px; color: #ece5d2; margin-bottom: 3px; }
+
+/* a small labelled dropdown in the Keeper (the Threshold reading chooser) */
+.tg-select-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.tg-select-row label { margin: 0; font-size: 0.78rem; color: #d8e0d2; letter-spacing: 0.05em; font-variant: small-caps; }
+.tg-select {
+  flex: 0 1 auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.76rem;
+  color: #f3ead4;
+  background: rgba(10, 16, 18, 0.5);
+  border: 1.5px solid rgba(243, 234, 212, 0.4);
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+.tg-select:focus { outline: none; border-color: rgba(243, 234, 212, 0.85); }
+
 /* compact layout for the Keeper (settings) so it fits one screen */
 .tg-settings h1 { margin-bottom: 8px; }
 .tg-settings p { margin-bottom: 10px; font-size: 0.8rem; line-height: 1.5; }
@@ -327,10 +422,13 @@ body {
 }
 .tg-moment { font-variant: small-caps; line-height: 1.7; margin-bottom: 7px; }
 .tg-moment span span { font-weight: 400; }
-.tg-forecast { display: flex; align-items: center; gap: 7px; }
-.tg-fc-glyph { width: 19px; height: 19px; flex-shrink: 0; }
-.tg-forecast-now { font-variant: small-caps; }
-.tg-forecast-now b { font-weight: 400; }
+
+/* a honey-coloured whisper on the Out panel as the golden hour nears */
+.tg-golden-whisper {
+  font-variant: small-caps; letter-spacing: 0.04em;
+  font-size: 0.78rem; color: #e7c24a; opacity: 0.9; margin-bottom: 16px;
+}
+
 
 /* a menu panel anchored to the lower part of the card (below the sun/moon and
    clouds), a fixed height so only its inner list scrolls — no double scrollbar */
@@ -355,7 +453,29 @@ body {
   display: flex; flex-direction: column; gap: 8px;
   padding-right: 4px;
 }
-.tg-relic { border-left: 2px solid rgba(243, 234, 212, 0.28); padding-left: 9px; }
+/* it's a button now (tap to re-read) — strip the inherited button chrome but
+   keep the quiet left-rule look. Scoped to .tg-relics so it outweighs the
+   global .tg-card-content button rule. */
+.tg-relics .tg-relic {
+  border: none; border-left: 2px solid rgba(243, 234, 212, 0.28);
+  padding: 0 0 0 9px; border-radius: 0; margin: 0;
+  display: block; width: 100%; text-align: left; background: none;
+  font: inherit; color: inherit; cursor: pointer; backdrop-filter: none;
+  transition: border-color 0.2s ease;
+}
+.tg-relics .tg-relic:hover, .tg-relics .tg-relic[aria-expanded="true"] {
+  border-left-color: rgba(243, 234, 212, 0.6); background: none;
+}
+.tg-relic-detail { animation: tgWanderFade 0.5s ease both; margin: 5px 0 2px; }
+.tg-relic-desc {
+  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+  font-size: 0.78rem; line-height: 1.5; color: #e6dfcc; margin: 0 0 4px;
+}
+.tg-relic-foot {
+  font-size: 0.64rem; font-variant: small-caps; letter-spacing: 0.03em;
+  color: #e3dcc7; opacity: 0.85;
+}
+.tg-relic-sky { opacity: 0.8; }
 .tg-relic-meta {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
   font-size: 0.64rem; color: #e3dcc7; font-variant: small-caps;

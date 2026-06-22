@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'vitest'
-import { getTimeOfDay, getSeason, getMoonPhase, getLight, getSunAltitude, getNextSunAnchor } from './context.js'
+import { getTimeOfDay, getSeason, getMoonPhase, getLight, getSunAltitude, getNextSunAnchor, moonPhaseName, daysToFullMoon } from './context.js'
 
 function dateAt(hour, month = 5) {
   const d = new Date(2024, month, 15)
@@ -78,6 +78,46 @@ describe('getMoonPhase', () => {
     expect(fraction).toBeGreaterThan(0.9)
   })
 })
+
+describe('moonPhaseName', () => {
+  test('the four cardinal phases land on their names', () => {
+    expect(moonPhaseName(0)).toBe('new moon')
+    expect(moonPhaseName(0.25)).toBe('first quarter')
+    expect(moonPhaseName(0.5)).toBe('full moon')
+    expect(moonPhaseName(0.75)).toBe('last quarter')
+  })
+  test('the between phases wax and wane correctly', () => {
+    expect(moonPhaseName(0.12)).toBe('waxing crescent')
+    expect(moonPhaseName(0.37)).toBe('waxing gibbous')
+    expect(moonPhaseName(0.62)).toBe('waning gibbous')
+    expect(moonPhaseName(0.88)).toBe('waning crescent')
+  })
+  test('wraps around 1 back to new moon', () => {
+    expect(moonPhaseName(0.999)).toBe('new moon')
+    expect(moonPhaseName(1)).toBe('new moon')
+  })
+})
+
+describe('daysToFullMoon', () => {
+  test('zero at full moon', () => {
+    expect(daysToFullMoon(0.5)).toBeCloseTo(0, 5)
+  })
+  test('about half a synodic month from new moon', () => {
+    expect(daysToFullMoon(0)).toBeCloseTo(14.77, 1)
+  })
+  test('just past full wraps toward the next full (~29 days)', () => {
+    expect(daysToFullMoon(0.51)).toBeGreaterThan(28)
+    expect(daysToFullMoon(0.51)).toBeLessThan(30)
+  })
+  test('always non-negative and within one synodic month', () => {
+    for (const p of [0, 0.1, 0.25, 0.49, 0.5, 0.51, 0.75, 0.99]) {
+      const d = daysToFullMoon(p)
+      expect(d).toBeGreaterThanOrEqual(0)
+      expect(d).toBeLessThan(29.54)
+    }
+  })
+})
+
 
 describe('getLight — golden / blue hour', () => {
   const equator = { lat: 0, lon: 0 }

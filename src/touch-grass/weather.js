@@ -37,6 +37,16 @@ export function intensityFromCode(code) {
   return INTENSITY[code] ?? 0
 }
 
+// Brief, glanceable words for a condition (shared by the Threshold's current-sky
+// line and the "kept under" note on a find).
+export const CONDITION_WORDS = {
+  clear: 'clear', 'partly-cloudy': 'a few clouds', overcast: 'overcast',
+  fog: 'fog', rain: 'rain', snow: 'snow', thunder: 'storms',
+}
+export function weatherWord(condition) {
+  return CONDITION_WORDS[condition] || condition
+}
+
 // Turn an Open-Meteo `current` object into our normalized model.
 export function parseWeather(current) {
   const code = current.weather_code

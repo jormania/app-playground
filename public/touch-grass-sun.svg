@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="daysky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3f86bd"/>
+      <stop offset="0.6" stop-color="#74b4dc"/>
+      <stop offset="1" stop-color="#aedcf0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#daysky)"/>
+
+  <!-- drifting clouds (the daytime counterpart to the moon's stars) -->
+  <g fill="#fdf7e6" opacity="0.55">
+    <path d="M64 132 Q72 110 98 116 Q108 96 132 108 Q156 100 156 124 Q168 130 158 146 Q120 150 96 146 Q70 150 64 132 Z"/>
+    <path d="M372 92 Q380 76 400 82 Q418 74 420 92 Q432 98 422 110 Q392 114 372 110 Q356 106 372 92 Z"/>
+  </g>
+
+  <!-- sun rays -->
+  <g stroke="#f0c64f" stroke-width="15" stroke-linecap="round">
+    <line x1="416" y1="236" x2="454" y2="236"/>
+    <line x1="394.6" y1="316" x2="427.5" y2="335"/>
+    <line x1="336" y1="374.6" x2="355" y2="407.5"/>
+    <line x1="256" y1="396" x2="256" y2="434"/>
+    <line x1="176" y1="374.6" x2="157" y2="407.5"/>
+    <line x1="117.4" y1="316" x2="84.5" y2="335"/>
+    <line x1="96" y1="236" x2="58" y2="236"/>
+    <line x1="117.4" y1="156" x2="84.5" y2="137"/>
+    <line x1="176" y1="97.4" x2="157" y2="64.5"/>
+    <line x1="256" y1="76" x2="256" y2="38"/>
+    <line x1="336" y1="97.4" x2="355" y2="64.5"/>
+    <line x1="394.6" y1="156" x2="427.5" y2="137"/>
+  </g>
+
+  <!-- sun -->
+  <g>
+    <circle cx="256" cy="236" r="158" fill="#f6d873" opacity="0.35"/>
+    <circle cx="256" cy="236" r="150" fill="#f9e7a6"/>
+    <!-- cheeks -->
+    <circle cx="188" cy="300" r="20" fill="#e8a23f" opacity="0.55"/>
+    <circle cx="324" cy="300" r="20" fill="#e8a23f" opacity="0.55"/>
+    <!-- brows -->
+    <path d="M170 196 Q200 180 230 196" fill="none" stroke="#1c4a47" stroke-width="7" stroke-linecap="round"/>
+    <path d="M282 196 Q312 180 342 196" fill="none" stroke="#1c4a47" stroke-width="7" stroke-linecap="round"/>
+    <!-- eyes -->
+    <path d="M168 224 Q200 200 232 224 Q200 248 168 224 Z" fill="#fdf7e6" stroke="#1c4a47" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M280 224 Q312 200 344 224 Q312 248 280 224 Z" fill="#fdf7e6" stroke="#1c4a47" stroke-width="7" stroke-linejoin="round"/>
+    <circle cx="200" cy="228" r="13" fill="#2f8a9a"/>
+    <circle cx="200" cy="228" r="6" fill="#16302e"/>
+    <circle cx="312" cy="228" r="13" fill="#2f8a9a"/>
+    <circle cx="312" cy="228" r="6" fill="#16302e"/>
+    <!-- nose -->
+    <path d="M256 232 Q272 262 256 280 Q248 282 242 274" fill="none" stroke="#1c4a47" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- smile -->
+    <path d="M226 304 Q256 330 286 304" fill="none" stroke="#1c4a47" stroke-width="7" stroke-linecap="round"/>
+  </g>
+
+  <!-- grass hint -->
+  <path d="M0 512 L0 486 Q40 452 64 488 Q92 448 120 488 Q150 450 180 488 Q212 452 240 488 Q272 448 300 488 Q332 452 360 488 Q392 450 420 488 Q450 452 480 488 Q500 466 512 486 L512 512 Z" fill="#3a7d3a"/>
+</svg>

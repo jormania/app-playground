@@ -1,5 +1,13 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(node -e \"try{require.resolve\\('sharp'\\);console.log\\('sharp: yes'\\)}catch\\(e\\){console.log\\('sharp: no'\\)}\")",
+      "Bash(node -e \"console.log\\('node',process.version\\)\")",
+      "PowerShell(npm i -D sharp 2>&1)",
+      "Bash(node -e ' *)",
+      "PowerShell(npm uninstall sharp 2>&1)",
+      "Read(//c/Users/Gabriel/dev/app-playground/dist/**)"
+    ],
     "additionalDirectories": [
       "c:\\Users\\Gabriel\\.claude\\projects\\c--Users-Gabriel-dev-app-playground\\memory"
     ]

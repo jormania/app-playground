@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { useWorld } from './world.jsx'
 
-export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSound, signsOn, onToggleSigns, motionOn, onToggleMotion, callOn, onToggleCall, onClose }) {
+const THRESHOLD_OPTIONS = [
+  ['almanac', 'Living-world almanac'],
+  ['tonight', "Tonight's sky"],
+  ['arc', "The sun's arc"],
+  ['sign', 'Rising sign'],
+]
+
+export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSound, signsOn, onToggleSigns, motionOn, onToggleMotion, callOn, onToggleCall, thresholdMode, onThreshold, onClose }) {
   const [draft, setDraft] = useState(currentKey)
   const hasKey = !!currentKey
   const hasDraft = draft.trim().length > 0
@@ -25,6 +32,13 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
         <button type="button" className="tg-toggle" aria-pressed={callOn} onClick={onToggleCall}>{callOn ? '✉ Daily call on' : '✉ Daily call off'}</button>
       </div>
       {callBlocked && <p className="tg-hint">✉ Your browser is blocking notifications — the daily call can't reach you.</p>}
+
+      <div className="tg-select-row">
+        <label htmlFor="threshold-fill">On the Threshold</label>
+        <select id="threshold-fill" className="tg-select" value={thresholdMode} onChange={e => onThreshold(e.target.value)}>
+          {THRESHOLD_OPTIONS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+        </select>
+      </div>
 
       <form onSubmit={handleSubmit}>
         <label htmlFor="apikey">Anthropic API key</label>

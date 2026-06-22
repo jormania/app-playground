@@ -37,6 +37,38 @@ export function getMoonPhase(date) {
   return { phase: m.phase, fraction: m.fraction }
 }
 
+// A plain name for the moon's phase (the four cardinal phases get a small
+// tolerance so "full" / "new" / the quarters land on the right night).
+export function moonPhaseName(phase) {
+  const p = ((phase % 1) + 1) % 1
+  const eps = 0.02
+  if (p < eps || p > 1 - eps) return 'new moon'
+  if (Math.abs(p - 0.25) < eps) return 'first quarter'
+  if (Math.abs(p - 0.5) < eps) return 'full moon'
+  if (Math.abs(p - 0.75) < eps) return 'last quarter'
+  if (p < 0.25) return 'waxing crescent'
+  if (p < 0.5) return 'waxing gibbous'
+  if (p < 0.75) return 'waning gibbous'
+  return 'waning crescent'
+}
+
+// Days until the next full moon, from the phase alone (full is at phase 0.5).
+// The mean synodic month is close enough for a "x days to full moon" line.
+const SYNODIC_MONTH = 29.530588853
+export function daysToFullMoon(phase) {
+  const p = ((phase % 1) + 1) % 1
+  const target = p <= 0.5 ? 0.5 : 1.5
+  return (target - p) * SYNODIC_MONTH
+}
+
+// The start of the evening golden hour at a location, or null without one — used
+// for the "the light turns to honey" whisper while out.
+export function getGoldenHourStart(date, coords) {
+  if (!coords || typeof coords.lat !== 'number' || typeof coords.lon !== 'number') return null
+  const g = getTimes(date, coords.lat, coords.lon).goldenHour
+  return g && Number.isFinite(g.getTime()) ? g : null
+}
+
 // Fallback thresholds (fractional hours) used when no location is available —
 // shifted by season to approximate daylight at mid-Northern latitudes.
 const THRESHOLDS = {

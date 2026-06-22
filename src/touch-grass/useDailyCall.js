@@ -10,7 +10,7 @@ const EVAL_EVERY = 60 * 1000
 
 function showCall(body, tag) {
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
-  const opts = { body, tag, badge: '/icon-192.png' }
+  const opts = { body, tag, icon: '/icon-sun-192.png', badge: '/icon-192.png' }
   try {
     if (navigator.serviceWorker && navigator.serviceWorker.ready) {
       navigator.serviceWorker.ready

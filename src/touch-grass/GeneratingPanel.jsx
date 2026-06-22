@@ -10,7 +10,7 @@ export default function GeneratingPanel({ tier }) {
   const style = tier ? TIER_STYLE[tier] : null
 
   return (
-    <div>
+    <div role="status" aria-live="polite">
       <h1>
         Divining your{style
           ? <> <span style={style}>{tier}</span></>

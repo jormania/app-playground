@@ -7,11 +7,20 @@ import GeneratingPanel from './GeneratingPanel.jsx'
 import ReliquaryPanel from './ReliquaryPanel.jsx'
 import TarotCard from './TarotCard.jsx'
 import Stage from './Stage.jsx'
+import Locus from './Locus.jsx'
 import { useAmbientSound } from './useAmbientSound.js'
 import { useDailyCall } from './useDailyCall.js'
 import { showWalkNotice, clearWalkNotice } from './walkNotice.js'
 import { useWorld } from './world.jsx'
+import { moonPhaseName } from './context.js'
+import { weatherWord } from './weather.js'
 import { rollTier, generateDiscovery } from './engine.js'
+
+// a soft haptic tick at the two moments that matter (Android honours it; iOS
+// Safari ignores navigator.vibrate, so this is a no-op there)
+function buzz(pattern) {
+  try { if (navigator.vibrate) navigator.vibrate(pattern) } catch (_) {}
+}
 
 const STORAGE_KEY = 'tg-react-state'
 const API_KEY_STORAGE = 'tg-react-apikey'
@@ -21,6 +30,8 @@ const MOTION_STORAGE = 'tg-react-motion'
 const CALL_STORAGE = 'tg-react-call'
 const HISTORY_STORAGE = 'tg-react-history'
 const VIEW_STORAGE = 'tg-react-view'
+const THRESHOLD_STORAGE = 'tg-react-threshold'
+const THRESHOLD_MODES = ['almanac', 'tonight', 'arc', 'sign']
 const HISTORY_CAP = 300
 
 function loadState() {
@@ -57,6 +68,11 @@ function loadCall() {
   return localStorage.getItem(CALL_STORAGE) !== '0' // default on
 }
 
+function loadThreshold() {
+  const v = localStorage.getItem(THRESHOLD_STORAGE)
+  return THRESHOLD_MODES.includes(v) ? v : 'almanac' // default: the living-world almanac
+}
+
 function loadHistory() {
   try {
     const raw = localStorage.getItem(HISTORY_STORAGE)
@@ -88,6 +104,7 @@ export default function App() {
   const [signsOn, setSignsOn] = useState(loadSigns)
   const [motionOn, setMotionOn] = useState(loadMotion)
   const [callOn, setCallOn] = useState(loadCall)
+  const [thresholdMode, setThresholdMode] = useState(loadThreshold)
   const [history, setHistory] = useState(loadHistory)
   const [showSettings, setShowSettings] = useState(() => loadView().settings)
   const [showReliquary, setShowReliquary] = useState(() => loadView().reliquary)
@@ -121,6 +138,20 @@ export default function App() {
     if (state.status !== 'out') clearWalkNotice()
   }, [state.status])
 
+  // while out, the browser tab quietly carries the walk — a glance at a
+  // backgrounded tab or the recent-apps view becomes a gentle nudge back outside
+  useEffect(() => {
+    const base = 'Touch Grass'
+    if (state.status !== 'out') { document.title = base; return }
+    const update = () => {
+      const min = Math.floor((Date.now() - state.departedAt) / 60000)
+      document.title = `◷ Outside · ${min}m — ${base}`
+    }
+    update()
+    const id = setInterval(update, 30000)
+    return () => { clearInterval(id); document.title = base }
+  }, [state.status, state.departedAt])
+
   // a notification tap reopens the app and asks to return — straight to the
   // result. Handle both a cold open (?return=1) and a focus of the live app
   // (a 'tg-return' message from the service worker). Kept in a ref so the
@@ -150,6 +181,7 @@ export default function App() {
     setState(prev => ({ ...prev, status: 'out', departedAt: Date.now(), pendingTier: null }))
     playDepart()
     showWalkNotice()
+    buzz(18) // a single soft tick as you set out
   }
 
   async function returnFromWalk() {
@@ -158,10 +190,17 @@ export default function App() {
     setState(prev => ({ ...prev, status: 'generating', pendingTier: tier }))
     const ctx = { timeOfDay: world.timeOfDay, season: world.season, weather: world.weather, moon: world.moon, coords: world.coords, biome: world.biome, moments: world.moments }
     const { discovery, isStatic, apiAttempted } = await generateDiscovery(tier, durationMinutes, apiKey, ctx)
-    const walk = { ts: Date.now(), durationMinutes, tier, discovery, isStatic, apiAttempted }
+    // the sky this find was kept under — a small memory carried by each relic
+    const sky = {
+      moon: world.moon ? moonPhaseName(world.moon.phase) : null,
+      weather: world.weather ? weatherWord(world.weather.condition) : null,
+      biome: world.biome || null,
+    }
+    const walk = { ts: Date.now(), durationMinutes, tier, discovery, isStatic, apiAttempted, sky }
     setState(prev => ({ ...prev, status: 'idle', departedAt: null, pendingTier: null, lastWalk: walk }))
     setHistory(prev => [walk, ...prev].slice(0, HISTORY_CAP))
     playReveal()
+    buzz([0, 14, 70, 22]) // a gentle double-tick as the card turns over
   }
 
   function saveApiKey(key) {
@@ -203,6 +242,12 @@ export default function App() {
     })
   }
 
+  function chooseThreshold(mode) {
+    const next = THRESHOLD_MODES.includes(mode) ? mode : 'almanac'
+    localStorage.setItem(THRESHOLD_STORAGE, next)
+    setThresholdMode(next)
+  }
+
   function clearAllHistory() { setHistory([]) }
   function clearLastHistory() { setHistory(prev => prev.slice(1)) }
 
@@ -211,7 +256,7 @@ export default function App() {
   let panel, title
   if (showSettings) {
     title = 'The Keeper'
-    panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} soundOn={soundOn} onToggleSound={toggleSound} signsOn={signsOn} onToggleSigns={toggleSigns} motionOn={motionOn} onToggleMotion={toggleMotion} callOn={callOn} onToggleCall={toggleCall} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
+    panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} soundOn={soundOn} onToggleSound={toggleSound} signsOn={signsOn} onToggleSigns={toggleSigns} motionOn={motionOn} onToggleMotion={toggleMotion} callOn={callOn} onToggleCall={toggleCall} thresholdMode={thresholdMode} onThreshold={chooseThreshold} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
   } else if (showReliquary) {
     title = 'The Reliquary'
     panel = <ReliquaryPanel history={history} onClearLast={clearLastHistory} onClearAll={clearAllHistory} onClose={() => { setShowReliquary(false); setDepartureKey(k => k + 1) }} />
@@ -226,7 +271,7 @@ export default function App() {
     panel = <ResultPanel lastWalk={lastWalk} onGoBack={() => { setShowDeparture(true); setDepartureKey(k => k + 1) }} />
   } else {
     title = 'The Threshold'
-    panel = <DeparturePanel key={departureKey} onDepart={startWalk} apiKey={apiKey} />
+    panel = <DeparturePanel key={departureKey} onDepart={startWalk} apiKey={apiKey} fill={thresholdMode} />
   }
 
   // the masthead text inverts against the daily stage: cream on the dark midday
@@ -236,6 +281,7 @@ export default function App() {
   return (
     <>
       <Stage />
+      <Locus />
       <div className="tg-shell">
         <header className={darkStage ? 'tg-masthead on-dark' : 'tg-masthead'}>
           <div className="tg-masthead-title">Touch Grass</div>

@@ -1,7 +1,7 @@
 // Shared root-scope service worker: stale-while-revalidate for same-origin GETs.
 // Enables PWA installability and offline use after the first visit, for both
 // the React rewrite (/touch-grass-react.html) and the older static apps.
-const CACHE = 'tg-cache-v3';
+const CACHE = 'tg-cache-v4';
 
 self.addEventListener('install', function () {
   self.skipWaiting();
@@ -128,7 +128,7 @@ function tgMaybeCalls() {
     var midnight = (function () { var m = new Date(now); m.setHours(24, 0, 0, 0); return m.getTime(); })();
     var jobs = [];
     var show = function (body, tag, dayKey) {
-      jobs.push(self.registration.showNotification('Touch Grass', { body: body, tag: tag, badge: '/icon-192.png' })
+      jobs.push(self.registration.showNotification('Touch Grass', { body: body, tag: tag, icon: '/icon-sun-192.png', badge: '/icon-192.png' })
         .then(function () { return tgSet(dayKey, today); }));
     };
     // golden hour — always, around its time
