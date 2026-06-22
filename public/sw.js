@@ -67,10 +67,11 @@ function tgSet(key, val) {
   }).catch(function () {});
 }
 
-// sunset, ported from SunCalc (no dependencies)
+// solar event time, ported from SunCalc (no dependencies): the "set" time when
+// the sun descends through hDeg degrees (−0.833 = sunset, 6 = evening golden hour)
 var TG_RAD = Math.PI / 180, TG_DAY = 86400000, TG_J1970 = 2440588, TG_J2000 = 2451545, TG_J0 = 0.0009, TG_E = TG_RAD * 23.4397;
 function tgFromJulian(j) { return new Date((j + 0.5 - TG_J1970) * TG_DAY); }
-function tgSunset(date, lat, lng) {
+function tgEventTime(date, lat, lng, hDeg) {
   var lw = TG_RAD * -lng, phi = TG_RAD * lat;
   var d = date.valueOf() / TG_DAY - 0.5 + TG_J1970 - TG_J2000;
   var n = Math.round(d - TG_J0 - lw / (2 * Math.PI));
@@ -78,45 +79,71 @@ function tgSunset(date, lat, lng) {
   var M = TG_RAD * (357.5291 + 0.98560028 * ds);
   var L = M + TG_RAD * (1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M)) + TG_RAD * 102.9372 + Math.PI;
   var dec = Math.asin(Math.sin(TG_E) * Math.sin(L));
-  var h0 = -0.833 * TG_RAD;
+  var h0 = hDeg * TG_RAD;
   var w = Math.acos((Math.sin(h0) - Math.sin(phi) * Math.sin(dec)) / (Math.cos(phi) * Math.cos(dec)));
   var a = TG_J0 + (w + lw) / (2 * Math.PI) + n;
   var Jset = TG_J2000 + a + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * L);
   return tgFromJulian(Jset);
 }
+function tgFinite(date) { return date && isFinite(date.getTime()) ? date.getTime() : null; }
 function tgTodayKey(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
-function tgBody(walked, name, beforeSunset) {
-  if (walked) return name ? ('You have been out today — ' + name + ' is yours. Rest, or go once more before dark.') : 'You walked today; the world noticed. Rest easy.';
-  if (beforeSunset) return 'A couple of hours of light left — somewhere out there a small strange thing is waiting.';
-  return 'Evening is settling in. A short walk before the dark? Something is always waiting.';
+function tgPick(a) { return a[Math.floor(Math.random() * a.length)]; }
+function tgDaily(beforeSunset) {
+  return beforeSunset
+    ? 'A couple of hours of light left — somewhere out there a small strange thing is waiting.'
+    : 'Evening is settling in. A short walk before the dark? Something is always waiting.';
+}
+function tgGolden() {
+  return tgPick([
+    'The light is about to turn to honey — step out and stand in it.',
+    'Golden hour is gathering. Go let it find you outside.',
+    'The long warm light is nearly here. The screen will keep; the gold will not.'
+  ]);
 }
 
 self.addEventListener('periodicsync', function (e) {
   if (e.tag !== 'tg-daily-call') return;
-  e.waitUntil(tgMaybeDailyCall());
+  e.waitUntil(tgMaybeCalls());
 });
 
-function tgMaybeDailyCall() {
+// In the background we can't hit an exact time, so each notification has a window
+// and we deliver on whatever wake lands inside it (once per day, guards shared
+// with the app). Golden hour and the almanac fire regardless of a walk; the
+// generic daily fires only when there's no golden hour to offer and you haven't
+// been out.
+function tgMaybeCalls() {
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return Promise.resolve();
-  var now = new Date();
-  var today = tgTodayKey(now);
-  return Promise.all([tgGet('callEnabled'), tgGet('lastCallDay'), tgGet('coords'), tgGet('lastWalkDay'), tgGet('lastWalkName')]).then(function (v) {
-    var enabled = v[0], last = v[1], coords = v[2], walkDay = v[3], walkName = v[4];
-    if (!enabled || last === today) return; // off, or already delivered today (by app or SW)
-    var callTime = null;
-    if (coords && typeof coords.lat === 'number') {
-      var sunset = tgSunset(now, coords.lat, coords.lon);
-      if (sunset && isFinite(sunset.getTime())) callTime = sunset.getTime() - 2 * 3600000;
+  var now = new Date(), today = tgTodayKey(now), nowMs = now.getTime();
+  return Promise.all([
+    tgGet('callEnabled'), tgGet('coords'), tgGet('lastWalkDay'),
+    tgGet('lastCallDay'), tgGet('lastGoldenDay'), tgGet('lastAlmanacDay'), tgGet('almanacBody')
+  ]).then(function (v) {
+    var enabled = v[0], coords = v[1], walkDay = v[2], callDay = v[3], goldenDay = v[4], almanacDay = v[5], almanacBody = v[6];
+    if (!enabled) return;
+    var hasCoords = coords && typeof coords.lat === 'number';
+    var sunset = hasCoords ? tgFinite(tgEventTime(now, coords.lat, coords.lon, -0.833)) : null;
+    var golden = hasCoords ? tgFinite(tgEventTime(now, coords.lat, coords.lon, 6)) : null;
+    var dailyTime = sunset != null ? sunset - 2 * 3600000 : (function () { var f = new Date(now); f.setHours(16, 30, 0, 0); return f.getTime(); })();
+    var goldenNotify = golden != null ? golden - 30 * 60000 : null;
+    var midnight = (function () { var m = new Date(now); m.setHours(24, 0, 0, 0); return m.getTime(); })();
+    var jobs = [];
+    var show = function (body, tag, dayKey) {
+      jobs.push(self.registration.showNotification('Touch Grass', { body: body, tag: tag, badge: '/icon-192.png' })
+        .then(function () { return tgSet(dayKey, today); }));
+    };
+    // golden hour — always, around its time
+    if (goldenNotify != null && goldenDay !== today && nowMs >= goldenNotify && nowMs <= goldenNotify + 80 * 60000) {
+      show(tgGolden(), 'tg-golden', 'lastGoldenDay');
     }
-    if (callTime == null) { var f = new Date(now); f.setHours(16, 30, 0, 0); callTime = f.getTime(); }
-    var midnight = new Date(now); midnight.setHours(24, 0, 0, 0);
-    // deliver on any background wake from sunset−2h until midnight (the timing is
-    // the browser's to choose, so we take the chance whenever it comes)
-    if (now.getTime() < callTime || now.getTime() >= midnight.getTime()) return;
-    var body = tgBody(walkDay === today, walkName, now.getTime() < callTime + 2 * 3600000);
-    return self.registration.showNotification('Touch Grass', {
-      body: body, tag: 'tg-daily-call', icon: '/icon-192.png', badge: '/icon-192.png'
-    }).then(function () { return tgSet('lastCallDay', today); });
+    // almanac — always on a moment day, any evening wake
+    if (almanacBody && almanacDay !== today && nowMs >= dailyTime && nowMs < midnight) {
+      show(almanacBody, 'tg-almanac', 'lastAlmanacDay');
+    }
+    // generic daily — only if there's no golden hour on offer, and not walked
+    if (goldenNotify == null && callDay !== today && walkDay !== today && nowMs >= dailyTime && nowMs < midnight) {
+      show(tgDaily(nowMs < dailyTime + 2 * 3600000), 'tg-daily-call', 'lastCallDay');
+    }
+    return Promise.all(jobs);
   }).catch(function () {});
 }
 

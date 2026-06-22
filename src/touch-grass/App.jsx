@@ -96,7 +96,7 @@ export default function App() {
 
   const { reveal: playReveal, depart: playDepart } = useAmbientSound(soundOn)
   const world = useWorld()
-  useDailyCall(callOn, world.coords, history)
+  useDailyCall(callOn, world.coords, history, world.moments)
 
   useEffect(() => {
     try {

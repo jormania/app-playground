@@ -10,9 +10,9 @@
 // alive and warm without ever crowding the listener.
 
 const SCENES = {
-  day:    { wind: 0.045, whistle: 0,    water: 0.065, crickets: 0,    birds: 0.6, chime: 0,   critters: true  },
-  night:  { wind: 0.028, whistle: 0,    water: 0.04,  crickets: 0.25, birds: 0,   chime: 0,   critters: false },
-  winter: { wind: 0.15,  whistle: 0.12, water: 0.02,  crickets: 0,    birds: 0,   chime: 0.5, critters: false },
+  day:    { wind: 0.028, whistle: 0,    water: 0.042, crickets: 0,    birds: 0.6, chime: 0,   critters: true  },
+  night:  { wind: 0.018, whistle: 0,    water: 0.026, crickets: 0.25, birds: 0,   chime: 0,   critters: false },
+  winter: { wind: 0.095, whistle: 0.07, water: 0.014, crickets: 0,    birds: 0,   chime: 0.5, critters: false },
 }
 
 const MASTER = 0.5
@@ -21,10 +21,10 @@ const MASTER = 0.5
 // wind, leaf rustle. `swell` modulates the level (a slow breath); `tone` wanders
 // the filter so the bed never sits as one flat block; `verb` is its reverb send.
 const BIOME_BED = {
-  coast:    { type: 'lowpass',  freq: 420,  gain: 0.075, swell: 0.40, tone: 0,  rate: 0.85, verb: 0.20 },
-  city:     { type: 'lowpass',  freq: 200,  gain: 0.025, swell: 0.18, tone: 55, rate: 0.6,  verb: 0.12 },
-  mountain: { type: 'bandpass', freq: 950,  gain: 0.03,  swell: 0.14, tone: 35, rate: 1.2,  verb: 0.34 },
-  forest:   { type: 'bandpass', freq: 2200, gain: 0.022, swell: 0.10, tone: 0,  rate: 1.1,  verb: 0.22 },
+  coast:    { type: 'lowpass',  freq: 420,  gain: 0.050, swell: 0.28, tone: 0,  rate: 0.85, verb: 0.20 },
+  city:     { type: 'lowpass',  freq: 200,  gain: 0.016, swell: 0.10, tone: 40, rate: 0.6,  verb: 0.12 },
+  mountain: { type: 'bandpass', freq: 950,  gain: 0.020, swell: 0.10, tone: 30, rate: 1.2,  verb: 0.34 },
+  forest:   { type: 'bandpass', freq: 2200, gain: 0.015, swell: 0.07, tone: 0,  rate: 1.1,  verb: 0.22 },
   plain:    { type: 'lowpass',  freq: 500,  gain: 0,     swell: 0,    tone: 0,  rate: 1.0,  verb: 0.10 },
 }
 const DEFAULT_VERB = 0.15
@@ -190,8 +190,8 @@ export function createAmbience() {
     const whGain = ctx.createGain(); whGain.gain.value = 0
     const whSwell = ctx.createGain(); whSwell.gain.value = 0.7
     whSrc.connect(whBP).connect(whGain).connect(whSwell).connect(master)
-    const whLfo = ctx.createOscillator(); whLfo.frequency.value = 0.045
-    const whDepth = ctx.createGain(); whDepth.gain.value = 0.22
+    const whLfo = ctx.createOscillator(); whLfo.frequency.value = 0.035
+    const whDepth = ctx.createGain(); whDepth.gain.value = 0.14
     whLfo.connect(whDepth).connect(whSwell.gain); whLfo.start()
 
     // WATER: a steady trickle
@@ -218,7 +218,7 @@ export function createAmbience() {
     bSrc.connect(bFilter).connect(biomeGain).connect(biomeSwell).connect(master)
     const biomeVerb = ctx.createGain(); biomeVerb.gain.value = 0.12
     biomeSwell.connect(biomeVerb).connect(convolver) // widen the bed through the room
-    const bLfo = ctx.createOscillator(); bLfo.frequency.value = 0.055
+    const bLfo = ctx.createOscillator(); bLfo.frequency.value = 0.04
     const bDepth = ctx.createGain(); bDepth.gain.value = 0
     bLfo.connect(bDepth).connect(biomeSwell.gain); bLfo.start()
     const bToneLfo = ctx.createOscillator(); bToneLfo.frequency.value = 0.05
@@ -239,10 +239,10 @@ export function createAmbience() {
     startSchedulers()
     startLiveliness()
 
-    // gentle, slow breathing — narrow range over long spans, so the bed stays
-    // serene; real dynamism comes from gusts (which scale with the true wind)
-    walkers.push(makeWalker(windDrift.gain, { min: 0.62, max: 1.08, step: 0.12, minDur: 18, maxDur: 44 }))
-    walkers.push(makeWalker(waterDrift.gain, { min: 0.66, max: 1.05, step: 0.10, minDur: 20, maxDur: 48 }))
+    // very gentle, very slow breathing — a narrow range crossed over long spans,
+    // so the bed only barely stirs; real dynamism comes from gusts
+    walkers.push(makeWalker(windDrift.gain, { min: 0.72, max: 1.05, step: 0.07, minDur: 26, maxDur: 60 }))
+    walkers.push(makeWalker(waterDrift.gain, { min: 0.74, max: 1.04, step: 0.06, minDur: 28, maxDur: 64 }))
   }
 
   // ============================ bed levels ============================
@@ -268,7 +268,7 @@ export function createAmbience() {
     if (!ctx || !n.biomeGain) return
     const p = BIOME_BED[biome]
     set(n.reverbSend.gain, p ? p.verb : DEFAULT_VERB, 2.0)
-    set(n.citySub.gain, biome === 'city' ? 0.05 : 0, 2.2)
+    set(n.citySub.gain, biome === 'city' ? 0.03 : 0, 2.2)
     if (!p) {
       set(n.biomeGain.gain, 0, 2.0); set(n.bDepth.gain, 0, 2.0); set(n.bToneDepth.gain, 0, 2.0)
       return
@@ -555,28 +555,126 @@ export function createAmbience() {
     o.start(t); o.stop(t + dur + 0.05)
   }
 
-  // a gust: swell the wind bed + a panned whoosh (forest leaves ride higher)
+  // a gust: a long, soft swell of the wind bed + a gentle panned whoosh that
+  // rises and ebbs over many seconds — background, never a sudden surge
   function gust(t, level, pan = rpan(0.5)) {
     if (n.gustGain) {
       const gg = n.gustGain.gain
       gg.cancelScheduledValues(t)
       gg.setValueAtTime(gg.value, t)
-      gg.linearRampToValueAtTime(1 + 0.4 * level, t + 1.4 + Math.random())
-      gg.linearRampToValueAtTime(1, t + 3.4 + Math.random() * 1.6)
+      gg.linearRampToValueAtTime(1 + 0.22 * level, t + 5 + Math.random() * 2) // long, slow rise
+      gg.linearRampToValueAtTime(1, t + 13 + Math.random() * 5)               // even slower ebb
     }
-    const s = loopNoise(noiseBuf, 1.0)
-    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.7
-    const f0 = biome === 'forest' ? 2400 : 700
+    if (!noiseBuf) return
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.playbackRate.value = 1.0
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.6
+    const f0 = biome === 'forest' ? 2200 : 650
     bp.frequency.setValueAtTime(f0 * 0.6, t)
-    bp.frequency.linearRampToValueAtTime(f0, t + 0.9)
-    bp.frequency.linearRampToValueAtTime(f0 * 0.7, t + 2.4)
+    bp.frequency.linearRampToValueAtTime(f0, t + 4)
+    bp.frequency.linearRampToValueAtTime(f0 * 0.65, t + 11)
     const g = ctx.createGain(); g.gain.value = 0.0001
     s.connect(bp).connect(g).connect(out(pan))
-    const peak = 0.05 * level
+    const peak = 0.022 * level
     g.gain.setValueAtTime(0.0001, t)
-    g.gain.linearRampToValueAtTime(peak, t + 0.8)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 2.6)
-    s.start(t, Math.random() * noiseBuf.duration); s.stop(t + 2.8)
+    g.gain.linearRampToValueAtTime(peak, t + 4)        // gentle ~4s fade-in
+    g.gain.linearRampToValueAtTime(0.0001, t + 11)     // ~7s fade-out (linear, no exp snap)
+    s.start(t, Math.random() * noiseBuf.duration); s.stop(t + 11.3)
+  }
+
+  // ---- per-biome ambient accents: one distinct, soft, widely-panned voice for
+  // each biome, scheduled sparsely so the field is richer but never crowded ----
+
+  // coast: a single wave washing in and receding — gentle filtered swell
+  function waveWash(t, level, pan) {
+    if (!noiseBuf) return
+    const dur = 6 + Math.random() * 2
+    const dest = out(pan)
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.playbackRate.value = 0.8
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'
+    lp.frequency.setValueAtTime(280, t)
+    lp.frequency.linearRampToValueAtTime(720, t + dur * 0.4) // wash builds, brighter
+    lp.frequency.linearRampToValueAtTime(240, t + dur)       // recedes, darker
+    const g = ctx.createGain(); g.gain.value = 0.0001
+    s.connect(lp).connect(g).connect(dest)
+    const peak = 0.04 * level
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.linearRampToValueAtTime(peak, t + dur * 0.4)
+    g.gain.linearRampToValueAtTime(0.0001, t + dur)
+    s.start(t, Math.random() * noiseBuf.duration); s.stop(t + dur + 0.2)
+  }
+
+  // forest: a soft hollow wood knock or two — distant, woody, unhurried
+  function woodKnock(t, level, pan) {
+    const dest = out(pan)
+    const reps = 1 + Math.floor(Math.random() * 2)
+    for (let k = 0; k < reps; k++) {
+      const tt = t + k * (0.18 + Math.random() * 0.12)
+      const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = 170 + Math.random() * 50
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 430; bp.Q.value = 4
+      const g = ctx.createGain(); g.gain.value = 0.0001
+      o.connect(bp).connect(g).connect(dest)
+      const peak = 0.04 * level
+      g.gain.setValueAtTime(0.0001, tt)
+      g.gain.linearRampToValueAtTime(peak, tt + 0.01)
+      g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.18)
+      o.start(tt); o.stop(tt + 0.22)
+    }
+  }
+
+  // city: a distant car drifting past — a low whoosh that pans across the field
+  function carPass(t, level) {
+    if (!noiseBuf) return
+    const dur = 5 + Math.random() * 2.5
+    const dest = out(-0.85)
+    dest.pan.setValueAtTime(-0.85, t)
+    dest.pan.linearRampToValueAtTime(0.85, t + dur)
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.playbackRate.value = 0.9
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 380
+    const g = ctx.createGain(); g.gain.value = 0.0001
+    s.connect(lp).connect(g).connect(dest)
+    const peak = 0.03 * level
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.linearRampToValueAtTime(peak, t + dur * 0.5)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+    s.start(t, Math.random() * noiseBuf.duration); s.stop(t + dur + 0.2)
+  }
+
+  // mountain: a far-off cowbell — soft metallic clank, pastoral and sparse
+  function cowbell(t, level, pan) {
+    const dest = out(pan)
+    const clanks = 1 + Math.floor(Math.random() * 2)
+    for (let c = 0; c < clanks; c++) {
+      const ct = t + c * (0.28 + Math.random() * 0.14)
+      const base = 520 + Math.random() * 90
+      ;[1, 1.5, 2.4].forEach((mult, idx) => {
+        const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = base * mult
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = base * 1.6; bp.Q.value = 7
+        const g = ctx.createGain(); g.gain.value = 0.0001
+        o.connect(bp).connect(g).connect(dest)
+        const peak = (0.028 / (idx + 1)) * level
+        g.gain.setValueAtTime(0.0001, ct)
+        g.gain.linearRampToValueAtTime(peak, ct + 0.005)
+        g.gain.exponentialRampToValueAtTime(0.0001, ct + 0.45)
+        o.start(ct); o.stop(ct + 0.55)
+      })
+    }
+  }
+
+  // plain: a soft breath of wind through tall grass — airy high-passed swell
+  function grassRustle(t, level, pan) {
+    if (!noiseBuf) return
+    const dur = 3.5 + Math.random() * 2
+    const dest = out(pan)
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.playbackRate.value = 1.2
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200
+    const g = ctx.createGain(); g.gain.value = 0.0001
+    s.connect(hp).connect(lp).connect(g).connect(dest)
+    const peak = 0.022 * level
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.linearRampToValueAtTime(peak, t + dur * 0.45)
+    g.gain.linearRampToValueAtTime(0.0001, t + dur)
+    s.start(t, Math.random() * noiseBuf.duration); s.stop(t + dur + 0.2)
   }
 
   // a single water drip — used as rain clears
@@ -727,10 +825,10 @@ export function createAmbience() {
 
     // wind gusts — only when it's genuinely breezy, and likelier/stronger the
     // windier it really is. A calm clear day stays gust-free and serene.
-    every(16000, 38000, () => {
-      if (!ready() || weatherWind < 10) return
-      if (!lively(Math.min(0.85, weatherWind / 32))) return
-      gust(ctx.currentTime, Math.min(1, weatherWind / 38))
+    every(30000, 72000, () => {
+      if (!ready() || weatherWind < 12) return
+      if (!lively(Math.min(0.7, weatherWind / 40))) return
+      gust(ctx.currentTime, Math.min(0.9, weatherWind / 46))
     })
 
     // biome- and time-aware voices (null = also when there's no location)
@@ -746,6 +844,14 @@ export function createAmbience() {
     every(20000, 44000, () => { if (voice(null, 'plain', 'forest') && scene === 'day' && lively(0.8)) bee(ctx.currentTime, 0.7, rpan(0.6)) })
     every(18000, 40000, () => { if (voice(null, 'plain', 'forest', 'coast') && scene === 'night' && lively(0.8)) frog(ctx.currentTime, 0.7, rpan(0.7)) })
     every(26000, 58000, () => { if (voice(null, 'plain') && scene === 'day' && lively(0.7)) skylark(ctx.currentTime, rpan(0.5)) })
+
+    // one distinct, gentle accent per biome — sparse and wide on the stage, so
+    // each place gains a little more character without crowding the bed
+    every(22000, 50000, () => { if (voice('coast') && lively(0.7)) waveWash(ctx.currentTime, 0.9, rpan(0.85)) })
+    every(30000, 64000, () => { if (voice('forest') && lively(0.6)) woodKnock(ctx.currentTime, 0.8, rpan(0.8)) })
+    every(34000, 78000, () => { if (voice('city') && lively(0.7)) carPass(ctx.currentTime, 0.8) })
+    every(38000, 84000, () => { if (voice('mountain') && lively(0.6)) cowbell(ctx.currentTime, 0.7, rpan(0.7)) })
+    every(28000, 60000, () => { if (voice('plain') && lively(0.7)) grassRustle(ctx.currentTime, 0.9, rpan(0.8)) })
 
     // rare surprises — at most one at a time, on a cooldown, low probability
     every(20000, 34000, scheduleSurprise)

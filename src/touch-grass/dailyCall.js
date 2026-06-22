@@ -6,6 +6,7 @@ import { getTimes } from 'suncalc'
 
 const FALLBACK_HOUR = 16.5 // 16:30 local, used when there's no location for a real sunset
 const TWO_HOURS = 2 * 3600 * 1000
+const HALF_HOUR = 30 * 60 * 1000
 
 // local YYYY-MM-DD — for "once per day" and "walked today" checks
 export function todayKey(date = new Date()) {
@@ -59,4 +60,31 @@ export function buildMessage(walk) {
     return pick(WALKED)(name)
   }
   return pick(NUDGE)
+}
+
+// 30 min before the evening golden hour begins (the heads-up), or null without
+// a usable sun (no location, or polar day/night)
+export function goldenNotifyTime(date, coords) {
+  if (coords && typeof coords.lat === 'number' && typeof coords.lon === 'number') {
+    const g = getTimes(date, coords.lat, coords.lon).goldenHour // evening golden hour start
+    if (g && Number.isFinite(g.getTime())) return new Date(g.getTime() - HALF_HOUR)
+  }
+  return null
+}
+
+const GOLDEN = [
+  'The light is about to turn to honey — step out and stand in it.',
+  'Golden hour is gathering. Go let it find you outside.',
+  'The long warm light is nearly here. The screen will keep; the gold will not.',
+  'In a little while the world goes gold. Be under it.',
+]
+export function buildGoldenBody() { return pick(GOLDEN) }
+
+// the almanac announcement for today's moment(s), or '' if there's none
+export function buildAlmanacBody(moments) {
+  if (!moments || !moments.length) return ''
+  const m = moments[0]
+  const name = m.name || 'something rare'
+  if (m.meteor) return `Tonight, ${name} — find a dark patch of grass and look up.`
+  return `Today, ${name}. The sky is marking it — go and stand in it.`
 }

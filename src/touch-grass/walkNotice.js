@@ -31,8 +31,7 @@ export async function showWalkNotice() {
       tag: TAG,            // one reminder at a time; a new walk replaces the old
       requireInteraction: true, // don't let it auto-dismiss — it's a standing reminder
       silent: true,        // it lingers in the shade; no buzz right after you set out
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
+      badge: '/icon-192.png', // status-bar glyph only; the OS draws the app icon itself
     })
   } catch (_) {}
 }
