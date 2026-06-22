@@ -30,6 +30,9 @@ Thumbs.db
 *.swp
 *.swo
 
+# Claude Code local config (not needed by the build)
+.claude/
+
 # Build info
 *.tsbuildinfo
 .cache/
