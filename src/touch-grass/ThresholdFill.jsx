@@ -199,7 +199,7 @@ function MoonDisc() {
 const ARC = { p0x: 8, p2x: 102, cx: 55, y0: 52 }
 function arcControlY(peakAlt) {
   const a = Math.max(0, Math.min(90, peakAlt || 0))
-  const dome = 9 + (a / 90) * 31 // apex height above the horizon: ~9 (flat winter) … ~40 (tall summer)
+  const dome = 9 + (a / 90) * 26 // apex height above the horizon: ~9 (flat winter) … ~35 (tall summer)
   return ARC.y0 - 2 * dome       // quadratic control y (apex sits at y0 - dome)
 }
 function arcPoint(p, cy) {
@@ -210,7 +210,7 @@ function Arc({ progress, marker, peakAlt }) {
   const cy = arcControlY(peakAlt)
   const pt = progress == null ? null : arcPoint(progress, cy)
   return (
-    <svg className="tg-tf-arcsvg" viewBox="0 0 110 64" aria-hidden="true">
+    <svg className="tg-tf-arcsvg" viewBox="0 6 110 58" aria-hidden="true">
       <line x1="4" y1={ARC.y0} x2="106" y2={ARC.y0} stroke="currentColor" strokeWidth="1.8" opacity="0.5" />
       <path d={`M${ARC.p0x} ${ARC.y0} Q${ARC.cx} ${cy} ${ARC.p2x} ${ARC.y0}`} fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" opacity="0.85" />
       {pt && <svg x={pt.x - 12} y={pt.y - 12} width="24" height="24" viewBox="0 0 24 24">{marker}</svg>}

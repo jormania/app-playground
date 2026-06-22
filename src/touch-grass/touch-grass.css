@@ -351,7 +351,7 @@ body {
 .tg-tf-arcs { display: flex; justify-content: space-between; align-items: flex-start; }
 .tg-tf-arc-col { display: flex; flex-direction: column; align-items: center; }
 .tg-tf-arc-title { font-size: 0.58rem; letter-spacing: 0.1em; color: #ecc356; margin-bottom: 1px; }
-.tg-tf-arcsvg { display: block; width: 102px; height: 59px; color: #f1ecdc; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5)); }
+.tg-tf-arcsvg { display: block; width: 102px; height: 54px; color: #f1ecdc; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5)); }
 .tg-tf-arc-cap { font-size: 0.58rem; letter-spacing: 0.02em; line-height: 1.5; text-align: center; white-space: nowrap; margin-top: 1px; }
 
 /* a small labelled dropdown in the Keeper (the Threshold reading chooser) */
