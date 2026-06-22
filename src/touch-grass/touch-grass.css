@@ -81,7 +81,10 @@ body {
    text and glyphs read over any surface. Sits below the card in the DOM. */
 .tg-locus {
   position: fixed;
-  right: 15px;
+  /* centred horizontally; when it fits it sits centred, when it overflows it
+     fills the width (capped) and scrolls within */
+  left: 50%;
+  transform: translateX(-50%);
   bottom: 13px;
   /* above the card's drop shadow (which is painted later in the DOM and would
      otherwise dim the ticker); they never overlap spatially, so the card body
