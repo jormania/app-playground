@@ -21,8 +21,6 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
 
   return (
     <div className="tg-settings">
-      <h1>Tend the rite.</h1>
-
       <div className="tg-row tg-toggles">
         <button type="button" className="tg-toggle" aria-pressed={soundOn} onClick={onToggleSound}>{soundOn ? '♪ Sound on' : '♪ Sound off'}</button>
         <button type="button" className="tg-toggle" aria-pressed={signsOn} onClick={onToggleSigns}>{signsOn ? '✦ Signs on' : '✦ Signs off'}</button>
