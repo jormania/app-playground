@@ -21,7 +21,7 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
 
   return (
     <div className="tg-settings">
-      <h1>What you keep.</h1>
+      <h1>Tend the rite.</h1>
 
       <div className="tg-row tg-toggles">
         <button type="button" className="tg-toggle" aria-pressed={soundOn} onClick={onToggleSound}>{soundOn ? '♪ Sound on' : '♪ Sound off'}</button>
@@ -40,16 +40,18 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
       </div>
 
       <form onSubmit={handleSubmit}>
-        <label htmlFor="apikey">Anthropic API key</label>
-        <input
-          id="apikey"
-          type="password"
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          placeholder="sk-ant-..."
-          autoComplete="off"
-          spellCheck="false"
-        />
+        <div className="tg-key-row">
+          <label htmlFor="apikey">API key</label>
+          <input
+            id="apikey"
+            type="password"
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            placeholder="sk-ant-..."
+            autoComplete="off"
+            spellCheck="false"
+          />
+        </div>
         <p className="tg-hint">{hasDraft
           ? '● Key set — the oracle answers.'
           : '○ Leave it empty and finds rise from the old book.'}</p>

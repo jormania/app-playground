@@ -1,7 +1,7 @@
 // Shared root-scope service worker: stale-while-revalidate for same-origin GETs.
 // Enables PWA installability and offline use after the first visit, for both
 // the React rewrite (/touch-grass-react.html) and the older static apps.
-const CACHE = 'tg-cache-v4';
+const CACHE = 'tg-cache-v5';
 
 self.addEventListener('install', function () {
   self.skipWaiting();

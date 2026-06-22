@@ -35,6 +35,20 @@ function StarGlyph() {
     </svg>
   )
 }
+// the golden-hour sun, but blue — for the blue hour
+function BlueGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="tg-tf-glyph" aria-hidden="true">
+      <g stroke="#7fb1e6" strokeWidth="1.8" strokeLinecap="round">
+        {Array.from({ length: 8 }, (_, i) => {
+          const a = (i / 8) * Math.PI * 2
+          return <line key={i} x1={12 + Math.cos(a) * 7} y1={12 + Math.sin(a) * 7} x2={12 + Math.cos(a) * 9.7} y2={12 + Math.sin(a) * 9.7} />
+        })}
+      </g>
+      <circle cx="12" cy="12" r="4.2" fill="#5b86bf" />
+    </svg>
+  )
+}
 function moonLitPath(phase) {
   const name = moonPhaseName(phase)
   if (name === 'new moon') return ''
@@ -70,6 +84,25 @@ function soonestFuture(d, coords, keys) {
   return best
 }
 
+// The current (or next) warm/cool light window — golden hour or blue hour — as an
+// interval. Both shift through the year; one is always on offer, never both, never
+// none. Morning: blue = dawn→sunrise, golden = sunrise→goldenHourEnd. Evening:
+// golden = goldenHour→sunset, blue = sunset→dusk.
+function lightWindow(now, coords) {
+  const wins = []
+  for (const off of [-1, 0, 1]) {
+    const d = new Date(now); d.setDate(d.getDate() + off)
+    const t = getTimes(d, coords.lat, coords.lon)
+    if (ok(t.dawn) && ok(t.sunrise)) wins.push({ kind: 'blue', s: t.dawn, e: t.sunrise })
+    if (ok(t.sunrise) && ok(t.goldenHourEnd)) wins.push({ kind: 'golden', s: t.sunrise, e: t.goldenHourEnd })
+    if (ok(t.goldenHour) && ok(t.sunset)) wins.push({ kind: 'golden', s: t.goldenHour, e: t.sunset })
+    if (ok(t.sunset) && ok(t.dusk)) wins.push({ kind: 'blue', s: t.sunset, e: t.dusk })
+  }
+  const cur = wins.find(w => now >= w.s.getTime() && now <= w.e.getTime())
+  if (cur) return cur
+  return wins.filter(w => w.s.getTime() > now).sort((a, b) => a.s - b.s)[0] || null
+}
+
 // ---- A · tonight ----
 function Tonight({ coords, now, moon, reading }) {
   if (!coords) return <NeedPlace />
@@ -89,25 +122,26 @@ function Tonight({ coords, now, moon, reading }) {
   const moonVerb = next ? (next[0] === 'rises' ? 'ascends at' : 'descends at') : null
   const moonTime = next ? fmt(next[1]) : null
 
-  // golden hour only matters while it's still ahead today (drop it once the sun's down)
-  const goldenAhead = ok(t.goldenHour) && ok(t.sunset) && now < t.sunset.getTime()
+  // the light window — golden hour or blue hour, whichever is current or next (always one)
+  const lw = lightWindow(now, coords)
 
   // stars: if darkness is still to come, count to it; if it's already dark, the
-  // next sky event is dawn, so point to first light instead
+  // stars will fade at dawn, so count to that instead
   const duskNext = soonestFuture(d, coords, ['night', 'nauticalDusk', 'dusk'])
   const dawnNext = soonestFuture(d, coords, ['nightEnd', 'nauticalDawn', 'dawn'])
-  let starGlyph = <StarGlyph />, starPhrase = null, starVerb = null, starTime = null
-  if (duskNext && (!dawnNext || duskNext.getTime() <= dawnNext.getTime())) { starPhrase = 'stars'; starVerb = 'emerge by'; starTime = fmt(duskNext) }
-  else if (dawnNext) { starGlyph = <SunGlyph />; starPhrase = 'first light'; starVerb = 'breaks by'; starTime = fmt(dawnNext) }
+  let starPhrase = null, starVerb = null, starTime = null
+  if (duskNext && (!dawnNext || duskNext.getTime() <= dawnNext.getTime())) { starVerb = 'emerge by'; starTime = fmt(duskNext) }
+  else if (dawnNext) { starVerb = 'fade by'; starTime = fmt(dawnNext) }
+  if (starTime) starPhrase = 'stars'
 
   return (
     <div className="tg-tf tg-tf-tonight">
       <div className="tg-tf-head">{reading || 'tonight'}</div>
-      {goldenAhead && (
-        <div className="tg-tf-row"><SunGlyph /><span>light turns to honey <span className="tg-nowrap">at <span className="tg-time">{fmt(t.goldenHour)}</span></span></span></div>
+      {lw && (
+        <div className="tg-tf-row">{lw.kind === 'golden' ? <SunGlyph /> : <BlueGlyph />}<span>{lw.kind === 'golden' ? 'light turns to honey' : 'the blue hour'} <span className="tg-nowrap"><span className="tg-time">{fmt(lw.s)}–{fmt(lw.e)}</span></span></span></div>
       )}
       <div className="tg-tf-row"><MoonGlyph phase={moon.phase} /><span>{moonPhrase}{moonVerb ? <>, <span className="tg-nowrap">{moonVerb} <span className="tg-time">{moonTime}</span></span></> : ''}</span></div>
-      {starPhrase && <div className="tg-tf-row">{starGlyph}<span>{starPhrase} <span className="tg-nowrap">{starVerb} <span className="tg-time">{starTime}</span></span></span></div>}
+      {starPhrase && <div className="tg-tf-row"><StarGlyph /><span>{starPhrase} <span className="tg-nowrap">{starVerb} <span className="tg-time">{starTime}</span></span></span></div>}
     </div>
   )
 }

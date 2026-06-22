@@ -104,28 +104,28 @@ body {
   letter-spacing: 0.1em;
   font-variant: small-caps;
   text-transform: lowercase;
-  color: #2a2118; /* dark ink for the pale dawn/dusk/night grounds */
-  opacity: 0.72;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
-  transition: color 1.5s ease;
+  /* one always-legible treatment instead of inverting: bright cream with a dark
+     outline, so it reads over any ground — bright midday or dim dusk/night */
+  color: #f7f0de;
+  opacity: 0.95;
+  text-shadow:
+    -1px -1px 0 rgba(8, 11, 16, 0.55), 1px -1px 0 rgba(8, 11, 16, 0.55),
+    -1px 1px 0 rgba(8, 11, 16, 0.55), 1px 1px 0 rgba(8, 11, 16, 0.55),
+    0 1px 4px rgba(0, 0, 0, 0.7);
 }
 .tg-locus::-webkit-scrollbar { display: none; }
-.tg-locus.on-dark {
-  color: #fbf8ef; /* near-white cream for the dark midday ground */
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
-}
 .tg-locus-item { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; }
-/* the readings now wear little COLOURED pictures, so a soft dark halo (rather than
-   an inverting one) keeps them crisp over any ground — pale or dark */
+/* the readings wear little coloured pictures — a stronger dark halo keeps them
+   crisp over any ground, pale or dark */
 .tg-locus svg {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
-  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.85)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
 }
 /* ---- separator styles (preview live with ?sep=) ---- */
-/* hairline (default): a faint vertical rule that inverts with the ground */
-.tg-locus-rule { width: 1px; height: 16px; background: currentColor; opacity: 0.32; flex: 0 0 auto; }
+/* hairline (default): a thin cream vertical rule with a dark edge so it shows on any ground */
+.tg-locus-rule { width: 1.5px; height: 16px; background: #f7f0de; opacity: 0.7; flex: 0 0 auto; box-shadow: 0 0 1.5px rgba(0, 0, 0, 0.8); }
 /* a faded middot or slash */
 .tg-locus-mark { opacity: 0.5; flex: 0 0 auto; }
 /* extra breathing space, beyond the base gap */
@@ -247,7 +247,7 @@ body {
 /* ---- Content typography (cream ink over artwork) ---- */
 .tg-card-content h1 {
   font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
-  font-size: 1.55rem;
+  font-size: 1.45rem;
   font-weight: 600;
   line-height: 1.2;
   color: #f7f0de;
@@ -255,7 +255,7 @@ body {
 }
 .tg-card-content h2 {
   font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
-  font-size: 1.18rem;
+  font-size: 1.08rem;
   font-weight: 600;
   color: #f3ead4;
   margin: 4px 0 8px;
@@ -368,6 +368,11 @@ body {
   cursor: pointer;
 }
 .tg-select:focus { outline: none; border-color: rgba(243, 234, 212, 0.85); }
+
+/* API key label hugging its input on one line (like the Display-the row) */
+.tg-key-row { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
+.tg-key-row label { margin: 0; white-space: nowrap; }
+.tg-key-row input[type="password"] { flex: 1; min-width: 0; margin-bottom: 0; }
 
 /* compact layout for the Keeper (settings) so it fits one screen */
 .tg-settings h1 { margin-bottom: 8px; }

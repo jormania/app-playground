@@ -194,9 +194,9 @@ async function fetchDiscovery(tier, durationMinutes, apiKey, ctx = {}) {
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 110,
+      max_tokens: 95,
       temperature: 1,
-      system: `You generate eldritch, dreamlike discoveries for a divination-themed walking app cast as a deck of unknown tarot cards. Each find is an impossible object, omen, or apparition the walker encountered outside — drawn from the surreal, the esoteric, divination and the occult, threaded with the macabre and with cosmic, Lovecraftian dread. Never mundane, never realistic, never ordinary comfort. Let the subject range widely across finds and rarely repeat — moths, butterflies and other insects are welcome but should be occasional guests, never your default. Respond with valid JSON only: {"name": "...", "description": "..."}. The name is an evocative title of 2–6 words, like an entry in a grimoire or the face of a tarot card; use Title Case, no leading article unless it truly belongs. The description is a single sentence of 10 to 16 words — and NEVER more than 20 words; 20 is a hard ceiling, count and obey it. Lean short; never pad. Hushed, precise, and strange; dread through implication, never gore for shock. No quotes.`,
+      system: `You generate eldritch, dreamlike discoveries for a divination-themed walking app cast as a deck of unknown tarot cards. Each find is an impossible object, omen, or apparition the walker encountered outside — drawn from the surreal, the esoteric, divination and the occult, threaded with the macabre and with cosmic, Lovecraftian dread. Never mundane, never realistic, never ordinary comfort. Let the subject range widely across finds and rarely repeat — moths, butterflies and other insects are welcome but should be occasional guests, never your default. Respond with valid JSON only: {"name": "...", "description": "..."}. The name is an evocative title of 2–6 words, like an entry in a grimoire or the face of a tarot card; use Title Case, no leading article unless it truly belongs. The description is ONE complete sentence of 10 to 15 words — and NEVER more than 18; this is a hard ceiling, count and obey it, and always finish the sentence within it (it must never be cut off). Lean short; never pad. Hushed, precise, and strange; dread through implication, never gore for shock. No quotes.`,
       messages: [
         {
           role: 'user',
@@ -216,7 +216,7 @@ async function fetchDiscovery(tier, durationMinutes, apiKey, ctx = {}) {
   const parsed = JSON.parse(text.slice(start, end + 1))
 
   if (!parsed.name || !parsed.description) throw new Error('bad shape')
-  parsed.description = clampWords(parsed.description, 20)
+  parsed.description = clampWords(parsed.description, 18)
   return parsed
 }
 

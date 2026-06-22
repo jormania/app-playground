@@ -139,14 +139,7 @@ export default function Locus() {
   const { biome, timeOfDay, moon, weather, coords, now } = useWorld()
   const boxRef = useRef(null)
 
-  // the midday ground is the only dark one — cream there, dark ink otherwise
-  const onDark = timeOfDay === 'day'
-
   // ---- the readings ----
-  // the place is just the biome — the hour reads from the card's own scene; the
-  // word "sign" makes clear this is the zodiac sign (not, well, the other thing)
-  const zodiacText = `${getZodiac(now)} sign`
-
   const anchor = getNextSunAnchor(new Date(now), coords)
   const remaining = anchor.at.getTime() - now.getTime()
   const sunText = remaining > 0 ? `${ANCHOR_LABEL[anchor.key]} in ${untilWords(remaining)}` : null
@@ -171,7 +164,6 @@ export default function Locus() {
   if (wxText) segs.push({ key: 'wx', glyph: <ForecastGlyph condition={cond} />, text: wxText })
   if (sunText) segs.push({ key: 'sun', glyph: <Glyph>{ANCHOR_GLYPH[anchor.key] || SUN_FULL}</Glyph>, text: sunText })
   if (moonText) segs.push({ key: 'moon', glyph: <Glyph>{MOON}</Glyph>, text: moonText })
-  segs.push({ key: 'zodiac', glyph: <Glyph>{ZODIAC_GLYPH}</Glyph>, text: zodiacText })
 
   // ---- the ticker: drag with a finger; auto-drift at a steady pace; bounce ----
   useEffect(() => {
@@ -224,7 +216,7 @@ export default function Locus() {
   }, [])
 
   return (
-    <div className={onDark ? 'tg-locus on-dark' : 'tg-locus'} ref={boxRef} aria-hidden="true">
+    <div className="tg-locus" ref={boxRef} aria-hidden="true">
       {segs.map((s, i) => (
         <Fragment key={s.key}>
           {i > 0 && <Separator mode={sep} />}
