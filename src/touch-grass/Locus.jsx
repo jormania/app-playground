@@ -1,23 +1,20 @@
 import { Fragment, useRef, useEffect } from 'react'
 import { useWorld } from './world.jsx'
 import { daysToFullMoon, getNextSunAnchor } from './context.js'
-import { getZodiac } from './zodiac.js'
 import { weatherWord } from './weather.js'
 import ForecastGlyph from './WeatherGlyph.jsx'
 import Sparkle from './Sparkle.jsx'
 
-// A very faint "you are here" ticker in the bottom-right of the stage (outside
-// the card): the place, the zodiac season, the next turn of the day, the
-// daylight, the moon and the weather — one line, hugging the right edge. Each
-// reading wears a small COLOURED glyph (a little picture), with a soft dark halo
-// so it reads over any ground; the text inverts with the daily surface (cream on
-// the dark midday ground, dark ink on the pale ones).
+// A very faint "you are here" ticker along the bottom of the stage (outside the
+// card): the place, the next turn of the day, the moon and the weather — one
+// line, centred when it fits. Each reading wears a small coloured glyph (a little
+// picture) with a soft dark halo, and the text is bright cream with a dark
+// outline, so the whole strip reads over any ground — bright midday or dim night.
 //
-// When it's too wide for the screen it becomes a true ticker: you can drag it
-// with a finger, and on its own it drifts at a steady pace, bouncing off each
-// end and reversing — never wrapping. It honours reduced-motion (no auto-drift,
-// but still draggable). The separator between readings can be previewed live
-// with ?sep=hairline|gap|dot|slash|sparkle.
+// When it's wider than the screen it becomes a true ticker: you can drag it with
+// a finger, and on its own it drifts at a steady pace, bouncing off each end and
+// reversing — never wrapping. It honours reduced-motion (no auto-drift, still
+// draggable). The separator can be previewed live with ?sep=hairline|gap|dot|slash|sparkle.
 
 // shared palette for the little pictures
 const C = {
@@ -59,15 +56,7 @@ const BIOME_GLYPH = {
   plain: <path d="M2 20 q4 -5 8 -2 q4 -5 8 -2 q2 1 4 0 V21 H2 Z" fill={C.grass} />,
 }
 
-// a warm zodiac wheel — the sun riding the ring of signs
-const ZODIAC_GLYPH = (
-  <g>
-    <circle cx="12" cy="12" r="8" fill="none" stroke={C.gold} strokeWidth="1.9" />
-    <circle cx="12" cy="12" r="2.4" fill={C.amber} />
-  </g>
-)
-
-// a full golden sun — for daylight and the noon turn
+// a full golden sun — for the noon turn
 const SUN_FULL = (
   <g>
     <g stroke={C.gold} strokeWidth="1.7" strokeLinecap="round">
@@ -136,7 +125,7 @@ function untilWords(ms) {
 const Glyph = ({ children }) => <svg viewBox="0 0 24 24">{children}</svg>
 
 export default function Locus() {
-  const { biome, timeOfDay, moon, weather, coords, now } = useWorld()
+  const { biome, moon, weather, coords, now } = useWorld()
   const boxRef = useRef(null)
 
   // ---- the readings ----
@@ -178,8 +167,13 @@ export default function Locus() {
     let last = null
     let raf = 0
 
-    const measure = () => { max = el.scrollWidth - el.clientWidth }
-    const onResize = () => { measure(); inited = false }
+    // reading scrollWidth forces layout, so do it sparingly (on resize and a few
+    // times a second) rather than every animation frame
+    const measure = () => {
+      max = el.scrollWidth - el.clientWidth
+      if (!inited && max > 1) { el.scrollLeft = max; inited = true } // start at the right edge
+    }
+    const onResize = () => { inited = false; measure() }
     const pause = () => { paused = true }
     const resume = () => { paused = false; last = null }
 
@@ -190,12 +184,12 @@ export default function Locus() {
     window.addEventListener('pointerup', resume)
     el.addEventListener('pointercancel', resume)
 
+    let lastMeasure = 0
     const tick = (t) => {
-      measure()
-      if (!inited && max > 1) { el.scrollLeft = max; inited = true } // hug the right edge first
       if (last == null) last = t
       const dt = (t - last) / 1000
       last = t
+      if (t - lastMeasure > 400) { measure(); lastMeasure = t } // re-measure ~2.5×/s, not every frame
       if (!reduce && !paused && max > 1) {
         let next = el.scrollLeft + dir * SPEED * dt
         if (next <= 0) { next = 0; dir = 1 }

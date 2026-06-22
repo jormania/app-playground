@@ -74,11 +74,11 @@ body {
   margin-top: 3px;
 }
 
-/* A faint "you are here" ticker in the bottom-right of the stage. One line that
-   hugs the right edge and never wraps; when it's wider than the screen it scrolls
-   (drag with a finger, and it drifts on its own — see Locus.jsx). Same ink as the
-   masthead, inverted with the daily ground, with an opposite-tone halo so the
-   text and glyphs read over any surface. Sits below the card in the DOM. */
+/* A faint "you are here" ticker along the bottom of the stage. One line, centred
+   when it fits and never wrapping; when it's wider than the screen it scrolls
+   (drag with a finger, and it drifts on its own — see Locus.jsx). Bright cream
+   with a dark outline so the text and glyphs read over any ground. z-index keeps
+   it above the card's drop shadow (they never overlap, so the card is never hidden). */
 .tg-locus {
   position: fixed;
   /* centred horizontally; when it fits it sits centred, when it overflows it

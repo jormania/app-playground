@@ -51,7 +51,7 @@ export default function ReliquaryPanel({ history, onClearLast, onClearAll, onClo
 
   return (
     <div className="tg-reliquary">
-      <h1>What you've kept.</h1>
+      <h1>What you've found.</h1>
       {count === 0 && <p className="tg-hint">Nothing kept yet — your finds will gather here.</p>}
 
       {count > 0 && (
