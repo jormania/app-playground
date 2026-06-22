@@ -1,6 +1,7 @@
 import { useWorld } from './world.jsx'
 import { getTimes, getMoonTimes } from 'suncalc'
 import { moonPhaseName, sunDeclinationDeg, moonDeclinationDeg, riseSetDirections } from './context.js'
+import { getZodiac, daysToNextSign } from './zodiac.js'
 
 // A quiet reading that fills the sky above the invitation on the Threshold. One
 // of three, chosen in the Keeper (persisted): tonight's sky, the sun & moon arcs,
@@ -32,6 +33,15 @@ function StarGlyph() {
   return (
     <svg viewBox="0 0 24 24" className="tg-tf-glyph" aria-hidden="true">
       <path d="M12 3 L13.6 10.4 L21 12 L13.6 13.6 L12 21 L10.4 13.6 L3 12 L10.4 10.4 Z" fill="#dfe6ef" />
+    </svg>
+  )
+}
+// a small zodiac wheel — for the current sign
+function ZodiacGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="tg-tf-glyph" aria-hidden="true">
+      <circle cx="12" cy="12" r="8" fill="none" stroke="#e7c24a" strokeWidth="1.8" />
+      <circle cx="12" cy="12" r="2.4" fill="#f0b429" />
     </svg>
   )
 }
@@ -134,6 +144,10 @@ function Tonight({ coords, now, moon, reading }) {
   else if (dawnNext) { starVerb = 'fade by'; starTime = fmt(dawnNext) }
   if (starTime) starPhrase = 'stars'
 
+  // the current zodiac sign and when its reign turns to the next
+  const sign = getZodiac(d)
+  const signDays = daysToNextSign(d)
+
   return (
     <div className="tg-tf tg-tf-tonight">
       <div className="tg-tf-head">{reading || 'tonight'}</div>
@@ -142,6 +156,7 @@ function Tonight({ coords, now, moon, reading }) {
       )}
       <div className="tg-tf-row"><MoonGlyph phase={moon.phase} /><span>{moonPhrase}{moonVerb ? <>, <span className="tg-nowrap">{moonVerb} <span className="tg-time">{moonTime}</span></span></> : ''}</span></div>
       {starPhrase && <div className="tg-tf-row"><StarGlyph /><span>{starPhrase} <span className="tg-nowrap">{starVerb} <span className="tg-time">{starTime}</span></span></span></div>}
+      {signDays != null && <div className="tg-tf-row"><ZodiacGlyph /><span>{sign}, <span className="tg-nowrap">the wheel turns in <span className="tg-time">{signDays} {signDays === 1 ? 'day' : 'days'}</span></span></span></div>}
     </div>
   )
 }

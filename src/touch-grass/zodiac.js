@@ -44,3 +44,16 @@ export function getZodiac(date) {
   }
   return 'capricorn' // Jan 1–19
 }
+
+// whole days until the Sun crosses into the next sign (i.e. the current sign ends)
+export function daysToNextSign(date) {
+  const today = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  let best = null
+  for (const yr of [today.getFullYear(), today.getFullYear() + 1]) {
+    for (const [m, d] of SIGNS) {
+      const bd = new Date(yr, m - 1, d)
+      if (bd.getTime() > today.getTime() && (best === null || bd < best)) best = bd
+    }
+  }
+  return best ? Math.round((best.getTime() - today.getTime()) / 86400000) : null
+}
