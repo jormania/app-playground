@@ -235,11 +235,15 @@ export default function App() {
   }
 
   function toggleCall() {
-    setCallOn(prev => {
-      const next = !prev
-      localStorage.setItem(CALL_STORAGE, next ? '1' : '0')
-      return next
-    })
+    const next = !callOn
+    localStorage.setItem(CALL_STORAGE, next ? '1' : '0')
+    setCallOn(next)
+    // turning notifications on (a real tap, so a valid gesture): if the browser
+    // hasn't been asked yet, prompt now. If already denied, it can't be re-asked
+    // here — the Keeper shows the "blocked" hint instead.
+    if (next && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      try { Notification.requestPermission() } catch (_) {}
+    }
   }
 
   function chooseThreshold(mode) {

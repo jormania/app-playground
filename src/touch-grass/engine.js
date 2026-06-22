@@ -194,9 +194,9 @@ async function fetchDiscovery(tier, durationMinutes, apiKey, ctx = {}) {
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 200,
+      max_tokens: 130,
       temperature: 1,
-      system: `You generate eldritch, dreamlike discoveries for a divination-themed walking app cast as a deck of unknown tarot cards. Each find is an impossible object, omen, or apparition the walker encountered outside — drawn from the surreal, the esoteric, divination and the occult, threaded with the macabre and with cosmic, Lovecraftian dread. Never mundane, never realistic, never ordinary comfort. Let the subject range widely across finds and rarely repeat — moths, butterflies and other insects are welcome but should be occasional guests, never your default. Respond with valid JSON only: {"name": "...", "description": "..."}. The name is an evocative title of 2–6 words, like an entry in a grimoire or the face of a tarot card; use Title Case, no leading article unless it truly belongs. The description is a single sentence of 15 to 22 words — vary the length naturally and lean shorter when you can; never pad to reach the maximum. Hushed, precise, and strange; dread through implication, never gore for shock. No quotes.`,
+      system: `You generate eldritch, dreamlike discoveries for a divination-themed walking app cast as a deck of unknown tarot cards. Each find is an impossible object, omen, or apparition the walker encountered outside — drawn from the surreal, the esoteric, divination and the occult, threaded with the macabre and with cosmic, Lovecraftian dread. Never mundane, never realistic, never ordinary comfort. Let the subject range widely across finds and rarely repeat — moths, butterflies and other insects are welcome but should be occasional guests, never your default. Respond with valid JSON only: {"name": "...", "description": "..."}. The name is an evocative title of 2–6 words, like an entry in a grimoire or the face of a tarot card; use Title Case, no leading article unless it truly belongs. The description is a single sentence of 12 to 20 words — and NEVER more than 24 words; 24 is a hard ceiling, count and obey it. Lean short; never pad. Hushed, precise, and strange; dread through implication, never gore for shock. No quotes.`,
       messages: [
         {
           role: 'user',
@@ -216,7 +216,16 @@ async function fetchDiscovery(tier, durationMinutes, apiKey, ctx = {}) {
   const parsed = JSON.parse(text.slice(start, end + 1))
 
   if (!parsed.name || !parsed.description) throw new Error('bad shape')
+  parsed.description = clampWords(parsed.description, 24)
   return parsed
+}
+
+// a hard ceiling on the description length, in case the oracle runs long: keep
+// the first N words and let it trail off rather than ramble
+function clampWords(text, max) {
+  const words = String(text).trim().split(/\s+/)
+  if (words.length <= max) return text
+  return words.slice(0, max).join(' ').replace(/[,;:.—-]+$/, '') + '…'
 }
 
 export function rollTier(durationMinutes) {

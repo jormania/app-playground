@@ -12,7 +12,7 @@ function fmtDay(ts) {
   return new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 function fmtTime(ts) {
-  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 function fmtDur(min) {
@@ -51,7 +51,7 @@ export default function ReliquaryPanel({ history, onClearLast, onClearAll, onClo
 
   return (
     <div className="tg-reliquary">
-      <h1>The Reliquary</h1>
+      <h1>What you've kept.</h1>
       <p className="tg-hint">{count
         ? `${count} relic${count > 1 ? 's' : ''} kept — newest first`
         : 'Nothing kept yet — your finds will gather here.'}</p>

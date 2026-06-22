@@ -178,7 +178,7 @@ export default function Locus() {
     const el = boxRef.current
     if (!el) return
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const SPEED = 40 // px per second — a steady, readable drift
+    const SPEED = 24 // px per second — a calm, readable drift
     let dir = -1     // start at the right edge and drift left to reveal the rest
     let max = 0
     let paused = false

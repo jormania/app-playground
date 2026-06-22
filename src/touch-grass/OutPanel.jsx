@@ -69,8 +69,8 @@ export default function OutPanel({ departedAt, onReturn }) {
     <div>
       <h1>You're outside.</h1>
       <div className="tg-walkmeta">
-        <div className="tg-walkmeta-main">Out for <span style={color ? { color } : undefined}>{formatElapsed(elapsed)}</span></div>
-        <div>Left at {new Date(departedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+        <div className="tg-walkmeta-main">Wandering for <span style={color ? { color } : undefined}>{formatElapsed(elapsed)}</span></div>
+        <div>Set out at {new Date(departedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</div>
       </div>
       {goldenSoon && (
         <div className="tg-golden-whisper">the light turns to honey in {formatCountdown(untilGolden)}</div>
@@ -79,7 +79,7 @@ export default function OutPanel({ departedAt, onReturn }) {
         <div className="tg-wander-head">while you wander</div>
         <div className="tg-wander-text" key={wanderIdx}>{WANDER[wanderIdx]}</div>
       </div>
-      <button onClick={onReturn}>I'm back</button>
+      <button onClick={onReturn}>Step back</button>
     </div>
   )
 }

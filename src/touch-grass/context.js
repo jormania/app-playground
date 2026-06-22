@@ -61,6 +61,39 @@ export function daysToFullMoon(phase) {
   return (target - p) * SYNODIC_MONTH
 }
 
+// Solar declination (degrees) — the precise value (same maths as the altitude),
+// good for working out where on the horizon the sun rises and sets.
+export function sunDeclinationDeg(date) {
+  const d = toDays(date)
+  const M = RAD * (357.5291 + 0.98560028 * d)
+  const L = M + RAD * (1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M)) + RAD * 102.9372 + Math.PI
+  return Math.asin(Math.sin(OBLIQUITY) * Math.sin(L)) / RAD
+}
+
+// Lunar declination (degrees), from SunCalc's own moon-coordinate maths (only its
+// horizontal transform misbehaves in this build, not the ra/dec it derives).
+export function moonDeclinationDeg(date) {
+  const d = toDays(date)
+  const L = RAD * (218.316 + 13.176396 * d)
+  const M = RAD * (134.963 + 13.064993 * d)
+  const F = RAD * (93.272 + 13.229350 * d)
+  const l = L + RAD * 6.289 * Math.sin(M) // ecliptic longitude
+  const b = RAD * 5.128 * Math.sin(F)     // ecliptic latitude
+  return Math.asin(Math.sin(b) * Math.cos(OBLIQUITY) + Math.cos(b) * Math.sin(OBLIQUITY) * Math.sin(l)) / RAD
+}
+
+const COMPASS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest']
+function compass8(az) { return COMPASS[Math.round((((az % 360) + 360) % 360) / 45) % 8] }
+
+// Where a body of declination `decDeg` rises and sets on the horizon at latitude
+// `latDeg` (the "amplitude" formula). Null when it doesn't rise/set (circumpolar).
+export function riseSetDirections(decDeg, latDeg) {
+  const x = Math.sin(decDeg * RAD) / Math.cos(latDeg * RAD)
+  if (!(x >= -1 && x <= 1)) return null
+  const A = Math.acos(x) / RAD // 0..180 from north, on the eastern (rising) side
+  return { rise: compass8(A), set: compass8(360 - A) }
+}
+
 // The start of the evening golden hour at a location, or null without one — used
 // for the "the light turns to honey" whisper while out.
 export function getGoldenHourStart(date, coords) {

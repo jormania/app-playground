@@ -69,7 +69,18 @@ function momentColor(key) {
   return MOMENT_PALETTE[h % MOMENT_PALETTE.length]
 }
 
-async function fetchThreshold(apiKey, ctx) {
+// the extra "reading" the oracle writes for the Threshold's chosen display:
+//   tonight → a short atmospheric "Tonight, …" fragment
+//   almanac → one bright, enticing line of nature's call (the living world now)
+//   arc     → none (it's pure data)
+function readingSpec(mode) {
+  if (mode === 'tonight') return `\n"reading": a short fragment that begins with "Tonight," and ends with a period — ecological and atmospheric (e.g. "Tonight, the lingering dusk." / "Tonight, warm shadows thicken." / "Tonight, the canopy rests.") — true to the hour, season, place and weather below. Eight words at most.`
+  if (mode === 'almanac') return `\n"reading": one line under 14 words, no trailing punctuation — nature's call: paint what the living world just outside is doing right now in bright, enticing, sensory words, true to the season, hour, place and weather below. Inviting, never a forecast.`
+  return ''
+}
+
+async function fetchThreshold(apiKey, ctx, mode) {
+  const wantReading = mode === 'tonight' || mode === 'almanac'
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -80,15 +91,15 @@ async function fetchThreshold(apiKey, ctx) {
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 80,
+      max_tokens: 160,
       temperature: 1,
-      system: `You write the home screen of a walking app whose whole purpose is to get the user to put the phone down and go outside. Respond with valid JSON only: {"invite": "...", "tagline": "..."}.
+      system: `You write the home screen of a walking app whose whole purpose is to get the user to put the phone down and go outside. Respond with valid JSON only: {"invite": "...", "tagline": "..."${wantReading ? ', "reading": "..."' : ''}}.
 "invite": one to five words (lean short when you can), Title Case — a fresh, compelling call to step outside (e.g. "Slip Away", "Leave the Glow Behind", "Go Where the Light Goes"). It is really an invitation to touch grass, said another way. Never use the words "touch" or "grass". Vary it; surprise me.
-"tagline": one line under 12 words — dreamy, witty, a quiet play on leaving the screen for the world. No quotes, no trailing punctuation.
-Both MUST fit the real time of day stated below. At night never invoke the sun, daylight, dawn, or "chasing the light"; by day never invoke the moon, stars, or the dark. Match what is actually outside right now.`,
+"tagline": one line under 12 words — dreamy, witty, a quiet play on leaving the screen for the world. No quotes, no trailing punctuation.${readingSpec(mode)}
+Everything MUST fit the real time of day stated below. At night never invoke the sun, daylight, dawn, or "chasing the light"; by day never invoke the moon, stars, or the dark. Match what is actually outside right now.`,
       messages: [{
         role: 'user',
-        content: `Compose the invite and tagline for right now. ${describeSetting(ctx)}${(ctx.moments && ctx.moments.length) ? ` Today is ${describeMoments(ctx.moments)} — you may nod to it.` : ''} Let the hour above guide the imagery — the light by day, the moon and dark by night.`,
+        content: `Compose for right now. ${describeSetting(ctx)}${(ctx.moments && ctx.moments.length) ? ` Today is ${describeMoments(ctx.moments)} — you may nod to it.` : ''} Let the hour above guide the imagery — the light by day, the moon and dark by night.`,
       }],
     }),
   })
@@ -99,9 +110,11 @@ Both MUST fit the real time of day stated below. At night never invoke the sun, 
   if (start === -1 || end === -1) throw new Error('no JSON in response')
   const parsed = JSON.parse(text.slice(start, end + 1))
   const tagline = (parsed.tagline || '').trim().replace(/^["']|["'.]+$/g, '')
+  const reading = wantReading ? (parsed.reading || '').trim().replace(/^["']|["']$/g, '') : null
   return {
     invite: cleanInvite(parsed.invite) || randomInvite(),
     tagline: tagline || randomFallback(),
+    reading: reading || null,
   }
 }
 
@@ -109,6 +122,7 @@ export default function DeparturePanel({ onDepart, apiKey, fill = 'almanac' }) {
   const world = useWorld()
   const [invite, setInvite] = useState(() => randomInvite(world.timeOfDay))
   const [tagline, setTagline] = useState(null)
+  const [reading, setReading] = useState(null)
   const [loading, setLoading] = useState(true)
 
   // Runs synchronously before the browser paints — prevents any flash
@@ -116,6 +130,7 @@ export default function DeparturePanel({ onDepart, apiKey, fill = 'almanac' }) {
   useLayoutEffect(() => {
     setInvite(randomInvite(world.timeOfDay))
     setTagline(null)
+    setReading(null)
     setLoading(true)
   }, [])
 
@@ -126,8 +141,8 @@ export default function DeparturePanel({ onDepart, apiKey, fill = 'almanac' }) {
       return
     }
     const ctx = { timeOfDay: world.timeOfDay, season: world.season, weather: world.weather, moon: world.moon, coords: world.coords, biome: world.biome, moments: world.moments }
-    fetchThreshold(apiKey, ctx)
-      .then(({ invite, tagline }) => { setInvite(invite); setTagline(tagline) })
+    fetchThreshold(apiKey, ctx, fill)
+      .then(({ invite, tagline, reading }) => { setInvite(invite); setTagline(tagline); setReading(reading) })
       .catch(() => setTagline(randomFallback()))
       .finally(() => setLoading(false))
   }, [])
@@ -136,7 +151,7 @@ export default function DeparturePanel({ onDepart, apiKey, fill = 'almanac' }) {
 
   return (
     <div>
-      <ThresholdFill mode={fill} />
+      <ThresholdFill mode={fill} reading={reading} />
       <h1>{invite}</h1>
       {loading ? <LoadingLine /> : <p>{tagline}</p>}
       {moments.length > 0 && (

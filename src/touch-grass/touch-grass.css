@@ -99,32 +99,33 @@ body {
   overscroll-behavior: contain;
   scrollbar-width: none;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.62rem;
-  letter-spacing: 0.14em;
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   font-variant: small-caps;
   text-transform: lowercase;
   color: #2a2118; /* dark ink for the pale dawn/dusk/night grounds */
-  opacity: 0.5;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.45);
+  opacity: 0.72;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
   transition: color 1.5s ease;
 }
 .tg-locus::-webkit-scrollbar { display: none; }
 .tg-locus.on-dark {
-  color: #f3ead4; /* cream for the dark midday ground */
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  color: #fbf8ef; /* near-white cream for the dark midday ground */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
-.tg-locus-item { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.tg-locus-item { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; }
 /* the readings now wear little COLOURED pictures, so a soft dark halo (rather than
    an inverting one) keeps them crisp over any ground — pale or dark */
 .tg-locus svg {
-  width: 14px;
-  height: 14px;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
-  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.6));
 }
 /* ---- separator styles (preview live with ?sep=) ---- */
 /* hairline (default): a faint vertical rule that inverts with the ground */
-.tg-locus-rule { width: 1px; height: 12px; background: currentColor; opacity: 0.3; flex: 0 0 auto; }
+.tg-locus-rule { width: 1px; height: 16px; background: currentColor; opacity: 0.32; flex: 0 0 auto; }
 /* a faded middot or slash */
 .tg-locus-mark { opacity: 0.5; flex: 0 0 auto; }
 /* extra breathing space, beyond the base gap */
@@ -318,31 +319,48 @@ body {
 .tg-tf {
   margin-bottom: 16px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
-  line-height: 1.65;
+  font-size: 0.74rem;
+  letter-spacing: 0.03em;
+  line-height: 1.55;
   font-variant: small-caps;
-  color: #ece5d2;
-  opacity: 0.6;
-  max-width: 30ch;
+  color: #f1ecdc;
+  opacity: 0.86;
+  /* a dark halo so it reads over the bright upper sky (above the reading scrim) */
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 .tg-tf-head {
-  font-size: 0.62rem; letter-spacing: 0.18em; color: #cdb079;
-  opacity: 0.9; margin-bottom: 3px;
+  font-size: 0.66rem; letter-spacing: 0.1em; color: #ecc356;
+  margin-bottom: 4px;
 }
-/* sun & moon arcs, side by side and perfectly level */
-.tg-tf-arcs { max-width: none; display: flex; gap: 14px; }
+.tg-tf-eyebrow { font-size: 0.62rem; letter-spacing: 0.03em; line-height: 1.35; } /* the longer "Month, Nickname" line */
+.tg-tf-row { display: flex; align-items: center; gap: 7px; }
+.tg-tf-row > span { min-width: 0; } /* let the phrase wrap; the time clause stays whole */
+.tg-nowrap { white-space: nowrap; }
+/* timestamps: small-caps blows digits up larger than the words, so trim them back
+   to sit level with the text (matching the Out panel's restrained meta) */
+.tg-time { font-size: 0.82em; font-variant: normal; letter-spacing: 0.02em; }
+
+/* the find's rarity sigil + esoteric auspice (the sigil doubles as the divider) */
+.tg-auspice-sigil { width: 12px; height: 12px; margin: 0 7px; vertical-align: -1px; }
+.tg-auspice { font-style: italic; opacity: 0.8; }
+.tg-tf-glyph { width: 16px; height: 16px; flex: 0 0 auto; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.55)); }
+
+/* sun & moon arcs — tucked to the left and right edges, a gap between */
+.tg-tf-arcs { display: flex; justify-content: space-between; align-items: flex-start; }
 .tg-tf-arc-col { display: flex; flex-direction: column; align-items: center; }
-.tg-tf-arcsvg { display: block; width: 92px; height: 47px; color: #ece5d2; }
-.tg-tf-arc-cap { font-size: 0.58rem; letter-spacing: 0.03em; opacity: 0.82; margin-top: 2px; white-space: nowrap; }
+.tg-tf-arc-title { font-size: 0.58rem; letter-spacing: 0.1em; color: #ecc356; margin-bottom: 1px; }
+.tg-tf-arcsvg { display: block; width: 102px; height: 59px; color: #f1ecdc; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5)); }
+.tg-tf-arc-cap { font-size: 0.58rem; letter-spacing: 0.02em; line-height: 1.5; text-align: center; white-space: nowrap; margin-top: 1px; }
 
 /* a small labelled dropdown in the Keeper (the Threshold reading chooser) */
-.tg-select-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.tg-select-row { display: flex; align-items: center; justify-content: flex-start; gap: 9px; margin-bottom: 14px; }
 .tg-select-row label { margin: 0; font-size: 0.78rem; color: #d8e0d2; letter-spacing: 0.05em; font-variant: small-caps; }
 .tg-select {
   flex: 0 1 auto;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.76rem;
+  font-variant: small-caps; /* match the small-caps labels around it */
+  letter-spacing: 0.05em;
   color: #f3ead4;
   background: rgba(10, 16, 18, 0.5);
   border: 1.5px solid rgba(243, 234, 212, 0.4);
@@ -390,8 +408,9 @@ body {
   margin-bottom: 16px;
   font-size: 0.76rem;
   font-weight: 400;
-  color: #d3d8cb;
-  opacity: 0.66;
+  color: #f1ecdc; /* matches the Tonight reading (the baseline) */
+  opacity: 0.86;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
   letter-spacing: 0.04em;
   line-height: 1.95;
 }
@@ -402,7 +421,8 @@ body {
 .tg-wander { margin-bottom: 24px; max-width: 32ch; }
 .tg-wander-head {
   font-size: 0.68rem; letter-spacing: 0.16em; font-variant: small-caps;
-  color: #cdb079; opacity: 0.8; margin-bottom: 7px;
+  color: #ecc356; opacity: 0.86; margin-bottom: 7px; /* matches the Tonight header gold */
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 .tg-wander-text {
   font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
@@ -418,9 +438,10 @@ body {
   margin-bottom: 18px;
   font-size: 0.76rem;
   font-weight: 400;
-  opacity: 0.66;
+  opacity: 0.86;
   letter-spacing: 0.04em;
-  color: #d3d8cb;
+  color: #f1ecdc; /* matches the Tonight reading baseline */
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 .tg-moment { font-variant: small-caps; line-height: 1.7; margin-bottom: 7px; }
 .tg-moment span span { font-weight: 400; }
