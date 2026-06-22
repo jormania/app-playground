@@ -31,7 +31,7 @@ const CALL_STORAGE = 'tg-react-call'
 const HISTORY_STORAGE = 'tg-react-history'
 const VIEW_STORAGE = 'tg-react-view'
 const THRESHOLD_STORAGE = 'tg-react-threshold'
-const THRESHOLD_MODES = ['almanac', 'tonight', 'arc', 'sign']
+const THRESHOLD_MODES = ['almanac', 'tonight', 'arc']
 const HISTORY_CAP = 300
 
 function loadState() {

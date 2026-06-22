@@ -4,8 +4,7 @@ import { useWorld } from './world.jsx'
 const THRESHOLD_OPTIONS = [
   ['almanac', 'Living-world almanac'],
   ['tonight', "Tonight's sky"],
-  ['arc', "The sun's arc"],
-  ['sign', 'Rising sign'],
+  ['arc', 'Sun & moon arcs'],
 ]
 
 export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSound, signsOn, onToggleSigns, motionOn, onToggleMotion, callOn, onToggleCall, thresholdMode, onThreshold, onClose }) {
