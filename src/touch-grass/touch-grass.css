@@ -121,8 +121,8 @@ body {
 /* the readings wear little coloured pictures — a stronger dark halo keeps them
    crisp over any ground, pale or dark */
 .tg-locus svg {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
   filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.85)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
 }
@@ -237,14 +237,14 @@ body {
   z-index: 4;
   background: none;
   border: none;
-  padding: 4px;
+  padding: 9px;
   cursor: pointer;
   line-height: 0;
   opacity: 0.95;
   transition: opacity 0.18s, transform 0.18s;
 }
 .tg-card-key:hover { opacity: 1; transform: rotate(-10deg) scale(1.06); }
-.tg-card-key svg { width: 26px; height: 26px; display: block; }
+.tg-card-key svg { width: 16px; height: 16px; display: block; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.55)); }
 
 
 /* ---- Content typography (cream ink over artwork) ---- */
@@ -530,7 +530,7 @@ body {
 .tg-reliquary .tg-row button { margin: 0; padding: 6px 10px; font-size: 0.72rem; letter-spacing: 0.02em; white-space: nowrap; }
 .tg-confirm button { margin: 0; padding: 4px 12px; font-size: 0.76rem; }
 
-/* lens — opens the Reliquary, tucked into the bottom-left grass */
+/* the kept cards — opens the Reliquary, tucked into the bottom-left grass */
 .tg-card-lens {
   position: absolute;
   bottom: 4px;
@@ -538,13 +538,13 @@ body {
   z-index: 4;
   background: none;
   border: none;
-  padding: 4px;
+  padding: 9px;
   cursor: pointer;
   line-height: 0;
   opacity: 0.95;
   transition: opacity 0.18s, transform 0.18s;
 }
-.tg-card-lens svg { width: 26px; height: 26px; display: block; }
+.tg-card-lens svg { width: 16px; height: 16px; display: block; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.55)); }
 @media (hover: hover) {
   .tg-card-lens:hover { opacity: 1; transform: rotate(8deg) scale(1.06); }
 }
