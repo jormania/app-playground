@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Sparkle, { starPath } from './Sparkle.jsx'
+import { getTimeOfDay } from './context.js'
 
 const TIER_LABEL = {
   common:    { text: 'Common',    color: null },
@@ -51,7 +52,7 @@ export default function ReliquaryPanel({ history, onClearLast, onClearAll, onClo
 
   return (
     <div className="tg-reliquary">
-      <h1>What you've found.</h1>
+      <h1>What found you.</h1>
       {count === 0 && <p className="tg-hint">Nothing kept yet — your finds will gather here.</p>}
 
       {count > 0 && (
@@ -60,7 +61,12 @@ export default function ReliquaryPanel({ history, onClearLast, onClearAll, onClo
             const key = `${w.ts}-${i}`
             const isOpen = open === key
             const tier = TIER_LABEL[w.tier] || TIER_LABEL.common
-            const skyLine = w.sky && [w.sky.moon, w.sky.weather, w.sky.biome].filter(Boolean).join(' · ')
+            // where & when it was found: the biome, and simply day or night
+            const tod = (w.sky && w.sky.tod) || getTimeOfDay(new Date(w.ts))
+            const dayNight = tod === 'night' ? 'nighttime' : 'daytime'
+            const foundLine = (w.sky && w.sky.biome)
+              ? `found in the ${w.sky.biome} during ${dayNight}`
+              : `found during ${dayNight}`
             return (
               <button
                 type="button"
@@ -85,7 +91,7 @@ export default function ReliquaryPanel({ history, onClearLast, onClearAll, onClo
                     <p className="tg-relic-desc">{w.discovery.description}</p>
                     <div className="tg-relic-foot">
                       <span style={tier.color ? { color: tier.color } : undefined}>{tier.text}</span>
-                      {skyLine && <span className="tg-relic-sky"> · kept under {skyLine}</span>}
+                      <span className="tg-relic-sky"> · {foundLine}</span>
                     </div>
                   </div>
                 )}

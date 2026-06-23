@@ -196,6 +196,7 @@ export default function App() {
       moon: world.moon ? moonPhaseName(world.moon.phase) : null,
       weather: world.weather ? weatherWord(world.weather.condition) : null,
       biome: world.biome || null,
+      tod: world.timeOfDay || null,
     }
     const walk = { ts: Date.now(), durationMinutes, tier, discovery, isStatic, apiAttempted, sky }
     setState(prev => ({ ...prev, status: 'idle', departedAt: null, pendingTier: null, lastWalk: walk }))

@@ -23,18 +23,14 @@ function KeyIcon() {
   )
 }
 
-// The Reliquary — a small fan of kept cards (the deck you've gathered), the front
-// one bearing a star, in parchment cream with gold edges.
+// The Reliquary — a single tarot card tilted at an angle, drawn as a clean gold
+// outline with empty (transparent) space inside, so it reads at a glance.
 function ReliquaryIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <g transform="rotate(-13 12 13)">
-        <rect x="4.8" y="6" width="8.6" height="13" rx="1.6" fill="#efe6cc" stroke="#c89a2c" strokeWidth="1" />
-      </g>
-      <g transform="rotate(11 12 13)">
-        <rect x="10" y="5.4" width="8.6" height="13" rx="1.6" fill="#fbf4dd" stroke="#e7c24a" strokeWidth="1.2" />
-        <path d="M14.3 9.2 L15.05 11.4 L17.3 12 L15.05 12.6 L14.3 14.8 L13.55 12.6 L11.3 12 L13.55 11.4 Z" fill="#e7c24a" />
-      </g>
+      <rect x="7.4" y="3.6" width="9.2" height="16.8" rx="2"
+        fill="none" stroke="#e7c24a" strokeWidth="2.2"
+        transform="rotate(-15 12 12)" />
     </svg>
   )
 }
