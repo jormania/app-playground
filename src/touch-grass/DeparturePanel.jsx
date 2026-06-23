@@ -85,7 +85,7 @@ function momentColor(key) {
 //   almanac → one bright, enticing line of nature's call (the living world now)
 //   arc     → none (it's pure data)
 function readingSpec(mode) {
-  if (mode === 'tonight') return `\n"reading": ONE short, COMPLETE fragment beginning with "Tonight," and ending with a period — usually about FIVE words after "Tonight,", and never more than EIGHT, a whole image that never trails off and never ends on a word like "the", "a", "of", "to", "with", or "and". Never a second sentence. Each visit, lean on a DIFFERENT facet and vary widely: the lie of the land (coast, forest, city, mountain, plain), the season and the turning year, the hour and its light, the place itself, a living thing abroad now. Do NOT mention temperature — no warmth, heat, cold, "warm", or "holds the heat" — and do not default to stillness, exhaling, or the sky. Examples across facets: "Tonight, the tideline keeps glowing." (coast) · "Tonight, the pines stand close." (forest) · "Tonight, the streets empty out." (city) · "Tonight, thin air sharpens the dark." (mountain) · "Tonight, the meadow lies open." (plain) · "Tonight, midsummer lingers late." (season).`
+  if (mode === 'tonight') return `\n"reading": ONE short, COMPLETE fragment beginning with "Tonight," and ending with a period — at most FIVE words after "Tonight,", a whole image that never trails off and never ends on a word like "the", "a", "of", "to", "with", or "and". Never a second sentence. Each visit, lean on a DIFFERENT facet and vary widely: the lie of the land (coast, forest, city, mountain, plain), the season and the turning year, the hour and its light, the place itself, a living thing abroad now. Do NOT mention temperature — no warmth, heat, cold, "warm", or "holds the heat" — and do not default to stillness, exhaling, or the sky. Examples across facets: "Tonight, the tideline keeps glowing." (coast) · "Tonight, the pines stand close." (forest) · "Tonight, the streets empty out." (city) · "Tonight, thin air sharpens the dark." (mountain) · "Tonight, the meadow lies open." (plain) · "Tonight, midsummer lingers late." (season).`
   if (mode === 'almanac') return `\n"reading": one line under 14 words, no trailing punctuation — nature's call: paint what the living world just outside is doing right now in bright, enticing, sensory words, true to the season, hour, place and weather below. Inviting, never a forecast.`
   return ''
 }
@@ -130,7 +130,7 @@ Everything MUST fit the real time of day stated below. At night never invoke the
   return {
     invite: cleanInvite(parsed.invite) || randomInvite(),
     tagline: tagline || randomFallback(),
-    reading: reading || null,
+    reading: reading || (mode === 'tonight' ? randomTonight() : null),
   }
 }
 
@@ -144,13 +144,18 @@ const TONIGHT_FALLBACKS = [
   'Tonight, the night opens wide.',
   'Tonight, something waits outside.',
 ]
-// keep the Tonight line to one short, COMPLETE fragment: first sentence only,
-// leaning ~5 words after "Tonight," and capped at 8. Crucially, never truncate
-// mid-phrase — if it runs long, swap in a whole fallback rather than a dangling cut.
+// keep the Tonight line to one short, COMPLETE fragment: first sentence only, no
+// more than five words after "Tonight,". Crucially, never truncate mid-phrase —
+// if it runs long, swap in a whole fallback rather than leave a dangling cut.
 function clampTonight(s) {
   const first = (s || '').split(/(?<=[.!?])\s/)[0].trim().replace(/[.!?]+$/, '')
   const words = first.split(/\s+/).filter(Boolean)
-  if (/^tonight\b/i.test(first) && words.length >= 3 && words.length <= 9) return words.join(' ') + '.'
+  if (/^tonight\b/i.test(first) && words.length >= 3 && words.length <= 6) return words.join(' ') + '.'
+  return randomTonight()
+}
+// a complete Tonight line, for when the oracle is silent (no key, an error, or a
+// dropped field) — so the reading is never the bare label "Tonight" alone
+function randomTonight() {
   return TONIGHT_FALLBACKS[Math.floor(Math.random() * TONIGHT_FALLBACKS.length)]
 }
 
@@ -173,13 +178,14 @@ export default function DeparturePanel({ onDepart, apiKey, fill = 'almanac' }) {
   useEffect(() => {
     if (!apiKey) {
       setTagline(randomFallback())
+      if (fill === 'tonight') setReading(randomTonight())
       setLoading(false)
       return
     }
     const ctx = { timeOfDay: world.timeOfDay, season: world.season, weather: world.weather, moon: world.moon, coords: world.coords, biome: world.biome, moments: world.moments }
     fetchThreshold(apiKey, ctx, fill)
       .then(({ invite, tagline, reading }) => { setInvite(invite); setTagline(tagline); setReading(reading) })
-      .catch(() => setTagline(randomFallback()))
+      .catch(() => { setTagline(randomFallback()); if (fill === 'tonight') setReading(randomTonight()) })
       .finally(() => setLoading(false))
   }, [])
 
