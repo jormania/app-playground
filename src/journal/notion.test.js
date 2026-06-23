@@ -117,6 +117,11 @@ describe('parseNotionId (so users can paste a URL, id, or UUID)', () => {
   test('accepts a dashed UUID and compacts it', () => {
     expect(parseNotionId('cf04e030-9829-4448-a206-d9a4e66f7187')).toBe(id)
   })
+  test('a slug ending in hex letters does not bleed into the id', () => {
+    // regression: "…App-Spec-<id>" must not glue the "ec" of "Spec" onto the id
+    expect(parseNotionId('https://app.notion.com/p/Journal-of-Delights-App-Spec-388d3e6d60db8101addccc18fd955a5f'))
+      .toBe('388d3e6d60db8101addccc18fd955a5f')
+  })
   test('empty / junk returns empty string', () => {
     expect(parseNotionId('')).toBe('')
     expect(parseNotionId(null)).toBe('')
