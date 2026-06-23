@@ -5,37 +5,46 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Touch Grass — full feature guide.">
 <title>Touch Grass · Feature Guide</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg: #0c0e14;
-  --surface: #13161f;
-  --border: #222636;
-  --border2: #2d3348;
-  --accent: #7c6fff;
-  --accent2: #4fc3a1;
-  --text: #dde2ee;
-  --muted: #7a8499;
-  --faint: #404660;
+  --bg: #100d0a;
+  --surface: #1a150f;
+  --border: #2c2419;
+  --border2: #403626;
+  --accent: #e0a955;
+  --accent2: #cf8a73;
+  --text: #ece4d4;
+  --muted: #b0a48d;
+  --faint: #6f6450;
+  --serif: 'Instrument Serif', Georgia, serif;
   --mono: 'JetBrains Mono', monospace;
 }
+html { overflow-x: hidden; scroll-behavior: smooth; }
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background: var(--bg);
+  background:
+    radial-gradient(900px 500px at 78% -8%, rgba(224,169,85,0.06), transparent 60%),
+    var(--bg);
   color: var(--text);
   line-height: 1.6;
   min-height: 100vh;
+  overflow-x: hidden;
+  overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
 }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
+::selection { background: rgba(224,169,85,0.25); color: #fff; }
 .container { max-width: 680px; margin: 0 auto; padding: 0 24px; }
 
 /* ── nav ── */
 nav {
   position: sticky; top: 0; z-index: 10;
-  background: rgba(12,14,20,0.9);
+  background: rgba(16,13,10,0.82);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
@@ -52,8 +61,8 @@ nav {
 .nav-version {
   font-family: var(--mono); font-size: 10px; font-weight: 500;
   padding: 2px 7px; border-radius: 5px;
-  background: rgba(79,195,161,0.12); color: var(--accent2);
-  border: 1px solid rgba(79,195,161,0.2);
+  background: rgba(224,169,85,0.12); color: var(--accent2);
+  border: 1px solid rgba(224,169,85,0.2);
 }
 
 /* ── hero ── */
@@ -64,8 +73,9 @@ nav {
   font-family: var(--mono); margin-bottom: 14px;
 }
 .hero h1 {
-  font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 700;
-  letter-spacing: -0.03em; margin-bottom: 14px; color: var(--text);
+  font-family: var(--serif); font-weight: 400;
+  font-size: clamp(2rem, 5vw, 3rem);
+  letter-spacing: -0.01em; margin-bottom: 14px; color: var(--text);
 }
 .hero p { color: var(--muted); font-size: 15px; max-width: 520px; line-height: 1.65; }
 
@@ -83,7 +93,7 @@ nav {
 .steps li::before {
   content: counter(step);
   font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--accent2);
-  background: rgba(79,195,161,0.1); border: 1px solid rgba(79,195,161,0.2);
+  background: rgba(224,169,85,0.1); border: 1px solid rgba(224,169,85,0.2);
   width: 22px; height: 22px; border-radius: 5px;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   margin-top: 2px;
