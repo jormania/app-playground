@@ -23,10 +23,11 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
     <div className="tg-settings">
       <div className="tg-row tg-toggles">
         <button type="button" className="tg-toggle" aria-pressed={soundOn} onClick={onToggleSound}>{soundOn ? '♪ Sound on' : '♪ Sound off'}</button>
-        <button type="button" className="tg-toggle" aria-pressed={signsOn} onClick={onToggleSigns}>{signsOn ? '✦ Signs on' : '✦ Signs off'}</button>
+        {/* Signs toggle hidden for now (kept for later, still drives the card via signsOn):
+        <button type="button" className="tg-toggle" aria-pressed={signsOn} onClick={onToggleSigns}>{signsOn ? '✦ Signs on' : '✦ Signs off'}</button> */}
         <button type="button" className="tg-toggle" aria-pressed={locationEnabled} onClick={toggleLocation}>{locationEnabled ? '⌖ Place on' : '⌖ Place off'}</button>
         <button type="button" className="tg-toggle" aria-pressed={motionOn} onClick={onToggleMotion}>{motionOn ? '⟳ Motion on' : '⟳ Motion off'}</button>
-        <button type="button" className="tg-toggle" aria-pressed={callOn} onClick={onToggleCall}>{callOn ? '✉ Notifications on' : '✉ Notifications off'}</button>
+        <button type="button" className="tg-toggle" aria-pressed={callOn} onClick={onToggleCall}>{callOn ? '✉ Pings on' : '✉ Pings off'}</button>
       </div>
       {callBlocked && <p className="tg-hint">✉ Your browser is blocking notifications — they can't reach you.</p>}
 

@@ -288,6 +288,7 @@ export default function App() {
     <>
       <Stage />
       <Locus />
+      <a className="tg-guide-link" href="/touch-grass-react-guide.html" target="_blank" rel="noopener">The Guide</a>
       <div className="tg-shell">
         <header className={darkStage ? 'tg-masthead on-dark' : 'tg-masthead'}>
           <div className="tg-masthead-title">Touch Grass</div>

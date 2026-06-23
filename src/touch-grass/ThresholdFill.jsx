@@ -156,7 +156,7 @@ function Tonight({ coords, now, moon, reading }) {
       )}
       <div className="tg-tf-row"><MoonGlyph phase={moon.phase} /><span>{moonPhrase}{moonVerb ? <>, <span className="tg-nowrap">{moonVerb} <span className="tg-time">{moonTime}</span></span></> : ''}</span></div>
       {starPhrase && <div className="tg-tf-row"><StarGlyph /><span>{starPhrase} <span className="tg-nowrap">{starVerb} <span className="tg-time">{starTime}</span></span></span></div>}
-      {signDays != null && <div className="tg-tf-row"><ZodiacGlyph /><span>{sign}, <span className="tg-nowrap">the wheel turns in <span className="tg-time">{signDays}d</span></span></span></div>}
+      {signDays != null && <div className="tg-tf-row"><ZodiacGlyph /><span>In {sign}, <span className="tg-nowrap">the wheel turns in <span className="tg-time">{signDays}d</span></span></span></div>}
     </div>
   )
 }
