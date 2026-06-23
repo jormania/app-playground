@@ -288,7 +288,14 @@ export default function App() {
     <>
       <Stage />
       <Locus />
-      <a className="tg-guide-link" href="/touch-grass-react-guide.html" target="_blank" rel="noopener">The Guide</a>
+      <a className="tg-guide-link" href="/touch-grass-react-guide.html" target="_blank" rel="noopener" aria-label="The Guide" title="The Guide">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <g fill="none" stroke="#e7c24a" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round">
+            <path d="M12 6.8 C9.5 5.6 6 5.6 3.5 6 V17.6 C6 17.1 9.5 17.3 12 18.9 C14.5 17.3 18 17.1 20.5 17.6 V6 C18 5.6 14.5 5.6 12 6.8 Z" />
+            <line x1="12" y1="6.8" x2="12" y2="18.9" />
+          </g>
+        </svg>
+      </a>
       <div className="tg-shell">
         <header className={darkStage ? 'tg-masthead on-dark' : 'tg-masthead'}>
           <div className="tg-masthead-title">Touch Grass</div>
