@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Journal of Delights — Guide</title>
+<meta name="description" content="How to use the Journal of Delights, and the small practice behind it." />
+<link rel="icon" href="/journal-icon.svg" type="image/svg+xml" />
+<meta name="theme-color" content="#1a1b26" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1a1b26; --bg2:#16161e; --surface:#1f2335; --surface2:#24283b;
+  --border:#292e42; --border2:#3b4261; --ink:#c0caf5; --muted:#a9b1d6; --faint:#565f89;
+  --blue:#7aa2f7; --cyan:#7dcfff; --green:#9ece6a; --purple:#bb9af7; --orange:#ff9e64;
+  --yellow:#e0af68; --gold:#e0a955; --gold-soft:#f0c987;
+  --serif:'Instrument Serif',Georgia,serif; --sans:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:radial-gradient(900px 480px at 80% -10%,rgba(187,154,247,0.08),transparent 60%),var(--bg);color:var(--ink);line-height:1.7;-webkit-font-smoothing:antialiased;}
+a{color:var(--blue);text-decoration:none;}
+a:hover{text-decoration:underline;}
+.wrap{max-width:720px;margin:0 auto;padding:0 24px;}
+header{text-align:center;padding:56px 0 26px;}
+header .eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:0.2em;text-transform:uppercase;color:var(--purple);margin-bottom:14px;}
+header h1{font-family:var(--serif);font-weight:400;font-size:clamp(2.4rem,7vw,3.4rem);line-height:1.02;}
+header h1 em{font-style:italic;color:var(--gold-soft);}
+header .lede{max-width:52ch;margin:14px auto 0;color:var(--muted);font-weight:300;font-size:15.5px;}
+.living{display:inline-block;margin-top:18px;font-family:var(--mono);font-size:11px;color:var(--yellow);border:1px solid rgba(224,175,104,0.3);background:rgba(224,175,104,0.08);border-radius:999px;padding:5px 13px;}
+.rule{height:1px;background:linear-gradient(90deg,var(--border),transparent);margin:8px 0 40px;}
+section{margin-bottom:44px;}
+h2{font-family:var(--serif);font-weight:400;font-size:30px;color:var(--ink);margin-bottom:6px;}
+h2 .n{font-family:var(--mono);font-size:13px;color:var(--purple);margin-right:10px;vertical-align:middle;}
+h3{font-family:var(--sans);font-weight:600;font-size:15px;color:var(--ink);margin:22px 0 6px;}
+p{color:var(--muted);font-weight:300;margin:10px 0;}
+p strong, li strong{color:var(--ink);font-weight:500;}
+em.book{font-style:italic;color:var(--ink);}
+ul{list-style:none;margin:12px 0;display:grid;gap:10px;}
+li{color:var(--muted);font-weight:300;display:flex;gap:11px;align-items:baseline;}
+li::before{content:'✦';color:var(--gold);font-size:9px;flex-shrink:0;position:relative;top:-1px;}
+.card{background:linear-gradient(180deg,var(--surface),var(--bg2));border:1px solid var(--border);border-radius:14px;padding:22px 24px;margin:16px 0;}
+code{font-family:var(--mono);font-size:12.5px;color:var(--cyan);background:var(--surface);padding:1px 6px;border-radius:5px;}
+.note{font-size:13.5px;color:var(--faint);border-left:2px solid var(--border2);padding-left:14px;margin:14px 0;}
+.steps{counter-reset:step;list-style:none;display:grid;gap:12px;margin-top:14px;}
+.steps li{counter-increment:step;}
+.steps li::before{content:counter(step);color:var(--bg);background:var(--blue);font-family:var(--mono);font-size:11px;font-weight:600;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;top:0;}
+table.schema{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;}
+table.schema th,table.schema td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+table.schema th{font-family:var(--mono);font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:0.06em;font-weight:400;}
+table.schema td:first-child{font-family:var(--mono);font-size:12.5px;color:var(--cyan);white-space:nowrap;}
+table.schema td:nth-child(2){color:var(--purple);white-space:nowrap;}
+table.schema td:last-child{color:var(--muted);font-weight:300;}
+.formula{display:block;font-family:var(--mono);font-size:12.5px;color:var(--green);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:10px 0;overflow-x:auto;white-space:pre;}
+footer{border-top:1px solid var(--border);padding:30px 0;text-align:center;font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:30px;}
+footer a{color:var(--faint);}footer a:hover{color:var(--gold);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">how to use this · the practice behind it</div>
+    <h1>The Journal of <em>Delights</em></h1>
+    <p class="lede">A short field guide to the app and the small daily habit it’s built around — after Ross Gay’s <em class="book">The Book of Delights</em>.</p>
+    <div class="living">● living document — grows as the app does</div>
+  </header>
+  <div class="rule"></div>
+
+  <section>
+    <h2><span class="n">01</span>What this is</h2>
+    <p>One delight a day, noticed closely and written down — somewhere between a sentence and a short essay. The app is a friendlier second doorway to a <strong>Notion database</strong> where the entries actually live; you can always open the same data in Notion itself.</p>
+    <p>It is <strong>not a gratitude journal</strong>, and deliberately so. There’s no scoring, no mood tracking, no rating, no streak counter. Those add an evaluative layer that quietly turns noticing into performance — which is the opposite of the point.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">02</span>What a delight is — lightly held</h2>
+    <p>Take this as orientation, not instruction. The practice is personal; these are just the contours Gay’s book sketches.</p>
+    <ul>
+      <li><strong>It’s an act of attention, not an event.</strong> Usually small and ordinary — a stranger’s gesture, an overheard phrase, the shape of light on a wall. The discipline is in the noticing, not in finding something impressive.</li>
+      <li><strong>It doesn’t require a good day.</strong> Delight sits comfortably beside grief, worry, and difficulty rather than denying them. A hard day can still hold one. A missed day is not a failure — just a day.</li>
+      <li><strong>It resists categories.</strong> Tags and people emerge from what you actually wrote, not from a list decided in advance. Let them accrue their own meaning over time.</li>
+      <li><strong>One a day is the whole shape of it.</strong> Even on a day full of delights, choosing one and writing it is what builds the practice. That’s why the app keeps to a single entry per date.</li>
+    </ul>
+    <p class="note">None of this is a rule the app enforces on your feelings. Write what you want to keep. The only real constraint is one entry per calendar day.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">03</span>Using the app</h2>
+
+    <h3>Writing today’s delight</h3>
+    <p>Tap <strong>Today</strong> in the slim bar at the top. If you haven’t written for today, it opens a fresh entry; if you have, it opens the one you already wrote so you can read or edit it — never a second one.</p>
+
+    <h3>The two views</h3>
+    <p>The same slim bar toggles between <strong>List</strong> (newest first, with excerpts) and <strong>Calendar</strong> (a month grid; days with an entry carry a small gold dot). In the calendar, tapping a written day opens it; tapping an empty day starts an entry for that date. Your choice of view is remembered.</p>
+
+    <h3>The fields</h3>
+    <ul>
+      <li><strong>Title</strong> — a short name for the delight, like <em>the espresso foam</em>. Optional, but it makes the list easier to wander.</li>
+      <li><strong>Date</strong> — defaults to today; you can write into the past. Past entries stay editable indefinitely.</li>
+      <li><strong>Entry</strong> — the writing itself. A gentle range of <strong>25–500 words</strong> is shown as you type. It’s guidance, not a gate — shorter and longer both save fine.</li>
+      <li><strong>Tags &amp; People</strong> — freeform. Start typing to reuse one you’ve used before, or create a new one inline. People are kept separate from Tags so “everything mentioning so-and-so” stays clean.</li>
+      <li><strong>Word Count</strong> — computed by Notion automatically after each save, so it’s shown read-only on a saved entry.</li>
+    </ul>
+
+    <h3>Install it</h3>
+    <p>In Chrome or Edge (desktop or Android), use <strong>Install app</strong> from the address bar or menu to add it to your home screen / app list. It runs full-screen like a native app. An internet connection is needed to read and write, since your delights live in Notion.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">04</span>Make it your own journal</h2>
+    <p>Anyone can run their <strong>own</strong> Journal of Delights against their <strong>own</strong> Notion — entirely separate from anyone else’s. Until you connect one, the app stays in <strong>demo mode</strong> on sample delights stored only on your device. To keep real entries you need two things: a Notion <strong>database</strong> with the right columns, and an <strong>integration token</strong> that lets the app read and write it. Setting this up takes a few minutes and needs no coding.</p>
+
+    <h3>Option A — duplicate a ready-made copy (easiest)</h3>
+    <p>If you’ve been given a share link to an existing “Journal of Delights” database, open it in Notion and use <strong>Duplicate</strong> (top-right <code>•••</code> → Duplicate) to make your own private copy. The columns and the Word Count formula come along automatically. Then jump to step 05 to connect it.</p>
+
+    <h3>Option B — build an empty one</h3>
+    <p>In Notion, create a new page and add a <strong>Table</strong> database (full-page is tidiest). Name it <em>Journal of Delights</em>. Then set up exactly these columns — <strong>the names matter</strong>, because the app looks them up by name:</p>
+    <table class="schema">
+      <thead><tr><th>Column</th><th>Type</th><th>What it holds</th></tr></thead>
+      <tbody>
+        <tr><td>Title</td><td>Title</td><td>The default first column. A short name for the delight, e.g. <em>the espresso foam</em>.</td></tr>
+        <tr><td>Date</td><td>Date</td><td>The day of the entry. One entry per day.</td></tr>
+        <tr><td>Entry</td><td>Text</td><td>The writing itself. Keep it as a <strong>Text</strong> property (a column), not the page body.</td></tr>
+        <tr><td>Tags</td><td>Multi-select</td><td>Leave the options empty — they fill in as you write.</td></tr>
+        <tr><td>People</td><td>Multi-select</td><td>Also start empty. Kept separate from Tags on purpose.</td></tr>
+        <tr><td>Word&nbsp;Count</td><td>Formula</td><td>Counts words automatically. Paste the formula below.</td></tr>
+      </tbody>
+    </table>
+    <p>For the <strong>Word Count</strong> column, choose type <em>Formula</em>, click <em>Edit formula</em>, and paste:</p>
+    <code class="formula">length(prop("Entry")) - length(replaceAll(prop("Entry"), " ", "")) + 1</code>
+    <p class="note">That’s every column. You can delete any extra columns Notion added by default (like a stray “Tags” it pre-creates) as long as the six above exist with these exact names. The app never writes to Word Count — Notion keeps it up to date by itself.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">05</span>Create the integration &amp; connect</h2>
+    <p>An <strong>internal integration</strong> is just a key that lets this one app reach your database. Here’s the whole path, step by step:</p>
+    <ol class="steps">
+      <li><strong>Create the integration.</strong> Go to <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener">notion.so/my-integrations</a> and click <em>New integration</em>. Give it a name (e.g. <em>Journal of Delights</em>), pick the workspace your database lives in, and leave the type as <em>Internal</em>. Save it.</li>
+      <li><strong>Copy the token.</strong> On the integration’s page, open <em>Configuration</em> (or <em>Secrets</em>) and find <em>Internal Integration Secret</em>. Click <em>Show</em>, then <em>Copy</em>. It starts with <code>ntn_</code> (older ones start with <code>secret_</code>). Treat it like a password.</li>
+      <li><strong>Share the database with it.</strong> Open your Journal of Delights database in Notion. Top-right <code>•••</code> menu → <em>Connections</em> (some workspaces label it <em>Add connections</em>) → search your integration’s name → select it. This is what grants read/write access — without it the app sees nothing.</li>
+      <li><strong>Get the database link.</strong> Still on the database, <code>•••</code> → <em>Copy link</em> (or just copy the URL from your browser’s address bar while viewing it).</li>
+      <li><strong>Connect in the app.</strong> Open the app, tap <strong>⚙ settings</strong> in the top bar, paste the <em>token</em> into the first field and the <em>database link</em> into the second, and Save. The app flips from demo to your live journal immediately.</li>
+    </ol>
+    <p class="note">Both the token and the database link are stored only in this browser and relayed to Notion through this site’s proxy — never saved on a server. Anyone using this browser profile can reach your journal, so disconnect from settings (which clears the token) on shared devices. To switch journals later, just paste a different database link.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">06</span>Not in this version</h2>
+    <p>The first version reads, creates, and edits. There’s deliberately <strong>no delete</strong> yet — entries are never destroyed from the app. Offline writing and richer search may come later; this guide will grow alongside them.</p>
+  </section>
+
+  <footer>
+    after Ross Gay’s <em>The Book of Delights</em> · <a href="/journal-of-delights-react.html">open the app</a> · <a href="/">Cone of Cold</a>
+  </footer>
+
+</div>
+</body>
+</html>

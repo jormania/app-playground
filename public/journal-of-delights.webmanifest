@@ -1,0 +1,14 @@
+{
+  "name": "Journal of Delights",
+  "short_name": "Delights",
+  "description": "One delight a day, noticed closely and written down.",
+  "start_url": "/journal-of-delights-react.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a1b26",
+  "theme_color": "#1a1b26",
+  "icons": [
+    { "src": "/journal-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
