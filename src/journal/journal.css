@@ -1,4 +1,4 @@
-/* Journal of Delights — Tokyo Night (frameless) palette.
+/* Journal of Delights — Solarized (frameless) palette.
 
    TYPE SYSTEM (keep to these three roles; don't introduce one-off fonts):
    · --serif  Instrument Serif — reserved for the few "title" moments only:
@@ -26,9 +26,9 @@
   --surface2:  #0b3d4a;
   --border:    #0e3f4c;
   --border2:   #1a5462;
-  --ink:       #93a1a1;
-  --muted:     #839496;
-  --faint:     #586e75;
+  --ink:       #c0cccc;
+  --muted:     #9fadad;
+  --faint:     #6d8183;
   --blue:      #268bd2;
   --cyan:      #2aa198;
   --green:     #859900;
@@ -43,6 +43,7 @@
   --ring:   color-mix(in srgb, var(--blue) 18%, transparent);
   --scrim:  rgba(0,8,10,0.62);
   --shadow: rgba(0,0,0,0.45);
+  --menubar-bg: color-mix(in srgb, var(--bg2) 86%, transparent);
   --serif: 'Instrument Serif', Georgia, serif;
   --sans:  'Inter', system-ui, sans-serif;
   --mono:  'JetBrains Mono', monospace;
@@ -56,9 +57,9 @@
   --surface2:  #e6dfc8;
   --border:    #ded7c1;
   --border2:   #cbc3aa;
-  --ink:       #586e75;
-  --muted:     #657b83;
-  --faint:     #93a1a1;
+  --ink:       #3a4d52;
+  --muted:     #4d5e64;
+  --faint:     #708385;
   --gold-soft: #a87c00;
   --glow:   rgba(38,139,210,0.06);
   --scrim:  rgba(7,54,66,0.32);
@@ -103,7 +104,7 @@ button { font-family: inherit; cursor: pointer; }
 /* ── Slim sticky menu bar ── */
 .menubar {
   position: sticky; top: 0; z-index: 50;
-  background: rgba(26,27,38,0.86);
+  background: var(--menubar-bg);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
