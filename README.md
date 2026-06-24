@@ -2,7 +2,7 @@
 
 **[coneofcold.vercel.app](https://coneofcold.vercel.app)**
 
-A personal collection of standalone web apps built with Claude. No frameworks, no dependencies, no build step. Open the file, it works.
+A personal collection of standalone web apps built with Claude. Most are single self-contained HTML files; a few are built with React + Vite. Either way they run entirely in your browser.
 
 ---
 
@@ -12,8 +12,7 @@ A personal collection of standalone web apps built with Claude. No frameworks, n
 | --- | --- | --- |
 | [Touch Grass](https://coneofcold.vercel.app/touch-grass.html) | outdoor · ambient | `touch-grass.html` |
 | [Codex Alchymicus — KCD2](https://coneofcold.vercel.app/kcd2-codex-v3.html) | gaming | `kcd2-codex-v3.html` |
-| [Kettlebell Training](https://coneofcold.vercel.app/kettlebell-claude.html) — Claude Sonnet | fitness · svg | `kettlebell-claude.html` |
-| [Kettlebell Training](https://coneofcold.vercel.app/kettlebell-gemini.html) — Gemini Pro | fitness · svg | `kettlebell-gemini.html` |
+| [Kettlebell Training](https://coneofcold.vercel.app/kettlebell-training-react.html) | fitness · svg · react · vite | `kettlebell-training-react.html` |
 
 ---
 
@@ -24,8 +23,7 @@ A personal collection of standalone web apps built with Claude. No frameworks, n
 ├── index.html              ← landing page with search + tag filter
 ├── touch-grass.html        ← go outside, come back, see what you found
 ├── kcd2-codex-v3.html
-├── kettlebell-claude.html
-├── kettlebell-gemini.html
+├── kettlebell-training-react.html  ← React + Vite entry (src/kettlebell/)
 ├── manifest.json           ← PWA manifest (Touch Grass)
 ├── sw.js                   ← service worker (Touch Grass)
 ├── icon-192.png            ← PWA icon

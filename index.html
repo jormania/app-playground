@@ -325,9 +325,10 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
     <div class="hero-eyebrow">Cone of Cold · personal playground</div>
     <h1>A cabinet of small, <em>strange</em> tools.</h1>
     <p class="hero-desc">
-      Standalone web apps built in conversation with Claude — tarot walks, alchemy
-      codices, pop-art workouts. <strong>Each one a real tool for a real need</strong>,
-      running entirely in your browser. No accounts, nothing to install.
+      Standalone web apps, each built in one long conversation with Claude —
+      <strong>small, strange, genuinely useful tools</strong> that live entirely in your browser.
+      No download, no sign-up to explore; the few that remember your work just plug into
+      accounts you already own. Pick one and step in.
     </p>
     <div class="hero-meta">
       <span><b id="stat-apps">—</b> apps live</span>
@@ -397,9 +398,7 @@ const APPS = [
     iconBg: "rgba(224,169,85,0.10)",
     title: "Touch Grass, a React Journey",
     subtitle: "tarot cards · live sky & weather · ai divination",
-    version: "1.0",
     latest: true,
-    final: true,
     deployed: "Jun 2026",
     size: "Vite bundle",
     tech: "React + Vite",
@@ -423,7 +422,6 @@ const APPS = [
     iconBg: "rgba(255,158,100,0.16)",
     title: "Journal of Delights",
     subtitle: "one delight a day · notion-backed · calendar & list",
-    version: "MVP",
     deployed: "Jun 2026",
     size: "Vite bundle",
     tech: "React + Vite + Notion",
@@ -441,6 +439,25 @@ const APPS = [
     ],
     guide: "journal-of-delights-guide.html",
     file: "journal-of-delights-react.html",
+  },
+  {
+    emoji: "🏋️",
+    iconBg: "rgba(255,30,30,0.14)",
+    title: "Kettlebell Training",
+    subtitle: "12 movements · keith haring pop-art · phase-by-phase",
+    deployed: "Jun 2026",
+    size: "Vite bundle",
+    tech: "React + Vite",
+    tags: ["fitness", "svg", "react", "vite"],
+    description: "Twelve foundational kettlebell movements drawn as bold, radiating Keith Haring figures — each lift shown as a 2–3 frame sequence so you see the motion, not a single frozen pose. Form cues are researched per movement, with difficulty pips and the muscles you'll feel the next morning.",
+    features: [
+      "Every lift is a 2–3 phase Haring sequence — hinge to snap, floor to overhead — with action lines and solid-ink kettlebells",
+      "Form cues researched per movement, not generic filler: six tight steps from setup to lockout",
+      "Difficulty pips (beginner → advanced) and primary muscle tags on every card",
+      "Sticky exercise rail that tracks whichever movement you're reading",
+      "Built in React + Vite as the foundation for dynamic content to come",
+    ],
+    file: "kettlebell-training-react.html",
   },
   {
     emoji: "🌿",
@@ -524,46 +541,6 @@ const APPS = [
       "Mobile layout with panel-switching navigation",
     ],
     file: "kcd2-codex-v3.html",
-  },
-  {
-    emoji: "🏋️",
-    iconBg: "rgba(255,215,0,0.15)",
-    title: "Kettlebell Training",
-    subtitle: "12 exercises · pop-art · mobile-first",
-    author: "Claude Sonnet",
-    deployed: "May 2025",
-    size: "48 KB",
-    tech: "Vanilla HTML",
-    tags: ["fitness", "svg"],
-    description: "Twelve essential kettlebell movements in Keith Haring's bold pop-art style — thick outlines, bright fills, speed lines that follow the arc of the swing. Each comes with a six-step breakdown, a difficulty rating, and the muscles you'll curse the morning after.",
-    features: [
-      "12 movements from swing to Turkish get-up, each fully illustrated",
-      "Six-step breakdowns with form cues, tempo, and common errors",
-      "Difficulty ratings and primary muscle group tags per exercise",
-      "Keith Haring thick outlines, bright fills, dynamic speed lines",
-      "Mobile-first layout optimised for one-handed scrolling in the gym",
-    ],
-    file: "kettlebell-claude.html",
-  },
-  {
-    emoji: "🏋️",
-    iconBg: "rgba(255,215,0,0.15)",
-    title: "Kettlebell Training",
-    subtitle: "12 exercises · pop-art · mobile-first",
-    author: "Gemini Pro Thinking",
-    deployed: "May 2025",
-    size: "45 KB",
-    tech: "Vanilla HTML",
-    tags: ["fitness", "svg"],
-    description: "The same twelve kettlebell fundamentals — swing to snatch — in a punchy yellow-and-black pop-art layout. Illustrated poses, difficulty ratings, target-muscle tags, and taglines that take the pain in just the right stride.",
-    features: [
-      "Yellow-and-black pop-art aesthetic, high contrast and energetic",
-      "Illustrated exercise poses for all twelve movements",
-      "Difficulty ratings and target muscle groups per exercise",
-      "Taglines that take the suffering in exactly the right stride",
-      "Mobile-first with sticky navigation",
-    ],
-    file: "kettlebell-gemini.html",
   },
 ];
 

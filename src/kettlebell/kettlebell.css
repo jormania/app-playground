@@ -1,0 +1,211 @@
+/* ─────────────────────────────────────────────────────────────
+   Kettlebell — pop-art field guide.
+   Warm-paper background, bold black keylines, hard offset shadows,
+   and a rotating Keith Haring primary palette per card.
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  --paper:   #f7ead0;
+  --paper-2: #f1dfbd;
+  --ink:     #111111;
+  --white:   #ffffff;
+  --nav-h:   54px;
+  --display: 'Archivo Black', system-ui, sans-serif;
+  --body:    'Space Grotesk', system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: var(--nav-h); }
+
+body {
+  font-family: var(--body);
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(circle, rgba(0,0,0,0.05) 1.4px, transparent 1.6px);
+  background-size: 22px 22px;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ── Top nav ───────────────────────────────────────────────── */
+.topnav {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; gap: 10px;
+  height: var(--nav-h);
+  padding: 0 12px;
+  background: var(--ink);
+  border-bottom: 4px solid var(--ink);
+}
+.brand {
+  font-family: var(--display); color: var(--paper);
+  font-size: 0.95rem; letter-spacing: 0.02em; white-space: nowrap;
+  flex-shrink: 0; padding-right: 10px; border-right: 2px solid #444;
+}
+.rail {
+  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.rail::-webkit-scrollbar { display: none; }
+.chip {
+  flex-shrink: 0; white-space: nowrap; text-decoration: none;
+  font-family: var(--body); font-weight: 700; font-size: 0.72rem;
+  text-transform: uppercase; letter-spacing: 0.03em;
+  color: #cfc4ad; padding: 6px 11px; border-radius: 999px;
+  border: 2px solid transparent; transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.chip:hover { color: var(--white); }
+.chip.active {
+  color: var(--ink); background: var(--accent);
+  border-color: var(--ink);
+}
+
+/* ── Hero ──────────────────────────────────────────────────── */
+.hero {
+  background: var(--ink);
+  border-bottom: 5px solid var(--ink);
+  padding: 46px 20px 40px;
+}
+.hero-inner { max-width: 760px; margin: 0 auto; text-align: center; }
+.hero-eyebrow {
+  font-family: var(--body); font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.22em; font-size: 0.7rem; color: #ffd400; margin-bottom: 16px;
+}
+.hero-title {
+  font-family: var(--display);
+  font-size: clamp(2.1rem, 9vw, 4rem); line-height: 0.95;
+  color: var(--paper); text-transform: uppercase; letter-spacing: -0.01em;
+  text-shadow: 5px 5px 0 #FF1E1E, 9px 9px 0 #1466FF;
+}
+.hero-title .amp { color: #ffd400; padding: 0 0.12em; -webkit-text-fill-color: #ffd400; }
+.hero-sub {
+  color: #e7dcc4; font-size: 1rem; line-height: 1.55;
+  max-width: 56ch; margin: 22px auto 0; font-weight: 500;
+}
+.hero-sub em { color: #ffd400; font-style: normal; font-weight: 700; }
+.hero-pills {
+  display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; margin-top: 26px;
+}
+.pill {
+  font-family: var(--display); font-size: 0.72rem; text-transform: uppercase;
+  letter-spacing: 0.02em; color: var(--ink); background: var(--paper);
+  border: 3px solid var(--ink); border-radius: 999px; padding: 6px 15px;
+  box-shadow: 3px 3px 0 #FF1E1E;
+}
+
+/* ── Cards ─────────────────────────────────────────────────── */
+.cards {
+  max-width: 760px; margin: 0 auto;
+  padding: 28px 16px 40px;
+  display: flex; flex-direction: column; gap: 30px;
+}
+.card {
+  background: var(--white);
+  border: 4px solid var(--ink);
+  box-shadow: 9px 9px 0 var(--ink);
+  scroll-margin-top: calc(var(--nav-h) + 12px);
+}
+
+.card-head {
+  background: var(--accent);
+  border-bottom: 4px solid var(--ink);
+  padding: 16px 18px 14px;
+}
+.card-num {
+  font-family: var(--display); font-size: 0.66rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--ink); opacity: 0.72;
+}
+.card-titlerow {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-top: 4px;
+}
+.card-title {
+  font-family: var(--display); text-transform: uppercase;
+  font-size: clamp(1.35rem, 5.5vw, 1.95rem); line-height: 1; color: var(--ink);
+}
+.card-tagline {
+  margin-top: 10px; font-weight: 600; font-style: italic;
+  font-size: 0.92rem; line-height: 1.4; color: var(--ink);
+}
+
+.difficulty { display: flex; gap: 3px; flex-shrink: 0; }
+.pip { width: 26px; height: 26px; }
+
+/* ── Filmstrip of poses ────────────────────────────────────── */
+.filmstrip {
+  display: flex; align-items: stretch; justify-content: center; gap: 4px;
+  padding: 18px 14px;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 11px, color-mix(in srgb, var(--accent) 7%, transparent) 11px 22px),
+    color-mix(in srgb, var(--accent) 9%, var(--white));
+  border-bottom: 4px solid var(--ink);
+}
+.frame-wrap { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+.frame {
+  position: relative; flex: 1; min-width: 0;
+  background: var(--white);
+  border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+  padding: 8px 6px 4px;
+}
+.frame-num {
+  position: absolute; top: -11px; left: -11px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); color: var(--ink);
+  border: 3px solid var(--ink);
+  font-family: var(--display); font-size: 0.72rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.flow-arrow { width: 22px; height: 22px; flex-shrink: 0; }
+
+.pose { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.pose svg { width: 100%; height: auto; max-height: 120px; overflow: visible; }
+.pose figcaption {
+  font-family: var(--display); font-size: 0.56rem; text-transform: uppercase;
+  letter-spacing: 0.04em; text-align: center; color: var(--ink); line-height: 1.1;
+}
+
+/* ── Steps ─────────────────────────────────────────────────── */
+.steps { list-style: none; counter-reset: s; padding: 18px 18px 8px; }
+.steps li {
+  counter-increment: s; position: relative; padding-left: 34px;
+  margin-bottom: 12px; font-size: 0.9rem; font-weight: 500; line-height: 1.45;
+}
+.steps li::before {
+  content: counter(s); position: absolute; left: 0; top: -1px;
+  width: 23px; height: 23px; border-radius: 50%;
+  background: var(--accent); color: var(--ink);
+  border: 2.5px solid var(--ink);
+  font-family: var(--display); font-size: 0.7rem;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.card-foot {
+  background: var(--ink); color: var(--paper);
+  font-family: var(--display); font-size: 0.72rem; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 11px 18px;
+}
+
+/* ── Footer ────────────────────────────────────────────────── */
+.site-foot {
+  background: var(--ink); color: #cfc4ad; text-align: center;
+  padding: 30px 20px; border-top: 5px solid var(--ink);
+}
+.site-foot p { font-weight: 600; font-style: italic; font-size: 0.9rem; max-width: 44ch; margin: 0 auto 12px; }
+.site-foot a { color: #ffd400; font-weight: 700; font-size: 0.82rem; text-decoration: none; }
+.site-foot a:hover { text-decoration: underline; }
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (min-width: 620px) {
+  .pose svg { max-height: 150px; }
+  .pose figcaption { font-size: 0.62rem; }
+  .steps li { font-size: 0.96rem; }
+}
+@media (max-width: 380px) {
+  .pose figcaption { font-size: 0.5rem; }
+  .frame { padding: 7px 3px 3px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
