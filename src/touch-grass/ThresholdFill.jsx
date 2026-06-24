@@ -134,6 +134,14 @@ function Tonight({ coords, now, moon, reading }) {
 
   // the light window — golden hour or blue hour, whichever is current or next (always one)
   const lw = lightWindow(now, coords)
+  // if it's already happening, the START has passed — point at when it ENDS instead,
+  // so we never say "turns to honey at 05:31" once 05:31 is behind us
+  const lwNow = lw && d.getTime() >= lw.s.getTime() && d.getTime() <= lw.e.getTime()
+  const lwLabel = !lw ? null
+    : lw.kind === 'golden'
+      ? (lwNow ? 'honey light until' : 'light turns to honey at')
+      : (lwNow ? 'Twilight’s Edge until' : 'Twilight’s Edge starts at')
+  const lwTime = lw ? fmt(lwNow ? lw.e : lw.s) : null
 
   // stars: if darkness is still to come, count to it; if it's already dark, the
   // stars will fade at dawn, so count to that instead
@@ -152,7 +160,7 @@ function Tonight({ coords, now, moon, reading }) {
     <div className="tg-tf tg-tf-tonight">
       <div className="tg-tf-head">{reading || 'tonight'}</div>
       {lw && (
-        <div className="tg-tf-row">{lw.kind === 'golden' ? <SunGlyph /> : <BlueGlyph />}<span>{lw.kind === 'golden' ? 'light turns to honey at' : 'Twilight’s Edge starts at'} <span className="tg-nowrap"><span className="tg-time">{fmt(lw.s)}</span></span></span></div>
+        <div className="tg-tf-row">{lw.kind === 'golden' ? <SunGlyph /> : <BlueGlyph />}<span>{lwLabel} <span className="tg-nowrap"><span className="tg-time">{lwTime}</span></span></span></div>
       )}
       <div className="tg-tf-row"><MoonGlyph phase={moon.phase} /><span>{moonPhrase}{moonVerb ? <>, <span className="tg-nowrap">{moonVerb} <span className="tg-time">{moonTime}</span></span></> : ''}</span></div>
       {starPhrase && <div className="tg-tf-row"><StarGlyph /><span>{starPhrase} <span className="tg-nowrap">{starVerb} <span className="tg-time">{starTime}</span></span></span></div>}
