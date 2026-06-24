@@ -201,6 +201,12 @@ button.chip:hover { border-color: currentColor; background: rgba(122,162,247,0.0
 
 /* ── List view ── */
 .list { display: flex; flex-direction: column; gap: 12px; }
+.list-count { font-family: var(--mono); font-size: 0.7rem; color: var(--faint); letter-spacing: 0.04em; }
+.list-divider {
+  display: flex; align-items: center; gap: 12px; margin-top: 8px;
+  font-family: var(--mono); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--faint);
+}
+.list-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 .entry-row {
   display: block; text-align: left; width: 100%;
   background: linear-gradient(180deg, var(--surface), var(--bg2));

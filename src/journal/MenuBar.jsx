@@ -6,7 +6,7 @@ const GUIDE_URL = '/journal-of-delights-guide.html'
 const VIEWS = [
   { id: 'list', Icon: ListIcon, label: 'List' },
   { id: 'calendar', Icon: CalendarIcon, label: 'Calendar' },
-  { id: 'year', Icon: YearIcon, label: 'Year' },
+  { id: 'year', Icon: YearIcon, label: 'Heatmap' },
 ]
 
 // The slim sticky bar: view selector · search (with scope) · Today · actions.

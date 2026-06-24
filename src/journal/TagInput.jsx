@@ -17,13 +17,21 @@ export default function TagInput({ values, options, onChange, kind = 'tag', plac
   )
   const exactExists = options.some(o => o.toLowerCase() === lower) || values.some(v => v.toLowerCase() === lower)
 
-  function add(value) {
+  function add(value, refocus = true) {
     const v = norm(value)
     if (!v) return
     if (!values.some(x => x.toLowerCase() === v.toLowerCase())) onChange([...values, v])
     setDraft('')
     setOpen(false)
-    inputRef.current?.focus()
+    if (refocus) inputRef.current?.focus()
+  }
+
+  // Commit a typed-but-unconfirmed value when focus leaves the field, so a tag
+  // entered without pressing Enter isn't silently lost on Save. (Clicks on the
+  // suggestion buttons keep focus via onMouseDown, so they don't trigger this.)
+  function onBlur() {
+    if (draft.trim()) add(draft, false)
+    setTimeout(() => setOpen(false), 120)
   }
 
   function remove(value) {
@@ -55,7 +63,7 @@ export default function TagInput({ values, options, onChange, kind = 'tag', plac
           placeholder={values.length ? '' : placeholder}
           onChange={e => { setDraft(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 120)}
+          onBlur={onBlur}
           onKeyDown={onKeyDown}
           autoComplete="off"
           spellCheck="false"

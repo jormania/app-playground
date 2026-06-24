@@ -134,16 +134,17 @@ function Tonight({ coords, now, moon, reading }) {
 
   // the light window — golden hour or blue hour, whichever is current or next (always one)
   const lw = lightWindow(now, coords)
-  // if it's already happening, the START has passed — point at when it ENDS instead,
-  // so we never say "turns to honey at 05:31" once 05:31 is behind us
+  // golden keeps its signature "Light turns to honey at <start>". For blue, if it's
+  // already happening the start has passed, so point at when it ENDS instead.
   const lwNow = lw && d.getTime() >= lw.s.getTime() && d.getTime() <= lw.e.getTime()
   const lwLabel = !lw ? null
     : lw.kind === 'golden'
-      ? (lwNow ? 'honey light until' : 'light turns to honey at')
+      ? 'Light turns to honey at'
       : lw.morning
-        ? (lwNow ? 'the blue before dawn, until' : 'the blue before dawn starts at')
-        : (lwNow ? 'Twilight’s Edge until' : 'Twilight’s Edge starts at')
-  const lwTime = lw ? fmt(lwNow ? lw.e : lw.s) : null
+        ? (lwNow ? 'The blue before dawn, until' : 'The blue before dawn starts at')
+        : (lwNow ? 'Twilight’s edge until' : 'Twilight’s edge starts at')
+  const lwTime = !lw ? null
+    : lw.kind === 'golden' ? fmt(lw.s) : fmt(lwNow ? lw.e : lw.s)
 
   // stars: if darkness is still to come, count to it; if it's already dark, the
   // stars will fade at dawn, so count to that instead
@@ -160,13 +161,13 @@ function Tonight({ coords, now, moon, reading }) {
 
   return (
     <div className="tg-tf tg-tf-tonight">
-      <div className="tg-tf-head">{reading || 'tonight'}</div>
+      <div className="tg-tf-head">{reading || 'Tonight'}</div>
       {lw && (
         <div className="tg-tf-row">{lw.kind === 'golden' ? <SunGlyph /> : <BlueGlyph />}<span>{lwLabel} <span className="tg-nowrap"><span className="tg-time">{lwTime}</span></span></span></div>
       )}
       <div className="tg-tf-row"><MoonGlyph phase={moon.phase} /><span>{moonPhrase}{moonVerb ? <>, <span className="tg-nowrap">{moonVerb} <span className="tg-time">{moonTime}</span></span></> : ''}</span></div>
       {starPhrase && <div className="tg-tf-row"><StarGlyph /><span>{starPhrase} <span className="tg-nowrap">{starVerb} <span className="tg-time">{starTime}</span></span></span></div>}
-      {signDays != null && <div className="tg-tf-row"><ZodiacGlyph /><span>In {sign}, <span className="tg-nowrap">the wheel turns in <span className="tg-time">{signDays}d</span></span></span></div>}
+      {signDays != null && <div className="tg-tf-row"><ZodiacGlyph /><span>In {sign.charAt(0).toUpperCase() + sign.slice(1)}, <span className="tg-nowrap">the wheel turns in <span className="tg-time">{signDays}d</span></span></span></div>}
     </div>
   )
 }

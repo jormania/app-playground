@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { wordCount, collectOptions } from './notion.js'
-import { findByDate, formatHuman, entriesOnSameDay } from './dates.js'
+import { findByDate, formatHuman, entriesOnSameDay, todayKey } from './dates.js'
 import { getDraft, saveDraft } from './store.js'
 import TagInput from './TagInput.jsx'
 import { TitleIcon, DateIcon, EntryIcon, TagIcon, PeopleIcon, HistoryIcon } from './icons.jsx'
@@ -36,7 +36,24 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, onOpen
     return existing && existing.id !== initial.id ? existing : null
   }, [entries, date, initial.id])
 
-  const canSave = text.trim().length > 0 && date && !clash && !saving
+  // A delight is something already noticed — never a future, scheduled date.
+  const today = todayKey()
+  const isFuture = date > today
+
+  // For existing entries, whether anything has actually been changed (used to
+  // confirm before discarding edits; new entries are auto-drafted, so no guard).
+  const dirty = !isNew && (
+    title !== (initial.title || '') || date !== (initial.date || '') || text !== (initial.entry || '') ||
+    JSON.stringify(tags) !== JSON.stringify(initial.tags || []) ||
+    JSON.stringify(people) !== JSON.stringify(initial.people || [])
+  )
+
+  const canSave = text.trim().length > 0 && date && !clash && !isFuture && !saving
+
+  function handleCancel() {
+    if (dirty && !window.confirm('Discard your changes to this delight?')) return
+    onCancel()
+  }
 
   // Quick entry: drop the cursor into the Title for a new delight.
   useEffect(() => { if (isNew) titleRef.current?.focus() }, [isNew])
@@ -85,13 +102,14 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, onOpen
 
       <div className="field">
         <label htmlFor="f-date"><DateIcon /> Date</label>
-        <input id="f-date" type="date" value={date} onChange={e => setDate(e.target.value)} />
+        <input id="f-date" type="date" value={date} max={today} onChange={e => setDate(e.target.value)} />
         {clash && (
           <div className="dupe-warn">
             There's already a delight on {formatHuman(date)} — “{clash.title || 'untitled'}”.{' '}
             <a role="button" tabIndex={0} onClick={() => onOpenExisting(clash)} onKeyDown={e => e.key === 'Enter' && onOpenExisting(clash)}>Open it instead</a>.
           </div>
         )}
+        {isFuture && <div className="dupe-warn">A delight is something already noticed — choose today or earlier.</div>}
       </div>
 
       <div className="field">
@@ -114,7 +132,7 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, onOpen
 
       <div className="btn-row">
         <button type="submit" className="btn primary" disabled={!canSave}>{saving ? 'Saving…' : isNew ? 'Keep this delight' : 'Save changes'}</button>
-        <button type="button" className="btn-ghost" onClick={onCancel}>Cancel</button>
+        <button type="button" className="btn-ghost" onClick={handleCancel}>Cancel</button>
       </div>
     </form>
   )

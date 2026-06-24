@@ -152,6 +152,7 @@ export default function App() {
           ) : view === 'list' ? (
             <ListView
               entries={filtered}
+              total={entries.length}
               onOpen={(e) => setFocus({ kind: 'view', entry: e })}
               onChip={filterByChip}
               emptyMessage={searching ? 'Nothing matches that search.' : undefined}

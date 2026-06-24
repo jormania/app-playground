@@ -353,8 +353,11 @@ body {
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 .tg-tf-head {
-  font-size: 0.66rem; letter-spacing: 0.1em; color: #ecc356;
+  font-size: 0.66rem; letter-spacing: 0.01em; color: #ecc356;
   margin-bottom: 4px;
+  /* the reading "name" (Tonight's line, the Living World month) reads as a normal
+     sentence; the content/list below each keeps its small-caps treatment */
+  font-variant: normal;
 }
 .tg-tf-eyebrow { font-size: 0.62rem; letter-spacing: 0.03em; line-height: 1.35; } /* the longer "Month, Nickname" line */
 .tg-tf-row { display: flex; align-items: center; gap: 7px; }
