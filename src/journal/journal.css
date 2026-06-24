@@ -120,6 +120,22 @@ button { font-family: inherit; cursor: pointer; }
 .search-wrap .search-clear:hover { color: var(--ink); }
 
 .menu-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
+.actions-inline { display: flex; align-items: center; gap: 8px; }
+.actions-overflow { display: none; position: relative; }
+.more-scrim { position: fixed; inset: 0; z-index: 60; }
+.more-menu {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 61;
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: 12px;
+  padding: 6px; min-width: 172px; display: flex; flex-direction: column; gap: 2px;
+  box-shadow: 0 14px 34px rgba(0,0,0,0.5);
+}
+.more-menu a, .more-menu button {
+  display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  background: none; border: none; color: var(--muted);
+  font-family: var(--sans); font-size: 0.9rem; padding: 9px 12px; border-radius: 8px;
+}
+.more-menu a:hover, .more-menu button:hover { background: var(--surface); color: var(--ink); }
+.more-menu svg { font-size: 16px; color: var(--muted); }
 .icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
   width: 36px; height: 36px; border-radius: 50%;
@@ -310,9 +326,9 @@ button.chip:hover { border-color: currentColor; background: rgba(122,162,247,0.0
 .year { width: fit-content; max-width: 100%; margin: 0 auto; }
 .year-scroll { overflow-x: auto; overflow-y: hidden; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
 .year-inner { width: max-content; }
-.year-months { display: grid; gap: 3px; margin-bottom: 5px; height: 1.1em; }
+.year-months { display: grid; gap: 2px; margin-bottom: 5px; height: 1.1em; }
 .year-month { grid-row: 1; font-family: var(--mono); font-size: 0.6rem; color: var(--faint); white-space: nowrap; }
-.year-grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 10px); grid-auto-columns: 10px; gap: 3px; }
+.year-grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 10px); grid-auto-columns: 10px; gap: 2px; }
 .year-cell { border-radius: 3px; background: var(--surface); border: 1px solid var(--border); }
 .year-cell.empty { visibility: hidden; }
 .year-cell:not(.empty) { cursor: pointer; }
@@ -351,6 +367,9 @@ button.chip:hover { border-color: currentColor; background: rgba(122,162,247,0.0
   .btn-today span { display: none; }
   .btn-today { padding: 8px 12px; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  /* collapse the secondary actions into the ⋯ overflow menu on phones */
+  .actions-inline { display: none; }
+  .actions-overflow { display: block; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

@@ -64,3 +64,7 @@ export const HistoryIcon = (p) => (
 export const YearIcon = (p) => (
   <svg {...base} {...p}><path d="M4 6h2M9 6h2M14 6h2M19 6h1M4 10h2M9 10h2M14 10h2M19 10h1M4 14h2M9 14h2M14 14h2M4 18h2M9 18h2" /></svg>
 )
+// More — three dots, for the mobile overflow menu.
+export const MoreIcon = (p) => (
+  <svg {...base} {...p}><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none" /></svg>
+)

@@ -1,15 +1,29 @@
-import { ListIcon, CalendarIcon, YearIcon, GuideIcon, GearIcon, PlusIcon, StatsIcon, ExportIcon, CloseIcon } from './icons.jsx'
+import { useState } from 'react'
+import { ListIcon, CalendarIcon, YearIcon, GuideIcon, GearIcon, PlusIcon, StatsIcon, ExportIcon, MoreIcon, CloseIcon } from './icons.jsx'
 import { SCOPES } from './search.js'
 
+const GUIDE_URL = '/journal-of-delights-guide.html'
+
 // The slim sticky bar: view toggle (List · Calendar · Year) · search (with scope) ·
-// Today · Stats · Export · Guide · Settings. Wraps gracefully — on narrow screens
-// the search drops to its own full-width row while the rest stays on the top line.
+// Today · actions. On desktop the actions sit inline; on phones they collapse into
+// a ⋯ overflow menu so the whole bar stays one tidy row + a full-width search row.
 export default function MenuBar({ view, onView, query, scope, onQuery, onScope, onToday, onStats, onExport, onSettings }) {
+  const [moreOpen, setMoreOpen] = useState(false)
+
   const seg = (id, Icon, label) => (
     <button className={view === id ? 'active' : ''} aria-selected={view === id} onClick={() => onView(id)}>
       <Icon /><span>{label}</span>
     </button>
   )
+
+  // The secondary actions, rendered both inline (desktop) and inside ⋯ (mobile).
+  const actions = [
+    { key: 'stats', Icon: StatsIcon, label: 'Stats', onClick: onStats, title: 'Stats' },
+    { key: 'export', Icon: ExportIcon, label: 'Export', onClick: onExport, title: 'Export as an HTML file' },
+    { key: 'guide', Icon: GuideIcon, label: 'Guide', href: GUIDE_URL, title: 'How to use this journal' },
+    { key: 'settings', Icon: GearIcon, label: 'Settings', onClick: onSettings, title: 'Connect to Notion' },
+  ]
+
   return (
     <nav className="menubar">
       <div className="menubar-inner">
@@ -38,10 +52,30 @@ export default function MenuBar({ view, onView, query, scope, onQuery, onScope, 
 
         <div className="menu-actions">
           <button className="btn-today" onClick={onToday}><PlusIcon /> <span>Today</span></button>
-          <button className="icon-btn" onClick={onStats} aria-label="Stats" title="Stats"><StatsIcon /></button>
-          <button className="icon-btn" onClick={onExport} aria-label="Export" title="Export as an HTML file"><ExportIcon /></button>
-          <a className="icon-btn" href="/journal-of-delights-guide.html" target="_blank" rel="noopener" aria-label="Guide" title="How to use this journal"><GuideIcon /></a>
-          <button className="icon-btn" onClick={onSettings} aria-label="Settings" title="Connect to Notion"><GearIcon /></button>
+
+          {/* Desktop: actions inline */}
+          <div className="actions-inline">
+            {actions.map(a => a.href
+              ? <a key={a.key} className="icon-btn" href={a.href} target="_blank" rel="noopener" aria-label={a.label} title={a.title}><a.Icon /></a>
+              : <button key={a.key} className="icon-btn" onClick={a.onClick} aria-label={a.label} title={a.title}><a.Icon /></button>
+            )}
+          </div>
+
+          {/* Mobile: one ⋯ button opening a popover of the same actions */}
+          <div className="actions-overflow">
+            <button className="icon-btn" onClick={() => setMoreOpen(o => !o)} aria-haspopup="menu" aria-expanded={moreOpen} aria-label="More actions"><MoreIcon /></button>
+            {moreOpen && (
+              <>
+                <div className="more-scrim" onClick={() => setMoreOpen(false)} />
+                <div className="more-menu" role="menu">
+                  {actions.map(a => a.href
+                    ? <a key={a.key} role="menuitem" href={a.href} target="_blank" rel="noopener" onClick={() => setMoreOpen(false)}><a.Icon /> {a.label}</a>
+                    : <button key={a.key} role="menuitem" onClick={() => { setMoreOpen(false); a.onClick() }}><a.Icon /> {a.label}</button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </nav>
