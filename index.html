@@ -723,7 +723,7 @@ const deployDate = deployMeta ? new Date(deployMeta.content) : null;
 const latestDate = latestDeployedDate();
 if (deployDate && !isNaN(deployDate)) {
   document.getElementById("updated-meta").textContent =
-    `updated ${MONTHS_FULL[deployDate.getMonth()]} ${deployDate.getFullYear()}`;
+    `updated ${MONTHS_FULL[deployDate.getMonth()]} ${deployDate.getDate()}, ${deployDate.getFullYear()}`;
   document.getElementById("footer-year").textContent = deployDate.getFullYear();
 } else if (latestDate) {
   document.getElementById("updated-meta").textContent = `updated ${MONTHS_FULL[latestDate.m]} ${latestDate.y}`;
