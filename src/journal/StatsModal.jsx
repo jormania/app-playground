@@ -27,7 +27,7 @@ export default function StatsModal({ entries, onClose }) {
           <Stat value={s.last7} label="in the last 7 days" />
           {s.daysSinceFirst != null && <Stat value={s.daysSinceFirst} label="days journalling" />}
           {/* word measures */}
-          <Stat value={s.avgWords} label="avg words / entry" />
+          <Stat value={s.avgWords} label="average words per entry" />
           <Stat value={`${s.shortest}–${s.longest}`} label="shortest–longest" />
           <Stat value={s.totalWords.toLocaleString()} label="words in all" />
           {/* motifs */}

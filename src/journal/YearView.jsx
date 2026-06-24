@@ -42,32 +42,30 @@ export default function YearView({ entries, onOpenEntry, onNewOn }) {
       </div>
 
       <div className="year-scroll">
-        <div className="year-inner">
-          <div className="year-months" style={{ gridTemplateColumns: `repeat(${weeks.length}, 1fr)` }}>
+        <div className="year-inner" style={{ width: `${weeks.length * 14}px` }}>
+          <div className="year-months" style={{ gridTemplateColumns: `repeat(${weeks.length}, 11px)` }}>
             {labels.map(l => <span key={l.wi} className="year-month" style={{ gridColumnStart: l.wi + 1 }}>{l.text}</span>)}
           </div>
+          {/* Cells flow column-by-column (Mon→Sun down each week) — DOM order is
+              already week-major, matching grid-auto-flow: column. */}
           <div className="year-grid">
-            {weeks.map((week, wi) => (
-              <div key={wi} className="year-col">
-                {week.map(cell => {
-                  const entry = cell.inYear && findByDate(entries, cell.key)
-                  const cls = [
-                    'year-cell',
-                    !cell.inYear ? 'empty' : '',
-                    entry ? 'lit' : '',
-                    cell.key === today ? 'today' : '',
-                  ].filter(Boolean).join(' ')
-                  return (
-                    <div
-                      key={cell.key}
-                      className={cls}
-                      onClick={() => clickCell(cell)}
-                      title={entry ? `${cell.key} — ${entry.title || 'untitled'}` : cell.inYear ? cell.key : ''}
-                    />
-                  )
-                })}
-              </div>
-            ))}
+            {weeks.flat().map(cell => {
+              const entry = cell.inYear && findByDate(entries, cell.key)
+              const cls = [
+                'year-cell',
+                !cell.inYear ? 'empty' : '',
+                entry ? 'lit' : '',
+                cell.key === today ? 'today' : '',
+              ].filter(Boolean).join(' ')
+              return (
+                <div
+                  key={cell.key}
+                  className={cls}
+                  onClick={() => clickCell(cell)}
+                  title={entry ? `${cell.key} — ${entry.title || 'untitled'}` : cell.inYear ? cell.key : ''}
+                />
+              )
+            })}
           </div>
         </div>
       </div>

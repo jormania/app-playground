@@ -9,7 +9,7 @@ function words(entry) {
   return entry.wordCount != null ? entry.wordCount : wordCount(entry.entry)
 }
 
-function topCounts(entries, field, n = 4) {
+function topCounts(entries, field, n = 3) {
   const counts = new Map()
   for (const e of entries) {
     for (const name of e[field] || []) counts.set(name, (counts.get(name) || 0) + 1)
