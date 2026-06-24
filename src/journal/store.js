@@ -9,7 +9,6 @@ import { createFixtureClient } from './fixtureClient.js'
 
 const TOKEN_KEY = 'jod_token'
 const DB_KEY = 'jod_database'
-const WEEK_START_KEY = 'jod_week_start'  // 0 = Sunday, 1 = Monday
 
 export function getToken() {
   try { return localStorage.getItem(TOKEN_KEY) || '' } catch { return '' }
@@ -47,16 +46,6 @@ export function hasCustomDatabase() {
 
 export function isLive() {
   return Boolean(getToken())
-}
-
-// Calendar week-start preference (0 = Sunday, 1 = Monday). Defaults to Monday,
-// matching the day-first date style used throughout the app.
-export function getWeekStart() {
-  try { return localStorage.getItem(WEEK_START_KEY) === '0' ? 0 : 1 } catch { return 1 }
-}
-
-export function setWeekStart(value) {
-  try { localStorage.setItem(WEEK_START_KEY, value === 0 ? '0' : '1') } catch { /* ignore */ }
 }
 
 // Used by the settings "Test connection" button. Builds a live client from the

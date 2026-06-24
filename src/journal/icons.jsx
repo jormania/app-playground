@@ -47,3 +47,8 @@ export const GearIcon = (p) => (
   <svg {...base} {...p}><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" /></svg>
 )
 export const CloseIcon = (p) => (<svg {...base} {...p}><path d="M6 6l12 12M18 6L6 18" /></svg>)
+export const SearchIcon = (p) => (<svg {...base} {...p}><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4 4" /></svg>)
+// Stats — a small bar chart.
+export const StatsIcon = (p) => (
+  <svg {...base} {...p}><path d="M5 21V11M12 21V4M19 21v-6" /><path d="M3 21h18" /></svg>
+)

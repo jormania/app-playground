@@ -1,13 +1,15 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import './journal.css'
 import { getClient, isLive } from './store.js'
 import { todayKey, findByDate } from './dates.js'
+import { filterEntries } from './search.js'
 import MenuBar from './MenuBar.jsx'
 import ListView from './ListView.jsx'
 import CalendarView from './CalendarView.jsx'
 import EntryView from './EntryView.jsx'
 import EntryEditor from './EntryEditor.jsx'
 import SettingsModal from './SettingsModal.jsx'
+import StatsModal from './StatsModal.jsx'
 
 const VIEW_KEY = 'jod_view' // remember list/calendar preference
 
@@ -22,7 +24,10 @@ export default function App() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [showSettings, setShowSettings] = useState(false)
+  const [showStats, setShowStats] = useState(false)
   const [live, setLive] = useState(isLive())
+  const [query, setQuery] = useState('')
+  const [scope, setScope] = useState('all')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -38,6 +43,9 @@ export default function App() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  const filtered = useMemo(() => filterEntries(entries, query, scope), [entries, query, scope])
+  const searching = query.trim().length > 0
 
   function chooseView(v) {
     setView(v)
@@ -88,7 +96,12 @@ export default function App() {
       <MenuBar
         view={view}
         onView={chooseView}
+        query={query}
+        scope={scope}
+        onQuery={setQuery}
+        onScope={setScope}
         onToday={openToday}
+        onStats={() => setShowStats(true)}
         onSettings={() => setShowSettings(true)}
       />
 
@@ -121,10 +134,14 @@ export default function App() {
           ) : loading ? (
             <div className="loading"><p>Gathering your delights…</p></div>
           ) : view === 'list' ? (
-            <ListView entries={entries} onOpen={(e) => setFocus({ kind: 'view', entry: e })} />
+            <ListView
+              entries={filtered}
+              onOpen={(e) => setFocus({ kind: 'view', entry: e })}
+              emptyMessage={searching ? 'Nothing matches that search.' : undefined}
+            />
           ) : (
             <CalendarView
-              entries={entries}
+              entries={filtered}
               onOpenEntry={(e) => setFocus({ kind: 'view', entry: e })}
               onNewOn={(key) => { setSaveError(''); setFocus({ kind: 'edit', initial: { date: key } }) }}
             />
@@ -134,11 +151,12 @@ export default function App() {
 
       <footer className="foot">
         <div className="container">
-          after Ross Gay’s <em>The Book of Delights</em> · <a href="/">Cone of Cold</a> · <a href="/journal-of-delights-guide.html" target="_blank" rel="noopener">guide</a>
+          after Ross Gay’s <a href="https://www.rossgay.net/the-book-of-delights" target="_blank" rel="noopener"><em>The Book of Delights</em></a> · <a href="/">Cone of Cold</a>
         </div>
       </footer>
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} onChanged={onSettingsChanged} />}
+      {showStats && <StatsModal entries={entries} onClose={() => setShowStats(false)} />}
     </>
   )
 }

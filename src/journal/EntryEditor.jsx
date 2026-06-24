@@ -38,10 +38,10 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, onOpen
 
   return (
     <form className="editor" onSubmit={submit}>
-      <h2>{isNew ? 'A new delight' : 'Edit delight'}</h2>
+      <h2>{isNew ? <>A new <em>delight</em></> : <>Edit <em>delight</em></>}</h2>
       <p className="sub">
         {isNew
-          ? 'Something small you noticed today — an act of attention, not a good day. As little as 25 words.'
+          ? 'Retrace the texture of something you noticed today.'
           : `Written for ${formatHuman(date)}.`}
       </p>
 
@@ -67,7 +67,6 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, onOpen
         <label htmlFor="f-entry"><EntryIcon /> Entry</label>
         <textarea id="f-entry" value={text} placeholder="Write it down before it dissolves…" onChange={e => setText(e.target.value)} />
         <div className="entry-meta">
-          <span className="hint">25–500 words is the gentle range — not a rule.</span>
           <span className={`wordcount ${inRange ? 'in-range' : ''}`}>{count} {count === 1 ? 'word' : 'words'}</span>
         </div>
       </div>

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   getToken, setToken, clearToken,
   getDatabaseId, setDatabaseId, hasCustomDatabase,
-  getWeekStart, setWeekStart, testConnection,
+  testConnection,
 } from './store.js'
 import { CloseIcon } from './icons.jsx'
 
@@ -13,7 +13,6 @@ import { CloseIcon } from './icons.jsx'
 export default function SettingsModal({ onClose, onChanged }) {
   const [token, setTokenValue] = useState(getToken())
   const [db, setDb] = useState(hasCustomDatabase() ? getDatabaseId() : '')
-  const [weekStart, setWeek] = useState(getWeekStart())
   const [testing, setTesting] = useState(false)
   const [result, setResult] = useState(null) // { ok, message }
   const live = Boolean(getToken())
@@ -21,7 +20,6 @@ export default function SettingsModal({ onClose, onChanged }) {
   function save() {
     setToken(token)
     setDatabaseId(db)            // empty -> falls back to the built-in default
-    setWeekStart(weekStart)
     onChanged()
     onClose()
   }
@@ -91,15 +89,6 @@ export default function SettingsModal({ onClose, onChanged }) {
             {result.ok ? '✓ ' : '✕ '}{result.message}
           </p>
         )}
-
-        <div className="field" style={{ marginTop: 18, borderTop: '1px solid var(--border)', paddingTop: 18 }}>
-          <label htmlFor="s-week" style={labelStyle}>Calendar starts week on</label>
-          <select id="s-week" value={weekStart} onChange={e => setWeek(Number(e.target.value))}
-            style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--ink)', fontFamily: 'var(--sans)', fontSize: 15, padding: '11px 14px', outline: 'none' }}>
-            <option value={1}>Monday</option>
-            <option value={0}>Sunday</option>
-          </select>
-        </div>
 
         <div className="btn-row" style={{ marginTop: 18 }}>
           <button className="btn primary" onClick={save} disabled={!token.trim()}>Save</button>

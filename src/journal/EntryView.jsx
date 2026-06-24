@@ -1,9 +1,9 @@
 import { formatHuman } from './dates.js'
-import { TagIcon, PeopleIcon, CountIcon, BackIcon } from './icons.jsx'
+import { CountIcon, BackIcon } from './icons.jsx'
+import EntryMeta from './EntryMeta.jsx'
 
-// Single-entry read view: Title, Date, the essayette, Tags, People, Word Count.
-// Word Count is shown as Notion's stored value when present (live mode), falling
-// back to nothing for an as-yet-unsaved entry.
+// Single-entry read view: Title, Date, the essayette, then People + Tags on one
+// line (shared with the list), and Word Count from Notion's formula when saved.
 export default function EntryView({ entry, onBack, onEdit }) {
   return (
     <article className="entry-view">
@@ -13,18 +13,7 @@ export default function EntryView({ entry, onBack, onEdit }) {
 
       <div className="ev-body">{entry.entry}</div>
 
-      {entry.people.length > 0 && (
-        <div className="field-row">
-          <span className="field-label"><PeopleIcon /> people</span>
-          {entry.people.map(p => <span key={p} className="chip person">{p}</span>)}
-        </div>
-      )}
-      {entry.tags.length > 0 && (
-        <div className="field-row">
-          <span className="field-label"><TagIcon /> tags</span>
-          {entry.tags.map(t => <span key={t} className="chip tag">{t}</span>)}
-        </div>
-      )}
+      <EntryMeta people={entry.people} tags={entry.tags} />
 
       <div className="ev-foot">
         {entry.wordCount != null && (

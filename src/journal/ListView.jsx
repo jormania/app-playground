@@ -1,11 +1,13 @@
 import { sortByDateDesc, formatShort } from './dates.js'
+import EntryMeta from './EntryMeta.jsx'
 
 // Primary read view: reverse-chronological list. One row per delight, newest first.
-export default function ListView({ entries, onOpen }) {
+// `emptyMessage` lets the caller distinguish "no entries" from "nothing matched".
+export default function ListView({ entries, onOpen, emptyMessage }) {
   if (!entries.length) {
     return (
       <div className="empty">
-        <p>No delights yet. The first one is waiting to be noticed.</p>
+        <p>{emptyMessage || 'No delights yet. The first one is waiting to be noticed.'}</p>
       </div>
     )
   }
@@ -18,12 +20,7 @@ export default function ListView({ entries, onOpen }) {
             <span className="row-title">{e.title || 'untitled'}</span>
           </div>
           {e.entry && <div className="row-excerpt">{e.entry}</div>}
-          {(e.tags.length > 0 || e.people.length > 0) && (
-            <div className="row-chips">
-              {e.people.map(p => <span key={`p-${p}`} className="chip person">{p}</span>)}
-              {e.tags.map(t => <span key={`t-${t}`} className="chip tag">{t}</span>)}
-            </div>
-          )}
+          <EntryMeta people={e.people} tags={e.tags} />
         </button>
       ))}
     </div>
