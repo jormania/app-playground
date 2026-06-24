@@ -1,7 +1,7 @@
 // Shared root-scope service worker: stale-while-revalidate for same-origin GETs.
 // Enables PWA installability and offline use after the first visit, for both
 // the React rewrite (/touch-grass-react.html) and the older static apps.
-const CACHE = 'tg-cache-v5';
+const CACHE = 'tg-cache-v6';
 
 self.addEventListener('install', function () {
   self.skipWaiting();
@@ -150,6 +150,25 @@ function tgMaybeCalls() {
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+
+  // Navigations (HTML documents) are network-first: a fresh deploy must show up
+  // immediately rather than serving a stale page that points at old hashed assets.
+  // Falls back to cache only when offline, so PWA offline use is preserved.
+  if (req.mode === 'navigate') {
+    e.respondWith(
+      fetch(req).then(function (res) {
+        if (res && res.status === 200 && res.type === 'basic') {
+          var copy = res.clone();
+          caches.open(CACHE).then(function (cache) { cache.put(req, copy); });
+        }
+        return res;
+      }).catch(function () { return caches.match(req); })
+    );
+    return;
+  }
+
+  // Everything else (hashed JS/CSS/assets, immutable by filename) is cache-first
+  // with background revalidation — fast and safe, since a new build means new names.
   e.respondWith(
     caches.open(CACHE).then(function (cache) {
       return cache.match(req).then(function (cached) {
