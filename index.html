@@ -4,7 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Cone of Cold — a cabinet of small, strange tools built with Claude.">
+<meta name="theme-color" content="#100d0a">
 <title>Cone of Cold</title>
+<link rel="icon" type="image/png" href="/cone-of-cold.png">
+<!-- Social sharing -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Cone of Cold">
+<meta property="og:description" content="A cabinet of small, strange tools — standalone web apps built with Claude that run entirely in your browser.">
+<meta property="og:image" content="/cone-of-cold.png">
+<meta name="twitter:card" content="summary">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -46,39 +54,21 @@ a { color: inherit; text-decoration: none; }
 ::selection { background: rgba(224,169,85,0.25); color: #fff; }
 .container { max-width: 1040px; margin: 0 auto; padding: 0 28px; }
 
-/* ── Nav ── */
-nav {
-  position: sticky; top: 0; z-index: 100;
-  background: rgba(16,13,10,0.82);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--border);
+/* ── Footer ── */
+.site-footer { border-top: 1px solid var(--border); padding: 28px 0 40px; }
+.footer-inner {
+  display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;
 }
-.nav-inner {
-  max-width: 1040px; margin: 0 auto; padding: 0 28px;
-  height: 62px; display: flex; align-items: center; justify-content: space-between;
+.footer-credit {
+  margin-top: 16px; text-align: center;
+  font-family: var(--mono); font-size: 12px; color: var(--faint);
 }
-.nav-logo {
-  display: flex; align-items: baseline; gap: 9px;
-  font-family: var(--serif); font-size: 23px; letter-spacing: 0.1px; color: var(--ink);
-}
-.nav-logo .mark { color: var(--gold); font-family: var(--sans); font-size: 16px; }
-.nav-links { display: flex; align-items: center; gap: 26px; font-size: 14px; color: var(--muted); }
-.nav-links a { transition: color 0.18s; }
-.nav-links a:hover { color: var(--ink); }
-.nav-cta {
-  color: var(--gold);
-  border: 1px solid rgba(224,169,85,0.30);
-  padding: 6px 15px; border-radius: 999px; font-size: 13px; transition: all 0.18s;
-}
-.nav-cta:hover { background: var(--gold-dim); border-color: rgba(224,169,85,0.55); }
+.footer-credit a { color: inherit; transition: color 0.18s; }
+.footer-credit a:hover { color: var(--muted); }
+.logo-mark { height: 34px; width: auto; display: block; }
 
 /* ── Hero ── */
-.hero { padding: 92px 0 56px; }
-.hero-eyebrow {
-  font-family: var(--mono); font-size: 11.5px; color: var(--gold);
-  letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 26px;
-}
+.hero { padding: 46px 0 34px; }
 .hero h1 {
   font-family: var(--serif); font-weight: 400;
   font-size: clamp(2.8rem, 7vw, 5rem); color: var(--ink);
@@ -87,29 +77,21 @@ nav {
 .hero h1 em { font-style: italic; color: var(--gold-soft); }
 .hero-desc { max-width: 580px; color: var(--muted); font-size: 17px; line-height: 1.72; font-weight: 300; }
 .hero-desc strong { color: var(--ink); font-weight: 500; }
-.hero-meta {
-  margin-top: 40px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+.collection-meta {
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0; white-space: nowrap;
   font-family: var(--mono); font-size: 12px; color: var(--faint);
 }
-.hero-meta .dot { color: var(--border2); }
-.hero-meta b { color: var(--gold); font-weight: 500; }
+.collection-meta .dot { color: var(--border2); }
+.collection-meta #result-count { color: var(--gold); font-weight: 500; white-space: nowrap; }
 
 .rule { height: 1px; background: linear-gradient(90deg, var(--border), transparent); }
 
 /* ── Apps section ── */
-#apps { padding: 48px 0 96px; }
-
-.section-header {
-  display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap; margin-bottom: 28px;
-}
-.section-title { font-family: var(--serif); font-size: 34px; font-weight: 400; color: var(--ink); line-height: 1; }
-.section-sub { font-size: 14px; color: var(--muted); margin-top: 6px; font-weight: 300; }
-.result-count { font-size: 11.5px; font-family: var(--mono); color: var(--faint); white-space: nowrap; }
+#apps { padding: 30px 0 40px; }
 
 /* ── Filter bar ── */
 .filter-bar { margin-bottom: 34px; }
-.search-row { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+.search-row { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
 .search-wrap { position: relative; flex: 1; }
 .search-wrap::before {
   content: '⌕'; position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
@@ -283,26 +265,18 @@ nav {
 }
 .empty-clear:hover { border-color: var(--gold); color: var(--gold); }
 
-/* ── Footer ── */
-footer { border-top: 1px solid var(--border); padding: 40px 0; }
-.footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.footer-left { font-size: 13px; color: var(--faint); font-family: var(--serif); font-style: italic; font-size: 15px; }
-.footer-left b { color: var(--muted); font-weight: 400; font-style: normal; font-family: var(--serif); }
-.footer-links { display: flex; gap: 22px; font-size: 12.5px; color: var(--faint); font-family: var(--mono); }
-.footer-links a { transition: color 0.18s; }
-.footer-links a:hover { color: var(--gold); }
-
 /* ── Responsive ── */
 @media (max-width: 760px) {
   #app-list { grid-template-columns: 1fr; gap: 18px; }
   .card.is-latest { grid-column: auto; }
-  .hero { padding: 60px 0 40px; }
+  .hero { padding: 34px 0 26px; }
   .card.is-latest .card-inner { padding: 26px; }
   .card.is-latest .card-title { font-size: 27px; }
   .card-footer { flex-direction: column; align-items: flex-start; }
   .card-actions { width: 100%; }
   .btn-launch { flex: 1; justify-content: center; }
-  .footer-inner { flex-direction: column; align-items: flex-start; }
+  .search-row { flex-wrap: wrap; }
+  .collection-meta { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -314,37 +288,15 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
 </head>
 <body>
 
-<!-- ══ NAV ══════════════════════════════════════════ -->
-<nav>
-  <div class="nav-inner">
-    <a href="/" class="nav-logo">
-      <span class="mark">❄</span>Cone of Cold
-    </a>
-    <div class="nav-links">
-      <a href="#apps">The collection</a>
-      <a class="nav-cta" href="https://github.com/jormania/app-playground" target="_blank" rel="noopener">GitHub ↗</a>
-    </div>
-  </div>
-</nav>
-
 <!-- ══ HERO ══════════════════════════════════════════ -->
 <section class="hero">
   <div class="container">
-    <div class="hero-eyebrow">Cone of Cold · personal playground</div>
     <h1>A cabinet of small, <em>strange</em> tools.</h1>
     <p class="hero-desc">
-      Standalone web apps, each built in one long conversation with Claude —
-      <strong>small, strange, genuinely useful tools</strong> that live entirely in your browser.
-      No download, no sign-up to explore; the few that remember your work just plug into
-      accounts you already own. Pick one and step in.
+      Standalone web apps — <strong>small, strange, genuinely useful tools</strong>,
+      each built in one long conversation with Claude. No download, no sign-up to explore;
+      the few that remember your work just plug into accounts you already own. Pick one and step in.
     </p>
-    <div class="hero-meta">
-      <span><b id="stat-apps">—</b> apps live</span>
-      <span class="dot">·</span>
-      <span>updated June 2026</span>
-      <span class="dot">·</span>
-      <span>runs in your browser</span>
-    </div>
   </div>
 </section>
 
@@ -356,16 +308,14 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
 
     <!-- Filter bar -->
     <div class="filter-bar">
-      <div class="section-header">
-        <div>
-          <h2 class="section-title">The collection</h2>
-          <div class="section-sub">Each app built in conversation with Claude — pick one and step in.</div>
-        </div>
-        <span class="result-count" id="result-count"></span>
-      </div>
       <div class="search-row">
+        <div class="collection-meta">
+          <span id="result-count">— apps</span>
+          <span class="dot">·</span>
+          <span id="updated-meta">updated —</span>
+        </div>
         <div class="search-wrap">
-          <input id="search" type="search" placeholder="Search apps, tags, descriptions…" autocomplete="off" spellcheck="false">
+          <input id="search" type="search" aria-label="Search apps" placeholder="Search apps, tags, descriptions…" autocomplete="off" spellcheck="false">
         </div>
         <button id="clear-btn">✕ clear</button>
       </div>
@@ -379,17 +329,12 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
 </section>
 
 <!-- ══ FOOTER ════════════════════════════════════════ -->
-<footer>
+<footer class="site-footer">
   <div class="container">
     <div class="footer-inner">
-      <div class="footer-left">
-        <b>Cone of Cold</b> — built with Claude, hosted on Vercel.
-      </div>
-      <div class="footer-links">
-        <a href="https://github.com/jormania/app-playground" target="_blank" rel="noopener">GitHub</a>
-        <a href="#apps">Apps</a>
-      </div>
+      <img class="logo-mark" src="/cone-of-cold.png" alt="Cone of Cold" width="380" height="380">
     </div>
+    <div class="footer-credit">© 2026 Cone of Cold · built with Claude · runs in your browser · <a href="https://github.com/jormania/app-playground" target="_blank" rel="noopener">GitHub ↗</a></div>
   </div>
 </footer>
 
@@ -399,6 +344,8 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
 // Category tags (get the rose highlight): gaming, fitness, outdoor…
 // Pre-design-system apps show a "Legacy" chip by default; set ds: true on an
 // app built on src/ds/ to drop it.
+// deployed: "Mon YYYY" (e.g. "Jun 2026") — drives both the date chip and the
+// "updated <Month YYYY>" line, which auto-derives from the newest deployed value.
 // ─────────────────────────────────────────────────────
 const CAT_TAGS = new Set(["gaming", "fitness", "outdoor", "mindfulness", "kawaii"]);
 
@@ -559,12 +506,32 @@ const clearBtn      = document.getElementById("clear-btn");
 const tagsRowEl     = document.getElementById("tags-row");
 const appListEl     = document.getElementById("app-list");
 const resultCountEl = document.getElementById("result-count");
-const statAppsEl    = document.getElementById("stat-apps");
 
 // ─────────────────────────────────────────────────────
 // TAGS
 // ─────────────────────────────────────────────────────
 const ALL_TAGS = [...new Set(APPS.flatMap(a => a.tags))].sort();
+
+// ─────────────────────────────────────────────────────
+// "updated <Month YYYY>" — derived from the newest deployed app
+// ─────────────────────────────────────────────────────
+const MONTHS_SHORT = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+const MONTHS_FULL  = ["January","February","March","April","May","June",
+                      "July","August","September","October","November","December"];
+function parseDeployed(s) {
+  const [mon, yr] = (s || "").trim().split(/\s+/);
+  const m = MONTHS_SHORT.indexOf((mon || "").slice(0, 3).toLowerCase());
+  const y = parseInt(yr, 10);
+  return (m < 0 || isNaN(y)) ? null : { y, m };
+}
+function latestDeployed() {
+  let best = null;
+  for (const a of APPS) {
+    const d = parseDeployed(a.deployed);
+    if (d && (!best || d.y > best.y || (d.y === best.y && d.m > best.m))) best = d;
+  }
+  return best ? `${MONTHS_FULL[best.m]} ${best.y}` : "";
+}
 
 function buildTagChips() {
   tagsRowEl.innerHTML = "";
@@ -594,7 +561,6 @@ function doFilter() {
       || app.description.toLowerCase().includes(q)
       || (app.features || []).some(f => f.toLowerCase().includes(q))
       || app.tags.some(t => t.includes(q))
-      || (app.author || "").toLowerCase().includes(q)
       || (app.tech || "").toLowerCase().includes(q);
     return matchTag && matchSearch;
   });
@@ -629,16 +595,13 @@ function renderCard(app) {
     ? `<span class="card-version">${app.version}</span>`
     : "";
 
-  const latestHtml = app.final
-    ? `<span class="card-latest">✦ Complete</span>`
-    : app.latest
+  const latestHtml = app.latest
     ? `<span class="card-latest">✦ Latest</span>`
     : "";
 
   const metaHtml = [
     app.deployed ? `<span class="meta-chip date">${app.deployed}</span>` : "",
     app.tech     ? `<span class="meta-chip stack">${app.tech}</span>` : "",
-    app.author   ? `<span class="meta-chip">${app.author}</span>` : "",
     app.ds       ? "" : `<span class="meta-chip legacy">Legacy</span>`,
   ].filter(Boolean).join("");
 
@@ -681,7 +644,6 @@ function applyFilters() {
   const total      = APPS.length;
   const isFiltered = activeTag || searchQuery.trim();
 
-  if (statAppsEl) statAppsEl.textContent = total;
   resultCountEl.textContent = isFiltered
     ? (results.length === 0 ? "no results" : `${results.length} of ${total} shown`)
     : `${total} apps`;
@@ -749,6 +711,9 @@ searchEl.addEventListener("input", () => {
   applyFilters(); updateURL();
 });
 clearBtn.addEventListener("click", clearAll);
+
+const updated = latestDeployed();
+if (updated) document.getElementById("updated-meta").textContent = `updated ${updated}`;
 
 readURL();
 applyFilters();
