@@ -103,10 +103,10 @@ function lightWindow(now, coords) {
   for (const off of [-1, 0, 1]) {
     const d = new Date(now); d.setDate(d.getDate() + off)
     const t = getTimes(d, coords.lat, coords.lon)
-    if (ok(t.dawn) && ok(t.sunrise)) wins.push({ kind: 'blue', s: t.dawn, e: t.sunrise })
-    if (ok(t.sunrise) && ok(t.goldenHourEnd)) wins.push({ kind: 'golden', s: t.sunrise, e: t.goldenHourEnd })
-    if (ok(t.goldenHour) && ok(t.sunset)) wins.push({ kind: 'golden', s: t.goldenHour, e: t.sunset })
-    if (ok(t.sunset) && ok(t.dusk)) wins.push({ kind: 'blue', s: t.sunset, e: t.dusk })
+    if (ok(t.dawn) && ok(t.sunrise)) wins.push({ kind: 'blue', morning: true, s: t.dawn, e: t.sunrise })
+    if (ok(t.sunrise) && ok(t.goldenHourEnd)) wins.push({ kind: 'golden', morning: true, s: t.sunrise, e: t.goldenHourEnd })
+    if (ok(t.goldenHour) && ok(t.sunset)) wins.push({ kind: 'golden', morning: false, s: t.goldenHour, e: t.sunset })
+    if (ok(t.sunset) && ok(t.dusk)) wins.push({ kind: 'blue', morning: false, s: t.sunset, e: t.dusk })
   }
   const cur = wins.find(w => now >= w.s.getTime() && now <= w.e.getTime())
   if (cur) return cur
@@ -140,7 +140,9 @@ function Tonight({ coords, now, moon, reading }) {
   const lwLabel = !lw ? null
     : lw.kind === 'golden'
       ? (lwNow ? 'honey light until' : 'light turns to honey at')
-      : (lwNow ? 'Twilight’s Edge until' : 'Twilight’s Edge starts at')
+      : lw.morning
+        ? (lwNow ? 'the blue before dawn, until' : 'the blue before dawn starts at')
+        : (lwNow ? 'Twilight’s Edge until' : 'Twilight’s Edge starts at')
   const lwTime = lw ? fmt(lwNow ? lw.e : lw.s) : null
 
   // stars: if darkness is still to come, count to it; if it's already dark, the
