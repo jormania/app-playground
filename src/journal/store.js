@@ -48,6 +48,26 @@ export function isLive() {
   return Boolean(getToken())
 }
 
+// ── Theme ───────────────────────────────────────────────────────────────────
+// Solarized Dark is the default; the user's choice is remembered and never
+// changed automatically. Applied via the <html data-theme> attribute.
+const THEME_KEY = 'jod_theme'
+const THEME_BAR = { dark: '#002b36', light: '#fdf6e3' } // mobile browser UI bar
+
+export function getTheme() {
+  try { return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark' } catch { return 'dark' }
+}
+
+export function setTheme(theme) {
+  const t = theme === 'light' ? 'light' : 'dark'
+  try { localStorage.setItem(THEME_KEY, t) } catch { /* ignore */ }
+  if (typeof document !== 'undefined') {
+    document.documentElement.dataset.theme = t
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.setAttribute('content', THEME_BAR[t])
+  }
+}
+
 // Used by the settings "Test connection" button. Builds a live client from the
 // values currently typed (not yet saved) and does a cheap reachability check.
 export async function testConnection(token, dbRaw) {

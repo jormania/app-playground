@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import './journal.css'
-import { getClient, isLive, clearDraft } from './store.js'
+import { getClient, isLive, clearDraft, getTheme, setTheme } from './store.js'
 import { todayKey, findByDate } from './dates.js'
 import { filterEntries } from './search.js'
 import { downloadJournal } from './exportHtml.js'
@@ -30,6 +30,10 @@ export default function App() {
   const [live, setLive] = useState(isLive())
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState('all')
+  const [theme, setThemeState] = useState(getTheme())
+
+  // Keep <html data-theme> and the mobile bar colour in sync with the choice.
+  useEffect(() => { setTheme(theme) }, [theme])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -115,6 +119,8 @@ export default function App() {
         onStats={() => setShowStats(true)}
         onExport={() => downloadJournal(entries)}
         onSettings={() => setShowSettings(true)}
+        theme={theme}
+        onToggleTheme={() => setThemeState(t => (t === 'dark' ? 'light' : 'dark'))}
       />
 
       <main>

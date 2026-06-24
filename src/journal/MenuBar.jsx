@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ListIcon, CalendarIcon, YearIcon, GuideIcon, GearIcon, PlusIcon, StatsIcon, ExportIcon, MoreIcon, CloseIcon } from './icons.jsx'
+import { ListIcon, CalendarIcon, YearIcon, GuideIcon, GearIcon, PlusIcon, StatsIcon, ExportIcon, MoreIcon, CloseIcon, SunIcon, MoonIcon } from './icons.jsx'
 import { SCOPES } from './search.js'
 
 const GUIDE_URL = '/journal-of-delights-guide.html'
@@ -13,13 +13,16 @@ const VIEWS = [
 // On desktop the view toggle is a segmented control and the actions sit inline;
 // on phones BOTH collapse into ⋯-style menus so the bar stays one row with the
 // search box on it (not pushed to a second row).
-export default function MenuBar({ view, onView, query, scope, onQuery, onScope, onToday, onStats, onExport, onSettings }) {
+export default function MenuBar({ view, onView, query, scope, onQuery, onScope, onToday, onStats, onExport, onSettings, theme, onToggleTheme }) {
   const [moreOpen, setMoreOpen] = useState(false)
   const [viewOpen, setViewOpen] = useState(false)
+  const dark = theme !== 'light'
 
   const actions = [
     { key: 'stats', Icon: StatsIcon, label: 'Stats', onClick: onStats, title: 'Stats' },
     { key: 'export', Icon: ExportIcon, label: 'Export', onClick: onExport, title: 'Export as an HTML file' },
+    // The toggle shows the mode you'll switch TO.
+    { key: 'theme', Icon: dark ? SunIcon : MoonIcon, label: dark ? 'Light' : 'Dark', onClick: onToggleTheme, title: dark ? 'Switch to light theme' : 'Switch to dark theme' },
     { key: 'guide', Icon: GuideIcon, label: 'Guide', href: GUIDE_URL, title: 'How to use this journal' },
     { key: 'settings', Icon: GearIcon, label: 'Settings', onClick: onSettings, title: 'Connect to Notion' },
   ]

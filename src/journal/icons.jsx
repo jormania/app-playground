@@ -64,6 +64,13 @@ export const HistoryIcon = (p) => (
 export const YearIcon = (p) => (
   <svg {...base} {...p}><path d="M4 6h2M9 6h2M14 6h2M19 6h1M4 10h2M9 10h2M14 10h2M19 10h1M4 14h2M9 14h2M14 14h2M4 18h2M9 18h2" /></svg>
 )
+// Sun / Moon — the light/dark theme toggle. Each shows the mode you'll switch TO.
+export const SunIcon = (p) => (
+  <svg {...base} {...p}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" /></svg>
+)
+export const MoonIcon = (p) => (
+  <svg {...base} {...p}><path d="M21 12.8A8 8 0 1 1 11.2 3a6.4 6.4 0 0 0 9.8 9.8z" /></svg>
+)
 // More — three dots, for the mobile overflow menu.
 export const MoreIcon = (p) => (
   <svg {...base} {...p}><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none" /></svg>
