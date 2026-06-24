@@ -70,7 +70,7 @@ footer{text-align:center;font-family:ui-monospace,monospace;font-size:11px;color
   <div class="sub">${count} ${count === 1 ? 'delight' : 'delights'} · exported ${esc(formatHuman(exportedOn.toISOString().slice(0, 10)))}</div>
 </header>
 ${list.map(renderEntry).join('\n')}
-<footer>after Ross Gay’s The Book of Delights</footer>
+<footer>based on Ross Gay’s The Book of Delights</footer>
 </div></body></html>`
 }
 
