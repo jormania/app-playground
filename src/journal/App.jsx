@@ -14,12 +14,10 @@ import SettingsModal from './SettingsModal.jsx'
 import StatsModal from './StatsModal.jsx'
 import OnThisDayModal from './OnThisDayModal.jsx'
 
-const VIEW_KEY = 'jod_view' // remember list/calendar/year preference
-
 export default function App() {
-  const [view, setView] = useState(() => {
-    try { return localStorage.getItem(VIEW_KEY) || 'list' } catch { return 'list' }
-  })
+  // List is the default landing every time the app opens; Calendar and Year are
+  // secondary, reachable from the view menu but never the launch state.
+  const [view, setView] = useState('list')
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -53,7 +51,6 @@ export default function App() {
 
   function chooseView(v) {
     setView(v)
-    try { localStorage.setItem(VIEW_KEY, v) } catch { /* ignore */ }
     setFocus(null)
   }
 

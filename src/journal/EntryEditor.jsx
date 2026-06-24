@@ -21,7 +21,7 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, onOpen
   const [text, setText] = useState(seed.entry || '')
   const [tags, setTags] = useState(seed.tags || [])
   const [people, setPeople] = useState(seed.people || [])
-  const entryRef = useRef(null)
+  const titleRef = useRef(null)
 
   const tagOptions = useMemo(() => collectOptions(entries, 'tags'), [entries])
   const peopleOptions = useMemo(() => collectOptions(entries, 'people'), [entries])
@@ -38,8 +38,8 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, onOpen
 
   const canSave = text.trim().length > 0 && date && !clash && !saving
 
-  // Quick entry: drop the cursor straight into the writing for a new delight.
-  useEffect(() => { if (isNew) entryRef.current?.focus() }, [isNew])
+  // Quick entry: drop the cursor into the Title for a new delight.
+  useEffect(() => { if (isNew) titleRef.current?.focus() }, [isNew])
 
   // Auto-persist the draft for new entries on every change (cheap, local-only).
   useEffect(() => {
@@ -79,7 +79,7 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, onOpen
 
       <div className="field">
         <label htmlFor="f-title"><TitleIcon /> Title</label>
-        <input id="f-title" className="title-input" type="text" value={title}
+        <input id="f-title" className="title-input" ref={titleRef} type="text" value={title}
           placeholder="Name its essence in a few words…" onChange={e => setTitle(e.target.value)} />
       </div>
 
@@ -96,7 +96,7 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, onOpen
 
       <div className="field">
         <label htmlFor="f-entry"><EntryIcon /> Entry</label>
-        <textarea id="f-entry" ref={entryRef} value={text} placeholder="Write it down before it dissolves…" onChange={e => setText(e.target.value)} />
+        <textarea id="f-entry" value={text} placeholder="Write it down before it dissolves…" onChange={e => setText(e.target.value)} />
         <div className="entry-meta">
           <span className={`wordcount ${inRange ? 'in-range' : ''}`}>{count} {count === 1 ? 'word' : 'words'}</span>
         </div>
