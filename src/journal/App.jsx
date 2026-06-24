@@ -174,7 +174,7 @@ export default function App() {
 
       <footer className="foot">
         <div className="container">
-          based on Ross Gay’s <a href="https://www.rossgay.net/the-book-of-delights" target="_blank" rel="noopener"><em>The Book of Delights</em></a> · <a href="/">Cone of Cold</a>
+          based on Ross Gay’s <a href="https://www.rossgay.net/the-book-of-delights" target="_blank" rel="noopener"><em>The Book of Delights</em></a>
         </div>
       </footer>
 

@@ -385,7 +385,8 @@ button.chip:hover { border-color: currentColor; background: rgba(122,162,247,0.0
   .view-overflow { display: block; }
   .actions-inline { display: none; }
   .actions-overflow { display: block; }
-  .search-wrap { min-width: 110px; max-width: none; }
+  /* small basis so view + search + Today + ⋯ all share one row */
+  .search-wrap { flex: 1 1 80px; min-width: 80px; max-width: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
