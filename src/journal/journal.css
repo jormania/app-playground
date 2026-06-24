@@ -53,7 +53,7 @@ body {
 a { color: inherit; text-decoration: none; }
 button { font-family: inherit; cursor: pointer; }
 ::selection { background: rgba(122,162,247,0.28); color: #fff; }
-.container { max-width: 760px; margin: 0 auto; padding: 0 22px; }
+.container { max-width: 860px; margin: 0 auto; padding: 0 22px; }
 
 /* ── Masthead ── */
 .masthead { padding: 40px 0 18px; text-align: center; }
@@ -80,7 +80,7 @@ button { font-family: inherit; cursor: pointer; }
   border-bottom: 1px solid var(--border);
 }
 .menubar-inner {
-  max-width: 760px; margin: 0 auto; padding: 8px 22px;
+  max-width: 860px; margin: 0 auto; padding: 8px 22px;
   min-height: 46px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
 .seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 3px; flex-shrink: 0; }
@@ -228,6 +228,8 @@ button.chip:hover { border-color: currentColor; background: rgba(122,162,247,0.0
 .cal-cell .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); }
 
 /* ── Single entry view ── */
+/* Keep prose-heavy views readable even though the column is now wider (860). */
+.entry-view, .editor { max-width: 720px; margin-left: auto; margin-right: auto; }
 .entry-view .ev-date { font-family: var(--mono); font-size: 0.75rem; color: var(--purple); letter-spacing: 0.04em; }
 .entry-view h1 { font-family: var(--sans); font-weight: 500; font-size: clamp(1.6rem, 4.5vw, 2.1rem); line-height: 1.15; margin: 8px 0 4px; color: var(--ink); }
 .entry-view .ev-body { font-family: var(--sans); font-weight: 300; font-size: 1.0625rem; line-height: 1.75; color: var(--ink); margin: 22px 0; white-space: pre-wrap; }
@@ -328,7 +330,7 @@ button.chip:hover { border-color: currentColor; background: rgba(122,162,247,0.0
 .year-inner { width: max-content; }
 .year-months { display: grid; gap: 2px; margin-bottom: 5px; height: 1.1em; }
 .year-month { grid-row: 1; font-family: var(--mono); font-size: 0.6rem; color: var(--faint); white-space: nowrap; }
-.year-grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 10px); grid-auto-columns: 10px; gap: 2px; }
+.year-grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 12px); grid-auto-columns: 12px; gap: 2px; }
 .year-cell { border-radius: 3px; background: var(--surface); border: 1px solid var(--border); }
 .year-cell.empty { visibility: hidden; }
 .year-cell:not(.empty) { cursor: pointer; }
