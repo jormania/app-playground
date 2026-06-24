@@ -334,7 +334,7 @@ a { color: inherit; text-decoration: none; }
     <div class="footer-inner">
       <img class="logo-mark" src="/cone-of-cold.png" alt="Cone of Cold" width="380" height="380">
     </div>
-    <div class="footer-credit">© 2026 Cone of Cold · built with Claude · runs in your browser · <a href="https://github.com/jormania/app-playground" target="_blank" rel="noopener">GitHub ↗</a></div>
+    <div class="footer-credit">© <span id="footer-year">2026</span> Cone of Cold · built with Claude · runs in your browser · <a href="https://github.com/jormania/app-playground" target="_blank" rel="noopener">GitHub ↗</a></div>
   </div>
 </footer>
 
@@ -524,12 +524,16 @@ function parseDeployed(s) {
   const y = parseInt(yr, 10);
   return (m < 0 || isNaN(y)) ? null : { y, m };
 }
-function latestDeployed() {
+function latestDeployedDate() {
   let best = null;
   for (const a of APPS) {
     const d = parseDeployed(a.deployed);
     if (d && (!best || d.y > best.y || (d.y === best.y && d.m > best.m))) best = d;
   }
+  return best;
+}
+function latestDeployed() {
+  const best = latestDeployedDate();
   return best ? `${MONTHS_FULL[best.m]} ${best.y}` : "";
 }
 
@@ -712,8 +716,19 @@ searchEl.addEventListener("input", () => {
 });
 clearBtn.addEventListener("click", clearAll);
 
-const updated = latestDeployed();
-if (updated) document.getElementById("updated-meta").textContent = `updated ${updated}`;
+// Prefer the real build/deploy date stamped in at build time (see vite.config.js);
+// fall back to the newest app `deployed` value in dev where no meta is injected.
+const deployMeta = document.querySelector('meta[name="deploy-date"]');
+const deployDate = deployMeta ? new Date(deployMeta.content) : null;
+const latestDate = latestDeployedDate();
+if (deployDate && !isNaN(deployDate)) {
+  document.getElementById("updated-meta").textContent =
+    `updated ${MONTHS_FULL[deployDate.getMonth()]} ${deployDate.getFullYear()}`;
+  document.getElementById("footer-year").textContent = deployDate.getFullYear();
+} else if (latestDate) {
+  document.getElementById("updated-meta").textContent = `updated ${MONTHS_FULL[latestDate.m]} ${latestDate.y}`;
+  document.getElementById("footer-year").textContent = latestDate.y;
+}
 
 readURL();
 applyFilters();
