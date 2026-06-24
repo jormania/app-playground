@@ -33,6 +33,16 @@ A personal collection of standalone web apps built with Claude. Most are single 
 
 ---
 
+## Design system
+
+New apps build on the fresh design system in [`src/ds/`](src/ds/) (tokens first;
+components to follow). The existing apps and static resources are **design-locked
+and out of scope for it** — see [`LEGACY.md`](LEGACY.md) for the boundary. The
+one-way rule (legacy apps never import `src/ds/`) is enforced by
+`src/ds/boundary.test.js` in `npm test`.
+
+---
+
 ## Adding a new app
 
 1. Drop the `.html` file in the repo root.

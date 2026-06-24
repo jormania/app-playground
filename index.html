@@ -248,10 +248,18 @@ nav {
   gap: 12px; padding-top: 16px; border-top: 1px solid var(--border); flex-wrap: wrap;
 }
 .card-meta-row {
-  font-size: 11px; color: var(--faint); font-family: var(--mono);
-  display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+  font-family: var(--mono);
+  display: flex; gap: 7px; flex-wrap: wrap; align-items: center;
 }
-.card-meta-row span + span { padding-left: 12px; border-left: 1px solid var(--border); }
+.meta-chip {
+  font-size: 10px; line-height: 1.5; white-space: nowrap;
+  padding: 3px 9px; border-radius: 999px;
+  background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+}
+/* colour-coded meta chips — soft tints tuned to the warm/dark palette */
+.meta-chip.date   { color: #aec2da; background: rgba(143,166,196,0.10); border-color: rgba(143,166,196,0.28); }
+.meta-chip.stack  { color: #8fccbc; background: rgba(107,179,160,0.10); border-color: rgba(107,179,160,0.28); }
+.meta-chip.legacy { color: #d8aecb; background: rgba(192,143,180,0.10); border-color: rgba(192,143,180,0.28); }
 .card-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
 
 .btn-launch {
@@ -389,6 +397,8 @@ footer { border-top: 1px solid var(--border); padding: 40px 0; }
 // ─────────────────────────────────────────────────────
 // APP DATA — add new apps here
 // Category tags (get the rose highlight): gaming, fitness, outdoor…
+// Pre-design-system apps show a "Legacy" chip by default; set ds: true on an
+// app built on src/ds/ to drop it.
 // ─────────────────────────────────────────────────────
 const CAT_TAGS = new Set(["gaming", "fitness", "outdoor", "mindfulness", "kawaii"]);
 
@@ -400,7 +410,6 @@ const APPS = [
     subtitle: "tarot cards · live sky & weather · ai divination",
     latest: true,
     deployed: "Jun 2026",
-    size: "Vite bundle",
     tech: "React + Vite",
     tags: ["outdoor", "react", "vite"],
     description: "The finished, definitive Touch Grass. Step outside, close the tab, come back — and a single strange find is waiting, conjured like a card from an unknown tarot deck. It all lives inside an illustrated tarot card that, with your permission, mirrors the real world where you are: its light, weather, moon, the lie of the land, and the rare moments of the year — with a quiet daily call to head out while the light lasts.",
@@ -423,7 +432,6 @@ const APPS = [
     title: "Journal of Delights",
     subtitle: "one delight a day · notion-backed · calendar & list",
     deployed: "Jun 2026",
-    size: "Vite bundle",
     tech: "React + Vite + Notion",
     tags: ["mindfulness", "writing", "react", "notion"],
     description: "A daily delight-logging app based on Ross Gay's The Book of Delights — one small thing, noticed closely and written into a short essayette. Not a gratitude log, no scoring or streaks: just attention. Entries live in a Notion database, and the app is a friendlier second doorway to it — read them as a list, a month calendar or a year heatmap, search by text, tags or people, and keep a quiet eye on the practice.",
@@ -446,7 +454,6 @@ const APPS = [
     title: "Kettlebell Training",
     subtitle: "12 movements · keith haring pop-art · phase-by-phase",
     deployed: "Jun 2026",
-    size: "Vite bundle",
     tech: "React + Vite",
     tags: ["fitness", "svg", "react", "vite"],
     description: "Twelve foundational kettlebell movements drawn as bold, radiating Keith Haring figures — each lift shown as a 2–3 frame sequence so you see the motion, not a single frozen pose. Form cues are researched per movement, with difficulty pips and the muscles you'll feel the next morning.",
@@ -466,7 +473,6 @@ const APPS = [
     subtitle: "surreal finds · ambient audio · real-time weather",
     version: "v7",
     deployed: "Jun 2026",
-    size: "~35 KB",
     tech: "Vanilla HTML",
     tags: ["outdoor", "ambient"],
     description: "Step outside, close the tab, come back. Touch Grass saves your departure so the browser can sleep, then generates surreal AI discoveries on return — scaled to how long you were gone.",
@@ -487,7 +493,6 @@ const APPS = [
     subtitle: "mindful finds · warm palette · presence practice",
     version: "v1",
     deployed: "Jun 2026",
-    size: "~35 KB",
     tech: "Vanilla HTML",
     tags: ["outdoor", "mindfulness"],
     description: "A warm version of Touch Grass built around mindful presence. Step outside without a goal, walk as long as you need, and come back to what the walk quietly left behind — small moments of noticing, not surreal objects.",
@@ -508,7 +513,6 @@ const APPS = [
     subtitle: "tokyo finds · mount fuji · cherry blossoms",
     version: "v1",
     deployed: "Jun 2026",
-    size: "~38 KB",
     tech: "Vanilla HTML",
     tags: ["outdoor", "kawaii"],
     description: "Go outside anywhere — what finds you is always Japan: capsule toys and daifuku in the grass, manga pages mid-air, origami cranes that already know your face. Through it all, Mount Fuji watches from the sky, its snow and blossoms shifting with the seasons.",
@@ -529,7 +533,6 @@ const APPS = [
     subtitle: "28 recipes · 6 categories · parchment UI",
     version: "v3",
     deployed: "Jun 2026",
-    size: "77 KB",
     tech: "Vanilla JS",
     tags: ["gaming"],
     description: "A parchment recipe manager for Kingdom Come: Deliverance II alchemy. All 28 learnable recipes, searchable by name and ingredient and filterable by category. Track what you've mastered, add custom brews.",
@@ -632,8 +635,12 @@ function renderCard(app) {
     ? `<span class="card-latest">✦ Latest</span>`
     : "";
 
-  const metaParts = [app.size, app.deployed, app.tech, app.author].filter(Boolean);
-  const metaHtml  = metaParts.map((p) => `<span>${p}</span>`).join("");
+  const metaHtml = [
+    app.deployed ? `<span class="meta-chip date">${app.deployed}</span>` : "",
+    app.tech     ? `<span class="meta-chip stack">${app.tech}</span>` : "",
+    app.author   ? `<span class="meta-chip">${app.author}</span>` : "",
+    app.ds       ? "" : `<span class="meta-chip legacy">Legacy</span>`,
+  ].filter(Boolean).join("");
 
   return `
     <article class="card${app.latest ? " is-latest" : ""}">
