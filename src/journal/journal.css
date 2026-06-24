@@ -44,6 +44,7 @@
   --scrim:  rgba(0,8,10,0.62);
   --shadow: rgba(0,0,0,0.45);
   --menubar-bg: color-mix(in srgb, var(--bg2) 86%, transparent);
+  --accent-btn: #7e84d6;
   --serif: 'Instrument Serif', Georgia, serif;
   --sans:  'Inter', system-ui, sans-serif;
   --mono:  'JetBrains Mono', monospace;
@@ -62,6 +63,7 @@
   --faint:     #708385;
   --gold-soft: #a87c00;
   --glow:   rgba(38,139,210,0.06);
+  --accent-btn: #565cb0;
   --scrim:  rgba(7,54,66,0.32);
   --shadow: rgba(88,110,117,0.20);
 }
@@ -186,7 +188,7 @@ button { font-family: inherit; cursor: pointer; }
 .icon-btn:hover { color: var(--ink); border-color: var(--border2); background: var(--surface); }
 .btn-today {
   display: inline-flex; align-items: center; gap: 6px;
-  background: var(--purple); color: var(--on-accent); border: none;
+  background: var(--accent-btn); color: var(--on-accent); border: none;
   font-size: 0.78rem; font-weight: 600; padding: 8px 14px; border-radius: 999px; transition: all 0.16s;
 }
 .btn-today:hover { filter: brightness(1.08); }
