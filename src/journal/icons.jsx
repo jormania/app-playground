@@ -52,3 +52,15 @@ export const SearchIcon = (p) => (<svg {...base} {...p}><circle cx="11" cy="11" 
 export const StatsIcon = (p) => (
   <svg {...base} {...p}><path d="M5 21V11M12 21V4M19 21v-6" /><path d="M3 21h18" /></svg>
 )
+// Export — a download / save-out arrow into a tray.
+export const ExportIcon = (p) => (
+  <svg {...base} {...p}><path d="M12 3v11M8 10l4 4 4-4" /><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" /></svg>
+)
+// On this day — a clock turning back.
+export const HistoryIcon = (p) => (
+  <svg {...base} {...p}><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 4v4h4" /><path d="M12 8v4l3 2" /></svg>
+)
+// Year — a grid of days.
+export const YearIcon = (p) => (
+  <svg {...base} {...p}><path d="M4 6h2M9 6h2M14 6h2M19 6h1M4 10h2M9 10h2M14 10h2M19 10h1M4 14h2M9 14h2M14 14h2M4 18h2M9 18h2" /></svg>
+)

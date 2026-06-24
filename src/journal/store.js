@@ -56,6 +56,32 @@ export async function testConnection(token, dbRaw) {
   return client.probe()
 }
 
+// ── Drafts ──────────────────────────────────────────────────────────────────
+// Resilience: the editor auto-saves what you're writing, keyed by date, so a
+// failed save, a closed tab, or a refresh never loses a delight. Cleared once the
+// entry saves successfully.
+const DRAFTS_KEY = 'jod_drafts'
+
+function readDrafts() {
+  try { return JSON.parse(localStorage.getItem(DRAFTS_KEY) || '{}') } catch { return {} }
+}
+function writeDrafts(map) {
+  try { localStorage.setItem(DRAFTS_KEY, JSON.stringify(map)) } catch { /* ignore quota */ }
+}
+
+export function getDraft(dateKey) {
+  return readDrafts()[dateKey] || null
+}
+export function saveDraft(dateKey, draft) {
+  const map = readDrafts()
+  map[dateKey] = draft
+  writeDrafts(map)
+}
+export function clearDraft(dateKey) {
+  const map = readDrafts()
+  if (dateKey in map) { delete map[dateKey]; writeDrafts(map) }
+}
+
 // Build the active client. Created fresh on demand so just-saved settings take
 // effect without a reload.
 export function getClient() {

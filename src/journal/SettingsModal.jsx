@@ -4,12 +4,11 @@ import {
   getDatabaseId, setDatabaseId, hasCustomDatabase,
   testConnection,
 } from './store.js'
-import { CloseIcon } from './icons.jsx'
+import Modal from './Modal.jsx'
 
-// Connects the app to a real journal and holds the app's few preferences. The two
-// BYO pieces (token + database) are stored locally, never on a server, so any user
-// can point at their own copy. A "Test connection" button verifies them before you
-// commit, and a week-start option tunes the calendar.
+// Connects the app to a real journal. The two BYO pieces (token + database) are
+// stored locally, never on a server, so any user can point at their own copy.
+// "Test connection" verifies them before you commit.
 export default function SettingsModal({ onClose, onChanged }) {
   const [token, setTokenValue] = useState(getToken())
   const [db, setDb] = useState(hasCustomDatabase() ? getDatabaseId() : '')
@@ -46,13 +45,7 @@ export default function SettingsModal({ onClose, onChanged }) {
   const labelStyle = { fontFamily: 'var(--mono)', fontSize: 11.5, color: 'var(--muted)', marginBottom: 6, display: 'block' }
 
   return (
-    <div className="modal-scrim" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-head">
-          <h3>Settings</h3>
-          <button className="icon-btn" onClick={onClose} aria-label="Close"><CloseIcon /></button>
-        </div>
-
+    <Modal title="Settings" onClose={onClose}>
         <p className={`status ${live ? 'live' : 'demo'}`}>
           {live ? '● Connected — reading and writing your real journal.' : '○ Demo mode — sample delights stored only on this device.'}
         </p>
@@ -84,17 +77,14 @@ export default function SettingsModal({ onClose, onChanged }) {
             {testing ? 'Testing…' : 'Test connection'}
           </button>
         </div>
-        {result && (
-          <p className={`status ${result.ok ? 'live' : ''}`} style={{ color: result.ok ? 'var(--green)' : 'var(--red)', marginTop: 0 }}>
-            {result.ok ? '✓ ' : '✕ '}{result.message}
-          </p>
-        )}
+        <p className="status" aria-live="polite" style={{ minHeight: result ? undefined : 0, color: result ? (result.ok ? 'var(--green)' : 'var(--red)') : undefined, marginTop: 0 }}>
+          {result ? `${result.ok ? '✓ ' : '✕ '}${result.message}` : ''}
+        </p>
 
         <div className="btn-row" style={{ marginTop: 18 }}>
           <button className="btn primary" onClick={save} disabled={!token.trim()}>Save</button>
           {live && <button className="btn-ghost" onClick={disconnect}>Disconnect (back to demo)</button>}
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

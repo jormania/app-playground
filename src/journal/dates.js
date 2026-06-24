@@ -87,3 +87,44 @@ export function stepMonth({ year, month }, delta) {
   const d = new Date(year, month + delta, 1)
   return { year: d.getFullYear(), month: d.getMonth() }
 }
+
+// Entries that fall on the same calendar day (month + day) as `key`, in any year,
+// excluding `key`'s own entry — the "on this day" glance. Newest first.
+export function entriesOnSameDay(entries, key) {
+  const d = keyToDate(key)
+  if (!d) return []
+  const m = d.getMonth()
+  const day = d.getDate()
+  return (entries || [])
+    .filter(e => {
+      if (!e || !e.date || e.date === key) return false
+      const ed = keyToDate(e.date)
+      return ed && ed.getMonth() === m && ed.getDate() === day
+    })
+    .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+}
+
+// A Monday-aligned grid covering an entire year, for the heatmap. Returns an array
+// of weeks (columns); each week is 7 day-cells. Cells outside the year are flagged
+// inYear:false so the grid stays rectangular.
+export function yearGrid(year) {
+  const jan1 = new Date(year, 0, 1)
+  const startOffset = (jan1.getDay() - 1 + 7) % 7 // Monday = 0
+  const dec31 = new Date(year, 11, 31)
+  const weeks = []
+  let cursor = new Date(year, 0, 1 - startOffset)
+  while (cursor <= dec31) {
+    const week = []
+    for (let i = 0; i < 7; i++) {
+      week.push({
+        key: todayKey(cursor),
+        day: cursor.getDate(),
+        month: cursor.getMonth(),
+        inYear: cursor.getFullYear() === year,
+      })
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1)
+    }
+    weeks.push(week)
+  }
+  return weeks
+}

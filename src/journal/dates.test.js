@@ -1,7 +1,7 @@
 import { test, expect, describe } from 'vitest'
 import {
   todayKey, keyToDate, formatHuman, formatShort, findByDate, hasEntryOn,
-  sortByDateDesc, monthGrid, stepMonth,
+  sortByDateDesc, monthGrid, stepMonth, entriesOnSameDay, yearGrid,
 } from './dates.js'
 
 describe('todayKey / keyToDate (local, not UTC)', () => {
@@ -76,5 +76,31 @@ describe('stepMonth', () => {
   })
   test('backward across a year boundary', () => {
     expect(stepMonth({ year: 2026, month: 0 }, -1)).toEqual({ year: 2025, month: 11 })
+  })
+})
+
+describe('entriesOnSameDay', () => {
+  const entries = [
+    { id: '1', date: '2026-06-24' },
+    { id: '2', date: '2025-06-24' },
+    { id: '3', date: '2024-06-24' },
+    { id: '4', date: '2025-06-23' },
+  ]
+  test('finds same month+day in other years, excluding the key itself, newest first', () => {
+    expect(entriesOnSameDay(entries, '2026-06-24').map(e => e.id)).toEqual(['2', '3'])
+  })
+  test('no matches returns empty', () => {
+    expect(entriesOnSameDay(entries, '2026-01-01')).toEqual([])
+  })
+})
+
+describe('yearGrid', () => {
+  test('is Monday-aligned and contains all 365 days of 2026', () => {
+    const weeks = yearGrid(2026)
+    expect(weeks[0]).toHaveLength(7)
+    const inYear = weeks.flat().filter(c => c.inYear)
+    expect(inYear).toHaveLength(365)
+    expect(inYear[0].key).toBe('2026-01-01')
+    expect(inYear[inYear.length - 1].key).toBe('2026-12-31')
   })
 })

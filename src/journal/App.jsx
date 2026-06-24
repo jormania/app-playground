@@ -1,17 +1,20 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import './journal.css'
-import { getClient, isLive } from './store.js'
+import { getClient, isLive, clearDraft } from './store.js'
 import { todayKey, findByDate } from './dates.js'
 import { filterEntries } from './search.js'
+import { downloadJournal } from './exportHtml.js'
 import MenuBar from './MenuBar.jsx'
 import ListView from './ListView.jsx'
 import CalendarView from './CalendarView.jsx'
+import YearView from './YearView.jsx'
 import EntryView from './EntryView.jsx'
 import EntryEditor from './EntryEditor.jsx'
 import SettingsModal from './SettingsModal.jsx'
 import StatsModal from './StatsModal.jsx'
+import OnThisDayModal from './OnThisDayModal.jsx'
 
-const VIEW_KEY = 'jod_view' // remember list/calendar preference
+const VIEW_KEY = 'jod_view' // remember list/calendar/year preference
 
 export default function App() {
   const [view, setView] = useState(() => {
@@ -25,6 +28,7 @@ export default function App() {
   const [saveError, setSaveError] = useState('')
   const [showSettings, setShowSettings] = useState(false)
   const [showStats, setShowStats] = useState(false)
+  const [onThisDay, setOnThisDay] = useState(null) // null | dateKey
   const [live, setLive] = useState(isLive())
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState('all')
@@ -60,19 +64,29 @@ export default function App() {
     setFocus(existing ? { kind: 'view', entry: existing } : { kind: 'edit', initial: { date: key } })
   }
 
+  // Tapping a tag/person chip filters the list by it.
+  function filterByChip(chipScope, value) {
+    setScope(chipScope)
+    setQuery(value)
+    setView('list')
+    setFocus(null)
+  }
+
   async function handleSave(entry) {
     setSaving(true)
     setSaveError('')
     try {
       const client = getClient()
       const saved = entry.id ? await client.updateEntry(entry.id, entry) : await client.createEntry(entry)
+      clearDraft(entry.date) // saved safely — drop the local draft
       // Refresh from source so Word Count (a Notion formula) reflects the save.
       const list = await client.listEntries()
       setEntries(list)
       const fresh = findByDate(list, saved.date) || saved
       setFocus({ kind: 'view', entry: fresh })
     } catch (err) {
-      setSaveError(err.message || 'Could not save. Check your connection and token.')
+      // Draft is still in localStorage, so nothing is lost — the Save button retries.
+      setSaveError(err.message || 'Could not save — your draft is kept locally; try again.')
     } finally {
       setSaving(false)
     }
@@ -102,6 +116,7 @@ export default function App() {
         onScope={setScope}
         onToday={openToday}
         onStats={() => setShowStats(true)}
+        onExport={() => downloadJournal(entries)}
         onSettings={() => setShowSettings(true)}
       />
 
@@ -113,7 +128,7 @@ export default function App() {
               <button onClick={() => setShowSettings(true)}>Connect</button>
             </div>
           )}
-          {loadError && <div className="error-note">{loadError}</div>}
+          {loadError && <div className="error-note" aria-live="polite">{loadError}</div>}
 
           {focus?.kind === 'edit' ? (
             <EntryEditor
@@ -124,12 +139,16 @@ export default function App() {
               onSave={handleSave}
               onCancel={() => { setSaveError(''); setFocus(null) }}
               onOpenExisting={(e) => { setSaveError(''); setFocus({ kind: 'view', entry: e }) }}
+              onOnThisDay={(key) => setOnThisDay(key)}
             />
           ) : focus?.kind === 'view' ? (
             <EntryView
               entry={focus.entry}
+              entries={entries}
               onBack={() => setFocus(null)}
               onEdit={(e) => setFocus({ kind: 'edit', initial: e })}
+              onChip={filterByChip}
+              onOnThisDay={(key) => setOnThisDay(key)}
             />
           ) : loading ? (
             <div className="loading"><p>Gathering your delights…</p></div>
@@ -137,10 +156,17 @@ export default function App() {
             <ListView
               entries={filtered}
               onOpen={(e) => setFocus({ kind: 'view', entry: e })}
+              onChip={filterByChip}
               emptyMessage={searching ? 'Nothing matches that search.' : undefined}
             />
-          ) : (
+          ) : view === 'calendar' ? (
             <CalendarView
+              entries={filtered}
+              onOpenEntry={(e) => setFocus({ kind: 'view', entry: e })}
+              onNewOn={(key) => { setSaveError(''); setFocus({ kind: 'edit', initial: { date: key } }) }}
+            />
+          ) : (
+            <YearView
               entries={filtered}
               onOpenEntry={(e) => setFocus({ kind: 'view', entry: e })}
               onNewOn={(key) => { setSaveError(''); setFocus({ kind: 'edit', initial: { date: key } }) }}
@@ -157,6 +183,7 @@ export default function App() {
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} onChanged={onSettingsChanged} />}
       {showStats && <StatsModal entries={entries} onClose={() => setShowStats(false)} />}
+      {onThisDay && <OnThisDayModal entries={entries} dateKey={onThisDay} onClose={() => setOnThisDay(null)} />}
     </>
   )
 }
