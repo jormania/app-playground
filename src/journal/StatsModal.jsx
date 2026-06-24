@@ -27,9 +27,9 @@ export default function StatsModal({ entries, onClose }) {
           <Stat value={s.last7} label="in the last 7 days" />
           {s.daysSinceFirst != null && <Stat value={s.daysSinceFirst} label="days journalling" />}
           {/* word measures */}
-          <Stat value={s.avgWords} label="average words per entry" />
-          <Stat value={`${s.shortest}–${s.longest}`} label="shortest–longest" />
-          <Stat value={s.totalWords.toLocaleString()} label="words in all" />
+          <Stat value={s.avgWords} label="average words per delight" />
+          <Stat value={`${s.shortest}–${s.longest}`} label="shortest and longest" />
+          <Stat value={s.totalWords.toLocaleString()} label="words in all delights" />
           {/* motifs */}
           {s.topTags.length > 0 && (
             <div className="stat-card span">

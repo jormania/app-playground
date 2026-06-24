@@ -304,11 +304,15 @@ button.chip:hover { border-color: currentColor; background: rgba(122,162,247,0.0
 .stat-chips { margin-top: 4px; }
 
 /* ── Year heatmap — 7 fixed rows (Mon→Sun), one column per week ── */
-.year { max-width: 760px; margin: 0 auto; }
-.year-scroll { overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+/* fit-content keeps the block exactly as wide as the heatmap and centres it, so
+   the 2026 label + arrows line up with the grid; it caps at the column on desktop
+   and the viewport on mobile (where the grid scrolls horizontally by touch). */
+.year { width: fit-content; max-width: 100%; margin: 0 auto; }
+.year-scroll { overflow-x: auto; overflow-y: hidden; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+.year-inner { width: max-content; }
 .year-months { display: grid; gap: 3px; margin-bottom: 5px; height: 1.1em; }
 .year-month { grid-row: 1; font-family: var(--mono); font-size: 0.6rem; color: var(--faint); white-space: nowrap; }
-.year-grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 11px); grid-auto-columns: 11px; gap: 3px; }
+.year-grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 10px); grid-auto-columns: 10px; gap: 3px; }
 .year-cell { border-radius: 3px; background: var(--surface); border: 1px solid var(--border); }
 .year-cell.empty { visibility: hidden; }
 .year-cell:not(.empty) { cursor: pointer; }

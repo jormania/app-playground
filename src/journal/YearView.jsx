@@ -42,8 +42,8 @@ export default function YearView({ entries, onOpenEntry, onNewOn }) {
       </div>
 
       <div className="year-scroll">
-        <div className="year-inner" style={{ width: `${weeks.length * 14}px` }}>
-          <div className="year-months" style={{ gridTemplateColumns: `repeat(${weeks.length}, 11px)` }}>
+        <div className="year-inner">
+          <div className="year-months" style={{ gridTemplateColumns: `repeat(${weeks.length}, 10px)` }}>
             {labels.map(l => <span key={l.wi} className="year-month" style={{ gridColumnStart: l.wi + 1 }}>{l.text}</span>)}
           </div>
           {/* Cells flow column-by-column (Mon→Sun down each week) — DOM order is
