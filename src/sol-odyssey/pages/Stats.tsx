@@ -1,12 +1,16 @@
+import { Download } from 'lucide-react'
+import { Button } from '../components/Button'
 import { Notice } from '../components/Notice'
 import { useSettings } from '../lib/settingsContext'
 import { isConfigured } from '../lib/settings'
 import { useOdysseyArchive } from '../lib/useOdysseyArchive'
+import { isHarvested } from '../lib/harvest'
+import { downloadSynopsis } from '../lib/exportSynopsis'
 import type { OdysseyDetail } from '../lib/notion'
 
-// A light, non-judgemental record of the Odysseys behind you — what you practised and why it
-// mattered. No durations, no scores, no pass/fail. The page is built from small reusable pieces
-// (StatHeader, ArchiveCard, Line) so future stats views can compose the same parts.
+// The look-back. Identity-led — who you've become across the completed Odysseys, the method's real
+// cargo. Purely qualitative: no dates, no streaks, no scores, no blame. A "Save as a page" export
+// at the foot lets you take the same synopsis with you.
 export function StatsPage({ navigate }: { navigate: (to: string) => void }) {
   const { settings } = useSettings()
   const archive = useOdysseyArchive()
@@ -19,8 +23,8 @@ export function StatsPage({ navigate }: { navigate: (to: string) => void }) {
     return <Notice title="Couldn’t load your Odysseys" body={archive.error.message} actionLabel="Open Settings" onAction={() => navigate('/settings')} />
   }
 
-  // "Past" = everything that's no longer the active run.
-  const past = (archive.data ?? []).filter((o) => o.status !== 'Active')
+  // Only completed (harvested) Odysseys — in-flight and not-yet-started ones are ignored here.
+  const past = (archive.data ?? []).filter((o) => isHarvested(o.status))
 
   if (past.length === 0) {
     return (
@@ -28,7 +32,7 @@ export function StatsPage({ navigate }: { navigate: (to: string) => void }) {
         <StatHeader count={0} />
         <Notice
           title="Nothing here yet"
-          body="Your finished Odysseys will gather here — what you practised, and why it mattered. No durations, no scores; just the trail behind you."
+          body="When you complete your first Odyssey, who you became will gather here — the identity you grew, what you practised, and why it mattered."
         />
       </div>
     )
@@ -37,10 +41,21 @@ export function StatsPage({ navigate }: { navigate: (to: string) => void }) {
   return (
     <div className="flex flex-col gap-6">
       <StatHeader count={past.length} />
+
       <div className="flex flex-col gap-3">
         {past.map((o) => (
-          <ArchiveCard key={o.id} odyssey={o} />
+          <BecomeCard key={o.id} odyssey={o} />
         ))}
+      </div>
+
+      <div>
+        <Button variant="secondary" onClick={() => downloadSynopsis(past)}>
+          <Download size={18} aria-hidden />
+          Save as a page
+        </Button>
+        <p className="mt-2 font-sans text-sm text-text-secondary">
+          A self-contained HTML keepsake of these journeys — yours to keep, print, or share.
+        </p>
       </div>
     </div>
   )
@@ -49,8 +64,8 @@ export function StatsPage({ navigate }: { navigate: (to: string) => void }) {
 function StatHeader({ count }: { count: number }) {
   return (
     <header className="flex flex-col gap-1">
-      <span className="font-mono text-xs uppercase tracking-wide text-accent">Stats</span>
-      <h2 className="font-display text-2xl">Odysseys behind you</h2>
+      <span className="font-mono text-xs uppercase tracking-wide text-accent">Looking back</span>
+      <h2 className="font-display text-2xl">Who you’ve become</h2>
       {count > 0 && (
         <p className="font-sans text-text-secondary">
           {count} {count === 1 ? 'Odyssey' : 'Odysseys'} practised into being.
@@ -60,16 +75,21 @@ function StatHeader({ count }: { count: number }) {
   )
 }
 
-/** One past Odyssey, lightly: what it was (tiny version) and why it mattered. */
-function ArchiveCard({ odyssey }: { odyssey: OdysseyDetail }) {
+/** One completed Odyssey, identity first. */
+function BecomeCard({ odyssey }: { odyssey: OdysseyDetail }) {
+  const identity = odyssey.identity.trim() || odyssey.behaviour.trim()
   return (
     <article className="flex flex-col gap-3 rounded-lg border border-tertiary bg-background-secondary p-5">
       <div className="flex items-start justify-between gap-3">
-        <h3 className="font-display text-lg">{odyssey.title}</h3>
-        {odyssey.status && <OutcomeTag status={odyssey.status} />}
+        <span className="font-mono text-xs uppercase tracking-wide text-text-secondary">{odyssey.title}</span>
+        <OutcomeTag value={odyssey.outcome || odyssey.status} />
       </div>
-      <Line label="What it was" value={odyssey.tinyVersion || odyssey.behaviour} />
-      <Line label="Why it mattered" value={odyssey.whyValue} />
+      {identity && <p className="font-display text-xl italic leading-snug">{identity}</p>}
+      <dl className="flex flex-col gap-3">
+        <Line label="Practised" value={odyssey.tinyVersion || odyssey.behaviour} />
+        <Line label="Why it mattered" value={odyssey.whyValue} />
+        <Line label="What installed" value={odyssey.notes} />
+      </dl>
     </article>
   )
 }
@@ -84,11 +104,12 @@ function Line({ label, value }: { label: string; value: string }) {
   )
 }
 
-/** A quiet status pill — descriptive, never a verdict. */
-function OutcomeTag({ status }: { status: string }) {
+/** A quiet descriptive pill — what you decided, never a verdict on you. */
+function OutcomeTag({ value }: { value: string }) {
+  if (!value) return null
   return (
     <span className="shrink-0 rounded-pill bg-accent-soft px-2.5 py-0.5 font-mono text-xs text-accent">
-      {status}
+      {value}
     </span>
   )
 }

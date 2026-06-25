@@ -56,6 +56,9 @@ export interface OdysseyDetail extends OdysseyRef {
   pairing: string
   dailySuccess: string
   whyValue: string
+  /** Set at harvest. */
+  outcome: string
+  notes: string
 }
 
 /** Extract a Notion object ID (32 hex chars) from a pasted URL or a bare/hyphenated ID.
@@ -123,6 +126,8 @@ export function parseOdysseyList(json: unknown): OdysseyDetail[] {
       pairing: textProp(props, 'Pairing'),
       dailySuccess: textProp(props, 'Daily Success'),
       whyValue: textProp(props, 'Why / Value'),
+      outcome: selectProp(props, 'Outcome'),
+      notes: textProp(props, 'Notes'),
     }
   })
 }

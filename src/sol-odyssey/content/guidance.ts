@@ -14,6 +14,10 @@ export interface GuidanceEntry {
 
 export const GUIDANCE = {
   // ── Charter ──────────────────────────────────────────────────────────────────────────────
+  theWish: {
+    summary: 'Why just one behaviour?',
+    body: "An Odyssey carries a single piece of cargo — one specific, observable action, not three habits or a whole new life. Focus is the entire advantage: spend it on one thing and it compounds; split it, and it scatters. Say the wish plainly for now, in your own voice — you'll shrink and sharpen it in the steps ahead.",
+  },
   identity: {
     summary: 'Why frame it as identity?',
     body: "You're not just 'doing walks' — you're becoming someone who moves. We start here because behaviour follows identity more loyally than identity follows behaviour: each small action is a quiet vote for the kind of person you are. Across many Odysseys, it's this accumulated sense of 'I'm someone who…' that lasts, long after any single habit.",
@@ -38,6 +42,18 @@ export const GUIDANCE = {
     summary: 'Why write down the why?',
     body: "One honest sentence about why this matters, tied to something you value. Motivation comes and goes like weather, so on the days the system isn't quite enough, this is the line you read. Connecting a small behaviour to a real value is what keeps it meaningful across the long haul — and across the Odysseys still to come.",
   },
+  pairing: {
+    summary: 'Why pair it with something?',
+    body: "Optionally tie the behaviour to something you genuinely enjoy — a podcast you only allow yourself on the walk, say. Pairing a new action with an existing pleasure lends it some of that pull, making the first move easier on low days. It's a small, entirely optional lever — but a well-chosen pairing can carry you through the weeks when willpower runs thin.",
+  },
+  dailySuccess: {
+    summary: 'Why define what counts?',
+    body: "Set the lowest bar that still counts, and make it binary: did it / didn't, no grey. A clear yes/no protects you from the slow creep of 'sort of' that quietly erodes a habit. When 'done' is unambiguous, the daily mark stays honest — and an honest record is the one that actually changes you.",
+  },
+  startDate: {
+    summary: 'Why the start date matters',
+    body: 'A start date you can point to — a Monday, the first of the month — gives the Odyssey a clean edge to begin from: easier to commit to, easier to remember. Fresh starts carry real motivational weight, and we lean on that on purpose. Pick one that feels like a genuine departure, not just the next blank day.',
+  },
   shrinkTest: {
     summary: 'The shrink test',
     body: "A quick gut-check: would you bet you'll do this every single day for six weeks? If you hesitate even slightly, it's still too big — go back and shrink it. It's far better to start smaller than you think you need and let it grow on its own; an Odyssey that's too ambitious on day one rarely reaches day forty-two.",
@@ -54,6 +70,10 @@ export const GUIDANCE = {
   },
 
   // ── Tracker ──────────────────────────────────────────────────────────────────────────────
+  trackerLegend: {
+    summary: 'Reading the grid',
+    body: 'Filled = a done day. Open = a miss — no crosses, no guilt. Tap any day that has a note to read it back; a small check on a cell marks a day you sent to your buddy. At a glance, the groove forms — and seeing it form is the whole point of the grid.',
+  },
   flexibleStreak: {
     summary: 'About the streak',
     body: "We show your current and best streak, but the streak isn't the point — and a broken one isn't a failure. The real rule is gentler and sturdier: never skip two days running. One gap is an accident; it's the second in a row that quietly starts a new habit pointed the wrong way. Aim for that, and the numbers take care of themselves.",

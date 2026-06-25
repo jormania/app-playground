@@ -12,8 +12,10 @@ import { useSettings } from './lib/settingsContext'
 import { GuidanceProvider } from './lib/guidanceContext'
 import { useActiveOdysseys } from './lib/useActiveOdysseys'
 import { useNextOdysseyNumber } from './lib/useNextOdysseyNumber'
+import { useOdysseyArchive } from './lib/useOdysseyArchive'
 import { useSyncStatus } from './lib/syncContext'
 import { isConfigured } from './lib/settings'
+import { isHarvested } from './lib/harvest'
 import { cn } from './lib/cn'
 import {
   CloudOff,
@@ -31,11 +33,12 @@ export default function App() {
   const { settings } = useSettings()
   const { route, navigate } = useHashRoute()
   const active = useActiveOdysseys()
-  const history = useNextOdysseyNumber()
-  // Context-aware nav: the daily loop tabs only matter once an Odyssey is under way; Stats only
-  // once there's history. No active Odyssey → the bar focuses on Charter (+ utilities).
+  const archive = useOdysseyArchive()
+  // Context-aware nav: the daily loop tabs only matter once an Odyssey is under way; Stats + Export
+  // only once an Odyssey has been completed (harvested). No active Odyssey → the bar focuses on
+  // Charter (+ utilities).
   const hasActive = (active.data?.length ?? 0) > 0
-  const hasPrior = history.data?.hasPrior ?? false
+  const hasCompleted = (archive.data ?? []).some((o) => isHarvested(o.status))
 
   return (
     <GuidanceProvider show={settings.showGuidance}>
@@ -67,7 +70,7 @@ export default function App() {
                     <NavLink current={route} to="/weekly" label="Weekly" onClick={navigate} icon={WeeklyIcon} />
                   </>
                 )}
-                {hasPrior && (
+                {hasCompleted && (
                   <NavLink current={route} to="/stats" label="Stats" onClick={navigate} icon={StatsIcon} iconOnly />
                 )}
                 <NavLink current={route} to="/settings" label="Settings" onClick={navigate} icon={SettingsIcon} iconOnly />

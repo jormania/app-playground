@@ -113,17 +113,12 @@ export function TrackerPage({ navigate }: { navigate: (to: string) => void }) {
             <Week key={w} week={w + 1} cellInfo={cellInfo} onOpen={setOpenDay} />
           ))}
         </div>
-        <p className="mt-4 font-sans text-xs text-text-secondary">
-          Filled = a done day. Open = a miss — no crosses, no guilt. Tap any day with a note to read
-          it; <Check size={11} className="inline align-middle text-accent" aria-hidden /> marks one
-          you sent to your buddy.
-        </p>
       </div>
 
       {temps.length > 0 && (
         <div className="rounded-lg border border-tertiary bg-background-secondary p-5">
           <p className="font-mono text-xs uppercase tracking-wide text-text-secondary">
-            Temperature · how installed it feels (1–10)
+            Temperature · how installed it feels
           </p>
           <div className="mt-3">
             {temps.length === 1 ? (
@@ -138,7 +133,9 @@ export function TrackerPage({ navigate }: { navigate: (to: string) => void }) {
         </div>
       )}
 
+      <SupportingNote note="trackerLegend" />
       <SupportingNote note="flexibleStreak" />
+      <SupportingNote note="selfCompassion" />
 
       <Modal open={openDay != null} onClose={() => setOpenDay(null)} title={`Day ${openDay ?? ''}`}>
         {openRec ? (

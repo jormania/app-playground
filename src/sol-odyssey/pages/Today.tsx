@@ -204,6 +204,7 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
           onCheckedChange={(v) => setForm((f) => ({ ...f, sentToBuddy: v }))}
         />
         <SupportingNote note="selfMonitor" />
+        <SupportingNote note="sentToBuddy" />
 
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={save} disabled={!canSaveCheckin(form) || upsert.isPending}>

@@ -27,6 +27,13 @@ export const OUTCOME_OPTIONS: OutcomeOption[] = [
   },
 ]
 
+/** The post-harvest statuses — an Odyssey is "completed" (has a Harvest result) once it's one of
+ *  these. Used to gate the Stats + Export toolbar items and to build the synopsis. */
+export const HARVESTED_STATUSES = new Set(['Maintenance', 'Completed', 'Retired'])
+export function isHarvested(status: string): boolean {
+  return HARVESTED_STATUSES.has(status)
+}
+
 /** The Status an Odyssey takes once harvested. Keep → Maintenance (no longer counts as Active, so
  *  a new Odyssey can start); Grow → Completed; Retire → Retired. */
 export function statusForOutcome(outcome: Outcome): 'Maintenance' | 'Completed' | 'Retired' {

@@ -109,8 +109,9 @@ entry IS the practice**, optional **where it's genuinely conditional**.
 - **Order:** Charter · Today · Tracker · Weekly · Stats · Settings. Buttons highlight the active
   route with `bg-accent-soft text-accent`.
 - **Context-aware:** the daily-loop tabs (Today/Tracker/Weekly) appear only when an Odyssey is
-  Active; Stats only once prior Odysseys exist; Charter + Settings are always present. No dead-end
-  tabs.
+  Active; **Stats** only once an Odyssey has been **completed** (harvested → Maintenance/Completed/
+  Retired); Charter + Settings are always present. No dead-end tabs. The synopsis **Export** is an
+  action *on the Stats page* ("Save as a page"), not a toolbar item — toolbar glyphs only navigate.
 - **Responsive (target: Samsung S24 PWA):** on phones the bar condenses to **icons** and the logo
   drops its wordmark; text labels + wordmark return at `≥sm`. Settings/Stats are icon-only at every
   width. The header is `sticky`.

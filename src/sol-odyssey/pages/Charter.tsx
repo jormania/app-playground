@@ -30,16 +30,16 @@ interface FieldStep {
 }
 
 const FIELD_STEPS: FieldStep[] = [
-  { key: 'behaviour', kind: 'text', title: 'The wish', label: 'What do you want to practise?', placeholder: 'e.g. Move my body before the day takes me.', hint: 'Say it plainly, in your own voice.' },
+  { key: 'behaviour', kind: 'text', title: 'The wish', label: 'What do you want to practise?', placeholder: 'e.g. Move my body before the day takes me.', hint: 'Say it plainly, in your own voice.', note: 'theWish' },
   { key: 'outcomePicture', kind: 'text', title: 'The benefit', label: 'Picture the payoff, vividly', placeholder: 'What does life feel like once this is part of you?', note: 'outcomePicture' },
   { key: 'identity', kind: 'text', title: 'Identity', label: 'I am someone who…', placeholder: '…starts the day in motion.', note: 'identity' },
   { key: 'tinyVersion', kind: 'text', title: 'Tiny version', label: 'The 2-minute floor', placeholder: 'So small you can’t fail on a bad day.', note: 'tinyFloor' },
   { key: 'anchor', kind: 'text', title: 'Anchor', label: 'After I…', placeholder: '…pour my first coffee, I will…', note: 'anchor' },
   { key: 'ifThen', kind: 'text', title: 'If-then', label: 'The known obstacle', placeholder: 'If [obstacle], then [your pre-decided response].', note: 'ifThen' },
-  { key: 'pairing', kind: 'text', title: 'Pairing', label: 'Pair it with something you enjoy (optional)', placeholder: 'Optional — leave blank if none.', optional: true },
-  { key: 'dailySuccess', kind: 'text', title: 'Daily success', label: 'What counts as done?', placeholder: 'The lowest clear bar: did it / didn’t.' },
+  { key: 'pairing', kind: 'text', title: 'Pairing', label: 'Pair it with something you enjoy (optional)', placeholder: 'Optional — leave blank if none.', optional: true, note: 'pairing' },
+  { key: 'dailySuccess', kind: 'text', title: 'Daily success', label: 'What counts as done?', placeholder: 'The lowest clear bar: did it / didn’t.', note: 'dailySuccess' },
   { key: 'whyValue', kind: 'text', title: 'Why it matters', label: 'One honest sentence + the value it serves', placeholder: 'What you’ll read on the days the system isn’t enough.', note: 'whyValue' },
-  { key: 'startDate', kind: 'date', title: 'Departure', label: 'Start date (Day 1)', hint: 'Defaults to the next Monday — a meaningful start.' },
+  { key: 'startDate', kind: 'date', title: 'Departure', label: 'Start date (Day 1)', hint: 'Defaults to the next Monday — a meaningful start.', note: 'startDate' },
 ]
 
 const TOTAL_STEPS = FIELD_STEPS.length + 1 // + review
