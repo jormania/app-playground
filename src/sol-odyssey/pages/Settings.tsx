@@ -19,6 +19,7 @@ type StringKey =
   | 'buddyEmail'
   | 'dailyTime'
   | 'weeklySlot'
+  | 'anthropicKey'
 
 const STRING_KEYS: StringKey[] = [
   'token',
@@ -29,6 +30,7 @@ const STRING_KEYS: StringKey[] = [
   'buddyEmail',
   'dailyTime',
   'weeklySlot',
+  'anthropicKey',
 ]
 
 export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
@@ -53,7 +55,8 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
       update(form)
       return listActiveOdysseys({ token: form.token, dsOdysseys: form.dsOdysseys })
     },
-    onSuccess: () => setSaved(true),
+    // Success is shown by the green "Connected — N Odysseys" panel below, not the "Saved." label
+    // (which belongs to the Save button). Testing still persists the form via update() above.
   })
 
   function handleSave() {
@@ -98,7 +101,7 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
           autoComplete="off"
           spellCheck={false}
           placeholder="Paste the database URL, or its ID"
-          hint="Open the database in Notion, Copy link, and paste it here — the ID is read from the URL."
+          hint="Open the database in Notion, Copy link, and paste it here"
           value={form.dsOdysseys}
           onChange={set('dsOdysseys')}
         />
@@ -107,6 +110,7 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
           autoComplete="off"
           spellCheck={false}
           placeholder="Paste the database URL, or its ID"
+          hint="Open the database in Notion, Copy link, and paste it here"
           value={form.dsCheckins}
           onChange={set('dsCheckins')}
         />
@@ -115,6 +119,7 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
           autoComplete="off"
           spellCheck={false}
           placeholder="Paste the database URL, or its ID"
+          hint="Open the database in Notion, Copy link, and paste it here"
           value={form.dsReflections}
           onChange={set('dsReflections')}
         />
@@ -170,6 +175,32 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
         />
       </section>
 
+      <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-6">
+        <h3 className="font-display text-lg">AI companion (optional)</h3>
+        <p className="font-sans text-sm text-text-secondary">
+          A gentle reflective witness for the in-between — it mirrors back what you write on a
+          check-in or weekly reflection. It’s optional and never replaces your human buddy, who
+          stays the heart of the process. Add your own Anthropic key to enable it; the key lives
+          only on this device, and your text goes straight to Anthropic under your key — never to a
+          server of ours.
+        </p>
+        <Field
+          label="Anthropic API key"
+          type="password"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="sk-ant-…"
+          value={form.anthropicKey}
+          onChange={set('anthropicKey')}
+        />
+        <Switch
+          label="Enable the AI companion"
+          description="Show an optional “reflect with your companion” on Today and Weekly."
+          checked={settings.companionEnabled}
+          onCheckedChange={(v) => update({ companionEnabled: v })}
+        />
+      </section>
+
       <section className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={handleSave}>
@@ -178,7 +209,10 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
           </Button>
           <Button
             variant="secondary"
-            onClick={() => test.mutate()}
+            onClick={() => {
+              setSaved(false) // clear any stale "Saved." so only the connection result shows
+              test.mutate()
+            }}
             disabled={!ready || test.isPending}
           >
             {test.isPending ? (

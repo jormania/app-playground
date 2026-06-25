@@ -6,9 +6,13 @@ import { Textarea } from '../components/Textarea'
 import { Notice } from '../components/Notice'
 import { SupportingNote } from '../components/SupportingNote'
 import { useSettings } from '../lib/settingsContext'
-import { isConfigured } from '../lib/settings'
+import { isConfigured, companionActive } from '../lib/settings'
+import { CompanionPanel } from '../components/CompanionPanel'
+import { buildDailyCompanionPrompt } from '../lib/companion'
 import { useActiveOdysseys } from '../lib/useActiveOdysseys'
 import { useNextOdysseyNumber } from '../lib/useNextOdysseyNumber'
+import { usePlanningOdyssey } from '../lib/usePlanningOdyssey'
+import { PlannedOdysseyCard, PlannedOdysseyStrip } from '../components/PlannedOdyssey'
 import { useCheckins, useUpsertCheckin } from '../lib/useCheckins'
 import { useReflections } from '../lib/useReflections'
 import { CYCLE_DAYS, todayISO } from '../lib/charter'
@@ -19,6 +23,8 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
   const { settings } = useSettings()
   const active = useActiveOdysseys()
   const odyssey = active.data?.[0]
+  const planning = usePlanningOdyssey()
+  const draft = planning.data ?? null
   const checkins = useCheckins(odyssey?.id)
   const reflections = useReflections(odyssey?.id)
   const history = useNextOdysseyNumber()
@@ -61,6 +67,8 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
     return <Notice title="Couldn’t load your Odyssey" body={active.error.message} actionLabel="Open Settings" onAction={() => navigate('/settings')} />
   }
   if (!odyssey) {
+    // A draft is prepared but nothing is running yet → offer to begin/edit it.
+    if (draft) return <PlannedOdysseyCard draft={draft} navigate={navigate} />
     const hasPrior = history.data?.hasPrior ?? false
     const nextNumber = history.data?.nextNumber ?? 1
     return (
@@ -105,6 +113,7 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
           actionLabel="Harvest this Odyssey"
           onAction={() => navigate('/harvest')}
         />
+        {draft && <PlannedOdysseyStrip draft={draft} navigate={navigate} />}
       </div>
     )
   }
@@ -231,6 +240,12 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
         )}
       </section>
 
+      {/* Optional reflective companion — only once today's check-in has words to reflect on. */}
+      {companionActive(settings) && todayRecord?.oneLine?.trim() && (
+        <CompanionPanel prompt={buildDailyCompanionPrompt(odyssey, todayRecord)} />
+      )}
+
+      {draft && <PlannedOdysseyStrip draft={draft} navigate={navigate} />}
     </div>
   )
 }

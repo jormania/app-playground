@@ -1,10 +1,12 @@
 import { useActiveOdysseys } from '../lib/useActiveOdysseys'
 import { useNextOdysseyNumber } from '../lib/useNextOdysseyNumber'
+import { usePlanningOdyssey } from '../lib/usePlanningOdyssey'
 import { useSettings } from '../lib/settingsContext'
 import { computeDayIndex, CYCLE_DAYS } from '../lib/charter'
 import { isConfigured } from '../lib/settings'
 import { Notice } from '../components/Notice'
 import { Button } from '../components/Button'
+import { PlannedOdysseyCard, PlannedOdysseyStrip } from '../components/PlannedOdyssey'
 import { Sprout } from 'lucide-react'
 import type { OdysseyDetail } from '../lib/notion'
 
@@ -14,6 +16,8 @@ export function OverviewPage({ navigate }: { navigate: (to: string) => void }) {
   const { settings } = useSettings()
   const active = useActiveOdysseys()
   const history = useNextOdysseyNumber()
+  const planning = usePlanningOdyssey()
+  const draft = planning.data ?? null
 
   if (!isConfigured(settings)) {
     return (
@@ -34,6 +38,8 @@ export function OverviewPage({ navigate }: { navigate: (to: string) => void }) {
     )
   }
   if (!active.data || active.data.length === 0) {
+    // A draft is prepared but nothing is running → the planned Odyssey is the focus here.
+    if (draft) return <PlannedOdysseyCard draft={draft} navigate={navigate} />
     const hasPrior = history.data?.hasPrior ?? false
     const nextNumber = history.data?.nextNumber ?? 1
     return (
@@ -50,10 +56,18 @@ export function OverviewPage({ navigate }: { navigate: (to: string) => void }) {
     )
   }
 
-  return <OdysseyReadout odyssey={active.data[0]} navigate={navigate} />
+  return <OdysseyReadout odyssey={active.data[0]} navigate={navigate} draft={draft} />
 }
 
-function OdysseyReadout({ odyssey, navigate }: { odyssey: OdysseyDetail; navigate: (to: string) => void }) {
+function OdysseyReadout({
+  odyssey,
+  navigate,
+  draft,
+}: {
+  odyssey: OdysseyDetail
+  navigate: (to: string) => void
+  draft: OdysseyDetail | null
+}) {
   const day = odyssey.startDate ? computeDayIndex(odyssey.startDate) : null
   const dayLabel =
     day == null ? '' : day < 1 ? `Starts in ${1 - day} day(s)` : `Day ${Math.min(day, CYCLE_DAYS)} of ${CYCLE_DAYS}`
@@ -96,6 +110,8 @@ function OdysseyReadout({ odyssey, navigate }: { odyssey: OdysseyDetail; navigat
           Harvest
         </Button>
       </div>
+
+      {draft && <PlannedOdysseyStrip draft={draft} navigate={navigate} />}
     </div>
   )
 }

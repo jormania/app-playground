@@ -14,6 +14,7 @@
 import type { Settings } from './settings'
 import {
   buildCreateOdysseyProperties,
+  buildDraftOdysseyProperties,
   nextOdysseyNumber,
   type CharterDraft,
 } from './charter'
@@ -210,14 +211,20 @@ export async function listAllOdysseys(
   return parseOdysseyList(data)
 }
 
-/** Pure: query for the single highest existing Odyssey Number. */
+/** Pure: query for the single highest existing Odyssey Number. Filters to rows that HAVE a number
+ *  so a numberless Planning draft can't be mistaken for the max — and can't flip the "first vs
+ *  next" home copy (`fetchNextOdysseyInfo().hasPrior`) before it's ever activated. */
 export function maxOdysseyNumberQuery(database: string): NotionRequest {
   const id = normalizeNotionId(database)
   if (!id) throw new Error('That doesn’t look like a Notion database link or ID.')
   return {
     path: `databases/${id}/query`,
     method: 'POST',
-    body: { sorts: [{ property: 'Odyssey Number', direction: 'descending' }], page_size: 1 },
+    body: {
+      filter: { property: 'Odyssey Number', number: { is_not_empty: true } },
+      sorts: [{ property: 'Odyssey Number', direction: 'descending' }],
+      page_size: 1,
+    },
   }
 }
 
@@ -327,6 +334,99 @@ export async function createActiveOdyssey(
     id: String((created as { id?: unknown })?.id ?? ''),
     title: extractTitle(created) || `Odyssey ${number}`,
   }
+}
+
+// ── Planning (draft) Odysseys ─────────────────────────────────────────────────────────────────
+// A Charter can be prepared ahead of time as a Planning draft: a real Odyssey row with
+// Status='Planning' and no Odyssey Number. It can be edited/resumed, can sit alongside an Active
+// Odyssey, and is promoted to Active by an explicit "Begin" (activatePlanningOdyssey). At most one
+// draft exists at a time, so the wizard upserts into it.
+
+/** Pure: the single Planning (draft) Odyssey, if any. */
+export function planningOdysseyQuery(database: string): NotionRequest {
+  const id = normalizeNotionId(database)
+  if (!id) throw new Error('That doesn’t look like a Notion database link or ID.')
+  return {
+    path: `databases/${id}/query`,
+    method: 'POST',
+    body: {
+      filter: { property: 'Status', select: { equals: 'Planning' } },
+      page_size: 1,
+    },
+  }
+}
+
+/** Pure: a page-archive request (moves the page to Notion Trash, recoverable for 30 days). */
+export function archivePageRequest(pageId: string): NotionRequest {
+  return { path: `pages/${pageId}`, method: 'PATCH', body: { archived: true } }
+}
+
+/** Read the current Planning draft, or null if there isn't one. */
+export async function listPlanningOdyssey(
+  settings: Pick<Settings, 'token' | 'dsOdysseys'>,
+  fetchImpl: typeof fetch = fetch,
+): Promise<OdysseyDetail | null> {
+  if (!settings.token.trim()) throw new Error('Add your Notion token in Settings first.')
+  if (!settings.dsOdysseys.trim()) {
+    throw new Error('Add the Odysseys database link in Settings first.')
+  }
+  const data = await callRelay(settings.token, planningOdysseyQuery(settings.dsOdysseys), fetchImpl)
+  return parseOdysseyList(data)[0] ?? null
+}
+
+/** Upsert the Planning draft: PATCH the existing draft row if `existingId` is given, else POST a
+ *  new one. Partial drafts are allowed. */
+export async function savePlanningDraft(
+  settings: Settings,
+  draft: CharterDraft,
+  existingId?: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<OdysseyRef> {
+  if (!settings.dsOdysseys.trim()) {
+    throw new Error('Add the Odysseys database link in Settings first.')
+  }
+  const properties = buildDraftOdysseyProperties(draft, settings)
+  const req = existingId
+    ? updatePageRequest(existingId, properties)
+    : createPageRequest(settings.dsOdysseys, properties)
+  const saved = await callRelay(settings.token, req, fetchImpl)
+  return {
+    id: String((saved as { id?: unknown })?.id ?? ''),
+    title: extractTitle(saved) || 'Planned Odyssey',
+  }
+}
+
+/** Promote a Planning draft to Active. Enforces Law I (no other Active Odyssey) and assigns the
+ *  next Odyssey Number now (drafts are numberless until this point). */
+export async function activatePlanningOdyssey(
+  settings: Settings,
+  draftId: string,
+  draft: CharterDraft,
+  fetchImpl: typeof fetch = fetch,
+): Promise<OdysseyDetail> {
+  // Law I — only one Odyssey may be Active at a time.
+  const active = await listActiveOdysseys(settings, fetchImpl)
+  if (active.length > 0) {
+    throw new Error(
+      'You already have an active Odyssey. Finish or retire it before starting another.',
+    )
+  }
+  // Number it one past the highest real (numbered) Odyssey.
+  const maxData = await callRelay(settings.token, maxOdysseyNumberQuery(settings.dsOdysseys), fetchImpl)
+  const number = nextOdysseyNumber(parseMaxOdysseyNumber(maxData))
+
+  const properties = buildCreateOdysseyProperties(draft, settings, number)
+  const saved = await callRelay(settings.token, updatePageRequest(draftId, properties), fetchImpl)
+  return parseOdysseyList({ results: [saved] })[0]
+}
+
+/** Discard a Planning draft — archives the row to Notion Trash (recoverable 30 days). */
+export async function discardPlanningDraft(
+  settings: Pick<Settings, 'token'>,
+  draftId: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<void> {
+  await callRelay(settings.token, archivePageRequest(draftId), fetchImpl)
 }
 
 // ── Check-ins (the daily loop) ──────────────────────────────────────────────────────────────

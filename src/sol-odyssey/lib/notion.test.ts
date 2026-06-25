@@ -1,23 +1,29 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
   RELAY_ENDPOINT,
+  activatePlanningOdyssey,
   activeOdysseysQuery,
   allOdysseysQuery,
+  archivePageRequest,
   buildRelayInit,
   checkinsForOdysseyQuery,
   createActiveOdyssey,
   createPageRequest,
+  discardPlanningDraft,
   fetchNextOdysseyInfo,
   friendlyError,
   harvestOdyssey,
   listActiveOdysseys,
+  listPlanningOdyssey,
   maxOdysseyNumberQuery,
   normalizeNotionId,
   parseCheckins,
   parseMaxOdysseyNumber,
   parseOdysseyList,
   parseReflections,
+  planningOdysseyQuery,
   reflectionsForOdysseyQuery,
+  savePlanningDraft,
   updatePageRequest,
   upsertCheckin,
   upsertReflection,
@@ -220,9 +226,10 @@ describe('createPageRequest', () => {
 })
 
 describe('maxOdysseyNumber', () => {
-  it('queries sorted desc, page_size 1', () => {
+  it('queries sorted desc, page_size 1, filtered to numbered rows (excludes drafts)', () => {
     const req = maxOdysseyNumberQuery('561fb186bc1142d9b9a3f56797136a1d')
     expect(req.body).toMatchObject({
+      filter: { property: 'Odyssey Number', number: { is_not_empty: true } },
       sorts: [{ property: 'Odyssey Number', direction: 'descending' }],
       page_size: 1,
     })
@@ -280,6 +287,106 @@ describe('createActiveOdyssey', () => {
     expect(body.path).toBe('pages')
     expect(body.body.properties['Odyssey Number'].number).toBe(3)
     expect(body.body.properties['Status'].select.name).toBe('Active')
+  })
+})
+
+describe('Planning (draft) Odysseys', () => {
+  const settings: Settings = {
+    ...EMPTY_SETTINGS,
+    token: 't',
+    dsOdysseys: '561fb186bc1142d9b9a3f56797136a1d',
+    buddyName: 'Sam',
+    buddyEmail: 'sam@example.com',
+  }
+  const draft: CharterDraft = {
+    ...emptyDraft(new Date('2026-07-06')),
+    behaviour: 'morning movement',
+    identity: 'I am someone who moves',
+    tinyVersion: 'walk to the corner',
+    anchor: 'after my first coffee',
+    ifThen: 'if it rains, hallway',
+    dailySuccess: 'shoes on, outside',
+    whyValue: 'a body in motion',
+    confirmedShrink: true,
+  }
+
+  it('planningOdysseyQuery filters Status = Planning', () => {
+    const req = planningOdysseyQuery('561fb186bc1142d9b9a3f56797136a1d')
+    expect(req.path).toBe('databases/561fb186bc1142d9b9a3f56797136a1d/query')
+    expect(req.body).toMatchObject({
+      filter: { property: 'Status', select: { equals: 'Planning' } },
+      page_size: 1,
+    })
+  })
+
+  it('archivePageRequest PATCHes archived:true', () => {
+    expect(archivePageRequest('page-7')).toMatchObject({
+      path: 'pages/page-7',
+      method: 'PATCH',
+      body: { archived: true },
+    })
+  })
+
+  it('listPlanningOdyssey returns the draft, or null when there is none', async () => {
+    const has = vi.fn(async (..._a: unknown[]) =>
+      jsonResponse({ results: [{ id: 'd1', properties: { Status: { select: { name: 'Planning' } } } }] }),
+    )
+    expect(await listPlanningOdyssey(settings, has as unknown as typeof fetch)).toMatchObject({ id: 'd1', status: 'Planning' })
+    const none = vi.fn(async (..._a: unknown[]) => jsonResponse({ results: [] }))
+    expect(await listPlanningOdyssey(settings, none as unknown as typeof fetch)).toBeNull()
+  })
+
+  it('savePlanningDraft POSTs a Planning page when there is no existing draft', async () => {
+    const fetchMock = vi.fn(async (..._a: unknown[]) => jsonResponse({ id: 'new', properties: {} }))
+    await savePlanningDraft(settings, draft, undefined, fetchMock as unknown as typeof fetch)
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)
+    expect(body.path).toBe('pages')
+    expect(body.method).toBe('POST')
+    expect(body.body.properties['Status'].select.name).toBe('Planning')
+    expect(body.body.properties['Odyssey Number']).toBeUndefined()
+  })
+
+  it('savePlanningDraft PATCHes the existing draft when given its id', async () => {
+    const fetchMock = vi.fn(async (..._a: unknown[]) => jsonResponse({ id: 'd1', properties: {} }))
+    await savePlanningDraft(settings, draft, 'd1', fetchMock as unknown as typeof fetch)
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)
+    expect(body.path).toBe('pages/d1')
+    expect(body.method).toBe('PATCH')
+  })
+
+  it('activatePlanningOdyssey refuses when an Active Odyssey exists (Law I)', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ results: [{ id: 'x', properties: {} }] }))
+    await expect(
+      activatePlanningOdyssey(settings, 'd1', draft, fetchMock as unknown as typeof fetch),
+    ).rejects.toThrow(/already have an active/i)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('activatePlanningOdyssey numbers past the max and PATCHes the draft to Active', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ results: [] })) // active check → none
+      .mockResolvedValueOnce(jsonResponse({ results: [{ properties: { 'Odyssey Number': { number: 2 } } }] })) // max → 2
+      .mockResolvedValueOnce(
+        jsonResponse({ id: 'd1', properties: { Name: { title: [{ plain_text: 'Odyssey III — morning movement' }] }, Status: { select: { name: 'Active' } } } }),
+      )
+    const out = await activatePlanningOdyssey(settings, 'd1', draft, fetchMock as unknown as typeof fetch)
+    expect(out).toMatchObject({ id: 'd1', status: 'Active' })
+
+    const patch = JSON.parse((fetchMock.mock.calls[2][1] as RequestInit).body as string)
+    expect(patch.path).toBe('pages/d1')
+    expect(patch.method).toBe('PATCH')
+    expect(patch.body.properties['Odyssey Number'].number).toBe(3)
+    expect(patch.body.properties['Status'].select.name).toBe('Active')
+  })
+
+  it('discardPlanningDraft archives the row', async () => {
+    const fetchMock = vi.fn(async (..._a: unknown[]) => jsonResponse({ id: 'd1', archived: true }))
+    await discardPlanningDraft({ token: 't' }, 'd1', fetchMock as unknown as typeof fetch)
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)
+    expect(body.path).toBe('pages/d1')
+    expect(body.method).toBe('PATCH')
+    expect(body.body.archived).toBe(true)
   })
 })
 

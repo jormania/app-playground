@@ -20,6 +20,10 @@ export interface Settings {
   showGuidance: boolean
   /** Show the landing page (intro instructions) on the home screen. */
   showLanding: boolean
+  /** Optional AI companion: a bring-your-own Anthropic key (on-device; calls go straight to
+   *  Anthropic, never our servers) + an opt-in toggle. Never replaces the human buddy. */
+  anthropicKey: string
+  companionEnabled: boolean
 }
 
 export const EMPTY_SETTINGS: Settings = {
@@ -34,6 +38,9 @@ export const EMPTY_SETTINGS: Settings = {
   // Newcomers get guidance on by default; it's switched off once it's second nature.
   showGuidance: true,
   showLanding: true,
+  // The AI companion is strictly opt-in: no key, and off, until the user chooses it.
+  anthropicKey: '',
+  companionEnabled: false,
 }
 
 const STORAGE_KEY = 'sol-odyssey:settings'
@@ -99,6 +106,12 @@ export function clearSettings(explicit?: StorageLike): void {
 /** True once the token + all three data-source IDs are present. */
 export function isConfigured(settings: Settings): boolean {
   return REQUIRED_KEYS.every((k) => String(settings[k]).trim().length > 0)
+}
+
+/** True when the optional AI companion should be offered — a key is present AND it's switched on.
+ *  Independent of `isConfigured`: the companion is additive and never required. */
+export function companionActive(settings: Pick<Settings, 'anthropicKey' | 'companionEnabled'>): boolean {
+  return settings.anthropicKey.trim().length > 0 && settings.companionEnabled === true
 }
 
 function normalize(value: Partial<Settings>): Settings {

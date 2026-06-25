@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { EMPTY_SETTINGS, type Settings } from './settings'
 import {
   buildCreateOdysseyProperties,
+  buildDraftOdysseyProperties,
   canActivate,
   charterErrors,
   computeDayIndex,
@@ -11,6 +12,7 @@ import {
   isSpecific,
   nextOdysseyNumber,
   odysseyName,
+  parseDraftToCharter,
   type CharterDraft,
 } from './charter'
 
@@ -121,5 +123,56 @@ describe('buildCreateOdysseyProperties', () => {
   it('renders an empty optional field as an empty rich_text array', () => {
     const props = buildCreateOdysseyProperties(validDraft({ pairing: '' }), settings, 1) as Record<string, any>
     expect(props['Pairing'].rich_text).toEqual([])
+  })
+})
+
+describe('buildDraftOdysseyProperties (Planning)', () => {
+  const settings: Settings = { ...EMPTY_SETTINGS, buddyName: 'Sam', buddyEmail: 'sam@example.com' }
+
+  it('sets Status=Planning, carries NO Odyssey Number, and writes dates from the start date', () => {
+    const props = buildDraftOdysseyProperties(validDraft(), settings) as Record<string, any>
+    expect(props['Status'].select.name).toBe('Planning')
+    expect(props['Odyssey Number']).toBeUndefined()
+    expect(props['Start Date'].date.start).toBe('2026-07-06')
+    expect(props['End Date'].date.start).toBe('2026-08-16')
+    expect(props['Tiny Version'].rich_text[0].text.content).toBe('Put on shoes and walk to the corner')
+    expect(props['Buddy Name'].rich_text[0].text.content).toBe('Sam')
+  })
+
+  it('titles from the behaviour tail, falling back when blank', () => {
+    expect((buildDraftOdysseyProperties(validDraft({ behaviour: 'morning movement' }), settings) as any)['Name'].title[0].text.content).toBe('morning movement')
+    expect((buildDraftOdysseyProperties(validDraft({ behaviour: '' }), settings) as any)['Name'].title[0].text.content).toBe('Planned Odyssey')
+  })
+
+  it('omits the dates entirely when no start date is set (partial draft)', () => {
+    const props = buildDraftOdysseyProperties(validDraft({ startDate: '' }), settings) as Record<string, any>
+    expect(props['Start Date']).toBeUndefined()
+    expect(props['End Date']).toBeUndefined()
+  })
+})
+
+describe('parseDraftToCharter', () => {
+  it('maps a Planning row back into a draft and resets the shrink gate', () => {
+    const detail = {
+      behaviour: 'morning movement',
+      outcomePicture: 'steadier mind',
+      identity: 'I am someone who moves',
+      tinyVersion: 'walk to the corner',
+      anchor: 'after my first coffee',
+      ifThen: 'if it rains, hallway',
+      pairing: '',
+      dailySuccess: 'shoes on, outside',
+      whyValue: 'a body in motion',
+      startDate: '2026-07-06',
+    }
+    expect(parseDraftToCharter(detail)).toEqual({ ...detail, confirmedShrink: false })
+  })
+
+  it('falls back to the default start date when the row has none', () => {
+    const detail = {
+      behaviour: '', outcomePicture: '', identity: '', tinyVersion: '', anchor: '',
+      ifThen: '', pairing: '', dailySuccess: '', whyValue: '', startDate: '',
+    }
+    expect(parseDraftToCharter(detail, new Date('2026-07-07T10:00:00')).startDate).toBe('2026-07-13')
   })
 })

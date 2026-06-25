@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ArrowRight, Loader2, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Loader2, Save, Sparkles } from 'lucide-react'
 import { Button } from '../components/Button'
 import { Field } from '../components/Field'
 import { Textarea } from '../components/Textarea'
@@ -8,12 +8,18 @@ import { Switch } from '../components/Switch'
 import { SupportingNote } from '../components/SupportingNote'
 import { useSettings } from '../lib/settingsContext'
 import { useActiveOdysseys, ACTIVE_ODYSSEYS_KEY } from '../lib/useActiveOdysseys'
+import {
+  usePlanningOdyssey,
+  useSavePlanningDraft,
+  useActivatePlanningOdyssey,
+} from '../lib/usePlanningOdyssey'
 import { createActiveOdyssey, type OdysseyRef } from '../lib/notion'
 import {
   canActivate,
   charterErrors,
   computeEndDate,
   emptyDraft,
+  parseDraftToCharter,
   type CharterDraft,
 } from '../lib/charter'
 import type { GuidanceKey } from '../content/guidance'
@@ -48,13 +54,36 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
   const { settings } = useSettings()
   const queryClient = useQueryClient()
   const active = useActiveOdysseys()
+  const planning = usePlanningOdyssey()
 
   const [draft, setDraft] = useState<CharterDraft>(() => emptyDraft())
   const [step, setStep] = useState(0)
+  // The Notion id of the Planning draft being edited (null until one is saved/loaded). Drives
+  // whether saving PATCHes the existing row and whether "Begin" activates it vs creates fresh.
+  const [draftId, setDraftId] = useState<string | null>(null)
+
+  const hasActive = Boolean(active.data && active.data.length > 0)
+
+  // Resume an existing draft once, when it loads — seed the fields and remember its id.
+  const seeded = useRef(false)
+  useEffect(() => {
+    if (seeded.current) return
+    if (planning.data) {
+      const resumed = parseDraftToCharter(planning.data)
+      setDraft(resumed)
+      setDraftId(planning.data.id)
+      // If the resumed charter is already complete, drop the user back on the review step so they
+      // can begin straight away (e.g. after a quick detour to Settings to add their buddy).
+      if (Object.keys(charterErrors(resumed)).length === 0) setStep(FIELD_STEPS.length)
+      seeded.current = true
+    }
+  }, [planning.data])
 
   const errors = charterErrors(draft)
   const buddyReady = Boolean(settings.buddyName.trim() && settings.buddyEmail.trim())
 
+  const save = useSavePlanningDraft()
+  const activate = useActivatePlanningOdyssey()
   const create = useMutation<OdysseyRef, Error>({
     mutationFn: () => createActiveOdyssey(settings, draft),
     onSuccess: () => {
@@ -65,38 +94,48 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
     },
   })
 
-  // Already running an Odyssey → don't offer a second (Law I).
-  if (active.data && active.data.length > 0) {
-    return (
-      <div className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-6">
-        <h2 className="font-display text-2xl">One Odyssey at a time</h2>
-        <p className="max-w-prose font-sans text-text-secondary">
-          You already have an active Odyssey — <strong>{active.data[0].title}</strong>. Finish or
-          retire it before starting another. One piece of cargo per voyage is the whole advantage.
-        </p>
-        <div>
-          <Button variant="secondary" onClick={() => navigate('/')}>
-            Back home
-          </Button>
-        </div>
-      </div>
-    )
-  }
+  const busy = save.isPending || activate.isPending || create.isPending
+  const actionError = save.error ?? activate.error ?? create.error
 
   const setField = (key: keyof CharterDraft, value: string) =>
     setDraft((d) => ({ ...d, [key]: value }))
 
+  /** Save (or update) the Planning draft, then go home. */
+  function saveDraft() {
+    save.mutate(
+      { draft, existingId: draftId ?? undefined },
+      { onSuccess: () => navigate('/') },
+    )
+  }
+
+  /** Save the in-progress charter as a draft, THEN go to Settings — so nipping out to add the
+   *  buddy never loses the form. On return the wizard resumes from the draft. */
+  function goToSettingsKeepingDraft() {
+    save.mutate(
+      { draft, existingId: draftId ?? undefined },
+      { onSuccess: (ref) => { setDraftId(ref.id); navigate('/settings') } },
+    )
+  }
+
+  /** Begin now: activate the saved draft if there is one, else create the Odyssey fresh. */
+  function begin() {
+    if (draftId) {
+      activate.mutate({ draftId, draft }, { onSuccess: () => navigate('/') })
+    } else {
+      create.mutate()
+    }
+  }
+
   const onReview = step === FIELD_STEPS.length
   const current = onReview ? undefined : FIELD_STEPS[step]
-  const stepInvalid = current
-    ? Boolean(errors[current.key]) && !current.optional
-    : false
+  const stepInvalid = current ? Boolean(errors[current.key]) && !current.optional : false
 
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
         <span className="font-mono text-xs text-text-secondary">
           Charter · step {step + 1} of {TOTAL_STEPS}
+          {draftId ? ' · resuming a draft' : ''}
         </span>
         <div className="h-1.5 overflow-hidden rounded-pill bg-background-tertiary">
           <div
@@ -161,21 +200,36 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
             </div>
           </div>
 
-          {!buddyReady && (
-            <div role="alert" className="rounded-md border border-caution/40 bg-background-secondary p-4">
+          {/* When an Odyssey is already running you can prepare this one, but not begin it yet. */}
+          {hasActive && (
+            <div className="rounded-md border border-tertiary bg-background-secondary p-4">
               <p className="font-sans text-sm text-text-primary">
-                One human buddy is required before you set out. Add their name and email in{' '}
-                <button className="font-medium text-accent underline" onClick={() => navigate('/settings')}>
-                  Settings
-                </button>
-                .
+                You already have an Odyssey under way, so save this as a planned Odyssey. You’ll be
+                able to begin it once you harvest your current one.
               </p>
             </div>
           )}
 
-          {create.isError && (
+          {!hasActive && !buddyReady && (
             <div role="alert" className="rounded-md border border-caution/40 bg-background-secondary p-4">
-              <p className="font-sans text-sm text-text-primary">{create.error.message}</p>
+              <p className="font-sans text-sm text-text-primary">
+                One human buddy is required before you set out. Add their name and email in{' '}
+                <button
+                  className="font-medium text-accent underline disabled:opacity-60"
+                  onClick={goToSettingsKeepingDraft}
+                  disabled={busy}
+                >
+                  Settings
+                </button>
+                {save.isPending ? ' (saving your charter…)' : ''} — we’ll keep this charter as a draft
+                so it’s waiting when you return.
+              </p>
+            </div>
+          )}
+
+          {actionError && (
+            <div role="alert" className="rounded-md border border-caution/40 bg-background-secondary p-4">
+              <p className="font-sans text-sm text-text-primary">{actionError.message}</p>
             </div>
           )}
         </section>
@@ -185,30 +239,49 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
         <Button
           variant="ghost"
           onClick={() => (step === 0 ? navigate('/') : setStep((s) => s - 1))}
-          disabled={create.isPending}
+          disabled={busy}
         >
           <ArrowLeft size={18} aria-hidden />
           {step === 0 ? 'Cancel' : 'Back'}
         </Button>
 
-        {onReview ? (
-          <Button
-            onClick={() => create.mutate()}
-            disabled={!canActivate(draft) || !buddyReady || create.isPending}
-          >
-            {create.isPending ? (
-              <Loader2 size={18} className="animate-spin" aria-hidden />
-            ) : (
-              <Sparkles size={18} aria-hidden />
-            )}
-            Begin the Odyssey
-          </Button>
-        ) : (
-          <Button onClick={() => setStep((s) => s + 1)} disabled={stepInvalid}>
-            Next
-            <ArrowRight size={18} aria-hidden />
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Save progress and leave — available throughout, partial drafts allowed. */}
+          {!(onReview && !hasActive) && (
+            <Button variant="secondary" onClick={saveDraft} disabled={busy}>
+              {save.isPending ? (
+                <Loader2 size={18} className="animate-spin" aria-hidden />
+              ) : (
+                <Save size={18} aria-hidden />
+              )}
+              {onReview ? 'Save as planned Odyssey' : 'Save draft'}
+            </Button>
+          )}
+
+          {onReview && !hasActive && (
+            <>
+              <Button variant="secondary" onClick={saveDraft} disabled={busy}>
+                {save.isPending ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Save size={18} aria-hidden />}
+                Save as planned
+              </Button>
+              <Button onClick={begin} disabled={!canActivate(draft) || !buddyReady || busy}>
+                {activate.isPending || create.isPending ? (
+                  <Loader2 size={18} className="animate-spin" aria-hidden />
+                ) : (
+                  <Sparkles size={18} aria-hidden />
+                )}
+                Begin the Odyssey
+              </Button>
+            </>
+          )}
+
+          {!onReview && (
+            <Button onClick={() => setStep((s) => s + 1)} disabled={stepInvalid || busy}>
+              Next
+              <ArrowRight size={18} aria-hidden />
+            </Button>
+          )}
+        </div>
       </footer>
     </div>
   )

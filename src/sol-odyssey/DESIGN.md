@@ -69,11 +69,13 @@ from these rather than hand-rolling markup.
 | `Textarea` | labelled multi-line input (+ `required`, `hint`) for rich-text fields. |
 | `Select` | token-styled native `<select>` (+ chevron) — accessible, no extra dep. |
 | `Switch` | `role="switch"` toggle (Done, sent-to-buddy, Settings guidance toggles). |
-| `Modal` | small pop-up; closes on backdrop / × / Esc. Used for the Tracker day note + Harvest confirm. |
+| `Modal` | small pop-up; closes on backdrop / × / Esc. Used for the Tracker day note, Harvest confirm, and discard-draft confirm. |
 | `Notice` | calm full-width message card with an optional action — empty / not-connected / error states. |
 | `PageLink` | the **only** affordance for lateral navigation between screens (`Tracker →`, `← back`). |
 | `SupportingNote` | optional companion-guidance twisty; renders nothing when guidance is off. |
 | `Sparkline` | hand-rolled SVG line (temperature trend) — no charting dependency. |
+| `PlannedOdyssey` | `PlannedOdysseyCard` (full draft state) + `PlannedOdysseyStrip` (compact "lined up for next"). |
+| `CompanionPanel` | the optional AI reflective companion — quiet `accent-soft` card, visually distinct from buddy elements. |
 
 **Buttons vs links:** buttons are for **actions** (Save, Begin, Harvest); **`PageLink`** (text +
 arrow) is for **moving between screens**. Don't mix the two for the same job.
@@ -116,12 +118,43 @@ entry IS the practice**, optional **where it's genuinely conditional**.
   drops its wordmark; text labels + wordmark return at `≥sm`. Settings/Stats are icon-only at every
   width. The header is `sticky`.
 
+## Odyssey lifecycle (Status model)
+
+An Odyssey row's `Status` select drives the whole app. The lifecycle:
+
+- **Planning** — a draft Charter, prepared ahead of time. Carries the charter fields but **no
+  `Odyssey Number`** (assigned at activation, so an abandoned draft never burns one). At most one
+  draft at a time; it can be edited/resumed in the wizard and **may coexist with an Active
+  Odyssey** (you can line up the next one), but is begun only by an explicit action.
+- **Active** — the one Odyssey under way. Law I: exactly one Active at a time. Drives the daily
+  loop (Today/Tracker/Weekly).
+- **Maintenance / Completed / Retired** — the three harvested end-states (Keep / Grow / Retire).
+  `isHarvested` treats these as "completed"; they feed Stats + the Export synopsis.
+
+Surfaces: the wizard's review step offers **Begin the Odyssey** + **Save as planned** when nothing
+is Active, or **Save as planned** only when one is (with a note that it can be begun after harvest).
+A draft is shown by `PlannedOdysseyCard` (full, when nothing is Active — Begin / Continue editing /
+Discard) and `PlannedOdysseyStrip` (compact "lined up for next", when an Odyssey is Active). Begin
+assigns the number and PATCHes the draft → Active; Discard archives it to Notion Trash. Planning is
+not harvested, so drafts never leak into Stats, numbering, or the "first vs next" home copy.
+
 ## Companion guidance
 
 Optional, unintrusive background notes live in [`content/guidance.ts`](content/guidance.ts) and
 render through `SupportingNote` twisties, gated by the `showGuidance` setting (and the Landing page
 by `showLanding`). Copy is generically worded — **never name any source of the method** (see
 `CLAUDE.md`).
+
+## AI companion (optional)
+
+A gentle, **opt-in** reflective witness ([`lib/companion.ts`](lib/companion.ts),
+[`components/CompanionPanel.tsx`](components/CompanionPanel.tsx)) shown on Today + Weekly when the
+user has supplied an **Anthropic key** (Settings, on-device) and toggled it on. The call goes
+**straight from the browser to Anthropic** under the user's key — the same direct-browser pattern as
+Touch Grass; no server, no relay, nothing stored. Reflections are **ephemeral** (never written to
+Notion). The `system` prompt is the safety surface: it keeps the companion attribution-free,
+non-prescriptive, and clearly **not the human buddy** (which stays the heart of the process). The
+panel is styled to read as a quiet aside — distinct from the buddy fields so the two never blur.
 
 ## Hand-rolled visuals
 

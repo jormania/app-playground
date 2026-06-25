@@ -9,7 +9,9 @@ import { Notice } from '../components/Notice'
 import { SupportingNote } from '../components/SupportingNote'
 import { cn } from '../lib/cn'
 import { useSettings } from '../lib/settingsContext'
-import { isConfigured } from '../lib/settings'
+import { isConfigured, companionActive } from '../lib/settings'
+import { CompanionPanel } from '../components/CompanionPanel'
+import { buildWeeklyCompanionPrompt } from '../lib/companion'
 import { useActiveOdysseys } from '../lib/useActiveOdysseys'
 import { useCheckins } from '../lib/useCheckins'
 import { useReflections, useUpsertReflection } from '../lib/useReflections'
@@ -224,6 +226,11 @@ export function WeeklyPage({ navigate }: { navigate: (to: string) => void }) {
           />
 
           <SupportingNote note="weeklyReflect" />
+
+          {/* Optional reflective companion — once the reflection has some substance to mirror. */}
+          {companionActive(settings) && (form.oneAdjustment.trim() || form.breakPoints.trim()) && (
+            <CompanionPanel prompt={buildWeeklyCompanionPrompt(odyssey, form, selectedWeek)} />
+          )}
 
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={save} disabled={!canSubmit(form) || upsert.isPending}>

@@ -145,18 +145,9 @@ function richText(value: string): { rich_text: { text: { content: string } }[] }
   return { rich_text: v ? [{ text: { content: v } }] : [] }
 }
 
-/** Build the Notion `properties` object for a new Active Odyssey row. */
-export function buildCreateOdysseyProperties(
-  draft: CharterDraft,
-  settings: Settings,
-  number: number,
-): Record<string, unknown> {
+/** The charter fields shared by both the Active and the Planning (draft) property maps. */
+function charterFieldProperties(draft: CharterDraft, settings: Settings): Record<string, unknown> {
   return {
-    Name: { title: [{ text: { content: odysseyName(number, draft.behaviour) } }] },
-    'Odyssey Number': { number },
-    Status: { select: { name: 'Active' } },
-    'Start Date': { date: { start: draft.startDate } },
-    'End Date': { date: { start: computeEndDate(draft.startDate) } },
     Behaviour: richText(draft.behaviour),
     'Identity Statement': richText(draft.identity),
     'Tiny Version': richText(draft.tinyVersion),
@@ -170,5 +161,76 @@ export function buildCreateOdysseyProperties(
     'Buddy Channel': richText(settings.buddyEmail),
     'Daily Reminder Time': richText(settings.dailyTime),
     'Weekly Call Slot': richText(settings.weeklySlot),
+  }
+}
+
+/** Build the Notion `properties` object for a new Active Odyssey row (also used to PATCH a
+ *  Planning draft into Active at activation — it sets Status + the assigned number). */
+export function buildCreateOdysseyProperties(
+  draft: CharterDraft,
+  settings: Settings,
+  number: number,
+): Record<string, unknown> {
+  return {
+    Name: { title: [{ text: { content: odysseyName(number, draft.behaviour) } }] },
+    'Odyssey Number': { number },
+    Status: { select: { name: 'Active' } },
+    'Start Date': { date: { start: draft.startDate } },
+    'End Date': { date: { start: computeEndDate(draft.startDate) } },
+    ...charterFieldProperties(draft, settings),
+  }
+}
+
+/** Build the Notion `properties` for a Planning (draft) Odyssey row. Unlike the Active map it
+ *  carries NO `Odyssey Number` (assigned at activation, so an abandoned draft never burns one)
+ *  and only writes the dates when a start date is set. Partial drafts are fine — `richText()`
+ *  tolerates empty values. The title falls back to the unnumbered behaviour tail. */
+export function buildDraftOdysseyProperties(
+  draft: CharterDraft,
+  settings: Settings,
+): Record<string, unknown> {
+  const tail = draft.behaviour.trim().replace(/\s+/g, ' ').slice(0, 60)
+  const props: Record<string, unknown> = {
+    Name: { title: [{ text: { content: tail || 'Planned Odyssey' } }] },
+    Status: { select: { name: 'Planning' } },
+    ...charterFieldProperties(draft, settings),
+  }
+  if (draft.startDate) {
+    props['Start Date'] = { date: { start: draft.startDate } }
+    props['End Date'] = { date: { start: computeEndDate(draft.startDate) } }
+  }
+  return props
+}
+
+/** Map a Planning row (read back from Notion) into a CharterDraft so the wizard can resume.
+ *  `confirmedShrink` is a gate, not a stored field — it resets so the user re-affirms before
+ *  beginning. */
+export function parseDraftToCharter(
+  detail: {
+    behaviour: string
+    outcomePicture: string
+    identity: string
+    tinyVersion: string
+    anchor: string
+    ifThen: string
+    pairing: string
+    dailySuccess: string
+    whyValue: string
+    startDate: string
+  },
+  today = new Date(),
+): CharterDraft {
+  return {
+    behaviour: detail.behaviour,
+    outcomePicture: detail.outcomePicture,
+    identity: detail.identity,
+    tinyVersion: detail.tinyVersion,
+    anchor: detail.anchor,
+    ifThen: detail.ifThen,
+    pairing: detail.pairing,
+    dailySuccess: detail.dailySuccess,
+    whyValue: detail.whyValue,
+    startDate: detail.startDate || defaultStartDate(today),
+    confirmedShrink: false,
   }
 }

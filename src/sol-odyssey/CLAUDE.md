@@ -11,9 +11,11 @@ conflict). These rules are non-negotiable — apply them to every change here.
    organizations, programs, or materials — in code, UI, comments, docs, or data. Describe
    techniques generically only.
 2. **Single-user MVP.** One owner. The human buddy is **name + email only** — no messages,
-   emails, templates, reminders, or comms screens. **No notifications of any kind.** No AI
-   buddy. No in-app guide. **No dark mode** (light only). Build only what the current
-   milestone scopes; deferred features live in the spec's Roadmap.
+   emails, templates, reminders, or comms screens. **No notifications of any kind.** No in-app
+   guide. **No dark mode** (light only). Build only what the current milestone scopes; deferred
+   features live in the spec's Roadmap. *(Post-MVP: an **optional** AI reflective companion now
+   exists — see below. It is **not** an AI buddy: it never messages, coaches, or replaces the
+   human buddy.)*
 3. **No hardcoded credentials.** The app ships with **no Notion token and no database/data-
    source IDs**. The user enters them in **Settings**, stored on-device
    (`localStorage`, see `lib/settings.ts`). Nothing secret goes in the repo, the build, or
@@ -63,3 +65,15 @@ src/sol-odyssey/
 The spec defines 6 milestones; **M1 (this one)** = scaffold + design system + relay +
 Settings/"Test connection" + docs + tests. **Stop after each milestone for review.** Do
 not build ahead (charter wizard, Today/tracker, weekly reflection, offline queue, harvest).
+
+**Post-MVP shipped:**
+- **Planning (draft) Odyssey** lifecycle stage (moved from the spec's Roadmap). A Charter can be
+  saved as a `Status='Planning'` draft (no `Odyssey Number` until activation), edited/resumed, and
+  may coexist with an Active Odyssey; "Begin" PATCHes it → Active. See the lifecycle section in
+  `DESIGN.md`.
+- **Optional AI reflective companion** (`lib/companion.ts`, `components/CompanionPanel.tsx`). A
+  **bring-your-own Anthropic key** (Settings, on-device) + opt-in toggle; the call goes **directly
+  from the browser** to Anthropic (the same pattern as Touch Grass — no server, no relay, no stored
+  secret). It's a brief **reflective witness** on Today + Weekly: mirrors back your words, asks at
+  most one gentle question, **ephemeral** (never written to Notion). The `system` prompt is the
+  safety surface — attribution-free, never prescriptive, never poses as or replaces the human buddy.
