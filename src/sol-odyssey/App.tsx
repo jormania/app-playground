@@ -15,7 +15,17 @@ import { useNextOdysseyNumber } from './lib/useNextOdysseyNumber'
 import { useSyncStatus } from './lib/syncContext'
 import { isConfigured } from './lib/settings'
 import { cn } from './lib/cn'
-import { CloudOff, RefreshCw, LineChart as StatsIcon, Settings as SettingsIcon, type LucideIcon } from 'lucide-react'
+import {
+  CloudOff,
+  RefreshCw,
+  ScrollText as CharterIcon,
+  Sun as TodayIcon,
+  LayoutGrid as TrackerIcon,
+  NotebookPen as WeeklyIcon,
+  LineChart as StatsIcon,
+  Settings as SettingsIcon,
+  type LucideIcon,
+} from 'lucide-react'
 
 export default function App() {
   const { settings } = useSettings()
@@ -31,14 +41,15 @@ export default function App() {
     <GuidanceProvider show={settings.showGuidance}>
       <div className="min-h-screen bg-background-primary">
         <header className="sticky top-0 z-20 border-b border-tertiary bg-background-primary/95 backdrop-blur">
-          <div className="mx-auto flex max-w-3xl items-center gap-3 px-5 py-4">
+          <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-4 sm:gap-3 sm:px-5">
             <button
               className="flex items-center gap-3"
               onClick={() => navigate('/')}
               aria-label="Sol Odyssey home"
             >
               <img src="/sol-odyssey-logo.svg" alt="" width={36} height={36} aria-hidden />
-              <span className="flex flex-col items-start">
+              {/* Wordmark drops on narrow phones so the nav fits; returns on ≥sm. */}
+              <span className="hidden flex-col items-start sm:flex">
                 <span className="font-display text-lg leading-none">Sol Odyssey</span>
                 <span className="font-mono text-xs text-text-secondary">
                   one behaviour · 42 days · witnessed
@@ -47,19 +58,19 @@ export default function App() {
             </button>
             <div className="ml-auto flex items-center gap-2">
               <SyncPill />
-              <nav className="flex items-center gap-1">
-                <NavLink current={route} to="/overview" label="Charter" onClick={navigate} />
+              <nav className="flex items-center gap-0.5 sm:gap-1">
+                <NavLink current={route} to="/overview" label="Charter" onClick={navigate} icon={CharterIcon} />
                 {hasActive && (
                   <>
-                    <NavLink current={route} to="/" label="Today" onClick={navigate} />
-                    <NavLink current={route} to="/tracker" label="Tracker" onClick={navigate} />
-                    <NavLink current={route} to="/weekly" label="Weekly" onClick={navigate} />
+                    <NavLink current={route} to="/" label="Today" onClick={navigate} icon={TodayIcon} />
+                    <NavLink current={route} to="/tracker" label="Tracker" onClick={navigate} icon={TrackerIcon} />
+                    <NavLink current={route} to="/weekly" label="Weekly" onClick={navigate} icon={WeeklyIcon} />
                   </>
                 )}
                 {hasPrior && (
-                  <NavLink current={route} to="/stats" label="Stats" onClick={navigate} icon={StatsIcon} />
+                  <NavLink current={route} to="/stats" label="Stats" onClick={navigate} icon={StatsIcon} iconOnly />
                 )}
-                <NavLink current={route} to="/settings" label="Settings" onClick={navigate} icon={SettingsIcon} />
+                <NavLink current={route} to="/settings" label="Settings" onClick={navigate} icon={SettingsIcon} iconOnly />
               </nav>
             </div>
           </div>
@@ -130,7 +141,8 @@ function SyncPill() {
       title={!online ? 'Offline — changes are saved on this device and will sync' : `${pending} change(s) waiting to sync`}
     >
       {!online ? <CloudOff size={13} aria-hidden /> : <RefreshCw size={13} aria-hidden />}
-      {!online ? 'Offline' : `${pending} to sync`}
+      {/* Label hides on phones to save room; the icon + tooltip carry the meaning. */}
+      <span className="hidden sm:inline">{!online ? 'Offline' : `${pending} to sync`}</span>
     </span>
   )
 }
@@ -141,27 +153,38 @@ function NavLink({
   label,
   onClick,
   icon: Icon,
+  iconOnly = false,
 }: {
   current: string
   to: string
   label: string
   onClick: (to: string) => void
-  icon?: LucideIcon
+  icon: LucideIcon
+  /** Utility tabs (Stats/Settings) stay icon-only at every width; content tabs show the icon on
+   *  phones and the text label on ≥sm. */
+  iconOnly?: boolean
 }) {
   const activeRoute = current === to
   return (
     <button
       onClick={() => onClick(to)}
       aria-current={activeRoute ? 'page' : undefined}
-      aria-label={Icon ? label : undefined}
-      title={Icon ? label : undefined}
+      aria-label={label}
+      title={label}
       className={cn(
         'rounded-md font-sans text-sm transition-colors duration-fast',
-        Icon ? 'p-2' : 'px-3 py-1.5',
+        iconOnly ? 'p-2' : 'p-2 sm:px-3 sm:py-1.5',
         activeRoute ? 'bg-accent-soft text-accent' : 'text-text-secondary hover:bg-background-secondary',
       )}
     >
-      {Icon ? <Icon size={18} aria-hidden /> : label}
+      {iconOnly ? (
+        <Icon size={18} aria-hidden />
+      ) : (
+        <>
+          <Icon size={18} aria-hidden className="sm:hidden" />
+          <span className="hidden sm:inline">{label}</span>
+        </>
+      )}
     </button>
   )
 }
