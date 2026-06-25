@@ -1,0 +1,28 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sol Odyssey compass">
+  <!-- outer ring -->
+  <circle cx="256" cy="256" r="236" stroke="#312E81" stroke-width="14" fill="none"/>
+  <circle cx="256" cy="256" r="210" stroke="#4338CA" stroke-width="3" fill="none" opacity="0.45"/>
+  <!-- cardinal ticks -->
+  <g fill="#312E81">
+    <rect x="250" y="34" width="12" height="34" rx="3"/>
+    <rect x="250" y="444" width="12" height="34" rx="3"/>
+    <rect x="34" y="250" width="34" height="12" rx="3"/>
+    <rect x="444" y="250" width="34" height="12" rx="3"/>
+  </g>
+  <!-- diagonal spokes -->
+  <g stroke="#4338CA" stroke-width="7" stroke-linecap="round" opacity="0.4">
+    <line x1="256" y1="256" x2="157" y2="157"/>
+    <line x1="256" y1="256" x2="355" y2="157"/>
+    <line x1="256" y1="256" x2="157" y2="355"/>
+    <line x1="256" y1="256" x2="355" y2="355"/>
+  </g>
+  <!-- horizontal compass diamond (E-W) -->
+  <polygon points="58,256 256,238 454,256 256,274" fill="#312E81"/>
+  <!-- vertical compass diamond (N-S), south + structure -->
+  <polygon points="256,58 274,256 256,454 238,256" fill="#3730A3"/>
+  <!-- north point, accented (bright indigo) -->
+  <polygon points="256,58 274,256 238,256" fill="#4F46E5"/>
+  <!-- center hub -->
+  <circle cx="256" cy="256" r="26" fill="#F7F7FC" stroke="#312E81" stroke-width="8"/>
+  <circle cx="256" cy="256" r="9" fill="#4F46E5"/>
+</svg>

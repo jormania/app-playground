@@ -1,0 +1,65 @@
+# Sol Odyssey — build rules
+
+Sol Odyssey is an online client + engine for a six-week behaviour-change method ("an
+**Odyssey**"), with **Notion as the system of record**. Source of truth is the Notion spec
+*"Sol Odyssey — App Spec & Architecture Review"* (it wins over the PDF field manual on any
+conflict). These rules are non-negotiable — apply them to every change here.
+
+## Hard rules
+
+1. **No attribution, ever.** Never name any source of the method — no people, books,
+   organizations, programs, or materials — in code, UI, comments, docs, or data. Describe
+   techniques generically only.
+2. **Single-user MVP.** One owner. The human buddy is **name + email only** — no messages,
+   emails, templates, reminders, or comms screens. **No notifications of any kind.** No AI
+   buddy. No in-app guide. **No dark mode** (light only). Build only what the current
+   milestone scopes; deferred features live in the spec's Roadmap.
+3. **No hardcoded credentials.** The app ships with **no Notion token and no database/data-
+   source IDs**. The user enters them in **Settings**, stored on-device
+   (`localStorage`, see `lib/settings.ts`). Nothing secret goes in the repo, the build, or
+   env vars.
+4. **Notion only via the relay.** The browser can't call Notion directly (CORS). All calls
+   go through the stateless [`/api/notion`](../../api/notion.js) relay, which holds no
+   secret and stores nothing — it forwards the per-request `x-notion-token`. The relay is
+   **shared** with another app and pins Notion-Version `2022-06-28` (the classic, stable
+   API). We use `databases/{id}/query` to read and `parent.database_id` to write, so the
+   user only needs a **database link** — Settings accepts a pasted URL or a bare ID and
+   `normalizeNotionId()` (in `lib/notion.ts`) reads the ID out of it.
+5. **Design = Claude Design System, light only.** Every colour/radius/duration is a
+   semantic `--color-*` / `--radius-*` / `--motion-*` token (`styles/tokens.css`); components
+   read the mapped Tailwind names, **never raw hex**. Body text is `--color-text-primary`,
+   never the accent. See `DESIGN.md`.
+
+## Design-system boundary (repo convention)
+
+This app's tokens follow the spec's **Claude Design System** convention
+(`--color-background-primary`, …) and are **self-contained** under `src/sol-odyssey/`. It
+does **not** import the repo's generic `src/ds/` tokens (a different convention), so the
+`LEGACY.md` one-way boundary is untouched. As a new design-system app, its index card is
+flagged `ds: true` (no "Legacy" chip).
+
+## File map
+
+```
+sol-odysseys-react.html          ← entry (repo root; Vite multi-entry input)
+api/notion.js                    ← shared stateless relay (reused, version-override added)
+public/sol-odyssey-logo.svg      ← compass mark (logo + favicon source)
+public/sol-odyssey-icon-*.png    ← generated PWA icons (npm run gen:icons)
+scripts/generate-sol-odyssey-icons.mjs
+src/sol-odyssey/
+  main.tsx                       ← React root + QueryClient + SW registration
+  App.tsx                        ← M1 shell (header + Settings)
+  pages/Settings.tsx             ← token + 3 data-source IDs + buddy; "Test connection"
+  lib/settings.ts                ← on-device settings (pure; tested)
+  lib/notion.ts                  ← relay request builders + listActiveOdysseys (pure core; tested)
+  lib/cn.ts                      ← clsx + tailwind-merge helper
+  components/{Button,Field}.tsx  ← token-styled primitives
+  styles/{tokens,fonts,index}.css
+  *.test.ts                      ← Vitest (node env)
+```
+
+## Milestones
+
+The spec defines 6 milestones; **M1 (this one)** = scaffold + design system + relay +
+Settings/"Test connection" + docs + tests. **Stop after each milestone for review.** Do
+not build ahead (charter wizard, Today/tracker, weekly reflection, offline queue, harvest).

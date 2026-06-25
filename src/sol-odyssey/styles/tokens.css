@@ -1,0 +1,70 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Sol Odyssey — Claude Design System tokens (Deep Indigo · LIGHT MODE ONLY).
+
+   The single source of truth for the app's look. Every component reads these
+   semantic --color-* / --radius-* / --motion-* variables and NEVER hard-codes a
+   colour, radius, or duration. Rebrand the whole app by editing this file alone.
+
+   There is ONE palette. No dark theme, no [data-theme] — light only, by design.
+   The colour of this journey is Deep Indigo: between the calm of dark blue and the
+   energy of violet — wisdom, self-mastery, the night sky as a canvas for a long
+   navigation.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: light;
+
+  /* ── Surfaces (back → front) ──────────────────────────────────────────── */
+  --color-background-primary:   #F7F7FC; /* app canvas (light indigo-white) */
+  --color-background-secondary: #EEEEF7; /* cards / surfaces */
+  --color-background-tertiary:  #E3E2F2; /* insets / hover */
+
+  /* ── Text ─────────────────────────────────────────────────────────────── */
+  --color-text-primary:   #1F1B4D; /* deep-indigo ink (body, headings) */
+  --color-text-secondary: #5C5891; /* muted indigo (captions, hints) */
+
+  /* ── Borders (strong → hairline) ──────────────────────────────────────── */
+  --color-border-primary:   #C2BFE3; /* strong dividers */
+  --color-border-secondary: #D6D4EE; /* inputs */
+  --color-border-tertiary:  #E8E7F5; /* hairlines */
+
+  /* ── Accent (brand Deep Indigo) ───────────────────────────────────────── */
+  --color-accent:          #4B45C6; /* buttons, active, brand */
+  --color-accent-hover:    #3E38B0; /* hover / pressed */
+  --color-accent-contrast: #FFFFFF; /* text / icon on an accent fill */
+  --color-accent-soft:     #E7E5FA; /* accent-tinted chips / fills */
+
+  /* ── Signals ──────────────────────────────────────────────────────────── */
+  --color-energy:  #6D63F0; /* violet momentum — the celebration beat */
+  --color-success: #2E8B73; /* calm green — "done" */
+  --color-caution: #C2873A; /* gentle amber — "missed" (NEVER red) */
+
+  /* Derived translucent fills adapt automatically if accents change. */
+  --color-ring:  color-mix(in srgb, var(--color-accent) 35%, transparent);
+  --color-scrim: color-mix(in srgb, var(--color-text-primary) 45%, transparent);
+
+  /* ── Radius ───────────────────────────────────────────────────────────── */
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   18px;
+  --radius-pill: 999px;
+
+  /* ── Elevation (soft indigo shadows) ──────────────────────────────────── */
+  --shadow-sm: 0 1px 2px rgba(31, 27, 77, 0.06);
+  --shadow-md: 0 6px 20px rgba(31, 27, 77, 0.10);
+  --shadow-lg: 0 16px 40px rgba(31, 27, 77, 0.14);
+
+  /* ── Motion (tokenized durations; honour reduced-motion below) ────────── */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 360ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0.001ms;
+    --motion-base: 0.001ms;
+    --motion-slow: 0.001ms;
+  }
+}
