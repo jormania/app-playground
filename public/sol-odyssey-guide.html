@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sol Odyssey — Field Guide</title>
+<meta name="description" content="How to run your own Odyssey: six weeks, one behaviour, witnessed — and how the Sol Odyssey app carries it." />
+<link rel="icon" href="/sol-odyssey-logo.svg" type="image/svg+xml" />
+<meta name="theme-color" content="#4B45C6" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F7FC; --surface:#EEEEF7; --surface2:#E3E2F2;
+    --ink:#1F1B4D; --muted:#5C5891; --faint:#8d8ab5;
+    --border:#C2BFE3; --border2:#D6D4EE; --hair:#E8E7F5;
+    --accent:#4B45C6; --accent-soft:#E7E5FA; --energy:#6D63F0;
+    --success:#2E8B73; --caution:#C2873A;
+    --serif:'Fraunces',Georgia,serif; --sans:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:720px;margin:0 auto;padding:0 24px;}
+  a{color:var(--accent);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+
+  /* cover */
+  .cover{min-height:92vh;display:flex;flex-direction:column;justify-content:space-between;padding:64px 0 40px;}
+  .cover .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent);}
+  .cover h1{font-family:var(--serif);font-weight:400;font-size:clamp(2.6rem,8vw,4rem);line-height:1.02;margin:18px 0 10px;}
+  .cover .sub{font-family:var(--serif);font-style:italic;font-size:clamp(1.05rem,3.4vw,1.4rem);color:var(--muted);}
+  .cover .meta{display:grid;grid-template-columns:repeat(3,1fr);gap:18px 24px;border-top:1px solid var(--border);padding-top:20px;}
+  .cover .meta dt{font-family:var(--mono);font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--faint);}
+  .cover .meta dd{font-family:var(--serif);font-size:0.98rem;margin-top:3px;}
+  @media (max-width:560px){.cover .meta{grid-template-columns:repeat(2,1fr);}}
+
+  /* sections */
+  section{padding:40px 0;border-top:1px solid var(--hair);}
+  .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);}
+  h2{font-family:var(--serif);font-weight:600;font-size:clamp(1.7rem,5vw,2.2rem);line-height:1.1;margin:6px 0 4px;}
+  h2 .n{font-family:var(--mono);font-weight:400;font-size:0.95rem;color:var(--accent);margin-right:12px;vertical-align:middle;}
+  h3{font-family:var(--serif);font-weight:600;font-size:1.15rem;margin:24px 0 6px;}
+  .lede{color:var(--muted);max-width:60ch;margin:8px 0 0;}
+  p{margin:12px 0;max-width:64ch;}
+  p strong,li strong{font-weight:600;}
+  em{font-style:italic;}
+  .muted{color:var(--muted);}
+
+  ul.laws{list-style:none;display:grid;gap:14px;margin:18px 0;}
+  ul.laws li{display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:start;}
+  ul.laws .num{font-family:var(--serif);font-size:1.4rem;color:var(--accent);line-height:1;}
+  ul.laws .t{font-weight:600;}
+  ul{margin:12px 0 12px 2px;padding-left:18px;}
+  li{margin:7px 0;color:var(--muted);}
+  li strong{color:var(--ink);}
+
+  .card{background:var(--surface);border:1px solid var(--hair);border-radius:16px;padding:22px 24px;margin:18px 0;}
+  .card h3:first-child{margin-top:0;}
+  .inapp{border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 12px 12px 0;padding:14px 18px;margin:16px 0;}
+  .inapp .tag{font-family:var(--mono);font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);}
+  .inapp p{margin:6px 0 0;color:var(--ink);}
+  .note{border-left:2px solid var(--border2);padding-left:14px;color:var(--faint);font-size:0.92rem;margin:14px 0;}
+  .pill{display:inline-block;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:2px 10px;font-family:var(--mono);font-size:0.72rem;}
+
+  dl.fill{display:grid;gap:12px;margin:14px 0;}
+  dl.fill dt{font-family:var(--mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);}
+  dl.fill dd{margin-top:2px;}
+
+  ol.steps{counter-reset:s;list-style:none;display:grid;gap:12px;margin:16px 0;padding:0;}
+  ol.steps li{counter-increment:s;position:relative;padding-left:38px;color:var(--muted);}
+  ol.steps li::before{content:counter(s);position:absolute;left:0;top:1px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-family:var(--mono);font-size:12px;display:flex;align-items:center;justify-content:center;}
+  ol.steps li strong{color:var(--ink);}
+
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:0.92rem;}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--hair);vertical-align:top;}
+  th{font-family:var(--mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--faint);font-weight:400;}
+  td:first-child{font-family:var(--mono);font-size:0.8rem;color:var(--accent);white-space:nowrap;}
+
+  .tmpl{border:1px dashed var(--border);border-radius:14px;padding:20px 22px;margin:16px 0;}
+  .tmpl .line{border-bottom:1px solid var(--border2);height:1.7em;margin:8px 0;}
+  .tmpl h3{margin-top:0;font-family:var(--mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);}
+
+  .loop{display:block;margin:18px auto;max-width:300px;}
+
+  footer{border-top:1px solid var(--border);padding:28px 0 48px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--faint);}
+
+  @page{size:A4;margin:18mm 16mm;}
+  @media print{
+    body{background:#fff;}
+    .wrap{max-width:none;padding:0;}
+    .cover{min-height:auto;page-break-after:always;}
+    section{break-before:page;border-top:none;padding:0 0 8px;}
+    .card,.tmpl,table,ul.laws li{break-inside:avoid;}
+    a{color:var(--ink);text-decoration:none;}
+    .noprint{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ───────────────── COVER ───────────────── -->
+  <header class="cover">
+    <div>
+      <div class="eyebrow">Sol Odyssey · Field Guide · v1 · 2026</div>
+    </div>
+    <div>
+      <div class="eyebrow">A self-run system for becoming</div>
+      <h1>How to Run<br>Your Own Odyssey</h1>
+      <p class="sub">Six weeks. One behaviour. A method you keep for life — and the app that carries it.</p>
+    </div>
+    <dl class="meta">
+      <div><dt>Prepared for</dt><dd>Gabriel</dd></div>
+      <div><dt>Position</dt><dd>București · 44.43°N 26.10°E</dd></div>
+      <div><dt>Cycle length</dt><dd>42 days</dd></div>
+      <div><dt>Departure</dt><dd>Odyssey 1</dd></div>
+      <div><dt>Companion</dt><dd>One human buddy</dd></div>
+      <div><dt>Edition</dt><dd>June 2026</dd></div>
+    </dl>
+  </header>
+
+  <!-- ───────────────── THE IDEA ───────────────── -->
+  <section>
+    <div class="eyebrow">The idea in one breath</div>
+    <h2>You don't study change. You practise it into being.</h2>
+    <p>Transformation isn't an act of information or motivation. It is the residue of what you do, quietly, on ordinary days. An <em>Odyssey</em> is a fixed stretch of time — six weeks — in which you install one chosen behaviour by practising it daily, in the smallest honest version, witnessed by one other person.</p>
+    <p class="muted">You bring the wish to change. The method is the structure that carries it from intention to a thing you simply do. The <strong>Sol Odyssey</strong> app holds that structure for you — the charter, the daily loop, the weekly reflection, the records — so nothing rests on memory. Learn the system once; run it for the rest of your life, on anything.</p>
+
+    <div class="card">
+      <h3>What's inside</h3>
+      <ul>
+        <li><strong>1 · The Five Laws</strong> — everything else is detail</li>
+        <li><strong>2 · The Engine</strong> — the daily and weekly loop the app drives</li>
+        <li><strong>3 · Before you start</strong> — connect your own Notion</li>
+        <li><strong>4 · The Charter</strong> — turning a wish into one un-missable action</li>
+        <li><strong>5 · The Daily Loop &amp; Tracker</strong> — Today, and the 42-day grid</li>
+        <li><strong>6 · The Weekly Reflection</strong> — the five questions</li>
+        <li><strong>7 · The Six-Week Ascent</strong> — each week's job</li>
+        <li><strong>8 · The Buddy</strong> — the second cylinder</li>
+        <li><strong>9 · Harvest &amp; the next Odyssey</strong> — and looking back</li>
+        <li><strong>10 · Quick-Start</strong> — launch this week</li>
+        <li><strong>Appendix</strong> — printable templates</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ───────────────── 1 · FIVE LAWS ───────────────── -->
+  <section>
+    <div class="eyebrow">01</div>
+    <h2><span class="n">§</span>The Five Laws</h2>
+    <p class="lede">Everything else is detail. If you forget the guide, keep these.</p>
+    <ul class="laws">
+      <li><span class="num">1</span><span><span class="t">One behaviour at a time.</span> <span class="muted">An Odyssey carries a single piece of cargo — one specific, observable action, not three habits or a new life. Focus is the whole advantage; spend it on one thing and it compounds.</span></span></li>
+      <li><span class="num">2</span><span><span class="t">Tiny beats heroic.</span> <span class="muted">Choose a version so small it feels almost absurd — two minutes, one page, one set. A behaviour you can't fail at is one that survives bad days.</span></span></li>
+      <li><span class="num">3</span><span><span class="t">Consistency over intensity.</span> <span class="muted">Showing up at low power every day outperforms occasional brilliance. Forty-two unremarkable days change a person more than three perfect ones.</span></span></li>
+      <li><span class="num">4</span><span><span class="t">A system you can feel.</span> <span class="muted">Don't lean on motivation; it comes and goes like weather. Lean on the loop: a fixed cue, a tiny action, a daily mark, a weekly look. The app does the carrying.</span></span></li>
+      <li><span class="num">5</span><span><span class="t">Never alone.</span> <span class="muted">One other person who knows what you're attempting, and checks. Being witnessed changes behaviour more reliably than willpower. The buddy is the engine's second cylinder.</span></span></li>
+    </ul>
+  </section>
+
+  <!-- ───────────────── 2 · THE ENGINE ───────────────── -->
+  <section>
+    <div class="eyebrow">02</div>
+    <h2><span class="n">§</span>The Engine</h2>
+    <p class="lede">The whole Odyssey is one small loop, turned every day, plus a longer loop turned once a week. Learn the shape and the rest is just repetition.</p>
+
+    <svg class="loop" viewBox="0 0 300 200" role="img" aria-label="The daily and weekly loop">
+      <circle cx="150" cy="100" r="74" fill="none" stroke="var(--border)" stroke-width="2"/>
+      <g font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink)" text-anchor="middle">
+        <circle cx="150" cy="26" r="15" fill="var(--accent)"/><text x="150" y="30" fill="#fff" font-size="9">DO</text>
+        <circle cx="224" cy="100" r="15" fill="var(--accent)"/><text x="224" y="104" fill="#fff" font-size="8">LOG</text>
+        <circle cx="150" cy="174" r="15" fill="var(--energy)"/><text x="150" y="178" fill="#fff" font-size="7">REFLECT</text>
+        <circle cx="76" cy="100" r="15" fill="var(--accent)"/><text x="76" y="104" fill="#fff" font-size="7">ADJUST</text>
+        <text x="150" y="96" fill="var(--muted)" font-size="9">DAILY ×6</text>
+        <text x="150" y="110" fill="var(--muted)" font-size="9">WEEKLY ×1</text>
+      </g>
+    </svg>
+
+    <ol class="steps">
+      <li><strong>Do.</strong> Perform the tiny version of your behaviour — two to fifteen minutes, at your own pace. Done counts; perfect is irrelevant.</li>
+      <li><strong>Log.</strong> Mark the day and write one line — what happened, or what you noticed. Ten seconds. The mark is the reward and the memory.</li>
+      <li><strong>Reflect — weekly.</strong> Once a week, walk the five questions (§6). Read the week honestly; this is where learning happens.</li>
+      <li><strong>Adjust.</strong> Make exactly one change for the coming week — usually shrinking the behaviour or moving its anchor. Then turn the loop again.</li>
+    </ol>
+    <div class="inapp">
+      <span class="tag">In the app</span>
+      <p>The <strong>Today</strong> screen drives the daily loop; <strong>Weekly</strong> unlocks the reflection at each week boundary. Miss a day and you simply rejoin — the loop has no penalty, only a next turn.</p>
+    </div>
+  </section>
+
+  <!-- ───────────────── 3 · BEFORE YOU START ───────────────── -->
+  <section>
+    <div class="eyebrow">03</div>
+    <h2><span class="n">§</span>Before you start — your own Notion</h2>
+    <p class="lede">Sol Odyssey keeps every personal record in <em>your</em> Notion workspace. The app ships with no account and no data of its own; it's a doorway to your databases, not a vault.</p>
+    <ol class="steps">
+      <li>Create a Notion <strong>internal integration</strong> and share your three databases with it — <strong>Odysseys</strong>, <strong>Check-ins</strong>, and <strong>Weekly Reflections</strong>.</li>
+      <li>Open <strong>Settings</strong> in the app and paste your <strong>integration token</strong> and a <strong>link to each of the three databases</strong>. They're stored only in this browser, on your device — never on a server, never in the app.</li>
+      <li>Tap <strong>Test connection</strong>. When it confirms, you're wired end to end.</li>
+      <li>Add your <strong>buddy's name and email</strong>, and (optionally) your daily check-in time and weekly call slot — recorded for you, not acted on.</li>
+    </ol>
+    <div class="inapp">
+      <span class="tag">Good to know</span>
+      <p>Your token is <em>your</em> key to <em>your</em> workspace — the app holds no secret of its own. Check-ins save on your device first and sync to Notion when you're online, so a tunnel or a dead zone never loses a day. Sol Odyssey is installable as an app (a PWA) and runs offline. There's an optional <strong>guidance</strong> setting — gentle background notes along the way — that you can switch off once the method is second nature.</p>
+    </div>
+  </section>
+
+  <!-- ───────────────── 4 · THE CHARTER ───────────────── -->
+  <section>
+    <div class="eyebrow">04</div>
+    <h2><span class="n">§</span>The Charter</h2>
+    <p class="lede">One page, written before Day 1. It turns a vague wish into a specific, daily, un-missable action. The app's charter wizard walks you through it line by line, then makes it your one Active Odyssey.</p>
+
+    <div class="card">
+      <h3>How to fill each line</h3>
+      <dl class="fill">
+        <div><dt>The wish</dt><dd>Say it plainly, in your own voice — one behaviour, not a whole new life. <span class="muted">e.g. "Move my body before the day takes me."</span></dd></div>
+        <div><dt>Outcome picture</dt><dd>Picture the payoff vividly — what an ordinary day feels like once this is part of you. It gives the behaviour something to pull toward.</dd></div>
+        <div><dt>Identity — I am someone who…</dt><dd>Name the kind of person this makes you. Behaviour follows identity more loyally than identity follows behaviour. <span class="muted">"…starts the day in motion."</span></dd></div>
+        <div><dt>Tiny version (the 2-minute floor)</dt><dd>Shrink until you cannot fail on your worst day. If unsure, halve it again. The floor must be laughably easy; you can always do more.</dd></div>
+        <div><dt>Anchor — after I…</dt><dd>Attach the action to something you already do without fail. The existing habit becomes the cue — no reminders, no willpower. <span class="muted">"…pour my first coffee, I walk to the corner."</span></dd></div>
+        <div><dt>If-then</dt><dd>Name the one obstacle you can already predict, and pre-decide the response. A decision made in advance survives a tired evening.</dd></div>
+        <div><dt>Pairing (optional)</dt><dd>Optionally tie it to something you enjoy — a podcast only allowed on the walk. A small lever; leave blank if none.</dd></div>
+        <div><dt>Daily success</dt><dd>Define the lowest bar that still counts. Clear and binary: did it / didn't. No grey.</dd></div>
+        <div><dt>Why it matters</dt><dd>One honest sentence tied to a value. On the days the system isn't enough, this is what you read.</dd></div>
+        <div><dt>Departure</dt><dd>The start date — Day 1. The app defaults to the next Monday: a clean edge to begin from.</dd></div>
+      </dl>
+    </div>
+
+    <div class="inapp">
+      <span class="tag">The shrink gate</span>
+      <p>Before it lets the Odyssey begin, the wizard asks: <strong>would you bet you'll do this every single day for 42 days?</strong> If you hesitate, it's still too big — go back and shrink it. The app also asks for a concrete tiny version and anchor, and requires a buddy (name + email) before departure. Only <strong>one</strong> Odyssey can be Active at a time.</p>
+    </div>
+  </section>
+
+  <!-- ───────────────── 5 · DAILY LOOP & TRACKER ───────────────── -->
+  <section>
+    <div class="eyebrow">05</div>
+    <h2><span class="n">§</span>The Daily Loop &amp; Tracker</h2>
+    <p class="lede">Two small acts a day, under a minute. Do the tiny version; log it. The <strong>Today</strong> screen is the whole daily ritual.</p>
+
+    <div class="card">
+      <h3>The day's check-in</h3>
+      <ul>
+        <li><strong>Did the tiny version?</strong> One toggle. Done counts; perfect is irrelevant. Marking it plays a small celebration — a positive beat helps install the habit.</li>
+        <li><strong>One line</strong> <span class="pill">required</span> — what happened, or what you noticed. Noticing your own behaviour in writing is the single highest-yield lever there is. You can't save the day without it.</li>
+        <li><strong>Friction</strong> (optional) — what got in the way, if anything.</li>
+        <li><strong>Sent to my buddy</strong> (optional) — a self-marked note that you reached out. <em>The app sends nothing</em>; the reaching out is yours.</li>
+      </ul>
+      <p class="muted">Before Day 1, Today shows a quiet countdown. There's nothing to perform yet — just rig the system and rest.</p>
+    </div>
+
+    <h3>The 42-day tracker</h3>
+    <p>A 6×7 grid — six weeks of days. A <strong>filled</strong> square is a done day; an <strong>open</strong> one is a miss — no crosses, no guilt. It shows your current and best streak, but the streak isn't the point.</p>
+    <div class="inapp">
+      <span class="tag">The one rule of the grid</span>
+      <p>Never skip two days running. One gap is an accident; two in a row is the start of a new habit pointed the wrong way. After a single gap the app surfaces a warm reminder — never a scolding. Tap any day with a note to read it back; a small check marks the days you sent to your buddy. A <strong>temperature</strong> line appears once you've logged weekly reflections.</p>
+    </div>
+    <p class="note">A miss is data, not a verdict. Note the friction, rejoin tomorrow. Streaks motivate; broken streaks teach. Neither is a reason to stop.</p>
+  </section>
+
+  <!-- ───────────────── 6 · WEEKLY REFLECTION ───────────────── -->
+  <section>
+    <div class="eyebrow">06</div>
+    <h2><span class="n">§</span>The Weekly Reflection</h2>
+    <p class="lede">Once a week — ideally with your buddy — you read the week as it was and change one thing. In the app, each week unlocks at its boundary; the five questions take a few minutes.</p>
+    <table>
+      <tr><th>The question</th><th>The posture</th></tr>
+      <tr><td>1 · The data</td><td><strong>Count, don't judge.</strong> How many of the seven days did the tiny version happen? The app pre-fills the count from your check-ins; you confirm it.</td></tr>
+      <tr><td>2 · Break points</td><td><strong>Find the pattern.</strong> Where did it slip, and what was the real cue? <span class="muted">Required only if a day was missed — a perfect week has nothing to diagnose.</span></td></tr>
+      <tr><td>3 · The fit</td><td><strong>Size is a dial, not a failure.</strong> Too big, too vague, or about right? Nearly every first week, it's too big.</td></tr>
+      <tr><td>4 · The adjustment</td><td><strong>One lever only.</strong> Choose exactly one change for next week — a smaller floor, a new anchor, a different time. Resist the overhaul.</td></tr>
+      <tr><td>5 · The temperature</td><td><strong>Track the shift.</strong> On 1–10, how installed does it feel — how close to automatic? Watch the drift over weeks, not any single number.</td></tr>
+    </table>
+    <p class="muted">Optionally name the <strong>riskiest moment</strong> next week and a coping plan, and mark that you <strong>reflected with your buddy</strong>. Then switch seats: your buddy answers the same five, and you become the witness.</p>
+  </section>
+
+  <!-- ───────────────── 7 · ASCENT ───────────────── -->
+  <section>
+    <div class="eyebrow">07</div>
+    <h2><span class="n">§</span>The Six-Week Ascent</h2>
+    <p class="lede">Each week has a different job. Don't try to do all six at once — climb one camp at a time. The summit isn't effort; it's the day the behaviour stops needing you to decide.</p>
+    <table>
+      <tr><th>Week</th><th>Its job</th></tr>
+      <tr><td>W0 · Base</td><td><strong>Provision.</strong> Write the charter, choose your buddy, connect Notion, set the times. Nothing to perform yet — just rig the system.</td></tr>
+      <tr><td>W1 · Ignition</td><td><strong>Just arrive.</strong> Do the tiny version, mark it, tell your buddy. Don't chase more — you're proving the loop turns.</td></tr>
+      <tr><td>W2 · Rhythm</td><td><strong>Notice.</strong> Same job, plus attention: when does it flow, where's the friction, is the anchor holding? Gather, don't change.</td></tr>
+      <tr><td>W3 · Recalibrate</td><td><strong>Re-size.</strong> The mid-point camp — adjust deliberately, almost always smaller or better-anchored. The most important week.</td></tr>
+      <tr><td>W4 · Deepen</td><td><strong>Let it grow.</strong> The floor stays tiny, but on good days allow it to expand on its own. Capacity, never obligation.</td></tr>
+      <tr><td>W5 · Identity</td><td><strong>Become.</strong> Watch the language shift from "I'm doing this" to "I'm someone who does this." That sentence is the real cargo.</td></tr>
+      <tr><td>W6 · Summit</td><td><strong>Harvest.</strong> Name what installed. Keep, grow, or retire it — and choose the one behaviour for the next Odyssey.</td></tr>
+    </table>
+  </section>
+
+  <!-- ───────────────── 8 · THE BUDDY ───────────────── -->
+  <section>
+    <div class="eyebrow">08</div>
+    <h2><span class="n">§</span>The Buddy</h2>
+    <p class="lede">The single highest-leverage part of the whole system, and the one most people skip. A human who knows what you're attempting and checks in turns a private resolution into a kept promise.</p>
+
+    <h3>Choosing the right person</h3>
+    <ul>
+      <li><strong>Reliable over close.</strong> A dependable acquaintance beats a beloved friend who forgets. You need someone who answers.</li>
+      <li><strong>Ideally, running their own.</strong> The strongest pairing is mutual — they have their own Odyssey, you witness each other.</li>
+      <li><strong>A peer, not a cheerleader.</strong> You want honest curiosity, not constant praise. Someone who'll ask "what actually happened on Thursday?"</li>
+      <li><strong>One is enough.</strong> One steady witness outperforms a group chat that goes quiet.</li>
+    </ul>
+
+    <h3>The four ground rules</h3>
+    <ul>
+      <li><strong>Witness, don't fix.</strong> Ask questions, reflect back what you hear. Advice only when asked.</li>
+      <li><strong>Curiosity, never judgment.</strong> A miss is met with "what got in the way?", not disappointment.</li>
+      <li><strong>Confidential.</strong> What's shared in the check-in stays there.</li>
+      <li><strong>Your practice never depends on theirs.</strong> If they slip, you keep climbing.</li>
+    </ul>
+
+    <div class="inapp">
+      <span class="tag">How the app treats the buddy</span>
+      <p>Sol Odyssey records your buddy as <strong>a name and an email only</strong>, and <strong>sends nothing</strong> — no messages, no reminders, no templates. You arrange the daily message and the weekly call directly, off-app; the app simply keeps the ritual on rails so nothing rests on memory. (A built-in messenger and an optional AI stand-in are noted for later releases — not part of this version.) If your buddy goes quiet for a few days, send one warm nudge, then carry on solo and re-sync at the weekly call. A wobble in the buddy is never a reason to stop your own loop.</p>
+    </div>
+  </section>
+
+  <!-- ───────────────── 9 · HARVEST ───────────────── -->
+  <section>
+    <div class="eyebrow">09</div>
+    <h2><span class="n">§</span>Harvest &amp; the next Odyssey</h2>
+    <p class="lede">Day 42 isn't an ending; it's a handover. You close one Odyssey by harvesting what it grew, then point the same method at the next thing. This is how a six-week effort becomes a lifelong capability.</p>
+    <ol class="steps">
+      <li><strong>Name what installed.</strong> What does the behaviour feel like now — automatic, half-there, still effortful? Write the honest verdict. Forty-two days rarely "finishes" a habit; it gives it roots.</li>
+      <li><strong>Keep · Grow · Retire.</strong> Decide its future — all three are wins, not grades. <strong>Keep</strong> it at the tiny floor as maintenance; <strong>grow</strong> it into a larger version next cycle; or <strong>retire</strong> it, its purpose served.</li>
+      <li><strong>Choose the next one.</strong> Pick the single behaviour for your next Odyssey. You don't start from zero — you start better at the process itself.</li>
+    </ol>
+    <div class="inapp">
+      <span class="tag">In the app</span>
+      <p>Open <strong>Harvest</strong> from the Charter screen (or the summit prompt on Today). Write the verdict, choose Keep / Grow / Retire — which sets the Odyssey to Maintenance, Completed, or Retired — and confirm. A kept behaviour leaves the active slot free, so you can <strong>begin your next Odyssey</strong> right away.</p>
+      <p style="margin-top:10px"><strong>Looking back.</strong> The <strong>Stats</strong> screen gathers who you've become across completed Odysseys — the identity you grew, what you practised, why it mattered — with no scores and no blame. From there, <strong>Save as a page</strong> exports a self-contained synopsis you can keep, print, or share.</p>
+    </div>
+    <p class="muted">Each Odyssey installs a behaviour <em>and</em> sharpens your skill at running Odysseys. By the third or fourth, the charter writes itself and the right size is obvious. The behaviours are the visible harvest; the real one is becoming a person who can deliberately change — for the rest of your life.</p>
+  </section>
+
+  <!-- ───────────────── 10 · QUICK-START ───────────────── -->
+  <section>
+    <div class="eyebrow">10</div>
+    <h2><span class="n">§</span>Quick-Start — launch this week</h2>
+    <p class="lede">Everything above, reduced to a departure checklist. Don't wait for the perfect Monday; the next one will do.</p>
+    <ol class="steps">
+      <li>Connect your Notion in <strong>Settings</strong> (token + three database links) and tap Test connection.</li>
+      <li>Pick <strong>one</strong> behaviour to install.</li>
+      <li>Walk the <strong>charter</strong> wizard — identity, tiny version, anchor, if-then, why.</li>
+      <li>Shrink it until you'd bet you'll never miss — the shrink gate.</li>
+      <li>Add your <strong>buddy</strong> (name + email) and agree the daily message + weekly call, off-app.</li>
+      <li>Set the start date — Day 1, the coming Monday.</li>
+      <li>Day 1: do the tiny version, mark it, write your line, tell your buddy. <strong>Your Odyssey has begun.</strong></li>
+    </ol>
+    <p class="muted">The Odyssey begins the moment you mark the first square.</p>
+  </section>
+
+  <!-- ───────────────── APPENDIX ───────────────── -->
+  <section>
+    <div class="eyebrow">Appendix</div>
+    <h2><span class="n">§</span>Templates</h2>
+    <p class="lede">The app captures your charter and records for you. These printable templates are for thinking on paper, and for the buddy pact you agree out loud.</p>
+
+    <div class="tmpl">
+      <h3>Odyssey Charter</h3>
+      <p class="muted" style="font-size:0.85rem">Odyssey № / start date</p><div class="line"></div>
+      <p class="muted" style="font-size:0.85rem">The wish</p><div class="line"></div>
+      <p class="muted" style="font-size:0.85rem">I am someone who…</p><div class="line"></div>
+      <p class="muted" style="font-size:0.85rem">The tiny version (2-min floor)</p><div class="line"></div>
+      <p class="muted" style="font-size:0.85rem">Anchor — after I…</p><div class="line"></div>
+      <p class="muted" style="font-size:0.85rem">If-then (known obstacle)</p><div class="line"></div>
+      <p class="muted" style="font-size:0.85rem">Daily success looks like</p><div class="line"></div>
+      <p class="muted" style="font-size:0.85rem">Why it matters to me</p><div class="line"></div>
+    </div>
+
+    <div class="tmpl">
+      <h3>Buddy Agreement</h3>
+      <p class="muted" style="font-size:0.85rem">My buddy</p><div class="line"></div>
+      <p class="muted" style="font-size:0.85rem">Daily check-in — channel &amp; time</p><div class="line"></div>
+      <p class="muted" style="font-size:0.85rem">Weekly call — day, time, length</p><div class="line"></div>
+      <p class="muted" style="font-size:0.85rem">We both agree to the four ground rules: witness · curiosity · confidential · independent</p>
+    </div>
+
+    <div class="tmpl">
+      <h3>Weekly Reflection — quick sheet</h3>
+      <p style="font-size:0.9rem">1 · Data ___ / 7 days &nbsp;&nbsp; 2 · Break points ____________</p>
+      <p style="font-size:0.9rem">3 · Fit: big / vague / right &nbsp;&nbsp; 4 · One adjustment ____________</p>
+      <p style="font-size:0.9rem">5 · Temperature ___ / 10 &nbsp;&nbsp; Riskiest moment next week ____________</p>
+    </div>
+  </section>
+
+  <footer>
+    Sol Odyssey · you practise it into being · One behaviour · 42 days · witnessed
+  </footer>
+
+</div>
+</body>
+</html>

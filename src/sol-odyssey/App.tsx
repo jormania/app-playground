@@ -25,6 +25,7 @@ import {
   LayoutGrid as TrackerIcon,
   NotebookPen as WeeklyIcon,
   LineChart as StatsIcon,
+  BookOpen as GuideIcon,
   Settings as SettingsIcon,
   type LucideIcon,
 } from 'lucide-react'
@@ -73,6 +74,16 @@ export default function App() {
                 {hasCompleted && (
                   <NavLink current={route} to="/stats" label="Stats" onClick={navigate} icon={StatsIcon} iconOnly />
                 )}
+                <a
+                  href="/sol-odyssey-guide.html"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="Field guide"
+                  title="Field guide"
+                  className="rounded-md p-2 text-text-secondary transition-colors duration-fast hover:bg-background-secondary"
+                >
+                  <GuideIcon size={18} aria-hidden />
+                </a>
                 <NavLink current={route} to="/settings" label="Settings" onClick={navigate} icon={SettingsIcon} iconOnly />
               </nav>
             </div>
