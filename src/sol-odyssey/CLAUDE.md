@@ -11,11 +11,12 @@ conflict). These rules are non-negotiable — apply them to every change here.
    organizations, programs, or materials — in code, UI, comments, docs, or data. Describe
    techniques generically only.
 2. **Single-user MVP.** One owner. The human buddy is **name + email only** — no messages,
-   emails, templates, reminders, or comms screens. **No notifications of any kind.** No in-app
-   guide. **No dark mode** (light only). Build only what the current milestone scopes; deferred
-   features live in the spec's Roadmap. *(Post-MVP: an **optional** AI reflective companion now
-   exists — see below. It is **not** an AI buddy: it never messages, coaches, or replaces the
-   human buddy.)*
+   emails, templates, or comms screens. No in-app guide. **No dark mode** (light only). Build only
+   what the current milestone scopes; deferred features live in the spec's Roadmap. *(Post-MVP, both
+   opt-in: an **AI reflective companion** — not an AI buddy; it never messages, coaches, or replaces
+   the human buddy — and **local reminders** — see below. Reminders are local, best-effort
+   notifications only: no server, no push service, nothing sent on the user's behalf or to the
+   buddy.)*
 3. **No hardcoded credentials.** The app ships with **no Notion token and no database/data-
    source IDs**. The user enters them in **Settings**, stored on-device
    (`localStorage`, see `lib/settings.ts`). Nothing secret goes in the repo, the build, or
@@ -74,12 +75,18 @@ not build ahead (charter wizard, Today/tracker, weekly reflection, offline queue
 - **Optional AI reflective companion** (`lib/companion.ts`, `components/CompanionPanel.tsx`). A
   **bring-your-own Anthropic key** (Settings, on-device) + opt-in toggle; the call goes **directly
   from the browser** to Anthropic (the same pattern as Touch Grass — no server, no relay, no stored
-  secret). It's a brief **reflective witness** on Today + Weekly: mirrors back your words, asks at
-  most one gentle question, **ephemeral** (never written to Notion). The `system` prompt is the
-  safety surface — attribution-free, never prescriptive, never poses as or replaces the human buddy.
+  secret). It's a brief **reflective witness** across the reflective moments (daily check-in, weekly
+  reflection, safety line, Harvest): mirrors back your words, asks at most one gentle question,
+  **ephemeral** (never written to Notion). The `system` prompt is the safety surface —
+  attribution-free, never prescriptive, never poses as or replaces the human buddy.
 - **Commitment device — forfeit-on-lapse contract** (`components/CommitmentCard.tsx`,
   `lib/useCommitment.ts`; `writeCommitment`/`forfeitDue`). An **optional** pledge (one consequence
   for missing two days running), set pre-Day-1, surfaced on Today at the wobble/lapse. Stored in an
   optional **`Commitment` rich-text column** the user adds to the Odysseys DB (the only schema
   addition; written defensively so its absence never breaks anything). The app **witnesses; it never
   enforces, handles money, or notifies.** The companion may reflect in-role on the forfeit/at the lapse.
+- **Opt-in local reminders** (`lib/reminders.ts`, `lib/useReminderSync.ts`,
+  `public/sol-odyssey-notify.js`; `remindersEnabled`). Four nudges — daily/weekly/start/harvest — via
+  **Periodic Background Sync** reading a shared IndexedDB snapshot (the same pattern as Touch Grass's
+  `public/sw.js`). **No server, no push service.** Background delivery is Chromium + installed-PWA
+  only and best-effort; degrades to the in-app surfaces elsewhere. Reuses `dailyTime`/`weeklySlot`.

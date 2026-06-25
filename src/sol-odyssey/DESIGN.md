@@ -149,8 +149,10 @@ by `showLanding`). Copy is generically worded — **never name any source of the
 ## AI companion (optional)
 
 A gentle, **opt-in** reflective witness ([`lib/companion.ts`](lib/companion.ts),
-[`components/CompanionPanel.tsx`](components/CompanionPanel.tsx)) shown on Today + Weekly when the
-user has supplied an **Anthropic key** (Settings, on-device) and toggled it on. The call goes
+[`components/CompanionPanel.tsx`](components/CompanionPanel.tsx)) shown at the app's reflective
+moments — the daily check-in, the weekly reflection, the safety line, and Harvest — wherever the
+user has written something to reflect on (a quiet hint appears before that so it's discoverable). It
+runs only when the user has supplied an **Anthropic key** (Settings, on-device) and toggled it on. The call goes
 **straight from the browser to Anthropic** under the user's key — the same direct-browser pattern as
 Touch Grass; no server, no relay, nothing stored. Reflections are **ephemeral** (never written to
 Notion). The `system` prompt is the safety surface: it keeps the companion attribution-free,
@@ -169,6 +171,21 @@ line is crossed (`forfeitDue` — two missed days after the practice was under w
 it and rejoin" notice. The app **witnesses and reflects; it never enforces, handles money, or
 notifies**. When the companion is enabled, it can reflect in-role on the forfeit you drafted and at
 the lapse (`buildContractCompanionPrompt` / `buildLapseCompanionPrompt`).
+
+## Reminders (opt-in, local, best-effort)
+
+Four optional nudges — **daily** (log, at the Daily check-in time), **weekly** (reflect, at the
+Weekly call slot), **start** (a planned Odyssey's start date arrived), and **harvest** (Day 42
+reached) — surfaced as local notifications. **No server, no push service**; nothing is sent on the
+user's behalf. Mechanism mirrors Touch Grass: `public/sol-odyssey-notify.js` is pulled into the
+generated worker via `workbox.importScripts`, and on a **Periodic Background Sync** wake it reads a
+shared IndexedDB snapshot ([`lib/reminders.ts`](lib/reminders.ts), written by
+[`lib/useReminderSync.ts`](lib/useReminderSync.ts) on Today/Weekly) and fires whatever is due —
+**suppressed** once that day/week is done, once-per-event for start/harvest. The decision logic is
+pure and unit-tested; the worker reimplements the same minimal logic inline. **Honest limits:**
+background delivery is Chromium + installed-PWA only and best-effort on timing; iOS can't run it
+without a server, so it degrades to the in-app surfaces (Settings states this plainly). Opt-in via a
+`remindersEnabled` toggle that requests notification permission.
 
 ## Hand-rolled visuals
 

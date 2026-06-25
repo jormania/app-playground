@@ -102,6 +102,20 @@ export function buildLapseCompanionPrompt(odyssey: OdysseyDetail, contract: stri
   return { system: SYSTEM_PROMPT, user: lines.join('\n') }
 }
 
+/** Build the prompt for the harvest — reflecting on what the 42 days installed. Mirrors the verdict
+ *  they wrote; must not steer the Keep/Grow/Retire choice (that's theirs). */
+export function buildHarvestCompanionPrompt(odyssey: OdysseyDetail, verdict: string): CompanionPrompt {
+  const lines = [
+    `The behaviour they practised: ${clean(odyssey.behaviour) || '(unspecified)'}.`,
+    'They have reached the end of the 42 days and are naming what the practice installed — how it ' +
+      'feels now.',
+    `In their words: "${clean(verdict)}".`,
+    'Reflect briefly on what they wrote about what it became. Do not tell them whether to keep, ' +
+      'grow, or retire it — that choice is theirs.',
+  ]
+  return { system: SYSTEM_PROMPT, user: lines.join('\n') }
+}
+
 /** Turn an Anthropic error into a calm, user-facing sentence. */
 function friendlyCompanionError(status: number): string {
   if (status === 401) return 'Anthropic rejected the key — check it in Settings.'

@@ -47,6 +47,8 @@ function solOdysseyPWA() {
         'assets/*.woff2',
       ],
       navigateFallback: null,
+      // Pull the reminders logic (periodic-sync + notificationclick) into the generated worker.
+      importScripts: ['sol-odyssey-notify.js'],
     },
     manifest: {
       name: 'Sol Odyssey',

@@ -24,6 +24,9 @@ export interface Settings {
    *  Anthropic, never our servers) + an opt-in toggle. Never replaces the human buddy. */
   anthropicKey: string
   companionEnabled: boolean
+  /** Opt-in local reminders (daily check-in + weekly reflect nudges). Best-effort, on-device, no
+   *  server — uses dailyTime / weeklySlot as the target windows. */
+  remindersEnabled: boolean
 }
 
 export const EMPTY_SETTINGS: Settings = {
@@ -41,6 +44,8 @@ export const EMPTY_SETTINGS: Settings = {
   // The AI companion is strictly opt-in: no key, and off, until the user chooses it.
   anthropicKey: '',
   companionEnabled: false,
+  // Reminders are opt-in too.
+  remindersEnabled: false,
 }
 
 const STORAGE_KEY = 'sol-odyssey:settings'

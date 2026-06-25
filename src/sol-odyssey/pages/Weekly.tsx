@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, Loader2, Lock, Save } from 'lucide-react'
+import { Check, Loader2, Lock, MessageCircleHeart, Save } from 'lucide-react'
 import { Button } from '../components/Button'
 import { Field } from '../components/Field'
 import { Textarea } from '../components/Textarea'
@@ -12,6 +12,7 @@ import { useSettings } from '../lib/settingsContext'
 import { isConfigured, companionActive } from '../lib/settings'
 import { CompanionPanel } from '../components/CompanionPanel'
 import { buildWeeklyCompanionPrompt } from '../lib/companion'
+import { useReminderSync } from '../lib/useReminderSync'
 import { useActiveOdysseys } from '../lib/useActiveOdysseys'
 import { useCheckins } from '../lib/useCheckins'
 import { useReflections, useUpsertReflection } from '../lib/useReflections'
@@ -38,6 +39,7 @@ export function WeeklyPage({ navigate }: { navigate: (to: string) => void }) {
   const checkins = useCheckins(odyssey?.id)
   const reflections = useReflections(odyssey?.id)
   const upsert = useUpsertReflection(odyssey?.id)
+  useReminderSync()
 
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
   const [form, setForm] = useState<ReflectionDraft>(EMPTY_REFLECTION)
@@ -227,10 +229,17 @@ export function WeeklyPage({ navigate }: { navigate: (to: string) => void }) {
 
           <SupportingNote note="weeklyReflect" />
 
-          {/* Optional reflective companion — once the reflection has some substance to mirror. */}
-          {companionActive(settings) && (form.oneAdjustment.trim() || form.breakPoints.trim()) && (
-            <CompanionPanel prompt={buildWeeklyCompanionPrompt(odyssey, form, selectedWeek)} />
-          )}
+          {/* Optional reflective companion — appears once the reflection has substance to mirror; a
+              quiet hint before that so it's discoverable. */}
+          {companionActive(settings) &&
+            (form.oneAdjustment.trim() || form.breakPoints.trim() ? (
+              <CompanionPanel prompt={buildWeeklyCompanionPrompt(odyssey, form, selectedWeek)} />
+            ) : (
+              <p className="flex items-center gap-2 rounded-md border border-accent/20 bg-accent-soft px-4 py-3 font-sans text-sm text-text-secondary">
+                <MessageCircleHeart size={16} className="shrink-0 text-accent" aria-hidden />
+                Answer the questions above, then your companion can reflect on your week here.
+              </p>
+            ))}
 
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={save} disabled={!canSubmit(form) || upsert.isPending}>

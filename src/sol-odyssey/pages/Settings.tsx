@@ -8,6 +8,7 @@ import { isConfigured, type Settings } from '../lib/settings'
 import { useSettings } from '../lib/settingsContext'
 import { listActiveOdysseys, type OdysseyDetail } from '../lib/notion'
 import { verifyAnthropicKey } from '../lib/companion'
+import { capabilities, enableReminders, unregisterPeriodicSync } from '../lib/reminders'
 
 /** The text fields the connection form owns (booleans are handled by the toggles below, so
  *  saving the form never clobbers them). */
@@ -40,6 +41,29 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
     Object.fromEntries(STRING_KEYS.map((k) => [k, settings[k]])) as Record<StringKey, string>,
   )
   const [saved, setSaved] = useState(false)
+  const [reminderMsg, setReminderMsg] = useState('')
+  const caps = capabilities()
+
+  /** Toggle reminders: enabling requests notification permission and best-effort registers
+   *  background sync; if permission is refused we flip back off and explain. */
+  async function toggleReminders(on: boolean) {
+    if (!on) {
+      update({ remindersEnabled: false })
+      setReminderMsg('')
+      void unregisterPeriodicSync()
+      return
+    }
+    update({ remindersEnabled: true })
+    const permission = await enableReminders()
+    if (permission !== 'granted') {
+      update({ remindersEnabled: false })
+      setReminderMsg('Notifications are blocked in your browser — allow them to use reminders.')
+    } else if (!caps.periodicSync) {
+      setReminderMsg('Background reminders aren’t supported on this browser/device — you’ll still see reminders inside the app.')
+    } else {
+      setReminderMsg('')
+    }
+  }
 
   const set =
     (key: StringKey) =>
@@ -260,7 +284,7 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
         />
         <Switch
           label="Enable the AI companion"
-          description="Show an optional “reflect with your companion” on Today and Weekly."
+          description="When on, a “Reflect with your companion” appears wherever you’ve written something to reflect on — your daily check-in (once today is logged), your weekly reflection, and your safety line. It mirrors back your own words."
           checked={settings.companionEnabled}
           onCheckedChange={(v) => update({ companionEnabled: v })}
         />
@@ -301,6 +325,29 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
             </p>
           </div>
         )}
+      </section>
+
+      <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-6">
+        <h3 className="font-display text-lg">Reminders (optional)</h3>
+        <p className="font-sans text-sm text-text-secondary">
+          Gentle nudges: a <strong>daily</strong> reminder to log (at your Daily check-in time) and a
+          <strong> weekly</strong> one to reflect (at your Weekly call slot), plus when a{' '}
+          <strong>planned Odyssey’s start</strong> arrives and when you reach the{' '}
+          <strong>summit</strong> (Day 42). They’re <strong>local and best-effort</strong> — on your
+          device only, nothing is sent on your behalf, and timing is approximate.
+        </p>
+        <Switch
+          label="Enable reminders"
+          description="Asks your browser’s permission to show notifications."
+          checked={settings.remindersEnabled}
+          onCheckedChange={toggleReminders}
+        />
+        <p className="font-sans text-xs text-text-secondary">
+          {caps.supported
+            ? 'Background reminders work best in an installed app on Android or desktop Chrome. On iPhone they can’t run in the background — you’ll still see reminders inside the app.'
+            : 'This browser can’t run background reminders — you’ll still see them inside the app when you open it.'}
+        </p>
+        {reminderMsg && <p className="font-sans text-sm text-caution">{reminderMsg}</p>}
       </section>
 
       <section className="flex flex-wrap items-center gap-3">

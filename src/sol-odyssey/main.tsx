@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import { SettingsProvider } from './lib/settingsContext'
 import { SyncProvider } from './lib/syncContext'
+import { loadSettings } from './lib/settings'
+import { registerPeriodicSync } from './lib/reminders'
 import './styles/index.css'
 
 const queryClient = new QueryClient({
@@ -16,6 +18,10 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sol-odyssey-sw.js', { scope: '/sol-odysseys-react.html' })
+      // If reminders were opted into before, let the browser resume periodic wakes after a reload.
+      .then(() => {
+        if (loadSettings().remindersEnabled) void registerPeriodicSync()
+      })
       .catch(() => {})
   })
 }

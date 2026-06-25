@@ -77,6 +77,17 @@ export function canActivate(draft: CharterDraft): boolean {
   return Object.keys(charterErrors(draft)).length === 0 && draft.confirmedShrink === true
 }
 
+/** Given the wizard's ordered field keys, the index of the first step still needing input (an
+ *  empty/invalid required field) — i.e. where to resume a saved draft. Returns `stepKeys.length`
+ *  (the review step) when the charter is already complete. Empty optional fields are skipped. */
+export function firstIncompleteStep(draft: CharterDraft, stepKeys: (keyof CharterDraft)[]): number {
+  const errors = charterErrors(draft)
+  for (let i = 0; i < stepKeys.length; i++) {
+    if (errors[stepKeys[i]]) return i
+  }
+  return stepKeys.length
+}
+
 // ── Dates (date-only, no timezone drift) ──────────────────────────────────────────────────
 
 function fmt(d: Date): string {

@@ -19,6 +19,7 @@ import {
   charterErrors,
   computeEndDate,
   emptyDraft,
+  firstIncompleteStep,
   parseDraftToCharter,
   type CharterDraft,
 } from '../lib/charter'
@@ -72,9 +73,9 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
       const resumed = parseDraftToCharter(planning.data)
       setDraft(resumed)
       setDraftId(planning.data.id)
-      // If the resumed charter is already complete, drop the user back on the review step so they
-      // can begin straight away (e.g. after a quick detour to Settings to add their buddy).
-      if (Object.keys(charterErrors(resumed)).length === 0) setStep(FIELD_STEPS.length)
+      // Resume where they left off: the first field still empty, or the review step if the charter
+      // is already complete (e.g. after a quick detour to Settings to add their buddy).
+      setStep(firstIncompleteStep(resumed, FIELD_STEPS.map((s) => s.key)))
       seeded.current = true
     }
   }, [planning.data])

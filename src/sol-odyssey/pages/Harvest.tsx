@@ -1,15 +1,17 @@
 import { useState } from 'react'
-import { ArrowRight, Check, Loader2, Sprout } from 'lucide-react'
+import { ArrowRight, Check, Loader2, MessageCircleHeart, Sprout } from 'lucide-react'
 import { Button } from '../components/Button'
 import { Textarea } from '../components/Textarea'
 import { Notice } from '../components/Notice'
 import { Modal } from '../components/Modal'
 import { SupportingNote } from '../components/SupportingNote'
+import { CompanionPanel } from '../components/CompanionPanel'
 import { cn } from '../lib/cn'
 import { useSettings } from '../lib/settingsContext'
-import { isConfigured } from '../lib/settings'
+import { isConfigured, companionActive } from '../lib/settings'
 import { useActiveOdysseys, useHarvestOdyssey } from '../lib/useActiveOdysseys'
 import { OUTCOME_OPTIONS, statusForOutcome, type Outcome } from '../lib/harvest'
+import { buildHarvestCompanionPrompt } from '../lib/companion'
 
 export function HarvestPage({ navigate }: { navigate: (to: string) => void }) {
   const { settings } = useSettings()
@@ -92,6 +94,17 @@ export function HarvestPage({ navigate }: { navigate: (to: string) => void }) {
         />
         <div className="mt-1"><SupportingNote note="harvest" /></div>
       </section>
+
+      {/* Optional reflective companion on what installed — appears once you've written the verdict. */}
+      {odyssey && companionActive(settings) &&
+        (verdict.trim() ? (
+          <CompanionPanel prompt={buildHarvestCompanionPrompt(odyssey, verdict)} />
+        ) : (
+          <p className="flex items-center gap-2 rounded-md border border-accent/20 bg-accent-soft px-4 py-3 font-sans text-sm text-text-secondary">
+            <MessageCircleHeart size={16} className="shrink-0 text-accent" aria-hidden />
+            Write what installed above, then your companion can reflect on it with you.
+          </p>
+        ))}
 
       <section className="flex flex-col gap-3 rounded-lg border border-tertiary bg-background-secondary p-5">
         <div className="flex items-baseline gap-2">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, Loader2, PartyPopper, Save } from 'lucide-react'
+import { CheckCircle2, Loader2, MessageCircleHeart, PartyPopper, Save } from 'lucide-react'
 import { Button } from '../components/Button'
 import { Switch } from '../components/Switch'
 import { Textarea } from '../components/Textarea'
@@ -10,6 +10,7 @@ import { isConfigured, companionActive } from '../lib/settings'
 import { CompanionPanel } from '../components/CompanionPanel'
 import { CommitmentCard } from '../components/CommitmentCard'
 import { buildDailyCompanionPrompt, buildLapseCompanionPrompt } from '../lib/companion'
+import { useReminderSync } from '../lib/useReminderSync'
 import { useActiveOdysseys } from '../lib/useActiveOdysseys'
 import { useNextOdysseyNumber } from '../lib/useNextOdysseyNumber'
 import { usePlanningOdyssey } from '../lib/usePlanningOdyssey'
@@ -30,6 +31,7 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
   const reflections = useReflections(odyssey?.id)
   const history = useNextOdysseyNumber()
   const upsert = useUpsertCheckin(odyssey?.id)
+  useReminderSync()
 
   const today = todayISO()
   const todayRecord = checkins.data?.find((r) => r.date === today)
@@ -276,10 +278,17 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
         )}
       </section>
 
-      {/* Optional reflective companion — only once today's check-in has words to reflect on. */}
-      {companionActive(settings) && todayRecord?.oneLine?.trim() && (
-        <CompanionPanel prompt={buildDailyCompanionPrompt(odyssey, todayRecord)} />
-      )}
+      {/* Optional reflective companion — appears once today's check-in has words to reflect on; a
+          quiet hint before that so it's discoverable. */}
+      {companionActive(settings) &&
+        (todayRecord?.oneLine?.trim() ? (
+          <CompanionPanel prompt={buildDailyCompanionPrompt(odyssey, todayRecord)} />
+        ) : (
+          <p className="flex items-center gap-2 rounded-md border border-accent/20 bg-accent-soft px-4 py-3 font-sans text-sm text-text-secondary">
+            <MessageCircleHeart size={16} className="shrink-0 text-accent" aria-hidden />
+            Log today’s check-in above, then your companion can reflect on it here.
+          </p>
+        ))}
 
       {draft && <PlannedOdysseyStrip draft={draft} navigate={navigate} />}
     </div>

@@ -9,6 +9,7 @@ import {
   computeEndDate,
   defaultStartDate,
   emptyDraft,
+  firstIncompleteStep,
   isSpecific,
   nextOdysseyNumber,
   odysseyName,
@@ -65,6 +66,28 @@ describe('charterErrors / canActivate', () => {
     expect(canActivate(validDraft())).toBe(true)
     expect(canActivate(validDraft({ confirmedShrink: false }))).toBe(false)
     expect(canActivate(validDraft({ behaviour: '' }))).toBe(false)
+  })
+})
+
+describe('firstIncompleteStep', () => {
+  // The wizard's field order.
+  const keys: (keyof ReturnType<typeof validDraft>)[] = [
+    'behaviour', 'outcomePicture', 'identity', 'tinyVersion', 'anchor',
+    'ifThen', 'pairing', 'dailySuccess', 'whyValue', 'startDate',
+  ]
+
+  it('returns the review step (length) for a complete draft', () => {
+    expect(firstIncompleteStep(validDraft(), keys)).toBe(keys.length)
+  })
+
+  it('lands on the first empty required field', () => {
+    expect(firstIncompleteStep(validDraft({ behaviour: '' }), keys)).toBe(0)
+    expect(firstIncompleteStep(validDraft({ identity: '' }), keys)).toBe(2)
+    expect(firstIncompleteStep(validDraft({ behaviour: '', identity: '' }), keys)).toBe(0) // earliest wins
+  })
+
+  it('skips an empty optional field (pairing) — it never traps resume', () => {
+    expect(firstIncompleteStep(validDraft({ pairing: '' }), keys)).toBe(keys.length)
   })
 })
 

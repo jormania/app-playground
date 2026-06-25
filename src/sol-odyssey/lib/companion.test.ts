@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import {
   buildContractCompanionPrompt,
   buildDailyCompanionPrompt,
+  buildHarvestCompanionPrompt,
   buildLapseCompanionPrompt,
   buildWeeklyCompanionPrompt,
   requestCompanionReflection,
@@ -90,6 +91,14 @@ describe('commitment-device prompts', () => {
     const { user, system } = buildLapseCompanionPrompt(odyssey, 'cold shower, no excuses')
     expect(user).toContain('cold shower, no excuses')
     expect(user.toLowerCase()).toContain('rejoin')
+    expect(system).toBe(baseSystem)
+  })
+
+  it('buildHarvestCompanionPrompt reflects on the verdict without steering Keep/Grow/Retire', () => {
+    const { user, system } = buildHarvestCompanionPrompt(odyssey, 'it feels almost automatic now')
+    expect(user).toContain('it feels almost automatic now')
+    expect(user.toLowerCase()).toContain('keep')
+    expect(user.toLowerCase()).toContain('that choice is theirs')
     expect(system).toBe(baseSystem)
   })
 })

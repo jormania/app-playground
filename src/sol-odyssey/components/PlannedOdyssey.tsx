@@ -7,6 +7,7 @@ import {
   useActivatePlanningOdyssey,
   useDiscardPlanningDraft,
 } from '../lib/usePlanningOdyssey'
+import { useNextOdysseyNumber } from '../lib/useNextOdysseyNumber'
 import { parseDraftToCharter } from '../lib/charter'
 import type { OdysseyDetail } from '../lib/notion'
 
@@ -29,6 +30,8 @@ export function PlannedOdysseyCard({
   navigate: (to: string) => void
 }) {
   const activate = useActivatePlanningOdyssey()
+  const history = useNextOdysseyNumber()
+  const nextNumber = history.data?.nextNumber
   const { label, ready } = startState(draft)
 
   function begin() {
@@ -45,7 +48,14 @@ export function PlannedOdysseyCard({
           <CalendarClock size={14} aria-hidden />
           Planned · not yet begun
         </span>
-        <h2 className="font-display text-2xl">{draft.title || 'Planned Odyssey'}</h2>
+        <h2 className="font-display text-2xl">
+          {nextNumber ? `Odyssey ${nextNumber} — ${draft.title || 'Planned Odyssey'}` : draft.title || 'Planned Odyssey'}
+        </h2>
+        {nextNumber && (
+          <p className="font-mono text-xs text-text-secondary">
+            The number it’ll take when you begin — not locked in until then.
+          </p>
+        )}
         {draft.identity && (
           <p className="font-display text-lg text-text-secondary">{draft.identity}</p>
         )}
@@ -98,12 +108,14 @@ export function PlannedOdysseyStrip({
   draft: OdysseyDetail
   navigate: (to: string) => void
 }) {
+  const history = useNextOdysseyNumber()
+  const nextNumber = history.data?.nextNumber
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-tertiary bg-background-secondary p-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-0.5">
         <span className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-wide text-text-secondary">
           <CalendarClock size={14} aria-hidden />
-          Lined up for next
+          {nextNumber ? `Odyssey ${nextNumber} · lined up for next` : 'Lined up for next'}
         </span>
         <p className="font-sans text-text-primary">{draft.title || 'A planned Odyssey'}</p>
         <p className="font-sans text-sm text-text-secondary">
