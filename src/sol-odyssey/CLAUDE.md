@@ -77,3 +77,9 @@ not build ahead (charter wizard, Today/tracker, weekly reflection, offline queue
   secret). It's a brief **reflective witness** on Today + Weekly: mirrors back your words, asks at
   most one gentle question, **ephemeral** (never written to Notion). The `system` prompt is the
   safety surface — attribution-free, never prescriptive, never poses as or replaces the human buddy.
+- **Commitment device — forfeit-on-lapse contract** (`components/CommitmentCard.tsx`,
+  `lib/useCommitment.ts`; `writeCommitment`/`forfeitDue`). An **optional** pledge (one consequence
+  for missing two days running), set pre-Day-1, surfaced on Today at the wobble/lapse. Stored in an
+  optional **`Commitment` rich-text column** the user adds to the Odysseys DB (the only schema
+  addition; written defensively so its absence never breaks anything). The app **witnesses; it never
+  enforces, handles money, or notifies.** The companion may reflect in-role on the forfeit/at the lapse.

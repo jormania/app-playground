@@ -19,6 +19,7 @@ function detail(over: Partial<OdysseyDetail> = {}): OdysseyDetail {
     pairing: '',
     dailySuccess: 'shoes on, outside',
     whyValue: 'a body in motion',
+    commitment: '',
     outcome: 'Keep',
     notes: 'feels automatic now',
     ...over,

@@ -8,6 +8,7 @@ import {
   currentStreak,
   cycleState,
   EMPTY_CHECKIN,
+  forfeitDue,
   shouldWarnDontSkipTwice,
   weekIndexFromDay,
   type CheckinRecord,
@@ -93,6 +94,21 @@ describe('shouldWarnDontSkipTwice', () => {
   })
   it('does not warn once today is marked done', () => {
     expect(shouldWarnDontSkipTwice([rec('2026-07-10', true), rec('2026-07-12', true)], today)).toBe(false)
+  })
+})
+
+describe('forfeitDue', () => {
+  const today = '2026-07-12' // yesterday 07-11, day-before 07-10
+  it('is due when the two prior days are both missed and the practice was under way', () => {
+    expect(forfeitDue([rec('2026-07-08', true)], today)).toBe(true)
+  })
+  it('is not due before the practice was ever under way (no earlier done day)', () => {
+    expect(forfeitDue([], today)).toBe(false)
+    expect(forfeitDue([rec('2026-07-11', false)], today)).toBe(false)
+  })
+  it('is not due when only one of the two prior days was missed (single gap)', () => {
+    expect(forfeitDue([rec('2026-07-08', true), rec('2026-07-10', true)], today)).toBe(false)
+    expect(forfeitDue([rec('2026-07-08', true), rec('2026-07-11', true)], today)).toBe(false)
   })
 })
 

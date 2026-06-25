@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { CheckCircle2, AlertCircle, Loader2, PlugZap, Save, X } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Loader2, MessageCircleHeart, PlugZap, Save, X } from 'lucide-react'
 import { Button } from '../components/Button'
 import { Field } from '../components/Field'
 import { Switch } from '../components/Switch'
 import { isConfigured, type Settings } from '../lib/settings'
 import { useSettings } from '../lib/settingsContext'
 import { listActiveOdysseys, type OdysseyDetail } from '../lib/notion'
+import { verifyAnthropicKey } from '../lib/companion'
 
 /** The text fields the connection form owns (booleans are handled by the toggles below, so
  *  saving the form never clobbers them). */
@@ -55,8 +56,16 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
       update(form)
       return listActiveOdysseys({ token: form.token, dsOdysseys: form.dsOdysseys })
     },
-    // Success is shown by the green "Connected — N Odysseys" panel below, not the "Saved." label
+    // Success is shown by the green "Connected — N Odysseys" panel, not the "Saved." label
     // (which belongs to the Save button). Testing still persists the form via update() above.
+  })
+
+  // The companion key check lives in its own section with its own button + result.
+  const testKey = useMutation<void, Error>({
+    mutationFn: () => {
+      update(form)
+      return verifyAnthropicKey(form.anthropicKey)
+    },
   })
 
   function handleSave() {
@@ -78,9 +87,10 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
           </button>
         </div>
         <p className="max-w-prose font-sans text-text-secondary">
-          Sol Odyssey keeps your records in <strong>your</strong> Notion workspace. Paste your
-          integration token and the links to your three databases below — they’re stored only in
-          this browser, never on a server or in the app itself.
+          Everything Sol Odyssey needs is set here — your <strong>Notion</strong> connection (where
+          your records live), your <strong>buddy</strong>, what <strong>guidance</strong> you see,
+          and an optional <strong>AI companion</strong>. Every value, including tokens and keys, is
+          stored <strong>only in this browser</strong> — never on a server or baked into the app.
         </p>
       </section>
 
@@ -101,7 +111,6 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
           autoComplete="off"
           spellCheck={false}
           placeholder="Paste the database URL, or its ID"
-          hint="Open the database in Notion, Copy link, and paste it here"
           value={form.dsOdysseys}
           onChange={set('dsOdysseys')}
         />
@@ -110,7 +119,6 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
           autoComplete="off"
           spellCheck={false}
           placeholder="Paste the database URL, or its ID"
-          hint="Open the database in Notion, Copy link, and paste it here"
           value={form.dsCheckins}
           onChange={set('dsCheckins')}
         />
@@ -119,10 +127,67 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
           autoComplete="off"
           spellCheck={false}
           placeholder="Paste the database URL, or its ID"
-          hint="Open the database in Notion, Copy link, and paste it here"
           value={form.dsReflections}
           onChange={set('dsReflections')}
         />
+
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setSaved(false) // clear any stale "Saved." so only the connection result shows
+              test.mutate()
+            }}
+            disabled={!ready || test.isPending}
+          >
+            {test.isPending ? (
+              <Loader2 size={18} className="animate-spin" aria-hidden />
+            ) : (
+              <PlugZap size={18} aria-hidden />
+            )}
+            Test Notion connection
+          </Button>
+          {!ready && (
+            <span className="font-sans text-sm text-text-secondary">
+              Enter the token and all three database links to test.
+            </span>
+          )}
+        </div>
+
+        {test.isError && (
+          <div
+            role="alert"
+            className="flex items-start gap-3 rounded-md border border-caution/40 bg-background-primary p-4"
+          >
+            <AlertCircle size={20} className="mt-0.5 shrink-0 text-caution" aria-hidden />
+            <p className="font-sans text-sm text-text-primary">{test.error.message}</p>
+          </div>
+        )}
+
+        {test.isSuccess && (
+          <div className="flex flex-col gap-2 rounded-md border border-success/40 bg-background-primary p-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={20} className="text-success" aria-hidden />
+              <p className="font-sans text-sm font-medium text-text-primary">
+                Connected — {test.data.length} active{' '}
+                {test.data.length === 1 ? 'Odyssey' : 'Odysseys'} found.
+              </p>
+            </div>
+            {test.data.length > 0 && (
+              <ul className="ml-7 list-disc font-mono text-sm text-text-secondary">
+                {test.data.map((o) => (
+                  <li key={o.id}>{o.title}</li>
+                ))}
+              </ul>
+            )}
+            {test.data.length === 0 && (
+              <p className="ml-7 font-sans text-sm text-text-secondary">
+                The wiring works. No Odyssey is Active yet — that’s expected before you’ve
+                started one.
+              </p>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-6">
@@ -199,74 +264,51 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
           checked={settings.companionEnabled}
           onCheckedChange={(v) => update({ companionEnabled: v })}
         />
-      </section>
 
-      <section className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={handleSave}>
-            <Save size={18} aria-hidden />
-            Save to this device
-          </Button>
+        <div className="flex flex-wrap items-center gap-3 pt-1">
           <Button
             variant="secondary"
-            onClick={() => {
-              setSaved(false) // clear any stale "Saved." so only the connection result shows
-              test.mutate()
-            }}
-            disabled={!ready || test.isPending}
+            onClick={() => testKey.mutate()}
+            disabled={!form.anthropicKey.trim() || testKey.isPending}
           >
-            {test.isPending ? (
+            {testKey.isPending ? (
               <Loader2 size={18} className="animate-spin" aria-hidden />
             ) : (
-              <PlugZap size={18} aria-hidden />
+              <MessageCircleHeart size={18} aria-hidden />
             )}
-            Test connection
+            Test AI companion key
           </Button>
-          {saved && !test.isPending && (
-            <span className="font-sans text-sm text-text-secondary">Saved.</span>
+          {!form.anthropicKey.trim() && (
+            <span className="font-sans text-sm text-text-secondary">Add a key to test it.</span>
           )}
         </div>
 
-        {!ready && (
-          <p className="font-sans text-sm text-text-secondary">
-            Enter the token and all three database links to test the connection.
-          </p>
-        )}
-
-        {test.isError && (
+        {testKey.isError && (
           <div
             role="alert"
-            className="flex items-start gap-3 rounded-md border border-caution/40 bg-background-secondary p-4"
+            className="flex items-start gap-3 rounded-md border border-caution/40 bg-background-primary p-4"
           >
             <AlertCircle size={20} className="mt-0.5 shrink-0 text-caution" aria-hidden />
-            <p className="font-sans text-sm text-text-primary">{test.error.message}</p>
+            <p className="font-sans text-sm text-text-primary">{testKey.error.message}</p>
           </div>
         )}
 
-        {test.isSuccess && (
-          <div className="flex flex-col gap-2 rounded-md border border-success/40 bg-background-secondary p-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 size={20} className="text-success" aria-hidden />
-              <p className="font-sans text-sm font-medium text-text-primary">
-                Connected — {test.data.length} active{' '}
-                {test.data.length === 1 ? 'Odyssey' : 'Odysseys'} found.
-              </p>
-            </div>
-            {test.data.length > 0 && (
-              <ul className="ml-7 list-disc font-mono text-sm text-text-secondary">
-                {test.data.map((o) => (
-                  <li key={o.id}>{o.title}</li>
-                ))}
-              </ul>
-            )}
-            {test.data.length === 0 && (
-              <p className="ml-7 font-sans text-sm text-text-secondary">
-                The wiring works. No Odyssey is Active yet — that’s expected before you’ve
-                started one.
-              </p>
-            )}
+        {testKey.isSuccess && (
+          <div className="flex items-center gap-2 rounded-md border border-success/40 bg-background-primary p-4">
+            <CheckCircle2 size={20} className="text-success" aria-hidden />
+            <p className="font-sans text-sm font-medium text-text-primary">
+              Key works — the companion is ready.
+            </p>
           </div>
         )}
+      </section>
+
+      <section className="flex flex-wrap items-center gap-3">
+        <Button onClick={handleSave}>
+          <Save size={18} aria-hidden />
+          Save to this device
+        </Button>
+        {saved && <span className="font-sans text-sm text-text-secondary">Saved.</span>}
       </section>
     </div>
   )

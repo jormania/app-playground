@@ -57,6 +57,9 @@ export interface OdysseyDetail extends OdysseyRef {
   pairing: string
   dailySuccess: string
   whyValue: string
+  /** Optional forfeit-on-lapse contract (commitment device). Empty when unset or the column is
+   *  absent. */
+  commitment: string
   /** Set at harvest. */
   outcome: string
   notes: string
@@ -127,6 +130,7 @@ export function parseOdysseyList(json: unknown): OdysseyDetail[] {
       pairing: textProp(props, 'Pairing'),
       dailySuccess: textProp(props, 'Daily Success'),
       whyValue: textProp(props, 'Why / Value'),
+      commitment: textProp(props, 'Commitment'),
       outcome: selectProp(props, 'Outcome'),
       notes: textProp(props, 'Notes'),
     }
@@ -427,6 +431,33 @@ export async function discardPlanningDraft(
   fetchImpl: typeof fetch = fetch,
 ): Promise<void> {
   await callRelay(settings.token, archivePageRequest(draftId), fetchImpl)
+}
+
+// ── Commitment device (forfeit-on-lapse contract) ────────────────────────────────────────────
+// An optional pre-Day-1 pledge stored in a `Commitment` rich-text property on the Odysseys DB.
+// Written on its own (never folded into create/activate/save) so a missing column can never break
+// creating an Odyssey — and if the column is absent, the error explains exactly how to add it.
+
+/** Save (or clear) the forfeit-on-lapse contract on an Odyssey. */
+export async function writeCommitment(
+  settings: Pick<Settings, 'token'>,
+  odysseyId: string,
+  contract: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<void> {
+  const properties = { Commitment: { rich_text: contract.trim() ? [{ text: { content: contract.trim() } }] : [] } }
+  try {
+    await callRelay(settings.token, updatePageRequest(odysseyId, properties), fetchImpl)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : ''
+    // Notion 400s with a message naming the property when the column doesn't exist yet.
+    if (/Commitment/i.test(message) && /(does not exist|is not a property|property)/i.test(message)) {
+      throw new Error(
+        'Add a “Commitment” text property to your Odysseys database in Notion to save your safety line.',
+      )
+    }
+    throw err
+  }
 }
 
 // ── Check-ins (the daily loop) ──────────────────────────────────────────────────────────────

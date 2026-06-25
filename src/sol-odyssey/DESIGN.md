@@ -76,6 +76,7 @@ from these rather than hand-rolling markup.
 | `Sparkline` | hand-rolled SVG line (temperature trend) — no charting dependency. |
 | `PlannedOdyssey` | `PlannedOdysseyCard` (full draft state) + `PlannedOdysseyStrip` (compact "lined up for next"). |
 | `CompanionPanel` | the optional AI reflective companion — quiet `accent-soft` card, visually distinct from buddy elements. |
+| `CommitmentCard` | set/edit the optional forfeit-on-lapse contract (commitment device) on an Odyssey. |
 
 **Buttons vs links:** buttons are for **actions** (Save, Begin, Harvest); **`PageLink`** (text +
 arrow) is for **moving between screens**. Don't mix the two for the same job.
@@ -155,6 +156,19 @@ Touch Grass; no server, no relay, nothing stored. Reflections are **ephemeral** 
 Notion). The `system` prompt is the safety surface: it keeps the companion attribution-free,
 non-prescriptive, and clearly **not the human buddy** (which stays the heart of the process). The
 panel is styled to read as a quiet aside — distinct from the buddy fields so the two never blur.
+
+## Commitment device (forfeit-on-lapse)
+
+An **optional** pre-Day-1 pledge: one consequence you choose for yourself if you ever miss two days
+running. Set/edited via `CommitmentCard` ([components/CommitmentCard.tsx](components/CommitmentCard.tsx))
+on Overview + pre-start Today, stored in a `Commitment` rich-text property on the Odysseys database
+(the one schema column this feature adds — written defensively by `writeCommitment` so a missing
+column never breaks creating an Odyssey, and explains how to add it). It's surfaced **where it
+bites**, on Today: when a single gap opens (`shouldWarnDontSkipTwice`) as a reminder, and when the
+line is crossed (`forfeitDue` — two missed days after the practice was under way) as a calm "honour
+it and rejoin" notice. The app **witnesses and reflects; it never enforces, handles money, or
+notifies**. When the companion is enabled, it can reflect in-role on the forfeit you drafted and at
+the lapse (`buildContractCompanionPrompt` / `buildLapseCompanionPrompt`).
 
 ## Hand-rolled visuals
 

@@ -27,6 +27,7 @@ import {
   updatePageRequest,
   upsertCheckin,
   upsertReflection,
+  writeCommitment,
 } from './notion'
 import type { CheckinDraft } from './checkins'
 import { EMPTY_REFLECTION, type ReflectionDraft } from './reflections'
@@ -387,6 +388,30 @@ describe('Planning (draft) Odysseys', () => {
     expect(body.path).toBe('pages/d1')
     expect(body.method).toBe('PATCH')
     expect(body.body.archived).toBe(true)
+  })
+})
+
+describe('writeCommitment', () => {
+  it('PATCHes the Odyssey with a Commitment rich_text (and clears with an empty array)', async () => {
+    const fetchMock = vi.fn(async (..._a: unknown[]) => jsonResponse({ id: 'o1', properties: {} }))
+    await writeCommitment({ token: 't' }, 'o1', 'donate £20 and tell my buddy', fetchMock as unknown as typeof fetch)
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)
+    expect(body.path).toBe('pages/o1')
+    expect(body.method).toBe('PATCH')
+    expect(body.body.properties.Commitment.rich_text[0].text.content).toBe('donate £20 and tell my buddy')
+
+    const clearMock = vi.fn(async (..._a: unknown[]) => jsonResponse({ id: 'o1', properties: {} }))
+    await writeCommitment({ token: 't' }, 'o1', '   ', clearMock as unknown as typeof fetch)
+    expect(JSON.parse((clearMock.mock.calls[0][1] as RequestInit).body as string).body.properties.Commitment.rich_text).toEqual([])
+  })
+
+  it('maps a missing-column 400 to an "add the column" message', async () => {
+    const fetchMock = vi.fn(async (..._a: unknown[]) =>
+      jsonResponse({ message: 'Commitment is not a property that exists' }, 400),
+    )
+    await expect(
+      writeCommitment({ token: 't' }, 'o1', 'something', fetchMock as unknown as typeof fetch),
+    ).rejects.toThrow(/Commitment.*property|property.*Odysseys/i)
   })
 })
 

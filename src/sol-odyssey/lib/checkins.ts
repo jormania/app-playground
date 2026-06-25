@@ -103,6 +103,18 @@ export function shouldWarnDontSkipTwice(records: CheckinRecord[], todayISO: stri
   return !done.has(isoAddDays(todayISO, -1)) && done.has(isoAddDays(todayISO, -2))
 }
 
+/** The forfeit-on-lapse condition: the two days before today are BOTH missed, and the practice was
+ *  genuinely under way (at least one done day earlier than that). Distinguishes a real two-day break
+ *  from the empty days at the very start of a cycle. */
+export function forfeitDue(records: CheckinRecord[], todayISO: string): boolean {
+  const done = doneSet(records)
+  const d1 = isoAddDays(todayISO, -1)
+  const d2 = isoAddDays(todayISO, -2)
+  if (done.has(d1) || done.has(d2)) return false
+  // Was the practice ever under way before the break? (a done day strictly before d2)
+  return [...done].some((d) => d < d2)
+}
+
 // ── Notion property mapping ─────────────────────────────────────────────────────────────────
 
 function richText(value: string): { rich_text: { text: { content: string } }[] } {

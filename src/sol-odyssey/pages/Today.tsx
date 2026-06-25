@@ -8,7 +8,8 @@ import { SupportingNote } from '../components/SupportingNote'
 import { useSettings } from '../lib/settingsContext'
 import { isConfigured, companionActive } from '../lib/settings'
 import { CompanionPanel } from '../components/CompanionPanel'
-import { buildDailyCompanionPrompt } from '../lib/companion'
+import { CommitmentCard } from '../components/CommitmentCard'
+import { buildDailyCompanionPrompt, buildLapseCompanionPrompt } from '../lib/companion'
 import { useActiveOdysseys } from '../lib/useActiveOdysseys'
 import { useNextOdysseyNumber } from '../lib/useNextOdysseyNumber'
 import { usePlanningOdyssey } from '../lib/usePlanningOdyssey'
@@ -16,7 +17,7 @@ import { PlannedOdysseyCard, PlannedOdysseyStrip } from '../components/PlannedOd
 import { useCheckins, useUpsertCheckin } from '../lib/useCheckins'
 import { useReflections } from '../lib/useReflections'
 import { CYCLE_DAYS, todayISO } from '../lib/charter'
-import { canSaveCheckin, checkinErrors, cycleState, EMPTY_CHECKIN, type CheckinDraft } from '../lib/checkins'
+import { canSaveCheckin, checkinErrors, cycleState, forfeitDue, shouldWarnDontSkipTwice, EMPTY_CHECKIN, type CheckinDraft } from '../lib/checkins'
 import { reflectableWeeks } from '../lib/reflections'
 
 export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
@@ -98,6 +99,7 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
           body="Your Odyssey hasn’t begun. Rig the system, tell your buddy, and rest until Day 1. The departure is fixed; nothing to perform yet."
         />
         {odyssey.tinyVersion && <TinyReminder value={odyssey.tinyVersion} />}
+        <CommitmentCard odyssey={odyssey} cycleActive={false} />
       </div>
     )
   }
@@ -123,6 +125,13 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
   const pendingWeek = reflectableWeeks(dayIndex).find(
     (w) => !(reflections.data?.some((r) => r.weekIndex === w)),
   )
+
+  // Surface the forfeit-on-lapse contract where it bites: when the line is crossed (two missed
+  // days), and — preventively — when a single gap has opened. Only when a contract is set.
+  const records = checkins.data ?? []
+  const hasContract = odyssey.commitment.trim().length > 0
+  const lapseCrossed = hasContract && forfeitDue(records, today)
+  const oneGap = hasContract && !lapseCrossed && shouldWarnDontSkipTwice(records, today)
 
   function save() {
     const wasDone = todayRecord?.done ?? false
@@ -175,6 +184,33 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
           <span>Week {pendingWeek} is complete — time to reflect and adjust.</span>
           <span className="font-medium text-accent">Reflect →</span>
         </button>
+      )}
+
+      {/* The forfeit-on-lapse contract, surfaced where it bites. */}
+      {lapseCrossed && (
+        <div role="status" className="flex flex-col gap-2 rounded-md border border-caution/40 bg-background-secondary p-4">
+          <p className="font-sans text-sm font-medium text-text-primary">
+            The line you drew has been crossed — two days missed.
+          </p>
+          <p className="font-sans text-sm text-text-secondary">
+            Honour what you pledged, tell your buddy, and rejoin today. No shame — just the next turn.
+          </p>
+          <p className="rounded-md border-l-2 border-caution/50 bg-background-primary px-3 py-2 font-sans text-sm text-text-primary">
+            “{odyssey.commitment}”
+          </p>
+          {companionActive(settings) && (
+            <CompanionPanel prompt={buildLapseCompanionPrompt(odyssey, odyssey.commitment)} />
+          )}
+        </div>
+      )}
+      {oneGap && (
+        <div role="status" className="rounded-md border border-caution/40 bg-background-secondary p-4">
+          <p className="font-sans text-sm text-text-primary">
+            A day slipped — close the gap before a second forms. You set this line:{' '}
+            <span className="font-medium">“{odyssey.commitment}”</span>. Don’t let it come due — do the
+            tiny version now.
+          </p>
+        </div>
       )}
 
       {odyssey.tinyVersion && <TinyReminder value={odyssey.tinyVersion} />}

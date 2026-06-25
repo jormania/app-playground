@@ -1,8 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
+  buildContractCompanionPrompt,
   buildDailyCompanionPrompt,
+  buildLapseCompanionPrompt,
   buildWeeklyCompanionPrompt,
   requestCompanionReflection,
+  verifyAnthropicKey,
 } from './companion'
 import type { OdysseyDetail } from './notion'
 import { EMPTY_REFLECTION } from './reflections'
@@ -24,6 +27,7 @@ const odyssey: OdysseyDetail = {
   pairing: '',
   dailySuccess: 'shoes on, outside',
   whyValue: 'a body in motion',
+  commitment: '',
   outcome: '',
   notes: '',
 }
@@ -72,6 +76,24 @@ describe('buildWeeklyCompanionPrompt', () => {
   })
 })
 
+describe('commitment-device prompts', () => {
+  const baseSystem = buildDailyCompanionPrompt(odyssey, checkin).system
+
+  it('buildContractCompanionPrompt reflects on the drafted forfeit without proposing one', () => {
+    const { user, system } = buildContractCompanionPrompt(odyssey, 'donate £20 and tell my buddy')
+    expect(user).toContain('donate £20 and tell my buddy')
+    expect(user.toLowerCase()).toContain('do not suggest a different consequence')
+    expect(system).toBe(baseSystem) // same witness role contract
+  })
+
+  it('buildLapseCompanionPrompt surfaces the pledge kindly at the lapse', () => {
+    const { user, system } = buildLapseCompanionPrompt(odyssey, 'cold shower, no excuses')
+    expect(user).toContain('cold shower, no excuses')
+    expect(user.toLowerCase()).toContain('rejoin')
+    expect(system).toBe(baseSystem)
+  })
+})
+
 describe('requestCompanionReflection', () => {
   const prompt = { system: 'sys', user: 'usr' }
 
@@ -105,6 +127,28 @@ describe('requestCompanionReflection', () => {
     await expect(
       requestCompanionReflection('  ', prompt, fetchMock as unknown as typeof fetch),
     ).rejects.toThrow(/key/i)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('verifyAnthropicKey', () => {
+  it('resolves on a 200 and posts a minimal request with the key header', async () => {
+    const fetchMock = vi.fn(async (..._a: unknown[]) => new Response('{}', { status: 200 }))
+    await expect(verifyAnthropicKey('sk-ant-xyz', fetchMock as unknown as typeof fetch)).resolves.toBeUndefined()
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('https://api.anthropic.com/v1/messages')
+    expect((init.headers as Record<string, string>)['x-api-key']).toBe('sk-ant-xyz')
+    expect(JSON.parse(init.body as string).max_tokens).toBe(1)
+  })
+
+  it('rejects a bad key with a key-specific message', async () => {
+    const fetchMock = vi.fn(async (..._a: unknown[]) => new Response('{}', { status: 401 }))
+    await expect(verifyAnthropicKey('bad', fetchMock as unknown as typeof fetch)).rejects.toThrow(/key/i)
+  })
+
+  it('refuses an empty key without a network call', async () => {
+    const fetchMock = vi.fn()
+    await expect(verifyAnthropicKey('  ', fetchMock as unknown as typeof fetch)).rejects.toThrow(/key/i)
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })

@@ -7,6 +7,7 @@ import { isConfigured } from '../lib/settings'
 import { Notice } from '../components/Notice'
 import { Button } from '../components/Button'
 import { PlannedOdysseyCard, PlannedOdysseyStrip } from '../components/PlannedOdyssey'
+import { CommitmentCard } from '../components/CommitmentCard'
 import { Sprout } from 'lucide-react'
 import type { OdysseyDetail } from '../lib/notion'
 
@@ -96,6 +97,8 @@ function OdysseyReadout({
       <p className="font-sans text-sm text-text-secondary">
         Your charter at a glance — it governs the whole six weeks.
       </p>
+
+      <CommitmentCard odyssey={odyssey} cycleActive={day != null && day >= 1} />
 
       {/* One prominent, clearly-labelled close-out — the same Harvest flow in every phase. */}
       <div className="flex flex-col gap-3 rounded-lg border border-border-primary bg-background-secondary p-5 sm:flex-row sm:items-center sm:justify-between">
