@@ -27,6 +27,7 @@ export function useHarvestOdyssey() {
       queryClient.invalidateQueries({ queryKey: ACTIVE_ODYSSEYS_KEY })
       queryClient.invalidateQueries({ queryKey: ['odysseyHistory'] })
       queryClient.invalidateQueries({ queryKey: ['odysseyArchive'] })
+      queryClient.invalidateQueries({ queryKey: ['hasCompleted'] })
       queryClient.invalidateQueries({ queryKey: ['checkins'] })
       queryClient.invalidateQueries({ queryKey: ['reflections'] })
     },

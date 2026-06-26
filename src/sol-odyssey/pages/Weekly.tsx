@@ -12,7 +12,6 @@ import { useSettings } from '../lib/settingsContext'
 import { isConfigured, companionActive } from '../lib/settings'
 import { CompanionPanel } from '../components/CompanionPanel'
 import { buildWeeklyCompanionPrompt } from '../lib/companion'
-import { useReminderSync } from '../lib/useReminderSync'
 import { useActiveOdysseys } from '../lib/useActiveOdysseys'
 import { useCheckins } from '../lib/useCheckins'
 import { useReflections, useUpsertReflection } from '../lib/useReflections'
@@ -39,7 +38,6 @@ export function WeeklyPage({ navigate }: { navigate: (to: string) => void }) {
   const checkins = useCheckins(odyssey?.id)
   const reflections = useReflections(odyssey?.id)
   const upsert = useUpsertReflection(odyssey?.id)
-  useReminderSync()
 
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
   const [form, setForm] = useState<ReflectionDraft>(EMPTY_REFLECTION)
@@ -136,6 +134,7 @@ export function WeeklyPage({ navigate }: { navigate: (to: string) => void }) {
 
       {!editable && (
         <Notice
+          titleAs="h3"
           title="Not yet"
           body={
             reflectable.length === 0

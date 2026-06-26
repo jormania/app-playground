@@ -31,6 +31,7 @@ export function StatsPage({ navigate }: { navigate: (to: string) => void }) {
       <div className="flex flex-col gap-6">
         <StatHeader count={0} />
         <Notice
+          titleAs="h3"
           title="Nothing here yet"
           body="When you complete your first Odyssey, who you became will gather here — the identity you grew, what you practised, and why it mattered."
         />

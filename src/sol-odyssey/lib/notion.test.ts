@@ -10,7 +10,9 @@ import {
   createActiveOdyssey,
   createPageRequest,
   discardPlanningDraft,
+  fetchHasCompleted,
   fetchNextOdysseyInfo,
+  hasCompletedOdysseyQuery,
   friendlyError,
   harvestOdyssey,
   listActiveOdysseys,
@@ -223,6 +225,27 @@ describe('createPageRequest', () => {
       parent: { database_id: '561fb186bc1142d9b9a3f56797136a1d' },
       properties: { Name: { title: [] } },
     })
+  })
+})
+
+describe('hasCompleted', () => {
+  it('queries one row filtered to a set Outcome (the harvested ones)', () => {
+    const req = hasCompletedOdysseyQuery('561fb186bc1142d9b9a3f56797136a1d')
+    expect(req.body).toMatchObject({
+      filter: { property: 'Outcome', select: { is_not_empty: true } },
+      page_size: 1,
+    })
+  })
+
+  it('fetchHasCompleted is true when a row comes back, false when empty or unconfigured', async () => {
+    const db = '561fb186bc1142d9b9a3f56797136a1d'
+    const some = vi.fn(async (..._a: unknown[]) => jsonResponse({ results: [{ id: 'x' }] }))
+    expect(await fetchHasCompleted({ token: 't', dsOdysseys: db }, some as unknown as typeof fetch)).toBe(true)
+    const none = vi.fn(async (..._a: unknown[]) => jsonResponse({ results: [] }))
+    expect(await fetchHasCompleted({ token: 't', dsOdysseys: db }, none as unknown as typeof fetch)).toBe(false)
+    const noCall = vi.fn()
+    expect(await fetchHasCompleted({ token: '', dsOdysseys: '' }, noCall as unknown as typeof fetch)).toBe(false)
+    expect(noCall).not.toHaveBeenCalled()
   })
 })
 

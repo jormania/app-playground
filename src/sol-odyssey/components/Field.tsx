@@ -23,6 +23,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(
         <input
           ref={ref}
           id={inputId}
+          aria-required={required || undefined}
           aria-describedby={hintId}
           className={cn(
             'h-11 rounded-md border border-secondary bg-background-primary px-3 text-base text-text-primary',

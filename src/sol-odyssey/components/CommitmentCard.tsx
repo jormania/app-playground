@@ -3,6 +3,7 @@ import { Anchor, CheckCircle2, Loader2, Save } from 'lucide-react'
 import { Button } from './Button'
 import { Textarea } from './Textarea'
 import { CompanionPanel } from './CompanionPanel'
+import { SupportingNote } from './SupportingNote'
 import { useWriteCommitment } from '../lib/useCommitment'
 import { useSettings } from '../lib/settingsContext'
 import { companionActive } from '../lib/settings'
@@ -48,6 +49,8 @@ export function CommitmentCard({
           Changing your safety line mid-Odyssey loosens it — set it before Day 1 and let it hold.
         </p>
       )}
+
+      <SupportingNote note="commitmentDevice" />
 
       <div className="flex flex-wrap items-center gap-3">
         <Button

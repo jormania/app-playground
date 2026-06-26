@@ -23,6 +23,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={inputId}
           rows={rows}
+          aria-required={required || undefined}
           aria-describedby={hintId}
           className={cn(
             'rounded-md border border-secondary bg-background-primary px-3 py-2 text-base text-text-primary',

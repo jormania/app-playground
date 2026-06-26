@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CalendarClock, Loader2, Pencil, Sparkles, Trash2 } from 'lucide-react'
 import { Button } from './Button'
 import { Modal } from './Modal'
+import { SupportingNote } from './SupportingNote'
 import { computeDayIndex } from '../lib/charter'
 import {
   useActivatePlanningOdyssey,
@@ -89,6 +90,8 @@ export function PlannedOdysseyCard({
           You can begin before the start date — the daily loop will simply count down to Day 1.
         </p>
       )}
+
+      <SupportingNote note="plannedOdyssey" />
 
       {activate.isError && (
         <p role="alert" className="font-sans text-sm text-caution">

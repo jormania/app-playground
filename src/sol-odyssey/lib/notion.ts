@@ -215,6 +215,30 @@ export async function listAllOdysseys(
   return parseOdysseyList(data)
 }
 
+/** Pure: a cheap "does any completed (harvested) Odyssey exist" probe — one row, filtered to rows
+ *  with an Outcome set (which is exactly the harvested ones). Powers the Stats nav gate without
+ *  loading the whole archive on every boot. */
+export function hasCompletedOdysseyQuery(database: string): NotionRequest {
+  const id = normalizeNotionId(database)
+  if (!id) throw new Error('That doesn’t look like a Notion database link or ID.')
+  return {
+    path: `databases/${id}/query`,
+    method: 'POST',
+    body: { filter: { property: 'Outcome', select: { is_not_empty: true } }, page_size: 1 },
+  }
+}
+
+/** True if at least one completed (harvested) Odyssey exists. */
+export async function fetchHasCompleted(
+  settings: Pick<Settings, 'token' | 'dsOdysseys'>,
+  fetchImpl: typeof fetch = fetch,
+): Promise<boolean> {
+  if (!settings.token.trim() || !settings.dsOdysseys.trim()) return false
+  const data = await callRelay(settings.token, hasCompletedOdysseyQuery(settings.dsOdysseys), fetchImpl)
+  const results = (data as { results?: unknown })?.results
+  return Array.isArray(results) && results.length > 0
+}
+
 /** Pure: query for the single highest existing Odyssey Number. Filters to rows that HAVE a number
  *  so a numberless Planning draft can't be mistaken for the max — and can't flip the "first vs
  *  next" home copy (`fetchNextOdysseyInfo().hasPrior`) before it's ever activated. */

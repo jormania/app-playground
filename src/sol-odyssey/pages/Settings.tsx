@@ -3,12 +3,14 @@ import { useMutation } from '@tanstack/react-query'
 import { CheckCircle2, AlertCircle, Loader2, MessageCircleHeart, PlugZap, Save, X } from 'lucide-react'
 import { Button } from '../components/Button'
 import { Field } from '../components/Field'
+import { Select } from '../components/Select'
 import { Switch } from '../components/Switch'
-import { isConfigured, type Settings } from '../lib/settings'
+import { SupportingNote } from '../components/SupportingNote'
+import { isConfigured, isValidEmail, type Settings } from '../lib/settings'
 import { useSettings } from '../lib/settingsContext'
-import { listActiveOdysseys, type OdysseyDetail } from '../lib/notion'
+import { listActiveOdysseys, normalizeNotionId, type OdysseyDetail } from '../lib/notion'
 import { verifyAnthropicKey } from '../lib/companion'
-import { capabilities, enableReminders, unregisterPeriodicSync } from '../lib/reminders'
+import { capabilities, enableReminders, notificationPermission, unregisterPeriodicSync, parseDailyTime, parseWeeklySlot } from '../lib/reminders'
 
 /** The text fields the connection form owns (booleans are handled by the toggles below, so
  *  saving the form never clobbers them). */
@@ -34,6 +36,37 @@ const STRING_KEYS: StringKey[] = [
   'weeklySlot',
   'anthropicKey',
 ]
+
+const WEEKDAYS = [
+  { value: 'Sun', label: 'Sunday' },
+  { value: 'Mon', label: 'Monday' },
+  { value: 'Tue', label: 'Tuesday' },
+  { value: 'Wed', label: 'Wednesday' },
+  { value: 'Thu', label: 'Thursday' },
+  { value: 'Fri', label: 'Friday' },
+  { value: 'Sat', label: 'Saturday' },
+]
+
+/** Split a stored "Sun 18:00" slot into its day + time parts (tolerant of partials/legacy text). */
+function slotParts(value: string): { day: string; time: string } {
+  const dayToken = value.match(/[A-Za-z]+/)?.[0]?.slice(0, 3).toLowerCase() ?? ''
+  const day = WEEKDAYS.find((d) => d.value.toLowerCase() === dayToken)?.value ?? ''
+  const time = value.match(/\d{1,2}:\d{2}/)?.[0] ?? ''
+  return { day, time }
+}
+function composeSlot(day: string, time: string): string {
+  return [day, time].filter(Boolean).join(' ')
+}
+
+/** A gentle inline caution when a pasted database value has no parseable Notion ID. */
+function LinkCaution({ value }: { value: string }) {
+  if (!value.trim() || normalizeNotionId(value)) return null
+  return (
+    <p className="font-sans text-sm text-caution">
+      That doesn’t look like a Notion link or ID — paste the database URL, or its 32-character ID.
+    </p>
+  )
+}
 
 export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
   const { settings, update } = useSettings()
@@ -130,30 +163,39 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
           value={form.token}
           onChange={set('token')}
         />
-        <Field
-          label="Odysseys — database link"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="Paste the database URL, or its ID"
-          value={form.dsOdysseys}
-          onChange={set('dsOdysseys')}
-        />
-        <Field
-          label="Check-ins — database link"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="Paste the database URL, or its ID"
-          value={form.dsCheckins}
-          onChange={set('dsCheckins')}
-        />
-        <Field
-          label="Weekly Reflections — database link"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="Paste the database URL, or its ID"
-          value={form.dsReflections}
-          onChange={set('dsReflections')}
-        />
+        <div className="flex flex-col gap-1.5">
+          <Field
+            label="Odysseys — database link"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="Paste the database URL, or its ID"
+            value={form.dsOdysseys}
+            onChange={set('dsOdysseys')}
+          />
+          <LinkCaution value={form.dsOdysseys} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Field
+            label="Check-ins — database link"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="Paste the database URL, or its ID"
+            value={form.dsCheckins}
+            onChange={set('dsCheckins')}
+          />
+          <LinkCaution value={form.dsCheckins} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Field
+            label="Weekly Reflections — database link"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="Paste the database URL, or its ID"
+            value={form.dsReflections}
+            onChange={set('dsReflections')}
+          />
+          <LinkCaution value={form.dsReflections} />
+        </div>
 
         <div className="flex flex-wrap items-center gap-3 pt-1">
           <Button
@@ -222,24 +264,45 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Buddy name" value={form.buddyName} onChange={set('buddyName')} />
-          <Field
-            label="Buddy email"
-            type="email"
-            autoComplete="off"
-            value={form.buddyEmail}
-            onChange={set('buddyEmail')}
-          />
+          <div className="flex flex-col gap-1.5">
+            <Field
+              label="Buddy email"
+              type="email"
+              autoComplete="off"
+              value={form.buddyEmail}
+              onChange={set('buddyEmail')}
+            />
+            {form.buddyEmail.trim() && !isValidEmail(form.buddyEmail) && (
+              <p className="font-sans text-sm text-caution">
+                That email looks off — check it so you can actually reach your buddy.
+              </p>
+            )}
+          </div>
           <Field
             label="Daily check-in time"
             type="time"
             value={form.dailyTime}
             onChange={set('dailyTime')}
           />
+          <div />
+          <Select
+            label="Weekly call — day"
+            placeholder="—"
+            options={WEEKDAYS}
+            value={slotParts(form.weeklySlot).day}
+            onChange={(e) => {
+              setForm((f) => ({ ...f, weeklySlot: composeSlot(e.target.value, slotParts(f.weeklySlot).time) }))
+              setSaved(false)
+            }}
+          />
           <Field
-            label="Weekly call slot"
-            placeholder="e.g. Sun 18:00"
-            value={form.weeklySlot}
-            onChange={set('weeklySlot')}
+            label="Weekly call — time"
+            type="time"
+            value={slotParts(form.weeklySlot).time}
+            onChange={(e) => {
+              setForm((f) => ({ ...f, weeklySlot: composeSlot(slotParts(f.weeklySlot).day, e.target.value) }))
+              setSaved(false)
+            }}
           />
         </div>
       </section>
@@ -325,6 +388,7 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
             </p>
           </div>
         )}
+        <SupportingNote note="aiCompanion" />
       </section>
 
       <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-6">
@@ -347,7 +411,25 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
             ? 'Background reminders work best in an installed app on Android or desktop Chrome. On iPhone they can’t run in the background — you’ll still see reminders inside the app.'
             : 'This browser can’t run background reminders — you’ll still see them inside the app when you open it.'}
         </p>
+        {settings.remindersEnabled && notificationPermission() === 'denied' && (
+          <p className="font-sans text-sm text-caution">
+            Notifications are blocked in your browser — reminders can’t show until you allow them in
+            your browser’s site settings.
+          </p>
+        )}
+        {settings.remindersEnabled && parseDailyTime(form.dailyTime) == null && (
+          <p className="font-sans text-sm text-caution">
+            Set a <strong>Daily check-in time</strong> above for the daily reminder to fire.
+          </p>
+        )}
+        {settings.remindersEnabled && form.weeklySlot.trim() && !parseWeeklySlot(form.weeklySlot) && (
+          <p className="font-sans text-sm text-caution">
+            Pick <strong>both a day and a time</strong> for the weekly call slot so the weekly reminder
+            can fire.
+          </p>
+        )}
         {reminderMsg && <p className="font-sans text-sm text-caution">{reminderMsg}</p>}
+        <SupportingNote note="reminders" />
       </section>
 
       <section className="flex flex-wrap items-center gap-3">

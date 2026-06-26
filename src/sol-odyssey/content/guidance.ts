@@ -123,6 +123,23 @@ export const GUIDANCE = {
     summary: 'On retiring it',
     body: 'Retiring a behaviour is a clean, honest win — it served its purpose, taught you what it had to, and you let it go without guilt. Not everything is meant to be kept, and knowing when something has done its work is its own kind of wisdom. The space it frees is room for whatever matters more to you now.',
   },
+  // ── Planning, commitment, reminders, companion (post-MVP) ──────────────────────────────────
+  plannedOdyssey: {
+    summary: 'Why plan ahead?',
+    body: "Writing the charter is its own work — saving it as a draft lets you do it unhurried, sleep on it, and sharpen the tiny version before any clock starts. You can even line up your next Odyssey while the current one finishes, so there’s no gap between ending and beginning. A number isn’t reserved until you actually begin, so nothing is wasted if you change your mind — the draft simply waits, ready, until you’re sure.",
+  },
+  commitmentDevice: {
+    summary: 'Why set a safety line?',
+    body: "A pre-decided stake raises the cost of drifting before the temptation arrives — while you’re calm and honest. The app only ever witnesses it: it holds your own words and shows them back the moment a gap opens; the keeping stays with you and your buddy. Make it sting just enough to matter, never cruel — the point is a gentle guardrail for the wobble, not a punishment to dread.",
+  },
+  reminders: {
+    summary: 'Why (and why not) reminders?',
+    body: "A nudge at a fixed time hands the remembering to the system instead of your willpower — useful while the loop is still new. But they’re a scaffold, not a master: skipped once you’ve done the thing, and never sent to anyone but you. The daily message to your buddy is what truly carries the loop; let a notification prompt you, but don’t let it become the relationship.",
+  },
+  aiCompanion: {
+    summary: 'What is the companion for?',
+    body: "An optional, private witness for the in-between — it mirrors back what you wrote and, at most, asks one gentle question. It never advises, scores, or decides for you. It is not your buddy and never replaces one; think of it as something to reflect with between human check-ins, or while you’re still finding your person. A human witness remains the heart of the method.",
+  },
 } as const
 
 export type GuidanceKey = keyof typeof GUIDANCE

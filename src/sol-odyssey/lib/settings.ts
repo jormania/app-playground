@@ -119,6 +119,12 @@ export function companionActive(settings: Pick<Settings, 'anthropicKey' | 'compa
   return settings.anthropicKey.trim().length > 0 && settings.companionEnabled === true
 }
 
+/** A light email-shape check (one @, a dot in the domain, no spaces) — enough to catch typos
+ *  before a buddy is required, without over-policing valid-but-unusual addresses. */
+export function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+}
+
 function normalize(value: Partial<Settings>): Settings {
   const out = { ...EMPTY_SETTINGS }
   for (const key of Object.keys(EMPTY_SETTINGS) as (keyof Settings)[]) {

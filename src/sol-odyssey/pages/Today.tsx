@@ -10,7 +10,6 @@ import { isConfigured, companionActive } from '../lib/settings'
 import { CompanionPanel } from '../components/CompanionPanel'
 import { CommitmentCard } from '../components/CommitmentCard'
 import { buildDailyCompanionPrompt, buildLapseCompanionPrompt } from '../lib/companion'
-import { useReminderSync } from '../lib/useReminderSync'
 import { useActiveOdysseys } from '../lib/useActiveOdysseys'
 import { useNextOdysseyNumber } from '../lib/useNextOdysseyNumber'
 import { usePlanningOdyssey } from '../lib/usePlanningOdyssey'
@@ -31,7 +30,6 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
   const reflections = useReflections(odyssey?.id)
   const history = useNextOdysseyNumber()
   const upsert = useUpsertCheckin(odyssey?.id)
-  useReminderSync()
 
   const today = todayISO()
   const todayRecord = checkins.data?.find((r) => r.date === today)
@@ -97,6 +95,7 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
       <div className="flex flex-col gap-6">
         <Header title={odyssey.title} sub={`Starts in ${cycle.daysUntilStart} day${cycle.daysUntilStart === 1 ? '' : 's'} · ${odyssey.startDate}`} />
         <Notice
+          titleAs="h3"
           title="Not yet — and that’s right"
           body="Your Odyssey hasn’t begun. Rig the system, tell your buddy, and rest until Day 1. The departure is fixed; nothing to perform yet."
         />
@@ -112,6 +111,7 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
       <div className="flex flex-col gap-6">
         <Header title={odyssey.title} sub="Your 42 days are complete" />
         <Notice
+          titleAs="h3"
           title="You reached the summit"
           body="The cycle is done. Harvest what installed — name it, decide keep / grow / retire — and choose what comes next."
           actionLabel="Harvest this Odyssey"

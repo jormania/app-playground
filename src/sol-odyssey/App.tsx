@@ -12,10 +12,10 @@ import { useSettings } from './lib/settingsContext'
 import { GuidanceProvider } from './lib/guidanceContext'
 import { useActiveOdysseys } from './lib/useActiveOdysseys'
 import { useNextOdysseyNumber } from './lib/useNextOdysseyNumber'
-import { useOdysseyArchive } from './lib/useOdysseyArchive'
+import { useHasCompleted } from './lib/useOdysseyArchive'
+import { useReminderSync } from './lib/useReminderSync'
 import { useSyncStatus } from './lib/syncContext'
 import { isConfigured } from './lib/settings'
-import { isHarvested } from './lib/harvest'
 import { cn } from './lib/cn'
 import {
   CloudOff,
@@ -34,12 +34,15 @@ export default function App() {
   const { settings } = useSettings()
   const { route, navigate } = useHashRoute()
   const active = useActiveOdysseys()
-  const archive = useOdysseyArchive()
+  const completed = useHasCompleted()
+  // Keep the reminders snapshot fresh on every route (not just Today/Weekly) so enabling reminders
+  // from Settings — and the start/harvest readiness — is mirrored to the worker right away.
+  useReminderSync()
   // Context-aware nav: the daily loop tabs only matter once an Odyssey is under way; Stats + Export
   // only once an Odyssey has been completed (harvested). No active Odyssey → the bar focuses on
   // Charter (+ utilities).
   const hasActive = (active.data?.length ?? 0) > 0
-  const hasCompleted = (archive.data ?? []).some((o) => isHarvested(o.status))
+  const hasCompleted = completed.data ?? false
 
   return (
     <GuidanceProvider show={settings.showGuidance}>

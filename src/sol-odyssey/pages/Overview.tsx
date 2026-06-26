@@ -31,7 +31,7 @@ export function OverviewPage({ navigate }: { navigate: (to: string) => void }) {
     )
   }
   if (active.isPending) {
-    return <p className="font-sans text-text-secondary">Loading your Odyssey…</p>
+    return <p className="font-sans text-text-secondary">Loading…</p>
   }
   if (active.isError) {
     return (

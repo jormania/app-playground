@@ -7,6 +7,7 @@ import { Textarea } from '../components/Textarea'
 import { Switch } from '../components/Switch'
 import { SupportingNote } from '../components/SupportingNote'
 import { useSettings } from '../lib/settingsContext'
+import { isValidEmail } from '../lib/settings'
 import { useActiveOdysseys, ACTIVE_ODYSSEYS_KEY } from '../lib/useActiveOdysseys'
 import {
   usePlanningOdyssey,
@@ -81,7 +82,7 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
   }, [planning.data])
 
   const errors = charterErrors(draft)
-  const buddyReady = Boolean(settings.buddyName.trim() && settings.buddyEmail.trim())
+  const buddyReady = Boolean(settings.buddyName.trim()) && isValidEmail(settings.buddyEmail)
 
   const save = useSavePlanningDraft()
   const activate = useActivatePlanningOdyssey()
