@@ -6,6 +6,8 @@ import { Notice } from '../components/Notice'
 import { Modal } from '../components/Modal'
 import { SupportingNote } from '../components/SupportingNote'
 import { CompanionPanel } from '../components/CompanionPanel'
+import { BuddyEmailButton } from '../components/BuddyEmailButton'
+import { harvestBuddyMail } from '../lib/buddyMail'
 import { cn } from '../lib/cn'
 import { useSettings } from '../lib/settingsContext'
 import { isConfigured, companionActive } from '../lib/settings'
@@ -55,6 +57,9 @@ export function HarvestPage({ navigate }: { navigate: (to: string) => void }) {
         />
         <SupportingNote note={outcomeNote} />
         <SupportingNote note="compounding" />
+        <div className="flex flex-wrap items-center gap-3">
+          <BuddyEmailButton mail={harvestBuddyMail(settings.buddyName, chosen)} navigate={navigate} />
+        </div>
         <div className="flex flex-wrap gap-3">
           <Button onClick={() => navigate('/charter')}>
             <Sprout size={18} aria-hidden />

@@ -19,6 +19,7 @@ import {
   canActivate,
   charterErrors,
   computeEndDate,
+  defaultStartDate,
   emptyDraft,
   firstIncompleteStep,
   parseDraftToCharter,
@@ -58,7 +59,9 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
   const active = useActiveOdysseys()
   const planning = usePlanningOdyssey()
 
-  const [draft, setDraft] = useState<CharterDraft>(() => emptyDraft())
+  const [draft, setDraft] = useState<CharterDraft>(() =>
+    emptyDraft(new Date(), defaultStartDate(new Date(), settings.defaultStart)),
+  )
   const [step, setStep] = useState(0)
   // The Notion id of the Planning draft being edited (null until one is saved/loaded). Drives
   // whether saving PATCHes the existing row and whether "Begin" activates it vs creates fresh.

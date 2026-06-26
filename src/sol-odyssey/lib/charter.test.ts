@@ -98,6 +98,12 @@ describe('dates', () => {
     expect(defaultStartDate(new Date('2026-07-05T10:00:00'))).toBe('2026-07-06') // Sun → next Mon
   })
 
+  it('defaultStartDate honours a preference (today / a weekday)', () => {
+    expect(defaultStartDate(new Date('2026-07-07T10:00:00'), 'today')).toBe('2026-07-07')
+    expect(defaultStartDate(new Date('2026-07-07T10:00:00'), 'wed')).toBe('2026-07-08') // Tue → next Wed
+    expect(defaultStartDate(new Date('2026-07-08T10:00:00'), 'wed')).toBe('2026-07-08') // Wed → same day
+  })
+
   it('computeEndDate is start + 41 days (42-day inclusive)', () => {
     expect(computeEndDate('2026-07-06')).toBe('2026-08-16')
   })

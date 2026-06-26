@@ -27,6 +27,14 @@ export interface Settings {
   /** Opt-in local reminders (daily check-in + weekly reflect nudges). Best-effort, on-device, no
    *  server — uses dailyTime / weeklySlot as the target windows. */
   remindersEnabled: boolean
+  /** Per-type reminder switches (only matter when remindersEnabled). */
+  remindersDaily: boolean
+  remindersWeekly: boolean
+  remindersStart: boolean
+  remindersHarvest: boolean
+  /** What a new Charter's start date defaults to: 'today' or a weekday ('mon'…'sun', meaning the
+   *  next occurrence of that day). */
+  defaultStart: string
 }
 
 export const EMPTY_SETTINGS: Settings = {
@@ -46,6 +54,11 @@ export const EMPTY_SETTINGS: Settings = {
   companionEnabled: false,
   // Reminders are opt-in too.
   remindersEnabled: false,
+  remindersDaily: true,
+  remindersWeekly: true,
+  remindersStart: true,
+  remindersHarvest: true,
+  defaultStart: 'mon',
 }
 
 const STORAGE_KEY = 'sol-odyssey:settings'

@@ -1,14 +1,15 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   Sol Odyssey — Claude Design System tokens (Deep Indigo · LIGHT MODE ONLY).
+   Sol Odyssey — Claude Design System tokens (Deep Indigo · LIGHT + DARK).
 
    The single source of truth for the app's look. Every component reads these
    semantic --color-* / --radius-* / --motion-* variables and NEVER hard-codes a
    colour, radius, or duration. Rebrand the whole app by editing this file alone.
 
-   There is ONE palette. No dark theme, no [data-theme] — light only, by design.
-   The colour of this journey is Deep Indigo: between the calm of dark blue and the
-   energy of violet — wisdom, self-mastery, the night sky as a canvas for a long
-   navigation.
+   Deep Indigo, in two palettes: LIGHT (default, on :root) and DARK (opt-in, under
+   [data-theme="dark"] — toggled from the app header / Settings and shared with the
+   field guide via the `sol-odyssey:theme` localStorage key). Components read the
+   semantic tokens and need no per-theme changes. Deep Indigo: between the calm of
+   dark blue and the energy of violet — the night sky as a canvas for a long voyage.
    ───────────────────────────────────────────────────────────────────────── */
 
 :root {
@@ -59,6 +60,41 @@
   --motion-base: 200ms;
   --motion-slow: 360ms;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Dark theme (Deep Indigo night) ─────────────────────────────────────────
+   Opt-in via [data-theme="dark"] on <html>. Only colours change. The accent flips
+   LIGHTER and its contrast goes DARK, so accent reads as text on the dark canvas
+   and accent-filled buttons stay legible (dark glyph on a light-indigo fill). */
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-background-primary:   #121127; /* night canvas */
+  --color-background-secondary: #1B1940; /* cards / surfaces */
+  --color-background-tertiary:  #262350; /* insets / hover */
+
+  --color-text-primary:   #ECEBF8; /* near-white indigo */
+  --color-text-secondary: #A7A3D4; /* muted */
+
+  --color-border-primary:   #3B3770;
+  --color-border-secondary: #322E5E;
+  --color-border-tertiary:  #28254C;
+
+  --color-accent:          #9A93F5; /* lighter indigo — reads on the dark canvas */
+  --color-accent-hover:    #ABA4FA;
+  --color-accent-contrast: #15132E; /* dark glyph on the light-indigo fill */
+  --color-accent-soft:     #2B2960; /* dark indigo tint for chips / soft fills */
+
+  --color-energy:  #8E86FF;
+  --color-success: #4FB89A;
+  --color-caution: #D9A34D;
+
+  /* Scrim must darken (text-primary is now light, so don't derive from it). */
+  --color-scrim: color-mix(in srgb, #000 70%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.42);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.52);
 }
 
 @media (prefers-reduced-motion: reduce) {

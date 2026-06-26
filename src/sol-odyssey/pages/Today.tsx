@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, Loader2, MessageCircleHeart, PartyPopper, Save } from 'lucide-react'
+import { CheckCircle2, Loader2, MessageCircleHeart, NotebookPen, PartyPopper, Save, Sprout } from 'lucide-react'
+import { ActionPrompt } from '../components/ActionPrompt'
 import { Button } from '../components/Button'
 import { Switch } from '../components/Switch'
 import { Textarea } from '../components/Textarea'
@@ -9,7 +10,9 @@ import { useSettings } from '../lib/settingsContext'
 import { isConfigured, companionActive } from '../lib/settings'
 import { CompanionPanel } from '../components/CompanionPanel'
 import { CommitmentCard } from '../components/CommitmentCard'
+import { BuddyEmailButton } from '../components/BuddyEmailButton'
 import { buildDailyCompanionPrompt, buildLapseCompanionPrompt } from '../lib/companion'
+import { dailyBuddyMail, kickoffBuddyMail } from '../lib/buddyMail'
 import { useActiveOdysseys } from '../lib/useActiveOdysseys'
 import { useNextOdysseyNumber } from '../lib/useNextOdysseyNumber'
 import { usePlanningOdyssey } from '../lib/usePlanningOdyssey'
@@ -100,6 +103,9 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
           body="Your Odyssey hasn’t begun. Rig the system, tell your buddy, and rest until Day 1. The departure is fixed; nothing to perform yet."
         />
         {odyssey.tinyVersion && <TinyReminder value={odyssey.tinyVersion} />}
+        <div className="flex flex-wrap items-center gap-3">
+          <BuddyEmailButton mail={kickoffBuddyMail(settings.buddyName, odyssey)} navigate={navigate} />
+        </div>
         <CommitmentCard odyssey={odyssey} cycleActive={false} />
       </div>
     )
@@ -162,13 +168,9 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
       <Header title={odyssey.title} sub={`Day ${dayIndex} of ${CYCLE_DAYS} · ${weekday}`} />
 
       {dayIndex >= CYCLE_DAYS && (
-        <button
-          onClick={() => navigate('/harvest')}
-          className="flex items-center justify-between gap-3 rounded-md border border-accent bg-accent px-4 py-3 text-left font-sans text-sm text-accent-contrast transition-colors duration-fast hover:bg-accent-hover"
-        >
-          <span>You’ve reached the summit — name what installed and choose what’s next.</span>
-          <span className="font-medium">Harvest →</span>
-        </button>
+        <ActionPrompt variant="solid" icon={Sprout} cta="Harvest" onAction={() => navigate('/harvest')}>
+          You’ve reached the summit — name what installed and choose what’s next.
+        </ActionPrompt>
       )}
 
       {celebrate && (
@@ -179,13 +181,9 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
       )}
 
       {pendingWeek && (
-        <button
-          onClick={() => navigate('/weekly')}
-          className="flex items-center justify-between gap-3 rounded-md border border-accent/30 bg-accent-soft px-4 py-3 text-left font-sans text-sm text-text-primary transition-colors duration-fast hover:bg-accent-soft/70"
-        >
-          <span>Week {pendingWeek} is complete — time to reflect and adjust.</span>
-          <span className="font-medium text-accent">Reflect →</span>
-        </button>
+        <ActionPrompt icon={NotebookPen} cta="Reflect" onAction={() => navigate('/weekly')}>
+          Week {pendingWeek} is complete — time to reflect and adjust.
+        </ActionPrompt>
       )}
 
       {/* The forfeit-on-lapse contract, surfaced where it bites. */}
@@ -244,12 +242,20 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
           value={form.friction}
           onChange={(e) => setForm((f) => ({ ...f, friction: e.target.value }))}
         />
-        <Switch
-          label="Sent to my buddy"
-          description="A self-marked note that you reached out — the app sends nothing."
-          checked={form.sentToBuddy}
-          onCheckedChange={(v) => setForm((f) => ({ ...f, sentToBuddy: v }))}
-        />
+        <div className="flex flex-col gap-3">
+          <Switch
+            label="Sent to my buddy"
+            description="A self-marked note that you reached out — the app sends nothing."
+            checked={form.sentToBuddy}
+            onCheckedChange={(v) => setForm((f) => ({ ...f, sentToBuddy: v }))}
+          />
+          <div className="flex flex-wrap items-center gap-3">
+            <BuddyEmailButton
+              mail={dailyBuddyMail(settings.buddyName, odyssey, form, dayIndex)}
+              navigate={navigate}
+            />
+          </div>
+        </div>
         <SupportingNote note="selfMonitor" />
         <SupportingNote note="sentToBuddy" />
 

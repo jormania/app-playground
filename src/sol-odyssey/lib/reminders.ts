@@ -30,6 +30,8 @@ export interface ReminderState {
   harvestReady: boolean
   /** Stable id for the harvest nudge's once-guard (the Odyssey's id). */
   harvestId: string
+  /** Per-type opt-in (defaults to true if absent). */
+  want: { daily: boolean; weekly: boolean; start: boolean; harvest: boolean }
 }
 
 export const REMINDERS_DB = 'sol-reminders'
@@ -82,7 +84,7 @@ export function weekKey(d: Date): string {
 /** Should the daily nudge fire now? (enabled, cycle active, past the time, today not yet logged,
  *  not already sent today). */
 export function shouldFireDaily(state: ReminderState, lastDailySent: string, now: Date): boolean {
-  if (!state.enabled || !state.cycleActive || state.dailyMinutes == null) return false
+  if (!state.enabled || !state.want.daily || !state.cycleActive || state.dailyMinutes == null) return false
   const today = dateKey(now)
   if (state.todayLogged === today) return false
   if (lastDailySent === today) return false
@@ -92,7 +94,7 @@ export function shouldFireDaily(state: ReminderState, lastDailySent: string, now
 /** Should the weekly nudge fire now? (enabled, a week is due, right weekday, past the slot time,
  *  not already sent this week). */
 export function shouldFireWeekly(state: ReminderState, lastWeeklySent: string, now: Date): boolean {
-  if (!state.enabled || !state.weekly || !state.weeklyDue) return false
+  if (!state.enabled || !state.want.weekly || !state.weekly || !state.weeklyDue) return false
   if (now.getDay() !== state.weekly.dow) return false
   if (lastWeeklySent === weekKey(now)) return false
   return minutesOfDay(now) >= state.weekly.minutes
@@ -101,14 +103,14 @@ export function shouldFireWeekly(state: ReminderState, lastWeeklySent: string, n
 /** Should the "your planned Odyssey is ready to begin" nudge fire? (enabled, a planned draft's start
  *  date has arrived, not already sent for that draft). Event-based — no time-of-day gate. */
 export function shouldFireStart(state: ReminderState, lastStartSent: string): boolean {
-  if (!state.enabled || !state.startReady || !state.startId) return false
+  if (!state.enabled || !state.want.start || !state.startReady || !state.startId) return false
   return lastStartSent !== state.startId
 }
 
 /** Should the "you reached the summit — harvest" nudge fire? (enabled, an Odyssey has hit Day 42,
  *  not already sent for that Odyssey). Event-based — no time-of-day gate. */
 export function shouldFireHarvest(state: ReminderState, lastHarvestSent: string): boolean {
-  if (!state.enabled || !state.harvestReady || !state.harvestId) return false
+  if (!state.enabled || !state.want.harvest || !state.harvestReady || !state.harvestId) return false
   return lastHarvestSent !== state.harvestId
 }
 

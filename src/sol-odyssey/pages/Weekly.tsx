@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Check, Loader2, Lock, MessageCircleHeart, Save } from 'lucide-react'
+import { Check, Loader2, Lock, MessageCircleHeart, Save, Sun } from 'lucide-react'
+import { ActionPrompt } from '../components/ActionPrompt'
 import { Button } from '../components/Button'
 import { Field } from '../components/Field'
 import { Textarea } from '../components/Textarea'
@@ -11,7 +12,9 @@ import { cn } from '../lib/cn'
 import { useSettings } from '../lib/settingsContext'
 import { isConfigured, companionActive } from '../lib/settings'
 import { CompanionPanel } from '../components/CompanionPanel'
+import { BuddyEmailButton } from '../components/BuddyEmailButton'
 import { buildWeeklyCompanionPrompt } from '../lib/companion'
+import { weeklyBuddyMail } from '../lib/buddyMail'
 import { useActiveOdysseys } from '../lib/useActiveOdysseys'
 import { useCheckins } from '../lib/useCheckins'
 import { useReflections, useUpsertReflection } from '../lib/useReflections'
@@ -85,6 +88,9 @@ export function WeeklyPage({ navigate }: { navigate: (to: string) => void }) {
   const errors = reflectionErrors(form)
   const selectedStatus = selectedWeek != null ? weekStatus(selectedWeek, dayIndex, Boolean(recordFor(selectedWeek))) : 'locked'
   const editable = selectedStatus !== 'locked'
+  // Cross-prompt: while reflecting, nudge to log today if the daily check-in is still pending.
+  const cycleActive = dayIndex >= 1 && dayIndex <= 42
+  const todayLogged = checkins.data?.some((r) => r.date === todayISO()) ?? false
 
   function save() {
     if (selectedWeek == null || !odyssey) return
@@ -104,6 +110,12 @@ export function WeeklyPage({ navigate }: { navigate: (to: string) => void }) {
         <span className="font-mono text-xs uppercase tracking-wide text-accent">Weekly reflection · the five questions</span>
         <h2 className="font-display text-2xl">Read the week. Change one thing.</h2>
       </header>
+
+      {cycleActive && !todayLogged && (
+        <ActionPrompt icon={Sun} cta="Log today" onAction={() => navigate('/')}>
+          Today isn’t logged yet — a minute is all it takes before you reflect.
+        </ActionPrompt>
+      )}
 
       {/* Week rail */}
       <div className="flex flex-wrap gap-2">
@@ -225,6 +237,12 @@ export function WeeklyPage({ navigate }: { navigate: (to: string) => void }) {
             checked={form.buddyReflected}
             onCheckedChange={(v) => setForm((f) => ({ ...f, buddyReflected: v }))}
           />
+          <div className="flex flex-wrap items-center gap-3">
+            <BuddyEmailButton
+              mail={weeklyBuddyMail(settings.buddyName, odyssey, form, selectedWeek)}
+              navigate={navigate}
+            />
+          </div>
 
           <SupportingNote note="weeklyReflect" />
 

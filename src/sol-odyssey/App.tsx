@@ -15,6 +15,7 @@ import { useNextOdysseyNumber } from './lib/useNextOdysseyNumber'
 import { useHasCompleted } from './lib/useOdysseyArchive'
 import { useReminderSync } from './lib/useReminderSync'
 import { useSyncStatus } from './lib/syncContext'
+import { useTheme } from './lib/themeContext'
 import { isConfigured } from './lib/settings'
 import { cn } from './lib/cn'
 import {
@@ -27,6 +28,8 @@ import {
   LineChart as StatsIcon,
   BookOpen as GuideIcon,
   Settings as SettingsIcon,
+  Moon as DarkIcon,
+  SunMedium as LightIcon,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -87,6 +90,7 @@ export default function App() {
                 >
                   <GuideIcon size={18} aria-hidden />
                 </a>
+                <ThemeToggle />
                 <NavLink current={route} to="/settings" label="Settings" onClick={navigate} icon={SettingsIcon} iconOnly />
               </nav>
             </div>
@@ -142,6 +146,22 @@ function Home({
     return <LandingPage navigate={navigate} />
   }
   return <TodayPage navigate={navigate} />
+}
+
+function ThemeToggle() {
+  const { resolved, toggle } = useTheme()
+  const dark = resolved === 'dark'
+  return (
+    <button
+      onClick={toggle}
+      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+      aria-pressed={dark}
+      title={dark ? 'Light mode' : 'Dark mode'}
+      className="rounded-md p-2 text-text-secondary transition-colors duration-fast hover:bg-background-secondary"
+    >
+      {dark ? <LightIcon size={18} aria-hidden /> : <DarkIcon size={18} aria-hidden />}
+    </button>
+  )
 }
 
 function SyncPill() {

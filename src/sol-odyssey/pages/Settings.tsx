@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { CheckCircle2, AlertCircle, Loader2, MessageCircleHeart, PlugZap, Save, X } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Loader2, MessageCircleHeart, PlugZap, Save, Trash2, X } from 'lucide-react'
 import { Button } from '../components/Button'
 import { Field } from '../components/Field'
 import { Select } from '../components/Select'
 import { Switch } from '../components/Switch'
+import { Modal } from '../components/Modal'
 import { SupportingNote } from '../components/SupportingNote'
-import { isConfigured, isValidEmail, type Settings } from '../lib/settings'
+import { clearSettings, isConfigured, isValidEmail, type Settings } from '../lib/settings'
 import { useSettings } from '../lib/settingsContext'
+import { useTheme } from '../lib/themeContext'
 import { listActiveOdysseys, normalizeNotionId, type OdysseyDetail } from '../lib/notion'
 import { verifyAnthropicKey } from '../lib/companion'
 import { capabilities, enableReminders, notificationPermission, unregisterPeriodicSync, parseDailyTime, parseWeeklySlot } from '../lib/reminders'
@@ -69,7 +71,9 @@ function LinkCaution({ value }: { value: string }) {
 }
 
 export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
-  const { settings, update } = useSettings()
+  const { settings, update, reload } = useSettings()
+  const { pref, setTheme } = useTheme()
+  const [clearing, setClearing] = useState(false)
   const [form, setForm] = useState<Record<StringKey, string>>(() =>
     Object.fromEntries(STRING_KEYS.map((k) => [k, settings[k]])) as Record<StringKey, string>,
   )
@@ -308,6 +312,41 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
       </section>
 
       <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-6">
+        <h3 className="font-display text-lg">Appearance</h3>
+        <Select
+          label="Theme"
+          hint="System follows your device. The field guide follows the same choice."
+          value={pref}
+          options={[
+            { value: 'light', label: 'Light' },
+            { value: 'dark', label: 'Dark' },
+            { value: 'system', label: 'System' },
+          ]}
+          onChange={(e) => setTheme(e.target.value as 'light' | 'dark' | 'system')}
+        />
+      </section>
+
+      <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-6">
+        <h3 className="font-display text-lg">New Odysseys</h3>
+        <Select
+          label="Default start day"
+          hint="What a new Charter's Day 1 defaults to (you can always change it in the wizard)."
+          value={settings.defaultStart}
+          options={[
+            { value: 'today', label: 'Today' },
+            { value: 'mon', label: 'Next Monday' },
+            { value: 'tue', label: 'Next Tuesday' },
+            { value: 'wed', label: 'Next Wednesday' },
+            { value: 'thu', label: 'Next Thursday' },
+            { value: 'fri', label: 'Next Friday' },
+            { value: 'sat', label: 'Next Saturday' },
+            { value: 'sun', label: 'Next Sunday' },
+          ]}
+          onChange={(e) => update({ defaultStart: e.target.value })}
+        />
+      </section>
+
+      <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-6">
         <h3 className="font-display text-lg">Guidance</h3>
         <p className="font-sans text-sm text-text-secondary">
           New here? Keep these on for gentle background notes along the way. Switch them off once
@@ -406,6 +445,14 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
           checked={settings.remindersEnabled}
           onCheckedChange={toggleReminders}
         />
+        {settings.remindersEnabled && (
+          <div className="flex flex-col gap-3 border-l-2 border-tertiary pl-4">
+            <Switch label="Daily check-in" checked={settings.remindersDaily} onCheckedChange={(v) => update({ remindersDaily: v })} />
+            <Switch label="Weekly reflection" checked={settings.remindersWeekly} onCheckedChange={(v) => update({ remindersWeekly: v })} />
+            <Switch label="A planned Odyssey’s start" checked={settings.remindersStart} onCheckedChange={(v) => update({ remindersStart: v })} />
+            <Switch label="Reaching the summit (harvest)" checked={settings.remindersHarvest} onCheckedChange={(v) => update({ remindersHarvest: v })} />
+          </div>
+        )}
         <p className="font-sans text-xs text-text-secondary">
           {caps.supported
             ? 'Background reminders work best in an installed app on Android or desktop Chrome. On iPhone they can’t run in the background — you’ll still see reminders inside the app.'
@@ -432,6 +479,20 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
         <SupportingNote note="reminders" />
       </section>
 
+      <section className="flex flex-col gap-3 rounded-lg border border-tertiary bg-background-secondary p-6">
+        <h3 className="font-display text-lg">This device</h3>
+        <p className="font-sans text-sm text-text-secondary">
+          Everything above is stored only in this browser. Clearing it removes your token, keys, and
+          buddy from this device — your Notion records are untouched.
+        </p>
+        <div>
+          <Button variant="secondary" onClick={() => setClearing(true)}>
+            <Trash2 size={18} aria-hidden />
+            Clear data on this device
+          </Button>
+        </div>
+      </section>
+
       <section className="flex flex-wrap items-center gap-3">
         <Button onClick={handleSave}>
           <Save size={18} aria-hidden />
@@ -439,6 +500,29 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
         </Button>
         {saved && <span className="font-sans text-sm text-text-secondary">Saved.</span>}
       </section>
+
+      <Modal open={clearing} onClose={() => setClearing(false)} title="Clear data on this device?">
+        <p className="font-sans text-sm text-text-secondary">
+          This removes your Notion token, any keys, and your buddy from <strong>this browser</strong>.
+          Your Notion records aren’t touched — re-enter your details anytime to reconnect.
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setClearing(false)}>
+            Keep it
+          </Button>
+          <Button
+            onClick={() => {
+              clearSettings()
+              reload()
+              setClearing(false)
+              navigate('/')
+            }}
+          >
+            <Trash2 size={18} aria-hidden />
+            Clear
+          </Button>
+        </div>
+      </Modal>
     </div>
   )
 }

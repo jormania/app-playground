@@ -23,6 +23,7 @@ function state(over: Partial<ReminderState> = {}): ReminderState {
     startId: '',
     harvestReady: false,
     harvestId: '',
+    want: { daily: true, weekly: true, start: true, harvest: true },
     ...over,
   }
 }
@@ -71,6 +72,10 @@ describe('shouldFireDaily', () => {
     expect(shouldFireDaily(state({ cycleActive: false }), '', sun1030)).toBe(false)
     expect(shouldFireDaily(state({ enabled: false }), '', sun1030)).toBe(false)
     expect(shouldFireDaily(state({ dailyMinutes: null }), '', sun1030)).toBe(false)
+  })
+  it('respects the per-type opt-out', () => {
+    expect(shouldFireDaily(state({ want: { daily: false, weekly: true, start: true, harvest: true } }), '', sun1030)).toBe(false)
+    expect(shouldFireHarvest(state({ harvestReady: true, harvestId: 'o1', want: { daily: true, weekly: true, start: true, harvest: false } }), '')).toBe(false)
   })
 })
 

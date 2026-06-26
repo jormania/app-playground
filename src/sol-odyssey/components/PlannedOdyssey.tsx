@@ -3,6 +3,9 @@ import { CalendarClock, Loader2, Pencil, Sparkles, Trash2 } from 'lucide-react'
 import { Button } from './Button'
 import { Modal } from './Modal'
 import { SupportingNote } from './SupportingNote'
+import { BuddyEmailButton } from './BuddyEmailButton'
+import { useSettings } from '../lib/settingsContext'
+import { kickoffBuddyMail } from '../lib/buddyMail'
 import { computeDayIndex } from '../lib/charter'
 import {
   useActivatePlanningOdyssey,
@@ -30,6 +33,7 @@ export function PlannedOdysseyCard({
   draft: OdysseyDetail
   navigate: (to: string) => void
 }) {
+  const { settings } = useSettings()
   const activate = useActivatePlanningOdyssey()
   const history = useNextOdysseyNumber()
   const nextNumber = history.data?.nextNumber
@@ -90,6 +94,10 @@ export function PlannedOdysseyCard({
           You can begin before the start date — the daily loop will simply count down to Day 1.
         </p>
       )}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <BuddyEmailButton mail={kickoffBuddyMail(settings.buddyName, draft)} navigate={navigate} />
+      </div>
 
       <SupportingNote note="plannedOdyssey" />
 

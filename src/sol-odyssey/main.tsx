@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import { SettingsProvider } from './lib/settingsContext'
 import { SyncProvider } from './lib/syncContext'
+import { ThemeProvider } from './lib/themeContext'
 import { loadSettings } from './lib/settings'
 import { registerPeriodicSync } from './lib/reminders'
 import './styles/index.css'
@@ -29,11 +30,13 @@ if ('serviceWorker' in navigator) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <SettingsProvider>
-        <SyncProvider>
-          <App />
-        </SyncProvider>
-      </SettingsProvider>
+      <ThemeProvider>
+        <SettingsProvider>
+          <SyncProvider>
+            <App />
+          </SyncProvider>
+        </SettingsProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   </StrictMode>,
 )

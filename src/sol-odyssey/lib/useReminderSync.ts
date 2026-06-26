@@ -67,9 +67,19 @@ export function useReminderSync() {
       startId,
       harvestReady,
       harvestId,
+      want: {
+        daily: settings.remindersDaily,
+        weekly: settings.remindersWeekly,
+        start: settings.remindersStart,
+        harvest: settings.remindersHarvest,
+      },
     })
   }, [
     settings.remindersEnabled,
+    settings.remindersDaily,
+    settings.remindersWeekly,
+    settings.remindersStart,
+    settings.remindersHarvest,
     settings.dailyTime,
     settings.weeklySlot,
     odyssey?.id,

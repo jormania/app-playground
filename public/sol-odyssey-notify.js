@@ -48,25 +48,27 @@
     return t.getUTCFullYear() + '-W' + ('0' + week).slice(-2);
   }
 
+  // Per-type opt-in; absent => true (older snapshots).
+  function wants(s, k) { return !s.want || s.want[k] !== false; }
   function shouldFireDaily(s, lastSent, now) {
-    if (!s || !s.enabled || !s.cycleActive || s.dailyMinutes == null) return false;
+    if (!s || !s.enabled || !wants(s, 'daily') || !s.cycleActive || s.dailyMinutes == null) return false;
     var today = dateKey(now);
     if (s.todayLogged === today) return false;
     if (lastSent === today) return false;
     return minutesOfDay(now) >= s.dailyMinutes;
   }
   function shouldFireWeekly(s, lastSent, now) {
-    if (!s || !s.enabled || !s.weekly || !s.weeklyDue) return false;
+    if (!s || !s.enabled || !wants(s, 'weekly') || !s.weekly || !s.weeklyDue) return false;
     if (now.getDay() !== s.weekly.dow) return false;
     if (lastSent === weekKey(now)) return false;
     return minutesOfDay(now) >= s.weekly.minutes;
   }
   function shouldFireStart(s, lastSent) {
-    if (!s || !s.enabled || !s.startReady || !s.startId) return false;
+    if (!s || !s.enabled || !wants(s, 'start') || !s.startReady || !s.startId) return false;
     return lastSent !== s.startId;
   }
   function shouldFireHarvest(s, lastSent) {
-    if (!s || !s.enabled || !s.harvestReady || !s.harvestId) return false;
+    if (!s || !s.enabled || !wants(s, 'harvest') || !s.harvestReady || !s.harvestId) return false;
     return lastSent !== s.harvestId;
   }
 

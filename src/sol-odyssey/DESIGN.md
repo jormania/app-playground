@@ -1,7 +1,7 @@
 # Sol Odyssey — design system
 
 A self-contained design system on the **Claude Design System** convention: semantic
-CSS-variable tokens, **light mode only**, a single **Deep Indigo** palette. Deep Indigo sits
+CSS-variable tokens, **light + dark**, a single **Deep Indigo** palette. Deep Indigo sits
 between the calm of dark blue and the energy of violet — wisdom, self-mastery, the night sky as
 the canvas for a long navigation.
 
@@ -11,8 +11,14 @@ Components consume **semantic tokens, never raw hex**. Tokens are defined once o
 [`styles/tokens.css`](styles/tokens.css) and mapped into Tailwind in
 [`tailwind.config.js`](../../tailwind.config.js) (`theme.extend.colors`, `borderColor`,
 `fontFamily`, `borderRadius`, `transitionDuration`), so a class like `bg-accent` resolves to
-`var(--color-accent)`. Rebrand the whole app by editing `tokens.css` alone. There is no dark
-theme and no `[data-theme]` — light only, by design.
+`var(--color-accent)`. Rebrand the whole app by editing `tokens.css` alone. **Dark mode** is a
+second palette under `[data-theme="dark"]` on `<html>` (same file) — toggled from the header
+(top-right `Sun`/`Moon`, a quick light/dark flip) and Settings → Appearance (Light / Dark /
+**System**, which follows `prefers-color-scheme`). Default light. The chosen theme lives in a
+shared `localStorage` key (`sol-odyssey:theme`, see `lib/theme.ts` / `themeContext.tsx`) so the
+standalone **field guide reads the same value and serves the same palette**; a `storage` listener
+keeps open pages in sync. A pre-paint inline script in the entry HTML avoids any flash. (The guide
+always **prints light** — its dark rules are `@media screen` only.)
 
 ## Palette — Deep Indigo (light)
 
@@ -77,6 +83,8 @@ from these rather than hand-rolling markup.
 | `PlannedOdyssey` | `PlannedOdysseyCard` (full draft state) + `PlannedOdysseyStrip` (compact "lined up for next"). |
 | `CompanionPanel` | the optional AI reflective companion — quiet `accent-soft` card, visually distinct from buddy elements. |
 | `CommitmentCard` | set/edit the optional forfeit-on-lapse contract (commitment device) on an Odyssey. |
+| `BuddyEmailButton` | one consistent "Draft email to your buddy" affordance (mailto) used at every contact point. |
+| `ActionPrompt` | calm-but-clear "do something elsewhere" nudge — icon in a softly-pulsing ring + CTA; `soft`/`solid`. |
 
 **Buttons vs links:** buttons are for **actions** (Save, Begin, Harvest); **`PageLink`** (text +
 arrow) is for **moving between screens**. Don't mix the two for the same job.
@@ -186,6 +194,18 @@ pure and unit-tested; the worker reimplements the same minimal logic inline. **H
 background delivery is Chromium + installed-PWA only and best-effort on timing; iOS can't run it
 without a server, so it degrades to the in-app surfaces (Settings states this plainly). Opt-in via a
 `remindersEnabled` toggle that requests notification permission.
+
+## Buddy emails (mailto)
+
+At each buddy-contact point — **daily** (Today), **weekly** (Weekly), **kickoff** (start), and
+**harvest** (Day 42) — a single `BuddyEmailButton` builds a `mailto:` from the recorded buddy email
+and a structured plain-text body ([`lib/buddyMail.ts`](lib/buddyMail.ts), pure + tested) and opens
+the user's own mail client. **The app sends nothing** — it hands off a pre-filled draft; the user
+reviews and sends. The "Sent to my buddy" / "Reflected with my buddy" toggles stay manual. Subjects
+carry the Odyssey + the named action; bodies lead with a `[ add your note here ]` space, then a tidy
+recap. Built for mobile too: `\r\n` newlines, ASCII-safe (no glyphs some clients mangle), short
+bodies (avoid truncation), `window.location.href` hand-off, touch-sized button. Disabled with a
+Settings nudge until a valid buddy email is on file.
 
 ## Hand-rolled visuals
 

@@ -10,13 +10,16 @@ conflict). These rules are non-negotiable — apply them to every change here.
 1. **No attribution, ever.** Never name any source of the method — no people, books,
    organizations, programs, or materials — in code, UI, comments, docs, or data. Describe
    techniques generically only.
-2. **Single-user MVP.** One owner. The human buddy is **name + email only** — no messages,
-   emails, templates, or comms screens. No in-app guide. **No dark mode** (light only). Build only
-   what the current milestone scopes; deferred features live in the spec's Roadmap. *(Post-MVP, both
-   opt-in: an **AI reflective companion** — not an AI buddy; it never messages, coaches, or replaces
-   the human buddy — and **local reminders** — see below. Reminders are local, best-effort
-   notifications only: no server, no push service, nothing sent on the user's behalf or to the
-   buddy.)*
+2. **Single-user MVP.** One owner. The human buddy is **name + email only**, and **the app never
+   transmits anything on the user's behalf** (no server, no comms infrastructure). No in-app guide.
+   *(Post-MVP: **dark mode** shipped — Light / Dark / System, default light, a `[data-theme="dark"]`
+   palette toggled from the header/Settings and shared with the guide via `sol-odyssey:theme`.)* Build only what the
+   current milestone scopes; deferred features
+   live in the spec's Roadmap. *(Post-MVP, all opt-in/user-driven: an **AI reflective companion** —
+   not an AI buddy; never messages, coaches, or replaces the human buddy; **local reminders** —
+   local, best-effort notifications only, nothing sent anywhere; and **mailto buddy drafts** — a
+   button pre-fills the user's OWN mail client at each contact point, the app still sends nothing
+   and the buddy toggles stay manual. See below.)*
 3. **No hardcoded credentials.** The app ships with **no Notion token and no database/data-
    source IDs**. The user enters them in **Settings**, stored on-device
    (`localStorage`, see `lib/settings.ts`). Nothing secret goes in the repo, the build, or
@@ -90,3 +93,7 @@ not build ahead (charter wizard, Today/tracker, weekly reflection, offline queue
   **Periodic Background Sync** reading a shared IndexedDB snapshot (the same pattern as Touch Grass's
   `public/sw.js`). **No server, no push service.** Background delivery is Chromium + installed-PWA
   only and best-effort; degrades to the in-app surfaces elsewhere. Reuses `dailyTime`/`weeklySlot`.
+- **Mailto buddy drafts** (`lib/buddyMail.ts`, `components/BuddyEmailButton.tsx`). A "Draft email to
+  your buddy" button at four contact points (daily/weekly/kickoff/harvest) builds a `mailto:` with a
+  structured plain-text body + a note space, opening the user's own mail client. **The app sends
+  nothing**; the buddy toggles stay manual. Mobile-hardened (`\r\n`, ASCII-safe, short, location.href).

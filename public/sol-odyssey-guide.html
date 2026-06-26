@@ -7,6 +7,15 @@
 <meta name="description" content="How to run your own Odyssey: six weeks, one behaviour, witnessed — and how the Sol Odyssey app carries it." />
 <link rel="icon" href="/sol-odyssey-logo.svg" type="image/svg+xml" />
 <meta name="theme-color" content="#4B45C6" />
+<script>
+  // Follow the app's theme (shared localStorage key), set before paint to avoid a flash.
+  try {
+    var p = localStorage.getItem('sol-odyssey:theme');
+    if (p === 'dark' || (p === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  } catch (e) {}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -19,6 +28,25 @@
     --success:#2E8B73; --caution:#C2873A;
     --serif:'Fraunces',Georgia,serif; --sans:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
   }
+  /* Dark theme — same Deep Indigo night palette as the app. Screen only: the guide always PRINTS
+     light (saves ink, keeps the print-ready design intact). */
+  @media screen {
+    html[data-theme='dark']{
+      color-scheme:dark;
+      --bg:#121127; --surface:#1B1940; --surface2:#262350;
+      --ink:#ECEBF8; --muted:#A7A3D4; --faint:#7E7AB0;
+      --border:#3B3770; --border2:#322E5E; --hair:#28254C;
+      --accent:#9A93F5; --accent-soft:#2B2960; --energy:#8E86FF;
+      --success:#4FB89A; --caution:#D9A34D;
+    }
+  }
+  /* Theme toggle — fixed top-right, hidden in print. */
+  .theme-toggle{position:fixed;top:14px;right:14px;z-index:50;width:40px;height:40px;display:flex;
+    align-items:center;justify-content:center;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--muted);cursor:pointer;}
+  .theme-toggle:hover{color:var(--ink);}
+  .theme-toggle svg{width:18px;height:18px;}
+  @media print{.theme-toggle{display:none;}}
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
   html{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;-webkit-font-smoothing:antialiased;}
@@ -27,7 +55,7 @@
   a:hover{text-decoration:underline;}
 
   /* cover */
-  .cover{min-height:92vh;display:flex;flex-direction:column;justify-content:space-between;padding:64px 0 40px;}
+  .cover{min-height:64vh;display:flex;flex-direction:column;justify-content:center;gap:22px;padding:56px 0 44px;}
   .cover .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent);}
   .cover h1{font-family:var(--serif);font-weight:400;font-size:clamp(2.6rem,8vw,4rem);line-height:1.02;margin:18px 0 10px;}
   .cover .sub{font-family:var(--serif);font-style:italic;font-size:clamp(1.05rem,3.4vw,1.4rem);color:var(--muted);}
@@ -99,6 +127,7 @@
 </style>
 </head>
 <body>
+<button class="theme-toggle" type="button" id="themeToggle" aria-label="Toggle dark mode" title="Toggle dark mode"></button>
 <div class="wrap">
 
   <!-- ───────────────── COVER ───────────────── -->
@@ -196,12 +225,12 @@
     </ol>
     <div class="inapp">
       <span class="tag">Good to know</span>
-      <p>Your token is <em>your</em> key to <em>your</em> workspace — the app holds no secret of its own. Check-ins save on your device first and sync to Notion when you're online, so a tunnel or a dead zone never loses a day. Sol Odyssey is installable as an app (a PWA) and runs offline. There's an optional <strong>guidance</strong> setting — gentle background notes along the way — that you can switch off once the method is second nature.</p>
+      <p>Your token is <em>your</em> key to <em>your</em> workspace — the app holds no secret of its own. Check-ins save on your device first and sync to Notion when you're online, so a tunnel or a dead zone never loses a day. Sol Odyssey is installable as an app (a PWA) and runs offline. There's an optional <strong>guidance</strong> setting — gentle background notes along the way — that you can switch off once the method is second nature. Prefer a darker screen? A <strong>Light / Dark / System</strong> theme toggle sits top-right (this guide follows the same choice).</p>
     </div>
 
     <div class="inapp">
       <span class="tag">Optional reminders</span>
-      <p>If you like, switch on <strong>reminders</strong> in Settings: a gentle daily nudge to log (at your check-in time) and a weekly one to reflect (at your call slot), plus a heads-up when a <strong>planned Odyssey's start</strong> arrives and when you reach the <strong>summit</strong> at Day 42. They're <strong>local and best-effort</strong> — on your device only, nothing is ever sent on your behalf, and a nudge is skipped once you've already done that day or week. Background reminders work best in the installed app on Android or desktop Chrome; on iPhone they can't run in the background, so you'll see them inside the app instead. Either way, the reminders are a scaffold, not a master — the daily message to your buddy is what truly carries the loop.</p>
+      <p>If you like, switch on <strong>reminders</strong> in Settings: a gentle daily nudge to log (at your check-in time) and a weekly one to reflect (at your call slot), plus a heads-up when a <strong>planned Odyssey's start</strong> arrives and when you reach the <strong>summit</strong> at Day 42. Each of the four is its own switch, so keep only the ones you want. They're <strong>local and best-effort</strong> — on your device only, nothing is ever sent on your behalf, and a nudge is skipped once you've already done that day or week. Background reminders work best in the installed app on Android or desktop Chrome; on iPhone they can't run in the background, so you'll see them inside the app instead. Either way, the reminders are a scaffold, not a master — the daily message to your buddy is what truly carries the loop.</p>
     </div>
   </section>
 
@@ -326,7 +355,7 @@
 
     <div class="inapp">
       <span class="tag">How the app treats the buddy</span>
-      <p>Sol Odyssey records your buddy as <strong>a name and an email only</strong>, and <strong>sends nothing</strong> — no messages, no reminders, no templates. You arrange the daily message and the weekly call directly, off-app; the app simply keeps the ritual on rails so nothing rests on memory. If your buddy goes quiet for a few days, send one warm nudge, then carry on solo and re-sync at the weekly call. A wobble in the buddy is never a reason to stop your own loop.</p>
+      <p>Sol Odyssey records your buddy as <strong>a name and an email only</strong>, and <strong>sends nothing itself</strong>. To make reaching out effortless, each contact point — your daily check-in, weekly reflection, the kickoff, and the harvest — has a <strong>“Draft email to your buddy”</strong> button: it opens your own mail app with a tidy, pre-filled message (a recap, plus room for your own words) that <em>you</em> review and send. You stay in control; the app never messages anyone. If your buddy goes quiet for a few days, send one warm nudge, then carry on solo and re-sync at the weekly call. A wobble in the buddy is never a reason to stop your own loop.</p>
     </div>
 
     <div class="inapp">
@@ -409,5 +438,32 @@
   </footer>
 
 </div>
+<script>
+  (function () {
+    var KEY = 'sol-odyssey:theme';
+    var SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></svg>';
+    var MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+    var btn = document.getElementById('themeToggle');
+    function pref() { try { var p = localStorage.getItem(KEY); return p === 'dark' || p === 'system' ? p : 'light'; } catch (e) { return 'light'; } }
+    function resolved() { var p = pref(); return p === 'dark' || (p === 'system' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
+    function render(t) { if (btn) btn.innerHTML = t === 'dark' ? SUN : MOON; }
+    function apply() {
+      var t = resolved();
+      if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      else document.documentElement.removeAttribute('data-theme');
+      render(t);
+    }
+    apply();
+    // The guide toggle is a quick light/dark flip (writes an explicit choice).
+    if (btn) btn.addEventListener('click', function () {
+      var t = resolved() === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem(KEY, t); } catch (e) {}
+      apply();
+    });
+    // Follow changes made in the app (other tab, same origin) and the OS scheme when on "system".
+    window.addEventListener('storage', function (e) { if (e.key === KEY) apply(); });
+    try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { if (pref() === 'system') apply(); }); } catch (e) {}
+  })();
+</script>
 </body>
 </html>

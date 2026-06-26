@@ -21,7 +21,7 @@ export interface CharterDraft {
 
 export const CYCLE_DAYS = 42
 
-export function emptyDraft(today = new Date()): CharterDraft {
+export function emptyDraft(today = new Date(), startDate = defaultStartDate(today)): CharterDraft {
   return {
     behaviour: '',
     outcomePicture: '',
@@ -32,7 +32,7 @@ export function emptyDraft(today = new Date()): CharterDraft {
     pairing: '',
     dailySuccess: '',
     whyValue: '',
-    startDate: defaultStartDate(today),
+    startDate,
     confirmedShrink: false,
   }
 }
@@ -102,11 +102,15 @@ function parseUTC(iso: string): Date {
   return new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1))
 }
 
-/** The next Monday on/after `today` — a meaningful Day 1 (today if it's already Monday). */
-export function defaultStartDate(today = new Date()): string {
+const DOW_INDEX: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
+
+/** A meaningful Day 1 from the user's preference: `'today'`, or a weekday (`'mon'`…`'sun'`) meaning
+ *  the next occurrence of that day (today if it's already that day). Defaults to next Monday. */
+export function defaultStartDate(today = new Date(), pref = 'mon'): string {
   const base = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()))
-  const dow = base.getUTCDay() // 0 Sun … 1 Mon
-  const add = (1 - dow + 7) % 7
+  if (pref === 'today') return fmt(base)
+  const target = DOW_INDEX[pref] ?? 1
+  const add = (target - base.getUTCDay() + 7) % 7
   base.setUTCDate(base.getUTCDate() + add)
   return fmt(base)
 }
