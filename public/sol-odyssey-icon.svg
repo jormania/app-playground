@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Sol Odyssey compass">
+  <defs>
+    <linearGradient id="night" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#15123A"/>
+      <stop offset="0.55" stop-color="#241F5B"/>
+      <stop offset="1" stop-color="#322A78"/>
+    </linearGradient>
+    <!-- one 4-point sparkle, centred at origin -->
+    <path id="spark" d="M0 -16 Q3 -3 16 0 Q3 3 0 16 Q-3 3 -16 0 Q-3 -3 0 -16 Z"/>
+  </defs>
+
+  <!-- full-bleed deep-indigo night -->
+  <rect width="512" height="512" fill="url(#night)"/>
+
+  <!-- scattered guide stars (echo the night-voyage; cropped softly on maskable) -->
+  <g fill="#F3EAD4">
+    <use href="#spark" transform="translate(118 128) scale(1)" opacity="0.9"/>
+    <use href="#spark" transform="translate(398 112) scale(0.78)" opacity="0.8"/>
+    <use href="#spark" transform="translate(406 392) scale(0.9)" opacity="0.8"/>
+    <use href="#spark" transform="translate(112 402) scale(0.66)" opacity="0.75"/>
+  </g>
+
+  <!-- compass bezel -->
+  <circle cx="256" cy="256" r="196" fill="none" stroke="#F3EAD4" stroke-width="14"/>
+  <circle cx="256" cy="256" r="176" fill="none" stroke="#E8B84B" stroke-width="3" opacity="0.55"/>
+
+  <!-- diagonal points — warm gold -->
+  <polygon points="341,171 286,256 341,341 256,286 171,341 226,256 171,171 256,226"
+           fill="#E8B84B"/>
+
+  <!-- primary points (N/E/S/W) — cream, dominant -->
+  <polygon points="256,84 284,228 428,256 284,284 256,428 228,284 84,256 228,228"
+           fill="#F3EAD4"/>
+
+  <!-- north point accented in bright indigo so the bearing reads -->
+  <polygon points="256,84 284,228 256,256 228,228" fill="#4F46E5"/>
+
+  <!-- sun hub (Sol) -->
+  <circle cx="256" cy="256" r="30" fill="#E8B84B" stroke="#312E81" stroke-width="8"/>
+  <circle cx="256" cy="256" r="11" fill="#F7F7FC"/>
+</svg>
