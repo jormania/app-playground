@@ -13,6 +13,31 @@ function Stat({ value, label }) {
   )
 }
 
+// A frequency heatmap of tags/people: every value shown as a chip shaded by how
+// often it appears (most-noticed = most intense). Nothing is cut off, so even a
+// once-mentioned name stays visible. `--heat` (0..1) drives the shading in CSS.
+function HeatChips({ items, kind, label }) {
+  if (!items.length) return null
+  const max = items[0].count // items arrive sorted by count desc
+  return (
+    <div className="stat-card span">
+      <div className="stat-label bare">{label}</div>
+      <div className="stat-chips heat">
+        {items.map(it => (
+          <span
+            key={it.name}
+            className={`chip ${kind}`}
+            style={{ '--heat': max > 1 ? (it.count - 1) / (max - 1) : 0 }}
+            title={`${it.count} ${it.count === 1 ? 'time' : 'times'}`}
+          >
+            {it.name} · {it.count}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function StatsModal({ entries, onClose }) {
   const s = useMemo(() => computeStats(entries), [entries])
 
@@ -30,23 +55,9 @@ export default function StatsModal({ entries, onClose }) {
           <Stat value={s.avgWords} label="average words per delight" />
           <Stat value={`${s.shortest}–${s.longest}`} label="shortest and longest" />
           <Stat value={s.totalWords.toLocaleString()} label="words in all delights" />
-          {/* motifs */}
-          {s.topTags.length > 0 && (
-            <div className="stat-card span">
-              <div className="stat-label bare">most-noticed tags</div>
-              <div className="stat-chips">
-                {s.topTags.map(t => <span key={t.name} className="chip tag">{t.name} · {t.count}</span>)}
-              </div>
-            </div>
-          )}
-          {s.topPeople.length > 0 && (
-            <div className="stat-card span">
-              <div className="stat-label bare">people who appear most</div>
-              <div className="stat-chips">
-                {s.topPeople.map(p => <span key={p.name} className="chip person">{p.name} · {p.count}</span>)}
-              </div>
-            </div>
-          )}
+          {/* motifs — frequency heatmaps over every tag / person */}
+          <HeatChips items={s.topTags} kind="tag" label="most-noticed tags" />
+          <HeatChips items={s.topPeople} kind="person" label="people who appear most" />
         </div>
       )}
     </Modal>

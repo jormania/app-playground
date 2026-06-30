@@ -370,6 +370,18 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .stat-label.bare { margin-top: 0; margin-bottom: 6px; }
 .stat-card .chip { margin: 4px 5px 0 0; display: inline-block; }
 .stat-chips { margin-top: 4px; }
+/* Frequency heatmap: --heat (0..1) fills the chip with more of its accent the more
+   often the tag/person appears. calc() keeps even a rare value faintly tinted. */
+.stat-chips.heat { display: flex; flex-wrap: wrap; gap: 6px; }
+.stat-chips.heat .chip { margin: 0; }
+.stat-chips.heat .chip.tag {
+  background: color-mix(in srgb, var(--green) calc(8% + var(--heat, 0) * 30%), transparent);
+  border-color: color-mix(in srgb, var(--green) calc(35% + var(--heat, 0) * 45%), transparent);
+}
+.stat-chips.heat .chip.person {
+  background: color-mix(in srgb, var(--cyan) calc(8% + var(--heat, 0) * 30%), transparent);
+  border-color: color-mix(in srgb, var(--cyan) calc(35% + var(--heat, 0) * 45%), transparent);
+}
 
 /* ── Year heatmap — 7 fixed rows (Mon→Sun), one column per week ── */
 /* fit-content keeps the block exactly as wide as the heatmap and centres it, so

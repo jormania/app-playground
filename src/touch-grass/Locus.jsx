@@ -1,6 +1,7 @@
 import { Fragment, useRef, useEffect } from 'react'
 import { useWorld } from './world.jsx'
 import { daysToFullMoon, getNextSunAnchor } from './context.js'
+import { getZodiac, daysToNextSign } from './zodiac.js'
 import { weatherWord } from './weather.js'
 import ForecastGlyph from './WeatherGlyph.jsx'
 import Sparkle from './Sparkle.jsx'
@@ -100,6 +101,14 @@ const MOON = (
   </g>
 )
 
+// a small zodiac wheel — for the current sign
+const ZODIAC = (
+  <g>
+    <circle cx="12" cy="12" r="8" fill="none" stroke={C.gold} strokeWidth="1.8" />
+    <circle cx="12" cy="12" r="2.4" fill={C.amber} />
+  </g>
+)
+
 const ANCHOR_GLYPH = { sunrise: SUN_HORIZON, noon: SUN_FULL, sunset: SUN_HORIZON, midnight: CRESCENT }
 const ANCHOR_LABEL = { sunrise: 'sunrise', noon: 'noon', sunset: 'sunset', midnight: 'midnight' }
 
@@ -138,6 +147,14 @@ export default function Locus() {
     : toFull <= 0 ? 'full moon tonight'
     : `${toFull}d to full moon`
 
+  // the current sign and how long until the wheel turns to the next — phrased to
+  // echo the moon reading beside it ("23d to leo")
+  const signDate = new Date(now)
+  const sign = getZodiac(signDate)
+  const signDays = daysToNextSign(signDate)
+  const nextSign = signDays != null ? getZodiac(new Date(signDate.getTime() + signDays * 86400000)) : null
+  const signText = signDays != null ? `${sign} · ${signDays}d to ${nextSign}` : null
+
   const cond = weather && weather.condition
   const windy = weather && (weather.wind || 0) >= 28 && !['rain', 'snow', 'thunder'].includes(cond)
   const wxText = cond
@@ -153,6 +170,7 @@ export default function Locus() {
   if (wxText) segs.push({ key: 'wx', glyph: <ForecastGlyph condition={cond} />, text: wxText })
   if (sunText) segs.push({ key: 'sun', glyph: <Glyph>{ANCHOR_GLYPH[anchor.key] || SUN_FULL}</Glyph>, text: sunText })
   if (moonText) segs.push({ key: 'moon', glyph: <Glyph>{MOON}</Glyph>, text: moonText })
+  if (signText) segs.push({ key: 'sign', glyph: <Glyph>{ZODIAC}</Glyph>, text: signText })
 
   // ---- the ticker: drag with a finger; auto-drift at a steady pace; bounce ----
   useEffect(() => {

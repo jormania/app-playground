@@ -9,15 +9,19 @@ function words(entry) {
   return entry.wordCount != null ? entry.wordCount : wordCount(entry.entry)
 }
 
-function topCounts(entries, field, n = 3) {
+// Every distinct value in `field`, with its count, most-frequent first (ties
+// alphabetical). Returns ALL of them — the Stats panel renders these as a
+// frequency heatmap, so nothing is sliced off (a rare tag/person staying visible
+// is the whole point). `limit` is available for callers that want a top-N.
+function rankCounts(entries, field, limit = Infinity) {
   const counts = new Map()
   for (const e of entries) {
     for (const name of e[field] || []) counts.set(name, (counts.get(name) || 0) + 1)
   }
-  return [...counts.entries()]
+  const ranked = [...counts.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .slice(0, n)
     .map(([name, count]) => ({ name, count }))
+  return Number.isFinite(limit) ? ranked.slice(0, limit) : ranked
 }
 
 export function computeStats(entries, today = new Date()) {
@@ -56,7 +60,7 @@ export function computeStats(entries, today = new Date()) {
     daysSinceFirst,
     longest: Math.max(...wordList),
     shortest: Math.min(...wordList),
-    topTags: topCounts(list, 'tags'),
-    topPeople: topCounts(list, 'people'),
+    topTags: rankCounts(list, 'tags'),
+    topPeople: rankCounts(list, 'people'),
   }
 }

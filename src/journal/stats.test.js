@@ -33,6 +33,24 @@ describe('computeStats', () => {
     expect(s2.avgWords).toBe(4)
     expect(s2.totalWords).toBe(4)
   })
+  test('ranks ALL people/tags, never capped — a 4th tied value still shows', () => {
+    // Regression: People were sliced to top-3, so a 4th once-mentioned name
+    // (e.g. "Viorica") vanished. Every distinct value must come through.
+    const list = [
+      { date: '2026-06-24', entry: 'x', tags: [], people: ['Nora'] },
+      { date: '2026-06-23', entry: 'x', tags: [], people: ['Nora'] },
+      { date: '2026-06-22', entry: 'x', tags: [], people: ['Andreia'] },
+      { date: '2026-06-21', entry: 'x', tags: [], people: ['Strangers'] },
+      { date: '2026-06-20', entry: 'x', tags: [], people: ['Viorica'] },
+    ]
+    const r = computeStats(list, today)
+    expect(r.topPeople).toEqual([
+      { name: 'Nora', count: 2 },
+      { name: 'Andreia', count: 1 },
+      { name: 'Strangers', count: 1 },
+      { name: 'Viorica', count: 1 },
+    ])
+  })
   test('empty journal is all zeroes, no crash', () => {
     const z = computeStats([], today)
     expect(z).toMatchObject({ total: 0, last7: 0, avgWords: 0, totalWords: 0, daysSinceFirst: null })

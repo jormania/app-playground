@@ -44,6 +44,17 @@ function loadForcedMoment() {
   }
 }
 
+// A forced moon-phase moment (?event=full-moon|new-moon) should also set the moon
+// itself — otherwise the label says "a Full Moon" while the real phase (and so the
+// sky glyph and the ticker's "Nd to full moon") still reflect today's actual moon,
+// which contradicts it. Tie the two together so the preview reads consistently.
+function moonForMoment(moment) {
+  if (!moment) return null
+  if (moment.key === 'full-moon') return { phase: 0.5, fraction: 1 }
+  if (moment.key === 'new-moon') return { phase: 0, fraction: 0 }
+  return null
+}
+
 // Preview override: append ?light=golden|blue|day|night to force the light.
 function loadForcedLight() {
   try {
@@ -193,7 +204,7 @@ export function WorldProvider({ children }) {
     })
   }
 
-  const moon = forcedMoon || getMoonPhase(now)
+  const moon = forcedMoon || moonForMoment(forcedMoment) || getMoonPhase(now)
   const moments = forcedMoment ? [forcedMoment] : getActiveMoments(now, moon.phase)
 
   const value = {
