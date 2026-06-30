@@ -216,9 +216,10 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
           )}
 
           {!hasActive && !buddyReady && (
-            <div role="alert" className="rounded-md border border-caution/40 bg-background-secondary p-4">
+            <div className="rounded-md border border-caution/40 bg-background-secondary p-4">
               <p className="font-sans text-sm text-text-primary">
-                One human buddy is required before you set out. Add their name and email in{' '}
+                <strong>Strongly recommended:</strong> one human buddy. Being witnessed beats willpower —
+                starting without one is the weakest version of the method. Add their name and email in{' '}
                 <button
                   className="font-medium text-accent underline disabled:opacity-60"
                   onClick={goToSettingsKeepingDraft}
@@ -226,8 +227,8 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
                 >
                   Settings
                 </button>
-                {save.isPending ? ' (saving your charter…)' : ''} — we’ll keep this charter as a draft
-                so it’s waiting when you return.
+                {save.isPending ? ' (saving your charter…)' : ''} — we’ll keep this charter as a draft so
+                it’s waiting when you return. You can still begin now and add a witness this week.
               </p>
             </div>
           )}
@@ -269,7 +270,7 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
                 {save.isPending ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Save size={18} aria-hidden />}
                 Save as planned
               </Button>
-              <Button onClick={begin} disabled={!canActivate(draft) || !buddyReady || busy}>
+              <Button onClick={begin} disabled={!canActivate(draft) || busy}>
                 {activate.isPending || create.isPending ? (
                   <Loader2 size={18} className="animate-spin" aria-hidden />
                 ) : (

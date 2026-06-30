@@ -217,12 +217,19 @@
     <h2><span class="n">§</span>Before you start — your own Notion</h2>
     <p class="lede">Sol Odyssey keeps every personal record in <em>your</em> Notion workspace. The app ships with no account and no data of its own; it's a doorway to your databases, not a vault.</p>
     <ol class="steps">
-      <li>Create a Notion <strong>internal integration</strong> and share your three databases with it — <strong>Odysseys</strong>, <strong>Check-ins</strong>, and <strong>Weekly Reflections</strong>.</li>
-      <li>Open <strong>Settings</strong> in the app and paste your <strong>integration token</strong> and a <strong>link to each of the three databases</strong>. They're stored only in this browser, on your device — never on a server, never in the app.</li>
-      <li>Tap <strong>Test Notion connection</strong>. When it confirms, you're wired end to end.</li>
+      <li><strong>Get the three databases.</strong> The fastest path is to <strong>duplicate the Starter Template</strong> (the three databases, pre-built with the right properties). Or build them yourself from the schema below — <strong>Odysseys</strong>, <strong>Check-ins</strong>, and <strong>Weekly Reflections</strong>.</li>
+      <li>Create a Notion <strong>internal integration</strong> and <strong>share all three databases</strong> with it.</li>
+      <li>Open <strong>Settings</strong> in the app and paste your <strong>integration token</strong> and a <strong>link to each database</strong>. They're stored only in this browser — never on a server, never in the app.</li>
+      <li>Tap <strong>Test Notion connection</strong>. It now <strong>checks every property</strong> too, and tells you exactly what to add if anything is missing or misnamed.</li>
       <li>Add your <strong>buddy's name and email</strong>, and (optionally) your daily check-in time and weekly call slot — recorded for you, not acted on.</li>
-      <li><em>Optional.</em> If you'd like a <strong>safety line</strong> (the forfeit-on-lapse commitment, below), add one text property named <strong>Commitment</strong> to your Odysseys database. Everything else works without it.</li>
     </ol>
+    <div class="inapp">
+      <span class="tag">Database schema — build it exactly</span>
+      <p>Property names and types must match exactly (the Starter Template already does this). Each database needs one <em>title</em> property called <strong>Name</strong>, plus:</p>
+      <p style="margin-top:8px"><strong>Odysseys</strong> — Odyssey Number <span class="muted">(number)</span>, Status <span class="muted">(select: Planning, Active, Maintenance, Completed, Retired)</span>, Start Date / End Date <span class="muted">(date)</span>, and these <em>text</em> properties: Behaviour, Identity Statement, Tiny Version, Anchor, If-Then, Outcome Picture, Pairing, Daily Success, Why / Value, Buddy Name, Buddy Channel, Daily Reminder Time, Weekly Call Slot, Commitment, Notes — plus Outcome <span class="muted">(select: Keep, Grow, Retire)</span>.</p>
+      <p style="margin-top:8px"><strong>Check-ins</strong> — Odyssey <span class="muted">(relation → Odysseys)</span>, Date <span class="muted">(date)</span>, Day Index / Week Index <span class="muted">(number)</span>, Done / Sent To Buddy / Logged Late <span class="muted">(checkbox)</span>, One Line / Friction <span class="muted">(text)</span>.</p>
+      <p style="margin-top:8px"><strong>Weekly Reflections</strong> — Odyssey <span class="muted">(relation → Odysseys)</span>, Week Index <span class="muted">(number)</span>, Date <span class="muted">(date)</span>, Days Done / Temperature <span class="muted">(number)</span>, Fit <span class="muted">(select: Too big, Too vague, About right)</span>, Buddy Reflected <span class="muted">(checkbox)</span>, Break Points / One Adjustment / Risk + Plan <span class="muted">(text)</span>.</p>
+    </div>
     <div class="inapp">
       <span class="tag">Good to know</span>
       <p>Your token is <em>your</em> key to <em>your</em> workspace — the app holds no secret of its own. Check-ins save on your device first and sync to Notion when you're online, so a tunnel or a dead zone never loses a day. Sol Odyssey is installable as an app (a PWA) and runs offline. There's an optional <strong>guidance</strong> setting — gentle background notes along the way — that you can switch off once the method is second nature. Prefer a darker screen? A <strong>Light / Dark / System</strong> theme toggle sits top-right (this guide follows the same choice).</p>
@@ -258,7 +265,7 @@
 
     <div class="inapp">
       <span class="tag">The shrink gate</span>
-      <p>Before it lets the Odyssey begin, the wizard asks: <strong>would you bet you'll do this every single day for 42 days?</strong> If you hesitate, it's still too big — go back and shrink it. The app also asks for a concrete tiny version and anchor, and requires a buddy (name + email) before you begin. Only <strong>one</strong> Odyssey can be Active at a time.</p>
+      <p>Before it lets the Odyssey begin, the wizard asks: <strong>would you bet you'll do this every single day for 42 days?</strong> If you hesitate, it's still too big — go back and shrink it. The app also asks for a concrete tiny version and anchor, and <strong>strongly encourages a buddy</strong> (name + email) — you can begin without one and add a witness within the first week, but a witness is the strongest version of the method. Only <strong>one</strong> Odyssey can be Active at a time.</p>
     </div>
 
     <div class="inapp">
@@ -288,7 +295,7 @@
     <p>A 6×7 grid — six weeks of days. A <strong>filled</strong> square is a done day; an <strong>open</strong> one is a miss — no crosses, no guilt. It shows your current and best streak, but the streak isn't the point.</p>
     <div class="inapp">
       <span class="tag">The one rule of the grid</span>
-      <p>Never skip two days running. One gap is an accident; two in a row is the start of a new habit pointed the wrong way. After a single gap the app surfaces a warm reminder — never a scolding. Tap any day with a note to read it back; a small check marks the days you sent to your buddy. A <strong>temperature</strong> line appears once you've logged weekly reflections.</p>
+      <p>Never skip two days running. One gap is an accident; two in a row is the start of a new habit pointed the wrong way. After a single gap the app surfaces a warm reminder — never a scolding; and if you do drift for a few days, <strong>Today</strong> meets you with a gentle way back (shrink the version, do that one thing) rather than a telling-off. Tap any day that's already passed to read, edit, or <strong>back-fill</strong> it — handy when you did the thing but forgot to log (it's kept honest as "logged late"). A small check marks the days you sent to your buddy; a <strong>temperature</strong> line appears once you've logged weekly reflections.</p>
     </div>
     <p class="note">A miss is data, not a verdict. Note the friction, rejoin tomorrow. Streaks motivate; broken streaks teach. Neither is a reason to stop.</p>
 
@@ -308,7 +315,7 @@
       <tr><td>1 · The data</td><td><strong>Count, don't judge.</strong> How many of the seven days did the tiny version happen? The app pre-fills the count from your check-ins; you confirm it.</td></tr>
       <tr><td>2 · Break points</td><td><strong>Find the pattern.</strong> Where did it slip, and what was the real cue? <span class="muted">Required only if a day was missed — a perfect week has nothing to diagnose.</span></td></tr>
       <tr><td>3 · The fit</td><td><strong>Size is a dial, not a failure.</strong> Too big, too vague, or about right? Nearly every first week, it's too big.</td></tr>
-      <tr><td>4 · The adjustment</td><td><strong>One lever only.</strong> Choose exactly one change for next week — a smaller floor, a new anchor, a different time. Resist the overhaul.</td></tr>
+      <tr><td>4 · The adjustment</td><td><strong>One lever only.</strong> Choose exactly one change for next week — a smaller floor, a new anchor, a different time. Resist the overhaul. If it's a smaller version, tick <em>“make this my new tiny version”</em> and the daily loop updates to match — so the change is real, not just noted.</td></tr>
       <tr><td>5 · The temperature</td><td><strong>Track the shift.</strong> On 1–10, how installed does it feel — how close to automatic? Watch the drift over weeks, not any single number.</td></tr>
     </table>
     <p class="muted">Optionally name the <strong>riskiest moment</strong> next week and a coping plan, and mark that you <strong>reflected with your buddy</strong>. Then switch seats: your buddy answers the same five, and you become the witness.</p>

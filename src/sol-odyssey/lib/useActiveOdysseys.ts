@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isConfigured } from './settings'
 import { useSettings } from './settingsContext'
-import { harvestOdyssey, listActiveOdysseys, type HarvestArgs, type OdysseyDetail } from './notion'
+import { harvestOdyssey, listActiveOdysseys, updateTinyVersion, type HarvestArgs, type OdysseyDetail } from './notion'
 
 export const ACTIVE_ODYSSEYS_KEY = ['activeOdysseys'] as const
 
@@ -13,6 +13,17 @@ export function useActiveOdysseys() {
     queryKey: ACTIVE_ODYSSEYS_KEY,
     queryFn: () => listActiveOdysseys(settings),
     enabled: isConfigured(settings),
+  })
+}
+
+/** Apply a weekly adjustment to the active Odyssey's tiny version (so the daily loop reminds you of
+ *  the new, smaller thing). Refreshes the active read so Today/Overview update at once. */
+export function useUpdateTinyVersion() {
+  const { settings } = useSettings()
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, { odysseyId: string; value: string }>({
+    mutationFn: ({ odysseyId, value }) => updateTinyVersion(settings, odysseyId, value),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ACTIVE_ODYSSEYS_KEY }),
   })
 }
 

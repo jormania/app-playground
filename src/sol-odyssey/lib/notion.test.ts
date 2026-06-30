@@ -469,7 +469,7 @@ describe('check-ins', () => {
       ],
     }
     expect(parseCheckins(json)).toEqual([
-      { id: 'c1', date: '2026-07-12', dayIndex: 7, done: true, oneLine: 'walked', friction: '', sentToBuddy: false },
+      { id: 'c1', date: '2026-07-12', dayIndex: 7, done: true, oneLine: 'walked', friction: '', sentToBuddy: false, loggedLate: false },
     ])
   })
 

@@ -13,8 +13,9 @@ import { CommitmentCard } from '../components/CommitmentCard'
 import { BuddyEmailButton } from '../components/BuddyEmailButton'
 import { buildDailyCompanionPrompt, buildLapseCompanionPrompt } from '../lib/companion'
 import { dailyBuddyMail, kickoffBuddyMail } from '../lib/buddyMail'
-import { useActiveOdysseys } from '../lib/useActiveOdysseys'
+import { useActiveOdysseys, useUpdateTinyVersion } from '../lib/useActiveOdysseys'
 import { useNextOdysseyNumber } from '../lib/useNextOdysseyNumber'
+import type { OdysseyDetail } from '../lib/notion'
 import { usePlanningOdyssey } from '../lib/usePlanningOdyssey'
 import { PlannedOdysseyCard, PlannedOdysseyStrip } from '../components/PlannedOdyssey'
 import { useCheckins, useUpsertCheckin } from '../lib/useCheckins'
@@ -134,12 +135,12 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
     (w) => !(reflections.data?.some((r) => r.weekIndex === w)),
   )
 
-  // Surface the forfeit-on-lapse contract where it bites: when the line is crossed (two missed
-  // days), and — preventively — when a single gap has opened. Only when a contract is set.
+  // A real lapse (two missed days after the practice was under way) → a gentle recovery card. A
+  // single fresh gap → a preventive nudge. The commitment pledge, if any, rides along.
   const records = checkins.data ?? []
   const hasContract = odyssey.commitment.trim().length > 0
-  const lapseCrossed = hasContract && forfeitDue(records, today)
-  const oneGap = hasContract && !lapseCrossed && shouldWarnDontSkipTwice(records, today)
+  const inLapse = forfeitDue(records, today)
+  const oneGap = !inLapse && hasContract && shouldWarnDontSkipTwice(records, today)
 
   function save() {
     const wasDone = todayRecord?.done ?? false
@@ -186,22 +187,13 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
         </ActionPrompt>
       )}
 
-      {/* The forfeit-on-lapse contract, surfaced where it bites. */}
-      {lapseCrossed && (
-        <div role="status" className="flex flex-col gap-2 rounded-md border border-caution/40 bg-background-secondary p-4">
-          <p className="font-sans text-sm font-medium text-text-primary">
-            The line you drew has been crossed — two days missed.
-          </p>
-          <p className="font-sans text-sm text-text-secondary">
-            Honour what you pledged, tell your buddy, and rejoin today. No shame — just the next turn.
-          </p>
-          <p className="rounded-md border-l-2 border-caution/50 bg-background-primary px-3 py-2 font-sans text-sm text-text-primary">
-            “{odyssey.commitment}”
-          </p>
-          {companionActive(settings) && (
-            <CompanionPanel prompt={buildLapseCompanionPrompt(odyssey, odyssey.commitment)} />
-          )}
-        </div>
+      {/* A real lapse — meet it with a way back, not a scolding. */}
+      {inLapse && (
+        <LapseRecovery
+          odyssey={odyssey}
+          hasContract={hasContract}
+          showCompanion={companionActive(settings)}
+        />
       )}
       {oneGap && (
         <div role="status" className="rounded-md border border-caution/40 bg-background-secondary p-4">
@@ -297,6 +289,65 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
         ))}
 
       {draft && <PlannedOdysseyStrip draft={draft} navigate={navigate} />}
+    </div>
+  )
+}
+
+/** A real multi-day lapse, met with a gentle way back: shrink the tiny version and just do that. */
+function LapseRecovery({
+  odyssey,
+  hasContract,
+  showCompanion,
+}: {
+  odyssey: OdysseyDetail
+  hasContract: boolean
+  showCompanion: boolean
+}) {
+  const updateTiny = useUpdateTinyVersion()
+  const [shrink, setShrink] = useState<string | null>(null)
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-accent/30 bg-accent-soft p-5">
+      <p className="font-display text-lg">It’s been a couple of days — come back gently.</p>
+      <p className="font-sans text-sm text-text-secondary">
+        No catching up to do, and no shame. Shrink today’s version until it’s impossible to miss, then
+        just do that one small thing. The ship is still sailing.
+      </p>
+      {hasContract && (
+        <p className="rounded-md border-l-2 border-accent/40 bg-background-primary px-3 py-2 font-sans text-sm text-text-primary">
+          You set this line: “{odyssey.commitment}”
+        </p>
+      )}
+      {shrink == null ? (
+        <div>
+          <Button variant="secondary" onClick={() => setShrink(odyssey.tinyVersion)}>
+            Make the tiny version smaller
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <Textarea
+            label="A smaller tiny version"
+            hint="Halve it again if you’re unsure — make it laughably easy."
+            rows={2}
+            value={shrink}
+            onChange={(e) => setShrink(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button
+              onClick={() => updateTiny.mutate({ odysseyId: odyssey.id, value: shrink }, { onSuccess: () => setShrink(null) })}
+              disabled={!shrink.trim() || updateTiny.isPending}
+            >
+              {updateTiny.isPending ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Save size={18} aria-hidden />}
+              Apply
+            </Button>
+            <Button variant="ghost" onClick={() => setShrink(null)} disabled={updateTiny.isPending}>
+              Cancel
+            </Button>
+          </div>
+          {updateTiny.isError && <p role="alert" className="font-sans text-sm text-caution">{updateTiny.error.message}</p>}
+        </div>
+      )}
+      {showCompanion && <CompanionPanel prompt={buildLapseCompanionPrompt(odyssey, odyssey.commitment)} />}
     </div>
   )
 }

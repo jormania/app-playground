@@ -10,7 +10,7 @@ import { SupportingNote } from '../components/SupportingNote'
 import { clearSettings, isConfigured, isValidEmail, type Settings } from '../lib/settings'
 import { useSettings } from '../lib/settingsContext'
 import { useTheme } from '../lib/themeContext'
-import { listActiveOdysseys, normalizeNotionId, type OdysseyDetail } from '../lib/notion'
+import { normalizeNotionId, runConnectionTest, type ConnectionTest } from '../lib/notion'
 import { verifyAnthropicKey } from '../lib/companion'
 import { capabilities, enableReminders, notificationPermission, unregisterPeriodicSync, parseDailyTime, parseWeeklySlot } from '../lib/reminders'
 
@@ -112,13 +112,18 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
   const formAsSettings = { ...settings, ...form } as Settings
   const ready = isConfigured(formAsSettings)
 
-  const test = useMutation<OdysseyDetail[], Error>({
+  const test = useMutation<ConnectionTest, Error>({
     mutationFn: () => {
       update(form)
-      return listActiveOdysseys({ token: form.token, dsOdysseys: form.dsOdysseys })
+      return runConnectionTest({
+        token: form.token,
+        dsOdysseys: form.dsOdysseys,
+        dsCheckins: form.dsCheckins,
+        dsReflections: form.dsReflections,
+      })
     },
-    // Success is shown by the green "Connected — N Odysseys" panel, not the "Saved." label
-    // (which belongs to the Save button). Testing still persists the form via update() above.
+    // Success is shown by the green "Connected" panel (+ any schema warnings), not the "Saved."
+    // label (which belongs to the Save button). Testing still persists the form via update() above.
   })
 
   // The companion key check lives in its own section with its own button + result.
@@ -235,26 +240,48 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
         )}
 
         {test.isSuccess && (
-          <div className="flex flex-col gap-2 rounded-md border border-success/40 bg-background-primary p-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 size={20} className="text-success" aria-hidden />
-              <p className="font-sans text-sm font-medium text-text-primary">
-                Connected — {test.data.length} active{' '}
-                {test.data.length === 1 ? 'Odyssey' : 'Odysseys'} found.
-              </p>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2 rounded-md border border-success/40 bg-background-primary p-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={20} className="text-success" aria-hidden />
+                <p className="font-sans text-sm font-medium text-text-primary">
+                  Connected — {test.data.odysseys.length} active{' '}
+                  {test.data.odysseys.length === 1 ? 'Odyssey' : 'Odysseys'} found.
+                </p>
+              </div>
+              {test.data.odysseys.length > 0 && (
+                <ul className="ml-7 list-disc font-mono text-sm text-text-secondary">
+                  {test.data.odysseys.map((o) => (
+                    <li key={o.id}>{o.title}</li>
+                  ))}
+                </ul>
+              )}
+              {test.data.odysseys.length === 0 && test.data.issues.length === 0 && (
+                <p className="ml-7 font-sans text-sm text-text-secondary">
+                  The wiring works. No Odyssey is Active yet — that’s expected before you’ve started one.
+                </p>
+              )}
             </div>
-            {test.data.length > 0 && (
-              <ul className="ml-7 list-disc font-mono text-sm text-text-secondary">
-                {test.data.map((o) => (
-                  <li key={o.id}>{o.title}</li>
-                ))}
-              </ul>
-            )}
-            {test.data.length === 0 && (
-              <p className="ml-7 font-sans text-sm text-text-secondary">
-                The wiring works. No Odyssey is Active yet — that’s expected before you’ve
-                started one.
-              </p>
+
+            {test.data.issues.length > 0 && (
+              <div className="flex flex-col gap-2 rounded-md border border-caution/40 bg-background-primary p-4">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={20} className="text-caution" aria-hidden />
+                  <p className="font-sans text-sm font-medium text-text-primary">
+                    Your databases are missing some properties — add these so saving works:
+                  </p>
+                </div>
+                <ul className="ml-7 flex flex-col gap-1 font-sans text-sm text-text-secondary">
+                  {test.data.issues.map((iss) => (
+                    <li key={`${iss.db}-${iss.property}`}>
+                      In <strong className="text-text-primary">{iss.db}</strong>: add a{' '}
+                      <span className="font-mono">{iss.expectedType.replace('_', ' ')}</span> property named{' '}
+                      <span className="font-mono text-text-primary">“{iss.property}”</span>
+                      {iss.actualType ? ` (currently ${iss.actualType.replace('_', ' ')})` : ''}.
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
         )}

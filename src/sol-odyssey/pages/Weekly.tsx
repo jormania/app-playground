@@ -15,7 +15,7 @@ import { CompanionPanel } from '../components/CompanionPanel'
 import { BuddyEmailButton } from '../components/BuddyEmailButton'
 import { buildWeeklyCompanionPrompt } from '../lib/companion'
 import { weeklyBuddyMail } from '../lib/buddyMail'
-import { useActiveOdysseys } from '../lib/useActiveOdysseys'
+import { useActiveOdysseys, useUpdateTinyVersion } from '../lib/useActiveOdysseys'
 import { useCheckins } from '../lib/useCheckins'
 import { useReflections, useUpsertReflection } from '../lib/useReflections'
 import { cycleState } from '../lib/checkins'
@@ -41,9 +41,13 @@ export function WeeklyPage({ navigate }: { navigate: (to: string) => void }) {
   const checkins = useCheckins(odyssey?.id)
   const reflections = useReflections(odyssey?.id)
   const upsert = useUpsertReflection(odyssey?.id)
+  const updateTiny = useUpdateTinyVersion()
 
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
   const [form, setForm] = useState<ReflectionDraft>(EMPTY_REFLECTION)
+  // "Make this my new tiny version" — turns the weekly adjustment into a real change to the loop.
+  const [applyTiny, setApplyTiny] = useState(false)
+  const [newTiny, setNewTiny] = useState('')
 
   const dayIndex = odyssey?.startDate ? cycleState(odyssey.startDate).dayIndex : 0
   const reflectable = reflectableWeeks(dayIndex)
@@ -74,6 +78,9 @@ export function WeeklyPage({ navigate }: { navigate: (to: string) => void }) {
     } else {
       setForm({ ...EMPTY_REFLECTION, daysDone: daysDoneInWeek(checkins.data ?? [], selectedWeek) })
     }
+    // Reset the "apply tiny version" control for the newly-selected week.
+    setApplyTiny(false)
+    setNewTiny(odyssey?.tinyVersion ?? '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWeek, reflections.data, checkins.data])
 
@@ -92,6 +99,8 @@ export function WeeklyPage({ navigate }: { navigate: (to: string) => void }) {
   const cycleActive = dayIndex >= 1 && dayIndex <= 42
   const todayLogged = checkins.data?.some((r) => r.date === todayISO()) ?? false
 
+  const tinyChanged = applyTiny && newTiny.trim().length > 0 && newTiny.trim() !== (odyssey?.tinyVersion ?? '').trim()
+
   function save() {
     if (selectedWeek == null || !odyssey) return
     upsert.mutate({
@@ -102,6 +111,8 @@ export function WeeklyPage({ navigate }: { navigate: (to: string) => void }) {
       existingId: recordFor(selectedWeek)?.id,
       draft: form,
     })
+    // If asked, make the adjustment real: update the tiny version the daily loop reminds you of.
+    if (tinyChanged) updateTiny.mutate({ odysseyId: odyssey.id, value: newTiny })
   }
 
   return (
@@ -209,6 +220,25 @@ export function WeeklyPage({ navigate }: { navigate: (to: string) => void }) {
             />
             {errors.oneAdjustment && <p className="font-sans text-sm text-caution">{errors.oneAdjustment}</p>}
             <div className="mt-2"><SupportingNote note="oneLever" /></div>
+
+            {/* Make the adjustment real: optionally update the tiny version the daily loop shows. */}
+            <div className="mt-3 flex flex-col gap-3 rounded-md border border-dashed border-tertiary bg-background-secondary p-4">
+              <Switch
+                label="Make this my new tiny version"
+                description="Update what the daily loop reminds you to do, from now on."
+                checked={applyTiny}
+                onCheckedChange={setApplyTiny}
+              />
+              {applyTiny && (
+                <Textarea
+                  label="New tiny version"
+                  hint="Keep it laughably small — the kind you can’t fail on a bad day."
+                  rows={2}
+                  value={newTiny}
+                  onChange={(e) => setNewTiny(e.target.value)}
+                />
+              )}
+            </div>
           </Question>
 
           <Question n={5} title="The temperature" imperative="Track the shift toward automatic.">
@@ -266,11 +296,13 @@ export function WeeklyPage({ navigate }: { navigate: (to: string) => void }) {
             {upsert.isSuccess && !upsert.isPending && (
               <span className="font-sans text-sm text-text-secondary">
                 {upsert.data?.queued ? 'Saved · will sync' : 'Saved.'}
+                {updateTiny.isSuccess ? ' Tiny version updated.' : ''}
               </span>
             )}
           </div>
 
           {upsert.isError && <p role="alert" className="font-sans text-sm text-caution">{upsert.error.message}</p>}
+          {updateTiny.isError && <p role="alert" className="font-sans text-sm text-caution">Couldn’t update the tiny version: {updateTiny.error.message}</p>}
         </section>
       )}
     </div>

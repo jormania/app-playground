@@ -1,20 +1,26 @@
-import { useState } from 'react'
-import { Check } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Check, Loader2, Save } from 'lucide-react'
 import { Notice } from '../components/Notice'
 import { SupportingNote } from '../components/SupportingNote'
 import { Sparkline } from '../components/Sparkline'
 import { Modal } from '../components/Modal'
+import { Switch } from '../components/Switch'
+import { Textarea } from '../components/Textarea'
+import { Button } from '../components/Button'
 import { useSettings } from '../lib/settingsContext'
 import { isConfigured } from '../lib/settings'
 import { useActiveOdysseys } from '../lib/useActiveOdysseys'
-import { useCheckins } from '../lib/useCheckins'
+import { useCheckins, useUpsertCheckin } from '../lib/useCheckins'
 import { useReflections } from '../lib/useReflections'
 import { CYCLE_DAYS, isoAddDays, todayISO } from '../lib/charter'
 import {
   bestStreak,
+  canSaveCheckin,
   currentStreak,
   cycleState,
   shouldWarnDontSkipTwice,
+  EMPTY_CHECKIN,
+  type CheckinDraft,
   type CheckinRecord,
 } from '../lib/checkins'
 import { cn } from '../lib/cn'
@@ -25,6 +31,7 @@ interface CellInfo {
   state: CellState
   rec?: CheckinRecord
   hasEntry: boolean
+  editable: boolean
 }
 
 export function TrackerPage({ navigate }: { navigate: (to: string) => void }) {
@@ -33,7 +40,9 @@ export function TrackerPage({ navigate }: { navigate: (to: string) => void }) {
   const odyssey = active.data?.[0]
   const checkins = useCheckins(odyssey?.id)
   const reflections = useReflections(odyssey?.id)
+  const upsert = useUpsertCheckin(odyssey?.id)
   const [openDay, setOpenDay] = useState<number | null>(null)
+  const [form, setForm] = useState<CheckinDraft>(EMPTY_CHECKIN)
 
   if (!isConfigured(settings)) {
     return <Notice title="Connect Notion first" body="Add your token and database links in Settings." actionLabel="Open Settings" onAction={() => navigate('/settings')} />
@@ -57,6 +66,9 @@ export function TrackerPage({ navigate }: { navigate: (to: string) => void }) {
     .filter((r) => r.temperature >= 1)
     .map((r) => ({ week: r.weekIndex, temperature: r.temperature }))
 
+  // Days that have already happened (day 1 … today) can be opened to view, edit, or back-fill.
+  const lastOccurredDay = cycle.dayIndex >= 1 ? Math.min(cycle.dayIndex, CYCLE_DAYS) : 0
+
   function cellInfo(dayIndex: number): CellInfo {
     const date = isoAddDays(start, dayIndex - 1)
     const rec = recordByDate.get(date)
@@ -65,10 +77,44 @@ export function TrackerPage({ navigate }: { navigate: (to: string) => void }) {
     else if (dayIndex === cycle.dayIndex) state = 'today'
     else if (dayIndex < cycle.dayIndex) state = 'miss'
     else state = 'future'
-    return { state, rec, hasEntry: Boolean(rec && (rec.oneLine.trim() || rec.friction.trim())) }
+    return {
+      state,
+      rec,
+      hasEntry: Boolean(rec && (rec.oneLine.trim() || rec.friction.trim())),
+      editable: dayIndex <= lastOccurredDay,
+    }
   }
 
-  const openRec = openDay != null ? recordByDate.get(isoAddDays(start, openDay - 1)) : undefined
+  const openDate = openDay != null ? isoAddDays(start, openDay - 1) : ''
+  const openRec = openDay != null ? recordByDate.get(openDate) : undefined
+
+  // Seed the editor when a day is opened.
+  useEffect(() => {
+    if (openDay == null) return
+    setForm(
+      openRec
+        ? { done: openRec.done, oneLine: openRec.oneLine, friction: openRec.friction, sentToBuddy: openRec.sentToBuddy }
+        : EMPTY_CHECKIN,
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openDay, openRec?.id])
+
+  function saveDay() {
+    if (openDay == null || !odyssey) return
+    const isToday = openDate === today
+    upsert.mutate(
+      {
+        odysseyId: odyssey.id,
+        odysseyNumber: odyssey.number ?? 1,
+        dateISO: openDate,
+        dayIndex: openDay,
+        existingId: openRec?.id,
+        // Mark a back-filled past day as logged-late (keep an existing marker if there is one).
+        draft: { ...form, loggedLate: openRec ? openRec.loggedLate : !isToday },
+      },
+      { onSuccess: () => setOpenDay(null) },
+    )
+  }
 
   const columnLabels = Array.from({ length: 7 }, (_, i) =>
     new Date(`${isoAddDays(start, i)}T12:00:00`).toLocaleDateString(undefined, { weekday: 'narrow' }),
@@ -138,33 +184,48 @@ export function TrackerPage({ navigate }: { navigate: (to: string) => void }) {
       <SupportingNote note="selfCompassion" />
 
       <Modal open={openDay != null} onClose={() => setOpenDay(null)} title={`Day ${openDay ?? ''}`}>
-        {openRec ? (
-          <div className="flex flex-col gap-3">
-            <span
-              className={cn(
-                'w-fit rounded-pill px-2.5 py-0.5 font-mono text-xs',
-                openRec.done ? 'bg-success/15 text-success' : 'bg-caution/15 text-caution',
-              )}
-            >
-              {openRec.done ? 'Done' : 'Missed'}
-              {openRec.sentToBuddy ? ' · sent to buddy' : ''}
-            </span>
-            <Entry label="One line" value={openRec.oneLine} />
-            {openRec.friction.trim() && <Entry label="Friction" value={openRec.friction} />}
+        <div className="flex flex-col gap-4">
+          {openDate && openDate !== today && (
+            <p className="font-mono text-xs uppercase tracking-wide text-text-secondary">
+              {openDate} · catching up on a past day{openRec?.loggedLate ? ' · logged late' : ''}
+            </p>
+          )}
+          <Switch
+            label="Did the tiny version"
+            checked={form.done}
+            onCheckedChange={(v) => setForm((f) => ({ ...f, done: v }))}
+          />
+          <Textarea
+            label="One line"
+            required
+            placeholder="What happened, or what you noticed."
+            rows={2}
+            value={form.oneLine}
+            onChange={(e) => setForm((f) => ({ ...f, oneLine: e.target.value }))}
+          />
+          <Textarea
+            label="Friction (optional)"
+            rows={2}
+            value={form.friction}
+            onChange={(e) => setForm((f) => ({ ...f, friction: e.target.value }))}
+          />
+          <Switch
+            label="Sent to my buddy"
+            checked={form.sentToBuddy}
+            onCheckedChange={(v) => setForm((f) => ({ ...f, sentToBuddy: v }))}
+          />
+          {upsert.isError && <p role="alert" className="font-sans text-sm text-caution">{upsert.error.message}</p>}
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setOpenDay(null)} disabled={upsert.isPending}>
+              Cancel
+            </Button>
+            <Button onClick={saveDay} disabled={!canSaveCheckin(form) || upsert.isPending}>
+              {upsert.isPending ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Save size={18} aria-hidden />}
+              {openRec ? 'Update day' : 'Save day'}
+            </Button>
           </div>
-        ) : (
-          <p className="font-sans text-sm text-text-secondary">Nothing logged for this day.</p>
-        )}
+        </div>
       </Modal>
-    </div>
-  )
-}
-
-function Entry({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="font-mono text-xs uppercase tracking-wide text-text-secondary">{label}</span>
-      <p className="font-sans text-text-primary">{value || <span className="text-text-secondary">—</span>}</p>
     </div>
   )
 }
@@ -183,14 +244,14 @@ function Week({
       <span className="flex items-center font-mono text-xs text-text-secondary">W{week}</span>
       {Array.from({ length: 7 }, (_, d) => {
         const dayIndex = (week - 1) * 7 + d + 1
-        const { state, rec, hasEntry } = cellInfo(dayIndex)
+        const { state, rec, editable } = cellInfo(dayIndex)
         const classes = cn(
           'relative aspect-square rounded-md border transition-colors duration-fast',
           state === 'done' && 'border-accent bg-accent',
           state === 'miss' && 'border-secondary bg-background-primary',
           state === 'today' && 'border-accent bg-accent-soft ring-1 ring-accent',
           state === 'future' && 'border-tertiary bg-background-tertiary/40',
-          hasEntry && 'cursor-pointer hover:opacity-80 focus-visible:outline-none',
+          editable && 'cursor-pointer hover:opacity-80 focus-visible:outline-none',
         )
         const sentMark = rec?.sentToBuddy ? (
           <Check
@@ -203,8 +264,8 @@ function Week({
           />
         ) : null
 
-        return hasEntry ? (
-          <button key={d} type="button" title={`Day ${dayIndex} — read note`} onClick={() => onOpen(dayIndex)} className={classes}>
+        return editable ? (
+          <button key={d} type="button" title={`Day ${dayIndex} — view or edit`} onClick={() => onOpen(dayIndex)} className={classes}>
             {sentMark}
           </button>
         ) : (

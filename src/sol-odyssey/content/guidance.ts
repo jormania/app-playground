@@ -72,7 +72,7 @@ export const GUIDANCE = {
   // ── Tracker ──────────────────────────────────────────────────────────────────────────────
   trackerLegend: {
     summary: 'Reading the grid',
-    body: 'Filled = a done day. Open = a miss — no crosses, no guilt. Tap any day that has a note to read it back; a small check on a cell marks a day you sent to your buddy. At a glance, the groove forms — and seeing it form is the whole point of the grid.',
+    body: 'Filled = a done day. Open = a miss — no crosses, no guilt. Tap any day that has already happened to read, edit, or back-fill it (handy when you did the thing but forgot to log — it’s marked logged-late, kept honest). A small check on a cell marks a day you sent to your buddy. At a glance, the groove forms — and seeing it form is the whole point of the grid.',
   },
   flexibleStreak: {
     summary: 'About the streak',

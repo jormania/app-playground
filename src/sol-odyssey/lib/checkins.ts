@@ -9,6 +9,8 @@ export interface CheckinDraft {
   oneLine: string
   friction: string
   sentToBuddy: boolean
+  /** Set when the entry is back-filled on a later day (an honest "logged late" marker). */
+  loggedLate?: boolean
 }
 
 export interface CheckinRecord extends CheckinDraft {
@@ -22,6 +24,7 @@ export const EMPTY_CHECKIN: CheckinDraft = {
   oneLine: '',
   friction: '',
   sentToBuddy: false,
+  loggedLate: false,
 }
 
 /** Validation: one line a day is the point — the highest-yield habit lever — so it's required to
@@ -129,7 +132,7 @@ export function buildCheckinProperties(
   dayIndex: number,
   odysseyNumber: number,
 ): Record<string, unknown> {
-  return {
+  const props: Record<string, unknown> = {
     Name: { title: [{ text: { content: checkinName(odysseyNumber, dayIndex, dateISO) } }] },
     Odyssey: { relation: [{ id: odysseyId }] },
     Date: { date: { start: dateISO } },
@@ -140,4 +143,8 @@ export function buildCheckinProperties(
     Friction: richText(draft.friction),
     'Sent To Buddy': { checkbox: draft.sentToBuddy },
   }
+  // Only sent when actually true — so a normal (on-time) check-in never needs the optional
+  // "Logged Late" column to exist, and existing setups keep working untouched.
+  if (draft.loggedLate) props['Logged Late'] = { checkbox: true }
+  return props
 }

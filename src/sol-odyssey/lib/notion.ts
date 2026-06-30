@@ -26,6 +26,7 @@ import {
   type ReflectionRecord,
 } from './reflections'
 import { buildHarvestProperties, type Outcome } from './harvest'
+import { validateSchema, type DbKey, type SchemaIssue } from './schema'
 
 export const RELAY_ENDPOINT = '/api/notion'
 
@@ -317,6 +318,53 @@ async function callRelay(
   return data
 }
 
+/** Pure: a GET for a database's metadata (its property schema). */
+export function databaseSchemaRequest(database: string): NotionRequest {
+  const id = normalizeNotionId(database)
+  if (!id) throw new Error('That doesn’t look like a Notion database link or ID.')
+  return { path: `databases/${id}`, method: 'GET' }
+}
+
+/** Read a database's properties map (name → { type, … }). */
+export async function fetchDatabaseProperties(
+  token: string,
+  database: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Record<string, { type?: string }>> {
+  const data = await callRelay(token, databaseSchemaRequest(database), fetchImpl)
+  return ((data as { properties?: Record<string, { type?: string }> })?.properties) ?? {}
+}
+
+export interface ConnectionTest {
+  odysseys: OdysseyDetail[]
+  issues: SchemaIssue[]
+}
+
+/** The full "Test connection": list Active Odysseys AND validate all three databases' schemas, so a
+ *  missing/misnamed property is caught here rather than as a cryptic write failure on Day 1. */
+export async function runConnectionTest(
+  settings: Pick<Settings, 'token' | 'dsOdysseys' | 'dsCheckins' | 'dsReflections'>,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ConnectionTest> {
+  const odysseys = await listActiveOdysseys(settings, fetchImpl)
+  const dbs: [DbKey, string][] = [
+    ['odysseys', settings.dsOdysseys],
+    ['checkins', settings.dsCheckins],
+    ['reflections', settings.dsReflections],
+  ]
+  const issues: SchemaIssue[] = []
+  for (const [key, db] of dbs) {
+    if (!db.trim()) continue
+    try {
+      const props = await fetchDatabaseProperties(settings.token, db, fetchImpl)
+      issues.push(...validateSchema(key, props))
+    } catch {
+      /* a per-DB read failure shows up via the main error; skip its schema check */
+    }
+  }
+  return { odysseys, issues }
+}
+
 /** List the Active Odysseys end-to-end via the relay. */
 export async function listActiveOdysseys(
   settings: Pick<Settings, 'token' | 'dsOdysseys'>,
@@ -484,6 +532,18 @@ export async function writeCommitment(
   }
 }
 
+/** Update the active Odyssey's Tiny Version — so a weekly "one adjustment" can actually change what
+ *  the daily loop reminds you to do. */
+export async function updateTinyVersion(
+  settings: Pick<Settings, 'token'>,
+  odysseyId: string,
+  value: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<void> {
+  const properties = { 'Tiny Version': { rich_text: value.trim() ? [{ text: { content: value.trim() } }] : [] } }
+  await callRelay(settings.token, updatePageRequest(odysseyId, properties), fetchImpl)
+}
+
 // ── Check-ins (the daily loop) ──────────────────────────────────────────────────────────────
 
 /** Pure: PATCH an existing page's properties (classic API). */
@@ -517,6 +577,7 @@ export function parseCheckinPage(page: unknown): CheckinRecord {
     oneLine: textProp(props, 'One Line'),
     friction: textProp(props, 'Friction'),
     sentToBuddy: checkboxProp(props, 'Sent To Buddy'),
+    loggedLate: checkboxProp(props, 'Logged Late'),
   }
 }
 

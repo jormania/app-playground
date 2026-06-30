@@ -95,5 +95,13 @@ not build ahead (charter wizard, Today/tracker, weekly reflection, offline queue
   only and best-effort; degrades to the in-app surfaces elsewhere. Reuses `dailyTime`/`weeklySlot`.
 - **Mailto buddy drafts** (`lib/buddyMail.ts`, `components/BuddyEmailButton.tsx`). A "Draft email to
   your buddy" button at four contact points (daily/weekly/kickoff/harvest) builds a `mailto:` with a
-  structured plain-text body + a note space, opening the user's own mail client. **The app sends
-  nothing**; the buddy toggles stay manual. Mobile-hardened (`\r\n`, ASCII-safe, short, location.href).
+  structured plain-text body, opening the user's own mail client. **The app sends nothing**; the buddy
+  toggles stay manual. Mobile-hardened (`\r\n`, ASCII-safe, short, location.href).
+- **Setup + process support.** `lib/schema.ts` is the source of truth for the Notion schema;
+  **Test connection now validates every property** in all 3 DBs (`runConnectionTest`) and names what
+  to add. The weekly "one adjustment" can **update the active Tiny Version** (`updateTinyVersion`); the
+  **Tracker edits/back-fills past days** (optional `Logged Late` checkbox, written only when set); a
+  **lapse-recovery card** on Today offers to shrink the tiny version; the **buddy is now a strong
+  nudge, not a hard gate**. Optional new Odysseys-DB column: `Commitment`; optional Check-ins column:
+  `Logged Late`. (A "Sol Odyssey — Starter Template" Notion page with all 3 DBs lives under the spec
+  page for duplication.)
