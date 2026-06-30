@@ -58,7 +58,7 @@ export function HarvestPage({ navigate }: { navigate: (to: string) => void }) {
         <SupportingNote note={outcomeNote} />
         <SupportingNote note="compounding" />
         <div className="flex flex-wrap items-center gap-3">
-          <BuddyEmailButton mail={harvestBuddyMail(settings.buddyName, chosen)} navigate={navigate} />
+          <BuddyEmailButton email={harvestBuddyMail(settings.buddyName, settings.userName, chosen)} navigate={navigate} />
         </div>
         <div className="flex flex-wrap gap-3">
           <Button onClick={() => navigate('/charter')}>

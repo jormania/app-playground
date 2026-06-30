@@ -83,7 +83,7 @@ from these rather than hand-rolling markup.
 | `PlannedOdyssey` | `PlannedOdysseyCard` (full draft state) + `PlannedOdysseyStrip` (compact "lined up for next"). |
 | `CompanionPanel` | the optional AI reflective companion — quiet `accent-soft` card, visually distinct from buddy elements. |
 | `CommitmentCard` | set/edit the optional forfeit-on-lapse contract (commitment device) on an Odyssey. |
-| `BuddyEmailButton` | one consistent "Draft email to your buddy" affordance (mailto) used at every contact point. |
+| `BuddyEmailButton` | one consistent "copy this email → open Gmail" affordance (rich clipboard) used at every contact point + the welcome package. |
 | `ActionPrompt` | calm-but-clear "do something elsewhere" nudge — icon in a softly-pulsing ring + CTA; `soft`/`solid`. |
 
 **Buttons vs links:** buttons are for **actions** (Save, Begin, Harvest); **`PageLink`** (text +
@@ -195,17 +195,32 @@ background delivery is Chromium + installed-PWA only and best-effort on timing; 
 without a server, so it degrades to the in-app surfaces (Settings states this plainly). Opt-in via a
 `remindersEnabled` toggle that requests notification permission.
 
-## Buddy emails (mailto)
+## Buddy emails (copy rich text → Gmail)
 
 At each buddy-contact point — **daily** (Today), **weekly** (Weekly), **kickoff** (start), and
-**harvest** (Day 42) — a single `BuddyEmailButton` builds a `mailto:` from the recorded buddy email
-and a structured plain-text body ([`lib/buddyMail.ts`](lib/buddyMail.ts), pure + tested) and opens
-the user's own mail client. **The app sends nothing** — it hands off a pre-filled draft; the user
-reviews and sends. The "Sent to my buddy" / "Reflected with my buddy" toggles stay manual. Subjects
-carry the Odyssey + the named action; bodies lead with a `[ add your note here ]` space, then a tidy
-recap. Built for mobile too: `\r\n` newlines, ASCII-safe (no glyphs some clients mangle), short
-bodies (avoid truncation), `window.location.href` hand-off, touch-sized button. Disabled with a
-Settings nudge until a valid buddy email is on file.
+**harvest** (Day 42), plus the one-time **welcome package** (Settings) — a single `BuddyEmailButton`
+copies a formatted note to the clipboard, then opens Gmail's compose window pre-addressed (`to` +
+`su`); the user **pastes** the body and sends. **The app sends nothing.** No `mailto:` — that path
+was replaced because it only ever produced plain text and depended on a configured desktop mail
+client.
+
+How it works:
+- [`lib/buddyMail.ts`](lib/buddyMail.ts) (pure + tested) builds each email as **structured content**
+  — `{ heading, greeting, intro, sections[], outro }`, each section a list of `{ emoji, label,
+  value }` rows. Optional fields drop out when empty. Field-by-field *explanations for the buddy* are
+  NOT in the recurring notes — they live once in `buddyWelcomeEmail`, so the daily/weekly emails stay
+  short.
+- `BuddyEmailButton` renders that model into an **off-screen rich template** (`RichEmail`) and writes
+  two clipboard flavours via `navigator.clipboard.write([new ClipboardItem(...)])`: `text/html` from
+  the template's `.innerHTML` (inline-CSS only, **no SVGs/images** — mail clients strip them; accents
+  are Unicode emojis + a `border-left` rail), and `text/plain` from the **deterministic**
+  `emailToPlainText(email)` (not `.innerText` — layout-independent and unit-testable). Degrades:
+  `ClipboardItem` → `writeText` → `execCommand('copy')`; if the popup is blocked, a manual "open
+  Gmail" link is shown. After copy it tells the user to paste (Ctrl/⌘+V).
+- Subjects carry the Odyssey + the named action **and the runner's own name** (`Settings.userName`,
+  a field beside the buddy fields) so the buddy sees who it's from. The "Sent to my buddy" /
+  "Reflected with my buddy" toggles stay manual. Disabled with a Settings nudge until a valid buddy
+  email is on file.
 
 ## Hand-rolled visuals
 

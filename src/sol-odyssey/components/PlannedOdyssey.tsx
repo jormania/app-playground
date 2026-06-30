@@ -96,7 +96,7 @@ export function PlannedOdysseyCard({
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <BuddyEmailButton mail={kickoffBuddyMail(settings.buddyName, draft)} navigate={navigate} />
+        <BuddyEmailButton email={kickoffBuddyMail(settings.buddyName, settings.userName, draft)} navigate={navigate} />
       </div>
 
       <SupportingNote note="plannedOdyssey" />

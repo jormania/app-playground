@@ -17,9 +17,10 @@ conflict). These rules are non-negotiable — apply them to every change here.
    current milestone scopes; deferred features
    live in the spec's Roadmap. *(Post-MVP, all opt-in/user-driven: an **AI reflective companion** —
    not an AI buddy; never messages, coaches, or replaces the human buddy; **local reminders** —
-   local, best-effort notifications only, nothing sent anywhere; and **mailto buddy drafts** — a
-   button pre-fills the user's OWN mail client at each contact point, the app still sends nothing
-   and the buddy toggles stay manual. See below.)*
+   local, best-effort notifications only, nothing sent anywhere; and **buddy email drafts** — a
+   button copies a formatted note to the clipboard and opens Gmail's compose window at each contact
+   point (the user pastes + sends), the app still sends nothing and the buddy toggles stay manual.
+   See below.)*
 3. **No hardcoded credentials.** The app ships with **no Notion token and no database/data-
    source IDs**. The user enters them in **Settings**, stored on-device
    (`localStorage`, see `lib/settings.ts`). Nothing secret goes in the repo, the build, or
@@ -93,10 +94,15 @@ not build ahead (charter wizard, Today/tracker, weekly reflection, offline queue
   **Periodic Background Sync** reading a shared IndexedDB snapshot (the same pattern as Touch Grass's
   `public/sw.js`). **No server, no push service.** Background delivery is Chromium + installed-PWA
   only and best-effort; degrades to the in-app surfaces elsewhere. Reuses `dailyTime`/`weeklySlot`.
-- **Mailto buddy drafts** (`lib/buddyMail.ts`, `components/BuddyEmailButton.tsx`). A "Draft email to
-  your buddy" button at four contact points (daily/weekly/kickoff/harvest) builds a `mailto:` with a
-  structured plain-text body, opening the user's own mail client. **The app sends nothing**; the buddy
-  toggles stay manual. Mobile-hardened (`\r\n`, ASCII-safe, short, location.href).
+- **Buddy email drafts — copy rich text → Gmail** (`lib/buddyMail.ts`, `components/BuddyEmailButton.tsx`).
+  At four contact points (daily/weekly/kickoff/harvest) plus a one-time **welcome package** (Settings),
+  the button copies a formatted note to the clipboard (`ClipboardItem` with `text/html` from an
+  off-screen template + `text/plain` from the deterministic `emailToPlainText`), then opens Gmail's
+  compose window pre-addressed (`to`+`su`); the user pastes + sends. **The app sends nothing.** Emails
+  are **structured content** (`{ heading, greeting, intro, sections[], outro }`), HTML is inline-CSS +
+  Unicode emojis (no SVGs/images). Buddy-facing field explanations live ONLY in `buddyWelcomeEmail`, not
+  the recurring notes. Subjects include the runner's name (`Settings.userName`). The buddy toggles stay
+  manual. (No `mailto:` — removed; it was plain-text-only and client-dependent.)
 - **Setup + process support.** `lib/schema.ts` is the source of truth for the Notion schema;
   **Test connection now validates every property** in all 3 DBs (`runConnectionTest`) and names what
   to add. The weekly "one adjustment" can **update the active Tiny Version** (`updateTinyVersion`); the

@@ -10,6 +10,8 @@ export interface Settings {
   dsOdysseys: string
   dsCheckins: string
   dsReflections: string
+  /** The runner's own name — shown in buddy-email subject lines (who the note is from). */
+  userName: string
   /** Human buddy — name + email only. MVP sends no messages. */
   buddyName: string
   buddyEmail: string
@@ -42,6 +44,7 @@ export const EMPTY_SETTINGS: Settings = {
   dsOdysseys: '',
   dsCheckins: '',
   dsReflections: '',
+  userName: '',
   buddyName: '',
   buddyEmail: '',
   dailyTime: '',

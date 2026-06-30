@@ -269,7 +269,14 @@ export function WeeklyPage({ navigate }: { navigate: (to: string) => void }) {
           />
           <div className="flex flex-wrap items-center gap-3">
             <BuddyEmailButton
-              mail={weeklyBuddyMail(settings.buddyName, odyssey, form, selectedWeek)}
+              email={weeklyBuddyMail(
+                settings.buddyName,
+                settings.userName,
+                odyssey,
+                form,
+                selectedWeek,
+                tinyChanged ? newTiny : undefined,
+              )}
               navigate={navigate}
             />
           </div>

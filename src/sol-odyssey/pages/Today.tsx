@@ -105,7 +105,7 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
         />
         {odyssey.tinyVersion && <TinyReminder value={odyssey.tinyVersion} />}
         <div className="flex flex-wrap items-center gap-3">
-          <BuddyEmailButton mail={kickoffBuddyMail(settings.buddyName, odyssey)} navigate={navigate} />
+          <BuddyEmailButton email={kickoffBuddyMail(settings.buddyName, settings.userName, odyssey)} navigate={navigate} />
         </div>
         <CommitmentCard odyssey={odyssey} cycleActive={false} />
       </div>
@@ -243,7 +243,7 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
           />
           <div className="flex flex-wrap items-center gap-3">
             <BuddyEmailButton
-              mail={dailyBuddyMail(settings.buddyName, odyssey, form, dayIndex)}
+              email={dailyBuddyMail(settings.buddyName, settings.userName, odyssey, form, dayIndex)}
               navigate={navigate}
             />
           </div>

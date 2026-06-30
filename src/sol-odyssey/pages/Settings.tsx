@@ -7,6 +7,8 @@ import { Select } from '../components/Select'
 import { Switch } from '../components/Switch'
 import { Modal } from '../components/Modal'
 import { SupportingNote } from '../components/SupportingNote'
+import { BuddyEmailButton } from '../components/BuddyEmailButton'
+import { buddyWelcomeEmail } from '../lib/buddyMail'
 import { clearSettings, isConfigured, isValidEmail, type Settings } from '../lib/settings'
 import { useSettings } from '../lib/settingsContext'
 import { useTheme } from '../lib/themeContext'
@@ -21,6 +23,7 @@ type StringKey =
   | 'dsOdysseys'
   | 'dsCheckins'
   | 'dsReflections'
+  | 'userName'
   | 'buddyName'
   | 'buddyEmail'
   | 'dailyTime'
@@ -32,6 +35,7 @@ const STRING_KEYS: StringKey[] = [
   'dsOdysseys',
   'dsCheckins',
   'dsReflections',
+  'userName',
   'buddyName',
   'buddyEmail',
   'dailyTime',
@@ -288,53 +292,88 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
       </section>
 
       <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-6">
-        <h3 className="font-display text-lg">Your buddy</h3>
+        <h3 className="font-display text-lg">You &amp; your buddy</h3>
         <p className="font-sans text-sm text-text-secondary">
-          One human who knows what you’re attempting and checks in. Recorded here only — Sol
-          Odyssey doesn’t message anyone.
+          The emails you draft are signed from <strong>you</strong> and sent to one{' '}
+          <strong>buddy</strong> — the person who knows what you’re attempting and checks in.
+          Recorded here only; Sol Odyssey doesn’t message anyone.
         </p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Buddy name" value={form.buddyName} onChange={set('buddyName')} />
-          <div className="flex flex-col gap-1.5">
+
+        <div className="flex flex-col gap-3">
+          <p className="font-sans text-xs font-semibold uppercase tracking-wide text-text-secondary">You</p>
+          <Field
+            label="Your name"
+            hint="Shown in the subject of the emails you draft, so your buddy sees who they’re from."
+            value={form.userName}
+            onChange={set('userName')}
+          />
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <p className="font-sans text-xs font-semibold uppercase tracking-wide text-text-secondary">
+            Your buddy
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Buddy name" value={form.buddyName} onChange={set('buddyName')} />
+            <div className="flex flex-col gap-1.5">
+              <Field
+                label="Buddy email"
+                type="email"
+                autoComplete="off"
+                value={form.buddyEmail}
+                onChange={set('buddyEmail')}
+              />
+              {form.buddyEmail.trim() && !isValidEmail(form.buddyEmail) && (
+                <p className="font-sans text-sm text-caution">
+                  That email looks off — check it so you can actually reach your buddy.
+                </p>
+              )}
+            </div>
             <Field
-              label="Buddy email"
-              type="email"
-              autoComplete="off"
-              value={form.buddyEmail}
-              onChange={set('buddyEmail')}
+              label="Daily check-in time"
+              type="time"
+              value={form.dailyTime}
+              onChange={set('dailyTime')}
             />
-            {form.buddyEmail.trim() && !isValidEmail(form.buddyEmail) && (
-              <p className="font-sans text-sm text-caution">
-                That email looks off — check it so you can actually reach your buddy.
-              </p>
-            )}
+            <div />
+            <Select
+              label="Weekly call — day"
+              placeholder="—"
+              options={WEEKDAYS}
+              value={slotParts(form.weeklySlot).day}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, weeklySlot: composeSlot(e.target.value, slotParts(f.weeklySlot).time) }))
+                setSaved(false)
+              }}
+            />
+            <Field
+              label="Weekly call — time"
+              type="time"
+              value={slotParts(form.weeklySlot).time}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, weeklySlot: composeSlot(slotParts(f.weeklySlot).day, e.target.value) }))
+                setSaved(false)
+              }}
+            />
           </div>
-          <Field
-            label="Daily check-in time"
-            type="time"
-            value={form.dailyTime}
-            onChange={set('dailyTime')}
-          />
-          <div />
-          <Select
-            label="Weekly call — day"
-            placeholder="—"
-            options={WEEKDAYS}
-            value={slotParts(form.weeklySlot).day}
-            onChange={(e) => {
-              setForm((f) => ({ ...f, weeklySlot: composeSlot(e.target.value, slotParts(f.weeklySlot).time) }))
-              setSaved(false)
-            }}
-          />
-          <Field
-            label="Weekly call — time"
-            type="time"
-            value={slotParts(form.weeklySlot).time}
-            onChange={(e) => {
-              setForm((f) => ({ ...f, weeklySlot: composeSlot(slotParts(f.weeklySlot).day, e.target.value) }))
-              setSaved(false)
-            }}
-          />
+        </div>
+
+        <div className="flex flex-col gap-2 rounded-md border border-dashed border-tertiary bg-background-primary p-4">
+          <p className="font-sans text-sm font-medium text-text-primary">Welcome package</p>
+          <p className="font-sans text-sm text-text-secondary">
+            Send this once when you ask someone to be your buddy. It explains the whole Odyssey — what
+            it is, what they’ll receive, what’s asked of them, and how to read your notes — so the
+            daily and weekly emails can stay short. It copies to your clipboard and opens Gmail; paste
+            to drop in the formatted note.
+          </p>
+          <div className="pt-1">
+            <BuddyEmailButton
+              email={buddyWelcomeEmail(form.buddyName, form.userName)}
+              to={form.buddyEmail}
+              inSettings
+              label="Copy the welcome package & open Gmail"
+            />
+          </div>
         </div>
       </section>
 

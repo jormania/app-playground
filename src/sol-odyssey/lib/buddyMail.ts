@@ -1,134 +1,246 @@
-// Draft buddy emails via mailto: the app builds a subject + a tight, structured plain-text body
-// (pulled from the Odyssey, with a space up top for the user's own note) and hands it to the user's
-// own mail client. The app sends nothing itself. Bodies are kept ASCII-clean and short so they
-// survive every mail client, desktop and mobile (the Gmail app, iOS Mail, …) without mangling.
+// Buddy emails as *structured content*, not mailto strings. Each builder returns a heading,
+// greeting, intro, labelled sections, and an outro — the app renders that into clean,
+// email-safe HTML (inline CSS + Unicode emojis, no SVGs/images) which the user copies to the
+// clipboard and pastes into Gmail's compose window (see components/BuddyEmailButton.tsx).
+// The app still sends nothing itself.
+//
+// Field-by-field explanations meant for the buddy do NOT live in these per-event emails — they
+// live once, in the welcome package (buddyWelcomeEmail), so the recurring notes stay clean.
 
 import type { OdysseyDetail } from './notion'
 import type { CheckinDraft } from './checkins'
 import type { ReflectionDraft } from './reflections'
 
-export interface BuddyMail {
+/** One labelled line in an email: an emoji accent, a label, and its value. */
+export interface EmailRow {
+  emoji: string
+  label: string
+  value: string
+}
+
+/** A block of rows, optionally titled (the welcome package uses several titled blocks; the
+ *  recurring emails use a single untitled one). */
+export interface EmailSection {
+  title?: string
+  rows: EmailRow[]
+}
+
+/** A fully-structured buddy email, ready to render to HTML + plain text. */
+export interface BuddyEmail {
   subject: string
-  body: string
+  heading: string
+  greeting: string
+  intro: string
+  sections: EmailSection[]
+  outro: string
 }
 
 function odysseyLabel(number: number | null): string {
   return number != null ? `Odyssey ${number}` : 'a new Odyssey'
 }
-function greeting(name: string): string {
-  const n = name.trim()
+function greeting(buddyName: string): string {
+  const n = clean(buddyName)
   return n ? `Dear ${n},` : 'Hello,'
-}
-/** Join non-empty lines with CRLF (the newline both iOS and Android mail clients parse cleanly). */
-function body(...lines: (string | false | null | undefined)[]): string {
-  return lines.filter((l): l is string => typeof l === 'string').join('\r\n')
 }
 function clean(s: string): string {
   return String(s ?? '').replace(/\s+/g, ' ').trim()
 }
+/** Append the runner's name to a subject, so the buddy sees at a glance who it's from. */
+function withUser(subject: string, userName: string): string {
+  const u = clean(userName)
+  return u ? `${subject} · ${u}` : subject
+}
+/** Keep only the rows that have a value (lets optional fields drop out cleanly). */
+function rows(...items: (EmailRow | undefined | false)[]): EmailRow[] {
+  return items.filter((r): r is EmailRow => Boolean(r))
+}
+/** An optional row: present only when its value is non-empty. */
+function opt(emoji: string, label: string, value: string): EmailRow | undefined {
+  const v = clean(value)
+  return v ? { emoji, label, value: v } : undefined
+}
 
 /** The daily check-in note. */
 export function dailyBuddyMail(
-  name: string,
+  buddyName: string,
+  userName: string,
   odyssey: OdysseyDetail,
   checkin: CheckinDraft,
   dayIndex: number,
-): BuddyMail {
+): BuddyEmail {
   return {
-    subject: `Sol Odyssey · ${odysseyLabel(odyssey.number)} · Day ${dayIndex} check-in`,
-    body: body(
-      greeting(name),
-      '',
-      `My daily check-in - day ${dayIndex} of 42, building one small habit a bit at a time.`,
-      '',
-      `The habit: ${clean(odyssey.behaviour) || '-'}`,
-      `Did it today? ${checkin.done ? 'Yes' : 'Not yet'}  (just showing up is the win)`,
-      `One line: ${clean(checkin.oneLine) || '-'}  (what happened, or what I noticed)`,
-      clean(checkin.friction) ? `What got in the way: ${clean(checkin.friction)}` : undefined,
-      '',
-      "Nothing to fix on your end - being witnessed is what helps.",
-    ),
+    subject: withUser(`Sol Odyssey · ${odysseyLabel(odyssey.number)} · Day ${dayIndex} check-in`, userName),
+    heading: `📅 Day ${dayIndex} check-in`,
+    greeting: greeting(buddyName),
+    intro: `My daily check-in — day ${dayIndex} of 42, building one small habit, one day at a time.`,
+    sections: [
+      {
+        rows: rows(
+          { emoji: '🎯', label: 'The habit', value: clean(odyssey.behaviour) || '—' },
+          { emoji: checkin.done ? '✅' : '⬜', label: 'Did it today', value: checkin.done ? 'Yes' : 'Not yet' },
+          { emoji: '📝', label: 'One line', value: clean(checkin.oneLine) || '—' },
+          opt('🪨', 'What got in the way', checkin.friction),
+        ),
+      },
+    ],
+    outro: "There's nothing you need to do with this — just knowing you've seen it helps more than you'd think.",
   }
 }
 
 /** The weekly reflection, for the weekly call. */
 export function weeklyBuddyMail(
-  name: string,
+  buddyName: string,
+  userName: string,
   odyssey: OdysseyDetail,
   draft: ReflectionDraft,
   week: number,
-): BuddyMail {
+  /** The new tiny version, ONLY when the runner actually applied it this week — surfaces the change
+   *  to the witness so the daily practice they're tracking stays accurate. Omitted otherwise. */
+  newTinyVersion?: string,
+): BuddyEmail {
   return {
-    subject: `Sol Odyssey · ${odysseyLabel(odyssey.number)} · Week ${week} reflection`,
-    body: body(
-      greeting(name),
-      '',
-      `My weekly reflection - a look back at week ${week} of this 42-day habit, for our check-in.`,
-      '',
-      `The habit: ${clean(odyssey.behaviour) || '-'}`,
-      `Days done: ${draft.daysDone} / 7  (days I managed it)`,
-      `Where it slipped: ${clean(draft.breakPoints) || '-'}  (moments it did not happen)`,
-      `How it felt: ${clean(draft.fit) || '-'}  (too big, too vague, or about right)`,
-      `One change next week: ${clean(draft.oneAdjustment) || '-'}  (the single thing I will adjust)`,
-      `How installed it feels: ${draft.temperature} / 10  (1 = effortful, 10 = automatic)`,
-      clean(draft.riskPlan) ? `Riskiest moment next week: ${clean(draft.riskPlan)}` : undefined,
-      '',
-      "Just listen and stay curious - that is the whole job.",
-    ),
+    subject: withUser(`Sol Odyssey · ${odysseyLabel(odyssey.number)} · Week ${week} reflection`, userName),
+    heading: `🗓️ Week ${week} reflection`,
+    greeting: greeting(buddyName),
+    intro: `My weekly reflection — a look back at week ${week} of my 42-day Odyssey, for our check-in.`,
+    sections: [
+      {
+        rows: rows(
+          { emoji: '🎯', label: 'The habit', value: clean(odyssey.behaviour) || '—' },
+          { emoji: '✅', label: 'Days done', value: `${draft.daysDone} / 7` },
+          { emoji: '🪨', label: 'Where it slipped', value: clean(draft.breakPoints) || '—' },
+          { emoji: '📐', label: 'How it felt', value: clean(draft.fit) || '—' },
+          { emoji: '🔧', label: 'One change next week', value: clean(draft.oneAdjustment) || '—' },
+          opt('🌱', 'New tiny version (from now on)', newTinyVersion ?? ''),
+          { emoji: '🌡️', label: 'How installed it feels', value: `${draft.temperature} / 10` },
+          opt('⚠️', 'Riskiest moment next week', draft.riskPlan),
+        ),
+      },
+    ],
+    outro: "No advice needed — honestly, just having you listen means a lot.",
   }
 }
 
 /** The kickoff: announce a new Odyssey, share the charter, ask them to witness. */
-export function kickoffBuddyMail(name: string, odyssey: OdysseyDetail): BuddyMail {
+export function kickoffBuddyMail(buddyName: string, userName: string, odyssey: OdysseyDetail): BuddyEmail {
   const hasRuns = Boolean(odyssey.startDate && odyssey.endDate)
   return {
-    subject: `Sol Odyssey · ${odysseyLabel(odyssey.number)} · will you witness?`,
-    body: body(
-      greeting(name),
-      '',
-      "I'm about to start a 42-day stretch of practising one small habit every day, and I'd love you as my witness. Here's the plan, and what I'd be asking of you.",
-      '',
-      `The habit I'm installing: ${clean(odyssey.behaviour) || '-'}`,
-      clean(odyssey.identity) ? `Who I'm becoming: ${clean(odyssey.identity)}  (the kind of person this builds)` : undefined,
-      clean(odyssey.tinyVersion) ? `The tiny version: ${clean(odyssey.tinyVersion)}  (so small I can't fail on a bad day)` : undefined,
-      clean(odyssey.dailySuccess) ? `What counts as done: ${clean(odyssey.dailySuccess)}` : undefined,
-      hasRuns ? `When it runs: ${odyssey.startDate} to ${odyssey.endDate}` : undefined,
-      '',
-      'Being my witness is light: a short note from me each day, and a ~10-minute call once a week.',
-      "Three small asks - witness don't fix, stay curious (no judgment), and keep it between us. No need to run one yourself.",
-    ),
+    subject: withUser(`Sol Odyssey · ${odysseyLabel(odyssey.number)} · will you witness?`, userName),
+    heading: '🚀 Starting a new Odyssey — will you witness?',
+    greeting: greeting(buddyName),
+    intro:
+      "I'm about to start a 42-day stretch of practising one small habit every day, and I'd love you as my witness. Here's the plan.",
+    sections: [
+      {
+        rows: rows(
+          { emoji: '🎯', label: "The habit I'm installing", value: clean(odyssey.behaviour) || '—' },
+          opt('🧭', "Who I'm becoming", odyssey.identity),
+          opt('🌱', 'The tiny version', odyssey.tinyVersion),
+          opt('✅', 'What counts as done', odyssey.dailySuccess),
+          hasRuns ? { emoji: '📆', label: 'When it runs', value: `${odyssey.startDate} to ${odyssey.endDate}` } : undefined,
+        ),
+      },
+    ],
+    outro:
+      "The welcome note I'll send lays out what it would involve for you — a short note from me most days and a ten-minute call once a week — and there's no need to run an Odyssey of your own.",
   }
-}
-
-function outcomeGloss(outcome: string): string {
-  if (outcome === 'Keep') return '(keeping it at its tiny floor)'
-  if (outcome === 'Grow') return '(growing it next cycle)'
-  if (outcome === 'Retire') return '(retiring it, its work done)'
-  return ''
 }
 
 /** The harvest: tell your buddy what installed + the outcome. */
-export function harvestBuddyMail(name: string, odyssey: OdysseyDetail): BuddyMail {
-  const gloss = outcomeGloss(odyssey.outcome)
+export function harvestBuddyMail(buddyName: string, userName: string, odyssey: OdysseyDetail): BuddyEmail {
   return {
-    subject: `Sol Odyssey · ${odysseyLabel(odyssey.number)} · harvested`,
-    body: body(
-      greeting(name),
-      '',
-      "I just finished my 42-day run - here's how it landed. Thank you for witnessing it.",
-      '',
-      `The habit: ${clean(odyssey.behaviour) || '-'}`,
-      `What installed: ${clean(odyssey.notes) || '-'}  (how it feels now)`,
-      odyssey.outcome ? `Where it goes next: ${odyssey.outcome}${gloss ? ' ' + gloss : ''}  (keep / grow / retire)` : undefined,
-      '',
-      "I couldn't have done it the same way without you.",
-    ),
+    subject: withUser(`Sol Odyssey · ${odysseyLabel(odyssey.number)} · harvested`, userName),
+    heading: '🌅 Harvest — 42 days done',
+    greeting: greeting(buddyName),
+    intro: "I just finished my 42-day run — here's how it landed. Thank you for witnessing it.",
+    sections: [
+      {
+        rows: rows(
+          { emoji: '🎯', label: 'The habit', value: clean(odyssey.behaviour) || '—' },
+          { emoji: '✨', label: 'What installed', value: clean(odyssey.notes) || '—' },
+          opt('🔭', 'Where it goes next', odyssey.outcome),
+        ),
+      },
+    ],
+    outro: "I couldn't have done it the same way without you.",
   }
 }
 
-/** Build a mailto: URL. The address is left as-is (a raw @ is valid in mailto); subject + body are
- *  percent-encoded (CRLF → %0D%0A). */
-export function buildMailtoUrl(to: string, mail: BuddyMail): string {
-  const query = `subject=${encodeURIComponent(mail.subject)}&body=${encodeURIComponent(mail.body)}`
-  return `mailto:${to.trim()}?${query}`
+/** The welcome package: a one-time onboarding letter the runner sends when recruiting a buddy.
+ *  It carries everything the buddy should understand — the Odyssey itself, what they'll receive,
+ *  what's asked of them, and how to read the recurring notes (the explanations stripped from the
+ *  per-event emails live here). */
+export function buddyWelcomeEmail(buddyName: string, userName: string): BuddyEmail {
+  const u = clean(userName)
+  return {
+    subject: withUser('Sol Odyssey · An invitation to be my witness', userName),
+    heading: '👋 Will you be my witness?',
+    greeting: greeting(buddyName),
+    intro:
+      "I'm starting something called an Odyssey: 42 days of practising one small habit every day until it sticks. It works far better with one person witnessing it — and I'd love that to be you. Here's everything it involves; none of it needs a reply.",
+    sections: [
+      {
+        title: '🧭 What an Odyssey is',
+        rows: [
+          { emoji: '🎯', label: 'One habit', value: 'A single small action, repeated daily for 42 days.' },
+          { emoji: '🌱', label: 'Kept tiny', value: "Small enough to do on the worst day — showing up beats intensity." },
+          { emoji: '📈', label: 'Adjusted weekly', value: 'Once a week I look back and change just one thing.' },
+        ],
+      },
+      {
+        title: "📬 What you'll receive",
+        rows: [
+          { emoji: '🚀', label: 'A kickoff', value: "Once, at the start — the plan for the 42 days. A “yes, I'm in” is all I need." },
+          { emoji: '📅', label: 'A daily note', value: 'A short check-in most days. No reply needed — being read is the point.' },
+          { emoji: '🗓️', label: 'A weekly call', value: 'About 10 minutes once a week to talk it through.' },
+          { emoji: '🌅', label: 'A harvest note', value: 'Once, at day 42 — how it all landed.' },
+        ],
+      },
+      {
+        title: '🤝 All I hope for',
+        rows: [
+          { emoji: '👂', label: 'Witnessing, not fixing', value: "You don't have to solve anything — just being there is what helps." },
+          { emoji: '💛', label: 'A little curiosity', value: 'A gentle question helps far more than judgment, especially on the days I slip.' },
+          { emoji: '🔒', label: 'Just between us', value: 'It would mean a lot to keep this private to the two of us.' },
+        ],
+      },
+      {
+        title: '🔎 Reading my notes',
+        rows: [
+          { emoji: '✅', label: '“Did it today”', value: 'Just showing up counts — the tiny version is a real yes.' },
+          { emoji: '📝', label: '“One line”', value: 'A sentence on what happened, or what I noticed.' },
+          { emoji: '🌡️', label: '“How installed it feels”', value: '1 = still effortful, 10 = automatic. Watch the drift, not the number.' },
+          { emoji: '📐', label: '“How it felt”', value: 'Whether the habit was too big, too vague, or about right.' },
+        ],
+      },
+    ],
+    outro: `That's the whole of it. If you're in, just reply — it would mean a lot to have you along.${u ? ` Thank you, ${u}.` : ' Thank you.'}`,
+  }
+}
+
+/** Gmail's compose handler. `to` + `su` (subject) are pre-filled; the rich note travels via the
+ *  clipboard (the compose URL can't carry formatted HTML), so an optional plain-text `body` seeds
+ *  the draft with a paste reminder the user replaces. */
+export function gmailComposeUrl(to: string, subject: string, body?: string): string {
+  const params = new URLSearchParams({ view: 'cm', fs: '1', to: to.trim(), su: subject })
+  if (body) params.set('body', body)
+  return `https://mail.google.com/mail/?${params.toString()}`
+}
+
+/** Seeded into the Gmail draft body as a reminder; the user pastes over it. */
+export const PASTE_REMINDER =
+  '⬇️ Paste here (Ctrl+V / ⌘+V) — your formatted note is already on the clipboard. Then delete this line and send.'
+
+/** Deterministic plain-text rendering of an email — the `text/plain` clipboard flavour.
+ *  Derived from the structured model (not the DOM's `.innerText`), so it's layout-independent,
+ *  works even when the HTML template is `display:none`, and is unit-testable. */
+export function emailToPlainText(email: BuddyEmail): string {
+  const out: string[] = [email.heading, '', email.greeting, email.intro, '']
+  for (const section of email.sections) {
+    if (section.title) out.push(section.title)
+    for (const r of section.rows) out.push(`${r.emoji} ${r.label}: ${r.value}`)
+    out.push('')
+  }
+  out.push(email.outro, '', 'Sent with Sol Odyssey')
+  return out.join('\n')
 }
