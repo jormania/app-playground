@@ -125,7 +125,7 @@ export default function App() {
         <div className="hero-inner">
           <p className="hero-eyebrow">Pop-Art Kettlebell Field Guide</p>
           <h1 className="hero-title">
-            Swing<span className="amp">·</span>Press<span className="amp">·</span>Carry
+            Swing<span className="amp">·</span><wbr />Press<span className="amp">·</span><wbr />Carry
           </h1>
           <p className="hero-sub">
             Twelve foundational kettlebell movements, each drawn as a sequence of bold,
