@@ -158,9 +158,10 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
         </div>
         <p className="max-w-prose font-sans text-text-secondary">
           Everything Sol Odyssey needs is set here — your <strong>Notion</strong> connection (where
-          your records live), your <strong>buddy</strong>, what <strong>guidance</strong> you see,
-          and an optional <strong>AI companion</strong>. Every value, including tokens and keys, is
-          stored <strong>only in this browser</strong> — never on a server or baked into the app.
+          your records live), <strong>you and your buddy</strong>, <strong>reminders</strong> and{' '}
+          <strong>appearance</strong>, the <strong>guidance</strong> you see, and an optional{' '}
+          <strong>AI companion</strong>. Every value, including tokens and keys, is stored{' '}
+          <strong>only in this browser</strong> — never on a server or baked into the app.
         </p>
       </section>
 
