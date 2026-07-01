@@ -68,7 +68,34 @@ one-way rule (legacy apps never import `src/ds/`) is enforced by
 },
 ```
 
-3. Push. Vercel deploys automatically.
+3. **Add the analytics tag** — every page on this site must include it (see [Analytics](#analytics)). Put this in the `<head>`:
+
+```html
+<script defer src="/_vercel/insights/script.js"></script>
+```
+
+4. Push. Vercel deploys automatically.
+
+---
+
+## Analytics
+
+Traffic is tracked with **Vercel Web Analytics** (privacy-friendly, cookieless). The
+dashboard is private to the Vercel project owner — Project → Analytics on
+[vercel.com](https://vercel.com). It breaks down views, visitors, referrers, and
+countries **per path**, so the homepage (`/`) and each app (e.g. `/touch-grass.html`)
+show up as separate rows.
+
+**Rule: every HTML page on this site includes the analytics tag** — no exceptions, so
+per-app access patterns stay complete. Add it to the `<head>` of any new page:
+
+```html
+<script defer src="/_vercel/insights/script.js"></script>
+```
+
+Vercel serves that script automatically once Web Analytics is enabled for the project;
+no npm package is needed. (This is separate from Speed Insights, which measures load
+performance rather than traffic.)
 
 ---
 
