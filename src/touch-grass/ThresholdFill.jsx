@@ -107,7 +107,6 @@ function lightWindow(now, coords) {
 function Tonight({ coords, now, moon, reading }) {
   if (!coords) return <NeedPlace />
   const d = new Date(now)
-  const t = getTimes(d, coords.lat, coords.lon)
 
   // moon: the next event ahead — "rises" until it's up, then "sets"
   const evs = []
@@ -230,7 +229,7 @@ function moonUpInterval(coords, now) {
   return null
 }
 
-function SunMoonArcs({ coords, now, moon }) {
+function SunMoonArcs({ coords, now, moon: _moon }) {
   if (!coords) return <NeedPlace />
   const d = new Date(now)
   const t = getTimes(d, coords.lat, coords.lon)

@@ -69,7 +69,7 @@ describe('createEntry', () => {
   })
 
   test('honours a custom databaseId so any user can point at their own copy', async () => {
-    const fetchImpl = vi.fn((token, path) => Promise.resolve({ results: [], has_more: false }))
+    const fetchImpl = vi.fn((_token, _path) => Promise.resolve({ results: [], has_more: false }))
     const client = createNotionClient('t', { databaseId: 'mydb', fetchImpl })
     await client.listEntries()
     expect(fetchImpl).toHaveBeenCalledWith('t', 'databases/mydb/query', 'POST', expect.any(Object))

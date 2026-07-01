@@ -7,6 +7,10 @@ const THRESHOLD_OPTIONS = [
   ['arc', 'Sun & Moon'],
 ]
 
+// signsOn / onToggleSigns are kept-for-later props (still passed by the parent);
+// they drive the hidden "Signs" toggle commented out below, so they read as
+// unused today.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSound, signsOn, onToggleSigns, motionOn, onToggleMotion, callOn, onToggleCall, thresholdMode, onThreshold, onClose }) {
   const [draft, setDraft] = useState(currentKey)
   const hasKey = !!currentKey

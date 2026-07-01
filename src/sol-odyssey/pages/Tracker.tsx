@@ -44,6 +44,24 @@ export function TrackerPage({ navigate }: { navigate: (to: string) => void }) {
   const [openDay, setOpenDay] = useState<number | null>(null)
   const [form, setForm] = useState<CheckinDraft>(EMPTY_CHECKIN)
 
+  // Seed the editor when a day is opened. Declared here — before the early
+  // returns below — so the hook order stays stable across loading/loaded
+  // renders (a conditionally-called hook would crash on that transition).
+  const seedStart = odyssey?.startDate
+  const seedRec =
+    openDay != null && seedStart
+      ? (checkins.data ?? []).find((r) => r.date === isoAddDays(seedStart, openDay - 1))
+      : undefined
+  useEffect(() => {
+    if (openDay == null) return
+    setForm(
+      seedRec
+        ? { done: seedRec.done, oneLine: seedRec.oneLine, friction: seedRec.friction, sentToBuddy: seedRec.sentToBuddy }
+        : EMPTY_CHECKIN,
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openDay, seedRec?.id])
+
   if (!isConfigured(settings)) {
     return <Notice title="Connect Notion first" body="Add your token and database links in Settings." actionLabel="Open Settings" onAction={() => navigate('/settings')} />
   }
@@ -87,17 +105,6 @@ export function TrackerPage({ navigate }: { navigate: (to: string) => void }) {
 
   const openDate = openDay != null ? isoAddDays(start, openDay - 1) : ''
   const openRec = openDay != null ? recordByDate.get(openDate) : undefined
-
-  // Seed the editor when a day is opened.
-  useEffect(() => {
-    if (openDay == null) return
-    setForm(
-      openRec
-        ? { done: openRec.done, oneLine: openRec.oneLine, friction: openRec.friction, sentToBuddy: openRec.sentToBuddy }
-        : EMPTY_CHECKIN,
-    )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openDay, openRec?.id])
 
   function saveDay() {
     if (openDay == null || !odyssey) return
