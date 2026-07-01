@@ -17,7 +17,10 @@ export default function EntryView({ entry, entries, onBack, onEdit, onChip, onOn
           </button>
         )}
       </div>
-      <div className="ev-date" style={{ marginTop: 14 }}>{formatHuman(entry.date)}</div>
+      <div className="ev-date" style={{ marginTop: 14 }}>
+        {formatHuman(entry.date)}
+        {entry.pending && <span className="pending-pill" title="Saved on this device — will sync to Notion when you’re online">unsynced</span>}
+      </div>
       <h1>{entry.title || 'untitled'}</h1>
 
       <div className="ev-body">{entry.entry}</div>

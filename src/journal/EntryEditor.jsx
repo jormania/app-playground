@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { wordCount, collectOptions } from './notion.js'
 import { findByDate, formatHuman, entriesOnSameDay, todayKey } from './dates.js'
-import { getDraft, saveDraft } from './store.js'
+import { getDraft, saveDraft, clearDraft } from './store.js'
 import TagInput from './TagInput.jsx'
 import { TitleIcon, DateIcon, EntryIcon, TagIcon, PeopleIcon, HistoryIcon } from './icons.jsx'
 
@@ -9,7 +9,7 @@ import { TitleIcon, DateIcon, EntryIcon, TagIcon, PeopleIcon, HistoryIcon } from
 // level — one entry per calendar date — by detecting a clash and offering to open
 // the existing entry rather than silently creating a duplicate (Notion itself
 // won't stop two pages sharing a Date).
-export default function EntryEditor({ initial, entries, onSave, onCancel, onOpenExisting, onOnThisDay, saving, error }) {
+export default function EntryEditor({ initial, entries, onSave, onSaveDraft, onCancel, onOpenExisting, onOnThisDay, saving, error }) {
   const isNew = !initial.id
   // Resilience: for a new entry, pick up any locally-saved draft for this date so a
   // failed save or closed tab never loses what was written.
@@ -49,8 +49,24 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, onOpen
   )
 
   const canSave = text.trim().length > 0 && date && !clash && !isFuture && !saving
+  const hasContent = title.trim() || text.trim() || tags.length || people.length
+
+  // Keep an in-progress delight to finish later. The auto-draft below already
+  // persists it; this makes the intent explicit and returns to the list.
+  function handleSaveDraft() {
+    if (hasContent) saveDraft(date, { id: null, title, date, entry: text, tags, people })
+    else clearDraft(date)
+    onSaveDraft()
+  }
 
   function handleCancel() {
+    if (isNew) {
+      // A new entry auto-drafts as you type; cancelling means "don't keep it", so
+      // clear that draft rather than leaving an orphan in the drafts strip.
+      if (hasContent && !window.confirm('Discard this delight? It won’t be kept as a draft.')) return
+      clearDraft(date)
+      return onCancel()
+    }
     if (dirty && !window.confirm('Discard your changes to this delight?')) return
     onCancel()
   }
@@ -132,6 +148,7 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, onOpen
 
       <div className="btn-row">
         <button type="submit" className="btn primary" disabled={!canSave}>{saving ? 'Saving…' : isNew ? 'Keep this delight' : 'Save changes'}</button>
+        {isNew && <button type="button" className="btn" onClick={handleSaveDraft} disabled={!hasContent} title="Keep it as a draft to finish later">Save draft</button>}
         <button type="button" className="btn-ghost" onClick={handleCancel}>Cancel</button>
       </div>
     </form>

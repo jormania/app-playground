@@ -208,6 +208,21 @@ main { padding: 26px 0 80px; }
   background: none; border: 1px solid var(--border2); border-radius: 999px; padding: 4px 11px;
 }
 .banner button:hover { color: var(--ink); border-color: var(--yellow); }
+/* Offline notice: calmer blue tint, not the yellow "act now" of demo mode. */
+.banner.offline {
+  background: color-mix(in srgb, var(--blue) 9%, transparent);
+  border-color: color-mix(in srgb, var(--blue) 30%, transparent);
+}
+.banner.offline b { color: var(--blue); }
+
+/* "unsynced" marker on optimistic entries queued while offline. */
+.pending-pill {
+  font-family: var(--mono); font-size: 0.5625rem; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--blue); border: 1px solid color-mix(in srgb, var(--blue) 40%, transparent);
+  background: color-mix(in srgb, var(--blue) 10%, transparent);
+  border-radius: 999px; padding: 2px 7px; white-space: nowrap; align-self: center;
+}
+.ev-date .pending-pill { margin-left: 10px; vertical-align: middle; }
 
 .error-note {
   font-size: 0.8125rem; color: var(--red);
@@ -231,6 +246,32 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 
 /* ── List view ── */
 .list { display: flex; flex-direction: column; gap: 12px; }
+
+/* Drafts strip: interrupted delights kept locally, sitting above the list. */
+.drafts-strip {
+  display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px;
+  border: 1px dashed var(--border2); border-radius: 12px; padding: 12px 14px;
+  background: color-mix(in srgb, var(--yellow) 5%, transparent);
+}
+.drafts-head { font-family: var(--mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint); }
+.draft-row { display: flex; align-items: center; gap: 10px; }
+.draft-open {
+  flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 10px;
+  background: none; border: none; text-align: left; cursor: pointer; padding: 4px 0; color: var(--ink);
+}
+.draft-open:hover .draft-title { color: var(--yellow); }
+.draft-open .row-date { font-family: var(--mono); font-size: 0.6875rem; color: var(--purple); white-space: nowrap; }
+.draft-title { font-family: var(--sans); font-size: 0.95rem; font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.draft-pill {
+  font-family: var(--mono); font-size: 0.5625rem; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--yellow); border: 1px solid color-mix(in srgb, var(--yellow) 40%, transparent);
+  border-radius: 999px; padding: 2px 7px; white-space: nowrap;
+}
+.draft-discard {
+  font-family: var(--mono); font-size: 0.6875rem; color: var(--faint);
+  background: none; border: 1px solid var(--border2); border-radius: 999px; padding: 4px 10px; cursor: pointer; white-space: nowrap;
+}
+.draft-discard:hover { color: var(--ink); border-color: var(--red, var(--yellow)); }
 .list-count { font-family: var(--mono); font-size: 0.7rem; color: var(--faint); letter-spacing: 0.04em; }
 .list-divider {
   display: flex; align-items: center; gap: 12px; margin-top: 8px;

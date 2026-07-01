@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import './journal.css'
-import { getClient, isLive, clearDraft, getTheme, setTheme } from './store.js'
+import { getClient, isLive, clearDraft, listDrafts, discardDraft, getTheme, setTheme } from './store.js'
 import { todayKey, findByDate } from './dates.js'
 import { filterEntries } from './search.js'
 import { downloadJournal } from './exportHtml.js'
@@ -28,9 +28,11 @@ export default function App() {
   const [showStats, setShowStats] = useState(false)
   const [onThisDay, setOnThisDay] = useState(null) // null | dateKey
   const [live, setLive] = useState(isLive())
+  const [offline, setOffline] = useState(false)
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState('all')
   const [theme, setThemeState] = useState(getTheme())
+  const [draftTick, setDraftTick] = useState(0) // bump to re-read drafts from storage
 
   // Keep <html data-theme> and the mobile bar colour in sync with the choice.
   useEffect(() => { setTheme(theme) }, [theme])
@@ -38,9 +40,14 @@ export default function App() {
   const load = useCallback(async () => {
     setLoading(true)
     setLoadError('')
+    const client = getClient()
     try {
-      const list = await getClient().listEntries()
+      // Flush anything written while offline before reading, so a reconnect
+      // reconciles first. No-op when the outbox is empty or we're still offline.
+      if (client.sync && navigator.onLine !== false) { try { await client.sync() } catch { /* stays queued */ } }
+      const list = await client.listEntries()
       setEntries(list)
+      setOffline(Boolean(client.offline))
     } catch (err) {
       setLoadError(err.message || 'Could not load your journal.')
     } finally {
@@ -50,8 +57,33 @@ export default function App() {
 
   useEffect(() => { load() }, [load])
 
+  // Reconnecting flushes the outbox and refreshes; losing the connection flips the
+  // banner immediately (the next read will confirm it's serving from cache).
+  useEffect(() => {
+    const onOnline = () => load()
+    const onOffline = () => setOffline(true)
+    window.addEventListener('online', onOnline)
+    window.addEventListener('offline', onOffline)
+    return () => {
+      window.removeEventListener('online', onOnline)
+      window.removeEventListener('offline', onOffline)
+    }
+  }, [load])
+
   const filtered = useMemo(() => filterEntries(entries, query, scope), [entries, query, scope])
   const searching = query.trim().length > 0
+  // Interrupted, not-yet-saved delights, re-read whenever entries change or a draft
+  // is saved/discarded (draftTick). Hidden while searching to keep results clean.
+  const drafts = useMemo(() => listDrafts(entries), [entries, draftTick]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function resumeDraft(dateKey) {
+    setSaveError('')
+    setFocus({ kind: 'edit', initial: { date: dateKey } })
+  }
+  function removeDraft(dateKey) {
+    discardDraft(dateKey)
+    setDraftTick(t => t + 1)
+  }
 
   function chooseView(v) {
     setView(v)
@@ -131,6 +163,11 @@ export default function App() {
               <button onClick={() => setShowSettings(true)}>Connect</button>
             </div>
           )}
+          {live && offline && !focus && (
+            <div className="banner offline">
+              <span><b>Offline.</b> Showing your last synced delights — anything you write now saves here and syncs to Notion when you’re back.</span>
+            </div>
+          )}
           {loadError && <div className="error-note" aria-live="polite">{loadError}</div>}
 
           {focus?.kind === 'edit' ? (
@@ -140,7 +177,8 @@ export default function App() {
               saving={saving}
               error={saveError}
               onSave={handleSave}
-              onCancel={() => { setSaveError(''); setFocus(null) }}
+              onSaveDraft={() => { setSaveError(''); setDraftTick(t => t + 1); setFocus(null) }}
+              onCancel={() => { setSaveError(''); setDraftTick(t => t + 1); setFocus(null) }}
               onOpenExisting={(e) => { setSaveError(''); setFocus({ kind: 'view', entry: e }) }}
               onOnThisDay={(key) => setOnThisDay(key)}
             />
@@ -159,6 +197,9 @@ export default function App() {
             <ListView
               entries={filtered}
               total={entries.length}
+              drafts={searching ? [] : drafts}
+              onResumeDraft={resumeDraft}
+              onDiscardDraft={removeDraft}
               onOpen={(e) => setFocus({ kind: 'view', entry: e })}
               onChip={filterByChip}
               emptyMessage={searching ? 'Nothing matches that search.' : undefined}

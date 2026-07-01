@@ -6,6 +6,7 @@
 import { parseNotionId } from './notion.js'
 import { createNotionClient, DEFAULT_DATABASE_ID } from './notionClient.js'
 import { createFixtureClient } from './fixtureClient.js'
+import { createOfflineClient } from './offlineClient.js'
 
 const TOKEN_KEY = 'jod_token'
 const DB_KEY = 'jod_database'
@@ -101,10 +102,30 @@ export function clearDraft(dateKey) {
   const map = readDrafts()
   if (dateKey in map) { delete map[dateKey]; writeDrafts(map) }
 }
+export const discardDraft = clearDraft
+
+// Drafts worth resuming, newest first. Skips empty drafts and — when the current
+// entry list is passed — any draft whose date already has a saved (or queued)
+// entry, so the strip self-heals instead of showing stale rows.
+export function listDrafts(entries = null) {
+  const map = readDrafts()
+  const savedDates = entries ? new Set(entries.filter(e => e && e.date).map(e => e.date)) : null
+  return Object.entries(map)
+    .map(([date, d]) => ({ ...d, date: d?.date || date }))
+    .filter(d =>
+      ((d.title && d.title.trim()) || (d.entry && d.entry.trim()) || d.tags?.length || d.people?.length) &&
+      !(savedDates && savedDates.has(d.date))
+    )
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+}
 
 // Build the active client. Created fresh on demand so just-saved settings take
 // effect without a reload.
 export function getClient() {
   const token = getToken()
-  return token ? createNotionClient(token, { databaseId: getDatabaseId() }) : createFixtureClient()
+  if (!token) return createFixtureClient()
+  const databaseId = getDatabaseId()
+  // Wrap the live client so the journal reads from a local cache and queues writes
+  // when offline, syncing to Notion on reconnect.
+  return createOfflineClient(createNotionClient(token, { databaseId }), { databaseId })
 }
