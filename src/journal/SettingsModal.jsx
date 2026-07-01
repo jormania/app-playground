@@ -53,8 +53,9 @@ export default function SettingsModal({ onClose, onChanged }) {
         <p>
           Paste a Notion <b>internal integration token</b> and the <b>database</b> it’s shared with.
           Both are kept only in this browser and relayed to Notion through this site’s proxy —
-          never stored on a server. New here? The <a className="link" href="/journal-of-delights-guide.html" target="_blank" rel="noopener">guide</a> walks
-          through building your own in a few minutes.
+          never stored on a server. New here?{' '}
+          <a className="link" href="https://app.notion.com/p/Journal-of-Delights-Starter-Template-390d3e6d60db811ca03ed1fa20412f78" target="_blank" rel="noopener">Duplicate the Starter Template</a>{' '}
+          for a ready-made database, then paste its link below — the <a className="link" href="/journal-of-delights-guide.html" target="_blank" rel="noopener">guide</a> walks through the whole setup.
         </p>
 
         <div className="field" style={{ marginTop: 8 }}>
