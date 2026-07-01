@@ -1,0 +1,17 @@
+/* Page-level baseline for the showcase. Component styling lives in each
+   component's own CSS Module; this only sets the canvas. */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  background: var(--color-bg-sunken);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}

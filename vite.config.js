@@ -110,6 +110,7 @@ export default defineConfig({
         journalOfDelights: resolve(__dirname, 'journal-of-delights-react.html'),
         kettlebellTraining: resolve(__dirname, 'kettlebell-training-react.html'),
         solOdysseys: resolve(__dirname, 'sol-odysseys-react.html'),
+        dsShowcase: resolve(__dirname, 'ds-showcase.html'),
       }
     }
   }

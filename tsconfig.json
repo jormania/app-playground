@@ -21,9 +21,10 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
-    /* This config only governs the TypeScript Sol Odyssey app. The other apps in
-       this repo are plain JS/JSX and are intentionally left out of `include`. */
+    /* Governs the TypeScript code: the Sol Odyssey app and the design system
+       (src/ds). The other apps in this repo are plain JS/JSX and are
+       intentionally left out of `include`. */
     "types": ["vitest/globals", "node"]
   },
-  "include": ["src/sol-odyssey"]
+  "include": ["src/sol-odyssey", "src/ds"]
 }
