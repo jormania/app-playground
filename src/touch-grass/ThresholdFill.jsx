@@ -131,7 +131,7 @@ function Tonight({ coords, now, moon, reading }) {
     : lw.kind === 'golden'
       ? 'Light turns to honey at'
       : lw.morning
-        ? (lwNow ? 'The blue before dawn, until' : 'The blue before dawn starts at')
+        ? (lwNow ? 'The blue before dawn, until' : 'blue before dawn starts at')
         : (lwNow ? 'Twilight’s edge until' : 'Twilight’s edge starts at')
   const lwTime = !lw ? null
     : lw.kind === 'golden' ? fmt(lw.s) : fmt(lwNow ? lw.e : lw.s)
