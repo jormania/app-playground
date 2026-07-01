@@ -4,6 +4,10 @@ A personal playground for standalone web apps. A few are React + Vite (under
 `src/`); the rest are self-contained static HTML files at the repo root. Deploys
 to Vercel on every push to `main`.
 
+For the human-readable build playbook — how to start a new app, extend the
+design system, and the full process/caveats — see the Notion page **Dev —
+Building an App**. This file is its enforced, in-repo companion.
+
 ## Before declaring any task done
 
 Run **`npm test`** and **`npm run typecheck`** and make sure both pass. Don't
@@ -28,9 +32,9 @@ call a change complete on green-looking code alone.
 | Touch Grass | `src/touch-grass/` | plain JSX, no type checking |
 | Static HTML apps | repo root (`*.html`) | design-locked, hand-authored — edit in place |
 
-`tsconfig.json` intentionally covers **only `src/sol-odyssey`**; `npm run
-typecheck` type-checks that app alone. The other React apps are plain JS/JSX by
-design.
+`tsconfig.json` covers the TypeScript code — **`src/sol-odyssey` and
+`src/ds`**; `npm run typecheck` type-checks both. The other React apps are plain
+JS/JSX by design and intentionally left out.
 
 ## Deploy guardrail
 
