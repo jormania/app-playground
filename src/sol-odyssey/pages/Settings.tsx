@@ -358,20 +358,32 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
           </div>
         </div>
 
+        <Select
+          label="Compose emails with"
+          hint="Which email opens when you draft a note. On phones, your device’s default mail app is always used. Either way the note is copied to your clipboard, so you can paste it into any email."
+          value={settings.mailProvider}
+          options={[
+            { value: 'default', label: 'Default mail app' },
+            { value: 'gmail', label: 'Gmail' },
+            { value: 'outlook', label: 'Outlook (web)' },
+          ]}
+          onChange={(e) => update({ mailProvider: e.target.value })}
+        />
+
         <div className="flex flex-col gap-2 rounded-md border border-dashed border-tertiary bg-background-primary p-4">
           <p className="font-sans text-sm font-medium text-text-primary">Welcome package</p>
           <p className="font-sans text-sm text-text-secondary">
             Send this once when you ask someone to be your buddy. It explains the whole Odyssey — what
             it is, what they’ll receive, what’s asked of them, and how to read your notes — so the
-            daily and weekly emails can stay short. It copies to your clipboard and opens Gmail; paste
-            to drop in the formatted note.
+            daily and weekly emails can stay short. It copies the note to your clipboard and opens your
+            email; paste to drop it in.
           </p>
           <div className="pt-1">
             <BuddyEmailButton
               email={buddyWelcomeEmail(form.buddyName, form.userName)}
               to={form.buddyEmail}
               inSettings
-              label="Copy the welcome package & open Gmail"
+              label="Copy the welcome package & open email"
             />
           </div>
         </div>

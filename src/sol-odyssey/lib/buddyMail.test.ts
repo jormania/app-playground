@@ -6,7 +6,11 @@ import {
   harvestBuddyMail,
   buddyWelcomeEmail,
   gmailComposeUrl,
+  outlookComposeUrl,
+  mailtoUrl,
+  composeTarget,
   emailToPlainText,
+  formatDateRange,
   type BuddyEmail,
 } from './buddyMail'
 import type { OdysseyDetail } from './notion'
@@ -92,7 +96,7 @@ describe('kickoffBuddyMail', () => {
     const mail = kickoffBuddyMail('Sam', 'Alex', odyssey())
     expect(mail.subject).toBe('Sol Odyssey · Odyssey 3 · will you witness? · Alex')
     expect(rowText(mail)).toContain("The habit I'm installing: Move my body before the day takes me")
-    expect(rowText(mail)).toContain('When it runs: 2026-07-06 to 2026-08-16')
+    expect(rowText(mail)).toContain('When it runs: 6 Jul – 16 Aug 2026')
     expect(`${mail.heading} ${mail.intro} ${mail.outro}`.toLowerCase()).toContain('witness')
   })
   it('falls back to "a new Odyssey" when a draft has no number', () => {
@@ -118,7 +122,25 @@ describe('buddyWelcomeEmail', () => {
     const text = emailToPlainText(mail)
     expect(text).toContain('1 = still effortful, 10 = automatic')
     expect(text).toContain('A weekly call')
+  })
+  it('carries all four ground rules from the guide', () => {
+    const text = emailToPlainText(buddyWelcomeEmail('Sam', 'Alex'))
     expect(text).toContain('Witnessing, not fixing')
+    expect(text).toContain('Curiosity, never judgment')
+    expect(text).toContain('Just between us')
+    expect(text).toContain('No pressure to keep pace')
+  })
+})
+
+describe('formatDateRange', () => {
+  it('collapses a shared year and uses an en dash', () => {
+    expect(formatDateRange('2026-07-06', '2026-08-16')).toBe('6 Jul – 16 Aug 2026')
+  })
+  it('keeps both years across a year boundary', () => {
+    expect(formatDateRange('2026-12-28', '2027-02-05')).toBe('28 Dec 2026 – 5 Feb 2027')
+  })
+  it('falls back to raw ISO when unparseable', () => {
+    expect(formatDateRange('nope', '2027-02-05')).toBe('nope to 2027-02-05')
   })
 })
 
@@ -134,6 +156,50 @@ describe('gmailComposeUrl', () => {
   })
   it('seeds the draft body only when one is given', () => {
     expect(gmailComposeUrl('sam@example.com', 'S', 'paste here')).toContain('body=paste+here')
+  })
+})
+
+describe('mailtoUrl', () => {
+  it('targets the address and encodes subject + body with %20 (not +)', () => {
+    const url = mailtoUrl('sam@example.com', 'Sol Odyssey · Day 1', 'paste here')
+    expect(url.startsWith('mailto:sam@example.com?')).toBe(true)
+    expect(url).toContain('subject=Sol%20Odyssey%20%C2%B7%20Day%201')
+    expect(url).toContain('body=paste%20here')
+    expect(url).not.toContain('+')
+  })
+  it('omits the body when none is given', () => {
+    expect(mailtoUrl('sam@example.com', 'S')).toBe('mailto:sam@example.com?subject=S')
+  })
+})
+
+describe('outlookComposeUrl', () => {
+  it('targets the Outlook deep link with to + subject', () => {
+    const url = outlookComposeUrl('sam@example.com', 'Hello there')
+    expect(url.startsWith('https://outlook.office.com/mail/deeplink/compose?')).toBe(true)
+    expect(url).toContain('to=sam%40example.com')
+    expect(url).toContain('subject=Hello+there')
+  })
+})
+
+describe('composeTarget', () => {
+  it('always uses mailto on mobile, whatever the provider', () => {
+    for (const p of ['default', 'gmail', 'outlook'] as const) {
+      const t = composeTarget(p, true, 'sam@example.com', 'S', 'b')
+      expect(t.viaLocation).toBe(true)
+      expect(t.url.startsWith('mailto:')).toBe(true)
+    }
+  })
+  it('on desktop honours the provider choice', () => {
+    expect(composeTarget('gmail', false, 'sam@example.com', 'S').url).toContain('mail.google.com')
+    expect(composeTarget('outlook', false, 'sam@example.com', 'S').url).toContain('outlook.office.com')
+    expect(composeTarget('default', false, 'sam@example.com', 'S')).toEqual({
+      url: 'mailto:sam@example.com?subject=S',
+      viaLocation: true,
+    })
+  })
+  it('marks webmail targets as new-tab (not location)', () => {
+    expect(composeTarget('gmail', false, 'sam@example.com', 'S').viaLocation).toBe(false)
+    expect(composeTarget('outlook', false, 'sam@example.com', 'S').viaLocation).toBe(false)
   })
 })
 

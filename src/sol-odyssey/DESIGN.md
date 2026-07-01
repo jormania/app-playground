@@ -199,10 +199,10 @@ without a server, so it degrades to the in-app surfaces (Settings states this pl
 
 At each buddy-contact point — **daily** (Today), **weekly** (Weekly), **kickoff** (start), and
 **harvest** (Day 42), plus the one-time **welcome package** (Settings) — a single `BuddyEmailButton`
-copies a formatted note to the clipboard, then opens Gmail's compose window pre-addressed (`to` +
-`su`); the user **pastes** the body and sends. **The app sends nothing.** No `mailto:` — that path
-was replaced because it only ever produced plain text and depended on a configured desktop mail
-client.
+copies a formatted note to the clipboard, then opens a compose window pre-addressed; the user
+**pastes** the body and sends. **The app sends nothing.** The *body* is never carried by a URL (a
+compose URL can't hold formatted HTML) — only the recipient + subject are, and the rich note rides
+the clipboard.
 
 How it works:
 - [`lib/buddyMail.ts`](lib/buddyMail.ts) (pure + tested) builds each email as **structured content**
@@ -215,8 +215,15 @@ How it works:
   the template's `.innerHTML` (inline-CSS only, **no SVGs/images** — mail clients strip them; accents
   are Unicode emojis + a `border-left` rail), and `text/plain` from the **deterministic**
   `emailToPlainText(email)` (not `.innerText` — layout-independent and unit-testable). Degrades:
-  `ClipboardItem` → `writeText` → `execCommand('copy')`; if the popup is blocked, a manual "open
-  Gmail" link is shown. After copy it tells the user to paste (Ctrl/⌘+V).
+  `ClipboardItem` → `writeText` → `execCommand('copy')`. After copy it tells the user to paste (Ctrl/⌘+V).
+- **Compose hand-off** (strategy only — same content either way) is chosen by `composeTarget(provider,
+  isMobile, …)`: a `{ url, viaLocation }` pair. **Mobile** (`isMobile()`, incl. iPadOS via touch
+  points) always uses `mailtoUrl` via `location.href` — the webmail *web* URLs deep-link into the app's
+  inbox and drop the compose params there, whereas `mailto:` opens the native app straight in compose.
+  **Desktop** follows `Settings.mailProvider`: `gmail` → `gmailComposeUrl` (new tab; a manual link is
+  shown if the popup is blocked), `outlook` → `outlookComposeUrl`, `default` → `mailtoUrl` (OS client).
+  The rich note is always on the clipboard first, so a non-Gmail user is never stuck — the confirmation
+  says so explicitly.
 - Subjects carry the Odyssey + the named action **and the runner's own name** (`Settings.userName`,
   a field beside the buddy fields) so the buddy sees who it's from. The "Sent to my buddy" /
   "Reflected with my buddy" toggles stay manual. Disabled with a Settings nudge until a valid buddy

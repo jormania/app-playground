@@ -3,7 +3,20 @@ import { Mail, Check, ExternalLink } from 'lucide-react'
 import { Button } from './Button'
 import { useSettings } from '../lib/settingsContext'
 import { isValidEmail } from '../lib/settings'
-import { gmailComposeUrl, emailToPlainText, PASTE_REMINDER, type BuddyEmail, type EmailSection } from '../lib/buddyMail'
+import { composeTarget, emailToPlainText, PASTE_REMINDER, type BuddyEmail, type EmailSection, type MailProvider } from '../lib/buddyMail'
+
+/** Detect a mobile hand-off (strategy only, never content). On mobile the webmail compose URLs
+ *  tend to open the app's inbox and drop the compose params, so we hand off via `mailto:`. */
+function isMobile(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const uaData = (navigator as Navigator & { userAgentData?: { mobile?: boolean } }).userAgentData
+  if (uaData && typeof uaData.mobile === 'boolean') return uaData.mobile
+  const ua = navigator.userAgent
+  // iPadOS Safari reports a desktop ("Macintosh") UA; catch it via touch points so it still takes
+  // the mailto path rather than the inbox-redirecting webmail URL.
+  const iPadOS = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1
+  return iPadOS || /Android|iPhone|iPad|iPod|Mobile/i.test(ua)
+}
 
 // ── Email-safe inline styles ───────────────────────────────────────────────────────────────────
 // Everything here is INLINE (mail clients strip <style>, classes, and SVGs). Visual accents come
@@ -122,6 +135,7 @@ export function BuddyEmailButton({
   const { settings } = useSettings()
   const recipient = (to ?? settings.buddyEmail).trim()
   const name = (buddyName ?? settings.buddyName).trim()
+  const provider = settings.mailProvider as MailProvider
   const ref = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
   // If the popup is blocked, we surface a manual link instead of silently failing.
@@ -158,9 +172,14 @@ export function BuddyEmailButton({
     setCopied(true)
     window.setTimeout(() => setCopied(false), 8000)
 
-    const url = gmailComposeUrl(recipient, email.subject, PASTE_REMINDER)
+    const { url, viaLocation } = composeTarget(provider, isMobile(), recipient, email.subject, PASTE_REMINDER)
+    // mailto: opens a native client (no popup); webmail opens a tab, with a manual link if blocked.
+    if (viaLocation) {
+      window.location.href = url
+      return
+    }
     const win = window.open(url, '_blank', 'noopener,noreferrer')
-    if (!win) setBlockedUrl(url) // popup blocked — offer a manual link
+    if (!win) setBlockedUrl(url)
   }
 
   return (
@@ -174,15 +193,16 @@ export function BuddyEmailButton({
 
       {copied && (
         <p className="font-sans text-sm text-text-secondary">
-          ✅ Copied. In the Gmail window that opened, <strong>paste</strong> (Ctrl/⌘+V) to drop in the
-          formatted note.
+          ✅ Copied to your clipboard. In the email that opens, <strong>paste</strong> (Ctrl/⌘+V) to
+          drop in the formatted note — it works in any email app, so if a different one opens you can
+          still paste it there.
         </p>
       )}
       {blockedUrl && (
         <p className="font-sans text-sm text-caution">
-          Your browser blocked the new tab —{' '}
+          Your browser blocked the new tab — the note is still copied, so{' '}
           <a href={blockedUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-accent underline">
-            open Gmail <ExternalLink size={13} className="inline align-text-top" aria-hidden />
+            open your email <ExternalLink size={13} className="inline align-text-top" aria-hidden />
           </a>{' '}
           and paste.
         </p>

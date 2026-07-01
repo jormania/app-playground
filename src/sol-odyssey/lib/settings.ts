@@ -37,6 +37,9 @@ export interface Settings {
   /** What a new Charter's start date defaults to: 'today' or a weekday ('mon'…'sun', meaning the
    *  next occurrence of that day). */
   defaultStart: string
+  /** Which email service opens when drafting a buddy note on desktop: 'default' (mailto → the OS
+   *  default client), 'gmail', or 'outlook'. Mobile always uses the device's default via mailto. */
+  mailProvider: string
 }
 
 export const EMPTY_SETTINGS: Settings = {
@@ -62,6 +65,8 @@ export const EMPTY_SETTINGS: Settings = {
   remindersStart: true,
   remindersHarvest: true,
   defaultStart: 'mon',
+  // Gmail preserves the desktop default; non-Gmail users can switch to their own client here.
+  mailProvider: 'gmail',
 }
 
 const STORAGE_KEY = 'sol-odyssey:settings'

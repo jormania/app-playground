@@ -60,6 +60,24 @@ function opt(emoji: string, label: string, value: string): EmailRow | undefined 
   return v ? { emoji, label, value: v } : undefined
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+function fmtDate(iso: string, withYear: boolean): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso.trim())
+  if (!m) return null
+  const month = MONTHS[Number(m[2]) - 1]
+  if (!month) return null
+  return withYear ? `${Number(m[3])} ${month} ${m[1]}` : `${Number(m[3])} ${month}`
+}
+/** Human-friendly ISO date range for the buddy: "6 Jul – 16 Aug 2026" (shared year shown once),
+ *  "28 Dec 2026 – 5 Feb 2027" across a year boundary. Falls back to the raw ISO if unparseable. */
+export function formatDateRange(startISO: string, endISO: string): string {
+  const sameYear = startISO.slice(0, 4) === endISO.slice(0, 4)
+  const start = fmtDate(startISO, !sameYear)
+  const end = fmtDate(endISO, true)
+  if (!start || !end) return `${startISO.trim()} to ${endISO.trim()}`
+  return `${start} – ${end}`
+}
+
 /** The daily check-in note. */
 export function dailyBuddyMail(
   buddyName: string,
@@ -123,7 +141,6 @@ export function weeklyBuddyMail(
 
 /** The kickoff: announce a new Odyssey, share the charter, ask them to witness. */
 export function kickoffBuddyMail(buddyName: string, userName: string, odyssey: OdysseyDetail): BuddyEmail {
-  const hasRuns = Boolean(odyssey.startDate && odyssey.endDate)
   return {
     subject: withUser(`Sol Odyssey · ${odysseyLabel(odyssey.number)} · will you witness?`, userName),
     heading: '🚀 Starting a new Odyssey — will you witness?',
@@ -137,7 +154,9 @@ export function kickoffBuddyMail(buddyName: string, userName: string, odyssey: O
           opt('🧭', "Who I'm becoming", odyssey.identity),
           opt('🌱', 'The tiny version', odyssey.tinyVersion),
           opt('✅', 'What counts as done', odyssey.dailySuccess),
-          hasRuns ? { emoji: '📆', label: 'When it runs', value: `${odyssey.startDate} to ${odyssey.endDate}` } : undefined,
+          odyssey.startDate && odyssey.endDate
+            ? { emoji: '📆', label: 'When it runs', value: formatDateRange(odyssey.startDate, odyssey.endDate) }
+            : undefined,
         ),
       },
     ],
@@ -177,7 +196,7 @@ export function buddyWelcomeEmail(buddyName: string, userName: string): BuddyEma
     heading: '👋 Will you be my witness?',
     greeting: greeting(buddyName),
     intro:
-      "I'm starting something called an Odyssey: 42 days of practising one small habit every day until it sticks. It works far better with one person witnessing it — and I'd love that to be you. Here's everything it involves; none of it needs a reply.",
+      "I'm starting something called an Odyssey: 42 days of practising one small habit every day until it sticks. It works far better with one person witnessing it — and I'd love that to be you. Here's everything it involves; the day-to-day never needs a reply.",
     sections: [
       {
         title: '🧭 What an Odyssey is',
@@ -200,8 +219,9 @@ export function buddyWelcomeEmail(buddyName: string, userName: string): BuddyEma
         title: '🤝 All I hope for',
         rows: [
           { emoji: '👂', label: 'Witnessing, not fixing', value: "You don't have to solve anything — just being there is what helps." },
-          { emoji: '💛', label: 'A little curiosity', value: 'A gentle question helps far more than judgment, especially on the days I slip.' },
-          { emoji: '🔒', label: 'Just between us', value: 'It would mean a lot to keep this private to the two of us.' },
+          { emoji: '💛', label: 'Curiosity, never judgment', value: 'A gentle question helps far more than judgment, especially on the days I slip.' },
+          { emoji: '🔒', label: 'Just between us', value: 'It would mean a lot to keep what I share private to the two of us.' },
+          { emoji: '🍃', label: 'No pressure to keep pace', value: "You don't need to run an Odyssey of your own — and if you're busy or miss a note, mine keeps going. Steady beats perfect." },
         ],
       },
       {
@@ -227,7 +247,50 @@ export function gmailComposeUrl(to: string, subject: string, body?: string): str
   return `https://mail.google.com/mail/?${params.toString()}`
 }
 
-/** Seeded into the Gmail draft body as a reminder; the user pastes over it. */
+/** Outlook web's compose deep link (office.com; also serves redirected consumer accounts). */
+export function outlookComposeUrl(to: string, subject: string, body?: string): string {
+  const params = new URLSearchParams({ to: to.trim(), subject })
+  if (body) params.set('body', body)
+  return `https://outlook.office.com/mail/deeplink/compose?${params.toString()}`
+}
+
+export type MailProvider = 'default' | 'gmail' | 'outlook'
+
+/** Where a drafted note is handed off. `viaLocation` = assign `location.href` (mailto — the reliable
+ *  hand-off that opens a native client, no popup); otherwise open a webmail tab with `window.open`. */
+export interface ComposeTarget {
+  url: string
+  viaLocation: boolean
+}
+
+/** Pick the compose hand-off from the user's provider choice + platform. Mobile always uses `mailto:`
+ *  (the device's default app in compose — the webmail URLs deep-link to the app's inbox and drop the
+ *  compose params there). On desktop the provider choice decides; 'default' also means `mailto:`. */
+export function composeTarget(
+  provider: MailProvider,
+  mobile: boolean,
+  to: string,
+  subject: string,
+  body?: string,
+): ComposeTarget {
+  if (mobile || provider === 'default') return { url: mailtoUrl(to, subject, body), viaLocation: true }
+  if (provider === 'outlook') return { url: outlookComposeUrl(to, subject, body), viaLocation: false }
+  return { url: gmailComposeUrl(to, subject, body), viaLocation: false }
+}
+
+/** A `mailto:` for the reliable mobile hand-off: unlike the Gmail *web* compose URL (which a mobile
+ *  browser often deep-links into the Gmail app's inbox, losing the compose params), `mailto:` opens
+ *  the native mail app straight in compose with `to` + `subject` filled. The body travels via the
+ *  clipboard, so `body` is just the paste reminder. */
+export function mailtoUrl(to: string, subject: string, body?: string): string {
+  const params = new URLSearchParams({ subject })
+  if (body) params.set('body', body)
+  // URLSearchParams encodes spaces as "+"; some mail clients render that literally in a mailto, so
+  // normalise to %20.
+  return `mailto:${to.trim()}?${params.toString().replace(/\+/g, '%20')}`
+}
+
+/** Seeded into the draft body as a reminder; the user pastes over it. */
 export const PASTE_REMINDER =
   '⬇️ Paste here (Ctrl+V / ⌘+V) — your formatted note is already on the clipboard. Then delete this line and send.'
 
