@@ -166,6 +166,22 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
 
       <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-6">
         <h3 className="font-display text-lg">Notion connection</h3>
+        <p className="font-sans text-sm text-text-secondary">
+          New here?{' '}
+          <a
+            href="https://app.notion.com/p/Sol-Odyssey-Starter-Template-38fd3e6d60db8194b97ce4a920572617"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-accent underline"
+          >
+            Duplicate the Starter Template
+          </a>{' '}
+          to get all three databases pre-built, then paste each link below. The{' '}
+          <a href="/sol-odyssey-guide.html" className="font-medium text-accent underline">
+            field guide
+          </a>{' '}
+          walks through the whole setup.
+        </p>
         <Field
           label="Notion integration token"
           type="password"
