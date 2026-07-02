@@ -111,6 +111,7 @@ export default defineConfig({
         kettlebellTraining: resolve(__dirname, 'kettlebell-training-react.html'),
         solOdysseys: resolve(__dirname, 'sol-odysseys-react.html'),
         tempo: resolve(__dirname, 'tempo-react.html'),
+        lawOfTheDay: resolve(__dirname, 'law-of-the-day-react.html'),
         dsShowcase: resolve(__dirname, 'ds-showcase.html'),
       }
     }

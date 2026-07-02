@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Law of the Day — Guide</title>
+<meta name="description" content="What Law of the Day is, how the daily quiz works, and how the season rotation and streak keep it interesting without repeating." />
+<meta name="theme-color" content="#F4F5F7" />
+<script>
+  // Follow the app's theme (shared localStorage key), set before paint to avoid a flash.
+  try {
+    if (localStorage.getItem('lawofday:theme') === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  } catch (e) {}
+</script>
+<link rel="icon" type="image/svg+xml" href="/law-of-the-day-logo.svg" />
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --bg2: #ece9e0;
+    --surface: #ffffff;
+    --border: #e3e6ea;
+    --ink: #1b1f24;
+    --muted: #5a636e;
+    --accent: #b8860b;
+    --accent-ink: #8a6608;
+    --maxw: 46rem;
+  }
+  html[data-theme='dark'] {
+    --bg: #0e1115;
+    --bg2: #171b22;
+    --surface: #1b1f25;
+    --border: #2b313a;
+    --ink: #e7eaee;
+    --muted: #aab2bd;
+    --accent: #d9ab3e;
+    --accent-ink: #eec569;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    color: var(--ink);
+    background: linear-gradient(165deg, var(--bg), var(--bg2));
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  header { margin-bottom: 2.5rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; }
+  .brand svg { width: 34px; height: 34px; }
+  h1 { font-size: clamp(2.2rem, 6vw, 3rem); line-height: 1.1; margin: 0; letter-spacing: -0.01em; }
+  .tagline { font-size: 1.15rem; color: var(--muted); margin: 0.5rem 0 0; }
+  h2 { font-size: 1.5rem; margin: 2.75rem 0 0.75rem; letter-spacing: -0.01em; }
+  h3 { font-size: 1.15rem; margin: 1.5rem 0 0.35rem; }
+  p { margin: 0.6rem 0; }
+  ul { margin: 0.6rem 0; padding-left: 1.2rem; }
+  li { margin: 0.3rem 0; }
+  a { color: var(--accent-ink); }
+  .lede { font-size: 1.2rem; color: var(--ink); }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem 1.4rem;
+    margin: 1rem 0;
+  }
+  .card h3 { margin-top: 0; }
+  .kicker { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-ink); margin: 0 0 0.2rem; font-weight: 600; }
+  .muted { color: var(--muted); }
+  .theme-toggle {
+    position: fixed; top: 14px; right: 14px; z-index: 50; width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 999px; color: var(--muted);
+  }
+  .theme-toggle:hover { color: var(--ink); }
+  footer { margin-top: 3rem; color: var(--muted); font-size: 0.9rem; }
+  @media print { .theme-toggle { display: none; } body { background: #fff; } }
+</style>
+</head>
+<body>
+<button class="theme-toggle" type="button" id="themeToggle" aria-label="Toggle dark mode" title="Toggle theme">◐</button>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 64 64" aria-hidden><path d="M18 27 L24 37 L32 24 L40 37 L46 27 L43 44 L21 44 Z" fill="none" stroke="#B8860B" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      <h1>Law of the Day</h1>
+    </div>
+    <p class="tagline">A daily quiz built on Robert Greene's The 48 Laws of Power.</p>
+  </header>
+
+  <p class="lede">Law of the Day is a small, unofficial fan project inspired by <em>The 48 Laws of Power</em>. It isn't affiliated with Robert Greene or his publisher — it's just a one-minute daily habit of reading a short scenario, guessing which law it illustrates, and seeing the explanation.</p>
+
+  <h2>How it works</h2>
+  <ul>
+    <li><strong>One scenario a day.</strong> Read the short situation on the home screen — a contemporary, relatable moment where one of the 48 laws is quietly at play.</li>
+    <li><strong>Pick a law.</strong> Four options are shown, one of which is correct. Tapping an option is the answer — there's no separate submit step.</li>
+    <li><strong>See the reveal.</strong> You'll immediately see whether you were right, the correct law's name, and a short explanation of why the scenario demonstrates it.</li>
+    <li><strong>One attempt per day.</strong> Once you've answered, the day locks — your result stays visible until a new scenario unlocks at local midnight.</li>
+  </ul>
+
+  <div class="card">
+    <p class="kicker">Rotation</p>
+    <h3>How the daily law is chosen</h3>
+    <p>All 48 laws are shuffled once into a "season." Each day draws the next law from that shuffled order, so no law repeats until every other law in the season has appeared. Once all 48 have been shown, the app reshuffles into a new season and continues — spaced repetition, not pure randomness, so you won't see the same law twice in a short stretch.</p>
+  </div>
+
+  <div class="card">
+    <p class="kicker">Streak</p>
+    <h3>What the streak counts</h3>
+    <p>The streak counts consecutive <strong>days answered</strong>, not consecutive correct answers — showing up and taking a guess keeps it alive, even on the days you get it wrong. Missing a day resets it back to one the next time you answer.</p>
+  </div>
+
+  <div class="card">
+    <p class="kicker">Privacy</p>
+    <h3>Where your data lives</h3>
+    <p>Everything — your current season, streak, and today's result — is stored only in this device's local storage. There's no account, no sync across devices, and no server involved. Clearing your browser's site data for this app will reset your progress.</p>
+  </div>
+
+  <h2>A gentle word</h2>
+  <p>The point isn't to master 48 rules of manipulation — it's the minute of thinking each scenario invites: noticing the strategic dynamic playing out in an ordinary moment, right or wrong. This is an unofficial fan project inspired by Robert Greene's <em>The 48 Laws of Power</em>, made for that purpose alone — not affiliated with the author or publisher, and not a substitute for reading the book itself.</p>
+
+  <footer>
+    <p>Law of the Day is part of a small collection of hand-built apps. It stores your progress on your own device and asks for nothing.</p>
+  </footer>
+</div>
+<script>
+  (function () {
+    var KEY = 'lawofday:theme';
+    var btn = document.getElementById('themeToggle');
+    function pref() { try { return localStorage.getItem(KEY) === 'dark' ? 'dark' : 'light'; } catch (e) { return 'light'; } }
+    function apply() {
+      if (pref() === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+    btn.addEventListener('click', function () {
+      var next = pref() === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem(KEY, next); } catch (e) {}
+      apply();
+    });
+    window.addEventListener('storage', function (e) { if (e.key === KEY) apply(); });
+    apply();
+  })();
+</script>
+</body>
+</html>

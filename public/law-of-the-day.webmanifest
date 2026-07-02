@@ -1,0 +1,17 @@
+{
+  "name": "Law of the Day",
+  "short_name": "Law of the Day",
+  "description": "A daily multiple-choice quiz inspired by Robert Greene's The 48 Laws of Power.",
+  "id": "/law-of-the-day-react.html",
+  "start_url": "/law-of-the-day-react.html",
+  "scope": "/law-of-the-day-react.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4F5F7",
+  "theme_color": "#B8860B",
+  "icons": [
+    { "src": "/law-of-the-day-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/law-of-the-day-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/law-of-the-day-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

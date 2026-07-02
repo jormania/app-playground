@@ -1,0 +1,8 @@
+.disclaimer {
+  margin: var(--space-lg) 0 0;
+  padding: 0 var(--space-md);
+  font-size: var(--text-xs);
+  line-height: var(--leading-body);
+  color: var(--color-faint);
+  text-align: center;
+}

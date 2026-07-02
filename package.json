@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "gen:icons": "node scripts/generate-sol-odyssey-icons.mjs",
-    "gen:tempo-icons": "node scripts/generate-tempo-icons.mjs"
+    "gen:tempo-icons": "node scripts/generate-tempo-icons.mjs",
+    "gen:law-of-the-day-icons": "node scripts/generate-law-of-the-day-icons.mjs"
   },
   "repository": {
     "type": "git",

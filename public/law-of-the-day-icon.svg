@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="lodTile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#C9992E"/>
+      <stop offset="1" stop-color="#7A4E17"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#lodTile)"/>
+  <path d="M146 220 L196 300 L256 190 L316 300 L366 220 L346 350 L166 350 Z"
+        fill="none" stroke="#FBF3E2" stroke-width="26" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

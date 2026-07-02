@@ -1,0 +1,57 @@
+/* This app's own palette, layered on top of the shared DS tokens: a warm
+   gold/bronze identity (matching the crown icon + guide page) rather than
+   the DS's generic blue accent, with a distinct gradient per theme. Scoping
+   the overrides to .shell means every descendant that reads --color-accent
+   (or its derived --color-ring/--color-glow) picks up this app's tint
+   automatically — same pattern Tempo uses for its own per-mode gradients. */
+.shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  --ga: #f8f2e3;
+  --gb: #efe3c8;
+  --color-accent: #b8860b;
+  --color-accent-hover: #96690a;
+  background: linear-gradient(165deg, var(--ga) 0%, var(--gb) 100%);
+  transition: background-color 400ms var(--ease);
+  display: flex;
+  justify-content: center;
+  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
+    env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+}
+
+:global(html[data-theme='dark']) .shell {
+  --ga: #16120c;
+  --gb: #1e1810;
+  --color-accent: #d9ab3e;
+  --color-accent-hover: #c4922a;
+}
+
+.content {
+  width: 100%;
+  max-width: 480px;
+  padding: var(--space-xl) var(--space-md) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 var(--space-lg);
+  gap: var(--space-sm);
+}
+
+.titleGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink);
+}
