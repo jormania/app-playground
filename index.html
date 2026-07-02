@@ -69,6 +69,15 @@ a { color: inherit; text-decoration: none; }
 
 /* ── Hero ── */
 .hero { padding: 46px 0 34px; }
+.hero-top { display: flex; justify-content: flex-end; margin-bottom: 18px; }
+.trove-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 12px; color: var(--gold-soft);
+  background: var(--gold-dim); border: 1px solid rgba(224,169,85,0.35);
+  border-radius: 999px; padding: 7px 16px; white-space: nowrap;
+  transition: all 0.18s;
+}
+.trove-pill:hover { background: rgba(224,169,85,0.18); border-color: rgba(224,169,85,0.55); transform: translateX(2px); }
 .hero h1 {
   font-family: var(--serif); font-weight: 400;
   font-size: clamp(2.8rem, 7vw, 5rem); color: var(--ink);
@@ -292,6 +301,9 @@ a { color: inherit; text-decoration: none; }
 <!-- ══ HERO ══════════════════════════════════════════ -->
 <section class="hero">
   <div class="container">
+    <div class="hero-top">
+      <a class="trove-pill" href="/coneofcold-trove.html">❄ Open the Trove ↗</a>
+    </div>
     <h1>A cabinet of small, <em>strange</em> tools.</h1>
     <p class="hero-desc">
       Standalone web apps — <strong>genuinely useful tools</strong>.
@@ -339,228 +351,10 @@ a { color: inherit; text-decoration: none; }
   </div>
 </footer>
 
-<script>
-// ─────────────────────────────────────────────────────
-// APP DATA — add new apps here
-// Category tags (get the rose highlight): gaming, fitness, outdoor…
-// Pre-design-system apps show a "Legacy" chip by default; set ds: true on an
-// app built on src/ds/ to drop it.
-// deployed: "Mon YYYY" (e.g. "Jun 2026") — drives both the date chip and the
-// "updated <Month YYYY>" line, which auto-derives from the newest deployed value.
-// ─────────────────────────────────────────────────────
-const CAT_TAGS = new Set(["gaming", "fitness", "outdoor", "mindfulness", "kawaii"]);
-
-const APPS = [
-  {
-    emoji: "⚖️",
-    iconBg: "rgba(184,134,11,0.12)",
-    title: "Law of the Day",
-    subtitle: "48 laws · one scenario · daily",
-    latest: true,
-    deployed: "Jul 2026",
-    tech: "React + Vite",
-    tags: ["quiz", "strategy", "reading", "react", "vite"],
-    ds: true,
-    description: "A one-minute daily quiz built around Robert Greene's The 48 Laws of Power: read a short scenario, guess which law it illustrates, then see the explanation. One law a day, no repeats until all 48 have come up, with a streak that tracks showing up rather than being right.",
-    features: [
-      "One scenario a day — pick from four laws, then reveal the answer with a short explanation",
-      "A shuffled 'season' rotation cycles through all 48 laws with no repeats, reshuffling once every law has appeared",
-      "A streak that counts consecutive days answered, not consecutive correct answers",
-      "Locks after today's answer so there's exactly one attempt per day, with your last result shown until tomorrow",
-      "All progress lives in this device's localStorage only — no account, no sync, no server",
-      "Light/dark theme and installable as a PWA",
-    ],
-    guide: "law-of-the-day-guide.html",
-    file: "law-of-the-day-react.html",
-  },
-  {
-    emoji: "🌿",
-    iconBg: "rgba(47,145,135,0.12)",
-    title: "Tempo",
-    subtitle: "movement · focus · breath",
-    deployed: "Jul 2026",
-    tech: "React + Vite",
-    tags: ["mindfulness", "fitness", "meditation", "breathing", "focus", "react", "vite"],
-    ds: true,
-    description: "A calm daily companion for the practices that keep body and mind well — a set on the mat, a focused work block, a few slow breaths before sleep. Tempo keeps the time quietly, with a soft cue at each change, so you can give your attention to the practice instead of the clock. Six timers: five well-worn methods plus a build-your-own, each remembering your last settings.",
-    features: [
-      "Rounds — alternating movement and rest for interval work; defaults to a Tabata set (20s/10s × 8)",
-      "Cycles — focused stretches with real breaks; the Pomodoro rhythm, or your own",
-      "Sit–Walk — longer seated meditation broken by mindful walking, the Vipassana way (20/5/20)",
-      "4-7-8 & Box Breathing — two calming breath protocols with a soft bell marking each phase",
-      "Custom — build any sequence by hand; soft bell for the mindful practices, a light ding for the rest, with a 3·2·1 count-in, Soft/Normal/Loud volume, and an optional interval chime",
-      "Reorderable home screen, light/dark theme, haptics, keep-awake, and it resumes right where you left off — even if you close the app mid-session",
-    ],
-    guide: "tempo-guide.html",
-    file: "tempo-react.html",
-  },
-  {
-    emoji: "🧭",
-    iconBg: "rgba(75,69,198,0.12)",
-    title: "Sol Odyssey",
-    subtitle: "one behaviour · 42 days · witnessed",
-    deployed: "Jun 2026",
-    tech: "React + Vite + Notion",
-    tags: ["habits", "growth", "tracker"],
-    ds: true,
-    description: "Run your own six-week behaviour-change Odyssey from start to finish: pick one tiny behaviour, practise it daily, and let the app carry the whole method — the charter, the daily loop, the 42-day tracker, the weekly reflection, and a closing harvest — all witnessed by one human buddy. Plan an Odyssey ahead, set yourself a gentle safety line, draft your buddy check-ins, and reflect with an optional AI companion as you go. Learn the method once; re-run it for the rest of your life.",
-    features: [
-      "One behaviour at a time, in a version so small it can't be failed on a bad day",
-      "A daily loop that does the remembering — do it, log one line, celebrate; flexible streaks around 'never skip two days', never guilt or red crosses",
-      "Weekly reflection that reads the week and changes one thing — then a harvest that names what installed: keep, grow, or retire",
-      "Plan an Odyssey ahead as a draft, and set an optional 'safety line' you'll honour if you ever miss two days",
-      "One human buddy (name + email): draft a tidy check-in email to them at every step, opened in your own mail app — Sol Odyssey sends nothing itself",
-      "An optional AI companion — a private, bring-your-own-key reflective witness that never replaces your buddy",
-      "Opt-in local reminders (daily · weekly · start · summit) and a Light / Dark / System theme",
-      "Notion-backed and keyless: your records live in your own Notion workspace, kept on your device — no server, installable as a PWA, works offline",
-    ],
-    guide: "sol-odyssey-guide.html",
-    file: "sol-odysseys-react.html",
-  },
-  {
-    emoji: "🔮",
-    iconBg: "rgba(224,169,85,0.10)",
-    title: "Touch Grass, a React Journey",
-    subtitle: "tarot cards · live sky & weather · ai divination",
-    deployed: "Jun 2026",
-    tech: "React + Vite",
-    tags: ["outdoor", "react", "vite"],
-    description: "The finished, definitive Touch Grass. Step outside, close the tab, come back — and a single strange find is waiting, conjured like a card from an unknown tarot deck. It all lives inside an illustrated tarot card that, with your permission, mirrors the real world where you are: its light, weather, moon, the lie of the land, and the rare moments of the year — with a quiet daily call to head out while the light lasts.",
-    features: [
-      "One illustrated tarot card — parchment keyline, full-bleed painted scenes — resting on the ground you're walking onto: sand at the coast, stone in a city, meadow on a plain",
-      "Mirrors your real sky: exact sunrise, sunset and twilight, with golden and blue hour easing in on the sun's true angle",
-      "Live weather painted onto the card — real clouds, rain, snow, fog banks, and thunderstorms that darken and flash",
-      "The true moon in tonight's real phase, and after dusk your zodiac constellation over a star field reseeded each day",
-      "AI-divined finds — one eldritch discovery per walk in four rarity tiers (common → legendary); the longer you're out, the rarer it turns",
-      "A living soundscape synthesised live, no audio files — set across a stereo field: gusting wind, a dawn chorus, distant things on a long walk",
-      "A sense of place — coast, forest, city, mountain or plain — colouring finds and sound alike: surf and gulls by the sea, a woodpecker in the forest",
-      "Rare moments turn the day special — solstices, cross-quarter festivals, meteor showers with real shooting stars, full and new moons — each tinting the find",
-    ],
-    guide: "touch-grass-react-guide.html",
-    file: "touch-grass-react.html",
-  },
-  {
-    emoji: "🍊",
-    iconBg: "rgba(255,158,100,0.16)",
-    title: "Journal of Delights",
-    subtitle: "one delight a day · notion-backed · calendar & list",
-    deployed: "Jun 2026",
-    tech: "React + Vite + Notion",
-    tags: ["mindfulness", "writing", "react", "notion"],
-    description: "A daily delight-logging app based on Ross Gay's The Book of Delights — one small thing, noticed closely and written into a short essayette. Not a gratitude log, no scoring or streaks: just attention. Entries live in a Notion database, and the app is a friendlier second doorway to it — read them as a list, a month calendar or a year heatmap, search by text, tags or people, and keep a quiet eye on the practice.",
-    features: [
-      "One entry per calendar day — editable forever, never duplicated",
-      "One optional picture per delight, even on a past entry — a faded, grainy, tilted thumbnail in the list, uncropped and full size on the entry itself",
-      "Three ways to read: a list, a month calendar, and a year heatmap, switched from a slim sticky bar",
-      "Search across text, tags or people — and tap any tag or person to filter to it",
-      "Freeform Tags and People that emerge from what you write, created inline — never a fixed list",
-      "A quiet Stats view with tag & people heatmaps and an optional ‘on this day’ glance — descriptive, never streaks or scores",
-      "Export the whole journal to a single self-contained HTML file",
-      "Interrupted mid-entry? Save it as a draft and resume it later from the top of the list",
-      "Works fully offline — reads from a local copy and queues new or edited delights, syncing to your Notion database once you're back online (token stays in your browser)",
-      "Installable as a PWA that opens offline; runs in demo mode on sample delights until you connect Notion",
-    ],
-    guide: "journal-of-delights-guide.html",
-    file: "journal-of-delights-react.html",
-  },
-  {
-    emoji: "🏋️",
-    iconBg: "rgba(255,30,30,0.14)",
-    title: "Kettlebell Training",
-    subtitle: "12 movements · keith haring pop-art · phase-by-phase",
-    deployed: "Jun 2026",
-    tech: "React + Vite",
-    tags: ["fitness", "svg", "react", "vite"],
-    description: "Twelve foundational kettlebell movements drawn as bold, radiating Keith Haring figures — each lift shown as a 2–3 frame sequence so you see the motion, not a single frozen pose. Form cues are researched per movement, with difficulty pips and the muscles you'll feel the next morning.",
-    features: [
-      "Every lift is a 2–3 phase Haring sequence — hinge to snap, floor to overhead — with action lines and solid-ink kettlebells",
-      "Form cues researched per movement, not generic filler: six tight steps from setup to lockout",
-      "Difficulty pips (beginner → advanced) and primary muscle tags on every card",
-      "Sticky exercise rail that tracks whichever movement you're reading",
-      "Built in React + Vite as the foundation for dynamic content to come",
-    ],
-    file: "kettlebell-training-react.html",
-  },
-  {
-    emoji: "🌿",
-    iconBg: "rgba(100,160,80,0.15)",
-    title: "Touch Grass",
-    subtitle: "surreal finds · ambient audio · real-time weather",
-    version: "v7",
-    deployed: "Jun 2026",
-    tech: "Vanilla HTML",
-    tags: ["outdoor", "ambient"],
-    description: "Step outside, close the tab, come back. Touch Grass saves your departure so the browser can sleep, then generates surreal AI discoveries on return — scaled to how long you were gone.",
-    features: [
-      "Departure saves across tab close — return hours later, it picks up where you left off",
-      "Sparse AI finds — 3 from an hour walk, each intentionally distinct in kind",
-      "Generative Web Audio that adapts to location, time of day, and live weather",
-      "Seasonal grass, sun/moon with real lunar phase, weather-driven sky and particles",
-      "Streak screen, walk stats, and persistent collection — all local, no account needed",
-    ],
-    guide: "touch-grass-features.html",
-    file: "touch-grass.html",
-  },
-  {
-    emoji: "🌸",
-    iconBg: "rgba(196,144,128,0.18)",
-    title: "Touch Grass · Thrive",
-    subtitle: "mindful finds · warm palette · presence practice",
-    version: "v1",
-    deployed: "Jun 2026",
-    tech: "Vanilla HTML",
-    tags: ["outdoor", "mindfulness"],
-    description: "A warm version of Touch Grass built around mindful presence. Step outside without a goal, walk as long as you need, and come back to what the walk quietly left behind — small moments of noticing, not surreal objects.",
-    features: [
-      "Finds are moments of presence — sensory, reflective, gently poetic, never heavy",
-      "Warm peach and rose palette: sky, panel, and grass all run softer and warmer",
-      "Same ambient soundscape, live weather, and seasonal canvas as the original",
-      "Separate collection and walk history — data stays distinct from the original app",
-      "Streak screen, walk stats, and collection — all local, all private",
-    ],
-    guide: "touch-grass-features-vio.html",
-    file: "touch-grass-vio.html",
-  },
-  {
-    emoji: "🗻",
-    iconBg: "rgba(255,45,120,0.16)",
-    title: "Touch Grass · Nora",
-    subtitle: "tokyo finds · mount fuji · cherry blossoms",
-    version: "v1",
-    deployed: "Jun 2026",
-    tech: "Vanilla HTML",
-    tags: ["outdoor", "kawaii"],
-    description: "Go outside anywhere — what finds you is always Japan: capsule toys and daifuku in the grass, manga pages mid-air, origami cranes that already know your face. Through it all, Mount Fuji watches from the sky, its snow and blossoms shifting with the seasons.",
-    features: [
-      "Finds are Japan — Tokyo kawaii, Edo legend, and everything in between",
-      "Mount Fuji painted across the sky, seasonal and alive — snow in winter, blossoms in spring",
-      "Cherry blossom petals drift through the air in spring",
-      "Same ambient audio, live weather, and walk stats as the original",
-      "Built for mobile — separate collection and walk history stored on device",
-    ],
-    guide: "touch-grass-features-nora.html",
-    file: "touch-grass-nora.html",
-  },
-  {
-    emoji: "⚗️",
-    iconBg: "rgba(255,180,50,0.15)",
-    title: "Codex Alchymicus — KCD2",
-    subtitle: "28 recipes · 6 categories · parchment UI",
-    version: "v3",
-    deployed: "Jun 2026",
-    tech: "Vanilla JS",
-    tags: ["gaming"],
-    description: "A parchment recipe manager for Kingdom Come: Deliverance II alchemy. All 28 learnable recipes, searchable by name and ingredient and filterable by category. Track what you've mastered, add custom brews.",
-    features: [
-      "Animated SVG candle flames and layered parchment textures",
-      "Hand-drawn herb icons: nettle, belladonna, marigold, mint, valerian…",
-      "Category filtering, difficulty pips, mastery toggle, recipe deletion",
-      "Custom recipe input modal with ingredient + step parsing",
-      "Mobile layout with panel-switching navigation",
-    ],
-    file: "kcd2-codex-v3.html",
-  },
-];
+<script type="module">
+import { APPS, CAT_TAGS } from '/src/apps-registry.js';
+// App data lives in src/apps-registry.js — the same source Coneofcold Trove
+// (coneofcold-trove.html) reads from. Add new apps there, not here.
 
 // ─────────────────────────────────────────────────────
 // STATE
@@ -727,8 +521,11 @@ function applyFilters() {
     appListEl.innerHTML = `
       <div class="empty-state">
         <p>Nothing matches${activeTag ? ` the tag “${activeTag}”` : " your search"}.</p>
-        <button class="empty-clear" onclick="clearAll()">Clear filters</button>
+        <button class="empty-clear">Clear filters</button>
       </div>`;
+    // type="module" scripts don't leak functions onto window, so this can't
+    // be an inline onclick — wire it up directly instead.
+    appListEl.querySelector(".empty-clear").addEventListener("click", clearAll);
   } else {
     appListEl.innerHTML = results.map(renderCard).join("");
 

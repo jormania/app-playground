@@ -28,10 +28,17 @@ call a change complete on green-looking code alone.
 |-----|----------|------|
 | Sol Odyssey | `src/sol-odyssey/` | **strict TypeScript** — has its own [`CLAUDE.md`](src/sol-odyssey/CLAUDE.md) + `DESIGN.md`; **defer to those** inside that dir |
 | Tempo | `src/tempo/` | plain JSX, builds on `src/ds/` |
+| Law of the Day | `src/law-of-the-day/` | plain JSX, builds on `src/ds/` |
+| Coneofcold Trove | `src/trove/` | plain JSX, builds on `src/ds/`; dashboard listing the other `react-vite` apps — see [`TROVE.md`](TROVE.md) |
 | Journal of Delights | `src/journal/` | plain JSX, no type checking |
 | Kettlebell Training | `src/kettlebell/` | plain JSX, no type checking |
 | Touch Grass | `src/touch-grass/` | plain JSX, no type checking |
 | Static HTML apps | repo root (`*.html`) | design-locked, hand-authored — edit in place |
+
+Every app's card/tile data (name, icon, blurb, tags) lives in one place —
+[`src/apps-registry.js`](src/apps-registry.js) — read by both `index.html`'s
+card grid and Coneofcold Trove. See [`TROVE.md`](TROVE.md) for the checklist
+when shipping a new app.
 
 `tsconfig.json` covers the TypeScript code — **`src/sol-odyssey` and
 `src/ds`**; `npm run typecheck` type-checks both. The other React apps are plain

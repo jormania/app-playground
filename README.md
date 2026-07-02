@@ -46,7 +46,9 @@ one-way rule (legacy apps never import `src/ds/`) is enforced by
 ## Adding a new app
 
 1. Drop the `.html` file in the repo root.
-2. Open `index.html` and add an entry to the `APPS` array in the `<script>` block:
+2. Add an entry to the `APPS` array in [`src/apps-registry.js`](src/apps-registry.js)
+   — this single file feeds both `index.html`'s card grid and the
+   [Coneofcold Trove](TROVE.md) dashboard:
 
 ```js
 {
@@ -65,6 +67,9 @@ one-way rule (legacy apps never import `src/ds/`) is enforced by
     "Feature two",
   ],
   file: "my-app.html",
+  // Only for a real Vite+React build with its own PWA manifest — see TROVE.md:
+  // kind: "react-vite",
+  // manifest: "/my-app.webmanifest",
 },
 ```
 

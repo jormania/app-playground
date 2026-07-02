@@ -1,0 +1,25 @@
+{
+  "name": "Coneofcold Trove",
+  "short_name": "Trove",
+  "description": "Every Cone of Cold React app, one launch pad.",
+  "id": "/coneofcold-trove.html",
+  "start_url": "/coneofcold-trove.html",
+  "scope": "/coneofcold-trove.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EAF6FC",
+  "theme_color": "#2A6F9E",
+  "icons": [
+    { "src": "/trove-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/trove-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/trove-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "related_applications": [
+    { "platform": "webapp", "url": "https://coneofcold.vercel.app/law-of-the-day.webmanifest" },
+    { "platform": "webapp", "url": "https://coneofcold.vercel.app/tempo.webmanifest" },
+    { "platform": "webapp", "url": "https://coneofcold.vercel.app/sol-odyssey.webmanifest" },
+    { "platform": "webapp", "url": "https://coneofcold.vercel.app/touch-grass.webmanifest" },
+    { "platform": "webapp", "url": "https://coneofcold.vercel.app/journal-of-delights.webmanifest" },
+    { "platform": "webapp", "url": "https://coneofcold.vercel.app/kettlebell-training.webmanifest" }
+  ]
+}
