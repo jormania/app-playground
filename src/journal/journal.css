@@ -487,14 +487,16 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .entry-row:has(.photo-thumb) { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .entry-row .row-main { flex: 1; min-width: 0; }
 
-.photo-thumb-plain { border: 1px solid var(--border2); }
+.photo-thumb-plain { border: 1px solid var(--border2); box-shadow: 0 6px 16px var(--shadow); }
 .photo-field .photo-thumb-plain { width: 84px; height: 84px; }
 .photo-current { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .photo-field .photo-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .photo-field .hint { margin-top: 8px; }
 
+/* A fixed, modest size at every viewport — on a narrow phone, a width:100%
+   photo reads as an edge-to-edge hero banner, not a snapshot pinned to a page. */
 .entry-photo { margin: 18px 0; }
-.entry-photo .photo-thumb-plain { width: 100%; max-width: 380px; aspect-ratio: 4 / 3; }
+.entry-photo .photo-thumb-plain { width: 200px; height: 200px; }
 
 /* ── Lightbox ── */
 .lightbox-scrim {
