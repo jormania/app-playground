@@ -31,15 +31,21 @@ function scale(volume) {
   return VOLUME_SCALE[volume] ?? 1
 }
 
+// Completion always rides a bit louder than a plain transition, at any volume
+// level, so "you're done" doesn't get lost at Soft or blend into the ordinary
+// step-change cue at Normal.
+const COMPLETE_BOOST = 1.4
+
 // ── Neutral "ding" — for movement / focus / custom (crisp, brief). ──────────
 function ding(v) {
   tone({ frequency: 880, duration: 0.15, volume: 0.2 * v })
 }
 
 function dingComplete(v) {
-  tone({ frequency: 660, duration: 0.15, volume: 0.2 * v })
-  tone({ frequency: 880, duration: 0.15, delay: 0.18, volume: 0.2 * v })
-  tone({ frequency: 1046, duration: 0.25, delay: 0.36, volume: 0.2 * v })
+  const b = v * COMPLETE_BOOST
+  tone({ frequency: 660, duration: 0.15, volume: 0.2 * b })
+  tone({ frequency: 880, duration: 0.15, delay: 0.18, volume: 0.2 * b })
+  tone({ frequency: 1046, duration: 0.25, delay: 0.36, volume: 0.2 * b })
 }
 
 // ── Calm "bell" — for the mindfulness practices (soft, resonant, long decay). ─
@@ -49,8 +55,9 @@ function bell(v) {
 }
 
 function bellComplete(v) {
-  tone({ frequency: 396, duration: 2.6, volume: 0.24 * v })
-  tone({ frequency: 792, duration: 2.0, volume: 0.07 * v })
+  const b = v * COMPLETE_BOOST
+  tone({ frequency: 396, duration: 2.6, volume: 0.24 * b })
+  tone({ frequency: 792, duration: 2.0, volume: 0.07 * b })
 }
 
 // A cue set keyed by the practice family; `volume` is 'soft' | 'normal' | 'loud'.
@@ -62,8 +69,12 @@ export function cueSet(kind, volume = 'normal') {
   return { transition: () => ding(v), complete: () => dingComplete(v) }
 }
 
-// A standalone gentle bell for the periodic "interval chime" during long sessions —
-// a touch softer than a transition bell at the same level.
+// A standalone "interval chime" for long sessions — deliberately distinct from
+// both the ding and the bell (different waveform, different melodic shape: two
+// notes in sequence rather than one beep or two simultaneous tones) so it's
+// unmistakable as "time has passed", not a step transition or completion.
 export function playChime(volume = 'normal') {
-  bell(scale(volume) * 0.7)
+  const v = scale(volume) * 0.55
+  tone({ frequency: 587, duration: 0.5, volume: v, type: 'triangle' })
+  tone({ frequency: 880, duration: 0.9, delay: 0.3, volume: v * 0.85, type: 'triangle' })
 }

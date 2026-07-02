@@ -137,7 +137,8 @@ export const MODES = {
       { key: 'cycles', label: 'Rounds', min: 1, max: 40 },
     ],
     build: (c) => buildBoxSegments({ side: c.side, cycles: c.cycles }),
-    summarize: (c) => (c ? `${c.side}-${c.side}-${c.side}-${c.side} · ${c.cycles} rounds` : null),
+    summarize: (c) =>
+      c ? `Inhale ${c.side} · hold ${c.side} · exhale ${c.side} · hold ${c.side} · ${c.cycles} rounds` : null,
   },
 
   custom: {

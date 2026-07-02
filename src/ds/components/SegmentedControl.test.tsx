@@ -33,4 +33,14 @@ describe('SegmentedControl', () => {
     await user.click(screen.getByRole('radio', { name: 'Rest' }))
     expect(onChange).toHaveBeenCalledWith('rest')
   })
+
+  it('disables every option and blocks onChange when disabled', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<SegmentedControl options={OPTIONS} value="work" onChange={onChange} disabled />)
+    const rest = screen.getByRole('radio', { name: 'Rest' })
+    expect(rest.hasAttribute('disabled')).toBe(true)
+    await user.click(rest)
+    expect(onChange).not.toHaveBeenCalled()
+  })
 })

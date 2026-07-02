@@ -147,6 +147,19 @@ export function Showcase() {
             onChange={setSegment}
           />
         </Row>
+        <Row label="Disabled">
+          <SegmentedControl
+            size="sm"
+            disabled
+            options={[
+              { value: 'prepare', label: 'Prep' },
+              { value: 'work', label: 'Work' },
+              { value: 'rest', label: 'Rest' },
+            ]}
+            value={segment}
+            onChange={setSegment}
+          />
+        </Row>
       </Section>
     </div>
   )

@@ -22,6 +22,13 @@ const CHIME_OPTIONS = [
 export function SettingsModal({ open, onClose, preferences, onChange }) {
   const { resolved, setTheme } = useTheme()
 
+  // Silent mode is a master override: it mutes all audio without touching the
+  // stored Sound cues preference, so switching it back off restores whatever
+  // was set before. Vibration is a separate channel and is never affected —
+  // Silent only ever means "no sound".
+  const audioDisabled = preferences.silent
+  const cueControlsDisabled = audioDisabled || !preferences.sound
+
   return (
     <Modal open={open} onClose={onClose} title="Settings">
       <div className={styles.settingsGroup}>
@@ -30,15 +37,33 @@ export function SettingsModal({ open, onClose, preferences, onChange }) {
           <SegmentedControl size="sm" options={THEME_OPTIONS} value={resolved} onChange={setTheme} />
         </div>
 
-        <label className={styles.settingsRow}>
-          <input type="checkbox" checked={preferences.sound} onChange={(e) => onChange({ sound: e.target.checked })} />
+        <div>
+          <label className={styles.settingsRow}>
+            <input
+              type="checkbox"
+              checked={preferences.silent}
+              onChange={(e) => onChange({ silent: e.target.checked })}
+            />
+            Silent mode
+          </label>
+          <p className={styles.settingsHint}>Mutes all sound below. Vibration keeps working.</p>
+        </div>
+
+        <label className={`${styles.settingsRow} ${audioDisabled ? styles.settingsRowDisabled : ''}`}>
+          <input
+            type="checkbox"
+            checked={preferences.sound}
+            disabled={audioDisabled}
+            onChange={(e) => onChange({ sound: e.target.checked })}
+          />
           Sound cues
         </label>
 
-        <div>
+        <div className={cueControlsDisabled ? styles.settingsRowDisabled : ''}>
           <p className={styles.settingsLabel}>Cue volume</p>
           <SegmentedControl
             size="sm"
+            disabled={cueControlsDisabled}
             options={VOLUME_OPTIONS}
             value={preferences.volume}
             onChange={(v) => onChange({ volume: v })}
@@ -55,10 +80,11 @@ export function SettingsModal({ open, onClose, preferences, onChange }) {
         </label>
 
         <div>
-          <label className={styles.settingsRow}>
+          <label className={`${styles.settingsRow} ${cueControlsDisabled ? styles.settingsRowDisabled : ''}`}>
             <input
               type="checkbox"
               checked={preferences.intervalChime}
+              disabled={cueControlsDisabled}
               onChange={(e) => onChange({ intervalChime: e.target.checked })}
             />
             Interval chime
@@ -67,6 +93,7 @@ export function SettingsModal({ open, onClose, preferences, onChange }) {
             <div className={styles.subControl}>
               <SegmentedControl
                 size="sm"
+                disabled={cueControlsDisabled}
                 options={CHIME_OPTIONS}
                 value={String(preferences.chimeInterval)}
                 onChange={(v) => onChange({ chimeInterval: Number(v) })}

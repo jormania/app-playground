@@ -11,12 +11,20 @@ import styles from './Player.module.css'
 
 const DEFAULT_PREFERENCES = {
   sound: true,
+  silent: false, // master mute for all audio — never touches vibration, that's a separate setting
   wakeLock: true,
   haptics: true,
   prepare: true, // a 3·2·1 count-in before the first step
   volume: 'normal', // cue volume: 'soft' | 'normal' | 'loud'
   intervalChime: false, // a soft bell every few minutes of a running session
   chimeInterval: 5, // minutes between interval chimes: 3 | 5 | 10
+}
+
+// The audio actually in effect right now — Silent mode overrides the Sound
+// cues preference without changing its stored value, so turning Silent back
+// off restores whatever the user had before.
+function soundIsOn(preferences) {
+  return preferences.sound && !preferences.silent
 }
 
 function initialPreferences() {
@@ -29,9 +37,13 @@ function formatTime(totalSeconds) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+const EXIT_CONFIRM_MS = 2000
+
 export function Player({ mode, segments, resumeFrom = null, onExit }) {
   const [preferences, setPreferences] = useState(initialPreferences)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [exitArmed, setExitArmed] = useState(false)
+  const exitTimerRef = useRef(null)
 
   // The list the engine actually plays: a resumed session replays exactly what
   // was saved; a fresh one optionally gets a "Get ready" count-in prepended.
@@ -56,27 +68,28 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
   }, [])
 
   // ── Cues (sound + haptics) on transitions and completion ──────────────────
+  const soundOn = soundIsOn(preferences)
   const prevRef = useRef({ index: currentIndex, status })
   useLayoutEffect(() => {
     const wasStatus = prevRef.current.status
     if (status === 'done' && wasStatus !== 'done') {
-      if (preferences.sound) cue.complete()
+      if (soundOn) cue.complete()
       if (preferences.haptics) vibrateComplete()
     } else if (status === 'running' && currentIndex !== prevRef.current.index) {
-      if (preferences.sound) cue.transition()
+      if (soundOn) cue.transition()
       if (preferences.haptics) vibrateTransition()
     }
     prevRef.current = { index: currentIndex, status }
-  }, [currentIndex, status, preferences.sound, preferences.haptics, cue])
+  }, [currentIndex, status, soundOn, preferences.haptics, cue])
 
   // ── Interval chime — a soft bell every few minutes while running (long sits) ──
   useEffect(() => {
     if (!preferences.intervalChime || status !== 'running') return undefined
     const id = setInterval(() => {
-      if (preferences.sound) playChime(preferences.volume)
+      if (soundOn) playChime(preferences.volume)
     }, preferences.chimeInterval * 60 * 1000)
     return () => clearInterval(id)
-  }, [preferences.intervalChime, preferences.chimeInterval, preferences.sound, preferences.volume, status])
+  }, [preferences.intervalChime, preferences.chimeInterval, preferences.volume, soundOn, status])
 
   // ── Persist the in-progress session so it survives the app closing ────────
   const latestRef = useRef({ currentIndex, secondsRemaining, status })
@@ -127,6 +140,33 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
     start()
   }, [reset, start])
 
+  // ── Exit needs a deliberate second tap mid-session — a stray touch while
+  // moving shouldn't end a practice. First tap arms it (button reads "Tap
+  // again"); a second tap within the window actually exits; anything else
+  // (pause/resume/skip, or just waiting) disarms it. ─────────────────────────
+  const handleExitRequest = useCallback(() => {
+    if (exitArmed) {
+      if (exitTimerRef.current) clearTimeout(exitTimerRef.current)
+      setExitArmed(false)
+      onExit()
+      return
+    }
+    setExitArmed(true)
+    exitTimerRef.current = setTimeout(() => setExitArmed(false), EXIT_CONFIRM_MS)
+  }, [exitArmed, onExit])
+
+  useEffect(() => {
+    setExitArmed(false)
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current)
+  }, [status, currentIndex])
+
+  useEffect(
+    () => () => {
+      if (exitTimerRef.current) clearTimeout(exitTimerRef.current)
+    },
+    [],
+  )
+
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
   useEffect(() => {
     function onKey(e) {
@@ -137,14 +177,14 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
       } else if (e.key === 'ArrowRight' || e.key.toLowerCase() === 's') {
         if (status === 'running' || status === 'paused') skip()
       } else if (e.key === 'Escape') {
-        onExit()
+        handleExitRequest()
       } else if (e.key === 'Enter' && status === 'done') {
         handleRestart()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [status, pause, resume, skip, onExit, handleRestart])
+  }, [status, pause, resume, skip, handleExitRequest, handleRestart])
 
   const fractionRemaining = currentSegment ? secondsRemaining / currentSegment.seconds : 0
 
@@ -166,10 +206,12 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
           <h1 className={styles.doneTitle}>Done — nicely paced.</h1>
           <p className={styles.doneNote}>That’s {mode.name.toLowerCase()} complete. Come back whenever it suits you.</p>
           <div className={styles.controls}>
-            <Button variant="secondary" onClick={onExit}>
+            <Button variant="secondary" className={styles.controlButton} onClick={onExit}>
               Home
             </Button>
-            <Button onClick={handleRestart}>Again</Button>
+            <Button className={styles.controlButton} onClick={handleRestart}>
+              Again
+            </Button>
           </div>
         </>
       ) : (
@@ -183,19 +225,23 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
           </p>
           <div className={styles.controls}>
             {status === 'running' ? (
-              <Button variant="secondary" onClick={pause}>
+              <Button variant="secondary" className={styles.controlButton} onClick={pause}>
                 Pause
               </Button>
             ) : (
-              <Button variant="secondary" onClick={resume}>
+              <Button variant="secondary" className={styles.controlButton} onClick={resume}>
                 Resume
               </Button>
             )}
-            <Button variant="secondary" onClick={skip}>
+            <Button variant="secondary" className={styles.controlButton} onClick={skip}>
               Skip
             </Button>
-            <Button variant="ghost" onClick={onExit}>
-              Exit
+            <Button
+              variant={exitArmed ? 'primary' : 'secondary'}
+              className={styles.controlButton}
+              onClick={handleExitRequest}
+            >
+              {exitArmed ? 'Tap again' : 'Exit'}
             </Button>
           </div>
         </>

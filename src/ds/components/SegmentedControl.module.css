@@ -48,3 +48,11 @@
   padding: 0 var(--space-md);
   font-size: var(--text-base);
 }
+
+.disabled {
+  opacity: 0.5;
+}
+
+.disabled .option {
+  cursor: not-allowed;
+}
