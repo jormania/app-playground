@@ -493,10 +493,13 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .photo-field .photo-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .photo-field .hint { margin-top: 8px; }
 
-/* A fixed, modest size at every viewport — on a narrow phone, a width:100%
-   photo reads as an edge-to-edge hero banner, not a snapshot pinned to a page. */
+/* The entry view shows the photo as taken — no cropping, so a portrait or
+   landscape shot both keep their real proportions. Only the listing thumbnail
+   (photo-thumb-sepia, a fixed square) is meant to crop; this one just scales
+   down to fit, capped so a tall portrait doesn't dominate the page. */
 .entry-photo { margin: 18px 0; }
-.entry-photo .photo-thumb-plain { width: 200px; height: 200px; }
+.entry-photo .photo-thumb-plain { width: auto; height: auto; max-width: min(100%, 340px); display: inline-block; }
+.entry-photo .photo-thumb-plain img { width: auto; height: auto; max-width: 100%; max-height: 420px; object-fit: contain; }
 
 /* ── Lightbox ── */
 .lightbox-scrim {
