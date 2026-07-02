@@ -32,6 +32,10 @@ export const EntryIcon = (p) => (
 export const CountIcon = (p) => (
   <svg {...base} {...p}><path d="M5 6h6M5 10h9M5 14h6M5 18h9" /><path d="M17 5l2 2 3-3.5" /></svg>
 )
+// Photo — a single snapshot, at most one per delight.
+export const PhotoIcon = (p) => (
+  <svg {...base} {...p}><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="10.5" r="2" /><path d="M21 16l-5.5-5-4 4-2-1.5L3 17" /></svg>
+)
 
 // ── UI glyphs ─────────────────────────────────────────────────
 export const ListIcon = (p) => (

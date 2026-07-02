@@ -1,15 +1,17 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { wordCount, collectOptions } from './notion.js'
 import { findByDate, formatHuman, entriesOnSameDay, todayKey } from './dates.js'
-import { getDraft, saveDraft, clearDraft } from './store.js'
+import { getDraft, saveDraft, clearDraft, getClient } from './store.js'
 import TagInput from './TagInput.jsx'
+import PhotoField from './PhotoField.jsx'
+import Lightbox from './Lightbox.jsx'
 import { TitleIcon, DateIcon, EntryIcon, TagIcon, PeopleIcon, HistoryIcon } from './icons.jsx'
 
 // Create or edit one delight. Enforces the journal's single hard rule at the app
 // level — one entry per calendar date — by detecting a clash and offering to open
 // the existing entry rather than silently creating a duplicate (Notion itself
 // won't stop two pages sharing a Date).
-export default function EntryEditor({ initial, entries, onSave, onSaveDraft, onCancel, onOpenExisting, onOnThisDay, saving, error }) {
+export default function EntryEditor({ initial, entries, onSave, onSaveDraft, onCancel, onOpenExisting, onOnThisDay, saving, error, offline }) {
   const isNew = !initial.id
   // Resilience: for a new entry, pick up any locally-saved draft for this date so a
   // failed save or closed tab never loses what was written.
@@ -22,6 +24,19 @@ export default function EntryEditor({ initial, entries, onSave, onSaveDraft, onC
   const [tags, setTags] = useState(seed.tags || [])
   const [people, setPeople] = useState(seed.people || [])
   const titleRef = useRef(null)
+
+  // Photo: uploads the moment it's picked (see PhotoField); `pendingPhoto` holds
+  // the not-yet-attached result, `photoRemoved` marks the existing one for removal.
+  // Neither is drafted locally — photos need a live save, unlike text.
+  const [pendingPhoto, setPendingPhoto] = useState(null)
+  const [photoRemoved, setPhotoRemoved] = useState(false)
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const [lightboxSrc, setLightboxSrc] = useState(null)
+  const client = useMemo(() => getClient(), [])
+
+  // A picked photo's local preview is a blob: URL — release it whenever it's
+  // replaced or the editor closes, so we don't leak it.
+  useEffect(() => () => { if (pendingPhoto?.previewUrl) URL.revokeObjectURL(pendingPhoto.previewUrl) }, [pendingPhoto])
 
   const tagOptions = useMemo(() => collectOptions(entries, 'tags'), [entries])
   const peopleOptions = useMemo(() => collectOptions(entries, 'people'), [entries])
@@ -45,10 +60,11 @@ export default function EntryEditor({ initial, entries, onSave, onSaveDraft, onC
   const dirty = !isNew && (
     title !== (initial.title || '') || date !== (initial.date || '') || text !== (initial.entry || '') ||
     JSON.stringify(tags) !== JSON.stringify(initial.tags || []) ||
-    JSON.stringify(people) !== JSON.stringify(initial.people || [])
+    JSON.stringify(people) !== JSON.stringify(initial.people || []) ||
+    Boolean(pendingPhoto) || photoRemoved
   )
 
-  const canSave = text.trim().length > 0 && date && !clash && !isFuture && !saving
+  const canSave = text.trim().length > 0 && date && !clash && !isFuture && !saving && !photoBusy
   const hasContent = title.trim() || text.trim() || tags.length || people.length
 
   // Keep an in-progress delight to finish later. The auto-draft below already
@@ -84,7 +100,10 @@ export default function EntryEditor({ initial, entries, onSave, onSaveDraft, onC
   function submit(e) {
     e?.preventDefault()
     if (!canSave) return
-    onSave({ id: initial.id ?? null, title: title.trim(), date, entry: text, tags, people })
+    let photoAction
+    if (pendingPhoto) photoAction = { type: 'set', ref: pendingPhoto.ref, name: pendingPhoto.name }
+    else if (photoRemoved) photoAction = { type: 'remove' }
+    onSave({ id: initial.id ?? null, title: title.trim(), date, entry: text, tags, people, photoAction })
   }
 
   // ⌘/Ctrl+Enter saves from anywhere in the form.
@@ -135,6 +154,23 @@ export default function EntryEditor({ initial, entries, onSave, onSaveDraft, onC
           <span className={`wordcount ${inRange ? 'in-range' : ''}`}>{count} {count === 1 ? 'word' : 'words'}</span>
         </div>
       </div>
+
+      <PhotoField
+        client={client}
+        dateKey={date}
+        currentPhoto={initial.photo || null}
+        removed={photoRemoved}
+        pending={pendingPhoto}
+        saving={saving}
+        offline={offline}
+        onPicked={setPendingPhoto}
+        onBusyChange={setPhotoBusy}
+        onRemove={() => setPhotoRemoved(true)}
+        onUndoRemove={() => setPhotoRemoved(false)}
+        onClearPending={() => setPendingPhoto(null)}
+        onView={() => setLightboxSrc(pendingPhoto ? pendingPhoto.previewUrl : initial.photo?.url)}
+      />
+      {lightboxSrc && <Lightbox src={lightboxSrc} alt={title} onClose={() => setLightboxSrc(null)} />}
 
       <div className="field">
         <label><TagIcon /> Tags</label>

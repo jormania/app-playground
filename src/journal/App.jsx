@@ -105,12 +105,18 @@ export default function App() {
     setFocus(null)
   }
 
-  async function handleSave(entry) {
+  async function handleSave({ photoAction, ...entry }) {
     setSaving(true)
     setSaveError('')
     try {
       const client = getClient()
-      const saved = entry.id ? await client.updateEntry(entry.id, entry) : await client.createEntry(entry)
+      let saved = entry.id ? await client.updateEntry(entry.id, entry) : await client.createEntry(entry)
+      // Photo actions need a real page id, and Notion itself — skip if the text
+      // save just got queued offline (saved.pending); nothing to attach to yet.
+      if (photoAction && !saved.pending) {
+        if (photoAction.type === 'set') saved = await client.attachPhoto(saved.id, { ref: photoAction.ref, name: photoAction.name })
+        else if (photoAction.type === 'remove') saved = await client.removePhoto(saved.id)
+      }
       clearDraft(entry.date) // saved safely — drop the local draft
       // Refresh from source so Word Count (a Notion formula) reflects the save.
       const list = await client.listEntries()
@@ -176,6 +182,7 @@ export default function App() {
               entries={entries}
               saving={saving}
               error={saveError}
+              offline={offline}
               onSave={handleSave}
               onSaveDraft={() => { setSaveError(''); setDraftTick(t => t + 1); setFocus(null) }}
               onCancel={() => { setSaveError(''); setDraftTick(t => t + 1); setFocus(null) }}

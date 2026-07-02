@@ -454,6 +454,58 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .empty, .loading { text-align: center; padding: 70px 20px; color: var(--muted); }
 .empty p, .loading p { font-family: var(--serif); font-style: italic; font-size: 1.0625rem; margin-bottom: 18px; }
 
+/* ── Photo ──
+   One picture per delight, at most. Two treatments of the same shared button/img
+   reset: `-sepia` is the compact listing thumbnail — faded, grainy, tilted, like a
+   snapshot tucked onto a journal page. `-plain` is everywhere the picture should
+   read as-taken: the editor's own preview and the single-entry view. The true
+   full-resolution photo only ever appears untouched, in the Lightbox. */
+.photo-thumb {
+  border: none; padding: 0; cursor: zoom-in; background: none; display: block;
+  border-radius: 10px; overflow: hidden; position: relative; flex-shrink: 0;
+}
+.photo-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+.photo-thumb-sepia {
+  width: 68px; height: 68px;
+  transform: rotate(-3deg);
+  border: 1px solid var(--gold-soft);
+  box-shadow: 0 6px 16px var(--shadow);
+  transition: transform 0.2s;
+}
+.photo-thumb-sepia img { filter: sepia(0.35) saturate(0.55) contrast(0.92) brightness(1.04); }
+.photo-thumb-sepia:hover { transform: rotate(-3deg) scale(1.06); }
+.photo-thumb-sepia::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle, transparent 55%, rgba(0,0,0,0.35) 130%);
+}
+.photo-thumb-sepia::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.16; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.entry-row:has(.photo-thumb) { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.entry-row .row-main { flex: 1; min-width: 0; }
+
+.photo-thumb-plain { border: 1px solid var(--border2); }
+.photo-field .photo-thumb-plain { width: 84px; height: 84px; }
+.photo-current { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.photo-field .photo-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.photo-field .hint { margin-top: 8px; }
+
+.entry-photo { margin: 18px 0; }
+.entry-photo .photo-thumb-plain { width: 100%; max-width: 380px; aspect-ratio: 4 / 3; }
+
+/* ── Lightbox ── */
+.lightbox-scrim {
+  position: fixed; inset: 0; z-index: 200; background: var(--scrim); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 28px; cursor: zoom-out;
+}
+.lightbox-img { max-width: 100%; max-height: 100%; border-radius: 10px; box-shadow: 0 20px 60px var(--shadow); cursor: default; }
+.lightbox-close {
+  position: absolute; top: 18px; right: 18px; background: var(--surface); border: 1px solid var(--border2);
+}
+
 /* ── Footer ── */
 .foot { border-top: 1px solid var(--border); padding: 26px 0; text-align: center;
   font-family: var(--mono); font-size: 0.6875rem; color: var(--faint); line-height: 1.9; }

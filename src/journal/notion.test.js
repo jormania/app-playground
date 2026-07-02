@@ -72,15 +72,34 @@ describe('toEntry', () => {
       people: ['Mara'],
       entry: 'It held its shape a beat too long.',
       wordCount: 8,
+      photo: null,
     })
   })
   test('survives missing/empty properties', () => {
     const e = toEntry({ id: 'x', properties: {} })
-    expect(e).toEqual({ id: 'x', title: '', date: null, tags: [], people: [], entry: '', wordCount: null })
+    expect(e).toEqual({ id: 'x', title: '', date: null, tags: [], people: [], entry: '', wordCount: null, photo: null })
   })
   test('accepts a Name title property as a fallback', () => {
     const e = toEntry({ id: 'y', properties: { Name: { title: [{ plain_text: 'untitled' }] } } })
     expect(e.title).toBe('untitled')
+  })
+})
+
+describe('toEntry Photo mapping', () => {
+  test('maps a Notion-hosted file to { url, name }', () => {
+    const page = { id: 'p', properties: { Photo: { files: [{ name: 'delight-2026-06-24.jpg', type: 'file', file: { url: 'https://s3.example/x.jpg', expiry_time: '2026-06-24T12:00:00Z' } }] } } }
+    expect(toEntry(page).photo).toEqual({ url: 'https://s3.example/x.jpg', name: 'delight-2026-06-24.jpg' })
+  })
+  test('an empty files array is no photo', () => {
+    const page = { id: 'p', properties: { Photo: { files: [] } } }
+    expect(toEntry(page).photo).toBeNull()
+  })
+  test('only ever reads the first file — the app enforces at most one', () => {
+    const page = { id: 'p', properties: { Photo: { files: [
+      { name: 'a.jpg', file: { url: 'https://s3.example/a.jpg' } },
+      { name: 'b.jpg', file: { url: 'https://s3.example/b.jpg' } },
+    ] } } }
+    expect(toEntry(page).photo.name).toBe('a.jpg')
   })
 })
 

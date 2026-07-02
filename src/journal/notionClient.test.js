@@ -5,8 +5,8 @@ import { createNotionClient, DEFAULT_DATABASE_ID, PROXY_URL } from './notionClie
 // signature, so we assert exactly what the client asks the proxy to do.
 function makeClient(handler) {
   const calls = []
-  const fetchImpl = vi.fn((token, path, method, body) => {
-    calls.push({ token, path, method, body })
+  const fetchImpl = vi.fn((token, path, method, body, version) => {
+    calls.push({ token, path, method, body, version })
     return Promise.resolve(handler(path, method, body))
   })
   return { client: createNotionClient('secret-token', { fetchImpl }), calls, fetchImpl }
@@ -86,6 +86,50 @@ describe('updateEntry', () => {
     })
     const saved = await client.updateEntry('abc', { title: 'edited', date: '2026-06-24', tags: [], people: [], entry: 'x' })
     expect(saved.title).toBe('edited')
+  })
+})
+
+describe('photo', () => {
+  test('uploadPhoto creates a file_upload (at the newer version) then sends bytes via the dedicated relay', async () => {
+    const { client, calls } = makeClient((path) => {
+      if (path === 'file_uploads') return { id: 'file-upload-1', status: 'pending' }
+      throw new Error(`unexpected proxy call: ${path}`)
+    })
+    const sendSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true, json: async () => ({ id: 'file-upload-1', status: 'uploaded' }),
+    })
+    const blob = new Blob(['x'], { type: 'image/jpeg' })
+
+    const result = await client.uploadPhoto(blob, 'delight-2026-06-24.jpg')
+
+    expect(calls[0]).toMatchObject({ path: 'file_uploads', method: 'POST', version: '2025-09-03' })
+    expect(calls[0].body).toMatchObject({ mode: 'single_part', filename: 'delight-2026-06-24.jpg', content_type: 'image/jpeg' })
+    expect(sendSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/api/notion-upload?id=file-upload-1'),
+      expect.objectContaining({ method: 'POST' })
+    )
+    expect(result).toEqual({ ref: 'file-upload-1', name: 'delight-2026-06-24.jpg' })
+    sendSpy.mockRestore()
+  })
+
+  test('attachPhoto PATCHes the page with a file_upload reference at the newer API version', async () => {
+    const { client, calls } = makeClient((path, method, body) => {
+      expect(path).toBe('pages/abc')
+      expect(method).toBe('PATCH')
+      expect(body.properties.Photo.files).toEqual([{ type: 'file_upload', file_upload: { id: 'file-upload-1' }, name: 'x.jpg' }])
+      return pageFor('abc', 'one', '2026-06-24')
+    })
+    await client.attachPhoto('abc', { ref: 'file-upload-1', name: 'x.jpg' })
+    expect(calls[0].version).toBe('2025-09-03')
+  })
+
+  test('removePhoto PATCHes an empty files array', async () => {
+    const { client, calls } = makeClient((_path, _method, body) => {
+      expect(body.properties.Photo.files).toEqual([])
+      return pageFor('abc', 'one', '2026-06-24')
+    })
+    await client.removePhoto('abc')
+    expect(calls[0].version).toBe('2025-09-03')
   })
 })
 

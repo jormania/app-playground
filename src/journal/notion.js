@@ -3,9 +3,11 @@
 // the same way Touch Grass keeps its logic in plain modules (moments.js, place.js).
 //
 // App model for one entry:
-//   { id, title, date, tags[], people[], entry, wordCount }
+//   { id, title, date, tags[], people[], entry, wordCount, photo }
 // where `date` is a 'YYYY-MM-DD' string, `entry` is the plain essayette text,
-// and `wordCount` is Notion's read-only formula value (null until saved).
+// `wordCount` is Notion's read-only formula value (null until saved), and `photo`
+// is `{ url, name } | null` — at most one picture, managed out of band via
+// notionClient's uploadPhoto/attachPhoto/removePhoto rather than toNotionProps.
 
 // Notion caps a single rich_text object's `content` at 2000 characters. A 500-word
 // essayette runs past that, so any text we WRITE has to be split into a sequence of
@@ -57,7 +59,20 @@ export function toEntry(page) {
     people: (props.People?.multi_select ?? []).map(o => o.name),
     entry: richTextToPlain(props.Entry?.rich_text),
     wordCount: props['Word Count']?.formula?.number ?? null,
+    photo: toPhoto(props.Photo?.files),
   }
+}
+
+// The Photo property is a Files & media column, but the app enforces "at most one
+// picture per delight" — so we only ever look at (or write) a single-element array.
+// Notion-hosted files carry a signed `file.url` that expires roughly an hour after
+// it's issued; we don't try to cache it, just re-read it on every fresh query.
+function toPhoto(files) {
+  const f = Array.isArray(files) ? files[0] : null
+  if (!f) return null
+  const url = f.file?.url ?? f.external?.url ?? null
+  if (!url) return null
+  return { url, name: f.name ?? null }
 }
 
 // Build the `properties` payload for a create/update call. Word Count is a formula

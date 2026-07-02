@@ -48,6 +48,27 @@ export function createFixtureClient() {
       save(entries.map(e => (e.id === id ? saved : e)))
       return saved
     },
+
+    // Demo mode has no backend to upload to — an object URL stands in for a
+    // Notion-hosted file. It only survives this tab session, which is fine: demo
+    // data is sample content, not something anyone relies on persisting.
+    async uploadPhoto(blob, filename) {
+      return { ref: URL.createObjectURL(blob), name: filename }
+    },
+
+    async attachPhoto(pageId, photo) {
+      const entries = load()
+      const updated = entries.map(e => (e.id === pageId ? { ...e, photo: { url: photo.ref, name: photo.name } } : e))
+      save(updated)
+      return updated.find(e => e.id === pageId)
+    },
+
+    async removePhoto(pageId) {
+      const entries = load()
+      const updated = entries.map(e => (e.id === pageId ? { ...e, photo: null } : e))
+      save(updated)
+      return updated.find(e => e.id === pageId)
+    },
   }
 }
 
