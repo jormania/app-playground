@@ -4,32 +4,13 @@ import { useTimerEngine } from '../lib/useTimerEngine'
 import { useWakeLock } from '../lib/useWakeLock'
 import { cueSet, playChime } from '../lib/sound'
 import { vibrateTransition, vibrateComplete } from '../lib/haptics'
-import { loadPreferences, savePreferences, saveActiveSession, clearActiveSession } from '../lib/storage'
+import { saveActiveSession, clearActiveSession } from '../lib/storage'
+import { soundIsOn } from '../lib/preferences'
+import { usePreferences } from '../lib/preferencesContext'
 import { SettingsModal } from './SettingsModal'
 import { CountdownRing } from './CountdownRing'
+import { IconSettings } from './icons'
 import styles from './Player.module.css'
-
-const DEFAULT_PREFERENCES = {
-  sound: true,
-  silent: false, // master mute for all audio — never touches vibration, that's a separate setting
-  wakeLock: true,
-  haptics: true,
-  prepare: true, // a 3·2·1 count-in before the first step
-  volume: 'normal', // cue volume: 'soft' | 'normal' | 'loud'
-  intervalChime: false, // a soft bell every few minutes of a running session
-  chimeInterval: 5, // minutes between interval chimes: 3 | 5 | 10
-}
-
-// The audio actually in effect right now — Silent mode overrides the Sound
-// cues preference without changing its stored value, so turning Silent back
-// off restores whatever the user had before.
-function soundIsOn(preferences) {
-  return preferences.sound && !preferences.silent
-}
-
-function initialPreferences() {
-  return { ...DEFAULT_PREFERENCES, ...loadPreferences({}) }
-}
 
 function formatTime(totalSeconds) {
   const m = Math.floor(totalSeconds / 60)
@@ -40,7 +21,7 @@ function formatTime(totalSeconds) {
 const EXIT_CONFIRM_MS = 2000
 
 export function Player({ mode, segments, resumeFrom = null, onExit }) {
-  const [preferences, setPreferences] = useState(initialPreferences)
+  const { preferences, updatePreferences } = usePreferences()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [exitArmed, setExitArmed] = useState(false)
   const exitTimerRef = useRef(null)
@@ -50,7 +31,7 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
   // Fixed at mount so toggling count-in mid-session can't reshuffle indices.
   const [playSegments] = useState(() => {
     if (resumeFrom) return resumeFrom.segments
-    return initialPreferences().prepare
+    return preferences.prepare
       ? [{ id: 'countin', label: 'Get ready', seconds: 3, kind: 'prepare' }, ...segments]
       : segments
   })
@@ -127,14 +108,6 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
     }
   }, [persist])
 
-  function updatePreferences(patch) {
-    setPreferences((prev) => {
-      const next = { ...prev, ...patch }
-      savePreferences(next)
-      return next
-    })
-  }
-
   const handleRestart = useCallback(() => {
     reset()
     start()
@@ -198,7 +171,7 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
         aria-label="Settings"
         onClick={() => setSettingsOpen(true)}
       >
-        ⚙
+        <IconSettings width={20} height={20} />
       </Button>
 
       {status === 'done' ? (

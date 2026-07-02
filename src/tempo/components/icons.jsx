@@ -117,6 +117,17 @@ export function IconReorder(props) {
   )
 }
 
+// Settings — a hex bolt-head with a hole through the middle. Deliberately not
+// a radiating/starburst shape (too close to the sun/theme glyph at this size).
+export function IconSettings(props) {
+  return (
+    <svg {...base} {...props} aria-hidden>
+      <path d="M12 3.2 19.2 7.6v8.8L12 20.8 4.8 16.4V7.6Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
 // Guide — an open book.
 export function IconGuide(props) {
   return (

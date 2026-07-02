@@ -5,6 +5,7 @@ import '@fontsource-variable/jetbrains-mono'
 import '../ds/tokens.css'
 import App from './App'
 import { ThemeProvider } from './lib/themeContext'
+import { PreferencesProvider } from './lib/preferencesContext'
 import './tempo.css'
 
 // Scoped service worker (VitePWA generates tempo-sw.js), registered ourselves so
@@ -18,7 +19,9 @@ if ('serviceWorker' in navigator) {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ThemeProvider>
-      <App />
+      <PreferencesProvider>
+        <App />
+      </PreferencesProvider>
     </ThemeProvider>
   </StrictMode>,
 )

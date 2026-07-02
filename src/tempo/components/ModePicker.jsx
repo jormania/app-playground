@@ -3,14 +3,18 @@ import { Card, IconButton } from '../../ds'
 import { MODES, DEFAULT_ORDER, reconcileOrder } from '../lib/modes'
 import { loadModeConfig, loadOrder, saveOrder } from '../lib/storage'
 import { useTheme } from '../lib/themeContext'
-import { TempoMark, IconReorder, IconArrowUp, IconArrowDown, IconGuide } from './icons'
+import { usePreferences } from '../lib/preferencesContext'
+import { SettingsModal } from './SettingsModal'
+import { TempoMark, IconReorder, IconArrowUp, IconArrowDown, IconGuide, IconSettings } from './icons'
 import styles from './ModePicker.module.css'
 
 export function ModePicker({ onSelect }) {
   const { resolved, cycle } = useTheme()
   const themeLabel = resolved === 'dark' ? 'Dark' : 'Light'
+  const { preferences, updatePreferences } = usePreferences()
   const [order, setOrder] = useState(() => reconcileOrder(loadOrder(DEFAULT_ORDER)))
   const [editing, setEditing] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   function move(index, dir) {
     setOrder((prev) => {
@@ -31,6 +35,9 @@ export function ModePicker({ onSelect }) {
     <div className={styles.page}>
       <header className={styles.topbar}>
         <div className={styles.topActions}>
+          <IconButton aria-label="Settings" title="Settings" onClick={() => setSettingsOpen(true)}>
+            <IconSettings />
+          </IconButton>
           <IconButton
             aria-label="Open the guide"
             title="Guide"
@@ -116,6 +123,13 @@ export function ModePicker({ onSelect }) {
           )
         })}
       </div>
+
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        preferences={preferences}
+        onChange={updatePreferences}
+      />
     </div>
   )
 }
