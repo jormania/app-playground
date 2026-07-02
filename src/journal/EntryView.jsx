@@ -1,14 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { formatHuman, entriesOnSameDay } from './dates.js'
 import { CountIcon, BackIcon, HistoryIcon } from './icons.jsx'
 import EntryMeta from './EntryMeta.jsx'
-import Lightbox from './Lightbox.jsx'
 
 // Single-entry read view: Title, Date, the essayette, then People + Tags on one
 // line (chips tap to filter), and Word Count from Notion's formula when saved.
 export default function EntryView({ entry, entries, onBack, onEdit, onChip, onOnThisDay }) {
   const pastCount = useMemo(() => entriesOnSameDay(entries, entry.date).length, [entries, entry.date])
-  const [showPhoto, setShowPhoto] = useState(false)
   return (
     <article className="entry-view">
       <div className="editor-head">
@@ -27,12 +25,11 @@ export default function EntryView({ entry, entries, onBack, onEdit, onChip, onOn
 
       {entry.photo && (
         <div className="entry-photo">
-          <button type="button" className="photo-thumb photo-thumb-plain" title="View full size" onClick={() => setShowPhoto(true)}>
+          <div className="photo-thumb photo-thumb-plain">
             <img src={entry.photo.url} alt="" />
-          </button>
+          </div>
         </div>
       )}
-      {showPhoto && <Lightbox src={entry.photo.url} alt={entry.title} onClose={() => setShowPhoto(false)} />}
 
       <div className="ev-body">{entry.entry}</div>
 
