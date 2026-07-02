@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Field, Modal } from '../index'
+import { Button, Field, Modal, NumberStepper, Card, SegmentedControl } from '../index'
 import styles from './Showcase.module.css'
 
 /** The design system's first consumer: a gallery that renders every component in
@@ -7,6 +7,9 @@ import styles from './Showcase.module.css'
 export function Showcase() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const [modalOpen, setModalOpen] = useState(false)
+  const [count, setCount] = useState(8)
+  const [segment, setSegment] = useState('work')
+  const [selectedCard, setSelectedCard] = useState('a')
 
   function toggleTheme() {
     const next = theme === 'light' ? 'dark' : 'light'
@@ -71,6 +74,55 @@ export function Showcase() {
             <Button onClick={() => setModalOpen(false)}>Confirm</Button>
           </div>
         </Modal>
+      </Section>
+
+      <Section title="NumberStepper" note="±, direct typing, min/max clamping">
+        <Row label="Default">
+          <NumberStepper label="Rounds" value={count} min={1} max={12} onChange={setCount} />
+        </Row>
+        <Row label="At bounds">
+          <NumberStepper label="Min" value={1} min={1} max={10} onChange={() => {}} />
+          <NumberStepper label="Max" value={10} min={1} max={10} onChange={() => {}} />
+        </Row>
+      </Section>
+
+      <Section title="Card" note="pressable surface — hover lift, focus ring, selected state">
+        <Row label="Pick one">
+          <Card selected={selectedCard === 'a'} onClick={() => setSelectedCard('a')}>
+            <strong>Rounds</strong>
+            <span className={styles.note}>Work/rest × N</span>
+          </Card>
+          <Card selected={selectedCard === 'b'} onClick={() => setSelectedCard('b')}>
+            <strong>Cycles</strong>
+            <span className={styles.note}>Focus/break blocks</span>
+          </Card>
+        </Row>
+      </Section>
+
+      <Section title="SegmentedControl" note="compact multi-option toggle">
+        <Row label="Size md">
+          <SegmentedControl
+            options={[
+              { value: 'prepare', label: 'Prep' },
+              { value: 'work', label: 'Work' },
+              { value: 'rest', label: 'Rest' },
+            ]}
+            value={segment}
+            onChange={setSegment}
+          />
+        </Row>
+        <Row label="Size sm">
+          <SegmentedControl
+            size="sm"
+            options={[
+              { value: 'prepare', label: 'Prep' },
+              { value: 'work', label: 'Work' },
+              { value: 'rest', label: 'Rest' },
+            ]}
+            value={segment}
+            onChange={setSegment}
+          />
+        </Row>
       </Section>
     </div>
   )

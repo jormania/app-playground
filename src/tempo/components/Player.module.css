@@ -1,0 +1,93 @@
+.page {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+  background: var(--color-bg);
+  transition: background-color var(--duration) var(--ease);
+}
+
+.work {
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-bg));
+}
+.rest {
+  background: color-mix(in srgb, var(--color-success) 10%, var(--color-bg));
+}
+.prepare {
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-bg));
+}
+
+.gear {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+}
+
+.segmentLabel {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  margin: 0;
+  max-width: 12rem;
+  overflow-wrap: break-word;
+}
+
+.work .segmentLabel {
+  color: var(--color-accent);
+}
+.rest .segmentLabel {
+  color: var(--color-success);
+}
+.prepare .segmentLabel {
+  color: var(--color-warning);
+}
+
+.countdown {
+  font-family: var(--font-mono);
+  font-size: var(--text-display);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+
+.progress {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  margin: 0;
+}
+
+.controls {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.doneTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.settingsRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--color-ink);
+}
+
+.settingsRow + .settingsRow {
+  margin-top: var(--space-md);
+}

@@ -27,6 +27,7 @@ call a change complete on green-looking code alone.
 | App | Location | Type |
 |-----|----------|------|
 | Sol Odyssey | `src/sol-odyssey/` | **strict TypeScript** — has its own [`CLAUDE.md`](src/sol-odyssey/CLAUDE.md) + `DESIGN.md`; **defer to those** inside that dir |
+| Tempo | `src/tempo/` | plain JSX, builds on `src/ds/` |
 | Journal of Delights | `src/journal/` | plain JSX, no type checking |
 | Kettlebell Training | `src/kettlebell/` | plain JSX, no type checking |
 | Touch Grass | `src/touch-grass/` | plain JSX, no type checking |

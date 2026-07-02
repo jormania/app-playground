@@ -1,0 +1,45 @@
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+}
+
+.fieldsLine {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-sm);
+}
+
+.labelField {
+  flex: 1;
+  min-width: 0;
+}
+
+.controlsLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.rowActions {
+  display: flex;
+  gap: var(--space-2xs);
+}
+
+.empty {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  text-align: center;
+  padding: var(--space-lg) 0;
+}

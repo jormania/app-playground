@@ -352,11 +352,30 @@ const CAT_TAGS = new Set(["gaming", "fitness", "outdoor", "mindfulness", "kawaii
 
 const APPS = [
   {
+    emoji: "⏱",
+    iconBg: "rgba(59,110,245,0.12)",
+    title: "Tempo",
+    subtitle: "rounds · cycles · custom sequences",
+    latest: true,
+    deployed: "Jul 2026",
+    tech: "React + Vite",
+    tags: ["fitness", "mindfulness", "timer", "react", "vite"],
+    ds: true,
+    description: "A usage-agnostic interval timer built around one idea: a session is just a flat list of timed segments, and a 'mode' is a small form that generates that list from a few numbers. Rounds mode covers workout circuits and Tabata (its own default preset); Cycles mode covers focus/break sprints and the classic Pomodoro (also just a default preset); Custom mode hand-builds any sequence the presets don't cover.",
+    features: [
+      "Rounds — work/rest intervals repeated N times, with an optional warmup; defaults to Tabata's 20s/10s × 8",
+      "Cycles — focus/break blocks with a longer break every few cycles; defaults to the classic 25/5/15 Pomodoro",
+      "Custom — build any sequence by hand: label, duration and kind per segment, freely reordered",
+      "A drift-free timer engine: countdown is derived from timestamps every tick, so a backgrounded or throttled tab always snaps back to the correct time instead of drifting",
+      "Optional sound cues on every transition, a wake lock to keep the screen on mid-session, and your last-used settings remembered per mode",
+    ],
+    file: "tempo-react.html",
+  },
+  {
     emoji: "🧭",
     iconBg: "rgba(75,69,198,0.12)",
     title: "Sol Odyssey",
     subtitle: "one behaviour · 42 days · witnessed",
-    latest: true,
     deployed: "Jun 2026",
     tech: "React + Vite + Notion",
     tags: ["habits", "growth", "tracker"],

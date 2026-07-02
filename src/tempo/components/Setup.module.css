@@ -1,0 +1,67 @@
+.page {
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-2xl) var(--space-md);
+}
+
+.panel {
+  width: 100%;
+  max-width: 28rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* flex-start, not the flex default (stretch) — two fields side by side
+   shouldn't be forced to match height just because one has a hint the
+   other doesn't; that's what produced the orphaned-looking hint text. */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-lg);
+}
+
+.hint {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+.actionsBetween {
+  justify-content: space-between;
+}
+
+/* One confident, full-width CTA anchoring the bottom of a single-action form —
+   used instead of a small button floating flex-end under a row of fields. */
+.submit {
+  width: 100%;
+}
