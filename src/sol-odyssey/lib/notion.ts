@@ -26,7 +26,7 @@ import {
   type ReflectionRecord,
 } from './reflections'
 import { buildHarvestProperties, type Outcome } from './harvest'
-import { validateSchema, type DbKey, type SchemaIssue } from './schema'
+import { validateSchema, DB_LABEL, type DbKey, type SchemaIssue } from './schema'
 
 export const RELAY_ENDPOINT = '/api/notion'
 
@@ -335,13 +335,26 @@ export async function fetchDatabaseProperties(
   return ((data as { properties?: Record<string, { type?: string }> })?.properties) ?? {}
 }
 
+/** A database that answered the Active-Odysseys query but couldn't be read for its own schema
+ *  check — almost always a wrong ID or a database not shared with the integration. Reported
+ *  distinctly from `issues` so "Connected" can never mean "two of three databases are actually
+ *  unreachable". */
+export interface UnreachableDb {
+  db: string
+  message: string
+}
+
 export interface ConnectionTest {
   odysseys: OdysseyDetail[]
   issues: SchemaIssue[]
+  unreachable: UnreachableDb[]
 }
 
 /** The full "Test connection": list Active Odysseys AND validate all three databases' schemas, so a
- *  missing/misnamed property is caught here rather than as a cryptic write failure on Day 1. */
+ *  missing/misnamed property is caught here rather than as a cryptic write failure on Day 1. A
+ *  per-DB read failure (wrong ID, or a database not shared with the integration) is reported as
+ *  `unreachable`, not silently skipped — otherwise a broken Check-ins or Reflections link could
+ *  still show a green "Connected" panel. */
 export async function runConnectionTest(
   settings: Pick<Settings, 'token' | 'dsOdysseys' | 'dsCheckins' | 'dsReflections'>,
   fetchImpl: typeof fetch = fetch,
@@ -353,16 +366,20 @@ export async function runConnectionTest(
     ['reflections', settings.dsReflections],
   ]
   const issues: SchemaIssue[] = []
+  const unreachable: UnreachableDb[] = []
   for (const [key, db] of dbs) {
     if (!db.trim()) continue
     try {
       const props = await fetchDatabaseProperties(settings.token, db, fetchImpl)
       issues.push(...validateSchema(key, props))
-    } catch {
-      /* a per-DB read failure shows up via the main error; skip its schema check */
+    } catch (err) {
+      unreachable.push({
+        db: DB_LABEL[key],
+        message: err instanceof Error ? err.message : 'Couldn’t read this database.',
+      })
     }
   }
-  return { odysseys, issues }
+  return { odysseys, issues, unreachable }
 }
 
 /** List the Active Odysseys end-to-end via the relay. */

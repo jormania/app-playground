@@ -20,6 +20,7 @@ import { useCheckins } from '../lib/useCheckins'
 import { useReflections, useUpsertReflection } from '../lib/useReflections'
 import { cycleState } from '../lib/checkins'
 import { todayISO } from '../lib/charter'
+import { isNetworkError } from '../lib/sync'
 import {
   EMPTY_REFLECTION,
   FIT_OPTIONS,
@@ -309,7 +310,14 @@ export function WeeklyPage({ navigate }: { navigate: (to: string) => void }) {
           </div>
 
           {upsert.isError && <p role="alert" className="font-sans text-sm text-caution">{upsert.error.message}</p>}
-          {updateTiny.isError && <p role="alert" className="font-sans text-sm text-caution">Couldn’t update the tiny version: {updateTiny.error.message}</p>}
+          {updateTiny.isError && (
+            <p role="alert" className="font-sans text-sm text-caution">
+              Couldn’t update the tiny version: {updateTiny.error.message}
+              {isNetworkError(updateTiny.error)
+                ? ' Unlike the reflection itself, this doesn’t queue for later — re-apply it once you’re back online.'
+                : ''}
+            </p>
+          )}
         </section>
       )}
     </div>

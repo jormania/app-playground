@@ -3,7 +3,7 @@
 // date / per week, the queue is KEYED by the logical target — repeated offline edits to the same
 // day or week collapse to the latest, so syncing replays one write, not many.
 
-import { get as idbGet, set as idbSet } from 'idb-keyval'
+import { get as idbGet, set as idbSet, update as idbUpdate } from 'idb-keyval'
 import type { CheckinDraft } from './checkins'
 import type { ReflectionDraft } from './reflections'
 
@@ -31,10 +31,13 @@ export interface ReflectionQueueItem {
 
 export type QueueItem = CheckinQueueItem | ReflectionQueueItem
 
-/** Async key/value backend; defaults to IndexedDB via idb-keyval, injectable for tests. */
+/** Async key/value backend; defaults to IndexedDB via idb-keyval, injectable for tests.
+ *  `update` is an atomic read-modify-write (one IDB transaction) — enqueue/dequeue use it when
+ *  available so a flush racing a new enqueue can never drop the newer write. */
 export interface StoreLike {
   get(key: string): Promise<unknown>
   set(key: string, value: unknown): Promise<void>
+  update?(key: string, fn: (old: unknown) => unknown): Promise<void>
 }
 
 const QUEUE_KEY = 'sol-odyssey:queue'
@@ -79,12 +82,29 @@ export function reflectionItem(
 }
 
 function defaultStore(): StoreLike {
-  return { get: (k) => idbGet(k), set: (k, v) => idbSet(k, v) }
+  return { get: (k) => idbGet(k), set: (k, v) => idbSet(k, v), update: (k, fn) => idbUpdate(k, fn) }
+}
+
+function asMap(v: unknown): Record<string, QueueItem> {
+  return v && typeof v === 'object' ? (v as Record<string, QueueItem>) : {}
 }
 
 async function readMap(store: StoreLike): Promise<Record<string, QueueItem>> {
-  const v = await store.get(QUEUE_KEY)
-  return v && typeof v === 'object' ? (v as Record<string, QueueItem>) : {}
+  return asMap(await store.get(QUEUE_KEY))
+}
+
+/** Apply `mutator` to the queue map. Uses the store's atomic `update` when available (the real
+ *  IndexedDB backend) so a concurrent enqueue/dequeue can never be lost between a read and its
+ *  write-back; falls back to a plain get+set for stores that don't support it (e.g. tests). */
+async function mutateMap(
+  mutator: (map: Record<string, QueueItem>) => Record<string, QueueItem>,
+  store: StoreLike,
+): Promise<void> {
+  if (store.update) {
+    await store.update(QUEUE_KEY, (v) => mutator(asMap(v)))
+    return
+  }
+  await store.set(QUEUE_KEY, mutator(await readMap(store)))
 }
 
 /** All queued items, oldest first. */
@@ -95,15 +115,15 @@ export async function loadQueue(store: StoreLike = defaultStore()): Promise<Queu
 
 /** Add or replace the item for its key (latest write wins). */
 export async function enqueue(item: QueueItem, store: StoreLike = defaultStore()): Promise<void> {
-  const map = await readMap(store)
-  map[item.key] = item
-  await store.set(QUEUE_KEY, map)
+  await mutateMap((map) => ({ ...map, [item.key]: item }), store)
 }
 
 export async function dequeue(key: string, store: StoreLike = defaultStore()): Promise<void> {
-  const map = await readMap(store)
-  delete map[key]
-  await store.set(QUEUE_KEY, map)
+  await mutateMap((map) => {
+    const next = { ...map }
+    delete next[key]
+    return next
+  }, store)
 }
 
 export async function queueSize(store: StoreLike = defaultStore()): Promise<number> {

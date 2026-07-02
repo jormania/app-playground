@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSettings } from './settingsContext'
 import { isConfigured } from './settings'
@@ -28,11 +28,19 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Guards against overlapping flushes: mount, settings changes, the `online` event, and
+  // SYNC_EVENT (fired after every mutation) can all trigger a flush in quick succession. Two
+  // flushes running at once would each resolve `existingId` from their own stale snapshot and
+  // could both POST a create for the same queued item — a duplicate row in Notion.
+  const flushing = useRef(false)
+
   const flush = useCallback(async () => {
+    if (flushing.current) return
     if (!isConfigured(settings)) {
       await refreshPending()
       return
     }
+    flushing.current = true
     setSyncing(true)
     try {
       const res = await flushQueue(settings)
@@ -46,6 +54,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       await refreshPending()
     } finally {
       setSyncing(false)
+      flushing.current = false
     }
   }, [settings, queryClient, refreshPending])
 

@@ -277,12 +277,30 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
                   ))}
                 </ul>
               )}
-              {test.data.odysseys.length === 0 && test.data.issues.length === 0 && (
+              {test.data.odysseys.length === 0 && test.data.issues.length === 0 && test.data.unreachable.length === 0 && (
                 <p className="ml-7 font-sans text-sm text-text-secondary">
                   The wiring works. No Odyssey is Active yet — that’s expected before you’ve started one.
                 </p>
               )}
             </div>
+
+            {test.data.unreachable.length > 0 && (
+              <div className="flex flex-col gap-2 rounded-md border border-caution/40 bg-background-primary p-4">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={20} className="text-caution" aria-hidden />
+                  <p className="font-sans text-sm font-medium text-text-primary">
+                    These databases couldn’t be reached — check the link and that it’s shared with your integration:
+                  </p>
+                </div>
+                <ul className="ml-7 flex flex-col gap-1 font-sans text-sm text-text-secondary">
+                  {test.data.unreachable.map((u) => (
+                    <li key={u.db}>
+                      <strong className="text-text-primary">{u.db}</strong>: {u.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {test.data.issues.length > 0 && (
               <div className="flex flex-col gap-2 rounded-md border border-caution/40 bg-background-primary p-4">

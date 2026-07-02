@@ -123,7 +123,12 @@
       self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
         for (var i = 0; i < list.length; i++) {
           var c = list[i];
-          if (c.url && c.url.indexOf('sol-odysseys-react') !== -1) { c.focus(); return; }
+          if (c.url && c.url.indexOf('sol-odysseys-react') !== -1) {
+            // Hand the target route to the open tab (its own router applies the hash — a service
+            // worker can't set location.hash on a client directly) and bring it to the front.
+            c.postMessage({ type: 'sol-odyssey:navigate', hash: hash });
+            return c.focus();
+          }
         }
         return self.clients.openWindow(APP + hash);
       })

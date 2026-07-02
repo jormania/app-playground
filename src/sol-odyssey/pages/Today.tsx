@@ -35,15 +35,40 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
   const history = useNextOdysseyNumber()
   const upsert = useUpsertCheckin(odyssey?.id)
 
-  const today = todayISO()
+  // Re-derived on tab focus/visibility (not just at mount) so a PWA left open across midnight
+  // doesn't keep writing yesterday's check-in after the calendar date has actually turned over.
+  const [today, setToday] = useState(todayISO)
+  useEffect(() => {
+    const refresh = () => setToday((t) => (document.hidden ? t : todayISO()))
+    document.addEventListener('visibilitychange', refresh)
+    window.addEventListener('focus', refresh)
+    return () => {
+      document.removeEventListener('visibilitychange', refresh)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [])
   const todayRecord = checkins.data?.find((r) => r.date === today)
 
   const [form, setForm] = useState<CheckinDraft>(EMPTY_CHECKIN)
   const [celebrate, setCelebrate] = useState(false)
 
+  // Guards the reseed effect below against a background sync clobbering unsaved edits: once a
+  // queued offline check-in flushes, its optimistic `local:<date>` id flips to the real Notion id,
+  // which would otherwise re-fire the seed effect and overwrite anything typed in between.
+  const [dirty, setDirty] = useState(false)
+  function updateForm(patch: Partial<CheckinDraft> | ((f: CheckinDraft) => CheckinDraft)) {
+    setDirty(true)
+    setForm((f) => (typeof patch === 'function' ? patch(f) : { ...f, ...patch }))
+  }
+
+  // A new day or a different Odyssey always starts fresh — drop any stale guard so the day's
+  // record (or a blank form) loads normally.
+  useEffect(() => setDirty(false), [odyssey?.id, today])
+
   // Seed the form from today's saved check-in on load / after a save (keyed on its id so we
-  // don't clobber what the user is typing between refetches).
+  // don't clobber what the user is typing between refetches), skipped while dirty.
   useEffect(() => {
+    if (dirty) return
     if (todayRecord) {
       setForm({
         done: todayRecord.done,
@@ -55,7 +80,7 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
       setForm(EMPTY_CHECKIN)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [odyssey?.id, todayRecord?.id])
+  }, [odyssey?.id, todayRecord?.id, dirty])
 
   if (!isConfigured(settings)) {
     return (
@@ -140,7 +165,7 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
   const records = checkins.data ?? []
   const hasContract = odyssey.commitment.trim().length > 0
   const inLapse = forfeitDue(records, today)
-  const oneGap = !inLapse && hasContract && shouldWarnDontSkipTwice(records, today)
+  const oneGap = !inLapse && shouldWarnDontSkipTwice(records, today)
 
   function save() {
     const wasDone = todayRecord?.done ?? false
@@ -198,9 +223,15 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
       {oneGap && (
         <div role="status" className="rounded-md border border-caution/40 bg-background-secondary p-4">
           <p className="font-sans text-sm text-text-primary">
-            A day slipped — close the gap before a second forms. You set this line:{' '}
-            <span className="font-medium">“{odyssey.commitment}”</span>. Don’t let it come due — do the
-            tiny version now.
+            A day slipped — close the gap before a second forms.{' '}
+            {hasContract ? (
+              <>
+                You set this line: <span className="font-medium">“{odyssey.commitment}”</span>. Don’t
+                let it come due — do the tiny version now.
+              </>
+            ) : (
+              'Do the tiny version now — one gap is an accident, two in a row is a new habit.'
+            )}
           </p>
         </div>
       )}
@@ -212,7 +243,7 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
           label="I did the tiny version today"
           description="Done counts. Perfect is irrelevant."
           checked={form.done}
-          onCheckedChange={(v) => setForm((f) => ({ ...f, done: v }))}
+          onCheckedChange={(v) => updateForm({ done: v })}
         />
         <div className="flex flex-col gap-1">
           <Textarea
@@ -221,7 +252,7 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
             placeholder="What happened, or what you noticed."
             rows={2}
             value={form.oneLine}
-            onChange={(e) => setForm((f) => ({ ...f, oneLine: e.target.value }))}
+            onChange={(e) => updateForm({ oneLine: e.target.value })}
           />
           {checkinErrors(form).oneLine && (
             <p className="font-sans text-sm text-caution">{checkinErrors(form).oneLine}</p>
@@ -232,14 +263,14 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
           placeholder="What got in the way, if anything."
           rows={2}
           value={form.friction}
-          onChange={(e) => setForm((f) => ({ ...f, friction: e.target.value }))}
+          onChange={(e) => updateForm({ friction: e.target.value })}
         />
         <div className="flex flex-col gap-3">
           <Switch
             label="Sent to my buddy"
             description="A self-marked note that you reached out — the app sends nothing."
             checked={form.sentToBuddy}
-            onCheckedChange={(v) => setForm((f) => ({ ...f, sentToBuddy: v }))}
+            onCheckedChange={(v) => updateForm({ sentToBuddy: v })}
           />
           <div className="flex flex-wrap items-center gap-3">
             <BuddyEmailButton

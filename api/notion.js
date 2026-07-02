@@ -14,9 +14,51 @@ const NOTION_BASE = 'https://api.notion.com/v1/'
 const NOTION_VERSION = '2022-06-28'
 const ALLOWED_METHODS = new Set(['GET', 'POST', 'PATCH'])
 
+// The relay is stateless and holds no secret, but it's still a live CORS-bypass to api.notion.com
+// with whatever token the caller supplies — an open one lets any third-party page use it as a free
+// proxy for someone else's Notion token. Two lightweight, additive guards close that off without
+// requiring any server-side state or secret:
+//   1. Origin allowlist — a real browser request always carries an Origin header naming the page
+//      that made it; a request from anywhere but our own deployed origins is rejected. Requests
+//      with no Origin header (curl, server-to-server, some same-origin edge cases) are allowed
+//      through, since the abuse vector is specifically cross-site pages, which always send one.
+//   2. Per-IP rate limit — a small in-memory token bucket. Best-effort only (resets on cold start,
+//      not shared across instances) but enough to blunt casual abuse of a single-user app's quota.
+const ALLOWED_ORIGINS = [/^https:\/\/([a-z0-9-]+\.)*coneofcold\.vercel\.app$/, /^https?:\/\/localhost(:\d+)?$/]
+
+function originAllowed(origin) {
+  if (!origin) return true
+  return ALLOWED_ORIGINS.some((re) => re.test(origin))
+}
+
+const RATE_LIMIT = 20 // requests
+const RATE_WINDOW_MS = 10_000 // per 10s per IP — generous for one user's real usage
+const hits = new Map() // ip -> [timestamps]
+
+function rateLimited(ip) {
+  const now = Date.now()
+  const recent = (hits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS)
+  recent.push(now)
+  hits.set(ip, recent)
+  // Prevent unbounded growth across many distinct IPs on a long-lived warm instance.
+  if (hits.size > 500) hits.clear()
+  return recent.length > RATE_LIMIT
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ message: 'Use POST to /api/notion.' })
+    return
+  }
+
+  if (!originAllowed(req.headers.origin)) {
+    res.status(403).json({ message: 'Origin not allowed.' })
+    return
+  }
+
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown'
+  if (rateLimited(ip)) {
+    res.status(429).json({ message: 'Too many requests — try again shortly.' })
     return
   }
 
