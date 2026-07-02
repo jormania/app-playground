@@ -23,14 +23,23 @@ export function absoluteManifestUrl(manifestPath) {
   return new URL(manifestPath, PROD_ORIGIN).href
 }
 
-export async function checkInstalledApps(apps) {
+// Raw pass-through to the browser API, for the diagnostics panel in
+// src/trove/App.jsx — lets a real device show exactly what Chrome reported,
+// instead of us guessing why a confirmed-installed app still reads as "not
+// installed" (e.g. Chrome's per-origin throttling on repeated calls, a
+// manifest id/url mismatch, etc).
+export async function getRawInstalledRelatedApps() {
   if (!installDetectionSupported()) return null
-  let related
   try {
-    related = await navigator.getInstalledRelatedApps()
+    return await navigator.getInstalledRelatedApps()
   } catch {
     return null
   }
+}
+
+export async function checkInstalledApps(apps) {
+  const related = await getRawInstalledRelatedApps()
+  if (related === null) return null
   const installedUrls = new Set(related.map((r) => r.url))
   const result = new Map()
   for (const app of apps) {

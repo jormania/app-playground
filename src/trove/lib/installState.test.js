@@ -1,5 +1,10 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { installDetectionSupported, absoluteManifestUrl, checkInstalledApps } from './installState'
+import {
+  installDetectionSupported,
+  absoluteManifestUrl,
+  checkInstalledApps,
+  getRawInstalledRelatedApps,
+} from './installState'
 
 // `navigator` is a read-only getter on globalThis in Node — vi.stubGlobal
 // swaps it out safely (and vi.unstubAllGlobals restores it after each test).
@@ -22,6 +27,26 @@ describe('installDetectionSupported', () => {
 describe('absoluteManifestUrl', () => {
   it('resolves a root-relative manifest path against the production origin', () => {
     expect(absoluteManifestUrl('/tempo.webmanifest')).toBe('https://coneofcold.vercel.app/tempo.webmanifest')
+  })
+})
+
+describe('getRawInstalledRelatedApps', () => {
+  it('returns null when the browser has no detection API', async () => {
+    vi.stubGlobal('navigator', {})
+    expect(await getRawInstalledRelatedApps()).toBeNull()
+  })
+
+  it('returns null when the API call throws', async () => {
+    vi.stubGlobal('navigator', {
+      getInstalledRelatedApps: async () => { throw new Error('nope') },
+    })
+    expect(await getRawInstalledRelatedApps()).toBeNull()
+  })
+
+  it('passes through whatever the browser reports, unfiltered', async () => {
+    const apps = [{ id: 'tempo', platform: 'webapp', url: 'https://coneofcold.vercel.app/tempo.webmanifest' }]
+    vi.stubGlobal('navigator', { getInstalledRelatedApps: async () => apps })
+    expect(await getRawInstalledRelatedApps()).toEqual(apps)
   })
 })
 
