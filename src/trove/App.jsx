@@ -53,26 +53,20 @@ function Diagnostics() {
 
 export default function App() {
   const { theme, toggle } = useTheme()
-  // null = "haven't checked yet" (rendered like "unknown"); once resolved this
-  // becomes either a Map (Chromium: real answers) or the literal null forever
-  // (unsupported browser: every tile stays "unknown").
+  // A confirmed install can still come back false — see AppTile's comment —
+  // so this Map (or null before/without a check) only ever gets trusted for
+  // its `true` values. Everything else renders identically to "unknown".
   const [installedByManifest, setInstalledByManifest] = useState(null)
-  const [checked, setChecked] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     checkInstalledApps(TROVE_APPS).then((result) => {
-      if (!cancelled) {
-        setInstalledByManifest(result)
-        setChecked(true)
-      }
+      if (!cancelled) setInstalledByManifest(result)
     })
     return () => {
       cancelled = true
     }
   }, [])
-
-  const supported = installDetectionSupported()
 
   return (
     <div className={styles.shell}>
@@ -92,20 +86,18 @@ export default function App() {
           </IconButton>
         </div>
 
-        {checked && !supported && (
-          <p className={styles.disclaimer}>
-            This browser can't verify which apps are installed — every "Open" link
-            below just opens the page; if you've added an app to your home screen,
-            use that icon instead for the full installed-app experience.
-          </p>
-        )}
+        <p className={styles.disclaimer}>
+          "Launch" means this device confirmed the app is already installed. "Open" just
+          opens it in the browser — it may already be installed too, browsers don't always
+          let a site check.
+        </p>
 
         <div className={styles.grid}>
           {TROVE_APPS.map((app) => (
             <AppTile
               key={app.file}
               app={app}
-              installed={installedByManifest ? installedByManifest.get(app.manifest) ?? null : null}
+              installed={installedByManifest?.get(app.manifest) === true}
             />
           ))}
         </div>

@@ -11,24 +11,37 @@ card grid reads from, so there's exactly one place to update per app.
 Source: [`src/trove/`](src/trove/). Entry shell: `coneofcold-trove.html`. Built
 on `src/ds/`, like any new app — see the [design-system rule](CLAUDE.md).
 
-## How install-detection works (and where it doesn't)
+## How install-detection works (and why there's no "not installed" error)
 
 Trove asks the browser which of the six sub-apps are already installed via
 [`navigator.getInstalledRelatedApps()`](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/getInstalledRelatedApps),
 matched against the `related_applications` list declared in
 [`public/coneofcold-trove.webmanifest`](public/coneofcold-trove.webmanifest).
 
-- **Chromium (desktop Chrome/Edge, Android Chrome):** real detection. An
-  uninstalled app shows a genuine "Not installed" state with an explanation;
-  an installed one shows "Launch →".
-- **Everywhere else (Safari, Firefox):** no such API exists. Trove shows a
-  plain "Open →" link and a one-time disclaimer instead of guessing — it
-  never claims an app is "not installed" without being able to verify it.
+**Only a `true` result is trusted.** The original design also showed a hard
+"Not installed" error on a `false` result, on the assumption that Chromium's
+answer would be reliable either way. Real-device testing on Android Chrome
+disproved that: a confirmed genuine install (verified in Android's own
+Settings → Apps, not just a home-screen shortcut) still came back as an empty
+result from `getInstalledRelatedApps()`. Most likely cause: Chrome throttles
+this API to stop it being used to fingerprint a device's installed-app list,
+so it doesn't reliably hand back real data even when asked correctly. Because
+a *false* "not installed" is actively misleading — worse than not claiming
+anything — every non-`true` result (including an explicit `false`, `null`,
+and unsupported browsers) now renders identically: a plain "Open →" link,
+never an error. See the comment atop
+[`src/trove/components/AppTile.jsx`](src/trove/components/AppTile.jsx).
 
 `related_applications` entries must be **absolute URLs**, so they're hardcoded
-to the production domain (`https://coneofcold.vercel.app`). This means real
-detection only works on the deployed site, not `localhost` — expected, not a
-bug. See [`src/trove/lib/installState.js`](src/trove/lib/installState.js).
+to the production domain (`https://coneofcold.vercel.app`). This means even a
+`true` result only ever shows up on the deployed site, not `localhost` — see
+[`src/trove/lib/installState.js`](src/trove/lib/installState.js).
+
+If you're chasing a similar detection problem, Trove ships a **Diagnostics**
+twistie at the bottom of the page (only rendered where the API exists) that
+prints the browser's raw `getInstalledRelatedApps()` result next to the
+manifest URLs Trove expects — read it straight off a real device instead of
+guessing.
 
 ## Adding a new app to Trove
 

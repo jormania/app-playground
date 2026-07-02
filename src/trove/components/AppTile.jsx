@@ -1,15 +1,14 @@
-import { useState } from 'react'
 import styles from './AppTile.module.css'
 
-// installed: true (confirmed installed) | false (confirmed not installed) | null (unknown/unsupported browser)
+// installed: true when the browser has genuinely confirmed this app is
+// installed — anything else (false, null, unsupported browser) is treated as
+// "unknown", not "not installed". A confirmed real install from a Chromium
+// user still reads as false sometimes (Chrome throttles
+// getInstalledRelatedApps() to prevent it being used to fingerprint a
+// device's installed apps), so a negative result here can't be trusted
+// enough to show as an error — see TROVE.md.
 export function AppTile({ app, installed }) {
-  const [showError, setShowError] = useState(false)
   const href = `/${app.file}`
-
-  function handleBlockedLaunch(e) {
-    e.preventDefault()
-    setShowError((v) => !v)
-  }
 
   return (
     <article className={styles.tile}>
@@ -31,28 +30,10 @@ export function AppTile({ app, installed }) {
       )}
 
       <div className={styles.actionRow}>
-        {installed === false ? (
-          <>
-            <button type="button" className={styles.notInstalled} onClick={handleBlockedLaunch}>
-              Not installed
-            </button>
-            <a className={styles.fallbackLink} href={href}>
-              Open in browser instead →
-            </a>
-          </>
-        ) : (
-          <a className={styles.launch} href={href}>
-            {installed === true ? 'Launch →' : 'Open →'}
-          </a>
-        )}
+        <a className={styles.launch} href={href}>
+          {installed ? 'Launch →' : 'Open →'}
+        </a>
       </div>
-
-      {showError && installed === false && (
-        <p className={styles.errorNote} role="alert">
-          {app.title} isn't installed on this device yet — open it once, then use your
-          browser's Install / Add to Home Screen prompt.
-        </p>
-      )}
     </article>
   )
 }
