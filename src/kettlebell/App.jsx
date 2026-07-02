@@ -62,6 +62,34 @@ function ExerciseCard({ ex }) {
 
 function Nav({ active }) {
   const railRef = useRef(null);
+  const userScrollingRef = useRef(false);
+  const userScrollTimeoutRef = useRef(null);
+
+  // A trackpad's horizontal swipe over the rail often bleeds a little
+  // vertical delta into the page, which can flip `active` mid-gesture — if
+  // the effect below reacted to that, it'd yank the rail back to the
+  // previously-active chip right as someone's trying to reach the last one.
+  // Suppress auto-recentring while the rail itself is being touched.
+  useEffect(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+    const markUserScrolling = () => {
+      userScrollingRef.current = true;
+      clearTimeout(userScrollTimeoutRef.current);
+      userScrollTimeoutRef.current = setTimeout(() => {
+        userScrollingRef.current = false;
+      }, 1200);
+    };
+    rail.addEventListener('wheel', markUserScrolling, { passive: true });
+    rail.addEventListener('touchstart', markUserScrolling, { passive: true });
+    rail.addEventListener('pointerdown', markUserScrolling);
+    return () => {
+      rail.removeEventListener('wheel', markUserScrolling);
+      rail.removeEventListener('touchstart', markUserScrolling);
+      rail.removeEventListener('pointerdown', markUserScrolling);
+      clearTimeout(userScrollTimeoutRef.current);
+    };
+  }, []);
 
   // Keep the active chip centred in the horizontal rail. We scroll the
   // rail's own scrollLeft rather than calling scrollIntoView — the chips
@@ -69,7 +97,7 @@ function Nav({ active }) {
   // vertical scroll, fighting the trackpad and mis-landing anchor clicks.
   useEffect(() => {
     const rail = railRef.current;
-    if (!rail) return;
+    if (!rail || userScrollingRef.current) return;
     const el = rail.querySelector(`[data-id="${active}"]`);
     if (!el) return;
     const railRect = rail.getBoundingClientRect();

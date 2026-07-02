@@ -45,6 +45,13 @@ body {
 .rail {
   display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  /* Flex items default to min-width:auto, which lets this grow past the
+     nav's available width instead of scrolling internally — the overflow
+     then gets clipped by body's overflow-x:hidden before you can reach the
+     last chips. Clamp it to the remaining flex space so its own
+     overflow-x:auto actually has room to kick in. */
+  flex: 1 1 0;
+  min-width: 0;
 }
 .rail::-webkit-scrollbar { display: none; }
 .chip {
