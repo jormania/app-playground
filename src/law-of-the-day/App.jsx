@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import laws from './data/laws.json'
 import { getDailyStatus, recordAnswer } from './lib/rotation'
 import { buildOptions, gradeAnswer } from './lib/quiz'
+import { fetchFreshContent } from './lib/fetchFreshContent'
 import { useTheme } from './lib/themeContext'
 import { IconButton } from '../ds'
 import { IconGuide } from './components/icons'
@@ -18,6 +19,26 @@ export default function App() {
     status.law ? buildOptions(status.law, laws) : []
   )
   const [reveal, setReveal] = useState(null)
+  const [contentOverride, setContentOverride] = useState(null)
+
+  // Progressive enhancement: try to swap in a fresher, cron-generated
+  // scenario/explanation for today's law before the user answers. Never
+  // blocks the initial render — the static bundled text is already showing.
+  const lawId = status.law?.id
+  useEffect(() => {
+    if (status.phase !== 'quiz' || reveal || !lawId) return
+    let cancelled = false
+    fetchFreshContent(lawId).then((fresh) => {
+      if (!cancelled && fresh) setContentOverride(fresh)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [lawId, status.phase, reveal])
+
+  const displayLaw = status.law && contentOverride
+    ? { ...status.law, scenarioText: contentOverride.scenarioText, explanationText: contentOverride.explanationText }
+    : status.law
 
   function handleAnswer(selectedId) {
     const correct = gradeAnswer(selectedId, status.law.id)
@@ -55,10 +76,10 @@ export default function App() {
           </div>
         </div>
         {status.phase === 'quiz' && !reveal && (
-          <ScenarioView law={status.law} options={options} onAnswer={handleAnswer} />
+          <ScenarioView law={displayLaw} options={options} onAnswer={handleAnswer} />
         )}
         {status.phase === 'quiz' && reveal && (
-          <RevealView law={status.law} correct={reveal.correct} onContinue={handleContinue} />
+          <RevealView law={displayLaw} correct={reveal.correct} onContinue={handleContinue} />
         )}
         {status.phase === 'locked' && (
           <LockedView law={status.law} lastResult={status.lastResult} streak={status.streak} />

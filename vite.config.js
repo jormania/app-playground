@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
 import notionHandler from './api/notion.js'
+import generateLawOfTheDayHandler from './api/generate-law-of-the-day.js'
+import lawOfTheDayContentHandler from './api/law-of-the-day-content.js'
 
 // Stamps the real build/deploy time into every HTML entry as a <meta> tag.
 // On Vercel a fresh build runs on each deploy, so this equals the deploy date.
@@ -100,8 +102,42 @@ function devNotionRelay() {
   }
 }
 
+// Dev-only: mount a GET-only serverless handler at the given path under `vite dev`,
+// with the same Vercel-style res.status/json/send shim as devNotionRelay above.
+// No body-draining needed since both Law of the Day endpoints are GET requests.
+function devApiRelay(path, handler, name) {
+  return {
+    name,
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(path, async (req, res) => {
+        try {
+          res.status = (code) => ((res.statusCode = code), res)
+          res.json = (obj) => {
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify(obj))
+          }
+          res.send = (text) => res.end(text)
+          await handler(req, res)
+        } catch (err) {
+          res.statusCode = 500
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({ message: `Dev relay error: ${err.message}` }))
+        }
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), deployDatePlugin(), solOdysseyPWA(), devNotionRelay()],
+  plugins: [
+    react(),
+    deployDatePlugin(),
+    solOdysseyPWA(),
+    devNotionRelay(),
+    devApiRelay('/api/generate-law-of-the-day', generateLawOfTheDayHandler, 'dev-generate-law-of-the-day-relay'),
+    devApiRelay('/api/law-of-the-day-content', lawOfTheDayContentHandler, 'dev-law-of-the-day-content-relay'),
+  ],
   build: {
     rollupOptions: {
       input: {
