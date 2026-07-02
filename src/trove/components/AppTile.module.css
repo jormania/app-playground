@@ -1,7 +1,9 @@
-/* Same chrome as ds/Card (border, radius, shadow) but a plain <article>, not
-   a <button> — a tile holds two independently-interactive children (twistie,
-   launch link), which can't nest inside a button. */
+/* Same chrome as ds/Card (border, radius, shadow) but the whole card is a
+   tap target via a stretched <a> (see .stretchedLink), not the card itself —
+   the twistie needs to keep working independently, which a <button>-as-card
+   wrapper couldn't do. */
 .tile {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -10,6 +12,26 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  transition: border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
+}
+.tile:hover {
+  border-color: var(--color-border-2);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+/* Sits beneath everything (z-index 0, painted first) so a tap anywhere on
+   the card navigates; .details is raised above it so the twistie doesn't. */
+.stretchedLink {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+}
+.stretchedLink:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
 }
 
 .top {
@@ -31,6 +53,7 @@
 
 .meta {
   min-width: 0;
+  flex: 1;
 }
 
 .title {
@@ -47,6 +70,21 @@
   margin-top: 2px;
 }
 
+.arrow {
+  flex-shrink: 0;
+  font-size: var(--text-lg);
+  color: var(--color-border-2);
+  transition: color var(--duration) var(--ease), transform var(--duration) var(--ease);
+}
+.tile:hover .arrow {
+  color: var(--color-accent);
+  transform: translateX(2px);
+}
+
+.details {
+  position: relative;
+  z-index: 1;
+}
 .details summary {
   list-style: none;
   cursor: pointer;
@@ -67,25 +105,3 @@
   color: var(--color-muted);
   line-height: var(--leading-body);
 }
-
-.actionRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  margin-top: auto;
-  padding-top: var(--space-xs);
-  flex-wrap: wrap;
-}
-
-.launch {
-  display: inline-flex;
-  align-items: center;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  padding: var(--space-xs) var(--space-md);
-  border-radius: var(--radius-pill);
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-  transition: background var(--duration) var(--ease), transform var(--duration) var(--ease);
-}
-.launch:hover { background: var(--color-accent-hover); transform: translateX(2px); }

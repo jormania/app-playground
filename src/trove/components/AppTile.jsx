@@ -12,6 +12,17 @@ export function AppTile({ app, installed }) {
 
   return (
     <article className={styles.tile}>
+      {/* Stretched-link pattern: makes the whole card tappable (easier on
+          mobile than a small button) while staying a real <a> for keyboard/
+          screen-reader users. Sits behind everything in z-order; only the
+          twistie below is raised above it so opening "More" doesn't also
+          navigate away. */}
+      <a
+        className={styles.stretchedLink}
+        href={href}
+        aria-label={`${installed ? 'Launch' : 'Open'} ${app.title}`}
+      />
+
       <div className={styles.top}>
         <div className={styles.icon} style={{ background: app.iconBg || 'var(--color-glow)' }}>
           {app.emoji}
@@ -20,6 +31,9 @@ export function AppTile({ app, installed }) {
           <div className={styles.title}>{app.title}</div>
           <div className={styles.subtitle}>{app.subtitle}</div>
         </div>
+        <span className={styles.arrow} aria-hidden="true">
+          →
+        </span>
       </div>
 
       {app.description && (
@@ -28,12 +42,6 @@ export function AppTile({ app, installed }) {
           <p className={styles.description}>{app.description}</p>
         </details>
       )}
-
-      <div className={styles.actionRow}>
-        <a className={styles.launch} href={href}>
-          {installed ? 'Launch →' : 'Open →'}
-        </a>
-      </div>
     </article>
   )
 }

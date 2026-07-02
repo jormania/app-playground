@@ -4,9 +4,11 @@
 // Only Chromium (desktop Chrome/Edge, Android Chrome) implements
 // navigator.getInstalledRelatedApps() — Safari and Firefox have no equivalent
 // API at all. So the result of checkInstalledApps() is one of:
-//   - a Map<manifestPath, boolean>  — real, verified answer (Chromium)
-//   - null                          — "can't tell" (every other browser),
-//     which the UI must treat as "unknown", never as a false "not installed"
+//   - a Map<manifestPath, boolean>  — Chromium's answer, but only its `true`
+//     values are trustworthy (see AppTile.jsx: Chrome throttles this API to
+//     prevent installed-app fingerprinting, so even a confirmed real install
+//     can come back false)
+//   - null                          — "can't tell" (every other browser)
 //
 // getInstalledRelatedApps() matches against the ABSOLUTE urls declared in
 // this page's own manifest (coneofcold-trove.webmanifest's
@@ -23,23 +25,14 @@ export function absoluteManifestUrl(manifestPath) {
   return new URL(manifestPath, PROD_ORIGIN).href
 }
 
-// Raw pass-through to the browser API, for the diagnostics panel in
-// src/trove/App.jsx — lets a real device show exactly what Chrome reported,
-// instead of us guessing why a confirmed-installed app still reads as "not
-// installed" (e.g. Chrome's per-origin throttling on repeated calls, a
-// manifest id/url mismatch, etc).
-export async function getRawInstalledRelatedApps() {
+export async function checkInstalledApps(apps) {
   if (!installDetectionSupported()) return null
+  let related
   try {
-    return await navigator.getInstalledRelatedApps()
+    related = await navigator.getInstalledRelatedApps()
   } catch {
     return null
   }
-}
-
-export async function checkInstalledApps(apps) {
-  const related = await getRawInstalledRelatedApps()
-  if (related === null) return null
   const installedUrls = new Set(related.map((r) => r.url))
   const result = new Map()
   for (const app of apps) {

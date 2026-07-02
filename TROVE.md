@@ -37,12 +37,6 @@ to the production domain (`https://coneofcold.vercel.app`). This means even a
 `true` result only ever shows up on the deployed site, not `localhost` — see
 [`src/trove/lib/installState.js`](src/trove/lib/installState.js).
 
-If you're chasing a similar detection problem, Trove ships a **Diagnostics**
-twistie at the bottom of the page (only rendered where the API exists) that
-prints the browser's raw `getInstalledRelatedApps()` result next to the
-manifest URLs Trove expects — read it straight off a real device instead of
-guessing.
-
 ## Adding a new app to Trove
 
 A new app only shows up in Trove once it's **stable and ready** — don't add it
