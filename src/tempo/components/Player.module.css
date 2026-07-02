@@ -100,5 +100,5 @@
 .guideLink {
   font-family: var(--font-sans);
   font-size: var(--text-sm);
-  color: var(--color-accent);
+  color: var(--color-link);
 }

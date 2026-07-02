@@ -75,7 +75,17 @@
 
 .iconWrap {
   display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: var(--color-accent);
+}
+
+/* The small connector between a mode's two state icons — quiet, not another
+   brand colour, just enough to read "this, then that". */
+.iconArrow {
+  font-size: 13px;
+  line-height: 1;
+  color: var(--color-faint);
 }
 .iconWrap[data-mode='rounds'] { color: #cb6a46; }
 .iconWrap[data-mode='cycles'] { color: #5a61c7; }
@@ -109,7 +119,7 @@
 .lastUsed {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--color-accent);
+  color: var(--color-link);
   margin: 0;
 }
 

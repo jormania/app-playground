@@ -12,8 +12,9 @@ const base = {
   strokeLinejoin: 'round',
 }
 
-// Rounds — a pulse/heartbeat line: movement, effort, rhythm.
-export function IconRounds(props) {
+// Rounds — Move (a pulse/heartbeat line: effort, rhythm) and Rest (a short
+// pause between rounds — not sitting down, just not moving for a beat).
+export function IconMove(props) {
   return (
     <svg {...base} {...props} aria-hidden>
       <path d="M2 12h4l2-5 3.5 10L14 8l2 4h6" />
@@ -21,13 +22,32 @@ export function IconRounds(props) {
   )
 }
 
-// Cycles — a clock face: focused time in blocks.
-export function IconCycles(props) {
+export function IconPause(props) {
+  return (
+    <svg {...base} {...props} aria-hidden>
+      <rect x="7" y="5" width="4" height="14" rx="1.6" />
+      <rect x="14" y="5" width="4" height="14" rx="1.6" />
+    </svg>
+  )
+}
+
+// Cycles — Focus (a clock face: timed attention) and Break (a cup — stepping
+// away from the work, not a workout rest and not a meditative sit).
+export function IconFocus(props) {
   return (
     <svg {...base} {...props} aria-hidden>
       <circle cx="12" cy="12" r="8.5" />
       <path d="M12 12V7" />
       <path d="M12 12h4" />
+    </svg>
+  )
+}
+
+export function IconBreak(props) {
+  return (
+    <svg {...base} {...props} aria-hidden>
+      <path d="M5 9h11v6a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5V9Z" />
+      <path d="M16 10.6h1.6a2.4 2.4 0 0 1 0 4.8H16" />
     </svg>
   )
 }
@@ -43,13 +63,23 @@ export function IconCustom(props) {
   )
 }
 
-// Sit–Walk — a seated figure over the ground: settled, grounded practice.
-export function IconSitWalk(props) {
+// Sit–Walk — Sit (a seated figure over the ground) and Walk (a pair of
+// footprints, mid-stride): the two states of the one practice, in order.
+export function IconSit(props) {
   return (
     <svg {...base} {...props} aria-hidden>
       <circle cx="12" cy="6.5" r="2.4" />
       <path d="M5 18c2.5-5 11.5-5 14 0" />
       <path d="M4.5 18.5h15" />
+    </svg>
+  )
+}
+
+export function IconWalk(props) {
+  return (
+    <svg {...base} {...props} aria-hidden>
+      <ellipse cx="9" cy="16.5" rx="2.4" ry="3.8" transform="rotate(-18 9 16.5)" />
+      <ellipse cx="16" cy="8.5" rx="2.4" ry="3.8" transform="rotate(18 16 8.5)" />
     </svg>
   )
 }

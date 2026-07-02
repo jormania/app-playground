@@ -69,11 +69,18 @@ export function ModePicker({ onSelect }) {
           const mode = MODES[id]
           if (!mode) return null
           const Icon = mode.Icon
+          const Icon2 = mode.Icon2
           const summary = summaryFor(mode)
           const content = (
             <>
               <span className={styles.iconWrap} data-mode={mode.id}>
                 <Icon />
+                {Icon2 && (
+                  <>
+                    <span className={styles.iconArrow} aria-hidden>→</span>
+                    <Icon2 />
+                  </>
+                )}
               </span>
               <h2 className={styles.cardTitle}>{mode.name}</h2>
               <p className={styles.cardBlurb}>{mode.tagline}</p>

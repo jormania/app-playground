@@ -5,7 +5,17 @@ import {
   build478Segments,
   buildBoxSegments,
 } from './segments'
-import { IconRounds, IconCycles, IconCustom, IconSitWalk, IconBreath, IconBox } from '../components/icons'
+import {
+  IconMove,
+  IconPause,
+  IconFocus,
+  IconBreak,
+  IconCustom,
+  IconSit,
+  IconWalk,
+  IconBreath,
+  IconBox,
+} from '../components/icons'
 
 // Single source of truth for the six panels. A "mode" bundles its identity, its
 // calm copy, its practice family (which drives the background gradient + the
@@ -35,7 +45,8 @@ export const MODES = {
     family: 'movement',
     grad: 'rounds',
     cue: 'ding',
-    Icon: IconRounds,
+    Icon: IconMove,
+    Icon2: IconPause,
     defaults: { work: 20, rest: 10, rounds: 8, warmup: 0 },
     fields: [
       { key: 'work', label: 'Move (sec)', min: 1, max: 600 },
@@ -55,7 +66,8 @@ export const MODES = {
     family: 'focus',
     grad: 'cycles',
     cue: 'ding',
-    Icon: IconCycles,
+    Icon: IconFocus,
+    Icon2: IconBreak,
     defaults: { focus: 25, shortBreak: 5, longBreak: 15, cyclesBeforeLongBreak: 4, totalCycles: 8 },
     fields: [
       { key: 'focus', label: 'Focus (min)', min: 1, max: 180 },
@@ -83,7 +95,8 @@ export const MODES = {
     family: 'mindfulness',
     grad: 'sitwalk',
     cue: 'bell',
-    Icon: IconSitWalk,
+    Icon: IconSit,
+    Icon2: IconWalk,
     defaults: { sit: 20, walk: 5, sits: 2 },
     fields: [
       { key: 'sit', label: 'Sit (min)', min: 1, max: 90 },

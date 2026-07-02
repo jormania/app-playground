@@ -14,3 +14,16 @@ body {
   background: var(--color-bg);
   color: var(--color-ink);
 }
+
+/* A dedicated colour for plain accent-coloured text (links, "last used"
+   captions) — DS's --color-accent blue reads flat against the dark surfaces
+   here, so dark mode borrows the warm gold used for text elsewhere on the
+   site. Interactive chrome (buttons, focus rings, selected states) still
+   reads --color-accent directly and stays untouched — this only affects
+   plain text, and only in dark mode; light mode is unchanged. */
+:root {
+  --color-link: var(--color-accent);
+}
+:root[data-theme='dark'] {
+  --color-link: #e0a955;
+}
