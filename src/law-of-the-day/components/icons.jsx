@@ -18,3 +18,14 @@ export function IconGuide(props) {
     </svg>
   )
 }
+
+// Stats — three ascending bars.
+export function IconStats(props) {
+  return (
+    <svg {...base} {...props} aria-hidden>
+      <path d="M5 19V13" />
+      <path d="M12 19V7" />
+      <path d="M19 19V10" />
+    </svg>
+  )
+}

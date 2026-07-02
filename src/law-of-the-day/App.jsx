@@ -3,12 +3,15 @@ import laws from './data/laws.json'
 import { getDailyStatus, recordAnswer } from './lib/rotation'
 import { buildOptions, gradeAnswer } from './lib/quiz'
 import { fetchFreshContent } from './lib/fetchFreshContent'
+import { loadHistory } from './lib/storage'
+import { computeStats } from './lib/stats'
 import { useTheme } from './lib/themeContext'
 import { IconButton } from '../ds'
-import { IconGuide } from './components/icons'
+import { IconGuide, IconStats } from './components/icons'
 import { ScenarioView } from './components/ScenarioView'
 import { RevealView } from './components/RevealView'
 import { LockedView } from './components/LockedView'
+import { StatsModal } from './components/StatsModal'
 import { Disclaimer } from './components/Disclaimer'
 import styles from './App.module.css'
 
@@ -20,6 +23,8 @@ export default function App() {
   )
   const [reveal, setReveal] = useState(null)
   const [contentOverride, setContentOverride] = useState(null)
+  const [statsOpen, setStatsOpen] = useState(false)
+  const stats = computeStats(laws, loadHistory())
 
   // Progressive enhancement: try to swap in a fresher, cron-generated
   // scenario/explanation for today's law before the user answers. Never
@@ -67,6 +72,14 @@ export default function App() {
             </IconButton>
             <IconButton
               size="sm"
+              aria-label="View your stats"
+              title="Stats"
+              onClick={() => setStatsOpen(true)}
+            >
+              <IconStats />
+            </IconButton>
+            <IconButton
+              size="sm"
               aria-label={`Theme: ${theme === 'dark' ? 'Dark' : 'Light'} (tap to switch)`}
               title={`Theme: ${theme === 'dark' ? 'Dark' : 'Light'}`}
               onClick={toggle}
@@ -86,6 +99,12 @@ export default function App() {
         )}
         <Disclaimer />
       </div>
+      <StatsModal
+        open={statsOpen}
+        onClose={() => setStatsOpen(false)}
+        streak={status.streak}
+        stats={stats}
+      />
     </div>
   )
 }
