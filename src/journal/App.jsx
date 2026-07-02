@@ -37,6 +37,16 @@ export default function App() {
   // Keep <html data-theme> and the mobile bar colour in sync with the choice.
   useEffect(() => { setTheme(theme) }, [theme])
 
+  // Opening an entry (or the editor) swaps content in place — the page itself
+  // never navigates, so without this the scroll position from wherever you were
+  // in the list (or a previous entry) carries straight over. Most noticeable on
+  // a photo entry, where the height differs enough to land mid-page instead of
+  // at the top. Going back to null (the list) is left alone, so list scroll
+  // position is preserved there.
+  useEffect(() => {
+    if (focus) window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [focus])
+
   const load = useCallback(async () => {
     setLoading(true)
     setLoadError('')

@@ -50,9 +50,13 @@ export default function PhotoField({ client, dateKey, currentPhoto, removed, pen
             <button type="button" className="btn btn-sm" onClick={() => inputRef.current?.click()} disabled={disabled}>
               {busy ? 'Uploading…' : 'Replace'}
             </button>
-            <button type="button" className="btn-ghost btn-sm" onClick={pending ? onClearPending : onRemove} disabled={disabled}>
-              {pending ? 'Cancel' : 'Remove'}
-            </button>
+            {pending ? (
+              <button type="button" className="btn-ghost" onClick={onClearPending} disabled={disabled}>Cancel</button>
+            ) : (
+              // Same weight as discarding a draft — a small, bordered, permanent
+              // undo of something already saved, not an in-progress pick.
+              <button type="button" className="draft-discard" onClick={onRemove} disabled={disabled}>Remove</button>
+            )}
           </div>
         </div>
       ) : (

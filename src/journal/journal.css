@@ -272,6 +272,8 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
   background: none; border: 1px solid var(--border2); border-radius: 999px; padding: 4px 10px; cursor: pointer; white-space: nowrap;
 }
 .draft-discard:hover { color: var(--ink); border-color: var(--red, var(--yellow)); }
+.draft-discard:disabled { opacity: 0.5; cursor: default; }
+.draft-discard:disabled:hover { color: var(--faint); border-color: var(--border2); }
 .list-count { font-family: var(--mono); font-size: 0.7rem; color: var(--faint); letter-spacing: 0.04em; }
 .list-divider {
   display: flex; align-items: center; gap: 12px; margin-top: 8px;

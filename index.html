@@ -352,11 +352,32 @@ const CAT_TAGS = new Set(["gaming", "fitness", "outdoor", "mindfulness", "kawaii
 
 const APPS = [
   {
+    emoji: "⚖️",
+    iconBg: "rgba(184,134,11,0.12)",
+    title: "Law of the Day",
+    subtitle: "48 laws · one scenario · daily",
+    latest: true,
+    deployed: "Jul 2026",
+    tech: "React + Vite",
+    tags: ["quiz", "strategy", "reading", "react", "vite"],
+    ds: true,
+    description: "A one-minute daily quiz built around Robert Greene's The 48 Laws of Power: read a short scenario, guess which law it illustrates, then see the explanation. One law a day, no repeats until all 48 have come up, with a streak that tracks showing up rather than being right.",
+    features: [
+      "One scenario a day — pick from four laws, then reveal the answer with a short explanation",
+      "A shuffled 'season' rotation cycles through all 48 laws with no repeats, reshuffling once every law has appeared",
+      "A streak that counts consecutive days answered, not consecutive correct answers",
+      "Locks after today's answer so there's exactly one attempt per day, with your last result shown until tomorrow",
+      "All progress lives in this device's localStorage only — no account, no sync, no server",
+      "Light/dark theme and installable as a PWA",
+    ],
+    guide: "law-of-the-day-guide.html",
+    file: "law-of-the-day-react.html",
+  },
+  {
     emoji: "🌿",
     iconBg: "rgba(47,145,135,0.12)",
     title: "Tempo",
     subtitle: "movement · focus · breath",
-    latest: true,
     deployed: "Jul 2026",
     tech: "React + Vite",
     tags: ["mindfulness", "fitness", "meditation", "breathing", "focus", "react", "vite"],
@@ -429,6 +450,7 @@ const APPS = [
     description: "A daily delight-logging app based on Ross Gay's The Book of Delights — one small thing, noticed closely and written into a short essayette. Not a gratitude log, no scoring or streaks: just attention. Entries live in a Notion database, and the app is a friendlier second doorway to it — read them as a list, a month calendar or a year heatmap, search by text, tags or people, and keep a quiet eye on the practice.",
     features: [
       "One entry per calendar day — editable forever, never duplicated",
+      "One optional picture per delight, even on a past entry — a faded, grainy, tilted thumbnail in the list, uncropped and full size on the entry itself",
       "Three ways to read: a list, a month calendar, and a year heatmap, switched from a slim sticky bar",
       "Search across text, tags or people — and tap any tag or person to filter to it",
       "Freeform Tags and People that emerge from what you write, created inline — never a fixed list",
