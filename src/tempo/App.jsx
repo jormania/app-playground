@@ -1,43 +1,69 @@
 import { useState } from 'react'
 import { ModePicker } from './components/ModePicker'
-import { RoundsSetup } from './components/RoundsSetup'
-import { CyclesSetup } from './components/CyclesSetup'
+import { PresetSetup } from './components/PresetSetup'
 import { CustomSetup } from './components/CustomSetup'
 import { Player } from './components/Player'
+import { MODES } from './lib/modes'
+import { loadActiveSession, clearActiveSession } from './lib/storage'
+import styles from './App.module.css'
 
 export default function App() {
-  const [view, setView] = useState('home') // 'home' | 'setup' | 'player'
-  const [mode, setMode] = useState(null)
-  const [segments, setSegments] = useState([])
+  // If a practice was left running when the app closed, pick it back up.
+  const [resume] = useState(() => loadActiveSession())
 
-  function handleSelectMode(selected) {
-    setMode(selected)
+  const [view, setView] = useState(() => (resume ? 'player' : 'home'))
+  const [modeId, setModeId] = useState(() => resume?.modeId ?? null)
+  const [segments, setSegments] = useState(() => resume?.segments ?? [])
+  // A key that changes each session, so the Player (and its engine) remounts clean.
+  const [sessionKey, setSessionKey] = useState(0)
+
+  const mode = modeId ? MODES[modeId] : null
+
+  function handleSelectMode(id) {
+    setModeId(id)
     setView('setup')
   }
 
   function handleStart(builtSegments) {
     setSegments(builtSegments)
+    setSessionKey((k) => k + 1)
     setView('player')
   }
 
   function handleExit() {
+    clearActiveSession()
     setView('home')
-    setMode(null)
+    setModeId(null)
     setSegments([])
   }
 
+  const grad = mode ? mode.grad : 'home'
+
+  let screen
   if (view === 'home') {
-    return <ModePicker onSelect={handleSelectMode} />
-  }
-
-  if (view === 'setup') {
+    screen = <ModePicker onSelect={handleSelectMode} />
+  } else if (view === 'setup') {
     const onBack = () => setView('home')
-    if (mode === 'rounds') return <RoundsSetup onStart={handleStart} onBack={onBack} />
-    if (mode === 'cycles') return <CyclesSetup onStart={handleStart} onBack={onBack} />
-    return <CustomSetup onStart={handleStart} onBack={onBack} />
+    screen = mode.isCustom ? (
+      <CustomSetup onStart={handleStart} onBack={onBack} />
+    ) : (
+      <PresetSetup mode={mode} onStart={handleStart} onBack={onBack} />
+    )
+  } else {
+    screen = (
+      <Player
+        key={sessionKey}
+        mode={mode}
+        segments={segments}
+        resumeFrom={view === 'player' && resume && sessionKey === 0 ? resume : null}
+        onExit={handleExit}
+      />
+    )
   }
 
-  // Fresh Player instance per session (view only reaches 'player' after a
-  // Start click), so useTimerEngine's internal state always begins clean.
-  return <Player segments={segments} onExit={handleExit} />
+  return (
+    <div className={`${styles.shell} ${styles[grad] ?? styles.home}`} data-grad={grad}>
+      {screen}
+    </div>
+  )
 }

@@ -1,24 +1,13 @@
 .page {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: var(--space-lg);
   padding: var(--space-lg);
-  background: var(--color-bg);
-  transition: background-color var(--duration) var(--ease);
-}
-
-.work {
-  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-bg));
-}
-.rest {
-  background: color-mix(in srgb, var(--color-success) 10%, var(--color-bg));
-}
-.prepare {
-  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-bg));
 }
 
 .gear {
@@ -32,21 +21,11 @@
   font-size: var(--text-base);
   font-weight: var(--weight-bold);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   color: var(--color-muted);
   margin: 0;
   max-width: 12rem;
   overflow-wrap: break-word;
-}
-
-.work .segmentLabel {
-  color: var(--color-accent);
-}
-.rest .segmentLabel {
-  color: var(--color-success);
-}
-.prepare .segmentLabel {
-  color: var(--color-warning);
 }
 
 .countdown {
@@ -68,6 +47,8 @@
 
 .controls {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: var(--space-sm);
 }
 
@@ -79,6 +60,21 @@
   margin: 0;
 }
 
+.doneNote {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--color-muted);
+  margin: 0;
+  text-align: center;
+  max-width: 20rem;
+}
+
+.settingsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
 .settingsRow {
   display: flex;
   align-items: center;
@@ -88,6 +84,21 @@
   color: var(--color-ink);
 }
 
-.settingsRow + .settingsRow {
-  margin-top: var(--space-md);
+.settingsLabel {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-muted);
+  margin: 0 0 var(--space-2xs);
+}
+
+.subControl {
+  margin-top: var(--space-xs);
+  padding-left: var(--space-lg);
+}
+
+.guideLink {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-accent);
 }

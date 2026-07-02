@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tempo — Guide</title>
+<meta name="description" content="What Tempo is, how it works, and the five practices it comes with — movement rounds, focus cycles, sit–walk meditation, 4-7-8, and box breathing." />
+<meta name="theme-color" content="#F4F6F3" />
+<script>
+  // Follow the app's theme (shared localStorage key), set before paint to avoid a flash.
+  try {
+    var p = localStorage.getItem('tempo:theme');
+    if (p === 'dark' || (p === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  } catch (e) {}
+</script>
+<link rel="icon" type="image/svg+xml" href="/tempo-logo.svg" />
+<style>
+  :root {
+    --bg: #f4f6f3;
+    --bg2: #eceff4;
+    --surface: #ffffff;
+    --border: #e3e6ea;
+    --ink: #1b1f24;
+    --muted: #5a636e;
+    --accent: #2f9187;
+    --accent-ink: #256b6f;
+    --maxw: 46rem;
+  }
+  html[data-theme='dark'] {
+    --bg: #12151a;
+    --bg2: #171b22;
+    --surface: #1b1f25;
+    --border: #2b313a;
+    --ink: #e7eaee;
+    --muted: #aab2bd;
+    --accent: #57b0a6;
+    --accent-ink: #7cc6bd;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    color: var(--ink);
+    background: linear-gradient(165deg, var(--bg), var(--bg2));
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  header { margin-bottom: 2.5rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; }
+  .brand svg { width: 34px; height: 34px; }
+  h1 { font-size: clamp(2.2rem, 6vw, 3rem); line-height: 1.1; margin: 0; letter-spacing: -0.01em; }
+  .tagline { font-size: 1.15rem; color: var(--muted); margin: 0.5rem 0 0; }
+  h2 { font-size: 1.5rem; margin: 2.75rem 0 0.75rem; letter-spacing: -0.01em; }
+  h3 { font-size: 1.15rem; margin: 1.5rem 0 0.35rem; }
+  p { margin: 0.6rem 0; }
+  ul { margin: 0.6rem 0; padding-left: 1.2rem; }
+  li { margin: 0.3rem 0; }
+  a { color: var(--accent-ink); }
+  .lede { font-size: 1.2rem; color: var(--ink); }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem 1.4rem;
+    margin: 1rem 0;
+  }
+  .card h3 { margin-top: 0; }
+  .kicker { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-ink); margin: 0 0 0.2rem; font-weight: 600; }
+  .muted { color: var(--muted); }
+  kbd {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.85em; background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 0.05em 0.4em;
+  }
+  .theme-toggle {
+    position: fixed; top: 14px; right: 14px; z-index: 50; width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 999px; color: var(--muted);
+  }
+  .theme-toggle:hover { color: var(--ink); }
+  footer { margin-top: 3rem; color: var(--muted); font-size: 0.9rem; }
+  @media print { .theme-toggle { display: none; } body { background: #fff; } }
+</style>
+</head>
+<body>
+<button class="theme-toggle" type="button" id="themeToggle" aria-label="Toggle dark mode" title="Toggle theme">◐</button>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 64 64" aria-hidden><path d="M53.3 32 A21.3 21.3 0 1 1 42.7 13.6" fill="none" stroke="#2F9187" stroke-width="5" stroke-linecap="round"/><circle cx="32" cy="32" r="6.4" fill="#2F9187"/></svg>
+      <h1>Tempo</h1>
+    </div>
+    <p class="tagline">Gentle timers for movement, focus, and breath.</p>
+  </header>
+
+  <p class="lede">Tempo is a small, calm companion for the daily practices that keep body and mind well — a set on the mat, a focused work block, a few slow breaths before sleep. It doesn’t track you, score you, or nag. It just keeps time, quietly, so you can give your attention to the practice instead of the clock.</p>
+
+  <p>Everything in Tempo is the same underneath: a session is a list of timed steps, and the app counts you through them with a soft cue at each change. What differs is the shape of that list — and Tempo comes with five ready-made shapes plus a build-your-own. Pick one, adjust the numbers to suit you, and begin.</p>
+
+  <h2>How it works</h2>
+  <ul>
+    <li><strong>Choose a timer</strong> from the home screen. Each remembers the last settings you used, shown right on its card.</li>
+    <li><strong>Set the numbers</strong> — lengths and counts — then tap <em>Begin</em>. A big ring counts down the current step, tinted to its kind, with the step name in the middle.</li>
+    <li><strong>Cues.</strong> Movement and focus timers give a light <em>ding</em> at each change; the three breathing/meditation practices use a soft <em>bell</em>. On a phone that supports it, a gentle vibration comes along too. Both can be turned off in Settings (the gear).</li>
+    <li><strong>Controls.</strong> Pause/Resume, Skip, and Exit are on screen. On a keyboard: <kbd>Space</kbd> pauses and resumes, <kbd>→</kbd> (or <kbd>S</kbd>) skips a step, <kbd>Esc</kbd> exits, and <kbd>Enter</kbd> goes again when you finish.</li>
+    <li><strong>It keeps your place.</strong> Close the app mid-session and it’ll be waiting, paused, right where you left it when you come back.</li>
+    <li><strong>Make it yours.</strong> Reorder the home cards (tap <em>Reorder</em>) so your usual practice is first. Switch between Light, Dark, and System themes in Settings — the guide follows the same choice. Install Tempo to your home screen and it runs full-screen and offline.</li>
+  </ul>
+
+  <h2>The five practices</h2>
+  <p class="muted">Each is a well-worn method from movement or contemplative traditions. Here’s the gist of each, and where it comes from.</p>
+
+  <div class="card">
+    <p class="kicker">Movement</p>
+    <h3>Rounds</h3>
+    <p>Alternating effort and rest, repeated — the backbone of interval training. The defaults (20 seconds on, 10 off, eight rounds) are a <strong>Tabata</strong> set, the protocol Dr. Izumi Tabata studied in the 1990s: short, hard efforts with brief recovery. But the same shape carries any interval work — a yoga flow held for time, calisthenics, mobility drills, a walk/jog. Add a warm-up if you like a moment to ease in.</p>
+  </div>
+
+  <div class="card">
+    <p class="kicker">Focus</p>
+    <h3>Cycles</h3>
+    <p>Focused stretches with real breaks between them. The defaults follow the <strong>Pomodoro Technique</strong> that Francesco Cirillo named in the late 1980s (after a tomato-shaped kitchen timer): work in ~25-minute bouts, take a short break, and a longer one every fourth cycle. Good for study, writing, or any deep work where the break matters as much as the push.</p>
+  </div>
+
+  <div class="card">
+    <p class="kicker">Meditation</p>
+    <h3>Sit–Walk</h3>
+    <p>A longer sitting practice, broken by slow, deliberate walking — the rhythm used in <strong>Vipassana</strong> retreats to rest the body and keep attention fresh across a long session. The default splits 45 minutes into 20 seated, 5 walking, 20 seated. When the bell moves you to <em>Walk</em>, rise and pace slowly and attentively; when it calls you back, settle in again. Add more seated blocks for a longer sit.</p>
+  </div>
+
+  <div class="card">
+    <p class="kicker">Breath</p>
+    <h3>4-7-8 Breathing</h3>
+    <p>A calming pranayama pattern popularised by Dr. Andrew Weil: breathe in through the nose for a count of four, hold for seven, and exhale slowly through the mouth for eight. The long exhale is the point — it’s what settles the body. Four breaths is the classic dose, often used to wind down or fall asleep. Let the bell mark each phase so you can keep your eyes closed.</p>
+  </div>
+
+  <div class="card">
+    <p class="kicker">Breath</p>
+    <h3>Box Breathing</h3>
+    <p>Four equal counts — in, hold, out, hold — like tracing the sides of a square. Widely taught for steadying the nervous system (it’s a staple of the calm-under-pressure toolkit used by athletes and first responders alike). Even and unhurried is the whole idea; four seconds a side is a gentle start, and you can lengthen each count as it becomes comfortable.</p>
+  </div>
+
+  <div class="card">
+    <p class="kicker">Your own</p>
+    <h3>Custom</h3>
+    <p>Build any sequence step by step — a label, a length, and what kind each step is (prepare, active, rest, or breathe). Reorder freely. It’s there for everything the presets don’t cover: a physio routine, a bedtime wind-down, a study ritual, a stretch series. Tempo remembers your last sequence and shows a summary of it on the home card.</p>
+  </div>
+
+  <h2>A gentle word on habits</h2>
+  <p>The practices here reward showing up more than pushing hard. A few slow breaths done daily will do more for you than a heroic session you dread and skip. Keep the numbers modest enough that beginning feels easy, let the cues carry the timing, and let the rest take care of itself. Tempo will keep the time; you keep the cadence.</p>
+
+  <footer>
+    <p>Tempo is part of a small collection of hand-built apps. It stores your settings on your own device and asks for nothing.</p>
+  </footer>
+</div>
+<script>
+  (function () {
+    var KEY = 'tempo:theme';
+    var btn = document.getElementById('themeToggle');
+    function pref() { try { var p = localStorage.getItem(KEY); return p === 'dark' || p === 'system' ? p : 'light'; } catch (e) { return 'light'; } }
+    function resolved() { var p = pref(); return p === 'dark' || (p === 'system' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
+    function apply() {
+      var t = resolved();
+      if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+    btn.addEventListener('click', function () {
+      var t = resolved() === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem(KEY, t); } catch (e) {}
+      apply();
+    });
+    window.addEventListener('storage', function (e) { if (e.key === KEY) apply(); });
+    try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { if (pref() === 'system') apply(); }); } catch (e) {}
+    apply();
+  })();
+</script>
+</body>
+</html>

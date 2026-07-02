@@ -8,6 +8,27 @@ const initialState = {
   pausedAt: null,
 }
 
+// Build the engine's starting state. With a `resumeFrom` snapshot (a session that
+// survived the app closing), begin PAUSED at that segment/time — anchoring the
+// clock so the derived remaining matches, and letting the user tap Resume rather
+// than auto-running through however long the app was shut.
+function makeInitialState(segments, resumeFrom) {
+  if (resumeFrom && segments[resumeFrom.currentIndex]) {
+    const seg = segments[resumeFrom.currentIndex]
+    const remaining = Math.min(seg.seconds, Math.max(0, resumeFrom.secondsRemaining))
+    const elapsed = (seg.seconds - remaining) * 1000
+    const now = performance.now()
+    return {
+      status: 'paused',
+      currentIndex: resumeFrom.currentIndex,
+      segmentStartedAt: now - elapsed,
+      accumulatedPauseMs: 0,
+      pausedAt: now,
+    }
+  }
+  return { ...initialState }
+}
+
 // Never trusts a stored "seconds remaining" counter — everything is derived
 // from timestamps on every read, so a late tick or a throttled background tab
 // self-corrects instead of drifting.
@@ -96,8 +117,12 @@ function reducer(state, action, segments) {
   }
 }
 
-export function useTimerEngine(segments) {
-  const [state, dispatch] = useReducer((s, a) => reducer(s, a, segments), initialState)
+export function useTimerEngine(segments, resumeFrom = null) {
+  const [state, dispatch] = useReducer(
+    (s, a) => reducer(s, a, segments),
+    resumeFrom,
+    (rf) => makeInitialState(segments, rf),
+  )
 
   useEffect(() => {
     if (state.status !== 'running') return undefined

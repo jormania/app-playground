@@ -108,6 +108,27 @@ describe('useTimerEngine', () => {
     expect(result.current.status).toBe('done')
   })
 
+  it('resumes a saved snapshot paused at the right segment and time', () => {
+    fakeClock(1000)
+    const { result } = renderHook(() => useTimerEngine(segments, { currentIndex: 1, secondsRemaining: 3 }))
+    expect(result.current.status).toBe('paused')
+    expect(result.current.currentIndex).toBe(1)
+    expect(result.current.currentSegment.label).toBe('Rest')
+    expect(result.current.secondsRemaining).toBe(3)
+  })
+
+  it('resumed snapshot continues counting down once resumed', () => {
+    const clock = fakeClock(1000)
+    const { result } = renderHook(() => useTimerEngine(segments, { currentIndex: 0, secondsRemaining: 6 }))
+    act(() => result.current.resume())
+    expect(result.current.status).toBe('running')
+    act(() => {
+      clock.advance(2000)
+      vi.advanceTimersByTime(250)
+    })
+    expect(result.current.secondsRemaining).toBe(4)
+  })
+
   it('reset returns to idle at the first segment', () => {
     const { result } = renderHook(() => useTimerEngine(segments))
     act(() => result.current.start())

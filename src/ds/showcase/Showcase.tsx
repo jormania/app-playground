@@ -1,6 +1,17 @@
 import { useState } from 'react'
-import { Button, Field, Modal, NumberStepper, Card, SegmentedControl } from '../index'
+import { Button, Field, Modal, NumberStepper, Card, SegmentedControl, IconButton } from '../index'
 import styles from './Showcase.module.css'
+
+const ArrowUp = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M12 5v14M6 11l6-6 6 6" />
+  </svg>
+)
+const ArrowDown = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M12 5v14M6 13l6 6 6-6" />
+  </svg>
+)
 
 /** The design system's first consumer: a gallery that renders every component in
  *  every state. It proves the API and doubles as a visual workbench. */
@@ -96,6 +107,19 @@ export function Showcase() {
             <strong>Cycles</strong>
             <span className={styles.note}>Focus/break blocks</span>
           </Card>
+        </Row>
+      </Section>
+
+      <Section title="IconButton" note="solid icon-only control — sizes, selected, disabled">
+        <Row label="Medium">
+          <IconButton aria-label="Move up"><ArrowUp /></IconButton>
+          <IconButton aria-label="Move down"><ArrowDown /></IconButton>
+          <IconButton aria-label="Toggle" selected>◐</IconButton>
+          <IconButton aria-label="Disabled" disabled><ArrowUp /></IconButton>
+        </Row>
+        <Row label="Small">
+          <IconButton size="sm" aria-label="Move up"><ArrowUp /></IconButton>
+          <IconButton size="sm" aria-label="Move down"><ArrowDown /></IconButton>
         </Row>
       </Section>
 

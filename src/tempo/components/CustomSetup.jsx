@@ -5,9 +5,10 @@ import styles from './Setup.module.css'
 import rowStyles from './CustomSetup.module.css'
 
 const KIND_OPTIONS = [
-  { value: 'prepare', label: 'Prep' },
-  { value: 'work', label: 'Work' },
+  { value: 'prepare', label: 'Prepare' },
+  { value: 'active', label: 'Active' },
   { value: 'rest', label: 'Rest' },
+  { value: 'inhale', label: 'Breathe' },
 ]
 
 function newId() {
@@ -16,7 +17,7 @@ function newId() {
 }
 
 function blankRow() {
-  return { id: newId(), label: '', seconds: 30, kind: 'work' }
+  return { id: newId(), label: '', seconds: 30, kind: 'active' }
 }
 
 export function CustomSetup({ onStart, onBack }) {
@@ -64,12 +65,11 @@ export function CustomSetup({ onStart, onBack }) {
     <div className={styles.page}>
       <form className={styles.panel} onSubmit={handleSubmit}>
         <div className={styles.header}>
-          <Button type="button" variant="ghost" size="sm" onClick={onBack}>← Back</Button>
           <h1 className={styles.title}>Custom</h1>
         </div>
 
         {rows.length === 0 ? (
-          <p className={rowStyles.empty}>Add at least one segment to start.</p>
+          <p className={rowStyles.empty}>Add a step to begin — a label, a length, and what kind it is.</p>
         ) : (
           <div className={rowStyles.rows}>
             {rows.map((row, index) => (
@@ -135,9 +135,17 @@ export function CustomSetup({ onStart, onBack }) {
           </div>
         )}
 
-        <div className={`${styles.actions} ${styles.actionsBetween}`}>
-          <Button type="button" variant="secondary" onClick={addRow}>+ Add segment</Button>
-          <Button type="submit" disabled={rows.length === 0}>Start</Button>
+        <Button type="button" variant="secondary" className={styles.addStep} onClick={addRow}>
+          + Add step
+        </Button>
+
+        <div className={styles.actions}>
+          <Button type="button" variant="secondary" className={styles.back} onClick={onBack}>
+            Back
+          </Button>
+          <Button type="submit" className={styles.submit} disabled={rows.length === 0}>
+            Begin
+          </Button>
         </div>
       </form>
     </div>

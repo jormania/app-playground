@@ -27,6 +27,14 @@
   margin: 0;
 }
 
+.lede {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  color: var(--color-muted);
+  margin: 0;
+}
+
 .form {
   display: flex;
   flex-direction: column;
@@ -50,18 +58,17 @@
   margin: 0;
 }
 
+/* Bottom action stack, identical on every setup screen. Begin sits at the very
+   bottom — the easy thumb target for the action you most want — with Back a row
+   above it, so Back takes a deliberate reach and isn't fat-thumbed by accident. */
 .actions {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
   gap: var(--space-sm);
 }
 
-.actionsBetween {
-  justify-content: space-between;
-}
-
-/* One confident, full-width CTA anchoring the bottom of a single-action form —
-   used instead of a small button floating flex-end under a row of fields. */
-.submit {
+.submit,
+.back,
+.addStep {
   width: 100%;
 }

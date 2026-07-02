@@ -20,6 +20,12 @@
   transition: stroke-dashoffset 0.25s linear;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .progress {
+    transition: none;
+  }
+}
+
 .content {
   position: absolute;
   inset: 0;

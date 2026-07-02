@@ -2,14 +2,37 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-2xl);
+  gap: var(--space-lg);
   min-height: 100vh;
-  padding: var(--space-2xl) var(--space-md);
+  padding: var(--space-lg) var(--space-md) var(--space-2xl);
+}
+
+.topbar {
+  width: 100%;
+  max-width: 48rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.topActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
 }
 
 .heading {
   text-align: center;
   max-width: 32rem;
+  margin-top: var(--space-md);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  color: var(--color-ink);
 }
 
 .title {
@@ -18,14 +41,14 @@
   font-weight: var(--weight-bold);
   line-height: var(--leading-tight);
   color: var(--color-ink);
-  margin: 0 0 var(--space-xs);
+  margin: 0;
 }
 
 .subtitle {
   font-family: var(--font-sans);
   font-size: var(--text-lg);
   color: var(--color-muted);
-  margin: 0;
+  margin: var(--space-xs) 0 0;
 }
 
 .grid {
@@ -36,10 +59,37 @@
   max-width: 48rem;
 }
 
-.emoji {
-  font-size: var(--text-2xl);
-  line-height: 1;
+/* Static card look used only while reordering (a real button can't nest the
+   up/down buttons). Mirrors the DS Card chrome without the press behaviour. */
+.cardStatic {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
+
+.iconWrap {
+  display: inline-flex;
+  color: var(--color-accent);
+}
+.iconWrap[data-mode='rounds'] { color: #cb6a46; }
+.iconWrap[data-mode='cycles'] { color: #5a61c7; }
+.iconWrap[data-mode='custom'] { color: #94815c; }
+.iconWrap[data-mode='sitwalk'] { color: #3f8e72; }
+.iconWrap[data-mode='breath478'] { color: #3e82b8; }
+.iconWrap[data-mode='box'] { color: #2f9187; }
+
+:global(html[data-theme='dark']) .iconWrap[data-mode='rounds'] { color: #e38a66; }
+:global(html[data-theme='dark']) .iconWrap[data-mode='cycles'] { color: #8a90e4; }
+:global(html[data-theme='dark']) .iconWrap[data-mode='custom'] { color: #c2ad82; }
+:global(html[data-theme='dark']) .iconWrap[data-mode='sitwalk'] { color: #64b497; }
+:global(html[data-theme='dark']) .iconWrap[data-mode='breath478'] { color: #6aa6d8; }
+:global(html[data-theme='dark']) .iconWrap[data-mode='box'] { color: #57b0a6; }
 
 .cardTitle {
   font-family: var(--font-display);
@@ -61,4 +111,10 @@
   font-size: var(--text-xs);
   color: var(--color-accent);
   margin: 0;
+}
+
+.reorder {
+  display: flex;
+  gap: var(--space-2xs);
+  margin-top: var(--space-xs);
 }

@@ -1,0 +1,30 @@
+/* The app shell owns the background — a soft, low-saturation gradient that
+   varies subtly by practice family and always honours the light/dark master
+   theme. Screens render transparently on top of it. A calm "dawn garden"
+   palette: warm for movement, periwinkle for focus, sand for custom, and cool
+   greens/blues for the three mindfulness practices. */
+
+.shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: linear-gradient(165deg, var(--ga, #f4f6f3) 0%, var(--gb, #eceff4) 100%);
+  transition: background-color 400ms var(--ease);
+}
+
+/* ── Light stops ─────────────────────────────────────────────────────────── */
+.home { --ga: #f4f6f3; --gb: #eceff4; }
+.rounds { --ga: #fdf0e9; --gb: #f8e3d8; }
+.cycles { --ga: #eef0fd; --gb: #e6e9fb; }
+.custom { --ga: #f5f2ec; --gb: #ece7dd; }
+.sitwalk { --ga: #edf4ee; --gb: #deede2; }
+.breath478 { --ga: #eaf3fa; --gb: #dcedf6; }
+.box { --ga: #e7f3f1; --gb: #d7ece7; }
+
+/* ── Dark stops (muted, close to the DS dark canvas so text tokens still read) ── */
+:global(html[data-theme='dark']) .home { --ga: #12151a; --gb: #171b22; }
+:global(html[data-theme='dark']) .rounds { --ga: #221a16; --gb: #2a201b; }
+:global(html[data-theme='dark']) .cycles { --ga: #181a24; --gb: #1e2030; }
+:global(html[data-theme='dark']) .custom { --ga: #1e1c17; --gb: #24211b; }
+:global(html[data-theme='dark']) .sitwalk { --ga: #151f19; --gb: #1a261f; }
+:global(html[data-theme='dark']) .breath478 { --ga: #131d24; --gb: #17242c; }
+:global(html[data-theme='dark']) .box { --ga: #13201e; --gb: #172826; }

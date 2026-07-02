@@ -3,10 +3,17 @@ import styles from './CountdownRing.module.css'
 const RADIUS = 42
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
+// Calm per-kind ring tints, harmonising with the family gradients.
 const TINT_BY_KIND = {
-  work: 'var(--color-accent)',
-  rest: 'var(--color-success)',
-  prepare: 'var(--color-warning)',
+  prepare: '#d8a657', // amber
+  active: '#d97a54', // warm coral (movement)
+  rest: '#6fb08a', // sage
+  focus: '#7076d8', // periwinkle
+  sit: '#4e9e86', // deep sage
+  walk: '#4fa6a0', // teal
+  inhale: '#5fa3d6', // sky
+  hold: '#9a8fd0', // lavender
+  exhale: '#5fb6ac', // seafoam
 }
 
 // A circular countdown, depleting clockwise as the segment elapses — the
