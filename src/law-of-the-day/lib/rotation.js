@@ -7,6 +7,8 @@ import {
   saveLastAnsweredDate,
   loadStreak,
   saveStreak,
+  loadBestStreak,
+  saveBestStreak,
   loadHistory,
   saveHistory,
 } from './storage'
@@ -106,9 +108,11 @@ export function getDailyStatus(laws, now = new Date()) {
   return { law, phase: 'quiz', streak, lastResult: null }
 }
 
-// Persists an answer: updates per-law history and the consecutive-day streak
+// Persists an answer: updates per-law history, the consecutive-day streak
 // (consecutive-day-answered, not consecutive-correct — answering right or
-// wrong still counts toward the streak). Returns the updated { streak, history }.
+// wrong still counts toward the streak), and the all-time best streak (a
+// high-water mark that only ever grows). Returns the updated
+// { streak, bestStreak, history }.
 export function recordAnswer(lawId, correct, now = new Date()) {
   const today = getTodayKey(now)
   const lastAnsweredDate = loadLastAnsweredDate()
@@ -116,6 +120,7 @@ export function recordAnswer(lawId, correct, now = new Date()) {
   const streak = lastAnsweredDate && addDays(lastAnsweredDate, 1) === today
     ? loadStreak() + 1
     : 1
+  const bestStreak = Math.max(loadBestStreak(), streak)
 
   const history = loadHistory()
   const entry = history[lawId] || { correctCount: 0, incorrectCount: 0 }
@@ -128,8 +133,9 @@ export function recordAnswer(lawId, correct, now = new Date()) {
   const updatedHistory = { ...history, [lawId]: updatedEntry }
 
   saveStreak(streak)
+  saveBestStreak(bestStreak)
   saveHistory(updatedHistory)
   saveLastAnsweredDate(today)
 
-  return { streak, history: updatedHistory }
+  return { streak, bestStreak, history: updatedHistory }
 }

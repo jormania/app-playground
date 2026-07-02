@@ -53,6 +53,15 @@ export function saveStreak(streak) {
   write('streak', streak)
 }
 
+// ── All-time best streak (a high-water mark, never decreases) ──────────────
+export function loadBestStreak() {
+  return read('bestStreak', 0)
+}
+
+export function saveBestStreak(bestStreak) {
+  write('bestStreak', bestStreak)
+}
+
 // ── Per-law answer history, for a future stats view ─────────────────────────
 export function loadHistory() {
   return read('history', {})

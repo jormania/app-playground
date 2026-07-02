@@ -1,17 +1,32 @@
 import { Modal } from '../../ds'
 import styles from './StatsModal.module.css'
 
-export function StatsModal({ open, onClose, streak, stats }) {
+export function StatsModal({ open, onClose, streak, bestStreak, stats }) {
   return (
     <Modal open={open} onClose={onClose} title="Your stats">
+      {/* Grouped in columns: streaks (current/best), volume (total answers/full
+          cycles), then coverage+quality (laws seen/accuracy) — each pair reads
+          top-to-bottom as "now" over "lifetime". */}
       <div className={styles.summaryRow}>
         <div className={styles.stat}>
           <span className={styles.statValue}>{streak}</span>
           <span className={styles.statLabel}>day streak</span>
         </div>
         <div className={styles.stat}>
+          <span className={styles.statValue}>{stats.totalAnswers}</span>
+          <span className={styles.statLabel}>scenarios answered</span>
+        </div>
+        <div className={styles.stat}>
           <span className={styles.statValue}>{stats.lawsSeen}/{stats.totalLaws}</span>
           <span className={styles.statLabel}>laws seen</span>
+        </div>
+        <div className={styles.stat}>
+          <span className={styles.statValue}>{bestStreak}</span>
+          <span className={styles.statLabel}>best streak</span>
+        </div>
+        <div className={styles.stat}>
+          <span className={styles.statValue}>{stats.seasonsCompleted}</span>
+          <span className={styles.statLabel}>seasons completed</span>
         </div>
         <div className={styles.stat}>
           <span className={styles.statValue}>{stats.accuracyPercent}%</span>

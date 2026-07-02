@@ -3,7 +3,7 @@ import laws from './data/laws.json'
 import { getDailyStatus, recordAnswer } from './lib/rotation'
 import { buildOptions, gradeAnswer } from './lib/quiz'
 import { fetchFreshContent } from './lib/fetchFreshContent'
-import { loadHistory } from './lib/storage'
+import { loadHistory, loadBestStreak } from './lib/storage'
 import { computeStats } from './lib/stats'
 import { useTheme } from './lib/themeContext'
 import { IconButton } from '../ds'
@@ -25,6 +25,7 @@ export default function App() {
   const [contentOverride, setContentOverride] = useState(null)
   const [statsOpen, setStatsOpen] = useState(false)
   const stats = computeStats(laws, loadHistory())
+  const bestStreak = loadBestStreak()
 
   // Progressive enhancement: try to swap in a fresher, cron-generated
   // scenario/explanation for today's law before the user answers. Never
@@ -103,6 +104,7 @@ export default function App() {
         open={statsOpen}
         onClose={() => setStatsOpen(false)}
         streak={status.streak}
+        bestStreak={bestStreak}
         stats={stats}
       />
     </div>

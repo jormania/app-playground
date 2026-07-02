@@ -147,4 +147,25 @@ describe('recordAnswer', () => {
       lastAnsweredCorrect: false,
     })
   })
+
+  it('sets bestStreak to the streak on the first answer', () => {
+    const { bestStreak } = recordAnswer(1, true, new Date(2026, 0, 1))
+    expect(bestStreak).toBe(1)
+  })
+
+  it('raises bestStreak as the current streak grows past it', () => {
+    recordAnswer(1, true, new Date(2026, 0, 1))
+    recordAnswer(2, true, new Date(2026, 0, 2))
+    const { bestStreak } = recordAnswer(3, true, new Date(2026, 0, 3))
+    expect(bestStreak).toBe(3)
+  })
+
+  it('keeps bestStreak after the current streak resets from a gap', () => {
+    recordAnswer(1, true, new Date(2026, 0, 1))
+    recordAnswer(2, true, new Date(2026, 0, 2))
+    recordAnswer(3, true, new Date(2026, 0, 3))
+    const { streak, bestStreak } = recordAnswer(4, true, new Date(2026, 0, 10))
+    expect(streak).toBe(1)
+    expect(bestStreak).toBe(3)
+  })
 })

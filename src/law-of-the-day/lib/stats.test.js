@@ -13,6 +13,8 @@ describe('computeStats', () => {
     expect(stats).toEqual({
       lawsSeen: 0,
       totalLaws: 3,
+      totalAnswers: 0,
+      seasonsCompleted: 0,
       correctCount: 0,
       incorrectCount: 0,
       accuracyPercent: 0,
@@ -25,6 +27,8 @@ describe('computeStats', () => {
     const stats = computeStats(laws, history)
     expect(stats.lawsSeen).toBe(1)
     expect(stats.totalLaws).toBe(3)
+    expect(stats.totalAnswers).toBe(4)
+    expect(stats.seasonsCompleted).toBe(1)
     expect(stats.correctCount).toBe(3)
     expect(stats.incorrectCount).toBe(1)
     expect(stats.accuracyPercent).toBe(75)
@@ -40,6 +44,7 @@ describe('computeStats', () => {
     }
     const stats = computeStats(laws, history)
     expect(stats.lawsSeen).toBe(2)
+    expect(stats.totalAnswers).toBe(3)
     expect(stats.correctCount).toBe(1)
     expect(stats.incorrectCount).toBe(2)
     expect(stats.perLaw.map((l) => l.lawId)).toEqual([1, 3])
@@ -56,5 +61,17 @@ describe('computeStats', () => {
     const stats = computeStats(laws, history)
     expect(stats.lawsSeen).toBe(0)
     expect(stats.correctCount).toBe(0)
+  })
+
+  it('counts completed seasons as full cycles through every law', () => {
+    // 3 laws, 7 total answers -> 2 completed cycles (6) plus 1 into the 3rd.
+    const history = {
+      1: { correctCount: 3, incorrectCount: 0, lastAnsweredCorrect: true, lastAnsweredDate: '2026-07-01' },
+      2: { correctCount: 2, incorrectCount: 1, lastAnsweredCorrect: false, lastAnsweredDate: '2026-07-02' },
+      3: { correctCount: 1, incorrectCount: 0, lastAnsweredCorrect: true, lastAnsweredDate: '2026-07-03' },
+    }
+    const stats = computeStats(laws, history)
+    expect(stats.totalAnswers).toBe(7)
+    expect(stats.seasonsCompleted).toBe(2)
   })
 })
