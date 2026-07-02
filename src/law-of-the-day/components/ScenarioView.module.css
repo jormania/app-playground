@@ -15,9 +15,7 @@
 
 .scenario {
   margin: 0;
-  padding: var(--space-lg);
-  background: color-mix(in srgb, var(--color-surface) 55%, var(--gb) 45%);
-  border-radius: var(--radius-lg);
+  padding: var(--space-lg) 0;
   font-size: var(--text-lg);
   line-height: var(--leading-body);
   color: var(--color-ink);
@@ -42,6 +40,7 @@
   font-size: var(--text-base);
   font-weight: var(--weight-medium);
   line-height: var(--leading-body);
+  background: color-mix(in srgb, var(--color-surface) 22%, transparent);
   border: none;
   box-shadow: none;
 }

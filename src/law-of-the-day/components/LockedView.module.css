@@ -3,9 +3,7 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-xs);
-  padding: var(--space-2xl) var(--space-lg);
-  background: color-mix(in srgb, var(--color-surface) 55%, var(--gb) 45%);
-  border-radius: var(--radius-lg);
+  padding: var(--space-2xl) 0;
   text-align: center;
 }
 
