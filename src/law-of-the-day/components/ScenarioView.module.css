@@ -16,7 +16,7 @@
 .scenario {
   margin: 0;
   padding: var(--space-lg);
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-surface) 55%, var(--gb) 45%);
   border-radius: var(--radius-lg);
   font-size: var(--text-lg);
   line-height: var(--leading-body);

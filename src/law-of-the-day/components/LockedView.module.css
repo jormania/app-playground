@@ -4,7 +4,7 @@
   align-items: center;
   gap: var(--space-xs);
   padding: var(--space-2xl) var(--space-lg);
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-surface) 55%, var(--gb) 45%);
   border-radius: var(--radius-lg);
   text-align: center;
 }
