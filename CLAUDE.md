@@ -29,11 +29,11 @@ call a change complete on green-looking code alone.
 | Sol Odyssey | `src/sol-odyssey/` | **strict TypeScript** — has its own [`CLAUDE.md`](src/sol-odyssey/CLAUDE.md) + `DESIGN.md`; **defer to those** inside that dir |
 | Tempo | `src/tempo/` | plain JSX, builds on `src/ds/` |
 | Law of the Day | `src/law-of-the-day/` | plain JSX, builds on `src/ds/` |
-| The Cabinet | `src/cabinet/` | plain JSX, builds on `src/ds/`; dashboard listing the other `react-vite` apps — see [`CABINET.md`](CABINET.md) |
+| The Cabinet | `src/cabinet/` | plain JSX, builds on `src/ds/`; dashboard listing the `react-vite` apps, plus legacy `static` apps behind an opt-in toggle — see [`CABINET.md`](CABINET.md) |
 | Journal of Delights | `src/journal/` | plain JSX, no type checking |
 | Kettlebell Training | `src/kettlebell/` | plain JSX, no type checking |
 | Touch Grass | `src/touch-grass/` | plain JSX, no type checking |
-| Static HTML apps | repo root (`*.html`) | design-locked, hand-authored — edit in place |
+| Static HTML apps | `public/*.html` (served at the site root) | design-locked, hand-authored — edit in place |
 
 Every app's card/tile data (name, icon, blurb, tags) lives in one place —
 [`src/apps-registry.js`](src/apps-registry.js) — read by both `index.html`'s

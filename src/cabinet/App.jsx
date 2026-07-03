@@ -23,6 +23,7 @@ const NEW_APP_FILES = newlyDeployedFiles(REACT_VITE_APPS)
 const SORT_OPTIONS = [
   { value: 'manual', label: 'Manual' },
   { value: 'recent', label: 'Recent' },
+  { value: 'popular', label: 'Popular' },
   { value: 'az', label: 'A–Z' },
 ]
 
@@ -108,6 +109,9 @@ export default function App() {
     if (sort === 'az') return [...visibleApps].sort((a, b) => a.title.localeCompare(b.title))
     if (sort === 'recent') {
       return [...visibleApps].sort((a, b) => (lastOpened[b.file]?.last || 0) - (lastOpened[a.file]?.last || 0))
+    }
+    if (sort === 'popular') {
+      return [...visibleApps].sort((a, b) => (lastOpened[b.file]?.count || 0) - (lastOpened[a.file]?.count || 0))
     }
     return manualOrderedApps
     // manualOrderedApps is derived fresh each render from `order`/`showLegacy`, so depend on those instead.

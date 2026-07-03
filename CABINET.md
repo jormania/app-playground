@@ -16,10 +16,17 @@ same data `index.html`'s card grid reads from, so there's exactly one place
 to update per app.
 
 The sort bar also offers Manual (drag-reorderable, persisted), Recent
-(by last-opened), and A–Z ordering — see
+(by last-opened), Popular (by open count), and A–Z ordering — see
 [`src/cabinet/App.jsx`](src/cabinet/App.jsx). Manual order is stored by file
 id across the *full* app set (react-vite + static) so a legacy app's position
 survives toggling it off and back on, even while hidden.
+
+Each tile also shows "opened Xm ago" once tapped, or "opened N× · Xm ago"
+after more than one tap — the count and timestamp Recent/Popular sort by.
+This only counts taps on the Cabinet's own tiles (`recordOpened` in
+[`src/cabinet/lib/storage.js`](src/cabinet/lib/storage.js)); launching an
+installed PWA from its home-screen icon bypasses the Cabinet and isn't
+counted. Local to this browser/device only — there's no sync.
 
 Source: [`src/cabinet/`](src/cabinet/). Entry shell: `coneofcold-cabinet.html`.
 Built on `src/ds/`, like any new app — see the [design-system rule](CLAUDE.md).
