@@ -75,6 +75,32 @@
   margin-top: 2px;
 }
 
+.lastOpened {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+  margin-top: 4px;
+}
+
+.action {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.actionLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-faint);
+  transition: color var(--duration) var(--ease);
+}
+.tile:hover .actionLabel {
+  color: var(--color-accent);
+}
+
 .arrow {
   flex-shrink: 0;
   font-size: var(--text-lg);

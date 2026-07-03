@@ -27,3 +27,14 @@ export function loadOrder() {
 export function saveOrder(order) {
   write('order', order)
 }
+
+// ── Last-opened timestamps (keyed by app.file) ──────────────────────────────
+export function loadLastOpened() {
+  return read('lastOpened', {})
+}
+
+export function recordOpened(file) {
+  const map = loadLastOpened()
+  map[file] = Date.now()
+  write('lastOpened', map)
+}

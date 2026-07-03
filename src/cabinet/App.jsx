@@ -3,7 +3,7 @@ import { APPS } from '../apps-registry'
 import { IconButton } from '../ds'
 import { useTheme } from './lib/themeContext'
 import { checkInstalledApps } from './lib/installState'
-import { loadOrder, saveOrder } from './lib/storage'
+import { loadOrder, saveOrder, loadLastOpened } from './lib/storage'
 import { AppTile } from './components/AppTile'
 import { IconReorder } from './components/icons'
 import styles from './App.module.css'
@@ -28,6 +28,9 @@ export default function App() {
   const [installedByManifest, setInstalledByManifest] = useState(null)
   const [order, setOrder] = useState(() => reconcileOrder(loadOrder()))
   const [editing, setEditing] = useState(false)
+  // Read once at mount: a tap navigates away immediately, so there's no
+  // in-page moment where a fresher value would ever be shown.
+  const [lastOpened] = useState(() => loadLastOpened())
 
   useEffect(() => {
     let cancelled = false
@@ -90,6 +93,7 @@ export default function App() {
               key={app.file}
               app={app}
               installed={installedByManifest?.get(app.manifest) === true}
+              lastOpenedAt={lastOpened[app.file]}
               editing={editing}
               onMoveUp={() => move(index, -1)}
               onMoveDown={() => move(index, 1)}

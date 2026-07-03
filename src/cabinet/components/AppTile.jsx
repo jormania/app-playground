@@ -1,5 +1,8 @@
 import { IconButton } from '../../ds'
 import { IconArrowUp, IconArrowDown } from './icons'
+import { canInstallPwaHere, chromeIntentUrl } from '../lib/browserSupport'
+import { recordOpened } from '../lib/storage'
+import { formatRelativeTime } from '../lib/relativeTime'
 import styles from './AppTile.module.css'
 
 // installed: true when the browser has genuinely confirmed this app is
@@ -12,8 +15,20 @@ import styles from './AppTile.module.css'
 //
 // editing: while reordering, the stretched link is dropped (a tap should
 // move a tile, not launch it) and the arrow is swapped for up/down controls.
-export function AppTile({ app, installed, editing, onMoveUp, onMoveDown, disableUp, disableDown }) {
-  const href = `/${app.file}`
+//
+// Any non-`true` install status shows "Install" rather than "Launch" — same
+// "never assert a negative" stance as the aria-label always used. On Android,
+// beforeinstallprompt can only be captured by the page that owns the
+// manifest, so Cabinet can't trigger a real install itself; the best it can
+// do is make sure the tap lands in a browser that can install at all. Edge
+// for Android (unlike its desktop build) doesn't support installing a PWA,
+// so if that's the phone's default browser, route the tap through Chrome
+// instead of silently opening a page the visitor can't act on.
+export function AppTile({ app, installed, lastOpenedAt, editing, onMoveUp, onMoveDown, disableUp, disableDown }) {
+  const path = `/${app.file}`
+  const needsChromeRedirect = !installed && !canInstallPwaHere()
+  const href = needsChromeRedirect ? chromeIntentUrl(window.location.origin + path) : path
+  const actionLabel = installed ? 'Launch' : 'Install'
 
   return (
     <article className={styles.tile}>
@@ -26,7 +41,8 @@ export function AppTile({ app, installed, editing, onMoveUp, onMoveDown, disable
         <a
           className={styles.stretchedLink}
           href={href}
-          aria-label={`${installed ? 'Launch' : 'Open'} ${app.title}`}
+          onClick={() => recordOpened(app.file)}
+          aria-label={`${actionLabel} ${app.title}${needsChromeRedirect ? ' (opens in Chrome)' : ''}`}
         />
       )}
 
@@ -37,6 +53,9 @@ export function AppTile({ app, installed, editing, onMoveUp, onMoveDown, disable
         <div className={styles.meta}>
           <div className={styles.title}>{app.title}</div>
           <div className={styles.subtitle}>{app.subtitle}</div>
+          {!editing && lastOpenedAt && (
+            <div className={styles.lastOpened}>opened {formatRelativeTime(lastOpenedAt)}</div>
+          )}
         </div>
         {editing ? (
           <div className={styles.reorder}>
@@ -48,8 +67,9 @@ export function AppTile({ app, installed, editing, onMoveUp, onMoveDown, disable
             </IconButton>
           </div>
         ) : (
-          <span className={styles.arrow} aria-hidden="true">
-            →
+          <span className={styles.action} aria-hidden="true">
+            <span className={styles.actionLabel}>{actionLabel}</span>
+            <span className={styles.arrow}>{installed ? '→' : '⤓'}</span>
           </span>
         )}
       </div>
