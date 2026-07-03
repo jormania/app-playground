@@ -87,6 +87,28 @@ unknown (see the `installed` note below on why that signal can't be
 trusted). `chromeIntentUrl()` (the Edge-for-Android → Chrome redirect) is
 unrelated and still used only for that case.
 
+**Confirmed working on a real device, 2026-07-03.** Android's "Open with"
+chooser correctly lists the installed app now, where before it wasn't
+offered at all — proof the hand-off itself works. If a specific app still
+never shows up as a launch option (chooser or otherwise) even though it's
+genuinely installed, the WebAPK's own Android-side verification may be
+stuck — see the troubleshooting note right below.
+
+### If a specific installed app won't launch: reinstall it
+
+Two apps (Touch Grass, Journal of Delights — both older installs) initially
+showed the browser chooser with no way to make it stick as a silent,
+one-tap launch, while every other app opened straight through. Diagnostic:
+on Android, Settings → Apps → *that app* → Set as default → "Supported web
+addresses" shows a domain toggle **only** for an app whose Digital Asset
+Link verification hasn't succeeded — a working, verified WebAPK doesn't
+show this screen at all. On at least Samsung/OneUI, that toggle is
+effectively read-only: switching it on doesn't persist, so there's no way
+to force verification by hand. **The fix is a clean uninstall + reinstall**
+of the affected app, which re-triggers verification from scratch against
+the current manifest — this isn't a manifest or icon quality problem (Touch
+Grass already had a full PNG icon set and still needed the reinstall).
+
 ## Install detection, take two: each app reports its own install
 
 `getInstalledRelatedApps()` (above) is Chrome's own answer and it's
@@ -107,6 +129,10 @@ the slower `checkInstalledApps()` result — never downgrades one, per the
 "only trust `true`" rule above. A new `react-vite` app needs one
 `watchInstalled('<file>.html')` call added at the top of its entry point;
 see any existing `main.jsx` for the pattern.
+
+**Confirmed working on a real device, 2026-07-03**: tiles for apps already
+installed (opened at least once in standalone mode since this shipped) now
+correctly read "Launch" instead of "Install".
 
 ## Search
 

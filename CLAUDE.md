@@ -29,7 +29,7 @@ call a change complete on green-looking code alone.
 | Sol Odyssey | `src/sol-odyssey/` | **strict TypeScript** — has its own [`CLAUDE.md`](src/sol-odyssey/CLAUDE.md) + `DESIGN.md`; **defer to those** inside that dir |
 | Tempo | `src/tempo/` | plain JSX, builds on `src/ds/` |
 | Law of the Day | `src/law-of-the-day/` | plain JSX, builds on `src/ds/` |
-| The Cabinet | `src/cabinet/` | plain JSX, builds on `src/ds/`; dashboard listing the `react-vite` apps, plus legacy `static` apps behind an opt-in toggle — see [`CABINET.md`](CABINET.md) |
+| The Cabinet | `src/cabinet/` | plain JSX, builds on `src/ds/`; dashboard listing every `react-vite` and legacy `static` app, always, with no toggle to hide either — see [`CABINET.md`](CABINET.md) |
 | Journal of Delights | `src/journal/` | plain JSX, no type checking |
 | Kettlebell Training | `src/kettlebell/` | plain JSX, no type checking |
 | Touch Grass | `src/touch-grass/` | plain JSX, no type checking |
@@ -53,7 +53,11 @@ can use it, including the legacy ones. Today it holds `src/shared/notify/`, the
 local-notifications foundation (Periodic Background Sync + IndexedDB state
 mirroring + a diagnostics reveal) used by Touch Grass, Sol Odyssey, and Journal
 of Delights — see [`NOTIFICATIONS.md`](NOTIFICATIONS.md) before building
-notifications into another app.
+notifications into another app. It also holds
+[`src/shared/installFlag.ts`](src/shared/installFlag.ts) — every `react-vite`
+app calls `watchInstalled('<file>.html')` once at startup so The Cabinet can
+tell it's installed reliably; see CABINET.md's "Install detection, take two"
+and add this call for any new PWA app.
 
 ## Deploy guardrail
 
