@@ -43,6 +43,13 @@ export function recordOpened(file) {
   write('lastOpened', map)
 }
 
+// Wipes only the open-count/last-opened map — leaves order and sort alone.
+// Triggered by a one-off `?resetStats=1` (see App.jsx), for clearing out
+// noise from a testing session.
+export function clearLastOpened() {
+  write('lastOpened', {})
+}
+
 // ── Sort mode: 'manual' | 'recent' | 'az' ───────────────────────────────────
 export function loadSort() {
   return read('sort', 'manual')

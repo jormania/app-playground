@@ -4,7 +4,7 @@ import { IconButton, SegmentedControl } from '../ds'
 import { useTheme } from './lib/themeContext'
 import { checkInstalledApps } from './lib/installState'
 import { newlyDeployedFiles } from './lib/deployed'
-import { loadOrder, saveOrder, loadLastOpened, loadSort, saveSort } from './lib/storage'
+import { loadOrder, saveOrder, loadLastOpened, clearLastOpened, loadSort, saveSort } from './lib/storage'
 import { AppTile } from './components/AppTile'
 import { IconReorder } from './components/icons'
 import styles from './App.module.css'
@@ -47,8 +47,23 @@ export default function App() {
   const [sort, setSort] = useState(() => loadSort())
   const [editing, setEditing] = useState(false)
   // Read once at mount: a tap navigates away immediately, so there's no
-  // in-page moment where a fresher value would ever be shown.
-  const [lastOpened] = useState(() => loadLastOpened())
+  // in-page moment where a fresher value would ever be shown. `?resetStats=1`
+  // wipes the open-count/last-opened map only (order and sort untouched)
+  // before that read — a one-off escape hatch for clearing noise built up
+  // during testing, matching Touch Grass's own `?` query-param convention.
+  const [lastOpened] = useState(() => {
+    try {
+      const p = new URLSearchParams(window.location.search)
+      if (p.get('resetStats') === '1') {
+        clearLastOpened()
+        p.delete('resetStats')
+        const qs = p.toString()
+        window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''))
+        return {}
+      }
+    } catch (_) {}
+    return loadLastOpened()
+  })
 
   useEffect(() => {
     let cancelled = false
