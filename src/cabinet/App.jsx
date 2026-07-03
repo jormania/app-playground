@@ -126,16 +126,6 @@ export default function App() {
           <div className={styles.titleActions}>
             <IconButton
               size="sm"
-              selected={editing}
-              disabled={sort !== 'manual'}
-              aria-label={editing ? 'Done reordering' : 'Reorder apps'}
-              title={sort !== 'manual' ? 'Switch to Manual sort to reorder' : editing ? 'Done' : 'Reorder'}
-              onClick={() => setEditing((e) => !e)}
-            >
-              <IconReorder />
-            </IconButton>
-            <IconButton
-              size="sm"
               aria-label={`Theme: ${theme === 'dark' ? 'Dark' : 'Light'} (tap to switch)`}
               title={`Theme: ${theme === 'dark' ? 'Dark' : 'Light'}`}
               onClick={toggle}
@@ -147,6 +137,16 @@ export default function App() {
 
         <div className={styles.controlsRow}>
           <SegmentedControl size="sm" options={SORT_OPTIONS} value={sort} onChange={changeSort} />
+          <IconButton
+            size="sm"
+            selected={editing}
+            disabled={sort !== 'manual'}
+            aria-label={editing ? 'Done reordering' : 'Reorder apps'}
+            title={sort !== 'manual' ? 'Switch to Manual sort to reorder' : editing ? 'Done' : 'Reorder'}
+            onClick={() => setEditing((e) => !e)}
+          >
+            <IconReorder />
+          </IconButton>
           <Button
             size="sm"
             variant={showLegacy ? 'primary' : 'secondary'}
