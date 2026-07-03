@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Law of the Day — The 48 Laws</title>
+<meta name="description" content="A reference list of all 48 laws from Robert Greene's The 48 Laws of Power, each with a short explanation of the underlying idea." />
+<meta name="theme-color" content="#F4F5F7" />
+<script>
+  // Follow the app's theme (shared localStorage key), set before paint to avoid a flash.
+  try {
+    if (localStorage.getItem('lawofday:theme') === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  } catch (e) {}
+</script>
+<link rel="icon" type="image/svg+xml" href="/law-of-the-day-logo.svg" />
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --bg2: #ece9e0;
+    --surface: #ffffff;
+    --border: #e3e6ea;
+    --ink: #1b1f24;
+    --muted: #5a636e;
+    --accent: #b8860b;
+    --accent-ink: #8a6608;
+    --maxw: 46rem;
+  }
+  html[data-theme='dark'] {
+    --bg: #0e1115;
+    --bg2: #171b22;
+    --surface: #1b1f25;
+    --border: #2b313a;
+    --ink: #e7eaee;
+    --muted: #aab2bd;
+    --accent: #d9ab3e;
+    --accent-ink: #eec569;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    color: var(--ink);
+    background: linear-gradient(165deg, var(--bg), var(--bg2));
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  header { margin-bottom: 2.5rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; }
+  .brand svg { width: 34px; height: 34px; }
+  h1 { font-size: clamp(2.2rem, 6vw, 3rem); line-height: 1.1; margin: 0; letter-spacing: -0.01em; }
+  .tagline { font-size: 1.15rem; color: var(--muted); margin: 0.5rem 0 0; }
+  h2 { font-size: 1.5rem; margin: 2.75rem 0 0.75rem; letter-spacing: -0.01em; }
+  h3 { font-size: 1.15rem; margin: 1.5rem 0 0.35rem; }
+  p { margin: 0.6rem 0; }
+  ul { margin: 0.6rem 0; padding-left: 1.2rem; }
+  li { margin: 0.3rem 0; }
+  a { color: var(--accent-ink); }
+  .lede { font-size: 1.2rem; color: var(--ink); }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem 1.4rem;
+    margin: 1rem 0;
+    scroll-margin-top: 1.25rem;
+  }
+  .card h3 { margin-top: 0; }
+  .kicker-row { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
+  .kicker { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-ink); margin: 0 0 0.2rem; font-weight: 600; }
+  .back-to-top { font-size: 0.78rem; color: var(--muted); text-decoration: none; white-space: nowrap; }
+  .back-to-top:hover { color: var(--accent-ink); }
+  .muted { color: var(--muted); }
+  .theme-toggle {
+    position: fixed; top: 14px; right: 14px; z-index: 50; width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 999px; color: var(--muted);
+  }
+  .theme-toggle:hover { color: var(--ink); }
+  footer { margin-top: 3rem; color: var(--muted); font-size: 0.9rem; }
+  .toc {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 0.5rem;
+    margin: 1rem 0 2rem;
+    padding: 0;
+    list-style: none;
+  }
+  .toc a {
+    display: flex; align-items: center; justify-content: center;
+    padding: 0.55rem 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--ink);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .toc a:hover { border-color: var(--accent); color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media print { .theme-toggle { display: none; } body { background: #fff; } }
+</style>
+</head>
+<body>
+<button class="theme-toggle" type="button" id="themeToggle" aria-label="Toggle dark mode" title="Toggle theme">◐</button>
+<div class="wrap">
+  <header id="top">
+    <div class="brand">
+      <svg viewBox="0 0 64 64" aria-hidden><path d="M18 27 L24 37 L32 24 L40 37 L46 27 L43 44 L21 44 Z" fill="none" stroke="#B8860B" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      <h1>The 48 Laws of Power</h1>
+    </div>
+    <p class="tagline">Law of the Day's reference list — Robert Greene, in short form.</p>
+  </header>
+
+  <p class="lede">A reference list of all 48 laws, each with a short explanation of the underlying idea — not the book's original text. Greene's own historical examples and full arguments are in the book itself.</p>
+  <p><a href="/law-of-the-day-guide.html">← Back to the Law of the Day guide</a></p>
+
+  <h2>Jump to a law</h2>
+  <ul class="toc">
+    <li><a href="#law-1">1</a></li>
+    <li><a href="#law-2">2</a></li>
+    <li><a href="#law-3">3</a></li>
+    <li><a href="#law-4">4</a></li>
+    <li><a href="#law-5">5</a></li>
+    <li><a href="#law-6">6</a></li>
+    <li><a href="#law-7">7</a></li>
+    <li><a href="#law-8">8</a></li>
+    <li><a href="#law-9">9</a></li>
+    <li><a href="#law-10">10</a></li>
+    <li><a href="#law-11">11</a></li>
+    <li><a href="#law-12">12</a></li>
+    <li><a href="#law-13">13</a></li>
+    <li><a href="#law-14">14</a></li>
+    <li><a href="#law-15">15</a></li>
+    <li><a href="#law-16">16</a></li>
+    <li><a href="#law-17">17</a></li>
+    <li><a href="#law-18">18</a></li>
+    <li><a href="#law-19">19</a></li>
+    <li><a href="#law-20">20</a></li>
+    <li><a href="#law-21">21</a></li>
+    <li><a href="#law-22">22</a></li>
+    <li><a href="#law-23">23</a></li>
+    <li><a href="#law-24">24</a></li>
+    <li><a href="#law-25">25</a></li>
+    <li><a href="#law-26">26</a></li>
+    <li><a href="#law-27">27</a></li>
+    <li><a href="#law-28">28</a></li>
+    <li><a href="#law-29">29</a></li>
+    <li><a href="#law-30">30</a></li>
+    <li><a href="#law-31">31</a></li>
+    <li><a href="#law-32">32</a></li>
+    <li><a href="#law-33">33</a></li>
+    <li><a href="#law-34">34</a></li>
+    <li><a href="#law-35">35</a></li>
+    <li><a href="#law-36">36</a></li>
+    <li><a href="#law-37">37</a></li>
+    <li><a href="#law-38">38</a></li>
+    <li><a href="#law-39">39</a></li>
+    <li><a href="#law-40">40</a></li>
+    <li><a href="#law-41">41</a></li>
+    <li><a href="#law-42">42</a></li>
+    <li><a href="#law-43">43</a></li>
+    <li><a href="#law-44">44</a></li>
+    <li><a href="#law-45">45</a></li>
+    <li><a href="#law-46">46</a></li>
+    <li><a href="#law-47">47</a></li>
+    <li><a href="#law-48">48</a></li>
+  </ul>
+
+  <h2>The laws</h2>
+
+  <div class="card" id="law-1">
+    <div class="kicker-row"><p class="kicker">Law 1</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Never Outshine the Master</h3>
+    <p>When you work under someone more powerful, resist the urge to prove how clever or capable you are at their expense. Superiors want to feel secure in their own superiority; making them look slow or outdated in front of others tends to provoke resentment rather than admiration, even if your intentions were innocent. The safer path is to let your competence serve their status rather than compete with it.</p>
+  </div>
+
+  <div class="card" id="law-2">
+    <div class="kicker-row"><p class="kicker">Law 2</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Never Put Too Much Trust in Friends, Learn How to Use Enemies</h3>
+    <p>Friendships can carry hidden fault lines — envy, favoritism, and the discomfort of mixing business with affection — that make friends unreliable in high-stakes situations. A former rival, by contrast, often has more to prove and fewer illusions about the relationship, which can make them a more dependable ally once won over.</p>
+  </div>
+
+  <div class="card" id="law-3">
+    <div class="kicker-row"><p class="kicker">Law 3</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Conceal Your Intentions</h3>
+    <p>People defend against threats they can see coming. By keeping your real aims vague or hidden behind a plausible alternative motive, you deny others the chance to organize against you before you've acted.</p>
+  </div>
+
+  <div class="card" id="law-4">
+    <div class="kicker-row"><p class="kicker">Law 4</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Always Say Less Than Necessary</h3>
+    <p>Excess talk exposes your reasoning, your uncertainty, and your weaknesses. Brevity, by contrast, projects control and forces others to fill the silence — often revealing more of themselves in the process than you reveal of yourself.</p>
+  </div>
+
+  <div class="card" id="law-5">
+    <div class="kicker-row"><p class="kicker">Law 5</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>So Much Depends on Reputation — Guard It with Your Life</h3>
+    <p>Reputation is a kind of leverage that operates even when you're not in the room. A strong one can substitute for actual force in a negotiation; a damaged one invites attacks from people who'd never have dared otherwise. Protecting it is worth real effort.</p>
+  </div>
+
+  <div class="card" id="law-6">
+    <div class="kicker-row"><p class="kicker">Law 6</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Court Attention at All Costs</h3>
+    <p>Being overlooked is its own kind of danger — obscurity means irrelevance. Cultivating visibility, distinctiveness, or even a bit of theater ensures you're accounted for in other people's decisions, which is where influence actually gets exercised.</p>
+  </div>
+
+  <div class="card" id="law-7">
+    <div class="kicker-row"><p class="kicker">Law 7</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Get Others to Do the Work for You, but Always Take the Credit</h3>
+    <p>Time and energy are finite; other people's skill and labor are a resource. The law isn't only about exploitation — it's about recognizing that the person who directs and synthesizes effort is often remembered as its author, for better or worse.</p>
+  </div>
+
+  <div class="card" id="law-8">
+    <div class="kicker-row"><p class="kicker">Law 8</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Make Other People Come to You — Use Bait if Necessary</h3>
+    <p>Whoever initiates an interaction on someone else's terms is already at a disadvantage. Creating a reason for others to approach you — an opportunity, a scarcity, a piece of leverage — keeps the terms of engagement in your hands.</p>
+  </div>
+
+  <div class="card" id="law-9">
+    <div class="kicker-row"><p class="kicker">Law 9</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Win Through Your Actions, Never Through Argument</h3>
+    <p>Verbal persuasion invites counter-argument and rarely overcomes deep-seated belief; a demonstrated result is harder to dispute and less likely to wound anyone's pride in the process. Showing tends to outlast telling.</p>
+  </div>
+
+  <div class="card" id="law-10">
+    <div class="kicker-row"><p class="kicker">Law 10</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Infection: Avoid the Unhappy and Unlucky</h3>
+    <p>Chronic misfortune or bitterness in someone close to you can be corrosive — not through any deliberate act, but through the way mood, luck, and reputation tend to rub off on the people around them. Greene's advice is to be deliberate about who you let into your circle for exactly this reason.</p>
+  </div>
+
+  <div class="card" id="law-11">
+    <div class="kicker-row"><p class="kicker">Law 11</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Learn to Keep People Dependent on You</h3>
+    <p>Being indispensable is a form of security. If the people above you rely on a skill, a relationship, or knowledge that only you hold, your position becomes harder to threaten or replace.</p>
+  </div>
+
+  <div class="card" id="law-12">
+    <div class="kicker-row"><p class="kicker">Law 12</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Use Selective Honesty and Generosity to Disarm Your Victim</h3>
+    <p>A single, well-timed act of genuine candor or kindness can lower someone's guard far more effectively than persistent flattery, precisely because it looks unstrategic. Greene notes this is precisely what makes it usable as a tool.</p>
+  </div>
+
+  <div class="card" id="law-13">
+    <div class="kicker-row"><p class="kicker">Law 13</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>When Asking for Help, Appeal to People's Self-Interest, Never to Their Mercy or Gratitude</h3>
+    <p>Requests framed around what the other person stands to gain are received far better than requests that lean on sympathy or old debts, which can feel like a burden or an obligation rather than an opportunity.</p>
+  </div>
+
+  <div class="card" id="law-14">
+    <div class="kicker-row"><p class="kicker">Law 14</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Pose as a Friend, Work as a Spy</h3>
+    <p>Warmth and apparent interest are effective ways to get people to disclose what they'd otherwise guard closely. Understanding someone's private motivations and fears gives you a significant edge in predicting how they'll act.</p>
+  </div>
+
+  <div class="card" id="law-15">
+    <div class="kicker-row"><p class="kicker">Law 15</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Crush Your Enemy Totally</h3>
+    <p>A defeated but not fully neutralized rival can regroup and return with a grudge. The law argues for resolving conflicts decisively rather than leaving smoldering resentment that can reignite later.</p>
+  </div>
+
+  <div class="card" id="law-16">
+    <div class="kicker-row"><p class="kicker">Law 16</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Use Absence to Increase Respect and Honor</h3>
+    <p>Constant presence erodes its own value — familiarity breeds a kind of contempt, or at least indifference. Strategic withdrawal can restore the sense of scarcity that made you compelling in the first place.</p>
+  </div>
+
+  <div class="card" id="law-17">
+    <div class="kicker-row"><p class="kicker">Law 17</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Keep Others in Suspended Terror: Cultivate an Air of Unpredictability</h3>
+    <p>Predictable people are easy to plan around and, eventually, easy to outmaneuver. An element of genuine unpredictability keeps others cautious and reactive rather than confidently in control.</p>
+  </div>
+
+  <div class="card" id="law-18">
+    <div class="kicker-row"><p class="kicker">Law 18</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Do Not Build Fortresses to Protect Yourself — Isolation Is Dangerous</h3>
+    <p>Cutting yourself off from others in the name of safety also cuts you off from information, allies, and warning signs. Greene argues that real security comes from staying embedded in a network of relationships, not from retreating behind walls.</p>
+  </div>
+
+  <div class="card" id="law-19">
+    <div class="kicker-row"><p class="kicker">Law 19</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Know Who You're Dealing With — Do Not Offend the Wrong Person</h3>
+    <p>Not everyone responds to the same tactics the same way, and misjudging who you're up against — their temperament, their resources, their capacity for retaliation — can turn a minor move into a costly mistake.</p>
+  </div>
+
+  <div class="card" id="law-20">
+    <div class="kicker-row"><p class="kicker">Law 20</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Do Not Commit to Anyone</h3>
+    <p>Staying above permanent alliances preserves your independence and your ability to be courted by multiple sides. Once you're firmly identified with one camp, your value to everyone else declines.</p>
+  </div>
+
+  <div class="card" id="law-21">
+    <div class="kicker-row"><p class="kicker">Law 21</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Play a Sucker to Catch a Sucker — Seem Dumber Than Your Mark</h3>
+    <p>If people believe they're smarter than you, they let their guard down. Appearing less sharp or less threatening than you are can be a deliberate advantage rather than a liability.</p>
+  </div>
+
+  <div class="card" id="law-22">
+    <div class="kicker-row"><p class="kicker">Law 22</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Use the Surrender Tactic: Transform Weakness into Power</h3>
+    <p>Fighting a losing battle for the sake of pride tends to make outcomes worse. A tactical surrender buys time, avoids unnecessary damage, and can quietly shift the balance of power back in your favor later.</p>
+  </div>
+
+  <div class="card" id="law-23">
+    <div class="kicker-row"><p class="kicker">Law 23</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Concentrate Your Forces</h3>
+    <p>Spreading effort, attention, or resources too thin across many fronts dilutes their impact. Greene argues for committing intensely to your strongest opportunity rather than dividing yourself evenly.</p>
+  </div>
+
+  <div class="card" id="law-24">
+    <div class="kicker-row"><p class="kicker">Law 24</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Play the Perfect Courtier</h3>
+    <p>Every social or professional environment has unwritten rules of tact, deference, and self-presentation. Learning and observing them — without seeming to grovel — lets you navigate hierarchy without triggering resistance.</p>
+  </div>
+
+  <div class="card" id="law-25">
+    <div class="kicker-row"><p class="kicker">Law 25</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Re-Create Yourself</h3>
+    <p>Rather than accepting an identity handed to you by circumstance or other people's expectations, deliberately shaping how you present yourself gives you more control over how you're perceived and valued.</p>
+  </div>
+
+  <div class="card" id="law-26">
+    <div class="kicker-row"><p class="kicker">Law 26</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Keep Your Hands Clean</h3>
+    <p>Mistakes and unpleasant necessities are inevitable, but visibly owning every one of them damages your standing. Greene advises distancing yourself from the dirty work — using intermediaries where necessary — while your own image stays untarnished.</p>
+  </div>
+
+  <div class="card" id="law-27">
+    <div class="kicker-row"><p class="kicker">Law 27</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Play on People's Need to Believe to Create a Cultlike Following</h3>
+    <p>People have a deep appetite for belonging to something larger than themselves. Offering a compelling vision — kept a little vague and aspirational — can generate loyalty far beyond what a purely transactional relationship would produce.</p>
+  </div>
+
+  <div class="card" id="law-28">
+    <div class="kicker-row"><p class="kicker">Law 28</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Enter Action with Boldness</h3>
+    <p>Hesitation broadcasts doubt, and doubt invites challenge. Greene argues that decisive, confident action — even when it involves risk — earns more respect than cautious half-measures, and that boldness also tends to cover for small mistakes along the way.</p>
+  </div>
+
+  <div class="card" id="law-29">
+    <div class="kicker-row"><p class="kicker">Law 29</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Plan All the Way to the End</h3>
+    <p>Failing to think through the full consequences of an action — including how it ends, not just how it starts — leaves you exposed to being blindsided by developments you should have anticipated.</p>
+  </div>
+
+  <div class="card" id="law-30">
+    <div class="kicker-row"><p class="kicker">Law 30</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Make Your Accomplishments Seem Effortless</h3>
+    <p>Visible struggle undercuts the impression of mastery. When results look effortless, they inspire a kind of awe that hard-won, visibly laborious achievements rarely do.</p>
+  </div>
+
+  <div class="card" id="law-31">
+    <div class="kicker-row"><p class="kicker">Law 31</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Control the Options: Get Others to Play with the Cards You Deal</h3>
+    <p>Offering people a choice makes them feel empowered, but if every option available actually serves your interest, you retain control of the outcome while they retain only the feeling of having chosen freely.</p>
+  </div>
+
+  <div class="card" id="law-32">
+    <div class="kicker-row"><p class="kicker">Law 32</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Play to People's Fantasies</h3>
+    <p>Grim reality has limited appeal. Offering people an attractive story or vision — one that speaks to what they wish were true — tends to draw them in more powerfully than a sober, factual pitch.</p>
+  </div>
+
+  <div class="card" id="law-33">
+    <div class="kicker-row"><p class="kicker">Law 33</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Discover Each Man's Thumbscrew</h3>
+    <p>Everyone has an insecurity, a need, or a weak point. Identifying it — not necessarily to exploit it cruelly, but to understand what truly motivates someone — gives you real insight into how to work with or around them.</p>
+  </div>
+
+  <div class="card" id="law-34">
+    <div class="kicker-row"><p class="kicker">Law 34</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Be Royal in Your Own Fashion: Act Like a King to Be Treated Like One</h3>
+    <p>How you carry yourself shapes how others treat you. Projecting quiet self-assurance and dignity, rather than uncertainty or excessive humility, tends to be self-fulfilling.</p>
+  </div>
+
+  <div class="card" id="law-35">
+    <div class="kicker-row"><p class="kicker">Law 35</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Master the Art of Timing</h3>
+    <p>The same action can succeed or fail entirely based on when it's taken. Greene emphasizes patience — recognizing the right moment rather than forcing events before conditions favor you.</p>
+  </div>
+
+  <div class="card" id="law-36">
+    <div class="kicker-row"><p class="kicker">Law 36</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Disdain Things You Cannot Have: Ignoring Them Is the Best Revenge</h3>
+    <p>Reacting to a slight or an obstacle often gives it more power than it deserves, and can make a minor problem look more significant than it is. Sometimes deliberate indifference is the stronger move.</p>
+  </div>
+
+  <div class="card" id="law-37">
+    <div class="kicker-row"><p class="kicker">Law 37</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Create Compelling Spectacles</h3>
+    <p>Visual and symbolic gestures tend to leave a stronger impression than words alone. A striking, memorable display of intent or achievement communicates power more viscerally than an explanation would.</p>
+  </div>
+
+  <div class="card" id="law-38">
+    <div class="kicker-row"><p class="kicker">Law 38</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Think as You Like but Behave Like Others</h3>
+    <p>Openly displaying contempt for convention or for other people's values, even if you privately disagree with them, tends to alienate people and invite backlash. Conforming outwardly while keeping your own judgment private avoids unnecessary conflict.</p>
+  </div>
+
+  <div class="card" id="law-39">
+    <div class="kicker-row"><p class="kicker">Law 39</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Stir Up Waters to Catch Fish</h3>
+    <p>Calm, composed thinking gives you the advantage in any conflict; losing your temper hands the advantage to whoever provoked you. Greene also notes the reverse — that provoking an opponent into anger can be a deliberate tactic to make them less effective.</p>
+  </div>
+
+  <div class="card" id="law-40">
+    <div class="kicker-row"><p class="kicker">Law 40</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Despise the Free Lunch</h3>
+    <p>Things given away too easily are often valued less, and unconditional generosity can create suspicion rather than gratitude. Using money and favors deliberately — including sometimes paying full price rather than seeking discounts — can build a stronger reputation than constant frugality.</p>
+  </div>
+
+  <div class="card" id="law-41">
+    <div class="kicker-row"><p class="kicker">Law 41</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Avoid Stepping into a Great Man's Shoes</h3>
+    <p>Following directly after someone widely admired sets up an unfair comparison you're likely to lose. Greene advises carving out distinct territory and standards rather than trying to replicate a predecessor's legacy.</p>
+  </div>
+
+  <div class="card" id="law-42">
+    <div class="kicker-row"><p class="kicker">Law 42</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Strike the Shepherd and the Sheep Will Scatter</h3>
+    <p>Group resistance or unrest usually has an instigator behind it. Addressing that individual directly, rather than the group as a whole, tends to be a faster and more effective way to defuse the situation.</p>
+  </div>
+
+  <div class="card" id="law-43">
+    <div class="kicker-row"><p class="kicker">Law 43</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Work on the Hearts and Minds of Others</h3>
+    <p>Coercion breeds resentment and eventual resistance; genuine emotional buy-in creates lasting loyalty. Winning people over — appealing to what they care about — tends to be more durable than forcing compliance.</p>
+  </div>
+
+  <div class="card" id="law-44">
+    <div class="kicker-row"><p class="kicker">Law 44</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Disarm and Infuriate with the Mirror Effect</h3>
+    <p>Reflecting someone's own values, emotions, or behavior back at them can make them feel deeply understood — or, used differently, can unsettle them by showing them an unflattering version of themselves.</p>
+  </div>
+
+  <div class="card" id="law-45">
+    <div class="kicker-row"><p class="kicker">Law 45</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Preach the Need for Change, but Never Reform Too Much at Once</h3>
+    <p>People are naturally resistant to sweeping, abrupt change, even when they say they want reform. Framing new ideas in familiar, incremental terms — and pacing change carefully — avoids triggering a backlash.</p>
+  </div>
+
+  <div class="card" id="law-46">
+    <div class="kicker-row"><p class="kicker">Law 46</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Never Appear Too Perfect</h3>
+    <p>Visible flawlessness tends to generate envy rather than admiration. Acknowledging a minor weakness, crediting luck, or otherwise humanizing your success can defuse resentment before it builds.</p>
+  </div>
+
+  <div class="card" id="law-47">
+    <div class="kicker-row"><p class="kicker">Law 47</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Do Not Go Past the Mark You Aimed For — In Victory, Learn When to Stop</h3>
+    <p>Momentum after a win can tempt you into overreaching, chasing more than you originally set out to achieve. Greene warns that this is often when people make their costliest mistakes — success itself becomes the trap.</p>
+  </div>
+
+  <div class="card" id="law-48">
+    <div class="kicker-row"><p class="kicker">Law 48</p><a class="back-to-top" href="#top">↑ Top</a></div>
+    <h3>Assume Formlessness</h3>
+    <p>Rigid patterns and fixed positions are easy for others to study and counter. Staying adaptable and hard to predict — closer to water than stone, in Greene's framing — makes you far more difficult to pin down or defeat.</p>
+  </div>
+
+  <footer>
+    <p><em>Note: these are original summaries of each law's core idea, not excerpts from the book. Greene's actual text develops each law with extended historical case studies, "reversals" (exceptions to the law), and more nuance than a one-paragraph summary can carry — worth going to the source for that.</em></p>
+    <p>This is an unofficial fan reference inspired by Robert Greene's <em>The 48 Laws of Power</em>. Not affiliated with the author or publisher.</p>
+    <p><a href="/law-of-the-day-guide.html">← Back to the Law of the Day guide</a></p>
+  </footer>
+</div>
+<script>
+  (function () {
+    var KEY = 'lawofday:theme';
+    var btn = document.getElementById('themeToggle');
+    function pref() { try { return localStorage.getItem(KEY) === 'dark' ? 'dark' : 'light'; } catch (e) { return 'light'; } }
+    function apply() {
+      if (pref() === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      else document.documentElement.removeAttribute('data-theme');
+    }
+    btn.addEventListener('click', function () {
+      var next = pref() === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem(KEY, next); } catch (e) {}
+      apply();
+    });
+    window.addEventListener('storage', function (e) { if (e.key === KEY) apply(); });
+    apply();
+  })();
+</script>
+</body>
+</html>
