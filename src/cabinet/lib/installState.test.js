@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { installDetectionSupported, absoluteManifestUrl, checkInstalledApps } from './installState'
+import { installDetectionSupported, absoluteManifestUrl, checkInstalledApps, checkInstalledFlags } from './installState'
 
 // `navigator` is a read-only getter on globalThis in Node — vi.stubGlobal
 // swaps it out safely (and vi.unstubAllGlobals restores it after each test).
@@ -59,5 +59,25 @@ describe('checkInstalledApps', () => {
     const result = await checkInstalledApps(apps)
     expect(result.get('/tempo.webmanifest')).toBe(false)
     expect(result.get('/kettlebell-training.webmanifest')).toBe(false)
+  })
+})
+
+describe('checkInstalledFlags', () => {
+  const apps = [
+    { file: 'tempo-react.html', manifest: '/tempo.webmanifest' },
+    { file: 'kettlebell-training-react.html', manifest: '/kettlebell-training.webmanifest' },
+  ]
+
+  it("reads each app's own install flag (set by src/shared/installFlag.ts) from localStorage", () => {
+    vi.stubGlobal('localStorage', { getItem: (k) => (k === 'installed:tempo-react.html' ? '1' : null) })
+    const result = checkInstalledFlags(apps)
+    expect(result.get('/tempo.webmanifest')).toBe(true)
+    expect(result.get('/kettlebell-training.webmanifest')).toBe(false)
+  })
+
+  it('treats an unavailable localStorage as nothing installed', () => {
+    vi.stubGlobal('localStorage', undefined)
+    const result = checkInstalledFlags(apps)
+    expect(result.get('/tempo.webmanifest')).toBe(false)
   })
 })

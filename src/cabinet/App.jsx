@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { APPS } from '../apps-registry'
 import { IconButton, SegmentedControl } from '../ds'
 import { useTheme } from './lib/themeContext'
-import { checkInstalledApps } from './lib/installState'
+import { checkInstalledApps, checkInstalledFlags } from './lib/installState'
 import { newlyDeployedFiles } from './lib/deployed'
 import { loadOrder, saveOrder, loadLastOpened, clearLastOpened, loadSort, saveSort } from './lib/storage'
+import { matchesSearch } from './lib/search'
 import { AppTile } from './components/AppTile'
 import { IconReorder } from './components/icons'
 import styles from './App.module.css'
@@ -40,12 +41,16 @@ function reconcileOrder(saved) {
 export default function App() {
   const { theme, toggle } = useTheme()
   // A confirmed install can still come back false — see AppTile's comment —
-  // so this Map (or null before/without a check) only ever gets trusted for
-  // its `true` values. Everything else renders identically to "unknown".
-  const [installedByManifest, setInstalledByManifest] = useState(null)
+  // so this Map only ever gets trusted for its `true` values. Everything
+  // else renders identically to "unknown". Seeded synchronously from each
+  // app's own install flag (src/shared/installFlag.ts — set from standalone
+  // display-mode or `appinstalled`), then only ever upgraded (never
+  // downgraded) by the async, less-reliable getInstalledRelatedApps() check.
+  const [installedByManifest, setInstalledByManifest] = useState(() => checkInstalledFlags(REACT_VITE_APPS))
   const [order, setOrder] = useState(() => reconcileOrder(loadOrder()))
   const [sort, setSort] = useState(() => loadSort())
   const [editing, setEditing] = useState(false)
+  const [query, setQuery] = useState('')
   // Read once at mount: a tap navigates away immediately, so there's no
   // in-page moment where a fresher value would ever be shown. `?resetStats=1`
   // wipes the open-count/last-opened map only (order and sort untouched)
@@ -67,8 +72,15 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false
-    checkInstalledApps(REACT_VITE_APPS).then((result) => {
-      if (!cancelled) setInstalledByManifest(result)
+    checkInstalledApps(REACT_VITE_APPS).then((detected) => {
+      if (cancelled || !detected) return
+      setInstalledByManifest((prev) => {
+        const merged = new Map(prev)
+        for (const [manifest, isInstalled] of detected) {
+          if (isInstalled) merged.set(manifest, true)
+        }
+        return merged
+      })
     })
     return () => {
       cancelled = true
@@ -112,6 +124,12 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sort, order, lastOpened])
 
+  // Search is hidden and ignored while reordering — move() and the
+  // disableUp/disableDown bounds below both walk the full, unfiltered
+  // manual order, so filtering it here would desync a tap's target index
+  // from what's actually on screen.
+  const visibleApps = editing ? orderedApps : orderedApps.filter((app) => matchesSearch(app, query))
+
   return (
     <div className={styles.shell}>
       <div className={styles.content}>
@@ -141,10 +159,20 @@ export default function App() {
           >
             <IconReorder />
           </IconButton>
+          {!editing && (
+            <input
+              type="search"
+              className={styles.searchInput}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search"
+              aria-label="Search apps by name or tag"
+            />
+          )}
         </div>
 
         <div className={styles.grid}>
-          {orderedApps.map((app, index) => (
+          {visibleApps.map((app, index) => (
             <AppTile
               key={app.file}
               app={app}
@@ -155,7 +183,7 @@ export default function App() {
               onMoveUp={() => move(app.file, -1)}
               onMoveDown={() => move(app.file, 1)}
               disableUp={index === 0}
-              disableDown={index === orderedApps.length - 1}
+              disableDown={index === visibleApps.length - 1}
             />
           ))}
         </div>

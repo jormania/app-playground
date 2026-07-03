@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client'
 import './touch-grass.css'
 import App from './App.jsx'
 import { WorldProvider } from './world.jsx'
+import { watchInstalled } from '../shared/installFlag'
+
+watchInstalled('touch-grass-react.html')
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

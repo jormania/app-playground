@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import { getRemindersEnabled } from './store.js'
 import { registerPeriodicSync } from './reminders.js'
+import { watchInstalled } from '../shared/installFlag'
+
+watchInstalled('journal-of-delights-react.html')
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>

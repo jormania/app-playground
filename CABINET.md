@@ -87,6 +87,39 @@ unknown (see the `installed` note below on why that signal can't be
 trusted). `chromeIntentUrl()` (the Edge-for-Android → Chrome redirect) is
 unrelated and still used only for that case.
 
+## Install detection, take two: each app reports its own install
+
+`getInstalledRelatedApps()` (above) is Chrome's own answer and it's
+unreliable in both directions — throttled false negatives, and per the
+launch-intent section above, nothing stops a *stale* WebAPK reporting `true`
+when it can no longer actually be launched. `checkInstalledFlags()` in
+[`src/cabinet/lib/installState.js`](src/cabinet/lib/installState.js) reads a
+second, much more direct signal: every `react-vite` app calls
+`watchInstalled(file)` from
+[`src/shared/installFlag.ts`](src/shared/installFlag.ts) in its own
+`main.jsx`/`main.tsx`, which writes a `localStorage` flag the instant that
+page is either running in standalone display mode (proof it's installed and
+was opened as the app) or receives the `appinstalled` event. Same origin as
+the Cabinet, so it's readable directly — no manifest matching, no async
+call, no throttling. `App.jsx` seeds `installedByManifest` from this
+synchronously at mount, then only ever *upgrades* an entry to `true` from
+the slower `checkInstalledApps()` result — never downgrades one, per the
+"only trust `true`" rule above. A new `react-vite` app needs one
+`watchInstalled('<file>.html')` call added at the top of its entry point;
+see any existing `main.jsx` for the pattern.
+
+## Search
+
+The controls row includes a single narrow `<input type="search">` (no chips,
+no suggestions) that filters the visible grid against `app.title` and
+`app.tags` only — deliberately not the `description`/"More" text, so a
+result only ever surfaces on a name or tag you'd actually recognize, not an
+incidental word buried in the blurb. Logic lives in
+[`src/cabinet/lib/search.js`](src/cabinet/lib/search.js)
+(`matchesSearch`). It's hidden while reordering: `move()` and the
+`disableUp`/`disableDown` bounds both walk the full manual order, so a
+filtered view would desync a tap's target index from what's on screen.
+
 ## Adding a new app to the Cabinet
 
 A new app only shows up in the Cabinet once it's **stable and ready** — don't
@@ -105,7 +138,11 @@ add it while still iterating. When it is:
    `scripts/generate-law-of-the-day-icons.mjs`).
 3. Add that manifest's absolute production URL to `related_applications` in
    [`public/cabinet.webmanifest`](public/cabinet.webmanifest).
-4. `npm test` — the registry test (`src/apps-registry.test.js`) checks every
+4. Call `watchInstalled('your-app-file.html')` from
+   [`src/shared/installFlag.ts`](src/shared/installFlag.ts) at the top of the
+   app's own `main.jsx`/`main.tsx` — see "Install detection, take two" below
+   for why, and any existing `main.jsx` for the one-line pattern.
+5. `npm test` — the registry test (`src/apps-registry.test.js`) checks every
    `react-vite` entry has a manifest path.
 
 That's it — the Cabinet's grid and index.html's card grid both update

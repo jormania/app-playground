@@ -17,6 +17,28 @@
 // sync with the manifest's related_applications list.
 const PROD_ORIGIN = 'https://coneofcold.vercel.app'
 
+const INSTALL_FLAG_PREFIX = 'installed:'
+
+// Each app marks its own install via src/shared/installFlag.ts (standalone
+// display-mode on load, or the `appinstalled` event) — a one-shot, trustworthy
+// signal, unlike getInstalledRelatedApps() below. Synchronous and available
+// immediately at mount, so the Cabinet doesn't have to wait on the async
+// check just to show an accurate "Launch" the first time an already-installed
+// app's flag exists.
+export function checkInstalledFlags(apps) {
+  const result = new Map()
+  for (const app of apps) {
+    let flagged = false
+    try {
+      flagged = localStorage.getItem(INSTALL_FLAG_PREFIX + app.file) === '1'
+    } catch {
+      // private browsing / unavailable — falls through as not flagged
+    }
+    result.set(app.manifest, flagged)
+  }
+  return result
+}
+
 export function installDetectionSupported() {
   return typeof navigator !== 'undefined' && 'getInstalledRelatedApps' in navigator
 }

@@ -96,6 +96,41 @@
   margin: 0 0 var(--space-lg);
 }
 
+/* Deliberately narrow, not a full-width bar — sits in the same row as sort
+   and reorder rather than claiming a row of its own. Grows a little on
+   wider viewports where .controlsRow has the space, but stays compact. */
+.searchInput {
+  flex: 0 1 120px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 var(--space-sm);
+  font-family: var(--font-sans);
+  /* ≥16px, not --text-sm, so mobile Safari doesn't auto-zoom on focus —
+     same reasoning as ds/Field's .input. */
+  font-size: var(--text-base);
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-md);
+  transition: border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease);
+}
+
+@media (min-width: 480px) {
+  .searchInput {
+    flex-basis: 160px;
+  }
+}
+
+.searchInput::placeholder {
+  color: var(--color-faint);
+}
+
+.searchInput:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-ring);
+}
+
 /* One column below 640px (phones — untouched, was already the effective
    result of the old auto-fill at that width). At 640px+, a fixed 2-column
    grid: auto-fill with a 260px minimum let three columns cram into the

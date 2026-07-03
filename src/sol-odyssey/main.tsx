@@ -7,7 +7,10 @@ import { SyncProvider } from './lib/syncContext'
 import { ThemeProvider } from './lib/themeContext'
 import { loadSettings } from './lib/settings'
 import { registerPeriodicSync } from './lib/reminders'
+import { watchInstalled } from '../shared/installFlag'
 import './styles/index.css'
+
+watchInstalled('sol-odysseys-react.html')
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
