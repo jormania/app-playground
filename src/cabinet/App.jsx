@@ -158,7 +158,7 @@ export default function App() {
             }
             onClick={() => changeShowLegacy(!showLegacy)}
           >
-            Legacy apps
+            Legacy
           </Button>
         </div>
 
