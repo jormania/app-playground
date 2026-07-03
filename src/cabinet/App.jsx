@@ -83,23 +83,11 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sort, order, lastOpened])
 
-  // installedByManifest only ever has trustworthy `true` values (see
-  // AppTile's comment) — this count can only under-report real installs,
-  // never over-report, so it's framed as a floor rather than a fact.
-  const confirmedInstalled = installedByManifest
-    ? CABINET_APPS.filter((app) => installedByManifest.get(app.manifest) === true).length
-    : null
-
   return (
     <div className={styles.shell}>
       <div className={styles.content}>
         <div className={styles.titleRow}>
-          <div>
-            <h1 className={styles.title}>Cabinet of Tools</h1>
-            <p className={styles.subtitle}>
-              One shelf for the small, strange things — each tap opens the real app, not just another tab.
-            </p>
-          </div>
+          <h1 className={styles.title}>Cabinet of Tools</h1>
           <div className={styles.titleActions}>
             <IconButton
               size="sm"
@@ -124,14 +112,6 @@ export default function App() {
 
         <div className={styles.controlsRow}>
           <SegmentedControl size="sm" options={SORT_OPTIONS} value={sort} onChange={changeSort} />
-          {confirmedInstalled !== null && (
-            <p
-              className={styles.installSummary}
-              title="Chrome under-reports installs by design (see CABINET.md) — a low count doesn't mean the rest aren't installed."
-            >
-              {confirmedInstalled} of {CABINET_APPS.length} confirmed installed
-            </p>
-          )}
         </div>
 
         <div className={styles.grid}>

@@ -74,26 +74,12 @@
   color: var(--color-ink);
 }
 
-.subtitle {
-  margin: 2px 0 0;
-  font-size: var(--text-sm);
-  color: var(--color-muted);
-}
-
 .controlsRow {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-sm);
   margin: 0 0 var(--space-lg);
-}
-
-.installSummary {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--color-faint);
-  cursor: help;
 }
 
 .grid {
