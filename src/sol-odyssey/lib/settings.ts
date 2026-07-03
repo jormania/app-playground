@@ -22,6 +22,9 @@ export interface Settings {
   showGuidance: boolean
   /** Show the landing page (intro instructions) on the home screen. */
   showLanding: boolean
+  /** Opt-in, on-device-only "state check-in" micro-ritual shown on Today before the daily check-in.
+   *  Never touches Notion or the network — purely local, ephemeral UI state. */
+  stateCheckinEnabled: boolean
   /** Optional AI companion: a bring-your-own Anthropic key (on-device; calls go straight to
    *  Anthropic, never our servers) + an opt-in toggle. Never replaces the human buddy. */
   anthropicKey: string
@@ -55,6 +58,8 @@ export const EMPTY_SETTINGS: Settings = {
   // Newcomers get guidance on by default; it's switched off once it's second nature.
   showGuidance: true,
   showLanding: true,
+  // Opt-in, off by default, like the other optional rituals.
+  stateCheckinEnabled: false,
   // The AI companion is strictly opt-in: no key, and off, until the user chooses it.
   anthropicKey: '',
   companionEnabled: false,

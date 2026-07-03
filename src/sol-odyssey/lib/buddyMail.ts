@@ -166,7 +166,14 @@ export function kickoffBuddyMail(buddyName: string, userName: string, odyssey: O
 }
 
 /** The harvest: tell your buddy what installed + the outcome. */
-export function harvestBuddyMail(buddyName: string, userName: string, odyssey: OdysseyDetail): BuddyEmail {
+export function harvestBuddyMail(
+  buddyName: string,
+  userName: string,
+  odyssey: OdysseyDetail,
+  /** A one-line note for whoever runs their own Odyssey next — written fresh at harvest time,
+   *  local-only, and carried only in this one email (never saved to Notion). */
+  passItOn?: string,
+): BuddyEmail {
   return {
     subject: withUser(`Sol Odyssey · ${odysseyLabel(odyssey.number)} · harvested`, userName),
     heading: '🌅 Harvest — 42 days done',
@@ -178,6 +185,7 @@ export function harvestBuddyMail(buddyName: string, userName: string, odyssey: O
           { emoji: '🎯', label: 'The habit', value: clean(odyssey.behaviour) || '—' },
           { emoji: '✨', label: 'What installed', value: clean(odyssey.notes) || '—' },
           opt('🔭', 'Where it goes next', odyssey.outcome),
+          opt('🌱', 'Something to pass on', passItOn ?? ''),
         ),
       },
     ],

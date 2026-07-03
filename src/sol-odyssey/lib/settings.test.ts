@@ -65,6 +65,13 @@ describe('settings storage', () => {
     expect(loaded.showLanding).toBe(true)
   })
 
+  it('defaults the state check-in ritual to off and round-trips it', () => {
+    const store = memStorage()
+    expect(loadSettings(store).stateCheckinEnabled).toBe(false)
+    saveSettings({ stateCheckinEnabled: true }, store)
+    expect(loadSettings(store).stateCheckinEnabled).toBe(true)
+  })
+
   it('coerces a non-boolean stored toggle back to its default', () => {
     const store = memStorage({
       [STORAGE_KEY]: JSON.stringify({ showGuidance: 'nope' }),

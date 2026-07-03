@@ -24,6 +24,7 @@ export function HarvestPage({ navigate }: { navigate: (to: string) => void }) {
   const [verdict, setVerdict] = useState('')
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const [confirming, setConfirming] = useState(false)
+  const [passItOn, setPassItOn] = useState('')
 
   if (!isConfigured(settings)) {
     return <Notice title="Connect Notion first" body="Add your token and database links in Settings." actionLabel="Open Settings" onAction={() => navigate('/settings')} />
@@ -57,8 +58,18 @@ export function HarvestPage({ navigate }: { navigate: (to: string) => void }) {
         />
         <SupportingNote note={outcomeNote} />
         <SupportingNote note="compounding" />
+        <Textarea
+          label="Something to pass on (optional)"
+          hint="One line for whoever's running their own Odyssey next. Not saved — it only travels in the note you send now."
+          rows={2}
+          value={passItOn}
+          onChange={(e) => setPassItOn(e.target.value)}
+        />
         <div className="flex flex-wrap items-center gap-3">
-          <BuddyEmailButton email={harvestBuddyMail(settings.buddyName, settings.userName, chosen)} navigate={navigate} />
+          <BuddyEmailButton
+            email={harvestBuddyMail(settings.buddyName, settings.userName, chosen, passItOn)}
+            navigate={navigate}
+          />
         </div>
         <div className="flex flex-wrap gap-3">
           <Button onClick={() => navigate('/charter')}>

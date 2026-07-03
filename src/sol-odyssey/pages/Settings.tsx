@@ -493,6 +493,21 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
       </section>
 
       <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-6">
+        <h3 className="font-display text-lg">State check-in (optional)</h3>
+        <p className="font-sans text-sm text-text-secondary">
+          A private, thirty-second moment on Today to name what's here before you log — nothing
+          about it is saved anywhere, in the app or in Notion.
+        </p>
+        <Switch
+          label="Show the state check-in on Today"
+          description="A short, on-device-only ritual above the daily check-in. Off by default."
+          checked={settings.stateCheckinEnabled}
+          onCheckedChange={(v) => update({ stateCheckinEnabled: v })}
+        />
+        <SupportingNote note="stateCheckin" />
+      </section>
+
+      <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-6">
         <h3 className="font-display text-lg">AI companion (optional)</h3>
         <p className="font-sans text-sm text-text-secondary">
           A gentle reflective witness for the in-between — it mirrors back what you write on a

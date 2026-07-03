@@ -6,6 +6,7 @@ import { Switch } from '../components/Switch'
 import { Textarea } from '../components/Textarea'
 import { Notice } from '../components/Notice'
 import { SupportingNote } from '../components/SupportingNote'
+import { StateCheckin } from '../components/StateCheckin'
 import { useSettings } from '../lib/settingsContext'
 import { isConfigured, companionActive } from '../lib/settings'
 import { CompanionPanel } from '../components/CompanionPanel'
@@ -237,6 +238,8 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
       )}
 
       {odyssey.tinyVersion && <TinyReminder value={odyssey.tinyVersion} />}
+
+      {settings.stateCheckinEnabled && <StateCheckin key={today} />}
 
       <section className="flex flex-col gap-5 rounded-lg border border-tertiary bg-background-secondary p-6">
         <Switch

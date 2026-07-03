@@ -112,6 +112,13 @@ describe('harvestBuddyMail', () => {
     expect(rowText(mail)).toContain('What installed: feels automatic now')
     expect(rowText(mail)).toContain('Where it goes next: Keep')
   })
+  it('omits the pass-it-on row unless one is written', () => {
+    expect(rowText(harvestBuddyMail('Sam', 'Alex', odyssey()))).not.toContain('Something to pass on')
+    expect(rowText(harvestBuddyMail('Sam', 'Alex', odyssey(), '   '))).not.toContain('Something to pass on')
+    expect(rowText(harvestBuddyMail('Sam', 'Alex', odyssey(), 'start smaller than you think'))).toContain(
+      'Something to pass on: start smaller than you think',
+    )
+  })
 })
 
 describe('buddyWelcomeEmail', () => {

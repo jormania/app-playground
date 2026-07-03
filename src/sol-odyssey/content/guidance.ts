@@ -60,6 +60,10 @@ export const GUIDANCE = {
   },
 
   // ── Today / daily loop ───────────────────────────────────────────────────────────────────
+  stateCheckin: {
+    summary: 'Why check in with yourself first?',
+    body: "Before you act, it helps to actually know where you are. Naming a feeling in a word or two — and noticing it in your body for a breath — quietly loosens its grip; from there you get a real choice: how you'll relate to what's here, and what you'd rather feel instead, letting the doing follow that choice rather than the reverse. It's private, on this device only, and takes about thirty seconds. Over time, that small pause before acting is often the difference between reacting and choosing.",
+  },
   selfMonitor: {
     summary: 'Why one line a day?',
     body: 'Marking the day and writing a single line is the smallest possible act of paying attention — and noticing your own behaviour is the highest-yield lever there is for changing it. It costs about ten seconds and turns a vague intention into something you can see. Over six weeks, those lines also become a quiet record of who you were becoming.',

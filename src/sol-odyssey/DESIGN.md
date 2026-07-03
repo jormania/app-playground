@@ -82,6 +82,7 @@ from these rather than hand-rolling markup.
 | `Sparkline` | hand-rolled SVG line (temperature trend) — no charting dependency. |
 | `PlannedOdyssey` | `PlannedOdysseyCard` (full draft state) + `PlannedOdysseyStrip` (compact "lined up for next"). |
 | `CompanionPanel` | the optional AI reflective companion — quiet `accent-soft` card, visually distinct from buddy elements. |
+| `StateCheckin` | the optional, ephemeral pre-check-in state ritual — dashed-border card, distinct from both the real check-in and the companion. |
 | `CommitmentCard` | set/edit the optional forfeit-on-lapse contract (commitment device) on an Odyssey. |
 | `BuddyEmailButton` | one consistent "copy this email → open Gmail" affordance (rich clipboard) used at every contact point + the welcome package. |
 | `ActionPrompt` | calm-but-clear "do something elsewhere" nudge — icon in a softly-pulsing ring + CTA; `soft`/`solid`. |
@@ -167,6 +168,24 @@ Notion). The `system` prompt is the safety surface: it keeps the companion attri
 non-prescriptive, and clearly **not the human buddy** (which stays the heart of the process). The
 panel is styled to read as a quiet aside — distinct from the buddy fields so the two never blur.
 
+## State check-in (opt-in, ephemeral, on-device)
+
+An **optional**, on-device-only micro-ritual (`lib/stateCheckin.ts` + `components/StateCheckin.tsx`)
+shown on Today, above the daily check-in section, gated by `settings.stateCheckinEnabled` (off by
+default, toggled in its own Settings section). It's a private thirty-second moment: name your
+current state from a fixed word list, gauge its intensity, take a breath, then choose the state
+you'd rather have — a small, deliberate act of noticing before you act. Selections are plain local
+`useState` inside `StateCheckin` (keyed to remount fresh each day via `key={today}` on Today) —
+**never wired into `CheckinDraft`, never sent to Notion, no network call at all**. Styled with a
+dashed border (`border-dashed border-tertiary bg-background-secondary`) deliberately distinct from
+both the real, Notion-persisted check-in section and the AI companion's `accent-soft` card, so it's
+never confused with either.
+
+**Renders on Today only, not Weekly** — a deliberate scope decision: the ritual pairs with the
+moment right before daily action, not a once-a-week look-back, and Weekly already carries five
+questions plus two optional sections. A future milestone could reconsider a lighter Weekly mention,
+but it should stay a one-liner, not a duplicate of the full ritual.
+
 ## Commitment device (forfeit-on-lapse)
 
 An **optional** pre-Day-1 pledge: one consequence you choose for yourself if you ever miss two days
@@ -210,6 +229,10 @@ How it works:
   value }` rows. Optional fields drop out when empty. Field-by-field *explanations for the buddy* are
   NOT in the recurring notes — they live once in `buddyWelcomeEmail`, so the daily/weekly emails stay
   short.
+- `harvestBuddyMail` takes an optional trailing `passItOn?: string` (mirrors `weeklyBuddyMail`'s
+  `newTinyVersion?`) — a one-line note for whoever runs their own Odyssey next, written on the
+  Harvest page's post-harvest screen. Local-only (plain `useState`, never sent to Notion); it
+  travels only in that one email and drops out of the row list when empty.
 - `BuddyEmailButton` renders that model into an **off-screen rich template** (`RichEmail`) and writes
   two clipboard flavours via `navigator.clipboard.write([new ClipboardItem(...)])`: `text/html` from
   the template's `.innerHTML` (inline-CSS only, **no SVGs/images** — mail clients strip them; accents
