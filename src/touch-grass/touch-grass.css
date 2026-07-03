@@ -405,8 +405,22 @@ body {
 .tg-settings h1 { margin-bottom: 8px; }
 .tg-settings p { margin-bottom: 10px; font-size: 0.8rem; line-height: 1.5; }
 .tg-settings .tg-hint { font-size: 0.76rem; opacity: 0.85; margin-bottom: 12px; }
+/* the key hint doubles as the seven-tap diagnostics trigger — no text-select
+   bubble or double-tap-zoom stall should interrupt a quick run of taps */
+.tg-settings form .tg-hint { -webkit-user-select: none; user-select: none; touch-action: manipulation; }
 .tg-settings label { margin-bottom: 5px; }
 .tg-settings input[type="password"] { margin-bottom: 6px; }
+
+/* notification diagnostics — reachable only via seven taps on the key hint,
+   so it stays visually inert (dim, terse, no border) unless summoned */
+.tg-diag {
+  margin-top: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  opacity: 0.6;
+}
+.tg-diag p { margin: 0; }
 .tg-settings .tg-row {
   display: flex;
   gap: 8px;
