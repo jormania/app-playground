@@ -82,8 +82,22 @@
   margin: 0 0 var(--space-lg);
 }
 
+/* One column below 640px (phones — untouched, was already the effective
+   result of the old auto-fill at that width). At 640px+, a fixed 2-column
+   grid: auto-fill with a 260px minimum let three columns cram into the
+   880px-capped .content on a laptop, squeezing each tile to ~270px — too
+   narrow for a title like "Law of the Day" to lay out on one line, which is
+   what was crushing the desktop view. Two columns inside that same 880px cap
+   gives each tile ~415px, plenty of room, while .content's cap keeps it from
+   sprawling edge-to-edge on very wide monitors. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--space-md);
+}
+
+@media (min-width: 640px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
