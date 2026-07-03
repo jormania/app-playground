@@ -38,3 +38,12 @@ export function recordOpened(file) {
   map[file] = Date.now()
   write('lastOpened', map)
 }
+
+// ── Sort mode: 'manual' | 'recent' | 'az' ───────────────────────────────────
+export function loadSort() {
+  return read('sort', 'manual')
+}
+
+export function saveSort(sort) {
+  write('sort', sort)
+}

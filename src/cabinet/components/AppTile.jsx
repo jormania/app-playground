@@ -24,7 +24,7 @@ import styles from './AppTile.module.css'
 // for Android (unlike its desktop build) doesn't support installing a PWA,
 // so if that's the phone's default browser, route the tap through Chrome
 // instead of silently opening a page the visitor can't act on.
-export function AppTile({ app, installed, lastOpenedAt, editing, onMoveUp, onMoveDown, disableUp, disableDown }) {
+export function AppTile({ app, installed, isNew, lastOpenedAt, editing, onMoveUp, onMoveDown, disableUp, disableDown }) {
   const path = `/${app.file}`
   const needsChromeRedirect = !installed && !canInstallPwaHere()
   const href = needsChromeRedirect ? chromeIntentUrl(window.location.origin + path) : path
@@ -51,7 +51,10 @@ export function AppTile({ app, installed, lastOpenedAt, editing, onMoveUp, onMov
           {app.emoji}
         </div>
         <div className={styles.meta}>
-          <div className={styles.title}>{app.title}</div>
+          <div className={styles.titleRow}>
+            <div className={styles.title}>{app.title}</div>
+            {isNew && <span className={styles.badge}>New</span>}
+          </div>
           <div className={styles.subtitle}>{app.subtitle}</div>
           {!editing && lastOpenedAt && (
             <div className={styles.lastOpened}>opened {formatRelativeTime(lastOpenedAt)}</div>

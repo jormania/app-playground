@@ -5,7 +5,7 @@ const REACT_VITE_TITLES = [
   'Law of the Day',
   'Tempo',
   'Sol Odyssey',
-  'Touch Grass, a React Journey',
+  'Touch Grass',
   'Journal of Delights',
   'Kettlebell Training',
 ]
