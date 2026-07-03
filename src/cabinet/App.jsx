@@ -122,7 +122,7 @@ export default function App() {
     <div className={styles.shell}>
       <div className={styles.content}>
         <div className={styles.titleRow}>
-          <h1 className={styles.title}>Cabinet of Tools</h1>
+          <h1 className={styles.title}>A cabinet of small, <em>strange</em> tools.</h1>
           <div className={styles.titleActions}>
             <IconButton
               size="sm"
