@@ -1,6 +1,6 @@
 import { IconButton } from '../../ds'
 import { IconArrowUp, IconArrowDown } from './icons'
-import { canInstallPwaHere, chromeIntentUrl } from '../lib/browserSupport'
+import { canInstallPwaHere, chromeIntentUrl, isAndroid, pwaLaunchIntentUrl } from '../lib/browserSupport'
 import { recordOpened } from '../lib/storage'
 import { formatRelativeTime } from '../lib/relativeTime'
 import styles from './AppTile.module.css'
@@ -28,11 +28,23 @@ import styles from './AppTile.module.css'
 // kind: "static" apps (the hand-authored legacy HTML ones) have no manifest
 // and nothing to install — they just open as a plain page, so none of the
 // above applies.
+//
+// On Android, a react-vite tap goes through pwaLaunchIntentUrl rather than a
+// plain relative href — see the comment on that function in
+// browserSupport.js for why a same-origin <a> can't hand off to an installed
+// WebAPK on its own. Applied unconditionally (not just when `installed` is
+// confirmed true), since Android's own answer at tap time is authoritative
+// and a false/unknown detection here shouldn't block a real installed app
+// from being found.
 export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, onMoveDown, disableUp, disableDown }) {
   const isStatic = app.kind === 'static'
   const path = `/${app.file}`
   const needsChromeRedirect = !isStatic && !installed && !canInstallPwaHere()
-  const href = needsChromeRedirect ? chromeIntentUrl(window.location.origin + path) : path
+  const href = needsChromeRedirect
+    ? chromeIntentUrl(window.location.origin + path)
+    : !isStatic && isAndroid()
+      ? pwaLaunchIntentUrl(window.location.origin + path)
+      : path
   const actionLabel = isStatic ? 'Open' : installed ? 'Launch' : 'Install'
 
   return (

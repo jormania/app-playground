@@ -56,6 +56,37 @@ to the production domain (`https://coneofcold.vercel.app`). This means even a
 `true` result only ever shows up on the deployed site, not `localhost` — see
 [`src/cabinet/lib/installState.js`](src/cabinet/lib/installState.js).
 
+## Launching into the installed app, not a browser tab (Android)
+
+Every sub-app here shares one origin (`coneofcold.vercel.app`) with its own
+exact-file manifest `scope` (e.g. `public/touch-grass.webmanifest`'s scope is
+just `/touch-grass-react.html`). A plain same-origin `<a href>` tap from
+inside the Cabinet's own page is ordinary in-page navigation — Android only
+runs its "does an installed app own this URL?" check on an external
+`ACTION_VIEW` intent (a tap from outside the browser: a notification,
+another app, a home-screen icon), not on a same-tab link click. So even with
+correct, non-overlapping scopes, tapping a Launch tile used to just open the
+target inside the current Chrome tab/Custom Tab instead of the standalone
+installed PWA — confirmed against
+[Chrome's own "same-origin, multi-PWA" guidance](https://web.dev/articles/building-multiple-pwas-on-the-same-domain),
+which calls this out as a known limitation and recommends separate origins
+(subdomains) as the only fully reliable fix — too heavy a restructure for
+this repo's one-Vercel-project, one-`main`-push-deploys setup.
+
+The workaround: `pwaLaunchIntentUrl()` in
+[`src/cabinet/lib/browserSupport.js`](src/cabinet/lib/browserSupport.js)
+rewrites the target into a bare Android `intent://` URL (no `package=`,
+`S.browser_fallback_url` set to the same https URL). Navigating to an
+`intent://` URL always forces Android's package-manager resolution, which is
+the same check an external tap gets — so it can find and launch the
+installed WebAPK. `AppTile.jsx` uses this for every `react-vite` tile on
+Android, **regardless of `installed` status**: if no WebAPK claims the URL,
+the fallback just reopens the page in the browser, i.e. today's behavior, so
+there's no downside to trying it even when install detection says false or
+unknown (see the `installed` note below on why that signal can't be
+trusted). `chromeIntentUrl()` (the Edge-for-Android → Chrome redirect) is
+unrelated and still used only for that case.
+
 ## Adding a new app to the Cabinet
 
 A new app only shows up in the Cabinet once it's **stable and ready** — don't

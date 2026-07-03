@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { canInstallPwaHere, chromeIntentUrl } from './browserSupport'
+import { canInstallPwaHere, chromeIntentUrl, isAndroid, pwaLaunchIntentUrl } from './browserSupport'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -46,6 +46,29 @@ describe('chromeIntentUrl', () => {
   it('rewrites an https URL into an Android Chrome intent URL', () => {
     expect(chromeIntentUrl('https://coneofcold.vercel.app/tempo-react.html')).toBe(
       'intent://coneofcold.vercel.app/tempo-react.html#Intent;scheme=https;package=com.android.chrome;end;',
+    )
+  })
+})
+
+describe('isAndroid', () => {
+  it('is false off Android', () => {
+    vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0' })
+    expect(isAndroid()).toBe(false)
+  })
+
+  it('is true on Android', () => {
+    vi.stubGlobal('navigator', {
+      userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36',
+    })
+    expect(isAndroid()).toBe(true)
+  })
+})
+
+describe('pwaLaunchIntentUrl', () => {
+  it('rewrites an https URL into a package-less intent URL with a browser fallback', () => {
+    expect(pwaLaunchIntentUrl('https://coneofcold.vercel.app/touch-grass-react.html')).toBe(
+      'intent://coneofcold.vercel.app/touch-grass-react.html#Intent;scheme=https;action=android.intent.action.VIEW;' +
+        'S.browser_fallback_url=https%3A%2F%2Fconeofcold.vercel.app%2Ftouch-grass-react.html;end;',
     )
   })
 })
