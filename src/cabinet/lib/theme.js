@@ -1,6 +1,6 @@
 // Theme (light / dark only). One dedicated localStorage key so the Cabinet's
 // choice doesn't collide with any sub-app's own theme storage. Keep in step
-// with the inline FOUC script in coneofcold-cabinet.html.
+// with the inline FOUC script in cabinet.html.
 
 export const THEME_KEY = 'cabinet:theme'
 

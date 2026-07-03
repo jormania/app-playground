@@ -1,6 +1,6 @@
 # The Cabinet — the app-of-apps
 
-**[coneofcold.vercel.app/coneofcold-cabinet.html](https://coneofcold.vercel.app/coneofcold-cabinet.html)**
+**[coneofcold.vercel.app/cabinet.html](https://coneofcold.vercel.app/cabinet.html)**
 
 A dashboard listing every app in this repo. The six Vite+React apps
 (`kind: "react-vite"`) always show and try to hand off to each one's
@@ -28,7 +28,7 @@ This only counts taps on the Cabinet's own tiles (`recordOpened` in
 installed PWA from its home-screen icon bypasses the Cabinet and isn't
 counted. Local to this browser/device only — there's no sync.
 
-Source: [`src/cabinet/`](src/cabinet/). Entry shell: `coneofcold-cabinet.html`.
+Source: [`src/cabinet/`](src/cabinet/). Entry shell: `cabinet.html`.
 Built on `src/ds/`, like any new app — see the [design-system rule](CLAUDE.md).
 Its palette is lifted from `index.html`'s own warm dark/gold identity rather
 than invented separately — see the comment atop
@@ -39,7 +39,7 @@ than invented separately — see the comment atop
 The Cabinet asks the browser which of the six react-vite sub-apps are already installed via
 [`navigator.getInstalledRelatedApps()`](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/getInstalledRelatedApps),
 matched against the `related_applications` list declared in
-[`public/coneofcold-cabinet.webmanifest`](public/coneofcold-cabinet.webmanifest).
+[`public/cabinet.webmanifest`](public/cabinet.webmanifest).
 
 **Only a `true` result is trusted.** The original design also showed a hard
 "Not installed" error on a `false` result, on the assumption that Chromium's
@@ -77,7 +77,7 @@ add it while still iterating. When it is:
    snippet, and a `scripts/generate-<app>-icons.mjs` icon script (copy
    `scripts/generate-law-of-the-day-icons.mjs`).
 3. Add that manifest's absolute production URL to `related_applications` in
-   [`public/coneofcold-cabinet.webmanifest`](public/coneofcold-cabinet.webmanifest).
+   [`public/cabinet.webmanifest`](public/cabinet.webmanifest).
 4. `npm test` — the registry test (`src/apps-registry.test.js`) checks every
    `react-vite` entry has a manifest path.
 

@@ -149,7 +149,7 @@ export default defineConfig({
         tempo: resolve(__dirname, 'tempo-react.html'),
         lawOfTheDay: resolve(__dirname, 'law-of-the-day-react.html'),
         dsShowcase: resolve(__dirname, 'ds-showcase.html'),
-        coneofcoldCabinet: resolve(__dirname, 'coneofcold-cabinet.html'),
+        cabinet: resolve(__dirname, 'cabinet.html'),
       }
     }
   }
