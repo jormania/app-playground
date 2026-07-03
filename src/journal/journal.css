@@ -371,6 +371,11 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .wordcount.in-range { color: var(--green); }
 .hint { font-family: var(--mono); font-size: 0.6875rem; color: var(--faint); }
 .dupe-warn { font-size: 0.8125rem; color: var(--orange); margin-top: 8px; }
+
+/* Notification diagnostics — reachable only via seven taps on the reminders hint above, so
+   it stays visually inert (dim, terse, no border) unless summoned. */
+.jod-diag { margin-top: 10px; font-family: var(--mono); font-size: 0.68rem; line-height: 1.5; opacity: 0.6; }
+.jod-diag p { margin: 0; }
 .dupe-warn a { color: var(--gold-soft); text-decoration: underline; cursor: pointer; }
 
 /* ── Tag input (freeform combobox) ── */

@@ -40,9 +40,20 @@ Every app's card/tile data (name, icon, blurb, tags) lives in one place —
 card grid and The Cabinet. See [`CABINET.md`](CABINET.md) for the checklist
 when shipping a new app.
 
-`tsconfig.json` covers the TypeScript code — **`src/sol-odyssey` and
-`src/ds`**; `npm run typecheck` type-checks both. The other React apps are plain
-JS/JSX by design and intentionally left out.
+`tsconfig.json` covers the TypeScript code — **`src/sol-odyssey`, `src/ds`, and
+`src/shared`**; `npm run typecheck` type-checks all three. The other React apps
+are plain JS/JSX by design and intentionally left out (they still import from
+`src/shared`, just without typechecking at those call sites).
+
+## Cross-app shared logic (`src/shared/`) — distinct from `src/ds/`
+
+`src/shared/` holds logic every app (new or legacy) may import — it is **not**
+part of the design-system boundary above, which is about styling only. Any app
+can use it, including the legacy ones. Today it holds `src/shared/notify/`, the
+local-notifications foundation (Periodic Background Sync + IndexedDB state
+mirroring + a diagnostics reveal) used by Touch Grass, Sol Odyssey, and Journal
+of Delights — see [`NOTIFICATIONS.md`](NOTIFICATIONS.md) before building
+notifications into another app.
 
 ## Deploy guardrail
 

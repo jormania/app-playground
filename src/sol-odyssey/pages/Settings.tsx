@@ -14,7 +14,11 @@ import { useSettings } from '../lib/settingsContext'
 import { useTheme } from '../lib/themeContext'
 import { normalizeNotionId, runConnectionTest, type ConnectionTest } from '../lib/notion'
 import { verifyAnthropicKey } from '../lib/companion'
-import { capabilities, enableReminders, notificationPermission, unregisterPeriodicSync, parseDailyTime, parseWeeklySlot } from '../lib/reminders'
+import { capabilities, enableReminders, notificationPermission, unregisterPeriodicSync, parseDailyTime, parseWeeklySlot, REMINDERS_DB } from '../lib/reminders'
+import { gatherDiagnostics, type NotifyDiagnostics } from '../../shared/notify/diagnostics'
+import { useDiagnosticsReveal } from '../../shared/notify/useDiagnosticsReveal'
+
+const REMINDER_DIAG_KEYS = ['state', 'lastDailySent', 'lastWeeklySent', 'lastStartSent', 'lastHarvestSent']
 
 /** The text fields the connection form owns (booleans are handled by the toggles below, so
  *  saving the form never clobbers them). */
@@ -83,7 +87,16 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
   )
   const [saved, setSaved] = useState(false)
   const [reminderMsg, setReminderMsg] = useState('')
+  const [reminderDiag, setReminderDiag] = useState<NotifyDiagnostics | null>(null)
   const caps = capabilities()
+
+  // Undocumented: seven quick taps on the "Reminders" heading dumps the background
+  // notification state (permission, periodic sync registration, last-sent guards) — the
+  // same diagnostics trick Touch Grass uses, ported here since reminders rely on the exact
+  // same fragile mechanism (a service worker woken by Periodic Background Sync).
+  const handleReminderHeadingTap = useDiagnosticsReveal(async () => {
+    setReminderDiag(await gatherDiagnostics({ dbName: REMINDERS_DB, keys: REMINDER_DIAG_KEYS }))
+  })
 
   /** Toggle reminders: enabling requests notification permission and best-effort registers
    *  background sync; if permission is refused we flip back off and explain. */
@@ -544,7 +557,7 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
       </section>
 
       <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-6">
-        <h3 className="font-display text-lg">Reminders (optional)</h3>
+        <h3 className="font-display text-lg select-none" onClick={handleReminderHeadingTap}>Reminders (optional)</h3>
         <p className="font-sans text-sm text-text-secondary">
           Gentle nudges: a <strong>daily</strong> reminder to log (at your Daily check-in time) and a
           <strong> weekly</strong> one to reflect (at your Weekly call slot), plus when a{' '}
@@ -589,6 +602,17 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
           </p>
         )}
         {reminderMsg && <p className="font-sans text-sm text-caution">{reminderMsg}</p>}
+        {reminderDiag && (
+          <div className="flex flex-col gap-1 rounded-lg border border-tertiary bg-background-primary p-4 font-mono text-xs text-text-secondary">
+            <p>permission: {reminderDiag.permission}</p>
+            <p>periodicSync: {reminderDiag.periodicSyncTags.length ? reminderDiag.periodicSyncTags.join(', ') : 'not registered'}</p>
+            <p>state: {reminderDiag.values.state ? JSON.stringify(reminderDiag.values.state) : 'none'}</p>
+            <p>lastDailySent: {String(reminderDiag.values.lastDailySent ?? '—')}</p>
+            <p>lastWeeklySent: {String(reminderDiag.values.lastWeeklySent ?? '—')}</p>
+            <p>lastStartSent: {String(reminderDiag.values.lastStartSent ?? '—')}</p>
+            <p>lastHarvestSent: {String(reminderDiag.values.lastHarvestSent ?? '—')}</p>
+          </div>
+        )}
         <SupportingNote note="reminders" />
       </section>
 

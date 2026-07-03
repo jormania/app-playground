@@ -69,6 +69,33 @@ export function setTheme(theme) {
   }
 }
 
+// ── Gentle reminders ────────────────────────────────────────────────────────
+// Opt-in local notifications (see reminders.js): a 9pm nudge to write today's
+// delight, and a 7pm "on this day" note. Master toggle plus a per-type opt-out,
+// same shape as the theme setting above.
+const REMINDERS_KEY = 'jod_reminders_enabled'
+const REMINDERS_NUDGE_KEY = 'jod_reminders_nudge'
+const REMINDERS_ON_THIS_DAY_KEY = 'jod_reminders_on_this_day'
+
+export function getRemindersEnabled() {
+  try { return localStorage.getItem(REMINDERS_KEY) === '1' } catch { return false }
+}
+export function setRemindersEnabled(on) {
+  try { localStorage.setItem(REMINDERS_KEY, on ? '1' : '0') } catch { /* ignore */ }
+}
+export function getRemindersNudge() {
+  try { return localStorage.getItem(REMINDERS_NUDGE_KEY) !== '0' } catch { return true }
+}
+export function setRemindersNudge(on) {
+  try { localStorage.setItem(REMINDERS_NUDGE_KEY, on ? '1' : '0') } catch { /* ignore */ }
+}
+export function getRemindersOnThisDay() {
+  try { return localStorage.getItem(REMINDERS_ON_THIS_DAY_KEY) !== '0' } catch { return true }
+}
+export function setRemindersOnThisDay(on) {
+  try { localStorage.setItem(REMINDERS_ON_THIS_DAY_KEY, on ? '1' : '0') } catch { /* ignore */ }
+}
+
 // Used by the settings "Test connection" button. Builds a live client from the
 // values currently typed (not yet saved) and does a cheap reachability check.
 export async function testConnection(token, dbRaw) {

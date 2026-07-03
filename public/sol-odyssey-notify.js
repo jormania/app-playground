@@ -2,38 +2,15 @@
 // workbox.importScripts). Best-effort local notifications via Periodic Background Sync: the browser
 // may wake this worker (installed PWA, Chromium); we read the snapshot the app keeps in IndexedDB
 // and show the daily / weekly nudge inside its window, once per day / week, suppressed once done.
-// No server, no push service — purely local. Mirrors the approach in the Touch Grass sw.js.
+// No server, no push service — purely local. Built on the same shared foundation as Touch Grass's
+// and Journal of Delights's service workers (see NOTIFICATIONS.md).
+importScripts('/shared-notify-idb.js');
 
 (function () {
   var DB = 'sol-reminders', STORE = 'kv', APP = '/sol-odysseys-react.html';
 
-  function openDB() {
-    return new Promise(function (resolve, reject) {
-      var r = indexedDB.open(DB, 1);
-      r.onupgradeneeded = function () { r.result.createObjectStore(STORE); };
-      r.onsuccess = function () { resolve(r.result); };
-      r.onerror = function () { reject(r.error); };
-    });
-  }
-  function get(key) {
-    return openDB().then(function (db) {
-      return new Promise(function (resolve) {
-        var t = db.transaction(STORE, 'readonly').objectStore(STORE).get(key);
-        t.onsuccess = function () { resolve(t.result); };
-        t.onerror = function () { resolve(undefined); };
-      });
-    }).catch(function () { return undefined; });
-  }
-  function set(key, val) {
-    return openDB().then(function (db) {
-      return new Promise(function (resolve) {
-        var tx = db.transaction(STORE, 'readwrite');
-        tx.objectStore(STORE).put(val, key);
-        tx.oncomplete = function () { resolve(); };
-        tx.onerror = function () { resolve(); };
-      });
-    }).catch(function () {});
-  }
+  function get(key) { return self.sharedNotifyIdb.get(DB, STORE, key); }
+  function set(key, val) { return self.sharedNotifyIdb.set(DB, STORE, key, val); }
 
   function dateKey(d) {
     return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);

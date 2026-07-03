@@ -3,6 +3,7 @@
 // uses them lives in useDailyCall.js.
 
 import { getTimes } from 'suncalc'
+import { dayKey } from '../shared/notify/dayKey'
 
 const FALLBACK_HOUR = 16.5 // 16:30 local, used when there's no location for a real sunset
 const TWO_HOURS = 2 * 3600 * 1000
@@ -10,10 +11,7 @@ const HALF_HOUR = 30 * 60 * 1000
 
 // local YYYY-MM-DD — for "once per day" and "walked today" checks
 export function todayKey(date = new Date()) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+  return dayKey(date)
 }
 
 // the most recent walk taken on `date`'s calendar day, or null

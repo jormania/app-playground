@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useWorld } from './world.jsx'
-import { idbGet } from './idbCall.js'
+import { gatherDiagnostics } from '../shared/notify/diagnostics'
+import { useDiagnosticsReveal } from '../shared/notify/useDiagnosticsReveal'
+
+const DIAG_KEYS = ['callEnabled', 'coords', 'lastWalkDay', 'lastCallDay', 'lastGoldenDay', 'lastAlmanacDay', 'almanacBody']
 
 const THRESHOLD_OPTIONS = [
   ['almanac', 'Living World'],
@@ -22,32 +25,11 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
   // Undocumented: seven quick taps on the key hint below dumps the notification
   // scheduling state (permission, periodic sync registration, last-sent days) —
   // a way to see why the daily/golden call went quiet without a laptop + devtools.
-  const [tapState, setTapState] = useState({ count: 0, last: 0 })
   const [diag, setDiag] = useState(null)
 
-  function handleHintTap() {
-    const now = Date.now()
-    setTapState(prev => {
-      const count = now - prev.last < 2500 ? prev.count + 1 : 1
-      if (count >= 7) {
-        loadDiagnostics()
-        return { count: 0, last: now }
-      }
-      return { count, last: now }
-    })
-  }
-
-  async function loadDiagnostics() {
-    const [permission, tags, callEnabled, coords, lastWalkDay, lastCallDay, lastGoldenDay, lastAlmanacDay, almanacBody] = await Promise.all([
-      typeof Notification === 'undefined' ? 'n/a' : Notification.permission,
-      navigator.serviceWorker && navigator.serviceWorker.ready
-        ? navigator.serviceWorker.ready.then(reg => (reg.periodicSync ? reg.periodicSync.getTags() : [])).catch(() => [])
-        : [],
-      idbGet('callEnabled'), idbGet('coords'), idbGet('lastWalkDay'), idbGet('lastCallDay'),
-      idbGet('lastGoldenDay'), idbGet('lastAlmanacDay'), idbGet('almanacBody'),
-    ])
-    setDiag({ permission, tags, callEnabled, coords, lastWalkDay, lastCallDay, lastGoldenDay, lastAlmanacDay, almanacBody })
-  }
+  const handleHintTap = useDiagnosticsReveal(async () => {
+    setDiag(await gatherDiagnostics({ dbName: 'tg-call', keys: DIAG_KEYS }))
+  })
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -98,14 +80,14 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
       {diag && (
         <div className="tg-diag">
           <p>permission: {diag.permission}</p>
-          <p>periodicSync: {diag.tags.length ? diag.tags.join(', ') : 'not registered'}</p>
-          <p>callEnabled: {String(!!diag.callEnabled)}</p>
-          <p>coords: {diag.coords ? `${diag.coords.lat.toFixed(2)}, ${diag.coords.lon.toFixed(2)}` : 'none'}</p>
-          <p>lastWalkDay: {diag.lastWalkDay || '—'}</p>
-          <p>lastCallDay: {diag.lastCallDay || '—'}</p>
-          <p>lastGoldenDay: {diag.lastGoldenDay || '—'}</p>
-          <p>lastAlmanacDay: {diag.lastAlmanacDay || '—'}</p>
-          <p>almanacBody: {diag.almanacBody ? 'set' : 'none'}</p>
+          <p>periodicSync: {diag.periodicSyncTags.length ? diag.periodicSyncTags.join(', ') : 'not registered'}</p>
+          <p>callEnabled: {String(!!diag.values.callEnabled)}</p>
+          <p>coords: {diag.values.coords ? `${diag.values.coords.lat.toFixed(2)}, ${diag.values.coords.lon.toFixed(2)}` : 'none'}</p>
+          <p>lastWalkDay: {diag.values.lastWalkDay || '—'}</p>
+          <p>lastCallDay: {diag.values.lastCallDay || '—'}</p>
+          <p>lastGoldenDay: {diag.values.lastGoldenDay || '—'}</p>
+          <p>lastAlmanacDay: {diag.values.lastAlmanacDay || '—'}</p>
+          <p>almanacBody: {diag.values.almanacBody ? 'set' : 'none'}</p>
         </div>
       )}
     </div>

@@ -21,10 +21,11 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
-    /* Governs the TypeScript code: the Sol Odyssey app and the design system
-       (src/ds). The other apps in this repo are plain JS/JSX and are
-       intentionally left out of `include`. */
+    /* Governs the TypeScript code: the Sol Odyssey app, the design system (src/ds),
+       and the cross-app shared logic (src/shared). The other apps in this repo are
+       plain JS/JSX and are intentionally left out of `include` — they still import
+       from src/shared, but only the shared code itself gets typechecked. */
     "types": ["vitest/globals", "node"]
   },
-  "include": ["src/sol-odyssey", "src/ds"]
+  "include": ["src/sol-odyssey", "src/ds", "src/shared"]
 }

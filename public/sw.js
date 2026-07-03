@@ -1,6 +1,7 @@
 // Shared root-scope service worker: stale-while-revalidate for same-origin GETs.
 // Enables PWA installability and offline use after the first visit, for both
 // the React rewrite (/touch-grass-react.html) and the older static apps.
+importScripts('/shared-notify-idb.js');
 const CACHE = 'tg-cache-v6';
 
 self.addEventListener('install', function () {
@@ -39,33 +40,8 @@ self.addEventListener('notificationclick', function (e) {
 // The browser may wake this worker periodically (installed PWA, Chromium). We
 // read the shared IndexedDB the app keeps, work out today's sunset−2h ourselves,
 // and show the reminder if we're in the evening window and haven't sent today.
-function tgOpenDB() {
-  return new Promise(function (resolve, reject) {
-    var r = indexedDB.open('tg-call', 1);
-    r.onupgradeneeded = function () { r.result.createObjectStore('kv'); };
-    r.onsuccess = function () { resolve(r.result); };
-    r.onerror = function () { reject(r.error); };
-  });
-}
-function tgGet(key) {
-  return tgOpenDB().then(function (db) {
-    return new Promise(function (resolve) {
-      var t = db.transaction('kv', 'readonly').objectStore('kv').get(key);
-      t.onsuccess = function () { resolve(t.result); };
-      t.onerror = function () { resolve(undefined); };
-    });
-  }).catch(function () { return undefined; });
-}
-function tgSet(key, val) {
-  return tgOpenDB().then(function (db) {
-    return new Promise(function (resolve) {
-      var tx = db.transaction('kv', 'readwrite');
-      tx.objectStore('kv').put(val, key);
-      tx.oncomplete = function () { resolve(); };
-      tx.onerror = function () { resolve(); };
-    });
-  }).catch(function () {});
-}
+function tgGet(key) { return self.sharedNotifyIdb.get('tg-call', 'kv', key); }
+function tgSet(key, val) { return self.sharedNotifyIdb.set('tg-call', 'kv', key, val); }
 
 // solar event time, ported from SunCalc (no dependencies): the "set" time when
 // the sun descends through hDeg degrees (−0.833 = sunset, 6 = evening golden hour)

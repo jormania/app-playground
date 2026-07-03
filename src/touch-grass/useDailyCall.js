@@ -3,10 +3,15 @@ import {
   nextCallTime, goldenNotifyTime, buildMessage, buildGoldenBody, buildAlmanacBody,
   walkToday, todayKey,
 } from './dailyCall.js'
-import { idbGet, idbSet } from './idbCall.js'
+import { createIdbKv } from '../shared/notify/idbKv'
+import { registerPeriodicSync as sharedRegisterPeriodicSync, unregisterPeriodicSync as sharedUnregisterPeriodicSync } from '../shared/notify/periodicSync'
 
 const GOLDEN_WINDOW = 80 * 60 * 1000 // a generous window around golden hour (it's a treat, not precise)
 const EVAL_EVERY = 60 * 1000
+const TAG = 'tg-daily-call'
+const idb = createIdbKv('tg-call', 'kv')
+const idbGet = (key) => idb.get(key)
+const idbSet = (key, val) => idb.set(key, val)
 
 function showCall(body, tag) {
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
@@ -24,24 +29,8 @@ function showCall(body, tag) {
 
 // Ask the browser to wake the (installed) PWA's service worker periodically, so
 // the notifications can be delivered even when the app is fully closed.
-async function registerPeriodicSync() {
-  try {
-    if (!('serviceWorker' in navigator)) return
-    const reg = await navigator.serviceWorker.ready
-    if (!reg.periodicSync) return
-    try {
-      const status = await navigator.permissions.query({ name: 'periodic-background-sync' })
-      if (status.state !== 'granted') return
-    } catch (_) { /* permission name unsupported — attempt anyway */ }
-    await reg.periodicSync.register('tg-daily-call', { minInterval: 12 * 60 * 60 * 1000 })
-  } catch (_) {}
-}
-async function unregisterPeriodicSync() {
-  try {
-    const reg = await navigator.serviceWorker.ready
-    if (reg.periodicSync) await reg.periodicSync.unregister('tg-daily-call')
-  } catch (_) {}
-}
+const registerPeriodicSync = () => sharedRegisterPeriodicSync(TAG, 12 * 60 * 60 * 1000)
+const unregisterPeriodicSync = () => sharedUnregisterPeriodicSync(TAG)
 
 // Three notifications, each in the app's voice:
 //   golden  — ~30 min before golden hour. Always (walked or not).

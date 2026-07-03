@@ -1,12 +1,26 @@
 // Opt-in local reminders: a daily "log your tiny version" nudge and a weekly "reflect" nudge.
-// Best-effort, on-device, no server — the same Periodic Background Sync pattern Touch Grass uses
-// (public/sw.js): a service worker wakes periodically, reads the shared IndexedDB snapshot this
-// module writes, and decides whether to show a notification. Background delivery only works where
-// the platform supports it (installed PWA on Chromium); elsewhere it's a no-op and the in-app
-// surfaces still carry the reminder.
+// Best-effort, on-device, no server — built on the cross-app shared foundation in
+// src/shared/notify/ (see NOTIFICATIONS.md), the same one Touch Grass and Journal of Delights use.
+// A service worker wakes periodically, reads the shared IndexedDB snapshot this module writes,
+// and decides whether to show a notification. Background delivery only works where the platform
+// supports it (installed PWA on Chromium); elsewhere it's a no-op and the in-app surfaces still
+// carry the reminder.
 //
 // The pure decision logic lives here (unit-tested in node); the service worker reimplements the
 // same minimal logic inline, since it can't import an ES module.
+import { dayKey, weekKey as sharedWeekKey, minutesOfDay as sharedMinutesOfDay } from '../../shared/notify/dayKey'
+import { createIdbKv } from '../../shared/notify/idbKv'
+import {
+  capabilities as sharedCapabilities,
+  notificationPermission as sharedNotificationPermission,
+  requestPermission as sharedRequestPermission,
+} from '../../shared/notify/permission'
+import {
+  registerPeriodicSync as sharedRegisterPeriodicSync,
+  unregisterPeriodicSync as sharedUnregisterPeriodicSync,
+} from '../../shared/notify/periodicSync'
+
+const TAG = 'sol-reminders'
 
 /** The app-owned snapshot the worker reads. (The worker owns the lastDailySent / lastWeeklySent
  *  guards separately, so a snapshot write never clobbers them.) */
@@ -64,22 +78,13 @@ export function parseWeeklySlot(value: string): { dow: number; minutes: number }
 }
 
 // ── Pure decision logic (shared shape with the worker) ──────────────────────────────────────────
+// The date math itself lives in src/shared/notify/dayKey.ts (identical logic used by Touch
+// Grass and Journal of Delights); re-exported here under this module's existing names.
 
-export function dateKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-function minutesOfDay(d: Date): number {
-  return d.getHours() * 60 + d.getMinutes()
-}
+export const dateKey = dayKey
+const minutesOfDay = sharedMinutesOfDay
 /** A stable per-ISO-week key (year + week number) for once-a-week suppression. */
-export function weekKey(d: Date): string {
-  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
-  const day = t.getUTCDay() || 7
-  t.setUTCDate(t.getUTCDate() + 4 - day)
-  const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1))
-  const week = Math.ceil(((t.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
-  return `${t.getUTCFullYear()}-W${String(week).padStart(2, '0')}`
-}
+export const weekKey = sharedWeekKey
 
 /** Should the daily nudge fire now? (enabled, cycle active, past the time, today not yet logged,
  *  not already sent today). */
@@ -114,82 +119,33 @@ export function shouldFireHarvest(state: ReminderState, lastHarvestSent: string)
   return lastHarvestSent !== state.harvestId
 }
 
-// ── Browser side-effects (guarded so node/tests never touch them) ───────────────────────────────
+// ── Browser side-effects (guarded so node/tests never touch them; delegate to src/shared/notify/) ─
 
-export interface ReminderCapabilities {
-  notifications: boolean
-  periodicSync: boolean
-  supported: boolean
-}
+export type ReminderCapabilities = ReturnType<typeof sharedCapabilities>
 
-export function capabilities(): ReminderCapabilities {
-  const notifications = typeof Notification !== 'undefined'
-  const periodicSync =
-    typeof navigator !== 'undefined' && 'serviceWorker' in navigator && typeof (globalThis as { PeriodicSyncManager?: unknown }).PeriodicSyncManager !== 'undefined'
-  return { notifications, periodicSync, supported: notifications && periodicSync }
-}
+export const capabilities = sharedCapabilities
+export const notificationPermission = sharedNotificationPermission
 
-export function notificationPermission(): NotificationPermission {
-  return typeof Notification !== 'undefined' ? Notification.permission : 'denied'
-}
-
-function openRemindersDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const r = indexedDB.open(REMINDERS_DB, 1)
-    r.onupgradeneeded = () => r.result.createObjectStore(REMINDERS_STORE)
-    r.onsuccess = () => resolve(r.result)
-    r.onerror = () => reject(r.error)
-  })
-}
+const remindersKv = createIdbKv(REMINDERS_DB, REMINDERS_STORE)
 
 /** Write the app-owned snapshot for the worker to read. Best-effort. */
 export async function writeReminderState(state: ReminderState): Promise<void> {
-  if (typeof indexedDB === 'undefined') return
-  try {
-    const db = await openRemindersDB()
-    await new Promise<void>((resolve) => {
-      const tx = db.transaction(REMINDERS_STORE, 'readwrite')
-      tx.objectStore(REMINDERS_STORE).put(state, STATE_KEY)
-      tx.oncomplete = () => resolve()
-      tx.onerror = () => resolve()
-    })
-  } catch {
-    /* IDB unavailable — reminders just won't fire in the background */
-  }
+  await remindersKv.set(STATE_KEY, state)
 }
 
 /** Request permission (must be from a user gesture) and best-effort register periodic sync.
  *  Returns the resulting Notification permission. */
 export async function enableReminders(): Promise<NotificationPermission> {
-  if (typeof Notification === 'undefined') return 'denied'
-  let permission = Notification.permission
-  if (permission === 'default') permission = await Notification.requestPermission()
+  const permission = await sharedRequestPermission()
   if (permission === 'granted') await registerPeriodicSync()
   return permission
 }
 
 /** Best-effort periodic-sync registration (no-op where unsupported or not permitted). */
 export async function registerPeriodicSync(): Promise<void> {
-  try {
-    if (!('serviceWorker' in navigator)) return
-    const reg = (await navigator.serviceWorker.ready) as ServiceWorkerRegistration & {
-      periodicSync?: { register: (tag: string, opts: { minInterval: number }) => Promise<void> }
-    }
-    if (!reg.periodicSync) return
-    await reg.periodicSync.register('sol-reminders', { minInterval: 12 * 60 * 60 * 1000 })
-  } catch {
-    /* not installed / not permitted — the in-app reminders still work */
-  }
+  await sharedRegisterPeriodicSync(TAG, 12 * 60 * 60 * 1000)
 }
 
 export async function unregisterPeriodicSync(): Promise<void> {
-  try {
-    if (!('serviceWorker' in navigator)) return
-    const reg = (await navigator.serviceWorker.ready) as ServiceWorkerRegistration & {
-      periodicSync?: { unregister: (tag: string) => Promise<void> }
-    }
-    await reg.periodicSync?.unregister('sol-reminders')
-  } catch {
-    /* ignore */
-  }
+  await sharedUnregisterPeriodicSync(TAG)
 }

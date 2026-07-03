@@ -3,8 +3,16 @@ import {
   getToken, setToken, clearToken,
   getDatabaseId, setDatabaseId, hasCustomDatabase,
   testConnection,
+  getRemindersEnabled, setRemindersEnabled,
+  getRemindersNudge, setRemindersNudge,
+  getRemindersOnThisDay, setRemindersOnThisDay,
 } from './store.js'
+import { enableReminders, unregisterPeriodicSync, capabilities, notificationPermission, REMINDERS_DB } from './reminders.js'
+import { gatherDiagnostics } from '../shared/notify/diagnostics'
+import { useDiagnosticsReveal } from '../shared/notify/useDiagnosticsReveal'
 import Modal from './Modal.jsx'
+
+const DIAG_KEYS = ['state', 'lastNudgeSent', 'lastOnThisDaySent']
 
 // Connects the app to a real journal. The two BYO pieces (token + database) are
 // stored locally, never on a server, so any user can point at their own copy.
@@ -15,6 +23,53 @@ export default function SettingsModal({ onClose, onChanged }) {
   const [testing, setTesting] = useState(false)
   const [result, setResult] = useState(null) // { ok, message }
   const live = Boolean(getToken())
+
+  const [remindersOn, setRemindersOn] = useState(getRemindersEnabled())
+  const [nudgeOn, setNudgeOn] = useState(getRemindersNudge())
+  const [onThisDayOn, setOnThisDayOn] = useState(getRemindersOnThisDay())
+  const [reminderMsg, setReminderMsg] = useState('')
+  const [diag, setDiag] = useState(null)
+  const caps = capabilities()
+  const remindersBlocked = remindersOn && notificationPermission() === 'denied'
+
+  // Undocumented: seven quick taps on the reminders hint below dumps the background
+  // notification state — the same diagnostics trick Touch Grass and Sol Odyssey use, since
+  // this relies on the exact same fragile mechanism (a service worker woken in the background).
+  const handleHintTap = useDiagnosticsReveal(async () => {
+    setDiag(await gatherDiagnostics({ dbName: REMINDERS_DB, keys: DIAG_KEYS }))
+  })
+
+  async function toggleReminders() {
+    if (remindersOn) {
+      setRemindersEnabled(false)
+      setRemindersOn(false)
+      setReminderMsg('')
+      void unregisterPeriodicSync()
+      return
+    }
+    setRemindersEnabled(true)
+    setRemindersOn(true)
+    const permission = await enableReminders()
+    if (permission !== 'granted') {
+      setRemindersEnabled(false)
+      setRemindersOn(false)
+      setReminderMsg('Notifications are blocked in your browser — allow them to use reminders.')
+    } else if (!caps.periodicSync) {
+      setReminderMsg('Background reminders aren’t supported on this browser/device — they’ll only show while the app happens to be open.')
+    } else {
+      setReminderMsg('')
+    }
+  }
+  function toggleNudge() {
+    const next = !nudgeOn
+    setRemindersNudge(next)
+    setNudgeOn(next)
+  }
+  function toggleOnThisDay() {
+    const next = !onThisDayOn
+    setRemindersOnThisDay(next)
+    setOnThisDayOn(next)
+  }
 
   function save() {
     setToken(token)
@@ -84,6 +139,46 @@ export default function SettingsModal({ onClose, onChanged }) {
         <p className="status" aria-live="polite" style={{ minHeight: result ? undefined : 0, color: result ? (result.ok ? 'var(--green)' : 'var(--red)') : undefined, marginTop: 0 }}>
           {result ? `${result.ok ? '✓ ' : '✕ '}${result.message}` : ''}
         </p>
+
+        <div className="field" style={{ marginTop: 22 }}>
+          <label style={labelStyle}>Gentle reminders</label>
+          <p className="hint" style={{ marginBottom: 8 }}>
+            A 9pm nudge to write today’s delight if it isn’t written yet, and a 7pm note when
+            past years share this calendar day (nothing shows when there’s no match). Local and
+            best-effort — nothing is sent on your behalf.
+          </p>
+          <div className="btn-row" style={{ marginTop: 0 }}>
+            <button type="button" className="btn" aria-pressed={remindersOn} onClick={toggleReminders}>
+              {remindersOn ? '✉ Reminders on' : '✉ Reminders off'}
+            </button>
+            {remindersOn && (
+              <>
+                <button type="button" className="btn btn-sm" aria-pressed={nudgeOn} onClick={toggleNudge}>
+                  {nudgeOn ? 'Evening nudge on' : 'Evening nudge off'}
+                </button>
+                <button type="button" className="btn btn-sm" aria-pressed={onThisDayOn} onClick={toggleOnThisDay}>
+                  {onThisDayOn ? 'On this day on' : 'On this day off'}
+                </button>
+              </>
+            )}
+          </div>
+          {remindersBlocked && (
+            <p className="hint" style={{ color: 'var(--red)', marginTop: 8 }}>
+              Your browser is blocking notifications — they can’t reach you.
+            </p>
+          )}
+          {reminderMsg && <p className="hint" style={{ marginTop: 8 }}>{reminderMsg}</p>}
+          <p className="hint" onClick={handleHintTap} style={{ marginTop: 10 }}>Local · best-effort · Chromium + installed app only</p>
+          {diag && (
+            <div className="jod-diag">
+              <p>permission: {diag.permission}</p>
+              <p>periodicSync: {diag.periodicSyncTags.length ? diag.periodicSyncTags.join(', ') : 'not registered'}</p>
+              <p>state: {diag.values.state ? JSON.stringify(diag.values.state) : 'none'}</p>
+              <p>lastNudgeSent: {diag.values.lastNudgeSent || '—'}</p>
+              <p>lastOnThisDaySent: {diag.values.lastOnThisDaySent || '—'}</p>
+            </div>
+          )}
+        </div>
 
         <div className="btn-row" style={{ marginTop: 18 }}>
           <button className="btn primary" onClick={save} disabled={!token.trim()}>Save</button>

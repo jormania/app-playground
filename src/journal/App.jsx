@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import './journal.css'
 import { getClient, isLive, clearDraft, listDrafts, discardDraft, getTheme, setTheme } from './store.js'
+import { writeReminderState, previewFromQuery } from './reminders.js'
 import { todayKey, findByDate } from './dates.js'
 import { filterEntries } from './search.js'
 import { downloadJournal } from './exportHtml.js'
@@ -66,6 +67,21 @@ export default function App() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  // Mirror today's state for the reminders service worker whenever entries change.
+  useEffect(() => {
+    if (loading) return
+    writeReminderState(entries)
+  }, [entries, loading])
+
+  // ?notify=nudge|onthisday — fire a one-off preview once entries are in hand (mirrors Touch
+  // Grass's ?call=), never more than once per load.
+  const previewedRef = useRef(false)
+  useEffect(() => {
+    if (loading || previewedRef.current) return
+    previewedRef.current = true
+    previewFromQuery(entries)
+  }, [entries, loading])
 
   // Reconnecting flushes the outbox and refreshes; losing the connection flips the
   // banner immediately (the next read will confirm it's serving from cache).
