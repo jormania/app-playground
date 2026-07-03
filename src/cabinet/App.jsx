@@ -21,6 +21,12 @@ const CABINET_APPS = APPS.filter((app) => app.kind === 'react-vite' || app.kind 
 // HTML page reusing an old deploy date shouldn't read as freshly shipped.
 const NEW_APP_FILES = newlyDeployedFiles(REACT_VITE_APPS)
 
+// Built, wired up, and ready — just switched off in the UI for now (asked
+// for later, once there are enough apps that it's worth the row it takes).
+// Flip to true to bring it back; matchesSearch/visibleApps below already do
+// the filtering, this only controls whether the input renders.
+const SEARCH_ENABLED = false
+
 const SORT_OPTIONS = [
   { value: 'manual', label: 'Manual' },
   { value: 'recent', label: 'Recent' },
@@ -159,7 +165,7 @@ export default function App() {
           >
             <IconReorder />
           </IconButton>
-          {!editing && (
+          {SEARCH_ENABLED && !editing && (
             <input
               type="search"
               className={styles.searchInput}
