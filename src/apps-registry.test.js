@@ -10,6 +10,8 @@ const REACT_VITE_TITLES = [
   'Kettlebell Training',
 ]
 
+const STATIC_TITLES = ['Touch Grass', 'Touch Grass · Thrive', 'Touch Grass · Nora', 'Codex Alchymicus — KCD2']
+
 describe('APPS registry', () => {
   it('marks exactly the six Vite+React apps as kind: "react-vite"', () => {
     const reactViteApps = APPS.filter((app) => app.kind === 'react-vite')
@@ -23,9 +25,14 @@ describe('APPS registry', () => {
     }
   })
 
-  it('leaves the static/hand-authored apps unmarked', () => {
-    const staticApps = APPS.filter((app) => app.kind !== 'react-vite')
-    for (const app of staticApps) {
+  it('marks exactly the four legacy apps as kind: "static"', () => {
+    const staticApps = APPS.filter((app) => app.kind === 'static')
+    expect(staticApps.map((app) => app.title).sort()).toEqual([...STATIC_TITLES].sort())
+  })
+
+  it('gives no non-react-vite app a manifest path', () => {
+    const nonReactViteApps = APPS.filter((app) => app.kind !== 'react-vite')
+    for (const app of nonReactViteApps) {
       expect(app.manifest, `${app.title} shouldn't have a manifest path`).toBeUndefined()
     }
   })

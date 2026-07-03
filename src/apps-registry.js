@@ -10,10 +10,15 @@
 // "updated <Month YYYY>" line, which auto-derives from the newest deployed value.
 //
 // kind: "react-vite" marks an app as a real Vite+React build (has a src/
-// source dir and its own build entry in vite.config.js) — these are the only
-// ones the Cabinet lists. Static/hand-authored HTML apps omit `kind` entirely.
+// source dir and its own build entry in vite.config.js) — the Cabinet always
+// lists these. kind: "static" marks a hand-authored HTML app the Cabinet can
+// also list, but hidden behind its "Legacy apps" toggle (off by default) —
+// no PWA, so it always opens as a plain page rather than an install/launch.
+// Static/hand-authored HTML apps not meant for the Cabinet at all (e.g.
+// index.html, ds-showcase.html) omit `kind` entirely.
 // manifest: path to the app's own webmanifest — required on every
 // "react-vite" entry so the Cabinet can ask the browser whether it's installed.
+// "static" entries never have one.
 // See CABINET.md for the full checklist when adding a new app.
 // ─────────────────────────────────────────────────────
 export const CAT_TAGS = new Set(["gaming", "fitness", "outdoor", "mindfulness", "kawaii"]);
@@ -171,6 +176,7 @@ export const APPS = [
     deployed: "Jun 2026",
     tech: "Vanilla HTML",
     tags: ["outdoor", "ambient"],
+    kind: "static",
     description: "Step outside, close the tab, come back. Touch Grass saves your departure so the browser can sleep, then generates surreal AI discoveries on return — scaled to how long you were gone.",
     features: [
       "Departure saves across tab close — return hours later, it picks up where you left off",
@@ -191,6 +197,7 @@ export const APPS = [
     deployed: "Jun 2026",
     tech: "Vanilla HTML",
     tags: ["outdoor", "mindfulness"],
+    kind: "static",
     description: "A warm version of Touch Grass built around mindful presence. Step outside without a goal, walk as long as you need, and come back to what the walk quietly left behind — small moments of noticing, not surreal objects.",
     features: [
       "Finds are moments of presence — sensory, reflective, gently poetic, never heavy",
@@ -211,6 +218,7 @@ export const APPS = [
     deployed: "Jun 2026",
     tech: "Vanilla HTML",
     tags: ["outdoor", "kawaii"],
+    kind: "static",
     description: "Go outside anywhere — what finds you is always Japan: capsule toys and daifuku in the grass, manga pages mid-air, origami cranes that already know your face. Through it all, Mount Fuji watches from the sky, its snow and blossoms shifting with the seasons.",
     features: [
       "Finds are Japan — Tokyo kawaii, Edo legend, and everything in between",
@@ -231,6 +239,7 @@ export const APPS = [
     deployed: "Jun 2026",
     tech: "Vanilla JS",
     tags: ["gaming"],
+    kind: "static",
     description: "A parchment recipe manager for Kingdom Come: Deliverance II alchemy. All 28 learnable recipes, searchable by name and ingredient and filterable by category. Track what you've mastered, add custom brews.",
     features: [
       "Animated SVG candle flames and layered parchment textures",

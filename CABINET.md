@@ -2,11 +2,24 @@
 
 **[coneofcold.vercel.app/coneofcold-cabinet.html](https://coneofcold.vercel.app/coneofcold-cabinet.html)**
 
-A dashboard that lists just the Vite+React apps in this repo (not the static
-HTML ones) and tries to hand off to each one's *installed* PWA rather than
-just opening another browser tab. Reuses each app's name, icon, and blurb from
-[`src/apps-registry.js`](src/apps-registry.js) — the same data `index.html`'s
-card grid reads from, so there's exactly one place to update per app.
+A dashboard listing every app in this repo. The six Vite+React apps
+(`kind: "react-vite"`) always show and try to hand off to each one's
+*installed* PWA rather than just opening another browser tab. The
+hand-authored legacy static-HTML apps (`kind: "static"` — the old Touch Grass
+variants and Codex Alchymicus) are hidden by default behind the "Legacy apps"
+toggle in the sort bar, since they're old artifacts rather than the everyday
+set; once shown, they render with the same tile treatment but always read
+"Open" (never "Install"/"Launch") and just navigate to the plain page — no
+manifest, no install detection, nothing to check. Reuses each app's name,
+icon, and blurb from [`src/apps-registry.js`](src/apps-registry.js) — the
+same data `index.html`'s card grid reads from, so there's exactly one place
+to update per app.
+
+The sort bar also offers Manual (drag-reorderable, persisted), Recent
+(by last-opened), and A–Z ordering — see
+[`src/cabinet/App.jsx`](src/cabinet/App.jsx). Manual order is stored by file
+id across the *full* app set (react-vite + static) so a legacy app's position
+survives toggling it off and back on, even while hidden.
 
 Source: [`src/cabinet/`](src/cabinet/). Entry shell: `coneofcold-cabinet.html`.
 Built on `src/ds/`, like any new app — see the [design-system rule](CLAUDE.md).
@@ -16,7 +29,7 @@ than invented separately — see the comment atop
 
 ## How install-detection works (and why there's no "not installed" error)
 
-The Cabinet asks the browser which of the six sub-apps are already installed via
+The Cabinet asks the browser which of the six react-vite sub-apps are already installed via
 [`navigator.getInstalledRelatedApps()`](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/getInstalledRelatedApps),
 matched against the `related_applications` list declared in
 [`public/coneofcold-cabinet.webmanifest`](public/coneofcold-cabinet.webmanifest).
@@ -63,3 +76,12 @@ add it while still iterating. When it is:
 
 That's it — the Cabinet's grid and index.html's card grid both update
 automatically from the one registry entry.
+
+## Adding a legacy static app instead
+
+Hand-authored HTML apps that predate the design system (see `LEGACY.md`) can
+still show up in the Cabinet, just behind the "Legacy apps" toggle. Set
+`kind: "static"` in its `apps-registry.js` entry — no `manifest` field, since
+there's nothing to install. It gets the same tile (icon, subtitle, "More"
+description) as a react-vite app, but the action always reads "Open" and taps
+just navigate to `/<app.file>` directly.

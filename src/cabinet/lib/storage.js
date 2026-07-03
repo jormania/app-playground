@@ -47,3 +47,12 @@ export function loadSort() {
 export function saveSort(sort) {
   write('sort', sort)
 }
+
+// ── Legacy (kind: 'static') apps visibility — off by default ───────────────
+export function loadShowLegacy() {
+  return read('showLegacy', false)
+}
+
+export function saveShowLegacy(showLegacy) {
+  write('showLegacy', showLegacy)
+}
