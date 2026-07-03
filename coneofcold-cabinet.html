@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>The Cabinet — Cone of Cold</title>
+  <meta name="description" content="ConeofCold's Cabinet of Tools — every React app, one launch pad." />
+  <meta name="theme-color" content="#f4eeda" />
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    try {
+      if (localStorage.getItem('cabinet:theme') === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute('content', '#100d0a');
+      }
+    } catch (e) {}
+  </script>
+  <link rel="icon" type="image/svg+xml" href="/cabinet-logo.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/cabinet-favicon-32.png" />
+  <link rel="apple-touch-icon" href="/cabinet-icon-192.png" />
+  <link rel="manifest" href="/coneofcold-cabinet.webmanifest" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="The Cabinet" />
+<script defer src="/_vercel/insights/script.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/cabinet/main.jsx"></script>
+</body>
+</html>

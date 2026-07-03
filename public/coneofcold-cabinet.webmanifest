@@ -1,18 +1,18 @@
 {
-  "name": "Coneofcold Trove",
-  "short_name": "Trove",
-  "description": "Every Cone of Cold React app, one launch pad.",
-  "id": "/coneofcold-trove.html",
-  "start_url": "/coneofcold-trove.html",
-  "scope": "/coneofcold-trove.html",
+  "name": "The Cabinet — Cone of Cold",
+  "short_name": "The Cabinet",
+  "description": "ConeofCold's Cabinet of Tools — every React app, one launch pad.",
+  "id": "/coneofcold-cabinet.html",
+  "start_url": "/coneofcold-cabinet.html",
+  "scope": "/coneofcold-cabinet.html",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#EAF6FC",
-  "theme_color": "#2A6F9E",
+  "background_color": "#F4EEDA",
+  "theme_color": "#A8781F",
   "icons": [
-    { "src": "/trove-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/trove-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/trove-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/cabinet-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/cabinet-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/cabinet-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "related_applications": [
     { "platform": "webapp", "url": "https://coneofcold.vercel.app/law-of-the-day.webmanifest" },

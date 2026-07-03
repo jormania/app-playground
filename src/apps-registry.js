@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────
 // APP REGISTRY — single source of truth for index.html's card grid AND the
-// Coneofcold Trove dashboard (src/trove/). Add new apps here only.
+// Cabinet dashboard (src/cabinet/). Add new apps here only.
 //
 // Category tags (get the rose highlight on index.html): gaming, fitness,
 // outdoor, mindfulness, kawaii.
@@ -11,10 +11,10 @@
 //
 // kind: "react-vite" marks an app as a real Vite+React build (has a src/
 // source dir and its own build entry in vite.config.js) — these are the only
-// ones Trove lists. Static/hand-authored HTML apps omit `kind` entirely.
+// ones the Cabinet lists. Static/hand-authored HTML apps omit `kind` entirely.
 // manifest: path to the app's own webmanifest — required on every
-// "react-vite" entry so Trove can ask the browser whether it's installed.
-// See TROVE.md for the full checklist when adding a new app.
+// "react-vite" entry so the Cabinet can ask the browser whether it's installed.
+// See CABINET.md for the full checklist when adding a new app.
 // ─────────────────────────────────────────────────────
 export const CAT_TAGS = new Set(["gaming", "fitness", "outdoor", "mindfulness", "kawaii"]);
 
@@ -137,6 +137,7 @@ export const APPS = [
       "Interrupted mid-entry? Save it as a draft and resume it later from the top of the list",
       "Works fully offline — reads from a local copy and queues new or edited delights, syncing to your Notion database once you're back online (token stays in your browser)",
       "Installable as a PWA that opens offline; runs in demo mode on sample delights until you connect Notion",
+      "Optional gentle reminders — a 9pm nudge if today's delight isn't written yet, and a 7pm 'on this day' note when past years share the date",
     ],
     guide: "journal-of-delights-guide.html",
     file: "journal-of-delights-react.html",

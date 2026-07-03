@@ -6,7 +6,7 @@ import styles from './AppTile.module.css'
 // user still reads as false sometimes (Chrome throttles
 // getInstalledRelatedApps() to prevent it being used to fingerprint a
 // device's installed apps), so a negative result here can't be trusted
-// enough to show as an error — see TROVE.md.
+// enough to show as an error — see CABINET.md.
 export function AppTile({ app, installed }) {
   const href = `/${app.file}`
 

@@ -34,13 +34,14 @@
   gap: var(--space-sm);
 }
 
+/* Deliberate solid panel via ds/Card's own defaults (solid fill, real border,
+   resting shadow, lift on hover) — same journal-style recipe as the Cabinet's
+   AppTile. A translucent wash toward the gradient kept reading as a faint
+   hard-edged box anyway, so this makes the separation a real design choice. */
 .option {
   width: 100%;
   color: var(--color-ink);
   font-size: var(--text-base);
   font-weight: var(--weight-medium);
   line-height: var(--leading-body);
-  background: color-mix(in srgb, var(--color-surface) 22%, transparent);
-  border: none;
-  box-shadow: none;
 }

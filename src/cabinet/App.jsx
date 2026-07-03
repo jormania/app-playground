@@ -6,7 +6,7 @@ import { checkInstalledApps } from './lib/installState'
 import { AppTile } from './components/AppTile'
 import styles from './App.module.css'
 
-const TROVE_APPS = APPS.filter((app) => app.kind === 'react-vite')
+const CABINET_APPS = APPS.filter((app) => app.kind === 'react-vite')
 
 export default function App() {
   const { theme, toggle } = useTheme()
@@ -17,7 +17,7 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false
-    checkInstalledApps(TROVE_APPS).then((result) => {
+    checkInstalledApps(CABINET_APPS).then((result) => {
       if (!cancelled) setInstalledByManifest(result)
     })
     return () => {
@@ -30,8 +30,10 @@ export default function App() {
       <div className={styles.content}>
         <div className={styles.titleRow}>
           <div>
-            <h1 className={styles.title}>Coneofcold Trove</h1>
-            <p className={styles.subtitle}>Every app, one launch pad.</p>
+            <h1 className={styles.title}>ConeofCold's Cabinet of Tools</h1>
+            <p className={styles.subtitle}>
+              One shelf for the small, strange things — each tap opens the real app, not just another tab.
+            </p>
           </div>
           <IconButton
             size="sm"
@@ -44,7 +46,7 @@ export default function App() {
         </div>
 
         <div className={styles.grid}>
-          {TROVE_APPS.map((app) => (
+          {CABINET_APPS.map((app) => (
             <AppTile
               key={app.file}
               app={app}

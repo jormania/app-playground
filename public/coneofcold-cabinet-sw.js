@@ -1,7 +1,7 @@
-// Coneofcold Trove service worker: stale-while-revalidate for same-origin GETs, scoped to
-// the Trove page. Enables PWA installability and offline use after first visit.
+// The Cabinet service worker: stale-while-revalidate for same-origin GETs, scoped to
+// the Cabinet page. Enables PWA installability and offline use after first visit.
 // Same shape as Law of the Day's sw.js.
-const CACHE = 'trove-cache-v1';
+const CACHE = 'cabinet-cache-v1';
 
 self.addEventListener('install', function () {
   self.skipWaiting();

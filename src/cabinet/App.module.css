@@ -1,0 +1,80 @@
+/* The Cabinet's own palette, layered on top of the shared DS tokens — lifted
+   straight from index.html's warm dark/gold identity (the site this
+   dashboard is an extension of), not invented separately the way the old
+   icy-blue Trove theme was. Dark mode reuses index.html's exact hex values;
+   light mode is a warm parchment companion in the same family, the way
+   Journal's Solarized light mirrors its dark. Scoping to .shell means every
+   descendant that reads --color-accent/--color-surface/--color-ink (or their
+   derived --color-ring/--color-glow) picks this up automatically — same
+   pattern Law of the Day and Tempo use for their own per-app tints. */
+.shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  --ga: #f4eeda;
+  --gb: #ece0c4;
+  --color-accent: #a8781f;
+  --color-accent-hover: #8a6218;
+  --color-surface: #fdf8ec;
+  --color-surface-2: #f4eeda;
+  --color-border: #e2d5b0;
+  --color-border-2: #cdbb87;
+  --color-ink: #3a2f1f;
+  --color-muted: #6b5c42;
+  --color-faint: #9c8b68;
+  background: linear-gradient(165deg, var(--ga) 0%, var(--gb) 100%);
+  transition: background-color 400ms var(--ease);
+  display: flex;
+  justify-content: center;
+  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
+    env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+}
+
+:global(html[data-theme='dark']) .shell {
+  --ga: #100d0a;
+  --gb: #1a150f;
+  --color-accent: #e0a955;
+  --color-accent-hover: #f0c987;
+  --color-surface: #1a150f;
+  --color-surface-2: #221b13;
+  --color-border: #2c2419;
+  --color-border-2: #40362655;
+  --color-ink: #ece4d4;
+  --color-muted: #b0a48d;
+  --color-faint: #6f6450;
+}
+
+.content {
+  width: 100%;
+  max-width: 880px;
+  padding: var(--space-xl) var(--space-md) var(--space-2xl);
+  display: flex;
+  flex-direction: column;
+}
+
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin: 0 0 var(--space-lg);
+  gap: var(--space-sm);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink);
+}
+
+.subtitle {
+  margin: 2px 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-md);
+}

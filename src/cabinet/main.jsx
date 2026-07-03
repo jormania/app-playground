@@ -9,7 +9,7 @@ import App from './App'
 // page — same pattern as Law of the Day.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/coneofcold-trove-sw.js', { scope: '/coneofcold-trove.html' }).catch(() => {})
+    navigator.serviceWorker.register('/coneofcold-cabinet-sw.js', { scope: '/coneofcold-cabinet.html' }).catch(() => {})
   })
 }
 

@@ -2,23 +2,26 @@
    target via a stretched <a> (see .stretchedLink), not the card itself — the
    twistie needs to keep working independently, which a <button>-as-card
    wrapper couldn't do.
-   No border or resting shadow: a flat DS surface fill (or a color-mix blend
-   toward a gradient stop) still reads as a hard box against the app's own
-   gradient background — small color deltas are highly perceptible in these
-   near-black/near-white ranges. A faint wash toward transparent keeps tiles
-   scannable as a grid without the boxed look; hover adds a shadow + lift for
-   feedback (same fix as Law of the Day's cards and quiz options). */
+   A deliberate, solid panel — same recipe as Journal of Delights' .entry-row:
+   solid surface fill, a real 1px border, resting shadow, lift + stronger
+   shadow on hover. Translucent washes toward the gradient kept reading as a
+   faint hard-edged box anyway (small color deltas are highly perceptible in
+   near-black/near-white ranges), so this makes the separation a real design
+   choice instead of fighting for a border-less illusion. */
 .tile {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   padding: var(--space-lg);
-  background: color-mix(in srgb, var(--color-surface) 26%, transparent);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  transition: box-shadow var(--duration) var(--ease), transform var(--duration) var(--ease);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease), transform var(--duration) var(--ease);
 }
 .tile:hover {
+  border-color: var(--color-border-2);
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }

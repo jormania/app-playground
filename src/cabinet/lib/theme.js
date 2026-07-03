@@ -1,11 +1,11 @@
-// Theme (light / dark only). One dedicated localStorage key so Trove's choice
-// doesn't collide with any sub-app's own theme storage. Keep in step with the
-// inline FOUC script in coneofcold-trove.html.
+// Theme (light / dark only). One dedicated localStorage key so the Cabinet's
+// choice doesn't collide with any sub-app's own theme storage. Keep in step
+// with the inline FOUC script in coneofcold-cabinet.html.
 
-export const THEME_KEY = 'trove:theme'
+export const THEME_KEY = 'cabinet:theme'
 
-// Browser-chrome colour per theme (matches ds/tokens.css --color-bg-sunken).
-const THEME_COLOR = { light: '#eaf6fc', dark: '#0e2a3d' }
+// Browser-chrome colour per theme — matches App.module.css's .shell gradient stops.
+const THEME_COLOR = { light: '#f4eeda', dark: '#100d0a' }
 
 export function loadThemePref() {
   try {

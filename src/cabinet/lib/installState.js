@@ -11,7 +11,7 @@
 //   - null                          — "can't tell" (every other browser)
 //
 // getInstalledRelatedApps() matches against the ABSOLUTE urls declared in
-// this page's own manifest (coneofcold-trove.webmanifest's
+// this page's own manifest (coneofcold-cabinet.webmanifest's
 // related_applications), which point at the production domain — so real
 // detection only works on the deployed site, not localhost. Keep this in
 // sync with the manifest's related_applications list.
