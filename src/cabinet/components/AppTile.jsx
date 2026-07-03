@@ -28,7 +28,7 @@ import styles from './AppTile.module.css'
 // kind: "static" apps (the hand-authored legacy HTML ones, shown only via
 // the Cabinet's "Legacy apps" toggle) have no manifest and nothing to
 // install — they just open as a plain page, so none of the above applies.
-export function AppTile({ app, installed, isNew, lastOpenedAt, editing, onMoveUp, onMoveDown, disableUp, disableDown }) {
+export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, onMoveDown, disableUp, disableDown }) {
   const isStatic = app.kind === 'static'
   const path = `/${app.file}`
   const needsChromeRedirect = !isStatic && !installed && !canInstallPwaHere()
@@ -61,8 +61,11 @@ export function AppTile({ app, installed, isNew, lastOpenedAt, editing, onMoveUp
             {isNew && <span className={styles.badge}>New</span>}
           </div>
           <div className={styles.subtitle}>{app.subtitle}</div>
-          {!editing && lastOpenedAt && (
-            <div className={styles.lastOpened}>opened {formatRelativeTime(lastOpenedAt)}</div>
+          {!editing && openStats?.last && (
+            <div className={styles.lastOpened}>
+              opened {openStats.count > 1 ? `${openStats.count}× · ` : ''}
+              {formatRelativeTime(openStats.last)}
+            </div>
           )}
         </div>
         {editing ? (

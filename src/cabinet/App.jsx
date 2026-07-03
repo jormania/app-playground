@@ -107,7 +107,7 @@ export default function App() {
   const orderedApps = useMemo(() => {
     if (sort === 'az') return [...visibleApps].sort((a, b) => a.title.localeCompare(b.title))
     if (sort === 'recent') {
-      return [...visibleApps].sort((a, b) => (lastOpened[b.file] || 0) - (lastOpened[a.file] || 0))
+      return [...visibleApps].sort((a, b) => (lastOpened[b.file]?.last || 0) - (lastOpened[a.file]?.last || 0))
     }
     return manualOrderedApps
     // manualOrderedApps is derived fresh each render from `order`/`showLegacy`, so depend on those instead.
@@ -165,7 +165,7 @@ export default function App() {
               app={app}
               installed={installedByManifest?.get(app.manifest) === true}
               isNew={NEW_APP_FILES.has(app.file)}
-              lastOpenedAt={lastOpened[app.file]}
+              openStats={lastOpened[app.file]}
               editing={editing}
               onMoveUp={() => move(app.file, -1)}
               onMoveDown={() => move(app.file, 1)}

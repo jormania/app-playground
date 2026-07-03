@@ -28,14 +28,18 @@ export function saveOrder(order) {
   write('order', order)
 }
 
-// ── Last-opened timestamps (keyed by app.file) ──────────────────────────────
+// ── Open stats (keyed by app.file): { count, last } ─────────────────────────
+// Counts taps on the Cabinet's own tiles, not real app launches — opening an
+// installed PWA from its home-screen icon bypasses the Cabinet entirely and
+// isn't seen here. That's true for every tile alike, static or react-vite.
 export function loadLastOpened() {
   return read('lastOpened', {})
 }
 
 export function recordOpened(file) {
   const map = loadLastOpened()
-  map[file] = Date.now()
+  const prevCount = typeof map[file] === 'object' && map[file] ? map[file].count : 0
+  map[file] = { count: prevCount + 1, last: Date.now() }
   write('lastOpened', map)
 }
 
