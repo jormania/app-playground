@@ -66,11 +66,18 @@
   flex-shrink: 0;
 }
 
+/* Same face/weight/tracking as index.html's hero h1 ("A cabinet of small,
+   strange tools.") — Instrument Serif at weight 400, tight leading, slight
+   negative tracking — but sized down well below that hero's clamp(2.8rem,
+   7vw,5rem): "Cabinet of Tools" at that scale would wrap on a phone-width
+   title row that also has to leave room for the reorder/theme buttons. */
 .title {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: var(--weight-bold);
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-weight: 400;
+  font-size: 1.75rem;
+  line-height: 1.0;
+  letter-spacing: -0.005em;
   color: var(--color-ink);
 }
 
