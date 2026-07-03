@@ -12,6 +12,24 @@
    change.
    ───────────────────────────────────────────────────────────────────────── */
 
+/* Base reset — every new-DS app loads tokens.css once at its root, so this is
+   the one place it happens. Without it the browser's default 8px body margin
+   shows through as a stray border around a full-viewport shell, and the
+   extra margin pushes total height past 100vh, forcing a scrollbar that
+   isn't otherwise needed. (Tempo and Sol Odyssey duplicate an equivalent
+   reset in their own entry CSS from before this existed; harmless overlap.) */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
 :root {
   /* ── Colour: surfaces (back-to-front) ─────────────────────────────────── */
   --color-bg:        #ffffff; /* app background */
