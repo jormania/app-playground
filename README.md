@@ -17,7 +17,7 @@ a few are self-contained static HTML pages. Either way they run entirely in your
 | [Touch Grass](https://coneofcold.vercel.app/touch-grass-react.html) | outdoor · react · vite | `touch-grass-react.html` |
 | [Journal of Delights](https://coneofcold.vercel.app/journal-of-delights-react.html) | mindfulness · writing · react · notion | `journal-of-delights-react.html` |
 | [Kettlebell Training](https://coneofcold.vercel.app/kettlebell-training-react.html) | fitness · svg · react · vite | `kettlebell-training-react.html` |
-| [Touch Grass (v7, legacy)](https://coneofcold.vercel.app/touch-grass.html) | outdoor · ambient | `touch-grass.html` |
+| [Touch Grass · Original (v7, legacy)](https://coneofcold.vercel.app/touch-grass.html) | outdoor · ambient | `touch-grass.html` |
 | [Touch Grass · Thrive (legacy)](https://coneofcold.vercel.app/touch-grass-vio.html) | outdoor · mindfulness | `touch-grass-vio.html` |
 | [Touch Grass · Nora (legacy)](https://coneofcold.vercel.app/touch-grass-nora.html) | outdoor · kawaii | `touch-grass-nora.html` |
 | [Codex Alchymicus — KCD2](https://coneofcold.vercel.app/kcd2-codex-v3.html) | gaming | `kcd2-codex-v3.html` |
@@ -27,8 +27,8 @@ see [`LEGACY.md`](LEGACY.md). All ten are registered in one place:
 [`src/apps-registry.js`](src/apps-registry.js), which feeds both `index.html`'s card
 grid and **[The Cabinet](CABINET.md)** — a dashboard at
 [coneofcold.vercel.app/cabinet.html](https://coneofcold.vercel.app/cabinet.html)
-that lists the six React+Vite apps (trying to hand off to each one's installed PWA) plus
-the four legacy static apps behind an opt-in toggle.
+that lists the six React+Vite apps, trying to hand off to each one's installed PWA
+(the four legacy static apps only show on `index.html`'s card grid, not the Cabinet).
 
 ---
 

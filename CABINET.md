@@ -2,24 +2,18 @@
 
 **[coneofcold.vercel.app/cabinet.html](https://coneofcold.vercel.app/cabinet.html)**
 
-A dashboard listing every app in this repo. The six Vite+React apps
-(`kind: "react-vite"`) always show and try to hand off to each one's
-*installed* PWA rather than just opening another browser tab. The
+A dashboard listing the six Vite+React apps in this repo (`kind: "react-vite"`
+in [`src/apps-registry.js`](src/apps-registry.js)) and trying to hand off to
+each one's *installed* PWA rather than just opening another browser tab. The
 hand-authored legacy static-HTML apps (`kind: "static"` — the old Touch Grass
-variants and Codex Alchymicus) are hidden by default behind the "Legacy apps"
-toggle in the sort bar, since they're old artifacts rather than the everyday
-set; once shown, they render with the same tile treatment but always read
-"Open" (never "Install"/"Launch") and just navigate to the plain page — no
-manifest, no install detection, nothing to check. Reuses each app's name,
-icon, and blurb from [`src/apps-registry.js`](src/apps-registry.js) — the
-same data `index.html`'s card grid reads from, so there's exactly one place
-to update per app.
+variants and Codex Alchymicus) are index.html-only; the Cabinet never lists
+them at all. Reuses each app's name, icon, and blurb from
+[`src/apps-registry.js`](src/apps-registry.js) — the same data `index.html`'s
+card grid reads from, so there's exactly one place to update per app.
 
 The sort bar also offers Manual (drag-reorderable, persisted), Recent
 (by last-opened), Popular (by open count), and A–Z ordering — see
-[`src/cabinet/App.jsx`](src/cabinet/App.jsx). Manual order is stored by file
-id across the *full* app set (react-vite + static) so a legacy app's position
-survives toggling it off and back on, even while hidden.
+[`src/cabinet/App.jsx`](src/cabinet/App.jsx).
 
 Each tile also shows "opened Xm ago" once tapped, or "opened N× · Xm ago"
 after more than one tap — the count and timestamp Recent/Popular sort by.
@@ -84,11 +78,6 @@ add it while still iterating. When it is:
 That's it — the Cabinet's grid and index.html's card grid both update
 automatically from the one registry entry.
 
-## Adding a legacy static app instead
-
-Hand-authored HTML apps that predate the design system (see `LEGACY.md`) can
-still show up in the Cabinet, just behind the "Legacy apps" toggle. Set
-`kind: "static"` in its `apps-registry.js` entry — no `manifest` field, since
-there's nothing to install. It gets the same tile (icon, subtitle, "More"
-description) as a react-vite app, but the action always reads "Open" and taps
-just navigate to `/<app.file>` directly.
+Hand-authored HTML apps that predate the design system (see `LEGACY.md`) use
+`kind: "static"` instead and are never shown in the Cabinet — only on
+`index.html`'s card grid.

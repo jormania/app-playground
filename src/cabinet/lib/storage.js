@@ -31,7 +31,7 @@ export function saveOrder(order) {
 // ── Open stats (keyed by app.file): { count, last } ─────────────────────────
 // Counts taps on the Cabinet's own tiles, not real app launches — opening an
 // installed PWA from its home-screen icon bypasses the Cabinet entirely and
-// isn't seen here. That's true for every tile alike, static or react-vite.
+// isn't seen here.
 export function loadLastOpened() {
   return read('lastOpened', {})
 }
@@ -50,13 +50,4 @@ export function loadSort() {
 
 export function saveSort(sort) {
   write('sort', sort)
-}
-
-// ── Legacy (kind: 'static') apps visibility — off by default ───────────────
-export function loadShowLegacy() {
-  return read('showLegacy', false)
-}
-
-export function saveShowLegacy(showLegacy) {
-  write('showLegacy', showLegacy)
 }
