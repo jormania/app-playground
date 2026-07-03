@@ -59,6 +59,13 @@
   gap: var(--space-sm);
 }
 
+.titleActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  flex-shrink: 0;
+}
+
 .title {
   margin: 0;
   font-family: var(--font-display);
