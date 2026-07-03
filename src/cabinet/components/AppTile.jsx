@@ -24,11 +24,16 @@ import styles from './AppTile.module.css'
 // for Android (unlike its desktop build) doesn't support installing a PWA,
 // so if that's the phone's default browser, route the tap through Chrome
 // instead of silently opening a page the visitor can't act on.
+//
+// kind: "static" apps (the hand-authored legacy HTML ones) have no manifest
+// and nothing to install — they just open as a plain page, so none of the
+// above applies.
 export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, onMoveDown, disableUp, disableDown }) {
+  const isStatic = app.kind === 'static'
   const path = `/${app.file}`
-  const needsChromeRedirect = !installed && !canInstallPwaHere()
+  const needsChromeRedirect = !isStatic && !installed && !canInstallPwaHere()
   const href = needsChromeRedirect ? chromeIntentUrl(window.location.origin + path) : path
-  const actionLabel = installed ? 'Launch' : 'Install'
+  const actionLabel = isStatic ? 'Open' : installed ? 'Launch' : 'Install'
 
   return (
     <article className={styles.tile}>
@@ -75,7 +80,7 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
         ) : (
           <span className={styles.action} aria-hidden="true">
             <span className={styles.actionLabel}>{actionLabel}</span>
-            <span className={styles.arrow}>{installed ? '→' : '⤓'}</span>
+            <span className={styles.arrow}>{isStatic || installed ? '→' : '⤓'}</span>
           </span>
         )}
       </div>

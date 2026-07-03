@@ -27,8 +27,8 @@ see [`LEGACY.md`](LEGACY.md). All ten are registered in one place:
 [`src/apps-registry.js`](src/apps-registry.js), which feeds both `index.html`'s card
 grid and **[The Cabinet](CABINET.md)** — a dashboard at
 [coneofcold.vercel.app/cabinet.html](https://coneofcold.vercel.app/cabinet.html)
-that lists the six React+Vite apps, trying to hand off to each one's installed PWA
-(the four legacy static apps only show on `index.html`'s card grid, not the Cabinet).
+that lists all ten apps — trying to hand off to each of the six React+Vite apps'
+installed PWA, and a plain "Open" link for the four legacy static apps.
 
 ---
 

@@ -2,12 +2,14 @@
 
 **[coneofcold.vercel.app/cabinet.html](https://coneofcold.vercel.app/cabinet.html)**
 
-A dashboard listing the six Vite+React apps in this repo (`kind: "react-vite"`
-in [`src/apps-registry.js`](src/apps-registry.js)) and trying to hand off to
-each one's *installed* PWA rather than just opening another browser tab. The
+A dashboard listing every app in this repo. The six Vite+React apps
+(`kind: "react-vite"`) always show and try to hand off to each one's
+*installed* PWA rather than just opening another browser tab. The
 hand-authored legacy static-HTML apps (`kind: "static"` — the old Touch Grass
-variants and Codex Alchymicus) are index.html-only; the Cabinet never lists
-them at all. Reuses each app's name, icon, and blurb from
+variants and Codex Alchymicus) always show too, with the same tile treatment,
+but always read "Open" (never "Install"/"Launch") and just navigate to the
+plain page — no manifest, no install detection, nothing to check. No toggle
+hides either group. Reuses each app's name, icon, and blurb from
 [`src/apps-registry.js`](src/apps-registry.js) — the same data `index.html`'s
 card grid reads from, so there's exactly one place to update per app.
 
@@ -78,6 +80,10 @@ add it while still iterating. When it is:
 That's it — the Cabinet's grid and index.html's card grid both update
 automatically from the one registry entry.
 
+## Adding a legacy static app instead
+
 Hand-authored HTML apps that predate the design system (see `LEGACY.md`) use
-`kind: "static"` instead and are never shown in the Cabinet — only on
-`index.html`'s card grid.
+`kind: "static"` instead. Set that — no `manifest` field, since there's
+nothing to install. It gets the same tile (icon, subtitle, "More"
+description) as a react-vite app, but the action always reads "Open" and taps
+just navigate to `/<app.file>` directly.

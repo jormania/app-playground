@@ -9,10 +9,15 @@ import { AppTile } from './components/AppTile'
 import { IconReorder } from './components/icons'
 import styles from './App.module.css'
 
-// The Cabinet only ever lists the real Vite+React PWAs — the hand-authored
-// legacy HTML apps (kind: "static") stay index.html-only.
+// The Cabinet lists every app that has a `kind` — the six Vite+React PWAs
+// (kind: "react-vite") plus the hand-authored legacy HTML apps
+// (kind: "static"), always, with no toggle to hide either group. Entries
+// with no `kind` at all (e.g. ds-showcase.html) aren't Cabinet apps.
 const REACT_VITE_APPS = APPS.filter((app) => app.kind === 'react-vite')
+const CABINET_APPS = APPS.filter((app) => app.kind === 'react-vite' || app.kind === 'static')
 
+// "New" only ever applies to the real, actively-developed apps — a legacy
+// HTML page reusing an old deploy date shouldn't read as freshly shipped.
 const NEW_APP_FILES = newlyDeployedFiles(REACT_VITE_APPS)
 
 const SORT_OPTIONS = [
@@ -25,7 +30,7 @@ const SORT_OPTIONS = [
 // Keep a saved order in step with the registry: drop ids no longer listed
 // there, and append any added since the order was last saved.
 function reconcileOrder(saved) {
-  const ids = REACT_VITE_APPS.map((app) => app.file)
+  const ids = CABINET_APPS.map((app) => app.file)
   const known = new Set(ids)
   const kept = (saved || []).filter((id) => known.has(id))
   const missing = ids.filter((id) => !kept.includes(id))
@@ -55,7 +60,7 @@ export default function App() {
     }
   }, [])
 
-  const appsById = new Map(REACT_VITE_APPS.map((app) => [app.file, app]))
+  const appsById = new Map(CABINET_APPS.map((app) => [app.file, app]))
 
   function move(file, dir) {
     setOrder((prev) => {
@@ -80,12 +85,12 @@ export default function App() {
   const manualOrderedApps = order.map((id) => appsById.get(id)).filter(Boolean)
 
   const orderedApps = useMemo(() => {
-    if (sort === 'az') return [...REACT_VITE_APPS].sort((a, b) => a.title.localeCompare(b.title))
+    if (sort === 'az') return [...CABINET_APPS].sort((a, b) => a.title.localeCompare(b.title))
     if (sort === 'recent') {
-      return [...REACT_VITE_APPS].sort((a, b) => (lastOpened[b.file]?.last || 0) - (lastOpened[a.file]?.last || 0))
+      return [...CABINET_APPS].sort((a, b) => (lastOpened[b.file]?.last || 0) - (lastOpened[a.file]?.last || 0))
     }
     if (sort === 'popular') {
-      return [...REACT_VITE_APPS].sort((a, b) => (lastOpened[b.file]?.count || 0) - (lastOpened[a.file]?.count || 0))
+      return [...CABINET_APPS].sort((a, b) => (lastOpened[b.file]?.count || 0) - (lastOpened[a.file]?.count || 0))
     }
     return manualOrderedApps
     // manualOrderedApps is derived fresh each render from `order`, so depend on that instead.

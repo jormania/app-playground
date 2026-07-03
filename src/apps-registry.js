@@ -10,12 +10,11 @@
 // "updated <Month YYYY>" line, which auto-derives from the newest deployed value.
 //
 // kind: "react-vite" marks an app as a real Vite+React build (has a src/
-// source dir and its own build entry in vite.config.js) — the Cabinet always
-// lists these. kind: "static" marks a hand-authored HTML app the Cabinet can
-// also list, but hidden behind its "Legacy apps" toggle (off by default) —
-// no PWA, so it always opens as a plain page rather than an install/launch.
-// Static/hand-authored HTML apps not meant for the Cabinet at all (e.g.
-// index.html, ds-showcase.html) omit `kind` entirely.
+// source dir and its own build entry in vite.config.js) — the Cabinet lists
+// these with install/launch handling. kind: "static" marks a hand-authored
+// legacy HTML app — the Cabinet lists it too, but always as a plain "Open"
+// link (no manifest, nothing to install). Apps not meant for the Cabinet or
+// index.html's card grid at all (e.g. ds-showcase.html) omit `kind` entirely.
 // manifest: path to the app's own webmanifest — required on every
 // "react-vite" entry so the Cabinet can ask the browser whether it's installed.
 // "static" entries never have one.
@@ -170,7 +169,7 @@ export const APPS = [
   {
     emoji: "🌿",
     iconBg: "rgba(100,160,80,0.15)",
-    title: "Touch Grass",
+    title: "Touch Grass · Original",
     subtitle: "surreal finds · ambient audio · real-time weather",
     version: "v7",
     deployed: "Jun 2026",

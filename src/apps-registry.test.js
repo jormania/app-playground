@@ -10,7 +10,7 @@ const REACT_VITE_TITLES = [
   'Kettlebell Training',
 ]
 
-const STATIC_TITLES = ['Touch Grass', 'Touch Grass · Thrive', 'Touch Grass · Nora', 'Codex Alchymicus — KCD2']
+const STATIC_TITLES = ['Touch Grass · Original', 'Touch Grass · Thrive', 'Touch Grass · Nora', 'Codex Alchymicus — KCD2']
 
 describe('APPS registry', () => {
   it('marks exactly the six Vite+React apps as kind: "react-vite"', () => {
