@@ -134,6 +134,19 @@ see any existing `main.jsx` for the pattern.
 installed (opened at least once in standalone mode since this shipped) now
 correctly read "Launch" instead of "Install".
 
+## Refreshing when you come back
+
+A tile tap navigates away, but the Cabinet page itself often survives that —
+the back button (Android and desktop alike) typically restores it from the
+back/forward cache with whatever state it had before the tap, and an
+installed Cabinet PWA just resumes rather than reloading. Without handling
+this, the open-count/last-opened stats — and therefore the Recent/Popular
+order — only ever caught up on a manual page refresh. `App.jsx` re-reads
+`lastOpened`, `order`, and the install flags on `pageshow` (bfcache
+restores specifically, via `event.persisted`), `visibilitychange` (tab/PWA
+regaining visibility), and `focus`, so returning to the Cabinet updates
+everything automatically.
+
 ## Search
 
 The controls row includes a single narrow `<input type="search">` (no chips,

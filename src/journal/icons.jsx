@@ -75,6 +75,10 @@ export const SunIcon = (p) => (
 export const MoonIcon = (p) => (
   <svg {...base} {...p}><path d="M21 12.8A8 8 0 1 1 11.2 3a6.4 6.4 0 0 0 9.8 9.8z" /></svg>
 )
+// Share — the classic three-nodes glyph.
+export const ShareIcon = (p) => (
+  <svg {...base} {...p}><circle cx="18" cy="5" r="2.5" /><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="19" r="2.5" /><path d="M8.2 10.7l7.6-4.4M8.2 13.3l7.6 4.4" /></svg>
+)
 // More — three dots, for the mobile overflow menu.
 export const MoreIcon = (p) => (
   <svg {...base} {...p}><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none" /></svg>

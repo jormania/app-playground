@@ -57,12 +57,11 @@ export default function App() {
   const [sort, setSort] = useState(() => loadSort())
   const [editing, setEditing] = useState(false)
   const [query, setQuery] = useState('')
-  // Read once at mount: a tap navigates away immediately, so there's no
-  // in-page moment where a fresher value would ever be shown. `?resetStats=1`
-  // wipes the open-count/last-opened map only (order and sort untouched)
-  // before that read — a one-off escape hatch for clearing noise built up
-  // during testing, matching Touch Grass's own `?` query-param convention.
-  const [lastOpened] = useState(() => {
+  // `?resetStats=1` wipes the open-count/last-opened map only (order and
+  // sort untouched) before the first read — a one-off escape hatch for
+  // clearing noise built up during testing, matching Touch Grass's own `?`
+  // query-param convention.
+  const [lastOpened, setLastOpened] = useState(() => {
     try {
       const p = new URLSearchParams(window.location.search)
       if (p.get('resetStats') === '1') {
@@ -76,10 +75,17 @@ export default function App() {
     return loadLastOpened()
   })
 
-  useEffect(() => {
-    let cancelled = false
+  function refreshInstalledByManifest() {
+    setInstalledByManifest((prev) => {
+      const flags = checkInstalledFlags(REACT_VITE_APPS)
+      const merged = new Map(prev)
+      for (const [manifest, isInstalled] of flags) {
+        if (isInstalled) merged.set(manifest, true)
+      }
+      return merged
+    })
     checkInstalledApps(REACT_VITE_APPS).then((detected) => {
-      if (cancelled || !detected) return
+      if (!detected) return
       setInstalledByManifest((prev) => {
         const merged = new Map(prev)
         for (const [manifest, isInstalled] of detected) {
@@ -88,9 +94,43 @@ export default function App() {
         return merged
       })
     })
-    return () => {
-      cancelled = true
+  }
+
+  useEffect(() => {
+    refreshInstalledByManifest()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // A tile tap navigates away, but the Cabinet page itself often isn't
+  // discarded — Android's back button (and desktop's) typically restores it
+  // from the back/forward cache with whatever state it had before the tap,
+  // and an installed Cabinet PWA just resumes rather than reloading. Without
+  // this, the open-count/last-opened stats (and therefore Recent/Popular
+  // order) only ever caught up on a manual refresh. `pageshow` catches the
+  // bfcache-restore case specifically; `visibilitychange`/`focus` catch
+  // resuming a backgrounded tab or standalone PWA more generally — cheap and
+  // idempotent, so no harm running all three.
+  useEffect(() => {
+    function refresh() {
+      setOrder(reconcileOrder(loadOrder()))
+      setLastOpened(loadLastOpened())
+      refreshInstalledByManifest()
     }
+    function onVisibility() {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    function onPageShow(e) {
+      if (e.persisted) refresh()
+    }
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pageshow', onPageShow)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pageshow', onPageShow)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const appsById = new Map(CABINET_APPS.map((app) => [app.file, app]))

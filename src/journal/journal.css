@@ -224,6 +224,15 @@ main { padding: 26px 0 80px; }
 }
 .ev-date .pending-pill { margin-left: 10px; vertical-align: middle; }
 
+/* Transient feedback after the clipboard fallback in EntryView's Share
+   button — the native OS share sheet gives its own confirmation, so this
+   only ever shows up when there wasn't one. */
+.share-status {
+  font-family: var(--mono); font-size: 0.72rem; color: var(--blue);
+  white-space: nowrap;
+}
+.share-status-error { color: var(--red); }
+
 .error-note {
   font-size: 0.8125rem; color: var(--red);
   background: color-mix(in srgb, var(--red) 9%, transparent); border: 1px solid color-mix(in srgb, var(--red) 33%, transparent);

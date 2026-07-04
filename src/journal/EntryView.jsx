@@ -1,12 +1,29 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { formatHuman, entriesOnSameDay } from './dates.js'
-import { CountIcon, BackIcon, HistoryIcon } from './icons.jsx'
+import { CountIcon, BackIcon, HistoryIcon, ShareIcon } from './icons.jsx'
 import EntryMeta from './EntryMeta.jsx'
+import { shareEntry } from './share.js'
 
 // Single-entry read view: Title, Date, the essayette, then People + Tags on one
 // line (chips tap to filter), and Word Count from Notion's formula when saved.
 export default function EntryView({ entry, entries, onBack, onEdit, onChip, onOnThisDay }) {
   const pastCount = useMemo(() => entriesOnSameDay(entries, entry.date).length, [entries, entry.date])
+  // Only surfaced after the OS share sheet isn't available and we copied to
+  // the clipboard instead — the native sheet already gives its own feedback.
+  const [shareStatus, setShareStatus] = useState(null) // null | 'copied' | 'copied-photo' | 'error'
+
+  async function handleShare() {
+    setShareStatus(null)
+    const result = await shareEntry(entry)
+    if (!result.ok) {
+      setShareStatus('error')
+    } else if (result.copied) {
+      setShareStatus(result.withPhoto ? 'copied-photo' : 'copied')
+    } else {
+      return
+    }
+    window.setTimeout(() => setShareStatus(null), 4000)
+  }
   return (
     <article className="entry-view">
       <div className="editor-head">
@@ -39,7 +56,11 @@ export default function EntryView({ entry, entries, onBack, onEdit, onChip, onOn
         {entry.wordCount != null && (
           <span className="count"><CountIcon /> {entry.wordCount} {entry.wordCount === 1 ? 'word' : 'words'}</span>
         )}
-        <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => onEdit(entry)}>Edit</button>
+        {shareStatus === 'copied' && <span className="share-status">Copied to clipboard</span>}
+        {shareStatus === 'copied-photo' && <span className="share-status">Copied (text + photo) to clipboard</span>}
+        {shareStatus === 'error' && <span className="share-status share-status-error">Couldn't share — try again</span>}
+        <button className="btn btn-sm" style={{ marginLeft: 'auto' }} onClick={handleShare}><ShareIcon /> Share</button>
+        <button className="btn" onClick={() => onEdit(entry)}>Edit</button>
       </div>
     </article>
   )
