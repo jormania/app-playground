@@ -130,6 +130,17 @@ describe('buddyWelcomeEmail', () => {
     expect(text).toContain('1 = still effortful, 10 = automatic')
     expect(text).toContain('A weekly call')
   })
+  it('glosses fields for all four event emails, not just the daily note', () => {
+    const text = emailToPlainText(buddyWelcomeEmail('Sam', 'Alex'))
+    expect(text).toContain('Reading the kickoff')
+    expect(text).toContain('“Who I’m becoming”')
+    expect(text).toContain('Reading the daily note')
+    expect(text).toContain('“What got in the way”')
+    expect(text).toContain('Reading the weekly reflection')
+    expect(text).toContain('“Riskiest moment next week”')
+    expect(text).toContain('Reading the harvest note')
+    expect(text).toContain('“Something to pass on”')
+  })
   it('carries all four ground rules from the guide', () => {
     const text = emailToPlainText(buddyWelcomeEmail('Sam', 'Alex'))
     expect(text).toContain('Witnessing, not fixing')

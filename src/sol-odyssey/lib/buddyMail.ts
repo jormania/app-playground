@@ -233,12 +233,40 @@ export function buddyWelcomeEmail(buddyName: string, userName: string): BuddyEma
         ],
       },
       {
-        title: '🔎 Reading my notes',
+        title: '🚀 Reading the kickoff',
+        rows: [
+          { emoji: '🧭', label: '“Who I’m becoming”', value: 'The identity behind the habit — why it matters to me beyond the habit itself.' },
+          { emoji: '🌱', label: '“The tiny version”', value: "The smallest version of the habit — small enough that skipping it isn't really an option." },
+          { emoji: '✅', label: '“What counts as done”', value: 'The plain, no-argument definition of a done day.' },
+          { emoji: '📆', label: '“When it runs”', value: 'The 42-day window, start to finish.' },
+        ],
+      },
+      {
+        title: '📅 Reading the daily note',
         rows: [
           { emoji: '✅', label: '“Did it today”', value: 'Just showing up counts — the tiny version is a real yes.' },
           { emoji: '📝', label: '“One line”', value: 'A sentence on what happened, or what I noticed.' },
-          { emoji: '🌡️', label: '“How installed it feels”', value: '1 = still effortful, 10 = automatic. Watch the drift, not the number.' },
+          { emoji: '🪨', label: '“What got in the way”', value: 'Only shows up on the days there was friction — not every day.' },
+        ],
+      },
+      {
+        title: '🗓️ Reading the weekly reflection',
+        rows: [
+          { emoji: '✅', label: '“Days done”', value: 'How many of the 7 days I did it, tiny version included.' },
+          { emoji: '🪨', label: '“Where it slipped”', value: 'What tripped it up this week, in my own words.' },
           { emoji: '📐', label: '“How it felt”', value: 'Whether the habit was too big, too vague, or about right.' },
+          { emoji: '🔧', label: '“One change next week”', value: "The single adjustment I'm trying next." },
+          { emoji: '🌱', label: '“New tiny version”', value: 'Only appears the weeks I actually shrink or change the habit.' },
+          { emoji: '🌡️', label: '“How installed it feels”', value: '1 = still effortful, 10 = automatic. Watch the drift, not the number.' },
+          { emoji: '⚠️', label: '“Riskiest moment next week”', value: "A moment I'm already bracing for — not something that's already happened." },
+        ],
+      },
+      {
+        title: '🌅 Reading the harvest note',
+        rows: [
+          { emoji: '✨', label: '“What installed”', value: 'What actually stuck, in my own words.' },
+          { emoji: '🔭', label: '“Where it goes next”', value: "Whether I'm keeping it, folding it into something else, or letting it go." },
+          { emoji: '🌱', label: '“Something to pass on”', value: "Only appears if I have a note for whoever runs their own Odyssey next — not written for you specifically." },
         ],
       },
     ],
