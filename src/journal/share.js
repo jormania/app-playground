@@ -10,14 +10,18 @@ export function canShare() {
   return typeof navigator !== 'undefined' && typeof navigator.share === 'function'
 }
 
-// Notion's Photo url is a signed, cross-origin file link — fetchable as a
-// blob when Notion's hosting allows it, but there's no guarantee (an expired
-// signed URL, offline, no CORS). Any failure here just means the share/copy
-// goes out as text only, never an error.
+// Notion's Photo url is a signed S3 link with no CORS headers — fine for the
+// <img> tag that already renders it, but a direct fetch() from the browser
+// can't read the bytes (an opaque/failed response), so this always routes
+// through our own /api/notion-photo-proxy relay instead: a server-to-server
+// fetch has no CORS restriction, and same-origin means the browser can read
+// what comes back. Any failure here (offline, an expired signed URL, the
+// proxy itself erroring) just means the share/copy goes out as text only,
+// never an error.
 async function photoFile(photo) {
   if (!photo?.url) return null
   try {
-    const res = await fetch(photo.url)
+    const res = await fetch(`/api/notion-photo-proxy?url=${encodeURIComponent(photo.url)}`)
     if (!res.ok) return null
     const blob = await res.blob()
     const type = blob.type || 'image/jpeg'
@@ -29,7 +33,13 @@ async function photoFile(photo) {
 
 export async function shareEntry(entry) {
   const title = entry?.title || 'A delight'
-  const text = entry?.entry || ''
+  const entryText = entry?.entry || ''
+  // The title also gets folded into `text`, not just passed as its own
+  // field: some share targets (WhatsApp's Android handler, notably) only
+  // ever read `text`, silently dropping `title` — putting it in both means
+  // it survives everywhere, at the cost of Gmail-style subject-line targets
+  // seeing it twice (subject + first line of the body), which reads fine.
+  const text = entryText ? `${title}\n\n${entryText}` : title
   const file = await photoFile(entry?.photo)
 
   if (canShare()) {
@@ -44,17 +54,16 @@ export async function shareEntry(entry) {
     }
   }
 
-  return copyToClipboard(title, text, file)
+  return copyToClipboard(text, file)
 }
 
 // Mirrors Sol Odyssey's buddyMail copy pattern: a rich multi-type
 // ClipboardItem first (text + image, when there's a photo), degrading to
 // plain writeText if that's unsupported or throws.
-async function copyToClipboard(title, text, file) {
-  const combined = text ? `${title}\n\n${text}` : title
+async function copyToClipboard(text, file) {
   try {
     if (navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
-      const parts = { 'text/plain': new Blob([combined], { type: 'text/plain' }) }
+      const parts = { 'text/plain': new Blob([text], { type: 'text/plain' }) }
       if (file) parts[file.type] = file
       await navigator.clipboard.write([new ClipboardItem(parts)])
       return { ok: true, copied: true, withPhoto: Boolean(file) }
@@ -63,7 +72,7 @@ async function copyToClipboard(title, text, file) {
     // fall through to text-only
   }
   try {
-    await navigator.clipboard.writeText(combined)
+    await navigator.clipboard.writeText(text)
     return { ok: true, copied: true, withPhoto: false }
   } catch {
     return { ok: false }

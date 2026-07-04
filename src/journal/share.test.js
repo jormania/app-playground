@@ -28,12 +28,12 @@ describe('canShare', () => {
 })
 
 describe('shareEntry — native share available', () => {
-  it('shares title and text, no files, when there is no photo', async () => {
+  it('shares title as its own field, and folded into text too (some targets, e.g. WhatsApp, only read text)', async () => {
     let shared
     vi.stubGlobal('navigator', { share: async (data) => { shared = data } })
     const result = await shareEntry(entry)
     expect(result).toEqual({ ok: true, shared: true })
-    expect(shared).toEqual({ title: 'A quiet find', text: entry.entry })
+    expect(shared).toEqual({ title: 'A quiet find', text: `${entry.title}\n\n${entry.entry}` })
   })
 
   it('falls back to the entry title when untitled', async () => {
@@ -53,6 +53,17 @@ describe('shareEntry — native share available', () => {
     await shareEntry(entryWithPhoto)
     expect(shared.files).toHaveLength(1)
     expect(shared.files[0].name).toBe('delight.jpg')
+  })
+
+  it("fetches the photo through /api/notion-photo-proxy, not Notion's URL directly (no CORS headers there)", async () => {
+    let requestedUrl
+    vi.stubGlobal('fetch', async (url) => {
+      requestedUrl = url
+      return { ok: true, blob: async () => new Blob(['fake-bytes'], { type: 'image/jpeg' }) }
+    })
+    vi.stubGlobal('navigator', { share: async () => {}, canShare: () => true })
+    await shareEntry(entryWithPhoto)
+    expect(requestedUrl).toBe(`/api/notion-photo-proxy?url=${encodeURIComponent(entryWithPhoto.photo.url)}`)
   })
 
   it('omits files when the browser reports it cannot share them', async () => {
