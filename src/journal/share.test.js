@@ -161,55 +161,28 @@ describe('shareEntry — no native share (desktop fallback)', () => {
   })
 })
 
-describe('shareByEmail — native share available', () => {
-  it('shares the subject as title and the entry text alone as text (never doubled)', async () => {
-    let shared
-    vi.stubGlobal('navigator', { share: async (data) => { shared = data } })
-    const result = await shareByEmail(entry)
-    expect(result).toEqual({ ok: true, shared: true })
-    expect(shared).toEqual({ title: "Gabriel's Delight from 24 Jun 2026: A quiet find", text: entry.entry })
-  })
-
-  it('falls back to the entry title when untitled, and drops "from <date>" when the date is missing', async () => {
-    let shared
-    vi.stubGlobal('navigator', { share: async (data) => { shared = data } })
-    await shareByEmail({ entry: 'no title here' })
-    expect(shared.title).toBe("Gabriel's Delight: A delight")
-  })
-
-  it('attaches the photo as a file when the browser can share files', async () => {
-    stubFetchOk()
-    let shared
-    vi.stubGlobal('navigator', { share: async (data) => { shared = data }, canShare: () => true })
-    await shareByEmail(entryWithPhoto)
-    expect(shared.files).toHaveLength(1)
-    expect(shared.files[0].name).toBe('delight.jpg')
-  })
-
-  it('reports a cancelled share as ok, without falling back to mailto', async () => {
-    const abort = Object.assign(new Error('cancelled'), { name: 'AbortError' })
-    vi.stubGlobal('navigator', { share: async () => { throw abort } })
-    const result = await shareByEmail(entry)
-    expect(result).toEqual({ ok: true, cancelled: true })
-  })
-
-  it('falls back to mailto when share() fails for a reason other than cancellation', async () => {
-    vi.stubGlobal('navigator', { share: async () => { throw new Error('some other failure') } })
+describe('shareByEmail', () => {
+  it('always builds a mailto: with the date + title in the subject and only the entry text in the body', async () => {
+    vi.stubGlobal('navigator', {})
     const result = await shareByEmail(entry)
     expect(result.ok).toBe(true)
     const params = new URL(result.mailto.replace('mailto:', 'https://x/')).searchParams
     expect(params.get('subject')).toBe("Gabriel's Delight from 24 Jun 2026: A quiet find")
     expect(params.get('body')).toBe(entry.entry)
   })
-})
 
-describe('shareByEmail — no native share (mailto fallback, text only)', () => {
-  it('puts the date and title in the subject, and only the entry text in the body', async () => {
+  it('never includes the title in the body — only the entry text', async () => {
     vi.stubGlobal('navigator', {})
     const result = await shareByEmail(entry)
     const params = new URL(result.mailto.replace('mailto:', 'https://x/')).searchParams
-    expect(params.get('subject')).toBe("Gabriel's Delight from 24 Jun 2026: A quiet find")
-    expect(params.get('body')).toBe(entry.entry)
+    expect(params.get('body')).not.toContain(entry.title)
+  })
+
+  it('falls back to the entry title when untitled', async () => {
+    vi.stubGlobal('navigator', {})
+    const result = await shareByEmail({ date: '2026-06-24', entry: 'no title here' })
+    const params = new URL(result.mailto.replace('mailto:', 'https://x/')).searchParams
+    expect(params.get('subject')).toBe("Gabriel's Delight from 24 Jun 2026: A delight")
   })
 
   it('drops the "from <date>" clause when the date is missing or invalid', async () => {
@@ -219,10 +192,49 @@ describe('shareByEmail — no native share (mailto fallback, text only)', () => 
     expect(params.get('subject')).toBe("Gabriel's Delight: No date here")
   })
 
-  it('never includes the title in the body — only the entry text', async () => {
+  it('never touches navigator.share — Gmail was found to silently drop the body when a file rides along on a real device', async () => {
+    let shareCalled = false
+    vi.stubGlobal('navigator', { share: async () => { shareCalled = true } })
+    await shareByEmail(entryWithPhoto)
+    expect(shareCalled).toBe(false)
+  })
+
+  it('has no photoCopied flag when the entry has no photo', async () => {
     vi.stubGlobal('navigator', {})
     const result = await shareByEmail(entry)
-    const params = new URL(result.mailto.replace('mailto:', 'https://x/')).searchParams
-    expect(params.get('body')).not.toContain(entry.title)
+    expect(result.photoCopied).toBeUndefined()
+  })
+
+  it('copies the photo to the clipboard (single image ClipboardItem) when present and supported', async () => {
+    stubFetchOk()
+    let written
+    vi.stubGlobal('ClipboardItem', class FakeClipboardItem {
+      constructor(parts) { this.parts = parts }
+    })
+    vi.stubGlobal('navigator', { clipboard: { write: async (items) => { written = items[0] } } })
+    const result = await shareByEmail(entryWithPhoto)
+    expect(result.photoCopied).toBe(true)
+    expect(written.parts['image/jpeg']).toBeDefined()
+  })
+
+  it('reports photoCopied: false without erroring when the clipboard write fails', async () => {
+    stubFetchOk()
+    vi.stubGlobal('ClipboardItem', class FakeClipboardItem {
+      constructor(parts) { this.parts = parts }
+    })
+    vi.stubGlobal('navigator', { clipboard: { write: async () => { throw new Error('nope') } } })
+    const result = await shareByEmail(entryWithPhoto)
+    expect(result.ok).toBe(true)
+    expect(result.photoCopied).toBe(false)
+    // the mailto: link is still valid even though the photo couldn't be copied
+    expect(result.mailto).toContain('mailto:')
+  })
+
+  it('has no photoCopied flag when the photo fetch itself fails, without erroring', async () => {
+    vi.stubGlobal('fetch', async () => { throw new Error('offline') })
+    vi.stubGlobal('navigator', {})
+    const result = await shareByEmail(entryWithPhoto)
+    expect(result.ok).toBe(true)
+    expect(result.photoCopied).toBeUndefined()
   })
 })

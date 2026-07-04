@@ -11,6 +11,10 @@ export default function EntryView({ entry, entries, onBack, onEdit, onChip, onOn
   // Only surfaced after the OS share sheet isn't available and we copied to
   // the clipboard instead — the native sheet already gives its own feedback.
   const [shareStatus, setShareStatus] = useState(null) // null | 'copied' | 'copied-photo' | 'error'
+  // Email always opens a mailto: link (visibly obvious on its own), but the
+  // photo-copied-to-clipboard part needs its own callout since nothing else
+  // signals it happened.
+  const [emailPhotoCopied, setEmailPhotoCopied] = useState(false)
 
   async function handleShare() {
     setShareStatus(null)
@@ -25,12 +29,17 @@ export default function EntryView({ entry, entries, onBack, onEdit, onChip, onOn
     window.setTimeout(() => setShareStatus(null), 4000)
   }
 
-  // Opens the same OS share sheet as Share when available (the only way a
-  // web page can hand a photo to an email app as an attachment), formatted
-  // for email specifically; falls back to a plain mailto: (no photo — that
-  // part genuinely can't be helped) when it isn't.
+  // Always a mailto: link (correct subject/body on every mail client, no
+  // exceptions) — when there's a photo, it's copied to the clipboard first
+  // so it can be pasted into the compose window that opens, since mailto:
+  // itself can never carry an attachment.
   async function handleEmail() {
+    setEmailPhotoCopied(false)
     const result = await shareByEmail(entry)
+    if (result.photoCopied) {
+      setEmailPhotoCopied(true)
+      window.setTimeout(() => setEmailPhotoCopied(false), 6000)
+    }
     if (result.mailto) window.location.href = result.mailto
   }
   return (
@@ -68,9 +77,10 @@ export default function EntryView({ entry, entries, onBack, onEdit, onChip, onOn
         {shareStatus === 'copied' && <span className="share-status">Copied to clipboard</span>}
         {shareStatus === 'copied-photo' && <span className="share-status">Copied (text + photo) to clipboard</span>}
         {shareStatus === 'error' && <span className="share-status share-status-error">Couldn't share — try again</span>}
+        {emailPhotoCopied && <span className="share-status">Photo copied — paste it into the email</span>}
         <div className="ev-actions">
           <button className="btn" onClick={() => onEdit(entry)}>Edit</button>
-          <button className="btn btn-sm" onClick={handleEmail} title="Email this delight, photo included where your mail app supports it">
+          <button className="btn btn-sm" onClick={handleEmail} title="Email this delight — the photo (if any) is copied to your clipboard to paste in, since mailto: can't attach it directly">
             <MailIcon /> Email
           </button>
           <button className="btn btn-sm" onClick={handleShare}><ShareIcon /> Share</button>

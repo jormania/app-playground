@@ -4,9 +4,9 @@
 // clipboard can carry an image — on anything without navigator.share (mostly
 // desktop Linux/older browsers). Deliberately just title + entry text +
 // photo: day/tags/people are journal metadata, not part of the delight
-// itself. Email (shareByEmail, below) reuses the same navigator.share() but
-// with its own subject/body split, rather than folding the title into text
-// the way this generic path needs to for WhatsApp's sake.
+// itself. Email (shareByEmail, below) is a separate, mailto:-based path —
+// see its own comment for why it doesn't reuse navigator.share() the way
+// this one does.
 import { fetchPhotoBlob } from './notionPhoto.js'
 import { formatMedium } from './dates.js'
 
@@ -53,36 +53,40 @@ export async function shareEntry(entry) {
   return copyToClipboard(text, file)
 }
 
-// A separate action rather than a "Share" variant: the subject is its own
-// custom line ("Gabriel's Delight from <date>: <title>"), the body is the
-// entry text alone (never doubled with the title the way the generic Share
-// button needs for WhatsApp), and the photo goes along as an attachment
-// where the browser can carry files through navigator.share() — this is the
-// one path that can actually attach a photo to an email at all, since
-// mailto: (and Gmail's own "compose" URL) can never carry an attachment
-// from a web page, on any client. Opens the OS share sheet same as Share
-// does; the user picks their mail app from it. Falls back to a plain
-// mailto: (text only, no photo — a mailto: link truly cannot attach a
-// file) when navigator.share isn't available, or fails for a reason other
-// than the user cancelling.
+// Always a mailto: link for the subject/body — never routed through
+// navigator.share(), unlike Share above. That was tried first, and Gmail
+// (tested on a real phone) turned out to silently drop the entry text
+// whenever a file was attached alongside it: Android's share intent can
+// only carry one MIME type, so once a photo is involved the intent becomes
+// an image share with the text along for the ride, and different mail
+// apps read that differently — Gmail's read of it was an empty body. A
+// mailto: link has no such ambiguity: subject and body land correctly on
+// every mail client, every time. The tradeoff is the one thing mailto:
+// truly cannot do on any client — carry an attachment — so the photo is
+// copied to the clipboard instead, ready to paste into the compose window
+// that opens (Gmail's own compose accepts a pasted image directly).
 export async function shareByEmail(entry) {
   const subject = emailSubject(entry)
   const text = entry?.entry || ''
+  const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`
+
   const file = await photoFile(entry?.photo)
+  if (!file) return { ok: true, mailto }
 
-  if (canShare()) {
-    const data = { title: subject, text }
-    if (file && navigator.canShare?.({ files: [file] })) data.files = [file]
-    try {
-      await navigator.share(data)
-      return { ok: true, shared: true }
-    } catch (err) {
-      if (err?.name === 'AbortError') return { ok: true, cancelled: true }
-      // fall through to the mailto: fallback below
+  const photoCopied = await copyPhotoToClipboard(file)
+  return { ok: true, mailto, photoCopied }
+}
+
+async function copyPhotoToClipboard(file) {
+  try {
+    if (navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
+      await navigator.clipboard.write([new ClipboardItem({ [file.type]: file })])
+      return true
     }
+  } catch {
+    // best-effort only — email still proceeds via mailto, just without the photo
   }
-
-  return { ok: true, mailto: `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}` }
+  return false
 }
 
 // Mirrors Sol Odyssey's buddyMail copy pattern: a rich multi-type
