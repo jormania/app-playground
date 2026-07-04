@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { canShare, shareEntry, emailUrl } from './share.js'
+import { canShare, shareEntry, shareByEmail } from './share.js'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -161,26 +161,68 @@ describe('shareEntry — no native share (desktop fallback)', () => {
   })
 })
 
-describe('emailUrl', () => {
-  it('puts the date and title in the subject, and only the entry text in the body', () => {
-    const url = emailUrl(entry)
-    const params = new URL(url.replace('mailto:', 'https://x/')).searchParams
+describe('shareByEmail — native share available', () => {
+  it('shares the subject as title and the entry text alone as text (never doubled)', async () => {
+    let shared
+    vi.stubGlobal('navigator', { share: async (data) => { shared = data } })
+    const result = await shareByEmail(entry)
+    expect(result).toEqual({ ok: true, shared: true })
+    expect(shared).toEqual({ title: "Gabriel's Delight from 24 Jun 2026: A quiet find", text: entry.entry })
+  })
+
+  it('falls back to the entry title when untitled, and drops "from <date>" when the date is missing', async () => {
+    let shared
+    vi.stubGlobal('navigator', { share: async (data) => { shared = data } })
+    await shareByEmail({ entry: 'no title here' })
+    expect(shared.title).toBe("Gabriel's Delight: A delight")
+  })
+
+  it('attaches the photo as a file when the browser can share files', async () => {
+    stubFetchOk()
+    let shared
+    vi.stubGlobal('navigator', { share: async (data) => { shared = data }, canShare: () => true })
+    await shareByEmail(entryWithPhoto)
+    expect(shared.files).toHaveLength(1)
+    expect(shared.files[0].name).toBe('delight.jpg')
+  })
+
+  it('reports a cancelled share as ok, without falling back to mailto', async () => {
+    const abort = Object.assign(new Error('cancelled'), { name: 'AbortError' })
+    vi.stubGlobal('navigator', { share: async () => { throw abort } })
+    const result = await shareByEmail(entry)
+    expect(result).toEqual({ ok: true, cancelled: true })
+  })
+
+  it('falls back to mailto when share() fails for a reason other than cancellation', async () => {
+    vi.stubGlobal('navigator', { share: async () => { throw new Error('some other failure') } })
+    const result = await shareByEmail(entry)
+    expect(result.ok).toBe(true)
+    const params = new URL(result.mailto.replace('mailto:', 'https://x/')).searchParams
+    expect(params.get('subject')).toBe("Gabriel's Delight from 24 Jun 2026: A quiet find")
+    expect(params.get('body')).toBe(entry.entry)
+  })
+})
+
+describe('shareByEmail — no native share (mailto fallback, text only)', () => {
+  it('puts the date and title in the subject, and only the entry text in the body', async () => {
+    vi.stubGlobal('navigator', {})
+    const result = await shareByEmail(entry)
+    const params = new URL(result.mailto.replace('mailto:', 'https://x/')).searchParams
     expect(params.get('subject')).toBe("Gabriel's Delight from 24 Jun 2026: A quiet find")
     expect(params.get('body')).toBe(entry.entry)
   })
 
-  it('falls back to the entry title when untitled', () => {
-    const params = new URL(emailUrl({ date: '2026-06-24' }).replace('mailto:', 'https://x/')).searchParams
-    expect(params.get('subject')).toBe("Gabriel's Delight from 24 Jun 2026: A delight")
-  })
-
-  it('drops the "from <date>" clause when the date is missing or invalid', () => {
-    const params = new URL(emailUrl({ title: 'No date here' }).replace('mailto:', 'https://x/')).searchParams
+  it('drops the "from <date>" clause when the date is missing or invalid', async () => {
+    vi.stubGlobal('navigator', {})
+    const result = await shareByEmail({ title: 'No date here' })
+    const params = new URL(result.mailto.replace('mailto:', 'https://x/')).searchParams
     expect(params.get('subject')).toBe("Gabriel's Delight: No date here")
   })
 
-  it('never includes the title in the body — only the entry text', () => {
-    const params = new URL(emailUrl(entry).replace('mailto:', 'https://x/')).searchParams
+  it('never includes the title in the body — only the entry text', async () => {
+    vi.stubGlobal('navigator', {})
+    const result = await shareByEmail(entry)
+    const params = new URL(result.mailto.replace('mailto:', 'https://x/')).searchParams
     expect(params.get('body')).not.toContain(entry.title)
   })
 })

@@ -336,6 +336,9 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .entry-view .meta-row { margin-top: 14px; }
 .ev-foot { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 0.72rem; color: var(--faint); }
 .ev-foot .count { display: inline-flex; align-items: center; gap: 6px; }
+/* Edit/Email/Share as one group, not three independent flex items — keeps
+   them together on a wrap instead of one peeling off onto its own row. */
+.ev-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 
 /* ── Buttons ── */
 .btn {

@@ -1,7 +1,7 @@
 {
-  "name": "The Cabinet — Cone of Cold",
+  "name": "The Cabinet",
   "short_name": "The Cabinet",
-  "description": "ConeofCold's Cabinet of Tools — every React app, one launch pad.",
+  "description": "ConeofCold's cabinet of tools — every app, one launch pad.",
   "id": "/cabinet.html",
   "start_url": "/cabinet.html",
   "scope": "/cabinet.html",
