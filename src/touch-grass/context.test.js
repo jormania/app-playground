@@ -46,12 +46,19 @@ describe('getTimeOfDay — autumn (October)', () => {
 
 describe('getTimeOfDay — with coordinates (SunCalc)', () => {
   const bucharest = { lat: 44.43, lon: 26.10 }
-  test('summer noon is day', () => {
-    const d = new Date('2024-06-21T12:00:00')
+  // Anchored to an explicit UTC instant (Bucharest is EEST, UTC+3, in June)
+  // rather than a bare 'T12:00:00' string — that's parsed as *local time of
+  // whatever machine runs the test*, so the same string means a different
+  // real-world instant (and a different actual sun position) on a CI
+  // runner (UTC) than on a dev machine set to Bucharest time. That mismatch
+  // is exactly what made the 3am case flip to 'dawn' in CI while passing
+  // locally.
+  test('summer noon (Bucharest local) is day', () => {
+    const d = new Date('2024-06-21T09:00:00Z') // 12:00 local
     expect(getTimeOfDay(d, bucharest)).toBe('day')
   })
-  test('summer 3am is night', () => {
-    const d = new Date('2024-06-21T03:00:00')
+  test('summer 3am (Bucharest local) is night', () => {
+    const d = new Date('2024-06-21T00:00:00Z') // 03:00 local
     expect(getTimeOfDay(d, bucharest)).toBe('night')
   })
   test('returns a valid bucket for any hour', () => {

@@ -21,10 +21,13 @@ async function photoFile(photo) {
   return new File([blob], photo.name || 'delight.jpg', { type: blob.type || 'image/jpeg' })
 }
 
+// Generic, not personalized — Journal of Delights is BYO-Notion, so anyone
+// can run their own copy against their own database; the subject shouldn't
+// name a specific person.
 function emailSubject(entry) {
   const title = entry?.title || 'A delight'
   const date = formatMedium(entry?.date)
-  return date ? `Gabriel's Delight from ${date}: ${title}` : `Gabriel's Delight: ${title}`
+  return date ? `A Delight from ${date}: ${title}` : `A Delight: ${title}`
 }
 
 export async function shareEntry(entry) {

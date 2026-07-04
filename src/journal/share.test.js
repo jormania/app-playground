@@ -167,7 +167,7 @@ describe('shareByEmail', () => {
     const result = await shareByEmail(entry)
     expect(result.ok).toBe(true)
     const params = new URL(result.mailto.replace('mailto:', 'https://x/')).searchParams
-    expect(params.get('subject')).toBe("Gabriel's Delight from 24 Jun 2026: A quiet find")
+    expect(params.get('subject')).toBe("A Delight from 24 Jun 2026: A quiet find")
     expect(params.get('body')).toBe(entry.entry)
   })
 
@@ -182,14 +182,14 @@ describe('shareByEmail', () => {
     vi.stubGlobal('navigator', {})
     const result = await shareByEmail({ date: '2026-06-24', entry: 'no title here' })
     const params = new URL(result.mailto.replace('mailto:', 'https://x/')).searchParams
-    expect(params.get('subject')).toBe("Gabriel's Delight from 24 Jun 2026: A delight")
+    expect(params.get('subject')).toBe("A Delight from 24 Jun 2026: A delight")
   })
 
   it('drops the "from <date>" clause when the date is missing or invalid', async () => {
     vi.stubGlobal('navigator', {})
     const result = await shareByEmail({ title: 'No date here' })
     const params = new URL(result.mailto.replace('mailto:', 'https://x/')).searchParams
-    expect(params.get('subject')).toBe("Gabriel's Delight: No date here")
+    expect(params.get('subject')).toBe("A Delight: No date here")
   })
 
   it('never touches navigator.share — Gmail was found to silently drop the body when a file rides along on a real device', async () => {
