@@ -15,6 +15,20 @@ function stubFetchOk() {
   }))
 }
 
+// A real navigator.clipboard.write() has to read each ClipboardItem value —
+// including a pending promise, like the photo's — to actually write it, so
+// it awaits them (and rejects if one rejects) before resolving. A mock that
+// just resolves without ever touching `parts` doesn't exercise that, and
+// leaves a rejected photo-blob promise unobserved (a real "unhandled
+// rejection", not a product bug, but a hole in the test).
+function realisticWrite(onWritten) {
+  return async (items) => {
+    const item = items[0]
+    onWritten?.(item)
+    await Promise.all(Object.values(item.parts))
+  }
+}
+
 describe('canShare', () => {
   it('is false when navigator.share is absent', () => {
     vi.stubGlobal('navigator', {})
@@ -122,7 +136,7 @@ describe('shareEntry — no native share (desktop fallback)', () => {
     vi.stubGlobal('ClipboardItem', FakeClipboardItem)
     let written
     vi.stubGlobal('navigator', {
-      clipboard: { write: async (items) => { written = items[0] } },
+      clipboard: { write: realisticWrite((item) => { written = item }) },
     })
     const result = await shareEntry(entryWithPhoto)
     expect(result).toEqual({ ok: true, copied: true, withPhoto: true })
@@ -162,47 +176,78 @@ describe('shareEntry — no native share (desktop fallback)', () => {
 })
 
 describe('shareByEmail', () => {
-  it('always builds a mailto: with the date + title in the subject and only the entry text in the body', async () => {
+  // shareByEmail() is deliberately synchronous (not `async`) so that when
+  // there's a photo, navigator.clipboard.write() is called in the same
+  // tick as the click — before any `await` has a chance to spend the
+  // click's transient user activation, which a clipboard write silently
+  // needs. `mailto` is available immediately either way; `ready` is a
+  // promise the caller awaits to learn whether the photo copy landed.
+
+  it('is synchronous: mailto is available without awaiting anything', () => {
     vi.stubGlobal('navigator', {})
-    const result = await shareByEmail(entry)
-    expect(result.ok).toBe(true)
-    const params = new URL(result.mailto.replace('mailto:', 'https://x/')).searchParams
-    expect(params.get('subject')).toBe("A Delight from 24 Jun 2026: A quiet find")
+    const result = shareByEmail(entry)
+    expect(typeof result.mailto).toBe('string')
+    expect(result.ready).toBeInstanceOf(Promise)
+  })
+
+  it('builds a mailto: with the date + title in the subject and only the entry text in the body', () => {
+    vi.stubGlobal('navigator', {})
+    const { mailto } = shareByEmail(entry)
+    const params = new URL(mailto.replace('mailto:', 'https://x/')).searchParams
+    expect(params.get('subject')).toBe('A Delight from 24 Jun 2026: A quiet find')
     expect(params.get('body')).toBe(entry.entry)
   })
 
-  it('never includes the title in the body — only the entry text', async () => {
+  it('never includes the title in the body — only the entry text', () => {
     vi.stubGlobal('navigator', {})
-    const result = await shareByEmail(entry)
-    const params = new URL(result.mailto.replace('mailto:', 'https://x/')).searchParams
+    const { mailto } = shareByEmail(entry)
+    const params = new URL(mailto.replace('mailto:', 'https://x/')).searchParams
     expect(params.get('body')).not.toContain(entry.title)
   })
 
-  it('falls back to the entry title when untitled', async () => {
+  it('falls back to the entry title when untitled', () => {
     vi.stubGlobal('navigator', {})
-    const result = await shareByEmail({ date: '2026-06-24', entry: 'no title here' })
-    const params = new URL(result.mailto.replace('mailto:', 'https://x/')).searchParams
-    expect(params.get('subject')).toBe("A Delight from 24 Jun 2026: A delight")
+    const { mailto } = shareByEmail({ date: '2026-06-24', entry: 'no title here' })
+    const params = new URL(mailto.replace('mailto:', 'https://x/')).searchParams
+    expect(params.get('subject')).toBe('A Delight from 24 Jun 2026: A delight')
   })
 
-  it('drops the "from <date>" clause when the date is missing or invalid', async () => {
+  it('drops the "from <date>" clause when the date is missing or invalid', () => {
     vi.stubGlobal('navigator', {})
-    const result = await shareByEmail({ title: 'No date here' })
-    const params = new URL(result.mailto.replace('mailto:', 'https://x/')).searchParams
-    expect(params.get('subject')).toBe("A Delight: No date here")
+    const { mailto } = shareByEmail({ title: 'No date here' })
+    const params = new URL(mailto.replace('mailto:', 'https://x/')).searchParams
+    expect(params.get('subject')).toBe('A Delight: No date here')
   })
 
   it('never touches navigator.share — Gmail was found to silently drop the body when a file rides along on a real device', async () => {
     let shareCalled = false
     vi.stubGlobal('navigator', { share: async () => { shareCalled = true } })
-    await shareByEmail(entryWithPhoto)
+    await shareByEmail(entryWithPhoto).ready
     expect(shareCalled).toBe(false)
   })
 
-  it('has no photoCopied flag when the entry has no photo', async () => {
+  it('ready resolves false when the entry has no photo', async () => {
     vi.stubGlobal('navigator', {})
-    const result = await shareByEmail(entry)
-    expect(result.photoCopied).toBeUndefined()
+    const { ready } = shareByEmail(entry)
+    expect(await ready).toBe(false)
+  })
+
+  it('calls navigator.clipboard.write() synchronously, before the photo fetch resolves', () => {
+    let writeCalledSync = false
+    let fetchResolved = false
+    vi.stubGlobal('fetch', () => new Promise((resolve) => {
+      queueMicrotask(() => { fetchResolved = true; resolve({ ok: true, blob: async () => new Blob(['x'], { type: 'image/jpeg' }) }) })
+    }))
+    vi.stubGlobal('ClipboardItem', class FakeClipboardItem { constructor(parts) { this.parts = parts } })
+    vi.stubGlobal('navigator', {
+      clipboard: {
+        write: async () => {
+          writeCalledSync = !fetchResolved // true only if write() ran before the fetch settled
+        },
+      },
+    })
+    shareByEmail(entryWithPhoto)
+    expect(writeCalledSync).toBe(true)
   })
 
   it('copies the photo to the clipboard (single image ClipboardItem) when present and supported', async () => {
@@ -211,30 +256,42 @@ describe('shareByEmail', () => {
     vi.stubGlobal('ClipboardItem', class FakeClipboardItem {
       constructor(parts) { this.parts = parts }
     })
-    vi.stubGlobal('navigator', { clipboard: { write: async (items) => { written = items[0] } } })
-    const result = await shareByEmail(entryWithPhoto)
-    expect(result.photoCopied).toBe(true)
+    vi.stubGlobal('navigator', { clipboard: { write: realisticWrite((item) => { written = item }) } })
+    const { ready } = shareByEmail(entryWithPhoto)
+    expect(await ready).toBe(true)
     expect(written.parts['image/jpeg']).toBeDefined()
   })
 
-  it('reports photoCopied: false without erroring when the clipboard write fails', async () => {
+  it('resolves ready: false without erroring when the clipboard write fails', async () => {
     stubFetchOk()
     vi.stubGlobal('ClipboardItem', class FakeClipboardItem {
       constructor(parts) { this.parts = parts }
     })
     vi.stubGlobal('navigator', { clipboard: { write: async () => { throw new Error('nope') } } })
-    const result = await shareByEmail(entryWithPhoto)
-    expect(result.ok).toBe(true)
-    expect(result.photoCopied).toBe(false)
+    const { mailto, ready } = shareByEmail(entryWithPhoto)
+    expect(await ready).toBe(false)
     // the mailto: link is still valid even though the photo couldn't be copied
-    expect(result.mailto).toContain('mailto:')
+    expect(mailto).toContain('mailto:')
   })
 
-  it('has no photoCopied flag when the photo fetch itself fails, without erroring', async () => {
+  it('resolves ready: false when the photo fetch itself fails, without erroring', async () => {
     vi.stubGlobal('fetch', async () => { throw new Error('offline') })
-    vi.stubGlobal('navigator', {})
-    const result = await shareByEmail(entryWithPhoto)
-    expect(result.ok).toBe(true)
-    expect(result.photoCopied).toBeUndefined()
+    vi.stubGlobal('ClipboardItem', class FakeClipboardItem { constructor(parts) { this.parts = parts } })
+    vi.stubGlobal('navigator', { clipboard: { write: realisticWrite() } })
+    const { ready } = shareByEmail(entryWithPhoto)
+    expect(await ready).toBe(false)
+  })
+
+  it('resolves ready: false if the copy takes too long (safety timeout)', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('fetch', () => new Promise(() => {})) // never resolves
+    vi.stubGlobal('ClipboardItem', class FakeClipboardItem { constructor(parts) { this.parts = parts } })
+    vi.stubGlobal('navigator', { clipboard: { write: () => new Promise(() => {}) } })
+    const { ready } = shareByEmail(entryWithPhoto)
+    let result
+    ready.then((v) => { result = v })
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(result).toBe(false)
+    vi.useRealTimers()
   })
 })

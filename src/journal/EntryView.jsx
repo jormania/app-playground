@@ -15,6 +15,7 @@ export default function EntryView({ entry, entries, onBack, onEdit, onChip, onOn
   // photo-copied-to-clipboard part needs its own callout since nothing else
   // signals it happened.
   const [emailPhotoCopied, setEmailPhotoCopied] = useState(false)
+  const [emailBusy, setEmailBusy] = useState(false)
 
   async function handleShare() {
     setShareStatus(null)
@@ -32,15 +33,24 @@ export default function EntryView({ entry, entries, onBack, onEdit, onChip, onOn
   // Always a mailto: link (correct subject/body on every mail client, no
   // exceptions) — when there's a photo, it's copied to the clipboard first
   // so it can be pasted into the compose window that opens, since mailto:
-  // itself can never carry an attachment.
+  // itself can never carry an attachment. shareByEmail() itself must be
+  // called synchronously, right from this click (not after an earlier
+  // await), so its clipboard write still counts as part of the user's
+  // gesture — see its own comment. Waiting for `ready` before opening the
+  // mailto: link (rather than firing both at once) is deliberate too: open
+  // the mail app first and the paste can land before the copy actually
+  // finished, especially once the tab backgrounds.
   async function handleEmail() {
     setEmailPhotoCopied(false)
-    const result = await shareByEmail(entry)
-    if (result.photoCopied) {
+    const { mailto, ready } = shareByEmail(entry)
+    setEmailBusy(true)
+    const copied = await ready
+    setEmailBusy(false)
+    if (copied) {
       setEmailPhotoCopied(true)
       window.setTimeout(() => setEmailPhotoCopied(false), 6000)
     }
-    if (result.mailto) window.location.href = result.mailto
+    window.location.href = mailto
   }
   return (
     <article className="entry-view">
@@ -80,8 +90,13 @@ export default function EntryView({ entry, entries, onBack, onEdit, onChip, onOn
         {emailPhotoCopied && <span className="share-status">Photo copied — paste it into the email</span>}
         <div className="ev-actions">
           <button className="btn" onClick={() => onEdit(entry)}>Edit</button>
-          <button className="btn btn-sm" onClick={handleEmail} title="Email this delight — the photo (if any) is copied to your clipboard to paste in, since mailto: can't attach it directly">
-            <MailIcon /> Email
+          <button
+            className="btn btn-sm"
+            onClick={handleEmail}
+            disabled={emailBusy}
+            title="Email this delight — the photo (if any) is copied to your clipboard to paste in, since mailto: can't attach it directly"
+          >
+            <MailIcon /> {emailBusy ? 'Copying photo…' : 'Email'}
           </button>
           <button className="btn btn-sm" onClick={handleShare}><ShareIcon /> Share</button>
         </div>

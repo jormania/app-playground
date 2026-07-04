@@ -39,9 +39,9 @@ export async function shareEntry(entry) {
   // it survives everywhere, at the cost of Gmail-style subject-line targets
   // seeing it twice (subject + first line of the body), which reads fine.
   const text = entryText ? `${title}\n\n${entryText}` : title
-  const file = await photoFile(entry?.photo)
 
   if (canShare()) {
+    const file = await photoFile(entry?.photo)
     const data = { title, text }
     if (file && navigator.canShare?.({ files: [file] })) data.files = [file]
     try {
@@ -53,7 +53,7 @@ export async function shareEntry(entry) {
     }
   }
 
-  return copyToClipboard(text, file)
+  return copyToClipboard(text, entry?.photo)
 }
 
 // Always a mailto: link for the subject/body — never routed through
@@ -68,40 +68,67 @@ export async function shareEntry(entry) {
 // truly cannot do on any client — carry an attachment — so the photo is
 // copied to the clipboard instead, ready to paste into the compose window
 // that opens (Gmail's own compose accepts a pasted image directly).
-export async function shareByEmail(entry) {
+//
+// Deliberately NOT an async function: navigator.clipboard.write() has to be
+// *called* within the click's transient user activation, which an `await`
+// before it (even just for the photo's network fetch) can spend — after
+// which the write silently no-ops, leaving whatever was already on the
+// clipboard in place. So the write is kicked off synchronously, right here,
+// passing it a promise for the photo bytes rather than waiting for them
+// first; the caller awaits the returned `ready` promise to know whether it
+// actually landed, and should hold off opening the mailto: link until then
+// (see EntryView.jsx) so the user isn't pasting before it's ready.
+export function shareByEmail(entry) {
   const subject = emailSubject(entry)
   const text = entry?.entry || ''
   const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`
 
-  const file = await photoFile(entry?.photo)
-  if (!file) return { ok: true, mailto }
-
-  const photoCopied = await copyPhotoToClipboard(file)
-  return { ok: true, mailto, photoCopied }
+  if (!entry?.photo?.url) return { mailto, ready: Promise.resolve(false) }
+  return { mailto, ready: withTimeout(copyPhotoToClipboard(entry.photo.url), 5000) }
 }
 
-async function copyPhotoToClipboard(file) {
+// A hung fetch (dead network, proxy down) shouldn't leave the Email button
+// stuck forever — after this, it proceeds to mailto: without the photo.
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(false), ms))])
+}
+
+function copyPhotoToClipboard(url) {
+  if (!(navigator.clipboard?.write && typeof ClipboardItem !== 'undefined')) return Promise.resolve(false)
   try {
-    if (navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
-      await navigator.clipboard.write([new ClipboardItem({ [file.type]: file })])
-      return true
-    }
+    // Our own upload pipeline (photo.js) always resizes to JPEG before it
+    // ever reaches Notion, so the eventual blob's real type is known ahead
+    // of the fetch that will produce it.
+    const blobPromise = fetchPhotoBlob(url).then((blob) => {
+      if (!blob) throw new Error('photo unavailable')
+      return blob
+    })
+    return navigator.clipboard.write([new ClipboardItem({ 'image/jpeg': blobPromise })])
+      .then(() => true)
+      .catch(() => false)
   } catch {
-    // best-effort only — email still proceeds via mailto, just without the photo
+    return Promise.resolve(false)
   }
-  return false
 }
 
 // Mirrors Sol Odyssey's buddyMail copy pattern: a rich multi-type
 // ClipboardItem first (text + image, when there's a photo), degrading to
-// plain writeText if that's unsupported or throws.
-async function copyToClipboard(text, file) {
+// plain writeText if that's unsupported or throws. Same activation
+// constraint as copyPhotoToClipboard above — the photo (when there is one)
+// is passed to ClipboardItem as a pending promise, and write() is called
+// before anything is awaited, not after.
+async function copyToClipboard(text, photo) {
   try {
     if (navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
       const parts = { 'text/plain': new Blob([text], { type: 'text/plain' }) }
-      if (file) parts[file.type] = file
+      if (photo?.url) {
+        parts['image/jpeg'] = fetchPhotoBlob(photo.url).then((blob) => {
+          if (!blob) throw new Error('photo unavailable')
+          return blob
+        })
+      }
       await navigator.clipboard.write([new ClipboardItem(parts)])
-      return { ok: true, copied: true, withPhoto: Boolean(file) }
+      return { ok: true, copied: true, withPhoto: Boolean(photo?.url) }
     }
   } catch {
     // fall through to text-only
