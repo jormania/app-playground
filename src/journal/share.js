@@ -81,9 +81,16 @@ export async function shareEntry(entry) {
 export function shareByEmail(entry) {
   const subject = emailSubject(entry)
   const text = entry?.entry || ''
-  const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`
+  const hasPhoto = Boolean(entry?.photo?.url)
+  // A trailing blank line, only when there's a photo to paste: mail compose
+  // windows put the cursor at the end of a pre-filled body, so without this
+  // it lands hard up against the last sentence — a blank line first leaves
+  // it sitting on its own empty line, with a paste landing there already
+  // visually separated from the text, rather than jammed into it.
+  const body = hasPhoto && text ? `${text}\n\n` : text
+  const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 
-  if (!entry?.photo?.url) return { mailto, ready: Promise.resolve(false) }
+  if (!hasPhoto) return { mailto, ready: Promise.resolve(false) }
   return { mailto, ready: withTimeout(copyPhotoToClipboard(entry.photo.url), 5000) }
 }
 

@@ -216,6 +216,20 @@ describe('shareByEmail', () => {
     expect(params.get('body')).toBe(entry.entry)
   })
 
+  it('adds a trailing blank line to the body when there is a photo, to leave the cursor some room to paste into', () => {
+    vi.stubGlobal('navigator', {})
+    const { mailto } = shareByEmail(entryWithPhoto)
+    const params = new URL(mailto.replace('mailto:', 'https://x/')).searchParams
+    expect(params.get('body')).toBe(`${entry.entry}\n\n`)
+  })
+
+  it('does not add a trailing blank line when there is no photo', () => {
+    vi.stubGlobal('navigator', {})
+    const { mailto } = shareByEmail(entry)
+    const params = new URL(mailto.replace('mailto:', 'https://x/')).searchParams
+    expect(params.get('body')).toBe(entry.entry)
+  })
+
   it('never includes the title in the body — only the entry text', () => {
     vi.stubGlobal('navigator', {})
     const { mailto } = shareByEmail(entry)
