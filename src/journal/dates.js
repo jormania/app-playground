@@ -38,6 +38,15 @@ export function formatShort(key) {
   return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`
 }
 
+// "24 Jun 2026" — compact but unambiguous with the year (formatShort omits
+// it, formatHuman adds a weekday that's overkill here) — used for e.g. an
+// email subject line.
+export function formatMedium(key) {
+  const d = keyToDate(key)
+  if (!d) return ''
+  return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`
+}
+
 export function monthLabel(year, month) {
   return `${MONTHS[month]} ${year}`
 }

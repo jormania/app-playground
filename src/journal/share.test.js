@@ -1,11 +1,11 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { canShare, shareEntry } from './share.js'
+import { canShare, shareEntry, emailUrl } from './share.js'
 
 afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-const entry = { title: 'A quiet find', entry: 'The rain smelled like the inside of a cedar box.' }
+const entry = { date: '2026-06-24', title: 'A quiet find', entry: 'The rain smelled like the inside of a cedar box.' }
 const entryWithPhoto = { ...entry, photo: { url: 'https://files.notion.so/delight.jpg', name: 'delight.jpg' } }
 
 function stubFetchOk() {
@@ -158,5 +158,29 @@ describe('shareEntry — no native share (desktop fallback)', () => {
     vi.stubGlobal('navigator', { clipboard: { writeText: async (text) => { written = text } } })
     await shareEntry({ title: 'Just a title' })
     expect(written).toBe('Just a title')
+  })
+})
+
+describe('emailUrl', () => {
+  it('puts the date and title in the subject, and only the entry text in the body', () => {
+    const url = emailUrl(entry)
+    const params = new URL(url.replace('mailto:', 'https://x/')).searchParams
+    expect(params.get('subject')).toBe("Gabriel's Delight from 24 Jun 2026: A quiet find")
+    expect(params.get('body')).toBe(entry.entry)
+  })
+
+  it('falls back to the entry title when untitled', () => {
+    const params = new URL(emailUrl({ date: '2026-06-24' }).replace('mailto:', 'https://x/')).searchParams
+    expect(params.get('subject')).toBe("Gabriel's Delight from 24 Jun 2026: A delight")
+  })
+
+  it('drops the "from <date>" clause when the date is missing or invalid', () => {
+    const params = new URL(emailUrl({ title: 'No date here' }).replace('mailto:', 'https://x/')).searchParams
+    expect(params.get('subject')).toBe("Gabriel's Delight: No date here")
+  })
+
+  it('never includes the title in the body — only the entry text', () => {
+    const params = new URL(emailUrl(entry).replace('mailto:', 'https://x/')).searchParams
+    expect(params.get('body')).not.toContain(entry.title)
   })
 })

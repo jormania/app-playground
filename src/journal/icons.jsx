@@ -79,6 +79,10 @@ export const MoonIcon = (p) => (
 export const ShareIcon = (p) => (
   <svg {...base} {...p}><circle cx="18" cy="5" r="2.5" /><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="19" r="2.5" /><path d="M8.2 10.7l7.6-4.4M8.2 13.3l7.6 4.4" /></svg>
 )
+// Email — a simple envelope.
+export const MailIcon = (p) => (
+  <svg {...base} {...p}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M4 6.5l8 6.5 8-6.5" /></svg>
+)
 // More — three dots, for the mobile overflow menu.
 export const MoreIcon = (p) => (
   <svg {...base} {...p}><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none" /></svg>

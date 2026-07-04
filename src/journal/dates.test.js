@@ -1,6 +1,6 @@
 import { test, expect, describe } from 'vitest'
 import {
-  todayKey, keyToDate, formatHuman, formatShort, findByDate, hasEntryOn,
+  todayKey, keyToDate, formatHuman, formatShort, formatMedium, findByDate, hasEntryOn,
   sortByDateDesc, monthGrid, stepMonth, entriesOnSameDay, yearGrid,
 } from './dates.js'
 
@@ -24,6 +24,8 @@ describe('todayKey / keyToDate (local, not UTC)', () => {
 describe('formatting', () => {
   test('formatHuman', () => expect(formatHuman('2026-06-24')).toBe('Wednesday, 24 June 2026'))
   test('formatShort', () => expect(formatShort('2026-06-24')).toBe('24 Jun'))
+  test('formatMedium', () => expect(formatMedium('2026-06-24')).toBe('24 Jun 2026'))
+  test('formatMedium rejects junk like keyToDate does', () => expect(formatMedium('')).toBe(''))
 })
 
 describe('one-entry-per-date helpers', () => {

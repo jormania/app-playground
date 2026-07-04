@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { formatHuman, entriesOnSameDay } from './dates.js'
-import { CountIcon, BackIcon, HistoryIcon, ShareIcon } from './icons.jsx'
+import { CountIcon, BackIcon, HistoryIcon, ShareIcon, MailIcon } from './icons.jsx'
 import EntryMeta from './EntryMeta.jsx'
-import { shareEntry } from './share.js'
+import { shareEntry, emailUrl } from './share.js'
 
 // Single-entry read view: Title, Date, the essayette, then People + Tags on one
 // line (chips tap to filter), and Word Count from Notion's formula when saved.
@@ -59,7 +59,15 @@ export default function EntryView({ entry, entries, onBack, onEdit, onChip, onOn
         {shareStatus === 'copied' && <span className="share-status">Copied to clipboard</span>}
         {shareStatus === 'copied-photo' && <span className="share-status">Copied (text + photo) to clipboard</span>}
         {shareStatus === 'error' && <span className="share-status share-status-error">Couldn't share — try again</span>}
-        <button className="btn btn-sm" style={{ marginLeft: 'auto' }} onClick={handleShare}><ShareIcon /> Share</button>
+        <a
+          className="btn btn-sm"
+          style={{ marginLeft: 'auto' }}
+          href={emailUrl(entry)}
+          title="Email this delight — text only, mailto: can't carry the photo"
+        >
+          <MailIcon /> Email
+        </a>
+        <button className="btn btn-sm" onClick={handleShare}><ShareIcon /> Share</button>
         <button className="btn" onClick={() => onEdit(entry)}>Edit</button>
       </div>
     </article>

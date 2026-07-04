@@ -1,5 +1,10 @@
-import { test, expect, describe } from 'vitest'
-import { buildExportHtml } from './exportHtml.js'
+// @vitest-environment happy-dom
+import { test, expect, describe, afterEach, vi } from 'vitest'
+import { buildExportHtml, withEmbeddedPhotos } from './exportHtml.js'
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 const entries = [
   { id: '1', date: '2026-06-22', title: 'rain on the awning', entry: 'a tiny drum', tags: ['rain'], people: [], wordCount: 3 },
@@ -31,5 +36,38 @@ describe('buildExportHtml', () => {
   })
   test('needs no external scripts', () => {
     expect(html).not.toContain('<script')
+  })
+  test('renders no photo markup when an entry has none', () => {
+    expect(html).not.toContain('class="photo"')
+  })
+  test('embeds a photo as an <img> when the entry carries a resolved data URI', () => {
+    const withPhoto = buildExportHtml([{ ...entries[0], photo: { dataUrl: 'data:image/jpeg;base64,AAAA' } }])
+    expect(withPhoto).toContain('<div class="photo"><img src="data:image/jpeg;base64,AAAA" alt=""/></div>')
+  })
+})
+
+describe('withEmbeddedPhotos', () => {
+  test('leaves entries without a photo untouched', async () => {
+    const result = await withEmbeddedPhotos(entries)
+    expect(result).toEqual(entries)
+  })
+
+  test("resolves an entry's photo to a data: URI via the same proxy share.js uses", async () => {
+    vi.stubGlobal('fetch', async (url) => {
+      expect(url).toBe(`/api/notion-photo-proxy?url=${encodeURIComponent('https://files.notion.so/delight.jpg')}`)
+      return { ok: true, blob: async () => new Blob(['fake-bytes'], { type: 'image/jpeg' }) }
+    })
+    const [result] = await withEmbeddedPhotos([
+      { ...entries[0], photo: { url: 'https://files.notion.so/delight.jpg' } },
+    ])
+    expect(result.photo.dataUrl).toMatch(/^data:image\/jpeg;base64,/)
+  })
+
+  test('leaves the photo out (without throwing) when the fetch fails', async () => {
+    vi.stubGlobal('fetch', async () => ({ ok: false }))
+    const [result] = await withEmbeddedPhotos([
+      { ...entries[0], photo: { url: 'https://files.notion.so/delight.jpg' } },
+    ])
+    expect(result.photo.dataUrl).toBeUndefined()
   })
 })

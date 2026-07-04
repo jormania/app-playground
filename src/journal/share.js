@@ -4,31 +4,35 @@
 // clipboard can carry an image — on anything without navigator.share (mostly
 // desktop Linux/older browsers). Deliberately just title + entry text +
 // photo: day/tags/people are journal metadata, not part of the delight
-// itself.
+// itself. Email is a dedicated path (emailUrl, below) rather than going
+// through here — see its own comment for why.
+import { fetchPhotoBlob } from './notionPhoto.js'
+import { formatMedium } from './dates.js'
 
 export function canShare() {
   return typeof navigator !== 'undefined' && typeof navigator.share === 'function'
 }
 
-// Notion's Photo url is a signed S3 link with no CORS headers — fine for the
-// <img> tag that already renders it, but a direct fetch() from the browser
-// can't read the bytes (an opaque/failed response), so this always routes
-// through our own /api/notion-photo-proxy relay instead: a server-to-server
-// fetch has no CORS restriction, and same-origin means the browser can read
-// what comes back. Any failure here (offline, an expired signed URL, the
-// proxy itself erroring) just means the share/copy goes out as text only,
-// never an error.
 async function photoFile(photo) {
   if (!photo?.url) return null
-  try {
-    const res = await fetch(`/api/notion-photo-proxy?url=${encodeURIComponent(photo.url)}`)
-    if (!res.ok) return null
-    const blob = await res.blob()
-    const type = blob.type || 'image/jpeg'
-    return new File([blob], photo.name || 'delight.jpg', { type })
-  } catch {
-    return null
-  }
+  const blob = await fetchPhotoBlob(photo.url)
+  if (!blob) return null
+  return new File([blob], photo.name || 'delight.jpg', { type: blob.type || 'image/jpeg' })
+}
+
+// A dedicated mailto: link, not a navigator.share() call routed to Gmail —
+// the generic share sheet hands identical {title, text} fields to whichever
+// app the user picks, with no way to format just one of them differently.
+// A mailto: URL lets us set the subject deterministically instead, so the
+// title only ever appears once (in the subject), never doubled into the
+// body the way the generic Share button's WhatsApp workaround needs. Can't
+// carry the photo — mailto: has no attachment mechanism, on any client.
+export function emailUrl(entry) {
+  const title = entry?.title || 'A delight'
+  const date = formatMedium(entry?.date)
+  const subject = date ? `Gabriel's Delight from ${date}: ${title}` : `Gabriel's Delight: ${title}`
+  const body = entry?.entry || ''
+  return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }
 
 export async function shareEntry(entry) {

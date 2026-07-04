@@ -1,8 +1,12 @@
 // Builds a single self-contained HTML file of the whole journal — Tokyo Night
 // styles and the field SVGs baked inline, no external dependencies, so it reads
-// the same offline forever. `buildExportHtml` is pure (returns a string) and so
-// unit-tested; `downloadJournal` wraps it in a Blob download.
+// the same offline forever. `buildExportHtml` stays pure and sync (returns a
+// string from entries that already carry a resolved `photo.dataUrl`, so it's
+// still simple to unit-test) — `downloadJournal` does the async photo-fetching
+// (via the same CORS-workaround proxy share.js uses) before calling it, then
+// wraps the result in a Blob download.
 import { sortByDateDesc, formatHuman } from './dates.js'
+import { fetchPhotoBlob } from './notionPhoto.js'
 
 function esc(s) {
   return String(s == null ? '' : s)
@@ -25,9 +29,16 @@ function renderEntry(e) {
     : ''
   const meta = people || tags ? `<div class="meta">${people}${tags}</div>` : ''
   const wc = e.wordCount != null ? `<div class="wc">${e.wordCount} ${e.wordCount === 1 ? 'word' : 'words'}</div>` : ''
+  // The data URI is baked straight into the file (not a live Notion URL,
+  // which is signed and expires) — that's the whole point of a
+  // self-contained export. Missing only when the fetch in downloadJournal
+  // failed (offline, expired signed URL) — the entry still exports, just
+  // without its picture, same as everywhere else this photo is optional.
+  const photo = e.photo?.dataUrl ? `<div class="photo"><img src="${esc(e.photo.dataUrl)}" alt=""/></div>` : ''
   return `<article class="entry">
     <div class="date">${esc(formatHuman(e.date))}</div>
     <h2>${esc(e.title || 'untitled')}</h2>
+    ${photo}
     <div class="body">${esc(e.entry)}</div>
     ${meta}${wc}
   </article>`
@@ -53,6 +64,8 @@ header .sub{color:#a9b1d6;font-size:14px;margin-top:10px;font-weight:300}
 .entry{border-top:1px solid #292e42;padding:28px 0}
 .entry .date{font-family:ui-monospace,monospace;font-size:12px;color:#bb9af7}
 .entry h2{font-weight:500;font-size:1.4rem;color:#c0caf5;margin:6px 0 14px}
+.entry .photo{margin:0 0 16px}
+.entry .photo img{max-width:100%;max-height:420px;border-radius:8px;display:block}
 .entry .body{font-weight:300;font-size:1.0625rem;line-height:1.75;white-space:pre-wrap;color:#c0caf5}
 .meta{display:flex;flex-wrap:wrap;gap:7px 18px;align-items:center;margin-top:16px}
 .grp{display:inline-flex;flex-wrap:wrap;gap:7px;align-items:center}
@@ -74,8 +87,35 @@ ${list.map(renderEntry).join('\n')}
 </div></body></html>`
 }
 
-export function downloadJournal(entries) {
-  const html = buildExportHtml(entries)
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(blob)
+  })
+}
+
+// Resolves every entry's photo (if any) to a data: URI up front, via the same
+// CORS-workaround proxy share.js uses (Notion's signed file URL can't be
+// fetch()'d directly from the browser). A failure on any one entry just
+// leaves that entry's photo out — never blocks the rest of the export.
+// Exported for testing; downloadJournal is its only real caller.
+export async function withEmbeddedPhotos(entries) {
+  return Promise.all(
+    (entries || []).map(async (e) => {
+      if (!e.photo?.url) return e
+      const blob = await fetchPhotoBlob(e.photo.url)
+      if (!blob) return e
+      const dataUrl = await blobToDataUrl(blob)
+      return { ...e, photo: { ...e.photo, dataUrl } }
+    })
+  )
+}
+
+export async function downloadJournal(entries) {
+  const withPhotos = await withEmbeddedPhotos(entries)
+  const html = buildExportHtml(withPhotos)
   const blob = new Blob([html], { type: 'text/html' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
