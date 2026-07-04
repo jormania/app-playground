@@ -15,6 +15,23 @@ function stubFetchOk() {
   }))
 }
 
+// share.js re-encodes every photo to PNG before writing it to the clipboard
+// (the Async Clipboard API only accepts image/png for an image write; our
+// own photos are always JPEG). That re-encoding runs through
+// createImageBitmap + <canvas> — real browser APIs Node doesn't have — so
+// tests that exercise a clipboard photo write need fakes for both.
+function stubImageConversion() {
+  vi.stubGlobal('createImageBitmap', async () => ({ width: 10, height: 10, close: () => {} }))
+  vi.stubGlobal('document', {
+    createElement: () => ({
+      width: 0,
+      height: 0,
+      getContext: () => ({ drawImage: () => {} }),
+      toBlob: (cb) => cb(new Blob(['fake-png-bytes'], { type: 'image/png' })),
+    }),
+  })
+}
+
 // A real navigator.clipboard.write() has to read each ClipboardItem value —
 // including a pending promise, like the photo's — to actually write it, so
 // it awaits them (and rejects if one rejects) before resolving. A mock that
@@ -128,8 +145,9 @@ describe('shareEntry — native share available', () => {
 })
 
 describe('shareEntry — no native share (desktop fallback)', () => {
-  it('copies title + text via a rich ClipboardItem, including the photo when fetchable', async () => {
+  it('copies title + text via a rich ClipboardItem, including the photo (re-encoded to PNG) when fetchable', async () => {
     stubFetchOk()
+    stubImageConversion()
     class FakeClipboardItem {
       constructor(parts) { this.parts = parts }
     }
@@ -141,7 +159,7 @@ describe('shareEntry — no native share (desktop fallback)', () => {
     const result = await shareEntry(entryWithPhoto)
     expect(result).toEqual({ ok: true, copied: true, withPhoto: true })
     expect(written.parts['text/plain']).toBeInstanceOf(Blob)
-    expect(written.parts['image/jpeg']).toBeDefined()
+    expect(await written.parts['image/png']).toBeInstanceOf(Blob)
   })
 
   it('degrades to writeText when the rich clipboard write throws', async () => {
@@ -233,6 +251,7 @@ describe('shareByEmail', () => {
   })
 
   it('calls navigator.clipboard.write() synchronously, before the photo fetch resolves', () => {
+    stubImageConversion()
     let writeCalledSync = false
     let fetchResolved = false
     vi.stubGlobal('fetch', () => new Promise((resolve) => {
@@ -241,17 +260,18 @@ describe('shareByEmail', () => {
     vi.stubGlobal('ClipboardItem', class FakeClipboardItem { constructor(parts) { this.parts = parts } })
     vi.stubGlobal('navigator', {
       clipboard: {
-        write: async () => {
+        write: realisticWrite(() => {
           writeCalledSync = !fetchResolved // true only if write() ran before the fetch settled
-        },
+        }),
       },
     })
     shareByEmail(entryWithPhoto)
     expect(writeCalledSync).toBe(true)
   })
 
-  it('copies the photo to the clipboard (single image ClipboardItem) when present and supported', async () => {
+  it('copies the photo to the clipboard as a PNG (the only image type Async Clipboard write supports) when present and supported', async () => {
     stubFetchOk()
+    stubImageConversion()
     let written
     vi.stubGlobal('ClipboardItem', class FakeClipboardItem {
       constructor(parts) { this.parts = parts }
@@ -259,11 +279,12 @@ describe('shareByEmail', () => {
     vi.stubGlobal('navigator', { clipboard: { write: realisticWrite((item) => { written = item }) } })
     const { ready } = shareByEmail(entryWithPhoto)
     expect(await ready).toBe(true)
-    expect(written.parts['image/jpeg']).toBeDefined()
+    expect(await written.parts['image/png']).toBeInstanceOf(Blob)
   })
 
   it('resolves ready: false without erroring when the clipboard write fails', async () => {
     stubFetchOk()
+    stubImageConversion()
     vi.stubGlobal('ClipboardItem', class FakeClipboardItem {
       constructor(parts) { this.parts = parts }
     })

@@ -93,17 +93,38 @@ function withTimeout(promise, ms) {
   return Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(false), ms))])
 }
 
+// The Async Clipboard API only accepts 'image/png' for an image write —
+// every other image type, including 'image/jpeg', throws
+// ("Type image/jpeg not supported on write"). Our own upload pipeline
+// (photo.js) always resizes to JPEG before it ever reaches Notion, so every
+// photo fetched back through notionPhoto.js needs re-encoding to PNG first.
+// Kept as a promise chain (not awaited here) so it can be handed straight
+// to ClipboardItem as a pending value — see the callers' comments on why
+// write() itself can't wait for this to finish first.
+function toClipboardPng(blob) {
+  return createImageBitmap(blob).then((bitmap) => {
+    const canvas = document.createElement('canvas')
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
+    canvas.getContext('2d').drawImage(bitmap, 0, 0)
+    bitmap.close?.()
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((png) => (png ? resolve(png) : reject(new Error('could not convert to PNG'))), 'image/png')
+    })
+  })
+}
+
+function photoPngPromise(url) {
+  return fetchPhotoBlob(url).then((blob) => {
+    if (!blob) throw new Error('photo unavailable')
+    return toClipboardPng(blob)
+  })
+}
+
 function copyPhotoToClipboard(url) {
   if (!(navigator.clipboard?.write && typeof ClipboardItem !== 'undefined')) return Promise.resolve(false)
   try {
-    // Our own upload pipeline (photo.js) always resizes to JPEG before it
-    // ever reaches Notion, so the eventual blob's real type is known ahead
-    // of the fetch that will produce it.
-    const blobPromise = fetchPhotoBlob(url).then((blob) => {
-      if (!blob) throw new Error('photo unavailable')
-      return blob
-    })
-    return navigator.clipboard.write([new ClipboardItem({ 'image/jpeg': blobPromise })])
+    return navigator.clipboard.write([new ClipboardItem({ 'image/png': photoPngPromise(url) })])
       .then(() => true)
       .catch(() => false)
   } catch {
@@ -121,12 +142,7 @@ async function copyToClipboard(text, photo) {
   try {
     if (navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
       const parts = { 'text/plain': new Blob([text], { type: 'text/plain' }) }
-      if (photo?.url) {
-        parts['image/jpeg'] = fetchPhotoBlob(photo.url).then((blob) => {
-          if (!blob) throw new Error('photo unavailable')
-          return blob
-        })
-      }
+      if (photo?.url) parts['image/png'] = photoPngPromise(photo.url)
       await navigator.clipboard.write([new ClipboardItem(parts)])
       return { ok: true, copied: true, withPhoto: Boolean(photo?.url) }
     }
