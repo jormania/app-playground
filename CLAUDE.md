@@ -64,3 +64,7 @@ and add this call for any new PWA app.
 Pushing to `main` **auto-deploys via Vercel** — an unreviewed edit can reach
 production. Never push with failing tests or type errors. **Stop and confirm with
 me before any push to `main`.**
+
+Once pushed, **don't poll GitHub Actions to check the CI run** — the owner
+gets emailed on failure and will follow up if something's wrong. Only check
+a run's status when explicitly asked to.

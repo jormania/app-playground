@@ -38,6 +38,7 @@ export const APPS = [
     description: "A one-minute daily quiz built around Robert Greene's The 48 Laws of Power: read a short scenario, guess which law it illustrates, then see the explanation. One law a day, no repeats until all 48 have come up, with a streak that tracks showing up rather than being right.",
     features: [
       "One scenario a day — pick from four laws, then reveal the answer with a short explanation",
+      "Three difficulty tiers that tune how close the wrong answers sit to the right one — from a gentle spread up to same-theme, personalized near-misses",
       "A shuffled 'season' rotation cycles through all 48 laws with no repeats, reshuffling once every law has appeared",
       "A streak that counts consecutive days answered, not consecutive correct answers",
       "Locks after today's answer so there's exactly one attempt per day, with your last result shown until tomorrow",
