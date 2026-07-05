@@ -123,6 +123,16 @@
   margin: 0;
 }
 
+/* Same shape as .lastUsed, one line below — a quieter, distinct color so the
+   two don't blend: .lastUsed is "what this card is set to", this is "when
+   you last opened it". Matches Cabinet's .lastOpened treatment. */
+.lastOpened {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+  margin: 0;
+}
+
 .reorder {
   display: flex;
   gap: var(--space-2xs);

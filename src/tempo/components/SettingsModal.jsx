@@ -20,6 +20,12 @@ const CHIME_OPTIONS = [
   { value: '10', label: '10 min' },
 ]
 
+const TICK_WINDOW_OPTIONS = [
+  { value: '3', label: '3s' },
+  { value: '5', label: '5s' },
+  { value: '8', label: '8s' },
+]
+
 export function SettingsModal({ open, onClose, preferences, onChange, cueKind = 'ding' }) {
   const { resolved, setTheme } = useTheme()
 
@@ -79,6 +85,19 @@ export function SettingsModal({ open, onClose, preferences, onChange, cueKind = 
           >
             ▶ Preview
           </Button>
+        </div>
+
+        <div>
+          <p className={styles.settingsLabel}>Heads-up tick</p>
+          <SegmentedControl
+            size="sm"
+            options={TICK_WINDOW_OPTIONS}
+            value={String(preferences.tickWindow)}
+            onChange={(v) => onChange({ tickWindow: Number(v) })}
+          />
+          <p className={`${styles.settingsHint} ${styles.settingsHintFlush}`}>
+            A quiet tick + ring glow before a step ends, on movement/focus timers only.
+          </p>
         </div>
 
         <label className={styles.settingsRow}>

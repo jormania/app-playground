@@ -12,6 +12,7 @@ export const DEFAULT_PREFERENCES = {
   volume: 'normal', // cue volume: 'soft' | 'normal' | 'loud'
   intervalChime: false, // a soft bell every few minutes of a running session
   chimeInterval: 5, // minutes between interval chimes: 3 | 5 | 10
+  tickWindow: 5, // seconds of anticipatory tick + ring pulse before a ding-family transition: 3 | 5 | 8
 }
 
 // The audio actually in effect right now — Silent mode overrides the Sound

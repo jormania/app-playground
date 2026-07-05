@@ -128,6 +128,12 @@
   margin: var(--space-2xs) 0 0 var(--space-lg);
 }
 
+/* Same hint style, but flush left — for a hint under a label + control
+   (no checkbox to align the indent with), e.g. the heads-up tick row. */
+.settingsHintFlush {
+  margin-left: 0;
+}
+
 /* Dims a row whose control is disabled (e.g. muted by Silent mode) — the
    underlying preference is untouched, just not in effect right now. */
 .settingsRowDisabled {

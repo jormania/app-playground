@@ -43,6 +43,20 @@ export function savePreferences(prefs) {
   write('preferences', prefs)
 }
 
+// ── Last-opened stats (keyed by mode id): { count, last } ───────────────────
+// Mirrors Cabinet's open-stats shape (src/cabinet/lib/storage.js) — records a
+// tap on a mode's card, not a completed session.
+export function loadLastOpened() {
+  return read('lastOpened', {})
+}
+
+export function recordOpened(modeId) {
+  const map = loadLastOpened()
+  const prevCount = typeof map[modeId] === 'object' && map[modeId] ? map[modeId].count : 0
+  map[modeId] = { count: prevCount + 1, last: Date.now() }
+  write('lastOpened', map)
+}
+
 // ── Home-screen panel order (array of mode ids) ─────────────────────────────
 export function loadOrder(fallback) {
   const saved = read('order', null)

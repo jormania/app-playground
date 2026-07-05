@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Card, IconButton } from '../../ds'
 import { MODES, DEFAULT_ORDER, reconcileOrder } from '../lib/modes'
-import { loadModeConfig, loadOrder, saveOrder } from '../lib/storage'
+import { loadModeConfig, loadOrder, saveOrder, loadLastOpened, recordOpened } from '../lib/storage'
+import { formatRelativeTime } from '../lib/relativeTime'
 import { useTheme } from '../lib/themeContext'
 import { usePreferences } from '../lib/preferencesContext'
 import { SettingsModal } from './SettingsModal'
@@ -15,6 +16,12 @@ export function ModePicker({ onSelect }) {
   const [order, setOrder] = useState(() => reconcileOrder(loadOrder(DEFAULT_ORDER)))
   const [editing, setEditing] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [lastOpened] = useState(() => loadLastOpened())
+
+  function handleSelect(id) {
+    recordOpened(id)
+    onSelect(id)
+  }
 
   function move(index, dir) {
     setOrder((prev) => {
@@ -78,6 +85,7 @@ export function ModePicker({ onSelect }) {
           const Icon = mode.Icon
           const Icon2 = mode.Icon2
           const summary = summaryFor(mode)
+          const opened = lastOpened[id]
           const content = (
             <>
               <span className={styles.iconWrap} data-mode={mode.id}>
@@ -92,6 +100,12 @@ export function ModePicker({ onSelect }) {
               <h2 className={styles.cardTitle}>{mode.name}</h2>
               <p className={styles.cardBlurb}>{mode.tagline}</p>
               {summary && <p className={styles.lastUsed}>{summary}</p>}
+              {opened?.last && (
+                <p className={styles.lastOpened}>
+                  opened {opened.count > 1 ? `${opened.count}× · ` : ''}
+                  {formatRelativeTime(opened.last)}
+                </p>
+              )}
             </>
           )
 
@@ -117,7 +131,7 @@ export function ModePicker({ onSelect }) {
           }
 
           return (
-            <Card key={id} onClick={() => onSelect(id)}>
+            <Card key={id} onClick={() => handleSelect(id)}>
               {content}
             </Card>
           )
