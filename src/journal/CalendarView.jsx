@@ -14,6 +14,7 @@ export default function CalendarView({ entries, onOpenEntry, onNewOn }) {
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() })
   const grid = monthGrid(view.year, view.month, WEEK_START)
   const today = todayKey()
+  const isCurrent = view.year === now.getFullYear() && view.month === now.getMonth()
 
   function clickCell(cell) {
     const entry = findByDate(entries, cell.key)
@@ -26,6 +27,7 @@ export default function CalendarView({ entries, onOpenEntry, onNewOn }) {
       <div className="cal-head">
         <h2>{monthLabel(view.year, view.month)}</h2>
         <div className="cal-nav">
+          <button className="cal-today-btn" disabled={isCurrent} onClick={() => setView({ year: now.getFullYear(), month: now.getMonth() })}>Today</button>
           <button className="icon-btn" aria-label="Previous month" onClick={() => setView(v => stepMonth(v, -1))}><BackIcon /></button>
           <button className="icon-btn" aria-label="Next month" style={{ transform: 'scaleX(-1)' }} onClick={() => setView(v => stepMonth(v, 1))}><BackIcon /></button>
         </div>

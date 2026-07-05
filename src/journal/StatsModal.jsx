@@ -16,7 +16,8 @@ function Stat({ value, label }) {
 // A frequency heatmap of tags/people: every value shown as a chip shaded by how
 // often it appears (most-noticed = most intense). Nothing is cut off, so even a
 // once-mentioned name stays visible. `--heat` (0..1) drives the shading in CSS.
-function HeatChips({ items, kind, label }) {
+// Tapping a chip filters the list by it, same as the chips on an entry itself.
+function HeatChips({ items, kind, label, onChip }) {
   if (!items.length) return null
   const max = items[0].count // items arrive sorted by count desc
   return (
@@ -24,21 +25,23 @@ function HeatChips({ items, kind, label }) {
       <div className="stat-label bare">{label}</div>
       <div className="stat-chips heat">
         {items.map(it => (
-          <span
+          <button
             key={it.name}
+            type="button"
             className={`chip ${kind}`}
             style={{ '--heat': max > 1 ? (it.count - 1) / (max - 1) : 0 }}
-            title={`${it.count} ${it.count === 1 ? 'time' : 'times'}`}
+            title={`Filter by ${it.name} — ${it.count} ${it.count === 1 ? 'time' : 'times'}`}
+            onClick={() => onChip(kind === 'person' ? 'people' : 'tags', it.name)}
           >
             {it.name} · {it.count}
-          </span>
+          </button>
         ))}
       </div>
     </div>
   )
 }
 
-export default function StatsModal({ entries, onClose }) {
+export default function StatsModal({ entries, onClose, onChip }) {
   const s = useMemo(() => computeStats(entries), [entries])
 
   return (
@@ -56,8 +59,8 @@ export default function StatsModal({ entries, onClose }) {
           <Stat value={`${s.shortest}–${s.longest}`} label="shortest and longest" />
           <Stat value={s.totalWords.toLocaleString()} label="words in all delights" />
           {/* motifs — frequency heatmaps over every tag / person */}
-          <HeatChips items={s.topTags} kind="tag" label="most-noticed tags" />
-          <HeatChips items={s.topPeople} kind="person" label="people who appear most" />
+          <HeatChips items={s.topTags} kind="tag" label="most-noticed tags" onChip={(scope, value) => { onChip(scope, value); onClose() }} />
+          <HeatChips items={s.topPeople} kind="person" label="people who appear most" onChip={(scope, value) => { onChip(scope, value); onClose() }} />
         </div>
       )}
     </Modal>

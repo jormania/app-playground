@@ -12,6 +12,7 @@ export default function YearView({ entries, onOpenEntry, onNewOn }) {
   const [year, setYear] = useState(now.getFullYear())
   const weeks = useMemo(() => yearGrid(year), [year])
   const today = todayKey()
+  const isCurrent = year === now.getFullYear()
 
   // Month labels: place one at the first week whose leading in-year day changes month.
   const labels = []
@@ -36,6 +37,7 @@ export default function YearView({ entries, onOpenEntry, onNewOn }) {
       <div className="cal-head">
         <h2>{year}</h2>
         <div className="cal-nav">
+          <button className="cal-today-btn" disabled={isCurrent} onClick={() => setYear(now.getFullYear())}>Today</button>
           <button className="icon-btn" aria-label="Previous year" onClick={() => setYear(y => y - 1)}><BackIcon /></button>
           <button className="icon-btn" aria-label="Next year" style={{ transform: 'scaleX(-1)' }} onClick={() => setYear(y => y + 1)}><BackIcon /></button>
         </div>

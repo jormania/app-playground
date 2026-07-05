@@ -309,6 +309,13 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 
 /* ── Calendar view (compact + centred) ── */
 .calendar { max-width: 460px; margin: 0 auto; }
+.cal-today-btn {
+  height: 36px; padding: 0 14px; border-radius: 999px;
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  font-size: 0.78rem; font-weight: 600; transition: all 0.16s;
+}
+.cal-today-btn:hover:not(:disabled) { color: var(--ink); border-color: var(--border2); background: var(--surface); }
+.cal-today-btn:disabled { opacity: 0.4; cursor: default; }
 .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .cal-head h2 { font-family: var(--serif); font-size: 1.5rem; font-weight: 400; }
 .cal-nav { display: flex; gap: 8px; }
