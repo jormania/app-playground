@@ -20,7 +20,7 @@ const TINT_BY_KIND = {
 // strongest visual anchor on the screen you spend the most time looking at.
 // Tempo-local (not DS): it's specific to "a fraction of a countdown", single
 // caller. Promote it into src/ds/ if a second app ever wants a generic ring.
-export function CountdownRing({ fractionRemaining, kind, children }) {
+export function CountdownRing({ fractionRemaining, kind, pulsing = false, children }) {
   const clamped = Math.min(1, Math.max(0, fractionRemaining))
   const offset = CIRCUMFERENCE * (1 - clamped)
   const tint = TINT_BY_KIND[kind] ?? 'var(--color-accent)'
@@ -35,8 +35,8 @@ export function CountdownRing({ fractionRemaining, kind, children }) {
           r={RADIUS}
           strokeWidth="6"
           fill="none"
-          className={styles.progress}
-          style={{ stroke: tint, strokeDasharray: CIRCUMFERENCE, strokeDashoffset: offset }}
+          className={`${styles.progress} ${pulsing ? styles.pulsing : ''}`}
+          style={{ stroke: tint, strokeDasharray: CIRCUMFERENCE, strokeDashoffset: offset, '--pulse-color': tint }}
         />
       </svg>
       <div className={styles.content}>{children}</div>

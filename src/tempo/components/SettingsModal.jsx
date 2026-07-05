@@ -1,5 +1,6 @@
-import { Modal, SegmentedControl } from '../../ds'
+import { Modal, SegmentedControl, Button } from '../../ds'
 import { useTheme } from '../lib/themeContext'
+import { cueSet } from '../lib/sound'
 import styles from './Player.module.css'
 
 const THEME_OPTIONS = [
@@ -19,7 +20,7 @@ const CHIME_OPTIONS = [
   { value: '10', label: '10 min' },
 ]
 
-export function SettingsModal({ open, onClose, preferences, onChange }) {
+export function SettingsModal({ open, onClose, preferences, onChange, cueKind = 'ding' }) {
   const { resolved, setTheme } = useTheme()
 
   // Silent mode is a master override: it mutes all audio without touching the
@@ -68,6 +69,16 @@ export function SettingsModal({ open, onClose, preferences, onChange }) {
             value={preferences.volume}
             onChange={(v) => onChange({ volume: v })}
           />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={styles.previewButton}
+            disabled={cueControlsDisabled}
+            onClick={() => cueSet(cueKind, preferences.volume).transition()}
+          >
+            ▶ Preview
+          </Button>
         </div>
 
         <label className={styles.settingsRow}>

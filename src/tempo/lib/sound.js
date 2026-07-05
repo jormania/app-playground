@@ -69,6 +69,15 @@ export function cueSet(kind, volume = 'normal') {
   return { transition: () => ding(v), complete: () => dingComplete(v) }
 }
 
+// A quiet anticipatory tick for the last few seconds of a segment (movement/
+// focus/custom only — the mindfulness bell practices stay uninterrupted).
+// Short, dry, and clearly distinct from the ding/bell/chime so it reads as
+// "heads up" rather than a transition itself.
+export function playTick(volume = 'normal') {
+  const v = scale(volume)
+  tone({ frequency: 1400, duration: 0.06, volume: 0.09 * v, type: 'square' })
+}
+
 // A standalone "interval chime" for long sessions — deliberately distinct from
 // both the ding and the bell (different waveform, different melodic shape: two
 // notes in sequence rather than one beep or two simultaneous tones) so it's

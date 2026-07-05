@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Button } from '../../ds'
 import { useTimerEngine } from '../lib/useTimerEngine'
 import { useWakeLock } from '../lib/useWakeLock'
-import { cueSet, playChime } from '../lib/sound'
+import { cueSet, playChime, playTick } from '../lib/sound'
 import { vibrateTransition, vibrateComplete } from '../lib/haptics'
 import { saveActiveSession, clearActiveSession } from '../lib/storage'
 import { soundIsOn } from '../lib/preferences'
@@ -62,6 +62,26 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
     }
     prevRef.current = { index: currentIndex, status }
   }, [currentIndex, status, soundOn, preferences.haptics, cue])
+
+  // ── Anticipatory tick — last 3 seconds of a segment, ding-family only, so
+  // there's a "heads up" before the transition instead of it arriving cold.
+  // Paired with the ring's pulse below: same trigger, reinforced two ways.
+  const tickEligible = mode.cue === 'ding'
+  const endingSoon = tickEligible && status === 'running' && secondsRemaining > 0 && secondsRemaining <= 3
+  const prevSecondsRef = useRef(secondsRemaining)
+  useLayoutEffect(() => {
+    if (
+      soundOn &&
+      tickEligible &&
+      status === 'running' &&
+      secondsRemaining <= 3 &&
+      secondsRemaining >= 1 &&
+      secondsRemaining !== prevSecondsRef.current
+    ) {
+      playTick(preferences.volume)
+    }
+    prevSecondsRef.current = secondsRemaining
+  }, [secondsRemaining, status, tickEligible, soundOn, preferences.volume])
 
   // ── Interval chime — a soft bell every few minutes while running (long sits) ──
   useEffect(() => {
@@ -189,7 +209,7 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
         </>
       ) : (
         <>
-          <CountdownRing fractionRemaining={fractionRemaining} kind={currentSegment?.kind}>
+          <CountdownRing fractionRemaining={fractionRemaining} kind={currentSegment?.kind} pulsing={endingSoon}>
             <p className={styles.segmentLabel}>{currentSegment?.label}</p>
             <p className={styles.countdown}>{formatTime(secondsRemaining)}</p>
           </CountdownRing>
@@ -225,6 +245,7 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
         onClose={() => setSettingsOpen(false)}
         preferences={preferences}
         onChange={updatePreferences}
+        cueKind={mode.cue}
       />
     </div>
   )

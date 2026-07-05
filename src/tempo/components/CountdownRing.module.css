@@ -5,8 +5,12 @@
   justify-content: center;
 }
 
+/* Bounded by height as well as width — on a short viewport (phone in
+   landscape) a width-only clamp lets the ring grow taller than the screen,
+   pushing the controls below the fold. min(…, 42vh) keeps the whole Player
+   screen (ring + progress text + buttons) fitting without a scroll. */
 .svg {
-  width: clamp(220px, 55vw, 320px);
+  width: clamp(160px, min(55vw, 42vh), 320px);
   height: auto;
   transform: rotate(-90deg);
 }
@@ -20,9 +24,28 @@
   transition: stroke-dashoffset 0.25s linear;
 }
 
+/* Last few seconds of a ding-family segment — a gentle glow pulse, paired
+   with the anticipatory tick sound, so the "heads up" lands two ways. */
+@keyframes ringPulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: drop-shadow(0 0 6px var(--pulse-color, currentColor));
+  }
+}
+
+.pulsing {
+  animation: ringPulse 1s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .progress {
     transition: none;
+  }
+
+  .pulsing {
+    animation: none;
   }
 }
 

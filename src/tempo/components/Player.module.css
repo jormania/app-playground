@@ -67,6 +67,20 @@
   font-weight: var(--weight-bold) !important;
 }
 
+/* Phone-in-landscape: the ring alone shrinks via CountdownRing's own vh
+   clamp, but padding/gaps/button height also need to give ground or the
+   Pause/Skip/Exit row still ends up below the fold. */
+@media (max-height: 480px) {
+  .page {
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-lg);
+  }
+
+  .controlButton {
+    height: 44px !important;
+  }
+}
+
 .doneTitle {
   font-family: var(--font-display);
   font-size: var(--text-2xl);
@@ -123,6 +137,10 @@
 .subControl {
   margin-top: var(--space-xs);
   padding-left: var(--space-lg);
+}
+
+.previewButton {
+  margin-top: var(--space-2xs);
 }
 
 .guideLink {
