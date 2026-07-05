@@ -70,3 +70,12 @@ export function loadHistory() {
 export function saveHistory(history) {
   write('history', history)
 }
+
+// ── Difficulty tier preference (see lib/difficulty.js) ──────────────────────
+export function loadDifficulty() {
+  return read('difficulty', 'standard')
+}
+
+export function saveDifficulty(difficulty) {
+  write('difficulty', difficulty)
+}

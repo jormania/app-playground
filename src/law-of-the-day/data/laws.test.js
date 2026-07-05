@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import laws from './laws.json'
+import { scenarioLeaksTitle } from '../lib/leakCheck'
 
 describe('laws.json', () => {
   it('has exactly 48 entries', () => {
@@ -45,6 +46,29 @@ describe('laws.json', () => {
     for (const law of laws) {
       expect(law.scenarioText.trim().length).toBeGreaterThanOrEqual(20)
       expect(law.explanationText.trim().length).toBeGreaterThanOrEqual(20)
+    }
+  })
+
+  it('has a non-empty family for every entry', () => {
+    for (const law of laws) {
+      expect(typeof law.family).toBe('string')
+      expect(law.family.trim().length).toBeGreaterThan(0)
+    }
+  })
+
+  it('has every family large enough to source 3 same-family distractors', () => {
+    const counts = {}
+    for (const law of laws) counts[law.family] = (counts[law.family] || 0) + 1
+    for (const [family, count] of Object.entries(counts)) {
+      // family size minus the correct law must leave at least 3 candidates
+      expect(count, `family "${family}"`).toBeGreaterThanOrEqual(4)
+    }
+  })
+
+  it('has no scenario that leaks a distinctive word from its own title', () => {
+    for (const law of laws) {
+      const leaks = scenarioLeaksTitle(law.scenarioText, law.lawTitle)
+      expect(leaks, `Law ${law.id} "${law.lawTitle}" leaks: ${leaks.join(', ')}`).toEqual([])
     }
   })
 })

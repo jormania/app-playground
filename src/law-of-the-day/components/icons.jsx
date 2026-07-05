@@ -29,3 +29,16 @@ export function IconStats(props) {
     </svg>
   )
 }
+
+// Difficulty — a rising meter of stacked chevrons, lit up to the current level
+// (1–3). Distinct from the Stats bars so the two never read as the same control.
+export function IconDifficulty({ level = 1, ...props }) {
+  const dim = 0.26
+  return (
+    <svg {...base} {...props} aria-hidden>
+      <path d="M6 17l6-3.4 6 3.4" strokeOpacity={level >= 1 ? 1 : dim} />
+      <path d="M6 12l6-3.4 6 3.4" strokeOpacity={level >= 2 ? 1 : dim} />
+      <path d="M6 7l6-3.4 6 3.4" strokeOpacity={level >= 3 ? 1 : dim} />
+    </svg>
+  )
+}

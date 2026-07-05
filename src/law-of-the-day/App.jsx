@@ -3,11 +3,17 @@ import laws from './data/laws.json'
 import { getDailyStatus, recordAnswer } from './lib/rotation'
 import { buildOptions, gradeAnswer } from './lib/quiz'
 import { fetchFreshContent } from './lib/fetchFreshContent'
-import { loadHistory, loadBestStreak } from './lib/storage'
+import { loadHistory, loadBestStreak, loadDifficulty, saveDifficulty } from './lib/storage'
 import { computeStats } from './lib/stats'
+import {
+  normalizeDifficulty,
+  nextDifficulty,
+  difficultyLevel,
+  difficultyLabel,
+} from './lib/difficulty'
 import { useTheme } from './lib/themeContext'
 import { IconButton } from '../ds'
-import { IconGuide, IconStats } from './components/icons'
+import { IconGuide, IconStats, IconDifficulty } from './components/icons'
 import { ScenarioView } from './components/ScenarioView'
 import { RevealView } from './components/RevealView'
 import { LockedView } from './components/LockedView'
@@ -18,8 +24,9 @@ import styles from './App.module.css'
 export default function App() {
   const { theme, toggle } = useTheme()
   const [status, setStatus] = useState(() => getDailyStatus(laws))
-  const [options] = useState(() =>
-    status.law ? buildOptions(status.law, laws) : []
+  const [difficulty, setDifficulty] = useState(() => normalizeDifficulty(loadDifficulty()))
+  const [options, setOptions] = useState(() =>
+    status.law ? buildOptions(status.law, laws, { difficulty, history: loadHistory() }) : []
   )
   const [reveal, setReveal] = useState(null)
   const [contentOverride, setContentOverride] = useState(null)
@@ -45,6 +52,17 @@ export default function App() {
   const displayLaw = status.law && contentOverride
     ? { ...status.law, scenarioText: contentOverride.scenarioText, explanationText: contentOverride.explanationText }
     : status.law
+
+  // Cycle the difficulty tier. If the user hasn't answered yet, rebuild today's
+  // distractors at the new tier so the change takes effect immediately.
+  function cycleDifficulty() {
+    const next = nextDifficulty(difficulty)
+    setDifficulty(next)
+    saveDifficulty(next)
+    if (status.phase === 'quiz' && !reveal && status.law) {
+      setOptions(buildOptions(status.law, laws, { difficulty: next, history: loadHistory() }))
+    }
+  }
 
   function handleAnswer(selectedId) {
     const correct = gradeAnswer(selectedId, status.law.id)
@@ -78,6 +96,14 @@ export default function App() {
               onClick={() => setStatsOpen(true)}
             >
               <IconStats />
+            </IconButton>
+            <IconButton
+              size="sm"
+              aria-label={`Difficulty: ${difficultyLabel(difficulty)} (tap to change)`}
+              title={`Difficulty: ${difficultyLabel(difficulty)}`}
+              onClick={cycleDifficulty}
+            >
+              <IconDifficulty level={difficultyLevel(difficulty)} />
             </IconButton>
             <IconButton
               size="sm"
