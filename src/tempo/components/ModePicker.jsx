@@ -48,7 +48,15 @@ export function ModePicker({ onSelect }) {
           <IconButton
             aria-label="Open the guide"
             title="Guide"
-            onClick={() => window.open('/tempo-guide.html', '_blank', 'noopener')}
+            onClick={() => {
+              // Plain new-tab open (no window-features string): passing 'noopener'
+              // as features makes desktop browsers treat this as a *popup* and
+              // silently block it, so the guide never opened from the app on
+              // desktop (mobile/PWA were unaffected). Sever opener ourselves
+              // instead — same security intent, opens as a real tab.
+              const w = window.open('/tempo-guide.html', '_blank')
+              if (w) w.opener = null
+            }}
           >
             <IconGuide />
           </IconButton>
