@@ -1,15 +1,28 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   Sol Odyssey — Claude Design System tokens (Deep Indigo · LIGHT + DARK).
+   Sol Odyssey — Claude Design System tokens (EIGHT presets · 4 light + 4 dark).
 
    The single source of truth for the app's look. Every component reads these
    semantic --color-* / --radius-* / --motion-* variables and NEVER hard-codes a
    colour, radius, or duration. Rebrand the whole app by editing this file alone.
 
-   Deep Indigo, in two palettes: LIGHT (default, on :root) and DARK (opt-in, under
-   [data-theme="dark"] — toggled from the app header / Settings and shared with the
-   field guide via the `sol-odyssey:theme` localStorage key). Components read the
-   semantic tokens and need no per-theme changes. Deep Indigo: between the calm of
-   dark blue and the energy of violet — the night sky as a canvas for a long voyage.
+   A preset is a full palette selected by `[data-theme="<id>"]` on <html>, chosen
+   from the header cycle button / Settings picker and shared with the field guide
+   via the `sol-odyssey:theme` localStorage key (see lib/theme.ts). :root carries
+   the structural tokens (radius / motion / shadows) plus the DEFAULT palette
+   (Deep Indigo light), so a missing/blank attribute is always safe.
+
+   The eight presets, in cycle order (each press flips light↔dark):
+     indigo-light · indigo-dark · quiet-light · octagon · filter-sun ·
+     ristretto · solarized-light · spectrum
+
+   ONE mapping discipline across all eight so they read as a single system:
+     accent  = the palette's violet/purple  (brand continuity)
+     energy  = its pink/magenta             (the celebration beat)
+     success = green   ·   caution = orange/amber (NEVER red)
+     body text = --color-text-primary, NEVER the accent.
+   Dark palettes flip the accent LIGHTER with a DARK --color-accent-contrast, so
+   accent reads as text on the dark canvas and accent-filled buttons stay legible.
+   The six non-indigo palettes are drawn from well-known VS Code themes.
    ───────────────────────────────────────────────────────────────────────── */
 
 :root {
@@ -62,39 +75,169 @@
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ── Dark theme (Deep Indigo night) ─────────────────────────────────────────
-   Opt-in via [data-theme="dark"] on <html>. Only colours change. The accent flips
-   LIGHTER and its contrast goes DARK, so accent reads as text on the dark canvas
-   and accent-filled buttons stay legible (dark glyph on a light-indigo fill). */
-[data-theme='dark'] {
+/* Shared dark-preset overrides: scrim + elevation darken (text-primary is now
+   light, so scrim must NOT derive from it). Applied to every dark palette. */
+[data-theme='indigo-dark'],
+[data-theme='octagon'],
+[data-theme='ristretto'],
+[data-theme='spectrum'] {
   color-scheme: dark;
+  --color-scrim: color-mix(in srgb, #000 70%, transparent);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.42);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.52);
+}
 
+/* ── indigo-light — Deep Indigo (explicit; same as the :root default) ──────── */
+[data-theme='indigo-light'] {
+  --color-background-primary:   #F7F7FC;
+  --color-background-secondary: #EEEEF7;
+  --color-background-tertiary:  #E3E2F2;
+  --color-text-primary:   #1F1B4D;
+  --color-text-secondary: #5C5891;
+  --color-border-primary:   #C2BFE3;
+  --color-border-secondary: #D6D4EE;
+  --color-border-tertiary:  #E8E7F5;
+  --color-accent:          #4B45C6;
+  --color-accent-hover:    #3E38B0;
+  --color-accent-contrast: #FFFFFF;
+  --color-accent-soft:     #E7E5FA;
+  --color-energy:  #6D63F0;
+  --color-success: #2E8B73;
+  --color-caution: #C2873A;
+}
+
+/* ── indigo-dark — Deep Indigo night ───────────────────────────────────────── */
+[data-theme='indigo-dark'] {
   --color-background-primary:   #121127; /* night canvas */
   --color-background-secondary: #1B1940; /* cards / surfaces */
   --color-background-tertiary:  #262350; /* insets / hover */
-
   --color-text-primary:   #ECEBF8; /* near-white indigo */
   --color-text-secondary: #A7A3D4; /* muted */
-
   --color-border-primary:   #3B3770;
   --color-border-secondary: #322E5E;
   --color-border-tertiary:  #28254C;
-
   --color-accent:          #9A93F5; /* lighter indigo — reads on the dark canvas */
   --color-accent-hover:    #ABA4FA;
   --color-accent-contrast: #15132E; /* dark glyph on the light-indigo fill */
   --color-accent-soft:     #2B2960; /* dark indigo tint for chips / soft fills */
-
   --color-energy:  #8E86FF;
   --color-success: #4FB89A;
   --color-caution: #D9A34D;
+}
 
-  /* Scrim must darken (text-primary is now light, so don't derive from it). */
-  --color-scrim: color-mix(in srgb, #000 70%, transparent);
+/* ── quiet-light — VS Code Quiet Light (soft, cool-neutral) ─────────────────── */
+[data-theme='quiet-light'] {
+  --color-background-primary:   #F5F5F5;
+  --color-background-secondary: #EDEDF5;
+  --color-background-tertiary:  #E2E2EA;
+  --color-text-primary:   #333333;
+  --color-text-secondary: #6B6B70;
+  --color-border-primary:   #C9C7D2;
+  --color-border-secondary: #D9D8E0;
+  --color-border-tertiary:  #E7E6EC;
+  --color-accent:          #705697;
+  --color-accent-hover:    #5E4880;
+  --color-accent-contrast: #FFFFFF;
+  --color-accent-soft:     #E9E3F1;
+  --color-energy:  #9769DC;
+  --color-success: #448C27;
+  --color-caution: #9C5D27;
+}
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32);
-  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.42);
-  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.52);
+/* ── octagon — Monokai Pro Octagon (bluish night) ──────────────────────────── */
+[data-theme='octagon'] {
+  --color-background-primary:   #1E1F2B;
+  --color-background-secondary: #282A3A;
+  --color-background-tertiary:  #343747;
+  --color-text-primary:   #EAF2F1;
+  --color-text-secondary: #A7AEB8;
+  --color-border-primary:   #535763;
+  --color-border-secondary: #3F4351;
+  --color-border-tertiary:  #313445;
+  --color-accent:          #C39AC9;
+  --color-accent-hover:    #D0ABD5;
+  --color-accent-contrast: #201D2B;
+  --color-accent-soft:     #3A3350;
+  --color-energy:  #FF657A;
+  --color-success: #BAD761;
+  --color-caution: #FF9B5E;
+}
+
+/* ── filter-sun — Monokai Pro Light (Sun) — warm cream ─────────────────────── */
+[data-theme='filter-sun'] {
+  --color-background-primary:   #FAF4F2;
+  --color-background-secondary: #F2EBE8;
+  --color-background-tertiary:  #EAE1DE;
+  --color-text-primary:   #29242A;
+  --color-text-secondary: #6B6367;
+  --color-border-primary:   #CFC7C6;
+  --color-border-secondary: #DED5D3;
+  --color-border-tertiary:  #ECE5E2;
+  --color-accent:          #7058BE;
+  --color-accent-hover:    #5F47A9;
+  --color-accent-contrast: #FFFFFF;
+  --color-accent-soft:     #ECE6F7;
+  --color-energy:  #E14775;
+  --color-success: #269D69;
+  --color-caution: #E16032;
+}
+
+/* ── ristretto — Monokai Pro Ristretto (warm brown night) ──────────────────── */
+[data-theme='ristretto'] {
+  --color-background-primary:   #211C1C;
+  --color-background-secondary: #2C2525;
+  --color-background-tertiary:  #392F2F;
+  --color-text-primary:   #FFF1F3;
+  --color-text-secondary: #B6ABAB;
+  --color-border-primary:   #5B5353;
+  --color-border-secondary: #46403F;
+  --color-border-tertiary:  #382F2F;
+  --color-accent:          #A8A9EB;
+  --color-accent-hover:    #B8B9F0;
+  --color-accent-contrast: #201B1B;
+  --color-accent-soft:     #35314F;
+  --color-energy:  #FD6883;
+  --color-success: #ADDA78;
+  --color-caution: #F38D70;
+}
+
+/* ── solarized-light — Solarized Light (canonical, warm) ───────────────────── */
+[data-theme='solarized-light'] {
+  --color-background-primary:   #FDF6E3;
+  --color-background-secondary: #F5EEDB;
+  --color-background-tertiary:  #EEE8D5;
+  --color-text-primary:   #586E75;
+  --color-text-secondary: #657B83;
+  --color-border-primary:   #D9CFB4;
+  --color-border-secondary: #E4DDC8;
+  --color-border-tertiary:  #EEE8D5;
+  --color-accent:          #6C71C4;
+  --color-accent-hover:    #565BB0;
+  --color-accent-contrast: #FFFFFF;
+  --color-accent-soft:     #E8E5F0;
+  --color-energy:  #D33682;
+  --color-success: #859900;
+  --color-caution: #CB4B16;
+}
+
+/* ── spectrum — Monokai Pro Spectrum (neutral night) ───────────────────────── */
+[data-theme='spectrum'] {
+  --color-background-primary:   #191919;
+  --color-background-secondary: #222222;
+  --color-background-tertiary:  #2E2D2F;
+  --color-text-primary:   #F7F1FF;
+  --color-text-secondary: #B0ACB6;
+  --color-border-primary:   #525053;
+  --color-border-secondary: #3D3C3E;
+  --color-border-tertiary:  #2F2E30;
+  --color-accent:          #948AE3;
+  --color-accent-hover:    #A49BF0;
+  --color-accent-contrast: #17161C;
+  --color-accent-soft:     #302D4D;
+  --color-energy:  #FC618D;
+  --color-success: #7BD88F;
+  --color-caution: #FD9353;
 }
 
 @media (prefers-reduced-motion: reduce) {

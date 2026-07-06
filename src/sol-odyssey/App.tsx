@@ -149,14 +149,15 @@ function Home({
 }
 
 function ThemeToggle() {
-  const { resolved, toggle } = useTheme()
-  const dark = resolved === 'dark'
+  const { mode, cycle, current } = useTheme()
+  const dark = mode === 'dark'
+  // The cycle steps through all eight presets in order; each press flips light↔dark, so the
+  // "switch to the opposite mode" glyph stays truthful. The title names the CURRENT palette.
   return (
     <button
-      onClick={toggle}
-      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      aria-pressed={dark}
-      title={dark ? 'Light mode' : 'Dark mode'}
+      onClick={cycle}
+      aria-label={`Theme: ${current.name}. Tap to cycle to the next palette.`}
+      title={`${current.name} — tap to cycle`}
       className="rounded-md p-2 text-text-secondary transition-colors duration-fast hover:bg-background-secondary"
     >
       {dark ? <LightIcon size={18} aria-hidden /> : <DarkIcon size={18} aria-hidden />}

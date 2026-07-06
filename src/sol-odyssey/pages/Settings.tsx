@@ -12,6 +12,8 @@ import { buddyWelcomeEmail } from '../lib/buddyMail'
 import { clearSettings, isConfigured, isValidEmail, type Settings } from '../lib/settings'
 import { useSettings } from '../lib/settingsContext'
 import { useTheme } from '../lib/themeContext'
+import { PRESETS, type PresetId } from '../lib/theme'
+import { cn } from '../lib/cn'
 import { normalizeNotionId, runConnectionTest, type ConnectionTest } from '../lib/notion'
 import { verifyAnthropicKey } from '../lib/companion'
 import { capabilities, enableReminders, notificationPermission, unregisterPeriodicSync, parseDailyTime, parseWeeklySlot, REMINDERS_DB } from '../lib/reminders'
@@ -80,7 +82,7 @@ function LinkCaution({ value }: { value: string }) {
 
 export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
   const { settings, update, reload } = useSettings()
-  const { pref, setTheme } = useTheme()
+  const { preset, setPreset } = useTheme()
   const [clearing, setClearing] = useState(false)
   const [form, setForm] = useState<Record<StringKey, string>>(() =>
     Object.fromEntries(STRING_KEYS.map((k) => [k, settings[k]])) as Record<StringKey, string>,
@@ -439,17 +441,12 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
 
       <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-6">
         <h3 className="font-display text-lg">Appearance</h3>
-        <Select
-          label="Theme"
-          hint="System follows your device. The field guide follows the same choice."
-          value={pref}
-          options={[
-            { value: 'light', label: 'Light' },
-            { value: 'dark', label: 'Dark' },
-            { value: 'system', label: 'System' },
-          ]}
-          onChange={(e) => setTheme(e.target.value as 'light' | 'dark' | 'system')}
-        />
+        <p className="font-sans text-sm text-text-secondary">
+          Pick a palette — four light, four dark. The header{' '}
+          <span className="font-medium text-text-primary">◐</span> button cycles through them in
+          order, and the field guide follows your choice.
+        </p>
+        <ThemePicker preset={preset} setPreset={setPreset} />
       </section>
 
       <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-6">
@@ -675,6 +672,56 @@ export function SettingsPage({ navigate }: { navigate: (to: string) => void }) {
           </Button>
         </div>
       </Modal>
+    </div>
+  )
+}
+
+/** The palette picker — four light + four dark presets, each a live swatch. The swatch dots are the
+ *  one place raw hex is legitimate (a colour preview OF the palette, sourced centrally from PRESETS),
+ *  the same way a colour picker must show its colours. */
+function ThemePicker({ preset, setPreset }: { preset: PresetId; setPreset: (id: PresetId) => void }) {
+  return (
+    <div className="flex flex-col gap-4">
+      {(['light', 'dark'] as const).map((mode) => (
+        <div key={mode} className="flex flex-col gap-2">
+          <p className="font-mono text-xs uppercase tracking-wider text-text-secondary">{mode}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {PRESETS.filter((p) => p.mode === mode).map((p) => {
+              const selected = p.id === preset
+              const [canvas, accent, text] = p.swatch
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPreset(p.id)}
+                  aria-pressed={selected}
+                  className={cn(
+                    'flex items-center gap-3 rounded-md border p-2.5 text-left transition-colors duration-fast',
+                    selected
+                      ? 'border-accent bg-accent-soft ring-1 ring-accent'
+                      : 'border-secondary bg-background-primary hover:border-primary',
+                  )}
+                >
+                  <span
+                    aria-hidden
+                    className="flex h-8 w-8 flex-none items-center justify-center gap-0.5 rounded border border-tertiary"
+                    style={{ background: canvas }}
+                  >
+                    <span className="h-3.5 w-3.5 rounded-full" style={{ background: accent }} />
+                    <span className="h-3.5 w-3.5 rounded-full" style={{ background: text }} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-sans text-sm font-medium text-text-primary">
+                      {p.name}
+                    </span>
+                  </span>
+                  {selected && <CheckCircle2 size={16} aria-hidden className="flex-none text-accent" />}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

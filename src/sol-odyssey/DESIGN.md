@@ -1,26 +1,55 @@
 # Sol Odyssey — design system
 
 A self-contained design system on the **Claude Design System** convention: semantic
-CSS-variable tokens, **light + dark**, a single **Deep Indigo** palette. Deep Indigo sits
-between the calm of dark blue and the energy of violet — wisdom, self-mastery, the night sky as
-the canvas for a long navigation.
+CSS-variable tokens with **eight palette presets — four light + four dark**. **Deep Indigo**
+(light + dark) is the brand anchor — between the calm of dark blue and the energy of violet:
+wisdom, self-mastery, the night sky as the canvas for a long navigation. Alongside it are six
+palettes ported from well-known VS Code themes (see *Presets* below).
 
 ## The one rule
 
-Components consume **semantic tokens, never raw hex**. Tokens are defined once on `:root` in
+Components consume **semantic tokens, never raw hex**. Tokens are defined in
 [`styles/tokens.css`](styles/tokens.css) and mapped into Tailwind in
 [`tailwind.config.js`](../../tailwind.config.js) (`theme.extend.colors`, `borderColor`,
 `fontFamily`, `borderRadius`, `transitionDuration`), so a class like `bg-accent` resolves to
-`var(--color-accent)`. Rebrand the whole app by editing `tokens.css` alone. **Dark mode** is a
-second palette under `[data-theme="dark"]` on `<html>` (same file) — toggled from the header
-(top-right `Sun`/`Moon`, a quick light/dark flip) and Settings → Appearance (Light / Dark /
-**System**, which follows `prefers-color-scheme`). Default light. The chosen theme lives in a
-shared `localStorage` key (`sol-odyssey:theme`, see `lib/theme.ts` / `themeContext.tsx`) so the
-standalone **field guide reads the same value and serves the same palette**; a `storage` listener
-keeps open pages in sync. A pre-paint inline script in the entry HTML avoids any flash. (The guide
-always **prints light** — its dark rules are `@media screen` only.)
+`var(--color-accent)`. `:root` holds the **structural** tokens (radius / motion / shadows) plus
+the default palette; each **preset** is a full colour set under `[data-theme="<id>"]` on `<html>`
+(same file). Add or rebrand a palette by editing `tokens.css` alone — components need no change.
+The chosen preset lives in a shared `localStorage` key (`sol-odyssey:theme`, see
+[`lib/theme.ts`](lib/theme.ts) / [`themeContext.tsx`](lib/themeContext.tsx)); a `storage` listener
+keeps open pages in sync and a pre-paint inline script in the entry HTML avoids any flash.
 
-## Palette — Deep Indigo (light)
+## Presets
+
+Eight palettes, in **cycle order** — the header button (top-right, `Sun`/`Moon`) steps through
+them and each press flips light↔dark; Settings → Appearance picks one directly from a swatch grid.
+Default **Deep Indigo · Light**.
+
+| # | id | Palette | Mode |
+|---|----|---------|------|
+| 1 | `indigo-light` | Deep Indigo | light |
+| 2 | `indigo-dark` | Deep Indigo | dark |
+| 3 | `quiet-light` | Quiet Light | light |
+| 4 | `octagon` | Monokai Pro · Octagon | dark |
+| 5 | `filter-sun` | Monokai Pro · Sun | light |
+| 6 | `ristretto` | Monokai Pro · Ristretto | dark |
+| 7 | `solarized-light` | Solarized Light | light |
+| 8 | `spectrum` | Monokai Pro · Spectrum | dark |
+
+**One mapping discipline across all eight** keeps them a single system: **accent** = the palette's
+violet/purple (brand continuity), **energy** = its pink/magenta (the celebration beat), **success**
+= green, **caution** = orange/amber (**never red**), body text = `--color-text-primary` (never the
+accent). Dark palettes flip the accent lighter with a **dark** `--color-accent-contrast`, so accent
+reads as text on the dark canvas and accent-filled buttons stay legible.
+
+The **field guide** keeps its own Deep Indigo look and only follows the active preset's **mode**
+(any dark preset id → its dark palette). It always **prints light** — dark rules are `@media
+screen` only.
+
+## Anchor palette — Deep Indigo (light)
+
+The default preset and semantic reference — the other seven follow the same token roles (the six
+new palettes' exact hexes live in [`styles/tokens.css`](styles/tokens.css)).
 
 | Token | Hex | Use |
 |---|---|---|

@@ -1,51 +1,45 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  applyTheme,
-  loadThemePref,
-  nextTheme,
-  resolveTheme,
-  saveThemePref,
+  applyPreset,
+  loadPreset,
+  modeOf,
+  nextPreset,
+  presetById,
+  savePreset,
   THEME_KEY,
+  type Preset,
+  type PresetId,
   type Theme,
-  type ThemePref,
 } from './theme'
 
 interface ThemeContextValue {
-  /** The user's preference (light / dark / system). */
-  pref: ThemePref
-  /** The palette actually applied right now. */
-  resolved: Theme
-  /** Set the preference explicitly (e.g. the Settings control). */
-  setTheme: (pref: ThemePref) => void
-  /** Quick header toggle — flips to the opposite of what's currently shown (an explicit choice). */
-  toggle: () => void
+  /** The chosen preset id. */
+  preset: PresetId
+  /** The full preset record (name, mode, swatch…). */
+  current: Preset
+  /** The resolved light/dark mode of the current preset (drives the header glyph). */
+  mode: Theme
+  /** Set a preset explicitly (the Settings picker). */
+  setPreset: (id: PresetId) => void
+  /** Header cycle button — advance to the next preset (wraps; flips light↔dark each press). */
+  cycle: () => void
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [pref, setPref] = useState<ThemePref>(() => loadThemePref())
-  const resolved = resolveTheme(pref)
+  const [preset, setPresetState] = useState<PresetId>(() => loadPreset())
 
-  // Apply + persist whenever the preference (or its resolution) changes.
+  // Apply + persist whenever the preset changes.
   useEffect(() => {
-    applyTheme(resolved)
-    saveThemePref(pref)
-  }, [pref, resolved])
-
-  // Re-resolve when the OS scheme changes while on "system".
-  useEffect(() => {
-    if (pref !== 'system' || typeof matchMedia === 'undefined') return
-    const mq = matchMedia('(prefers-color-scheme: dark)')
-    const onChange = () => applyTheme(resolveTheme('system'))
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [pref])
+    applyPreset(preset)
+    savePreset(preset)
+  }, [preset])
 
   // Live sync with the field guide (and other tabs).
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === THEME_KEY) setPref(loadThemePref())
+      if (e.key === THEME_KEY) setPresetState(loadPreset())
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
@@ -53,12 +47,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<ThemeContextValue>(
     () => ({
-      pref,
-      resolved,
-      setTheme: (p) => setPref(p),
-      toggle: () => setPref(nextTheme(resolved)),
+      preset,
+      current: presetById(preset),
+      mode: modeOf(preset),
+      setPreset: (id) => setPresetState(id),
+      cycle: () => setPresetState((p) => nextPreset(p)),
     }),
-    [pref, resolved],
+    [preset],
   )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>

@@ -7,15 +7,24 @@
   <meta name="description" content="Run your own six-week behaviour-change Odyssey: one behaviour, 42 days, witnessed by a buddy. Your records live in your own Notion." />
   <meta name="theme-color" content="#4B45C6" />
   <script>
-    // Apply the saved theme before first paint (shared with the field guide) to avoid a flash.
+    // Apply the saved palette preset before first paint (shared with the field guide) to avoid a
+    // flash. Keep this map in step with lib/theme.ts (PRESETS) — one entry per preset id → its
+    // theme-color. Legacy 'light'/'dark'/'system' prefs migrate to the two Deep Indigo presets.
     try {
-      var p = localStorage.getItem('sol-odyssey:theme');
-      var dark = p === 'dark' || (p === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-      if (dark) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        var m = document.querySelector('meta[name="theme-color"]');
-        if (m) m.setAttribute('content', '#121127');
-      }
+      var COLORS = {
+        'indigo-light': '#4B45C6', 'indigo-dark': '#121127',
+        'quiet-light': '#F5F5F5', 'octagon': '#1E1F2B',
+        'filter-sun': '#FAF4F2', 'ristretto': '#211C1C',
+        'solarized-light': '#FDF6E3', 'spectrum': '#191919'
+      };
+      var id = localStorage.getItem('sol-odyssey:theme');
+      if (id === 'light') id = 'indigo-light';
+      else if (id === 'dark') id = 'indigo-dark';
+      else if (id === 'system') id = matchMedia('(prefers-color-scheme: dark)').matches ? 'indigo-dark' : 'indigo-light';
+      if (!COLORS[id]) id = 'indigo-light';
+      document.documentElement.setAttribute('data-theme', id);
+      var m = document.querySelector('meta[name="theme-color"]');
+      if (m) m.setAttribute('content', COLORS[id]);
     } catch (e) {}
   </script>
   <link rel="icon" type="image/svg+xml" href="/sol-odyssey-logo.svg" />

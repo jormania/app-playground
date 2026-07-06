@@ -12,8 +12,11 @@ conflict). These rules are non-negotiable — apply them to every change here.
    techniques generically only.
 2. **Single-user MVP.** One owner. The human buddy is **name + email only**, and **the app never
    transmits anything on the user's behalf** (no server, no comms infrastructure). No in-app guide.
-   *(Post-MVP: **dark mode** shipped — Light / Dark / System, default light, a `[data-theme="dark"]`
-   palette toggled from the header/Settings and shared with the guide via `sol-odyssey:theme`.)* Build only what the
+   *(Post-MVP: **theme presets** shipped — **eight palettes, four light + four dark** (Deep Indigo +
+   six ported VS Code themes), default Deep Indigo light. The header button cycles through them in
+   order (each press flips light↔dark); Settings → Appearance picks one from a swatch grid. Each is a
+   `[data-theme="<id>"]` palette in `styles/tokens.css`, shared with the guide via `sol-odyssey:theme`
+   — the guide follows the active preset's light/dark mode only. See `DESIGN.md` → Presets.)* Build only what the
    current milestone scopes; deferred features
    live in the spec's Roadmap. *(Post-MVP, all opt-in/user-driven: an **AI reflective companion** —
    not an AI buddy; never messages, coaches, or replaces the human buddy; **local reminders** —
@@ -32,10 +35,12 @@ conflict). These rules are non-negotiable — apply them to every change here.
    API). We use `databases/{id}/query` to read and `parent.database_id` to write, so the
    user only needs a **database link** — Settings accepts a pasted URL or a bare ID and
    `normalizeNotionId()` (in `lib/notion.ts`) reads the ID out of it.
-5. **Design = Claude Design System, light only.** Every colour/radius/duration is a
-   semantic `--color-*` / `--radius-*` / `--motion-*` token (`styles/tokens.css`); components
-   read the mapped Tailwind names, **never raw hex**. Body text is `--color-text-primary`,
-   never the accent. See `DESIGN.md`.
+5. **Design = Claude Design System.** Every colour/radius/duration is a semantic `--color-*` /
+   `--radius-*` / `--motion-*` token (`styles/tokens.css`); components read the mapped Tailwind
+   names, **never raw hex** (the Settings swatch preview is the one deliberate exception — a
+   colour preview OF the palettes, sourced centrally from `PRESETS`). Body text is
+   `--color-text-primary`, never the accent. Colours ship as **eight palette presets** — see
+   `DESIGN.md` → Presets. Adding/rebranding a palette is a `tokens.css`-only change.
 
 ## Design-system boundary (repo convention)
 
