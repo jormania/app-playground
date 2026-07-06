@@ -1,6 +1,6 @@
 import { Modal, SegmentedControl, Button } from '../../ds'
 import { useTheme } from '../lib/themeContext'
-import { cueSet, playChime } from '../lib/sound'
+import { cueSet, playChime, playTick } from '../lib/sound'
 import styles from './Player.module.css'
 
 const THEME_OPTIONS = [
@@ -95,8 +95,20 @@ export function SettingsModal({ open, onClose, preferences, onChange, cueKind = 
             value={String(preferences.tickWindow)}
             onChange={(v) => onChange({ tickWindow: Number(v) })}
           />
+          {cueKind === 'ding' ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={styles.previewButton}
+              disabled={cueControlsDisabled}
+              onClick={() => playTick(preferences.volume)}
+            >
+              ▶ Preview
+            </Button>
+          ) : null}
           <p className={`${styles.settingsHint} ${styles.settingsHintFlush}`}>
-            A quiet tick + ring glow before a step ends, on movement/focus timers only.
+            A quiet tick + ring glow before a step ends, on movement, focus, and custom timers — not the breathing bells.
           </p>
         </div>
 

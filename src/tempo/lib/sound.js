@@ -84,10 +84,12 @@ export function playTick(volume = 'normal') {
 
 // Sit–Walk: a resonant bell struck twice. Pitched above the single-strike
 // transition bell (528Hz) and doubled, so it reads as "interval", not a step.
+// Deliberately damped below the transition bell (0.22*v) so this background
+// "time passing" marker sits under the actual sit→walk cue rather than rivaling it.
 function chimeBell(v) {
   const strike = (delay) => {
-    tone({ frequency: 660, duration: 1.4, delay, volume: 0.2 * v, type: 'sine' })
-    tone({ frequency: 1320, duration: 0.85, delay, volume: 0.05 * v, type: 'sine' })
+    tone({ frequency: 660, duration: 1.4, delay, volume: 0.13 * v, type: 'sine' })
+    tone({ frequency: 1320, duration: 0.85, delay, volume: 0.035 * v, type: 'sine' })
   }
   strike(0)
   strike(0.55)
