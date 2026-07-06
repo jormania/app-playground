@@ -123,11 +123,15 @@ arrow) is for **moving between screens**. Don't mix the two for the same job.
 
 Two tiers, by design:
 
-- **Brand mark = bespoke.** The two-tone Deep Indigo compass
-  ([`public/sol-odyssey-logo.svg`](../../public/sol-odyssey-logo.svg)) is the logo, favicon, and
-  PWA icon. PNGs (192, 512, 512-maskable with safe-zone padding) + the 32px favicon are generated
-  from the SVG by `npm run gen:icons`
-  ([`scripts/generate-sol-odyssey-icons.mjs`](../../scripts/generate-sol-odyssey-icons.mjs)).
+- **Brand mark = bespoke, and palette-aware in-app.** The compass. In the header it's an inlined
+  token-driven component ([`components/Logo.tsx`](components/Logo.tsx)) that **tints with the active
+  preset** — structure on `--color-accent`, the north point + centre dot on `--color-energy`, the
+  hub on `--color-background-primary` — so it belongs to every palette, not just Deep Indigo. The
+  standalone [`public/sol-odyssey-logo.svg`](../../public/sol-odyssey-logo.svg) stays fixed Deep
+  Indigo: it's the favicon + PWA-icon source (outside the themed surface). PNGs (192, 512,
+  512-maskable with safe-zone padding) + the 32px favicon are generated from it by `npm run
+  gen:icons` ([`scripts/generate-sol-odyssey-icons.mjs`](../../scripts/generate-sol-odyssey-icons.mjs)).
+  Keep the inline component and the static file in visual step.
 - **UI glyphs = lucide line icons** (`lucide-react`). This is the system's icon set — clean,
   consistent, timeless. Any new utility/section glyph is a lucide icon, given an `aria-label`.
   Nav map: Charter = `ScrollText`, Today = `Sun`, Tracker = `LayoutGrid`, Weekly = `NotebookPen`,

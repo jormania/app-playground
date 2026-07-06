@@ -7,6 +7,7 @@ import { TrackerPage } from './pages/Tracker'
 import { WeeklyPage } from './pages/Weekly'
 import { HarvestPage } from './pages/Harvest'
 import { StatsPage } from './pages/Stats'
+import { Logo } from './components/Logo'
 import { useHashRoute } from './lib/useHashRoute'
 import { useSettings } from './lib/settingsContext'
 import { GuidanceProvider } from './lib/guidanceContext'
@@ -57,7 +58,7 @@ export default function App() {
               onClick={() => navigate('/')}
               aria-label="Sol Odyssey home"
             >
-              <img src="/sol-odyssey-logo.svg" alt="" width={36} height={36} aria-hidden />
+              <Logo size={36} />
               {/* Wordmark drops on narrow phones so the nav fits; returns on ≥sm. */}
               <span className="hidden flex-col items-start sm:flex">
                 <span className="font-display text-lg leading-none">Sol Odyssey</span>
