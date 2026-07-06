@@ -8,11 +8,21 @@
   <link rel="manifest" href="/journal-of-delights.webmanifest" />
   <meta name="theme-color" content="#002b36" />
   <script>
-    // Apply the saved theme before paint to avoid a flash of the wrong palette.
+    // Apply the saved palette preset before first paint to avoid a flash of the wrong theme. Keep
+    // this map in step with src/journal/theme.js (PRESETS) — one entry per preset id → its bar
+    // colour. Legacy 'light'/'dark' prefs migrate to the two Solarized presets.
     try {
-      var t = localStorage.getItem('jod_theme') === 'light' ? 'light' : 'dark';
-      document.documentElement.dataset.theme = t;
-      document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'light' ? '#fdf6e3' : '#002b36');
+      var BAR = {
+        'solarized-dark': '#002b36', 'solarized-light': '#fdf6e3',
+        'octagon': '#1e1f2b', 'quiet-light': '#f5f5f5',
+        'spectrum': '#191919', 'filter-sun': '#faf4f2'
+      };
+      var id = localStorage.getItem('jod_theme');
+      if (id === 'light') id = 'solarized-light';
+      else if (id === 'dark') id = 'solarized-dark';
+      if (!BAR[id]) id = 'solarized-dark';
+      document.documentElement.setAttribute('data-theme', id);
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', BAR[id]);
     } catch (e) {}
   </script>
   <link rel="icon" href="/journal-icon.svg" type="image/svg+xml" />

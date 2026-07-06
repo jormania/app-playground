@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import './journal.css'
-import { getClient, isLive, clearDraft, listDrafts, discardDraft, getTheme, setTheme } from './store.js'
+import { getClient, isLive, clearDraft, listDrafts, discardDraft, loadPreset, savePreset, applyPreset, nextPreset, modeOf, presetById, THEME_KEY } from './store.js'
 import { writeReminderState, previewFromQuery } from './reminders.js'
 import { todayKey, findByDate } from './dates.js'
 import { filterEntries } from './search.js'
@@ -32,11 +32,18 @@ export default function App() {
   const [offline, setOffline] = useState(false)
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState('all')
-  const [theme, setThemeState] = useState(getTheme())
+  const [preset, setPresetState] = useState(loadPreset())
   const [draftTick, setDraftTick] = useState(0) // bump to re-read drafts from storage
 
-  // Keep <html data-theme> and the mobile bar colour in sync with the choice.
-  useEffect(() => { setTheme(theme) }, [theme])
+  // Apply <html data-theme> + mobile bar colour and persist whenever the preset changes.
+  useEffect(() => { applyPreset(preset); savePreset(preset) }, [preset])
+
+  // Live-sync with the field guide (and other tabs) via the shared jod_theme key.
+  useEffect(() => {
+    const onStorage = (e) => { if (e.key === THEME_KEY) setPresetState(loadPreset()) }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
 
   // Opening an entry (or the editor) swaps content in place — the page itself
   // never navigates, so without this the scroll position from wherever you were
@@ -183,8 +190,9 @@ export default function App() {
         onStats={() => setShowStats(true)}
         onExport={() => downloadJournal(entries)}
         onSettings={() => setShowSettings(true)}
-        theme={theme}
-        onToggleTheme={() => setThemeState(t => (t === 'dark' ? 'light' : 'dark'))}
+        themeMode={modeOf(preset)}
+        themeName={presetById(preset).name}
+        onCycleTheme={() => setPresetState(nextPreset(preset))}
       />
 
       <main>

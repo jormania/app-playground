@@ -13,16 +13,17 @@ const VIEWS = [
 // On desktop the view toggle is a segmented control and the actions sit inline;
 // on phones BOTH collapse into ⋯-style menus so the bar stays one row with the
 // search box on it (not pushed to a second row).
-export default function MenuBar({ view, onView, query, scope, onQuery, onScope, onToday, onStats, onExport, onSettings, theme, onToggleTheme }) {
+export default function MenuBar({ view, onView, query, scope, onQuery, onScope, onToday, onStats, onExport, onSettings, themeMode, themeName, onCycleTheme }) {
   const [moreOpen, setMoreOpen] = useState(false)
   const [viewOpen, setViewOpen] = useState(false)
-  const dark = theme !== 'light'
+  const dark = themeMode !== 'light'
 
   const actions = [
     { key: 'stats', Icon: StatsIcon, label: 'Stats', onClick: onStats, title: 'Stats' },
     { key: 'export', Icon: ExportIcon, label: 'Export', onClick: onExport, title: 'Export as an HTML file' },
-    // The toggle shows the mode you'll switch TO.
-    { key: 'theme', Icon: dark ? SunIcon : MoonIcon, label: dark ? 'Light' : 'Dark', onClick: onToggleTheme, title: dark ? 'Switch to light theme' : 'Switch to dark theme' },
+    // Cycles through the six palettes (each press flips light↔dark, so the sun/moon glyph — the mode
+    // you'll switch TO — stays truthful); the title names the palette you're on.
+    { key: 'theme', Icon: dark ? SunIcon : MoonIcon, label: 'Theme', onClick: onCycleTheme, title: `${themeName} — tap to cycle themes` },
     { key: 'guide', Icon: GuideIcon, label: 'Guide', href: GUIDE_URL, title: 'How to use this journal' },
     { key: 'settings', Icon: GearIcon, label: 'Settings', onClick: onSettings, title: 'Connect to Notion' },
   ]

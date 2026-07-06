@@ -50,24 +50,10 @@ export function isLive() {
 }
 
 // ── Theme ───────────────────────────────────────────────────────────────────
-// Solarized Dark is the default; the user's choice is remembered and never
-// changed automatically. Applied via the <html data-theme> attribute.
-const THEME_KEY = 'jod_theme'
-const THEME_BAR = { dark: '#002b36', light: '#fdf6e3' } // mobile browser UI bar
-
-export function getTheme() {
-  try { return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark' } catch { return 'dark' }
-}
-
-export function setTheme(theme) {
-  const t = theme === 'light' ? 'light' : 'dark'
-  try { localStorage.setItem(THEME_KEY, t) } catch { /* ignore */ }
-  if (typeof document !== 'undefined') {
-    document.documentElement.dataset.theme = t
-    const meta = document.querySelector('meta[name="theme-color"]')
-    if (meta) meta.setAttribute('content', THEME_BAR[t])
-  }
-}
+// The palette presets (six: three light + three dark) and the shared `jod_theme`
+// key now live in theme.js — the header cycle button drives them. Kept here as a
+// re-export so existing importers keep one home for app state.
+export { loadPreset, savePreset, applyPreset, nextPreset, presetById, modeOf, PRESETS, THEME_KEY } from './theme.js'
 
 // ── Gentle reminders ────────────────────────────────────────────────────────
 // Opt-in local notifications (see reminders.js): a 9pm nudge to write today's

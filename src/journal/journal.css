@@ -13,11 +13,17 @@
    Inputs are >=16px so mobile Safari never auto-zooms on focus. */
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* Two palettes (Solarized, after Ethan Schoonover). Dark is the default; the
-   user toggles to light and the choice is remembered. Solarized keeps the SAME
-   accent hues across both modes by design, so only the base tones swap — which is
-   why every component reads from these variables and never hard-codes a colour.
-   Translucent fills are derived from the accents via color-mix so they adapt too. */
+/* SIX palettes, three light + three dark, chosen from the header cycle button (each press flips
+   dark↔light) and remembered in the shared `jod_theme` key (see theme.js). Solarized (dark default
+   + light) is the brand pair; the other four are drawn from well-known editor themes — Quiet Light,
+   Monokai Pro Sun, Octagon, and Spectrum — each re-authored across THIS palette's Solarized-derived
+   token roles so people-chips (--cyan), tag-chips (--green), dates (--purple) and the heatmap
+   (--gold) stay legible everywhere, not just the primary accent (--blue).
+
+   :root carries the DEFAULT palette (Solarized dark) so a missing/blank data-theme is always safe;
+   `data-theme="solarized-dark"` therefore needs no block of its own. Every component reads these
+   variables and never hard-codes a colour. Derived fills (--ring, --menubar-bg) are color-mix over
+   --blue / --bg2, so they re-resolve per preset automatically. */
 :root {
   /* Solarized Dark (default) */
   --bg:        #002b36;
@@ -50,8 +56,8 @@
   --mono:  'JetBrains Mono', monospace;
 }
 
-:root[data-theme="light"] {
-  /* Solarized Light */
+[data-theme="solarized-light"] {
+  /* Solarized Light — same accent hues as the dark default; only base tones swap. */
   --bg:        #fdf6e3;
   --bg2:       #f4eeda;
   --surface:   #eee8d5;
@@ -65,6 +71,119 @@
   --glow:   rgba(38,139,210,0.06);
   --scrim:  rgba(7,54,66,0.32);
   --shadow: rgba(88,110,117,0.20);
+}
+
+/* ── Quiet Light — VS Code Quiet Light: soft, cool-neutral, muted-purple accent. ───────────── */
+[data-theme="quiet-light"] {
+  --bg:        #f5f5f5;
+  --bg2:       #ececf2;
+  --surface:   #edeef5;
+  --surface2:  #e2e2ea;
+  --border:    #dedde6;
+  --border2:   #c9c7d2;
+  --ink:       #333333;
+  --muted:     #62626b;
+  --faint:     #94939c;
+  --blue:      #4b83cd; /* primary — links, focus, primary button */
+  --cyan:      #398a86; /* people chips */
+  --green:     #448c27; /* tag chips */
+  --purple:    #705697; /* dates, eyebrow — the theme's signature */
+  --red:       #c0392b;
+  --orange:    #9c5d27;
+  --yellow:    #a67b00;
+  --gold:      #b58a2a;
+  --gold-soft: #8a6a00;
+  --on-accent: #ffffff;
+  --accent-btn:#7e6ba8;
+  --glow:   rgba(75,131,205,0.05);
+  --ring:   color-mix(in srgb, var(--blue) 20%, transparent);
+  --scrim:  rgba(51,51,51,0.30);
+  --shadow: rgba(80,80,92,0.18);
+}
+
+/* ── Monokai Pro Sun — warm cream light, violet accent. ────────────────────────────────────── */
+[data-theme="filter-sun"] {
+  --bg:        #faf4f2;
+  --bg2:       #f1e9e6;
+  --surface:   #f4ede9;
+  --surface2:  #eae1de;
+  --border:    #ded5d3;
+  --border2:   #cfc7c6;
+  --ink:       #29242a;
+  --muted:     #6b6367;
+  --faint:     #9a9195;
+  --blue:      #7058be; /* primary — the theme's violet */
+  --cyan:      #1c8c86; /* people chips (teal) */
+  --green:     #269d69; /* tag chips */
+  --purple:    #9350b0; /* dates */
+  --red:       #d0304f;
+  --orange:    #e16032;
+  --yellow:    #b57608;
+  --gold:      #c4872a;
+  --gold-soft: #a96c1e;
+  --on-accent: #ffffff;
+  --accent-btn:#8168c8;
+  --glow:   rgba(112,88,190,0.06);
+  --ring:   color-mix(in srgb, var(--blue) 18%, transparent);
+  --scrim:  rgba(41,36,42,0.30);
+  --shadow: rgba(90,80,80,0.18);
+}
+
+/* ── Monokai Pro Octagon — bluish night; pastel accents on a dark canvas, so --on-accent goes
+      DARK (accent fills are light and want dark ink). ────────────────────────────────────────── */
+[data-theme="octagon"] {
+  --bg:        #1e1f2b;
+  --bg2:       #191a24;
+  --surface:   #282a3a;
+  --surface2:  #343747;
+  --border:    #313445;
+  --border2:   #454962;
+  --ink:       #eaf2f1;
+  --muted:     #a7aeb8;
+  --faint:     #7c8290;
+  --blue:      #78c7e0; /* primary — octagon's cyan-blue */
+  --cyan:      #78dce8; /* people chips */
+  --green:     #bad761; /* tag chips */
+  --purple:    #c39ac9; /* dates — the signature mauve */
+  --red:       #ff657a;
+  --orange:    #ff9b5e;
+  --yellow:    #ffd76d;
+  --gold:      #e0b25a;
+  --gold-soft: #d9ae63;
+  --on-accent: #1e1f2b; /* dark ink on the light accent fills */
+  --accent-btn:#b49ad6;
+  --glow:   rgba(120,199,224,0.10);
+  --ring:   color-mix(in srgb, var(--blue) 24%, transparent);
+  --scrim:  rgba(10,10,16,0.62);
+  --shadow: rgba(0,0,0,0.45);
+}
+
+/* ── Monokai Pro Spectrum — neutral night; same dark-accent discipline as Octagon. ──────────── */
+[data-theme="spectrum"] {
+  --bg:        #191919;
+  --bg2:       #131313;
+  --surface:   #222222;
+  --surface2:  #2e2d2f;
+  --border:    #2f2e30;
+  --border2:   #4a484c;
+  --ink:       #f7f1ff;
+  --muted:     #b0acb6;
+  --faint:     #817e86;
+  --blue:      #5ad4e6; /* primary — spectrum's cyan */
+  --cyan:      #7bd8c6; /* people chips (teal, kept distinct from --blue) */
+  --green:     #7bd88f; /* tag chips */
+  --purple:    #948ae3; /* dates — the violet */
+  --red:       #fc618d;
+  --orange:    #fd9353;
+  --yellow:    #fce566;
+  --gold:      #dcc05a;
+  --gold-soft: #cfb04e;
+  --on-accent: #191919; /* dark ink on the light accent fills */
+  --accent-btn:#948ae3;
+  --glow:   rgba(90,212,230,0.09);
+  --ring:   color-mix(in srgb, var(--blue) 22%, transparent);
+  --scrim:  rgba(0,0,0,0.62);
+  --shadow: rgba(0,0,0,0.45);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
