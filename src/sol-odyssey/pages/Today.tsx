@@ -260,6 +260,7 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
           {checkinErrors(form).oneLine && (
             <p className="font-sans text-sm text-caution">{checkinErrors(form).oneLine}</p>
           )}
+          <SupportingNote note="selfMonitor" />
         </div>
         <Textarea
           label="Friction (optional)"
@@ -282,7 +283,6 @@ export function TodayPage({ navigate }: { navigate: (to: string) => void }) {
             />
           </div>
         </div>
-        <SupportingNote note="selfMonitor" />
         <SupportingNote note="sentToBuddy" />
 
         <div className="flex flex-wrap items-center gap-3">
