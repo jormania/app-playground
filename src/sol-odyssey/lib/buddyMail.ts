@@ -162,7 +162,7 @@ export function kickoffBuddyMail(buddyName: string, userName: string, odyssey: O
       },
     ],
     outro:
-      "The welcome note I'll send lays out what it would involve for you — a short note from me most days and a ten-minute call once a week — and there's no need to run an Odyssey of your own.",
+      "There's a separate welcome note that lays out what this would involve for you — a short update from me most days and a ten-minute call once a week — you don't need to run an Odyssey of your own.",
   }
 }
 
