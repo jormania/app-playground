@@ -1,0 +1,106 @@
+/* A full-screen, frameless settings overlay — not a card. It sits on the night
+   itself, closed by tapping 夜 at the top or "done" at the foot. */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  overflow-y: auto;
+  padding: max(var(--space-xl), env(safe-area-inset-top)) var(--space-lg)
+    max(var(--space-xl), env(safe-area-inset-bottom));
+  animation: rise 0.32s var(--ease) both;
+}
+
+.close {
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--yoru-glow);
+  font-family: var(--font-sans);
+  font-size: 2.5rem;
+  line-height: 1;
+  opacity: 0.9;
+  flex: none;
+}
+
+.list {
+  width: 100%;
+  max-width: 22rem; /* a phone column, even on desktop */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* align-items:flex-start keeps the inline-flex segmented tracks hugging their
+   labels instead of being stretched to the full column width. */
+.row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  width: 100%;
+}
+
+.label {
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+}
+
+.name {
+  appearance: none;
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: var(--text-base);
+  padding: var(--space-sm) var(--space-md);
+}
+.name::placeholder {
+  color: var(--color-faint);
+}
+.name:focus {
+  outline: none;
+  border-color: var(--color-border-2);
+}
+
+.done {
+  appearance: none;
+  cursor: pointer;
+  width: 100%;
+  max-width: 22rem;
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.14em;
+  text-transform: lowercase;
+  transition: border-color var(--duration) var(--ease), background-color var(--duration) var(--ease);
+}
+.done:hover {
+  border-color: var(--yoru-glow);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

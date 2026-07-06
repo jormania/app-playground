@@ -20,6 +20,7 @@
     { "platform": "webapp", "url": "https://coneofcold.vercel.app/sol-odyssey.webmanifest" },
     { "platform": "webapp", "url": "https://coneofcold.vercel.app/touch-grass.webmanifest" },
     { "platform": "webapp", "url": "https://coneofcold.vercel.app/journal-of-delights.webmanifest" },
-    { "platform": "webapp", "url": "https://coneofcold.vercel.app/kettlebell-training.webmanifest" }
+    { "platform": "webapp", "url": "https://coneofcold.vercel.app/kettlebell-training.webmanifest" },
+    { "platform": "webapp", "url": "https://coneofcold.vercel.app/yoru.webmanifest" }
   ]
 }

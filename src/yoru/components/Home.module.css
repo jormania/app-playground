@@ -1,0 +1,75 @@
+.home {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  text-align: center;
+  padding: max(var(--space-xl), env(safe-area-inset-top)) var(--space-lg)
+    max(var(--space-xl), env(safe-area-inset-bottom));
+}
+
+/* The title IS the glyph 夜 — flat, no border, no shadow, no gradient — and it's
+   also the way into Settings (tap it). It breathes with a very slow pulse (at
+   the chosen breath's cadence) while its colour drifts through the night. */
+.hero {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: clamp(5rem, 30vw, 8rem);
+  line-height: 1;
+  font-weight: var(--weight-medium);
+  color: var(--yoru-glow);
+  will-change: transform, color, opacity;
+  animation:
+    heroPulse var(--breath-cycle, 10s) ease-in-out infinite,
+    heroHue 32s linear infinite;
+}
+
+@keyframes heroPulse {
+  0% {
+    transform: scale(0.965);
+    opacity: 0.74;
+  }
+  45% {
+    transform: scale(1.045);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.965);
+    opacity: 0.74;
+  }
+}
+
+@keyframes heroHue {
+  0% { color: #bb9af7; }
+  25% { color: #7aa2f7; }
+  50% { color: #7dcfff; }
+  75% { color: #9d7cd8; }
+  100% { color: #bb9af7; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero {
+    animation: none;
+    opacity: 0.9;
+  }
+}
+
+.tagline {
+  margin: 0;
+  color: var(--color-faint);
+  font-size: var(--text-sm);
+  letter-spacing: 0.08em;
+}
+
+.begin {
+  margin-top: var(--space-md);
+  min-width: 12rem;
+  letter-spacing: 0.06em;
+}

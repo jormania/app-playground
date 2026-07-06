@@ -148,6 +148,7 @@ export default defineConfig({
         solOdysseys: resolve(__dirname, 'sol-odysseys-react.html'),
         tempo: resolve(__dirname, 'tempo-react.html'),
         lawOfTheDay: resolve(__dirname, 'law-of-the-day-react.html'),
+        yoru: resolve(__dirname, 'yoru-react.html'),
         dsShowcase: resolve(__dirname, 'ds-showcase.html'),
         cabinet: resolve(__dirname, 'cabinet.html'),
       }

@@ -1,0 +1,52 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2xl);
+}
+
+.orb {
+  width: 15rem;
+  height: 15rem;
+  border-radius: var(--radius-pill);
+  /* Driven by inline transform: scale() every frame from the breath. */
+  will-change: transform;
+  background: radial-gradient(
+    circle at 50% 45%,
+    color-mix(in srgb, var(--yoru-glow) 55%, transparent) 0%,
+    color-mix(in srgb, var(--yoru-glow2) 34%, transparent) 38%,
+    color-mix(in srgb, var(--yoru-glow2) 8%, transparent) 66%,
+    transparent 78%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.core {
+  width: 46%;
+  height: 46%;
+  border-radius: var(--radius-pill);
+  background: radial-gradient(
+    circle at 50% 45%,
+    color-mix(in srgb, var(--yoru-glow) 78%, white 6%) 0%,
+    color-mix(in srgb, var(--yoru-glow) 42%, transparent) 60%,
+    transparent 82%
+  );
+  filter: blur(2px);
+}
+
+.label {
+  font-size: var(--text-sm);
+  letter-spacing: 0.22em;
+  text-transform: lowercase;
+  color: var(--color-faint);
+  min-height: 1.2em;
+}
+
+@media (max-width: 380px) {
+  .orb {
+    width: 12rem;
+    height: 12rem;
+  }
+}

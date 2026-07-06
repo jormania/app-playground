@@ -14,7 +14,8 @@
     "gen:tempo-icons": "node scripts/generate-tempo-icons.mjs",
     "gen:law-of-the-day-icons": "node scripts/generate-law-of-the-day-icons.mjs",
     "gen:kettlebell-icons": "node scripts/generate-kettlebell-icons.mjs",
-    "gen:cabinet-icons": "node scripts/generate-cabinet-icons.mjs"
+    "gen:cabinet-icons": "node scripts/generate-cabinet-icons.mjs",
+    "gen:yoru-icons": "node scripts/generate-yoru-icons.mjs"
   },
   "repository": {
     "type": "git",
