@@ -9,6 +9,7 @@
 import type { OdysseyDetail } from './notion'
 import type { CheckinRecord } from './checkins'
 import type { ReflectionDraft } from './reflections'
+import { identitySentence } from './charter'
 
 export interface CompanionPrompt {
   system: string
@@ -49,7 +50,7 @@ function clean(s: string): string {
 export function buildDailyCompanionPrompt(odyssey: OdysseyDetail, checkin: CheckinRecord): CompanionPrompt {
   const lines = [
     `The behaviour they are practising: ${clean(odyssey.behaviour) || '(unspecified)'}.`,
-    odyssey.identity ? `Who they want to become: ${clean(odyssey.identity)}.` : '',
+    odyssey.identity ? `Who they want to become: ${identitySentence(clean(odyssey.identity))}.` : '',
     `Today (day ${checkin.dayIndex}) they marked it ${checkin.done ? 'done' : 'not done'}.`,
     `In their words: "${clean(checkin.oneLine)}".`,
     checkin.friction ? `What got in the way: "${clean(checkin.friction)}".` : '',

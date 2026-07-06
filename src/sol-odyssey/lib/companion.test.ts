@@ -20,7 +20,7 @@ const odyssey: OdysseyDetail = {
   startDate: '2026-07-06',
   endDate: '2026-08-16',
   behaviour: 'Move my body before the day takes me',
-  identity: 'I am someone who starts the day in motion',
+  identity: 'starts the day in motion',
   tinyVersion: 'walk to the corner',
   anchor: 'after my first coffee',
   ifThen: 'if it rains, hallway',

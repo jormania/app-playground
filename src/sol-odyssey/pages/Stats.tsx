@@ -6,6 +6,7 @@ import { isConfigured } from '../lib/settings'
 import { useOdysseyArchive } from '../lib/useOdysseyArchive'
 import { isHarvested } from '../lib/harvest'
 import { downloadSynopsis } from '../lib/exportSynopsis'
+import { identitySentence } from '../lib/charter'
 import type { OdysseyDetail } from '../lib/notion'
 
 // The look-back. Identity-led — who you've become across the completed Odysseys, the method's real
@@ -78,7 +79,7 @@ function StatHeader({ count }: { count: number }) {
 
 /** One completed Odyssey, identity first. */
 function BecomeCard({ odyssey }: { odyssey: OdysseyDetail }) {
-  const identity = odyssey.identity.trim() || odyssey.behaviour.trim()
+  const identity = odyssey.identity.trim() ? identitySentence(odyssey.identity) : odyssey.behaviour.trim()
   return (
     <article className="flex flex-col gap-3 rounded-lg border border-tertiary bg-background-secondary p-5">
       <div className="flex items-start justify-between gap-3">

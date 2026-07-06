@@ -56,6 +56,14 @@ export function isSpecific(value: string): boolean {
   return trimmed.length >= 8 && trimmed.split(/\s+/).length >= 2
 }
 
+/** The identity field only ever stores the completion of "I am someone who…" (it's captured as a
+ *  sentence-starter, like Anchor's "After I…"). Reconstruct the full sentence for any surface that
+ *  shows it standalone, without a separate label already supplying that frame. */
+export function identitySentence(identity: string): string {
+  const trimmed = identity.trim()
+  return trimmed ? `I am someone who ${trimmed}` : ''
+}
+
 /** Field-level validation messages for the whole draft (empty when valid). */
 export function charterErrors(draft: CharterDraft): Partial<Record<keyof CharterDraft, string>> {
   const errors: Partial<Record<keyof CharterDraft, string>> = {}

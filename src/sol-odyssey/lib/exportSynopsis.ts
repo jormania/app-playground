@@ -4,6 +4,7 @@
 // is pure (no DOM) and unit-tested; `downloadSynopsis` is the thin browser wrapper.
 
 import type { OdysseyDetail } from './notion'
+import { identitySentence } from './charter'
 
 export const SYNOPSIS_FILENAME = 'sol-odyssey-synopsis.html'
 
@@ -21,7 +22,7 @@ function row(label: string, value: string): string {
 
 function odysseySection(o: OdysseyDetail): string {
   const tag = o.outcome ? `<span class="pill">${esc(o.outcome)}</span>` : ''
-  const identity = o.identity.trim() || o.behaviour.trim()
+  const identity = o.identity.trim() ? identitySentence(o.identity) : o.behaviour.trim()
   const lines = [
     row('Practised', o.tinyVersion || o.behaviour),
     row('Why it mattered', o.whyValue),

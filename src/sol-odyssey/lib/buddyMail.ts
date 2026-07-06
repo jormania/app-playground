@@ -10,6 +10,7 @@
 import type { OdysseyDetail } from './notion'
 import type { CheckinDraft } from './checkins'
 import type { ReflectionDraft } from './reflections'
+import { identitySentence } from './charter'
 
 /** One labelled line in an email: an emoji accent, a label, and its value. */
 export interface EmailRow {
@@ -151,7 +152,7 @@ export function kickoffBuddyMail(buddyName: string, userName: string, odyssey: O
       {
         rows: rows(
           { emoji: '🎯', label: "The habit I'm installing", value: clean(odyssey.behaviour) || '—' },
-          opt('🧭', "Who I'm becoming", odyssey.identity),
+          opt('🧭', "Who I'm becoming", identitySentence(odyssey.identity)),
           opt('🌱', 'The tiny version', odyssey.tinyVersion),
           opt('✅', 'What counts as done', odyssey.dailySuccess),
           odyssey.startDate && odyssey.endDate

@@ -6,7 +6,7 @@ import { SupportingNote } from './SupportingNote'
 import { BuddyEmailButton } from './BuddyEmailButton'
 import { useSettings } from '../lib/settingsContext'
 import { kickoffBuddyMail } from '../lib/buddyMail'
-import { computeDayIndex } from '../lib/charter'
+import { computeDayIndex, identitySentence } from '../lib/charter'
 import {
   useActivatePlanningOdyssey,
   useDiscardPlanningDraft,
@@ -56,13 +56,8 @@ export function PlannedOdysseyCard({
         <h2 className="font-display text-2xl">
           {nextNumber ? `Odyssey ${nextNumber} — ${draft.title || 'Planned Odyssey'}` : draft.title || 'Planned Odyssey'}
         </h2>
-        {nextNumber && (
-          <p className="font-mono text-xs text-text-secondary">
-            The number it’ll take when you begin — not locked in until then.
-          </p>
-        )}
         {draft.identity && (
-          <p className="font-display text-lg text-text-secondary">{draft.identity}</p>
+          <p className="font-display text-lg text-text-secondary">{identitySentence(draft.identity)}</p>
         )}
       </header>
 

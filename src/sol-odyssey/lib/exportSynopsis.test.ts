@@ -11,7 +11,7 @@ function detail(over: Partial<OdysseyDetail> = {}): OdysseyDetail {
     startDate: '2026-06-15',
     endDate: '2026-07-26',
     behaviour: 'move my body',
-    identity: 'I am someone who moves',
+    identity: 'moves',
     tinyVersion: 'walk to the corner',
     anchor: 'after my first coffee',
     ifThen: 'if it rains, hallway',

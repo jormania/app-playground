@@ -241,9 +241,10 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
         </section>
       )}
 
-      <footer className="flex items-center justify-between gap-3">
+      <footer className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Button
           variant="ghost"
+          className="w-full sm:w-auto"
           onClick={() => (step === 0 ? navigate('/') : setStep((s) => s - 1))}
           disabled={busy}
         >
@@ -251,10 +252,10 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
           {step === 0 ? 'Cancel' : 'Back'}
         </Button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           {/* Save progress and leave — available throughout, partial drafts allowed. */}
           {!(onReview && !hasActive) && (
-            <Button variant="secondary" onClick={saveDraft} disabled={busy}>
+            <Button variant="secondary" className="w-full sm:w-auto" onClick={saveDraft} disabled={busy}>
               {save.isPending ? (
                 <Loader2 size={18} className="animate-spin" aria-hidden />
               ) : (
@@ -266,11 +267,11 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
 
           {onReview && !hasActive && (
             <>
-              <Button variant="secondary" onClick={saveDraft} disabled={busy}>
+              <Button variant="secondary" className="w-full sm:w-auto" onClick={saveDraft} disabled={busy}>
                 {save.isPending ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Save size={18} aria-hidden />}
                 Save as planned
               </Button>
-              <Button onClick={begin} disabled={!canActivate(draft) || busy}>
+              <Button className="w-full sm:w-auto" onClick={begin} disabled={!canActivate(draft) || busy}>
                 {activate.isPending || create.isPending ? (
                   <Loader2 size={18} className="animate-spin" aria-hidden />
                 ) : (
@@ -282,7 +283,7 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
           )}
 
           {!onReview && (
-            <Button onClick={() => setStep((s) => s + 1)} disabled={stepInvalid || busy}>
+            <Button className="w-full sm:w-auto" onClick={() => setStep((s) => s + 1)} disabled={stepInvalid || busy}>
               Next
               <ArrowRight size={18} aria-hidden />
             </Button>

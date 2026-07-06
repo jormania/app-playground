@@ -2,7 +2,7 @@ import { useActiveOdysseys } from '../lib/useActiveOdysseys'
 import { useNextOdysseyNumber } from '../lib/useNextOdysseyNumber'
 import { usePlanningOdyssey } from '../lib/usePlanningOdyssey'
 import { useSettings } from '../lib/settingsContext'
-import { computeDayIndex, CYCLE_DAYS } from '../lib/charter'
+import { computeDayIndex, CYCLE_DAYS, identitySentence } from '../lib/charter'
 import { isConfigured } from '../lib/settings'
 import { Notice } from '../components/Notice'
 import { Button } from '../components/Button'
@@ -79,7 +79,7 @@ function OdysseyReadout({
         <span className="font-mono text-xs uppercase tracking-wide text-accent">{dayLabel}</span>
         <h2 className="font-display text-2xl">{odyssey.title}</h2>
         {odyssey.identity && (
-          <p className="font-display text-lg text-text-secondary">{odyssey.identity}</p>
+          <p className="font-display text-lg text-text-secondary">{identitySentence(odyssey.identity)}</p>
         )}
       </header>
 

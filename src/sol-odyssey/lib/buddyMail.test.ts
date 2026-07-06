@@ -26,7 +26,7 @@ function odyssey(over: Partial<OdysseyDetail> = {}): OdysseyDetail {
     startDate: '2026-07-06',
     endDate: '2026-08-16',
     behaviour: 'Move my body before the day takes me',
-    identity: 'I am someone who starts the day in motion',
+    identity: 'starts the day in motion',
     tinyVersion: 'walk to the corner',
     anchor: 'after my first coffee',
     ifThen: 'if it rains, hallway',
@@ -96,6 +96,7 @@ describe('kickoffBuddyMail', () => {
     const mail = kickoffBuddyMail('Sam', 'Alex', odyssey())
     expect(mail.subject).toBe('Sol Odyssey · Odyssey 3 · will you witness? · Alex')
     expect(rowText(mail)).toContain("The habit I'm installing: Move my body before the day takes me")
+    expect(rowText(mail)).toContain("Who I'm becoming: I am someone who starts the day in motion")
     expect(rowText(mail)).toContain('When it runs: 6 Jul – 16 Aug 2026')
     expect(`${mail.heading} ${mail.intro} ${mail.outro}`.toLowerCase()).toContain('witness')
   })
