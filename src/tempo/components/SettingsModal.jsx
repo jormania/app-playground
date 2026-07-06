@@ -1,6 +1,6 @@
 import { Modal, SegmentedControl, Button } from '../../ds'
 import { useTheme } from '../lib/themeContext'
-import { cueSet } from '../lib/sound'
+import { cueSet, playChime } from '../lib/sound'
 import styles from './Player.module.css'
 
 const THEME_OPTIONS = [
@@ -26,7 +26,7 @@ const TICK_WINDOW_OPTIONS = [
   { value: '8', label: '8s' },
 ]
 
-export function SettingsModal({ open, onClose, preferences, onChange, cueKind = 'ding' }) {
+export function SettingsModal({ open, onClose, preferences, onChange, cueKind = 'ding', chimeMode = null }) {
   const { resolved, setTheme } = useTheme()
 
   // Silent mode is a master override: it mutes all audio without touching the
@@ -128,8 +128,22 @@ export function SettingsModal({ open, onClose, preferences, onChange, cueKind = 
                 value={String(preferences.chimeInterval)}
                 onChange={(v) => onChange({ chimeInterval: Number(v) })}
               />
+              {chimeMode ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={styles.previewButton}
+                  disabled={cueControlsDisabled}
+                  onClick={() => playChime(preferences.volume, chimeMode)}
+                >
+                  ▶ Preview
+                </Button>
+              ) : null}
             </div>
           )}
+          <p className={`${styles.settingsHint} ${styles.settingsHintFlush}`}>
+            Only on Sit–Walk (a distinct bell) and Custom (a soft alarm) — the long-session modes.
+          </p>
         </div>
 
         <label className={styles.settingsRow}>

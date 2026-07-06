@@ -78,12 +78,30 @@ export function playTick(volume = 'normal') {
   tone({ frequency: 1400, duration: 0.06, volume: 0.09 * v, type: 'square' })
 }
 
-// A standalone "interval chime" for long sessions — deliberately distinct from
-// both the ding and the bell (different waveform, different melodic shape: two
-// notes in sequence rather than one beep or two simultaneous tones) so it's
-// unmistakable as "time has passed", not a step transition or completion.
-export function playChime(volume = 'normal') {
-  const v = scale(volume) * 0.55
-  tone({ frequency: 587, duration: 0.5, volume: v, type: 'triangle' })
-  tone({ frequency: 880, duration: 0.9, delay: 0.3, volume: v * 0.85, type: 'triangle' })
+// ── Interval chimes — a "time has passed" marker for long Sit–Walk and Custom
+// sessions. Each mode gets its own voice so it can't be mistaken for a step
+// transition or completion, and the two modes don't sound alike either.
+
+// Sit–Walk: a resonant bell struck twice. Pitched above the single-strike
+// transition bell (528Hz) and doubled, so it reads as "interval", not a step.
+function chimeBell(v) {
+  const strike = (delay) => {
+    tone({ frequency: 660, duration: 1.4, delay, volume: 0.2 * v, type: 'sine' })
+    tone({ frequency: 1320, duration: 0.85, delay, volume: 0.05 * v, type: 'sine' })
+  }
+  strike(0)
+  strike(0.55)
+}
+
+// Custom: a short, gentle two-beep — a soft alarm/notification feel, not a
+// panicky buzzer. Triangle wave, mid pitch, brief.
+function chimeAlarm(v) {
+  tone({ frequency: 784, duration: 0.12, volume: 0.16 * v, type: 'triangle' })
+  tone({ frequency: 784, duration: 0.14, delay: 0.18, volume: 0.16 * v, type: 'triangle' })
+}
+
+export function playChime(volume = 'normal', variant = 'sitwalk') {
+  const v = scale(volume)
+  if (variant === 'custom') return chimeAlarm(v)
+  return chimeBell(v)
 }

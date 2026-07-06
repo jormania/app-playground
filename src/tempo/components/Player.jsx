@@ -85,14 +85,18 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
     prevSecondsRef.current = secondsRemaining
   }, [secondsRemaining, status, tickEligible, soundOn, preferences.volume, tickWindow])
 
-  // ── Interval chime — a soft bell every few minutes while running (long sits) ──
+  // ── Interval chime — every few minutes while running, but only on the two
+  // long-session modes: Sit–Walk (a distinct doubled bell) and Custom (a short
+  // soft alarm). The other four modes never chime, so it can't clutter a short
+  // Rounds set or double up with the mindfulness step bells.
+  const chimeMode = mode.id === 'sitwalk' || mode.id === 'custom'
   useEffect(() => {
-    if (!preferences.intervalChime || status !== 'running') return undefined
+    if (!preferences.intervalChime || status !== 'running' || !chimeMode) return undefined
     const id = setInterval(() => {
-      if (soundOn) playChime(preferences.volume)
+      if (soundOn) playChime(preferences.volume, mode.id)
     }, preferences.chimeInterval * 60 * 1000)
     return () => clearInterval(id)
-  }, [preferences.intervalChime, preferences.chimeInterval, preferences.volume, soundOn, status])
+  }, [preferences.intervalChime, preferences.chimeInterval, preferences.volume, soundOn, status, chimeMode, mode.id])
 
   // ── Persist the in-progress session so it survives the app closing ────────
   const latestRef = useRef({ currentIndex, secondsRemaining, status })
@@ -248,6 +252,7 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
         preferences={preferences}
         onChange={updatePreferences}
         cueKind={mode.cue}
+        chimeMode={chimeMode ? mode.id : null}
       />
     </div>
   )
