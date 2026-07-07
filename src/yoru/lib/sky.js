@@ -27,20 +27,33 @@ export function moonPosition(date, coords) {
 // plus how present it is. With a location we honour the real altitude/azimuth:
 // a high moon rides higher and brighter; a moon below the horizon sits low and
 // dim. Without a location we place a gentle moon low on the right.
+//
+// Margins are deliberately generous on every side — well clear of the left,
+// right, top AND bottom edges (the halo alone reaches ~2.6× the moon's own
+// radius, so a tight clamp would let it clip the frame; a phone's notch/status
+// bar also lives up top). The moon should always read as floating IN the sky,
+// never touching its border.
+const MARGIN_X = 0.24
+const MARGIN_TOP = 0.28
+const MARGIN_BOTTOM = 0.2
+
 export function moonPlacement(pos) {
-  if (!pos) return { x: 0.72, y: 0.8, presence: 0.85 }
+  const clampX = (x) => Math.min(1 - MARGIN_X, Math.max(MARGIN_X, x))
+  if (!pos) return { x: clampX(0.72), y: 1 - MARGIN_BOTTOM - 0.06, presence: 0.85 }
   const altDeg = (pos.altitude * 180) / Math.PI
   // azimuth: SunCalc measures from south, + toward west. Map to a screen x.
   const az = pos.azimuth
   const x = 0.5 + 0.42 * Math.sin(az)
   if (altDeg <= 0) {
-    // below the horizon — a faint moon resting near the bottom edge
-    return { x: Math.min(0.86, Math.max(0.14, x)), y: 0.9, presence: 0.4 }
+    // below the horizon — a faint moon resting well above the bottom edge
+    return { x: clampX(x), y: 1 - MARGIN_BOTTOM, presence: 0.4 }
   }
   const up = Math.min(1, altDeg / 60) // 0 at horizon → 1 near overhead
+  const yLow = 1 - MARGIN_BOTTOM - 0.12 // just above the "below horizon" resting spot
+  const yHigh = MARGIN_TOP
   return {
-    x: Math.min(0.86, Math.max(0.14, x)),
-    y: 0.72 - 0.5 * up, // higher altitude → higher in the frame
+    x: clampX(x),
+    y: yLow - (yLow - yHigh) * up, // higher altitude → higher in the frame
     presence: 0.7 + 0.3 * up,
   }
 }

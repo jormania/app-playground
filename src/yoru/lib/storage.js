@@ -33,8 +33,6 @@ function remove(key) {
 // maps each to a real synth parameter (see soundscape.js). Reset returns to the
 // default blend. Shaper defaults are the mid (5); layers make a gentle rain.
 export const MIX_MAX = 10
-export const MIX_LAYERS = ['rain', 'waves', 'wind', 'leaves', 'warmth', 'drone']
-export const MIX_SHAPERS = ['volume', 'brightness', 'motion', 'pace']
 
 export const DEFAULT_MIX = {
   // layers (0 = off)

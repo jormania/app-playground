@@ -86,7 +86,7 @@ export default function Session({ session, onNote, onFinish }) {
   // the progress), so a stray touch can't end the night. A short tap shows a
   // hint instead. On completion the whole screen fades to black, then hands over
   // to the close — no hard cut.
-  const HOLD_MS = 780
+  const HOLD_MS = 1170 // 780ms base, +50%
   const holdTimer = useRef(0)
   const hintTimer = useRef(0)
   const [holding, setHolding] = useState(false)
@@ -117,6 +117,19 @@ export default function Session({ session, onNote, onFinish }) {
     clearTimeout(hintTimer.current)
   }, [])
 
+  // Keyboard equivalent of the press-and-hold, so ending isn't pointer-only:
+  // holding Enter/Space behaves exactly like holding the orb.
+  const onKeyDown = (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    e.preventDefault()
+    if (e.repeat) return
+    startHold()
+  }
+  const onKeyUp = (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    endHold()
+  }
+
   const label = useMemo(() => phaseLabel(phase), [phase])
 
   return (
@@ -131,6 +144,8 @@ export default function Session({ session, onNote, onFinish }) {
         onPointerUp={endHold}
         onPointerLeave={endHold}
         onPointerCancel={endHold}
+        onKeyDown={onKeyDown}
+        onKeyUp={onKeyUp}
         onContextMenu={(e) => e.preventDefault()}
         aria-label="Press and hold to end the night"
       >
