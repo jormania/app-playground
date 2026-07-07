@@ -51,8 +51,10 @@ export function moonPlacement(pos) {
   const az = (pos.azimuth * Math.PI) / 180
   const x = 0.5 + 0.42 * Math.sin(az)
   if (altDeg <= 0) {
-    // below the horizon — a faint moon resting well above the bottom edge
-    return { x: clampX(x), y: 1 - MARGIN_BOTTOM, presence: 0.4 }
+    // below the horizon — genuinely not up yet (or already set), so it's not
+    // visible at all. No dim placeholder: strict realism, matched to the real
+    // moonrise/moonset moment rather than a fixed "always some glow" look.
+    return { x: clampX(x), y: 1 - MARGIN_BOTTOM, presence: 0 }
   }
   const up = Math.min(1, altDeg / 60) // 0 at horizon → 1 near overhead
   const yLow = 1 - MARGIN_BOTTOM - 0.12 // just above the "below horizon" resting spot
