@@ -26,6 +26,19 @@
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x)
 const lerp = (a, b, t) => a + (b - a) * t
 
+// Human loudness perception is roughly logarithmic: a LINEAR slider->gain
+// mapping always feels wrong in the same way — each step near the bottom of the
+// range is a much bigger perceived jump than the same step near the top, and a
+// linear floor above zero means "0" never actually reaches silence. `taper`
+// fixes both — t=0 stays exactly 0, t=1 is unchanged, and the curve in between
+// spaces perceived loudness far more evenly. Master gets the steeper of the two
+// (it's the one control that should behave like a real volume knob); each
+// layer's own level gets a gentler taper so relative balance between layers in
+// a blended preset doesn't reshuffle too much.
+const taper = (t, exp) => Math.pow(clamp01(t), exp)
+const VOLUME_TAPER = 1.9
+const LAYER_TAPER = 1.4
+
 const EBB_START = 0.65
 const FADE_IN_SEC = 5
 
@@ -76,17 +89,23 @@ function panner(ctx, pan) {
 
 function resolveMix(mix) {
   const nv = (k) => clamp01((mix && typeof mix[k] === 'number' ? mix[k] : 0) / 10)
+  const gv = (k) => taper(nv(k), LAYER_TAPER) // a layer's own level, perceptually tapered
   return {
-    master: lerp(0.02, 0.18, nv('volume')),
-    toneHz: lerp(520, 8200, nv('brightness')),
+    // Volume: 0 is now true silence (taper(0,_)=0), and the steep taper gives it
+    // a real "audio knob" feel instead of a linear one.
+    master: taper(nv('volume'), VOLUME_TAPER) * 0.18,
+    // Brightness is a FREQUENCY, not a gain — ears perceive pitch/tone
+    // logarithmically (an octave feels like an equal step wherever you are), so
+    // this interpolates in log-frequency space rather than linear Hz.
+    toneHz: 520 * Math.pow(8200 / 520, nv('brightness')),
     motion: lerp(0.35, 1.6, nv('motion')),
     pace: lerp(0.5, 1.9, nv('pace')),
-    rain: nv('rain'),
-    waves: nv('waves'),
-    wind: nv('wind'),
-    leaves: nv('leaves'),
-    warmth: nv('warmth'),
-    drone: nv('drone'),
+    rain: gv('rain'),
+    waves: gv('waves'),
+    wind: gv('wind'),
+    leaves: gv('leaves'),
+    warmth: gv('warmth'),
+    drone: gv('drone'),
   }
 }
 

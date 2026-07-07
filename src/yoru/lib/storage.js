@@ -42,9 +42,12 @@ export const DEFAULT_MIX = {
   leaves: 0,
   warmth: 5,
   drone: 3,
-  // shapers
-  volume: 5,
-  brightness: 5,
+  // shapers — volume and brightness sit above the visual midpoint (not 5) because
+  // both now read through a perceptual taper (soundscape.js): the curve pulls
+  // mid-range values down so a real "5" would sound quieter/darker than the app
+  // used to feel by default. 7/8 roughly restores the old out-of-the-box level.
+  volume: 7,
+  brightness: 8,
   motion: 5, // depth of the swell
   pace: 5, // speed of the swell / drift
 }

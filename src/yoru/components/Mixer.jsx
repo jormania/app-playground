@@ -13,7 +13,7 @@ const LAYERS = [
   { key: 'drone', label: 'Drone', hint: 'a deep, soft hum underneath' },
 ]
 const SHAPERS = [
-  { key: 'volume', label: 'Volume', hint: 'overall loudness' },
+  { key: 'volume', label: 'Volume', hint: 'overall loudness — 0 is silent' },
   { key: 'brightness', label: 'Brightness', hint: 'the tone, from dark to airy' },
   { key: 'motion', label: 'Motion', hint: 'how much it swells and gusts' },
   { key: 'pace', label: 'Pace', hint: 'how fast it drifts and swells' },

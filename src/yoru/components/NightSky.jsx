@@ -77,9 +77,12 @@ export default function NightSky({ coords }) {
           homeY,
           x: homeX,
           y: homeY,
-          vx: 0,
-          vy: 0,
-          roam: 26 + Math.random() * 20, // how far it wanders from home
+          t: Math.random() * 40, // stagger so they don't all wander in lockstep
+          ampX: 20 + Math.random() * 16,
+          ampY: 16 + Math.random() * 14,
+          perX: 7 + Math.random() * 5, // seconds per loop, x-axis
+          perY: 9 + Math.random() * 6, // different from perX → an organic
+          // Lissajous-style loop, not a simple repeating ellipse
           size: 1.4 + Math.random() * 1.4,
           phase: Math.random() * Math.PI * 2,
           blink: 0.5 + Math.random() * 0.7,
@@ -132,24 +135,16 @@ export default function NightSky({ coords }) {
       for (let i = parts.length - 1; i >= 0; i--) {
         const p = parts[i]
         if (p.kind === 'firefly') {
-          // Hover near home: a gentle random push each frame, plus a soft pull
-          // back once it strays past its roam radius — no net drift in any
-          // direction, so it loops and wanders in place rather than flying off.
-          p.vx += (Math.random() - 0.5) * 12 * dt
-          p.vy += (Math.random() - 0.5) * 12 * dt
-          const ox = p.x - p.homeX
-          const oy = p.y - p.homeY
-          const dist = Math.sqrt(ox * ox + oy * oy)
-          if (dist > p.roam) {
-            const pull = (dist - p.roam) * 0.8
-            p.vx -= (ox / dist) * pull * dt
-            p.vy -= (oy / dist) * pull * dt
-          }
-          // gentle drag so it settles into slow loops instead of jittering
-          p.vx *= 1 - 1.8 * dt
-          p.vy *= 1 - 1.8 * dt
-          p.x += p.vx * dt
-          p.y += p.vy * dt
+          // A slow Lissajous wander around a fixed home point: always moving,
+          // always organic, and never drifting away. (A velocity-based random
+          // walk was tried first, but its push and drag nearly cancelled out at
+          // typical frame rates, settling into well under a pixel/second of
+          // drift — technically wandering, but imperceptible; this reads clearly
+          // instead, driven directly by elapsed time rather than accumulated
+          // velocity.)
+          p.t += dt
+          p.x = p.homeX + Math.sin((p.t / p.perX) * Math.PI * 2) * p.ampX
+          p.y = p.homeY + Math.sin((p.t / p.perY) * Math.PI * 2 + 1.3) * p.ampY
           p.phase += p.blink * dt
           const s = Math.max(0, Math.sin(p.phase))
           const a = 0.08 + 0.55 * s * s
