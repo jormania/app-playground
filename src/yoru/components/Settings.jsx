@@ -23,9 +23,12 @@ const BREATH_OPTIONS = [
   { value: '478', label: '4·7·8' },
 ]
 
+// Chime has no chip here on purpose — it's an accent meant to sit over one of
+// these, not a scene of its own (see storage.js). Dial it in from the mixer.
 const SCENE_OPTIONS = [
   { value: 'rain', label: 'Rain' },
   { value: 'waves', label: 'Waves' },
+  { value: 'stream', label: 'Stream' },
   { value: 'wind', label: 'Wind' },
   { value: 'forest', label: 'Forest' },
 ]

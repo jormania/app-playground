@@ -7,8 +7,10 @@ import styles from './Mixer.module.css'
 const LAYERS = [
   { key: 'rain', label: 'Rain', hint: 'soft rain and far-off droplets' },
   { key: 'waves', label: 'Waves', hint: 'slow ocean surf, rising and receding' },
+  { key: 'stream', label: 'Stream', hint: 'a steady brook, softly babbling' },
   { key: 'wind', label: 'Wind', hint: 'air moving through the dark' },
   { key: 'leaves', label: 'Leaves', hint: 'a hush of wind through the trees' },
+  { key: 'chime', label: 'Chime', hint: 'a wind chime, only now and then' },
   { key: 'warmth', label: 'Warmth', hint: 'the soft noise floor beneath it all' },
   { key: 'drone', label: 'Drone', hint: 'a deep, soft hum underneath' },
 ]

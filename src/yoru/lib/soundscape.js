@@ -102,8 +102,10 @@ function resolveMix(mix) {
     pace: lerp(0.5, 1.9, nv('pace')),
     rain: gv('rain'),
     waves: gv('waves'),
+    stream: gv('stream'),
     wind: gv('wind'),
     leaves: gv('leaves'),
+    chime: gv('chime'),
     warmth: gv('warmth'),
     drone: gv('drone'),
   }
@@ -337,6 +339,110 @@ export function createNightSoundscape() {
     timers.push(t)
   }
 
+  // ── stream: a continuous brook — steadier and higher than Waves (no big swell
+  // envelope), with soft, frequent "bubble" transients rather than sparse drops.
+  // Level makes it both louder AND busier, matching rain's own convention. ──
+  function buildStream(white, level, pace, dest) {
+    const src = loopSource(ctx, white)
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.value = 1600
+    bp.Q.value = 0.6
+    const g = ctx.createGain()
+    g.gain.value = 0.05 * level
+    src.connect(bp)
+    bp.connect(g)
+    g.connect(dest)
+    src.start()
+    nodes.push(src)
+
+    // a slow drift on the wash's centre so it's never perfectly static, while
+    // staying steadier than Waves (no swelling gain envelope)
+    const drift = ctx.createOscillator()
+    drift.frequency.value = 0.04 * pace
+    const driftDepth = ctx.createGain()
+    driftDepth.gain.value = 220
+    drift.connect(driftDepth)
+    driftDepth.connect(bp.frequency)
+    drift.start()
+    nodes.push(drift)
+
+    const busier = 1.5 - 0.6 * level // louder → more frequent bubbles
+    let nextAt = ctx.currentTime + 0.3
+    const t = setInterval(() => {
+      if (stopped) return
+      const ahead = ctx.currentTime + 1.2
+      while (nextAt < ahead) {
+        const when = nextAt
+        const bubble = ctx.createBufferSource()
+        bubble.buffer = white
+        const bbp = ctx.createBiquadFilter()
+        bbp.type = 'bandpass'
+        bbp.frequency.value = 1800 + Math.random() * 2200
+        bbp.Q.value = 2.2
+        const dg = ctx.createGain()
+        const v = (0.015 + Math.random() * 0.02) * level
+        dg.gain.setValueAtTime(0.0001, when)
+        dg.gain.exponentialRampToValueAtTime(v, when + 0.006)
+        dg.gain.exponentialRampToValueAtTime(0.0001, when + 0.05 + Math.random() * 0.05)
+        const p = panner(ctx, Math.random() * 1.6 - 0.8)
+        bubble.connect(bbp)
+        bbp.connect(dg)
+        dg.connect(p)
+        p.connect(dest)
+        bubble.start(when)
+        bubble.stop(when + 0.2)
+        // continuous babble — much more frequent than rain's droplets
+        nextAt += (0.03 + Math.random() * 0.09) * busier / pace
+      }
+    }, 250)
+    timers.push(t)
+  }
+
+  // ── chime: a sparse furin (wind chime) / distant temple-bell accent — a
+  // single soft resonant tone now and then, never a melody or a repeating
+  // pattern. Meant to sit over another layer, not be a scene on its own. ──
+  const CHIME_NOTES = [587.33, 659.25, 698.46, 783.99, 880.0, 987.77]
+  function buildChime(level, pace, dest) {
+    const busier = 1.6 - 0.7 * level // louder → a little more frequent
+    let nextAt = ctx.currentTime + 6 + Math.random() * 8
+    const t = setInterval(() => {
+      if (stopped) return
+      const ahead = ctx.currentTime + 6
+      while (nextAt < ahead) {
+        const when = nextAt
+        const f = CHIME_NOTES[(Math.random() * CHIME_NOTES.length) | 0]
+        const g = ctx.createGain()
+        const v = (0.05 + Math.random() * 0.03) * level
+        g.gain.setValueAtTime(0.0001, when)
+        g.gain.exponentialRampToValueAtTime(v, when + 0.015)
+        g.gain.exponentialRampToValueAtTime(0.0001, when + 2.2 + Math.random() * 1.2)
+        const p = panner(ctx, Math.random() * 1.4 - 0.7)
+        g.connect(p)
+        p.connect(dest)
+        // fundamental + a slightly inharmonic partial for a metallic, glassy
+        // quality rather than a clean musical tone
+        const osc1 = ctx.createOscillator()
+        osc1.type = 'sine'
+        osc1.frequency.value = f
+        osc1.connect(g)
+        osc1.start(when)
+        osc1.stop(when + 3.6)
+        const osc2 = ctx.createOscillator()
+        osc2.type = 'sine'
+        osc2.frequency.value = f * 2.76
+        const g2 = ctx.createGain()
+        g2.gain.value = 0.3
+        osc2.connect(g2)
+        g2.connect(g)
+        osc2.start(when)
+        osc2.stop(when + 3.6)
+        nextAt += (8 + Math.random() * 17) * busier / pace
+      }
+    }, 3000)
+    timers.push(t)
+  }
+
   async function start({ totalSec, elapsedSec = 0, mix, fadeIn = FADE_IN_SEC }) {
     const p = resolveMix(mix)
     if (p.master <= 0) return
@@ -365,7 +471,9 @@ export function createNightSoundscape() {
     if (p.wind > 0) buildWind(white, 0.34 * p.wind, 900, p.motion, p.pace, tone)
     if (p.rain > 0) buildRain(white, p.rain, p.pace, tone)
     if (p.waves > 0) buildWaves(white, p.waves, p.motion, p.pace, tone)
+    if (p.stream > 0) buildStream(white, p.stream, p.pace, tone)
     if (p.leaves > 0) buildLeaves(white, p.leaves, p.motion, p.pace, tone)
+    if (p.chime > 0) buildChime(p.chime, p.pace, tone)
 
     scheduleEnvelope(p.master, totalSec, elapsedSec, fadeIn)
   }

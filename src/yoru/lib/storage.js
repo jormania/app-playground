@@ -35,11 +35,15 @@ function remove(key) {
 export const MIX_MAX = 10
 
 export const DEFAULT_MIX = {
-  // layers (0 = off)
+  // layers (0 = off). Chime is an ACCENT layer by design — meant to sit over
+  // another layer, not stand as a scene on its own — so it has no dedicated
+  // quick-pick preset in Settings; it only shows up here, in the mixer.
   rain: 6,
   waves: 0,
+  stream: 0,
   wind: 3,
   leaves: 0,
+  chime: 0,
   warmth: 5,
   drone: 3,
   // shapers — volume and brightness sit above the visual midpoint (not 5) because
@@ -53,12 +57,15 @@ export const DEFAULT_MIX = {
 }
 
 // The main-Settings "Sound" quick-pick stamps one of these starting blends onto
-// the layers (shapers are left untouched); the mixer then refines it.
+// the layers (shapers are left untouched); the mixer then refines it. Every
+// preset lists every layer explicitly (including the zeroed ones) so switching
+// scenes always fully resets the blend, not just the layers it cares about.
 export const SCENE_PRESETS = {
-  rain: { rain: 6, waves: 0, wind: 3, leaves: 0, warmth: 5, drone: 3 },
-  waves: { rain: 0, waves: 6, wind: 1, leaves: 0, warmth: 5, drone: 3 },
-  wind: { rain: 0, waves: 0, wind: 6, leaves: 2, warmth: 5, drone: 3 },
-  forest: { rain: 1, waves: 0, wind: 4, leaves: 6, warmth: 4, drone: 2 },
+  rain: { rain: 6, waves: 0, stream: 0, wind: 3, leaves: 0, chime: 0, warmth: 5, drone: 3 },
+  waves: { rain: 0, waves: 6, stream: 0, wind: 1, leaves: 0, chime: 0, warmth: 5, drone: 3 },
+  wind: { rain: 0, waves: 0, stream: 0, wind: 6, leaves: 2, chime: 0, warmth: 5, drone: 3 },
+  forest: { rain: 1, waves: 0, stream: 0, wind: 4, leaves: 6, chime: 0, warmth: 4, drone: 2 },
+  stream: { rain: 0, waves: 0, stream: 6, wind: 1, leaves: 1, chime: 0, warmth: 4, drone: 2 },
 }
 
 // ── Settings, remembered across nights ──────────────────────────────────────
