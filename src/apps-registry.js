@@ -47,6 +47,7 @@ export const APPS = [
       "Set down a single thought for tomorrow — write it, let it out of sight, and it's discarded when the night ends; greets you by name at the close",
       "Resumes within the same night, starts fresh on a new one; works offline, installable as a PWA — all on this device, no account",
     ],
+    guide: "yoru-guide.html",
     file: "yoru-react.html",
   },
   {

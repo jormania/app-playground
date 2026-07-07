@@ -37,11 +37,14 @@ export default function Session({ session, onNote, onFinish }) {
   }
   useEffect(() => () => clearTimeout(peekTimer.current), [])
 
-  // In 'off' mode, come back to 'lit' as soon as the app is visible again.
+  // On returning to the app: revive the soundscape if the browser suspended it
+  // while backgrounded (iOS Safari does this on tab-hide / screen-lock, in every
+  // display mode), and — only from 'off' — come back to 'lit'.
   useEffect(() => {
-    if (screenMode !== 'off') return undefined
     const onVis = () => {
-      if (document.visibilityState === 'visible') setScreenMode('lit')
+      if (document.visibilityState !== 'visible') return
+      sound.current?.resume()
+      if (screenMode === 'off') setScreenMode('lit')
     }
     document.addEventListener('visibilitychange', onVis)
     return () => document.removeEventListener('visibilitychange', onVis)

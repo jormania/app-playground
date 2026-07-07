@@ -107,7 +107,13 @@ manifest [`public/yoru.webmanifest`](public/yoru.webmanifest), 夜 icons via
 `npm run gen:yoru-icons` (needs a Japanese-capable system font). `main.jsx` calls
 `watchInstalled('yoru-react.html')` for the Cabinet.
 
-## Deferred
+## Guide
 
-No guide page / Notion spec yet — retroactive later. Register a `guide:` on
-Yoru's [`src/apps-registry.js`](src/apps-registry.js) entry when it lands.
+[`public/yoru-guide.html`](public/yoru-guide.html) — a standalone, always-dark
+page in Yoru's own Zen Old Mincho / Zen Kaku Gothic New hand and Tokyo Night
+Storm palette, walking through Settings, the mixer, breathwork, the three
+display modes, the night sky, and the note. Registered as `guide:` on Yoru's
+[`src/apps-registry.js`](src/apps-registry.js) entry, so it's linked from
+`index.html`'s card — **deliberately not linked from inside the app itself**,
+to keep Yoru down to one screen and one way in (the glyph). Notion spec: **Yoru
+— App Spec** under Dev / App Specs, also listed on **Apps at a glance**.

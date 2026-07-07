@@ -29,7 +29,7 @@ export default function Note({ value, onChange }) {
   if (mode === 'prompt') {
     return (
       <button type="button" className={styles.prompt} onClick={() => setMode('writing')}>
-        <span className={styles.promptLead}>Is something following you into tomorrow?</span>
+        <span className={styles.promptLead}>Something following you into tomorrow?</span>
         <span className={styles.promptWhy}>
           A worry, a to-do, a thought that keeps circling. Leave it here for the night — once it's
           written down, your mind can stop holding it, and sleep comes more easily.

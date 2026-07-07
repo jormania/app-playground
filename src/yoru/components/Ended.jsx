@@ -13,6 +13,13 @@ export default function Ended({ name, onClose }) {
     return () => clearTimeout(t)
   }, [])
 
+  // If it's just left sitting — you dozed off looking at it — let it return home
+  // on its own after a minute, so nothing lingers on screen through the night.
+  useEffect(() => {
+    const t = setTimeout(onClose, 60000)
+    return () => clearTimeout(t)
+  }, [onClose])
+
   const who = (name || '').trim()
 
   return (

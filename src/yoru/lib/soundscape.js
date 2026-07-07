@@ -486,6 +486,15 @@ export function createNightSoundscape() {
     bedGain.gain.setTargetAtTime(bedBase * (0.78 + 0.22 * s), ctx.currentTime, 0.35)
   }
 
+  // Revive a context the browser suspended while backgrounded — on iOS Safari the
+  // AudioContext is suspended whenever the tab is hidden / the screen locks (the
+  // exact "Turn off and listen till I sleep" flow), and it doesn't come back on
+  // its own. Call this when the page becomes visible again. No-op otherwise.
+  function resume() {
+    if (stopped || !ctx || ctx.state !== 'suspended') return
+    ctx.resume().catch(() => {})
+  }
+
   // Always release with a gentle fade — the sound must flow out, never cut,
   // whatever the mixer is set to. `release` (s) is the fade length.
   function stop(release = 1.8) {
@@ -525,5 +534,5 @@ export function createNightSoundscape() {
     bedGain = null
   }
 
-  return { start, setBreath, stop }
+  return { start, setBreath, stop, resume }
 }

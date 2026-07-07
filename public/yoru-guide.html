@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Yoru — Guide</title>
+<meta name="description" content="What Yoru is and how its one night-time screen works — the soundscape mixer, breathwork, the three display modes, the night sky, and the note." />
+<meta name="theme-color" content="#1f2335" />
+<link rel="icon" type="image/svg+xml" href="/yoru-logo.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* Yoru is a single fixed Tokyo Night Storm palette — no theme toggle, always dim-dark, screen or print. */
+    --bg: #1a1e2e;
+    --bg2: #1f2335;
+    --surface: #24283b;
+    --surface2: #292e42;
+    --border: #2a2f45;
+    --border2: #414868;
+    --ink: #c0caf5;
+    --muted: #7982a9;
+    --faint: #565f89;
+    --accent: #7aa2f7;
+    --accent-hover: #89b4fa;
+    --glow: #bb9af7;
+    --maxw: 46rem;
+    --display: 'Zen Old Mincho', 'Yu Mincho', serif;
+    --sans: 'Zen Kaku Gothic New', 'Yu Gothic', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    line-height: 1.7;
+    color: var(--ink);
+    background: linear-gradient(165deg, var(--bg2), var(--bg));
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  header { margin-bottom: 2.5rem; }
+  .brand { display: flex; align-items: center; gap: 0.7rem; }
+  .glyph {
+    font-family: var(--display); font-size: 2.2rem; line-height: 1; color: var(--glow);
+    text-shadow: 0 0 18px rgba(187, 154, 247, 0.35);
+  }
+  h1 { font-family: var(--display); font-weight: 500; font-size: clamp(2rem, 6vw, 2.8rem); line-height: 1.15; margin: 0; letter-spacing: 0.01em; }
+  .tagline { font-size: 1.05rem; color: var(--muted); margin: 0.6rem 0 0; }
+  h2 { font-family: var(--display); font-weight: 500; font-size: 1.4rem; margin: 2.75rem 0 0.75rem; letter-spacing: 0.01em; color: var(--ink); }
+  h3 { font-size: 1.05rem; margin: 1.4rem 0 0.35rem; color: var(--ink); }
+  p { margin: 0.6rem 0; }
+  ul { margin: 0.6rem 0; padding-left: 1.2rem; }
+  li { margin: 0.35rem 0; }
+  a { color: var(--accent); }
+  a:hover { color: var(--accent-hover); }
+  .lede { font-size: 1.1rem; color: var(--ink); }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.2rem 1.4rem;
+    margin: 1rem 0;
+  }
+  .card h3 { margin-top: 0; }
+  .kicker { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--glow); margin: 0 0 0.3rem; font-weight: 500; }
+  .muted { color: var(--muted); }
+  .faint { color: var(--faint); font-size: 0.9rem; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border); color: var(--faint); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <span class="glyph">夜</span>
+      <div>
+        <h1>Yoru</h1>
+        <p class="tagline">A wind-down for the night — one screen, one thing.</p>
+      </div>
+    </div>
+  </header>
+
+  <p class="lede">Yoru (夜, "night") does one thing at one time of day: open it in bed and let a
+  single screen carry you down to sleep. There's no dashboard, no history, no light mode — just an
+  optional slowing breath, a synthesised, blendable soundscape that ebbs to silence, and a place to
+  set down whatever you're carrying into tomorrow.</p>
+
+  <h2>Getting in</h2>
+  <p>Home is bare on purpose: the pulsing 夜 glyph, a line, and Begin. Tap the glyph itself to reach
+  Settings — that's the only way in, and it's deliberate. There's nothing else to tap.</p>
+
+  <h2>Settings, behind the glyph</h2>
+  <div class="card">
+    <div class="kicker">Before you begin</div>
+    <ul>
+      <li><strong>Your name</strong> — used only for the close of the night.</li>
+      <li><strong>Session length</strong> — 15 to 90 minutes.</li>
+      <li><strong>Soundscape</strong> — a quick-pick starting blend, refined in the mixer below.</li>
+      <li><strong>Audio tuner</strong> — opens the full mixer.</li>
+      <li><strong>Display mode</strong> — stay lit, go dark, or turn off (see below).</li>
+      <li><strong>Atmosphere</strong> — Night, Moonlight, or Candlelight — a palette, not a setting that changes behaviour.</li>
+      <li><strong>Breathwork + pattern</strong> — only shown while the screen stays lit.</li>
+    </ul>
+    <p class="faint">Every change here is auditioned live through a single sound preview, so you hear a change before you commit to a whole night of it.</p>
+  </div>
+
+  <h2>The soundscape mixer</h2>
+  <p>Fully synthesised — no audio files. Rather than picking one fixed scene, Yoru blends independent
+  layers, the way the better ambient-noise apps do:</p>
+  <ul>
+    <li><strong>Rain</strong> — a wash plus stereo droplets</li>
+    <li><strong>Waves</strong> — slow surf</li>
+    <li><strong>Wind</strong> — drifting, occasionally gusting</li>
+    <li><strong>Leaves</strong> — wind through foliage, with rustles</li>
+    <li><strong>Warmth</strong> — a pink-noise floor, warmer and less boomy than brown noise</li>
+    <li><strong>Drone</strong> — a soft low fifth underneath everything</li>
+  </ul>
+  <p>Four shapers sit alongside the layers: <strong>Volume</strong> (master), <strong>Brightness</strong>
+  (one global low-pass, dark to airy), <strong>Motion</strong> (how much the layers swell and gust), and
+  <strong>Pace</strong> (how fast they drift). Nature only — no animals, no city.</p>
+  <p>Whatever the mix, the sound never simply cuts: it fades in gently, ebbs to true silence by the
+  session's end on its own, and releases softly if you stop early.</p>
+
+  <h2>Breathwork (optional)</h2>
+  <p>A breathing orb offers two patterns: a <strong>lengthening exhale</strong> (the default — the exhale
+  grows across the session) or a fixed <strong>4·7·8</strong>. Turn it off for sound alone; the centre
+  then holds a still 夜. Tap the orb — or the glyph, sound-only — to end the night early. A quiet
+  mm:ss countdown sits in the bottom-right, easy to miss on purpose.</p>
+
+  <h2>Display mode: lit · dark · off</h2>
+  <div class="card">
+    <h3>Stay lit</h3>
+    <p>The orb stays on screen, dimming gradually toward the end of the session.</p>
+  </div>
+  <div class="card">
+    <h3>Go dark</h3>
+    <p>Blacks out to a live night sky (below) while staying awake, so the soundscape keeps playing.
+    Tap anywhere to peek back at the time remaining.</p>
+  </div>
+  <div class="card">
+    <h3>Turn off</h3>
+    <p>Releases the wake lock so the device's screen can genuinely sleep and save power. Re-engaging
+    flips it back to lit.</p>
+  </div>
+
+  <h2>The night sky</h2>
+  <p>What you see in "go dark":</p>
+  <ul>
+    <li>Generic drifting stars — no constellations or zodiac.</li>
+    <li>The real moon, at tonight's true phase, placed using your device's location where you've
+    granted it (otherwise a gentle default) — rendered as a lit body with maria and limb darkening,
+    not a flat plate.</li>
+    <li>Mount Fuji, a static, dim, moonlit silhouette on the horizon, unchanged across seasons.</li>
+    <li>Season-aware drift: sakura in spring, fireflies in summer, momiji in autumn, snow in winter.</li>
+  </ul>
+
+  <h2>The note</h2>
+  <p>A place to set a single thought down — not a journal, and it isn't kept. Write it, tap
+  "set it down," and it's out of view for the rest of the night. At the session's end it's discarded
+  for good; the point is offloading it before sleep, not keeping a record.</p>
+
+  <h2>Everything else</h2>
+  <ul>
+    <li>Resumes within the same night if you close the app partway through; starts fresh the next night.</li>
+    <li>Works fully offline and installs as a PWA.</li>
+    <li>Nothing leaves your device — no account, no server, no sync.</li>
+  </ul>
+
+  <footer>
+    Yoru is one of several small apps at
+    <a href="/">coneofcold.vercel.app</a>. This guide isn't linked from inside Yoru itself — the
+    app stays down to one screen, one glyph, one way in.
+  </footer>
+</div>
+</body>
+</html>

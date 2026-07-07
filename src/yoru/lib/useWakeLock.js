@@ -18,6 +18,12 @@ export function useWakeLock(active) {
           sentinel.release().catch(() => {})
           return
         }
+        // The OS/browser can release the lock on its own (e.g. tab hidden) without
+        // us calling release() — listen so the ref doesn't go stale and block a
+        // re-acquire once the tab is visible again.
+        sentinel.addEventListener('release', () => {
+          if (sentinelRef.current === sentinel) sentinelRef.current = null
+        })
         sentinelRef.current = sentinel
       } catch {
         // denied or unsupported in this context — degrade silently
