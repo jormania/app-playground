@@ -53,6 +53,7 @@ export default function App() {
       totalSec: settings.minutes * 60,
       breathwork: settings.breathwork,
       breath: settings.breath,
+      haptics: settings.haptics,
       scene: settings.scene,
       mix: settings.mix,
       screen: settings.screen,

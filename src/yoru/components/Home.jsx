@@ -14,6 +14,11 @@ export default function Home({ settings, onChange, onBegin }) {
   // breathwork off there's no breath to follow, so it drifts on a slow default.
   const breathCycle = settings.breathwork === false ? 14 : settings.breath === '478' ? 19 : 10
 
+  const openSettings = () => {
+    setSettingsOpen(true)
+    if (!settings.hintSeen) onChange({ hintSeen: true })
+  }
+
   return (
     <main className={styles.home}>
       <button
@@ -22,11 +27,12 @@ export default function Home({ settings, onChange, onBegin }) {
         lang="ja"
         aria-label="Yoru — settings"
         style={{ '--breath-cycle': `${breathCycle}s` }}
-        onClick={() => setSettingsOpen(true)}
+        onClick={openSettings}
       >
         夜
       </button>
       <p className={styles.tagline}>put the day down</p>
+      {!settings.hintSeen && <p className={styles.hint}>tap 夜 to adjust</p>}
 
       <Button className={styles.begin} onClick={onBegin}>
         Begin

@@ -75,27 +75,76 @@ export default function Session({ session, onNote, onFinish }) {
     if (breathwork) sound.current?.setBreath(scale)
   }, [scale, breathwork])
 
+  // Optional breath haptics — a barely-there tick on each phase change, so the
+  // breath can be followed with eyes closed.
+  const haptics = session.haptics && breathwork
+  useEffect(() => {
+    if (haptics && typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(16)
+  }, [phase, haptics])
+
+  // Ending requires a deliberate press-and-hold on the orb, so a stray touch
+  // can't end the night. A short tap shows a hint instead.
+  const holdTimer = useRef(0)
+  const hintTimer = useRef(0)
+  const [holding, setHolding] = useState(false)
+  const [tapHint, setTapHint] = useState(false)
+  const startHold = () => {
+    setHolding(true)
+    holdTimer.current = setTimeout(() => {
+      holdTimer.current = 0
+      onFinish()
+    }, 750)
+  }
+  const endHold = () => {
+    setHolding(false)
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current)
+      holdTimer.current = 0
+      setTapHint(true)
+      clearTimeout(hintTimer.current)
+      hintTimer.current = setTimeout(() => setTapHint(false), 2200)
+    }
+  }
+  useEffect(() => () => {
+    clearTimeout(holdTimer.current)
+    clearTimeout(hintTimer.current)
+  }, [])
+
   const label = useMemo(() => phaseLabel(phase), [phase])
 
   return (
     <main className={styles.session} style={{ '--dim': dimFor(progress) }}>
       <div className={styles.top} aria-hidden="true" />
 
-      <button type="button" className={styles.center} onClick={onFinish} aria-label="Tap to end the night">
+      <button
+        type="button"
+        className={holding ? `${styles.center} ${styles.holding}` : styles.center}
+        onPointerDown={startHold}
+        onPointerUp={endHold}
+        onPointerLeave={endHold}
+        onPointerCancel={endHold}
+        onContextMenu={(e) => e.preventDefault()}
+        aria-label="Press and hold to end the night"
+      >
         {breathwork ? (
           <BreathOrb scale={scale} label={label} />
         ) : (
           <span className={styles.ambient} aria-hidden="true">夜</span>
         )}
+        <span className={tapHint ? `${styles.holdHint} ${styles.holdHintShow}` : styles.holdHint}>
+          hold to end the night
+        </span>
       </button>
 
       <div className={styles.bottom}>
         <Note value={session.note} onChange={onNote} />
       </div>
 
-      <span className={styles.countdown} aria-hidden="true">{formatTime(remainingSec)}</span>
+      <span className={styles.countdown} aria-hidden="true" style={{ opacity: fadeLate(progress, 0.5) }}>
+        {formatTime(remainingSec)}
+      </span>
 
-      <div className={styles.progress} aria-hidden="true">
+      <div className={styles.progress} aria-hidden="true" style={{ opacity: fadeLate(progress, 1) }}>
         <div className={styles.progressFill} style={{ transform: `scaleX(${progress.toFixed(4)})` }} />
       </div>
 
@@ -115,6 +164,13 @@ function formatTime(sec) {
   const s = Math.max(0, Math.floor(sec))
   const m = Math.floor(s / 60)
   return `${m}:${String(s % 60).padStart(2, '0')}`
+}
+
+// The countdown and progress hairline fade to nothing over the last quarter, so
+// nothing is lit near sleep. `max` is the starting opacity.
+function fadeLate(progress, max) {
+  if (progress < 0.6) return max
+  return (max * (1 - Math.min(1, (progress - 0.6) / 0.25))).toFixed(3)
 }
 
 // The whole screen fades toward black over the final stretch, matching the

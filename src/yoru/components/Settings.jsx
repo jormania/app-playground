@@ -30,6 +30,11 @@ const SCENE_OPTIONS = [
   { value: 'forest', label: 'Forest' },
 ]
 
+const HAPTICS_OPTIONS = [
+  { value: 'on', label: 'On' },
+  { value: 'off', label: 'Off' },
+]
+
 const SCREEN_OPTIONS = [
   { value: 'lit', label: 'Stay lit' },
   { value: 'dark', label: 'Go dark' },
@@ -145,6 +150,17 @@ export default function Settings({ settings, onChange, onClose }) {
           <div className={styles.row}>
             <span className={styles.label}>pattern</span>
             <SegmentedControl options={BREATH_OPTIONS} value={settings.breath} onChange={(v) => onChange({ breath: v })} />
+          </div>
+        )}
+
+        {screenShowsOrb && settings.breathwork !== false && (
+          <div className={styles.row}>
+            <span className={styles.label}>haptics</span>
+            <SegmentedControl
+              options={HAPTICS_OPTIONS}
+              value={settings.haptics ? 'on' : 'off'}
+              onChange={(v) => onChange({ haptics: v === 'on' })}
+            />
           </div>
         )}
       </div>

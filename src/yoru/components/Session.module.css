@@ -44,16 +44,41 @@
   cursor: pointer;
 }
 
-/* The orb (or ambient glyph) is itself the way to end the night — tap it. */
+/* The orb (or ambient glyph) is itself the way to end the night — press and
+   hold it. A short tap reveals the hint instead of ending. */
 .center {
   appearance: none;
   border: none;
   background: none;
   padding: 0;
   cursor: pointer;
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* While holding, the orb eases down a touch as it commits to ending. */
+.holding {
+  opacity: 0.72;
+  transition: opacity 0.75s var(--ease);
+}
+
+.holdHint {
+  position: absolute;
+  bottom: -2.4rem;
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  color: var(--color-faint);
+  opacity: 0;
+  transition: opacity var(--duration) var(--ease);
+  pointer-events: none;
+}
+.holdHintShow {
+  opacity: 0.8;
 }
 
 .bottom {

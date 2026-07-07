@@ -65,11 +65,13 @@ export const DEFAULT_SETTINGS = {
   minutes: 15,
   breathwork: true,
   breath: 'exhale',
+  haptics: false,
   scene: 'rain',
   mix: { ...DEFAULT_MIX },
   screen: 'lit',
   palette: 'storm',
   name: '',
+  hintSeen: false, // first-run "tap 夜" hint
 }
 
 export function loadSettings() {
