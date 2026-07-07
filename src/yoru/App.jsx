@@ -17,14 +17,13 @@ export default function App() {
   const [session, setSession] = useState(null)
   const [phase, setPhase] = useState('home')
 
-  // Apply the chosen palette app-wide (warmer "Moonlight" vs the default night).
+  // Apply the chosen palette app-wide. 'storm' is the default Night (no
+  // attribute); 'moonlight' and 'candlelight' are overrides in yoru.css.
   useEffect(() => {
     const root = document.documentElement
-    if ((settings.palette ?? 'storm') === 'moonlight') {
-      root.setAttribute('data-yoru-palette', 'moonlight')
-    } else {
-      root.removeAttribute('data-yoru-palette')
-    }
+    const palette = settings.palette ?? 'storm'
+    if (palette === 'storm') root.removeAttribute('data-yoru-palette')
+    else root.setAttribute('data-yoru-palette', palette)
   }, [settings.palette])
 
   // On open, pick up an unfinished session from earlier this same night.
@@ -55,8 +54,7 @@ export default function App() {
       breathwork: settings.breathwork,
       breath: settings.breath,
       scene: settings.scene,
-      intensity: settings.intensity,
-      volume: settings.volume,
+      mix: settings.mix,
       screen: settings.screen,
       note: '',
     }

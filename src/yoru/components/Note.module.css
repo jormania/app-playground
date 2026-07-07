@@ -12,15 +12,28 @@
 }
 
 .prompt {
-  color: var(--color-faint);
-  font-size: var(--text-sm);
-  letter-spacing: 0.02em;
-  opacity: 0.7;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  max-width: 26rem;
+  text-align: center;
   padding: var(--space-sm);
+  opacity: 0.82;
   transition: opacity var(--duration) var(--ease);
 }
 .prompt:hover {
   opacity: 1;
+}
+.promptLead {
+  color: var(--color-muted);
+  font-size: var(--text-base);
+  letter-spacing: 0.01em;
+  line-height: var(--leading-tight);
+}
+.promptWhy {
+  color: var(--color-faint);
+  font-size: var(--text-xs);
+  line-height: var(--leading-body);
 }
 
 .writing {

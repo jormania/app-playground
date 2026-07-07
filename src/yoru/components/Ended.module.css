@@ -15,6 +15,7 @@
 }
 
 .mark {
+  font-family: var(--font-display);
   font-size: 2.75rem;
   line-height: 1;
   color: var(--yoru-glow);

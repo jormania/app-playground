@@ -45,46 +45,229 @@ export function moonPlacement(pos) {
   }
 }
 
+// Astronomical season (Northern hemisphere / Japan) for the drifting elements:
+// spring → sakura, summer → fireflies, autumn → momiji, winter → snow.
+export function season(date = new Date()) {
+  const m = date.getMonth() + 1
+  const d = date.getDate()
+  const onOrAfter = (mm, dd) => m > mm || (m === mm && d >= dd)
+  if (onOrAfter(12, 21) || !onOrAfter(3, 20)) return 'winter'
+  if (!onOrAfter(6, 21)) return 'spring'
+  if (!onOrAfter(9, 22)) return 'summer'
+  return 'autumn'
+}
+
+// ── Mount Fuji ──────────────────────────────────────────────────────────────
+// Precompute Fuji's geometry once (it never animates, and per-frame randomness
+// would make the snow shimmer). The silhouette uses Fuji's signature CONCAVE
+// slopes (width ∝ (1-height)^1.55 → steep near the summit, flaring at the base),
+// a slightly flat summit, and a snow cap with a jagged, streaked lower edge.
+export function makeFuji(w, h) {
+  const cx = w * 0.5
+  const baseY = h + 6
+  // Broad and low: as wide as the frame allows, rising only ~40% of the height,
+  // with a flat-ish summit — Fuji is wide, not a spire.
+  const half = w * 0.92
+  const height = Math.min(h * 0.42, half * 0.72)
+  const peakY = baseY - height
+  const P = 1.28 // gentle concavity (flared base, not pinched to a point)
+  const uTop = 0.9 // leave a small flat summit
+  const widthAt = (u) => half * Math.pow(1 - u, P)
+  const yAt = (u) => baseY - u * height
+
+  const N = 64
+  const outline = []
+  for (let i = 0; i <= N; i++) {
+    const u = (i / N) * uTop
+    outline.push([cx - widthAt(u), yAt(u)])
+  }
+  // a subtle crater dip across the flat summit
+  outline.push([cx, yAt(uTop) + height * 0.02])
+  for (let i = N; i >= 0; i--) {
+    const u = (i / N) * uTop
+    outline.push([cx + widthAt(u), yAt(u)])
+  }
+
+  // Snow cap: up the left slope to the summit, down the right slope to the snow
+  // line, then a soft, gently-tongued lower edge back across (no sharp claws).
+  const snowU = 0.52
+  const snowY = yAt(snowU)
+  const leftX = cx - widthAt(snowU)
+  const rightX = cx + widthAt(snowU)
+  const snow = []
+  for (let i = 0; i <= 22; i++) {
+    const u = snowU + (uTop - snowU) * (i / 22)
+    snow.push([cx - widthAt(u), yAt(u)])
+  }
+  snow.push([cx, yAt(uTop) + height * 0.02])
+  for (let i = 22; i >= 0; i--) {
+    const u = snowU + (uTop - snowU) * (i / 22)
+    snow.push([cx + widthAt(u), yAt(u)])
+  }
+  // A few irregular tongues of snow reaching down the gullies (fixed positions
+  // and depths so it's organic but never shimmers), over a gentle undulation.
+  const tongues = [
+    [0.18, 0.05],
+    [0.34, 0.028],
+    [0.5, 0.075],
+    [0.63, 0.032],
+    [0.8, 0.055],
+  ]
+  const segs = 40
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs
+    const x = rightX + (leftX - rightX) * t
+    let dip = Math.sin(t * Math.PI * 3 + 0.4) * height * 0.01
+    for (const [c, d] of tongues) {
+      dip += d * height * Math.exp(-((t - c) * (t - c)) / 0.004)
+    }
+    snow.push([x, snowY + height * 0.01 + dip])
+  }
+
+  // Faint gully lines fanning from the summit give the cone volume, so it reads
+  // as Fuji rather than a flat triangle.
+  const gullies = [-0.42, -0.16, 0.14, 0.4]
+
+  return { outline, snow, gullies, cx, peakY, half, baseY, height, snowY }
+}
+
+// Draw the precomputed Fuji, dim and moonlit to match the moon's weight.
+export function drawFuji(ctx, fuji, moonX = 0.7) {
+  const { outline, snow, gullies, cx, peakY, half, baseY, height } = fuji
+  ctx.save()
+
+  ctx.beginPath()
+  ctx.moveTo(outline[0][0], outline[0][1])
+  for (const [x, y] of outline) ctx.lineTo(x, y)
+  ctx.closePath()
+  ctx.clip()
+
+  const body = ctx.createLinearGradient(0, peakY, 0, baseY)
+  body.addColorStop(0, '#161520')
+  body.addColorStop(1, '#08070d')
+  ctx.fillStyle = body
+  ctx.fillRect(cx - half - 2, peakY - 8, half * 2 + 4, height + 16)
+
+  // faint gullies fanning from the summit — soft dark ridgelines for volume
+  ctx.globalAlpha = 0.5
+  for (const gx of gullies) {
+    const baseX = cx + gx * half
+    const grad = ctx.createLinearGradient(cx, peakY, baseX, baseY)
+    grad.addColorStop(0, 'rgba(0,0,0,0)')
+    grad.addColorStop(1, 'rgba(0,0,0,0.28)')
+    ctx.strokeStyle = grad
+    ctx.lineWidth = 2.5
+    ctx.beginPath()
+    ctx.moveTo(cx, peakY + height * 0.08)
+    ctx.quadraticCurveTo((cx + baseX) / 2, peakY + height * 0.5, baseX, baseY)
+    ctx.stroke()
+  }
+  ctx.globalAlpha = 1
+
+  // a faint rim of moonlight down the moon-facing slope
+  const rim = ctx.createLinearGradient(cx - half, 0, cx + half, 0)
+  const edge = 'rgba(155,155,192,0.1)'
+  if (moonX >= 0.5) {
+    rim.addColorStop(0.5, 'rgba(0,0,0,0)')
+    rim.addColorStop(1, edge)
+  } else {
+    rim.addColorStop(0, edge)
+    rim.addColorStop(0.5, 'rgba(0,0,0,0)')
+  }
+  ctx.fillStyle = rim
+  ctx.fillRect(cx - half, peakY - 8, half * 2, height + 16)
+
+  // snow cap — dim, cool, moonlit (matched to the moon's muted lilac)
+  ctx.beginPath()
+  ctx.moveTo(snow[0][0], snow[0][1])
+  for (const [x, y] of snow) ctx.lineTo(x, y)
+  ctx.closePath()
+  const snowGrad = ctx.createLinearGradient(0, peakY, 0, peakY + height * 0.42)
+  snowGrad.addColorStop(0, 'rgba(176,175,205,0.42)')
+  snowGrad.addColorStop(1, 'rgba(140,140,172,0.14)')
+  ctx.fillStyle = snowGrad
+  ctx.fill()
+
+  ctx.restore()
+}
+
 // Draw the moon at its true phase on a 2D canvas context. Deliberately dim: the
 // lit face is a soft, low glow and the shadow side is barely perceptible, so it
 // never lights a dark room.
+// Fixed maria (the moon's dark "seas"), in disc-normalised coordinates so they
+// stay put frame to frame — [x, y, radius, darkness]. They texture both the lit
+// face and (faintly) the earthshine side, so it reads as a body, not a plate.
+// Irregular maria (dark seas), disc-normalised [x, y, radius, darkness]. A few
+// large, overlapping, uneven blotches — a moon face, not a ring of dots.
+const MARIA = [
+  [-0.18, -0.26, 0.42, 0.42],
+  [0.1, -0.34, 0.26, 0.34],
+  [0.28, -0.02, 0.34, 0.4],
+  [0.02, 0.18, 0.4, 0.36],
+  [-0.32, 0.06, 0.24, 0.34],
+  [0.34, 0.36, 0.18, 0.28],
+]
+
 export function drawMoon(ctx, cx, cy, r, phase, alpha) {
   ctx.save()
   ctx.globalAlpha = alpha
 
   // faint halo
-  const halo = ctx.createRadialGradient(cx, cy, r * 0.6, cx, cy, r * 2.4)
-  halo.addColorStop(0, 'rgba(190,178,230,0.07)')
+  const halo = ctx.createRadialGradient(cx, cy, r * 0.7, cx, cy, r * 2.6)
+  halo.addColorStop(0, 'rgba(188,186,224,0.07)')
   halo.addColorStop(1, 'rgba(0,0,0,0)')
   ctx.fillStyle = halo
   ctx.beginPath()
-  ctx.arc(cx, cy, r * 2.4, 0, Math.PI * 2)
+  ctx.arc(cx, cy, r * 2.6, 0, Math.PI * 2)
   ctx.fill()
 
-  // dark disc (earthshine) — barely visible, just enough to read as a full disc
-  ctx.fillStyle = 'rgba(48,45,68,0.22)'
+  ctx.save()
   ctx.beginPath()
   ctx.arc(cx, cy, r, 0, Math.PI * 2)
-  ctx.fill()
+  ctx.clip()
 
-  // illuminated part, bounded by the terminator ellipse (standard construction);
-  // a muted lilac, not white
+  // earthshine (dark side) — barely visible, so a crescent still reads as a
+  // crescent, not a full grey disc with a bright edge
+  ctx.fillStyle = 'rgba(42,40,62,0.28)'
+  ctx.fillRect(cx - r, cy - r, r * 2, r * 2)
+
+  // lit face, bounded by the terminator ellipse, with a photometric gradient:
+  // brightest at the limb, dimming toward the terminator (as on a real sphere).
   const waxing = phase <= 0.5
-  const ellipseW = r * Math.cos(phase * 2 * Math.PI) // signed
-  ctx.fillStyle = '#8f88b4'
+  const ellipseW = r * Math.cos(phase * 2 * Math.PI)
   ctx.beginPath()
   ctx.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2, !waxing)
-  ctx.ellipse(
-    cx,
-    cy,
-    Math.abs(ellipseW),
-    r,
-    0,
-    Math.PI / 2,
-    -Math.PI / 2,
-    ellipseW > 0 ? waxing : !waxing,
-  )
+  ctx.ellipse(cx, cy, Math.abs(ellipseW), r, 0, Math.PI / 2, -Math.PI / 2, ellipseW > 0 ? waxing : !waxing)
+  ctx.closePath()
+  const brightX = waxing ? cx + r : cx - r
+  const termX = waxing ? cx - r : cx + r
+  const lit = ctx.createLinearGradient(termX, 0, brightX, 0)
+  lit.addColorStop(0, 'rgba(120,119,150,1)')
+  lit.addColorStop(1, 'rgba(186,184,214,1)')
+  ctx.fillStyle = lit
   ctx.fill()
 
+  // maria over the whole disc (soft dark seas)
+  for (const [mx, my, mr, md] of MARIA) {
+    const gx = cx + mx * r
+    const gy = cy + my * r
+    const grr = mr * r
+    const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, grr)
+    g.addColorStop(0, `rgba(36,34,56,${md})`)
+    g.addColorStop(1, 'rgba(36,34,56,0)')
+    ctx.fillStyle = g
+    ctx.beginPath()
+    ctx.arc(gx, gy, grr, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  // limb darkening — a shaded rim so it reads as a sphere, not a disc
+  const limb = ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r)
+  limb.addColorStop(0, 'rgba(0,0,12,0)')
+  limb.addColorStop(1, 'rgba(0,0,14,0.3)')
+  ctx.fillStyle = limb
+  ctx.fillRect(cx - r, cy - r, r * 2, r * 2)
+
+  ctx.restore()
   ctx.restore()
 }

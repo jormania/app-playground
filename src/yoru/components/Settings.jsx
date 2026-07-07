@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { SegmentedControl } from '../../ds'
 import { createNightSoundscape } from '../lib/soundscape'
+import { SCENE_PRESETS } from '../lib/storage'
+import Mixer from './Mixer'
 import styles from './Settings.module.css'
 
 const LENGTH_OPTIONS = [
@@ -28,48 +30,47 @@ const SCENE_OPTIONS = [
   { value: 'forest', label: 'Forest' },
 ]
 
-const INTENSITY_OPTIONS = [
-  { value: 'faint', label: 'Faint' },
-  { value: 'gentle', label: 'Gentle' },
-  { value: 'steady', label: 'Steady' },
-  { value: 'lively', label: 'Lively' },
-]
-
-const VOLUME_OPTIONS = [
-  { value: 'off', label: 'Off' },
-  { value: 'soft', label: 'Soft' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'full', label: 'Full' },
-]
-
 const SCREEN_OPTIONS = [
   { value: 'lit', label: 'Stay lit' },
   { value: 'dark', label: 'Go dark' },
+  { value: 'off', label: 'Turn off' },
 ]
 
 const PALETTE_OPTIONS = [
   { value: 'storm', label: 'Night' },
   { value: 'moonlight', label: 'Moonlight' },
+  { value: 'candlelight', label: 'Candlelight' },
 ]
 
 // The full settings sheet — reached only by tapping 夜, so the home stays bare.
-// A dark, frameless overlay (not a card): all of Yoru's choices in one quiet
-// list, closed with a tap of 夜 at the top.
+// A dark, frameless overlay (not a card). Audio fine-tuning lives one step
+// deeper, in the Mixer. Settings owns the single live sound preview, so both the
+// scene here and every mixer control are auditioned by ear before a session.
 export default function Settings({ settings, onChange, onClose }) {
-  // Audition the sound live while the sheet is open, so scene + volume can be
-  // chosen by ear before a session ever begins. A long totalSec keeps it steady
-  // (no ebb); a quick fade makes each change audible almost at once. Stops when
-  // the sheet closes.
+  const [mixerOpen, setMixerOpen] = useState(false)
+
   const scene = settings.scene ?? 'rain'
-  const volume = settings.volume ?? 'medium'
-  const intensity = settings.intensity ?? 'gentle'
+  const mixKey = JSON.stringify(settings.mix)
+  // The orb is only visible when the screen stays lit.
+  const screenShowsOrb = (settings.screen ?? 'lit') === 'lit'
+
   const preview = useRef(null)
+  const restart = useRef(0)
   useEffect(() => {
-    const s = createNightSoundscape()
-    preview.current = s
-    s.start({ totalSec: 100000, elapsedSec: 0, volume, scene, intensity, fadeIn: 0.8 })
-    return () => s.stop()
-  }, [scene, volume, intensity])
+    // Debounced so dragging a mixer slider doesn't thrash the audio graph.
+    clearTimeout(restart.current)
+    restart.current = setTimeout(() => {
+      preview.current?.stop()
+      const s = createNightSoundscape()
+      preview.current = s
+      s.start({ totalSec: 100000, elapsedSec: 0, mix: settings.mix, fadeIn: 0.6 })
+    }, 140)
+    return () => clearTimeout(restart.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mixKey])
+
+  // Stop the preview for good when the sheet closes.
+  useEffect(() => () => preview.current?.stop(), [])
 
   return (
     <div className={styles.overlay} role="dialog" aria-label="Settings">
@@ -79,7 +80,7 @@ export default function Settings({ settings, onChange, onClose }) {
 
       <div className={styles.list}>
         <label className={styles.row}>
-          <span className={styles.label}>you</span>
+          <span className={styles.label}>your name</span>
           <input
             className={styles.name}
             type="text"
@@ -91,7 +92,7 @@ export default function Settings({ settings, onChange, onClose }) {
         </label>
 
         <div className={styles.row}>
-          <span className={styles.label}>length</span>
+          <span className={styles.label}>session length</span>
           <SegmentedControl
             size="sm"
             options={LENGTH_OPTIONS}
@@ -101,40 +102,46 @@ export default function Settings({ settings, onChange, onClose }) {
         </div>
 
         <div className={styles.row}>
-          <span className={styles.label}>sound</span>
-          <SegmentedControl size="sm" options={SCENE_OPTIONS} value={settings.scene ?? 'rain'} onChange={(v) => onChange({ scene: v })} />
+          <span className={styles.label}>soundscape</span>
+          <SegmentedControl
+            size="sm"
+            options={SCENE_OPTIONS}
+            value={scene}
+            onChange={(v) => onChange({ scene: v, mix: { ...settings.mix, ...SCENE_PRESETS[v] } })}
+          />
         </div>
 
         <div className={styles.row}>
-          <span className={styles.label}>intensity</span>
-          <SegmentedControl size="sm" options={INTENSITY_OPTIONS} value={settings.intensity ?? 'gentle'} onChange={(v) => onChange({ intensity: v })} />
+          <span className={styles.label}>audio tuner</span>
+          <button type="button" className={styles.mixerBtn} onClick={() => setMixerOpen(true)}>
+            open mixer →
+          </button>
         </div>
 
         <div className={styles.row}>
-          <span className={styles.label}>volume</span>
-          <SegmentedControl size="sm" options={VOLUME_OPTIONS} value={settings.volume ?? 'medium'} onChange={(v) => onChange({ volume: v })} />
-        </div>
-
-        <div className={styles.row}>
-          <span className={styles.label}>screen</span>
+          <span className={styles.label}>display mode</span>
           <SegmentedControl options={SCREEN_OPTIONS} value={settings.screen ?? 'lit'} onChange={(v) => onChange({ screen: v })} />
         </div>
 
         <div className={styles.row}>
-          <span className={styles.label}>colour</span>
+          <span className={styles.label}>atmosphere</span>
           <SegmentedControl options={PALETTE_OPTIONS} value={settings.palette ?? 'storm'} onChange={(v) => onChange({ palette: v })} />
         </div>
 
-        <div className={styles.row}>
-          <span className={styles.label}>breathwork</span>
-          <SegmentedControl
-            options={BREATHWORK_OPTIONS}
-            value={settings.breathwork === false ? 'off' : 'on'}
-            onChange={(v) => onChange({ breathwork: v === 'on' })}
-          />
-        </div>
+        {/* With the screen dark or off you can't see the orb, so breathwork —
+            and its pattern — don't apply and are hidden. */}
+        {screenShowsOrb && (
+          <div className={styles.row}>
+            <span className={styles.label}>breathwork</span>
+            <SegmentedControl
+              options={BREATHWORK_OPTIONS}
+              value={settings.breathwork === false ? 'off' : 'on'}
+              onChange={(v) => onChange({ breathwork: v === 'on' })}
+            />
+          </div>
+        )}
 
-        {settings.breathwork !== false && (
+        {screenShowsOrb && settings.breathwork !== false && (
           <div className={styles.row}>
             <span className={styles.label}>pattern</span>
             <SegmentedControl options={BREATH_OPTIONS} value={settings.breath} onChange={(v) => onChange({ breath: v })} />
@@ -145,6 +152,8 @@ export default function Settings({ settings, onChange, onClose }) {
       <button type="button" className={styles.done} onClick={onClose}>
         done
       </button>
+
+      {mixerOpen && <Mixer settings={settings} onChange={onChange} onClose={() => setMixerOpen(false)} />}
     </div>
   )
 }

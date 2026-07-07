@@ -41,6 +41,13 @@
   --color-warning:      #e0af68;
   --color-danger:       #f7768e;
 
+  /* Type — one Japanese superfamily (see main.jsx). Zen Old Mincho is the
+     display face (the 夜 glyph, titles); Zen Kaku Gothic New is the UI text.
+     Minimal, harmonised, and Japanese through and through. */
+  --font-display: 'Zen Old Mincho', 'Yu Mincho', 'Hiragino Mincho Pro', serif;
+  --font-sans: 'Zen Kaku Gothic New', 'Yu Gothic', system-ui, sans-serif;
+  --font-mono: 'Zen Kaku Gothic New', system-ui, sans-serif;
+
   /* Yoru-specific: the breath orb's colour. */
   --yoru-glow:  #bb9af7;
   --yoru-glow2: #7aa2f7;
@@ -73,6 +80,28 @@
 
   --yoru-glow:  #d4bcff;
   --yoru-glow2: #a9a0ee;
+}
+
+/* Warm "Candlelight" palette — a paper-lantern (andon) glow: warm amber on a
+   deep warm-black. The third night, beside cool Night and lilac Moonlight. */
+:root[data-yoru-palette="candlelight"] {
+  --color-bg:        #191512;
+  --color-bg-sunken: #141110;
+  --color-surface:   #221c16;
+  --color-surface-2: #2a221a;
+  --color-border:    #2c2419;
+  --color-border-2:  #463a28;
+
+  --color-ink:   #efe2cf;
+  --color-muted: #a99a80;
+  --color-faint: #6f6350;
+
+  --color-accent:       #e0a86a;
+  --color-accent-hover: #ecb87c;
+  --color-on-accent:    #1a1410;
+
+  --yoru-glow:  #e8b276;
+  --yoru-glow2: #d59a58;
 }
 
 /* Frameless, edge-to-edge night. The body itself is the darkest surface so the

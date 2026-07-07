@@ -64,6 +64,19 @@
   padding-bottom: var(--space-sm);
 }
 
+/* A very discrete countdown in the bottom-right — same faint text style as the
+   rest of the app, easy to ignore, there if you glance for it. */
+.countdown {
+  position: absolute;
+  right: max(var(--space-md), env(safe-area-inset-right));
+  bottom: max(var(--space-md), env(safe-area-inset-bottom));
+  font-size: var(--text-sm);
+  letter-spacing: 0.1em;
+  color: var(--color-faint);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.5;
+}
+
 /* A single hairline of progress along the very bottom edge — dim enough to
    ignore, there if you want it. */
 .progress {
@@ -94,9 +107,19 @@
   animation: veilIn 2.5s var(--ease) both;
 }
 
+/* "Turn off": a plain black cover while the device screen powers down. No sky,
+   nothing lit — it's meant to actually go dark. */
+.blackout {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  animation: veilIn 1.5s var(--ease) both;
+}
+
 /* When breathwork is off, a still, softly pulsing glyph anchors the centre in
    place of the breathing orb — ambient, not an instruction. */
 .ambient {
+  font-family: var(--font-display);
   font-size: clamp(4rem, 22vw, 6rem);
   line-height: 1;
   color: var(--yoru-glow);

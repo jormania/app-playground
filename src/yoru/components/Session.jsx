@@ -15,13 +15,17 @@ import styles from './Session.module.css'
 export default function Session({ session, onNote, onFinish }) {
   const sound = useRef(null)
 
-  const breathwork = session.breathwork !== false
+  // Three screen modes. 'lit' shows the orb; 'dark' blacks out to a night sky
+  // but stays awake (audio keeps playing); 'off' releases the wake lock so the
+  // device screen truly sleeps to save power — and flips back to 'lit' the
+  // moment you re-engage with the app.
+  const [screenMode, setScreenMode] = useState(session.screen || 'lit')
+  const dark = screenMode === 'dark'
+  const off = screenMode === 'off'
 
-  // "Go dark" — the screen blacks out but the device stays awake, so the
-  // synthesised sound keeps playing (it would be suspended if the display
-  // actually slept). Tap to peek for a few seconds. The dark backdrop shows the
-  // real moon, so ask for a location only in this mode.
-  const dark = session.screen === 'dark'
+  // The orb (and breathwork) only make sense when the screen is lit.
+  const breathwork = session.breathwork !== false && screenMode === 'lit'
+
   const coords = useCoords(dark)
   const [veiled, setVeiled] = useState(dark)
   const peekTimer = useRef(0)
@@ -33,11 +37,20 @@ export default function Session({ session, onNote, onFinish }) {
   }
   useEffect(() => () => clearTimeout(peekTimer.current), [])
 
-  // Always keep the screen awake during a session — in "Go dark" it's black but
-  // still on, which is what keeps the audio alive.
-  useWakeLock(true)
+  // In 'off' mode, come back to 'lit' as soon as the app is visible again.
+  useEffect(() => {
+    if (screenMode !== 'off') return undefined
+    const onVis = () => {
+      if (document.visibilityState === 'visible') setScreenMode('lit')
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [screenMode])
 
-  const { progress, scale, phase } = useDescent({
+  // Keep the screen awake except in 'off' (there we let the device sleep).
+  useWakeLock(!off)
+
+  const { progress, scale, phase, remainingSec } = useDescent({
     startedAt: session.startedAt,
     totalSec: session.totalSec,
     breath: session.breath,
@@ -46,12 +59,13 @@ export default function Session({ session, onNote, onFinish }) {
   })
 
   // Build the soundscape once, resuming its envelope at the current elapsed so a
-  // mid-night resume doesn't restart the ebb from the top.
+  // mid-night resume doesn't restart the ebb from the top. Skipped entirely when
+  // sound is off (a breath-only night).
   useEffect(() => {
     const s = createNightSoundscape()
     sound.current = s
     const elapsedSec = Math.max(0, (Date.now() - session.startedAt) / 1000)
-    s.start({ totalSec: session.totalSec, elapsedSec, volume: session.volume, scene: session.scene, intensity: session.intensity })
+    s.start({ totalSec: session.totalSec, elapsedSec, mix: session.mix })
     return () => s.stop()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -79,6 +93,8 @@ export default function Session({ session, onNote, onFinish }) {
         <Note value={session.note} onChange={onNote} />
       </div>
 
+      <span className={styles.countdown} aria-hidden="true">{formatTime(remainingSec)}</span>
+
       <div className={styles.progress} aria-hidden="true">
         <div className={styles.progressFill} style={{ transform: `scaleX(${progress.toFixed(4)})` }} />
       </div>
@@ -88,8 +104,17 @@ export default function Session({ session, onNote, onFinish }) {
           <NightSky coords={coords} />
         </button>
       )}
+
+      {off && <div className={styles.blackout} aria-hidden="true" />}
     </main>
   )
+}
+
+// mm:ss for the discrete countdown.
+function formatTime(sec) {
+  const s = Math.max(0, Math.floor(sec))
+  const m = Math.floor(s / 60)
+  return `${m}:${String(s % 60).padStart(2, '0')}`
 }
 
 // The whole screen fades toward black over the final stretch, matching the

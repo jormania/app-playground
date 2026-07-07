@@ -29,7 +29,11 @@ export default function Note({ value, onChange }) {
   if (mode === 'prompt') {
     return (
       <button type="button" className={styles.prompt} onClick={() => setMode('writing')}>
-        anything you're carrying into tomorrow?
+        <span className={styles.promptLead}>Is something following you into tomorrow?</span>
+        <span className={styles.promptWhy}>
+          A worry, a to-do, a thought that keeps circling. Leave it here for the night — once it's
+          written down, your mind can stop holding it, and sleep comes more easily.
+        </span>
       </button>
     )
   }
@@ -42,7 +46,7 @@ export default function Note({ value, onChange }) {
           className={styles.area}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="set it here…"
+          placeholder="write it down, and leave it here till morning…"
           rows={3}
         />
         <button type="button" className={styles.setDown} onClick={setDown}>
