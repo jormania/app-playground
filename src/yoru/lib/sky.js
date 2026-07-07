@@ -10,8 +10,13 @@ export function moonPhase(date = new Date()) {
   return { fraction: m.fraction, phase: m.phase }
 }
 
-// { altitude (rad, >0 = above horizon), azimuth (rad) } or null without coords.
-// Guarded because SunCalc's horizontal transform can return non-finite values.
+// { altitude (deg, >0 = above horizon), azimuth (deg) } or null without coords.
+// NOTE: this installed suncalc (2.x) returns both already in DEGREES — its own
+// source converts internally (`/ rad`, where `rad = PI/180`) before returning.
+// That's a change from the classic 1.x API (radians), which is what the rest of
+// this file used to assume; treating degrees as radians made every downstream
+// calculation (the altitude threshold, and worse, azimuth fed straight into
+// Math.sin/cos) come out essentially arbitrary. Guarded for non-finite values.
 export function moonPosition(date, coords) {
   if (!coords || typeof coords.lat !== 'number' || typeof coords.lon !== 'number') return null
   try {
@@ -40,9 +45,10 @@ const MARGIN_BOTTOM = 0.2
 export function moonPlacement(pos) {
   const clampX = (x) => Math.min(1 - MARGIN_X, Math.max(MARGIN_X, x))
   if (!pos) return { x: clampX(0.72), y: 1 - MARGIN_BOTTOM - 0.06, presence: 0.85 }
-  const altDeg = (pos.altitude * 180) / Math.PI
-  // azimuth: SunCalc measures from south, + toward west. Map to a screen x.
-  const az = pos.azimuth
+  const altDeg = pos.altitude // already degrees
+  // azimuth: SunCalc measures from south, + toward west, in degrees — convert
+  // to radians before using it in a trig function.
+  const az = (pos.azimuth * Math.PI) / 180
   const x = 0.5 + 0.42 * Math.sin(az)
   if (altDeg <= 0) {
     // below the horizon — a faint moon resting well above the bottom edge
