@@ -35,7 +35,7 @@ export default function NightSky({ coords }) {
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     const which = season()
 
-    const stars = Array.from({ length: 82 }, () => ({
+    const stars = Array.from({ length: 160 }, () => ({
       x: Math.random(),
       y: Math.random(),
       r: 0.5 + Math.random() * 1.1,
@@ -90,6 +90,24 @@ export default function NightSky({ coords }) {
       }
     }
 
+    // A rare shooting star — a quiet surprise, not a light show. One at a
+    // time, long gaps between, gone in well under a second.
+    let meteor = null
+    let nextMeteorAt = performance.now() + 6000 + Math.random() * 14000
+    const spawnMeteor = () => {
+      const angle = (Math.PI / 4) + (Math.random() - 0.5) * 0.5
+      const speed = 700 + Math.random() * 400
+      return {
+        x: w * (0.15 + Math.random() * 0.7),
+        y: h * (0.05 + Math.random() * 0.2),
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        len: 50 + Math.random() * 40,
+        life: 0,
+        maxLife: 0.5 + Math.random() * 0.25,
+      }
+    }
+
     let raf = 0
     let last = performance.now()
 
@@ -116,6 +134,37 @@ export default function NightSky({ coords }) {
         ctx.fill()
       }
       ctx.globalAlpha = 1
+
+      // the rare shooting star
+      if (!reduced) {
+        if (!meteor && now > nextMeteorAt) meteor = spawnMeteor()
+        if (meteor) {
+          meteor.life += dt
+          meteor.x += meteor.vx * dt
+          meteor.y += meteor.vy * dt
+          const t = meteor.life / meteor.maxLife
+          if (t >= 1) {
+            meteor = null
+            nextMeteorAt = now + 12000 + Math.random() * 30000
+          } else {
+            const speed = Math.hypot(meteor.vx, meteor.vy)
+            const ux = meteor.vx / speed
+            const uy = meteor.vy / speed
+            const tx = meteor.x - ux * meteor.len
+            const ty = meteor.y - uy * meteor.len
+            const a = Math.sin(Math.PI * t) * 0.7
+            const grad = ctx.createLinearGradient(tx, ty, meteor.x, meteor.y)
+            grad.addColorStop(0, 'rgba(238,240,255,0)')
+            grad.addColorStop(1, `rgba(238,240,255,${a})`)
+            ctx.strokeStyle = grad
+            ctx.lineWidth = 1.3
+            ctx.beginPath()
+            ctx.moveTo(tx, ty)
+            ctx.lineTo(meteor.x, meteor.y)
+            ctx.stroke()
+          }
+        }
+      }
 
       // the real moon, at tonight's true phase and (with a location) its place
       const now2 = new Date()

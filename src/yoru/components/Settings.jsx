@@ -68,7 +68,13 @@ export default function Settings({ settings, onChange, onClose }) {
     // Debounced so dragging a mixer slider doesn't thrash the audio graph.
     clearTimeout(restart.current)
     restart.current = setTimeout(() => {
-      preview.current?.stop()
+      // A SHORT release here, not the default ~1.8s session-ending fade: this
+      // fires on every mixer tweak, and stop()'s release runs independently of
+      // the new instance's own fade-in, so a long release meant the outgoing
+      // and incoming mixes played on top of each other for up to ~1.8s after
+      // every single change — exactly while you're trying to judge the change
+      // by ear.
+      preview.current?.stop(0.15)
       const s = createNightSoundscape()
       preview.current = s
       s.start({ totalSec: 100000, elapsedSec: 0, mix: settings.mix, fadeIn: 0.6 })
@@ -77,8 +83,9 @@ export default function Settings({ settings, onChange, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mixKey])
 
-  // Stop the preview for good when the sheet closes.
-  useEffect(() => () => preview.current?.stop(), [])
+  // Stop the preview for good when the sheet closes — also short, so it
+  // doesn't linger once you're already looking at Home again.
+  useEffect(() => () => preview.current?.stop(0.3), [])
 
   return (
     <div className={styles.overlay} role="dialog" aria-label="Settings">

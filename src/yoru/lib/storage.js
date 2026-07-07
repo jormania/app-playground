@@ -50,7 +50,7 @@ export const DEFAULT_MIX = {
   // both now read through a perceptual taper (soundscape.js): the curve pulls
   // mid-range values down so a real "5" would sound quieter/darker than the app
   // used to feel by default. 7/8 roughly restores the old out-of-the-box level.
-  volume: 7,
+  volume: 8,
   brightness: 8,
   motion: 5, // depth of the swell
   pace: 5, // speed of the swell / drift
@@ -82,10 +82,30 @@ export const DEFAULT_SETTINGS = {
   hintSeen: false, // first-run "tap 夜" hint
 }
 
+// Bump whenever the mix's underlying CURVE changes meaning (not just its
+// default values) — e.g. introducing the perceptual taper in soundscape.js
+// meant the same saved number (say, volume: 5) suddenly produced a different,
+// usually quieter, actual gain than before. A stale saved mix that predates the
+// current curve is reset to the fresh defaults rather than silently carried
+// forward at the wrong loudness.
+const MIX_VERSION = 2
+
 export function loadSettings() {
   const s = read('settings', DEFAULT_SETTINGS)
-  // Merge deeply enough that a newly-added mix control fills in from the default.
-  return { ...DEFAULT_SETTINGS, ...s, mix: { ...DEFAULT_MIX, ...(s && s.mix) } }
+  const staleMix = !s || s.mixVersion !== MIX_VERSION
+  const result = {
+    ...DEFAULT_SETTINGS,
+    ...s,
+    // Merge deeply enough that a newly-added mix control fills in from the
+    // default; but if the curve itself has moved on, don't carry old numbers
+    // forward at all.
+    mix: staleMix ? { ...DEFAULT_MIX } : { ...DEFAULT_MIX, ...s.mix },
+    mixVersion: MIX_VERSION,
+  }
+  // Persist the migration immediately rather than leaving the on-disk copy
+  // stale until the user happens to change some other setting.
+  if (staleMix) saveSettings(result)
+  return result
 }
 
 export function saveSettings(settings) {

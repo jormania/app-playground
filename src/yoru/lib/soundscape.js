@@ -92,8 +92,9 @@ function resolveMix(mix) {
   const gv = (k) => taper(nv(k), LAYER_TAPER) // a layer's own level, perceptually tapered
   return {
     // Volume: 0 is now true silence (taper(0,_)=0), and the steep taper gives it
-    // a real "audio knob" feel instead of a linear one.
-    master: taper(nv('volume'), VOLUME_TAPER) * 0.18,
+    // a real "audio knob" feel instead of a linear one. 0.24 ceiling (was 0.18)
+    // after the first taper pass came back reporting the whole mix too quiet.
+    master: taper(nv('volume'), VOLUME_TAPER) * 0.24,
     // Brightness is a FREQUENCY, not a gain — ears perceive pitch/tone
     // logarithmically (an octave feels like an equal step wherever you are), so
     // this interpolates in log-frequency space rather than linear Hz.
@@ -342,7 +343,7 @@ export function createNightSoundscape() {
   // ── stream: a continuous brook — steadier and higher than Waves (no big swell
   // envelope), with soft, frequent "bubble" transients rather than sparse drops.
   // Level makes it both louder AND busier, matching rain's own convention. ──
-  function buildStream(white, level, pace, dest) {
+  function buildStream(white, level, motion, pace, dest) {
     const src = loopSource(ctx, white)
     const bp = ctx.createBiquadFilter()
     bp.type = 'bandpass'
@@ -357,11 +358,12 @@ export function createNightSoundscape() {
     nodes.push(src)
 
     // a slow drift on the wash's centre so it's never perfectly static, while
-    // staying steadier than Waves (no swelling gain envelope)
+    // staying steadier than Waves (no swelling gain envelope). Motion scales
+    // its depth, same as every other layer's own drift/gust.
     const drift = ctx.createOscillator()
     drift.frequency.value = 0.04 * pace
     const driftDepth = ctx.createGain()
-    driftDepth.gain.value = 220
+    driftDepth.gain.value = 220 * motion
     drift.connect(driftDepth)
     driftDepth.connect(bp.frequency)
     drift.start()
@@ -471,7 +473,7 @@ export function createNightSoundscape() {
     if (p.wind > 0) buildWind(white, 0.34 * p.wind, 900, p.motion, p.pace, tone)
     if (p.rain > 0) buildRain(white, p.rain, p.pace, tone)
     if (p.waves > 0) buildWaves(white, p.waves, p.motion, p.pace, tone)
-    if (p.stream > 0) buildStream(white, p.stream, p.pace, tone)
+    if (p.stream > 0) buildStream(white, p.stream, p.motion, p.pace, tone)
     if (p.leaves > 0) buildLeaves(white, p.leaves, p.motion, p.pace, tone)
     if (p.chime > 0) buildChime(p.chime, p.pace, tone)
 
