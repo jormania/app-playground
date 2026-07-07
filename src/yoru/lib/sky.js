@@ -66,6 +66,111 @@ export function moonPlacement(pos) {
   }
 }
 
+// ── Real star colours & sizes ────────────────────────────────────────────
+// Real stars span the blackbody range (spectral classes O through M) — hot
+// blue-white through to cool orange-red — and true brightness follows a
+// steep curve: most stars are faint pinpricks, a rare few stand out. Shared
+// by the ordinary star field and the Milky Way's speckle texture, so the
+// whole sky reads as one consistent population, not two different palettes.
+const STAR_PALETTE = [
+  { c: [170, 191, 255], w: 0.06 }, // O/B — blue-white, rare
+  { c: [202, 215, 255], w: 0.16 }, // A — white with a cool cast
+  { c: [244, 246, 255], w: 0.3 }, // F — near white
+  { c: [255, 244, 234], w: 0.28 }, // G — warm white (Sun-like)
+  { c: [255, 214, 170], w: 0.14 }, // K — pale orange
+  { c: [255, 181, 128], w: 0.06 }, // M — orange-red, rare
+]
+export function starColor() {
+  const r = Math.random()
+  let acc = 0
+  for (const s of STAR_PALETTE) {
+    acc += s.w
+    if (r <= acc) return s.c
+  }
+  return STAR_PALETTE[STAR_PALETTE.length - 1].c
+}
+export function starSize() {
+  return 0.3 + Math.random() ** 3.2 * 1.7 // steep falloff — bright/big ones are rare
+}
+
+// ── Milky Way ────────────────────────────────────────────────────────────
+// The sky's main "space filler": a wispy band arching across a large diagonal
+// span of the frame — a fixed, sensible angle and position (only lightly
+// randomised) so it always reads as one real arc crossing the whole sky,
+// never as a patch floating in the middle. Built from two layers:
+//   1. A wispy glow — many overlapping soft patches of varying width and
+//      density along the band, composited with 'lighten' so overlaps take the
+//      brighter value rather than summing (summing double-darkens every
+//      overlap into visible blotches — the single failure mode to avoid here).
+//      Deliberately dim throughout: this must never compete with the moon.
+//   2. A scatter of countless tiny, realistically coloured speckle stars
+//      within the glow, denser toward the core — the actual "filling" texture.
+export function makeMilkyWay(w, h) {
+  const angle = -1.15 + (Math.random() - 0.5) * 0.1 // a steep, consistent diagonal
+  const cx = w * 0.5
+  const cy = h * 0.4
+  const length = Math.max(w, h) * 2.05 // runs off both edges — a real arc, not a patch
+  const dx = Math.cos(angle)
+  const dy = Math.sin(angle)
+
+  const glow = []
+  const SEG_N = 50
+  for (let i = 0; i < SEG_N; i++) {
+    const t = (i / (SEG_N - 1) - 0.5) * length
+    const core = Math.exp(-((t / (length * 0.36)) ** 2))
+    const density = core * (0.5 + Math.random() * 0.75) // patchy, not uniform
+    if (density < 0.05) continue
+    const along = t + (Math.random() - 0.5) * (length / SEG_N) * 0.9
+    const perp = (Math.random() - 0.5) * Math.min(w, h) * 0.06
+    const x = cx + dx * along - dy * perp
+    const y = cy + dy * along + dx * perp
+    const halfW = Math.min(w, h) * (0.065 + Math.random() * 0.07) * (0.55 + density)
+    glow.push([x, y, halfW, density])
+  }
+
+  const speckles = []
+  const N = 320
+  for (let i = 0; i < N; i++) {
+    const t = (Math.random() - 0.5) * length
+    const core = Math.exp(-((t / (length * 0.34)) ** 2))
+    if (Math.random() > core * 0.85 + 0.05) continue
+    const perp = (Math.random() - 0.5) * Math.min(w, h) * 0.16 * (0.35 + core)
+    const x = cx + dx * t - dy * perp
+    const y = cy + dy * t + dx * perp
+    const [cr, cg, cb] = starColor()
+    speckles.push([x, y, starSize() * 0.65, (0.035 + Math.random() * 0.065) * (0.4 + core), `${cr},${cg},${cb}`])
+  }
+
+  return { glow, speckles }
+}
+
+export function drawMilkyWay(ctx, mw) {
+  const { glow, speckles } = mw
+
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighten' // max, not sum — no double-alpha blotching
+  for (const [x, y, halfW, density] of glow) {
+    const peak = 0.026 * density // kept low: never allowed to rival the moon
+    const g = ctx.createRadialGradient(x, y, 0, x, y, halfW)
+    g.addColorStop(0, `rgba(203,208,230,${peak})`)
+    g.addColorStop(1, 'rgba(203,208,230,0)')
+    ctx.fillStyle = g
+    ctx.beginPath()
+    ctx.arc(x, y, halfW, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.restore()
+
+  for (const [x, y, r, alpha, color] of speckles) {
+    ctx.globalAlpha = alpha
+    ctx.fillStyle = `rgb(${color})`
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.globalAlpha = 1
+}
+
 // Astronomical season (Northern hemisphere / Japan) for the drifting elements:
 // spring → sakura, summer → fireflies, autumn → momiji, winter → snow.
 export function season(date = new Date()) {

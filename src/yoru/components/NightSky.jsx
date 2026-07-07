@@ -1,12 +1,26 @@
 import { useEffect, useRef } from 'react'
-import { moonPhase, moonPosition, moonPlacement, drawMoon, makeFuji, drawFuji, season } from '../lib/sky'
+import {
+  moonPhase,
+  moonPosition,
+  moonPlacement,
+  drawMoon,
+  makeFuji,
+  drawFuji,
+  makeMilkyWay,
+  drawMilkyWay,
+  starColor,
+  starSize,
+  season,
+} from '../lib/sky'
 import styles from './NightSky.module.css'
 
-// The "Go dark" backdrop: a near-black sky with slowly drifting, faintly
-// twinkling GENERIC stars (no constellations), the real moon at tonight's true
-// phase and place, Mount Fuji rising from the lower centre, and season-aware
-// drifting elements — sakura (spring), fireflies (summer), momiji (autumn),
-// snow (winter). Deliberately very dim. The parent handles tap-to-peek.
+// The "Go dark" backdrop: a near-black sky with slowly drifting, realistically
+// coloured and sized GENERIC stars (no constellations), a wispy Milky Way band
+// — the sky's main "space filler," giving it weight even when the moon isn't
+// up — the real moon at tonight's true phase and place, Mount Fuji rising from
+// the lower centre, an occasional quiet meteor, and season-aware drifting
+// elements — sakura (spring), fireflies (summer), momiji (autumn), snow
+// (winter). Deliberately very dim. The parent handles tap-to-peek.
 export default function NightSky({ coords }) {
   const canvasRef = useRef(null)
   const coordsRef = useRef(coords)
@@ -21,6 +35,7 @@ export default function NightSky({ coords }) {
     let h = 0
 
     let fuji = null
+    let milkyWay = null
     const resize = () => {
       w = canvas.clientWidth
       h = canvas.clientHeight
@@ -28,6 +43,7 @@ export default function NightSky({ coords }) {
       canvas.height = Math.floor(h * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       fuji = makeFuji(w, h)
+      milkyWay = makeMilkyWay(w, h)
     }
     resize()
     window.addEventListener('resize', resize)
@@ -35,15 +51,19 @@ export default function NightSky({ coords }) {
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     const which = season()
 
-    const stars = Array.from({ length: 160 }, () => ({
-      x: Math.random(),
-      y: Math.random(),
-      r: 0.5 + Math.random() * 1.1,
-      base: 0.05 + Math.random() * 0.2,
-      phase: Math.random() * Math.PI * 2,
-      speed: 0.3 + Math.random() * 0.6,
-      drift: 0.0018 + Math.random() * 0.0028,
-    }))
+    const stars = Array.from({ length: 160 }, () => {
+      const [cr, cg, cb] = starColor()
+      return {
+        x: Math.random(),
+        y: Math.random(),
+        r: starSize(),
+        color: `${cr},${cg},${cb}`,
+        base: 0.05 + Math.random() * 0.2,
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.3 + Math.random() * 0.6,
+        drift: 0.0018 + Math.random() * 0.0028,
+      }
+    })
 
     // Season-aware drifting elements.
     const parts = []
@@ -66,11 +86,19 @@ export default function NightSky({ coords }) {
 
     // Summer — a fixed population of blinking fireflies (hotaru) that hover and
     // wander near a home point, rather than travel anywhere — real hotaru drift
-    // and loop in place over the grass, they don't climb or take flight.
+    // and loop in place over the grass, they don't climb or take flight. Kept
+    // low, around Fuji's silhouette — a bit below its snow-capped top down to
+    // near its base — never up among the stars. Only four: unlike the other
+    // seasons' elements (which fall through the whole frame and leave), these
+    // stay on screen the entire session AND are confined to a much smaller
+    // area (just the Fuji band, not the full width and height) — so the same
+    // raw count reads as far denser per unit of area than it would spread out.
     if (which === 'summer' && !reduced) {
-      for (let i = 0; i < 12; i++) {
+      const fireflyMinY = fuji.peakY + h * 0.03
+      const fireflyMaxY = fuji.baseY - h * 0.04
+      for (let i = 0; i < 4; i++) {
         const homeX = Math.random() * w
-        const homeY = h * 0.25 + Math.random() * h * 0.6
+        const homeY = fireflyMinY + Math.random() * (fireflyMaxY - fireflyMinY)
         parts.push({
           kind: 'firefly',
           homeX,
@@ -119,6 +147,9 @@ export default function NightSky({ coords }) {
       ctx.fillStyle = '#04040a'
       ctx.fillRect(0, 0, w, h)
 
+      // the Milky Way — a soft backdrop texture, stars scattered on top of it
+      if (milkyWay) drawMilkyWay(ctx, milkyWay)
+
       // stars
       for (const s of stars) {
         if (!reduced) {
@@ -128,7 +159,7 @@ export default function NightSky({ coords }) {
         }
         const tw = reduced ? 1 : 0.55 + 0.45 * Math.sin(s.phase)
         ctx.globalAlpha = s.base * tw
-        ctx.fillStyle = '#eef0ff'
+        ctx.fillStyle = `rgb(${s.color})`
         ctx.beginPath()
         ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2)
         ctx.fill()
