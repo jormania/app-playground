@@ -82,18 +82,25 @@ export default function Session({ session, onNote, onFinish }) {
     if (haptics && typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(16)
   }, [phase, haptics])
 
-  // Ending requires a deliberate press-and-hold on the orb, so a stray touch
-  // can't end the night. A short tap shows a hint instead.
+  // Ending requires a deliberate press-and-hold on the orb (a filling ring shows
+  // the progress), so a stray touch can't end the night. A short tap shows a
+  // hint instead. On completion the whole screen fades to black, then hands over
+  // to the close — no hard cut.
+  const HOLD_MS = 780
   const holdTimer = useRef(0)
   const hintTimer = useRef(0)
   const [holding, setHolding] = useState(false)
   const [tapHint, setTapHint] = useState(false)
+  const [ending, setEnding] = useState(false)
   const startHold = () => {
+    if (ending) return
     setHolding(true)
     holdTimer.current = setTimeout(() => {
       holdTimer.current = 0
-      onFinish()
-    }, 750)
+      setHolding(false)
+      setEnding(true)
+      setTimeout(onFinish, 620) // let the fade-to-black land before the close
+    }, HOLD_MS)
   }
   const endHold = () => {
     setHolding(false)
@@ -114,6 +121,7 @@ export default function Session({ session, onNote, onFinish }) {
 
   return (
     <main className={styles.session} style={{ '--dim': dimFor(progress) }}>
+      <div className={styles.enter} aria-hidden="true" />
       <div className={styles.top} aria-hidden="true" />
 
       <button
@@ -131,6 +139,9 @@ export default function Session({ session, onNote, onFinish }) {
         ) : (
           <span className={styles.ambient} aria-hidden="true">夜</span>
         )}
+        <svg className={styles.ring} viewBox="0 0 100 100" aria-hidden="true">
+          <circle className={styles.ringFill} cx="50" cy="50" r="47" style={{ animationDuration: `${HOLD_MS}ms` }} />
+        </svg>
         <span className={tapHint ? `${styles.holdHint} ${styles.holdHintShow}` : styles.holdHint}>
           hold to end the night
         </span>
@@ -155,6 +166,7 @@ export default function Session({ session, onNote, onFinish }) {
       )}
 
       {off && <div className={styles.blackout} aria-hidden="true" />}
+      {ending && <div className={styles.endFade} aria-hidden="true" />}
     </main>
   )
 }

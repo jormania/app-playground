@@ -63,19 +63,89 @@
 }
 /* While holding, the orb eases down a touch as it commits to ending. */
 .holding {
-  opacity: 0.72;
-  transition: opacity 0.75s var(--ease);
+  opacity: 0.78;
+  transition: opacity 0.78s var(--ease);
 }
 
+/* A ring around the orb that fills over the hold, so the commitment to end is
+   visible. Hidden unless holding. */
+.ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16.5rem;
+  height: 16.5rem;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  opacity: 0;
+  transition: opacity 0.2s var(--ease);
+  pointer-events: none;
+}
+.holding .ring {
+  opacity: 0.85;
+}
+.ringFill {
+  fill: none;
+  stroke: var(--yoru-glow);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-dasharray: 295.3; /* 2·π·47 */
+  stroke-dashoffset: 295.3;
+}
+.holding .ringFill {
+  animation-name: holdRing;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes holdRing {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .ring {
+    width: 13.5rem;
+    height: 13.5rem;
+  }
+}
+
+/* Fades the session in from black on entry, and out to black as it ends, so the
+   transitions from Begin and to the close never hard-cut. */
+.enter {
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg);
+  pointer-events: none;
+  animation: enterFade 0.7s var(--ease) forwards;
+}
+@keyframes enterFade {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.endFade {
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg);
+  pointer-events: none;
+  z-index: 40;
+  animation: endFadeIn 0.62s var(--ease) forwards;
+}
+@keyframes endFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Above the orb, clear of the note prompt below it. */
 .holdHint {
   position: absolute;
-  bottom: -2.4rem;
+  top: -2.6rem;
   font-size: var(--text-xs);
   letter-spacing: 0.14em;
   color: var(--color-faint);
   opacity: 0;
   transition: opacity var(--duration) var(--ease);
   pointer-events: none;
+  white-space: nowrap;
 }
 .holdHintShow {
   opacity: 0.8;

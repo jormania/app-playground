@@ -11,7 +11,7 @@
   justify-content: center;
   gap: var(--space-lg);
   cursor: default;
-  animation: fadein 2.2s var(--ease) both;
+  animation: fadein 1.5s var(--ease) both;
 }
 
 .mark {

@@ -8,6 +8,11 @@
   text-align: center;
   padding: max(var(--space-xl), env(safe-area-inset-top)) var(--space-lg)
     max(var(--space-xl), env(safe-area-inset-bottom));
+  animation: homeIn 0.8s var(--ease) both;
+}
+@keyframes homeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* The title IS the glyph 夜 — flat, no border, no shadow, no gradient — and it's
