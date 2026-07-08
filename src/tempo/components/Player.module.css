@@ -63,11 +63,12 @@
 .secondaryControl {
   flex-direction: column !important;
   gap: var(--space-2xs) !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
 .primaryControl {
   grid-column: 1 / -1;
-  height: 100px !important;
+  height: 124px !important;
   border-width: 2px !important;
   border-radius: var(--radius-lg) !important;
   font-size: var(--text-xl) !important;
@@ -77,7 +78,7 @@
 }
 
 .secondaryControl {
-  height: 84px !important;
+  height: 104px !important;
   border-width: 2px !important;
   border-radius: var(--radius-lg) !important;
   font-size: var(--text-lg) !important;
@@ -86,10 +87,11 @@
   letter-spacing: 0.04em;
 }
 
-/* Light, schematic hints, not icons in their own right — the label under them
-   already carries the meaning, this is just a faster, glanceable pre-read. */
+/* Bold and near-full-strength, on purpose — this sits right above an
+   uppercase bold label on the same box and needs to read as one unit with
+   it, not a faint decoration hovering over the real content. */
 .controlIcon {
-  opacity: 0.55;
+  opacity: 0.9;
 }
 
 .controlLabel {

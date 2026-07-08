@@ -240,17 +240,23 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
           <div className={styles.controls}>
             {status === 'running' ? (
               <Button variant="secondary" className={styles.primaryControl} onClick={pause}>
-                <IconPause width={22} height={22} strokeWidth={1.4} className={styles.controlIcon} />
+                <IconPause
+                  width={30}
+                  height={30}
+                  fill="currentColor"
+                  stroke="none"
+                  className={styles.controlIcon}
+                />
                 <span className={styles.controlLabel}>Pause</span>
               </Button>
             ) : (
               <Button variant="secondary" className={styles.primaryControl} onClick={resume}>
-                <IconPlay width={22} height={22} strokeWidth={1.4} className={styles.controlIcon} />
+                <IconPlay width={30} height={30} className={styles.controlIcon} />
                 <span className={styles.controlLabel}>Resume</span>
               </Button>
             )}
             <Button variant="secondary" className={styles.secondaryControl} onClick={skip}>
-              <IconSkipForward width={20} height={20} strokeWidth={1.4} className={styles.controlIcon} />
+              <IconSkipForward width={26} height={26} className={styles.controlIcon} />
               <span className={styles.controlLabel}>Skip</span>
             </Button>
             <Button
@@ -259,9 +265,9 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
               onClick={handleExitRequest}
             >
               {exitArmed ? (
-                <IconConfirm width={20} height={20} className={styles.controlIcon} />
+                <IconConfirm width={26} height={26} className={styles.controlIcon} />
               ) : (
-                <IconExitDoor width={20} height={20} strokeWidth={1.4} className={styles.controlIcon} />
+                <IconExitDoor width={26} height={26} className={styles.controlIcon} />
               )}
               <span className={styles.controlLabel}>{exitArmed ? 'Tap again' : 'Exit'}</span>
             </Button>

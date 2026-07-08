@@ -31,31 +31,34 @@ export function IconPause(props) {
   )
 }
 
-// Player controls — Resume, Skip, and Exit (default + armed-to-confirm). Kept
-// as light, schematic hints on the big control boxes, not standalone marks:
-// small, low-opacity, single idea each.
+// Player controls — Resume, Skip, and Exit (default + armed-to-confirm). Solid
+// and bold by default, on purpose: they sit right above an uppercase bold
+// label on the same box, and need to read as one unit with it, not a faint
+// decoration floating above the real content.
 export function IconPlay(props) {
   return (
-    <svg {...base} {...props} aria-hidden>
-      <path d="M7 5v14l12-7L7 5Z" />
+    <svg {...base} {...props} fill="currentColor" stroke="none" aria-hidden>
+      <path d="M7 4.5v15l13-7.5-13-7.5Z" />
     </svg>
   )
 }
 
 export function IconSkipForward(props) {
   return (
-    <svg {...base} {...props} aria-hidden>
-      <path d="M5 6l7 6-7 6" />
-      <path d="M13 6l7 6-7 6" />
+    <svg {...base} {...props} fill="currentColor" stroke="none" aria-hidden>
+      <path d="M3 6l8 6-8 6V6Z" />
+      <path d="M12 6l8 6-8 6V6Z" />
     </svg>
   )
 }
 
 // Exit — a door frame with an arrow stepping out through it (the universal
 // exit-sign shape), not a raw "X" — reads as "leave", not "delete/error".
+// Stays a line mark (a compound shape like this doesn't read well solid at
+// this size) but bolder than the app's other outline icons for the same reason.
 export function IconExitDoor(props) {
   return (
-    <svg {...base} {...props} aria-hidden>
+    <svg {...base} {...props} strokeWidth={2.2} aria-hidden>
       <path d="M10 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" />
       <path d="M10 12h9" />
       <path d="M16 8l4 4-4 4" />
@@ -67,7 +70,7 @@ export function IconExitDoor(props) {
 // than a second door, so it reads as "yes, do it" not "another destination".
 export function IconConfirm(props) {
   return (
-    <svg {...base} strokeWidth={2} {...props} aria-hidden>
+    <svg {...base} {...props} strokeWidth={2.4} aria-hidden>
       <path d="M5 13l4 4L19 7" />
     </svg>
   )
