@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wanderlist</title>
+  <meta name="description" content="Everything you mean to go and see — a backlog of city things to do, kept in your own Notion." />
+  <link rel="manifest" href="/wanderlist.webmanifest" />
+  <meta name="theme-color" content="#002b36" />
+  <script>
+    // Apply the saved palette preset before first paint (no flash). Six presets, brought
+    // over from Journal of Delights; keep this map in step with src/wanderlist/theme.js
+    // (PRESETS) — one entry per preset id → its bar colour. Legacy 'light'/'dark' prefs
+    // migrate to the two Solarized presets; anything unknown falls back to Solarized dark.
+    try {
+      var BAR = {
+        'solarized-dark': '#002b36', 'solarized-light': '#fdf6e3',
+        'octagon': '#1e1f2b', 'quiet-light': '#f5f5f5',
+        'spectrum': '#191919', 'filter-sun': '#faf4f2'
+      };
+      var id = localStorage.getItem('wanderlist_theme');
+      if (id === 'light') id = 'solarized-light';
+      else if (id === 'dark') id = 'solarized-dark';
+      if (!BAR[id]) id = 'solarized-dark';
+      document.documentElement.setAttribute('data-theme', id);
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', BAR[id]);
+    } catch (e) {}
+  </script>
+  <link rel="icon" href="/wanderlist-icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/wanderlist-icon.svg" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Wanderlist" />
+<script defer src="/_vercel/insights/script.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/wanderlist/main.jsx"></script>
+</body>
+</html>

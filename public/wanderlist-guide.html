@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wanderlist — Guide</title>
+<meta name="description" content="How to set up Wanderlist: connect Notion, place search, and the email reminder." />
+<meta name="theme-color" content="#002b36" />
+<script>
+  // The app has six palette presets (theme.js); the guide only needs light-vs-dark, so it
+  // maps whichever preset is stored to its MODE. Keep the id list in step with theme.js.
+  try {
+    var MODE = { 'solarized-dark': 'dark', 'solarized-light': 'light', 'octagon': 'dark', 'quiet-light': 'light', 'spectrum': 'dark', 'filter-sun': 'light' };
+    var BAR = { light: '#fdf6e3', dark: '#002b36' };
+    var id = localStorage.getItem('wanderlist_theme');
+    if (id === 'light') id = 'solarized-light'; else if (id === 'dark') id = 'solarized-dark';
+    var m = MODE[id] || 'dark';
+    document.documentElement.setAttribute('data-theme', m);
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', BAR[m]);
+  } catch (e) {}
+</script>
+<link rel="icon" href="/wanderlist-icon.svg" type="image/svg+xml" />
+<style>
+  /* Solarized light/dark — the app's brand pair — so the guide feels of a piece. */
+  :root{
+    --bg:#fdf6e3;--bg2:#f4eeda;--surface:#eee8d5;--border:#ded7c1;--border2:#cbc3aa;
+    --ink:#3a4d52;--muted:#4d5e64;--faint:#708385;--brass:#268bd2;--cat:#6c71c4;--place:#2aa198;--green:#859900;
+    --serif:'Fraunces',Georgia,serif;--sans:'Inter',system-ui,sans-serif;--mono:ui-monospace,'JetBrains Mono',monospace;
+  }
+  html[data-theme="dark"]{
+    --bg:#002b36;--bg2:#00212a;--surface:#073642;--border:#0e3f4c;--border2:#1a5462;
+    --ink:#c0cccc;--muted:#9fadad;--faint:#6d8183;--brass:#268bd2;--cat:#6c71c4;--place:#2aa198;--green:#859900;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.65;-webkit-font-smoothing:antialiased;padding:0 20px 90px}
+  .wrap{max-width:720px;margin:0 auto}
+  header{text-align:center;padding:52px 0 22px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--cat);margin-bottom:12px}
+  h1{font-family:var(--serif);font-weight:600;font-size:clamp(2rem,6vw,2.8rem);line-height:1.03}
+  h1 em{font-style:italic;color:var(--brass)}
+  .lede{color:var(--muted);max-width:52ch;margin:12px auto 0}
+  h2{font-family:var(--serif);font-weight:600;font-size:1.5rem;margin:36px 0 8px;padding-top:20px;border-top:1px solid var(--border)}
+  h3{font-size:1.02rem;margin:20px 0 6px}
+  p{margin:10px 0;color:var(--ink)}
+  p.muted{color:var(--muted);font-size:.95rem}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:6px 0}
+  code{font-family:var(--mono);font-size:.82em;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:var(--place)}
+  a{color:var(--brass);text-decoration:underline}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin:14px 0}
+  .env{font-family:var(--mono);font-size:.8rem;line-height:1.9;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;overflow-x:auto;white-space:pre;color:var(--ink)}
+  .pill{display:inline-block;font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--green);border:1px solid var(--green);border-radius:999px;padding:2px 8px;margin-left:8px}
+  .back{display:inline-flex;gap:6px;font-family:var(--mono);font-size:.72rem;color:var(--muted);margin-top:30px}
+  footer{text-align:center;font-family:var(--mono);font-size:.68rem;color:var(--faint);margin-top:40px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">a city worth wandering</div>
+    <h1>Wander<em>list</em> — guide</h1>
+    <p class="lede">A friendlier doorway to your Notion list of city things to do. Browse the backlog, triage it, mark things attended, and get a heads-up the day before a deadline closes.</p>
+  </header>
+
+  <h2>What it is</h2>
+  <p>Wanderlist reads and writes a single Notion database of things to do — events, culture, art, movies, venues, ideas. It’s a <b>triaged backlog</b>: keep everything you mean to get to in one place, sort by what’s expiring soonest, check items off as <b>Attended</b> without losing them — and see it all on a <b>month calendar</b> that plots each item’s planned date and expiring deadline.</p>
+  <p class="muted">Everything is stored in <b>your</b> Notion. The app keeps a local copy so it works offline and installs as an app; nothing lives on a server except the one-time reminder setup below.</p>
+
+  <h2>1 · Connect Notion</h2>
+  <ol>
+    <li>Create an <b>internal integration</b> at <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener">notion.so/my-integrations</a> and copy its token (starts with <code>ntn_</code>).</li>
+    <li>Open your <b>events database</b> in Notion → <b>•••</b> → <b>Connections</b> → add your integration, so it can read and write.</li>
+    <li>In Wanderlist, open <b>Settings</b> (gear icon), paste the token and the database link, and hit <b>Test connection</b> → <b>Save</b>.</li>
+  </ol>
+
+  <h3>The database fields</h3>
+  <p>Wanderlist expects these properties (types matter):</p>
+  <ul>
+    <li><code>Name</code> — title</li>
+    <li><code>Description</code> — text</li>
+    <li><code>Link</code> — URL</li>
+    <li><code>Category</code> — select (e.g. Event, Culture, Movie, Art, Venue, Idea) · extendable from the app</li>
+    <li><code>Place</code> — <b>text</b> (holds the resolved place name) · <code>Map</code> — URL (the Maps pin link)</li>
+    <li><code>Tags</code> — multi-select · freeform (free, ticketed, outdoor, with-friends…)</li>
+    <li><code>Attended</code> — checkbox</li>
+    <li><code>Date Added</code> — date · <code>Date Expiring</code> — date (the deadline to act on)</li>
+    <li><code>Planned Date</code> — date, optional (the day you plan to go; shown on the calendar)</li>
+  </ul>
+  <p class="muted">Note: <code>Place</code> is a plain text field, not Notion’s native Maps/geo field — the app writes place names through the classic Notion API, which can’t set the geo type. The app still gives you live map search (below) and stores a Maps link in <code>Map</code>.</p>
+
+  <h2>2 · Place search <span class="pill">optional</span></h2>
+  <p>When you type in the <b>Place</b> field, Wanderlist can suggest real places (Google) and store the name plus a Maps link. To enable it, add a Google Places key on the server:</p>
+  <ol>
+    <li>In Google Cloud, enable <b>Places API (New)</b> and create an API key. Set the <b>API restriction</b> to just Places API (New); leave the <b>application restriction</b> as <b>None</b> — the key is used server-side (from this site’s proxy), so a Websites/IP restriction would block it.</li>
+    <li>Add it to your Vercel project as an environment variable:</li>
+  </ol>
+  <div class="env">GOOGLE_PLACES_KEY = your-google-places-key</div>
+  <p class="muted">Without the key, the Place field simply becomes a plain text box — you type the place name yourself and everything else still works.</p>
+
+  <h2>3 · Email reminder <span class="pill">optional</span></h2>
+  <p>Get one email the day before something’s <code>Date Expiring</code> (and not yet attended). It’s sent by a daily server job, so it reaches you <b>even when the app is closed</b>. Turn it on, and set the address, in <b>Settings → Email reminder</b> — but first do this one-time server setup:</p>
+  <ol>
+    <li>Create a <a href="https://resend.com" target="_blank" rel="noopener">Resend</a> account and API key (the free tier is plenty; you can send from <code>onboarding@resend.dev</code> to your own verified address, or verify your own domain).</li>
+    <li>Create a <b>Vercel KV</b> store on the project (Storage → KV) — it auto-adds its <code>KV_REST_API_*</code> env vars. This holds your reminder prefs so the cron can read them.</li>
+    <li>Add these environment variables in Vercel:</li>
+  </ol>
+  <div class="env">WANDERLIST_NOTION_TOKEN = ntn_…        (integration token, shared with the DB)
+WANDERLIST_DB_ID        = your database id
+RESEND_API_KEY          = re_…
+REMINDER_FROM           = Wanderlist &lt;onboarding@resend.dev&gt;
+CRON_SECRET             = any-long-random-string   (optional, guards the endpoint)</div>
+  <ol start="4">
+    <li>The daily job is already wired in <code>vercel.json</code> (runs each morning). Once the vars are set and you’ve toggled the reminder on in Settings with your email, you’re done.</li>
+  </ol>
+  <p class="muted">The reminder address and name are editable in the app (saved to KV, gated by your Notion token so only you can change them). Secrets stay in Vercel env vars and never touch your browser.</p>
+
+  <h2>4 · Everyday use</h2>
+  <ul>
+    <li><b>Add</b> anything with just a name — flesh it out later.</li>
+    <li>Filter with the <b>To-do / Attended / All</b> segment; search by text, category, place, or tags; tap any chip to filter by it.</li>
+    <li><b>Sort</b> by expiring-first (default), recently added, or A–Z. Expiring-soon items float up with a warm pill.</li>
+    <li>Hit the round <b>✓</b> to mark something attended — it stays in the list, just checked off.</li>
+    <li><b>Calendar</b> (the calendar button): a month grid where each day shows up to two dots — a <b>Planned</b> dot and an <b>Expiring</b> dot. Tap a day to see its entries in an agenda below.</li>
+    <li><b>Themes</b> from the sun/moon button — six palettes (Solarized, Monokai Pro…); installs as an app and works offline.</li>
+  </ul>
+
+  <a class="back" href="/wanderlist-react.html">← back to Wanderlist</a>
+  <footer>Wanderlist · part of the playground</footer>
+</div>
+</body>
+</html>

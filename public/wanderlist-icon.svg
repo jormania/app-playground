@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Wanderlist">
+  <rect width="512" height="512" rx="112" fill="#111c26"/>
+  <!-- subtle brass ring -->
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#3a4a56" stroke-width="10"/>
+  <!-- compass rose: brass star pointing to a marked destination -->
+  <g>
+    <polygon points="256,96 286,240 256,268 226,240" fill="#d59a4a"/>
+    <polygon points="256,416 226,272 256,244 286,272" fill="#a9741f"/>
+    <polygon points="96,256 240,226 268,256 240,286" fill="#c98a34"/>
+    <polygon points="416,256 272,286 244,256 272,226" fill="#c98a34"/>
+    <circle cx="256" cy="256" r="20" fill="#f3ecda"/>
+  </g>
+</svg>

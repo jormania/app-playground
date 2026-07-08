@@ -9,12 +9,13 @@ const REACT_VITE_TITLES = [
   'Journal of Delights',
   'Kettlebell Training',
   'Yoru',
+  'Wanderlist',
 ]
 
 const STATIC_TITLES = ['Touch Grass · Original', 'Touch Grass · Thrive', 'Touch Grass · Nora', 'Codex Alchymicus — KCD2']
 
 describe('APPS registry', () => {
-  it('marks exactly the seven Vite+React apps as kind: "react-vite"', () => {
+  it('marks exactly the eight Vite+React apps as kind: "react-vite"', () => {
     const reactViteApps = APPS.filter((app) => app.kind === 'react-vite')
     expect(reactViteApps.map((app) => app.title).sort()).toEqual([...REACT_VITE_TITLES].sort())
   })

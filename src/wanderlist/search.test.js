@@ -1,0 +1,52 @@
+import { test, expect, describe } from 'vitest'
+import { filterBySearch, filterByStatus, sortEntries, triage } from './search.js'
+
+const items = [
+  { id: 'a', name: 'Jazz in the garden', description: 'free sunday sessions', category: 'Event', place: 'Grădina Uranus', tags: ['free', 'outdoor'], attended: false, dateAdded: '2026-06-30', dateExpiring: null },
+  { id: 'b', name: 'Brâncuși retrospective', description: 'timed entry', category: 'Art', place: 'MNAR', tags: ['ticketed'], attended: false, dateAdded: '2026-06-24', dateExpiring: '2026-07-14' },
+  { id: 'c', name: 'Art Deco walk', description: 'interwar façades', category: 'Culture', place: 'Magheru', tags: ['ticketed', 'outdoor'], attended: false, dateAdded: '2026-07-05', dateExpiring: '2026-07-09' },
+  { id: 'd', name: 'Enescu — Beethoven', description: 'went with M', category: 'Culture', place: 'Ateneu', tags: ['music'], attended: true, dateAdded: '2026-05-20', dateExpiring: '2026-05-28' },
+]
+
+describe('filterBySearch', () => {
+  test('matches text scope across name + description', () => {
+    expect(filterBySearch(items, 'façades', 'text').map(e => e.id)).toEqual(['c'])
+  })
+  test('scopes to category / place / tags', () => {
+    expect(filterBySearch(items, 'culture', 'category').map(e => e.id)).toEqual(['c', 'd'])
+    expect(filterBySearch(items, 'uranus', 'place').map(e => e.id)).toEqual(['a'])
+    expect(filterBySearch(items, 'outdoor', 'tags').map(e => e.id)).toEqual(['a', 'c'])
+  })
+  test('all tokens must match (AND); empty query returns all', () => {
+    expect(filterBySearch(items, 'walk deco', 'all').map(e => e.id)).toEqual(['c'])
+    expect(filterBySearch(items, '', 'all')).toHaveLength(4)
+  })
+})
+
+describe('filterByStatus', () => {
+  test('todo excludes attended; attended only attended; all keeps everything', () => {
+    expect(filterByStatus(items, 'todo').map(e => e.id)).toEqual(['a', 'b', 'c'])
+    expect(filterByStatus(items, 'attended').map(e => e.id)).toEqual(['d'])
+    expect(filterByStatus(items, 'all')).toHaveLength(4)
+  })
+})
+
+describe('sortEntries', () => {
+  const today = '2026-07-08'
+  test('expiring first: soonest deadline up, no-deadline items after', () => {
+    // c (07-09) before b (07-14); a (none) last. d filtered out separately.
+    const active = items.filter(e => !e.attended)
+    expect(sortEntries(active, 'expiring', today).map(e => e.id)).toEqual(['c', 'b', 'a'])
+  })
+  test('recently added and A–Z', () => {
+    expect(sortEntries(items, 'added').map(e => e.id)).toEqual(['c', 'a', 'b', 'd'])
+    expect(sortEntries(items, 'az').map(e => e.id)[0]).toBe('c') // "Art Deco walk"
+  })
+})
+
+describe('triage pipeline', () => {
+  test('status → search → sort in one call', () => {
+    const out = triage(items, { status: 'todo', query: 'outdoor', scope: 'tags', sort: 'expiring', today: '2026-07-08' })
+    expect(out.map(e => e.id)).toEqual(['c', 'a']) // c has a deadline, a doesn't
+  })
+})

@@ -1,0 +1,15 @@
+{
+  "name": "Wanderlist",
+  "short_name": "Wanderlist",
+  "description": "Everything you mean to go and see — a backlog of city things to do, kept in your own Notion.",
+  "id": "/wanderlist-react.html",
+  "start_url": "/wanderlist-react.html",
+  "scope": "/wanderlist-react.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#002b36",
+  "theme_color": "#002b36",
+  "icons": [
+    { "src": "/wanderlist-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

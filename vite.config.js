@@ -5,6 +5,9 @@ import { resolve } from 'path'
 import notionHandler from './api/notion.js'
 import generateLawOfTheDayHandler from './api/generate-law-of-the-day.js'
 import lawOfTheDayContentHandler from './api/law-of-the-day-content.js'
+import placesHandler from './api/places.js'
+import wanderlistRemindersHandler from './api/wanderlist-reminders.js'
+import wanderlistRemindHandler from './api/wanderlist-remind.js'
 
 // Stamps the real build/deploy time into every HTML entry as a <meta> tag.
 // On Vercel a fresh build runs on each deploy, so this equals the deploy date.
@@ -112,6 +115,37 @@ function devApiRelay(path, handler, name) {
     configureServer(server) {
       server.middlewares.use(path, async (req, res) => {
         try {
+          req.query = Object.fromEntries(new URL(req.url, 'http://localhost').searchParams)
+          res.status = (code) => ((res.statusCode = code), res)
+          res.json = (obj) => {
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify(obj))
+          }
+          res.send = (text) => res.end(text)
+          await handler(req, res)
+        } catch (err) {
+          res.statusCode = 500
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({ message: `Dev relay error: ${err.message}` }))
+        }
+      })
+    },
+  }
+}
+
+// Dev-only: like devApiRelay but drains the request body first (for POST endpoints such
+// as /api/places and /api/wanderlist-reminders), the same way devNotionRelay does.
+function devBodyRelay(path, handler, name) {
+  return {
+    name,
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(path, async (req, res) => {
+        try {
+          const chunks = []
+          for await (const chunk of req) chunks.push(chunk)
+          req.body = Buffer.concat(chunks).toString('utf8')
+          req.query = Object.fromEntries(new URL(req.url, 'http://localhost').searchParams)
           res.status = (code) => ((res.statusCode = code), res)
           res.json = (obj) => {
             res.setHeader('Content-Type', 'application/json')
@@ -137,6 +171,9 @@ export default defineConfig({
     devNotionRelay(),
     devApiRelay('/api/generate-law-of-the-day', generateLawOfTheDayHandler, 'dev-generate-law-of-the-day-relay'),
     devApiRelay('/api/law-of-the-day-content', lawOfTheDayContentHandler, 'dev-law-of-the-day-content-relay'),
+    devBodyRelay('/api/places', placesHandler, 'dev-places-relay'),
+    devBodyRelay('/api/wanderlist-reminders', wanderlistRemindersHandler, 'dev-wanderlist-reminders-relay'),
+    devApiRelay('/api/wanderlist-remind', wanderlistRemindHandler, 'dev-wanderlist-remind-relay'),
   ],
   build: {
     rollupOptions: {
@@ -149,6 +186,7 @@ export default defineConfig({
         tempo: resolve(__dirname, 'tempo-react.html'),
         lawOfTheDay: resolve(__dirname, 'law-of-the-day-react.html'),
         yoru: resolve(__dirname, 'yoru-react.html'),
+        wanderlist: resolve(__dirname, 'wanderlist-react.html'),
         dsShowcase: resolve(__dirname, 'ds-showcase.html'),
         cabinet: resolve(__dirname, 'cabinet.html'),
       }
