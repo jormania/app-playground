@@ -205,10 +205,10 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
           <h1 className={styles.doneTitle}>Done — nicely paced.</h1>
           <p className={styles.doneNote}>That’s {mode.name.toLowerCase()} complete. Come back whenever it suits you.</p>
           <div className={styles.controls}>
-            <Button variant="secondary" className={styles.controlButton} onClick={onExit}>
+            <Button variant="secondary" className={styles.secondaryControl} onClick={onExit}>
               Home
             </Button>
-            <Button className={styles.controlButton} onClick={handleRestart}>
+            <Button className={styles.secondaryControl} onClick={handleRestart}>
               Again
             </Button>
           </div>
@@ -224,20 +224,20 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
           </p>
           <div className={styles.controls}>
             {status === 'running' ? (
-              <Button variant="secondary" className={styles.controlButton} onClick={pause}>
+              <Button variant="secondary" className={styles.primaryControl} onClick={pause}>
                 Pause
               </Button>
             ) : (
-              <Button variant="secondary" className={styles.controlButton} onClick={resume}>
+              <Button variant="secondary" className={styles.primaryControl} onClick={resume}>
                 Resume
               </Button>
             )}
-            <Button variant="secondary" className={styles.controlButton} onClick={skip}>
+            <Button variant="secondary" className={styles.secondaryControl} onClick={skip}>
               Skip
             </Button>
             <Button
               variant={exitArmed ? 'primary' : 'secondary'}
-              className={styles.controlButton}
+              className={styles.secondaryControl}
               onClick={handleExitRequest}
             >
               {exitArmed ? 'Tap again' : 'Exit'}

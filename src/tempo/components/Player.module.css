@@ -18,19 +18,19 @@
 
 .segmentLabel {
   font-family: var(--font-sans);
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   font-weight: var(--weight-bold);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-ink);
   margin: 0;
-  max-width: 12rem;
+  max-width: 14rem;
   overflow-wrap: break-word;
 }
 
 .countdown {
   font-family: var(--font-mono);
-  font-size: var(--text-display);
+  font-size: clamp(2.75rem, 8vw, 4.5rem);
   font-weight: var(--weight-bold);
   color: var(--color-ink);
   line-height: 1;
@@ -40,44 +40,73 @@
 
 .progress {
   font-family: var(--font-sans);
-  font-size: var(--text-base);
-  font-weight: var(--weight-medium);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
   color: var(--color-ink);
   margin: 0;
 }
 
-/* Never wraps to a second line and never scrolls — each button claims an equal,
-   generous share of the width so it can be hit at a glance while moving,
-   Android-Auto style, instead of hunting for a small target. */
+/* Big tap-anywhere boxes, not slim buttons — built for a thumb that's moving,
+   cycling, rowing. Pause/Resume (the one you hit most) gets its own full-width
+   row; Skip and Exit share the row below, still each a large box. The whole
+   rendered box is the hit target (native <button> behaviour), so there's
+   generous margin for error, not just a small label to aim for. */
 .controls {
-  display: flex;
-  flex-wrap: nowrap;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: var(--space-sm);
   width: 100%;
-  max-width: 28rem;
+  max-width: 30rem;
 }
 
-.controlButton {
-  flex: 1 1 0;
-  min-width: 0;
-  height: 56px !important;
-  padding: 0 var(--space-xs) !important;
+.primaryControl {
+  grid-column: 1 / -1;
+  height: 100px !important;
+  border-width: 2px !important;
+  border-radius: var(--radius-lg) !important;
+  font-size: var(--text-xl) !important;
+  font-weight: var(--weight-bold) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.secondaryControl {
+  height: 84px !important;
+  border-width: 2px !important;
+  border-radius: var(--radius-lg) !important;
   font-size: var(--text-lg) !important;
   font-weight: var(--weight-bold) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 /* Phone-in-landscape: the ring alone shrinks via CountdownRing's own vh
-   clamp, but padding/gaps/button height also need to give ground or the
-   Pause/Skip/Exit row still ends up below the fold. */
+   clamp, but padding/gaps/box height also need to give ground or the
+   Pause/Skip/Exit boxes still end up below the fold. */
 @media (max-height: 480px) {
   .page {
     gap: var(--space-sm);
     padding: var(--space-sm) var(--space-lg);
   }
 
-  .controlButton {
-    height: 44px !important;
+  .primaryControl {
+    height: 64px !important;
+  }
+
+  .secondaryControl {
+    height: 56px !important;
+  }
+
+  .segmentLabel {
+    font-size: var(--text-lg);
+  }
+
+  .countdown {
+    font-size: clamp(2rem, 6vw, 3rem);
+  }
+
+  .progress {
+    font-size: var(--text-lg);
   }
 }
 

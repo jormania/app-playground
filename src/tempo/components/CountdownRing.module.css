@@ -10,7 +10,7 @@
    pushing the controls below the fold. min(…, 42vh) keeps the whole Player
    screen (ring + progress text + buttons) fitting without a scroll. */
 .svg {
-  width: clamp(160px, min(55vw, 42vh), 320px);
+  width: clamp(200px, min(66vw, 50vh), 400px);
   height: auto;
   transform: rotate(-90deg);
 }
@@ -21,7 +21,9 @@
 
 .progress {
   stroke-linecap: round;
-  transition: stroke-dashoffset 0.25s linear;
+  transition:
+    stroke-dashoffset 0.25s linear,
+    stroke 0.6s ease;
 }
 
 /* Last few seconds of a ding-family segment — a gentle glow pulse, paired
