@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import Anthropic from '@anthropic-ai/sdk'
 import { put } from '@vercel/blob'
-import { getGeneratorLawId } from './lib/generatorRotation.js'
+import { getGeneratorLawId } from './_lib/generatorRotation.js'
 import { titleLeakWords, scenarioLeaksTitle } from '../src/law-of-the-day/lib/leakCheck.js'
 
 // Read as a plain file rather than a JSON module import — avoids depending

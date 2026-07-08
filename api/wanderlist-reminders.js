@@ -7,7 +7,7 @@
 // the token (i.e. you) can set where reminders go. If KV or that token env var isn't set
 // up, we answer 501 so the app can show a "finish server setup" hint instead of failing.
 import { originAllowed, rateLimited, clientIp } from './_shared.js'
-import { kvConfigured, kvGet, kvSet } from './lib/kv.js'
+import { kvConfigured, kvGet, kvSet } from './_lib/kv.js'
 
 export const PREFS_KEY = 'wanderlist:reminder-prefs'
 const DEFAULTS = { enabled: false, email: '', name: '', sendHour: 8 }

@@ -1,9 +1,11 @@
-// Tiny wrapper over Vercel KV's (Upstash Redis) REST API using plain fetch — so the
-// reminder endpoints can persist a handful of prefs without adding an npm dependency.
-// When the KV env vars aren't present (local dev, or before you create a KV store),
-// kvConfigured() is false and callers respond "not set up yet" instead of throwing.
-const BASE = process.env.KV_REST_API_URL
-const TOKEN = process.env.KV_REST_API_TOKEN
+// Tiny wrapper over an Upstash Redis REST API using plain fetch — so the reminder
+// endpoints can persist a handful of prefs without adding an npm dependency. "Vercel KV"
+// is now provided through the Vercel Marketplace by Upstash (Storage → Upstash → Redis);
+// it injects KV_REST_API_URL/TOKEN (and UPSTASH_REDIS_REST_URL/TOKEN) — we accept either.
+// When neither is present (local dev, or before you create a store), kvConfigured() is
+// false and callers respond "not set up yet" instead of throwing.
+const BASE = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL
+const TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN
 
 export function kvConfigured() {
   return Boolean(BASE && TOKEN)

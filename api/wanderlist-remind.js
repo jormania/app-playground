@@ -10,8 +10,8 @@
 //   CRON_SECRET (optional)   — Vercel adds `Authorization: Bearer <secret>` to cron calls
 //   KV store (optional)      — holds the {enabled,email,name} prefs from the app; if KV
 //                              isn't set, we fall back to REMINDER_EMAIL / REMINDER_NAME.
-import { selectExpiring, zonedTomorrowKey, buildReminderEmail } from './lib/reminders.js'
-import { kvGet } from './lib/kv.js'
+import { selectExpiring, zonedTomorrowKey, buildReminderEmail } from './_lib/reminders.js'
+import { kvGet } from './_lib/kv.js'
 import { PREFS_KEY } from './wanderlist-reminders.js'
 
 const NOTION_VERSION = '2022-06-28'

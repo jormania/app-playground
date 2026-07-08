@@ -77,9 +77,9 @@ with the app closed.
 - **Cron:** `vercel.json` runs `GET /api/wanderlist-remind` daily (`0 6 * * *`, ~morning
   Bucharest). It reads prefs, queries Notion for items whose `Date Expiring` == **tomorrow
   (Europe/Bucharest)** and `Attended` == false, and sends one digest via **Resend**.
-- **Pure rule** in `api/lib/reminders.js` (`selectExpiring`, `zonedTomorrowKey`,
-  `buildReminderEmail`) — unit-tested in `api/lib/reminders.test.js`.
-- **Prefs** (`{ enabled, email, name }`) live in **Vercel KV** (`api/lib/kv.js`, Upstash
+- **Pure rule** in `api/_lib/reminders.js` (`selectExpiring`, `zonedTomorrowKey`,
+  `buildReminderEmail`) — unit-tested in `api/_lib/reminders.test.js`.
+- **Prefs** (`{ enabled, email, name }`) live in **Upstash Redis** (`api/_lib/kv.js`, Upstash
   REST via fetch — no npm dep), written from Settings via `/api/wanderlist-reminders`,
   **gated by the Notion token** (only someone with the token can change where mail goes).
   Falls back to `REMINDER_EMAIL` / `REMINDER_NAME` env if KV is absent.
