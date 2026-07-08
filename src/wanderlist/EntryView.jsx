@@ -1,27 +1,38 @@
 import { useState } from 'react'
 import { formatHuman, expiryLabel, daysUntil } from './dates.js'
-import { BackIcon, ExternalIcon, MapIcon, CheckCircleIcon, HourglassIcon, CalendarIcon, TicketIcon } from './icons.jsx'
+import { BackIcon, ExternalIcon, MapIcon, CheckCircleIcon, HourglassIcon, CalendarIcon, TicketIcon, ShareIcon, WhatsAppIcon, MailIcon } from './icons.jsx'
 import MetaChips from './MetaChips.jsx'
 import Lightbox from './Lightbox.jsx'
+import { shareNative, whatsappUrl, emailUrl } from './share.js'
 
-// Single-item detail view: name, the deadline + event date, a photo (if any), Category/
-// Place/Tags chips (tap to filter), the description, tickets (if any), and the primary
-// triage actions — Mark attended and Edit — plus quick links to the event page and map.
+// Single-item detail view. Header grammar: Back + Edit sit together on the left as one
+// secondary-button pair; the one decision that changes the item's state — Mark attended —
+// hugs the right. Below: badges, photo, description, chips, tickets, links, and sharing
+// (WhatsApp / Email / OS sheet — text only, no attachments).
 export default function EntryView({ entry, onBack, onEdit, onChip, onToggleAttended, saving, today }) {
   const n = entry.dateExpiring ? daysUntil(entry.dateExpiring, today) : null
   const urgency = n == null ? '' : n < 0 ? 'expired' : n <= 3 ? 'soon' : n <= 14 ? 'near' : 'far'
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [shareStatus, setShareStatus] = useState(null) // null | 'copied' | 'error'
+
+  async function handleShare() {
+    const r = await shareNative(entry)
+    if (r.copied) setShareStatus('copied')
+    else if (!r.ok) setShareStatus('error')
+    else return
+    window.setTimeout(() => setShareStatus(null), 3000)
+  }
 
   return (
     <article className="entry-view">
       <div className="detail-head">
-        <button className="icon-btn" onClick={onBack} aria-label="Back to the list" title="Back"><BackIcon /></button>
-        <div className="detail-actions">
-          {entry.attended
-            ? <button className="btn done" onClick={() => onToggleAttended(entry)} disabled={saving} title="Tap to mark as not attended"><CheckCircleIcon /> Attended</button>
-            : <button className="btn primary" onClick={() => onToggleAttended(entry)} disabled={saving}><CheckCircleIcon /> Mark attended</button>}
+        <div className="detail-nav">
+          <button className="btn" onClick={onBack}><BackIcon /> Back</button>
           <button className="btn" onClick={() => onEdit(entry)} title="Edit this item">Edit</button>
         </div>
+        {entry.attended
+          ? <button className="btn done" onClick={() => onToggleAttended(entry)} disabled={saving} title="Tap to mark as not attended"><CheckCircleIcon /> Attended</button>
+          : <button className="btn primary" onClick={() => onToggleAttended(entry)} disabled={saving}><CheckCircleIcon /> Mark attended</button>}
       </div>
 
       <div className="ev-badges">
@@ -50,7 +61,7 @@ export default function EntryView({ entry, onBack, onEdit, onChip, onToggleAtten
 
       {entry.tickets?.length > 0 && (
         <div className="ticket-section">
-          <span className="field-label"><TicketIcon /> tickets</span>
+          <span className="field-label"><TicketIcon /> tickets · paid</span>
           <ul className="ticket-list plain">
             {entry.tickets.map((t, i) => (
               <li key={i} className="ticket-row">
@@ -68,6 +79,15 @@ export default function EntryView({ entry, onBack, onEdit, onChip, onToggleAtten
           {entry.placeUrl && <a className="btn btn-sm" href={entry.placeUrl} target="_blank" rel="noopener"><MapIcon /> Open in Maps</a>}
         </div>
       )}
+
+      <div className="ev-share">
+        <span className="field-label"><ShareIcon /> share</span>
+        <a className="btn btn-sm" href={whatsappUrl(entry)} target="_blank" rel="noopener"><WhatsAppIcon /> WhatsApp</a>
+        <a className="btn btn-sm" href={emailUrl(entry)}><MailIcon /> Email</a>
+        <button type="button" className="btn btn-sm" onClick={handleShare}><ShareIcon /> Share…</button>
+        {shareStatus === 'copied' && <span className="share-status">Copied to clipboard</span>}
+        {shareStatus === 'error' && <span className="share-status err">Couldn’t share</span>}
+      </div>
     </article>
   )
 }

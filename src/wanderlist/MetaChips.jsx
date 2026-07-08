@@ -1,36 +1,29 @@
-import { CategoryIcon, PlaceIcon, TagIcon } from './icons.jsx'
+import { PlaceIcon } from './icons.jsx'
 
-// One shared presentation of Category + Place + Tags, used in list rows and the detail
-// view: a wrapping line of labelled chip groups. When `onChip` is given, each value
-// becomes a button that filters the list by it. Renders nothing when all are empty.
+// Shared presentation of an item's chips, used in list rows and the detail view. Category
+// and Tags merge onto one line, in that order (colour tells them apart — Category is plum,
+// Tags olive), and Place always sits on its own row underneath, last. When `onChip` is
+// given, each value is a button that filters the list by it. Renders nothing when empty.
 export default function MetaChips({ category, place, tags = [], onChip }) {
-  const hasAny = category || place || (tags && tags.length)
-  if (!hasAny) return null
+  const topChips = [
+    ...(category ? [{ scope: 'category', kind: 'category', value: category }] : []),
+    ...(tags || []).map(t => ({ scope: 'tags', kind: 'tag', value: t })),
+  ]
+  if (topChips.length === 0 && !place) return null
 
-  const chip = (scope, kind, value) => onChip
+  const chip = ({ scope, kind, value }) => onChip
     ? <button key={`${kind}-${value}`} type="button" className={`chip ${kind}`}
         onClick={e => { e.stopPropagation(); onChip(scope, value) }} title={`Filter by ${value}`}>{value}</button>
     : <span key={`${kind}-${value}`} className={`chip ${kind}`}>{value}</span>
 
   return (
-    <div className="meta-row">
-      {category && (
-        <span className="meta-group">
-          <span className="field-label"><CategoryIcon /></span>
-          {chip('category', 'category', category)}
-        </span>
-      )}
+    <div className="meta">
+      {topChips.length > 0 && <div className="meta-row">{topChips.map(chip)}</div>}
       {place && (
-        <span className="meta-group">
+        <div className="meta-row place-row">
           <span className="field-label"><PlaceIcon /></span>
-          {chip('place', 'place', place)}
-        </span>
-      )}
-      {tags && tags.length > 0 && (
-        <span className="meta-group">
-          <span className="field-label"><TagIcon /></span>
-          {tags.map(t => chip('tags', 'tag', t))}
-        </span>
+          {chip({ scope: 'place', kind: 'place', value: place })}
+        </div>
       )}
     </div>
   )

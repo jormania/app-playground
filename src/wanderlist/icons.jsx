@@ -89,7 +89,15 @@ export const SunIcon = (p) => (
 export const MoonIcon = (p) => (
   <svg {...base} {...p}><path d="M21 12.8A8 8 0 1 1 11.2 3a6.4 6.4 0 0 0 9.8 9.8z" /></svg>
 )
-// Mail — the reminders envelope.
+// Mail — the reminders envelope, and the email share.
 export const MailIcon = (p) => (
   <svg {...base} {...p}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M4 6.5l8 6.5 8-6.5" /></svg>
+)
+// Share — the classic three-nodes glyph (OS share sheet / copy).
+export const ShareIcon = (p) => (
+  <svg {...base} {...p}><circle cx="18" cy="5" r="2.6" /><circle cx="6" cy="12" r="2.6" /><circle cx="18" cy="19" r="2.6" /><path d="M8.2 10.7l7.6-4.4M8.2 13.3l7.6 4.4" /></svg>
+)
+// WhatsApp — a chat bubble with a handset.
+export const WhatsAppIcon = (p) => (
+  <svg {...base} {...p}><path d="M12 3a9 9 0 0 0-7.7 13.6L3.5 21l4.5-1.2A9 9 0 1 0 12 3z" /><path d="M9 8.5c-.3 0-.6.1-.8.4-.3.3-.9.9-.9 2s.9 2.3 1 2.5c.1.2 1.7 2.8 4.3 3.7 2.1.8 2.6.6 3 .6.5-.1 1.4-.6 1.6-1.2.2-.6.2-1 .1-1.2 0-.1-.3-.2-.6-.4l-1.5-.7c-.2-.1-.4-.1-.6.1l-.6.8c-.1.2-.3.2-.5.1-.7-.3-1.4-.6-2.1-1.5-.5-.6-.8-1.2-.9-1.4-.1-.2 0-.4.1-.5l.4-.5c.1-.2.1-.3.2-.5 0-.2 0-.4-.1-.5l-.7-1.6c-.2-.4-.4-.4-.6-.4z" fill="currentColor" stroke="none" /></svg>
 )

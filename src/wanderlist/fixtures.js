@@ -21,6 +21,7 @@ export function seedEntries() {
       dateAdded: '2026-07-01',
       dateExpiring: '2026-07-10',
       plannedDate: '2026-07-11',
+      tickets: [{ url: 'https://animest.ro/ticket.pdf', name: 'closing-night.pdf', fileUploadId: null }],
     },
     {
       id: 'seed-2',

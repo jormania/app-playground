@@ -47,7 +47,6 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
               {e.attended && <span className="attended-pill"><CheckCircleIcon /> attended</span>}
               {!e.attended && e.dateExpiring && <ExpiryPill dateKey={e.dateExpiring} today={today} />}
               {e.plannedDate && <span className="when-pill"><CalendarIcon /> planned {formatMedium(e.plannedDate)}</span>}
-              {e.tickets?.length > 0 && <span className="ticket-badge" title={`${e.tickets.length} ticket${e.tickets.length === 1 ? '' : 's'}`}><TicketIcon /> {e.tickets.length}</span>}
             </div>
             {e.description && <div className="row-excerpt">{e.description}</div>}
             <MetaChips category={e.category} place={e.place} tags={e.tags} onChip={onChip} />
@@ -57,6 +56,13 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
               <div className="photo-thumb photo-thumb-sm" title="Has a photo">
                 <img src={e.photo.url} alt="" loading="lazy" />
               </div>
+            )}
+            {/* Tickets on file means it's paid for — a small green ticket badge, alongside
+                the link and the attendance check on the right. */}
+            {e.tickets?.length > 0 && (
+              <span className="row-paid" title={`Paid — ${e.tickets.length} ticket${e.tickets.length === 1 ? '' : 's'} on file`} aria-label="Paid">
+                <TicketIcon />
+              </span>
             )}
             {e.link && (
               <a className="row-link" href={e.link} target="_blank" rel="noopener" title="Open link"

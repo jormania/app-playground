@@ -6,7 +6,6 @@ import { triage, filterByStatus, filterBySearch } from './search.js'
 import MenuBar from './MenuBar.jsx'
 import ListView from './ListView.jsx'
 import CalendarView from './CalendarView.jsx'
-import MapView from './MapView.jsx'
 import EntryView from './EntryView.jsx'
 import EntryEditor from './EntryEditor.jsx'
 import SettingsModal from './SettingsModal.jsx'
@@ -22,7 +21,7 @@ export default function App() {
   const [live, setLive] = useState(isLive())
   const [offline, setOffline] = useState(false)
 
-  const [view, setView] = useState('list') // 'list' | 'calendar' | 'map'
+  const [view, setView] = useState('list') // 'list' | 'calendar'
   const [status, setStatus] = useState('todo')
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState('all')
@@ -154,7 +153,7 @@ export default function App() {
         <div className="container">
           <div className="eyebrow">a city worth wandering</div>
           <h1>Wander<em>list</em></h1>
-          <p className="blurb">Everything you mean to go and see — kept in one place, triaged when you like, checked off as you go.</p>
+          <p className="blurb">Everything you mean to go and see.</p>
         </div>
       </header>
 
@@ -219,8 +218,6 @@ export default function App() {
               onOpen={(e) => setFocus({ kind: 'view', entry: e })}
               onChip={filterByChip}
             />
-          ) : view === 'map' ? (
-            <MapView entries={calendarEntries} />
           ) : (
             <ListView
               entries={filtered}

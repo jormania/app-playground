@@ -1,22 +1,18 @@
 import { useState, useRef, useEffect } from 'react'
-import { ListIcon, CalendarIcon, MapIcon, GuideIcon, GearIcon, PlusIcon, MoreIcon, CloseIcon, SearchIcon, SortIcon, SunIcon, MoonIcon, CheckIcon } from './icons.jsx'
+import { ListIcon, CalendarIcon, GuideIcon, GearIcon, PlusIcon, MoreIcon, CloseIcon, SearchIcon, SortIcon, SunIcon, MoonIcon, CheckIcon } from './icons.jsx'
 import { SCOPES, STATUSES, SORTS } from './search.js'
 
 const GUIDE_URL = '/wanderlist-guide.html'
-
-// The three ways to look at the backlog. Order matters — List is home.
 const VIEWS = [
   { id: 'list', Icon: ListIcon, label: 'List' },
   { id: 'calendar', Icon: CalendarIcon, label: 'Calendar' },
-  { id: 'map', Icon: MapIcon, label: 'Map' },
 ]
 
-// The slim sticky bar. Two clear zones, left→right: WHAT you're looking at (status filter +
-// view switcher) on the left, and the TOOLS to act (search · sort · add · app menu) on the
-// right. Search is a focused mode — opening it hides the left zone and grows the field, so
-// everything stays on one row even inside the 860px column. On phones the status segment
-// collapses to a dropdown and the app icons collapse to a ⋯ menu; the view switcher and the
-// primary tools stay visible.
+// One bar, same on every width. Left→right: the view switcher (List | Calendar), then the
+// tools in a fixed order — Search · To-do filter · Sort · Add · ⋯ — with the secondary
+// actions (theme, guide, settings) tucked under the ⋯ menu. Search is a focused mode: while
+// the field is open it takes the whole row (closes only via its own ✕), everything else
+// hides, and the field grows to fill.
 export default function MenuBar({ status, onStatus, query, scope, onQuery, onScope, sort, onSort, view, onView, onAdd, onSettings, themeMode, themeName, onCycleTheme }) {
   const [moreOpen, setMoreOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
@@ -28,7 +24,6 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
   const currentStatus = STATUSES.find(s => s.value === status) || STATUSES[0]
   const currentSort = SORTS.find(s => s.value === sort) || SORTS[0]
 
-  // Focus the field the moment search expands.
   useEffect(() => { if (searchActive) searchRef.current?.focus() }, [searchActive])
 
   const appActions = [
@@ -37,52 +32,21 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
     { key: 'settings', Icon: GearIcon, label: 'Settings', onClick: onSettings, title: 'Connect to Notion & reminders' },
   ]
 
-  // Only closes via the explicit ✕ (never on blur — so tapping the scope <select> inside the
-  // field can't yank the whole search UI away).
   function closeSearch() { onQuery(''); setSearchOpen(false) }
 
   return (
     <nav className="menubar">
       <div className={`menubar-inner${searchActive ? ' searching' : ''}`}>
-        {/* Status filter — desktop segment */}
-        <div className="seg" role="tablist" aria-label="Status filter">
-          {STATUSES.map(s => (
-            <button key={s.value} className={status === s.value ? 'active' : ''} aria-selected={status === s.value} onClick={() => onStatus(s.value)}>
-              {s.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Status filter — mobile dropdown */}
-        <div className="status-overflow">
-          <button className="pill-btn" onClick={() => setStatusOpen(o => !o)} aria-haspopup="menu" aria-expanded={statusOpen} aria-label="Change status filter">
-            <span>{currentStatus.label}</span><span className="caret" />
-          </button>
-          {statusOpen && (
-            <>
-              <div className="more-scrim" onClick={() => setStatusOpen(false)} />
-              <div className="more-menu left" role="menu">
-                {STATUSES.map(s => (
-                  <button key={s.value} role="menuitem" className={status === s.value ? 'active' : ''} onClick={() => { setStatusOpen(false); onStatus(s.value) }}>
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* View switcher — List / Calendar / Map. Map hides on phones (see CSS) where it
-            won't fit, and reappears inside the ⋯ menu instead. */}
+        {/* View switcher — far left */}
         <div className="view-switch" role="tablist" aria-label="View">
           {VIEWS.map(v => (
-            <button key={v.id} className={`${view === v.id ? 'active' : ''}${v.id === 'map' ? ' view-map-btn' : ''}`} aria-selected={view === v.id} onClick={() => onView(v.id)} title={v.label} aria-label={v.label}>
+            <button key={v.id} className={view === v.id ? 'active' : ''} aria-selected={view === v.id} onClick={() => onView(v.id)} title={v.label} aria-label={v.label}>
               <v.Icon />
             </button>
           ))}
         </div>
 
-        {/* Tools */}
+        {/* Tools — right-aligned, in the fixed order search · status · sort · add · more */}
         <div className="menu-actions">
           {searchActive ? (
             <div className="search-wrap">
@@ -106,7 +70,26 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
             <button className="icon-btn" onClick={() => setSearchOpen(true)} aria-label="Search" title="Search"><SearchIcon /></button>
           )}
 
-          {/* Sort: only in the list view (calendar/map place things themselves) */}
+          {/* Status filter (To-do / Attended / All) */}
+          <div className="status-wrap">
+            <button className="pill-btn" onClick={() => setStatusOpen(o => !o)} aria-haspopup="menu" aria-expanded={statusOpen} aria-label="Filter by status" title="Filter">
+              <span>{currentStatus.label}</span><span className="caret" />
+            </button>
+            {statusOpen && (
+              <>
+                <div className="more-scrim" onClick={() => setStatusOpen(false)} />
+                <div className="more-menu left" role="menu">
+                  {STATUSES.map(s => (
+                    <button key={s.value} role="menuitem" className={status === s.value ? 'active' : ''} onClick={() => { setStatusOpen(false); onStatus(s.value) }}>
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Sort — only in the list view (the calendar places things by date) */}
           {view === 'list' && (
             <div className="sort-wrap">
               <button className="icon-btn" onClick={() => setSortOpen(o => !o)} aria-haspopup="menu" aria-expanded={sortOpen} aria-label="Sort order" title={`Sort: ${currentSort.label}`}><SortIcon /></button>
@@ -127,24 +110,13 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
 
           <button className="btn-today" onClick={onAdd} title="Add something to your list"><PlusIcon /> <span>Add</span></button>
 
-          {/* Desktop: app actions inline */}
-          <div className="actions-inline">
-            {appActions.map(a => a.href
-              ? <a key={a.key} className="icon-btn" href={a.href} target="_blank" rel="noopener" aria-label={a.label} title={a.title}><a.Icon /></a>
-              : <button key={a.key} className="icon-btn" onClick={a.onClick} aria-label={a.label} title={a.title}><a.Icon /></button>
-            )}
-          </div>
-
-          {/* Mobile: one ⋯ button opening a popover. Map lives here on phones (where the
-              switcher drops it), above the app actions with a divider. */}
+          {/* ⋯ — theme, guide, settings */}
           <div className="actions-overflow">
-            <button className="icon-btn" onClick={() => setMoreOpen(o => !o)} aria-haspopup="menu" aria-expanded={moreOpen} aria-label="More actions"><MoreIcon /></button>
+            <button className="icon-btn" onClick={() => setMoreOpen(o => !o)} aria-haspopup="menu" aria-expanded={moreOpen} aria-label="More"><MoreIcon /></button>
             {moreOpen && (
               <>
                 <div className="more-scrim" onClick={() => setMoreOpen(false)} />
                 <div className="more-menu" role="menu">
-                  <button role="menuitem" className={`menu-map${view === 'map' ? ' active' : ''}`} onClick={() => { setMoreOpen(false); onView('map') }}><MapIcon /> Map</button>
-                  <div className="more-divider" />
                   {appActions.map(a => a.href
                     ? <a key={a.key} role="menuitem" href={a.href} target="_blank" rel="noopener" onClick={() => setMoreOpen(false)}><a.Icon /> {a.label}</a>
                     : <button key={a.key} role="menuitem" onClick={() => { setMoreOpen(false); a.onClick() }}><a.Icon /> {a.label}</button>
