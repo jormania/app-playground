@@ -8,11 +8,11 @@ const VIEWS = [
   { id: 'calendar', Icon: CalendarIcon, label: 'Calendar' },
 ]
 
-// One bar, same on every width. Left→right: the view switcher (List | Calendar), then the
-// tools in a fixed order — Search · To-do filter · Sort · Add · ⋯ — with the secondary
-// actions (theme, guide, settings) tucked under the ⋯ menu. Search is a focused mode: while
-// the field is open it takes the whole row (closes only via its own ✕), everything else
-// hides, and the field grows to fill.
+// One bar, same on every width. Two packed groups: the view switcher, Search, the To-do
+// filter and Sort all sit left-aligned in a fixed order; Add and ⋯ push to the far right
+// (via .btn-today's margin-left: auto), with the secondary actions (theme, guide, settings)
+// tucked under the ⋯ menu. Search is a focused mode: while the field is open it takes the
+// whole row (closes only via its own ✕), everything else hides, and the field grows to fill.
 export default function MenuBar({ status, onStatus, query, scope, onQuery, onScope, sort, onSort, view, onView, onAdd, onSettings, themeMode, themeName, onCycleTheme }) {
   const [moreOpen, setMoreOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)

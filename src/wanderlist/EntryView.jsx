@@ -1,14 +1,15 @@
 import { useState } from 'react'
-import { formatHuman, expiryLabel, daysUntil } from './dates.js'
-import { BackIcon, ExternalIcon, MapIcon, CheckCircleIcon, HourglassIcon, CalendarIcon, TicketIcon, ShareIcon, WhatsAppIcon, MailIcon } from './icons.jsx'
+import { formatHuman, expiryLabel, daysUntil, isPlannedPast } from './dates.js'
+import { BackIcon, ExternalIcon, MapIcon, CheckCircleIcon, HourglassIcon, CalendarIcon, TicketIcon, ShareIcon } from './icons.jsx'
 import MetaChips from './MetaChips.jsx'
 import Lightbox from './Lightbox.jsx'
-import { shareNative, whatsappUrl, emailUrl } from './share.js'
+import { shareNative } from './share.js'
 
 // Single-item detail view. Header grammar: Back + Edit sit together on the left as one
 // secondary-button pair; the one decision that changes the item's state — Mark attended —
-// hugs the right. Below: badges, photo, description, chips, tickets, links, and sharing
-// (WhatsApp / Email / OS sheet — text only, no attachments).
+// hugs the right. Below: badges, photo, description, chips, tickets, and one links row
+// (Open link / Open in Maps / Share…) — Share opens the OS sheet (WhatsApp, Email, and
+// everything else the device offers), text-only, no attachments.
 export default function EntryView({ entry, onBack, onEdit, onChip, onToggleAttended, saving, today }) {
   const n = entry.dateExpiring ? daysUntil(entry.dateExpiring, today) : null
   const urgency = n == null ? '' : n < 0 ? 'expired' : n <= 3 ? 'soon' : n <= 14 ? 'near' : 'far'
@@ -40,7 +41,11 @@ export default function EntryView({ entry, onBack, onEdit, onChip, onToggleAtten
         {entry.dateExpiring && (
           <span className={`expiry-pill ${urgency}`}><HourglassIcon /> {expiryLabel(entry.dateExpiring, today)} · {formatHuman(entry.dateExpiring)}</span>
         )}
-        {entry.plannedDate && <span className="when-pill"><CalendarIcon /> planned · {formatHuman(entry.plannedDate)}</span>}
+        {entry.plannedDate && (
+          <span className={`when-pill${isPlannedPast(entry, today) ? ' slipped' : ''}`}>
+            <CalendarIcon /> {isPlannedPast(entry, today) ? 'was planned' : 'planned'} · {formatHuman(entry.plannedDate)}
+          </span>
+        )}
         {entry.pending && <span className="pending-pill" title="Saved on this device — will sync to Notion when you’re online">unsynced</span>}
       </div>
 
@@ -73,17 +78,9 @@ export default function EntryView({ entry, onBack, onEdit, onChip, onToggleAtten
         </div>
       )}
 
-      {(entry.link || entry.placeUrl) && (
-        <div className="ev-links">
-          {entry.link && <a className="btn btn-sm" href={entry.link} target="_blank" rel="noopener"><ExternalIcon /> Open link</a>}
-          {entry.placeUrl && <a className="btn btn-sm" href={entry.placeUrl} target="_blank" rel="noopener"><MapIcon /> Open in Maps</a>}
-        </div>
-      )}
-
-      <div className="ev-share">
-        <span className="field-label"><ShareIcon /> share</span>
-        <a className="btn btn-sm" href={whatsappUrl(entry)} target="_blank" rel="noopener"><WhatsAppIcon /> WhatsApp</a>
-        <a className="btn btn-sm" href={emailUrl(entry)}><MailIcon /> Email</a>
+      <div className="ev-links">
+        {entry.link && <a className="btn btn-sm" href={entry.link} target="_blank" rel="noopener"><ExternalIcon /> Open link</a>}
+        {entry.placeUrl && <a className="btn btn-sm" href={entry.placeUrl} target="_blank" rel="noopener"><MapIcon /> Open in Maps</a>}
         <button type="button" className="btn btn-sm" onClick={handleShare}><ShareIcon /> Share…</button>
         {shareStatus === 'copied' && <span className="share-status">Copied to clipboard</span>}
         {shareStatus === 'error' && <span className="share-status err">Couldn’t share</span>}

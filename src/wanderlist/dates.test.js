@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'vitest'
-import { daysUntil, expiryLabel, isExpiringSoon, formatMedium, monthGrid, stepMonth, entriesOnDay } from './dates.js'
+import { daysUntil, expiryLabel, isExpiringSoon, isPastExpired, isPlannedPast, formatMedium, monthGrid, stepMonth, entriesOnDay } from './dates.js'
 
 describe('daysUntil', () => {
   test('counts whole calendar days, signed', () => {
@@ -30,6 +30,27 @@ describe('isExpiringSoon', () => {
     expect(isExpiringSoon({ attended: true, dateExpiring: '2026-07-10' }, { today })).toBe(false)
     expect(isExpiringSoon({ attended: false, dateExpiring: '2026-07-01' }, { today })).toBe(false) // past
     expect(isExpiringSoon({ attended: false, dateExpiring: null }, { today })).toBe(false)
+  })
+})
+
+describe('isPastExpired', () => {
+  const today = '2026-07-08'
+  test('unattended and the deadline has already passed', () => {
+    expect(isPastExpired({ attended: false, dateExpiring: '2026-07-05' }, today)).toBe(true)
+    expect(isPastExpired({ attended: false, dateExpiring: '2026-07-08' }, today)).toBe(false) // today isn't past yet
+    expect(isPastExpired({ attended: false, dateExpiring: '2026-07-10' }, today)).toBe(false)
+    expect(isPastExpired({ attended: true, dateExpiring: '2026-07-05' }, today)).toBe(false) // attended sinks no more
+    expect(isPastExpired({ attended: false, dateExpiring: null }, today)).toBe(false)
+  })
+})
+
+describe('isPlannedPast', () => {
+  const today = '2026-07-08'
+  test('unattended and the planned date has slipped by', () => {
+    expect(isPlannedPast({ attended: false, plannedDate: '2026-07-01' }, today)).toBe(true)
+    expect(isPlannedPast({ attended: false, plannedDate: '2026-07-08' }, today)).toBe(false)
+    expect(isPlannedPast({ attended: true, plannedDate: '2026-07-01' }, today)).toBe(false)
+    expect(isPlannedPast({ attended: false, plannedDate: null }, today)).toBe(false)
   })
 })
 

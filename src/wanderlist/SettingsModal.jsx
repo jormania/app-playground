@@ -4,7 +4,7 @@ import {
   getDatabaseId, setDatabaseId, hasCustomDatabase,
   testConnection,
 } from './store.js'
-import { loadServerPrefs, saveServerPrefs, getLocalPrefs } from './remindersConfig.js'
+import { loadServerPrefs, saveServerPrefs, getLocalPrefs, sendTestReminder } from './remindersConfig.js'
 import Modal from './Modal.jsx'
 
 // Connects the app to a real backlog and configures the email reminder. Token + database
@@ -26,6 +26,8 @@ export default function SettingsModal({ onClose, onChanged }) {
   const [remStatus, setRemStatus] = useState(live ? 'loading' : 'offline') // loading|configured|unconfigured|error|offline|saved
   const [remMsg, setRemMsg] = useState('')
   const [remSaving, setRemSaving] = useState(false)
+  const [testSending, setTestSending] = useState(false)
+  const [testMsg, setTestMsg] = useState(null) // { ok, message } | null
 
   useEffect(() => {
     let cancelled = false
@@ -52,6 +54,14 @@ export default function SettingsModal({ onClose, onChanged }) {
     if (res.ok) { setRemStatus('saved'); setRemMsg('Saved — your reminder is set.') }
     else if (res.configured === false) { setRemStatus('unconfigured'); setRemMsg(res.message || '') }
     else { setRemStatus('error'); setRemMsg(res.error || 'Could not save.') }
+  }
+
+  async function testReminder() {
+    setTestSending(true)
+    setTestMsg(null)
+    const res = await sendTestReminder()
+    setTestSending(false)
+    setTestMsg(res)
   }
 
   function save() {
@@ -148,7 +158,14 @@ export default function SettingsModal({ onClose, onChanged }) {
               <button className="btn" onClick={saveReminders} disabled={remSaving || remStatus === 'loading' || remStatus === 'unconfigured'}>
                 {remSaving ? 'Saving…' : 'Save reminder'}
               </button>
+              <button className="btn" onClick={testReminder} disabled={testSending || !email.trim() || remStatus === 'loading' || remStatus === 'unconfigured'}
+                title="Sends a real email right now, so you can confirm the pipeline works">
+                {testSending ? 'Sending…' : 'Send test reminder'}
+              </button>
             </div>
+            {testMsg && (
+              <p className="hint" style={{ marginTop: 6, color: testMsg.ok ? 'var(--green)' : 'var(--red)' }}>{testMsg.message}</p>
+            )}
             {remStatus === 'loading' && <p className="hint" style={{ marginTop: 6 }}>Checking reminder setup…</p>}
             {remStatus === 'unconfigured' && (
               <p className="hint" style={{ marginTop: 6, color: 'var(--gold-soft)' }}>

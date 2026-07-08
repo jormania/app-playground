@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import './wanderlist.css'
-import { getClient, isLive, loadPreset, savePreset, applyPreset, nextPreset, presetById, modeOf, THEME_KEY } from './store.js'
+import { getClient, isLive, loadPreset, savePreset, applyPreset, nextPreset, presetById, modeOf, THEME_KEY, loadViewPrefs, saveViewPrefs } from './store.js'
 import { todayKey } from './dates.js'
 import { triage, filterByStatus, filterBySearch } from './search.js'
 import MenuBar from './MenuBar.jsx'
@@ -9,6 +9,17 @@ import CalendarView from './CalendarView.jsx'
 import EntryView from './EntryView.jsx'
 import EntryEditor from './EntryEditor.jsx'
 import SettingsModal from './SettingsModal.jsx'
+
+// The list's empty state, tailored to *why* it's empty — a search with no hits, a To-do
+// filter with nothing left to do, or an Attended filter with nothing checked off yet. When
+// there are no entries at all, undefined falls through to ListView's own first-run copy.
+function emptyMessage(searching, status, totalCount) {
+  if (searching) return 'Nothing matches that search.'
+  if (totalCount === 0) return undefined
+  if (status === 'todo') return 'Nothing to do right now — everything’s marked attended.'
+  if (status === 'attended') return 'Nothing marked attended yet.'
+  return undefined
+}
 
 export default function App() {
   const [entries, setEntries] = useState([])
@@ -21,17 +32,21 @@ export default function App() {
   const [live, setLive] = useState(isLive())
   const [offline, setOffline] = useState(false)
 
-  const [view, setView] = useState('list') // 'list' | 'calendar'
-  const [status, setStatus] = useState('todo')
+  const initialViewPrefs = loadViewPrefs()
+  const [view, setView] = useState(initialViewPrefs.view) // 'list' | 'calendar'
+  const [status, setStatus] = useState(initialViewPrefs.status)
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState('all')
-  const [sort, setSort] = useState('expiring')
+  const [sort, setSort] = useState(initialViewPrefs.sort)
   const [preset, setPresetState] = useState(loadPreset())
 
   const today = todayKey()
 
   // Apply <html data-theme> + mobile bar colour and persist whenever the preset changes.
   useEffect(() => { applyPreset(preset); savePreset(preset) }, [preset])
+
+  // Remember the last view/status/sort so a reload opens back up where you left it.
+  useEffect(() => { saveViewPrefs({ view, status, sort }) }, [view, status, sort])
 
   // Live-sync the palette with the guide (and other tabs) via the shared theme key.
   useEffect(() => {
@@ -226,7 +241,8 @@ export default function App() {
               onChip={filterByChip}
               onToggleAttended={toggleAttended}
               today={today}
-              emptyMessage={searching ? 'Nothing matches that search.' : (status === 'attended' ? 'Nothing marked attended yet.' : undefined)}
+              sort={sort}
+              emptyMessage={emptyMessage(searching, status, entries.length)}
             />
           )}
         </div>

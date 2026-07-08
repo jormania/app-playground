@@ -42,6 +42,19 @@ describe('sortEntries', () => {
     expect(sortEntries(items, 'added').map(e => e.id)).toEqual(['c', 'a', 'b', 'd'])
     expect(sortEntries(items, 'az').map(e => e.id)[0]).toBe('c') // "Art Deco walk"
   })
+  test('expiring first: past-due unattended items sink below no-deadline items, most-recently-expired first', () => {
+    const withPast = [
+      { id: 'future', name: 'Future', attended: false, dateAdded: '2026-06-01', dateExpiring: '2026-07-20' },
+      { id: 'none', name: 'No deadline', attended: false, dateAdded: '2026-06-01', dateExpiring: null },
+      { id: 'old', name: 'Long expired', attended: false, dateAdded: '2026-06-01', dateExpiring: '2026-06-01' },
+      { id: 'recent', name: 'Recently expired', attended: false, dateAdded: '2026-06-01', dateExpiring: '2026-07-05' },
+      { id: 'attended-past', name: 'Attended, was past', attended: true, dateAdded: '2026-06-01', dateExpiring: '2026-05-01' },
+    ]
+    // future first (soonest deadline), then no-deadline, then past-due newest-expired-first;
+    // an attended item never sinks into the past tier even with an old deadline.
+    expect(sortEntries(withPast, 'expiring', today).map(e => e.id))
+      .toEqual(['future', 'attended-past', 'none', 'recent', 'old'])
+  })
 })
 
 describe('triage pipeline', () => {

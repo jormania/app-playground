@@ -53,13 +53,21 @@ export function filterByStatus(entries, status = 'todo') {
 // the top, items with no deadline after them (by recency), and — within either group —
 // unattended before attended so checked-off things sink. A missing dateExpiring sorts
 // as +∞ so it never jumps ahead of a dated item.
+// Tiers for "expiring first": a future/today deadline ranks by days-away (soonest first);
+// no deadline sits in the middle; an already-expired, still-unattended item sinks into a
+// tier of its own at the very bottom (most-recently-expired first) — see the "past"
+// divider in ListView, which renders right where this tier begins. Attended items never
+// carry expiry weight, since the deadline no longer matters once you've gone.
+const NO_EXPIRY_RANK = 1e9
+const PAST_RANK_BASE = 2e9
 export function sortEntries(entries, sort = 'expiring', today = todayKey()) {
   const list = [...(entries || [])]
   const addedRank = (e) => e?.dateAdded || ''
   const expRank = (e) => {
-    if (!e?.dateExpiring) return Infinity
+    if (!e?.dateExpiring || e.attended) return NO_EXPIRY_RANK
     const n = daysUntil(e.dateExpiring, today)
-    return n == null ? Infinity : n
+    if (n == null) return NO_EXPIRY_RANK
+    return n < 0 ? PAST_RANK_BASE - n : n
   }
   if (sort === 'az') {
     list.sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), undefined, { sensitivity: 'base' }))

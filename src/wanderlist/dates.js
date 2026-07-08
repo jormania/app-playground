@@ -74,6 +74,22 @@ export function isExpiringSoon(entry, { today = todayKey(), days = 14 } = {}) {
   return n != null && n >= 0 && n <= days
 }
 
+// True once an unattended item's Date Expiring has already passed — the "sink below the
+// past divider" case in the default Expiring-first sort.
+export function isPastExpired(entry, today = todayKey()) {
+  if (!entry || entry.attended || !entry.dateExpiring) return false
+  const n = daysUntil(entry.dateExpiring, today)
+  return n != null && n < 0
+}
+
+// True when an item's Planned Date has slipped by (passed, still unattended) — a gentle
+// nudge that it was meant to happen and didn't.
+export function isPlannedPast(entry, today = todayKey()) {
+  if (!entry || entry.attended || !entry.plannedDate) return false
+  const n = daysUntil(entry.plannedDate, today)
+  return n != null && n < 0
+}
+
 // The item on a given date, or null (used sparingly; Wanderlist has no one-per-date rule).
 export function findByDate(entries, key) {
   return (entries || []).find(e => e && e.dateExpiring === key) || null

@@ -1,15 +1,14 @@
-// Share one item via WhatsApp, email, or the OS share sheet. Text-only by request — the
-// name, the note, its link and its place; no attachments and no app metadata (dates,
-// category, tags, attended/paid state are Wanderlist's own bookkeeping, not part of the
-// thing you're telling someone about). Mirrors Journal of Delights' share.js, minus all
-// the photo/clipboard machinery it needed for attachments.
+// Share one item via the OS share sheet (which itself offers WhatsApp, email, and
+// whatever else the device has — no need for Wanderlist to build its own per-channel
+// buttons). Text-only by request — the name, the note, its link and its place; no
+// attachments and no app metadata (dates, category, tags, attended/paid state are
+// Wanderlist's own bookkeeping, not part of the thing you're telling someone about).
 
 export function canShare() {
   return typeof navigator !== 'undefined' && typeof navigator.share === 'function'
 }
 
-// The place + links footer, shared by every channel. `📍`/`🔗` read fine in WhatsApp,
-// mail and the OS sheet alike.
+// The place + links footer. `📍`/`🔗` read fine wherever the OS sheet lands the text.
 function footer(entry) {
   const foot = []
   if (entry?.place) foot.push(`📍 ${entry.place}`)
@@ -18,27 +17,14 @@ function footer(entry) {
   return foot
 }
 
-// The full blurb (name + note + footer) — used verbatim for WhatsApp and the OS sheet's
-// `text`. Email splits the name out into the subject instead (see emailUrl).
+// The full blurb (name + note + footer) — the OS sheet's `text`, and the clipboard
+// fallback's copied text.
 export function shareText(entry) {
   const lines = [entry?.name || 'Something to see']
   if (entry?.description) lines.push('', entry.description)
   const foot = footer(entry)
   if (foot.length) lines.push('', ...foot)
   return lines.join('\n')
-}
-
-export function whatsappUrl(entry) {
-  return `https://wa.me/?text=${encodeURIComponent(shareText(entry))}`
-}
-
-export function emailUrl(entry) {
-  const subject = entry?.name || 'Something to see'
-  const lines = []
-  if (entry?.description) lines.push(entry.description)
-  const foot = footer(entry)
-  if (foot.length) { if (lines.length) lines.push(''); lines.push(...foot) }
-  return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`
 }
 
 // The OS share sheet where supported (mobile + modern desktop Chromium — this is what

@@ -8,6 +8,7 @@ import { createOfflineClient } from './offlineClient.js'
 
 const TOKEN_KEY = 'wanderlist_token'
 const DB_KEY = 'wanderlist_database'
+const VIEW_PREFS_KEY = 'wanderlist_view_prefs'
 
 export function getToken() {
   try { return localStorage.getItem(TOKEN_KEY) || '' } catch { return '' }
@@ -37,6 +38,23 @@ export function hasCustomDatabase() {
 
 export function isLive() {
   return Boolean(getToken())
+}
+
+// ── View prefs ────────────────────────────────────────────────────────────────
+// Remembers the last view (List/Calendar), status filter (To-do/Attended/All), and sort
+// order across reloads — so the app opens back up where you left it, not reset to
+// defaults every time. Search text is deliberately not persisted (stale search on reload
+// would be more confusing than helpful).
+export const DEFAULT_VIEW_PREFS = { view: 'list', status: 'todo', sort: 'expiring' }
+export function loadViewPrefs() {
+  try {
+    const raw = localStorage.getItem(VIEW_PREFS_KEY)
+    if (raw) return { ...DEFAULT_VIEW_PREFS, ...JSON.parse(raw) }
+  } catch { /* ignore */ }
+  return { ...DEFAULT_VIEW_PREFS }
+}
+export function saveViewPrefs(prefs) {
+  try { localStorage.setItem(VIEW_PREFS_KEY, JSON.stringify({ ...DEFAULT_VIEW_PREFS, ...prefs })) } catch { /* quota */ }
 }
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
