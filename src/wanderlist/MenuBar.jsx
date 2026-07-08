@@ -8,15 +8,36 @@ const VIEWS = [
   { id: 'calendar', Icon: CalendarIcon, label: 'Calendar' },
 ]
 
+// Shared behaviour for the status/sort/⋯ dropdowns: Escape closes and returns focus to
+// the button that opened it, and opening one focuses its first item — the same two things
+// Modal.jsx already does for the bigger dialogs, brought down to these small popovers too.
+function usePopover() {
+  const [open, setOpen] = useState(false)
+  const triggerRef = useRef(null)
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    menuRef.current?.querySelector('[role="menuitem"]')?.focus()
+    function onKeyDown(e) {
+      if (e.key === 'Escape') { setOpen(false); triggerRef.current?.focus() }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open])
+
+  return { open, setOpen, triggerRef, menuRef }
+}
+
 // One bar, same on every width. Two packed groups: the view switcher, Search, the To-do
 // filter and Sort all sit left-aligned in a fixed order; Add and ⋯ push to the far right
 // (via .btn-today's margin-left: auto), with the secondary actions (theme, guide, settings)
 // tucked under the ⋯ menu. Search is a focused mode: while the field is open it takes the
 // whole row (closes only via its own ✕), everything else hides, and the field grows to fill.
 export default function MenuBar({ status, onStatus, query, scope, onQuery, onScope, sort, onSort, view, onView, onAdd, onStats, onSettings, themeMode, themeName, onCycleTheme }) {
-  const [moreOpen, setMoreOpen] = useState(false)
-  const [statusOpen, setStatusOpen] = useState(false)
-  const [sortOpen, setSortOpen] = useState(false)
+  const more = usePopover()
+  const statusPop = usePopover()
+  const sortPop = usePopover()
   const [searchOpen, setSearchOpen] = useState(false)
   const searchRef = useRef(null)
   const dark = themeMode !== 'light'
@@ -73,15 +94,15 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
 
           {/* Status filter (To-do / Attended / All) */}
           <div className="status-wrap">
-            <button className="pill-btn" onClick={() => setStatusOpen(o => !o)} aria-haspopup="menu" aria-expanded={statusOpen} aria-label="Filter by status" title="Filter">
+            <button ref={statusPop.triggerRef} className="pill-btn" onClick={() => statusPop.setOpen(o => !o)} aria-haspopup="menu" aria-expanded={statusPop.open} aria-label="Filter by status" title="Filter">
               <span>{currentStatus.label}</span><span className="caret" />
             </button>
-            {statusOpen && (
+            {statusPop.open && (
               <>
-                <div className="more-scrim" onClick={() => setStatusOpen(false)} />
-                <div className="more-menu left" role="menu">
+                <div className="more-scrim" onClick={() => statusPop.setOpen(false)} />
+                <div className="more-menu left" role="menu" ref={statusPop.menuRef}>
                   {STATUSES.map(s => (
-                    <button key={s.value} role="menuitem" className={status === s.value ? 'active' : ''} onClick={() => { setStatusOpen(false); onStatus(s.value) }}>
+                    <button key={s.value} role="menuitem" className={status === s.value ? 'active' : ''} onClick={() => { statusPop.setOpen(false); onStatus(s.value) }}>
                       {s.label}
                     </button>
                   ))}
@@ -93,13 +114,13 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
           {/* Sort — only in the list view (the calendar places things by date) */}
           {view === 'list' && (
             <div className="sort-wrap">
-              <button className="icon-btn" onClick={() => setSortOpen(o => !o)} aria-haspopup="menu" aria-expanded={sortOpen} aria-label="Sort order" title={`Sort: ${currentSort.label}`}><SortIcon /></button>
-              {sortOpen && (
+              <button ref={sortPop.triggerRef} className="icon-btn" onClick={() => sortPop.setOpen(o => !o)} aria-haspopup="menu" aria-expanded={sortPop.open} aria-label="Sort order" title={`Sort: ${currentSort.label}`}><SortIcon /></button>
+              {sortPop.open && (
                 <>
-                  <div className="more-scrim" onClick={() => setSortOpen(false)} />
-                  <div className="more-menu" role="menu">
+                  <div className="more-scrim" onClick={() => sortPop.setOpen(false)} />
+                  <div className="more-menu" role="menu" ref={sortPop.menuRef}>
                     {SORTS.map(s => (
-                      <button key={s.value} role="menuitem" className={sort === s.value ? 'active' : ''} onClick={() => { setSortOpen(false); onSort(s.value) }}>
+                      <button key={s.value} role="menuitem" className={sort === s.value ? 'active' : ''} onClick={() => { sortPop.setOpen(false); onSort(s.value) }}>
                         {sort === s.value ? <CheckIcon /> : <span style={{ width: '1em' }} />} {s.label}
                       </button>
                     ))}
@@ -113,14 +134,14 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
 
           {/* ⋯ — theme, guide, settings */}
           <div className="actions-overflow">
-            <button className="icon-btn" onClick={() => setMoreOpen(o => !o)} aria-haspopup="menu" aria-expanded={moreOpen} aria-label="More"><MoreIcon /></button>
-            {moreOpen && (
+            <button ref={more.triggerRef} className="icon-btn" onClick={() => more.setOpen(o => !o)} aria-haspopup="menu" aria-expanded={more.open} aria-label="More"><MoreIcon /></button>
+            {more.open && (
               <>
-                <div className="more-scrim" onClick={() => setMoreOpen(false)} />
-                <div className="more-menu" role="menu">
+                <div className="more-scrim" onClick={() => more.setOpen(false)} />
+                <div className="more-menu" role="menu" ref={more.menuRef}>
                   {appActions.map(a => a.href
-                    ? <a key={a.key} role="menuitem" href={a.href} target="_blank" rel="noopener" onClick={() => setMoreOpen(false)}><a.Icon /> {a.label}</a>
-                    : <button key={a.key} role="menuitem" onClick={() => { setMoreOpen(false); a.onClick() }}><a.Icon /> {a.label}</button>
+                    ? <a key={a.key} role="menuitem" href={a.href} target="_blank" rel="noopener" onClick={() => more.setOpen(false)}><a.Icon /> {a.label}</a>
+                    : <button key={a.key} role="menuitem" onClick={() => { more.setOpen(false); a.onClick() }}><a.Icon /> {a.label}</button>
                   )}
                 </div>
               </>

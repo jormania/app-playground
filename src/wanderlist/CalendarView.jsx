@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { monthGrid, stepMonth, monthLabel, keyToDate, formatHuman, entriesOnDay, expiryLabel, daysUntil } from './dates.js'
-import { BackIcon, ExternalIcon, HourglassIcon, CalendarIcon, CheckCircleIcon } from './icons.jsx'
+import { BackIcon, ExternalIcon, HourglassIcon, CalendarIcon, CheckCircleIcon, TicketIcon } from './icons.jsx'
 import MetaChips from './MetaChips.jsx'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -104,9 +104,16 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
                 <div className="agenda-main">
                   <div className="agenda-top">
                     <span className="agenda-name">{entry.name || 'Untitled'}</span>
-                    {entry.link && (
-                      <a className="row-link" href={entry.link} target="_blank" rel="noopener" title="Open link" onClick={ev => ev.stopPropagation()}><ExternalIcon /></a>
-                    )}
+                    <div className="agenda-icons">
+                      {entry.tickets?.length > 0 && (
+                        <span className="row-paid on" title={`Paid — ${entry.tickets.length} ticket${entry.tickets.length === 1 ? '' : 's'} on file`} aria-label="Paid">
+                          <TicketIcon />
+                        </span>
+                      )}
+                      {entry.link && (
+                        <a className="row-link" href={entry.link} target="_blank" rel="noopener" title="Open link" onClick={ev => ev.stopPropagation()}><ExternalIcon /></a>
+                      )}
+                    </div>
                   </div>
                   <div className="row-badges">
                     {entry.attended && <span className="attended-pill"><CheckCircleIcon /> attended</span>}

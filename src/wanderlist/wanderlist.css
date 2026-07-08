@@ -691,6 +691,7 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .agenda-card:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .agenda-card.attended { opacity: 0.62; }
 .agenda-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.agenda-icons { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .agenda-name { font-family: var(--sans); font-size: 1.02rem; font-weight: 600; color: var(--ink); }
 .agenda-card.attended .agenda-name { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--ink) 40%, transparent); }
 .agenda-card .meta { margin-top: 10px; }
