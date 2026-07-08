@@ -98,12 +98,21 @@ export default function App() {
     setFocus(null)
   }
 
-  async function handleSave(entry) {
+  async function handleSave({ photoAction, ticketsAction, ...entry }) {
     setSaving(true)
     setSaveError('')
     try {
       const client = getClient()
-      const saved = entry.id ? await client.updateEntry(entry.id, entry) : await client.createEntry(entry)
+      let saved = entry.id ? await client.updateEntry(entry.id, entry) : await client.createEntry(entry)
+      // Photo/ticket actions need a real page id, and Notion itself — skip if the base save
+      // just got queued offline (saved.pending); nothing to attach to yet.
+      if (photoAction && !saved.pending) {
+        if (photoAction.type === 'set') saved = await client.attachPhoto(saved.id, { ref: photoAction.ref, name: photoAction.name })
+        else if (photoAction.type === 'remove') saved = await client.removePhoto(saved.id)
+      }
+      if (ticketsAction && !saved.pending) {
+        saved = await client.setTickets(saved.id, ticketsAction.files)
+      }
       const list = await client.listEntries()
       setEntries(list)
       setOffline(Boolean(client.offline))

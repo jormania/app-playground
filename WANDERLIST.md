@@ -42,25 +42,39 @@ cycle button — brought over per request "as close to the original as possible"
 ## Notion database schema
 
 App model: `{ id, name, description, link, category, place, placeUrl, tags[], attended,
-dateAdded, dateExpiring, plannedDate }`. Notion properties:
+dateAdded, dateExpiring, plannedDate, photo, tickets[] }`. Notion properties:
 
 | Property | Type | Notes |
 |---|---|---|
 | `Name` | title | |
 | `Description` | rich_text | chunked to Notion's 2000-char limit |
 | `Link` | url | the event page |
-| `Category` | **select** | single, extendable inline |
+| `Category` | **select** | single, extendable inline, **always lowercase** (normalized on read + write) |
 | `Place` | **rich_text** | resolved place name (see below) |
 | `Map` | **url** | Maps pin link for the place |
-| `Tags` | multi_select | freeform |
+| `Tags` | multi_select | freeform, **always lowercase** (normalized + deduped on read + write) |
 | `Attended` | checkbox | |
 | `Date Added` | date | app stamps on create |
 | `Date Expiring` | date | the deadline to act — drives the reminder, expiry pills, and the calendar's Expiring marker |
 | `Planned Date` | date (optional) | the day you plan to go — drives the calendar's Planned marker (renamed from `When` in M2) |
+| `Photo` | **files** (M3) | at most one picture — a poster, a photo you took |
+| `Tickets` | **files** (M3), multi | ticket PDFs/screenshots, shown separately from Photo |
 
 **Migration from the original "Findings" DB:** `Place` was Notion's native geo/`place`
 type, which the classic API can't write — it was converted to **rich_text**, and **`Map`
-(url)** + **`Tags` (multi_select)** were added. `When` is optional.
+(url)** + **`Tags` (multi_select)** were added. `When` is optional. Category and Tags select
+options were renamed to lowercase in place (Notion options are identified by id, not string,
+so renaming an option retroactively re-labels every page that references it — no per-page
+edits needed for existing data).
+
+### Category/Tags casing (enforced in `notion.js`)
+
+Both are normalized to lowercase on **every read and write** (`normalizeTag`/
+`normalizeCategory` — currently the same function; kept as two names in case they ever
+diverge). Tags are also deduped case-insensitively on write. This is a data-layer rule, not
+just UI polish — it means a value typed in mixed case anywhere (the app, or directly in
+Notion) settles to one canonical casing, so `"Free"` and `"free"` can never fork into two
+separate filter chips.
 
 ## Place search (Google Places, optional)
 
@@ -110,9 +124,28 @@ in the menu bar; the calendar respects the status segment + search (so markers r
 To-do/Attended and any filter) but not the list sort. Grid/marker/agenda helpers are pure in
 `dates.js` (`monthGrid`, `stepMonth`, `entriesOnDay`, `rolesOn`) and unit-tested.
 
-## M3 (parked)
+## Photo + Tickets (M3, shipped)
 
-- **Attachments**: reuse JoD's photo/upload pipeline for event photos and **ticket
-  files/PDFs** (`api/notion-upload.js` already exists).
+Reuses Journal of Delights' file-upload pipeline almost verbatim (`photo.js`'s client-side
+resize, `api/notion-upload.js`'s multipart relay — both already generic/shared, so no new
+serverless function was needed) plus one new piece for the multi-file case:
+
+- **Photo** (`PhotoField.jsx`) — at most one, mirrors JoD exactly: pick → resize (max 1600px
+  edge, JPEG 0.82) → upload immediately → attach on Save. Shown as a poster panel in the
+  detail view (tap → `Lightbox.jsx`, full size) and a small thumbnail in list rows.
+- **Tickets** (`TicketsField.jsx`) — multiple files (PDF or image), kept as a **separate**
+  field from Photo. Each pick uploads immediately (multi-select supported); the *whole* set
+  is written to Notion in one PATCH on Save — Notion's Files & media property has no "append"
+  verb, every write replaces the array. `notion.js`'s `toTickets`/`ticketWriteEntry` handle
+  this: existing tickets carry a `fileUploadId` (the durable handle Notion's 2025-09-03 File
+  Upload API exposes) that lets them be re-included without re-uploading bytes; anything
+  without one (rare — e.g. attached outside the app) falls back to its just-fetched signed
+  url as an `external` reference, safe only because the write happens within the same short
+  editor session it was read in. Shown as a "tickets" section (linked, downloadable) in the
+  detail view and a small paperclip-style count badge in list rows.
+- Both require a live connection (same as JoD's photo) — no offline queueing for uploads.
+
+## M4+ (parked)
+
 - Richer reminders (configurable lead time, weekly digest); paste-a-link autofill; a map
   view of Places; a week/agenda calendar layout.

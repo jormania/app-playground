@@ -273,9 +273,10 @@ button { font-family: inherit; cursor: pointer; }
 .actions-inline { display: flex; align-items: center; gap: 8px; }
 .actions-overflow { display: none; position: relative; }
 .sort-wrap { position: relative; display: inline-flex; }
-/* Search is a focused mode: while the field is open it takes the bar (the ✕ inside it
-   exits), so the secondary controls tuck away and everything stays on one row within the
-   860px column. Add stays. */
+/* Search is a focused mode: while the field is open it takes the row (closes only via its
+   own ✕, never on blur — see MenuBar.jsx), so the status filter and secondary controls tuck
+   away and the field + Add stay on one row within the 860px column. */
+.menu-actions.searching .view-overflow,
 .menu-actions.searching .sort-wrap,
 .menu-actions.searching .actions-inline,
 .menu-actions.searching .actions-overflow { display: none; }
@@ -437,11 +438,11 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .btn-sm { padding: 6px 12px; font-size: 0.76rem; }
 .btn-sm svg { font-size: 14px; }
 .btn-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 22px; }
-.btn-ghost { background: none; border: none; color: var(--faint); font-size: 0.8rem; }
+.btn-ghost { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; color: var(--faint); font-size: 0.8rem; padding: 9px 2px; }
 .btn-ghost:hover { color: var(--muted); }
 
 /* ── Editor ── */
-.editor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+.editor-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
 .editor h2 { font-family: var(--serif); font-weight: 500; font-size: clamp(1.9rem, 5.5vw, 2.6rem); line-height: 1.04; margin-bottom: 4px; color: var(--ink); }
 .editor h2 em { font-style: italic; color: var(--gold-soft); }
 .editor .sub { color: var(--muted); font-size: 0.9375rem; font-weight: 400; }
@@ -506,6 +507,70 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .placeinput .place-map:hover { color: var(--blue); }
 .placeinput .place-clear:hover { color: var(--ink); }
 .placeinput .place-loading { font-family: var(--mono); font-size: 0.66rem; color: var(--faint); margin-top: 6px; }
+
+/* ── Photo (editor field + detail panel + list thumb) ── */
+.photo-current { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.photo-field .photo-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.photo-field .hint { margin-top: 8px; }
+.photo-thumb {
+  padding: 0; cursor: zoom-in; background: none; display: block;
+  border-radius: 10px; overflow: hidden; position: relative; flex-shrink: 0;
+  border: 1px solid var(--border2); box-shadow: 0 6px 16px var(--shadow);
+}
+.photo-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.photo-field .photo-thumb { width: 84px; height: 84px; }
+.field-remove {
+  font-family: var(--mono); font-size: 0.6875rem; color: var(--faint);
+  background: none; border: 1px solid var(--border2); border-radius: 999px; padding: 4px 11px; cursor: pointer;
+}
+.field-remove:hover { color: var(--red); border-color: var(--red); }
+.field-remove:disabled { opacity: 0.5; cursor: default; }
+
+/* The detail view shows the photo as taken, no cropping — scales down to fit, capped so a
+   tall portrait doesn't dominate the page. */
+.entry-photo { margin: 18px 0; }
+.entry-photo .photo-thumb { width: auto; height: auto; max-width: min(100%, 340px); display: inline-block; }
+.entry-photo .photo-thumb img { width: auto; height: auto; max-width: 100%; max-height: 420px; object-fit: contain; }
+
+/* Compact square indicator in a list row — just signals a photo exists; opening the row
+   shows the real thing. */
+.photo-thumb-sm { width: 44px; height: 44px; border-radius: 8px; overflow: hidden; flex-shrink: 0; border: 1px solid var(--border2); }
+.photo-thumb-sm img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* ── Lightbox ── */
+.lightbox-scrim {
+  position: fixed; inset: 0; z-index: 200; background: var(--scrim); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 28px; cursor: zoom-out;
+}
+.lightbox-img { max-width: 100%; max-height: 100%; border-radius: 10px; box-shadow: 0 20px 60px var(--shadow); cursor: default; }
+.lightbox-close { position: absolute; top: 18px; right: 18px; background: var(--surface); border: 1px solid var(--border2); }
+
+/* ── Tickets (editor list + detail section + list-row badge) ── */
+.ticket-field .ticket-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.ticket-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.ticket-row {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 7px 10px;
+  font-family: var(--sans); font-size: 0.86rem; color: var(--ink);
+}
+.ticket-row svg:first-child { font-size: 15px; color: var(--cyan); flex-shrink: 0; }
+.ticket-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ticket-open, .ticket-remove { background: none; border: none; color: var(--faint); display: inline-flex; padding: 3px; flex-shrink: 0; }
+.ticket-open:hover { color: var(--blue); }
+.ticket-remove:hover { color: var(--red); }
+.ticket-remove:disabled { opacity: 0.5; cursor: default; }
+/* Plain read-only rendering in the detail view — no background box, just a linked line. */
+.ticket-list.plain { margin-top: 6px; }
+.ticket-list.plain .ticket-row { background: none; border: none; padding: 3px 0; font-family: var(--mono); font-size: 0.8125rem; }
+.ticket-list.plain .ticket-row a { color: var(--blue); text-decoration: underline; }
+.ticket-section { margin-top: 16px; }
+.ticket-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--mono); font-size: 0.66rem; color: var(--cyan);
+  border: 1px solid color-mix(in srgb, var(--cyan) 40%, transparent); background: color-mix(in srgb, var(--cyan) 8%, transparent);
+  border-radius: 999px; padding: 3px 8px;
+}
+.ticket-badge svg { font-size: 12px; }
 
 /* ── Modal ── */
 .modal-scrim { position: fixed; inset: 0; background: var(--scrim); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }

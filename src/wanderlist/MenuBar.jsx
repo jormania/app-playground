@@ -34,8 +34,9 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
   const current = STATUSES.find(s => s.value === status) || STATUSES[0]
   const currentSort = SORTS.find(s => s.value === sort) || SORTS[0]
 
-  function collapseSearch() {
-    if (!query.trim()) setSearchOpen(false)
+  function closeSearch() {
+    onQuery('')
+    setSearchOpen(false)
   }
 
   return (
@@ -50,27 +51,33 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
           ))}
         </div>
 
-        {/* Mobile: status collapses into a small menu */}
-        <div className="view-overflow">
-          <button className="view-btn" onClick={() => setStatusOpen(o => !o)} aria-haspopup="menu" aria-expanded={statusOpen} aria-label="Change status">
-            <span className="view-label">{current.label}</span><span className="caret" />
-          </button>
-          {statusOpen && (
-            <>
-              <div className="more-scrim" onClick={() => setStatusOpen(false)} />
-              <div className="more-menu left" role="menu">
-                {STATUSES.map(s => (
-                  <button key={s.value} role="menuitem" className={status === s.value ? 'active' : ''} onClick={() => { setStatusOpen(false); onStatus(s.value) }}>
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
+        {/* Everything else — status (mobile), search, sort, Add, app actions — is ONE
+            right-aligned cluster, so idle whitespace collects at the leading edge instead
+            of splitting the bar into two disconnected islands with a dead gap between them. */}
         <div className={`menu-actions${searchActive ? ' searching' : ''}`}>
-          {/* Search: a magnifier that expands into a field (and stays open while there's a query) */}
+          {/* Mobile: status collapses into a small menu; hidden while searching so the
+              search field always has the full row to itself (no wrap). */}
+          <div className="view-overflow">
+            <button className="view-btn" onClick={() => setStatusOpen(o => !o)} aria-haspopup="menu" aria-expanded={statusOpen} aria-label="Change status">
+              <span className="view-label">{current.label}</span><span className="caret" />
+            </button>
+            {statusOpen && (
+              <>
+                <div className="more-scrim" onClick={() => setStatusOpen(false)} />
+                <div className="more-menu left" role="menu">
+                  {STATUSES.map(s => (
+                    <button key={s.value} role="menuitem" className={status === s.value ? 'active' : ''} onClick={() => { setStatusOpen(false); onStatus(s.value) }}>
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Search: a magnifier that expands into a field. Only ever closes via the
+              explicit ✕ — NOT on blur, so tapping the scope <select> (or anything else
+              inside the field) can't yank the whole search UI out from under you. */}
           {searchActive ? (
             <div className="search-wrap">
               <select className="scope" value={scope} onChange={e => onScope(e.target.value)} aria-label="Search scope">
@@ -83,12 +90,11 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
                 value={query}
                 placeholder="search…"
                 onChange={e => onQuery(e.target.value)}
-                onBlur={collapseSearch}
                 autoComplete="off"
                 spellCheck="false"
                 aria-label="Search your list"
               />
-              <button className="search-clear" onClick={() => { onQuery(''); setSearchOpen(false) }} aria-label="Close search"><CloseIcon /></button>
+              <button type="button" className="search-clear" onMouseDown={e => e.preventDefault()} onClick={closeSearch} aria-label="Close search"><CloseIcon /></button>
             </div>
           ) : (
             <button className="icon-btn" onClick={() => setSearchOpen(true)} aria-label="Search" title="Search"><SearchIcon /></button>

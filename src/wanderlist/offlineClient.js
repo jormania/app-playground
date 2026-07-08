@@ -125,6 +125,32 @@ export function createOfflineClient(inner, { databaseId = 'default' } = {}) {
       return getOutbox().length > 0
     },
 
+    // Photo/ticket actions need a live connection outright (the upload itself is a network
+    // call before any of this runs) — no offline queueing, just a passthrough that keeps
+    // the local cache in step with what Notion now holds. Same treatment as Journal of
+    // Delights' photo actions.
+    async uploadFile(blob, filename) {
+      return inner.uploadFile(blob, filename)
+    },
+
+    async attachPhoto(pageId, photo) {
+      const page = await inner.attachPhoto(pageId, photo)
+      setCache(getCache().map(e => (e.id === pageId ? page : e)))
+      return page
+    },
+
+    async removePhoto(pageId) {
+      const page = await inner.removePhoto(pageId)
+      setCache(getCache().map(e => (e.id === pageId ? page : e)))
+      return page
+    },
+
+    async setTickets(pageId, tickets) {
+      const page = await inner.setTickets(pageId, tickets)
+      setCache(getCache().map(e => (e.id === pageId ? page : e)))
+      return page
+    },
+
     // Replay the outbox in order. Stops at the first op that fails (offline again, or a
     // real error) and leaves it — plus everything after — queued for next time. Returns
     // how many ops synced.

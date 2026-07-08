@@ -16,6 +16,13 @@ export default function PlaceInput({ value, url, onChange }) {
   const sessionRef = useRef(newSessionToken())
   const abortRef = useRef(null)
   const inputRef = useRef(null)
+  // Every keystroke round-trips through the parent (onChange -> EntryEditor's `place`
+  // state -> back down as `value`), so `value` mirrors `query` on every render, not just
+  // on programmatic changes. This ref — set right before a programmatic setQuery (picking
+  // a suggestion, clearing) — tells the debounce effect below to skip exactly one search
+  // cycle, instead of comparing against `value` (which was always equal, silently
+  // disabling search on every keystroke — the actual bug behind "Place never searches").
+  const skipNextSearchRef = useRef(false)
 
   // Keep the visible text in step if the parent resets the value (e.g. opening a
   // different item in the editor).
@@ -41,12 +48,13 @@ export default function PlaceInput({ value, url, onChange }) {
 
   // Debounce the lookup ~250ms after typing stops.
   useEffect(() => {
+    if (skipNextSearchRef.current) { skipNextSearchRef.current = false; return }
     if (!supported) return
     const q = query.trim()
-    if (q.length < 2 || q === (value || '')) { setPreds([]); setOpen(false); return }
+    if (q.length < 2) { setPreds([]); setOpen(false); return }
     const t = setTimeout(() => runSearch(q), 250)
     return () => clearTimeout(t)
-  }, [query, supported, runSearch, value])
+  }, [query, supported, runSearch])
 
   function setTyped(text) {
     // Free text (no Google match): store as-is, clear any stale Maps link.
@@ -55,6 +63,7 @@ export default function PlaceInput({ value, url, onChange }) {
   }
 
   async function choose(pred) {
+    skipNextSearchRef.current = true
     setQuery(pred.description)
     setOpen(false)
     // Optimistically store the description; refine with the resolved name + Maps link.
@@ -62,6 +71,7 @@ export default function PlaceInput({ value, url, onChange }) {
     const { configured, place } = await details(pred.placeId, sessionRef.current)
     sessionRef.current = newSessionToken() // a details call ends the billing session
     if (configured && place) {
+      skipNextSearchRef.current = true
       setQuery(place.name || pred.description)
       onChange({ place: place.name || pred.description, placeUrl: place.mapsUrl || '' })
     }

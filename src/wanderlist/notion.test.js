@@ -1,7 +1,7 @@
 import { test, expect, describe } from 'vitest'
 import {
   richTextToPlain, plainToRichText, toEntry, toNotionProps,
-  collectOptions, parseNotionId, RICH_TEXT_LIMIT,
+  collectOptions, parseNotionId, ticketWriteEntry, RICH_TEXT_LIMIT,
 } from './notion.js'
 
 describe('richTextToPlain / plainToRichText', () => {
@@ -44,7 +44,7 @@ describe('toEntry', () => {
       name: 'Anim’est closing',
       description: 'shorts + gala',
       link: 'https://animest.ro',
-      category: 'Event',
+      category: 'event',
       place: 'Cinema Pro',
       placeUrl: 'https://maps.example/pin',
       tags: ['ticketed', 'film'],
@@ -52,7 +52,21 @@ describe('toEntry', () => {
       dateAdded: '2026-07-01',
       dateExpiring: '2026-07-10',
       plannedDate: '2026-07-11',
+      photo: null,
+      tickets: [],
     })
+  })
+  test('normalizes Category and Tags to lowercase on read', () => {
+    const e = toEntry({
+      id: 'x',
+      properties: {
+        Name: { title: [{ plain_text: 'x' }] },
+        Category: { select: { name: 'CULTURE' } },
+        Tags: { multi_select: [{ name: 'Free' }, { name: 'WITH-FRIENDS' }] },
+      },
+    })
+    expect(e.category).toBe('culture')
+    expect(e.tags).toEqual(['free', 'with-friends'])
   })
   test('is defensive about missing / empty properties', () => {
     const e = toEntry({ id: 'x', properties: { Name: { title: [] } } })
@@ -68,7 +82,7 @@ describe('toNotionProps', () => {
       dateExpiring: null, plannedDate: null,
     })
     expect(props['Planned Date']).toEqual({ date: null })
-    expect(props.Category).toEqual({ select: { name: 'Event' } })
+    expect(props.Category).toEqual({ select: { name: 'event' } })
     expect(props.Tags).toEqual({ multi_select: [{ name: 'free' }, { name: 'outdoor' }] })
     expect(props.Attended).toEqual({ checkbox: false })
     expect(props.Link).toEqual({ url: null })
@@ -78,6 +92,63 @@ describe('toNotionProps', () => {
   })
   test('empty category clears the select', () => {
     expect(toNotionProps({ category: null }).Category).toEqual({ select: null })
+  })
+  test('normalizes Category and Tags to lowercase + deduped on write', () => {
+    const props = toNotionProps({ category: 'CULTURE', tags: ['Free', 'free', 'WITH-friends'] })
+    expect(props.Category).toEqual({ select: { name: 'culture' } })
+    expect(props.Tags).toEqual({ multi_select: [{ name: 'free' }, { name: 'with-friends' }] })
+  })
+})
+
+describe('toEntry — Photo / Tickets', () => {
+  test('maps a single Photo file, preferring internal file.url over external', () => {
+    const e = toEntry({
+      id: 'x',
+      properties: {
+        Name: { title: [{ plain_text: 'x' }] },
+        Photo: { files: [{ name: 'poster.jpg', file: { url: 'https://notion.so/poster.jpg' } }] },
+      },
+    })
+    expect(e.photo).toEqual({ url: 'https://notion.so/poster.jpg', name: 'poster.jpg' })
+  })
+  test('no Photo files -> null; a file with neither url shape -> null', () => {
+    expect(toEntry({ id: 'x', properties: { Photo: { files: [] } } }).photo).toBeNull()
+    expect(toEntry({ id: 'x', properties: {} }).photo).toBeNull()
+  })
+  test('maps multiple Tickets files, capturing fileUploadId when present', () => {
+    const e = toEntry({
+      id: 'x',
+      properties: {
+        Tickets: {
+          files: [
+            { name: 'ticket1.pdf', file: { url: 'https://notion.so/t1.pdf' }, file_upload: { id: 'up_1' } },
+            { name: 'ticket2.png', external: { url: 'https://elsewhere/t2.png' } }, // no file_upload id
+          ],
+        },
+      },
+    })
+    expect(e.tickets).toEqual([
+      { url: 'https://notion.so/t1.pdf', name: 'ticket1.pdf', fileUploadId: 'up_1' },
+      { url: 'https://elsewhere/t2.png', name: 'ticket2.png', fileUploadId: null },
+    ])
+  })
+  test('a ticket with no readable url is dropped', () => {
+    const e = toEntry({ id: 'x', properties: { Tickets: { files: [{ name: 'broken' }] } } })
+    expect(e.tickets).toEqual([])
+  })
+})
+
+describe('ticketWriteEntry', () => {
+  test('prefers the durable file_upload id when known', () => {
+    expect(ticketWriteEntry({ name: 'a.pdf', fileUploadId: 'up_1', url: 'https://stale' }))
+      .toEqual({ type: 'file_upload', file_upload: { id: 'up_1' }, name: 'a.pdf' })
+  })
+  test('falls back to external + the freshest known url when no id is known', () => {
+    expect(ticketWriteEntry({ name: 'b.pdf', fileUploadId: null, url: 'https://notion.so/b.pdf' }))
+      .toEqual({ type: 'external', name: 'b.pdf', external: { url: 'https://notion.so/b.pdf' } })
+  })
+  test('defaults a missing name to "ticket"', () => {
+    expect(ticketWriteEntry({ fileUploadId: 'up_2' }).name).toBe('ticket')
   })
 })
 

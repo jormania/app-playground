@@ -79,14 +79,16 @@
     <li><code>Name</code> — title</li>
     <li><code>Description</code> — text</li>
     <li><code>Link</code> — URL</li>
-    <li><code>Category</code> — select (e.g. Event, Culture, Movie, Art, Venue, Idea) · extendable from the app</li>
+    <li><code>Category</code> — select (e.g. event, culture, movie, art, venue, idea) · extendable from the app</li>
     <li><code>Place</code> — <b>text</b> (holds the resolved place name) · <code>Map</code> — URL (the Maps pin link)</li>
     <li><code>Tags</code> — multi-select · freeform (free, ticketed, outdoor, with-friends…)</li>
     <li><code>Attended</code> — checkbox</li>
     <li><code>Date Added</code> — date · <code>Date Expiring</code> — date (the deadline to act on)</li>
     <li><code>Planned Date</code> — date, optional (the day you plan to go; shown on the calendar)</li>
+    <li><code>Photo</code> — files, at most one (a poster, a picture you took)</li>
+    <li><code>Tickets</code> — files, multiple (PDFs or screenshots — kept separate from Photo)</li>
   </ul>
-  <p class="muted">Note: <code>Place</code> is a plain text field, not Notion’s native Maps/geo field — the app writes place names through the classic Notion API, which can’t set the geo type. The app still gives you live map search (below) and stores a Maps link in <code>Map</code>.</p>
+  <p class="muted">Note: <code>Place</code> is a plain text field, not Notion’s native Maps/geo field — the app writes place names through the classic Notion API, which can’t set the geo type. The app still gives you live map search (below) and stores a Maps link in <code>Map</code>. <code>Category</code> and <code>Tags</code> are always saved lowercase, whatever case you type — so they never fork into look-alike duplicates.</p>
 
   <h2>2 · Place search <span class="pill">optional</span></h2>
   <p>When you type in the <b>Place</b> field, Wanderlist can suggest real places (Google) and store the name plus a Maps link. To enable it, add a Google Places key on the server:</p>
@@ -120,6 +122,8 @@ CRON_SECRET             = any-long-random-string   (optional, guards the endpoin
     <li>Filter with the <b>To-do / Attended / All</b> segment; search by text, category, place, or tags; tap any chip to filter by it.</li>
     <li><b>Sort</b> by expiring-first (default), recently added, or A–Z. Expiring-soon items float up with a warm pill.</li>
     <li>Hit the round <b>✓</b> to mark something attended — it stays in the list, just checked off.</li>
+    <li><b>Photo</b> — add one picture per item (a poster, a shot you took) from the editor; tap it in the detail view for the full size.</li>
+    <li><b>Tickets</b> — attach one or more PDFs or screenshots, kept separate from Photo; each opens in a new tab from the detail view.</li>
     <li><b>Calendar</b> (the calendar button): a month grid where each day shows up to two dots — a <b>Planned</b> dot and an <b>Expiring</b> dot. Tap a day to see its entries in an agenda below.</li>
     <li><b>Themes</b> from the sun/moon button — six palettes (Solarized, Monokai Pro…); installs as an app and works offline.</li>
   </ul>
