@@ -31,6 +31,48 @@ export function IconPause(props) {
   )
 }
 
+// Player controls — Resume, Skip, and Exit (default + armed-to-confirm). Kept
+// as light, schematic hints on the big control boxes, not standalone marks:
+// small, low-opacity, single idea each.
+export function IconPlay(props) {
+  return (
+    <svg {...base} {...props} aria-hidden>
+      <path d="M7 5v14l12-7L7 5Z" />
+    </svg>
+  )
+}
+
+export function IconSkipForward(props) {
+  return (
+    <svg {...base} {...props} aria-hidden>
+      <path d="M5 6l7 6-7 6" />
+      <path d="M13 6l7 6-7 6" />
+    </svg>
+  )
+}
+
+// Exit — a door frame with an arrow stepping out through it (the universal
+// exit-sign shape), not a raw "X" — reads as "leave", not "delete/error".
+export function IconExitDoor(props) {
+  return (
+    <svg {...base} {...props} aria-hidden>
+      <path d="M10 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" />
+      <path d="M10 12h9" />
+      <path d="M16 8l4 4-4 4" />
+    </svg>
+  )
+}
+
+// Confirm — the second tap of the exit-confirm pair; a plain check rather
+// than a second door, so it reads as "yes, do it" not "another destination".
+export function IconConfirm(props) {
+  return (
+    <svg {...base} strokeWidth={2} {...props} aria-hidden>
+      <path d="M5 13l4 4L19 7" />
+    </svg>
+  )
+}
+
 // Cycles — Focus (a clock face: timed attention) and Break (a cup — stepping
 // away from the work, not a workout rest and not a meditative sit).
 export function IconFocus(props) {

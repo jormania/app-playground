@@ -3,13 +3,14 @@ import { Button } from '../../ds'
 import { useTimerEngine } from '../lib/useTimerEngine'
 import { useWakeLock } from '../lib/useWakeLock'
 import { cueSet, playChime, playTick } from '../lib/sound'
-import { vibrateTransition, vibrateComplete } from '../lib/haptics'
+import { vibrateTransition, vibrateComplete, vibrateTick } from '../lib/haptics'
+import { useMediaSession } from '../lib/mediaSession'
 import { saveActiveSession, clearActiveSession } from '../lib/storage'
 import { soundIsOn } from '../lib/preferences'
 import { usePreferences } from '../lib/preferencesContext'
 import { SettingsModal } from './SettingsModal'
 import { CountdownRing } from './CountdownRing'
-import { IconSettings } from './icons'
+import { IconSettings, IconPause, IconPlay, IconSkipForward, IconExitDoor, IconConfirm } from './icons'
 import styles from './Player.module.css'
 
 function formatTime(totalSeconds) {
@@ -42,6 +43,19 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
   const cue = useMemo(() => cueSet(mode.cue, preferences.volume), [mode.cue, preferences.volume])
   useWakeLock(preferences.wakeLock && status === 'running')
 
+  // Lock-screen / headset / smartwatch transport controls — Pause, Resume and
+  // Skip without touching the phone. Live for the whole session (paused or
+  // running), gone once it's done.
+  useMediaSession({
+    active: status !== 'done',
+    title: currentSegment?.label ?? mode.name,
+    artist: mode.name,
+    status,
+    onPlay: resume,
+    onPause: pause,
+    onNext: skip,
+  })
+
   // Auto-start a fresh session; a resumed one begins paused, awaiting Resume.
   useLayoutEffect(() => {
     if (!resumeFrom) start()
@@ -66,24 +80,25 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
   // ── Anticipatory tick — last few seconds of a segment (length set in
   // Settings), ding-family only, so there's a "heads up" before the
   // transition instead of it arriving cold. Paired with the ring's pulse
-  // below: same trigger, reinforced two ways.
+  // and (on supported phones) a light vibrate — same trigger, reinforced
+  // three ways, since sound alone can get lost over wind or traffic.
   const tickWindow = preferences.tickWindow
   const tickEligible = mode.cue === 'ding'
   const endingSoon = tickEligible && status === 'running' && secondsRemaining > 0 && secondsRemaining <= tickWindow
   const prevSecondsRef = useRef(secondsRemaining)
   useLayoutEffect(() => {
-    if (
-      soundOn &&
+    const inTickWindow =
       tickEligible &&
       status === 'running' &&
       secondsRemaining <= tickWindow &&
       secondsRemaining >= 1 &&
       secondsRemaining !== prevSecondsRef.current
-    ) {
-      playTick(preferences.volume)
+    if (inTickWindow) {
+      if (soundOn) playTick(preferences.volume)
+      if (preferences.haptics) vibrateTick()
     }
     prevSecondsRef.current = secondsRemaining
-  }, [secondsRemaining, status, tickEligible, soundOn, preferences.volume, tickWindow])
+  }, [secondsRemaining, status, tickEligible, soundOn, preferences.volume, preferences.haptics, tickWindow])
 
   // ── Interval chime — every few minutes while running, but only on the two
   // long-session modes: Sit–Walk (a distinct doubled bell) and Custom (a short
@@ -225,22 +240,30 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
           <div className={styles.controls}>
             {status === 'running' ? (
               <Button variant="secondary" className={styles.primaryControl} onClick={pause}>
-                Pause
+                <IconPause width={22} height={22} strokeWidth={1.4} className={styles.controlIcon} />
+                <span className={styles.controlLabel}>Pause</span>
               </Button>
             ) : (
               <Button variant="secondary" className={styles.primaryControl} onClick={resume}>
-                Resume
+                <IconPlay width={22} height={22} strokeWidth={1.4} className={styles.controlIcon} />
+                <span className={styles.controlLabel}>Resume</span>
               </Button>
             )}
             <Button variant="secondary" className={styles.secondaryControl} onClick={skip}>
-              Skip
+              <IconSkipForward width={20} height={20} strokeWidth={1.4} className={styles.controlIcon} />
+              <span className={styles.controlLabel}>Skip</span>
             </Button>
             <Button
               variant={exitArmed ? 'primary' : 'secondary'}
               className={styles.secondaryControl}
               onClick={handleExitRequest}
             >
-              {exitArmed ? 'Tap again' : 'Exit'}
+              {exitArmed ? (
+                <IconConfirm width={20} height={20} className={styles.controlIcon} />
+              ) : (
+                <IconExitDoor width={20} height={20} strokeWidth={1.4} className={styles.controlIcon} />
+              )}
+              <span className={styles.controlLabel}>{exitArmed ? 'Tap again' : 'Exit'}</span>
             </Button>
           </div>
         </>

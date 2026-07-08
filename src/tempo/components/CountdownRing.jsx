@@ -2,6 +2,9 @@ import styles from './CountdownRing.module.css'
 
 const RADIUS = 42
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
+// Thick enough to read at a glance in direct sunlight (outdoor screens wash
+// out a thin line first) — was 6, room to spare before it'd crowd RADIUS.
+const STROKE_WIDTH = 10
 
 // Calm per-kind ring tints, harmonising with the family gradients. `active`
 // (a Move segment, in Rounds or Custom) isn't listed here — it gets a
@@ -46,12 +49,12 @@ export function CountdownRing({ fractionRemaining, kind, pulsing = false, childr
   return (
     <div className={styles.wrap}>
       <svg viewBox="0 0 100 100" className={styles.svg}>
-        <circle cx="50" cy="50" r={RADIUS} strokeWidth="6" className={styles.track} fill="none" />
+        <circle cx="50" cy="50" r={RADIUS} strokeWidth={STROKE_WIDTH} className={styles.track} fill="none" />
         <circle
           cx="50"
           cy="50"
           r={RADIUS}
-          strokeWidth="6"
+          strokeWidth={STROKE_WIDTH}
           fill="none"
           className={`${styles.progress} ${pulsing ? styles.pulsing : ''}`}
           style={{ stroke: tint, strokeDasharray: CIRCUMFERENCE, strokeDashoffset: offset, '--pulse-color': tint }}

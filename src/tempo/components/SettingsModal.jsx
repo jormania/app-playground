@@ -108,7 +108,8 @@ export function SettingsModal({ open, onClose, preferences, onChange, cueKind = 
             </Button>
           ) : null}
           <p className={`${styles.settingsHint} ${styles.settingsHintFlush}`}>
-            A quiet tick + ring glow before a step ends, on movement, focus, and custom timers — not the breathing bells.
+            A quiet tick, ring glow, and (with Vibration on) a light pulse before a step ends, on movement, focus,
+            and custom timers — not the breathing bells.
           </p>
         </div>
 

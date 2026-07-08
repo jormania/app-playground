@@ -59,6 +59,12 @@
   max-width: 30rem;
 }
 
+.primaryControl,
+.secondaryControl {
+  flex-direction: column !important;
+  gap: var(--space-2xs) !important;
+}
+
 .primaryControl {
   grid-column: 1 / -1;
   height: 100px !important;
@@ -80,6 +86,16 @@
   letter-spacing: 0.04em;
 }
 
+/* Light, schematic hints, not icons in their own right — the label under them
+   already carries the meaning, this is just a faster, glanceable pre-read. */
+.controlIcon {
+  opacity: 0.55;
+}
+
+.controlLabel {
+  line-height: 1;
+}
+
 /* Phone-in-landscape: the ring alone shrinks via CountdownRing's own vh
    clamp, but padding/gaps/box height also need to give ground or the
    Pause/Skip/Exit boxes still end up below the fold. */
@@ -95,6 +111,12 @@
 
   .secondaryControl {
     height: 56px !important;
+  }
+
+  /* No headroom for icon + label stacked in a 56–64px box here — the label
+     alone still reads fine, so the icon drops rather than getting crushed. */
+  .controlIcon {
+    display: none;
   }
 
   .segmentLabel {
