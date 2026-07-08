@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { ListIcon, CalendarIcon, GuideIcon, GearIcon, PlusIcon, MoreIcon, CloseIcon, SearchIcon, SortIcon, SunIcon, MoonIcon, CheckIcon } from './icons.jsx'
+import { ListIcon, CalendarIcon, GuideIcon, GearIcon, PlusIcon, MoreIcon, CloseIcon, SearchIcon, SortIcon, StatsIcon, SunIcon, MoonIcon, CheckIcon } from './icons.jsx'
 import { SCOPES, STATUSES, SORTS } from './search.js'
 
 const GUIDE_URL = '/wanderlist-guide.html'
@@ -13,7 +13,7 @@ const VIEWS = [
 // (via .btn-today's margin-left: auto), with the secondary actions (theme, guide, settings)
 // tucked under the ⋯ menu. Search is a focused mode: while the field is open it takes the
 // whole row (closes only via its own ✕), everything else hides, and the field grows to fill.
-export default function MenuBar({ status, onStatus, query, scope, onQuery, onScope, sort, onSort, view, onView, onAdd, onSettings, themeMode, themeName, onCycleTheme }) {
+export default function MenuBar({ status, onStatus, query, scope, onQuery, onScope, sort, onSort, view, onView, onAdd, onStats, onSettings, themeMode, themeName, onCycleTheme }) {
   const [moreOpen, setMoreOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
@@ -27,6 +27,7 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
   useEffect(() => { if (searchActive) searchRef.current?.focus() }, [searchActive])
 
   const appActions = [
+    { key: 'stats', Icon: StatsIcon, label: 'Stats', onClick: onStats, title: 'Stats' },
     { key: 'theme', Icon: dark ? SunIcon : MoonIcon, label: 'Theme', onClick: onCycleTheme, title: `${themeName} — tap to cycle themes` },
     { key: 'guide', Icon: GuideIcon, label: 'Guide', href: GUIDE_URL, title: 'How to use Wanderlist' },
     { key: 'settings', Icon: GearIcon, label: 'Settings', onClick: onSettings, title: 'Connect to Notion & reminders' },

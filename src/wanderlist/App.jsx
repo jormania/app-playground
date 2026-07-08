@@ -9,6 +9,7 @@ import CalendarView from './CalendarView.jsx'
 import EntryView from './EntryView.jsx'
 import EntryEditor from './EntryEditor.jsx'
 import SettingsModal from './SettingsModal.jsx'
+import StatsModal from './StatsModal.jsx'
 
 // The list's empty state, tailored to *why* it's empty — a search with no hits, a To-do
 // filter with nothing left to do, or an Attended filter with nothing checked off yet. When
@@ -29,6 +30,7 @@ export default function App() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [showSettings, setShowSettings] = useState(false)
+  const [showStats, setShowStats] = useState(false)
   const [live, setLive] = useState(isLive())
   const [offline, setOffline] = useState(false)
 
@@ -184,6 +186,7 @@ export default function App() {
         view={view}
         onView={(v) => { setFocus(null); setView(v) }}
         onAdd={openAdd}
+        onStats={() => setShowStats(true)}
         onSettings={() => setShowSettings(true)}
         themeMode={modeOf(preset)}
         themeName={presetById(preset).name}
@@ -255,6 +258,7 @@ export default function App() {
       </footer>
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} onChanged={onSettingsChanged} />}
+      {showStats && <StatsModal entries={entries} onClose={() => setShowStats(false)} onChip={filterByChip} />}
     </>
   )
 }

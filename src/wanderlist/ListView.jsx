@@ -22,9 +22,11 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
   }
 
   const shown = entries.length
-  const countText = (total != null && shown !== total)
-    ? `${shown} of ${total}`
-    : `${shown} ${shown === 1 ? 'thing' : 'things'}`
+  // "Curiosities threading through your city" over a bare count of "things" — the same
+  // register as the masthead's "a city worth wandering", not a plain tally.
+  const noun = shown === 1 ? 'curiosity' : 'curiosities'
+  const prefix = (total != null && shown !== total) ? `${shown} of ${total}` : `${shown}`
+  const countText = `${prefix} ${noun} threading through your city`
 
   return (
     <div className="list">

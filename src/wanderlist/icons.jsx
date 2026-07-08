@@ -75,6 +75,9 @@ export const SearchIcon = (p) => (<svg {...base} {...p}><circle cx="11" cy="11" 
 export const MoreIcon = (p) => (
   <svg {...base} {...p}><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none" /></svg>
 )
+export const StatsIcon = (p) => (
+  <svg {...base} {...p}><path d="M5 21V11M12 21V4M19 21v-6" /><path d="M3 21h18" /></svg>
+)
 export const SortIcon = (p) => (
   <svg {...base} {...p}><path d="M7 5v14M7 19l-3-3M7 5l3 3M17 19V5M17 5l-3 3M17 19l3-3" /></svg>
 )
