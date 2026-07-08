@@ -17,9 +17,9 @@ afterEach(() => { cleanup(); vi.restoreAllMocks() })
 
 // A stateful wrapper mirroring exactly how EntryEditor uses PlaceInput: `place` is owned by
 // the parent and fed back down as `value` on every change — the shape that triggered the bug.
-function ControlledPlaceInput() {
-  const [place, setPlace] = useState('')
-  const [placeUrl, setPlaceUrl] = useState('')
+function ControlledPlaceInput({ initial = '', initialUrl = '' }) {
+  const [place, setPlace] = useState(initial)
+  const [placeUrl, setPlaceUrl] = useState(initialUrl)
   return <PlaceInput value={place} url={placeUrl} onChange={({ place: p, placeUrl: u }) => { setPlace(p); setPlaceUrl(u) }} />
 }
 
@@ -75,5 +75,32 @@ describe('PlaceInput — search actually fires while typing', () => {
     await userEvent.type(input, 'c')
     await act(async () => new Promise(r => setTimeout(r, 350)))
     expect(spy).not.toHaveBeenCalled()
+  })
+})
+
+describe('PlaceInput — a saved selection stays put on re-open', () => {
+  it('does not re-search on mount when the field already carries a resolved place (editing a saved entry)', async () => {
+    const spy = vi.spyOn(placesClient, 'autocomplete').mockResolvedValue({
+      configured: true,
+      predictions: [{ description: 'Cinema Pro, București', placeId: 'abc123' }],
+    })
+    render(<ControlledPlaceInput initial="Cinema Pro" initialUrl="https://maps.example/pin" />)
+    // Give the debounce window a chance to fire, then assert it never did — the mount
+    // itself must not be treated as "the user typed something new".
+    await act(async () => new Promise(r => setTimeout(r, 350)))
+    expect(spy).not.toHaveBeenCalled()
+    expect(screen.queryByText('Cinema Pro, București')).toBeNull()
+  })
+
+  it('still searches normally once the saved value is actually edited', async () => {
+    const spy = vi.spyOn(placesClient, 'autocomplete').mockResolvedValue({
+      configured: true,
+      predictions: [{ description: 'Cinema Prova, București', placeId: 'xyz789' }],
+    })
+    render(<ControlledPlaceInput initial="Cinema Pro" initialUrl="https://maps.example/pin" />)
+    const input = screen.getByPlaceholderText('search for a place…')
+    await userEvent.type(input, 'va')
+    await waitFor(() => expect(spy).toHaveBeenCalled(), { timeout: 1000 })
+    expect(spy).toHaveBeenCalledWith('Cinema Prova', expect.any(String), expect.anything())
   })
 })

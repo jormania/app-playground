@@ -6,6 +6,11 @@ import { categoryIcon } from './categoryIcons.js'
 // A forward-looking portrait of the backlog — what's coming up, what needs attention,
 // what's still someday. Attended items carry no weight anywhere on this screen; once
 // you've gone, it's dropped from the picture, same as everywhere else in the app.
+//
+// Layout note: the six count cards below fill two complete 3-column rows before any
+// full-width ("span") card appears — a span card mid-grid forces a line break and leaves
+// a dangling empty cell in whichever row it interrupts, so "next up" and the heat cards
+// all sit after the counts, not between them.
 function Stat({ value, label }) {
   return (
     <div className="stat-card">
@@ -26,32 +31,42 @@ function NextUp({ nextUp }) {
   )
 }
 
-// A frequency heatmap over Category, Tags, or Place: every value shown as a chip shaded
-// by how often it turns up in the active backlog (most-common = most intense). Tapping a
-// chip filters the list by it — the same gesture, and the same chip.js system, as
-// Journal of Delights' Stats screen (ported: kind/scope generalised beyond tag/person to
-// cover category and place too, and category chips carry their type icon).
-function HeatChips({ items, kind, scope, label, onChip }) {
-  if (!items.length) return null
-  const max = items[0].count
+// One chip button, coloured/iconed by kind, sized by --heat within its own group (so
+// Category's busiest value and Tag's busiest value are each fully saturated, rather than
+// competing against each other's raw counts).
+function HeatChip({ it, max, kind, scope, onChip }) {
+  const Icon = kind === 'category' ? categoryIcon(it.name) : null
+  return (
+    <button
+      type="button"
+      className={`chip ${kind}`}
+      style={{ '--heat': max > 1 ? (it.count - 1) / (max - 1) : 0 }}
+      title={`Search ${it.name} — ${it.count} ${it.count === 1 ? 'thing' : 'things'}`}
+      onClick={() => onChip(scope, it.name)}
+    >
+      {Icon && <Icon />}{it.name} · {it.count}
+    </button>
+  )
+}
+
+// A frequency heatmap card over one or more chip groups: every value shown as a chip
+// shaded by how often it turns up in the active backlog. Tapping a chip searches by it —
+// the same gesture, and the same chip system, as Journal of Delights' Stats screen. Two
+// groups (Category + Tags) share one card, merged onto one row in that order — the same
+// pairing MetaChips uses on an entry itself; Place gets its own card, same as it gets its
+// own row there too.
+function HeatCard({ groups, label, onChip }) {
+  const visible = groups.filter(g => g.items.length > 0)
+  if (!visible.length) return null
   return (
     <div className="stat-card span">
       <div className="stat-label bare">{label}</div>
       <div className="stat-chips heat">
-        {items.map(it => {
-          const Icon = kind === 'category' ? categoryIcon(it.name) : null
-          return (
-            <button
-              key={it.name}
-              type="button"
-              className={`chip ${kind}`}
-              style={{ '--heat': max > 1 ? (it.count - 1) / (max - 1) : 0 }}
-              title={`Search ${it.name} — ${it.count} ${it.count === 1 ? 'thing' : 'things'}`}
-              onClick={() => onChip(scope, it.name)}
-            >
-              {Icon && <Icon />}{it.name} · {it.count}
-            </button>
-          )
+        {visible.flatMap(g => {
+          const max = g.items[0].count
+          return g.items.map(it => (
+            <HeatChip key={`${g.kind}-${it.name}`} it={it} max={max} kind={g.kind} scope={g.scope} onChip={onChip} />
+          ))
         })}
       </div>
     </div>
@@ -70,15 +85,21 @@ export default function StatsModal({ entries, onClose, onChip }) {
       ) : (
         <div className="stats-grid">
           <Stat value={s.total} label="curiosities to explore" />
-          <NextUp nextUp={s.nextUp} />
           <Stat value={s.expiringSoon} label="expiring within 7 days" />
           <Stat value={s.needsAttention} label="past due, still open" />
           <Stat value={s.plannedSoon} label="planned within 7 days" />
           <Stat value={s.noDeadline} label="no deadline — someday" />
           <Stat value={s.paidUpcoming} label="already paid for" />
-          <HeatChips items={s.topCategories} kind="category" scope="category" label="by category" onChip={chip} />
-          <HeatChips items={s.topTags} kind="tag" scope="tags" label="by tag" onChip={chip} />
-          <HeatChips items={s.topPlaces} kind="place" scope="place" label="where" onChip={chip} />
+          <NextUp nextUp={s.nextUp} />
+          <HeatCard
+            label="by category & tag"
+            onChip={chip}
+            groups={[
+              { items: s.topCategories, kind: 'category', scope: 'category' },
+              { items: s.topTags, kind: 'tag', scope: 'tags' },
+            ]}
+          />
+          <HeatCard label="where" onChip={chip} groups={[{ items: s.topPlaces, kind: 'place', scope: 'place' }]} />
         </div>
       )}
     </Modal>

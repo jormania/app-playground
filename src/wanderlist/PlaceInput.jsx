@@ -22,7 +22,12 @@ export default function PlaceInput({ value, url, onChange }) {
   // a suggestion, clearing) — tells the debounce effect below to skip exactly one search
   // cycle, instead of comparing against `value` (which was always equal, silently
   // disabling search on every keystroke — the actual bug behind "Place never searches").
-  const skipNextSearchRef = useRef(false)
+  // Starts true: the editor mounts fresh every time you open an entry (see EntryEditor),
+  // so the very first render already carries an already-resolved saved place — that's a
+  // selection to keep, not something to re-search. Without this, the debounce effect's
+  // first run (which fires on mount regardless of "changes") re-queried the saved value
+  // and popped the suggestion list open again on every single re-edit.
+  const skipNextSearchRef = useRef(true)
 
   // Keep the visible text in step if the parent resets the value (e.g. opening a
   // different item in the editor).

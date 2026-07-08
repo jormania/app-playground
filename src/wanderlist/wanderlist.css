@@ -615,14 +615,14 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 /* ── Stats (ported from Journal of Delights: counts + frequency heatmaps of chips,
    tap-to-search) — forward-looking only, so no "days since" or history measures, just
    backlog shape and near-term forecast. ── */
-.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 16px; }
-.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 14px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
 .stat-card.span { grid-column: 1 / -1; }
-.stat-value { font-family: var(--sans); font-size: 1.25rem; font-weight: 500; color: var(--ink); line-height: 1.25; }
-.stat-label { font-family: var(--mono); font-size: 0.6rem; color: var(--faint); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 5px; line-height: 1.4; }
-.stat-label.bare { margin-top: 0; margin-bottom: 6px; }
+.stat-value { font-family: var(--sans); font-size: 1.15rem; font-weight: 500; color: var(--ink); line-height: 1.25; }
+.stat-label { font-family: var(--mono); font-size: 0.6rem; color: var(--faint); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; line-height: 1.35; }
+.stat-label.bare { margin-top: 0; margin-bottom: 5px; }
 .stat-chips { margin-top: 4px; }
-.stat-chips.heat { display: flex; flex-wrap: wrap; gap: 6px; }
+.stat-chips.heat { display: flex; flex-wrap: wrap; gap: 5px; }
 .stat-chips.heat .chip { margin: 0; cursor: pointer; }
 /* Frequency heatmap: --heat (0..1) fills the chip with more of its accent the more often
    the value turns up — Category in purple, Tags in green, Place in cyan, matching the
