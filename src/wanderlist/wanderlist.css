@@ -221,15 +221,23 @@ button { font-family: inherit; cursor: pointer; }
   max-width: 860px; margin: 0 auto; padding: 8px 22px;
   min-height: 46px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
-.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 3px; flex-shrink: 0; }
+/* Segmented controls share one look: a pill-track holding pill buttons. The status filter
+   (text) and the view switcher (icons) both use it, so "pick one of a set" reads the same
+   everywhere. */
+.seg, .view-switch { display: inline-flex; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 3px; flex-shrink: 0; }
 .seg button {
-  display: inline-flex; align-items: center; gap: 6px;
   border: none; background: none; color: var(--faint);
-  font-size: 0.78rem; padding: 5px 12px; border-radius: 999px; transition: all 0.16s;
+  font-size: 0.78rem; padding: 5px 13px; border-radius: 999px; transition: all 0.16s;
 }
-.seg button svg { font-size: 14px; }
 .seg button.active { background: var(--surface2); color: var(--ink); box-shadow: 0 1px 0 var(--shadow); }
 .seg button:hover:not(.active) { color: var(--muted); }
+.view-switch button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 33px; height: 28px; border: none; background: none; color: var(--faint);
+  border-radius: 999px; font-size: 15px; transition: all 0.16s;
+}
+.view-switch button.active { background: var(--surface2); color: var(--blue); box-shadow: 0 1px 0 var(--shadow); }
+.view-switch button:hover:not(.active) { color: var(--muted); }
 
 .search-wrap {
   display: flex; align-items: center; gap: 2px;
@@ -266,29 +274,32 @@ button { font-family: inherit; cursor: pointer; }
 .sort-select:hover { border-color: var(--border2); color: var(--ink); }
 .sort-select option { background: var(--surface2); color: var(--ink); }
 
-/* Fills the width right of the status segment and right-aligns its controls, so the
-   collapsed search/sort icons cluster on the right and an expanded search field grows
-   leftward into the free space — keeping the whole bar on one row. */
+/* The right-hand tools cluster: fills the space right of the left zone and right-aligns, so
+   the collapsed search/sort icons sit on the right and an expanded search field grows
+   leftward into the free space. */
 .menu-actions { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; justify-content: flex-end; }
 .actions-inline { display: flex; align-items: center; gap: 8px; }
 .actions-overflow { display: none; position: relative; }
 .sort-wrap { position: relative; display: inline-flex; }
 /* Search is a focused mode: while the field is open it takes the row (closes only via its
-   own ✕, never on blur — see MenuBar.jsx), so the status filter and secondary controls tuck
-   away and the field + Add stay on one row within the 860px column. */
-.menu-actions.searching .view-overflow,
-.menu-actions.searching .sort-wrap,
-.menu-actions.searching .actions-inline,
-.menu-actions.searching .actions-overflow { display: none; }
+   own ✕, never on blur — see MenuBar.jsx), so the whole left zone (status + view switcher)
+   and the secondary tools tuck away, and the field + Add stay on one row in the 860px column.
+   The class lives on .menubar-inner so it can hide the left-zone siblings, not just the tools. */
+.menubar-inner.searching .seg,
+.menubar-inner.searching .status-overflow,
+.menubar-inner.searching .view-switch,
+.menubar-inner.searching .sort-wrap,
+.menubar-inner.searching .actions-inline,
+.menubar-inner.searching .actions-overflow { display: none; }
 
-.view-overflow { display: none; position: relative; flex-shrink: 0; }
-.view-btn {
+/* Status filter as a dropdown pill (mobile only — the desktop segment is hidden there). */
+.status-overflow { display: none; position: relative; flex-shrink: 0; }
+.pill-btn {
   display: inline-flex; align-items: center; gap: 8px;
   background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
-  color: var(--ink); padding: 8px 14px; font-size: 0.8rem;
+  color: var(--ink); padding: 7px 13px; font-size: 0.78rem;
 }
-.view-btn .view-label { font-family: var(--mono); font-size: 0.7rem; }
-.view-btn .caret { width: 0; height: 0; border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; border-top: 4px solid var(--faint); }
+.pill-btn .caret { width: 0; height: 0; border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; border-top: 4px solid var(--faint); }
 .more-menu.left { right: auto; left: 0; }
 .more-menu button.active, .more-menu a.active { color: var(--ink); background: var(--surface); }
 .more-scrim { position: fixed; inset: 0; z-index: 60; }
@@ -305,6 +316,9 @@ button { font-family: inherit; cursor: pointer; }
 }
 .more-menu a:hover, .more-menu button:hover { background: var(--surface); color: var(--ink); }
 .more-menu svg { font-size: 16px; color: var(--muted); }
+.more-menu .menu-map.active { color: var(--blue); }
+.more-menu .menu-map.active svg { color: var(--blue); }
+.more-divider { height: 1px; background: var(--border); margin: 4px 6px; }
 .icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
   width: 36px; height: 36px; border-radius: 50%;
@@ -312,9 +326,11 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 16px; transition: all 0.16s;
 }
 .icon-btn:hover { color: var(--ink); border-color: var(--border2); background: var(--surface); }
+/* Add is THE create action — it wears the app's one primary colour (--blue), same as
+   "Mark attended" and every primary form button, so a single accent means "act" everywhere. */
 .btn-today {
   display: inline-flex; align-items: center; gap: 6px;
-  background: var(--accent-btn); color: var(--on-accent); border: none;
+  background: var(--blue); color: var(--on-accent); border: none;
   font-size: 0.78rem; font-weight: 600; padding: 8px 15px; border-radius: 999px; transition: all 0.16s;
 }
 .btn-today:hover { filter: brightness(1.06); }
@@ -419,6 +435,16 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 
 /* ── Detail view ── */
 .entry-view, .editor { max-width: 720px; margin-left: auto; margin-right: auto; }
+/* Header grammar matches the app: a circular icon-button for navigation (back), pill
+   buttons for the entry's actions (Mark attended = primary, Edit = secondary) — same
+   height, same radius, one clear hierarchy. */
+.detail-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.detail-actions { display: flex; align-items: center; gap: 8px; }
+.btn.done {
+  background: color-mix(in srgb, var(--green) 15%, transparent); color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 50%, transparent);
+}
+.btn.done:hover { border-color: var(--green); }
 .entry-view h1 { font-family: var(--sans); font-weight: 600; font-size: clamp(1.6rem, 4.5vw, 2.1rem); line-height: 1.15; margin: 10px 0 4px; color: var(--ink); }
 .entry-view .ev-body { font-family: var(--sans); font-weight: 400; font-size: 1.0625rem; line-height: 1.75; color: var(--ink); margin: 18px 0; white-space: pre-wrap; }
 .entry-view .meta-row { margin-top: 14px; }
@@ -648,6 +674,28 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 }
 .planned-pill svg { font-size: 12px; }
 
+/* ── Map view (placeholder) ── */
+.map-view { max-width: 560px; margin: 10px auto 0; text-align: center; }
+.map-illo {
+  border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+  background: linear-gradient(180deg, var(--surface), var(--bg2)); padding: 8px;
+}
+.map-illo svg { display: block; border-radius: 10px; }
+.mi-streets { stroke: var(--border2); stroke-width: 2; opacity: 0.7; }
+.mi-streets .mi-diag { opacity: 0.5; }
+.mi-river { stroke: var(--cyan); stroke-width: 6; opacity: 0.28; }
+.mi-pin .mi-body { fill: var(--blue); }
+.mi-pin .mi-halo { fill: var(--blue); opacity: 0.16; }
+.mi-pin .mi-dot { fill: var(--on-accent); }
+.mi-pin.mi-red .mi-body, .mi-pin.mi-red .mi-halo { fill: var(--red); }
+.map-view h2 { font-family: var(--serif); font-weight: 500; font-size: 1.7rem; margin: 22px 0 0; }
+.map-view h2 em { font-style: italic; color: var(--gold-soft); }
+.map-lede { color: var(--muted); font-size: 0.95rem; line-height: 1.65; max-width: 46ch; margin: 10px auto 0; }
+.map-lede .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; vertical-align: middle; margin: 0 1px; }
+.map-lede .dot.planned { background: var(--blue); }
+.map-lede .dot.expires { background: var(--red); }
+.map-count { font-family: var(--mono); font-size: 0.72rem; color: var(--faint); margin-top: 16px; }
+
 /* ── Empty & loading ── */
 .empty, .loading { text-align: center; padding: 70px 20px; color: var(--muted); }
 .empty p, .loading p { font-family: var(--serif); font-style: italic; font-size: 1.1rem; }
@@ -663,11 +711,18 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 @media (max-width: 560px) {
   .masthead { padding: 28px 0 14px; }
   .container { padding: 0 18px; }
+  /* tighten the bar so status(dropdown) + view switcher + tools (incl. sort) all fit one row */
+  .menubar-inner { padding: 8px 12px; gap: 6px; }
+  .menu-actions { gap: 6px; }
+  .view-switch { padding: 2px; }
+  .view-switch button { width: 30px; height: 28px; }
+  .pill-btn { padding: 7px 11px; }
   .btn-today span { display: none; }
-  .btn-today { padding: 8px 12px; }
-  .seg { display: none; }
-  .view-overflow { display: block; }
-  .actions-inline { display: none; }
+  .btn-today { padding: 8px 10px; }
+  .seg { display: none; }              /* status → dropdown */
+  .status-overflow { display: block; }
+  .view-switch .view-map-btn { display: none; }  /* Map → ⋯ menu on phones */
+  .actions-inline { display: none; }   /* theme/guide/settings → ⋯ */
   .actions-overflow { display: block; }
   .search-wrap { max-width: none; }
 }

@@ -6,6 +6,7 @@ import { triage, filterByStatus, filterBySearch } from './search.js'
 import MenuBar from './MenuBar.jsx'
 import ListView from './ListView.jsx'
 import CalendarView from './CalendarView.jsx'
+import MapView from './MapView.jsx'
 import EntryView from './EntryView.jsx'
 import EntryEditor from './EntryEditor.jsx'
 import SettingsModal from './SettingsModal.jsx'
@@ -21,7 +22,7 @@ export default function App() {
   const [live, setLive] = useState(isLive())
   const [offline, setOffline] = useState(false)
 
-  const [view, setView] = useState('list') // 'list' | 'calendar'
+  const [view, setView] = useState('list') // 'list' | 'calendar' | 'map'
   const [status, setStatus] = useState('todo')
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState('all')
@@ -167,7 +168,7 @@ export default function App() {
         sort={sort}
         onSort={setSort}
         view={view}
-        onToggleView={() => { setFocus(null); setView(v => (v === 'list' ? 'calendar' : 'list')) }}
+        onView={(v) => { setFocus(null); setView(v) }}
         onAdd={openAdd}
         onSettings={() => setShowSettings(true)}
         themeMode={modeOf(preset)}
@@ -218,6 +219,8 @@ export default function App() {
               onOpen={(e) => setFocus({ kind: 'view', entry: e })}
               onChip={filterByChip}
             />
+          ) : view === 'map' ? (
+            <MapView entries={calendarEntries} />
           ) : (
             <ListView
               entries={filtered}

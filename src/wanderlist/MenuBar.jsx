@@ -1,83 +1,89 @@
 import { useState, useRef, useEffect } from 'react'
-import { ListIcon, CalendarIcon, GuideIcon, GearIcon, PlusIcon, MoreIcon, CloseIcon, SearchIcon, SortIcon, SunIcon, MoonIcon, CheckCircleIcon, CheckIcon } from './icons.jsx'
+import { ListIcon, CalendarIcon, MapIcon, GuideIcon, GearIcon, PlusIcon, MoreIcon, CloseIcon, SearchIcon, SortIcon, SunIcon, MoonIcon, CheckIcon } from './icons.jsx'
 import { SCOPES, STATUSES, SORTS } from './search.js'
 
 const GUIDE_URL = '/wanderlist-guide.html'
 
-// The slim sticky bar, kept to a SINGLE row on laptop widths by making the two space-hungry
-// controls compact: search is a magnifier that expands into a field only when you want it,
-// and sort is a small icon-menu (not a wide dropdown). Left→right: status segment · search ·
-// sort · Add · view/theme/guide/settings. On phones the status segment and the app icons
-// collapse into ⋯-style menus.
-export default function MenuBar({ status, onStatus, query, scope, onQuery, onScope, sort, onSort, view, onToggleView, onAdd, onSettings, themeMode, themeName, onCycleTheme }) {
+// The three ways to look at the backlog. Order matters — List is home.
+const VIEWS = [
+  { id: 'list', Icon: ListIcon, label: 'List' },
+  { id: 'calendar', Icon: CalendarIcon, label: 'Calendar' },
+  { id: 'map', Icon: MapIcon, label: 'Map' },
+]
+
+// The slim sticky bar. Two clear zones, left→right: WHAT you're looking at (status filter +
+// view switcher) on the left, and the TOOLS to act (search · sort · add · app menu) on the
+// right. Search is a focused mode — opening it hides the left zone and grows the field, so
+// everything stays on one row even inside the 860px column. On phones the status segment
+// collapses to a dropdown and the app icons collapse to a ⋯ menu; the view switcher and the
+// primary tools stay visible.
+export default function MenuBar({ status, onStatus, query, scope, onQuery, onScope, sort, onSort, view, onView, onAdd, onSettings, themeMode, themeName, onCycleTheme }) {
   const [moreOpen, setMoreOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const searchRef = useRef(null)
   const dark = themeMode !== 'light'
-  const calendar = view === 'calendar'
   const searchActive = searchOpen || query.trim().length > 0
+  const currentStatus = STATUSES.find(s => s.value === status) || STATUSES[0]
+  const currentSort = SORTS.find(s => s.value === sort) || SORTS[0]
 
   // Focus the field the moment search expands.
   useEffect(() => { if (searchActive) searchRef.current?.focus() }, [searchActive])
 
-  const actions = [
-    // List ⇄ Calendar toggle: the icon shows the view you'll switch TO.
-    { key: 'view', Icon: calendar ? ListIcon : CalendarIcon, label: calendar ? 'List' : 'Calendar', onClick: onToggleView, title: calendar ? 'List view' : 'Calendar view' },
-    // Cycles the six palettes (each press flips light↔dark, so the sun/moon glyph — the
-    // mode you'll switch TO — stays truthful); the title names the palette you're on.
+  const appActions = [
     { key: 'theme', Icon: dark ? SunIcon : MoonIcon, label: 'Theme', onClick: onCycleTheme, title: `${themeName} — tap to cycle themes` },
     { key: 'guide', Icon: GuideIcon, label: 'Guide', href: GUIDE_URL, title: 'How to use Wanderlist' },
     { key: 'settings', Icon: GearIcon, label: 'Settings', onClick: onSettings, title: 'Connect to Notion & reminders' },
   ]
-  const current = STATUSES.find(s => s.value === status) || STATUSES[0]
-  const currentSort = SORTS.find(s => s.value === sort) || SORTS[0]
 
-  function closeSearch() {
-    onQuery('')
-    setSearchOpen(false)
-  }
+  // Only closes via the explicit ✕ (never on blur — so tapping the scope <select> inside the
+  // field can't yank the whole search UI away).
+  function closeSearch() { onQuery(''); setSearchOpen(false) }
 
   return (
     <nav className="menubar">
-      <div className="menubar-inner">
-        {/* Desktop: status segmented control */}
-        <div className="seg" role="tablist" aria-label="Status">
+      <div className={`menubar-inner${searchActive ? ' searching' : ''}`}>
+        {/* Status filter — desktop segment */}
+        <div className="seg" role="tablist" aria-label="Status filter">
           {STATUSES.map(s => (
             <button key={s.value} className={status === s.value ? 'active' : ''} aria-selected={status === s.value} onClick={() => onStatus(s.value)}>
-              {s.value === 'attended' ? <CheckCircleIcon /> : <ListIcon />}<span>{s.label}</span>
+              {s.label}
             </button>
           ))}
         </div>
 
-        {/* Everything else — status (mobile), search, sort, Add, app actions — is ONE
-            right-aligned cluster, so idle whitespace collects at the leading edge instead
-            of splitting the bar into two disconnected islands with a dead gap between them. */}
-        <div className={`menu-actions${searchActive ? ' searching' : ''}`}>
-          {/* Mobile: status collapses into a small menu; hidden while searching so the
-              search field always has the full row to itself (no wrap). */}
-          <div className="view-overflow">
-            <button className="view-btn" onClick={() => setStatusOpen(o => !o)} aria-haspopup="menu" aria-expanded={statusOpen} aria-label="Change status">
-              <span className="view-label">{current.label}</span><span className="caret" />
-            </button>
-            {statusOpen && (
-              <>
-                <div className="more-scrim" onClick={() => setStatusOpen(false)} />
-                <div className="more-menu left" role="menu">
-                  {STATUSES.map(s => (
-                    <button key={s.value} role="menuitem" className={status === s.value ? 'active' : ''} onClick={() => { setStatusOpen(false); onStatus(s.value) }}>
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+        {/* Status filter — mobile dropdown */}
+        <div className="status-overflow">
+          <button className="pill-btn" onClick={() => setStatusOpen(o => !o)} aria-haspopup="menu" aria-expanded={statusOpen} aria-label="Change status filter">
+            <span>{currentStatus.label}</span><span className="caret" />
+          </button>
+          {statusOpen && (
+            <>
+              <div className="more-scrim" onClick={() => setStatusOpen(false)} />
+              <div className="more-menu left" role="menu">
+                {STATUSES.map(s => (
+                  <button key={s.value} role="menuitem" className={status === s.value ? 'active' : ''} onClick={() => { setStatusOpen(false); onStatus(s.value) }}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
 
-          {/* Search: a magnifier that expands into a field. Only ever closes via the
-              explicit ✕ — NOT on blur, so tapping the scope <select> (or anything else
-              inside the field) can't yank the whole search UI out from under you. */}
+        {/* View switcher — List / Calendar / Map. Map hides on phones (see CSS) where it
+            won't fit, and reappears inside the ⋯ menu instead. */}
+        <div className="view-switch" role="tablist" aria-label="View">
+          {VIEWS.map(v => (
+            <button key={v.id} className={`${view === v.id ? 'active' : ''}${v.id === 'map' ? ' view-map-btn' : ''}`} aria-selected={view === v.id} onClick={() => onView(v.id)} title={v.label} aria-label={v.label}>
+              <v.Icon />
+            </button>
+          ))}
+        </div>
+
+        {/* Tools */}
+        <div className="menu-actions">
           {searchActive ? (
             <div className="search-wrap">
               <select className="scope" value={scope} onChange={e => onScope(e.target.value)} aria-label="Search scope">
@@ -100,8 +106,8 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
             <button className="icon-btn" onClick={() => setSearchOpen(true)} aria-label="Search" title="Search"><SearchIcon /></button>
           )}
 
-          {/* Sort: compact icon-menu (hidden in calendar view, where sort doesn't apply) */}
-          {!calendar && (
+          {/* Sort: only in the list view (calendar/map place things themselves) */}
+          {view === 'list' && (
             <div className="sort-wrap">
               <button className="icon-btn" onClick={() => setSortOpen(o => !o)} aria-haspopup="menu" aria-expanded={sortOpen} aria-label="Sort order" title={`Sort: ${currentSort.label}`}><SortIcon /></button>
               {sortOpen && (
@@ -119,24 +125,27 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
             </div>
           )}
 
-          <button className="btn-today" onClick={onAdd}><PlusIcon /> <span>Add</span></button>
+          <button className="btn-today" onClick={onAdd} title="Add something to your list"><PlusIcon /> <span>Add</span></button>
 
           {/* Desktop: app actions inline */}
           <div className="actions-inline">
-            {actions.map(a => a.href
+            {appActions.map(a => a.href
               ? <a key={a.key} className="icon-btn" href={a.href} target="_blank" rel="noopener" aria-label={a.label} title={a.title}><a.Icon /></a>
               : <button key={a.key} className="icon-btn" onClick={a.onClick} aria-label={a.label} title={a.title}><a.Icon /></button>
             )}
           </div>
 
-          {/* Mobile: one ⋯ button opening a popover of the same app actions */}
+          {/* Mobile: one ⋯ button opening a popover. Map lives here on phones (where the
+              switcher drops it), above the app actions with a divider. */}
           <div className="actions-overflow">
             <button className="icon-btn" onClick={() => setMoreOpen(o => !o)} aria-haspopup="menu" aria-expanded={moreOpen} aria-label="More actions"><MoreIcon /></button>
             {moreOpen && (
               <>
                 <div className="more-scrim" onClick={() => setMoreOpen(false)} />
                 <div className="more-menu" role="menu">
-                  {actions.map(a => a.href
+                  <button role="menuitem" className={`menu-map${view === 'map' ? ' active' : ''}`} onClick={() => { setMoreOpen(false); onView('map') }}><MapIcon /> Map</button>
+                  <div className="more-divider" />
+                  {appActions.map(a => a.href
                     ? <a key={a.key} role="menuitem" href={a.href} target="_blank" rel="noopener" onClick={() => setMoreOpen(false)}><a.Icon /> {a.label}</a>
                     : <button key={a.key} role="menuitem" onClick={() => { setMoreOpen(false); a.onClick() }}><a.Icon /> {a.label}</button>
                   )}

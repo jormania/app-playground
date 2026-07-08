@@ -7,7 +7,7 @@ import PlaceInput from './PlaceInput.jsx'
 import PhotoField from './PhotoField.jsx'
 import TicketsField from './TicketsField.jsx'
 import Lightbox from './Lightbox.jsx'
-import { NameIcon, TextIcon, LinkIcon, CategoryIcon, PlaceIcon, TagIcon, HourglassIcon, CalendarIcon, CheckCircleIcon } from './icons.jsx'
+import { NameIcon, TextIcon, LinkIcon, CategoryIcon, PlaceIcon, TagIcon, HourglassIcon, CalendarIcon } from './icons.jsx'
 
 // Create or edit one item. Everything but a Name is optional — this is a low-friction
 // backlog, so you can jot a bare idea now and flesh it out later. Category is a single
@@ -24,7 +24,9 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, saving
   const [tags, setTags] = useState(initial.tags || [])
   const [dateExpiring, setDateExpiring] = useState(initial.dateExpiring || '')
   const [plannedDate, setPlannedDate] = useState(initial.plannedDate || '')
-  const [attended, setAttended] = useState(Boolean(initial.attended))
+  // Attended is toggled from the list (round ✓) and the detail view, never here — but we
+  // carry the existing value through so editing an already-attended item doesn't clear it.
+  const attended = Boolean(initial.attended)
   const nameRef = useRef(null)
   const client = useMemo(() => getClient(), [])
 
@@ -179,11 +181,6 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, saving
         saving={saving}
         offline={client.mode === 'fixtures' ? false : Boolean(client.offline)}
       />
-
-      <label className="check-row">
-        <input type="checkbox" checked={attended} onChange={e => setAttended(e.target.checked)} />
-        <CheckCircleIcon /> <span>Already attended — keep it in the list, marked done</span>
-      </label>
 
       <div className="btn-row">
         <button type="submit" className="btn primary" disabled={!canSave}>{saving ? 'Saving…' : isNew ? 'Add to list' : 'Save changes'}</button>

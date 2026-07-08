@@ -14,13 +14,13 @@ export default function EntryView({ entry, onBack, onEdit, onChip, onToggleAtten
 
   return (
     <article className="entry-view">
-      <div className="editor-head">
-        <button className="btn-ghost" onClick={onBack}><BackIcon /> back</button>
-        <div className="ev-actions">
-          <button className={`btn${entry.attended ? '' : ' primary'}`} onClick={() => onToggleAttended(entry)} disabled={saving}>
-            <CheckCircleIcon /> {entry.attended ? 'Attended ✓ — undo' : 'Mark attended'}
-          </button>
-          <button className="btn btn-sm" onClick={() => onEdit(entry)}>Edit</button>
+      <div className="detail-head">
+        <button className="icon-btn" onClick={onBack} aria-label="Back to the list" title="Back"><BackIcon /></button>
+        <div className="detail-actions">
+          {entry.attended
+            ? <button className="btn done" onClick={() => onToggleAttended(entry)} disabled={saving} title="Tap to mark as not attended"><CheckCircleIcon /> Attended</button>
+            : <button className="btn primary" onClick={() => onToggleAttended(entry)} disabled={saving}><CheckCircleIcon /> Mark attended</button>}
+          <button className="btn" onClick={() => onEdit(entry)} title="Edit this item">Edit</button>
         </div>
       </div>
 

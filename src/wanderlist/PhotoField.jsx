@@ -63,11 +63,13 @@ export default function PhotoField({ client, nameHint, currentPhoto, removed, pe
           <button type="button" className="btn btn-sm" onClick={() => inputRef.current?.click()} disabled={disabled}>
             {busy ? 'Uploading…' : 'Add a picture'}
           </button>
-          {removed && (
+          {removed ? (
             <span className="hint">
               Will be removed on save ·{' '}
               <a role="button" tabIndex={0} onClick={onUndoRemove} onKeyDown={ev => ev.key === 'Enter' && onUndoRemove()}>Undo</a>
             </span>
+          ) : (
+            <span className="hint">one image · a poster, a street shot, a clipping</span>
           )}
         </div>
       )}
