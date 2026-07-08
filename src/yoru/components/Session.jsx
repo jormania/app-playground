@@ -9,33 +9,61 @@ import { createNightSoundscape } from '../lib/soundscape'
 import { phaseLabel } from '../lib/breath'
 import styles from './Session.module.css'
 
+// The three display modes, as a quiet in-session control. Short forms of the
+// Settings labels (Stay lit / Go dark / Turn off).
+const MODES = [
+  { value: 'lit', label: 'lit' },
+  { value: 'dark', label: 'dark' },
+  { value: 'off', label: 'off' },
+]
+// How long a peek reveals the session (and the mode control) before the overlay
+// eases back over a covered mode.
+const PEEK_MS = 6000
+
 // The running descent: the breathing orb, the night soundscape ebbing beneath
 // it, and the note. Everything dims toward the end; nothing announces the finish
 // with a jolt — the sound simply reaches silence and we ease to the close.
 export default function Session({ session, onNote, onFinish }) {
   const sound = useRef(null)
 
-  // Three screen modes. 'lit' shows the orb; 'dark' blacks out to a night sky
-  // but stays awake (audio keeps playing); 'off' releases the wake lock so the
-  // device screen truly sleeps to save power — and flips back to 'lit' the
-  // moment you re-engage with the app.
+  // Three display modes, switchable mid-session (see switchMode): 'lit' shows the
+  // orb; 'dark' covers the screen with a night sky but stays awake so audio keeps
+  // playing; 'off' releases the wake lock so the device screen can truly sleep to
+  // save power — and comes back to 'lit' the moment you re-engage with the app.
   const [screenMode, setScreenMode] = useState(session.screen || 'lit')
   const dark = screenMode === 'dark'
   const off = screenMode === 'off'
+  const covered = dark || off
 
   // The orb (and breathwork) only make sense when the screen is lit.
   const breathwork = session.breathwork !== false && screenMode === 'lit'
 
   const coords = useCoords(dark)
-  const [veiled, setVeiled] = useState(dark)
-  const peekTimer = useRef(0)
 
+  // While `veiled`, a covered mode draws its overlay (the sky for 'dark', black
+  // for 'off'). A tap peeks — hiding it briefly to reveal the session and the
+  // mode control — then it eases back over. 'lit' has no overlay.
+  const [veiled, setVeiled] = useState(covered)
+  const peekTimer = useRef(0)
   const peek = () => {
     setVeiled(false)
     clearTimeout(peekTimer.current)
-    peekTimer.current = setTimeout(() => setVeiled(true), 6000)
+    peekTimer.current = setTimeout(() => setVeiled(true), PEEK_MS)
   }
   useEffect(() => () => clearTimeout(peekTimer.current), [])
+
+  // Change display mode without disturbing the rest of the session — the sound,
+  // the clock and the breath all keep going. Entering a covered mode draws its
+  // overlay at once; 'lit' clears it.
+  const switchMode = (mode) => {
+    clearTimeout(peekTimer.current)
+    setScreenMode(mode)
+    setVeiled(mode === 'dark' || mode === 'off')
+  }
+
+  // The mode control is offered whenever the session itself is showing: always in
+  // 'lit', and during a peek in the covered modes.
+  const showModes = screenMode === 'lit' || !veiled
 
   // On returning to the app: revive the soundscape if the browser suspended it
   // while backgrounded (iOS Safari does this on tab-hide / screen-lock, in every
@@ -44,7 +72,11 @@ export default function Session({ session, onNote, onFinish }) {
     const onVis = () => {
       if (document.visibilityState !== 'visible') return
       sound.current?.resume()
-      if (screenMode === 'off') setScreenMode('lit')
+      if (screenMode === 'off') {
+        clearTimeout(peekTimer.current)
+        setScreenMode('lit')
+        setVeiled(false)
+      }
     }
     document.addEventListener('visibilitychange', onVis)
     return () => document.removeEventListener('visibilitychange', onVis)
@@ -138,7 +170,23 @@ export default function Session({ session, onNote, onFinish }) {
   return (
     <main className={styles.session} style={{ '--dim': dimFor(progress) }}>
       <div className={styles.enter} aria-hidden="true" />
-      <div className={styles.top} aria-hidden="true" />
+      <div className={styles.top}>
+        {showModes && (
+          <div className={styles.modes} role="group" aria-label="Display mode">
+            {MODES.map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                className={m.value === screenMode ? `${styles.mode} ${styles.modeOn}` : styles.mode}
+                aria-pressed={m.value === screenMode}
+                onClick={() => switchMode(m.value)}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       <button
         type="button"
@@ -183,7 +231,9 @@ export default function Session({ session, onNote, onFinish }) {
         </button>
       )}
 
-      {off && <div className={styles.blackout} aria-hidden="true" />}
+      {off && veiled && (
+        <button type="button" className={styles.blackout} onClick={peek} aria-label="Tap to peek" />
+      )}
       {ending && <div className={styles.endFade} aria-hidden="true" />}
     </main>
   )

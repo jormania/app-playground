@@ -72,6 +72,14 @@ discrete mm:ss countdown sits in the bottom-right.
 - **Turn off** — releases the wake lock so the device screen truly **sleeps to
   save power**, and flips back to *lit* the moment you re-engage.
 
+Settings picks the *starting* mode; from then on it's **switchable mid-session**
+via a quiet `lit · dark · off` control in the top bar — shown always in lit, and
+during a peek in the covered modes (tap the sky / black to peek, the control
+appears, pick a mode). Every transition is reachable and none disturb the running
+session: the sound, the clock and the breath all keep going, only the screen's
+behaviour changes. Lives in [`components/Session.jsx`](src/yoru/components/Session.jsx)
+(`switchMode`) — a covered mode draws its overlay at once, *lit* clears it.
+
 The screen is kept awake during lit/dark; when the session ends the lock is
 released so the display can power down.
 
