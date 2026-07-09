@@ -238,7 +238,12 @@ button { font-family: inherit; cursor: pointer; }
   border-radius: 999px; font-size: 15px; transition: all 0.16s;
 }
 .view-switch button.active { background: var(--surface2); color: var(--blue); box-shadow: 0 1px 0 var(--shadow); }
-.view-switch button:hover:not(.active) { color: var(--muted); }
+/* Every plain :hover rule in this file is scoped to (hover: hover) — touchscreens fake a
+   persistent hover on tap that only clears after a timeout (sometimes several seconds),
+   so without this gate, tapped icons/buttons can visibly show their hover colour long
+   after the tap, looking like a stuck or delayed state. Real mouse/trackpad devices are
+   unaffected: they get hover exactly as before. */
+@media (hover: hover) { .view-switch button:hover:not(.active) { color: var(--muted); } }
 
 .search-wrap {
   display: flex; align-items: center; gap: 2px;
@@ -262,7 +267,7 @@ button { font-family: inherit; cursor: pointer; }
 .search-wrap .search-input::placeholder { color: var(--faint); }
 .search-wrap .scope option { background: var(--surface2); color: var(--ink); }
 .search-wrap .search-clear { background: none; border: none; color: var(--faint); font-size: 14px; display: inline-flex; padding: 2px; }
-.search-wrap .search-clear:hover { color: var(--ink); }
+@media (hover: hover) { .search-wrap .search-clear:hover { color: var(--ink); } }
 
 /* The tools cluster, in the order search · status · sort · add · more. Search/status/sort
    pack left, right after the view switcher; Add (the one create action) and ⋯ push to the
@@ -284,7 +289,7 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
   color: var(--ink); padding: 7px 13px; font-size: 0.78rem; white-space: nowrap;
 }
-.pill-btn:hover { border-color: var(--border2); }
+@media (hover: hover) { .pill-btn:hover { border-color: var(--border2); } }
 .pill-btn .caret { width: 0; height: 0; border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; border-top: 4px solid var(--faint); }
 .more-menu.left { right: auto; left: 0; }
 .more-menu button.active, .more-menu a.active { color: var(--ink); background: var(--surface); }
@@ -300,7 +305,7 @@ button { font-family: inherit; cursor: pointer; }
   background: none; border: none; color: var(--muted);
   font-family: var(--sans); font-size: 0.9rem; padding: 9px 12px; border-radius: 8px;
 }
-.more-menu a:hover, .more-menu button:hover { background: var(--surface); color: var(--ink); }
+@media (hover: hover) { .more-menu a:hover, .more-menu button:hover { background: var(--surface); color: var(--ink); } }
 .more-menu svg { font-size: 16px; color: var(--muted); }
 .icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
@@ -308,7 +313,7 @@ button { font-family: inherit; cursor: pointer; }
   background: none; border: 1px solid var(--border); color: var(--muted);
   font-size: 16px; transition: all 0.16s;
 }
-.icon-btn:hover { color: var(--ink); border-color: var(--border2); background: var(--surface); }
+@media (hover: hover) { .icon-btn:hover { color: var(--ink); border-color: var(--border2); background: var(--surface); } }
 /* Add is THE create action — it wears the app's one primary colour (--blue), same as
    "Mark attended" and every primary form button, so a single accent means "act" everywhere. */
 .btn-today {
@@ -317,7 +322,7 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 0.78rem; font-weight: 600; padding: 8px 15px; border-radius: 999px; transition: all 0.16s;
   margin-left: auto;
 }
-.btn-today:hover { filter: brightness(1.06); }
+@media (hover: hover) { .btn-today:hover { filter: brightness(1.06); } }
 .btn-today svg { font-size: 14px; }
 
 main { padding: 26px 0 80px; }
@@ -334,7 +339,7 @@ main { padding: 26px 0 80px; }
   margin-left: auto; font-family: var(--mono); font-size: 0.6875rem; color: var(--muted);
   background: none; border: 1px solid var(--border2); border-radius: 999px; padding: 4px 11px;
 }
-.banner button:hover { color: var(--ink); border-color: var(--yellow); }
+@media (hover: hover) { .banner button:hover { color: var(--ink); border-color: var(--yellow); } }
 .banner.offline { background: color-mix(in srgb, var(--cyan) 9%, transparent); border-color: color-mix(in srgb, var(--cyan) 30%, transparent); }
 .banner.offline b { color: var(--cyan); }
 
@@ -359,7 +364,8 @@ main { padding: 26px 0 80px; }
 .field-label { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 0.6875rem; color: var(--faint); }
 .field-label svg { font-size: 14px; color: var(--muted); }
 /* The pin doubles as an "open in Maps" link wherever a place is shown. */
-a.place-pin:hover svg, a.place-pin:focus-visible svg { color: var(--blue); }
+a.place-pin:focus-visible svg { color: var(--blue); }
+@media (hover: hover) { a.place-pin:hover svg { color: var(--blue); } }
 .chip {
   display: inline-flex; align-items: center; gap: 5px;
   font-family: var(--mono); font-size: 0.6875rem; padding: 3px 9px; border-radius: 999px;
@@ -370,7 +376,7 @@ a.place-pin:hover svg, a.place-pin:focus-visible svg { color: var(--blue); }
 .chip.place { color: var(--cyan); border-color: color-mix(in srgb, var(--cyan) 45%, transparent); }
 .chip.tag { color: var(--blue); border-color: color-mix(in srgb, var(--blue) 45%, transparent); }
 button.chip { cursor: pointer; transition: border-color 0.16s, background 0.16s; }
-button.chip:hover { border-color: currentColor; background: color-mix(in srgb, var(--blue) 10%, transparent); }
+@media (hover: hover) { button.chip:hover { border-color: currentColor; background: color-mix(in srgb, var(--blue) 10%, transparent); } }
 
 /* ── Status / expiry pills ── */
 .row-badges, .ev-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
@@ -413,10 +419,10 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
   border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px;
   transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s, opacity 0.35s; cursor: pointer;
 }
-.entry-row:hover { border-color: var(--border2); transform: translateY(-2px); box-shadow: 0 10px 30px var(--shadow); }
+@media (hover: hover) { .entry-row:hover { border-color: var(--border2); transform: translateY(-2px); box-shadow: 0 10px 30px var(--shadow); } }
 .entry-row:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .entry-row.attended { opacity: 0.62; }
-.entry-row.attended:hover { opacity: 0.85; }
+@media (hover: hover) { .entry-row.attended:hover { opacity: 0.85; } }
 .row-main { flex: 1; min-width: 0; }
 .row-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .row-name { font-family: var(--sans); font-size: 1.2rem; font-weight: 600; color: var(--ink); line-height: 1.2; }
@@ -437,18 +443,18 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 }
 .row-link svg, .row-check svg, .row-going svg, .row-paid svg { stroke-width: 2.1; }
 .row-link { border-color: var(--border); color: var(--muted); }
-.row-link:hover { color: var(--blue); border-color: var(--blue); }
+@media (hover: hover) { .row-link:hover { color: var(--blue); border-color: var(--blue); } }
 /* Off states use --muted (not the near-invisible --faint) so "not yet" reads clearly
    rather than nearly blending into the row background — matched between Going and
    Attended so their un-toggled look is identical, only the accent colour differs once on. */
 .row-check, .row-going { background: var(--surface); color: var(--muted); }
-.row-check:hover { color: var(--green); border-color: var(--green); }
+@media (hover: hover) { .row-check:hover { color: var(--green); border-color: var(--green); } }
 .row-check.on { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); border-color: var(--green); animation: check-pop 0.28s ease; }
 /* Going — the list rail's quick toggle for the same field the editor's checkbox sets;
    blue (not green) so it's visually distinct from Attended at a glance. Gray/hollow
    when still deciding (identical to Attended's off state), filled solid blue once
    confirmed — same hollow-to-filled language as the calendar's planned dot. */
-.row-going:hover { color: var(--blue); border-color: var(--blue); }
+@media (hover: hover) { .row-going:hover { color: var(--blue); border-color: var(--blue); } }
 .row-going.on { background: color-mix(in srgb, var(--blue) 18%, transparent); color: var(--blue); border-color: var(--blue); animation: check-pop 0.28s ease; }
 @keyframes check-pop { 0% { transform: scale(0.7); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
 
@@ -463,7 +469,7 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
   border-color: color-mix(in srgb, var(--green) 50%, transparent);
   animation: check-pop 0.3s ease;
 }
-.btn.done:hover { border-color: var(--green); }
+@media (hover: hover) { .btn.done:hover { border-color: var(--green); } }
 .entry-view h1 { font-family: var(--sans); font-weight: 600; font-size: clamp(1.6rem, 4.5vw, 2.1rem); line-height: 1.15; margin: 10px 0 4px; color: var(--ink); }
 .entry-view .ev-body { font-family: var(--sans); font-weight: 400; font-size: 1.0625rem; line-height: 1.75; color: var(--ink); margin: 18px 0; white-space: pre-wrap; }
 .entry-view .meta { margin-top: 14px; }
@@ -478,16 +484,16 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
   font-size: 0.84rem; font-weight: 500; padding: 9px 16px; border-radius: 999px;
   border: 1px solid var(--border2); background: var(--surface); color: var(--ink); transition: all 0.16s;
 }
-.btn:hover { border-color: var(--blue); }
+@media (hover: hover) { .btn:hover { border-color: var(--blue); } }
 .btn svg { font-size: 15px; }
 .btn.primary { background: var(--blue); color: var(--on-accent); border-color: var(--blue); }
-.btn.primary:hover { filter: brightness(1.06); }
+@media (hover: hover) { .btn.primary:hover { filter: brightness(1.06); } }
 .btn:disabled { opacity: 0.5; cursor: default; }
 .btn-sm { padding: 6px 12px; font-size: 0.76rem; }
 .btn-sm svg { font-size: 14px; }
 .btn-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 22px; }
 .btn-ghost { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; color: var(--faint); font-size: 0.8rem; padding: 9px 2px; }
-.btn-ghost:hover { color: var(--muted); }
+@media (hover: hover) { .btn-ghost:hover { color: var(--muted); } }
 
 /* ── Editor ── */
 .editor-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
@@ -520,11 +526,15 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .field > input[type=time]::-webkit-calendar-picker-indicator {
   opacity: 0.6; border-radius: 6px; padding: 3px; margin-right: -2px; cursor: pointer; transition: opacity 0.16s, background 0.16s;
 }
-.field > input[type=date]:hover::-webkit-calendar-picker-indicator,
-.field > input[type=time]:hover::-webkit-calendar-picker-indicator,
 .field > input[type=date]:focus::-webkit-calendar-picker-indicator,
 .field > input[type=time]:focus::-webkit-calendar-picker-indicator {
   opacity: 1; background: color-mix(in srgb, var(--blue) 16%, transparent);
+}
+@media (hover: hover) {
+  .field > input[type=date]:hover::-webkit-calendar-picker-indicator,
+  .field > input[type=time]:hover::-webkit-calendar-picker-indicator {
+    opacity: 1; background: color-mix(in srgb, var(--blue) 16%, transparent);
+  }
 }
 .field > input:focus, .field > textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--ring); }
 .field input::placeholder, .field textarea::placeholder { color: var(--faint); }
@@ -549,7 +559,7 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .chipinput .token.category { color: var(--purple); }
 .chipinput .token.tag { color: var(--blue); }
 .chipinput .token button { background: none; border: none; color: inherit; opacity: 0.6; display: inline-flex; font-size: 13px; }
-.chipinput .token button:hover { opacity: 1; }
+@media (hover: hover) { .chipinput .token button:hover { opacity: 1; } }
 .chipinput input { flex: 1; min-width: 90px; background: none; border: none; outline: none; color: var(--ink); font-family: var(--sans); font-size: 16px; padding: 4px; }
 .chipinput .suggest, .placeinput .suggest {
   position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 20;
@@ -560,7 +570,7 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
   display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: none; color: var(--muted);
   font-size: 0.86rem; padding: 8px 10px; border-radius: 7px;
 }
-.chipinput .suggest button:hover, .placeinput .suggest button:hover { background: var(--surface); color: var(--ink); }
+@media (hover: hover) { .chipinput .suggest button:hover, .placeinput .suggest button:hover { background: var(--surface); color: var(--ink); } }
 .chipinput .suggest .create { color: var(--blue); }
 .placeinput .suggest button svg { font-size: 15px; color: var(--cyan); flex-shrink: 0; }
 
@@ -575,8 +585,10 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .placeinput input { flex: 1; min-width: 60px; background: none; border: none; outline: none; color: var(--ink); font-family: var(--sans); font-size: 16px; padding: 11px 2px; }
 .placeinput input::placeholder { color: var(--faint); }
 .placeinput .place-map, .placeinput .place-clear { background: none; border: none; color: var(--faint); display: inline-flex; padding: 4px; font-size: 15px; }
-.placeinput .place-map:hover { color: var(--blue); }
-.placeinput .place-clear:hover { color: var(--ink); }
+@media (hover: hover) {
+  .placeinput .place-map:hover { color: var(--blue); }
+  .placeinput .place-clear:hover { color: var(--ink); }
+}
 .placeinput .place-loading { font-family: var(--mono); font-size: 0.66rem; color: var(--faint); margin-top: 6px; }
 
 /* ── Photo (editor field + detail panel + list thumb) ── */
@@ -594,7 +606,7 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
   font-family: var(--mono); font-size: 0.6875rem; color: var(--faint);
   background: none; border: 1px solid var(--border2); border-radius: 999px; padding: 4px 11px; cursor: pointer;
 }
-.field-remove:hover { color: var(--red); border-color: var(--red); }
+@media (hover: hover) { .field-remove:hover { color: var(--red); border-color: var(--red); } }
 .field-remove:disabled { opacity: 0.5; cursor: default; }
 
 /* The detail view shows the photo as taken, no cropping — scales down to fit, capped so a
@@ -625,8 +637,10 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .ticket-row svg:first-child { font-size: 15px; color: var(--cyan); flex-shrink: 0; }
 .ticket-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ticket-open, .ticket-remove { background: none; border: none; color: var(--faint); display: inline-flex; padding: 3px; flex-shrink: 0; }
-.ticket-open:hover { color: var(--blue); }
-.ticket-remove:hover { color: var(--red); }
+@media (hover: hover) {
+  .ticket-open:hover { color: var(--blue); }
+  .ticket-remove:hover { color: var(--red); }
+}
 .ticket-remove:disabled { opacity: 0.5; cursor: default; }
 /* Plain read-only rendering in the detail view — no background box, just a linked line. */
 .ticket-list.plain { margin-top: 6px; }
@@ -641,7 +655,7 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
   border-color: var(--gold);
   background: color-mix(in srgb, var(--gold) 14%, transparent); color: var(--gold);
 }
-.row-paid:hover { background: color-mix(in srgb, var(--gold) 26%, transparent); }
+@media (hover: hover) { .row-paid:hover { background: color-mix(in srgb, var(--gold) 26%, transparent); } }
 
 /* ── Modal ── */
 .modal-scrim { position: fixed; inset: 0; background: var(--scrim); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
@@ -696,7 +710,7 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
   background: none; border: 1px solid var(--border); color: var(--muted);
   font-size: 0.78rem; font-weight: 600; transition: all 0.16s;
 }
-.cal-today-btn:hover:not(:disabled) { color: var(--ink); border-color: var(--border2); background: var(--surface); }
+@media (hover: hover) { .cal-today-btn:hover:not(:disabled) { color: var(--ink); border-color: var(--border2); background: var(--surface); } }
 .cal-today-btn:disabled { opacity: 0.4; cursor: default; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
 .cal-dow-row { margin-bottom: 5px; }
@@ -712,7 +726,7 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
    They stay legible and clickable; selecting one still fills it (see .selected below). */
 .cal-cell.past { background: none; color: var(--faint); }
 .cal-cell.past .cal-dot { opacity: 0.55; }
-.cal-cell:hover { border-color: var(--blue); transform: translateY(-1px); }
+@media (hover: hover) { .cal-cell:hover { border-color: var(--blue); transform: translateY(-1px); } }
 .cal-cell.today { border-color: var(--purple); color: var(--ink); }
 .cal-cell.selected { background: linear-gradient(180deg, var(--surface2), var(--surface)); color: var(--ink); border-color: var(--blue); box-shadow: 0 0 0 2px var(--ring); }
 /* Day number stays centred in the box; the marker dots sit absolutely beneath it so
@@ -737,7 +751,7 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
   border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px; cursor: pointer;
   transition: border-color 0.16s, transform 0.16s, box-shadow 0.16s;
 }
-.agenda-card:hover { border-color: var(--border2); transform: translateY(-1px); box-shadow: 0 8px 22px var(--shadow); }
+@media (hover: hover) { .agenda-card:hover { border-color: var(--border2); transform: translateY(-1px); box-shadow: 0 8px 22px var(--shadow); } }
 .agenda-card:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .agenda-card.attended { opacity: 0.62; }
 .agenda-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }

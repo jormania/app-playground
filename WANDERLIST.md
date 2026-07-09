@@ -77,6 +77,15 @@ doesn't exist, e.g. iOS). Tapping Paid with more than one ticket opens `TicketsM
 — a small list, each ticket opening directly — instead of falling through to the full
 entry (exactly one ticket still opens directly via `links.js`'s `openTickets`).
 
+**Every plain `:hover` rule in `wanderlist.css` is scoped to `@media (hover: hover)`.**
+Touchscreens fake a persistent hover on tap (Chrome/Android in particular can leave it
+"stuck" for several seconds before clearing), so an un-scoped hover rule reads as a
+delayed/wrong colour after a real tap — this is what caused the row rail's Going icon to
+flash the wrong colour for a few seconds after toggling on a phone. Real mouse/trackpad
+devices are unaffected — they still get every hover exactly as before. Two rules mixed
+`:hover` with `:focus`/`:focus-visible` (the place-pin icon, the date/time picker's
+indicator glyph) and needed splitting so the focus-triggered half stays always-active.
+
 ## Notion database schema
 
 App model: `{ id, name, description, link, category, place, placeUrl, tags[], attended, going,
