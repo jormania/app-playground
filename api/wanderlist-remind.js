@@ -12,6 +12,11 @@
 // Planned-and-Going (confirmed) — each one labelled with which it is. All server-side: it
 // never touches your browser, so it works with the app closed.
 //
+// Once a week (IDEA_NUDGE_WEEKDAY, Sunday) it also appends a gentle nudge about "ideas" —
+// unattended items with no Planned Date and no Date Expiring, added ≥30 days ago — the
+// someday pile that never surfaces on the calendar and is easy to forget. Weekly, not
+// daily, so it never becomes noise; it piggybacks on the same evening send.
+//
 // Also answers `?test=1` — Settings' "Send test reminder" button. That path skips the
 // CRON_SECRET (browsers can't hold it) and the local-hour gate (a test press should always
 // send now, not wait for evening) and is instead gated like wanderlist-reminders.js: only
@@ -27,14 +32,16 @@
 //   CRON_SECRET (optional)   — Vercel adds `Authorization: Bearer <secret>` to cron calls
 //   KV store (optional)      — holds the {enabled,email,name} prefs from the app; if KV
 //                              isn't set, we fall back to REMINDER_EMAIL / REMINDER_NAME.
-import { selectDueTomorrow, zonedTomorrowKey, zonedHour, splitPlannedStart, buildReminderEmail } from './_lib/reminders.js'
+import { selectDueTomorrow, selectStaleIdeas, zonedTomorrowKey, zonedTodayKey, zonedHour, zonedWeekday, splitPlannedStart, buildReminderEmail } from './_lib/reminders.js'
 import { kvGet } from './_lib/kv.js'
 import { PREFS_KEY } from './wanderlist-reminders.js'
 import { originAllowed, rateLimited, clientIp } from './_shared.js'
 
 const NOTION_VERSION = '2022-06-28'
 const TIMEZONE = 'Europe/Bucharest'
-const SEND_HOUR = 19 // local hour this reminder should go out
+const SEND_HOUR = 19       // local hour this reminder should go out
+const IDEA_NUDGE_WEEKDAY = 0 // Sunday — the one day a week stale ideas are nudged (0 = Sun)
+const IDEA_MIN_AGE_DAYS = 30 // an idea must be at least this old to be nudged about
 
 // Minimal row → item mapping (only the fields the email needs). Kept local so the cron
 // bundle doesn't reach into the Vite src tree.
@@ -48,11 +55,29 @@ function mapRow(page) {
     place: plain(p.Place?.rich_text),
     link: p.Link?.url || '',
     dateExpiring: p['Date Expiring']?.date?.start || null,
+    dateAdded: p['Date Added']?.date?.start || null,
     plannedDate: planned.date,
     plannedTime: planned.time,
     going: Boolean(p.Going?.checkbox),
     attended: Boolean(p.Attended?.checkbox),
   }
+}
+
+// One Notion query helper — POSTs a filter, returns mapped rows (or throws with a message).
+async function queryNotion(dbId, token, filter) {
+  const nres = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Notion-Version': NOTION_VERSION, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ page_size: 100, filter }),
+  })
+  if (!nres.ok) {
+    const text = await nres.text()
+    const err = new Error(`Notion query failed (${nres.status})`)
+    err.detail = text.slice(0, 300)
+    throw err
+  }
+  const data = await nres.json()
+  return (data.results || []).map(mapRow)
 }
 
 export default async function handler(req, res) {
@@ -109,54 +134,60 @@ export default async function handler(req, res) {
   if (!isTest && !prefs.enabled) { res.status(200).json({ sent: 0, reason: 'disabled' }); return }
   if (!prefs.email) { res.status(200).json({ sent: 0, reason: 'no-email' }); return }
 
-  const tomorrow = zonedTomorrowKey(new Date(), TIMEZONE)
+  const now = new Date()
+  const tomorrow = zonedTomorrowKey(now, TIMEZONE)
+  const todayK = zonedTodayKey(now, TIMEZONE)
+  // The stale-idea nudge is weekly (see IDEA_NUDGE_WEEKDAY) so it never becomes daily noise;
+  // a test send always includes it so you can see the whole email.
+  const nudgeIdeas = isTest || zonedWeekday(now, TIMEZONE) === IDEA_NUDGE_WEEKDAY
 
   let items = []
+  let ideas = []
   try {
-    const nres = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Notion-Version': NOTION_VERSION, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        page_size: 100,
-        filter: {
-          and: [
-            { property: 'Attended', checkbox: { equals: false } },
-            {
-              or: [
-                { property: 'Date Expiring', date: { equals: tomorrow } },
-                { property: 'Planned Date', date: { equals: tomorrow } },
-              ],
-            },
+    const dueRows = await queryNotion(dbId, token, {
+      and: [
+        { property: 'Attended', checkbox: { equals: false } },
+        {
+          or: [
+            { property: 'Date Expiring', date: { equals: tomorrow } },
+            { property: 'Planned Date', date: { equals: tomorrow } },
           ],
         },
-      }),
+      ],
     })
-    if (!nres.ok) {
-      const text = await nres.text()
-      res.status(502).json({ message: `Notion query failed (${nres.status})`, detail: text.slice(0, 300) })
-      return
-    }
-    const data = await nres.json()
     // selectDueTomorrow re-checks the rule in case the DB filter and our mapping ever
     // drift (e.g. a Planned Date's `equals` matching a day it merely overlaps in time).
-    items = selectDueTomorrow((data.results || []).map(mapRow), tomorrow)
+    items = selectDueTomorrow(dueRows, tomorrow)
+
+    if (nudgeIdeas) {
+      const cutoff = zonedTomorrowKey(new Date(now.getTime() - (IDEA_MIN_AGE_DAYS + 1) * 86400000), TIMEZONE)
+      const ideaRows = await queryNotion(dbId, token, {
+        and: [
+          { property: 'Attended', checkbox: { equals: false } },
+          { property: 'Planned Date', date: { is_empty: true } },
+          { property: 'Date Expiring', date: { is_empty: true } },
+          { property: 'Date Added', date: { on_or_before: cutoff } },
+        ],
+      })
+      ideas = selectStaleIdeas(ideaRows, todayK, IDEA_MIN_AGE_DAYS)
+    }
   } catch (err) {
-    res.status(502).json({ message: `Could not reach Notion: ${err.message}` })
+    res.status(502).json({ message: `Could not reach Notion: ${err.message}`, detail: err.detail })
     return
   }
 
   // A test send with nothing genuinely due tomorrow still emails one placeholder item, so
   // the button always produces a real message to check.
-  if (isTest && items.length === 0) {
+  if (isTest && items.length === 0 && ideas.length === 0) {
     items = [{ id: 'test', name: 'Test reminder — Wanderlist', place: '', link: '', dateExpiring: tomorrow, attended: false, statuses: ['expiring'] }]
   }
 
-  if (items.length === 0) { res.status(200).json({ sent: 0, tomorrow, reason: 'nothing-due' }); return }
+  if (items.length === 0 && ideas.length === 0) { res.status(200).json({ sent: 0, tomorrow, reason: 'nothing-due' }); return }
 
-  const email = buildReminderEmail(items, { name: prefs.name, tomorrowKey: tomorrow })
+  const email = buildReminderEmail(items, { name: prefs.name, ideas })
   if (isTest) email.subject = `[Test] ${email.subject}`
 
-  if (dryRun) { res.status(200).json({ dryRun: true, tomorrow, count: items.length, to: prefs.email, email }); return }
+  if (dryRun) { res.status(200).json({ dryRun: true, tomorrow, count: items.length, ideas: ideas.length, to: prefs.email, email }); return }
 
   try {
     const rres = await fetch('https://api.resend.com/emails', {
@@ -174,5 +205,5 @@ export default async function handler(req, res) {
     return
   }
 
-  res.status(200).json({ sent: items.length, tomorrow, test: isTest })
+  res.status(200).json({ sent: items.length + ideas.length, due: items.length, ideas: ideas.length, tomorrow, test: isTest })
 }

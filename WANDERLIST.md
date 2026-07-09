@@ -89,7 +89,7 @@ indicator glyph) and needed splitting so the focus-triggered half stays always-a
 ## Notion database schema
 
 App model: `{ id, name, description, link, category, place, placeUrl, tags[], attended, going,
-dateAdded, dateExpiring, plannedDate, plannedTime, photo, tickets[] }`. Notion properties:
+cost, dateAdded, dateExpiring, plannedDate, plannedTime, photo, tickets[] }`. Notion properties:
 
 | Property | Type | Notes |
 |---|---|---|
@@ -99,6 +99,7 @@ dateAdded, dateExpiring, plannedDate, plannedTime, photo, tickets[] }`. Notion p
 | `Category` | **select** | single, extendable inline, **always lowercase** (normalized on read + write) |
 | `Place` | **rich_text** | resolved place name (see below) |
 | `Map` | **url** | Maps pin link for the place |
+| `Cost` | **number** | optional price in lei; hidden in-app for anything tagged `free` |
 | `Tags` | multi_select | freeform, **always lowercase** (normalized + deduped on read + write) |
 | `Attended` | checkbox | |
 | `Going` | checkbox | added M2.1 — "have I decided to go", separate from `Attended`'s "did it happen". Only meaningful once a `Planned Date` exists; the editor only shows the toggle then, and clearing the date clears `Going` too. Lets you track a concert's date/time while still undecided about attending. |
@@ -245,10 +246,42 @@ serverless function was needed) plus one new piece for the multi-file case:
   calendar dot + agenda pill — see above).
 - Both require a live connection (same as JoD's photo) — no offline queueing for uploads.
 
-## M4+ (parked)
+## M4 (shipped)
 
-- Richer reminders (configurable lead time, weekly digest); paste-a-link autofill; a
-  week/agenda calendar layout.
-- **Not** a map view — considered, then explicitly ruled out for good (a Places link +
-  "Open in Maps" already cover it; the app isn't meant to become a real map product). If
-  this is revisited, that's a deliberate reversal of a standing decision, not a default.
+- **Add to Calendar** on the detail view (`calendar.js`) — a Google Calendar template URL,
+  prefilled; a planned date + time (going) arrives as a timed block, a vaguer entry opens
+  with the date left to set.
+- **Cost** (lei, optional Number property) — shown above the chips in `MetaChips`, hidden
+  for anything tagged `free` (the editor field disappears entirely once `free` is tagged, and
+  any value is dropped on save, so a free thing never carries a cost). No Stats surface, by request.
+- **Ideas filter** (`search.js`'s `isIdea`) — unattended, dateless items, a **subset of
+  Backlog**, in the status segment as **Backlog · Ideas · Attended · All** (the first option's
+  value is still `'todo'` internally — only its label changed from "To-do" to "Backlog"); plus a
+  **weekly stale-idea email nudge** (Sundays, ≥30 days old — `selectStaleIdeas` in
+  `api/_lib/reminders.js`).
+- **Map view** (`MapModal.jsx` + `mapView.js` + `geocode.js`, in the ⋯ menu above Stats) — a
+  **Leaflet + OpenStreetMap** map (no API key), plotting **every entry with a place as its own
+  custom pin**: the active one gold and larger, the rest muted and smaller (so they're distinct
+  from each other, and — being our own divIcons on an OSM base — there are no Google markers to
+  clash with). Opens centred on the next-expiring entry with a place; a list beneath re-centres.
+  Places are geocoded once via **Nominatim** and cached in `localStorage` (`geocode.js`), so
+  first open trickles pins in and later opens are instant. Leaflet is dynamically imported so it
+  only loads when the map opens. This is a **deliberate reversal** of the earlier "never a map
+  view" stance — still lightweight (a map + a list, not a routing/search product).
+- **Theme picker in Settings → Appearance** (`SettingsModal.jsx`'s `ThemePicker`, swatches from
+  `theme.js`'s `PRESETS`) — jump straight to any of the six palettes; the header ◐ button still
+  cycles. The same picker was added to **Journal of Delights** (which had the palettes + cycle
+  button but no Settings control) — see its `SettingsModal.jsx`.
+- **24-hour time** — `dates.js`'s `formatTime` renders `HH:MM` (Romania uses military time, no
+  am/pm); the reminder email's `formatTime24` matches.
+- **New PWA icon** — a brass map-pin with a check (a place, ticked off), replacing the old
+  compass rose that read too close to Sol Odyssey's. `public/wanderlist-icon.svg` (the manifest,
+  favicon, and apple-touch-icon all point at this one SVG).
+
+## M5+ (parked)
+
+- **Recurring events** — a monthly market, a weekly class currently must be re-added each
+  time. Wants a recurrence rule on an entry (and the reminder/calendar logic to respect it).
+  Deferred until the need is real; noted here and in project memory so it isn't forgotten.
+- Richer reminders (configurable lead time, not just the evening-before + weekly nudge);
+  paste-a-link autofill; a week/agenda calendar layout; a same-day "you're going today" nudge.

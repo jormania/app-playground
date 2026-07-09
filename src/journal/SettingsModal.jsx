@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   getToken, setToken, clearToken,
   getDatabaseId, setDatabaseId, hasCustomDatabase,
-  testConnection,
+  testConnection, PRESETS,
   getRemindersEnabled, setRemindersEnabled,
   getRemindersNudge, setRemindersNudge,
   getRemindersOnThisDay, setRemindersOnThisDay,
@@ -11,13 +11,48 @@ import { enableReminders, unregisterPeriodicSync, capabilities, notificationPerm
 import { gatherDiagnostics } from '../shared/notify/diagnostics'
 import { useDiagnosticsReveal } from '../shared/notify/useDiagnosticsReveal'
 import Modal from './Modal.jsx'
+import { CheckIcon } from './icons.jsx'
 
 const DIAG_KEYS = ['state', 'lastNudgeSent', 'lastOnThisDaySent']
+
+// The palette picker — the six presets grouped dark / light, each a live swatch (canvas +
+// accent + ink dots). Journal of Delights already had the six-palette theme system and the
+// header cycle button, but no way to jump straight to a palette; this adds that in Settings,
+// mirroring Sol Odyssey's Appearance section. Swatch hexes come from PRESETS (a colour
+// preview OF each palette — the one place raw hex is legitimate).
+function ThemePicker({ preset, onSetPreset }) {
+  return (
+    <div className="theme-picker">
+      {['dark', 'light'].map(mode => (
+        <div key={mode} className="theme-group">
+          <p className="theme-group-label">{mode}</p>
+          <div className="theme-grid">
+            {PRESETS.filter(p => p.mode === mode).map(p => {
+              const selected = p.id === preset
+              const [canvas, accent, ink] = p.swatch
+              return (
+                <button key={p.id} type="button" className={`theme-option${selected ? ' selected' : ''}`}
+                  aria-pressed={selected} onClick={() => onSetPreset(p.id)}>
+                  <span className="theme-swatch" aria-hidden style={{ background: canvas }}>
+                    <span style={{ background: accent }} />
+                    <span style={{ background: ink }} />
+                  </span>
+                  <span className="theme-name">{p.name}</span>
+                  {selected && <CheckIcon />}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 // Connects the app to a real journal. The two BYO pieces (token + database) are
 // stored locally, never on a server, so any user can point at their own copy.
 // "Test connection" verifies them before you commit.
-export default function SettingsModal({ onClose, onChanged }) {
+export default function SettingsModal({ preset, onSetPreset, onClose, onChanged }) {
   const [token, setTokenValue] = useState(getToken())
   const [db, setDb] = useState(hasCustomDatabase() ? getDatabaseId() : '')
   const [testing, setTesting] = useState(false)
@@ -178,6 +213,15 @@ export default function SettingsModal({ onClose, onChanged }) {
               <p>lastOnThisDaySent: {diag.values.lastOnThisDaySent || '—'}</p>
             </div>
           )}
+        </div>
+
+        <div className="field" style={{ marginTop: 22 }}>
+          <label style={labelStyle}>Appearance</label>
+          <p className="hint" style={{ marginBottom: 10 }}>
+            Pick a palette — three dark, three light. The header <b>◐</b> button cycles through
+            them in order; this jumps straight to one.
+          </p>
+          <ThemePicker preset={preset} onSetPreset={onSetPreset} />
         </div>
 
         <div className="btn-row" style={{ marginTop: 18 }}>

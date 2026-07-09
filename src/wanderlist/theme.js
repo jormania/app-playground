@@ -19,15 +19,18 @@ export const THEME_KEY = 'wanderlist_theme'
 /**
  * Presets in CYCLE ORDER — Solarized first, then interleaved so each header press flips
  * dark↔light. `barColor` is the mobile browser-chrome colour (the palette's canvas).
- * @type {{ id: PresetId, name: string, mode: Mode, barColor: string }[]}
+ * `swatch` is `[canvas, accent, ink]` — the only place raw hex is legitimate outside the
+ * `[data-theme]` blocks in wanderlist.css, since it's a colour PREVIEW of the palette for
+ * the Settings theme picker (the same swatch-of-itself exception Sol Odyssey makes).
+ * @type {{ id: PresetId, name: string, mode: Mode, barColor: string, swatch: [string, string, string] }[]}
  */
 export const PRESETS = [
-  { id: 'solarized-dark',  name: 'Solarized · Dark',       mode: 'dark',  barColor: '#002b36' },
-  { id: 'solarized-light', name: 'Solarized · Light',      mode: 'light', barColor: '#fdf6e3' },
-  { id: 'octagon',         name: 'Monokai Pro · Octagon',  mode: 'dark',  barColor: '#1e1f2b' },
-  { id: 'quiet-light',     name: 'Quiet Light',            mode: 'light', barColor: '#f5f5f5' },
-  { id: 'spectrum',        name: 'Monokai Pro · Spectrum', mode: 'dark',  barColor: '#191919' },
-  { id: 'filter-sun',      name: 'Monokai Pro · Sun',      mode: 'light', barColor: '#faf4f2' },
+  { id: 'solarized-dark',  name: 'Solarized · Dark',       mode: 'dark',  barColor: '#002b36', swatch: ['#002b36', '#268bd2', '#c0cccc'] },
+  { id: 'solarized-light', name: 'Solarized · Light',      mode: 'light', barColor: '#fdf6e3', swatch: ['#fdf6e3', '#268bd2', '#3a4d52'] },
+  { id: 'octagon',         name: 'Monokai Pro · Octagon',  mode: 'dark',  barColor: '#1e1f2b', swatch: ['#1e1f2b', '#78c7e0', '#eaf2f1'] },
+  { id: 'quiet-light',     name: 'Quiet Light',            mode: 'light', barColor: '#f5f5f5', swatch: ['#f5f5f5', '#4b83cd', '#333333'] },
+  { id: 'spectrum',        name: 'Monokai Pro · Spectrum', mode: 'dark',  barColor: '#191919', swatch: ['#191919', '#5ad4e6', '#f7f1ff'] },
+  { id: 'filter-sun',      name: 'Monokai Pro · Sun',      mode: 'light', barColor: '#faf4f2', swatch: ['#faf4f2', '#7058be', '#29242a'] },
 ]
 
 /** @type {PresetId} */

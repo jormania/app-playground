@@ -155,7 +155,7 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
                     )}
                     {expiring && <span className={`expiry-pill ${urgency}`}><HourglassIcon /> {expiryLabel(entry.dateExpiring, today)}</span>}
                   </div>
-                  <MetaChips category={entry.category} place={entry.place} placeUrl={entry.placeUrl} tags={entry.tags} onChip={onChip} />
+                  <MetaChips category={entry.category} place={entry.place} placeUrl={entry.placeUrl} tags={entry.tags} cost={entry.cost} onChip={onChip} />
                 </div>
               </div>
             )

@@ -44,17 +44,15 @@ export function formatMedium(key) {
   return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`
 }
 
-// "7:30pm" — a stored 24h 'HH:MM' clock time, cheaply human. Lowercase, no space before
-// am/pm, matching the compact register of the app's other pills (e.g. "expires in 5 days").
+// "19:30" — a stored 'HH:MM' clock time, normalized to zero-padded 24-hour (Romania uses
+// 24h / "military" time, no am/pm). Returns '' for anything not shaped like a time.
 export function formatTime(time) {
   if (!time || typeof time !== 'string') return ''
   const m = /^(\d{1,2}):(\d{2})$/.exec(time.trim())
   if (!m) return ''
   const h = Number(m[1]), min = Number(m[2])
   if (h > 23 || min > 59) return ''
-  const period = h >= 12 ? 'pm' : 'am'
-  const h12 = h % 12 || 12
-  return `${h12}:${String(min).padStart(2, '0')}${period}`
+  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`
 }
 
 // This browser's current UTC offset as "+03:00" / "-05:00" — appended to a Planned Date +

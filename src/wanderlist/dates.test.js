@@ -62,11 +62,11 @@ describe('formatMedium', () => {
 })
 
 describe('formatTime', () => {
-  test('12h clock, lowercase am/pm, no leading zero on the hour', () => {
-    expect(formatTime('19:30')).toBe('7:30pm')
-    expect(formatTime('08:05')).toBe('8:05am')
-    expect(formatTime('00:00')).toBe('12:00am')
-    expect(formatTime('12:00')).toBe('12:00pm')
+  test('24h clock, zero-padded hour (Romania uses military time)', () => {
+    expect(formatTime('19:30')).toBe('19:30')
+    expect(formatTime('8:05')).toBe('08:05')
+    expect(formatTime('00:00')).toBe('00:00')
+    expect(formatTime('12:00')).toBe('12:00')
   })
   test('blank/invalid input is the empty string', () => {
     expect(formatTime('')).toBe('')

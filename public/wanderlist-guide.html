@@ -91,6 +91,7 @@
       <tr><td>Category</td><td>Select</td><td>Leave the options empty, or seed <em>event, discovery, venue, idea, culture, movie, art</em> — the app adds more inline either way.</td></tr>
       <tr><td>Place</td><td>Text</td><td>Holds the resolved place name. <b>Not</b> Notion’s native Maps/geo property — plain text.</td></tr>
       <tr><td>Map</td><td>URL</td><td>The Maps pin link for the place. Leave empty — the app fills it in.</td></tr>
+      <tr><td>Cost</td><td>Number</td><td>Optional price in lei. Hidden in the app for anything tagged <em>free</em>.</td></tr>
       <tr><td>Tags</td><td>Multi-select</td><td>Leave the options empty — they fill in as you add things.</td></tr>
       <tr><td>Attended</td><td>Checkbox</td><td>Defaults unchecked.</td></tr>
       <tr><td>Going</td><td>Checkbox</td><td>Defaults unchecked. Separate from Attended — “have I decided to go”, not “did it happen”. Only shown in the editor once a Planned Date is picked.</td></tr>
@@ -101,7 +102,7 @@
       <tr><td>Tickets</td><td>Files&nbsp;&amp;&nbsp;media</td><td>Optional. Leave empty — the app uploads into it. Any number of files.</td></tr>
     </tbody>
   </table>
-  <p class="muted">That’s every column. You can delete any extra columns Notion added by default as long as the thirteen above exist with these exact names. <code>Category</code> and <code>Tags</code> are always saved lowercase, whatever case you type, so they never fork into look-alike duplicates.</p>
+  <p class="muted">That’s every column. You can delete any extra columns Notion added by default as long as the fourteen above exist with these exact names. <code>Category</code> and <code>Tags</code> are always saved lowercase, whatever case you type, so they never fork into look-alike duplicates.</p>
 
   <h2>2 · Create the integration &amp; connect</h2>
   <p>An <b>internal integration</b> is just a key that lets this one app reach your database. Here’s the whole path, step by step:</p>
@@ -148,18 +149,21 @@ CRON_SECRET             = any-long-random-string   (optional, guards the endpoin
   <h2>5 · Everyday use</h2>
   <ul>
     <li><b>Add</b> anything with just a name — flesh it out later.</li>
-    <li>Filter with the <b>To-do / Attended / All</b> segment; search by text, category, place, or tags; tap any chip to filter by it. Your last view, filter, and sort stick across reloads.</li>
+    <li>Filter with the <b>Backlog / Ideas / Attended / All</b> segment. <b>Backlog</b> is everything not yet attended; <b>Ideas</b> is a subset of it — the loose someday things with no planned date and no expiry, easy to lose track of. Search by text, category, place, or tags; tap any chip to filter by it. Your last view, filter, and sort stick across reloads.</li>
     <li><b>Sort</b> by expiring-first (default), recently added, or A–Z. Expiring-soon items float up with a warm pill; anything already past its deadline sinks below a <b>past</b> divider instead of jumping the queue.</li>
     <li>Hit the round <b>✓</b> to mark something attended — it stays in the list, just checked off.</li>
     <li><b>Planned Date</b> can optionally carry a <b>start time</b> too, once a date's picked — no end time, just when it begins. Shows up everywhere the planned date does (list, detail, calendar agenda). <b>Expires</b> never has a time — it's a deadline day, not a moment.</li>
     <li>Once a Planned Date is set, a <b>Going</b> toggle appears in the editor — off by default (“still deciding”), tap it once you've actually committed. It's separate from Attended, so you can track a concert's date and still be undecided about going. Confirmed items show a filled dot on the calendar and a green “going” pill instead of “planned”.</li>
+    <li><b>Cost</b> (optional, in lei) — a field in the editor, shown as a small gold line above the chips. It's hidden entirely for anything tagged <em>free</em>, in the editor and on the entry.</li>
+    <li><b>Add to Calendar</b> from an item's detail view — opens Google Calendar's create-event editor, prefilled. Something with a planned date + time (and marked Going) arrives as a timed event, one tap from saved; a vaguer entry opens with the date left for you to set and check.</li>
+    <li><b>Map</b> (under <b>⋯</b>): a map of every entry that has a place, each as its own pin — the one you're looking at gold and larger, the rest muted. Opens centred on the next thing expiring; tap any in the list beneath to re-centre, or double-tap to open it. (Uses OpenStreetMap; “Open in Maps” on an entry still opens Google.)</li>
     <li><b>Photo</b> — add one picture per item (a poster, a shot you took) from the editor; tap it in the detail view for the full size.</li>
     <li><b>Tickets</b> — attach one or more PDFs or screenshots, kept separate from Photo; each opens in a new tab from the detail view. Anything with tickets on file reads as <b>paid</b> — a gold badge in the list, and a gold dot/chip on the calendar. Tapping Paid with more than one ticket lists them so you can pick which to open; with exactly one, it opens directly.</li>
     <li>Every list row has a quick-check rail on the right: Photo/Link/Paid show only when there's something there, and <b>Going</b> (once a Planned Date is set) and <b>Attended</b> are always-visible tap toggles — a fast way to update either without opening the item. Going here is the same field as the editor's checkbox, just a quicker path to it. Each gets its own colour used everywhere it shows up: green = Attended, blue = Going (hollow while undecided, filled once confirmed), gold = Paid — with a short vibration on tap where your device supports it.</li>
     <li><b>Calendar</b> (the calendar button): a month grid where each day shows up to three dots — <b>Planned</b> (hollow until you've marked something Going, then filled solid), <b>Expiring</b>, and <b>Paid</b>. Tap a day to see its entries in an agenda below. With <b>All</b> selected, an attended item's dot only shows on a day already past — not on today or a future date, since a done thing's date no longer means anything going forward.</li>
     <li><b>Stats</b> (under <b>⋯</b>): a forward-looking snapshot of the backlog — what's expiring soon, what's past due, what's still someday — plus tap-to-search heatmaps over Category, Tags, and Place. Attended items carry no weight here.</li>
     <li><b>Share</b> an item from its detail view — the OS share sheet (WhatsApp, Email, whatever the device offers), or a clipboard copy where that's not available. Text only: name, note, place, links — no attachments.</li>
-    <li><b>Themes</b> from the sun/moon button — six palettes (Solarized, Monokai Pro…); installs as an app and works offline.</li>
+    <li><b>Themes</b> — six palettes (Solarized, Monokai Pro…). The sun/moon button cycles through them, or pick one straight from <b>Settings → Appearance</b>. Installs as an app and works offline.</li>
   </ul>
 
   <a class="back" href="/wanderlist-react.html">← back to Wanderlist</a>

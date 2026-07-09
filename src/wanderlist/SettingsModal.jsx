@@ -2,16 +2,51 @@ import { useState, useEffect } from 'react'
 import {
   getToken, setToken, clearToken,
   getDatabaseId, setDatabaseId, hasCustomDatabase,
-  testConnection,
+  testConnection, PRESETS,
 } from './store.js'
 import { loadServerPrefs, saveServerPrefs, getLocalPrefs, sendTestReminder } from './remindersConfig.js'
 import Modal from './Modal.jsx'
+import { CheckIcon } from './icons.jsx'
+
+// The palette picker — the six presets grouped dark / light, each a live swatch (canvas +
+// accent + ink dots). Mirrors Sol Odyssey's Settings → Appearance; the header ◐ button still
+// cycles, this just lets you jump straight to one. The swatch hexes come from PRESETS (a
+// colour preview OF each palette — the one place raw hex is legitimate outside the theme
+// blocks, same exception Sol Odyssey makes).
+function ThemePicker({ preset, onSetPreset }) {
+  return (
+    <div className="theme-picker">
+      {['dark', 'light'].map(mode => (
+        <div key={mode} className="theme-group">
+          <p className="theme-group-label">{mode}</p>
+          <div className="theme-grid">
+            {PRESETS.filter(p => p.mode === mode).map(p => {
+              const selected = p.id === preset
+              const [canvas, accent, ink] = p.swatch
+              return (
+                <button key={p.id} type="button" className={`theme-option${selected ? ' selected' : ''}`}
+                  aria-pressed={selected} onClick={() => onSetPreset(p.id)}>
+                  <span className="theme-swatch" aria-hidden style={{ background: canvas }}>
+                    <span style={{ background: accent }} />
+                    <span style={{ background: ink }} />
+                  </span>
+                  <span className="theme-name">{p.name}</span>
+                  {selected && <CheckIcon />}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 // Connects the app to a real backlog and configures the email reminder. Token + database
 // are BYO and stored only in this browser (relayed to Notion through the proxy). The
 // reminder prefs, by contrast, are saved server-side (Vercel KV) so the daily cron can
 // read them with the app closed — see remindersConfig.js.
-export default function SettingsModal({ onClose, onChanged }) {
+export default function SettingsModal({ preset, onSetPreset, onClose, onChanged }) {
   const [token, setTokenValue] = useState(getToken())
   const [db, setDb] = useState(hasCustomDatabase() ? getDatabaseId() : '')
   const [testing, setTesting] = useState(false)
@@ -177,6 +212,16 @@ export default function SettingsModal({ onClose, onChanged }) {
             {remStatus === 'error' && <p className="hint" style={{ marginTop: 6, color: 'var(--red)' }}>{remMsg}</p>}
           </>
         )}
+      </div>
+
+      {/* ── Appearance ── */}
+      <div className="field" style={{ marginTop: 22 }}>
+        <label style={labelStyle}>Appearance</label>
+        <p style={{ marginTop: 0, marginBottom: 10 }}>
+          Pick a palette — three dark, three light. The header <b>◐</b> button cycles through
+          them in order, and the guide follows your choice.
+        </p>
+        <ThemePicker preset={preset} onSetPreset={onSetPreset} />
       </div>
 
       <div className="btn-row" style={{ marginTop: 18 }}>

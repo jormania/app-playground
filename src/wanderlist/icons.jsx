@@ -44,6 +44,14 @@ export const HourglassIcon = (p) => (
 export const CalendarIcon = (p) => (
   <svg {...base} {...p}><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3" /></svg>
 )
+// Add to calendar — a calendar leaf with a plus (distinct from the plain "when" glyph).
+export const CalendarPlusIcon = (p) => (
+  <svg {...base} {...p}><path d="M20.5 11V7a2 2 0 0 0-2-2h-13a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h6" /><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3M18 15v6M15 18h6" /></svg>
+)
+// Cost — a coin with a currency stroke (the optional price in lei).
+export const CoinIcon = (p) => (
+  <svg {...base} {...p}><circle cx="12" cy="12" r="8.5" /><path d="M14.5 9.3a3 3 0 1 0 0 5.4M9.5 10.5h4M9.5 13.5h4" /></svg>
+)
 // Photo — a single snapshot, at most one per item.
 export const PhotoIcon = (p) => (
   <svg {...base} {...p}><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="10.5" r="2" /><path d="M21 16l-5.5-5-4 4-2-1.5L3 17" /></svg>

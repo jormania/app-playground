@@ -34,6 +34,7 @@ describe('toEntry', () => {
       Tags: { multi_select: [{ name: 'ticketed' }, { name: 'film' }] },
       Attended: { checkbox: true },
       Going: { checkbox: true },
+      Cost: { number: 80 },
       'Date Added': { date: { start: '2026-07-01' } },
       'Date Expiring': { date: { start: '2026-07-10' } },
       'Planned Date': { date: { start: '2026-07-11' } },
@@ -51,6 +52,7 @@ describe('toEntry', () => {
       tags: ['ticketed', 'film'],
       attended: true,
       going: true,
+      cost: 80,
       dateAdded: '2026-07-01',
       dateExpiring: '2026-07-10',
       plannedDate: '2026-07-11',
@@ -116,6 +118,17 @@ describe('toNotionProps', () => {
   test('going writes true only when explicitly set', () => {
     expect(toNotionProps({ going: true }).Going).toEqual({ checkbox: true })
     expect(toNotionProps({}).Going).toEqual({ checkbox: false })
+  })
+  test('cost writes a number, clears on blank/absent/NaN', () => {
+    expect(toNotionProps({ cost: 80 }).Cost).toEqual({ number: 80 })
+    expect(toNotionProps({ cost: 0 }).Cost).toEqual({ number: 0 })
+    expect(toNotionProps({ cost: '' }).Cost).toEqual({ number: null })
+    expect(toNotionProps({ cost: null }).Cost).toEqual({ number: null })
+    expect(toNotionProps({}).Cost).toEqual({ number: null })
+    expect(toNotionProps({ cost: 'not-a-number' }).Cost).toEqual({ number: null })
+  })
+  test('cost reads back as null when absent', () => {
+    expect(toEntry({ id: 'x', properties: { Name: { title: [] } } }).cost).toBeNull()
   })
   test('empty category clears the select', () => {
     expect(toNotionProps({ category: null }).Category).toEqual({ select: null })

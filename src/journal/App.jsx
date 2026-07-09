@@ -267,7 +267,14 @@ export default function App() {
         </div>
       </footer>
 
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} onChanged={onSettingsChanged} />}
+      {showSettings && (
+        <SettingsModal
+          preset={preset}
+          onSetPreset={setPresetState}
+          onClose={() => setShowSettings(false)}
+          onChanged={onSettingsChanged}
+        />
+      )}
       {showStats && <StatsModal entries={entries} onClose={() => setShowStats(false)} onChip={filterByChip} />}
       {onThisDay && <OnThisDayModal entries={entries} dateKey={onThisDay} onClose={() => setOnThisDay(null)} />}
     </>

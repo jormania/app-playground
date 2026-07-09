@@ -12,12 +12,25 @@ export const SCOPES = [
   { value: 'tags', label: 'tags' },
 ]
 
-// Status segment for the backlog: things still to do, things already attended, or all.
+// Status segment for the backlog. "Backlog" is everything not yet attended — the whole
+// active pile, including ideas. "Ideas" is a SUBSET of it: the loose someday things with
+// neither a Planned Date nor a Date Expiring, so they never surface on the calendar and are
+// easy to forget; that filter keeps a closer eye on them. (`value: 'todo'` is kept for the
+// Backlog option so a previously-persisted view pref still resolves — only the label changed.)
 export const STATUSES = [
-  { value: 'todo', label: 'To-do' },
+  { value: 'todo', label: 'Backlog' },
+  { value: 'ideas', label: 'Ideas' },
   { value: 'attended', label: 'Attended' },
   { value: 'all', label: 'All' },
 ]
+
+// Shared predicate for "an idea": unattended, with no planned date and no expiry — a thing
+// you mean to get to someday but haven't pinned to any date. Reused by the Ideas filter
+// here and the server-side stale-idea email nudge (kept in step by intent, not by import —
+// the cron can't reach into the Vite tree).
+export function isIdea(entry) {
+  return Boolean(entry) && !entry.attended && !entry.plannedDate && !entry.dateExpiring
+}
 
 export const SORTS = [
   { value: 'expiring', label: 'Expiring first' },
@@ -45,6 +58,7 @@ export function filterBySearch(entries, query, scope = 'all') {
 
 export function filterByStatus(entries, status = 'todo') {
   if (status === 'all') return entries || []
+  if (status === 'ideas') return (entries || []).filter(isIdea)
   const attended = status === 'attended'
   return (entries || []).filter(e => Boolean(e?.attended) === attended)
 }

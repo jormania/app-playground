@@ -20,6 +20,10 @@ export const DateIcon = (p) => (
 export const TagIcon = (p) => (
   <svg {...base} {...p}><path d="M3.5 11.5l8-8 9 1 1 9-8 8z" /><circle cx="15.5" cy="8.5" r="1.4" /></svg>
 )
+// Check — a tick (used to mark the selected theme in Settings).
+export const CheckIcon = (p) => (
+  <svg {...base} {...p}><path d="M5 12.5l4.2 4.2L19 7" /></svg>
+)
 // People — kept separate from tags.
 export const PeopleIcon = (p) => (
   <svg {...base} {...p}><circle cx="9" cy="8" r="3.2" /><path d="M3.5 20c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5" /><path d="M16 5.2a3.2 3.2 0 0 1 0 6M17.5 14.7c2.2.6 3.5 2.6 3.5 5.3" /></svg>

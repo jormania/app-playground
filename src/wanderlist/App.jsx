@@ -10,6 +10,7 @@ import EntryView from './EntryView.jsx'
 import EntryEditor from './EntryEditor.jsx'
 import SettingsModal from './SettingsModal.jsx'
 import StatsModal from './StatsModal.jsx'
+import MapModal from './MapModal.jsx'
 
 // The list's empty state, tailored to *why* it's empty — a search with no hits, a To-do
 // filter with nothing left to do, or an Attended filter with nothing checked off yet. When
@@ -17,7 +18,8 @@ import StatsModal from './StatsModal.jsx'
 function emptyMessage(searching, status, totalCount) {
   if (searching) return 'Nothing matches that search.'
   if (totalCount === 0) return undefined
-  if (status === 'todo') return 'Nothing to do right now — everything’s marked attended.'
+  if (status === 'todo') return 'Your backlog is clear — everything’s marked attended.'
+  if (status === 'ideas') return 'No loose ideas right now — everything has a date or is done.'
   if (status === 'attended') return 'Nothing marked attended yet.'
   return undefined
 }
@@ -31,6 +33,7 @@ export default function App() {
   const [saveError, setSaveError] = useState('')
   const [showSettings, setShowSettings] = useState(false)
   const [showStats, setShowStats] = useState(false)
+  const [showMap, setShowMap] = useState(false)
   const [live, setLive] = useState(isLive())
   const [offline, setOffline] = useState(false)
 
@@ -209,6 +212,7 @@ export default function App() {
         view={view}
         onView={(v) => { setFocus(null); setView(v) }}
         onAdd={openAdd}
+        onMap={() => setShowMap(true)}
         onStats={() => setShowStats(true)}
         onSettings={() => setShowSettings(true)}
         themeMode={modeOf(preset)}
@@ -284,8 +288,23 @@ export default function App() {
         </div>
       </footer>
 
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} onChanged={onSettingsChanged} />}
+      {showSettings && (
+        <SettingsModal
+          preset={preset}
+          onSetPreset={setPresetState}
+          onClose={() => setShowSettings(false)}
+          onChanged={onSettingsChanged}
+        />
+      )}
       {showStats && <StatsModal entries={entries} onClose={() => setShowStats(false)} onChip={filterByChip} />}
+      {showMap && (
+        <MapModal
+          entries={entries}
+          today={today}
+          onOpen={(e) => setFocus({ kind: 'view', entry: e })}
+          onClose={() => setShowMap(false)}
+        />
+      )}
     </>
   )
 }

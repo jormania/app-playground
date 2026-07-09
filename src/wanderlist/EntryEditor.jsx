@@ -7,7 +7,7 @@ import PlaceInput from './PlaceInput.jsx'
 import PhotoField from './PhotoField.jsx'
 import TicketsField from './TicketsField.jsx'
 import Lightbox from './Lightbox.jsx'
-import { NameIcon, TextIcon, LinkIcon, CategoryIcon, PlaceIcon, TagIcon, HourglassIcon, CalendarIcon } from './icons.jsx'
+import { NameIcon, TextIcon, LinkIcon, CategoryIcon, PlaceIcon, TagIcon, HourglassIcon, CalendarIcon, CoinIcon } from './icons.jsx'
 
 // Create or edit one item. Everything but a Name is optional — this is a low-friction
 // backlog, so you can jot a bare idea now and flesh it out later. Category is a single
@@ -22,6 +22,9 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, saving
   const [place, setPlace] = useState(initial.place || '')
   const [placeUrl, setPlaceUrl] = useState(initial.placeUrl || '')
   const [tags, setTags] = useState(initial.tags || [])
+  // Cost in lei — a bare number, optional. Kept as a string in the field (empty = unpriced);
+  // coerced to a number | null on submit.
+  const [cost, setCost] = useState(initial.cost != null ? String(initial.cost) : '')
   const [dateExpiring, setDateExpiring] = useState(initial.dateExpiring || '')
   const [plannedDate, setPlannedDate] = useState(initial.plannedDate || '')
   // Start time only — no end time tracked. Meaningless without a plannedDate, so clearing
@@ -93,6 +96,7 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, saving
       place: place.trim(),
       placeUrl: placeUrl.trim(),
       tags,
+      cost: tags.includes('free') || cost.trim() === '' || Number.isNaN(Number(cost)) ? null : Number(cost),
       dateExpiring: dateExpiring || null,
       plannedDate: plannedDate || null,
       plannedTime: plannedDate ? (plannedTime || null) : null,
@@ -145,6 +149,16 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, saving
         <label><PlaceIcon /> Place</label>
         <PlaceInput value={place} url={placeUrl} onChange={({ place: p, placeUrl: u }) => { setPlace(p); setPlaceUrl(u) }} />
       </div>
+
+      {/* Cost is meaningless on a free thing — so the field is hidden entirely once "free"
+          is tagged (and any value is dropped on save, below), rather than shown with a note. */}
+      {!tags.includes('free') && (
+        <div className="field">
+          <label htmlFor="f-cost"><CoinIcon /> Cost <span className="opt">— in lei, optional</span></label>
+          <input id="f-cost" type="number" inputMode="decimal" min="0" step="1" value={cost}
+            placeholder="e.g. 80" onChange={e => setCost(e.target.value)} />
+        </div>
+      )}
 
       <div className="field">
         <label><TagIcon /> Tags</label>

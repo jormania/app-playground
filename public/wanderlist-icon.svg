@@ -1,13 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Wanderlist">
+  <!-- Warm dark canvas (full-bleed, so it survives a maskable crop) -->
   <rect width="512" height="512" rx="112" fill="#111c26"/>
-  <!-- subtle brass ring -->
-  <circle cx="256" cy="256" r="150" fill="none" stroke="#3a4a56" stroke-width="10"/>
-  <!-- compass rose: brass star pointing to a marked destination -->
-  <g>
-    <polygon points="256,96 286,240 256,268 226,240" fill="#d59a4a"/>
-    <polygon points="256,416 226,272 256,244 286,272" fill="#a9741f"/>
-    <polygon points="96,256 240,226 268,256 240,286" fill="#c98a34"/>
-    <polygon points="416,256 272,286 244,256 272,226" fill="#c98a34"/>
-    <circle cx="256" cy="256" r="20" fill="#f3ecda"/>
-  </g>
+  <!-- A map pin = a place; the check inside = triaged / ticked off. Deliberately NOT a
+       compass (Sol Odyssey owns that motif) — this is Wanderlist's own "a place, dealt with"
+       identity. The pin sits inside the ~80% maskable safe zone. -->
+  <path d="M256 104 C186 104 132 158 132 228 C132 312 220 360 256 434 C292 360 380 312 380 228 C380 158 326 104 256 104 Z" fill="#d59a4a"/>
+  <circle cx="256" cy="224" r="62" fill="#f3ecda"/>
+  <path d="M228 224 l20 22 l40 -46" fill="none" stroke="#a9741f" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

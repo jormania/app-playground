@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { formatHuman, formatTime, expiryLabel, daysUntil, isPlannedPast } from './dates.js'
-import { BackIcon, ExternalIcon, MapIcon, CheckCircleIcon, HourglassIcon, CalendarIcon, TicketIcon, ShareIcon } from './icons.jsx'
+import { BackIcon, ExternalIcon, MapIcon, CheckCircleIcon, HourglassIcon, CalendarIcon, CalendarPlusIcon, TicketIcon, ShareIcon } from './icons.jsx'
 import MetaChips from './MetaChips.jsx'
 import Lightbox from './Lightbox.jsx'
 import { shareNative } from './share.js'
+import { googleCalendarUrl } from './calendar.js'
 
 // Single-item detail view. Header grammar: Back + Edit sit together on the left as one
 // secondary-button pair; the one decision that changes the item's state — Mark attended —
@@ -65,7 +66,7 @@ export default function EntryView({ entry, onBack, onEdit, onChip, onToggleAtten
 
       {entry.description && <div className="ev-body">{entry.description}</div>}
 
-      <MetaChips category={entry.category} place={entry.place} placeUrl={entry.placeUrl} tags={entry.tags} onChip={onChip} />
+      <MetaChips category={entry.category} place={entry.place} placeUrl={entry.placeUrl} tags={entry.tags} cost={entry.cost} onChip={onChip} />
 
       {entry.tickets?.length > 0 && (
         <div className="ticket-section">
@@ -83,6 +84,10 @@ export default function EntryView({ entry, onBack, onEdit, onChip, onToggleAtten
 
       <div className="ev-links">
         {entry.link && <a className="btn btn-sm" href={entry.link} target="_blank" rel="noopener"><ExternalIcon /> Open link</a>}
+        {/* Add to Calendar — opens Google Calendar's create-event editor, prefilled. A
+            planned date + time (and going) arrive as a timed block one tap from saved; a
+            vaguer entry opens with the date left for you to set. See calendar.js. */}
+        <a className="btn btn-sm" href={googleCalendarUrl(entry)} target="_blank" rel="noopener"><CalendarPlusIcon /> Add to Calendar</a>
         {entry.placeUrl && <a className="btn btn-sm" href={entry.placeUrl} target="_blank" rel="noopener"><MapIcon /> Open in Maps</a>}
         <button type="button" className="btn btn-sm" onClick={handleShare}><ShareIcon /> Share…</button>
         {shareStatus === 'copied' && <span className="share-status">Copied to clipboard</span>}

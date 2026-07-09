@@ -1,7 +1,7 @@
 import { test, expect, describe } from 'vitest'
 import {
-  addDays, zonedTodayKey, zonedTomorrowKey, zonedHour,
-  splitPlannedStart, formatTime12, statusesFor, selectDueTomorrow, buildReminderEmail,
+  addDays, zonedTodayKey, zonedTomorrowKey, zonedHour, zonedWeekday, daysSince,
+  splitPlannedStart, formatTime24, statusesFor, selectDueTomorrow, selectStaleIdeas, buildReminderEmail,
 } from './reminders.js'
 
 describe('addDays', () => {
@@ -44,13 +44,13 @@ describe('splitPlannedStart', () => {
   })
 })
 
-describe('formatTime12', () => {
-  test('renders 24h HH:MM as a compact 12h string', () => {
-    expect(formatTime12('19:30')).toBe('7:30pm')
-    expect(formatTime12('00:05')).toBe('12:05am')
-    expect(formatTime12('12:00')).toBe('12:00pm')
-    expect(formatTime12(null)).toBe('')
-    expect(formatTime12('nope')).toBe('')
+describe('formatTime24', () => {
+  test('normalizes to zero-padded 24h (Romania uses military time)', () => {
+    expect(formatTime24('19:30')).toBe('19:30')
+    expect(formatTime24('0:05')).toBe('00:05')
+    expect(formatTime24('12:00')).toBe('12:00')
+    expect(formatTime24(null)).toBe('')
+    expect(formatTime24('nope')).toBe('')
   })
 })
 
@@ -62,6 +62,44 @@ describe('statusesFor', () => {
     expect(statusesFor({ plannedDate: day, going: true }, day)).toEqual(['going'])
     expect(statusesFor({ dateExpiring: day, plannedDate: day, going: true }, day)).toEqual(['expiring', 'going'])
     expect(statusesFor({ dateExpiring: '2026-07-10' }, day)).toEqual([])
+  })
+})
+
+describe('zonedWeekday (Europe/Bucharest)', () => {
+  test('resolves the local weekday, 0 = Sunday', () => {
+    // 2026-07-12 is a Sunday.
+    expect(zonedWeekday(new Date('2026-07-12T09:00:00Z'), 'Europe/Bucharest')).toBe(0)
+    // 2026-07-13 is a Monday.
+    expect(zonedWeekday(new Date('2026-07-13T09:00:00Z'), 'Europe/Bucharest')).toBe(1)
+    // Late UTC that's already the next local day flips the weekday.
+    expect(zonedWeekday(new Date('2026-07-12T22:30:00Z'), 'Europe/Bucharest')).toBe(1) // Monday in Bucharest
+  })
+})
+
+describe('daysSince', () => {
+  test('whole days between two keys, DST-safe', () => {
+    expect(daysSince('2026-07-01', '2026-07-31')).toBe(30)
+    expect(daysSince('2026-07-31', '2026-07-31')).toBe(0)
+    expect(daysSince('2026-03-01', '2026-04-01')).toBe(31) // spans EU DST change
+    expect(daysSince('bad', '2026-07-31')).toBeNull()
+  })
+})
+
+describe('selectStaleIdeas', () => {
+  const today = '2026-07-31'
+  const items = [
+    { name: 'Old idea', attended: false, plannedDate: null, dateExpiring: null, dateAdded: '2026-06-01' },   // 60d -> nudge
+    { name: 'Fresh idea', attended: false, plannedDate: null, dateExpiring: null, dateAdded: '2026-07-20' }, // 11d -> too new
+    { name: 'Planned', attended: false, plannedDate: '2026-08-01', dateExpiring: null, dateAdded: '2026-01-01' }, // has a date -> skip
+    { name: 'Expiring', attended: false, plannedDate: null, dateExpiring: '2026-08-01', dateAdded: '2026-01-01' }, // has a date -> skip
+    { name: 'Done', attended: true, plannedDate: null, dateExpiring: null, dateAdded: '2026-01-01' },        // attended -> skip
+    { name: 'Exactly 30d', attended: false, plannedDate: null, dateExpiring: null, dateAdded: '2026-07-01' }, // 30d -> included (>=)
+  ]
+  test('unattended, dateless, and at least minAgeDays old', () => {
+    expect(selectStaleIdeas(items, today, 30).map(i => i.name)).toEqual(['Old idea', 'Exactly 30d'])
+  })
+  test('respects a custom min age', () => {
+    expect(selectStaleIdeas(items, today, 45).map(i => i.name)).toEqual(['Old idea'])
   })
 })
 
@@ -110,15 +148,32 @@ describe('buildReminderEmail', () => {
       { name: 'Concert', statuses: ['going'], plannedTime: '19:30' },
       { name: 'Museum', statuses: ['planned'] },
     ], {})
-    expect(text).toContain('you’re going tomorrow at 7:30pm')
+    expect(text).toContain('you’re going tomorrow at 19:30')
     expect(text).toContain('planned for tomorrow — you haven’t said you’re going yet')
   })
   test('an item due under two statuses explains both', () => {
     const { text } = buildReminderEmail([{ name: 'Both', statuses: ['expiring', 'going'], plannedTime: '09:00' }], {})
-    expect(text).toContain('expires tomorrow · you’re going tomorrow at 9:00am')
+    expect(text).toContain('expires tomorrow · you’re going tomorrow at 09:00')
   })
   test('escapes HTML in names', () => {
     const { html } = buildReminderEmail([{ name: 'A & <b>B</b>', statuses: ['expiring'] }], {})
     expect(html).toContain('A &amp; &lt;b&gt;B&lt;/b&gt;')
+  })
+  test('due items lead the subject even when ideas are also present', () => {
+    const { subject, text, html } = buildReminderEmail(
+      [{ name: 'Jazz', statuses: ['expiring'] }],
+      { ideas: [{ name: 'Ramen place' }, { name: 'Rooftop bar' }] }
+    )
+    expect(subject).toBe('Wanderlist: “Jazz” — expires tomorrow')
+    expect(text).toContain('someday list')
+    expect(text).toContain('Ramen place')
+    expect(html).toContain('Rooftop bar')
+  })
+  test('ideas-only email gets its own subject and no due section', () => {
+    const one = buildReminderEmail([], { ideas: [{ name: 'Ramen place' }] })
+    expect(one.subject).toBe('Wanderlist: an idea you haven’t scheduled')
+    expect(one.text).not.toContain('for tomorrow')
+    const many = buildReminderEmail([], { ideas: [{ name: 'A' }, { name: 'B' }, { name: 'C' }] })
+    expect(many.subject).toBe('Wanderlist: 3 ideas you haven’t scheduled')
   })
 })

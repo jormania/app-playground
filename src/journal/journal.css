@@ -547,6 +547,22 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .modal .status.live { color: var(--green); }
 .modal .status.demo { color: var(--yellow); }
 
+/* ── Theme picker (Settings → Appearance) — token-styled so it reads on every palette;
+   only the swatch dots carry raw hex, as a live preview OF each palette. ── */
+.theme-picker { display: flex; flex-direction: column; gap: 12px; }
+.theme-group-label { font-family: var(--mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--faint); margin-bottom: 6px; }
+.theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.theme-option {
+  display: flex; align-items: center; gap: 10px; text-align: left; width: 100%;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; transition: border-color 0.16s, background 0.16s;
+}
+.theme-option:hover { border-color: var(--border2); }
+.theme-option.selected { border-color: var(--blue); background: color-mix(in srgb, var(--blue) 10%, transparent); }
+.theme-swatch { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 7px; border: 1px solid var(--border2); display: inline-flex; align-items: center; justify-content: center; gap: 3px; }
+.theme-swatch span { width: 8px; height: 8px; border-radius: 50%; }
+.theme-name { flex: 1; min-width: 0; font-family: var(--sans); font-size: 0.8rem; font-weight: 500; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.theme-option > svg { flex: 0 0 auto; font-size: 15px; color: var(--blue); }
+
 /* ── Stats (up to 3 per row, compact) ── */
 .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 16px; }
 .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }

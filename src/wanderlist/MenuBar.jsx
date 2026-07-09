@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { ListIcon, CalendarIcon, GuideIcon, GearIcon, PlusIcon, MoreIcon, CloseIcon, SearchIcon, SortIcon, StatsIcon, SunIcon, MoonIcon, CheckIcon } from './icons.jsx'
+import { ListIcon, CalendarIcon, GuideIcon, GearIcon, PlusIcon, MoreIcon, CloseIcon, SearchIcon, SortIcon, StatsIcon, MapIcon, SunIcon, MoonIcon, CheckIcon } from './icons.jsx'
 import { SCOPES, STATUSES, SORTS } from './search.js'
 
 const GUIDE_URL = '/wanderlist-guide.html'
@@ -34,7 +34,7 @@ function usePopover() {
 // (via .btn-today's margin-left: auto), with the secondary actions (theme, guide, settings)
 // tucked under the ⋯ menu. Search is a focused mode: while the field is open it takes the
 // whole row (closes only via its own ✕), everything else hides, and the field grows to fill.
-export default function MenuBar({ status, onStatus, query, scope, onQuery, onScope, sort, onSort, view, onView, onAdd, onStats, onSettings, themeMode, themeName, onCycleTheme }) {
+export default function MenuBar({ status, onStatus, query, scope, onQuery, onScope, sort, onSort, view, onView, onAdd, onMap, onStats, onSettings, themeMode, themeName, onCycleTheme }) {
   const more = usePopover()
   const statusPop = usePopover()
   const sortPop = usePopover()
@@ -48,6 +48,7 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
   useEffect(() => { if (searchActive) searchRef.current?.focus() }, [searchActive])
 
   const appActions = [
+    { key: 'map', Icon: MapIcon, label: 'Map', onClick: onMap, title: 'Map of your places' },
     { key: 'stats', Icon: StatsIcon, label: 'Stats', onClick: onStats, title: 'Stats' },
     { key: 'theme', Icon: dark ? SunIcon : MoonIcon, label: 'Theme', onClick: onCycleTheme, title: `${themeName} — tap to cycle themes` },
     { key: 'guide', Icon: GuideIcon, label: 'Guide', href: GUIDE_URL, title: 'How to use Wanderlist' },
@@ -93,7 +94,7 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
             <button className="icon-btn" onClick={() => setSearchOpen(true)} aria-label="Search" title="Search"><SearchIcon /></button>
           )}
 
-          {/* Status filter (To-do / Attended / All) */}
+          {/* Status filter (Backlog / Ideas / Attended / All) */}
           <div className="status-wrap">
             <button ref={statusPop.triggerRef} className="pill-btn" onClick={() => statusPop.setOpen(o => !o)} aria-haspopup="menu" aria-expanded={statusPop.open} aria-label="Filter by status" title="Filter">
               <span>{currentStatus.label}</span><span className="caret" />

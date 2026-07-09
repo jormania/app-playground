@@ -68,7 +68,7 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
                 )}
               </div>
               {e.description && <div className="row-excerpt">{e.description}</div>}
-              <MetaChips category={e.category} place={e.place} placeUrl={e.placeUrl} tags={e.tags} onChip={onChip} />
+              <MetaChips category={e.category} place={e.place} placeUrl={e.placeUrl} tags={e.tags} cost={e.cost} onChip={onChip} />
             </div>
             {/* A quick-check rail: Attended shows always, on or off, so it's a stable
                 landmark; Photo/Link/Paid are situational shortcuts to that thing (photo,

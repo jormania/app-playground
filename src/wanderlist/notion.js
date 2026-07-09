@@ -6,7 +6,9 @@ import { localOffsetString } from './dates.js'
 //
 // App model for one item:
 //   { id, name, description, link, category, place, placeUrl, tags[], attended, going,
-//     dateAdded, dateExpiring, plannedDate, plannedTime, photo, tickets[], pending? }
+//     cost, dateAdded, dateExpiring, plannedDate, plannedTime, photo, tickets[], pending? }
+// where `cost` is an optional number in Romanian lei (null when unpriced; hidden in the UI
+// for anything tagged `free`),
 // where `plannedDate` is the day you plan to go (drives the calendar's Planned marker),
 // `plannedTime` is an optional 'HH:MM' 24h start time for it (no end time — a fixed start
 // is all the app tracks; Expires never carries a time, only a deadline day), `going` is a
@@ -100,6 +102,7 @@ export function toEntry(page) {
     tags: (props.Tags?.multi_select ?? []).map(o => normalizeTag(o.name)),
     attended: Boolean(props.Attended?.checkbox),
     going: Boolean(props.Going?.checkbox),
+    cost: props.Cost?.number ?? null,
     dateAdded: props['Date Added']?.date?.start ?? null,
     dateExpiring: props['Date Expiring']?.date?.start ?? null,
     plannedDate: planned.date,
@@ -163,6 +166,9 @@ export function toNotionProps(entry) {
     Tags: { multi_select: [...new Set((e.tags ?? []).map(normalizeTag).filter(Boolean))].map(name => ({ name })) },
     Attended: { checkbox: Boolean(e.attended) },
     Going: { checkbox: Boolean(e.going) },
+    // Cost is an optional number (Romanian lei). A blank/absent cost clears the property;
+    // never write NaN (a non-numeric string slipping through) — treat that as "no cost".
+    Cost: { number: e.cost === '' || e.cost == null || Number.isNaN(Number(e.cost)) ? null : Number(e.cost) },
     'Date Added': { date: e.dateAdded ? { start: e.dateAdded } : null },
     'Date Expiring': { date: e.dateExpiring ? { start: e.dateExpiring } : null },
     'Planned Date': { date: e.plannedDate ? { start: combinePlannedDate(e.plannedDate, e.plannedTime) } : null },
