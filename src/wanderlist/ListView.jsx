@@ -15,7 +15,7 @@ function ExpiryPill({ dateKey, today }) {
   return <span className={`expiry-pill ${urgency}`}><HourglassIcon /> {expiryLabel(dateKey, today)}</span>
 }
 
-export default function ListView({ entries, total, onOpen, onChip, onToggleAttended, emptyMessage, today, sort }) {
+export default function ListView({ entries, total, onOpen, onChip, onToggleAttended, onToggleGoing, emptyMessage, today, sort }) {
   const [lightboxSrc, setLightboxSrc] = useState(null)
 
   if (!entries.length) {
@@ -67,9 +67,13 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
               {e.description && <div className="row-excerpt">{e.description}</div>}
               <MetaChips category={e.category} place={e.place} placeUrl={e.placeUrl} tags={e.tags} onChip={onChip} />
             </div>
-            {/* Attended shows always, on or off, so the rail is a stable landmark; the
-                other three are situational — they only appear when there's something
-                to act on, and each is a shortcut to that thing (photo, link, ticket). */}
+            {/* A quick-check rail: Attended shows always, on or off, so it's a stable
+                landmark; Photo/Link/Paid are situational shortcuts to that thing (photo,
+                link, ticket); Going is a second toggle, situational (only once there's a
+                Planned Date to be going TO), distinct from the same field's checkbox in
+                the editor — this is the fast in-list path, that one's the deliberate-edit
+                path. Each toggle/status gets its own colour (green=Attended, blue=Going,
+                gold=Paid), matched everywhere else that colour appears (pills, calendar). */}
             <div className="row-side">
               {e.photo && (
                 <button
@@ -93,6 +97,18 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
                   onClick={ev => { ev.stopPropagation(); openTickets(e, onOpen) }}
                 >
                   <TicketIcon />
+                </button>
+              )}
+              {e.plannedDate && (
+                <button
+                  type="button"
+                  className={`row-going${e.going ? ' on' : ''}`}
+                  title={e.going ? 'Going — tap to mark still deciding' : 'Still deciding — tap to mark going'}
+                  aria-label={e.going ? 'Mark as still deciding' : 'Mark as going'}
+                  aria-pressed={e.going}
+                  onClick={ev => { ev.stopPropagation(); onToggleGoing(e) }}
+                >
+                  <CalendarIcon />
                 </button>
               )}
               <button

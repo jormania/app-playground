@@ -160,9 +160,11 @@ export default function App() {
     }
   }
 
-  async function toggleAttended(entry) {
+  // Shared by the list rail's two quick toggles (Attended, Going) — same optimistic-update
+  // + persist + reconcile shape, just flipping a different boolean field.
+  async function toggleField(entry, field) {
     setSaveError('')
-    const updated = { ...entry, attended: !entry.attended }
+    const updated = { ...entry, [field]: !entry[field] }
     setEntries(list => list.map(e => (e.id === entry.id ? updated : e)))
     setFocus(f => (f?.kind === 'view' && f.entry.id === entry.id ? { kind: 'view', entry: updated } : f))
     try {
@@ -177,6 +179,8 @@ export default function App() {
       load()
     }
   }
+  const toggleAttended = (entry) => toggleField(entry, 'attended')
+  const toggleGoing = (entry) => toggleField(entry, 'going')
 
   function onSettingsChanged() {
     setLive(isLive())
@@ -265,6 +269,7 @@ export default function App() {
               onOpen={(e) => setFocus({ kind: 'view', entry: e })}
               onChip={filterByChip}
               onToggleAttended={toggleAttended}
+              onToggleGoing={toggleGoing}
               today={today}
               sort={sort}
               emptyMessage={emptyMessage(searching, status, entries.length)}

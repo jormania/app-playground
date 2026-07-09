@@ -60,8 +60,14 @@ cycle button — brought over per request "as close to the original as possible"
 (`store.js`'s `loadViewPrefs`/`saveViewPrefs`). The default Expiring-first sort sinks
 already-expired, unattended items below a **past** divider instead of floating them to
 the top (`search.js`'s tiered `expRank`). Tickets on file mark an item **paid** — shown
-in the list row's right rail (Link · Paid · Attended, top to bottom, always visible
-on/off) and echoed on the calendar (see below).
+in the list row's right rail: Photo · Link · Paid · Going · Attended, top to bottom.
+Photo/Link/Paid are situational (only rendered when there's something to show); Going
+(only once a Planned Date exists) and Attended are always-visible toggles — a second,
+quick-tap path to the same fields the editor sets, distinct from the editor's own
+controls. Each gets its own colour, matched everywhere it appears (this rail, the
+list/detail/calendar pills, the calendar's dots): **green** = Attended, **blue** = Going
+(hollow "still deciding" → filled once confirmed, same language as the calendar's planned
+dot), **gold** = Paid.
 
 ## Notion database schema
 
