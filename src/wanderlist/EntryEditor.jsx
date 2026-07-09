@@ -7,7 +7,7 @@ import PlaceInput from './PlaceInput.jsx'
 import PhotoField from './PhotoField.jsx'
 import TicketsField from './TicketsField.jsx'
 import Lightbox from './Lightbox.jsx'
-import { NameIcon, TextIcon, LinkIcon, CategoryIcon, PlaceIcon, TagIcon, HourglassIcon, CalendarIcon, CheckIcon } from './icons.jsx'
+import { NameIcon, TextIcon, LinkIcon, CategoryIcon, PlaceIcon, TagIcon, HourglassIcon, CalendarIcon } from './icons.jsx'
 
 // Create or edit one item. Everything but a Name is optional — this is a low-friction
 // backlog, so you can jot a bare idea now and flesh it out later. Category is a single
@@ -175,12 +175,14 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, saving
           </div>
           {/* Going is separate from a bare Planned Date: the date/time just means "this is
               when it happens", not "I've committed" — a concert you're still deciding on
-              still wants its date tracked. Only surfaces once there's a date to anchor it. */}
+              still wants its date tracked. Only surfaces once there's a date to anchor it;
+              a plain checkbox row (same pattern as Settings' reminder toggle) reads as part
+              of the field instead of a badge stuck on underneath it. */}
           {plannedDate && (
-            <button type="button" className={`going-toggle${going ? ' on' : ''}`}
-              aria-pressed={going} onClick={() => setGoing(g => !g)}>
-              <CheckIcon /> {going ? 'Going' : 'Still deciding'}
-            </button>
+            <label className="check-row">
+              <input type="checkbox" checked={going} onChange={e => setGoing(e.target.checked)} />
+              <span>I've decided I'm going</span>
+            </label>
           )}
         </div>
       </div>

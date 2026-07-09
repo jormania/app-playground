@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import './wanderlist.css'
 import { getClient, isLive, loadPreset, savePreset, applyPreset, nextPreset, presetById, modeOf, THEME_KEY, loadViewPrefs, saveViewPrefs } from './store.js'
 import { todayKey } from './dates.js'
@@ -63,7 +63,9 @@ export default function App() {
   // scroll to the top so a long detail/editor doesn't land mid-page.
   useEffect(() => { if (focus) window.scrollTo({ top: 0, behavior: 'instant' }) }, [focus])
 
+  const lastLoadRef = useRef(0)
   const load = useCallback(async () => {
+    lastLoadRef.current = Date.now()
     setLoading(true)
     setLoadError('')
     const client = getClient()
@@ -88,6 +90,20 @@ export default function App() {
     window.addEventListener('online', onOnline)
     window.addEventListener('offline', onOffline)
     return () => { window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline) }
+  }, [load])
+
+  // Findings can change from outside this tab entirely — most often Claude.ai's Notion
+  // connector adding something while this tab sat in the background. Refresh whenever the
+  // tab regains focus, same idea as the reconnect refresh above; throttled so rapid
+  // alt-tabbing doesn't hit Notion on every switch.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState !== 'visible') return
+      if (Date.now() - lastLoadRef.current < 10000) return
+      load()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [load])
 
   const filtered = useMemo(

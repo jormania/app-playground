@@ -492,16 +492,6 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .date-time-row { display: flex; gap: 8px; }
 .date-time-row > input[type=date] { flex: 1; min-width: 0; }
 .date-time-row > input[type=time] { flex: 0 0 auto; width: 118px; }
-/* Going: a small pill under the date/time row, off by default ("still deciding") — flips
-   to a confirmed green once tapped, same visual language as the list's row-check. */
-.going-toggle {
-  display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 12px;
-  border-radius: 999px; border: 1px solid var(--border2); background: var(--surface);
-  color: var(--faint); font-family: var(--mono); font-size: 0.72rem; cursor: pointer; transition: all 0.16s;
-}
-.going-toggle:hover { color: var(--muted); border-color: var(--muted); }
-.going-toggle svg { font-size: 13px; }
-.going-toggle.on { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); border-color: color-mix(in srgb, var(--green) 55%, transparent); }
 .hint { font-family: var(--mono); font-size: 0.6875rem; color: var(--faint); line-height: 1.5; }
 .check-row {
   display: flex; align-items: center; gap: 9px; font-size: 0.9rem; color: var(--muted);

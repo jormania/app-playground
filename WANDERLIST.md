@@ -41,6 +41,9 @@ cycle button — brought over per request "as close to the original as possible"
   fixtures (`src/wanderlist/fixtures.js`).
 - Clients: `notionClient.js` (live) wrapped by `offlineClient.js` (localStorage read-cache
   + write-outbox, flush on reconnect); `fixtureClient.js` for demo. `store.js` picks.
+- `App.jsx` refetches on mount, on reconnect, and on regaining tab focus (`visibilitychange`,
+  throttled to once per 10s) — the last one catches changes made outside this tab entirely,
+  e.g. an entry added via Claude.ai's Notion connector while this tab sat in the background.
 - Pure logic (tested): `notion.js` (Notion⇄model mapping), `search.js` (status/search/sort
   `triage`), `dates.js` (expiry + past/planned-slipped helpers), `stats.js` (forecast
   counts + Category/Tags/Place frequency ranking), `theme.js`.
