@@ -427,27 +427,29 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 }
 .entry-row .meta { margin-top: 12px; }
 .row-side { display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; }
-.row-link {
-  display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
-  border-radius: 50%; border: 1px solid var(--border); color: var(--muted); font-size: 15px;
+/* Shared shape for every rail icon (Link/Paid/Going/Attended) — a touch bigger than the
+   original 32px, a visibly thicker ring, and a bolder icon stroke than the app-wide
+   default (1.6), all to make four small circles at arm's length on a phone easier to
+   read at a glance and to tell apart from one another. */
+.row-link, .row-check, .row-going, .row-paid {
+  display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px;
+  border-radius: 50%; border: 1.75px solid var(--border2); font-size: 16px; transition: all 0.16s;
 }
+.row-link svg, .row-check svg, .row-going svg, .row-paid svg { stroke-width: 2.1; }
+.row-link { border-color: var(--border); color: var(--muted); }
 .row-link:hover { color: var(--blue); border-color: var(--blue); }
-.row-check {
-  display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
-  border-radius: 50%; border: 1px solid var(--border2); background: var(--surface); color: var(--faint); font-size: 15px; transition: all 0.16s;
-}
+/* Off states use --muted (not the near-invisible --faint) so "not yet" reads clearly
+   rather than nearly blending into the row background — matched between Going and
+   Attended so their un-toggled look is identical, only the accent colour differs once on. */
+.row-check, .row-going { background: var(--surface); color: var(--muted); }
 .row-check:hover { color: var(--green); border-color: var(--green); }
-.row-check.on { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); border-color: color-mix(in srgb, var(--green) 55%, transparent); animation: check-pop 0.28s ease; }
+.row-check.on { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); border-color: var(--green); animation: check-pop 0.28s ease; }
 /* Going — the list rail's quick toggle for the same field the editor's checkbox sets;
-   blue (not green) so it's visually distinct from Attended at a glance. Hollow/faint
-   when still deciding, filled solid blue once confirmed — same hollow-to-filled language
-   as the calendar's planned dot. */
-.row-going {
-  display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
-  border-radius: 50%; border: 1px solid var(--border2); background: var(--surface); color: var(--faint); font-size: 15px; transition: all 0.16s;
-}
+   blue (not green) so it's visually distinct from Attended at a glance. Gray/hollow
+   when still deciding (identical to Attended's off state), filled solid blue once
+   confirmed — same hollow-to-filled language as the calendar's planned dot. */
 .row-going:hover { color: var(--blue); border-color: var(--blue); }
-.row-going.on { background: color-mix(in srgb, var(--blue) 16%, transparent); color: var(--blue); border-color: color-mix(in srgb, var(--blue) 55%, transparent); animation: check-pop 0.28s ease; }
+.row-going.on { background: color-mix(in srgb, var(--blue) 18%, transparent); color: var(--blue); border-color: var(--blue); animation: check-pop 0.28s ease; }
 @keyframes check-pop { 0% { transform: scale(0.7); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
 
 /* ── Detail view ── */
@@ -636,11 +638,10 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
    its "on" look — no off state to draw. Gold — distinct from Attended's green and Going's
    blue, matched everywhere Paid shows up (this, .paid-pill in the calendar agenda). */
 .row-paid {
-  display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
-  border-radius: 50%; border: 1px solid color-mix(in srgb, var(--gold) 50%, transparent);
-  background: color-mix(in srgb, var(--gold) 12%, transparent); color: var(--gold); font-size: 15px; transition: all 0.16s;
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 14%, transparent); color: var(--gold);
 }
-.row-paid:hover { background: color-mix(in srgb, var(--gold) 24%, transparent); }
+.row-paid:hover { background: color-mix(in srgb, var(--gold) 26%, transparent); }
 
 /* ── Modal ── */
 .modal-scrim { position: fixed; inset: 0; background: var(--scrim); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
@@ -743,10 +744,13 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .agenda-name { font-family: var(--sans); font-size: 1.02rem; font-weight: 600; color: var(--ink); }
 .agenda-card.attended .agenda-name { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--ink) 40%, transparent); }
 .agenda-card .meta { margin-top: 10px; }
+/* Planned (undecided) is neutral gray — matching .when-pill's own default — so Going's
+   blue actually reads as a distinct, confirmed state instead of both looking the same
+   (they used to both be blue here, which is the bug this fixes). */
 .planned-pill {
   display: inline-flex; align-items: center; gap: 5px;
   font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.02em; padding: 3px 9px; border-radius: 999px;
-  color: var(--blue); border: 1px solid color-mix(in srgb, var(--blue) 45%, transparent); background: color-mix(in srgb, var(--blue) 9%, transparent);
+  color: var(--muted); border: 1px solid var(--border2);
 }
 .planned-pill.going { color: var(--blue); border-color: color-mix(in srgb, var(--blue) 45%, transparent); background: color-mix(in srgb, var(--blue) 9%, transparent); }
 .planned-pill svg { font-size: 12px; }

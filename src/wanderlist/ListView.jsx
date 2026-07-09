@@ -3,7 +3,9 @@ import { expiryLabel, daysUntil, formatMedium, formatTime, isPastExpired, isPlan
 import { CheckIcon, CheckCircleIcon, ExternalIcon, HourglassIcon, CalendarIcon, TicketIcon } from './icons.jsx'
 import MetaChips from './MetaChips.jsx'
 import Lightbox from './Lightbox.jsx'
+import TicketsModal from './TicketsModal.jsx'
 import { openTickets } from './links.js'
+import { haptic } from './haptics.js'
 
 // Primary read view: the triaged, sorted backlog as cards. Expiring-soon items carry a
 // warm pill and (via App's sort) float up; attended items dim and sink. The row is a
@@ -17,6 +19,7 @@ function ExpiryPill({ dateKey, today }) {
 
 export default function ListView({ entries, total, onOpen, onChip, onToggleAttended, onToggleGoing, emptyMessage, today, sort }) {
   const [lightboxSrc, setLightboxSrc] = useState(null)
+  const [ticketsFor, setTicketsFor] = useState(null)
 
   if (!entries.length) {
     return (
@@ -81,12 +84,12 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
                   className="photo-thumb photo-thumb-sm"
                   title="Has a photo — tap to view"
                   aria-label="Open photo"
-                  onClick={ev => { ev.stopPropagation(); setLightboxSrc(e.photo.url) }}
+                  onClick={ev => { ev.stopPropagation(); haptic(); setLightboxSrc(e.photo.url) }}
                 ><img src={e.photo.url} alt="" loading="lazy" /></button>
               )}
               {e.link && (
                 <a className="row-link" href={e.link} target="_blank" rel="noopener" title="Open link"
-                   onClick={ev => ev.stopPropagation()}><ExternalIcon /></a>
+                   onClick={ev => { ev.stopPropagation(); haptic() }}><ExternalIcon /></a>
               )}
               {e.tickets?.length > 0 && (
                 <button
@@ -94,7 +97,15 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
                   className="row-paid"
                   title={`Paid — ${e.tickets.length} ticket${e.tickets.length === 1 ? '' : 's'} on file — tap to open`}
                   aria-label="Open tickets"
-                  onClick={ev => { ev.stopPropagation(); openTickets(e, onOpen) }}
+                  onClick={ev => {
+                    ev.stopPropagation()
+                    haptic()
+                    // Exactly one ticket has an obvious target — open it directly. More
+                    // than one has no single "the" ticket, so list them instead of
+                    // jumping straight to the full entry.
+                    if (e.tickets.length > 1) setTicketsFor(e)
+                    else openTickets(e, onOpen)
+                  }}
                 >
                   <TicketIcon />
                 </button>
@@ -106,7 +117,7 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
                   title={e.going ? 'Going — tap to mark still deciding' : 'Still deciding — tap to mark going'}
                   aria-label={e.going ? 'Mark as still deciding' : 'Mark as going'}
                   aria-pressed={e.going}
-                  onClick={ev => { ev.stopPropagation(); onToggleGoing(e) }}
+                  onClick={ev => { ev.stopPropagation(); haptic(); onToggleGoing(e) }}
                 >
                   <CalendarIcon />
                 </button>
@@ -116,7 +127,7 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
                 title={e.attended ? 'Mark as not attended' : 'Mark attended'}
                 aria-label={e.attended ? 'Mark as not attended' : 'Mark attended'}
                 aria-pressed={e.attended}
-                onClick={ev => { ev.stopPropagation(); onToggleAttended(e) }}
+                onClick={ev => { ev.stopPropagation(); haptic(); onToggleAttended(e) }}
               >
                 <CheckIcon />
               </button>
@@ -126,6 +137,7 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
         )
       })}
       {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+      {ticketsFor && <TicketsModal entry={ticketsFor} onClose={() => setTicketsFor(null)} />}
     </div>
   )
 }

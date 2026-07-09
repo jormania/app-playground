@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { monthGrid, stepMonth, monthLabel, keyToDate, formatHuman, formatTime, entriesOnDay, expiryLabel, daysUntil } from './dates.js'
 import { BackIcon, ExternalIcon, HourglassIcon, CalendarIcon, CheckCircleIcon, TicketIcon } from './icons.jsx'
 import MetaChips from './MetaChips.jsx'
+import TicketsModal from './TicketsModal.jsx'
 import { openTickets } from './links.js'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -15,6 +16,7 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
   const initial = keyToDate(today) || new Date()
   const [month, setMonth] = useState({ year: initial.getFullYear(), month: initial.getMonth() })
   const [selected, setSelected] = useState(today)
+  const [ticketsFor, setTicketsFor] = useState(null)
 
   // Marker lookup: which days carry a planned / an expiring / a paid entry. Paid rides
   // whichever date the entry itself lands on (planned, else expiring) — tickets don't have
@@ -144,7 +146,11 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
                         type="button"
                         className="paid-pill"
                         title={`Paid — ${entry.tickets.length} ticket${entry.tickets.length === 1 ? '' : 's'} — tap to open`}
-                        onClick={ev => { ev.stopPropagation(); openTickets(entry, onOpen) }}
+                        onClick={ev => {
+                          ev.stopPropagation()
+                          if (entry.tickets.length > 1) setTicketsFor(entry)
+                          else openTickets(entry, onOpen)
+                        }}
                       ><TicketIcon /> paid</button>
                     )}
                     {expiring && <span className={`expiry-pill ${urgency}`}><HourglassIcon /> {expiryLabel(entry.dateExpiring, today)}</span>}
@@ -156,6 +162,7 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
           })
         )}
       </div>
+      {ticketsFor && <TicketsModal entry={ticketsFor} onClose={() => setTicketsFor(null)} />}
     </div>
   )
 }

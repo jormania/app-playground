@@ -67,7 +67,15 @@ quick-tap path to the same fields the editor sets, distinct from the editor's ow
 controls. Each gets its own colour, matched everywhere it appears (this rail, the
 list/detail/calendar pills, the calendar's dots): **green** = Attended, **blue** = Going
 (hollow "still deciding" → filled once confirmed, same language as the calendar's planned
-dot), **gold** = Paid.
+dot), **gold** = Paid. Off states use `--muted` (not the near-invisible `--faint`) so
+"not yet" reads clearly rather than blending into the row; a fixed bug had the calendar
+agenda's undecided-planned pill rendering blue (identical to Going's blue) — it's neutral
+gray now, matching the list/detail pill's own default. All four rail icons carry a
+visibly thicker ring and bolder stroke than the app-wide default, and each fires a short
+`navigator.vibrate` pulse on tap (`haptics.js`; a safe no-op where the Vibration API
+doesn't exist, e.g. iOS). Tapping Paid with more than one ticket opens `TicketsModal.jsx`
+— a small list, each ticket opening directly — instead of falling through to the full
+entry (exactly one ticket still opens directly via `links.js`'s `openTickets`).
 
 ## Notion database schema
 
