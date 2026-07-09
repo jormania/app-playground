@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import { expiryLabel, daysUntil, formatMedium, isPastExpired, isPlannedPast } from './dates.js'
 import { CheckIcon, CheckCircleIcon, ExternalIcon, HourglassIcon, CalendarIcon, TicketIcon } from './icons.jsx'
 import MetaChips from './MetaChips.jsx'
+import Lightbox from './Lightbox.jsx'
+import { openTickets } from './links.js'
 
 // Primary read view: the triaged, sorted backlog as cards. Expiring-soon items carry a
 // warm pill and (via App's sort) float up; attended items dim and sink. The row is a
@@ -13,6 +16,8 @@ function ExpiryPill({ dateKey, today }) {
 }
 
 export default function ListView({ entries, total, onOpen, onChip, onToggleAttended, emptyMessage, today, sort }) {
+  const [lightboxSrc, setLightboxSrc] = useState(null)
+
   if (!entries.length) {
     return (
       <div className="empty">
@@ -59,27 +64,36 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
                 )}
               </div>
               {e.description && <div className="row-excerpt">{e.description}</div>}
-              <MetaChips category={e.category} place={e.place} tags={e.tags} onChip={onChip} />
+              <MetaChips category={e.category} place={e.place} placeUrl={e.placeUrl} tags={e.tags} onChip={onChip} />
             </div>
+            {/* Attended shows always, on or off, so the rail is a stable landmark; the
+                other three are situational — they only appear when there's something
+                to act on, and each is a shortcut to that thing (photo, link, ticket). */}
             <div className="row-side">
               {e.photo && (
-                <div className="photo-thumb photo-thumb-sm" title="Has a photo">
-                  <img src={e.photo.url} alt="" loading="lazy" />
-                </div>
+                <button
+                  type="button"
+                  className="photo-thumb photo-thumb-sm"
+                  title="Has a photo — tap to view"
+                  aria-label="Open photo"
+                  onClick={ev => { ev.stopPropagation(); setLightboxSrc(e.photo.url) }}
+                ><img src={e.photo.url} alt="" loading="lazy" /></button>
               )}
               {e.link && (
                 <a className="row-link" href={e.link} target="_blank" rel="noopener" title="Open link"
                    onClick={ev => ev.stopPropagation()}><ExternalIcon /></a>
               )}
-              {/* Paid — tickets on file mean it's paid for. Always shown (like Attended
-                  below) so the rail reads consistently, on or off. */}
-              <span
-                className={`row-paid${e.tickets?.length > 0 ? ' on' : ''}`}
-                title={e.tickets?.length > 0 ? `Paid — ${e.tickets.length} ticket${e.tickets.length === 1 ? '' : 's'} on file` : 'Not paid — no tickets on file'}
-                aria-label={e.tickets?.length > 0 ? 'Paid' : 'Not paid'}
-              >
-                <TicketIcon />
-              </span>
+              {e.tickets?.length > 0 && (
+                <button
+                  type="button"
+                  className="row-paid"
+                  title={`Paid — ${e.tickets.length} ticket${e.tickets.length === 1 ? '' : 's'} on file — tap to open`}
+                  aria-label="Open tickets"
+                  onClick={ev => { ev.stopPropagation(); openTickets(e, onOpen) }}
+                >
+                  <TicketIcon />
+                </button>
+              )}
               <button
                 className={`row-check${e.attended ? ' on' : ''}`}
                 title={e.attended ? 'Mark as not attended' : 'Mark attended'}
@@ -94,6 +108,7 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
         </div>
         )
       })}
+      {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
     </div>
   )
 }

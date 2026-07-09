@@ -62,7 +62,7 @@ export default function EntryView({ entry, onBack, onEdit, onChip, onToggleAtten
 
       {entry.description && <div className="ev-body">{entry.description}</div>}
 
-      <MetaChips category={entry.category} place={entry.place} tags={entry.tags} onChip={onChip} />
+      <MetaChips category={entry.category} place={entry.place} placeUrl={entry.placeUrl} tags={entry.tags} onChip={onChip} />
 
       {entry.tickets?.length > 0 && (
         <div className="ticket-section">

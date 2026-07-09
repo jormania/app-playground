@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { monthGrid, stepMonth, monthLabel, keyToDate, formatHuman, entriesOnDay, expiryLabel, daysUntil } from './dates.js'
 import { BackIcon, ExternalIcon, HourglassIcon, CalendarIcon, CheckCircleIcon, TicketIcon } from './icons.jsx'
 import MetaChips from './MetaChips.jsx'
+import { openTickets } from './links.js'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -122,10 +123,17 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
                   <div className="row-badges">
                     {entry.attended && <span className="attended-pill"><CheckCircleIcon /> attended</span>}
                     {planned && <span className="planned-pill"><CalendarIcon /> planned</span>}
-                    {entry.tickets?.length > 0 && <span className="paid-pill"><TicketIcon /> paid</span>}
+                    {entry.tickets?.length > 0 && (
+                      <button
+                        type="button"
+                        className="paid-pill"
+                        title={`Paid — ${entry.tickets.length} ticket${entry.tickets.length === 1 ? '' : 's'} — tap to open`}
+                        onClick={ev => { ev.stopPropagation(); openTickets(entry, onOpen) }}
+                      ><TicketIcon /> paid</button>
+                    )}
                     {expiring && <span className={`expiry-pill ${urgency}`}><HourglassIcon /> {expiryLabel(entry.dateExpiring, today)}</span>}
                   </div>
-                  <MetaChips category={entry.category} place={entry.place} tags={entry.tags} onChip={onChip} />
+                  <MetaChips category={entry.category} place={entry.place} placeUrl={entry.placeUrl} tags={entry.tags} onChip={onChip} />
                 </div>
               </div>
             )
