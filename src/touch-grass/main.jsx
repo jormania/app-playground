@@ -15,7 +15,9 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>
 )
 
-if ('serviceWorker' in navigator) {
+// Production only — in `vite dev` the worker would cache-first the unhashed dev modules
+// and serve stale code back on every reload (see CLAUDE.md "Service workers & dev").
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {})
   })

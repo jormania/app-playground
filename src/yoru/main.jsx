@@ -15,8 +15,8 @@ import App from './App'
 watchInstalled('yoru-react.html')
 
 // Scoped service worker, registered ourselves so it stays confined to this
-// page — same pattern as Tempo / Law of the Day.
-if ('serviceWorker' in navigator) {
+// page — same pattern as Tempo / Law of the Day. Production only (see CLAUDE.md "Service workers & dev").
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/yoru-sw.js', { scope: '/yoru-react.html' })

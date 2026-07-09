@@ -61,6 +61,20 @@ app calls `watchInstalled('<file>.html')` once at startup so The Cabinet can
 tell it's installed reliably; see CABINET.md's "Install detection, take two"
 and add this call for any new PWA app.
 
+## Service workers & dev
+
+Every `react-vite` app registers its own scoped service worker from its
+`main.{jsx,tsx}`. Those workers cache assets **cache-first**, which is correct in
+production (hashed filenames guarantee a cache miss on each new build) but
+**poison the Vite dev server**: dev module URLs are stable and unhashed, so the
+worker serves the *first-cached* copy of your code back on every reload and your
+edits never show up (this is why `localhost:5173/<app>.html` can look like "a
+very old version"). **Registration is therefore gated on `import.meta.env.PROD`**
+in every entry — a service worker must never install under `vite dev`. Keep that
+guard when adding a new app or touching an entry's SW registration. If a stale
+worker is already installed on localhost, unregister it and clear caches
+(DevTools → Application) once; the guard prevents it recurring.
+
 ## Deploy guardrail
 
 Pushing to `main` **auto-deploys via Vercel** — an unreviewed edit can reach

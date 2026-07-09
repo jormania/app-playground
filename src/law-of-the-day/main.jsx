@@ -9,8 +9,8 @@ import App from './App'
 watchInstalled('law-of-the-day-react.html')
 
 // Scoped service worker, registered ourselves so it stays confined to this
-// page — same pattern as Tempo.
-if ('serviceWorker' in navigator) {
+// page — same pattern as Tempo. Production only (see CLAUDE.md "Service workers & dev").
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/law-of-the-day-sw.js', { scope: '/law-of-the-day-react.html' }).catch(() => {})
   })

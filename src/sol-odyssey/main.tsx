@@ -18,7 +18,8 @@ const queryClient = new QueryClient({
 
 // Register the app's own service worker (scoped to this page, distinct filename so it
 // never collides with the other apps' workers). Best-effort; failure is non-fatal.
-if ('serviceWorker' in navigator) {
+// Production only (see CLAUDE.md "Service workers & dev").
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sol-odyssey-sw.js', { scope: '/sol-odysseys-react.html' })

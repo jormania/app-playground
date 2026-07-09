@@ -12,8 +12,9 @@ import './tempo.css'
 watchInstalled('tempo-react.html')
 
 // Scoped service worker (VitePWA generates tempo-sw.js), registered ourselves so
-// it stays confined to Tempo's page — same pattern as Sol Odyssey.
-if ('serviceWorker' in navigator) {
+// it stays confined to Tempo's page — same pattern as Sol Odyssey. Production only
+// (see CLAUDE.md "Service workers & dev").
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/tempo-sw.js', { scope: '/tempo-react.html' }).catch(() => {})
   })

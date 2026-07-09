@@ -15,7 +15,8 @@ createRoot(document.getElementById('root')).render(
 
 // Register the app's own service worker (scoped to this page, distinct filename so it never
 // collides with Touch Grass's root-scope /sw.js). Best-effort; failure is non-fatal.
-if ('serviceWorker' in navigator) {
+// Production only (see CLAUDE.md "Service workers & dev").
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/journal-sw.js', { scope: '/journal-of-delights-react.html' })
