@@ -117,11 +117,19 @@ the request errors, or you're offline — Place is never a hard dependency.
 Unlike the other apps' *local* notifications, this is a **server-side** email so it lands
 with the app closed.
 
-- **Cron:** `vercel.json` runs `GET /api/wanderlist-remind` daily (`0 6 * * *`, ~morning
-  Bucharest). It reads prefs, queries Notion for items whose `Date Expiring` == **tomorrow
-  (Europe/Bucharest)** and `Attended` == false, and sends one digest via **Resend**.
-- **Pure rule** in `api/_lib/reminders.js` (`selectExpiring`, `zonedTomorrowKey`,
-  `buildReminderEmail`) — unit-tested in `api/_lib/reminders.test.js`.
+- **Cron:** `vercel.json` runs `GET /api/wanderlist-remind` via **two** daily entries —
+  `0 16 * * *` and `0 17 * * *` (UTC) — one per Bucharest DST offset (EEST/+3, EET/+2).
+  Hobby-plan cron can't run more than once a day, and can't be told a timezone, so each
+  invocation checks the actual local hour and no-ops unless it's genuinely evening there;
+  only one of the two ever really sends on a given day. (Hobby cron also has up to ~59min
+  of jitter within its scheduled hour, so this lands *around* 7pm, not the exact minute.)
+- It reads prefs, queries Notion for unattended items whose `Date Expiring`, `Planned Date`,
+  or (`Planned Date` + `Going`) fall on **tomorrow (Europe/Bucharest)**, and sends one digest
+  via **Resend** — each item labelled with which of Expiring/Planned/Going it's due under
+  (an item can be more than one, e.g. expiring and planned the same day).
+- **Pure rule** in `api/_lib/reminders.js` (`selectDueTomorrow`, `statusesFor`, `zonedHour`,
+  `zonedTomorrowKey`, `splitPlannedStart`, `formatTime12`, `buildReminderEmail`) —
+  unit-tested in `api/_lib/reminders.test.js`.
 - **Prefs** (`{ enabled, email, name }`) live in **Upstash Redis** (`api/_lib/kv.js`, Upstash
   REST via fetch — no npm dep), written from Settings via `/api/wanderlist-reminders`,
   **gated by the Notion token** (only someone with the token can change where mail goes).

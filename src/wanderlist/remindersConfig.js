@@ -67,12 +67,13 @@ export async function saveServerPrefs(prefs) {
   }
 }
 
-// Fires a real reminder email right now, bypassing the "enabled" toggle and the tomorrow-
-// only date filter — so you can confirm the whole pipeline (Notion query → Resend send)
-// works without waiting for a real item to be a day out. Uses today's real expiring-soon
-// items if there are any due tomorrow, otherwise a single placeholder item, so the button
-// always produces a real email to check. Gated the same way as saveServerPrefs: the
-// server only accepts it from whoever already holds the matching Notion token.
+// Fires a real reminder email right now, bypassing the "enabled" toggle and the evening
+// local-hour gate — so you can confirm the whole pipeline (Notion query → Resend send)
+// works without waiting for 7pm or a real item to be a day out. Uses today's real
+// due-tomorrow items (Expiring, Planned, or Going) if there are any, otherwise a single
+// placeholder item, so the button always produces a real email to check. Gated the same
+// way as saveServerPrefs: the server only accepts it from whoever already holds the
+// matching Notion token.
 export async function sendTestReminder() {
   const token = getToken()
   if (!token) return { ok: false, message: 'Connect Notion first.' }

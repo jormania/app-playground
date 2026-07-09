@@ -132,8 +132,9 @@ export default function SettingsModal({ onClose, onChanged }) {
       <div className="field" style={{ marginTop: 22 }}>
         <label style={labelStyle}>Email reminder</label>
         <p style={{ marginTop: 0, marginBottom: 10 }}>
-          One email the day before something’s <b>Date Expiring</b> (and not yet attended). Sent
-          server-side, so it reaches you even with the app closed.
+          One email around <b>7pm the evening before</b> — for anything unattended that's
+          <b> Expiring</b>, <b>Planned</b>, or <b>Going</b> the next day, each labelled with
+          which it is. Sent server-side, so it reaches you even with the app closed.
         </p>
 
         {!live && <p className="hint">Connect Notion above to set up reminders.</p>}
@@ -142,7 +143,7 @@ export default function SettingsModal({ onClose, onChanged }) {
           <>
             <label className="check-row" style={{ marginBottom: 12 }}>
               <input type="checkbox" checked={remOn} onChange={e => setRemOn(e.target.checked)} />
-              <span>Email me a day before things expire</span>
+              <span>Email me the evening before things are due</span>
             </label>
             <div className="field">
               <label htmlFor="r-email" style={labelStyle}>Send to</label>

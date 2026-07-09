@@ -127,7 +127,7 @@
   <p class="muted">Redeploy for the variable to take effect. Without the key — or if it’s missing or invalid — the Place field simply becomes a plain text box: you type the place name yourself and everything else (Category, Tags, dates, the calendar, reminders) still works exactly the same.</p>
 
   <h2>4 · Email reminder <span class="pill">optional</span></h2>
-  <p>Get one email the day before something’s <code>Date Expiring</code> (and not yet attended). It’s sent by a daily server job, so it reaches you <b>even when the app is closed</b>. Like Place search, this is a one-time <b>server-side</b> setup done once by whoever runs the deployment; after that, turning it on and setting the address is done per-person in <b>Settings → Email reminder</b>.</p>
+  <p>Get one email around <b>7pm the evening before</b> — for anything unattended that's <b>Expiring</b>, <b>Planned</b>, or <b>Planned and Going</b> the next day, each line labelled with which it is (an item can be more than one, e.g. expiring and planned the same day). It’s sent by a daily server job, so it reaches you <b>even when the app is closed</b>. Like Place search, this is a one-time <b>server-side</b> setup done once by whoever runs the deployment; after that, turning it on and setting the address is done per-person in <b>Settings → Email reminder</b>.</p>
   <ol class="steps">
     <li><b>Create a Resend account.</b> Sign up at <a href="https://resend.com" target="_blank" rel="noopener">resend.com</a> (the free tier is plenty for one person's reminders) and grab an <b>API key</b> from the dashboard.</li>
     <li><b>Pick a sender.</b> The quickest path is Resend's own <code>onboarding@resend.dev</code> address, which can send to your own verified email without any domain setup. To send from your own address instead, verify your domain in Resend first.</li>
@@ -140,7 +140,7 @@ RESEND_API_KEY          = re_…
 REMINDER_FROM           = Wanderlist &lt;onboarding@resend.dev&gt;
 CRON_SECRET             = any-long-random-string   (optional, guards the endpoint)</div>
   <ol class="steps" start="5">
-    <li><b>Redeploy.</b> The daily job itself is already wired in <code>vercel.json</code> (runs each morning, Europe/Bucharest) — nothing to add there. Once the vars are set and the project redeploys, open <b>Settings → Email reminder</b> in the app, turn it on, enter your email, and <b>Save</b>.</li>
+    <li><b>Redeploy.</b> The job itself is already wired in <code>vercel.json</code> as two daily entries — one per Bucharest DST offset, so it lands around 7pm local year-round without needing a timezone-aware cron — nothing to add there. Once the vars are set and the project redeploys, open <b>Settings → Email reminder</b> in the app, turn it on, enter your email, and <b>Save</b>.</li>
     <li><b>Verify it actually works.</b> Hit <b>Send test reminder</b>, right next to Save — it fires a real email immediately through the same pipeline the daily job uses (a placeholder item if nothing’s genuinely due tomorrow), so you can confirm delivery without waiting for a real deadline.</li>
   </ol>
   <p class="muted">The reminder address and name are editable in the app (saved to KV, gated by your Notion token so only you can change them). Secrets stay in Vercel env vars and never touch your browser.</p>
