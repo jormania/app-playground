@@ -62,7 +62,7 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
         {/* View switcher — far left */}
         <div className="view-switch" role="tablist" aria-label="View">
           {VIEWS.map(v => (
-            <button key={v.id} className={view === v.id ? 'active' : ''} aria-selected={view === v.id} onClick={() => onView(v.id)} title={v.label} aria-label={v.label}>
+            <button key={v.id} role="tab" className={view === v.id ? 'active' : ''} aria-selected={view === v.id} onClick={() => onView(v.id)} title={v.label} aria-label={v.label}>
               <v.Icon />
             </button>
           ))}
@@ -82,6 +82,7 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
                 value={query}
                 placeholder="search…"
                 onChange={e => onQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Escape') closeSearch() }}
                 autoComplete="off"
                 spellCheck="false"
                 aria-label="Search your list"

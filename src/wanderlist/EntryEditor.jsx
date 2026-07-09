@@ -24,6 +24,9 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, saving
   const [tags, setTags] = useState(initial.tags || [])
   const [dateExpiring, setDateExpiring] = useState(initial.dateExpiring || '')
   const [plannedDate, setPlannedDate] = useState(initial.plannedDate || '')
+  // Start time only — no end time tracked. Meaningless without a plannedDate, so clearing
+  // the date clears the time too (see the date field's onChange below).
+  const [plannedTime, setPlannedTime] = useState(initial.plannedTime || '')
   // Attended is toggled from the list (round ✓) and the detail view, never here — but we
   // carry the existing value through so editing an already-attended item doesn't clear it.
   const attended = Boolean(initial.attended)
@@ -89,6 +92,7 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, saving
       tags,
       dateExpiring: dateExpiring || null,
       plannedDate: plannedDate || null,
+      plannedTime: plannedDate ? (plannedTime || null) : null,
       attended,
       dateAdded: initial.dateAdded || todayKey(),
       photoAction,
@@ -144,15 +148,27 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, saving
       </div>
 
       <div className="field-grid">
+        {/* The two dates are deliberately unconstrained against each other: a ticket
+            window often closes BEFORE the day you attend (expiry < planned), and an
+            exhibition's run can end after the day you pick (planned < expiry) — both are
+            normal. A min/max pairing here once blocked saving perfectly valid entries. */}
         <div className="field">
           <label htmlFor="f-exp"><HourglassIcon /> Expires <span className="opt">— deadline to act</span></label>
-          {/* Can't expire before you plan to go — earlier days are greyed out. */}
-          <input id="f-exp" type="date" value={dateExpiring} min={plannedDate || undefined} onChange={e => setDateExpiring(e.target.value)} />
+          <input id="f-exp" type="date" value={dateExpiring} onChange={e => setDateExpiring(e.target.value)} />
         </div>
         <div className="field">
           <label htmlFor="f-when"><CalendarIcon /> Planned <span className="opt">— when you'll go</span></label>
-          {/* Planned can't be past the deadline — later days are greyed out. */}
-          <input id="f-when" type="date" value={plannedDate} max={dateExpiring || undefined} onChange={e => setPlannedDate(e.target.value)} />
+          <div className="date-time-row">
+            <input id="f-when" type="date" value={plannedDate}
+              onChange={e => { const v = e.target.value; setPlannedDate(v); if (!v) setPlannedTime('') }} />
+            {/* Start time only, and only once a date's picked — a time with no day to
+                anchor it to means nothing. No end time: the app tracks a fixed start,
+                not a duration. */}
+            {plannedDate && (
+              <input type="time" value={plannedTime} onChange={e => setPlannedTime(e.target.value)}
+                aria-label="Start time (optional)" title="Start time — optional" />
+            )}
+          </div>
         </div>
       </div>
 

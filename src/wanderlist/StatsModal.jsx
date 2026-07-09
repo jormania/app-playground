@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { computeStats } from './stats.js'
 import Modal from './Modal.jsx'
-import { categoryIcon } from './categoryIcons.js'
+import { categoryGlyph } from './categoryIcons.js'
 
 // A forward-looking portrait of the backlog — what's coming up, what needs attention,
 // what's still someday. Attended items carry no weight anywhere on this screen; once
@@ -35,7 +35,6 @@ function NextUp({ nextUp }) {
 // Category's busiest value and Tag's busiest value are each fully saturated, rather than
 // competing against each other's raw counts).
 function HeatChip({ it, max, kind, scope, onChip }) {
-  const Icon = kind === 'category' ? categoryIcon(it.name) : null
   return (
     <button
       type="button"
@@ -44,7 +43,7 @@ function HeatChip({ it, max, kind, scope, onChip }) {
       title={`Search ${it.name} — ${it.count} ${it.count === 1 ? 'thing' : 'things'}`}
       onClick={() => onChip(scope, it.name)}
     >
-      {Icon && <Icon />}{it.name} · {it.count}
+      {kind === 'category' && categoryGlyph(it.name)}{it.name} · {it.count}
     </button>
   )
 }

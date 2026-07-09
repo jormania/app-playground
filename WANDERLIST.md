@@ -63,7 +63,7 @@ on/off) and echoed on the calendar (see below).
 ## Notion database schema
 
 App model: `{ id, name, description, link, category, place, placeUrl, tags[], attended,
-dateAdded, dateExpiring, plannedDate, photo, tickets[] }`. Notion properties:
+dateAdded, dateExpiring, plannedDate, plannedTime, photo, tickets[] }`. Notion properties:
 
 | Property | Type | Notes |
 |---|---|---|
@@ -77,7 +77,7 @@ dateAdded, dateExpiring, plannedDate, photo, tickets[] }`. Notion properties:
 | `Attended` | checkbox | |
 | `Date Added` | date | app stamps on create |
 | `Date Expiring` | date | the deadline to act — drives the reminder, expiry pills, and the calendar's Expiring marker |
-| `Planned Date` | date (optional) | the day you plan to go — drives the calendar's Planned marker (renamed from `When` in M2) |
+| `Planned Date` | date (optional) | the day you plan to go — drives the calendar's Planned marker (renamed from `When` in M2). Optionally carries a **start time** too (no end time) — the app model splits it into `plannedDate`/`plannedTime`, but on the wire it's one Notion date property: a bare day when no time is set, a full ISO datetime (this browser's UTC offset) when it is. `Date Expiring` never carries a time, deadline-only. |
 | `Photo` | **files** (M3) | at most one picture — a poster, a photo you took |
 | `Tickets` | **files** (M3), multi | ticket PDFs/screenshots, shown separately from Photo |
 
@@ -152,8 +152,13 @@ that day's entries — both Planned-Date and Date-Expiring matches, each labelle
 Planned pill, a Paid pill (green, next to Planned, when tickets are on file), and/or an
 expiry pill — tap one to open the full entry. The List⇄Calendar toggle lives in the menu
 bar; the calendar respects the status segment + search (so markers reflect To-do/Attended
-and any filter) but not the list sort. Grid/marker/agenda helpers are pure in `dates.js`
-(`monthGrid`, `stepMonth`, `entriesOnDay`, `rolesOn`) and unit-tested.
+and any filter) but not the list sort. **Attended items only ever light up a dot on a day
+already past** — even with the status set to "All", a done thing's planned/expiring date
+no longer means anything going forward, so it's suppressed from today/future days (a day
+already past keeps the dot, as a quiet record of what happened). Grid/marker/agenda
+helpers are pure in `dates.js` (`monthGrid`, `stepMonth`, `entriesOnDay`, `rolesOn`) and
+unit-tested; the attended-suppression rule itself lives inline in `CalendarView.jsx`'s
+marker `useMemo` (component-level, not a `dates.js` helper, since it needs `today`).
 
 ## Stats (shipped)
 

@@ -34,7 +34,9 @@ export default function App() {
   const [live, setLive] = useState(isLive())
   const [offline, setOffline] = useState(false)
 
-  const initialViewPrefs = loadViewPrefs()
+  // Read once at mount (lazy initializer) — not per render, which re-hit localStorage on
+  // every keystroke while searching.
+  const [initialViewPrefs] = useState(loadViewPrefs)
   const [view, setView] = useState(initialViewPrefs.view) // 'list' | 'calendar'
   const [status, setStatus] = useState(initialViewPrefs.status)
   const [query, setQuery] = useState('')
@@ -143,6 +145,7 @@ export default function App() {
   }
 
   async function toggleAttended(entry) {
+    setSaveError('')
     const updated = { ...entry, attended: !entry.attended }
     setEntries(list => list.map(e => (e.id === entry.id ? updated : e)))
     setFocus(f => (f?.kind === 'view' && f.entry.id === entry.id ? { kind: 'view', entry: updated } : f))
@@ -207,6 +210,9 @@ export default function App() {
             </div>
           )}
           {loadError && <div className="error-note" aria-live="polite">{loadError}</div>}
+          {/* Save/toggle errors surface here whenever the editor (which shows its own
+              copy) isn't open — otherwise a failed ✓-toggle from the list was silent. */}
+          {saveError && focus?.kind !== 'edit' && <div className="error-note" aria-live="polite">{saveError}</div>}
 
           {focus?.kind === 'edit' ? (
             <EntryEditor
@@ -221,7 +227,7 @@ export default function App() {
             <EntryView
               entry={focus.entry}
               onBack={() => setFocus(null)}
-              onEdit={(e) => setFocus({ kind: 'edit', initial: e })}
+              onEdit={(e) => { setSaveError(''); setFocus({ kind: 'edit', initial: e }) }}
               onChip={filterByChip}
               onToggleAttended={toggleAttended}
               saving={saving}

@@ -2,19 +2,29 @@
 // No network, no React — the part that gets the heaviest test coverage, mirroring
 // Journal of Delights' notion.js. Wanderlist reads/writes the "Findings" database
 // (see WANDERLIST.md): a backlog of city things-to-do you triage and check off.
+import { localOffsetString } from './dates.js'
 //
 // App model for one item:
 //   { id, name, description, link, category, place, placeUrl, tags[], attended,
-//     dateAdded, dateExpiring, plannedDate, photo, tickets[], pending? }
+//     dateAdded, dateExpiring, plannedDate, plannedTime, photo, tickets[], pending? }
 // where `plannedDate` is the day you plan to go (drives the calendar's Planned marker),
-// `dateExpiring` is the deadline to act (the Expiring marker), `photo` is
-// `{ url, name } | null` (at most one picture, managed out of band via notionClient's
-// uploadFile/attachPhoto/removePhoto rather than toNotionProps — same pattern as Journal
-// of Delights), and `tickets` is `{ url, name, fileUploadId }[]` — ticket files/screenshots,
-// also managed out of band via notionClient's setTickets.
+// `plannedTime` is an optional 'HH:MM' 24h start time for it (no end time — a fixed start
+// is all the app tracks; Expires never carries a time, only a deadline day), `dateExpiring`
+// is the deadline to act (the Expiring marker), `photo` is `{ url, name } | null` (at most
+// one picture, managed out of band via notionClient's uploadFile/attachPhoto/removePhoto
+// rather than toNotionProps — same pattern as Journal of Delights), and `tickets` is
+// `{ url, name, fileUploadId }[]` — ticket files/screenshots, also managed out of band via
+// notionClient's setTickets.
 // where every date is a 'YYYY-MM-DD' string | null, `category` is a single string
 // | null, `place` is a resolved place name string, `placeUrl` is a Maps link, and
 // `tags` is a freeform multi-select.
+//
+// Planned Date's Notion property carries the time too when set — the property's `start`
+// is either a bare 'YYYY-MM-DD' (no time) or a full ISO datetime with this browser's UTC
+// offset (see dates.js's localOffsetString). `splitPlannedDate` below is the one place
+// that datetime gets pulled apart into the app's separate plannedDate/plannedTime fields;
+// every day-key comparison elsewhere in the app (sort, calendar grid, search) keeps
+// working against plain plannedDate, untouched by this.
 
 // Notion caps a single rich_text object's `content` at 2000 characters, so any long
 // text we WRITE (Description) is split into a sequence of <=2000-char chunks; reading
@@ -48,12 +58,34 @@ function normalizeTag(name) {
 }
 const normalizeCategory = normalizeTag
 
+// Split a Notion date property's `start` into a plain day key + an optional 'HH:MM' time.
+// A bare date ('2026-07-12') has no time component; a datetime ('2026-07-12T19:30:00.000+03:00')
+// does — we only need the wall-clock hour:minute as typed, not the offset itself (it's only
+// there so Notion stores the correct absolute instant; round-tripping through the same
+// browser's local time reads it back out unchanged).
+function splitPlannedDate(start) {
+  if (!start) return { date: null, time: null }
+  const m = /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?/.exec(start)
+  if (!m) return { date: null, time: null }
+  return { date: m[1], time: m[2] || null }
+}
+
+// The inverse: combine a day key + optional time back into what Notion's date property
+// expects — a bare day key with no time, or a full ISO datetime (this browser's offset
+// appended) when a start time was set.
+function combinePlannedDate(date, time) {
+  if (!date) return null
+  if (!time) return date
+  return `${date}T${time}:00${localOffsetString()}`
+}
+
 // Read a Notion page object into our app model. Defensive throughout: a property can
 // be missing or a different type if the schema drifts, and we'd rather render a
 // half-empty item than throw on the whole list.
 export function toEntry(page) {
   const props = (page && page.properties) || {}
   const titleProp = props.Name || props.Title || {}
+  const planned = splitPlannedDate(props['Planned Date']?.date?.start ?? null)
   return {
     id: page?.id ?? null,
     name: richTextToPlain(titleProp.title),
@@ -66,7 +98,8 @@ export function toEntry(page) {
     attended: Boolean(props.Attended?.checkbox),
     dateAdded: props['Date Added']?.date?.start ?? null,
     dateExpiring: props['Date Expiring']?.date?.start ?? null,
-    plannedDate: props['Planned Date']?.date?.start ?? null,
+    plannedDate: planned.date,
+    plannedTime: planned.time,
     photo: toPhoto(props.Photo?.files),
     tickets: toTickets(props.Tickets?.files),
   }
@@ -127,7 +160,7 @@ export function toNotionProps(entry) {
     Attended: { checkbox: Boolean(e.attended) },
     'Date Added': { date: e.dateAdded ? { start: e.dateAdded } : null },
     'Date Expiring': { date: e.dateExpiring ? { start: e.dateExpiring } : null },
-    'Planned Date': { date: e.plannedDate ? { start: e.plannedDate } : null },
+    'Planned Date': { date: e.plannedDate ? { start: combinePlannedDate(e.plannedDate, e.plannedTime) } : null },
   }
 }
 

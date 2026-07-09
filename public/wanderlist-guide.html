@@ -95,7 +95,7 @@
       <tr><td>Attended</td><td>Checkbox</td><td>Defaults unchecked.</td></tr>
       <tr><td>Date&nbsp;Added</td><td>Date</td><td>The app stamps this on create.</td></tr>
       <tr><td>Date&nbsp;Expiring</td><td>Date</td><td>The deadline to act on — a registration or ticket window closing. Optional.</td></tr>
-      <tr><td>Planned&nbsp;Date</td><td>Date</td><td>The day you plan to go. Optional.</td></tr>
+      <tr><td>Planned&nbsp;Date</td><td>Date</td><td>The day you plan to go. Optional — and can optionally carry a start time too (no end time), if it's something with a fixed start.</td></tr>
       <tr><td>Photo</td><td>Files&nbsp;&amp;&nbsp;media</td><td>Optional. Leave empty — the app uploads into it. At most one file is ever used.</td></tr>
       <tr><td>Tickets</td><td>Files&nbsp;&amp;&nbsp;media</td><td>Optional. Leave empty — the app uploads into it. Any number of files.</td></tr>
     </tbody>
@@ -150,9 +150,10 @@ CRON_SECRET             = any-long-random-string   (optional, guards the endpoin
     <li>Filter with the <b>To-do / Attended / All</b> segment; search by text, category, place, or tags; tap any chip to filter by it. Your last view, filter, and sort stick across reloads.</li>
     <li><b>Sort</b> by expiring-first (default), recently added, or A–Z. Expiring-soon items float up with a warm pill; anything already past its deadline sinks below a <b>past</b> divider instead of jumping the queue.</li>
     <li>Hit the round <b>✓</b> to mark something attended — it stays in the list, just checked off.</li>
+    <li><b>Planned Date</b> can optionally carry a <b>start time</b> too, once a date's picked — no end time, just when it begins. Shows up everywhere the planned date does (list, detail, calendar agenda). <b>Expires</b> never has a time — it's a deadline day, not a moment.</li>
     <li><b>Photo</b> — add one picture per item (a poster, a shot you took) from the editor; tap it in the detail view for the full size.</li>
     <li><b>Tickets</b> — attach one or more PDFs or screenshots, kept separate from Photo; each opens in a new tab from the detail view. Anything with tickets on file reads as <b>paid</b> — a badge in the list, and a green dot/chip on the calendar.</li>
-    <li><b>Calendar</b> (the calendar button): a month grid where each day shows up to three dots — <b>Planned</b>, <b>Expiring</b>, and <b>Paid</b>. Tap a day to see its entries in an agenda below.</li>
+    <li><b>Calendar</b> (the calendar button): a month grid where each day shows up to three dots — <b>Planned</b>, <b>Expiring</b>, and <b>Paid</b>. Tap a day to see its entries in an agenda below. With <b>All</b> selected, an attended item's dot only shows on a day already past — not on today or a future date, since a done thing's date no longer means anything going forward.</li>
     <li><b>Stats</b> (under <b>⋯</b>): a forward-looking snapshot of the backlog — what's expiring soon, what's past due, what's still someday — plus tap-to-search heatmaps over Category, Tags, and Place. Attended items carry no weight here.</li>
     <li><b>Share</b> an item from its detail view — the OS share sheet (WhatsApp, Email, whatever the device offers), or a clipboard copy where that's not available. Text only: name, note, place, links — no attachments.</li>
     <li><b>Themes</b> from the sun/moon button — six palettes (Solarized, Monokai Pro…); installs as an app and works offline.</li>

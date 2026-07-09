@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { expiryLabel, daysUntil, formatMedium, isPastExpired, isPlannedPast } from './dates.js'
+import { expiryLabel, daysUntil, formatMedium, formatTime, isPastExpired, isPlannedPast } from './dates.js'
 import { CheckIcon, CheckCircleIcon, ExternalIcon, HourglassIcon, CalendarIcon, TicketIcon } from './icons.jsx'
 import MetaChips from './MetaChips.jsx'
 import Lightbox from './Lightbox.jsx'
@@ -60,6 +60,7 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
                 {e.plannedDate && (
                   <span className={`when-pill${isPlannedPast(e, today) ? ' slipped' : ''}`}>
                     <CalendarIcon /> {isPlannedPast(e, today) ? 'was planned' : 'planned'} {formatMedium(e.plannedDate)}
+                    {e.plannedTime ? `, ${formatTime(e.plannedTime)}` : ''}
                   </span>
                 )}
               </div>

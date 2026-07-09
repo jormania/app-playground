@@ -1,5 +1,5 @@
 import { PlaceIcon } from './icons.jsx'
-import { categoryIcon } from './categoryIcons.js'
+import { categoryGlyph } from './categoryIcons.js'
 import { mapsLink } from './links.js'
 
 // Shared presentation of an item's chips, used in list rows and the detail view. Category
@@ -15,8 +15,7 @@ export default function MetaChips({ category, place, placeUrl, tags = [], onChip
   if (topChips.length === 0 && !place) return null
 
   const chip = ({ scope, kind, value }) => {
-    const Icon = kind === 'category' ? categoryIcon(value) : null
-    const content = <>{Icon && <Icon />}{value}</>
+    const content = <>{kind === 'category' && categoryGlyph(value)}{value}</>
     return onChip
       ? <button key={`${kind}-${value}`} type="button" className={`chip ${kind}`}
           onClick={e => { e.stopPropagation(); onChip(scope, value) }} title={`Filter by ${value}`}>{content}</button>

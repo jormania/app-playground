@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'vitest'
-import { daysUntil, expiryLabel, isExpiringSoon, isPastExpired, isPlannedPast, formatMedium, monthGrid, stepMonth, entriesOnDay } from './dates.js'
+import { daysUntil, expiryLabel, isExpiringSoon, isPastExpired, isPlannedPast, formatMedium, formatTime, localOffsetString, monthGrid, stepMonth, entriesOnDay } from './dates.js'
 
 describe('daysUntil', () => {
   test('counts whole calendar days, signed', () => {
@@ -58,6 +58,27 @@ describe('formatMedium', () => {
   test('compact, year-unambiguous', () => {
     expect(formatMedium('2026-07-11')).toBe('11 Jul 2026')
     expect(formatMedium(null)).toBe('')
+  })
+})
+
+describe('formatTime', () => {
+  test('12h clock, lowercase am/pm, no leading zero on the hour', () => {
+    expect(formatTime('19:30')).toBe('7:30pm')
+    expect(formatTime('08:05')).toBe('8:05am')
+    expect(formatTime('00:00')).toBe('12:00am')
+    expect(formatTime('12:00')).toBe('12:00pm')
+  })
+  test('blank/invalid input is the empty string', () => {
+    expect(formatTime('')).toBe('')
+    expect(formatTime(null)).toBe('')
+    expect(formatTime('not a time')).toBe('')
+    expect(formatTime('25:00')).toBe('')
+  })
+})
+
+describe('localOffsetString', () => {
+  test('a fixed-sign, zero-padded ISO UTC offset', () => {
+    expect(localOffsetString(new Date())).toMatch(/^[+-]\d{2}:\d{2}$/)
   })
 })
 

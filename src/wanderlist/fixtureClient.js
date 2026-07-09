@@ -65,9 +65,11 @@ export function createFixtureClient() {
     },
 
     async setTickets(pageId, tickets) {
+      // A ticket freshly uploaded this session carries its object URL in `fileUploadId`
+      // (that's what uploadFile above returned as `ref`); one saved earlier carries `url`.
       const entries = load()
       const updated = entries.map(e => (e.id === pageId
-        ? { ...e, tickets: (tickets || []).map(t => ({ url: t.ref || t.url, name: t.name, fileUploadId: null })) }
+        ? { ...e, tickets: (tickets || []).map(t => ({ url: t.fileUploadId || t.url, name: t.name, fileUploadId: null })) }
         : e))
       save(updated)
       return updated.find(e => e.id === pageId)

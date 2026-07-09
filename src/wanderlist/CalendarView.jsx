@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { monthGrid, stepMonth, monthLabel, keyToDate, formatHuman, entriesOnDay, expiryLabel, daysUntil } from './dates.js'
+import { monthGrid, stepMonth, monthLabel, keyToDate, formatHuman, formatTime, entriesOnDay, expiryLabel, daysUntil } from './dates.js'
 import { BackIcon, ExternalIcon, HourglassIcon, CalendarIcon, CheckCircleIcon, TicketIcon } from './icons.jsx'
 import MetaChips from './MetaChips.jsx'
 import { openTickets } from './links.js'
@@ -19,18 +19,25 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
   // Marker lookup: which days carry a planned / an expiring / a paid entry. Paid rides
   // whichever date the entry itself lands on (planned, else expiring) — tickets don't have
   // their own date field.
+  //
+  // Attended items are suppressed from today/future days — with the status filter set to
+  // "All", a done thing's planned/expiring date no longer means anything going forward, so
+  // it shouldn't still light up a dot on a day yet to come. A day already past keeps its
+  // dot regardless — that's a quiet, honest record of what happened, not a forecast.
   const { plannedKeys, expiringKeys, paidKeys } = useMemo(() => {
     const planned = new Set(), expiring = new Set(), paid = new Set()
+    const suppress = (entry, key) => Boolean(entry?.attended) && key >= today
     for (const e of entries || []) {
-      if (e?.plannedDate) planned.add(e.plannedDate)
-      if (e?.dateExpiring) expiring.add(e.dateExpiring)
+      const pd = e?.plannedDate, ed = e?.dateExpiring
+      if (pd && !suppress(e, pd)) planned.add(pd)
+      if (ed && !suppress(e, ed)) expiring.add(ed)
       if (e?.tickets?.length > 0) {
-        if (e.plannedDate) paid.add(e.plannedDate)
-        else if (e.dateExpiring) paid.add(e.dateExpiring)
+        if (pd && !suppress(e, pd)) paid.add(pd)
+        else if (ed && !suppress(e, ed)) paid.add(ed)
       }
     }
     return { plannedKeys: planned, expiringKeys: expiring, paidKeys: paid }
-  }, [entries])
+  }, [entries, today])
 
   const weeks = useMemo(() => monthGrid(month.year, month.month, 1), [month])
   const agenda = useMemo(() => entriesOnDay(entries, selected), [entries, selected])
@@ -122,7 +129,11 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
                   </div>
                   <div className="row-badges">
                     {entry.attended && <span className="attended-pill"><CheckCircleIcon /> attended</span>}
-                    {planned && <span className="planned-pill"><CalendarIcon /> planned</span>}
+                    {planned && (
+                      <span className="planned-pill">
+                        <CalendarIcon /> planned{entry.plannedTime ? ` · ${formatTime(entry.plannedTime)}` : ''}
+                      </span>
+                    )}
                     {entry.tickets?.length > 0 && (
                       <button
                         type="button"

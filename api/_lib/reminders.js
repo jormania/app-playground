@@ -43,7 +43,9 @@ export function selectExpiring(entries, tomorrowKey) {
 
 // Compose the digest email (subject + plain-text + minimal HTML body) for a batch of
 // expiring items. Pure and presentation-only; the cron just hands the result to Resend.
-export function buildReminderEmail(items, { name = '', tomorrowKey = '' } = {}) {
+// (Callers also pass a `tomorrowKey` in the options — accepted and ignored; the copy
+// says "tomorrow" in prose rather than printing the date.)
+export function buildReminderEmail(items, { name = '' } = {}) {
   const n = items.length
   const greeting = name ? `Hi ${name},` : 'Hi,'
   const subject = n === 1

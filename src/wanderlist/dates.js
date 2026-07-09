@@ -44,6 +44,33 @@ export function formatMedium(key) {
   return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`
 }
 
+// "7:30pm" — a stored 24h 'HH:MM' clock time, cheaply human. Lowercase, no space before
+// am/pm, matching the compact register of the app's other pills (e.g. "expires in 5 days").
+export function formatTime(time) {
+  if (!time || typeof time !== 'string') return ''
+  const m = /^(\d{1,2}):(\d{2})$/.exec(time.trim())
+  if (!m) return ''
+  const h = Number(m[1]), min = Number(m[2])
+  if (h > 23 || min > 59) return ''
+  const period = h >= 12 ? 'pm' : 'am'
+  const h12 = h % 12 || 12
+  return `${h12}:${String(min).padStart(2, '0')}${period}`
+}
+
+// This browser's current UTC offset as "+03:00" / "-05:00" — appended to a Planned Date +
+// time when writing it to Notion, so the stored instant matches the wall-clock time you
+// actually picked (Notion's date property accepts a full ISO datetime with offset, not a
+// bare local time). getTimezoneOffset() returns minutes WEST of UTC (positive west); we
+// want the conventional east-positive ISO sign, hence the negation.
+export function localOffsetString(date = new Date()) {
+  const totalMin = -date.getTimezoneOffset()
+  const sign = totalMin >= 0 ? '+' : '-'
+  const abs = Math.abs(totalMin)
+  const hh = String(Math.floor(abs / 60)).padStart(2, '0')
+  const mm = String(abs % 60).padStart(2, '0')
+  return `${sign}${hh}:${mm}`
+}
+
 // Whole days from `today` until `key` (negative = already past). Both are floored to
 // local midnight so the count is a clean number of calendar days, not hours.
 export function daysUntil(key, today = todayKey()) {

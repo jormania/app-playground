@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { formatHuman, expiryLabel, daysUntil, isPlannedPast } from './dates.js'
+import { formatHuman, formatTime, expiryLabel, daysUntil, isPlannedPast } from './dates.js'
 import { BackIcon, ExternalIcon, MapIcon, CheckCircleIcon, HourglassIcon, CalendarIcon, TicketIcon, ShareIcon } from './icons.jsx'
 import MetaChips from './MetaChips.jsx'
 import Lightbox from './Lightbox.jsx'
@@ -38,12 +38,15 @@ export default function EntryView({ entry, onBack, onEdit, onChip, onToggleAtten
 
       <div className="ev-badges">
         {entry.attended && <span className="attended-pill"><CheckCircleIcon /> attended</span>}
-        {entry.dateExpiring && (
+        {/* Once attended, the deadline no longer matters (same rule as the list and the
+            sort) — so no urgency-coloured "expired N days ago" on a thing already done. */}
+        {!entry.attended && entry.dateExpiring && (
           <span className={`expiry-pill ${urgency}`}><HourglassIcon /> {expiryLabel(entry.dateExpiring, today)} · {formatHuman(entry.dateExpiring)}</span>
         )}
         {entry.plannedDate && (
           <span className={`when-pill${isPlannedPast(entry, today) ? ' slipped' : ''}`}>
             <CalendarIcon /> {isPlannedPast(entry, today) ? 'was planned' : 'planned'} · {formatHuman(entry.plannedDate)}
+            {entry.plannedTime ? ` · ${formatTime(entry.plannedTime)}` : ''}
           </span>
         )}
         {entry.pending && <span className="pending-pill" title="Saved on this device — will sync to Notion when you’re online">unsynced</span>}

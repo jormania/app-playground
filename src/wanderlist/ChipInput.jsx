@@ -11,7 +11,10 @@ export default function ChipInput({ values, options = [], onChange, kind = 'tag'
   const [open, setOpen] = useState(false)
   const inputRef = useRef(null)
 
-  const norm = (s) => s.trim()
+  // Lowercased on add, matching the save-time normalization in notion.js — so the chip
+  // you see in the editor is exactly what persists (and demo mode, which has no
+  // save-time normalization of its own, can't fork "Free" and "free" into two values).
+  const norm = (s) => s.trim().toLowerCase()
   const lower = draft.trim().toLowerCase()
   const suggestions = options.filter(
     o => !values.includes(o) && (lower === '' || o.toLowerCase().includes(lower))
@@ -78,7 +81,7 @@ export default function ChipInput({ values, options = [], onChange, kind = 'tag'
         <div className="suggest">
           {draft.trim() && !exactExists && (
             <button type="button" className="create" onMouseDown={e => e.preventDefault()} onClick={() => add(draft)}>
-              + create “{draft.trim()}”
+              + create “{lower}”
             </button>
           )}
           {suggestions.map(s => (

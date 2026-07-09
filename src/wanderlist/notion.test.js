@@ -52,9 +52,29 @@ describe('toEntry', () => {
       dateAdded: '2026-07-01',
       dateExpiring: '2026-07-10',
       plannedDate: '2026-07-11',
+      plannedTime: null,
       photo: null,
       tickets: [],
     })
+  })
+  test('splits a Planned Date datetime into plannedDate + plannedTime', () => {
+    const e = toEntry({
+      id: 'x',
+      properties: {
+        Name: { title: [{ plain_text: 'x' }] },
+        'Planned Date': { date: { start: '2026-07-11T19:30:00.000+03:00' } },
+      },
+    })
+    expect(e.plannedDate).toBe('2026-07-11')
+    expect(e.plannedTime).toBe('19:30')
+  })
+  test('a bare Planned Date (no time) reads plannedTime as null', () => {
+    const e = toEntry({
+      id: 'x',
+      properties: { Name: { title: [{ plain_text: 'x' }] }, 'Planned Date': { date: { start: '2026-07-11' } } },
+    })
+    expect(e.plannedDate).toBe('2026-07-11')
+    expect(e.plannedTime).toBeNull()
   })
   test('normalizes Category and Tags to lowercase on read', () => {
     const e = toEntry({
@@ -97,6 +117,20 @@ describe('toNotionProps', () => {
     const props = toNotionProps({ category: 'CULTURE', tags: ['Free', 'free', 'WITH-friends'] })
     expect(props.Category).toEqual({ select: { name: 'culture' } })
     expect(props.Tags).toEqual({ multi_select: [{ name: 'free' }, { name: 'with-friends' }] })
+  })
+  test('a Planned Date with no time writes a bare date', () => {
+    const props = toNotionProps({ plannedDate: '2026-07-11', plannedTime: null })
+    expect(props['Planned Date']).toEqual({ date: { start: '2026-07-11' } })
+  })
+  test('a Planned Date with a time writes a full ISO datetime with this machine’s offset', () => {
+    const props = toNotionProps({ plannedDate: '2026-07-11', plannedTime: '19:30' })
+    expect(props['Planned Date'].date.start).toMatch(/^2026-07-11T19:30:00[+-]\d{2}:\d{2}$/)
+  })
+  test('Planned Date + time round-trips through write then read unchanged', () => {
+    const written = toNotionProps({ plannedDate: '2026-07-11', plannedTime: '08:05' })['Planned Date']
+    const read = toEntry({ id: 'x', properties: { Name: { title: [] }, 'Planned Date': written } })
+    expect(read.plannedDate).toBe('2026-07-11')
+    expect(read.plannedTime).toBe('08:05')
   })
 })
 
