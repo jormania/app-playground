@@ -17,6 +17,11 @@
    --green is reserved for Attended/Paid state, not chips. */
 
 :root {
+  /* Tells the browser to render native form-control chrome (the date/time picker popup,
+     the little calendar/clock glyph) using its dark variant, instead of a stark light
+     default that clashes with every one of these palettes. Overridden to `light` on the
+     three light presets below. */
+  color-scheme: dark;
   /* Solarized Dark (default) */
   --bg:        #002b36;
   --bg2:       #00212a;
@@ -49,6 +54,7 @@
 }
 
 [data-theme="solarized-light"] {
+  color-scheme: light;
   --bg:        #fdf6e3;
   --bg2:       #f4eeda;
   --surface:   #eee8d5;
@@ -66,6 +72,7 @@
 
 /* ── Quiet Light — VS Code Quiet Light: soft, cool-neutral, muted-purple accent. ── */
 [data-theme="quiet-light"] {
+  color-scheme: light;
   --bg:        #f5f5f5;
   --bg2:       #ececf2;
   --surface:   #edeef5;
@@ -94,6 +101,7 @@
 
 /* ── Monokai Pro Sun — warm cream light, violet accent. ── */
 [data-theme="filter-sun"] {
+  color-scheme: light;
   --bg:        #faf4f2;
   --bg2:       #f1e9e6;
   --surface:   #f4ede9;
@@ -475,23 +483,40 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .entry-view .ev-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .field { margin-bottom: 16px; }
 .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+/* Time rides a third, content-sized column next to Expires/Planned — added only once a
+   Planned Date exists — so Expires and Planned stay equal-width instead of Planned's date
+   input shrinking to share space with a time field. */
+.field-grid.has-time { grid-template-columns: 1fr 1fr auto; }
 .field > label { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 0.72rem; color: var(--muted); margin-bottom: 8px; }
 .field > label svg { font-size: 15px; color: var(--blue); }
 .field .opt { color: var(--faint); font-weight: 400; }
-.field > input[type=text], .field > input[type=url], .field > input[type=email], .field > input[type=date], .field > input[type=password], .field > textarea,
-.date-time-row > input[type=date], .date-time-row > input[type=time] {
+.field > input[type=text], .field > input[type=url], .field > input[type=email], .field > input[type=date], .field > input[type=time], .field > input[type=password], .field > textarea {
   width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
   color: var(--ink); font-family: var(--sans); font-size: 16px; padding: 11px 14px; outline: none;
   transition: border-color 0.16s, box-shadow 0.16s;
 }
 .field > textarea { resize: vertical; min-height: 120px; font-weight: 400; line-height: 1.6; }
-.field > input:focus, .field > textarea:focus, .date-time-row > input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--ring); }
+/* Date/time inputs render their native picker glyph (and, for time, an AM/PM segment) at
+   16px, which crowds out of the field's padding — a size down leaves room for both. */
+.field > input[type=date], .field > input[type=time] { font-size: 14px; padding: 10px 12px; }
+/* The picker glyph itself (`color-scheme` above handles the popup that opens on click) —
+   dial back its stark default opacity and round a hover/focus backdrop behind it so it
+   reads as a small button that belongs to the field, not a foreign icon glued on top. */
+.field > input[type=date]::-webkit-calendar-picker-indicator,
+.field > input[type=time]::-webkit-calendar-picker-indicator {
+  opacity: 0.6; border-radius: 6px; padding: 3px; margin-right: -2px; cursor: pointer; transition: opacity 0.16s, background 0.16s;
+}
+.field > input[type=date]:hover::-webkit-calendar-picker-indicator,
+.field > input[type=time]:hover::-webkit-calendar-picker-indicator,
+.field > input[type=date]:focus::-webkit-calendar-picker-indicator,
+.field > input[type=time]:focus::-webkit-calendar-picker-indicator {
+  opacity: 1; background: color-mix(in srgb, var(--blue) 16%, transparent);
+}
+.field > input:focus, .field > textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--ring); }
 .field input::placeholder, .field textarea::placeholder { color: var(--faint); }
-/* Planned's date + optional start-time sit side by side — the time input only appears
-   once a date's picked, and shrinks to fit its own content rather than stretching. */
-.date-time-row { display: flex; gap: 8px; }
-.date-time-row > input[type=date] { flex: 1; min-width: 0; }
-.date-time-row > input[type=time] { flex: 0 0 auto; width: 118px; }
+/* Time gets its own column next to Planned (the editor's `.has-time` modifier class),
+   sized to its content rather than stretching to match Expires/Planned's full column width. */
+.field.time-field { width: 132px; }
 .hint { font-family: var(--mono); font-size: 0.6875rem; color: var(--faint); line-height: 1.5; }
 .check-row {
   display: flex; align-items: center; gap: 9px; font-size: 0.9rem; color: var(--muted);
@@ -734,10 +759,8 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 
 /* ── Responsive ── */
 @media (max-width: 620px) {
-  .field-grid { grid-template-columns: 1fr; gap: 0; }
-}
-@media (max-width: 380px) {
-  .date-time-row > input[type=time] { width: 96px; }
+  .field-grid, .field-grid.has-time { grid-template-columns: 1fr; gap: 0; }
+  .field.time-field { width: 100%; }
 }
 @media (max-width: 560px) {
   .masthead { padding: 28px 0 14px; }

@@ -151,7 +151,7 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, saving
         <ChipInput values={tags} options={tagOptions} onChange={setTags} kind="tag" placeholder="free, ticketed, outdoor, with-friends…" />
       </div>
 
-      <div className="field-grid">
+      <div className={`field-grid${plannedDate ? ' has-time' : ''}`}>
         {/* The two dates are deliberately unconstrained against each other: a ticket
             window often closes BEFORE the day you attend (expiry < planned), and an
             exhibition's run can end after the day you pick (planned < expiry) — both are
@@ -162,17 +162,8 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, saving
         </div>
         <div className="field">
           <label htmlFor="f-when"><CalendarIcon /> Planned <span className="opt">— when you'll go</span></label>
-          <div className="date-time-row">
-            <input id="f-when" type="date" value={plannedDate}
-              onChange={e => { const v = e.target.value; setPlannedDate(v); if (!v) { setPlannedTime(''); setGoing(false) } }} />
-            {/* Start time only, and only once a date's picked — a time with no day to
-                anchor it to means nothing. No end time: the app tracks a fixed start,
-                not a duration. */}
-            {plannedDate && (
-              <input type="time" value={plannedTime} onChange={e => setPlannedTime(e.target.value)}
-                aria-label="Start time (optional)" title="Start time — optional" />
-            )}
-          </div>
+          <input id="f-when" type="date" value={plannedDate}
+            onChange={e => { const v = e.target.value; setPlannedDate(v); if (!v) { setPlannedTime(''); setGoing(false) } }} />
           {/* Going is separate from a bare Planned Date: the date/time just means "this is
               when it happens", not "I've committed" — a concert you're still deciding on
               still wants its date tracked. Only surfaces once there's a date to anchor it;
@@ -185,6 +176,17 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, saving
             </label>
           )}
         </div>
+        {/* Start time gets its own column rather than squeezing into Planned's — that kept
+            Expires and Planned at mismatched widths. Only once a date's picked: a time
+            with no day to anchor it to means nothing. No end time: the app tracks a fixed
+            start, not a duration. */}
+        {plannedDate && (
+          <div className="field time-field">
+            <label htmlFor="f-time">Time <span className="opt">— optional</span></label>
+            <input id="f-time" type="time" value={plannedTime} onChange={e => setPlannedTime(e.target.value)}
+              aria-label="Start time (optional)" title="Start time — optional" />
+          </div>
+        )}
       </div>
 
       <PhotoField
