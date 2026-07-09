@@ -9,6 +9,15 @@ closes.
 Lives at `src/wanderlist/`, entry `wanderlist-react.html`, guide
 `public/wanderlist-guide.html`. React + Vite + Notion.
 
+**Notion paperwork** (per the Dev Conventions): a **Wanderlist — App Spec** lives under
+Dev → App Specs (front-matter, schema, architecture, and an "AI-assisted capture" section
+for deriving a new entry from a pasted link/text); a de-personalized **Starter Template**
+database lives under Dev → Starter Templates → Wanderlist, linked from the guide's
+Connect-Notion section. Unlike Journal of Delights/Sol Odyssey, the *live* database
+(`Findings`) is not under Dev → App Databases — it's the owner's pre-existing personal
+list under **My events**, predating the app; the spec links to it in place instead of
+relocating it.
+
 ## Design-system note (deliberate deviation)
 
 The repo rule is "new apps build on `src/ds/`." Wanderlist **intentionally does not** — it
@@ -33,11 +42,23 @@ cycle button — brought over per request "as close to the original as possible"
 - Clients: `notionClient.js` (live) wrapped by `offlineClient.js` (localStorage read-cache
   + write-outbox, flush on reconnect); `fixtureClient.js` for demo. `store.js` picks.
 - Pure logic (tested): `notion.js` (Notion⇄model mapping), `search.js` (status/search/sort
-  `triage`), `dates.js` (expiry helpers), `theme.js`.
-- UI: `App.jsx` shell → `MenuBar` (status segment · search+scope · sort · Add · theme ·
-  guide · settings) → `ListView` / `EntryView` / `EntryEditor` / `SettingsModal`.
-  `ChipInput` (Category single, Tags multi), `PlaceInput` (Google autocomplete),
-  `MetaChips` (Category/Place/Tags chips, tap to filter).
+  `triage`), `dates.js` (expiry + past/planned-slipped helpers), `stats.js` (forecast
+  counts + Category/Tags/Place frequency ranking), `theme.js`.
+- UI: `App.jsx` shell → `MenuBar` (List/Calendar switcher · search · To-do/Attended/All
+  filter · sort · Add, left-packed and right-packed respectively around a spacer · ⋯ for
+  Stats/theme/guide/settings) → `ListView` / `CalendarView` / `EntryView` / `EntryEditor`
+  / `SettingsModal` / `StatsModal`. `ChipInput` (Category single, Tags multi), `PlaceInput`
+  (Google autocomplete — sticks on re-edit, never re-searches an already-resolved saved
+  value), `MetaChips` (Category/Place/Tags chips, tap to filter, Category carries a small
+  type icon via `categoryIcons.js`), `share.js` (OS share sheet / clipboard fallback,
+  text-only).
+
+**List behaviour:** the last view, status filter, and sort persist across reloads
+(`store.js`'s `loadViewPrefs`/`saveViewPrefs`). The default Expiring-first sort sinks
+already-expired, unattended items below a **past** divider instead of floating them to
+the top (`search.js`'s tiered `expRank`). Tickets on file mark an item **paid** — shown
+in the list row's right rail (Link · Paid · Attended, top to bottom, always visible
+on/off) and echoed on the calendar (see below).
 
 ## Notion database schema
 
@@ -113,16 +134,48 @@ KV_REST_API_URL / _TOKEN  auto-added when you create a Vercel KV store
 Dry-run (no send): `GET /api/wanderlist-remind?dryRun=1` (carry `?secret=<CRON_SECRET>` if
 set) returns the composed email + matched items.
 
+**Send test reminder** (Settings, next to Save) hits the same endpoint with `?test=1`
+instead — gated like `wanderlist-reminders.js`'s writes (an `x-notion-token` header must
+match the server's `WANDERLIST_NOTION_TOKEN`, so only whoever holds the token can trigger
+it), bypasses the `enabled` toggle, and **actually sends** rather than dry-running. If
+nothing is genuinely expiring tomorrow it emails one placeholder item instead, so the
+button always produces a real message to check end-to-end.
+
 ## Calendar (M2, shipped)
 
-`CalendarView.jsx` — a Monday-start month grid. Each day box shows up to **two markers**:
-a **Planned** dot (`--blue`, from `plannedDate`) and an **Expiring** dot (`--red`, from
-`dateExpiring`). Selecting a day opens an **agenda panel** beneath the grid listing that
-day's entries — both Planned-Date and Date-Expiring matches, each labelled with a Planned
-pill and/or an expiry pill — tap one to open the full entry. The List⇄Calendar toggle lives
-in the menu bar; the calendar respects the status segment + search (so markers reflect
-To-do/Attended and any filter) but not the list sort. Grid/marker/agenda helpers are pure in
-`dates.js` (`monthGrid`, `stepMonth`, `entriesOnDay`, `rolesOn`) and unit-tested.
+`CalendarView.jsx` — a Monday-start month grid. Each day box shows up to **three markers**:
+a **Planned** dot (`--blue`, from `plannedDate`), an **Expiring** dot (`--red`, from
+`dateExpiring`), and a **Paid** dot (`--green`, an entry with tickets on file — rides
+whichever date the entry itself lands on, planned first then expiring, since tickets have
+no date of their own). Selecting a day opens an **agenda panel** beneath the grid listing
+that day's entries — both Planned-Date and Date-Expiring matches, each labelled with a
+Planned pill, a Paid pill (green, next to Planned, when tickets are on file), and/or an
+expiry pill — tap one to open the full entry. The List⇄Calendar toggle lives in the menu
+bar; the calendar respects the status segment + search (so markers reflect To-do/Attended
+and any filter) but not the list sort. Grid/marker/agenda helpers are pure in `dates.js`
+(`monthGrid`, `stepMonth`, `entriesOnDay`, `rolesOn`) and unit-tested.
+
+## Stats (shipped)
+
+`StatsModal.jsx` (off the ⋯ menu, `stats.js` for the pure computation) — a
+**forward-looking-only** snapshot: attended items carry no weight anywhere on this screen,
+same as everywhere else. Six count cards (fill two complete 3-column grid rows, so no span
+card interrupts them and leaves a dangling empty cell): total active, expiring within 7
+days, past due and still open, planned within 7 days, no deadline yet, already paid for —
+then a full-width "next up" card (soonest still-open deadline), then two heat-chip cards:
+Category + Tags merged onto one (same pairing `MetaChips` uses on an entry), and Place
+("where") on its own. Every chip taps straight into a filtered search, same gesture as a
+chip on an entry itself, and closes the modal.
+
+## Sharing (shipped)
+
+`share.js` + a single **Share…** button in `EntryView`, on the same row as Open link /
+Open in Maps. Uses `navigator.share()` where available (surfaces WhatsApp, Email, and
+whatever else the device offers) and falls back to a clipboard copy — deliberately just
+the one button, since the OS sheet already covers the per-channel cases a WhatsApp/Email
+button pair would otherwise duplicate. Text only: name, note, place, links — no
+attachments, no app metadata (dates/category/tags/attended/paid aren't part of what
+you're telling someone about).
 
 ## Photo + Tickets (M3, shipped)
 
@@ -141,11 +194,15 @@ serverless function was needed) plus one new piece for the multi-file case:
   Upload API exposes) that lets them be re-included without re-uploading bytes; anything
   without one (rare — e.g. attached outside the app) falls back to its just-fetched signed
   url as an `external` reference, safe only because the write happens within the same short
-  editor session it was read in. Shown as a "tickets" section (linked, downloadable) in the
-  detail view and a small paperclip-style count badge in list rows.
+  editor session it was read in. Shown as a "tickets · paid" section (linked, downloadable)
+  in the detail view; having any also flips the item to **paid** everywhere else (list rail,
+  calendar dot + agenda pill — see above).
 - Both require a live connection (same as JoD's photo) — no offline queueing for uploads.
 
 ## M4+ (parked)
 
-- Richer reminders (configurable lead time, weekly digest); paste-a-link autofill; a map
-  view of Places; a week/agenda calendar layout.
+- Richer reminders (configurable lead time, weekly digest); paste-a-link autofill; a
+  week/agenda calendar layout.
+- **Not** a map view — considered, then explicitly ruled out for good (a Places link +
+  "Open in Maps" already cover it; the app isn't meant to become a real map product). If
+  this is revisited, that's a deliberate reversal of a standing decision, not a default.

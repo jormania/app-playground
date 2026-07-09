@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Wanderlist — Guide</title>
-<meta name="description" content="How to set up Wanderlist: connect Notion, place search, and the email reminder." />
+<meta name="description" content="How to set up Wanderlist from scratch: duplicate the starter database or build your own, connect Notion, enable Place search, and the email reminder." />
 <meta name="theme-color" content="#002b36" />
 <script>
   // The app has six palette presets (theme.js); the guide only needs light-vs-dark, so it
@@ -50,6 +50,14 @@
   .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin:14px 0}
   .env{font-family:var(--mono);font-size:.8rem;line-height:1.9;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;overflow-x:auto;white-space:pre;color:var(--ink)}
   .pill{display:inline-block;font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--green);border:1px solid var(--green);border-radius:999px;padding:2px 8px;margin-left:8px}
+  .steps{counter-reset:step;list-style:none;margin:14px 0 10px;padding:0;display:grid;gap:13px}
+  .steps li{counter-increment:step;position:relative;padding-left:34px;margin:0}
+  .steps li::before{content:counter(step);position:absolute;left:0;top:1px;color:#fff;background:var(--brass);font-family:var(--mono);font-size:11px;font-weight:600;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center}
+  table.schema{width:100%;border-collapse:collapse;margin:12px 0;font-size:.85rem}
+  table.schema th,table.schema td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  table.schema th{font-family:var(--mono);font-size:.65rem;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-weight:500}
+  table.schema td:first-child{font-family:var(--mono);font-size:.78rem;color:var(--place);white-space:nowrap}
+  table.schema td:nth-child(2){color:var(--cat);white-space:nowrap}
   .back{display:inline-flex;gap:6px;font-family:var(--mono);font-size:.72rem;color:var(--muted);margin-top:30px}
   footer{text-align:center;font-family:var(--mono);font-size:.68rem;color:var(--faint);margin-top:40px}
 </style>
@@ -64,67 +72,89 @@
 
   <h2>What it is</h2>
   <p>Wanderlist reads and writes a single Notion database of things to do — events, culture, art, movies, venues, ideas. It’s a <b>triaged backlog</b>: keep everything you mean to get to in one place, sort by what’s expiring soonest, check items off as <b>Attended</b> without losing them — and see it all on a <b>month calendar</b> that plots each item’s planned date and expiring deadline.</p>
-  <p class="muted">Everything is stored in <b>your</b> Notion. The app keeps a local copy so it works offline and installs as an app; nothing lives on a server except the one-time reminder setup below.</p>
+  <p class="muted">Everything is stored in <b>your</b> Notion. The app keeps a local copy so it works offline and installs as an app; nothing lives on a server except the optional Place-search key and reminder setup below.</p>
 
   <h2>1 · Connect Notion</h2>
-  <ol>
-    <li>Create an <b>internal integration</b> at <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener">notion.so/my-integrations</a> and copy its token (starts with <code>ntn_</code>).</li>
-    <li>Open your <b>events database</b> in Notion → <b>•••</b> → <b>Connections</b> → add your integration, so it can read and write.</li>
-    <li>In Wanderlist, open <b>Settings</b> (gear icon), paste the token and the database link, and hit <b>Test connection</b> → <b>Save</b>.</li>
+  <p>Wanderlist reads and writes a single Notion database. Until you connect one, the app stays in <b>demo mode</b> on sample items stored only on this device. To keep real entries you need two things: a Notion <b>database</b> with the right columns, and an <b>integration token</b> that lets the app read and write it. Setting this up takes a few minutes and needs no coding.</p>
+
+  <h3>Option A — duplicate the ready-made Starter Template (easiest)</h3>
+  <p>Duplicate the <a href="https://app.notion.com/p/398d3e6d60db81f58529cca3e4b6962f" target="_blank" rel="noopener"><b>Wanderlist Starter Template</b></a> — an empty database with the exact columns already set up. Open it and use <b>Duplicate</b> (top-right <code>•••</code> → Duplicate) to make your own private copy — then skip straight to <b>section 2</b> to connect it.</p>
+
+  <h3>Option B — build an empty one by hand</h3>
+  <p>In Notion, create a new page and add a <b>Table</b> database (full-page is tidiest). Name it whatever you like. Then set up exactly these columns — <b>the names matter</b>, because the app looks them up by name:</p>
+  <table class="schema">
+    <thead><tr><th>Column</th><th>Type</th><th>What it holds</th></tr></thead>
+    <tbody>
+      <tr><td>Name</td><td>Title</td><td>The default first column. What it is, a few words.</td></tr>
+      <tr><td>Description</td><td>Text</td><td>Notes, programme, why it caught your eye. Optional.</td></tr>
+      <tr><td>Link</td><td>URL</td><td>The event/listing page. Optional.</td></tr>
+      <tr><td>Category</td><td>Select</td><td>Leave the options empty, or seed <em>event, discovery, venue, idea, culture, movie, art</em> — the app adds more inline either way.</td></tr>
+      <tr><td>Place</td><td>Text</td><td>Holds the resolved place name. <b>Not</b> Notion’s native Maps/geo property — plain text.</td></tr>
+      <tr><td>Map</td><td>URL</td><td>The Maps pin link for the place. Leave empty — the app fills it in.</td></tr>
+      <tr><td>Tags</td><td>Multi-select</td><td>Leave the options empty — they fill in as you add things.</td></tr>
+      <tr><td>Attended</td><td>Checkbox</td><td>Defaults unchecked.</td></tr>
+      <tr><td>Date&nbsp;Added</td><td>Date</td><td>The app stamps this on create.</td></tr>
+      <tr><td>Date&nbsp;Expiring</td><td>Date</td><td>The deadline to act on — a registration or ticket window closing. Optional.</td></tr>
+      <tr><td>Planned&nbsp;Date</td><td>Date</td><td>The day you plan to go. Optional.</td></tr>
+      <tr><td>Photo</td><td>Files&nbsp;&amp;&nbsp;media</td><td>Optional. Leave empty — the app uploads into it. At most one file is ever used.</td></tr>
+      <tr><td>Tickets</td><td>Files&nbsp;&amp;&nbsp;media</td><td>Optional. Leave empty — the app uploads into it. Any number of files.</td></tr>
+    </tbody>
+  </table>
+  <p class="muted">That’s every column. You can delete any extra columns Notion added by default as long as the thirteen above exist with these exact names. <code>Category</code> and <code>Tags</code> are always saved lowercase, whatever case you type, so they never fork into look-alike duplicates.</p>
+
+  <h2>2 · Create the integration &amp; connect</h2>
+  <p>An <b>internal integration</b> is just a key that lets this one app reach your database. Here’s the whole path, step by step:</p>
+  <ol class="steps">
+    <li><b>Create the integration.</b> Go to <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener">notion.so/my-integrations</a> and click <em>New integration</em>. Give it a name (e.g. <em>Wanderlist</em>), pick the workspace your database lives in, and leave the type as <em>Internal</em>. Save it.</li>
+    <li><b>Copy the token.</b> On the integration’s page, open <em>Configuration</em> (or <em>Secrets</em>) and find <em>Internal Integration Secret</em>. Click <em>Show</em>, then <em>Copy</em>. It starts with <code>ntn_</code> (older ones start with <code>secret_</code>). Treat it like a password.</li>
+    <li><b>Share the database with it.</b> Open your Wanderlist database in Notion. Top-right <code>•••</code> menu → <em>Connections</em> (some workspaces label it <em>Add connections</em>) → search your integration’s name → select it. This is what grants read/write access — without it the app sees nothing.</li>
+    <li><b>Get the database link.</b> Still on the database, <code>•••</code> → <em>Copy link</em> (or just copy the URL from your browser’s address bar while viewing it).</li>
+    <li><b>Connect in the app.</b> Open Wanderlist, tap the <code>⋯</code> menu → <b>Settings</b>, paste the <em>token</em> into the first field and the <em>database link</em> into the second, hit <em>Test connection</em>, then <em>Save</em>. The app flips from demo to your live backlog immediately.</li>
   </ol>
+  <p class="muted">Both the token and the database link are stored only in this browser and relayed to Notion through this site’s proxy — never saved on a server. Anyone using this browser profile can reach your backlog, so disconnect from Settings (which clears the token) on shared devices. To switch backlogs later, just paste a different database link.</p>
 
-  <h3>The database fields</h3>
-  <p>Wanderlist expects these properties (types matter):</p>
-  <ul>
-    <li><code>Name</code> — title</li>
-    <li><code>Description</code> — text</li>
-    <li><code>Link</code> — URL</li>
-    <li><code>Category</code> — select (e.g. event, culture, movie, art, venue, idea) · extendable from the app</li>
-    <li><code>Place</code> — <b>text</b> (holds the resolved place name) · <code>Map</code> — URL (the Maps pin link)</li>
-    <li><code>Tags</code> — multi-select · freeform (free, ticketed, outdoor, with-friends…)</li>
-    <li><code>Attended</code> — checkbox</li>
-    <li><code>Date Added</code> — date · <code>Date Expiring</code> — date (the deadline to act on)</li>
-    <li><code>Planned Date</code> — date, optional (the day you plan to go; shown on the calendar)</li>
-    <li><code>Photo</code> — files, at most one (a poster, a picture you took)</li>
-    <li><code>Tickets</code> — files, multiple (PDFs or screenshots — kept separate from Photo)</li>
-  </ul>
-  <p class="muted">Note: <code>Place</code> is a plain text field, not Notion’s native Maps/geo field — the app writes place names through the classic Notion API, which can’t set the geo type. The app still gives you live map search (below) and stores a Maps link in <code>Map</code>. <code>Category</code> and <code>Tags</code> are always saved lowercase, whatever case you type — so they never fork into look-alike duplicates.</p>
-
-  <h2>2 · Place search <span class="pill">optional</span></h2>
-  <p>When you type in the <b>Place</b> field, Wanderlist can suggest real places (Google) and store the name plus a Maps link. To enable it, add a Google Places key on the server:</p>
-  <ol>
-    <li>In Google Cloud, enable <b>Places API (New)</b> and create an API key. Set the <b>API restriction</b> to just Places API (New); leave the <b>application restriction</b> as <b>None</b> — the key is used server-side (from this site’s proxy), so a Websites/IP restriction would block it.</li>
-    <li>Add it to your Vercel project as an environment variable:</li>
+  <h2>3 · Place search <span class="pill">optional</span></h2>
+  <p>When you type in the <b>Place</b> field, Wanderlist can suggest real places (Google) and store the resolved name plus a Maps link — pick a suggestion once and it sticks; reopening the entry later won’t re-search it out from under you. This step is entirely <b>server-side</b>, done once by whoever runs the deployment — not something each person connecting their own Notion database needs to repeat.</p>
+  <ol class="steps">
+    <li><b>Open Google Cloud Console.</b> Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a> and create a project (or pick an existing one) — top-left project selector → <em>New Project</em>.</li>
+    <li><b>Enable Places API (New).</b> In the console’s search bar, find <em>Places API (New)</em> — not the older “Places API” — under <em>APIs &amp; Services → Library</em>, and click <em>Enable</em>.</li>
+    <li><b>Create an API key.</b> <em>APIs &amp; Services → Credentials → Create Credentials → API key</em>. Copy the key.</li>
+    <li><b>Restrict the key.</b> Click into the key’s settings: set <em>API restrictions</em> to just <em>Places API (New)</em>. Leave <em>Application restrictions</em> as <em>None</em> — the key is only ever called server-side (this site’s own proxy, never the browser), so a Websites/IP restriction would block the very requests it’s meant to allow.</li>
+    <li><b>Add it to Vercel.</b> In the project’s Vercel dashboard → <em>Settings → Environment Variables</em>, add:</li>
   </ol>
   <div class="env">GOOGLE_PLACES_KEY = your-google-places-key</div>
-  <p class="muted">Without the key, the Place field simply becomes a plain text box — you type the place name yourself and everything else still works.</p>
+  <p class="muted">Redeploy for the variable to take effect. Without the key — or if it’s missing or invalid — the Place field simply becomes a plain text box: you type the place name yourself and everything else (Category, Tags, dates, the calendar, reminders) still works exactly the same.</p>
 
-  <h2>3 · Email reminder <span class="pill">optional</span></h2>
-  <p>Get one email the day before something’s <code>Date Expiring</code> (and not yet attended). It’s sent by a daily server job, so it reaches you <b>even when the app is closed</b>. Turn it on, and set the address, in <b>Settings → Email reminder</b> — but first do this one-time server setup:</p>
-  <ol>
-    <li>Create a <a href="https://resend.com" target="_blank" rel="noopener">Resend</a> account and API key (the free tier is plenty; you can send from <code>onboarding@resend.dev</code> to your own verified address, or verify your own domain).</li>
-    <li>Create a <b>Vercel KV</b> store on the project (Storage → KV) — it auto-adds its <code>KV_REST_API_*</code> env vars. This holds your reminder prefs so the cron can read them.</li>
-    <li>Add these environment variables in Vercel:</li>
+  <h2>4 · Email reminder <span class="pill">optional</span></h2>
+  <p>Get one email the day before something’s <code>Date Expiring</code> (and not yet attended). It’s sent by a daily server job, so it reaches you <b>even when the app is closed</b>. Like Place search, this is a one-time <b>server-side</b> setup done once by whoever runs the deployment; after that, turning it on and setting the address is done per-person in <b>Settings → Email reminder</b>.</p>
+  <ol class="steps">
+    <li><b>Create a Resend account.</b> Sign up at <a href="https://resend.com" target="_blank" rel="noopener">resend.com</a> (the free tier is plenty for one person's reminders) and grab an <b>API key</b> from the dashboard.</li>
+    <li><b>Pick a sender.</b> The quickest path is Resend's own <code>onboarding@resend.dev</code> address, which can send to your own verified email without any domain setup. To send from your own address instead, verify your domain in Resend first.</li>
+    <li><b>Create a Vercel KV store.</b> In the Vercel project → <em>Storage → KV → Create</em>. This holds the reminder preferences (on/off, email, name) so the daily job can read them — connecting it auto-adds the needed <code>KV_REST_API_*</code> environment variables for you.</li>
+    <li><b>Add the remaining environment variables</b> in Vercel → <em>Settings → Environment Variables</em>:</li>
   </ol>
   <div class="env">WANDERLIST_NOTION_TOKEN = ntn_…        (integration token, shared with the DB)
 WANDERLIST_DB_ID        = your database id
 RESEND_API_KEY          = re_…
 REMINDER_FROM           = Wanderlist &lt;onboarding@resend.dev&gt;
 CRON_SECRET             = any-long-random-string   (optional, guards the endpoint)</div>
-  <ol start="4">
-    <li>The daily job is already wired in <code>vercel.json</code> (runs each morning). Once the vars are set and you’ve toggled the reminder on in Settings with your email, you’re done.</li>
+  <ol class="steps" start="5">
+    <li><b>Redeploy.</b> The daily job itself is already wired in <code>vercel.json</code> (runs each morning, Europe/Bucharest) — nothing to add there. Once the vars are set and the project redeploys, open <b>Settings → Email reminder</b> in the app, turn it on, enter your email, and <b>Save</b>.</li>
+    <li><b>Verify it actually works.</b> Hit <b>Send test reminder</b>, right next to Save — it fires a real email immediately through the same pipeline the daily job uses (a placeholder item if nothing’s genuinely due tomorrow), so you can confirm delivery without waiting for a real deadline.</li>
   </ol>
   <p class="muted">The reminder address and name are editable in the app (saved to KV, gated by your Notion token so only you can change them). Secrets stay in Vercel env vars and never touch your browser.</p>
 
-  <h2>4 · Everyday use</h2>
+  <h2>5 · Everyday use</h2>
   <ul>
     <li><b>Add</b> anything with just a name — flesh it out later.</li>
-    <li>Filter with the <b>To-do / Attended / All</b> segment; search by text, category, place, or tags; tap any chip to filter by it.</li>
-    <li><b>Sort</b> by expiring-first (default), recently added, or A–Z. Expiring-soon items float up with a warm pill.</li>
+    <li>Filter with the <b>To-do / Attended / All</b> segment; search by text, category, place, or tags; tap any chip to filter by it. Your last view, filter, and sort stick across reloads.</li>
+    <li><b>Sort</b> by expiring-first (default), recently added, or A–Z. Expiring-soon items float up with a warm pill; anything already past its deadline sinks below a <b>past</b> divider instead of jumping the queue.</li>
     <li>Hit the round <b>✓</b> to mark something attended — it stays in the list, just checked off.</li>
     <li><b>Photo</b> — add one picture per item (a poster, a shot you took) from the editor; tap it in the detail view for the full size.</li>
-    <li><b>Tickets</b> — attach one or more PDFs or screenshots, kept separate from Photo; each opens in a new tab from the detail view.</li>
-    <li><b>Calendar</b> (the calendar button): a month grid where each day shows up to two dots — a <b>Planned</b> dot and an <b>Expiring</b> dot. Tap a day to see its entries in an agenda below.</li>
+    <li><b>Tickets</b> — attach one or more PDFs or screenshots, kept separate from Photo; each opens in a new tab from the detail view. Anything with tickets on file reads as <b>paid</b> — a badge in the list, and a green dot/chip on the calendar.</li>
+    <li><b>Calendar</b> (the calendar button): a month grid where each day shows up to three dots — <b>Planned</b>, <b>Expiring</b>, and <b>Paid</b>. Tap a day to see its entries in an agenda below.</li>
+    <li><b>Stats</b> (under <b>⋯</b>): a forward-looking snapshot of the backlog — what's expiring soon, what's past due, what's still someday — plus tap-to-search heatmaps over Category, Tags, and Place. Attended items carry no weight here.</li>
+    <li><b>Share</b> an item from its detail view — the OS share sheet (WhatsApp, Email, whatever the device offers), or a clipboard copy where that's not available. Text only: name, note, place, links — no attachments.</li>
     <li><b>Themes</b> from the sun/moon button — six palettes (Solarized, Monokai Pro…); installs as an app and works offline.</li>
   </ul>
 

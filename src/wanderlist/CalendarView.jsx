@@ -5,22 +5,30 @@ import MetaChips from './MetaChips.jsx'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-// Month calendar (M2). Each day box carries up to two markers — a Planned dot and an
-// Expiring dot, in different colours — and selecting a day opens an agenda beneath the
-// grid listing that day's entries (both Planned-Date and Date-Expiring matches, labelled).
+// Month calendar (M2). Each day box carries up to three markers — a Planned dot, an
+// Expiring dot, and a Paid dot (something with tickets on file lands that day) — and
+// selecting a day opens an agenda beneath the grid listing that day's entries (Planned-
+// Date and Date-Expiring matches, labelled; Paid is a per-entry chip in that agenda, not
+// a day-matching role of its own).
 export default function CalendarView({ entries, today, onOpen, onChip }) {
   const initial = keyToDate(today) || new Date()
   const [month, setMonth] = useState({ year: initial.getFullYear(), month: initial.getMonth() })
   const [selected, setSelected] = useState(today)
 
-  // Marker lookup: which days carry a planned / an expiring entry.
-  const { plannedKeys, expiringKeys } = useMemo(() => {
-    const planned = new Set(), expiring = new Set()
+  // Marker lookup: which days carry a planned / an expiring / a paid entry. Paid rides
+  // whichever date the entry itself lands on (planned, else expiring) — tickets don't have
+  // their own date field.
+  const { plannedKeys, expiringKeys, paidKeys } = useMemo(() => {
+    const planned = new Set(), expiring = new Set(), paid = new Set()
     for (const e of entries || []) {
       if (e?.plannedDate) planned.add(e.plannedDate)
       if (e?.dateExpiring) expiring.add(e.dateExpiring)
+      if (e?.tickets?.length > 0) {
+        if (e.plannedDate) paid.add(e.plannedDate)
+        else if (e.dateExpiring) paid.add(e.dateExpiring)
+      }
     }
-    return { plannedKeys: planned, expiringKeys: expiring }
+    return { plannedKeys: planned, expiringKeys: expiring, paidKeys: paid }
   }, [entries])
 
   const weeks = useMemo(() => monthGrid(month.year, month.month, 1), [month])
@@ -59,6 +67,7 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
         {weeks.flat().map(cell => {
           const planned = plannedKeys.has(cell.key)
           const expiring = expiringKeys.has(cell.key)
+          const paid = paidKeys.has(cell.key)
           const cls = [
             'cal-cell',
             cell.inMonth ? 'in' : 'out',
@@ -69,10 +78,11 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
           return (
             <button key={cell.key} className={cls} onClick={() => pick(cell)} aria-label={cell.key}>
               <span className="cal-day">{cell.day}</span>
-              {(planned || expiring) && (
+              {(planned || expiring || paid) && (
                 <span className="cal-dots">
                   {planned && <span className="cal-dot planned" title="Something planned" />}
                   {expiring && <span className="cal-dot expires" title="Something expires" />}
+                  {paid && <span className="cal-dot paid" title="Something paid for" />}
                 </span>
               )}
             </button>
@@ -83,6 +93,7 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
       <div className="cal-legend">
         <span><span className="cal-dot planned" /> planned</span>
         <span><span className="cal-dot expires" /> expires</span>
+        <span><span className="cal-dot paid" /> paid</span>
       </div>
 
       <div className="cal-agenda">
@@ -104,20 +115,14 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
                 <div className="agenda-main">
                   <div className="agenda-top">
                     <span className="agenda-name">{entry.name || 'Untitled'}</span>
-                    <div className="agenda-icons">
-                      {entry.tickets?.length > 0 && (
-                        <span className="row-paid on" title={`Paid — ${entry.tickets.length} ticket${entry.tickets.length === 1 ? '' : 's'} on file`} aria-label="Paid">
-                          <TicketIcon />
-                        </span>
-                      )}
-                      {entry.link && (
-                        <a className="row-link" href={entry.link} target="_blank" rel="noopener" title="Open link" onClick={ev => ev.stopPropagation()}><ExternalIcon /></a>
-                      )}
-                    </div>
+                    {entry.link && (
+                      <a className="row-link" href={entry.link} target="_blank" rel="noopener" title="Open link" onClick={ev => ev.stopPropagation()}><ExternalIcon /></a>
+                    )}
                   </div>
                   <div className="row-badges">
                     {entry.attended && <span className="attended-pill"><CheckCircleIcon /> attended</span>}
                     {planned && <span className="planned-pill"><CalendarIcon /> planned</span>}
+                    {entry.tickets?.length > 0 && <span className="paid-pill"><TicketIcon /> paid</span>}
                     {expiring && <span className={`expiry-pill ${urgency}`}><HourglassIcon /> {expiryLabel(entry.dateExpiring, today)}</span>}
                   </div>
                   <MetaChips category={entry.category} place={entry.place} tags={entry.tags} onChip={onChip} />
