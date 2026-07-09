@@ -4,7 +4,7 @@ import { mapsLink } from './links.js'
 
 // Shared presentation of an item's chips, used in list rows and the detail view. Category
 // and Tags merge onto one line, in that order (colour tells them apart — Category is plum,
-// Tags olive — and Category also carries a small type icon), and Place always sits on its
+// Tags blue — and Category also carries a small type icon), and Place always sits on its
 // own row underneath, last — its pin icon doubles as a Maps link. When `onChip` is given,
 // each value is a button that filters the list by it. Renders nothing when empty.
 export default function MetaChips({ category, place, placeUrl, tags = [], onChip }) {

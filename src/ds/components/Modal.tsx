@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { cx } from '../lib/cx'
 import styles from './Modal.module.css'
 
@@ -65,7 +66,13 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
 
   if (!open) return null
 
-  return (
+  // Portalled straight to <body>: a CSS `transform` (or `filter`/`will-change`)
+  // on ANY ancestor — e.g. Cabinet's AppTile, whose .tile gets a hover
+  // transform — turns that ancestor into position:fixed's containing block
+  // instead of the viewport, trapping the overlay inside that element's own
+  // box rather than centering it on screen. Rendering outside the React tree
+  // this way sidesteps that regardless of where <Modal> gets used from.
+  return createPortal(
     <div className={styles.overlay}>
       <div className={styles.scrim} onClick={onClose} aria-hidden />
       <div
@@ -86,6 +93,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
         </div>
         <div className={styles.body}>{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

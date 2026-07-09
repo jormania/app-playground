@@ -37,3 +37,14 @@ export function IconArrowDown(props) {
     </svg>
   )
 }
+
+export function IconQrCode(props) {
+  return (
+    <svg {...base} {...props} aria-hidden>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <path d="M14 14h3v3h-3zM20.5 14v3M14 20.5h3M20.5 20.5v.01" />
+    </svg>
+  )
+}

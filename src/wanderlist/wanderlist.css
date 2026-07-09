@@ -13,7 +13,8 @@
 
    :root carries the DEFAULT palette (Solarized dark) so a missing/blank data-theme is safe;
    `data-theme="solarized-dark"` therefore needs no block of its own. Chip roles:
-   Category → --purple, Place → --cyan, Tags → --green, primary accent → --blue. */
+   Category → --purple, Place → --cyan, Tags → --blue (shares the primary accent colour).
+   --green is reserved for Attended/Paid state, not chips. */
 
 :root {
   /* Solarized Dark (default) */
@@ -359,7 +360,7 @@ a.place-pin:hover svg, a.place-pin:focus-visible svg { color: var(--blue); }
 .chip svg { font-size: 12px; }
 .chip.category { color: var(--purple); border-color: color-mix(in srgb, var(--purple) 45%, transparent); }
 .chip.place { color: var(--cyan); border-color: color-mix(in srgb, var(--cyan) 45%, transparent); }
-.chip.tag { color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, transparent); }
+.chip.tag { color: var(--blue); border-color: color-mix(in srgb, var(--blue) 45%, transparent); }
 button.chip { cursor: pointer; transition: border-color 0.16s, background 0.16s; }
 button.chip:hover { border-color: currentColor; background: color-mix(in srgb, var(--blue) 10%, transparent); }
 
@@ -498,7 +499,7 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .chipinput .token { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 0.72rem;
   background: var(--surface2); border: 1px solid var(--border2); border-radius: 999px; padding: 3px 4px 3px 10px; }
 .chipinput .token.category { color: var(--purple); }
-.chipinput .token.tag { color: var(--green); }
+.chipinput .token.tag { color: var(--blue); }
 .chipinput .token button { background: none; border: none; color: inherit; opacity: 0.6; display: inline-flex; font-size: 13px; }
 .chipinput .token button:hover { opacity: 1; }
 .chipinput input { flex: 1; min-width: 90px; background: none; border: none; outline: none; color: var(--ink); font-family: var(--sans); font-size: 16px; padding: 4px; }
@@ -622,15 +623,15 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .stat-chips.heat { display: flex; flex-wrap: wrap; gap: 5px; }
 .stat-chips.heat .chip { margin: 0; cursor: pointer; }
 /* Frequency heatmap: --heat (0..1) fills the chip with more of its accent the more often
-   the value turns up — Category in purple, Tags in green, Place in cyan, matching the
+   the value turns up — Category in purple, Tags in blue, Place in cyan, matching the
    chips everywhere else in the app. */
 .stat-chips.heat .chip.category {
   background: color-mix(in srgb, var(--purple) calc(8% + var(--heat, 0) * 30%), transparent);
   border-color: color-mix(in srgb, var(--purple) calc(35% + var(--heat, 0) * 45%), transparent);
 }
 .stat-chips.heat .chip.tag {
-  background: color-mix(in srgb, var(--green) calc(8% + var(--heat, 0) * 30%), transparent);
-  border-color: color-mix(in srgb, var(--green) calc(35% + var(--heat, 0) * 45%), transparent);
+  background: color-mix(in srgb, var(--blue) calc(8% + var(--heat, 0) * 30%), transparent);
+  border-color: color-mix(in srgb, var(--blue) calc(35% + var(--heat, 0) * 45%), transparent);
 }
 .stat-chips.heat .chip.place {
   background: color-mix(in srgb, var(--cyan) calc(8% + var(--heat, 0) * 30%), transparent);

@@ -137,6 +137,47 @@
   gap: var(--space-2xs);
 }
 
+/* Same reasoning as .details below: raised above .stretchedLink (z-index 0)
+   so tapping it opens the QR dialog instead of also navigating the tile. */
+.qrButton {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.qrCanvasWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+.qrCanvasWrap canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.qrHint {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+  text-align: center;
+  margin-bottom: var(--space-2xs);
+}
+
+.qrUrl {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  text-align: center;
+  word-break: break-all;
+  -webkit-user-select: all;
+  user-select: all;
+}
+
 .details {
   position: relative;
   z-index: 1;

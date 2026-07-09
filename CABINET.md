@@ -109,6 +109,40 @@ of the affected app, which re-triggers verification from scratch against
 the current manifest — this isn't a manifest or icon quality problem (Touch
 Grass already had a full PNG icon set and still needed the reinstall).
 
+## QR launch — "scan to open on phone"
+
+Every app in the registry (both `kind: "react-vite"` and `kind: "static"`)
+has a small QR button — next to `.btn-launch` on each `index.html` card, and
+raised above the stretched link on each `AppTile`. Tapping it opens a dialog
+with a client-side-generated QR code encoding
+`https://coneofcold.vercel.app/<app.file>` — the same hardcoded production
+domain already used by `related_applications` above and
+`installState.js`'s `PROD_ORIGIN`, since a QR code is meant to be scanned by
+a phone camera that has no notion of `localhost`.
+
+The shared logic (`appQrUrl()` + a thin `QRCode.toCanvas` wrapper) lives in
+[`src/shared/qrCode.ts`](src/shared/qrCode.ts) — a typed module in the
+typechecked path, imported directly by both `index.html`'s inline module
+script and `AppTile.jsx`. Both render lazily: the canvas is only drawn once
+its dialog actually opens, not for every app up front.
+
+Two things to keep in mind if you touch this:
+
+- **The stretched-link z-index trap.** `AppTile` has a full-tile `<a>`
+  behind everything so the whole card is tappable (see "Launching into the
+  installed app" below and `.stretchedLink` in `AppTile.module.css`). The QR
+  button (`.qrButton`) is deliberately raised above it (`position: relative;
+  z-index: 1`, matching `.details`), and its `onClick` calls
+  `preventDefault()`/`stopPropagation()` — without both, tapping it would
+  also navigate the tile.
+- **No `intent://` rewriting.** Unlike `pwaLaunchIntentUrl()` below, the QR
+  code encodes the plain `https://` URL as-is. A code scanned by a phone's
+  camera or QR-scanner app is already an external `ACTION_VIEW` intent — the
+  exact case Android runs its "does an installed app own this URL?" check
+  against — so the OS-level WebAPK hand-off happens on its own. The
+  `intent://` rewrite exists only to force that same check for a same-tab
+  link tap *inside* the Cabinet, which a QR scan was never going to be.
+
 ## Install detection, take two: each app reports its own install
 
 `getInstalledRelatedApps()` (above) is Chrome's own answer and it's

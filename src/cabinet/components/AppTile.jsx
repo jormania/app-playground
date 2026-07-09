@@ -1,8 +1,10 @@
-import { IconButton } from '../../ds'
-import { IconArrowUp, IconArrowDown } from './icons'
+import { useEffect, useRef, useState } from 'react'
+import { IconButton, Modal } from '../../ds'
+import { IconArrowUp, IconArrowDown, IconQrCode } from './icons'
 import { canInstallPwaHere, chromeIntentUrl, isAndroid, pwaLaunchIntentUrl } from '../lib/browserSupport'
 import { recordOpened } from '../lib/storage'
 import { formatRelativeTime } from '../lib/relativeTime'
+import { appQrUrl, renderAppQr } from '../../shared/qrCode'
 import styles from './AppTile.module.css'
 
 // installed: true when the browser has genuinely confirmed this app is
@@ -47,6 +49,16 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
       : path
   const actionLabel = isStatic ? 'Open' : installed ? 'Launch' : 'Install'
 
+  // QR dialog: rendered lazily — the canvas only exists in the DOM once the
+  // Modal actually opens (it returns null while closed), so the effect below
+  // never fires, and never draws, until then.
+  const [qrOpen, setQrOpen] = useState(false)
+  const qrCanvasRef = useRef(null)
+  useEffect(() => {
+    if (!qrOpen) return
+    renderAppQr(qrCanvasRef.current, app.file)
+  }, [qrOpen, app.file])
+
   return (
     <article className={styles.tile}>
       {/* Stretched-link pattern: makes the whole card tappable (easier on
@@ -90,10 +102,23 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
             </IconButton>
           </div>
         ) : (
-          <span className={styles.action} aria-hidden="true">
-            <span className={styles.actionLabel}>{actionLabel}</span>
-            <span className={styles.arrow}>{isStatic || installed ? '→' : '⤓'}</span>
-          </span>
+          <>
+            {/* Raised above the stretched link (see .qrButton) so tapping it
+                opens the QR dialog instead of also navigating — same trick
+                as .details below. */}
+            <IconButton
+              size="sm"
+              className={styles.qrButton}
+              aria-label={`Show QR code to open ${app.title} on your phone`}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQrOpen(true) }}
+            >
+              <IconQrCode />
+            </IconButton>
+            <span className={styles.action} aria-hidden="true">
+              <span className={styles.actionLabel}>{actionLabel}</span>
+              <span className={styles.arrow}>{isStatic || installed ? '→' : '⤓'}</span>
+            </span>
+          </>
         )}
       </div>
 
@@ -103,6 +128,14 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
           <p className={styles.description}>{app.description}</p>
         </details>
       )}
+
+      <Modal open={qrOpen} onClose={() => setQrOpen(false)} title={`Scan to open ${app.title}`}>
+        <div className={styles.qrCanvasWrap}>
+          <canvas ref={qrCanvasRef} width={240} height={240} />
+        </div>
+        <p className={styles.qrHint}>Scan to open on your phone</p>
+        <p className={styles.qrUrl}>{appQrUrl(app.file)}</p>
+      </Modal>
     </article>
   )
 }
