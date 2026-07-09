@@ -62,7 +62,7 @@ on/off) and echoed on the calendar (see below).
 
 ## Notion database schema
 
-App model: `{ id, name, description, link, category, place, placeUrl, tags[], attended,
+App model: `{ id, name, description, link, category, place, placeUrl, tags[], attended, going,
 dateAdded, dateExpiring, plannedDate, plannedTime, photo, tickets[] }`. Notion properties:
 
 | Property | Type | Notes |
@@ -75,11 +75,16 @@ dateAdded, dateExpiring, plannedDate, plannedTime, photo, tickets[] }`. Notion p
 | `Map` | **url** | Maps pin link for the place |
 | `Tags` | multi_select | freeform, **always lowercase** (normalized + deduped on read + write) |
 | `Attended` | checkbox | |
+| `Going` | checkbox | added M2.1 — "have I decided to go", separate from `Attended`'s "did it happen". Only meaningful once a `Planned Date` exists; the editor only shows the toggle then, and clearing the date clears `Going` too. Lets you track a concert's date/time while still undecided about attending. |
 | `Date Added` | date | app stamps on create |
 | `Date Expiring` | date | the deadline to act — drives the reminder, expiry pills, and the calendar's Expiring marker |
 | `Planned Date` | date (optional) | the day you plan to go — drives the calendar's Planned marker (renamed from `When` in M2). Optionally carries a **start time** too (no end time) — the app model splits it into `plannedDate`/`plannedTime`, but on the wire it's one Notion date property: a bare day when no time is set, a full ISO datetime (this browser's UTC offset) when it is. `Date Expiring` never carries a time, deadline-only. |
 | `Photo` | **files** (M3) | at most one picture — a poster, a photo you took |
 | `Tickets` | **files** (M3), multi | ticket PDFs/screenshots, shown separately from Photo |
+
+**Note:** the `Tags` option `going` (a leftover from an earlier, weaker attempt at this same
+distinction) was removed from the multi_select vocabulary when the `Going` checkbox was added
+— it was never applied to any page, so no data migration was needed.
 
 **Migration from the original "Findings" DB:** `Place` was Notion's native geo/`place`
 type, which the classic API can't write — it was converted to **rich_text**, and **`Map`
@@ -144,13 +149,15 @@ button always produces a real message to check end-to-end.
 ## Calendar (M2, shipped)
 
 `CalendarView.jsx` — a Monday-start month grid. Each day box shows up to **three markers**:
-a **Planned** dot (`--blue`, from `plannedDate`), an **Expiring** dot (`--red`, from
-`dateExpiring`), and a **Paid** dot (`--green`, an entry with tickets on file — rides
+a **Planned** dot (`--blue`, from `plannedDate` — **hollow** when undecided, **filled solid**
+once `Going` is checked on at least one of that day's entries), an **Expiring** dot (`--red`,
+from `dateExpiring`), and a **Paid** dot (`--green`, an entry with tickets on file — rides
 whichever date the entry itself lands on, planned first then expiring, since tickets have
 no date of their own). Selecting a day opens an **agenda panel** beneath the grid listing
 that day's entries — both Planned-Date and Date-Expiring matches, each labelled with a
-Planned pill, a Paid pill (green, next to Planned, when tickets are on file), and/or an
-expiry pill — tap one to open the full entry. The List⇄Calendar toggle lives in the menu
+Planned/Going pill (green once `Going` is checked, blue otherwise), a Paid pill (green, next
+to it, when tickets are on file), and/or an expiry pill — tap one to open the full entry.
+The List⇄Calendar toggle lives in the menu
 bar; the calendar respects the status segment + search (so markers reflect To-do/Attended
 and any filter) but not the list sort. **Attended items only ever light up a dot on a day
 already past** — even with the status set to "All", a done thing's planned/expiring date

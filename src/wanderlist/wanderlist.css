@@ -380,6 +380,9 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .attended-pill { color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, transparent); background: color-mix(in srgb, var(--green) 9%, transparent); }
 /* A planned date that's come and gone, still unattended — a gentle nudge, not an alarm. */
 .when-pill.slipped { color: var(--orange); border-color: color-mix(in srgb, var(--orange) 45%, transparent); background: color-mix(in srgb, var(--orange) 9%, transparent); }
+/* Going — a confirmed plan, not just a tracked date. Same green as Attended, since both
+   mean "decided", just at different points in the item's life. */
+.when-pill.going { color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, transparent); background: color-mix(in srgb, var(--green) 9%, transparent); }
 
 /* The default Expiring-first sort sinks already-expired, unattended items into their own
    tier at the bottom instead of letting them float to the top — this marks where it
@@ -489,6 +492,16 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .date-time-row { display: flex; gap: 8px; }
 .date-time-row > input[type=date] { flex: 1; min-width: 0; }
 .date-time-row > input[type=time] { flex: 0 0 auto; width: 118px; }
+/* Going: a small pill under the date/time row, off by default ("still deciding") — flips
+   to a confirmed green once tapped, same visual language as the list's row-check. */
+.going-toggle {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 12px;
+  border-radius: 999px; border: 1px solid var(--border2); background: var(--surface);
+  color: var(--faint); font-family: var(--mono); font-size: 0.72rem; cursor: pointer; transition: all 0.16s;
+}
+.going-toggle:hover { color: var(--muted); border-color: var(--muted); }
+.going-toggle svg { font-size: 13px; }
+.going-toggle.on { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); border-color: color-mix(in srgb, var(--green) 55%, transparent); }
 .hint { font-family: var(--mono); font-size: 0.6875rem; color: var(--faint); line-height: 1.5; }
 .check-row {
   display: flex; align-items: center; gap: 9px; font-size: 0.9rem; color: var(--muted);
@@ -678,7 +691,10 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
 .cal-day { line-height: 1; }
 .cal-dots { position: absolute; bottom: 7px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; }
 .cal-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
-.cal-dot.planned { background: var(--blue); }
+/* Planned defaults to hollow (undecided) and fills solid once Going is confirmed — same
+   slot, same colour, so the month grid gains the signal without a new dot or legend entry. */
+.cal-dot.planned { background: transparent; border: 1.4px solid var(--blue); }
+.cal-dot.planned.going { background: var(--blue); border-color: var(--blue); }
 .cal-dot.expires { background: var(--red); }
 .cal-dot.paid { background: var(--green); }
 .cal-legend { display: flex; justify-content: center; gap: 18px; margin-top: 12px; font-family: var(--mono); font-size: 0.66rem; color: var(--faint); }
@@ -704,6 +720,7 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
   font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.02em; padding: 3px 9px; border-radius: 999px;
   color: var(--blue); border: 1px solid color-mix(in srgb, var(--blue) 45%, transparent); background: color-mix(in srgb, var(--blue) 9%, transparent);
 }
+.planned-pill.going { color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, transparent); background: color-mix(in srgb, var(--green) 9%, transparent); }
 .planned-pill svg { font-size: 12px; }
 /* Paid — tickets on file, shown right alongside "planned" in the day-agenda's badge row. */
 .paid-pill {

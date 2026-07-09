@@ -7,7 +7,7 @@ import PlaceInput from './PlaceInput.jsx'
 import PhotoField from './PhotoField.jsx'
 import TicketsField from './TicketsField.jsx'
 import Lightbox from './Lightbox.jsx'
-import { NameIcon, TextIcon, LinkIcon, CategoryIcon, PlaceIcon, TagIcon, HourglassIcon, CalendarIcon } from './icons.jsx'
+import { NameIcon, TextIcon, LinkIcon, CategoryIcon, PlaceIcon, TagIcon, HourglassIcon, CalendarIcon, CheckIcon } from './icons.jsx'
 
 // Create or edit one item. Everything but a Name is optional — this is a low-friction
 // backlog, so you can jot a bare idea now and flesh it out later. Category is a single
@@ -27,6 +27,9 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, saving
   // Start time only — no end time tracked. Meaningless without a plannedDate, so clearing
   // the date clears the time too (see the date field's onChange below).
   const [plannedTime, setPlannedTime] = useState(initial.plannedTime || '')
+  // Going answers "have I decided to go", separate from Attended's "did it happen" — it
+  // only means anything once there's a Planned Date, so it clears along with the date.
+  const [going, setGoing] = useState(Boolean(initial.going))
   // Attended is toggled from the list (round ✓) and the detail view, never here — but we
   // carry the existing value through so editing an already-attended item doesn't clear it.
   const attended = Boolean(initial.attended)
@@ -93,6 +96,7 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, saving
       dateExpiring: dateExpiring || null,
       plannedDate: plannedDate || null,
       plannedTime: plannedDate ? (plannedTime || null) : null,
+      going: plannedDate ? going : false,
       attended,
       dateAdded: initial.dateAdded || todayKey(),
       photoAction,
@@ -160,7 +164,7 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, saving
           <label htmlFor="f-when"><CalendarIcon /> Planned <span className="opt">— when you'll go</span></label>
           <div className="date-time-row">
             <input id="f-when" type="date" value={plannedDate}
-              onChange={e => { const v = e.target.value; setPlannedDate(v); if (!v) setPlannedTime('') }} />
+              onChange={e => { const v = e.target.value; setPlannedDate(v); if (!v) { setPlannedTime(''); setGoing(false) } }} />
             {/* Start time only, and only once a date's picked — a time with no day to
                 anchor it to means nothing. No end time: the app tracks a fixed start,
                 not a duration. */}
@@ -169,6 +173,15 @@ export default function EntryEditor({ initial, entries, onSave, onCancel, saving
                 aria-label="Start time (optional)" title="Start time — optional" />
             )}
           </div>
+          {/* Going is separate from a bare Planned Date: the date/time just means "this is
+              when it happens", not "I've committed" — a concert you're still deciding on
+              still wants its date tracked. Only surfaces once there's a date to anchor it. */}
+          {plannedDate && (
+            <button type="button" className={`going-toggle${going ? ' on' : ''}`}
+              aria-pressed={going} onClick={() => setGoing(g => !g)}>
+              <CheckIcon /> {going ? 'Going' : 'Still deciding'}
+            </button>
+          )}
         </div>
       </div>
 

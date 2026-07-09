@@ -24,19 +24,22 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
   // "All", a done thing's planned/expiring date no longer means anything going forward, so
   // it shouldn't still light up a dot on a day yet to come. A day already past keeps its
   // dot regardless — that's a quiet, honest record of what happened, not a forecast.
-  const { plannedKeys, expiringKeys, paidKeys } = useMemo(() => {
-    const planned = new Set(), expiring = new Set(), paid = new Set()
+  const { plannedKeys, goingKeys, expiringKeys, paidKeys } = useMemo(() => {
+    const planned = new Set(), going = new Set(), expiring = new Set(), paid = new Set()
     const suppress = (entry, key) => Boolean(entry?.attended) && key >= today
     for (const e of entries || []) {
       const pd = e?.plannedDate, ed = e?.dateExpiring
-      if (pd && !suppress(e, pd)) planned.add(pd)
+      if (pd && !suppress(e, pd)) {
+        planned.add(pd)
+        if (e?.going) going.add(pd)
+      }
       if (ed && !suppress(e, ed)) expiring.add(ed)
       if (e?.tickets?.length > 0) {
         if (pd && !suppress(e, pd)) paid.add(pd)
         else if (ed && !suppress(e, ed)) paid.add(ed)
       }
     }
-    return { plannedKeys: planned, expiringKeys: expiring, paidKeys: paid }
+    return { plannedKeys: planned, goingKeys: going, expiringKeys: expiring, paidKeys: paid }
   }, [entries, today])
 
   const weeks = useMemo(() => monthGrid(month.year, month.month, 1), [month])
@@ -74,6 +77,7 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
       <div className="cal-grid">
         {weeks.flat().map(cell => {
           const planned = plannedKeys.has(cell.key)
+          const going = goingKeys.has(cell.key)
           const expiring = expiringKeys.has(cell.key)
           const paid = paidKeys.has(cell.key)
           const cls = [
@@ -88,7 +92,7 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
               <span className="cal-day">{cell.day}</span>
               {(planned || expiring || paid) && (
                 <span className="cal-dots">
-                  {planned && <span className="cal-dot planned" title="Something planned" />}
+                  {planned && <span className={`cal-dot planned${going ? ' going' : ''}`} title={going ? 'Something you’re going to' : 'Something planned, undecided'} />}
                   {expiring && <span className="cal-dot expires" title="Something expires" />}
                   {paid && <span className="cal-dot paid" title="Something paid for" />}
                 </span>
@@ -100,6 +104,7 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
 
       <div className="cal-legend">
         <span><span className="cal-dot planned" /> planned</span>
+        <span><span className="cal-dot planned going" /> going</span>
         <span><span className="cal-dot expires" /> expires</span>
         <span><span className="cal-dot paid" /> paid</span>
       </div>
@@ -130,8 +135,8 @@ export default function CalendarView({ entries, today, onOpen, onChip }) {
                   <div className="row-badges">
                     {entry.attended && <span className="attended-pill"><CheckCircleIcon /> attended</span>}
                     {planned && (
-                      <span className="planned-pill">
-                        <CalendarIcon /> planned{entry.plannedTime ? ` · ${formatTime(entry.plannedTime)}` : ''}
+                      <span className={`planned-pill${entry.going ? ' going' : ''}`}>
+                        <CalendarIcon /> {entry.going ? 'going' : 'planned'}{entry.plannedTime ? ` · ${formatTime(entry.plannedTime)}` : ''}
                       </span>
                     )}
                     {entry.tickets?.length > 0 && (

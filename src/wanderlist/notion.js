@@ -5,11 +5,14 @@
 import { localOffsetString } from './dates.js'
 //
 // App model for one item:
-//   { id, name, description, link, category, place, placeUrl, tags[], attended,
+//   { id, name, description, link, category, place, placeUrl, tags[], attended, going,
 //     dateAdded, dateExpiring, plannedDate, plannedTime, photo, tickets[], pending? }
 // where `plannedDate` is the day you plan to go (drives the calendar's Planned marker),
 // `plannedTime` is an optional 'HH:MM' 24h start time for it (no end time — a fixed start
-// is all the app tracks; Expires never carries a time, only a deadline day), `dateExpiring`
+// is all the app tracks; Expires never carries a time, only a deadline day), `going` is a
+// separate boolean from `attended` — it answers "have I actually decided to go" for an
+// item with a Planned Date, distinct from "did it happen" (you can plan something and stay
+// undecided; `going` only ever means something once a plannedDate exists), `dateExpiring`
 // is the deadline to act (the Expiring marker), `photo` is `{ url, name } | null` (at most
 // one picture, managed out of band via notionClient's uploadFile/attachPhoto/removePhoto
 // rather than toNotionProps — same pattern as Journal of Delights), and `tickets` is
@@ -96,6 +99,7 @@ export function toEntry(page) {
     placeUrl: props.Map?.url ?? '',
     tags: (props.Tags?.multi_select ?? []).map(o => normalizeTag(o.name)),
     attended: Boolean(props.Attended?.checkbox),
+    going: Boolean(props.Going?.checkbox),
     dateAdded: props['Date Added']?.date?.start ?? null,
     dateExpiring: props['Date Expiring']?.date?.start ?? null,
     plannedDate: planned.date,
@@ -158,6 +162,7 @@ export function toNotionProps(entry) {
     Map: { url: e.placeUrl ? String(e.placeUrl) : null },
     Tags: { multi_select: [...new Set((e.tags ?? []).map(normalizeTag).filter(Boolean))].map(name => ({ name })) },
     Attended: { checkbox: Boolean(e.attended) },
+    Going: { checkbox: Boolean(e.going) },
     'Date Added': { date: e.dateAdded ? { start: e.dateAdded } : null },
     'Date Expiring': { date: e.dateExpiring ? { start: e.dateExpiring } : null },
     'Planned Date': { date: e.plannedDate ? { start: combinePlannedDate(e.plannedDate, e.plannedTime) } : null },

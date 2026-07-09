@@ -44,8 +44,8 @@ export default function EntryView({ entry, onBack, onEdit, onChip, onToggleAtten
           <span className={`expiry-pill ${urgency}`}><HourglassIcon /> {expiryLabel(entry.dateExpiring, today)} · {formatHuman(entry.dateExpiring)}</span>
         )}
         {entry.plannedDate && (
-          <span className={`when-pill${isPlannedPast(entry, today) ? ' slipped' : ''}`}>
-            <CalendarIcon /> {isPlannedPast(entry, today) ? 'was planned' : 'planned'} · {formatHuman(entry.plannedDate)}
+          <span className={`when-pill${isPlannedPast(entry, today) ? ' slipped' : ''}${entry.going ? ' going' : ''}`}>
+            <CalendarIcon /> {isPlannedPast(entry, today) ? 'was planned' : entry.going ? 'going' : 'planned'} · {formatHuman(entry.plannedDate)}
             {entry.plannedTime ? ` · ${formatTime(entry.plannedTime)}` : ''}
           </span>
         )}

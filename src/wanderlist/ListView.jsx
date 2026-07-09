@@ -58,8 +58,8 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
                 {e.attended && <span className="attended-pill"><CheckCircleIcon /> attended</span>}
                 {!e.attended && e.dateExpiring && <ExpiryPill dateKey={e.dateExpiring} today={today} />}
                 {e.plannedDate && (
-                  <span className={`when-pill${isPlannedPast(e, today) ? ' slipped' : ''}`}>
-                    <CalendarIcon /> {isPlannedPast(e, today) ? 'was planned' : 'planned'} {formatMedium(e.plannedDate)}
+                  <span className={`when-pill${isPlannedPast(e, today) ? ' slipped' : ''}${e.going ? ' going' : ''}`}>
+                    <CalendarIcon /> {isPlannedPast(e, today) ? 'was planned' : e.going ? 'going' : 'planned'} {formatMedium(e.plannedDate)}
                     {e.plannedTime ? `, ${formatTime(e.plannedTime)}` : ''}
                   </span>
                 )}

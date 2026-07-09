@@ -37,6 +37,7 @@ export function seedEntries() {
       dateExpiring: daysFromToday(2),
       plannedDate: daysFromToday(3),
       plannedTime: '19:30',
+      going: true,
       tickets: [{ url: 'https://animest.ro/ticket.pdf', name: 'closing-night.pdf', fileUploadId: null }],
     },
     {

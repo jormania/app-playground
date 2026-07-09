@@ -33,6 +33,7 @@ describe('toEntry', () => {
       Map: { url: 'https://maps.example/pin' },
       Tags: { multi_select: [{ name: 'ticketed' }, { name: 'film' }] },
       Attended: { checkbox: true },
+      Going: { checkbox: true },
       'Date Added': { date: { start: '2026-07-01' } },
       'Date Expiring': { date: { start: '2026-07-10' } },
       'Planned Date': { date: { start: '2026-07-11' } },
@@ -49,6 +50,7 @@ describe('toEntry', () => {
       placeUrl: 'https://maps.example/pin',
       tags: ['ticketed', 'film'],
       attended: true,
+      going: true,
       dateAdded: '2026-07-01',
       dateExpiring: '2026-07-10',
       plannedDate: '2026-07-11',
@@ -98,17 +100,22 @@ describe('toNotionProps', () => {
   test('writes select, multi_select, checkbox, url and dates; nulls clear', () => {
     const props = toNotionProps({
       name: 'Jazz', description: '', link: '', category: 'Event', place: 'Uranus',
-      placeUrl: '', tags: ['free', 'outdoor'], attended: false, dateAdded: '2026-07-01',
+      placeUrl: '', tags: ['free', 'outdoor'], attended: false, going: false, dateAdded: '2026-07-01',
       dateExpiring: null, plannedDate: null,
     })
     expect(props['Planned Date']).toEqual({ date: null })
     expect(props.Category).toEqual({ select: { name: 'event' } })
     expect(props.Tags).toEqual({ multi_select: [{ name: 'free' }, { name: 'outdoor' }] })
     expect(props.Attended).toEqual({ checkbox: false })
+    expect(props.Going).toEqual({ checkbox: false })
     expect(props.Link).toEqual({ url: null })
     expect(props.Place).toEqual({ rich_text: [{ text: { content: 'Uranus' } }] })
     expect(props['Date Expiring']).toEqual({ date: null })
     expect(props['Date Added']).toEqual({ date: { start: '2026-07-01' } })
+  })
+  test('going writes true only when explicitly set', () => {
+    expect(toNotionProps({ going: true }).Going).toEqual({ checkbox: true })
+    expect(toNotionProps({}).Going).toEqual({ checkbox: false })
   })
   test('empty category clears the select', () => {
     expect(toNotionProps({ category: null }).Category).toEqual({ select: null })
