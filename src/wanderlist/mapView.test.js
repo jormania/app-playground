@@ -21,9 +21,14 @@ describe('mapEntries', () => {
 })
 
 describe('embedSrc', () => {
-  test('builds a keyless Google embed URL around the place text', () => {
+  test('an address-shaped place (has a comma) is used as-is', () => {
     expect(embedSrc({ place: 'Cinema Pro, București' }))
       .toBe('https://maps.google.com/maps?q=Cinema%20Pro%2C%20Bucure%C8%99ti&z=14&output=embed')
+  })
+  test('a bare name (no comma) gets the city appended so Google pins it', () => {
+    // Without the city, Google's keyless embed often centres but drops no pin.
+    expect(embedSrc({ place: 'ARCUB - Hanul Gabroveni' }))
+      .toBe('https://maps.google.com/maps?q=ARCUB%20-%20Hanul%20Gabroveni%2C%20Bucure%C8%99ti&z=14&output=embed')
   })
   test('honours a custom zoom', () => {
     expect(embedSrc({ place: 'X' }, { zoom: 11 })).toContain('&z=11&')
