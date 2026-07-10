@@ -29,6 +29,16 @@ const BIOME_BED = {
 }
 const DEFAULT_VERB = 0.15
 
+// The Chorus (the mixer): five category buses grouping every scheduled voice
+// and continuous bed, plus three shapers. Every category/volume default is
+// UNITY (10/10 = gain 1) and warmth defaults fully open — the mixer is a set
+// of user overrides layered on top of the existing, already-tuned sound, so
+// until someone touches a slider, nothing about today's mix changes at all.
+const WARMTH_MIN_HZ = 700 // fully closed: hushed and close
+const WARMTH_MAX_HZ = 16000 // fully open: today's untouched tone
+const ACTIVITY_MIN = 0.4
+const ACTIVITY_MAX = 1.6
+
 export function sceneFor(timeOfDay, season) {
   if (season === 'winter') return 'winter'
   if (timeOfDay === 'day' || timeOfDay === 'dawn') return 'day'
@@ -39,9 +49,11 @@ export function createAmbience() {
   // ---- state ----
   let ctx = null
   let master = null
+  let warmthFilter = null
   let reverbSend = null
   let noiseBuf = null
   let n = {}
+  let catGains = {}       // { place, weather, wildlife, city, events } — built lazily, see build()
   let scene = 'day'
   let phase = 'day'        // exact time of day: dawn | day | dusk | night
   let season = 'summer'
@@ -60,15 +72,24 @@ export function createAmbience() {
   let walkers = []
   let timers = []          // every self-rescheduling timer, cleared on dispose
 
+  // ---- the Chorus mix (0..1 each; may be set before the graph exists — e.g.
+  // sound is off — so it's held here and (re)applied whenever the graph is
+  // built or a value changes; see applyMix() ----
+  let mixPlace = 1, mixWeather = 1, mixWildlife = 1, mixCity = 1, mixEvents = 1
+  let mixVolume = 1
+  let activityMul = 1
+  let warmthHz = WARMTH_MAX_HZ
+
   // ---- small helpers ----
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+  const clamp01 = (v) => clamp(v, 0, 1)
   const rpan = (w) => (Math.random() * 2 - 1) * w
   const ready = () => enabled && ctx && ctx.state === 'running' && !solo
   // a biome "voice": plays for matching biomes and survives solo (it IS the
   // biome) as long as a biome is set; null in the list = the no-location case
   const voice = (...allowed) =>
     enabled && ctx && ctx.state === 'running' && allowed.includes(biome) && (!solo || biome != null)
-  const lively = (p = 1) => Math.random() < p * liveliness
+  const lively = (p = 1) => Math.random() < p * liveliness * activityMul
 
   function set(param, v, tc) {
     param.setTargetAtTime(v, ctx.currentTime, tc)
@@ -143,9 +164,24 @@ export function createAmbience() {
     return buf
   }
 
-  // a placed output: panner → master (dry) and → reverb send (wet). Returns the
-  // panner so callers can automate its pan (e.g. a plane drifting across).
-  function out(pan = 0) {
+  // a placed, CATEGORIZED output: panner → that category's bus, which the
+  // Chorus mixer can fade (and which itself forwards to master + the reverb
+  // send — see the catGains wiring in build()). Every scheduled voice below
+  // is tagged with one of 'place' | 'weather' | 'wildlife' | 'city' | 'events'.
+  // Returns the panner so callers can automate its pan (e.g. a plane drifting
+  // across).
+  function out(pan = 0, category = 'place') {
+    const p = ctx.createStereoPanner()
+    p.pan.value = clamp(pan, -1, 1)
+    p.connect(catGains[category] || master)
+    return p
+  }
+
+  // a placed output for INTERACTION sounds (tap/depart/reveal) — always
+  // straight to master + the reverb send, deliberately outside the Chorus's
+  // five ambient categories (a confirmatory UI sound shouldn't go quiet just
+  // because Wildlife is muted). Still scales with the master Volume shaper.
+  function outUI(pan = 0) {
     const p = ctx.createStereoPanner()
     p.pan.value = clamp(pan, -1, 1)
     p.connect(master)
@@ -159,7 +195,12 @@ export function createAmbience() {
     ctx = new AC()
     master = ctx.createGain()
     master.gain.value = 0
-    master.connect(ctx.destination)
+    // WARMTH: one global tone shaper downstream of everything, the Chorus's
+    // third shaper (cosy/muffled <-> today's untouched open tone).
+    warmthFilter = ctx.createBiquadFilter()
+    warmthFilter.type = 'lowpass'
+    warmthFilter.frequency.value = warmthHz
+    master.connect(warmthFilter).connect(ctx.destination)
     noiseBuf = pinkNoiseBuffer(8)
 
     // REVERB: a warm stereo room shared by the one-shots (send amount per biome)
@@ -171,12 +212,28 @@ export function createAmbience() {
     reverbSend.connect(convolver)
     convolver.connect(verbLP).connect(reverbReturn).connect(master)
 
+    // THE CHORUS: five category buses. Every scheduled voice and continuous
+    // bed below routes into one of these (via out()'s category argument, or
+    // directly for the beds) instead of straight to master, so each can be
+    // faded independently; each bus forwards its own dry AND wet (reverb)
+    // signal, so muting a category silences its reverb tail too, not just
+    // the direct sound.
+    catGains = {
+      place: ctx.createGain(), weather: ctx.createGain(), wildlife: ctx.createGain(),
+      city: ctx.createGain(), events: ctx.createGain(),
+    }
+    Object.values(catGains).forEach((g) => {
+      g.gain.value = 1
+      g.connect(master)
+      g.connect(reverbSend)
+    })
+
     // WIND: stereo bed (two decorrelated sources panned L/R) → level → slow
-    // drift → gust gain (transient swells) → master
+    // drift → gust gain (transient swells) → the Weather bus
     const windDrift = ctx.createGain(); windDrift.gain.value = 0.9
     const gustGain = ctx.createGain(); gustGain.gain.value = 1
     const windGain = ctx.createGain(); windGain.gain.value = 0
-    windGain.connect(windDrift).connect(gustGain).connect(master)
+    windGain.connect(windDrift).connect(gustGain).connect(catGains.weather)
     ;[[-0.7, 0.98], [0.7, 1.03]].forEach(([pan, rate]) => {
       const s = loopNoise(noiseBuf, rate)
       const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 320
@@ -189,7 +246,7 @@ export function createAmbience() {
     const whBP = ctx.createBiquadFilter(); whBP.type = 'bandpass'; whBP.frequency.value = 1200; whBP.Q.value = 6
     const whGain = ctx.createGain(); whGain.gain.value = 0
     const whSwell = ctx.createGain(); whSwell.gain.value = 0.7
-    whSrc.connect(whBP).connect(whGain).connect(whSwell).connect(master)
+    whSrc.connect(whBP).connect(whGain).connect(whSwell).connect(catGains.weather)
     const whLfo = ctx.createOscillator(); whLfo.frequency.value = 0.035
     const whDepth = ctx.createGain(); whDepth.gain.value = 0.14
     whLfo.connect(whDepth).connect(whSwell.gain); whLfo.start()
@@ -200,14 +257,14 @@ export function createAmbience() {
     const wBP = ctx.createBiquadFilter(); wBP.type = 'bandpass'; wBP.frequency.value = 1500; wBP.Q.value = 0.5
     const waterGain = ctx.createGain(); waterGain.gain.value = 0
     const waterDrift = ctx.createGain(); waterDrift.gain.value = 0.85
-    wSrc.connect(wHP).connect(wBP).connect(waterGain).connect(waterDrift).connect(master)
+    wSrc.connect(wHP).connect(wBP).connect(waterGain).connect(waterDrift).connect(catGains.place)
 
     // RAIN: brighter bed, gated by live weather (gain 0 when dry)
     const rSrc = loopNoise(noiseBuf, 1.07)
     const rHP = ctx.createBiquadFilter(); rHP.type = 'highpass'; rHP.frequency.value = 900
     const rLP = ctx.createBiquadFilter(); rLP.type = 'lowpass'; rLP.frequency.value = 5500
     const rainGain = ctx.createGain(); rainGain.gain.value = 0
-    rSrc.connect(rHP).connect(rLP).connect(rainGain).connect(master)
+    rSrc.connect(rHP).connect(rLP).connect(rainGain).connect(catGains.weather)
 
     // BIOME BED: place-coloured noise (surf / traffic / thin wind / rustle),
     // with a level swell LFO and a slow tonal filter wander; sent to reverb too
@@ -215,7 +272,11 @@ export function createAmbience() {
     const bFilter = ctx.createBiquadFilter(); bFilter.type = 'lowpass'; bFilter.frequency.value = 500
     const biomeGain = ctx.createGain(); biomeGain.gain.value = 0
     const biomeSwell = ctx.createGain(); biomeSwell.gain.value = 1
-    bSrc.connect(bFilter).connect(biomeGain).connect(biomeSwell).connect(master)
+    bSrc.connect(bFilter).connect(biomeGain).connect(biomeSwell).connect(catGains.place)
+    // this bed's own dedicated reverb send (distinct from the Chorus buses'
+    // shared one, an existing, separate design) — kept in `n` so applyMix()
+    // can scale it by the Place level too, or it'd linger audibly even with
+    // Place faded to 0
     const biomeVerb = ctx.createGain(); biomeVerb.gain.value = 0.12
     biomeSwell.connect(biomeVerb).connect(convolver) // widen the bed through the room
     const bLfo = ctx.createOscillator(); bLfo.frequency.value = 0.04
@@ -229,13 +290,14 @@ export function createAmbience() {
     const csSrc = loopNoise(noiseBuf, 0.6)
     const csLP = ctx.createBiquadFilter(); csLP.type = 'lowpass'; csLP.frequency.value = 90
     const citySub = ctx.createGain(); citySub.gain.value = 0
-    csSrc.connect(csLP).connect(citySub).connect(master)
+    csSrc.connect(csLP).connect(citySub).connect(catGains.place)
 
-    n = { windGain, gustGain, whGain, waterGain, rainGain, biomeGain, bFilter, bDepth, bToneDepth, bSrc, citySub, reverbSend }
+    n = { windGain, gustGain, whGain, waterGain, rainGain, biomeGain, bFilter, bDepth, bToneDepth, bSrc, citySub, biomeVerb, reverbSend }
 
     applyScene(true)
     applyWeather()
     applyBiome()
+    applyMix() // push any mix already set (e.g. sound was off) onto the freshly built graph
     startSchedulers()
     startLiveliness()
 
@@ -243,6 +305,21 @@ export function createAmbience() {
     // so the bed only barely stirs; real dynamism comes from gusts
     walkers.push(makeWalker(windDrift.gain, { min: 0.72, max: 1.05, step: 0.07, minDur: 26, maxDur: 60 }))
     walkers.push(makeWalker(waterDrift.gain, { min: 0.74, max: 1.04, step: 0.06, minDur: 28, maxDur: 64 }))
+  }
+
+  // ============================ the Chorus mix ============================
+  // Applies the current mix values to the live graph (a no-op before build()
+  // has run — see build()'s own applyMix() call, which catches up once it has).
+  function applyMix() {
+    if (!ctx) return
+    set(catGains.place.gain, mixPlace, 1.2)
+    set(catGains.weather.gain, mixWeather, 1.2)
+    set(catGains.wildlife.gain, mixWildlife, 1.2)
+    set(catGains.city.gain, mixCity, 1.2)
+    set(catGains.events.gain, mixEvents, 1.2)
+    if (n.biomeVerb) set(n.biomeVerb.gain, 0.12 * mixPlace, 1.2)
+    if (warmthFilter) set(warmthFilter.frequency, warmthHz, 1.5)
+    if (master) set(master.gain, enabled ? MASTER * mixVolume : 0, 0.6)
   }
 
   // ============================ bed levels ============================
@@ -285,7 +362,7 @@ export function createAmbience() {
   function chirp(t, level, pan = 0) {
     const o = ctx.createOscillator(); o.type = 'sine'
     const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(g).connect(out(pan))
+    o.connect(g).connect(out(pan, 'wildlife'))
     const base = 1900 + Math.random() * 1900
     o.frequency.setValueAtTime(base, t)
     o.frequency.exponentialRampToValueAtTime(base * 1.5, t + 0.06)
@@ -301,7 +378,7 @@ export function createAmbience() {
     const o = ctx.createOscillator(); o.type = 'triangle'
     o.frequency.value = 4200 + Math.random() * 700
     const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(g).connect(out(pan))
+    o.connect(g).connect(out(pan, 'wildlife'))
     const pulses = 3 + Math.floor(Math.random() * 4)
     let tt = t
     for (let k = 0; k < pulses; k++) {
@@ -316,7 +393,7 @@ export function createAmbience() {
   function chime(t, level, pan = 0) {
     const roots = [1568, 2093, 2637, 3136]
     const root = roots[Math.floor(Math.random() * roots.length)]
-    const dest = out(pan)
+    const dest = out(pan, 'weather')
     ;[root, root * 2].forEach((f, idx) => {
       const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f
       const g = ctx.createGain(); g.gain.value = 0.0001
@@ -334,7 +411,7 @@ export function createAmbience() {
     const o = ctx.createOscillator(); o.type = 'sawtooth'
     const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1000; bp.Q.value = 4
     const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(bp).connect(g).connect(out(pan))
+    o.connect(bp).connect(g).connect(out(pan, 'wildlife'))
     o.frequency.setValueAtTime(520, t)
     o.frequency.linearRampToValueAtTime(840, t + 0.18)
     o.frequency.linearRampToValueAtTime(660, t + 0.40)
@@ -364,7 +441,7 @@ export function createAmbience() {
     o.start(t); o.stop(t + 0.2)
   }
   function dog(t, level, pan = 0) {
-    const dest = out(pan)
+    const dest = out(pan, 'wildlife')
     woof(t, level, dest)
     if (Math.random() < 0.6) woof(t + 0.24 + Math.random() * 0.12, level * 0.9, dest)
   }
@@ -373,7 +450,7 @@ export function createAmbience() {
   function airplane(t, level) {
     if (!noiseBuf) return
     const dur = 18 + Math.random() * 8
-    const dest = out(-0.85)
+    const dest = out(-0.85, 'city')
     dest.pan.setValueAtTime(-0.85, t)
     dest.pan.linearRampToValueAtTime(0.85, t + dur)
     const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.playbackRate.value = 0.5
@@ -394,7 +471,7 @@ export function createAmbience() {
   function thunderClap(t) {
     if (!noiseBuf) return
     const dur = 2.6 + Math.random() * 2.8
-    const dest = out(rpan(0.4))
+    const dest = out(rpan(0.4), 'weather')
     const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.playbackRate.value = 0.3
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 140
     const g = ctx.createGain(); g.gain.value = 0.0001
@@ -406,7 +483,7 @@ export function createAmbience() {
     o.frequency.setValueAtTime(40 + Math.random() * 10, t)
     o.frequency.exponentialRampToValueAtTime(27, t + dur * 0.9)
     const og = ctx.createGain(); og.gain.value = 0.0001
-    o.connect(og).connect(out(0))
+    o.connect(og).connect(out(0, 'weather'))
     og.gain.setValueAtTime(0.0001, t)
     og.gain.linearRampToValueAtTime(0.15, t + 0.06)
     og.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.85)
@@ -418,7 +495,7 @@ export function createAmbience() {
     const o = ctx.createOscillator(); o.type = 'sawtooth'
     const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1700; bp.Q.value = 5
     const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(bp).connect(g).connect(out(pan))
+    o.connect(bp).connect(g).connect(out(pan, 'wildlife'))
     const base = 1500 + Math.random() * 500
     o.frequency.setValueAtTime(base, t)
     o.frequency.linearRampToValueAtTime(base * 1.12, t + 0.05)
@@ -432,7 +509,7 @@ export function createAmbience() {
 
   function owl(t, level, pan = 0) {
     const base = 320 + Math.random() * 60
-    const dest = out(pan)
+    const dest = out(pan, 'wildlife')
     ;[0, 0.5].forEach((dt, idx) => {
       const tt = t + dt
       const o = ctx.createOscillator(); o.type = 'sine'
@@ -449,7 +526,7 @@ export function createAmbience() {
   }
 
   function crow(t, level, pan = 0) {
-    const dest = out(pan)
+    const dest = out(pan, 'wildlife')
     const reps = 1 + Math.floor(Math.random() * 3)
     for (let k = 0; k < reps; k++) {
       const tt = t + k * (0.28 + Math.random() * 0.12)
@@ -471,7 +548,7 @@ export function createAmbience() {
   function pigeon(t, level, pan = 0) {
     const o = ctx.createOscillator(); o.type = 'sine'
     const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(g).connect(out(pan))
+    o.connect(g).connect(out(pan, 'wildlife'))
     const base = 470 + Math.random() * 60
     ;[0, 0.34, 0.62].forEach((dt, i) => {
       const tt = t + dt
@@ -490,7 +567,7 @@ export function createAmbience() {
     const o = ctx.createOscillator(); o.type = 'sawtooth'
     const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 6
     const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(bp).connect(g).connect(out(pan))
+    o.connect(bp).connect(g).connect(out(pan, 'wildlife'))
     const f = 2400 + Math.random() * 500
     o.frequency.setValueAtTime(f, t)
     o.frequency.exponentialRampToValueAtTime(f * 0.55, t + 0.5)
@@ -508,7 +585,7 @@ export function createAmbience() {
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900
     const env = ctx.createGain(); env.gain.value = 0.0001
     const tg = ctx.createGain(); tg.gain.value = 1
-    o.connect(lp).connect(env).connect(tg).connect(out(pan))
+    o.connect(lp).connect(env).connect(tg).connect(out(pan, 'wildlife'))
     const trem = ctx.createOscillator(); trem.type = 'sine'; trem.frequency.value = 24
     const td = ctx.createGain(); td.gain.value = 0.4
     trem.connect(td).connect(tg.gain)
@@ -525,7 +602,7 @@ export function createAmbience() {
     const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 150 + Math.random() * 40
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 600
     const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(lp).connect(g).connect(out(pan))
+    o.connect(lp).connect(g).connect(out(pan, 'wildlife'))
     const pulses = 3 + Math.floor(Math.random() * 3)
     let tt = t
     for (let k = 0; k < pulses; k++) {
@@ -542,7 +619,7 @@ export function createAmbience() {
     const dur = 2.0 + Math.random() * 2
     const o = ctx.createOscillator(); o.type = 'sine'
     const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(g).connect(out(pan))
+    o.connect(g).connect(out(pan, 'wildlife'))
     let tt = t
     g.gain.setValueAtTime(0.0001, t)
     g.gain.linearRampToValueAtTime(0.04, t + 0.12)
@@ -573,7 +650,7 @@ export function createAmbience() {
     bp.frequency.linearRampToValueAtTime(f0, t + 4)
     bp.frequency.linearRampToValueAtTime(f0 * 0.65, t + 11)
     const g = ctx.createGain(); g.gain.value = 0.0001
-    s.connect(bp).connect(g).connect(out(pan))
+    s.connect(bp).connect(g).connect(out(pan, 'weather'))
     const peak = 0.022 * level
     g.gain.setValueAtTime(0.0001, t)
     g.gain.linearRampToValueAtTime(peak, t + 4)        // gentle ~4s fade-in
@@ -588,7 +665,7 @@ export function createAmbience() {
   function waveWash(t, level, pan) {
     if (!noiseBuf) return
     const dur = 6 + Math.random() * 2
-    const dest = out(pan)
+    const dest = out(pan, 'place')
     const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.playbackRate.value = 0.8
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'
     lp.frequency.setValueAtTime(280, t)
@@ -605,7 +682,7 @@ export function createAmbience() {
 
   // forest: a soft hollow wood knock or two — distant, woody, unhurried
   function woodKnock(t, level, pan) {
-    const dest = out(pan)
+    const dest = out(pan, 'place')
     const reps = 1 + Math.floor(Math.random() * 2)
     for (let k = 0; k < reps; k++) {
       const tt = t + k * (0.18 + Math.random() * 0.12)
@@ -625,7 +702,7 @@ export function createAmbience() {
   function carPass(t, level) {
     if (!noiseBuf) return
     const dur = 5 + Math.random() * 2.5
-    const dest = out(-0.85)
+    const dest = out(-0.85, 'city')
     dest.pan.setValueAtTime(-0.85, t)
     dest.pan.linearRampToValueAtTime(0.85, t + dur)
     const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.playbackRate.value = 0.9
@@ -641,7 +718,7 @@ export function createAmbience() {
 
   // mountain: a far-off cowbell — soft metallic clank, pastoral and sparse
   function cowbell(t, level, pan) {
-    const dest = out(pan)
+    const dest = out(pan, 'place')
     const clanks = 1 + Math.floor(Math.random() * 2)
     for (let c = 0; c < clanks; c++) {
       const ct = t + c * (0.28 + Math.random() * 0.14)
@@ -664,7 +741,7 @@ export function createAmbience() {
   function grassRustle(t, level, pan) {
     if (!noiseBuf) return
     const dur = 3.5 + Math.random() * 2
-    const dest = out(pan)
+    const dest = out(pan, 'place')
     const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.playbackRate.value = 1.2
     const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200
@@ -681,7 +758,7 @@ export function createAmbience() {
   function drip(t, pan = 0) {
     const o = ctx.createOscillator(); o.type = 'sine'
     const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(g).connect(out(pan))
+    o.connect(g).connect(out(pan, 'weather'))
     const f = 900 + Math.random() * 900
     o.frequency.setValueAtTime(f, t)
     o.frequency.exponentialRampToValueAtTime(f * 0.6, t + 0.08)
@@ -698,7 +775,7 @@ export function createAmbience() {
     const pan = rpan(0.3)
     for (let k = 0; k < strikes; k++) {
       const tt = t + k * 1.6
-      const dest = out(pan)
+      const dest = out(pan, 'events')
       ;[1, 2.0, 2.76, 5.4].forEach((mult, idx) => {
         const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = root * mult
         const g = ctx.createGain(); g.gain.value = 0.0001
@@ -714,7 +791,7 @@ export function createAmbience() {
 
   function cuckoo(t) {
     const pan = rpan(0.5)
-    const dest = out(pan)
+    const dest = out(pan, 'events')
     ;[[0, 1.0], [0.45, 0.8]].forEach(([dt, fr]) => {
       const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 720 * fr
       const g = ctx.createGain(); g.gain.value = 0.0001
@@ -729,7 +806,7 @@ export function createAmbience() {
 
   function woodpecker(t) {
     const pan = rpan(0.6)
-    const dest = out(pan)
+    const dest = out(pan, 'events')
     const reps = 6 + Math.floor(Math.random() * 6)
     for (let k = 0; k < reps; k++) {
       const tt = t + k * 0.04
@@ -748,7 +825,7 @@ export function createAmbience() {
     const o = ctx.createOscillator(); o.type = 'sawtooth'
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1200
     const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(lp).connect(g).connect(out(rpan(0.5)))
+    o.connect(lp).connect(g).connect(out(rpan(0.5), 'events'))
     const base = 300 + Math.random() * 60
     o.frequency.setValueAtTime(base * 0.8, t)
     o.frequency.linearRampToValueAtTime(base * 1.3, t + 0.6)
@@ -762,7 +839,7 @@ export function createAmbience() {
   }
 
   function foghorn(t) {
-    const dest = out(rpan(0.2))
+    const dest = out(rpan(0.2), 'events')
     ;[78, 116].forEach((f, i) => {
       const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f
       const g = ctx.createGain(); g.gain.value = 0.0001
@@ -779,7 +856,7 @@ export function createAmbience() {
   // a soft rising glassy shimmer — paired with a shooting star
   function meteorShimmer(t) {
     const pan = rpan(0.6)
-    const dest = out(pan)
+    const dest = out(pan, 'events')
     ;[1, 1.5, 2.01].forEach((mult, idx) => {
       const o = ctx.createOscillator(); o.type = 'sine'
       const g = ctx.createGain(); g.gain.value = 0.0001
@@ -939,7 +1016,7 @@ export function createAmbience() {
       const t = t0 + i * 0.12
       const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f
       const g = ctx.createGain(); g.gain.value = 0.0001
-      o.connect(g).connect(out(0))
+      o.connect(g).connect(outUI(0))
       const peak = 0.14 - i * 0.022
       g.gain.setValueAtTime(0.0001, t)
       g.gain.linearRampToValueAtTime(peak, t + 0.03)
@@ -959,7 +1036,7 @@ export function createAmbience() {
       const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f
       const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = f * 1.004
       const g = ctx.createGain(); g.gain.value = 0.0001
-      const dest = out(0)
+      const dest = outUI(0)
       o.connect(g); o2.connect(g); g.connect(dest)
       const peak = 0.16 - i * 0.018
       g.gain.setValueAtTime(0.0001, t)
@@ -1004,12 +1081,28 @@ export function createAmbience() {
       applyWeather()
     },
     setMeteor(on) { meteor = !!on },
+    // The Chorus: mix = { place, weather, wildlife, city, events, volume } each
+    // 0..10 (10 = unity/unchanged), plus activity (0..10, 5 = neutral) and
+    // warmth (0..10, 10 = today's fully-open tone). Safe to call before sound
+    // has ever been enabled — see applyMix()/build()'s own call to it.
+    setMix(mix) {
+      const pct = (v, d = 10) => clamp01((v ?? d) / 10)
+      mixPlace = pct(mix.place)
+      mixWeather = pct(mix.weather)
+      mixWildlife = pct(mix.wildlife)
+      mixCity = pct(mix.city)
+      mixEvents = pct(mix.events)
+      mixVolume = pct(mix.volume)
+      activityMul = ACTIVITY_MIN + pct(mix.activity, 5) * (ACTIVITY_MAX - ACTIVITY_MIN)
+      warmthHz = WARMTH_MIN_HZ * Math.pow(WARMTH_MAX_HZ / WARMTH_MIN_HZ, pct(mix.warmth))
+      applyMix()
+    },
     setEnabled(on) {
       enabled = on
       if (on) {
         if (!ctx) build()
         this.resume()
-        set(master.gain, MASTER, 0.6)
+        set(master.gain, MASTER * mixVolume, 0.6)
       } else if (ctx) {
         set(master.gain, 0, 0.4)
       }

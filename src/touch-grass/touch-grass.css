@@ -457,6 +457,79 @@ body {
   border-color: rgba(243, 234, 212, 0.32);
 }
 
+/* ---- The Chorus (the ambient mixer) ---- */
+.tg-mixer { display: flex; flex-direction: column; height: 100%; }
+.tg-mixer h1 { flex: 0 0 auto; margin-bottom: 4px; }
+.tg-mixer > .tg-hint { flex: 0 0 auto; margin-bottom: 4px; }
+.tg-mixer-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 4px 0 10px;
+  padding-right: 4px;
+}
+.tg-mixer-group {
+  display: block;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  font-variant: small-caps;
+  color: #ecc356;
+  opacity: 0.85;
+  margin: 12px 0 6px;
+}
+.tg-mixer-group:first-child { margin-top: 2px; }
+.tg-mixer-row { margin-bottom: 11px; }
+.tg-mixer-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: #e6dfcc;
+  letter-spacing: 0.03em;
+  font-variant: small-caps;
+  margin-bottom: 5px;
+}
+.tg-mixer-value { font-variant: normal; color: #cdb079; font-size: 0.72rem; }
+.tg-mixer-hint {
+  display: block;
+  font-size: 0.64rem;
+  color: #cdd3c6;
+  opacity: 0.62;
+  letter-spacing: 0.01em;
+  margin-top: 3px;
+}
+.tg-mixer-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  cursor: pointer;
+  outline: none;
+}
+.tg-mixer-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #f3ead4;
+  border: 1.5px solid #241812;
+  cursor: pointer;
+  margin-top: -0.5px;
+}
+.tg-mixer-slider::-moz-range-track { height: 4px; border-radius: 2px; background: none; }
+.tg-mixer-slider::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #f3ead4;
+  border: 1.5px solid #241812;
+  cursor: pointer;
+}
+.tg-mixer .tg-row { flex: 0 0 auto; margin-bottom: 0; }
+.tg-mixer .tg-row button { margin: 0; padding: 7px 14px; font-size: 0.78rem; }
+
 /* Out-panel meta — three quiet, secondary lines (elapsed · departure · next
    turn of the day). Deliberately light and faded so it reads at a glance
    without pulling focus, with clear space before the button. */

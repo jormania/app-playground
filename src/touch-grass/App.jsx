@@ -3,6 +3,7 @@ import DeparturePanel from './DeparturePanel.jsx'
 import OutPanel from './OutPanel.jsx'
 import ResultPanel from './ResultPanel.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
+import MixerPanel from './MixerPanel.jsx'
 import GeneratingPanel from './GeneratingPanel.jsx'
 import ReliquaryPanel from './ReliquaryPanel.jsx'
 import TarotCard from './TarotCard.jsx'
@@ -31,8 +32,15 @@ const CALL_STORAGE = 'tg-react-call'
 const HISTORY_STORAGE = 'tg-react-history'
 const VIEW_STORAGE = 'tg-react-view'
 const THRESHOLD_STORAGE = 'tg-react-threshold'
+const MIX_STORAGE = 'tg-react-mix'
 const THRESHOLD_MODES = ['almanac', 'tonight', 'arc']
 const HISTORY_CAP = 300
+
+// The Chorus — every value defaults to "unchanged from today's tuned sound"
+// (10 = unity gain on each category/volume, warmth fully open); Activity
+// alone centres at 5 (a neutral multiplier, not a ceiling). See
+// ambientAudio.js's own note on this at the top of its Chorus section.
+export const DEFAULT_MIX = { place: 10, weather: 10, wildlife: 10, city: 10, events: 10, volume: 10, activity: 5, warmth: 10 }
 
 function loadState() {
   try {
@@ -73,6 +81,14 @@ function loadThreshold() {
   return THRESHOLD_MODES.includes(v) ? v : 'almanac' // default: the living-world almanac
 }
 
+function loadMix() {
+  try {
+    const raw = localStorage.getItem(MIX_STORAGE)
+    if (raw) return { ...DEFAULT_MIX, ...JSON.parse(raw) }
+  } catch (_) {}
+  return { ...DEFAULT_MIX }
+}
+
 function loadHistory() {
   try {
     const raw = localStorage.getItem(HISTORY_STORAGE)
@@ -105,13 +121,15 @@ export default function App() {
   const [motionOn, setMotionOn] = useState(loadMotion)
   const [callOn, setCallOn] = useState(loadCall)
   const [thresholdMode, setThresholdMode] = useState(loadThreshold)
+  const [mix, setMix] = useState(loadMix)
   const [history, setHistory] = useState(loadHistory)
   const [showSettings, setShowSettings] = useState(() => loadView().settings)
+  const [showMixer, setShowMixer] = useState(false)
   const [showReliquary, setShowReliquary] = useState(() => loadView().reliquary)
   const [showDeparture, setShowDeparture] = useState(() => loadView().departure)
   const [departureKey, setDepartureKey] = useState(0)
 
-  const { reveal: playReveal, depart: playDepart } = useAmbientSound(soundOn)
+  const { reveal: playReveal, depart: playDepart } = useAmbientSound(soundOn, mix)
   const world = useWorld()
   useDailyCall(callOn, world.coords, history, world.moments)
 
@@ -120,6 +138,12 @@ export default function App() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
     } catch (_) {}
   }, [state])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(MIX_STORAGE, JSON.stringify(mix))
+    } catch (_) {}
+  }, [mix])
 
   useEffect(() => {
     try {
@@ -254,15 +278,21 @@ export default function App() {
     setThresholdMode(next)
   }
 
+  function updateMix(patch) { setMix(prev => ({ ...prev, ...patch })) }
+  function resetMix() { setMix({ ...DEFAULT_MIX }) }
+
   function clearAllHistory() { setHistory([]) }
   function clearLastHistory() { setHistory(prev => prev.slice(1)) }
 
   const { status, departedAt, lastWalk } = state
 
   let panel, title
-  if (showSettings) {
+  if (showMixer) {
+    title = 'The Chorus'
+    panel = <MixerPanel mix={mix} onChange={updateMix} onReset={resetMix} onClose={() => setShowMixer(false)} />
+  } else if (showSettings) {
     title = 'The Keeper'
-    panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} soundOn={soundOn} onToggleSound={toggleSound} signsOn={signsOn} onToggleSigns={toggleSigns} motionOn={motionOn} onToggleMotion={toggleMotion} callOn={callOn} onToggleCall={toggleCall} thresholdMode={thresholdMode} onThreshold={chooseThreshold} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
+    panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} soundOn={soundOn} onToggleSound={toggleSound} signsOn={signsOn} onToggleSigns={toggleSigns} motionOn={motionOn} onToggleMotion={toggleMotion} callOn={callOn} onToggleCall={toggleCall} thresholdMode={thresholdMode} onThreshold={chooseThreshold} onOpenMixer={() => setShowMixer(true)} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
   } else if (showReliquary) {
     title = 'The Reliquary'
     panel = <ReliquaryPanel history={history} onClearLast={clearLastHistory} onClearAll={clearAllHistory} onClose={() => { setShowReliquary(false); setDepartureKey(k => k + 1) }} />
@@ -305,9 +335,9 @@ export default function App() {
           title={title}
           showSigns={signsOn}
           motionOn={motionOn}
-          fill={showReliquary}
-          onSettings={(showSettings || showReliquary) ? null : () => setShowSettings(true)}
-          onReliquary={(showSettings || showReliquary) ? null : () => setShowReliquary(true)}
+          fill={showReliquary || showMixer}
+          onSettings={(showSettings || showReliquary || showMixer) ? null : () => setShowSettings(true)}
+          onReliquary={(showSettings || showReliquary || showMixer) ? null : () => setShowReliquary(true)}
         >{panel}</TarotCard>
       </div>
     </>

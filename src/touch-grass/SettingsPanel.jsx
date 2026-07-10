@@ -15,7 +15,7 @@ const THRESHOLD_OPTIONS = [
 // they drive the hidden "Signs" toggle commented out below, so they read as
 // unused today.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSound, signsOn, onToggleSigns, motionOn, onToggleMotion, callOn, onToggleCall, thresholdMode, onThreshold, onClose }) {
+export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSound, signsOn, onToggleSigns, motionOn, onToggleMotion, callOn, onToggleCall, thresholdMode, onThreshold, onOpenMixer, onClose }) {
   const [draft, setDraft] = useState(currentKey)
   const hasKey = !!currentKey
   const hasDraft = draft.trim().length > 0
@@ -47,6 +47,10 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
         <button type="button" className="tg-toggle" aria-pressed={callOn} onClick={onToggleCall}>{callOn ? '✉ Pings on' : '✉ Pings off'}</button>
       </div>
       {callBlocked && <p className="tg-hint">✉ Your browser is blocking notifications — they can't reach you.</p>}
+
+      <div className="tg-row">
+        <button type="button" onClick={onOpenMixer}>♫ Tune the Chorus →</button>
+      </div>
 
       <div className="tg-select-row">
         <label htmlFor="threshold-fill">Display the</label>

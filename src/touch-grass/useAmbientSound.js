@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react'
 import { createAmbience, sceneFor } from './ambientAudio.js'
 import { useWorld } from './world.jsx'
 
-export function useAmbientSound(enabled) {
+export function useAmbientSound(enabled, mix) {
   const ref = useRef(null)
   const { timeOfDay, season, weather, biome, soloBiome, moments } = useWorld()
   const meteor = (moments || []).some(m => m.meteor)
@@ -63,6 +63,11 @@ export function useAmbientSound(enabled) {
   useEffect(() => {
     if (ref.current) ref.current.setEnabled(enabled)
   }, [enabled])
+
+  // the Chorus — five category levels + volume/activity/warmth shapers
+  useEffect(() => {
+    if (ref.current && mix) ref.current.setMix(mix)
+  }, [mix])
 
   const reveal = useCallback(() => ref.current?.reveal(), [])
   const depart = useCallback(() => ref.current?.depart(), [])
