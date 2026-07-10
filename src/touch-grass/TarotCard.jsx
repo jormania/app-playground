@@ -35,11 +35,11 @@ function ReliquaryIcon() {
   )
 }
 
-// fill: false (default text panel) | 'fill' (bottom 58%, used by the Reliquary's
-// scrollable list) | 'full' (the whole card, top to bottom — used by the
-// Chorus mixer, which needs room for its presets, sliders and shapers at once)
+// fill: false (default text panel, bottom-anchored) | true (the whole card,
+// top to bottom — used by the Reliquary and the Chorus mixer, both of which
+// need the full card for their scrollable list/sliders, title-less, banner-named)
 export default function TarotCard({ title, showSigns = true, motionOn = true, fill = false, onSettings, onReliquary, children }) {
-  const contentClass = fill === 'full' ? 'tg-card-content tg-full' : fill ? 'tg-card-content tg-fill' : 'tg-card-content'
+  const contentClass = fill ? 'tg-card-content tg-full' : 'tg-card-content'
   return (
     <div className="tg-card">
       <div className="tg-card-inner">

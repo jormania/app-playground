@@ -52,7 +52,7 @@ export default function ReliquaryPanel({ history, onClearLast, onClearAll, onClo
 
   return (
     <div className="tg-reliquary">
-      <h1>What found you.</h1>
+      {/* no title here — the card banner below already reads "THE RELIQUARY" */}
       {count === 0 && <p className="tg-hint">Nothing kept yet — your finds will gather here.</p>}
 
       {count > 0 && (

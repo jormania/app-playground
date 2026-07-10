@@ -459,8 +459,6 @@ body {
 
 /* ---- The Chorus (the ambient mixer) ---- */
 .tg-mixer { display: flex; flex-direction: column; height: 100%; }
-.tg-mixer h1 { flex: 0 0 auto; margin-bottom: 4px; }
-.tg-mixer > .tg-hint { flex: 0 0 auto; margin-bottom: 4px; }
 .tg-mixer-list {
   flex: 1 1 auto;
   min-height: 0;
@@ -664,23 +662,13 @@ body {
 }
 
 
-/* a menu panel anchored to the lower part of the card (below the sun/moon and
-   clouds), a fixed height so only its inner list scrolls — no double scrollbar */
-.tg-card-content.tg-fill {
-  height: 58%;
-  max-height: 58%;
-  overflow: hidden;
-  /* the panel sits higher than the reading scrim reaches, so give it its own
-     soft backing for legible relic text over a bright sky */
-  background: linear-gradient(to bottom, rgba(8, 12, 18, 0.32) 0%, rgba(8, 12, 18, 0.5) 100%);
-}
-
-/* The Chorus takes the whole card, top to bottom — it has too much in it
-   (attunements, four slider groups) to fit the lower 58% the other panels use.
-   flex:1 (not a % height) so it exactly fills whatever the banner leaves
-   below it, growing over the sky art the other panels leave uncovered. A
-   markedly less transparent backing than .tg-fill's, since it now also sits
-   over the brightest part of the art (a clear midday sun, a full moon). */
+/* The Reliquary and the Chorus both take the whole card, top to bottom, and
+   both are title-less — the card's own banner below already names them. flex:1
+   (not a % height) so it exactly fills whatever the banner leaves below it,
+   growing over the sky art the other, shorter panels leave uncovered. A
+   markedly less transparent backing than plain content gets, since it now
+   also sits over the brightest part of the art (a clear midday sun, a full
+   moon) and must stay legible there too. */
 .tg-card-content.tg-full {
   flex: 1 1 auto;
   min-height: 0;
@@ -694,8 +682,7 @@ body {
 
 /* ---- The Reliquary (walk history) ---- */
 .tg-reliquary { display: flex; flex-direction: column; height: 100%; }
-.tg-reliquary h1 { flex: 0 0 auto; margin-bottom: 4px; }
-.tg-reliquary > .tg-hint { flex: 0 0 auto; }
+.tg-reliquary > .tg-hint { flex: 0 0 auto; margin-top: 2px; }
 .tg-relics {
   flex: 1 1 auto;
   min-height: 0;

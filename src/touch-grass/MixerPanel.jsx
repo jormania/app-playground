@@ -78,8 +78,7 @@ export default function MixerPanel({ mix, onChange, onReset, onClose, customMixe
 
   return (
     <div className="tg-mixer">
-      <h1>The Chorus</h1>
-      <p className="tg-hint">Balance what you hear along the way.</p>
+      {/* no title/subtitle here — the card banner below already reads "THE CHORUS" */}
       <div className="tg-mixer-list">
         <span className="tg-mixer-group">attunements</span>
         <div className="tg-mixer-chips">

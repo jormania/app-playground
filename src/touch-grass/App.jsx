@@ -368,7 +368,7 @@ export default function App() {
           title={title}
           showSigns={signsOn}
           motionOn={motionOn}
-          fill={showMixer ? 'full' : (showReliquary ? 'fill' : false)}
+          fill={showMixer || showReliquary}
           onSettings={(showSettings || showReliquary || showMixer) ? null : () => setShowSettings(true)}
           onReliquary={(showSettings || showReliquary || showMixer) ? null : () => setShowReliquary(true)}
         >{panel}</TarotCard>
