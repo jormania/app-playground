@@ -41,8 +41,18 @@
   animation: ringPulse 1s ease-in-out infinite;
 }
 
+/* Move ring's three pre-coloured zones — see ActiveZones in CountdownRing.jsx. */
+.zoneFill {
+  stroke-linecap: round;
+  transition: d 0.25s linear;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .progress {
+    transition: none;
+  }
+
+  .zoneFill {
     transition: none;
   }
 
