@@ -7,6 +7,7 @@ import { useWakeLock } from '../lib/useWakeLock'
 import { useCoords } from '../lib/useCoords'
 import { createNightSoundscape } from '../lib/soundscape'
 import { phaseLabel } from '../lib/breath'
+import { moonPhase, moonArc, moonPhaseName } from '../lib/sky'
 import styles from './Session.module.css'
 
 // The three display modes, as a quiet in-session control. Short forms of the
@@ -64,6 +65,33 @@ export default function Session({ session, onNote, onFinish }) {
   // The mode control is offered whenever the session itself is showing: always in
   // 'lit', and during a peek in the covered modes.
   const showModes = screenMode === 'lit' || !veiled
+
+  // A quiet caption for the moon, computed independently of NightSky (which is
+  // unmounted while peeking — the sky itself is what a peek hides) so the info
+  // is available exactly when there's nowhere else to see it. Refreshed every
+  // few minutes; the phase and the moon's rise/set window both move slowly.
+  const [moonCaption, setMoonCaption] = useState('')
+  useEffect(() => {
+    if (!dark || !coords) {
+      setMoonCaption('')
+      return undefined
+    }
+    const refresh = () => {
+      const now = new Date()
+      const name = moonPhaseName(moonPhase(now).phase)
+      const arc = moonArc(now, coords)
+      let clause = ''
+      if (arc) {
+        const t = now.getTime()
+        if (t >= arc.riseAt && t <= arc.setAt) clause = ` · sets ${formatClock(arc.setAt)}`
+        else if (t < arc.riseAt) clause = ` · rises ${formatClock(arc.riseAt)}`
+      }
+      setMoonCaption(name + clause)
+    }
+    refresh()
+    const id = setInterval(refresh, 5 * 60000)
+    return () => clearInterval(id)
+  }, [dark, coords])
 
   // On returning to the app: revive the soundscape if the browser suspended it
   // while backgrounded (iOS Safari does this on tab-hide / screen-lock, in every
@@ -172,18 +200,21 @@ export default function Session({ session, onNote, onFinish }) {
       <div className={styles.enter} aria-hidden="true" />
       <div className={styles.top}>
         {showModes && (
-          <div className={styles.modes} role="group" aria-label="Display mode">
-            {MODES.map((m) => (
-              <button
-                key={m.value}
-                type="button"
-                className={m.value === screenMode ? `${styles.mode} ${styles.modeOn}` : styles.mode}
-                aria-pressed={m.value === screenMode}
-                onClick={() => switchMode(m.value)}
-              >
-                {m.label}
-              </button>
-            ))}
+          <div className={styles.topStack}>
+            <div className={styles.modes} role="group" aria-label="Display mode">
+              {MODES.map((m) => (
+                <button
+                  key={m.value}
+                  type="button"
+                  className={m.value === screenMode ? `${styles.mode} ${styles.modeOn}` : styles.mode}
+                  aria-pressed={m.value === screenMode}
+                  onClick={() => switchMode(m.value)}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            {dark && !veiled && moonCaption && <p className={styles.moonCaption}>{moonCaption}</p>}
           </div>
         )}
       </div>
@@ -255,6 +286,13 @@ export default function Session({ session, onNote, onFinish }) {
       {ending && <div className={styles.endFade} aria-hidden="true" />}
     </main>
   )
+}
+
+// HH:MM, local 24-hour — deliberately not toLocaleTimeString, which defaults
+// to 12-hour + AM/PM in several locales; a rise/set time reads better plain.
+function formatClock(ms) {
+  const d = new Date(ms)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 // mm:ss for the discrete countdown.

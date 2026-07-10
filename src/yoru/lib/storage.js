@@ -81,6 +81,7 @@ export const DEFAULT_SETTINGS = {
   palette: 'storm',
   name: '',
   hintSeen: false, // first-run "tap 夜" hint
+  customMixes: [], // saved mixer blends: [{ id, name, mix }]
 }
 
 // Bump whenever the mix's underlying CURVE changes meaning (not just its

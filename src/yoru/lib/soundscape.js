@@ -155,6 +155,7 @@ export function createNightSoundscape() {
     bedGain.connect(dest)
     src.start()
     nodes.push(src)
+    driftFilter(lp, 60, 0.018) // barely-there wobble — the floor should read as alive, not static
   }
 
   // ── drone: a soft fifth, high-passed + lightly detuned (no reverb ring) ──
@@ -179,7 +180,28 @@ export function createNightSoundscape() {
       osc.start()
       nodes.push(osc)
     })
+    // A very slow amplitude breathing — small enough to read as alive over a
+    // long session, not as a tremolo.
+    driftGain(g, level * 0.006, 0.011)
   }
+
+  // A slow, low-depth sine wobble summed onto an AudioParam's own constant
+  // value (Web Audio sums a connected node's output onto a param's intrinsic
+  // value) — the shared shape behind every layer's "organic drift" below.
+  // `rateHz` is randomised a little per call so no two layers ever drift in
+  // lockstep.
+  function driftParam(param, depth, rateHz) {
+    const osc = ctx.createOscillator()
+    osc.frequency.value = rateHz * (0.85 + Math.random() * 0.3)
+    const g = ctx.createGain()
+    g.gain.value = depth
+    osc.connect(g)
+    g.connect(param)
+    osc.start()
+    nodes.push(osc)
+  }
+  const driftFilter = (filter, depthHz, rateHz) => driftParam(filter.frequency, depthHz, rateHz)
+  const driftGain = (gainNode, depth, rateHz) => driftParam(gainNode.gain, depth, rateHz)
 
   // ── wind: band-passed noise, drifting (pace) + gusting (motion) ──
   function buildWind(white, level, lpHz, motion, pace, dest) {
@@ -232,6 +254,7 @@ export function createNightSoundscape() {
     g.connect(dest)
     rain.start()
     nodes.push(rain)
+    driftFilter(lp, 900, 0.025) // a slow drift on the wash's top end
 
     let nextAt = ctx.currentTime + 0.6
     const t = setInterval(() => {
@@ -261,6 +284,45 @@ export function createNightSoundscape() {
         nextAt += (0.22 + Math.random() * 0.7) * (1.6 - level) / pace
       }
     }, 400)
+    timers.push(t)
+  }
+
+  // ── thunder: a distant rumble accenting Rain — rare, low, and scaled to how
+  // heavy the rain is (heavier rain, a touch more frequent and a touch louder,
+  // but always distant, never a startling crack). Checked once per tick rather
+  // than the "schedule several ahead" pattern the frequent transients use
+  // above: events are minutes apart, so there's never more than one pending. ──
+  function buildThunder(white, level, dest) {
+    let nextAt = ctx.currentTime + 25 + Math.random() * 50
+    const t = setInterval(() => {
+      if (stopped || ctx.currentTime < nextAt) return
+      const when = nextAt
+      const dur = 3.2 + Math.random() * 2.4
+      const src = ctx.createBufferSource()
+      src.buffer = white
+      const hp = ctx.createBiquadFilter()
+      hp.type = 'highpass'
+      hp.frequency.value = 28
+      const lp = ctx.createBiquadFilter()
+      lp.type = 'lowpass'
+      lp.frequency.value = 130 + Math.random() * 90
+      const g = ctx.createGain()
+      const peak = (0.05 + Math.random() * 0.04) * level
+      g.gain.setValueAtTime(0.0001, when)
+      g.gain.exponentialRampToValueAtTime(peak, when + 0.8 + Math.random() * 0.6) // a slow, distant roll-in
+      g.gain.exponentialRampToValueAtTime(0.0001, when + dur)
+      const p = panner(ctx, Math.random() * 1.6 - 0.8)
+      src.connect(hp)
+      hp.connect(lp)
+      lp.connect(g)
+      g.connect(p)
+      p.connect(dest)
+      src.start(when)
+      src.stop(when + dur + 0.2)
+      driftFilter(lp, 40, 0.7 + Math.random() * 0.5) // a wobble on the cutoff so the rumble isn't static
+      // rare, and only slightly more frequent the heavier the rain
+      nextAt = when + (260 + Math.random() * 340) / (0.55 + 0.45 * level)
+    }, 4000)
     timers.push(t)
   }
 
@@ -465,13 +527,20 @@ export function createNightSoundscape() {
     tone.frequency.value = p.toneHz
     tone.connect(master)
 
-    const white = makeWhiteBuffer(ctx, 4)
-    const pink = makePinkBuffer(ctx, 8)
+    // Long enough that the underlying loop period is never consciously
+    // audible over a real session (15-90min): a short clip repeating
+    // thousands of times can start to reveal itself even as white/pink
+    // noise; 20/26s puts the repeat count low enough that per-layer drift
+    // (below) and the constantly-randomised transient layers are what a
+    // listener actually notices, not the loop.
+    const white = makeWhiteBuffer(ctx, 20)
+    const pink = makePinkBuffer(ctx, 26)
 
     if (p.warmth > 0) buildWarmth(pink, p.warmth, tone)
     if (p.drone > 0) buildDrone(p.drone, tone)
     if (p.wind > 0) buildWind(white, 0.34 * p.wind, 900, p.motion, p.pace, tone)
     if (p.rain > 0) buildRain(white, p.rain, p.pace, tone)
+    if (p.rain > 0) buildThunder(white, p.rain, tone)
     if (p.waves > 0) buildWaves(white, p.waves, p.motion, p.pace, tone)
     if (p.stream > 0) buildStream(white, p.stream, p.motion, p.pace, tone)
     if (p.leaves > 0) buildLeaves(white, p.leaves, p.motion, p.pace, tone)

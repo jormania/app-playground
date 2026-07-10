@@ -19,6 +19,13 @@
   min-height: 2rem;
 }
 
+.topStack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
 /* The in-session display-mode control: three faint words, the active one a touch
    brighter. Quiet enough to ignore, there when you want to change how the screen
    behaves without leaving the night. */
@@ -34,10 +41,11 @@
   background: none;
   color: var(--color-faint);
   font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  letter-spacing: 0.16em;
-  padding: var(--space-2xs) var(--space-xs);
-  opacity: 0.5;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.14em;
+  padding: var(--space-2xs) var(--space-sm);
+  opacity: 0.55;
   cursor: pointer;
   transition: opacity var(--duration) var(--ease), color var(--duration) var(--ease);
 }
@@ -163,6 +171,22 @@
 @keyframes endFadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* A quiet caption under the mode control while peeking at "Go dark" — the
+   moon's real phase, and when it next rises or sets. Only ever present while
+   peeking (the sky itself is hidden then), so it's the one place this
+   information can actually be read. */
+.moonCaption {
+  margin: 0;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--color-faint);
+  /* No fade-in animation here on purpose: `animation` overrides `opacity` for
+     the property it animates, so a 0->1 veilIn would have silently overridden
+     this static value and left the caption at full opacity once the
+     animation finished — the opposite of "quiet". */
+  opacity: 0.65;
 }
 
 /* Above the orb, clear of the note prompt below it. */

@@ -1,4 +1,4 @@
-import { getMoonIllumination, getMoonPosition } from 'suncalc'
+import { getMoonIllumination, getMoonPosition, getPosition as getSunPosition } from 'suncalc'
 
 // Real lunar data for Yoru's "Go dark" sky. The moon's PHASE is the same the
 // world over at a given instant; its POSITION (whether it's up, and where) is
@@ -8,6 +8,23 @@ import { getMoonIllumination, getMoonPosition } from 'suncalc'
 export function moonPhase(date = new Date()) {
   const m = getMoonIllumination(date)
   return { fraction: m.fraction, phase: m.phase }
+}
+
+// The familiar eight-name phase, from the same 0..1 value moonPhase returns.
+const PHASE_NAMES = [
+  [0.02, 'new moon'],
+  [0.24, 'waxing crescent'],
+  [0.26, 'first quarter'],
+  [0.48, 'waxing gibbous'],
+  [0.52, 'full moon'],
+  [0.74, 'waning gibbous'],
+  [0.76, 'last quarter'],
+  [0.98, 'waning crescent'],
+  [1.01, 'new moon'], // catches the top of the range (phase can land exactly at 1)
+]
+export function moonPhaseName(phase) {
+  for (const [upTo, name] of PHASE_NAMES) if (phase < upTo) return name
+  return 'new moon'
 }
 
 // { altitude (deg, >0 = above horizon), azimuth (deg) } or null without coords.
@@ -61,6 +78,48 @@ export function moonPlacement(pos) {
   const x = clampX(0.5 + 0.42 * Math.sin((pos.azimuth * Math.PI) / 180))
   if (pos.altitude <= 0) return { x, y: 1 - MARGIN_BOTTOM, presence: 0 }
   return { x, y: altToY(pos.altitude), presence: 0.7 + 0.3 * Math.min(1, pos.altitude / 60) }
+}
+
+// ── Twilight horizon ──────────────────────────────────────────────────────
+// A faint warm wash low on the sky, tracking the REAL sun — present only
+// while it's near the horizon (dusk or dawn twilight), peaking right at
+// sunset/sunrise and gone by full daylight above or true astronomical night
+// below. Most sessions start well after twilight has faded, so on most
+// nights this simply never appears — an honest touch, not a fixed effect.
+const TWILIGHT_FADE_ABOVE = 3 // sun altitude (deg) above the horizon where the glow is gone (daylight)
+const TWILIGHT_FADE_BELOW = 12 // sun altitude below the horizon where the glow is gone (twilight over)
+
+export function twilight(date, coords) {
+  if (!coords) return null
+  const pos = getSunPosition(date, coords.lat, coords.lon)
+  // Like moonPosition (see its own note above): this installed suncalc
+  // returns both altitude and azimuth already in DEGREES, not radians.
+  if (!pos || !Number.isFinite(pos.altitude) || !Number.isFinite(pos.azimuth)) return null
+  const intensity =
+    pos.altitude >= 0
+      ? Math.max(0, 1 - pos.altitude / TWILIGHT_FADE_ABOVE)
+      : Math.max(0, 1 - -pos.altitude / TWILIGHT_FADE_BELOW)
+  if (intensity <= 0) return null
+  const x = Math.min(1 - MARGIN_X, Math.max(MARGIN_X, 0.5 + 0.42 * Math.sin((pos.azimuth * Math.PI) / 180)))
+  return { intensity, x }
+}
+
+// A soft, low horizon glow — behind everything else in the sky, so stars,
+// the Milky Way, the moon and its arc all sit on top of it undimmed.
+export function drawTwilight(ctx, tw, w, h) {
+  if (!tw) return
+  const cx = tw.x * w
+  const bandCy = h * 0.78
+  const radius = w * 0.62
+  const peak = 0.16 * tw.intensity
+  const grad = ctx.createRadialGradient(cx, bandCy, 0, cx, bandCy, radius)
+  grad.addColorStop(0, `rgba(255,148,92,${peak})`)
+  grad.addColorStop(0.55, `rgba(224,120,88,${peak * 0.4})`)
+  grad.addColorStop(1, 'rgba(224,120,88,0)')
+  ctx.save()
+  ctx.fillStyle = grad
+  ctx.fillRect(0, 0, w, h)
+  ctx.restore()
 }
 
 // ── Moon arc — the moon's path across tonight's sky ──────────────────────
@@ -513,5 +572,28 @@ export function drawMoon(ctx, cx, cy, r, phase, alpha) {
   ctx.fillRect(cx - r, cy - r, r * 2, r * 2)
 
   ctx.restore()
+  ctx.restore()
+}
+
+// A tiny flat silhouette of the moon at its real phase — for icon-sized use
+// (the Home screen's quiet teaser), where drawMoon's gradients/maria/halo
+// would just read as mud at a few pixels. Same terminator-ellipse
+// construction as drawMoon, just flatly filled: a dim full disc (a hint of
+// earthshine) with the true lit crescent/gibbous over it.
+export function drawMoonGlyph(ctx, cx, cy, r, phase, litColor, shadowAlpha = 0.32) {
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.fillStyle = `rgba(0,0,0,${shadowAlpha})`
+  ctx.fill()
+
+  const waxing = phase <= 0.5
+  const ellipseW = r * Math.cos(phase * 2 * Math.PI)
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2, !waxing)
+  ctx.ellipse(cx, cy, Math.abs(ellipseW), r, 0, Math.PI / 2, -Math.PI / 2, ellipseW > 0 ? waxing : !waxing)
+  ctx.closePath()
+  ctx.fillStyle = litColor
+  ctx.fill()
   ctx.restore()
 }

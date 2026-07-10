@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button } from '../../ds'
 import Settings from './Settings'
+import MoonGlyph from './MoonGlyph'
 import styles from './Home.module.css'
 
 // The home is as close to empty as it gets: the glyph, a line, and Begin.
@@ -21,16 +22,22 @@ export default function Home({ settings, onChange, onBegin }) {
 
   return (
     <main className={styles.home}>
-      <button
-        type="button"
-        className={styles.hero}
-        lang="ja"
-        aria-label="Yoru — settings"
-        style={{ '--breath-cycle': `${breathCycle}s` }}
-        onClick={openSettings}
-      >
-        夜
-      </button>
+      <span className={styles.heroWrap}>
+        <button
+          type="button"
+          className={styles.hero}
+          lang="ja"
+          aria-label="Yoru — settings"
+          style={{ '--breath-cycle': `${breathCycle}s` }}
+          onClick={openSettings}
+        >
+          夜
+        </button>
+        {/* A quiet teaser of tonight's real moon phase. */}
+        <span className={styles.phaseGlyph}>
+          <MoonGlyph />
+        </span>
+      </span>
       <p className={styles.tagline}>put the day down</p>
       {!settings.hintSeen && <p className={styles.hint}>tap 夜 to adjust</p>}
 

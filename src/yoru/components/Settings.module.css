@@ -93,6 +93,102 @@
   border-color: var(--yoru-glow);
 }
 
+/* Saved mixes — a small wrap of pill chips, capped low enough (see
+   MAX_CUSTOM_MIXES) to stay within a row or two even on a narrow phone. */
+.mixChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+.mixChip {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+.mixChip button {
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
+}
+.mixChip button:first-child {
+  padding: var(--space-2xs) var(--space-xs);
+}
+.mixChip button:last-child {
+  padding: var(--space-2xs) var(--space-2xs) var(--space-2xs) 0;
+  color: var(--color-faint);
+  font-size: var(--text-sm);
+  line-height: 1;
+}
+.mixChip button:last-child:hover {
+  color: var(--color-danger);
+}
+.mixAdd {
+  appearance: none;
+  cursor: pointer;
+  border: 1px dashed var(--color-border-2);
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--color-faint);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  padding: var(--space-2xs) var(--space-sm);
+}
+.mixAdd:hover {
+  color: var(--color-ink);
+  border-color: var(--yoru-glow);
+}
+
+.mixEditor {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  width: 100%;
+}
+.mixNameInput {
+  appearance: none;
+  flex: 1;
+  min-width: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  padding: var(--space-2xs) var(--space-sm);
+}
+.mixNameInput::placeholder {
+  color: var(--color-faint);
+}
+.mixNameInput:focus {
+  outline: none;
+  border-color: var(--color-border-2);
+}
+.mixSave,
+.mixCancel {
+  appearance: none;
+  cursor: pointer;
+  flex: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  padding: var(--space-2xs) var(--space-sm);
+}
+.mixSave:hover {
+  border-color: var(--yoru-glow);
+  color: var(--color-ink);
+}
+
 .done {
   appearance: none;
   cursor: pointer;

@@ -5,8 +5,10 @@ import {
   moonPlacement,
   moonArc,
   moonOnArc,
+  twilight,
   drawMoon,
   drawMoonArc,
+  drawTwilight,
   makeFuji,
   drawFuji,
   makeMilkyWay,
@@ -170,9 +172,17 @@ export default function NightSky({ coords, moonPath: showMoonPath = true, geoSta
       const dt = Math.min(0.05, (now - last) / 1000)
       last = now
 
+      const now2 = new Date() // real wall-clock time, for everything real-astronomy below
+
       ctx.clearRect(0, 0, w, h)
       ctx.fillStyle = '#04040a'
       ctx.fillRect(0, 0, w, h)
+
+      // twilight — a low horizon wash tracking the real sun, drawn first so it
+      // sits behind absolutely everything else (stars, Milky Way, the moon and
+      // its arc all layer over it undimmed). Cheap enough (one trig call, no
+      // scan) to compute fresh every frame, same as the moon's own phase below.
+      drawTwilight(ctx, twilight(now2, coordsRef.current), w, h)
 
       // the Milky Way — a soft backdrop texture, stars scattered on top of it
       if (milkyWay) drawMilkyWay(ctx, milkyWay)
@@ -183,9 +193,9 @@ export default function NightSky({ coords, moonPath: showMoonPath = true, geoSta
       // session, so it's recomputed only every few minutes, or once the cached
       // window has fully elapsed.
       if (showMoonPathRef.current && coordsRef.current) {
-        if (!moonArcData || now - lastArcAt > 5 * 60000 || Date.now() > moonArcData.setAt) {
+        if (!moonArcData || now - lastArcAt > 5 * 60000 || now2.getTime() > moonArcData.setAt) {
           lastArcAt = now
-          moonArcData = moonArc(new Date(), coordsRef.current)
+          moonArcData = moonArc(now2, coordsRef.current)
         }
         drawMoonArc(ctx, moonArcData, w, h)
       } else {
@@ -243,7 +253,6 @@ export default function NightSky({ coords, moonPath: showMoonPath = true, geoSta
       // When it's up and we have its arc, it sits exactly ON that arc; otherwise
       // it falls back to the plain placement (the no-location decorative moon,
       // or an invisible below-horizon one).
-      const now2 = new Date()
       const { phase } = moonPhase(now2)
       const place =
         moonOnArc(now2, coordsRef.current, moonArcData) ||
