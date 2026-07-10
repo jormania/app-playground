@@ -42,99 +42,144 @@ const MARGIN_X = 0.24
 const MARGIN_TOP = 0.28
 const MARGIN_BOTTOM = 0.2
 
+// Shared screen-mapping, used by BOTH the moon disc and its arc so the two can
+// never disagree: altitude → vertical position (horizon rests low, ~60°+ rides
+// near the top), and a rise→set fraction → horizontal position.
+const ARC_Y_LOW = 1 - MARGIN_BOTTOM - 0.12 // just above the below-horizon resting spot
+const ARC_Y_HIGH = MARGIN_TOP
+const altToY = (altDeg) => ARC_Y_LOW - (ARC_Y_LOW - ARC_Y_HIGH) * Math.min(1, Math.max(0, altDeg) / 60)
+const arcXAt = (t) => MARGIN_X + (1 - 2 * MARGIN_X) * t // t: 0 = rise (left), 1 = set (right)
+
+// Fallback moon placement, used when there's no arc to sit on: no location at
+// all (a gentle decorative moon, low on the right), or the moon below the
+// horizon (presence 0 — genuinely not up, so not drawn). When the moon IS up
+// and we have its arc, moonOnArc places it instead, exactly on the path.
 export function moonPlacement(pos) {
   const clampX = (x) => Math.min(1 - MARGIN_X, Math.max(MARGIN_X, x))
   if (!pos) return { x: clampX(0.72), y: 1 - MARGIN_BOTTOM - 0.06, presence: 0.85 }
-  const altDeg = pos.altitude // already degrees
-  // azimuth: SunCalc measures from south, + toward west, in degrees — convert
-  // to radians before using it in a trig function.
-  const az = (pos.azimuth * Math.PI) / 180
-  const x = 0.5 + 0.42 * Math.sin(az)
-  if (altDeg <= 0) {
-    // below the horizon — genuinely not up yet (or already set), so it's not
-    // visible at all. No dim placeholder: strict realism, matched to the real
-    // moonrise/moonset moment rather than a fixed "always some glow" look.
-    return { x: clampX(x), y: 1 - MARGIN_BOTTOM, presence: 0 }
-  }
-  const up = Math.min(1, altDeg / 60) // 0 at horizon → 1 near overhead
-  const yLow = 1 - MARGIN_BOTTOM - 0.12 // just above the "below horizon" resting spot
-  const yHigh = MARGIN_TOP
-  return {
-    x: clampX(x),
-    y: yLow - (yLow - yHigh) * up, // higher altitude → higher in the frame
-    presence: 0.7 + 0.3 * up,
-  }
+  // azimuth: SunCalc measures from south, + toward west, in degrees.
+  const x = clampX(0.5 + 0.42 * Math.sin((pos.azimuth * Math.PI) / 180))
+  if (pos.altitude <= 0) return { x, y: 1 - MARGIN_BOTTOM, presence: 0 }
+  return { x, y: altToY(pos.altitude), presence: 0.7 + 0.3 * Math.min(1, pos.altitude / 60) }
 }
 
-// ── Moon transition trail ────────────────────────────────────────────────
-// A dotted trail either side of "now" — where the moon was, and where it's
-// headed — built from the same real placement the moon itself uses, so it
-// always passes exactly through the rendered moon. Deliberately a short
-// breadcrumb (a few hours), not the whole night: azimuth sweeps past ±90°
-// over a full transit, and since x is mapped from sin(azimuth) (see
-// moonPlacement), that means x eventually folds back on itself — harmless for
-// a single dot, but it would visibly cross itself in a trail. Each side stops
-// the instant it would double back, so the assembled trail is always one
-// continuous, non-overlapping sweep from left to right.
-const TRAIL_STEP_MIN = 5
-const TRAIL_MAX_HOURS = 4
+// ── Moon arc — the moon's path across tonight's sky ──────────────────────
+// The dotted dome from the familiar sky-path diagram: the moon's whole
+// above-horizon journey, rise to set, traced as a faint arc it travels along.
+//
+// Parametrised by TIME — evenly from rise (left) to set (right), the vertical
+// following real altitude — NOT by azimuth. Azimuth is the "true" horizontal
+// angle, but mapping it to an x fold backs on itself whenever the moon passes
+// more than 90° from due south, pinning at a screen edge while it climbs — the
+// vertical double-back an earlier version showed. A steady rise→set sweep is
+// always a clean dome, matches how these diagrams are drawn, and (sharing
+// altToY/arcXAt with moonPlacement) lets the moon disc sit exactly on it.
+const ARC_SCAN_STEP_MIN = 10
+const ARC_SCAN_SPAN_HOURS = 17 // each side of now — longer than a full up-period, so both
+// the rise and set crossings are in range wherever "now" falls within it (a long summer
+// moon can be up ~16h; beyond the window the arc simply ends at the window edge)
+const ARC_POINTS = 88
 
-export function moonPath(date, coords) {
+// Resolve the moon's current (or, if it's down, nearest) above-horizon window
+// and trace it. Returns { points: [{x,y}], riseAt, setAt } with absolute ms
+// timestamps (so moonOnArc can place the disc on it later), or null when
+// there's no location or no resolvable window.
+export function moonArc(date, coords) {
   if (!coords) return null
-  const stepMs = TRAIL_STEP_MIN * 60 * 1000
-  const maxSteps = Math.round((TRAIL_MAX_HOURS * 60) / TRAIL_STEP_MIN)
+  const t0 = date.getTime()
+  const stepMs = ARC_SCAN_STEP_MIN * 60 * 1000
+  const half = Math.round((ARC_SCAN_SPAN_HOURS * 60) / ARC_SCAN_STEP_MIN)
+  const offsetAt = (i) => (i - half) * stepMs // sample index → ms offset from now
 
-  const at = (offsetMs) => {
-    const pos = moonPosition(new Date(date.getTime() + offsetMs), coords)
-    return pos ? moonPlacement(pos) : null
+  // Sample altitude across a wide window centred on now.
+  const alt = []
+  for (let i = 0; i <= 2 * half; i++) {
+    const pos = moonPosition(new Date(t0 + offsetAt(i)), coords)
+    alt.push(pos ? pos.altitude : null)
+  }
+  const nowIdx = half
+
+  // Collect every contiguous above-horizon run, then pick the one nearest now
+  // (the one containing it when the moon is up; otherwise the closest, so a
+  // moon just below the horizon still previews the arc it's about to rise into
+  // or has just set out of).
+  const runs = []
+  for (let i = 0, start = -1; i <= alt.length; i++) {
+    const up = i < alt.length && alt[i] != null && alt[i] > 0
+    if (up && start < 0) start = i
+    else if (!up && start >= 0) {
+      runs.push([start, i - 1])
+      start = -1
+    }
+  }
+  if (!runs.length) return null
+  let best = null
+  let bestDist = Infinity
+  for (const r of runs) {
+    const d = nowIdx < r[0] ? r[0] - nowIdx : nowIdx > r[1] ? nowIdx - r[1] : 0
+    if (d < bestDist) {
+      bestDist = d
+      best = r
+      if (d === 0) break
+    }
   }
 
-  const now = at(0)
-  if (!now || now.presence <= 0) return null
+  // Refine the rise/set instants to the true horizon crossing rather than
+  // snapping to the nearest 10-minute scan tick, so the arc ends at the ground.
+  const riseMs = zeroCrossMs(alt, best[0], -1, offsetAt)
+  const setMs = zeroCrossMs(alt, best[1], 1, offsetAt)
+  if (!(setMs > riseMs)) return null
 
-  // Which way x is currently moving, so both sides extend consistently with
-  // it (and so we can tell "doubled back" from "still advancing").
-  const probe = at(stepMs)
-  const dir = probe && probe.x !== now.x ? Math.sign(probe.x - now.x) : 1
-
-  const past = []
-  let prevX = now.x
-  for (let i = 1; i <= maxSteps; i++) {
-    const p = at(-i * stepMs)
-    if (!p || p.presence <= 0 || (p.x - prevX) * dir > 0) break
-    past.unshift(p)
-    prevX = p.x
+  const points = []
+  for (let k = 0; k < ARC_POINTS; k++) {
+    const t = k / (ARC_POINTS - 1)
+    const pos = moonPosition(new Date(t0 + riseMs + (setMs - riseMs) * t), coords)
+    points.push({ x: arcXAt(t), y: altToY(pos ? pos.altitude : 0) })
   }
-
-  const future = []
-  prevX = now.x
-  for (let i = 1; i <= maxSteps; i++) {
-    const p = at(i * stepMs)
-    if (!p || p.presence <= 0 || (p.x - prevX) * dir < 0) break
-    future.push(p)
-    prevX = p.x
-  }
-
-  const points = [...past, now, ...future]
-  return points.length > 1 ? { points, nowIndex: past.length } : null
+  return { points, riseAt: t0 + riseMs, setAt: t0 + setMs }
 }
 
-// Dim dots tracing the trail (the moon itself already marks "now", so that
-// point is skipped), fading toward both ends but staying clearly readable —
-// dim enough to belong in this sky, bright enough to actually see against it.
-export function drawMoonPath(ctx, path, w, h) {
-  if (!path) return
-  const { points, nowIndex } = path
-  const span = Math.max(points.length - 1, 1)
-  for (let i = 0; i < points.length; i++) {
-    if (i === nowIndex) continue
-    const p = points[i]
-    const dist = Math.abs(i - nowIndex) / span
-    const alpha = 0.4 * (1 - dist * 0.5) * p.presence
-    if (alpha <= 0) continue
-    ctx.fillStyle = `rgba(198,197,224,${alpha})`
+// Linear-interpolated ms offset where altitude crosses zero, between an
+// above-horizon sample i and its neighbour in direction dir (below the horizon,
+// or off the window edge — then falls back to i's own offset, no refinement).
+function zeroCrossMs(alt, i, dir, offsetAt) {
+  const a = alt[i]
+  const b = alt[i + dir]
+  if (a == null || b == null || b > 0) return offsetAt(i)
+  return offsetAt(i) + (offsetAt(i + dir) - offsetAt(i)) * (a / (a - b)) // a>0, b<=0
+}
+
+// The moon's screen position right now, sitting ON its cached arc: now → t →
+// x, real altitude → y and presence. Keeps the disc and the path from ever
+// disagreeing. Returns { x, y, presence } or null when the moon is below the
+// horizon (outside the arc's window) — the caller then falls back to
+// moonPlacement (an invisible below-horizon moon, or the no-location one).
+export function moonOnArc(date, coords, arc) {
+  if (!arc) return null
+  const now = date.getTime()
+  if (now < arc.riseAt || now > arc.setAt) return null
+  const pos = moonPosition(date, coords)
+  if (!pos || pos.altitude <= 0) return null
+  const t = (now - arc.riseAt) / (arc.setAt - arc.riseAt)
+  return { x: arcXAt(t), y: altToY(pos.altitude), presence: 0.7 + 0.3 * Math.min(1, pos.altitude / 60) }
+}
+
+// A faint, finely-dotted arc — present but never competing with the moon or
+// stars — fading softly into the horizon at both ends.
+const ARC_PEAK_ALPHA = 0.26
+const ARC_DOT_R = 1.3
+const ARC_FADE = 0.12 // fraction of the arc each end fades over
+export function drawMoonArc(ctx, arc, w, h) {
+  if (!arc) return
+  const pts = arc.points
+  const n = pts.length
+  for (let i = 0; i < n; i++) {
+    const edge = Math.min(i, n - 1 - i) / (n * ARC_FADE)
+    const alpha = ARC_PEAK_ALPHA * Math.min(1, edge)
+    if (alpha <= 0.004) continue
+    ctx.fillStyle = `rgba(200,199,226,${alpha})`
     ctx.beginPath()
-    ctx.arc(p.x * w, p.y * h, 1.7, 0, Math.PI * 2)
+    ctx.arc(pts[i].x * w, pts[i].y * h, ARC_DOT_R, 0, Math.PI * 2)
     ctx.fill()
   }
 }

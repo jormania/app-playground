@@ -3,9 +3,10 @@ import {
   moonPhase,
   moonPosition,
   moonPlacement,
-  moonPath,
+  moonArc,
+  moonOnArc,
   drawMoon,
-  drawMoonPath,
+  drawMoonArc,
   makeFuji,
   drawFuji,
   makeMilkyWay,
@@ -162,8 +163,8 @@ export default function NightSky({ coords, moonPath: showMoonPath = true, geoSta
 
     let raf = 0
     let last = performance.now()
-    let moonTrail = null
-    let lastTrailAt = 0
+    let moonArcData = null
+    let lastArcAt = 0
 
     const frame = (now) => {
       const dt = Math.min(0.05, (now - last) / 1000)
@@ -175,6 +176,21 @@ export default function NightSky({ coords, moonPath: showMoonPath = true, geoSta
 
       // the Milky Way — a soft backdrop texture, stars scattered on top of it
       if (milkyWay) drawMilkyWay(ctx, milkyWay)
+
+      // the moon's arc — drawn here so it sits IN FRONT OF the Milky Way but
+      // BEHIND the stars and the moon: a faint guide in the deep sky, not a
+      // foreground mark. Its shape (a full rise→set window) is stable for the
+      // session, so it's recomputed only every few minutes, or once the cached
+      // window has fully elapsed.
+      if (showMoonPathRef.current && coordsRef.current) {
+        if (!moonArcData || now - lastArcAt > 5 * 60000 || Date.now() > moonArcData.setAt) {
+          lastArcAt = now
+          moonArcData = moonArc(new Date(), coordsRef.current)
+        }
+        drawMoonArc(ctx, moonArcData, w, h)
+      } else {
+        moonArcData = null
+      }
 
       // stars
       for (const s of stars) {
@@ -223,18 +239,15 @@ export default function NightSky({ coords, moonPath: showMoonPath = true, geoSta
         }
       }
 
-      // the real moon, at tonight's true phase and (with a location) its place
+      // the real moon, at tonight's true phase and (with a location) its place.
+      // When it's up and we have its arc, it sits exactly ON that arc; otherwise
+      // it falls back to the plain placement (the no-location decorative moon,
+      // or an invisible below-horizon one).
       const now2 = new Date()
       const { phase } = moonPhase(now2)
-      const place = moonPlacement(moonPosition(now2, coordsRef.current))
-
-      // its trail — recomputed every minute or so, not every frame (the moon
-      // barely moves frame to frame, so this would be pure waste)
-      if (now - lastTrailAt > 60000) {
-        lastTrailAt = now
-        moonTrail = showMoonPathRef.current && coordsRef.current ? moonPath(now2, coordsRef.current) : null
-      }
-      if (showMoonPathRef.current && moonTrail) drawMoonPath(ctx, moonTrail, w, h)
+      const place =
+        moonOnArc(now2, coordsRef.current, moonArcData) ||
+        moonPlacement(moonPosition(now2, coordsRef.current))
 
       const mr = Math.min(w, h) * 0.11
       drawMoon(ctx, place.x * w, place.y * h, mr, phase, 0.5 * place.presence)
