@@ -551,7 +551,9 @@ button.chip:hover { border-color: currentColor; background: color-mix(in srgb, v
    only the swatch dots carry raw hex, as a live preview OF each palette. ── */
 .theme-picker { display: flex; flex-direction: column; gap: 12px; }
 .theme-group-label { font-family: var(--mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--faint); margin-bottom: 6px; }
-.theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* One palette per row — a two-column grid pushed longer names into a horizontal scroll
+   on a phone, avoided entirely. */
+.theme-grid { display: flex; flex-direction: column; gap: 8px; }
 .theme-option {
   display: flex; align-items: center; gap: 10px; text-align: left; width: 100%;
   background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; transition: border-color 0.16s, background 0.16s;

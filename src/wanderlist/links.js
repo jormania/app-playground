@@ -1,6 +1,6 @@
 // Shared helpers for the two "open something external" affordances that recur across
 // the list row, detail view, and calendar agenda: the Place pin (opens Maps) and the
-// Paid badge (opens ticket files).
+// Tickets badge (opens ticket/registration files).
 
 // Best-effort Maps link for a place: prefer the resolved placeUrl (set when the entry
 // was created via Google Places autocomplete); fall back to a plain Maps search by name

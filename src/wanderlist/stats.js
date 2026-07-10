@@ -29,7 +29,7 @@ export function computeStats(entries, today = todayKey()) {
   const total = active.length
   if (total === 0) {
     return {
-      total: 0, expiringSoon: 0, needsAttention: 0, plannedSoon: 0, noDeadline: 0, paidUpcoming: 0,
+      total: 0, expiringSoon: 0, needsAttention: 0, plannedSoon: 0, noDeadline: 0, withTickets: 0,
       nextUp: null, topCategories: [], topTags: [], topPlaces: [],
     }
   }
@@ -38,7 +38,7 @@ export function computeStats(entries, today = todayKey()) {
   const needsAttention = active.filter(e => isPastExpired(e, today)).length
   const plannedSoon = active.filter(e => inNextDays(e.plannedDate, today, 7)).length
   const noDeadline = active.filter(e => !e.dateExpiring).length
-  const paidUpcoming = active.filter(e => e.tickets?.length > 0).length
+  const withTickets = active.filter(e => e.tickets?.length > 0).length
 
   // The single soonest still-open deadline (today or later) — a concrete pointer at what
   // to act on next. Already-past deadlines surface via "needs attention" instead.
@@ -55,7 +55,7 @@ export function computeStats(entries, today = todayKey()) {
     needsAttention,
     plannedSoon,
     noDeadline,
-    paidUpcoming,
+    withTickets,
     nextUp,
     topCategories: rankCounts(active, e => (e.category ? [e.category] : [])),
     topTags: rankCounts(active, e => e.tags || []),

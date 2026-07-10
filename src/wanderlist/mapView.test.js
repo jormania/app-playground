@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'vitest'
-import { mapEntries } from './mapView.js'
+import { mapEntries, embedSrc } from './mapView.js'
 
 describe('mapEntries', () => {
   const today = '2026-07-09'
@@ -17,5 +17,20 @@ describe('mapEntries', () => {
   test('empty / missing input -> []', () => {
     expect(mapEntries([], today)).toEqual([])
     expect(mapEntries(undefined, today)).toEqual([])
+  })
+})
+
+describe('embedSrc', () => {
+  test('builds a keyless Google embed URL around the place text', () => {
+    expect(embedSrc({ place: 'Cinema Pro, București' }))
+      .toBe('https://maps.google.com/maps?q=Cinema%20Pro%2C%20Bucure%C8%99ti&z=14&output=embed')
+  })
+  test('honours a custom zoom', () => {
+    expect(embedSrc({ place: 'X' }, { zoom: 11 })).toContain('&z=11&')
+  })
+  test('no place -> empty string', () => {
+    expect(embedSrc({ place: '' })).toBe('')
+    expect(embedSrc({})).toBe('')
+    expect(embedSrc(null)).toBe('')
   })
 })

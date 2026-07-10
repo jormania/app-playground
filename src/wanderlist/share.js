@@ -1,7 +1,7 @@
 // Share one item via the OS share sheet (which itself offers WhatsApp, email, and
 // whatever else the device has — no need for Wanderlist to build its own per-channel
 // buttons). Text-only by request — the name, the note, its link and its place; no
-// attachments and no app metadata (dates, category, tags, attended/paid state are
+// attachments and no app metadata (dates, category, tags, attended state are
 // Wanderlist's own bookkeeping, not part of the thing you're telling someone about).
 
 export function canShare() {

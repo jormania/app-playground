@@ -88,7 +88,7 @@ export default function StatsModal({ entries, onClose, onChip }) {
           <Stat value={s.needsAttention} label="past due, still open" />
           <Stat value={s.plannedSoon} label="planned within 7 days" />
           <Stat value={s.noDeadline} label="no deadline — someday" />
-          <Stat value={s.paidUpcoming} label="already paid for" />
+          <Stat value={s.withTickets} label="with tickets on file" />
           <NextUp nextUp={s.nextUp} />
           <HeatCard
             label="by category & tag"

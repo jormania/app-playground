@@ -10,3 +10,13 @@ export function mapEntries(entries, today) {
   const withPlace = (entries || []).filter(e => e && e.place && String(e.place).trim())
   return sortEntries(withPlace, 'expiring', today)
 }
+
+// The place a keyless Google Maps embed centres on for a given entry — its resolved place
+// text, URL-encoded into the classic `?q=…&output=embed` form (no API key needed). Returns
+// '' for an entry without a place. Google's embed only shows ONE pin (the query) — deliberate:
+// we chose Google's familiar map over a multi-pin custom-map stack, one place at a time.
+export function embedSrc(entry, { zoom = 14 } = {}) {
+  const place = entry?.place ? String(entry.place).trim() : ''
+  if (!place) return ''
+  return `https://maps.google.com/maps?q=${encodeURIComponent(place)}&z=${zoom}&output=embed`
+}

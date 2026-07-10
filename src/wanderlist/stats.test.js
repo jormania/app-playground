@@ -20,7 +20,7 @@ describe('computeStats', () => {
   test('past due, still unattended, sinks into needsAttention not expiringSoon', () => expect(s.needsAttention).toBe(1)) // c
   test('planned within 7 days', () => expect(s.plannedSoon).toBe(2)) // a: 07-11, e: 07-09
   test('no deadline at all', () => expect(s.noDeadline).toBe(2)) // d, e
-  test('already paid for (has tickets)', () => expect(s.paidUpcoming).toBe(1)) // a
+  test('with tickets on file', () => expect(s.withTickets).toBe(1)) // a
   test('next up: soonest future deadline, attended items excluded', () => {
     expect(s.nextUp).toEqual({ name: 'Anim’est', days: 2 })
   })
@@ -48,7 +48,7 @@ describe('computeStats', () => {
   })
   test('empty backlog is all zeroes, no crash', () => {
     const z = computeStats([], today)
-    expect(z).toMatchObject({ total: 0, expiringSoon: 0, needsAttention: 0, plannedSoon: 0, noDeadline: 0, paidUpcoming: 0, nextUp: null })
+    expect(z).toMatchObject({ total: 0, expiringSoon: 0, needsAttention: 0, plannedSoon: 0, noDeadline: 0, withTickets: 0, nextUp: null })
   })
   test('all-attended backlog counts as empty', () => {
     const z = computeStats([entries[5]], today)

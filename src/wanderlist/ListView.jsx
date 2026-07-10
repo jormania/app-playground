@@ -71,12 +71,12 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
               <MetaChips category={e.category} place={e.place} placeUrl={e.placeUrl} tags={e.tags} cost={e.cost} onChip={onChip} />
             </div>
             {/* A quick-check rail: Attended shows always, on or off, so it's a stable
-                landmark; Photo/Link/Paid are situational shortcuts to that thing (photo,
-                link, ticket); Going is a second toggle, situational (only once there's a
-                Planned Date to be going TO), distinct from the same field's checkbox in
+                landmark; Photo/Link/Tickets are situational shortcuts to that thing (photo,
+                link, ticket files); Going is a second toggle, situational (only once there's
+                a Planned Date to be going TO), distinct from the same field's checkbox in
                 the editor — this is the fast in-list path, that one's the deliberate-edit
                 path. Each toggle/status gets its own colour (green=Attended, blue=Going,
-                gold=Paid), matched everywhere else that colour appears (pills, calendar). */}
+                gold=Tickets), matched everywhere else that colour appears (pills, calendar). */}
             <div className="row-side">
               {e.photo && (
                 <button
@@ -94,8 +94,8 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
               {e.tickets?.length > 0 && (
                 <button
                   type="button"
-                  className="row-paid"
-                  title={`Paid — ${e.tickets.length} ticket${e.tickets.length === 1 ? '' : 's'} on file — tap to open`}
+                  className="row-tickets"
+                  title={`${e.tickets.length} ticket${e.tickets.length === 1 ? '' : 's'} on file — tap to open`}
                   aria-label="Open tickets"
                   onClick={ev => {
                     ev.stopPropagation()

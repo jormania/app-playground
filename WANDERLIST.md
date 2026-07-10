@@ -59,23 +59,25 @@ cycle button — brought over per request "as close to the original as possible"
 **List behaviour:** the last view, status filter, and sort persist across reloads
 (`store.js`'s `loadViewPrefs`/`saveViewPrefs`). The default Expiring-first sort sinks
 already-expired, unattended items below a **past** divider instead of floating them to
-the top (`search.js`'s tiered `expRank`). Tickets on file mark an item **paid** — shown
-in the list row's right rail: Photo · Link · Paid · Going · Attended, top to bottom.
-Photo/Link/Paid are situational (only rendered when there's something to show); Going
-(only once a Planned Date exists) and Attended are always-visible toggles — a second,
+the top (`search.js`'s tiered `expRank`). Ticket/registration files on an item raise a
+**tickets** indicator — shown in the list row's right rail: Photo · Link · Tickets · Going ·
+Attended, top to bottom. (It's "tickets", not "paid": an attachment may be a free
+registration/booking confirmation, not a purchase — the flag just means "I have proof I'm
+in".) Photo/Link/Tickets are situational (only rendered when there's something to show);
+Going (only once a Planned Date exists) and Attended are always-visible toggles — a second,
 quick-tap path to the same fields the editor sets, distinct from the editor's own
 controls. Each gets its own colour, matched everywhere it appears (this rail, the
 list/detail/calendar pills, the calendar's dots): **green** = Attended, **blue** = Going
 (hollow "still deciding" → filled once confirmed, same language as the calendar's planned
-dot), **gold** = Paid. Off states use `--muted` (not the near-invisible `--faint`) so
+dot), **gold** = Tickets. Off states use `--muted` (not the near-invisible `--faint`) so
 "not yet" reads clearly rather than blending into the row; a fixed bug had the calendar
 agenda's undecided-planned pill rendering blue (identical to Going's blue) — it's neutral
 gray now, matching the list/detail pill's own default. All four rail icons carry a
 visibly thicker ring and bolder stroke than the app-wide default, and each fires a short
 `navigator.vibrate` pulse on tap (`haptics.js`; a safe no-op where the Vibration API
-doesn't exist, e.g. iOS). Tapping Paid with more than one ticket opens `TicketsModal.jsx`
-— a small list, each ticket opening directly — instead of falling through to the full
-entry (exactly one ticket still opens directly via `links.js`'s `openTickets`).
+doesn't exist, e.g. iOS). Tapping Tickets with more than one file opens `TicketsModal.jsx`
+— a small list, each opening directly — instead of falling through to the full entry
+(exactly one still opens directly via `links.js`'s `openTickets`).
 
 **Every plain `:hover` rule in `wanderlist.css` is scoped to `@media (hover: hover)`.**
 Touchscreens fake a persistent hover on tap (Chrome/Android in particular can leave it
@@ -186,14 +188,14 @@ button always produces a real message to check end-to-end.
 `CalendarView.jsx` — a Monday-start month grid. Each day box shows up to **three markers**:
 a **Planned** dot (`--blue`, from `plannedDate` — **hollow** when undecided, **filled solid**
 once `Going` is checked on at least one of that day's entries), an **Expiring** dot (`--red`,
-from `dateExpiring`), and a **Paid** dot (`--green`, an entry with tickets on file — rides
-whichever date the entry itself lands on, planned first then expiring, since tickets have
-no date of their own). Selecting a day opens an **agenda panel** beneath the grid listing
-that day's entries — both Planned-Date and Date-Expiring matches, each labelled with a
-Planned/Going pill (green once `Going` is checked, blue otherwise), a Paid pill (green, next
-to it, when tickets are on file), and/or an expiry pill — tap one to open the full entry.
-The List⇄Calendar toggle lives in the menu
-bar; the calendar respects the status segment + search (so markers reflect To-do/Attended
+from `dateExpiring`), and a **Tickets** dot (`--gold`, an entry with ticket/registration
+files on it — rides whichever date the entry itself lands on, planned first then expiring,
+since the files have no date of their own). Selecting a day opens an **agenda panel** beneath
+the grid listing that day's entries — both Planned-Date and Date-Expiring matches, each
+labelled with a Planned/Going pill (green once `Going` is checked, gray otherwise), a Tickets
+pill (gold, next to it, when files are on it), and/or an expiry pill — tap one to open the
+full entry. The List⇄Calendar toggle lives in the menu
+bar; the calendar respects the status segment + search (so markers reflect Backlog/Attended
 and any filter) but not the list sort. **Attended items only ever light up a dot on a day
 already past** — even with the status set to "All", a done thing's planned/expiring date
 no longer means anything going forward, so it's suppressed from today/future days (a day
@@ -208,7 +210,7 @@ marker `useMemo` (component-level, not a `dates.js` helper, since it needs `toda
 **forward-looking-only** snapshot: attended items carry no weight anywhere on this screen,
 same as everywhere else. Six count cards (fill two complete 3-column grid rows, so no span
 card interrupts them and leaves a dangling empty cell): total active, expiring within 7
-days, past due and still open, planned within 7 days, no deadline yet, already paid for —
+days, past due and still open, planned within 7 days, no deadline yet, with tickets on file —
 then a full-width "next up" card (soonest still-open deadline), then two heat-chip cards:
 Category + Tags merged onto one (same pairing `MetaChips` uses on an entry), and Place
 ("where") on its own. Every chip taps straight into a filtered search, same gesture as a
@@ -221,7 +223,7 @@ Open in Maps. Uses `navigator.share()` where available (surfaces WhatsApp, Email
 whatever else the device offers) and falls back to a clipboard copy — deliberately just
 the one button, since the OS sheet already covers the per-channel cases a WhatsApp/Email
 button pair would otherwise duplicate. Text only: name, note, place, links — no
-attachments, no app metadata (dates/category/tags/attended/paid aren't part of what
+attachments, no app metadata (dates/category/tags/attended aren't part of what
 you're telling someone about).
 
 ## Photo + Tickets (M3, shipped)
@@ -241,9 +243,10 @@ serverless function was needed) plus one new piece for the multi-file case:
   Upload API exposes) that lets them be re-included without re-uploading bytes; anything
   without one (rare — e.g. attached outside the app) falls back to its just-fetched signed
   url as an `external` reference, safe only because the write happens within the same short
-  editor session it was read in. Shown as a "tickets · paid" section (linked, downloadable)
-  in the detail view; having any also flips the item to **paid** everywhere else (list rail,
-  calendar dot + agenda pill — see above).
+  editor session it was read in. Shown as a "tickets" section (linked, downloadable) in the
+  detail view; having any also raises the **tickets** indicator everywhere else (list rail,
+  calendar dot + agenda pill — see above). Named "tickets", never "paid": an attached file may
+  be a free registration/booking confirmation, not proof of payment.
 - Both require a live connection (same as JoD's photo) — no offline queueing for uploads.
 
 ## M4 (shipped)
@@ -259,15 +262,13 @@ serverless function was needed) plus one new piece for the multi-file case:
   value is still `'todo'` internally — only its label changed from "To-do" to "Backlog"); plus a
   **weekly stale-idea email nudge** (Sundays, ≥30 days old — `selectStaleIdeas` in
   `api/_lib/reminders.js`).
-- **Map view** (`MapModal.jsx` + `mapView.js` + `geocode.js`, in the ⋯ menu above Stats) — a
-  **Leaflet + OpenStreetMap** map (no API key), plotting **every entry with a place as its own
-  custom pin**: the active one gold and larger, the rest muted and smaller (so they're distinct
-  from each other, and — being our own divIcons on an OSM base — there are no Google markers to
-  clash with). Opens centred on the next-expiring entry with a place; a list beneath re-centres.
-  Places are geocoded once via **Nominatim** and cached in `localStorage` (`geocode.js`), so
-  first open trickles pins in and later opens are instant. Leaflet is dynamically imported so it
-  only loads when the map opens. This is a **deliberate reversal** of the earlier "never a map
-  view" stance — still lightweight (a map + a list, not a routing/search product).
+- **Map view** (`MapModal.jsx` + `mapView.js`, in the ⋯ menu above Stats) — a **keyless Google
+  Maps embed** (`maps.google.com/…&output=embed`, no API key/CSP allowance), showing **one place
+  at a time**, centred on the next-expiring entry with a place; a list beneath re-centres the
+  map on any entry. A **deliberate reversal** of the earlier "never a map view" stance — and
+  itself a second reversal: an interim Leaflet/OpenStreetMap version plotted *all* places as
+  custom pins at once, but that was dropped (owner's call) in favour of the familiar Google map,
+  accepting one pin at a time. Keep it that way unless asked — no Leaflet/geocoding dependency.
 - **Theme picker in Settings → Appearance** (`SettingsModal.jsx`'s `ThemePicker`, swatches from
   `theme.js`'s `PRESETS`) — jump straight to any of the six palettes; the header ◐ button still
   cycles. The same picker was added to **Journal of Delights** (which had the palettes + cycle

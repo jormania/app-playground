@@ -70,7 +70,7 @@ export default function EntryView({ entry, onBack, onEdit, onChip, onToggleAtten
 
       {entry.tickets?.length > 0 && (
         <div className="ticket-section">
-          <span className="field-label"><TicketIcon /> tickets · paid</span>
+          <span className="field-label"><TicketIcon /> tickets</span>
           <ul className="ticket-list plain">
             {entry.tickets.map((t, i) => (
               <li key={i} className="ticket-row">
