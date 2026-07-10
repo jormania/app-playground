@@ -22,13 +22,14 @@
   display: inline-flex;
 }
 
-/* A quiet teaser, not a second focal point — dim, small, tucked at the
-   glyph's shoulder. */
+/* A quiet teaser, not a second focal point — a small moon hanging in the sky
+   off the glyph's shoulder, with clear air around it so it reads as its own
+   thing rather than a blemish clinging to the stroke. */
 .phaseGlyph {
   position: absolute;
-  top: 8%;
-  right: -2%;
-  opacity: 0.55;
+  top: -8%;
+  right: -16%;
+  opacity: 0.6;
 }
 
 /* The title IS the glyph 夜 — flat, no border, no shadow, no gradient — and it's
