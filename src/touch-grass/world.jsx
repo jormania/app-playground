@@ -98,17 +98,6 @@ function loadForcedBiome() {
   }
 }
 
-// Listening aid: append ?solo (or ?solo=1) to mute every ambient layer except
-// the biome bed, so each biome can be auditioned cleanly and separately.
-function loadForcedSolo() {
-  try {
-    const s = new URLSearchParams(window.location.search).get('solo')
-    return s != null && s !== '0'
-  } catch (_) {
-    return false
-  }
-}
-
 // Preview override: append ?moon=0.1 (0 new … 0.5 full … 1 new) to the URL.
 function loadForcedMoon() {
   try {
@@ -140,7 +129,6 @@ export function WorldProvider({ children }) {
   const [locationEnabled, setLocationEnabled] = useState(loadLocationPref)
   const [forcedWeather] = useState(loadForcedWeather)
   const [forcedBiome] = useState(loadForcedBiome)
-  const [soloBiome] = useState(loadForcedSolo)
   const [forcedMoon] = useState(loadForcedMoon)
   const [forcedTod] = useState(loadForcedTod)
   const [forcedLight] = useState(loadForcedLight)
@@ -215,7 +203,6 @@ export function WorldProvider({ children }) {
     season: forcedSeason || getSeason(now),
     weather: forcedWeather || weather,
     biome: forcedBiome || biome,
-    soloBiome,
     moon,
     moments,
     locationEnabled,

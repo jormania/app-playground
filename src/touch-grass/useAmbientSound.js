@@ -1,14 +1,14 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { createAmbience, sceneFor } from './ambientAudio.js'
+import { createAmbience } from './ambientAudio.js'
 import { useWorld } from './world.jsx'
 
+// Wires the vanilla audio engine to React. The bed is driven entirely by the
+// user's mix (the Chorus); only the light day/night gating of the voices reads
+// the world (time of day, season, meteor nights).
 export function useAmbientSound(enabled, mix) {
   const ref = useRef(null)
-  const { timeOfDay, season, weather, biome, soloBiome, moments } = useWorld()
+  const { timeOfDay, season, moments } = useWorld()
   const meteor = (moments || []).some(m => m.meteor)
-  // the Chorus's biome picker can override the real, detected biome — so you
-  // can audition a different place's sound regardless of where you actually are
-  const effectiveBiome = (mix && mix.biome) || biome
 
   // create the engine once; resume + tap on gesture; dispose on unmount
   useEffect(() => {
@@ -29,49 +29,21 @@ export function useAmbientSound(enabled, mix) {
     }
   }, [])
 
-  // follow the world's time-of-day / season scene
+  // the mix (the Chorus) — layers, shapers, voice levels. Set before enabling is
+  // fine; the engine holds it and applies it on enable.
   useEffect(() => {
-    if (ref.current) ref.current.setScene(sceneFor(timeOfDay, season))
-  }, [timeOfDay, season])
+    if (ref.current && mix) ref.current.setMix(mix)
+  }, [mix])
 
-  // exact phase (dawn chorus / dusk wind-down) and season (cuckoo, wolf…)
+  // light world context for the voices' day/night appropriateness
   useEffect(() => {
-    if (ref.current) ref.current.setPhase(timeOfDay)
-  }, [timeOfDay])
-  useEffect(() => {
-    if (ref.current) ref.current.setSeason(season)
-  }, [season])
-
-  // meteor-shower nights unlock the shooting-star shimmer
-  useEffect(() => {
-    if (ref.current) ref.current.setMeteor(meteor)
-  }, [meteor])
-
-  // follow live weather (rain bed, thunder, wind level)
-  useEffect(() => {
-    if (ref.current) ref.current.setWeather(weather)
-  }, [weather])
-
-  // follow the coarse biome (surf, traffic, thin wind, leaf-rustle, gulls) —
-  // or the Chorus's override, if one is set
-  useEffect(() => {
-    if (ref.current) ref.current.setBiome(effectiveBiome)
-  }, [effectiveBiome])
-
-  // ?solo — mute everything but the biome bed, for auditioning each biome
-  useEffect(() => {
-    if (ref.current) ref.current.setSolo(soloBiome)
-  }, [soloBiome])
+    if (ref.current) ref.current.setWorld({ timeOfDay, season, meteor })
+  }, [timeOfDay, season, meteor])
 
   // mute / unmute
   useEffect(() => {
     if (ref.current) ref.current.setEnabled(enabled)
   }, [enabled])
-
-  // the Chorus — five category levels + volume/activity/warmth shapers
-  useEffect(() => {
-    if (ref.current && mix) ref.current.setMix(mix)
-  }, [mix])
 
   const reveal = useCallback(() => ref.current?.reveal(), [])
   const depart = useCallback(() => ref.current?.depart(), [])

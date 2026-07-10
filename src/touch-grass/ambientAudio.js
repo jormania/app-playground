@@ -1,1144 +1,837 @@
-// Procedural ambient soundscape via Web Audio — no audio files.
+// Procedural outdoor soundscape for Touch Grass — fully synthesised, no audio
+// files. A LAYER-BLEND engine ported from Yoru (src/yoru/lib/soundscape.js):
+// eight nature beds you blend freely, plus four global shapers. On top of that
+// bed sit a handful of Touch Grass VOICES — birds, city sounds, and rare omens —
+// scheduled as one-shots and dialled by their own Wildlife / City / Omens levels
+// and a global Activity shaper.
 //
-// Architecture:
-//   master ← dry one-shots (each through its own StereoPanner) and the beds
-//   master ← reverb return (a stereo impulse) ← per-voice send (amount per biome)
-// Continuous beds (wind/whistle/water/rain/biome/city-sub) sit low and steady;
-// everything else is a scheduled one-shot, placed in the stereo field. A slow
-// "liveliness" drift swells and calms the whole field so it breathes over time.
-// Gusts, after-rain transitions, dawn/dusk shaping and rare surprises keep it
-// alive and warm without ever crowding the listener.
+//   layers (0 = off):
+//     rain    soft high wash + sparse droplets, with distant thunder when up
+//     waves   slow ocean surf, each swell a little different
+//     stream  a steady brook, softly babbling
+//     wind    band-passed air, slowly drifting and gusting
+//     leaves  a hush through foliage + soft rustles
+//     chime   a sparse wind-chime accent, now and then
+//     warmth  a pink-noise floor under everything
+//     drone   a deep, soft tonal hum
+//   shapers:
+//     volume     master loudness (true silence at 0)
+//     brightness one global low-pass, dark -> airy
+//     motion     how MUCH it swells and gusts (depth)
+//     pace       how FAST it drifts and swells (speed)
+//   voices (Touch Grass, one-shots over the bed):
+//     wildlife   songbirds, crickets, owl, crow, cat, dog
+//     city       a passing car, a bicycle bell, an airplane overhead
+//     omens      a church bell, cuckoo, woodpecker, wolf, meteor-shimmer
+//     activity   how often any voice speaks up
+//
+// The bed is not world-driven — it's the user's own mix (the Chorus). The voices
+// keep a light touch of day/night appropriateness (birds by day, owl/crickets by
+// night, a meteor-shimmer only on shower nights) from the world context.
 
-const SCENES = {
-  day:    { wind: 0.028, whistle: 0,    water: 0.042, crickets: 0,    birds: 0.6, chime: 0,   critters: true  },
-  night:  { wind: 0.018, whistle: 0,    water: 0.026, crickets: 0.25, birds: 0,   chime: 0,   critters: false },
-  winter: { wind: 0.095, whistle: 0.07, water: 0.014, crickets: 0,    birds: 0,   chime: 0.5, critters: false },
+const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x)
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+const lerp = (a, b, t) => a + (b - a) * t
+
+// Loudness/tone perception is roughly logarithmic; a linear slider->gain feels
+// wrong the same way every time. `taper` keeps 0 at true silence and 1 unchanged
+// while spacing the middle more evenly. Master gets the steeper curve (a real
+// volume knob); each layer's own level a gentler one so blended presets keep
+// their balance. (Both ported straight from Yoru.)
+const taper = (t, exp) => Math.pow(clamp01(t), exp)
+const VOLUME_TAPER = 1.9
+const LAYER_TAPER = 1.4
+
+const FADE_IN_SEC = 1.0 // Touch Grass isn't a timed session — a short fade on (re)build, then hold
+// the voices ride a category bus into the same brightness filter as the beds;
+// this trim lifts them to sit just over the bed at a mid category level (they're
+// quieter than the beds per-sample, being sparse one-shots)
+const VOICE_TRIM = 3.0
+
+function makeWhiteBuffer(ctx, seconds) {
+  const len = Math.floor(ctx.sampleRate * seconds)
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1
+  return buf
 }
 
-const MASTER = 0.5
-
-// biome beds layered over the scene: surf swell, traffic rumble, thin alpine
-// wind, leaf rustle. `swell` modulates the level (a slow breath); `tone` wanders
-// the filter so the bed never sits as one flat block; `verb` is its reverb send.
-const BIOME_BED = {
-  coast:    { type: 'lowpass',  freq: 420,  gain: 0.050, swell: 0.28, tone: 0,  rate: 0.85, verb: 0.20 },
-  city:     { type: 'lowpass',  freq: 200,  gain: 0.016, swell: 0.10, tone: 40, rate: 0.6,  verb: 0.12 },
-  mountain: { type: 'bandpass', freq: 950,  gain: 0.020, swell: 0.10, tone: 30, rate: 1.2,  verb: 0.34 },
-  forest:   { type: 'bandpass', freq: 2200, gain: 0.015, swell: 0.07, tone: 0,  rate: 1.1,  verb: 0.22 },
-  plain:    { type: 'lowpass',  freq: 500,  gain: 0,     swell: 0,    tone: 0,  rate: 1.0,  verb: 0.10 },
+// Pink noise (Paul Kellet) — warmer, more balanced bed texture than brown.
+function makePinkBuffer(ctx, seconds) {
+  const len = Math.floor(ctx.sampleRate * seconds)
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate)
+  const d = buf.getChannelData(0)
+  let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0
+  for (let i = 0; i < len; i++) {
+    const w = Math.random() * 2 - 1
+    b0 = 0.99886 * b0 + w * 0.0555179
+    b1 = 0.99332 * b1 + w * 0.0750759
+    b2 = 0.969 * b2 + w * 0.153852
+    b3 = 0.8665 * b3 + w * 0.3104856
+    b4 = 0.55 * b4 + w * 0.5329522
+    b5 = -0.7616 * b5 - w * 0.016898
+    d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11
+    b6 = w * 0.115926
+  }
+  return buf
 }
-const DEFAULT_VERB = 0.15
 
-// The Chorus (the mixer): five category buses grouping every scheduled voice
-// and continuous bed, plus three shapers. Every category/volume default is
-// UNITY (10/10 = gain 1) and warmth defaults fully open — the mixer is a set
-// of user overrides layered on top of the existing, already-tuned sound, so
-// until someone touches a slider, nothing about today's mix changes at all.
-const WARMTH_MIN_HZ = 700 // fully closed: hushed and close
-const WARMTH_MAX_HZ = 16000 // fully open: today's untouched tone
-const ACTIVITY_MIN = 0.4
-const ACTIVITY_MAX = 1.6
+function loopSource(ctx, buffer) {
+  const src = ctx.createBufferSource()
+  src.buffer = buffer
+  src.loop = true
+  return src
+}
 
-export function sceneFor(timeOfDay, season) {
-  if (season === 'winter') return 'winter'
-  if (timeOfDay === 'day' || timeOfDay === 'dawn') return 'day'
-  return 'night'
+function panner(ctx, pan) {
+  if (ctx.createStereoPanner) {
+    const p = ctx.createStereoPanner()
+    p.pan.value = pan
+    return p
+  }
+  return ctx.createGain()
+}
+
+// mix (each 0..10) -> concrete synth values. Ported from Yoru, extended with the
+// three Touch Grass voice categories and the Activity shaper.
+function resolveMix(mix) {
+  const nv = (k) => clamp01((mix && typeof mix[k] === 'number' ? mix[k] : 0) / 10)
+  const gv = (k) => taper(nv(k), LAYER_TAPER)
+  return {
+    master: taper(nv('volume'), VOLUME_TAPER) * 0.24,
+    toneHz: 520 * Math.pow(8200 / 520, nv('brightness')),
+    motion: lerp(0.35, 1.6, nv('motion')),
+    pace: lerp(0.5, 1.9, nv('pace')),
+    rain: gv('rain'),
+    waves: gv('waves'),
+    stream: gv('stream'),
+    wind: gv('wind'),
+    leaves: gv('leaves'),
+    chime: gv('chime'),
+    warmth: gv('warmth'),
+    drone: gv('drone'),
+    // voices: category loudness (0 = that voice group is silent / unscheduled)
+    wildlife: gv('wildlife'),
+    city: gv('city'),
+    omens: gv('omens'),
+    // activity: how often voices fire (a frequency multiplier; higher = busier)
+    activity: lerp(0.4, 1.8, nv('activity')),
+  }
 }
 
 export function createAmbience() {
-  // ---- state ----
-  let ctx = null
-  let master = null
-  let warmthFilter = null
-  let reverbSend = null
-  let noiseBuf = null
-  let n = {}
-  let catGains = {}       // { place, weather, wildlife, city, events } — built lazily, see build()
-  let scene = 'day'
-  let phase = 'day'        // exact time of day: dawn | day | dusk | night
-  let season = 'summer'
-  let biome = null
+  // ---- facade state (persists across soundscape rebuilds) ----
+  let mix = null
   let enabled = false
-  let solo = false
   let disposed = false
-  let weatherCond = null
-  let weatherWind = 0
-  let weatherIntensity = 0
-  let prevCond = null
-  let meteor = false
-  let liveliness = 0.6     // 0.25..1, drifts slowly to make the field breathe
-  let lastSurprise = -1e9
-  let lastBellHour = -1
-  let walkers = []
-  let timers = []          // every self-rescheduling timer, cleared on dispose
+  let scape = null // the live soundscape graph (rebuilt on mix change)
+  let rebuildTimer = null
+  let world = { timeOfDay: 'day', season: 'summer', meteor: false }
+  let uiCtx = null // a small persistent context for tap / depart / reveal
 
-  // ---- the Chorus mix (0..1 each; may be set before the graph exists — e.g.
-  // sound is off — so it's held here and (re)applied whenever the graph is
-  // built or a value changes; see applyMix() ----
-  let mixPlace = 1, mixWeather = 1, mixWildlife = 1, mixCity = 1, mixEvents = 1
-  let mixVolume = 1
-  let activityMul = 1
-  let warmthHz = WARMTH_MAX_HZ
+  // ======================================================================
+  // The soundscape graph. Built fresh from the current `mix`; disposed with a
+  // gentle fade. Voices read `world` live (via closure) so a change of day/night
+  // never needs a rebuild — only a mix change does.
+  // ======================================================================
+  function buildScape() {
+    const Ctx = window.AudioContext || window.webkitAudioContext
+    if (!Ctx) return null
+    const p = resolveMix(mix)
+    if (p.master <= 0) return null
 
-  // ---- small helpers ----
-  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
-  const clamp01 = (v) => clamp(v, 0, 1)
-  const rpan = (w) => (Math.random() * 2 - 1) * w
-  const ready = () => enabled && ctx && ctx.state === 'running' && !solo
-  // a biome "voice": plays for matching biomes and survives solo (it IS the
-  // biome) as long as a biome is set; null in the list = the no-location case
-  const voice = (...allowed) =>
-    enabled && ctx && ctx.state === 'running' && allowed.includes(biome) && (!solo || biome != null)
-  const lively = (p = 1) => Math.random() < p * liveliness * activityMul
+    const ctx = new Ctx()
+    ctx.resume?.().catch(() => {})
+    let stopped = false
+    const nodes = []
+    const intervals = []
+    const timeouts = [] // holders { id } for self-rescheduling voice timers
+    let liveliness = 0.6
 
-  function set(param, v, tc) {
-    param.setTargetAtTime(v, ctx.currentTime, tc)
-  }
+    const master = ctx.createGain()
+    master.gain.value = 0.0001
+    master.connect(ctx.destination)
 
-  // Brownian-ish drift: nudge a param toward a new nearby target over a long,
-  // randomized interval, so it meanders like weather rather than oscillating.
-  function makeWalker(param, { min, max, step, minDur, maxDur }) {
-    let current = (min + max) / 2
-    param.setValueAtTime(current, ctx.currentTime)
-    let timer
-    const tick = () => {
-      if (disposed) return
-      current = clamp(current + (Math.random() * 2 - 1) * step, min, max)
-      const dur = minDur + Math.random() * (maxDur - minDur)
-      param.linearRampToValueAtTime(current, ctx.currentTime + dur)
-      timer = setTimeout(tick, dur * 1000)
+    // one global brightness low-pass everything passes through
+    const tone = ctx.createBiquadFilter()
+    tone.type = 'lowpass'
+    tone.frequency.value = p.toneHz
+    tone.connect(master)
+
+    const white = makeWhiteBuffer(ctx, 20)
+    const pink = makePinkBuffer(ctx, 26)
+
+    // a slow low-depth sine wobble summed onto a param's own value — the shared
+    // "organic drift" behind every bed. rate randomised so layers never lock step.
+    function driftParam(param, depth, rateHz) {
+      const osc = ctx.createOscillator()
+      osc.frequency.value = rateHz * (0.85 + Math.random() * 0.3)
+      const g = ctx.createGain()
+      g.gain.value = depth
+      osc.connect(g)
+      g.connect(param)
+      osc.start()
+      nodes.push(osc)
     }
-    tick()
-    return () => clearTimeout(timer)
-  }
+    const driftFilter = (filter, depthHz, rateHz) => driftParam(filter.frequency, depthHz, rateHz)
+    const driftGain = (gainNode, depth, rateHz) => driftParam(gainNode.gain, depth, rateHz)
 
-  // self-rescheduling timer with a randomized period, registered for cleanup
-  function every(minMs, maxMs, fn) {
-    const h = { id: 0 }
-    const tick = () => {
-      if (disposed) return
-      fn()
-      h.id = setTimeout(tick, minMs + Math.random() * (maxMs - minMs))
+    // ---- beds (ported from Yoru) --------------------------------------------
+    function buildWarmth(level, dest) {
+      const src = loopSource(ctx, pink)
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 95
+      const g = ctx.createGain(); g.gain.value = level * 0.85
+      src.connect(lp); lp.connect(hp); hp.connect(g); g.connect(dest)
+      src.start(); nodes.push(src)
+      driftFilter(lp, 60, 0.018)
     }
-    h.id = setTimeout(tick, minMs + Math.random() * (maxMs - minMs))
-    timers.push(h)
-  }
 
-  // pink noise (Paul Kellet) — natural, far less audible looping than white
-  function pinkNoiseBuffer(seconds) {
-    const len = ctx.sampleRate * seconds
-    const buf = ctx.createBuffer(1, len, ctx.sampleRate)
-    const d = buf.getChannelData(0)
-    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0
-    for (let i = 0; i < len; i++) {
-      const w = Math.random() * 2 - 1
-      b0 = 0.99886 * b0 + w * 0.0555179
-      b1 = 0.99332 * b1 + w * 0.0750759
-      b2 = 0.96900 * b2 + w * 0.1538520
-      b3 = 0.86650 * b3 + w * 0.3104856
-      b4 = 0.55000 * b4 + w * 0.5329522
-      b5 = -0.7616 * b5 - w * 0.0168980
-      d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11
-      b6 = w * 0.115926
+    function buildDrone(level, dest) {
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 300
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 110
+      const g = ctx.createGain(); g.gain.value = level * 0.032
+      hp.connect(lp); lp.connect(g); g.connect(dest)
+      ;[110, 164.81].forEach((f, i) => {
+        const osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = f
+        osc.detune.value = i === 0 ? -1.5 : 1.5
+        osc.connect(hp); osc.start(); nodes.push(osc)
+      })
+      driftGain(g, level * 0.006, 0.011)
     }
-    return buf
-  }
 
-  function loopNoise(buf, rate) {
-    const s = ctx.createBufferSource()
-    s.buffer = buf
-    s.loop = true
-    s.playbackRate.value = rate
-    s.start(0, Math.random() * buf.duration)
-    return s
-  }
-
-  // a stereo exponential-decay impulse — two decorrelated channels for width
-  function makeIR(seconds, decay) {
-    const len = Math.floor(ctx.sampleRate * seconds)
-    const buf = ctx.createBuffer(2, len, ctx.sampleRate)
-    for (let ch = 0; ch < 2; ch++) {
-      const d = buf.getChannelData(ch)
-      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay)
+    function buildWind(level, lpHz, motion, pace, dest) {
+      const wind = loopSource(ctx, white)
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 480; bp.Q.value = 0.55
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = lpHz
+      const g = ctx.createGain(); g.gain.value = level
+      const drift = ctx.createOscillator(); drift.frequency.value = 0.05 * pace
+      const driftDepth = ctx.createGain(); driftDepth.gain.value = 170 * motion
+      drift.connect(driftDepth); driftDepth.connect(bp.frequency)
+      const gust = ctx.createOscillator(); gust.frequency.value = 0.07 * pace
+      const gustDepth = ctx.createGain(); gustDepth.gain.value = level * 0.45 * motion
+      gust.connect(gustDepth); gustDepth.connect(g.gain)
+      wind.connect(bp); bp.connect(lp); lp.connect(g); g.connect(dest)
+      wind.start(); drift.start(); gust.start(); nodes.push(wind, drift, gust)
     }
-    return buf
-  }
 
-  // a placed, CATEGORIZED output: panner → that category's bus, which the
-  // Chorus mixer can fade (and which itself forwards to master + the reverb
-  // send — see the catGains wiring in build()). Every scheduled voice below
-  // is tagged with one of 'place' | 'weather' | 'wildlife' | 'city' | 'events'.
-  // Returns the panner so callers can automate its pan (e.g. a plane drifting
-  // across).
-  function out(pan = 0, category = 'place') {
-    const p = ctx.createStereoPanner()
-    p.pan.value = clamp(pan, -1, 1)
-    p.connect(catGains[category] || master)
-    return p
-  }
-
-  // a placed output for INTERACTION sounds (tap/depart/reveal) — always
-  // straight to master + the reverb send, deliberately outside the Chorus's
-  // five ambient categories (a confirmatory UI sound shouldn't go quiet just
-  // because Wildlife is muted). Still scales with the master Volume shaper.
-  function outUI(pan = 0) {
-    const p = ctx.createStereoPanner()
-    p.pan.value = clamp(pan, -1, 1)
-    p.connect(master)
-    if (reverbSend) p.connect(reverbSend)
-    return p
-  }
-
-  // ============================ build the graph ============================
-  function build() {
-    const AC = window.AudioContext || window.webkitAudioContext
-    ctx = new AC()
-    master = ctx.createGain()
-    master.gain.value = 0
-    // WARMTH: one global tone shaper downstream of everything, the Chorus's
-    // third shaper (cosy/muffled <-> today's untouched open tone).
-    warmthFilter = ctx.createBiquadFilter()
-    warmthFilter.type = 'lowpass'
-    warmthFilter.frequency.value = warmthHz
-    master.connect(warmthFilter).connect(ctx.destination)
-    noiseBuf = pinkNoiseBuffer(8)
-
-    // REVERB: a warm stereo room shared by the one-shots (send amount per biome)
-    const convolver = ctx.createConvolver()
-    convolver.buffer = makeIR(2.4, 3.2)
-    const verbLP = ctx.createBiquadFilter(); verbLP.type = 'lowpass'; verbLP.frequency.value = 3600
-    const reverbReturn = ctx.createGain(); reverbReturn.gain.value = 0.9
-    reverbSend = ctx.createGain(); reverbSend.gain.value = DEFAULT_VERB
-    reverbSend.connect(convolver)
-    convolver.connect(verbLP).connect(reverbReturn).connect(master)
-
-    // THE CHORUS: five category buses. Every scheduled voice and continuous
-    // bed below routes into one of these (via out()'s category argument, or
-    // directly for the beds) instead of straight to master, so each can be
-    // faded independently; each bus forwards its own dry AND wet (reverb)
-    // signal, so muting a category silences its reverb tail too, not just
-    // the direct sound.
-    catGains = {
-      place: ctx.createGain(), weather: ctx.createGain(), wildlife: ctx.createGain(),
-      city: ctx.createGain(), events: ctx.createGain(),
+    function buildRain(level, pace, dest) {
+      const rain = loopSource(ctx, white)
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1300
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 6500
+      const g = ctx.createGain(); g.gain.value = 0.09 * level
+      rain.connect(hp); hp.connect(lp); lp.connect(g); g.connect(dest)
+      rain.start(); nodes.push(rain)
+      driftFilter(lp, 900, 0.025)
+      let nextAt = ctx.currentTime + 0.6
+      const t = setInterval(() => {
+        if (stopped) return
+        const ahead = ctx.currentTime + 1.5
+        while (nextAt < ahead) {
+          const when = nextAt
+          const src = ctx.createBufferSource(); src.buffer = white
+          const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2000 + Math.random() * 2600; bp.Q.value = 1.1
+          const dg = ctx.createGain(); const v = (0.02 + Math.random() * 0.03) * level
+          dg.gain.setValueAtTime(0.0001, when)
+          dg.gain.exponentialRampToValueAtTime(v, when + 0.004)
+          dg.gain.exponentialRampToValueAtTime(0.0001, when + 0.08 + Math.random() * 0.07)
+          const pn = panner(ctx, Math.random() * 1.4 - 0.7)
+          src.connect(bp); bp.connect(dg); dg.connect(pn); pn.connect(dest)
+          src.start(when); src.stop(when + 0.3)
+          nextAt += (0.22 + Math.random() * 0.7) * (1.6 - level) / pace
+        }
+      }, 400)
+      intervals.push(t)
     }
-    Object.values(catGains).forEach((g) => {
-      g.gain.value = 1
-      g.connect(master)
-      g.connect(reverbSend)
-    })
 
-    // WIND: stereo bed (two decorrelated sources panned L/R) → level → slow
-    // drift → gust gain (transient swells) → the Weather bus
-    const windDrift = ctx.createGain(); windDrift.gain.value = 0.9
-    const gustGain = ctx.createGain(); gustGain.gain.value = 1
-    const windGain = ctx.createGain(); windGain.gain.value = 0
-    windGain.connect(windDrift).connect(gustGain).connect(catGains.weather)
-    ;[[-0.7, 0.98], [0.7, 1.03]].forEach(([pan, rate]) => {
-      const s = loopNoise(noiseBuf, rate)
-      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 320
-      const pn = ctx.createStereoPanner(); pn.pan.value = pan
-      s.connect(lp).connect(pn).connect(windGain)
-    })
-
-    // WHISTLE (cold-wind overtone, winter)
-    const whSrc = loopNoise(noiseBuf, 1.11)
-    const whBP = ctx.createBiquadFilter(); whBP.type = 'bandpass'; whBP.frequency.value = 1200; whBP.Q.value = 6
-    const whGain = ctx.createGain(); whGain.gain.value = 0
-    const whSwell = ctx.createGain(); whSwell.gain.value = 0.7
-    whSrc.connect(whBP).connect(whGain).connect(whSwell).connect(catGains.weather)
-    const whLfo = ctx.createOscillator(); whLfo.frequency.value = 0.035
-    const whDepth = ctx.createGain(); whDepth.gain.value = 0.14
-    whLfo.connect(whDepth).connect(whSwell.gain); whLfo.start()
-
-    // WATER: a steady trickle
-    const wSrc = loopNoise(noiseBuf, 0.91)
-    const wHP = ctx.createBiquadFilter(); wHP.type = 'highpass'; wHP.frequency.value = 650
-    const wBP = ctx.createBiquadFilter(); wBP.type = 'bandpass'; wBP.frequency.value = 1500; wBP.Q.value = 0.5
-    const waterGain = ctx.createGain(); waterGain.gain.value = 0
-    const waterDrift = ctx.createGain(); waterDrift.gain.value = 0.85
-    wSrc.connect(wHP).connect(wBP).connect(waterGain).connect(waterDrift).connect(catGains.place)
-
-    // RAIN: brighter bed, gated by live weather (gain 0 when dry)
-    const rSrc = loopNoise(noiseBuf, 1.07)
-    const rHP = ctx.createBiquadFilter(); rHP.type = 'highpass'; rHP.frequency.value = 900
-    const rLP = ctx.createBiquadFilter(); rLP.type = 'lowpass'; rLP.frequency.value = 5500
-    const rainGain = ctx.createGain(); rainGain.gain.value = 0
-    rSrc.connect(rHP).connect(rLP).connect(rainGain).connect(catGains.weather)
-
-    // BIOME BED: place-coloured noise (surf / traffic / thin wind / rustle),
-    // with a level swell LFO and a slow tonal filter wander; sent to reverb too
-    const bSrc = loopNoise(noiseBuf, 1.0)
-    const bFilter = ctx.createBiquadFilter(); bFilter.type = 'lowpass'; bFilter.frequency.value = 500
-    const biomeGain = ctx.createGain(); biomeGain.gain.value = 0
-    const biomeSwell = ctx.createGain(); biomeSwell.gain.value = 1
-    bSrc.connect(bFilter).connect(biomeGain).connect(biomeSwell).connect(catGains.place)
-    // this bed's own dedicated reverb send (distinct from the Chorus buses'
-    // shared one, an existing, separate design) — kept in `n` so applyMix()
-    // can scale it by the Place level too, or it'd linger audibly even with
-    // Place faded to 0
-    const biomeVerb = ctx.createGain(); biomeVerb.gain.value = 0.12
-    biomeSwell.connect(biomeVerb).connect(convolver) // widen the bed through the room
-    const bLfo = ctx.createOscillator(); bLfo.frequency.value = 0.04
-    const bDepth = ctx.createGain(); bDepth.gain.value = 0
-    bLfo.connect(bDepth).connect(biomeSwell.gain); bLfo.start()
-    const bToneLfo = ctx.createOscillator(); bToneLfo.frequency.value = 0.05
-    const bToneDepth = ctx.createGain(); bToneDepth.gain.value = 0
-    bToneLfo.connect(bToneDepth).connect(bFilter.frequency); bToneLfo.start()
-
-    // CITY SUB: a deep distant throb, only in the city
-    const csSrc = loopNoise(noiseBuf, 0.6)
-    const csLP = ctx.createBiquadFilter(); csLP.type = 'lowpass'; csLP.frequency.value = 90
-    const citySub = ctx.createGain(); citySub.gain.value = 0
-    csSrc.connect(csLP).connect(citySub).connect(catGains.place)
-
-    n = { windGain, gustGain, whGain, waterGain, rainGain, biomeGain, bFilter, bDepth, bToneDepth, bSrc, citySub, biomeVerb, reverbSend }
-
-    applyScene(true)
-    applyWeather()
-    applyBiome()
-    applyMix() // push any mix already set (e.g. sound was off) onto the freshly built graph
-    startSchedulers()
-    startLiveliness()
-
-    // very gentle, very slow breathing — a narrow range crossed over long spans,
-    // so the bed only barely stirs; real dynamism comes from gusts
-    walkers.push(makeWalker(windDrift.gain, { min: 0.72, max: 1.05, step: 0.07, minDur: 26, maxDur: 60 }))
-    walkers.push(makeWalker(waterDrift.gain, { min: 0.74, max: 1.04, step: 0.06, minDur: 28, maxDur: 64 }))
-  }
-
-  // ============================ the Chorus mix ============================
-  // Applies the current mix values to the live graph (a no-op before build()
-  // has run — see build()'s own applyMix() call, which catches up once it has).
-  function applyMix() {
-    if (!ctx) return
-    set(catGains.place.gain, mixPlace, 1.2)
-    set(catGains.weather.gain, mixWeather, 1.2)
-    set(catGains.wildlife.gain, mixWildlife, 1.2)
-    set(catGains.city.gain, mixCity, 1.2)
-    set(catGains.events.gain, mixEvents, 1.2)
-    if (n.biomeVerb) set(n.biomeVerb.gain, 0.12 * mixPlace, 1.2)
-    if (warmthFilter) set(warmthFilter.frequency, warmthHz, 1.5)
-    if (master) set(master.gain, enabled ? MASTER * mixVolume : 0, 0.6)
-  }
-
-  // ============================ bed levels ============================
-  function applyScene(immediate) {
-    if (!ctx) return
-    const tg = SCENES[scene]
-    const tc = immediate ? 0.01 : 1.6
-    const windBoost = Math.min(0.3, weatherWind * 0.006)
-    set(n.windGain.gain, solo ? 0 : tg.wind + windBoost, tc)
-    set(n.whGain.gain, solo ? 0 : tg.whistle, tc)
-    set(n.waterGain.gain, solo ? 0 : tg.water, tc)
-  }
-
-  function applyWeather() {
-    if (!ctx) return
-    const raining = weatherCond === 'rain' || weatherCond === 'thunder'
-    const rainTarget = solo ? 0 : (raining ? 0.10 + weatherIntensity * 0.20 : 0)
-    set(n.rainGain.gain, rainTarget, raining ? 1.2 : 2.0)
-    applyScene(false) // refresh the wind boost
-  }
-
-  function applyBiome() {
-    if (!ctx || !n.biomeGain) return
-    const p = BIOME_BED[biome]
-    set(n.reverbSend.gain, p ? p.verb : DEFAULT_VERB, 2.0)
-    set(n.citySub.gain, biome === 'city' ? 0.03 : 0, 2.2)
-    if (!p) {
-      set(n.biomeGain.gain, 0, 2.0); set(n.bDepth.gain, 0, 2.0); set(n.bToneDepth.gain, 0, 2.0)
-      return
+    // distant thunder, rare, only while it rains — scaled to how heavy the rain
+    // is (this is where the kept "thunder" voice lives: turning up Rain brings it)
+    function buildThunder(level, dest) {
+      let nextAt = ctx.currentTime + 25 + Math.random() * 50
+      const t = setInterval(() => {
+        if (stopped || ctx.currentTime < nextAt) return
+        const when = nextAt
+        const dur = 3.2 + Math.random() * 2.4
+        const src = ctx.createBufferSource(); src.buffer = white
+        const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 28
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 130 + Math.random() * 90
+        const g = ctx.createGain(); const peak = (0.05 + Math.random() * 0.04) * level
+        g.gain.setValueAtTime(0.0001, when)
+        g.gain.exponentialRampToValueAtTime(peak, when + 0.8 + Math.random() * 0.6)
+        g.gain.exponentialRampToValueAtTime(0.0001, when + dur)
+        const pn = panner(ctx, Math.random() * 1.6 - 0.8)
+        src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(pn); pn.connect(dest)
+        src.start(when); src.stop(when + dur + 0.2)
+        driftFilter(lp, 40, 0.7 + Math.random() * 0.5)
+        nextAt = when + (260 + Math.random() * 340) / (0.55 + 0.45 * level)
+      }, 4000)
+      intervals.push(t)
     }
-    n.bFilter.type = p.type
-    set(n.bFilter.frequency, p.freq, 1.5)
-    set(n.bSrc.playbackRate, p.rate, 1.5)
-    set(n.biomeGain.gain, p.gain, 2.2)
-    set(n.bDepth.gain, p.swell, 2.2)
-    set(n.bToneDepth.gain, p.tone || 0, 2.2)
-  }
 
-  // ============================ voices (one-shots) ============================
-  function chirp(t, level, pan = 0) {
-    const o = ctx.createOscillator(); o.type = 'sine'
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(g).connect(out(pan, 'wildlife'))
-    const base = 1900 + Math.random() * 1900
-    o.frequency.setValueAtTime(base, t)
-    o.frequency.exponentialRampToValueAtTime(base * 1.5, t + 0.06)
-    o.frequency.exponentialRampToValueAtTime(base * 0.85, t + 0.16)
-    const peak = 0.12 * level
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.linearRampToValueAtTime(peak, t + 0.02)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22)
-    o.start(t); o.stop(t + 0.26)
-  }
-
-  function cricketTrill(t, level, pan = 0) {
-    const o = ctx.createOscillator(); o.type = 'triangle'
-    o.frequency.value = 4200 + Math.random() * 700
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(g).connect(out(pan, 'wildlife'))
-    const pulses = 3 + Math.floor(Math.random() * 4)
-    let tt = t
-    for (let k = 0; k < pulses; k++) {
-      g.gain.setValueAtTime(0.0001, tt)
-      g.gain.linearRampToValueAtTime(0.06 * level, tt + 0.008)
-      g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.05)
-      tt += 0.058 + Math.random() * 0.02
+    function buildWaves(level, motion, pace, dest) {
+      const src = loopSource(ctx, white)
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 160
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500
+      const g = ctx.createGain(); const trough = 0.03 * level; g.gain.value = trough
+      src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(dest)
+      src.start(); nodes.push(src)
+      let nextAt = ctx.currentTime + 0.8
+      g.gain.setValueAtTime(trough, nextAt)
+      lp.frequency.setValueAtTime(340, nextAt)
+      const t = setInterval(() => {
+        if (stopped) return
+        const ahead = ctx.currentTime + 12
+        while (nextAt < ahead) {
+          const period = (9 + Math.random() * 5) / pace
+          const crest = nextAt + period * 0.42
+          const end = nextAt + period
+          const peak = (0.5 + Math.random() * 0.28) * level * motion
+          g.gain.setValueAtTime(trough, nextAt)
+          g.gain.linearRampToValueAtTime(peak, crest)
+          g.gain.exponentialRampToValueAtTime(Math.max(0.0002, trough), end)
+          lp.frequency.setValueAtTime(340, nextAt)
+          lp.frequency.linearRampToValueAtTime(900 + Math.random() * 500, crest)
+          lp.frequency.exponentialRampToValueAtTime(320, end)
+          nextAt = end
+        }
+      }, 1000)
+      intervals.push(t)
     }
-    o.start(t); o.stop(tt + 0.1)
-  }
 
-  function chime(t, level, pan = 0) {
-    const roots = [1568, 2093, 2637, 3136]
-    const root = roots[Math.floor(Math.random() * roots.length)]
-    const dest = out(pan, 'weather')
-    ;[root, root * 2].forEach((f, idx) => {
-      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f
-      const g = ctx.createGain(); g.gain.value = 0.0001
-      o.connect(g).connect(dest)
-      const peak = (idx === 0 ? 0.10 : 0.04) * level
-      const decay = idx === 0 ? 3.2 : 2.2
-      g.gain.setValueAtTime(0.0001, t)
-      g.gain.linearRampToValueAtTime(peak, t + 0.01)
-      g.gain.exponentialRampToValueAtTime(0.0001, t + decay)
-      o.start(t); o.stop(t + decay + 0.2)
-    })
-  }
+    function buildLeaves(level, motion, pace, dest) {
+      buildWind(level * 0.5, 1100, motion, pace, dest)
+      let nextAt = ctx.currentTime + 2
+      const t = setInterval(() => {
+        if (stopped) return
+        const ahead = ctx.currentTime + 4
+        while (nextAt < ahead) {
+          const when = nextAt
+          const src = ctx.createBufferSource(); src.buffer = white
+          const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400 + Math.random() * 1400; bp.Q.value = 0.8
+          const g = ctx.createGain(); const v = (0.02 + Math.random() * 0.025) * level * motion
+          const dur = 0.7 + Math.random() * 1.1
+          g.gain.setValueAtTime(0.0001, when)
+          g.gain.linearRampToValueAtTime(v, when + dur * 0.4)
+          g.gain.exponentialRampToValueAtTime(0.0001, when + dur)
+          const pn = panner(ctx, Math.random() * 1.4 - 0.7)
+          src.connect(bp); bp.connect(g); g.connect(pn); pn.connect(dest)
+          src.start(when); src.stop(when + dur + 0.1)
+          nextAt += (2.5 + Math.random() * 4) / pace
+        }
+      }, 700)
+      intervals.push(t)
+    }
 
-  function meow(t, level, pan = 0) {
-    const o = ctx.createOscillator(); o.type = 'sawtooth'
-    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1000; bp.Q.value = 4
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(bp).connect(g).connect(out(pan, 'wildlife'))
-    o.frequency.setValueAtTime(520, t)
-    o.frequency.linearRampToValueAtTime(840, t + 0.18)
-    o.frequency.linearRampToValueAtTime(660, t + 0.40)
-    o.frequency.linearRampToValueAtTime(430, t + 0.6)
-    bp.frequency.setValueAtTime(900, t)
-    bp.frequency.linearRampToValueAtTime(1500, t + 0.2)
-    bp.frequency.linearRampToValueAtTime(700, t + 0.6)
-    const peak = 0.09 * level
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.linearRampToValueAtTime(peak, t + 0.06)
-    g.gain.setValueAtTime(peak, t + 0.4)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.66)
-    o.start(t); o.stop(t + 0.7)
-  }
+    function buildStream(level, motion, pace, dest) {
+      const src = loopSource(ctx, white)
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1600; bp.Q.value = 0.6
+      const g = ctx.createGain(); g.gain.value = 0.05 * level
+      src.connect(bp); bp.connect(g); g.connect(dest)
+      src.start(); nodes.push(src)
+      const drift = ctx.createOscillator(); drift.frequency.value = 0.04 * pace
+      const driftDepth = ctx.createGain(); driftDepth.gain.value = 220 * motion
+      drift.connect(driftDepth); driftDepth.connect(bp.frequency); drift.start(); nodes.push(drift)
+      const busier = 1.5 - 0.6 * level
+      let nextAt = ctx.currentTime + 0.3
+      const t = setInterval(() => {
+        if (stopped) return
+        const ahead = ctx.currentTime + 1.2
+        while (nextAt < ahead) {
+          const when = nextAt
+          const bubble = ctx.createBufferSource(); bubble.buffer = white
+          const bbp = ctx.createBiquadFilter(); bbp.type = 'bandpass'; bbp.frequency.value = 1800 + Math.random() * 2200; bbp.Q.value = 2.2
+          const dg = ctx.createGain(); const v = (0.015 + Math.random() * 0.02) * level
+          dg.gain.setValueAtTime(0.0001, when)
+          dg.gain.exponentialRampToValueAtTime(v, when + 0.006)
+          dg.gain.exponentialRampToValueAtTime(0.0001, when + 0.05 + Math.random() * 0.05)
+          const pn = panner(ctx, Math.random() * 1.6 - 0.8)
+          bubble.connect(bbp); bbp.connect(dg); dg.connect(pn); pn.connect(dest)
+          bubble.start(when); bubble.stop(when + 0.2)
+          nextAt += (0.03 + Math.random() * 0.09) * busier / pace
+        }
+      }, 250)
+      intervals.push(t)
+    }
 
-  function woof(t, level, dest) {
-    const o = ctx.createOscillator(); o.type = 'sawtooth'
-    o.frequency.setValueAtTime(260, t)
-    o.frequency.exponentialRampToValueAtTime(150, t + 0.12)
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 850
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(lp).connect(g).connect(dest)
-    const peak = 0.10 * level
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.linearRampToValueAtTime(peak, t + 0.01)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16)
-    o.start(t); o.stop(t + 0.2)
-  }
-  function dog(t, level, pan = 0) {
-    const dest = out(pan, 'wildlife')
-    woof(t, level, dest)
-    if (Math.random() < 0.6) woof(t + 0.24 + Math.random() * 0.12, level * 0.9, dest)
-  }
+    const CHIME_NOTES = [587.33, 659.25, 698.46, 783.99, 880.0, 987.77]
+    function buildChime(level, pace, dest) {
+      const busier = 1.6 - 0.7 * level
+      let nextAt = ctx.currentTime + 6 + Math.random() * 8
+      const t = setInterval(() => {
+        if (stopped) return
+        const ahead = ctx.currentTime + 6
+        while (nextAt < ahead) {
+          const when = nextAt
+          const f = CHIME_NOTES[(Math.random() * CHIME_NOTES.length) | 0]
+          const g = ctx.createGain(); const v = (0.05 + Math.random() * 0.03) * level
+          g.gain.setValueAtTime(0.0001, when)
+          g.gain.exponentialRampToValueAtTime(v, when + 0.015)
+          g.gain.exponentialRampToValueAtTime(0.0001, when + 2.2 + Math.random() * 1.2)
+          const pn = panner(ctx, Math.random() * 1.4 - 0.7)
+          g.connect(pn); pn.connect(dest)
+          const osc1 = ctx.createOscillator(); osc1.type = 'sine'; osc1.frequency.value = f
+          osc1.connect(g); osc1.start(when); osc1.stop(when + 3.6)
+          const osc2 = ctx.createOscillator(); osc2.type = 'sine'; osc2.frequency.value = f * 2.76
+          const g2 = ctx.createGain(); g2.gain.value = 0.3
+          osc2.connect(g2); g2.connect(g); osc2.start(when); osc2.stop(when + 3.6)
+          nextAt += (8 + Math.random() * 17) * busier / pace
+        }
+      }, 3000)
+      intervals.push(t)
+    }
 
-  // distant airplane — heavily low-passed rumble that drifts across the stereo field
-  function airplane(t, level) {
-    if (!noiseBuf) return
-    const dur = 18 + Math.random() * 8
-    const dest = out(-0.85, 'city')
-    dest.pan.setValueAtTime(-0.85, t)
-    dest.pan.linearRampToValueAtTime(0.85, t + dur)
-    const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.playbackRate.value = 0.5
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    s.connect(lp).connect(g).connect(dest)
-    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 95
-    const og = ctx.createGain(); og.gain.value = 0.0001
-    o.connect(og).connect(dest)
-    const peak = 0.05 * level, opeak = 0.022 * level
-    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + dur * 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-    og.gain.setValueAtTime(0.0001, t); og.gain.linearRampToValueAtTime(opeak, t + dur * 0.45); og.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-    s.start(t, Math.random() * noiseBuf.duration); s.stop(t + dur + 0.2)
-    o.start(t); o.stop(t + dur + 0.2)
-  }
+    // ---- voice buses (Touch Grass one-shots ride these into the brightness LP) --
+    const rpan = (w) => (Math.random() * 2 - 1) * w
+    const mkBus = (level) => {
+      if (level <= 0) return null
+      const g = ctx.createGain(); g.gain.value = level * VOICE_TRIM; g.connect(tone); return g
+    }
+    const buses = { wildlife: mkBus(p.wildlife), city: mkBus(p.city), omens: mkBus(p.omens) }
+    function out(pan, bus) {
+      const pn = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain()
+      if (pn.pan) pn.pan.value = clamp(pan, -1, 1)
+      pn.connect(bus)
+      return pn
+    }
 
-  // a rolling thunder clap — deep sub boom + low rumble (felt, not sharp)
-  function thunderClap(t) {
-    if (!noiseBuf) return
-    const dur = 2.6 + Math.random() * 2.8
-    const dest = out(rpan(0.4), 'weather')
-    const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.playbackRate.value = 0.3
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 140
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    s.connect(lp).connect(g).connect(dest)
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.linearRampToValueAtTime(0.22, t + 0.05 + Math.random() * 0.12)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-    const o = ctx.createOscillator(); o.type = 'sine'
-    o.frequency.setValueAtTime(40 + Math.random() * 10, t)
-    o.frequency.exponentialRampToValueAtTime(27, t + dur * 0.9)
-    const og = ctx.createGain(); og.gain.value = 0.0001
-    o.connect(og).connect(out(0, 'weather'))
-    og.gain.setValueAtTime(0.0001, t)
-    og.gain.linearRampToValueAtTime(0.15, t + 0.06)
-    og.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.85)
-    s.start(t, Math.random() * noiseBuf.duration); s.stop(t + dur + 0.2)
-    o.start(t); o.stop(t + dur + 0.2)
-  }
-
-  function gull(t, level, pan = 0) {
-    const o = ctx.createOscillator(); o.type = 'sawtooth'
-    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1700; bp.Q.value = 5
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(bp).connect(g).connect(out(pan, 'wildlife'))
-    const base = 1500 + Math.random() * 500
-    o.frequency.setValueAtTime(base, t)
-    o.frequency.linearRampToValueAtTime(base * 1.12, t + 0.05)
-    o.frequency.linearRampToValueAtTime(base * 0.62, t + 0.28)
-    const peak = 0.05 * level
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.linearRampToValueAtTime(peak, t + 0.04)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32)
-    o.start(t); o.stop(t + 0.36)
-  }
-
-  function owl(t, level, pan = 0) {
-    const base = 320 + Math.random() * 60
-    const dest = out(pan, 'wildlife')
-    ;[0, 0.5].forEach((dt, idx) => {
-      const tt = t + dt
+    // ---- voices (ported from the old engine, biome coupling removed) ---------
+    function chirp(t, pan) {
       const o = ctx.createOscillator(); o.type = 'sine'
       const g = ctx.createGain(); g.gain.value = 0.0001
-      o.connect(g).connect(dest)
-      o.frequency.setValueAtTime(base * (idx ? 1.05 : 1), tt)
-      o.frequency.linearRampToValueAtTime(base * 0.92, tt + 0.3)
-      const peak = 0.06 * level
-      g.gain.setValueAtTime(0.0001, tt)
-      g.gain.linearRampToValueAtTime(peak, tt + 0.05)
-      g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.42)
-      o.start(tt); o.stop(tt + 0.5)
-    })
-  }
-
-  function crow(t, level, pan = 0) {
-    const dest = out(pan, 'wildlife')
-    const reps = 1 + Math.floor(Math.random() * 3)
-    for (let k = 0; k < reps; k++) {
-      const tt = t + k * (0.28 + Math.random() * 0.12)
-      const o = ctx.createOscillator(); o.type = 'sawtooth'
-      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1200; bp.Q.value = 3
+      o.connect(g).connect(out(pan, buses.wildlife))
+      const base = 1900 + Math.random() * 1900
+      o.frequency.setValueAtTime(base, t)
+      o.frequency.exponentialRampToValueAtTime(base * 1.5, t + 0.06)
+      o.frequency.exponentialRampToValueAtTime(base * 0.85, t + 0.16)
+      g.gain.setValueAtTime(0.0001, t)
+      g.gain.linearRampToValueAtTime(0.12, t + 0.02)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22)
+      o.start(t); o.stop(t + 0.26)
+    }
+    function cricketTrill(t, pan) {
+      const o = ctx.createOscillator(); o.type = 'triangle'
+      o.frequency.value = 4200 + Math.random() * 700
       const g = ctx.createGain(); g.gain.value = 0.0001
-      o.connect(bp).connect(g).connect(dest)
-      const f = 700 + Math.random() * 180
-      o.frequency.setValueAtTime(f, tt)
-      o.frequency.linearRampToValueAtTime(f * 0.7, tt + 0.18)
-      const peak = 0.05 * level
-      g.gain.setValueAtTime(0.0001, tt)
-      g.gain.linearRampToValueAtTime(peak, tt + 0.02)
-      g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.2)
-      o.start(tt); o.stop(tt + 0.24)
+      o.connect(g).connect(out(pan, buses.wildlife))
+      const pulses = 3 + Math.floor(Math.random() * 4)
+      let tt = t
+      for (let k = 0; k < pulses; k++) {
+        g.gain.setValueAtTime(0.0001, tt)
+        g.gain.linearRampToValueAtTime(0.06, tt + 0.008)
+        g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.05)
+        tt += 0.058 + Math.random() * 0.02
+      }
+      o.start(t); o.stop(tt + 0.1)
     }
-  }
-
-  function pigeon(t, level, pan = 0) {
-    const o = ctx.createOscillator(); o.type = 'sine'
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(g).connect(out(pan, 'wildlife'))
-    const base = 470 + Math.random() * 60
-    ;[0, 0.34, 0.62].forEach((dt, i) => {
-      const tt = t + dt
-      o.frequency.setValueAtTime(base * 0.9, tt)
-      o.frequency.linearRampToValueAtTime(base * (i === 0 ? 1.15 : 1.05), tt + 0.08)
-      o.frequency.linearRampToValueAtTime(base * 0.95, tt + 0.26)
-      const peak = 0.045 * level
-      g.gain.setValueAtTime(0.0001, tt)
-      g.gain.linearRampToValueAtTime(peak, tt + 0.05)
-      g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.3)
-    })
-    o.start(t); o.stop(t + 0.95)
-  }
-
-  function raptor(t, level, pan = 0) {
-    const o = ctx.createOscillator(); o.type = 'sawtooth'
-    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 6
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(bp).connect(g).connect(out(pan, 'wildlife'))
-    const f = 2400 + Math.random() * 500
-    o.frequency.setValueAtTime(f, t)
-    o.frequency.exponentialRampToValueAtTime(f * 0.55, t + 0.5)
-    const peak = 0.04 * level
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.linearRampToValueAtTime(peak, t + 0.04)
-    g.gain.setValueAtTime(peak, t + 0.18)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55)
-    o.start(t); o.stop(t + 0.6)
-  }
-
-  function bee(t, level, pan = 0) {
-    const dur = 1.6 + Math.random() * 1.2
-    const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 170 + Math.random() * 40
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900
-    const env = ctx.createGain(); env.gain.value = 0.0001
-    const tg = ctx.createGain(); tg.gain.value = 1
-    o.connect(lp).connect(env).connect(tg).connect(out(pan, 'wildlife'))
-    const trem = ctx.createOscillator(); trem.type = 'sine'; trem.frequency.value = 24
-    const td = ctx.createGain(); td.gain.value = 0.4
-    trem.connect(td).connect(tg.gain)
-    const peak = 0.03 * level
-    env.gain.setValueAtTime(0.0001, t)
-    env.gain.linearRampToValueAtTime(peak, t + dur * 0.4)
-    env.gain.setValueAtTime(peak, t + dur * 0.6)
-    env.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-    o.frequency.linearRampToValueAtTime(200 + Math.random() * 50, t + dur)
-    o.start(t); trem.start(t); o.stop(t + dur + 0.1); trem.stop(t + dur + 0.1)
-  }
-
-  function frog(t, level, pan = 0) {
-    const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 150 + Math.random() * 40
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 600
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(lp).connect(g).connect(out(pan, 'wildlife'))
-    const pulses = 3 + Math.floor(Math.random() * 3)
-    let tt = t
-    for (let k = 0; k < pulses; k++) {
-      g.gain.setValueAtTime(0.0001, tt)
-      g.gain.linearRampToValueAtTime(0.05 * level, tt + 0.02)
-      g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.07)
-      tt += 0.09 + Math.random() * 0.03
-    }
-    o.start(t); o.stop(tt + 0.1)
-  }
-
-  // skylark — a fast, sustained high warble overhead (meadow, day)
-  function skylark(t, pan = 0) {
-    const dur = 2.0 + Math.random() * 2
-    const o = ctx.createOscillator(); o.type = 'sine'
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(g).connect(out(pan, 'wildlife'))
-    let tt = t
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.linearRampToValueAtTime(0.04, t + 0.12)
-    while (tt < t + dur) {
-      o.frequency.setValueAtTime(3000 * (0.8 + Math.random() * 0.5), tt)
-      tt += 0.05 + Math.random() * 0.04
-    }
-    g.gain.setValueAtTime(0.04, t + dur - 0.3)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-    o.start(t); o.stop(t + dur + 0.05)
-  }
-
-  // a gust: a long, soft swell of the wind bed + a gentle panned whoosh that
-  // rises and ebbs over many seconds — background, never a sudden surge
-  function gust(t, level, pan = rpan(0.5)) {
-    if (n.gustGain) {
-      const gg = n.gustGain.gain
-      gg.cancelScheduledValues(t)
-      gg.setValueAtTime(gg.value, t)
-      gg.linearRampToValueAtTime(1 + 0.22 * level, t + 5 + Math.random() * 2) // long, slow rise
-      gg.linearRampToValueAtTime(1, t + 13 + Math.random() * 5)               // even slower ebb
-    }
-    if (!noiseBuf) return
-    const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.playbackRate.value = 1.0
-    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.6
-    const f0 = biome === 'forest' ? 2200 : 650
-    bp.frequency.setValueAtTime(f0 * 0.6, t)
-    bp.frequency.linearRampToValueAtTime(f0, t + 4)
-    bp.frequency.linearRampToValueAtTime(f0 * 0.65, t + 11)
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    s.connect(bp).connect(g).connect(out(pan, 'weather'))
-    const peak = 0.022 * level
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.linearRampToValueAtTime(peak, t + 4)        // gentle ~4s fade-in
-    g.gain.linearRampToValueAtTime(0.0001, t + 11)     // ~7s fade-out (linear, no exp snap)
-    s.start(t, Math.random() * noiseBuf.duration); s.stop(t + 11.3)
-  }
-
-  // ---- per-biome ambient accents: one distinct, soft, widely-panned voice for
-  // each biome, scheduled sparsely so the field is richer but never crowded ----
-
-  // coast: a single wave washing in and receding — gentle filtered swell
-  function waveWash(t, level, pan) {
-    if (!noiseBuf) return
-    const dur = 6 + Math.random() * 2
-    const dest = out(pan, 'place')
-    const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.playbackRate.value = 0.8
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'
-    lp.frequency.setValueAtTime(280, t)
-    lp.frequency.linearRampToValueAtTime(720, t + dur * 0.4) // wash builds, brighter
-    lp.frequency.linearRampToValueAtTime(240, t + dur)       // recedes, darker
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    s.connect(lp).connect(g).connect(dest)
-    const peak = 0.04 * level
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.linearRampToValueAtTime(peak, t + dur * 0.4)
-    g.gain.linearRampToValueAtTime(0.0001, t + dur)
-    s.start(t, Math.random() * noiseBuf.duration); s.stop(t + dur + 0.2)
-  }
-
-  // forest: a soft hollow wood knock or two — distant, woody, unhurried
-  function woodKnock(t, level, pan) {
-    const dest = out(pan, 'place')
-    const reps = 1 + Math.floor(Math.random() * 2)
-    for (let k = 0; k < reps; k++) {
-      const tt = t + k * (0.18 + Math.random() * 0.12)
-      const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = 170 + Math.random() * 50
-      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 430; bp.Q.value = 4
-      const g = ctx.createGain(); g.gain.value = 0.0001
-      o.connect(bp).connect(g).connect(dest)
-      const peak = 0.04 * level
-      g.gain.setValueAtTime(0.0001, tt)
-      g.gain.linearRampToValueAtTime(peak, tt + 0.01)
-      g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.18)
-      o.start(tt); o.stop(tt + 0.22)
-    }
-  }
-
-  // city: a distant car drifting past — a low whoosh that pans across the field
-  function carPass(t, level) {
-    if (!noiseBuf) return
-    const dur = 5 + Math.random() * 2.5
-    const dest = out(-0.85, 'city')
-    dest.pan.setValueAtTime(-0.85, t)
-    dest.pan.linearRampToValueAtTime(0.85, t + dur)
-    const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.playbackRate.value = 0.9
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 380
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    s.connect(lp).connect(g).connect(dest)
-    const peak = 0.03 * level
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.linearRampToValueAtTime(peak, t + dur * 0.5)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-    s.start(t, Math.random() * noiseBuf.duration); s.stop(t + dur + 0.2)
-  }
-
-  // city: a rare bicycle bell — two quick, close, metallic dings
-  function bikeBell(t, pan) {
-    const dest = out(pan, 'city')
-    ;[0, 0.16].forEach((dt) => {
-      const tt = t + dt
-      const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 2500 + Math.random() * 260
-      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2650; bp.Q.value = 9
-      const g = ctx.createGain(); g.gain.value = 0.0001
-      o.connect(bp).connect(g).connect(dest)
-      const peak = 0.032
-      g.gain.setValueAtTime(0.0001, tt)
-      g.gain.linearRampToValueAtTime(peak, tt + 0.004)
-      g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.16)
-      o.start(tt); o.stop(tt + 0.2)
-    })
-  }
-
-  // mountain: a far-off cowbell — soft metallic clank, pastoral and sparse
-  function cowbell(t, level, pan) {
-    const dest = out(pan, 'place')
-    const clanks = 1 + Math.floor(Math.random() * 2)
-    for (let c = 0; c < clanks; c++) {
-      const ct = t + c * (0.28 + Math.random() * 0.14)
-      const base = 520 + Math.random() * 90
-      ;[1, 1.5, 2.4].forEach((mult, idx) => {
-        const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = base * mult
-        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = base * 1.6; bp.Q.value = 7
-        const g = ctx.createGain(); g.gain.value = 0.0001
-        o.connect(bp).connect(g).connect(dest)
-        const peak = (0.028 / (idx + 1)) * level
-        g.gain.setValueAtTime(0.0001, ct)
-        g.gain.linearRampToValueAtTime(peak, ct + 0.005)
-        g.gain.exponentialRampToValueAtTime(0.0001, ct + 0.45)
-        o.start(ct); o.stop(ct + 0.55)
-      })
-    }
-  }
-
-  // plain: a soft breath of wind through tall grass — airy high-passed swell
-  function grassRustle(t, level, pan) {
-    if (!noiseBuf) return
-    const dur = 3.5 + Math.random() * 2
-    const dest = out(pan, 'place')
-    const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.playbackRate.value = 1.2
-    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    s.connect(hp).connect(lp).connect(g).connect(dest)
-    const peak = 0.022 * level
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.linearRampToValueAtTime(peak, t + dur * 0.45)
-    g.gain.linearRampToValueAtTime(0.0001, t + dur)
-    s.start(t, Math.random() * noiseBuf.duration); s.stop(t + dur + 0.2)
-  }
-
-  // a single water drip — used as rain clears
-  function drip(t, pan = 0) {
-    const o = ctx.createOscillator(); o.type = 'sine'
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(g).connect(out(pan, 'weather'))
-    const f = 900 + Math.random() * 900
-    o.frequency.setValueAtTime(f, t)
-    o.frequency.exponentialRampToValueAtTime(f * 0.6, t + 0.08)
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.linearRampToValueAtTime(0.05, t + 0.005)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12)
-    o.start(t); o.stop(t + 0.14)
-  }
-
-  // ---- surprises (rare, soft, distant) ----
-  function bell(t) {
-    const strikes = 1 + Math.floor(Math.random() * 2)
-    const root = 330
-    const pan = rpan(0.3)
-    for (let k = 0; k < strikes; k++) {
-      const tt = t + k * 1.6
-      const dest = out(pan, 'events')
-      ;[1, 2.0, 2.76, 5.4].forEach((mult, idx) => {
-        const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = root * mult
+    function owl(t, pan) {
+      const base = 320 + Math.random() * 60
+      const dest = out(pan, buses.wildlife)
+      ;[0, 0.5].forEach((dt, idx) => {
+        const tt = t + dt
+        const o = ctx.createOscillator(); o.type = 'sine'
         const g = ctx.createGain(); g.gain.value = 0.0001
         o.connect(g).connect(dest)
-        const peak = 0.06 / (idx + 1)
+        o.frequency.setValueAtTime(base * (idx ? 1.05 : 1), tt)
+        o.frequency.linearRampToValueAtTime(base * 0.92, tt + 0.3)
         g.gain.setValueAtTime(0.0001, tt)
-        g.gain.linearRampToValueAtTime(peak, tt + 0.01)
-        g.gain.exponentialRampToValueAtTime(0.0001, tt + 3.2 / (1 + idx * 0.4))
-        o.start(tt); o.stop(tt + 3.4)
+        g.gain.linearRampToValueAtTime(0.06, tt + 0.05)
+        g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.42)
+        o.start(tt); o.stop(tt + 0.5)
       })
     }
-  }
-
-  function cuckoo(t) {
-    const pan = rpan(0.5)
-    const dest = out(pan, 'events')
-    ;[[0, 1.0], [0.45, 0.8]].forEach(([dt, fr]) => {
-      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 720 * fr
-      const g = ctx.createGain(); g.gain.value = 0.0001
-      o.connect(g).connect(dest)
-      const tt = t + dt
-      g.gain.setValueAtTime(0.0001, tt)
-      g.gain.linearRampToValueAtTime(0.06, tt + 0.03)
-      g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.22)
-      o.start(tt); o.stop(tt + 0.26)
-    })
-  }
-
-  function woodpecker(t) {
-    const pan = rpan(0.6)
-    const dest = out(pan, 'events')
-    const reps = 6 + Math.floor(Math.random() * 6)
-    for (let k = 0; k < reps; k++) {
-      const tt = t + k * 0.04
-      const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 180
-      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 2
-      const g = ctx.createGain(); g.gain.value = 0.0001
-      o.connect(bp).connect(g).connect(dest)
-      g.gain.setValueAtTime(0.0001, tt)
-      g.gain.linearRampToValueAtTime(0.05, tt + 0.003)
-      g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.03)
-      o.start(tt); o.stop(tt + 0.04)
+    function crow(t, pan) {
+      const dest = out(pan, buses.wildlife)
+      const reps = 1 + Math.floor(Math.random() * 3)
+      for (let k = 0; k < reps; k++) {
+        const tt = t + k * (0.28 + Math.random() * 0.12)
+        const o = ctx.createOscillator(); o.type = 'sawtooth'
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1200; bp.Q.value = 3
+        const g = ctx.createGain(); g.gain.value = 0.0001
+        o.connect(bp).connect(g).connect(dest)
+        const f = 700 + Math.random() * 180
+        o.frequency.setValueAtTime(f, tt)
+        o.frequency.linearRampToValueAtTime(f * 0.7, tt + 0.18)
+        g.gain.setValueAtTime(0.0001, tt)
+        g.gain.linearRampToValueAtTime(0.05, tt + 0.02)
+        g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.2)
+        o.start(tt); o.stop(tt + 0.24)
+      }
     }
-  }
-
-  function wolf(t) {
-    const o = ctx.createOscillator(); o.type = 'sawtooth'
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1200
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(lp).connect(g).connect(out(rpan(0.5), 'events'))
-    const base = 300 + Math.random() * 60
-    o.frequency.setValueAtTime(base * 0.8, t)
-    o.frequency.linearRampToValueAtTime(base * 1.3, t + 0.6)
-    o.frequency.linearRampToValueAtTime(base * 1.15, t + 1.6)
-    o.frequency.linearRampToValueAtTime(base * 0.7, t + 2.4)
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.linearRampToValueAtTime(0.06, t + 0.3)
-    g.gain.setValueAtTime(0.06, t + 1.6)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 2.5)
-    o.start(t); o.stop(t + 2.6)
-  }
-
-  function foghorn(t) {
-    const dest = out(rpan(0.2), 'events')
-    ;[78, 116].forEach((f, i) => {
-      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f
+    function meow(t, pan) {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1000; bp.Q.value = 4
       const g = ctx.createGain(); g.gain.value = 0.0001
-      o.connect(g).connect(dest)
-      const peak = i === 0 ? 0.12 : 0.06
+      o.connect(bp).connect(g).connect(out(pan, buses.wildlife))
+      o.frequency.setValueAtTime(520, t)
+      o.frequency.linearRampToValueAtTime(840, t + 0.18)
+      o.frequency.linearRampToValueAtTime(660, t + 0.4)
+      o.frequency.linearRampToValueAtTime(430, t + 0.6)
+      bp.frequency.setValueAtTime(900, t)
+      bp.frequency.linearRampToValueAtTime(1500, t + 0.2)
+      bp.frequency.linearRampToValueAtTime(700, t + 0.6)
       g.gain.setValueAtTime(0.0001, t)
-      g.gain.linearRampToValueAtTime(peak, t + 0.4)
-      g.gain.setValueAtTime(peak, t + 1.4)
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 2.6)
-      o.start(t); o.stop(t + 2.8)
-    })
-  }
-
-  // a soft rising glassy shimmer — paired with a shooting star
-  function meteorShimmer(t) {
-    const pan = rpan(0.6)
-    const dest = out(pan, 'events')
-    ;[1, 1.5, 2.01].forEach((mult, idx) => {
-      const o = ctx.createOscillator(); o.type = 'sine'
+      g.gain.linearRampToValueAtTime(0.09, t + 0.06)
+      g.gain.setValueAtTime(0.09, t + 0.4)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.66)
+      o.start(t); o.stop(t + 0.7)
+    }
+    function woof(t, level, dest) {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'
+      o.frequency.setValueAtTime(260, t)
+      o.frequency.exponentialRampToValueAtTime(150, t + 0.12)
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 850
       const g = ctx.createGain(); g.gain.value = 0.0001
-      o.connect(g).connect(dest)
-      const f = 1400 * mult
-      o.frequency.setValueAtTime(f * 0.9, t)
-      o.frequency.linearRampToValueAtTime(f * 1.15, t + 1.2)
-      const peak = 0.03 / (idx + 1)
+      o.connect(lp).connect(g).connect(dest)
       g.gain.setValueAtTime(0.0001, t)
-      g.gain.linearRampToValueAtTime(peak, t + 0.4)
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6)
-      o.start(t); o.stop(t + 1.7)
-    })
-  }
-
-  // ============================ schedulers ============================
-  function startSchedulers() {
-    // birds — denser at dawn (the chorus), normal by day, silent otherwise
-    every(800, 3200, () => {
-      const tg = SCENES[scene]
-      if (!ready() || tg.birds <= 0) return
-      if (!lively(phase === 'dawn' ? 1 : 0.85)) return
-      const extra = phase === 'dawn' ? 2 : 0
-      const burst = 1 + Math.floor(Math.random() * (2 + extra))
-      for (let i = 0; i < burst; i++) chirp(ctx.currentTime + i * 0.16 + Math.random() * 0.08, tg.birds, rpan(0.6))
-    })
-    // crickets — night (fade in across dusk as the scene turns)
-    every(700, 2600, () => {
-      const tg = SCENES[scene]
-      if (!(enabled && ctx.state === 'running' && !solo) || tg.crickets <= 0) return
-      if (!lively(0.9)) return
-      cricketTrill(ctx.currentTime, tg.crickets, rpan(0.7))
-      if (Math.random() < 0.4) cricketTrill(ctx.currentTime + 0.2 + Math.random() * 0.4, tg.crickets * 0.7, rpan(0.7))
-    })
-    every(10000, 15000, () => {
-      const tg = SCENES[scene]
-      if (enabled && !solo && tg.chime > 0 && ctx.state === 'running') chime(ctx.currentTime, tg.chime, rpan(0.5))
-    })
-    // cats and dogs: plausible near people — city, open plain, or an unknown
-    // location — but not deep forest, high mountain, or open coast
-    const petBiome = () => biome === 'city' || biome === 'plain' || biome == null
-    every(28000, 58000, () => { if (ready() && SCENES[scene].critters && petBiome() && lively(0.85)) meow(ctx.currentTime, 0.7, rpan(0.7)) })
-    every(32000, 70000, () => { if (ready() && SCENES[scene].critters && petBiome() && lively(0.85)) dog(ctx.currentTime, 0.7, rpan(0.7)) })
-    every(120000, 240000, () => { if (ready() && scene !== 'winter') airplane(ctx.currentTime, 1) })
-    every(8000, 13000, () => { if (ready() && weatherCond === 'thunder') thunderClap(ctx.currentTime + 0.1) })
-
-    // wind gusts — only when it's genuinely breezy, and likelier/stronger the
-    // windier it really is. A calm clear day stays gust-free and serene.
-    every(30000, 72000, () => {
-      if (!ready() || weatherWind < 12) return
-      if (!lively(Math.min(0.7, weatherWind / 40))) return
-      gust(ctx.currentTime, Math.min(0.9, weatherWind / 46))
-    })
-
-    // biome- and time-aware voices (null = also when there's no location)
-    every(14000, 40000, () => {
-      if (!voice('coast')) return
-      const burst = 1 + Math.floor(Math.random() * 3)
-      for (let i = 0; i < burst; i++) gull(ctx.currentTime + i * (0.3 + Math.random() * 0.25), 0.8, rpan(0.8))
-    })
-    every(24000, 52000, () => { if (voice(null, 'forest', 'plain', 'mountain') && scene === 'night' && lively(0.8)) owl(ctx.currentTime, 0.7, rpan(0.5)) })
-    every(22000, 46000, () => { if (voice(null, 'forest', 'city', 'plain', 'mountain') && scene === 'day' && lively(0.8)) crow(ctx.currentTime, 0.7, rpan(0.6)) })
-    every(16000, 36000, () => { if (voice('city') && scene === 'day' && lively(0.85)) pigeon(ctx.currentTime, 0.7, rpan(0.6)) })
-    every(28000, 62000, () => { if (voice('mountain', 'coast') && scene === 'day' && lively(0.8)) raptor(ctx.currentTime, 0.6, rpan(0.7)) })
-    every(20000, 44000, () => { if (voice(null, 'plain', 'forest') && scene === 'day' && lively(0.8)) bee(ctx.currentTime, 0.7, rpan(0.6)) })
-    every(18000, 40000, () => { if (voice(null, 'plain', 'forest', 'coast') && scene === 'night' && lively(0.8)) frog(ctx.currentTime, 0.7, rpan(0.7)) })
-    every(26000, 58000, () => { if (voice(null, 'plain') && scene === 'day' && lively(0.7)) skylark(ctx.currentTime, rpan(0.5)) })
-
-    // one distinct, gentle accent per biome — sparse and wide on the stage, so
-    // each place gains a little more character without crowding the bed
-    every(22000, 50000, () => { if (voice('coast') && lively(0.7)) waveWash(ctx.currentTime, 0.9, rpan(0.85)) })
-    every(30000, 64000, () => { if (voice('forest') && lively(0.6)) woodKnock(ctx.currentTime, 0.8, rpan(0.8)) })
-    every(34000, 78000, () => { if (voice('city') && lively(0.7)) carPass(ctx.currentTime, 0.8) })
-    every(55000, 120000, () => { if (voice('city') && lively(0.45)) bikeBell(ctx.currentTime, rpan(0.6)) })
-    every(38000, 84000, () => { if (voice('mountain') && lively(0.6)) cowbell(ctx.currentTime, 0.7, rpan(0.7)) })
-    every(28000, 60000, () => { if (voice('plain') && lively(0.7)) grassRustle(ctx.currentTime, 0.9, rpan(0.8)) })
-
-    // rare surprises — at most one at a time, on a cooldown, low probability
-    every(20000, 34000, scheduleSurprise)
-  }
-
-  function scheduleSurprise() {
-    if (!ready() || ctx.currentTime - lastSurprise < 28) return
-    const opts = []
-    const now = new Date()
-    if (now.getMinutes() < 2 && now.getHours() !== lastBellHour) opts.push('bell')
-    if (season === 'spring' && scene === 'day' && (biome === 'forest' || biome === 'plain' || biome == null)) opts.push('cuckoo')
-    if (scene === 'day' && (biome === 'forest' || biome == null)) opts.push('woodpecker')
-    if (phase === 'night' && (season === 'winter' || biome === 'mountain') && weatherCond !== 'rain' && weatherCond !== 'thunder') opts.push('wolf')
-    if (weatherCond === 'fog' && (biome === 'coast' || biome == null)) opts.push('foghorn')
-    if (meteor && (phase === 'night' || phase === 'dusk') && weatherCond !== 'rain' && weatherCond !== 'thunder') opts.push('meteor')
-    if (!opts.length) return
-    if (Math.random() > 0.45 * liveliness + 0.1) return
-    const pick = opts[Math.floor(Math.random() * opts.length)]
-    const t = ctx.currentTime + 0.05
-    if (pick === 'bell') { bell(t); lastBellHour = now.getHours() }
-    else if (pick === 'cuckoo') cuckoo(t)
-    else if (pick === 'woodpecker') woodpecker(t)
-    else if (pick === 'wolf') wolf(t)
-    else if (pick === 'foghorn') foghorn(t)
-    else if (pick === 'meteor') meteorShimmer(t)
-    lastSurprise = ctx.currentTime
-  }
-
-  // a slow random walk of overall activity, so the field swells and calms
-  function startLiveliness() {
-    const tick = () => {
-      if (disposed) return
-      const target = 0.3 + Math.random() * 0.7
-      liveliness = clamp(liveliness + (target - liveliness) * 0.4, 0.25, 1)
-      h.id = setTimeout(tick, 6000 + Math.random() * 7000)
+      g.gain.linearRampToValueAtTime(0.1 * level, t + 0.01)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16)
+      o.start(t); o.stop(t + 0.2)
     }
-    const h = { id: setTimeout(tick, 4000) }
-    timers.push(h)
+    function dog(t, pan) {
+      const dest = out(pan, buses.wildlife)
+      woof(t, 1, dest)
+      if (Math.random() < 0.6) woof(t + 0.24 + Math.random() * 0.12, 0.9, dest)
+    }
+    function carPass(t) {
+      const dur = 5 + Math.random() * 2.5
+      const dest = out(-0.85, buses.city)
+      if (dest.pan) { dest.pan.setValueAtTime(-0.85, t); dest.pan.linearRampToValueAtTime(0.85, t + dur) }
+      const s = ctx.createBufferSource(); s.buffer = white; s.loop = true; s.playbackRate.value = 0.9
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 380
+      const g = ctx.createGain(); g.gain.value = 0.0001
+      s.connect(lp).connect(g).connect(dest)
+      g.gain.setValueAtTime(0.0001, t)
+      g.gain.linearRampToValueAtTime(0.03, t + dur * 0.5)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+      s.start(t, Math.random() * white.duration); s.stop(t + dur + 0.2)
+    }
+    function bikeBell(t, pan) {
+      const dest = out(pan, buses.city)
+      ;[0, 0.16].forEach((dt) => {
+        const tt = t + dt
+        const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 2500 + Math.random() * 260
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2650; bp.Q.value = 9
+        const g = ctx.createGain(); g.gain.value = 0.0001
+        o.connect(bp).connect(g).connect(dest)
+        g.gain.setValueAtTime(0.0001, tt)
+        g.gain.linearRampToValueAtTime(0.032, tt + 0.004)
+        g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.16)
+        o.start(tt); o.stop(tt + 0.2)
+      })
+    }
+    function airplane(t) {
+      const dur = 18 + Math.random() * 8
+      const dest = out(-0.85, buses.city)
+      if (dest.pan) { dest.pan.setValueAtTime(-0.85, t); dest.pan.linearRampToValueAtTime(0.85, t + dur) }
+      const s = ctx.createBufferSource(); s.buffer = white; s.loop = true; s.playbackRate.value = 0.5
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260
+      const g = ctx.createGain(); g.gain.value = 0.0001
+      s.connect(lp).connect(g).connect(dest)
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 95
+      const og = ctx.createGain(); og.gain.value = 0.0001
+      o.connect(og).connect(dest)
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.05, t + dur * 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+      og.gain.setValueAtTime(0.0001, t); og.gain.linearRampToValueAtTime(0.022, t + dur * 0.45); og.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+      s.start(t, Math.random() * white.duration); s.stop(t + dur + 0.2)
+      o.start(t); o.stop(t + dur + 0.2)
+    }
+    function bell(t) {
+      const strikes = 1 + Math.floor(Math.random() * 2)
+      const root = 330
+      const pan = rpan(0.3)
+      for (let k = 0; k < strikes; k++) {
+        const tt = t + k * 1.6
+        const dest = out(pan, buses.omens)
+        ;[1, 2.0, 2.76, 5.4].forEach((mult, idx) => {
+          const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = root * mult
+          const g = ctx.createGain(); g.gain.value = 0.0001
+          o.connect(g).connect(dest)
+          const peak = 0.06 / (idx + 1)
+          g.gain.setValueAtTime(0.0001, tt)
+          g.gain.linearRampToValueAtTime(peak, tt + 0.01)
+          g.gain.exponentialRampToValueAtTime(0.0001, tt + 3.2 / (1 + idx * 0.4))
+          o.start(tt); o.stop(tt + 3.4)
+        })
+      }
+    }
+    function cuckoo(t) {
+      const dest = out(rpan(0.5), buses.omens)
+      ;[[0, 1.0], [0.45, 0.8]].forEach(([dt, fr]) => {
+        const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 720 * fr
+        const g = ctx.createGain(); g.gain.value = 0.0001
+        o.connect(g).connect(dest)
+        const tt = t + dt
+        g.gain.setValueAtTime(0.0001, tt)
+        g.gain.linearRampToValueAtTime(0.06, tt + 0.03)
+        g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.22)
+        o.start(tt); o.stop(tt + 0.26)
+      })
+    }
+    function woodpecker(t) {
+      const dest = out(rpan(0.6), buses.omens)
+      const reps = 6 + Math.floor(Math.random() * 6)
+      for (let k = 0; k < reps; k++) {
+        const tt = t + k * 0.04
+        const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 180
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 2
+        const g = ctx.createGain(); g.gain.value = 0.0001
+        o.connect(bp).connect(g).connect(dest)
+        g.gain.setValueAtTime(0.0001, tt)
+        g.gain.linearRampToValueAtTime(0.05, tt + 0.003)
+        g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.03)
+        o.start(tt); o.stop(tt + 0.04)
+      }
+    }
+    function wolf(t) {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1200
+      const g = ctx.createGain(); g.gain.value = 0.0001
+      o.connect(lp).connect(g).connect(out(rpan(0.5), buses.omens))
+      const base = 300 + Math.random() * 60
+      o.frequency.setValueAtTime(base * 0.8, t)
+      o.frequency.linearRampToValueAtTime(base * 1.3, t + 0.6)
+      o.frequency.linearRampToValueAtTime(base * 1.15, t + 1.6)
+      o.frequency.linearRampToValueAtTime(base * 0.7, t + 2.4)
+      g.gain.setValueAtTime(0.0001, t)
+      g.gain.linearRampToValueAtTime(0.06, t + 0.3)
+      g.gain.setValueAtTime(0.06, t + 1.6)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 2.5)
+      o.start(t); o.stop(t + 2.6)
+    }
+    function meteorShimmer(t) {
+      const dest = out(rpan(0.6), buses.omens)
+      ;[1, 1.5, 2.01].forEach((mult, idx) => {
+        const o = ctx.createOscillator(); o.type = 'sine'
+        const g = ctx.createGain(); g.gain.value = 0.0001
+        o.connect(g).connect(dest)
+        const f = 1400 * mult
+        o.frequency.setValueAtTime(f * 0.9, t)
+        o.frequency.linearRampToValueAtTime(f * 1.15, t + 1.2)
+        const peak = 0.03 / (idx + 1)
+        g.gain.setValueAtTime(0.0001, t)
+        g.gain.linearRampToValueAtTime(peak, t + 0.4)
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6)
+        o.start(t); o.stop(t + 1.7)
+      })
+    }
+
+    // ---- voice scheduling ---------------------------------------------------
+    const running = () => !stopped && ctx.state === 'running'
+    const isDay = () => world.timeOfDay === 'day' || world.timeOfDay === 'dawn'
+    const isNight = () => world.timeOfDay === 'night' || world.timeOfDay === 'dusk'
+    const chance = (prob) => Math.random() < prob * liveliness
+    // self-rescheduling timer, randomised period scaled by Activity (busier = shorter)
+    function every(minMs, maxMs, fn) {
+      const h = { id: 0 }
+      const tick = () => {
+        if (stopped) return
+        fn()
+        h.id = setTimeout(tick, (minMs + Math.random() * (maxMs - minMs)) / p.activity)
+      }
+      h.id = setTimeout(tick, (minMs + Math.random() * (maxMs - minMs)) / p.activity)
+      timeouts.push(h)
+    }
+
+    // a slow random walk of overall liveliness, so voice density breathes
+    function startLiveliness() {
+      const h = { id: 0 }
+      const tick = () => {
+        if (stopped) return
+        const target = 0.35 + Math.random() * 0.65
+        liveliness = clamp(liveliness + (target - liveliness) * 0.4, 0.3, 1)
+        h.id = setTimeout(tick, 6000 + Math.random() * 7000)
+      }
+      h.id = setTimeout(tick, 4000)
+      timeouts.push(h)
+    }
+
+    if (buses.wildlife) {
+      every(3200, 8000, () => {
+        if (!running() || !isDay() || !chance(0.9)) return
+        const burst = 1 + Math.floor(Math.random() * (world.timeOfDay === 'dawn' ? 3 : 2))
+        for (let i = 0; i < burst; i++) chirp(ctx.currentTime + i * 0.16 + Math.random() * 0.08, rpan(0.6))
+      })
+      every(11000, 24000, () => { if (running() && isDay() && chance(0.7)) crow(ctx.currentTime, rpan(0.6)) })
+      every(3200, 8000, () => {
+        if (!running() || !isNight() || !chance(0.9)) return
+        cricketTrill(ctx.currentTime, rpan(0.7))
+        if (Math.random() < 0.4) cricketTrill(ctx.currentTime + 0.2 + Math.random() * 0.4, rpan(0.7))
+      })
+      every(26000, 56000, () => { if (running() && isNight() && chance(0.7)) owl(ctx.currentTime, rpan(0.5)) })
+      every(30000, 68000, () => { if (running() && chance(0.7)) meow(ctx.currentTime, rpan(0.7)) })
+      every(34000, 74000, () => { if (running() && chance(0.7)) dog(ctx.currentTime, rpan(0.7)) })
+    }
+
+    if (buses.city) {
+      every(30000, 68000, () => { if (running() && chance(0.75)) carPass(ctx.currentTime) })
+      every(60000, 130000, () => { if (running() && chance(0.5)) bikeBell(ctx.currentTime, rpan(0.6)) })
+      every(130000, 260000, () => { if (running() && chance(0.6)) airplane(ctx.currentTime) })
+    }
+
+    if (buses.omens) {
+      let lastOmen = -1e9
+      let lastBellHour = -1
+      every(45000, 95000, () => {
+        if (!running() || ctx.currentTime - lastOmen < 25) return
+        const opts = []
+        const now = new Date()
+        if (now.getMinutes() < 2 && now.getHours() !== lastBellHour) opts.push('bell')
+        if (isDay()) opts.push('woodpecker')
+        if (isDay() && world.season === 'spring') opts.push('cuckoo')
+        if (isNight()) opts.push('wolf')
+        if (world.meteor && isNight()) opts.push('meteor')
+        if (!opts.length) return
+        if (Math.random() > 0.5 * liveliness + 0.15) return
+        const pick = opts[Math.floor(Math.random() * opts.length)]
+        const t = ctx.currentTime + 0.05
+        if (pick === 'bell') { bell(t); lastBellHour = now.getHours() }
+        else if (pick === 'woodpecker') woodpecker(t)
+        else if (pick === 'cuckoo') cuckoo(t)
+        else if (pick === 'wolf') wolf(t)
+        else if (pick === 'meteor') meteorShimmer(t)
+        lastOmen = ctx.currentTime
+      })
+    }
+
+    // ---- build the beds, then fade the master in --------------------------
+    if (p.warmth > 0) buildWarmth(p.warmth, tone)
+    if (p.drone > 0) buildDrone(p.drone, tone)
+    if (p.wind > 0) buildWind(0.34 * p.wind, 900, p.motion, p.pace, tone)
+    if (p.rain > 0) { buildRain(p.rain, p.pace, tone); buildThunder(p.rain, tone) }
+    if (p.waves > 0) buildWaves(p.waves, p.motion, p.pace, tone)
+    if (p.stream > 0) buildStream(p.stream, p.motion, p.pace, tone)
+    if (p.leaves > 0) buildLeaves(p.leaves, p.motion, p.pace, tone)
+    if (p.chime > 0) buildChime(p.chime, p.pace, tone)
+    startLiveliness()
+
+    master.gain.setValueAtTime(0.0001, ctx.currentTime)
+    master.gain.exponentialRampToValueAtTime(p.master, ctx.currentTime + FADE_IN_SEC)
+
+    function stop(release = 0.5) {
+      if (stopped) return
+      stopped = true
+      intervals.forEach(clearInterval)
+      timeouts.forEach((h) => clearTimeout(h.id))
+      const now = ctx.currentTime
+      try {
+        master.gain.cancelScheduledValues(now)
+        master.gain.setValueAtTime(Math.max(0.0001, master.gain.value), now)
+        master.gain.setTargetAtTime(0.0001, now, release / 3)
+        master.gain.exponentialRampToValueAtTime(0.0001, now + release)
+      } catch (_) {}
+      setTimeout(() => {
+        nodes.forEach((n) => { try { n.stop?.() } catch (_) {} })
+        ctx.close?.().catch(() => {})
+      }, release * 1000 + 250)
+    }
+
+    return {
+      stop,
+      resume() { if (ctx.state === 'suspended') ctx.resume().catch(() => {}) },
+    }
   }
 
-  // when rain stops: a scatter of drips, then a few birds returning
-  function rainClearing() {
-    if (!ctx) return
-    const drops = 6 + Math.floor(Math.random() * 6)
-    for (let k = 0; k < drops; k++) {
-      const h = { id: setTimeout(() => { if (!disposed && enabled) drip(ctx.currentTime, rpan(0.7)) }, (1 + Math.random() * 16) * 1000) }
-      timers.push(h)
-    }
-    const hb = { id: setTimeout(() => {
+  // ---- rebuild orchestration ----------------------------------------------
+  function rebuild(delay) {
+    clearTimeout(rebuildTimer)
+    rebuildTimer = setTimeout(() => {
       if (disposed || !enabled) return
-      if (SCENES[scene].birds > 0) for (let i = 0; i < 3; i++) chirp(ctx.currentTime + i * 0.18, SCENES[scene].birds, rpan(0.6))
-    }, 5000) }
-    timers.push(hb)
+      const old = scape
+      scape = buildScape()
+      // fade the old graph out under the new one (a short crossfade on a change)
+      old?.stop(0.35)
+    }, delay)
+  }
+  function teardown() {
+    clearTimeout(rebuildTimer)
+    if (scape) { scape.stop(0.4); scape = null }
   }
 
-  // ============================ interaction sounds ============================
+  // ======================================================================
+  // interaction sounds (tap / depart / reveal) — their own tiny persistent
+  // context, so slider-drag rebuilds of the bed never interrupt them
+  // ======================================================================
   function buzz(pattern) {
     if (enabled && typeof navigator !== 'undefined' && navigator.vibrate) {
       try { navigator.vibrate(pattern) } catch (_) {}
     }
   }
-
-  function tap() {
-    buzz(10)
-    if (!ctx || ctx.state !== 'running') return
-    const t = ctx.currentTime
-    const o = ctx.createOscillator(); o.type = 'sine'
-    const g = ctx.createGain(); g.gain.value = 0.0001
-    o.connect(g).connect(master)
-    o.frequency.setValueAtTime(660, t)
-    o.frequency.exponentialRampToValueAtTime(330, t + 0.06)
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.linearRampToValueAtTime(0.28, t + 0.005)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09)
-    o.start(t); o.stop(t + 0.12)
+  function ensureUi() {
+    if (uiCtx) return uiCtx
+    const Ctx = window.AudioContext || window.webkitAudioContext
+    if (!Ctx) return null
+    uiCtx = new Ctx()
+    return uiCtx
   }
-
-  function depart() {
-    if (!ctx) return
-    if (ctx.state === 'suspended') ctx.resume().catch(() => {})
-    buzz(14)
-    const t0 = ctx.currentTime + 0.02
-    const notes = [659.25, 523.25, 392.00]
-    notes.forEach((f, i) => {
-      const t = t0 + i * 0.12
-      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f
-      const g = ctx.createGain(); g.gain.value = 0.0001
-      o.connect(g).connect(outUI(0))
-      const peak = 0.14 - i * 0.022
-      g.gain.setValueAtTime(0.0001, t)
-      g.gain.linearRampToValueAtTime(peak, t + 0.03)
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9)
-      o.start(t); o.stop(t + 1.0)
-    })
-  }
-
-  function reveal() {
-    if (!ctx) return
-    if (ctx.state === 'suspended') ctx.resume().catch(() => {})
-    buzz([20, 40, 20])
-    const t0 = ctx.currentTime + 0.02
-    const notes = [523.25, 659.25, 783.99, 1046.5]
-    notes.forEach((f, i) => {
-      const t = t0 + i * 0.10
-      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f
-      const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = f * 1.004
-      const g = ctx.createGain(); g.gain.value = 0.0001
-      const dest = outUI(0)
-      o.connect(g); o2.connect(g); g.connect(dest)
-      const peak = 0.16 - i * 0.018
+  function uiTone(freqs, dur, peakStart, glide) {
+    const c = ensureUi()
+    if (!c) return
+    if (c.state === 'suspended') c.resume().catch(() => {})
+    const t0 = c.currentTime + 0.02
+    freqs.forEach((f, i) => {
+      const t = t0 + i * glide
+      const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = f
+      const o2 = c.createOscillator(); o2.type = 'sine'; o2.frequency.value = f * 1.004
+      const g = c.createGain(); g.gain.value = 0.0001
+      o.connect(g); o2.connect(g); g.connect(c.destination)
+      const peak = Math.max(0.02, peakStart - i * 0.02)
       g.gain.setValueAtTime(0.0001, t)
       g.gain.linearRampToValueAtTime(peak, t + 0.02)
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.2)
-      o.start(t); o2.start(t); o.stop(t + 1.3); o2.stop(t + 1.3)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+      o.start(t); o2.start(t); o.stop(t + dur + 0.1); o2.stop(t + dur + 0.1)
     })
   }
 
-  // ============================ public API ============================
   return {
-    tap,
-    reveal,
-    depart,
-    setScene(s) {
-      if (s === scene) return
-      scene = s
-      applyScene(false)
+    // The Chorus: mix is the full model from mix.js (each key 0..10). Safe to
+    // call before sound is enabled — the value is held and applied on enable.
+    setMix(m) {
+      mix = m
+      if (enabled) rebuild(160)
     },
-    setPhase(p) { phase = p },
-    setSeason(s) { season = s },
-    setWeather(w) {
-      const nextCond = w ? w.condition : null
-      weatherWind = w ? (w.wind || 0) : 0
-      weatherIntensity = w ? (w.intensity || 0) : 0
-      const wasRain = prevCond === 'rain' || prevCond === 'thunder'
-      const isRain = nextCond === 'rain' || nextCond === 'thunder'
-      weatherCond = nextCond
-      applyWeather()
-      if (wasRain && !isRain && enabled) rainClearing()
-      prevCond = nextCond
-    },
-    setBiome(b) {
-      if (b === biome) return
-      biome = b
-      applyBiome()
-    },
-    setSolo(on) {
-      if (on === solo) return
-      solo = on
-      applyScene(false)
-      applyWeather()
-    },
-    setMeteor(on) { meteor = !!on },
-    // The Chorus: mix = { place, weather, wildlife, city, events, volume } each
-    // 0..10 (10 = unity/unchanged), plus activity (0..10, 5 = neutral) and
-    // warmth (0..10, 10 = today's fully-open tone). Safe to call before sound
-    // has ever been enabled — see applyMix()/build()'s own call to it.
-    setMix(mix) {
-      const pct = (v, d = 10) => clamp01((v ?? d) / 10)
-      mixPlace = pct(mix.place)
-      mixWeather = pct(mix.weather)
-      mixWildlife = pct(mix.wildlife)
-      mixCity = pct(mix.city)
-      mixEvents = pct(mix.events)
-      mixVolume = pct(mix.volume)
-      activityMul = ACTIVITY_MIN + pct(mix.activity, 5) * (ACTIVITY_MAX - ACTIVITY_MIN)
-      warmthHz = WARMTH_MIN_HZ * Math.pow(WARMTH_MAX_HZ / WARMTH_MIN_HZ, pct(mix.warmth))
-      applyMix()
+    // world context for the light day/night gating of the voices — never forces
+    // a rebuild; the running voice scheduler reads it live.
+    setWorld(w) {
+      world = { ...world, ...w }
     },
     setEnabled(on) {
+      if (on === enabled) return
       enabled = on
-      if (on) {
-        if (!ctx) build()
-        this.resume()
-        set(master.gain, MASTER * mixVolume, 0.6)
-      } else if (ctx) {
-        set(master.gain, 0, 0.4)
-      }
+      if (on) rebuild(0)
+      else teardown()
+    },
+    tap() {
+      buzz(10)
+      const c = ensureUi()
+      if (!c || !enabled) return
+      if (c.state === 'suspended') c.resume().catch(() => {})
+      const t = c.currentTime + 0.01
+      const o = c.createOscillator(); o.type = 'sine'
+      const g = c.createGain(); g.gain.value = 0.0001
+      o.connect(g).connect(c.destination)
+      o.frequency.setValueAtTime(660, t)
+      o.frequency.exponentialRampToValueAtTime(330, t + 0.06)
+      g.gain.setValueAtTime(0.0001, t)
+      g.gain.linearRampToValueAtTime(0.16, t + 0.005)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09)
+      o.start(t); o.stop(t + 0.12)
+    },
+    depart() {
+      buzz(14)
+      uiTone([659.25, 523.25, 392.0], 0.9, 0.14, 0.12)
+    },
+    reveal() {
+      buzz([20, 40, 20])
+      uiTone([523.25, 659.25, 783.99, 1046.5], 1.2, 0.16, 0.1)
     },
     resume() {
-      if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {})
+      scape?.resume()
+      if (uiCtx && uiCtx.state === 'suspended') uiCtx.resume().catch(() => {})
     },
     dispose() {
       disposed = true
-      timers.forEach(h => clearTimeout(h.id))
-      timers = []
-      walkers.forEach(stop => stop())
-      walkers = []
-      if (ctx) ctx.close().catch(() => {})
-      ctx = null
+      teardown()
+      if (uiCtx) { uiCtx.close?.().catch(() => {}); uiCtx = null }
     },
   }
 }

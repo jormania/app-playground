@@ -1,48 +1,47 @@
 import { useState } from 'react'
-import { BIOMES } from './place.js'
+import { SCENE_PRESETS, PRESET_ORDER, PRESET_LABELS, activePreset } from './mix.js'
 
-// "The Chorus" — the ambient soundscape's mixer. Every slider is a multiplier
-// layered OVER the already-tuned sound in ambientAudio.js, not a replacement
-// for it: at the defaults (10 on every category/volume, 5 on Activity, 10 on
-// Warmth, biome unset) nothing about today's mix changes at all — see the
-// Chorus notes at the top of ambientAudio.js and DEFAULT_MIX in App.jsx.
+// "The Chorus" — Touch Grass's soundscape mixer. A layer-blend engine ported
+// from Yoru (see ambientAudio.js): pick a soundscape, save your own blends, then
+// dial the eight nature layers, the Touch Grass voices, and the global shapers.
 
-const BIOME_LABELS = { coast: 'Coast', forest: 'Forest', city: 'City', mountain: 'Mountain', plain: 'Plain' }
-
-// Natural elements + the rare surprises woven through them
-const FIELD = [
-  { key: 'place', label: 'Place', hint: 'surf, traffic hum, thin wind, rustle underfoot' },
-  { key: 'weather', label: 'Weather', hint: 'rain, wind, thunder, the winter chime' },
-  { key: 'wildlife', label: 'Wildlife', hint: 'birds, crickets, critters passing by' },
-  { key: 'events', label: 'Omens', hint: 'bells, howls, meteor-shimmer — the rare surprises' },
+// the eight blendable beds (Yoru's layers)
+const LAYERS = [
+  { key: 'rain', label: 'Rain', hint: 'soft wash, droplets, and distant thunder' },
+  { key: 'waves', label: 'Waves', hint: 'slow ocean surf, rising and receding' },
+  { key: 'stream', label: 'Stream', hint: 'a steady brook, softly babbling' },
+  { key: 'wind', label: 'Wind', hint: 'air moving through the open' },
+  { key: 'leaves', label: 'Leaves', hint: 'a hush of wind through the trees' },
+  { key: 'chime', label: 'Chime', hint: 'a wind chime, only now and then' },
+  { key: 'warmth', label: 'Warmth', hint: 'a soft noise floor beneath it all' },
+  { key: 'drone', label: 'Drone', hint: 'a deep, soft hum underneath' },
 ]
-// The human world — its own separate realm
-const CITY = [
-  { key: 'city', label: 'City', hint: 'traffic drifting past, a bike bell, planes overhead' },
+// the Touch Grass voices — one-shots over the bed
+const VOICES = [
+  { key: 'wildlife', label: 'Wildlife', hint: 'birds, crickets, a cat or a dog' },
+  { key: 'city', label: 'City', hint: 'a passing car, a bike bell, a plane' },
+  { key: 'omens', label: 'Omens', hint: 'a bell, a cuckoo, a wolf — the rare ones' },
+  { key: 'activity', label: 'Activity', hint: 'how often the voices speak up' },
 ]
+// global shapers
 const SHAPERS = [
   { key: 'volume', label: 'Volume', hint: 'overall loudness' },
-  { key: 'activity', label: 'Activity', hint: 'how often the world speaks up' },
-  { key: 'warmth', label: 'Warmth', hint: 'hushed and close, or bright and open' },
+  { key: 'brightness', label: 'Brightness', hint: 'the tone, from dark to airy' },
+  { key: 'motion', label: 'Motion', hint: 'how much it swells and gusts' },
+  { key: 'pace', label: 'Pace', hint: 'how fast it drifts and swells' },
 ]
 
 const MAX_CUSTOM_MIXES = 4
 const MAX_MIX_NAME_LEN = 18
-
-// a biome preset is the app's own golden-standard sound for that place — unity
-// on every category/shaper, with the biome pinned so it plays regardless of
-// where you actually are (see useAmbientSound's effectiveBiome)
-const goldenStandard = (biome) => ({
-  biome, place: 10, weather: 10, wildlife: 10, city: 10, events: 10, volume: 10, activity: 5, warmth: 10,
-})
 
 export default function MixerPanel({ mix, onChange, onReset, onClose, customMixes = [], onSaveMix, onDeleteMix }) {
   const [addingMix, setAddingMix] = useState(false)
   const [mixName, setMixName] = useState('')
 
   const setLevel = (key, value) => onChange({ [key]: value })
-  const applyPreset = (biome) => onChange(goldenStandard(biome))
+  const applyPreset = (key) => onChange({ ...SCENE_PRESETS[key] })
   const applyCustom = (m) => onChange({ ...m.mix })
+  const active = activePreset(mix)
 
   const submitSave = () => {
     if (!mixName.trim() || !onSaveMix) return
@@ -51,9 +50,9 @@ export default function MixerPanel({ mix, onChange, onReset, onClose, customMixe
     setAddingMix(false)
   }
 
-  const renderRow = ({ key, label, hint, max = 10 }) => {
-    const value = typeof mix[key] === 'number' ? mix[key] : Math.round(max / 2)
-    const pct = (value / max) * 100
+  const renderRow = ({ key, label, hint }) => {
+    const value = typeof mix[key] === 'number' ? mix[key] : 5
+    const pct = (value / 10) * 100
     return (
       <div key={key} className="tg-mixer-row">
         <span className="tg-mixer-label">
@@ -63,7 +62,7 @@ export default function MixerPanel({ mix, onChange, onReset, onClose, customMixe
         <input
           type="range"
           min={0}
-          max={max}
+          max={10}
           step={1}
           value={value}
           onChange={(e) => setLevel(key, Number(e.target.value))}
@@ -78,21 +77,22 @@ export default function MixerPanel({ mix, onChange, onReset, onClose, customMixe
 
   return (
     <div className="tg-mixer">
-      {/* no title/subtitle here — the card banner below already reads "THE CHORUS" */}
       <div className="tg-mixer-list">
-        <span className="tg-mixer-group">attunements</span>
+        <span className="tg-mixer-group">soundscapes</span>
         <div className="tg-mixer-chips">
-          <button type="button" className={mix.biome == null ? 'tg-chip tg-chip-active' : 'tg-chip'} onClick={() => applyPreset(null)}>
-            Here
-          </button>
-          {BIOMES.map((b) => (
-            <button key={b} type="button" className={mix.biome === b ? 'tg-chip tg-chip-active' : 'tg-chip'} onClick={() => applyPreset(b)}>
-              {BIOME_LABELS[b]}
+          {PRESET_ORDER.map((key) => (
+            <button
+              key={key}
+              type="button"
+              className={active === key ? 'tg-chip tg-chip-active' : 'tg-chip'}
+              onClick={() => applyPreset(key)}
+            >
+              {PRESET_LABELS[key]}
             </button>
           ))}
         </div>
-        <span className="tg-mixer-note">A golden-standard blend for each place — hear it, wherever you actually are.</span>
 
+        <span className="tg-mixer-group">your mixes</span>
         {customMixes.length > 0 && (
           <div className="tg-mixer-chips">
             {customMixes.map((m) => (
@@ -103,12 +103,7 @@ export default function MixerPanel({ mix, onChange, onReset, onClose, customMixe
             ))}
           </div>
         )}
-        {onSaveMix && customMixes.length < MAX_CUSTOM_MIXES && !addingMix && (
-          <div className="tg-mixer-chips">
-            <button type="button" className="tg-chip tg-chip-dashed" onClick={() => setAddingMix(true)}>+ save this mix</button>
-          </div>
-        )}
-        {addingMix && (
+        {addingMix ? (
           <div className="tg-mixer-save-row">
             <input
               autoFocus
@@ -125,12 +120,18 @@ export default function MixerPanel({ mix, onChange, onReset, onClose, customMixe
             <button type="button" onClick={submitSave}>Save</button>
             <button type="button" onClick={() => { setAddingMix(false); setMixName('') }}>Cancel</button>
           </div>
+        ) : (
+          onSaveMix && customMixes.length < MAX_CUSTOM_MIXES && (
+            <div className="tg-mixer-chips">
+              <button type="button" className="tg-chip tg-chip-dashed" onClick={() => setAddingMix(true)}>+ save this mix</button>
+            </div>
+          )
         )}
 
-        <span className="tg-mixer-group">the field</span>
-        {FIELD.map(renderRow)}
-        <span className="tg-mixer-group">the city</span>
-        {CITY.map(renderRow)}
+        <span className="tg-mixer-group">layers</span>
+        {LAYERS.map(renderRow)}
+        <span className="tg-mixer-group">voices</span>
+        {VOICES.map(renderRow)}
         <span className="tg-mixer-group">shapers</span>
         {SHAPERS.map(renderRow)}
       </div>

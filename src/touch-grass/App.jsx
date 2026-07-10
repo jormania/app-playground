@@ -10,6 +10,7 @@ import TarotCard from './TarotCard.jsx'
 import Stage from './Stage.jsx'
 import Locus from './Locus.jsx'
 import { useAmbientSound } from './useAmbientSound.js'
+import { DEFAULT_MIX, MIX_VERSION } from './mix.js'
 import { useDailyCall } from './useDailyCall.js'
 import { showWalkNotice, clearWalkNotice } from './walkNotice.js'
 import { useWorld } from './world.jsx'
@@ -36,13 +37,6 @@ const MIX_STORAGE = 'tg-react-mix'
 const MIXES_STORAGE = 'tg-react-mixes'
 const THRESHOLD_MODES = ['almanac', 'tonight', 'arc']
 const HISTORY_CAP = 300
-
-// The Chorus — every value defaults to "unchanged from today's tuned sound"
-// (10 = unity gain on each category/volume, warmth fully open, biome null =
-// follow wherever you actually are); Activity alone centres at 5 (a neutral
-// multiplier, not a ceiling). See ambientAudio.js's own note on this at the
-// top of its Chorus section.
-export const DEFAULT_MIX = { biome: null, place: 10, weather: 10, wildlife: 10, city: 10, events: 10, volume: 10, activity: 5, warmth: 10 }
 
 function loadState() {
   try {
@@ -83,21 +77,27 @@ function loadThreshold() {
   return THRESHOLD_MODES.includes(v) ? v : 'almanac' // default: the living-world almanac
 }
 
+// The stored mix carries a version stamp; a mix saved under an older engine
+// (whose numbers meant something else) is dropped rather than misread.
 function loadMix() {
   try {
     const raw = localStorage.getItem(MIX_STORAGE)
-    if (raw) return { ...DEFAULT_MIX, ...JSON.parse(raw) }
+    if (raw) {
+      const s = JSON.parse(raw)
+      if (s && s._v === MIX_VERSION) return { ...DEFAULT_MIX, ...s }
+    }
   } catch (_) {}
   return { ...DEFAULT_MIX }
 }
 
-// user-saved Chorus blends: [{ id, name, mix }] — see saveCustomMix()
+// user-saved Chorus blends: { _v, list: [{ id, name, mix }] } — versioned the
+// same way, so pre-rewrite saves are cleared rather than played at wrong levels
 function loadCustomMixes() {
   try {
     const raw = localStorage.getItem(MIXES_STORAGE)
     if (raw) {
-      const a = JSON.parse(raw)
-      if (Array.isArray(a)) return a
+      const s = JSON.parse(raw)
+      if (s && s._v === MIX_VERSION && Array.isArray(s.list)) return s.list
     }
   } catch (_) {}
   return []
@@ -156,13 +156,13 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(MIX_STORAGE, JSON.stringify(mix))
+      localStorage.setItem(MIX_STORAGE, JSON.stringify({ ...mix, _v: MIX_VERSION }))
     } catch (_) {}
   }, [mix])
 
   useEffect(() => {
     try {
-      localStorage.setItem(MIXES_STORAGE, JSON.stringify(customMixes))
+      localStorage.setItem(MIXES_STORAGE, JSON.stringify({ _v: MIX_VERSION, list: customMixes }))
     } catch (_) {}
   }, [customMixes])
 
