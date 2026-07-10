@@ -14,38 +14,51 @@ export const MIX_VERSION = 2
 // The eight blendable beds (0 = that layer is off). Ported 1:1 from Yoru.
 export const LAYER_KEYS = ['rain', 'waves', 'stream', 'wind', 'leaves', 'chime', 'warmth', 'drone']
 
-// The out-of-box blend: Yoru's Forest preset (a breezy wood) for the beds — the
-// most "outdoors" of the five presets and the right first impression for Touch
-// Grass — plus Yoru's shaper defaults and a moderate dab of birdsong. Volume and
-// brightness sit at 8, not 5: both read through a perceptual taper in the engine
-// that pulls mid values down, so 8 restores the loudness/tone a naive "5" implies.
-export const DEFAULT_MIX = {
-  // layers (Yoru Forest)
-  rain: 1, waves: 0, stream: 0, wind: 4, leaves: 6, chime: 0, warmth: 4, drone: 2,
-  // shapers (Yoru defaults)
-  volume: 8, brightness: 8, motion: 5, pace: 5,
-  // Touch Grass voices
-  wildlife: 5, city: 2, omens: 3, activity: 5,
-}
+// The five soundscapes are complete curated scenes: each dials all the CHARACTER
+// controls — the eight layers, the three voices, Activity, and the brightness /
+// motion / pace shapers. They deliberately DON'T set the master `volume`: that's
+// a personal comfort dial (like Yoru leaves the shapers out of its scene picks),
+// so browsing presets never jumps your loudness. `activePreset` compares exactly
+// this key set for the chip highlight.
+export const PRESET_APPLY_KEYS = [
+  'rain', 'waves', 'stream', 'wind', 'leaves', 'chime', 'warmth', 'drone',
+  'wildlife', 'city', 'omens', 'activity', 'brightness', 'motion', 'pace',
+]
 
-// The five soundscapes, ported verbatim from Yoru — each stamps only the eight
-// LAYER_KEYS, leaving the shapers and the Touch Grass voices untouched (exactly
-// as Yoru's own scene picks leave the shapers). Order here is the display order.
+// A studied full scene per preset (see the reasoning in each). Order here is the
+// display order. Distinct enough that switching between them is a real change of
+// place, layered enough that none sounds flat or synthetic.
 export const SCENE_PRESETS = {
-  rain:   { rain: 6, waves: 0, stream: 0, wind: 3, leaves: 0, chime: 0, warmth: 5, drone: 3 },
-  waves:  { rain: 0, waves: 6, stream: 0, wind: 1, leaves: 0, chime: 0, warmth: 5, drone: 3 },
-  stream: { rain: 0, waves: 0, stream: 6, wind: 1, leaves: 1, chime: 0, warmth: 4, drone: 2 },
-  wind:   { rain: 0, waves: 0, stream: 0, wind: 6, leaves: 2, chime: 0, warmth: 5, drone: 3 },
-  forest: { rain: 1, waves: 0, stream: 0, wind: 4, leaves: 6, chime: 0, warmth: 4, drone: 2 },
+  // steady, cozy rain — wind gives it body, a little wet-leaf patter, a warm
+  // floor beneath; tone pulled dark and muffled, voices sparse (rain masks the
+  // world). Distant thunder rides the rain layer automatically.
+  rain:   { rain: 7, waves: 0, stream: 0, wind: 4, leaves: 2, chime: 0, warmth: 5, drone: 2, wildlife: 2, city: 1, omens: 2, activity: 3, brightness: 5, motion: 5, pace: 4 },
+  // slow ocean surf — a sea breeze on the wind, deep ocean body on the drone,
+  // long swells (motion up, pace slow); almost no other life so the surf breathes.
+  waves:  { rain: 0, waves: 7, stream: 0, wind: 3, leaves: 0, chime: 0, warmth: 4, drone: 3, wildlife: 1, city: 0, omens: 2, activity: 3, brightness: 6, motion: 6, pace: 4 },
+  // a woodland brook — babbling and bright and steady (low motion, no big swell),
+  // with light wind through leaves and a lively scatter of birdsong over it.
+  stream: { rain: 0, waves: 0, stream: 7, wind: 2, leaves: 3, chime: 0, warmth: 3, drone: 1, wildlife: 4, city: 0, omens: 2, activity: 5, brightness: 8, motion: 4, pace: 5 },
+  // open and windswept — the wind chime sings here, a low moaning drone under the
+  // gusts; sparse, exposed voices and the odd wolf or bell carried on the air.
+  wind:   { rain: 0, waves: 0, stream: 0, wind: 7, leaves: 2, chime: 2, warmth: 4, drone: 3, wildlife: 2, city: 1, omens: 3, activity: 3, brightness: 6, motion: 6, pace: 6 },
+  // a living wood — a full leaf canopy over a hidden brook and a little wind,
+  // rich birdsong, and woodland omens (a woodpecker, a spring cuckoo). Airy tone.
+  forest: { rain: 0, waves: 0, stream: 2, wind: 4, leaves: 6, chime: 0, warmth: 4, drone: 2, wildlife: 5, city: 0, omens: 4, activity: 5, brightness: 8, motion: 5, pace: 5 },
 }
 
 export const PRESET_ORDER = ['rain', 'waves', 'stream', 'wind', 'forest']
 export const PRESET_LABELS = { rain: 'Rain', waves: 'Waves', stream: 'Stream', wind: 'Wind', forest: 'Forest' }
 
-// which preset (if any) the current mix's layers exactly match — for the
-// active-chip highlight; null when the layers have been hand-tweaked away from
-// every preset.
+// The out-of-box blend is the Forest scene at a comfortable volume — the most
+// "outdoors" first impression, and one of the five curated presets, so the
+// Forest chip reads as active on a fresh start.
+export const DEFAULT_MIX = { ...SCENE_PRESETS.forest, volume: 8 }
+
+// which preset (if any) the current mix's character exactly matches — for the
+// active-chip highlight; null once anything has been hand-tweaked away from it
+// (the master volume is ignored, since presets don't set it).
 export function activePreset(mix) {
   if (!mix) return null
-  return PRESET_ORDER.find((key) => LAYER_KEYS.every((k) => (mix[k] ?? 0) === SCENE_PRESETS[key][k])) || null
+  return PRESET_ORDER.find((key) => PRESET_APPLY_KEYS.every((k) => (mix[k] ?? 0) === SCENE_PRESETS[key][k])) || null
 }

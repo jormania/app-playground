@@ -42,7 +42,7 @@ const taper = (t, exp) => Math.pow(clamp01(t), exp)
 const VOLUME_TAPER = 1.9
 const LAYER_TAPER = 1.4
 
-const FADE_IN_SEC = 1.0 // Touch Grass isn't a timed session — a short fade on (re)build, then hold
+const FADE_IN_SEC = 1.4 // Touch Grass isn't a timed session — a gentle fade on (re)build, then hold; long enough that switching scenes crossfades rather than cuts
 // the voices ride a category bus into the same brightness filter as the beds;
 // this trim lifts them to sit just over the bed at a mid category level (they're
 // quieter than the beds per-sample, being sparse one-shots)
@@ -658,8 +658,10 @@ export function createAmbience() {
         if (Math.random() < 0.4) cricketTrill(ctx.currentTime + 0.2 + Math.random() * 0.4, rpan(0.7))
       })
       every(26000, 56000, () => { if (running() && isNight() && chance(0.7)) owl(ctx.currentTime, rpan(0.5)) })
-      every(30000, 68000, () => { if (running() && chance(0.7)) meow(ctx.currentTime, rpan(0.7)) })
-      every(34000, 74000, () => { if (running() && chance(0.7)) dog(ctx.currentTime, rpan(0.7)) })
+      // cat and dog are near-people sounds, not a constant bed — kept rare and
+      // widely spaced so they read as a distant "somewhere out there", never a metronome
+      every(55000, 130000, () => { if (running() && chance(0.6)) meow(ctx.currentTime, rpan(0.7)) })
+      every(64000, 150000, () => { if (running() && chance(0.6)) dog(ctx.currentTime, rpan(0.7)) })
     }
 
     if (buses.city) {
@@ -738,13 +740,14 @@ export function createAmbience() {
       if (disposed || !enabled) return
       const old = scape
       scape = buildScape()
-      // fade the old graph out under the new one (a short crossfade on a change)
-      old?.stop(0.35)
+      // fade the old graph out under the new one — a real ~1s crossfade so a
+      // scene change flows from one to the next, never cuts or gaps
+      old?.stop(1.0)
     }, delay)
   }
   function teardown() {
     clearTimeout(rebuildTimer)
-    if (scape) { scape.stop(0.4); scape = null }
+    if (scape) { scape.stop(0.6); scape = null }
   }
 
   // ======================================================================
