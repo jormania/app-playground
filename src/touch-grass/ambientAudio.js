@@ -13,7 +13,6 @@
 //     leaves  a hush through foliage + soft rustles
 //     chime   a sparse wind-chime accent, now and then
 //     warmth  a pink-noise floor under everything
-//     drone   a deep, soft tonal hum
 //   shapers:
 //     volume     master loudness (true silence at 0)
 //     brightness one global low-pass, dark -> airy
@@ -21,7 +20,6 @@
 //     pace       how FAST it drifts and swells (speed)
 //   voices (Touch Grass, one-shots over the bed):
 //     wildlife   songbirds, crickets, owl, crow, cat, dog
-//     city       a passing car, a bicycle bell, an airplane overhead
 //     omens      a church bell, cuckoo, woodpecker, wolf, meteor-shimmer
 //     activity   how often any voice speaks up
 //
@@ -38,7 +36,7 @@ const lerp = (a, b, t) => a + (b - a) * t
 // while spacing the middle more evenly. Master gets the steeper curve (a real
 // volume knob); each layer's own level a gentler one so blended presets keep
 // their balance. (Both ported straight from Yoru.)
-const taper = (t, exp) => Math.pow(clamp01(t), exp)
+export const taper = (t, exp) => Math.pow(clamp01(t), exp)
 const VOLUME_TAPER = 1.9
 const LAYER_TAPER = 1.4
 
@@ -93,8 +91,9 @@ function panner(ctx, pan) {
 }
 
 // mix (each 0..10) -> concrete synth values. Ported from Yoru, extended with the
-// three Touch Grass voice categories and the Activity shaper.
-function resolveMix(mix) {
+// Touch Grass voice categories and the Activity shaper. Exported for unit tests
+// (it's pure — no audio nodes touched here).
+export function resolveMix(mix) {
   const nv = (k) => clamp01((mix && typeof mix[k] === 'number' ? mix[k] : 0) / 10)
   const gv = (k) => taper(nv(k), LAYER_TAPER)
   return {
@@ -109,10 +108,8 @@ function resolveMix(mix) {
     leaves: gv('leaves'),
     chime: gv('chime'),
     warmth: gv('warmth'),
-    drone: gv('drone'),
     // voices: category loudness (0 = that voice group is silent / unscheduled)
     wildlife: gv('wildlife'),
-    city: gv('city'),
     omens: gv('omens'),
     // activity: how often voices fire (a frequency multiplier; higher = busier)
     activity: lerp(0.4, 1.8, nv('activity')),
@@ -150,7 +147,17 @@ export function createAmbience() {
 
     const master = ctx.createGain()
     master.gain.value = 0.0001
-    master.connect(ctx.destination)
+    // a transparent brick-wall safety limiter on the final output: no extreme
+    // combination of layers, voices and volume can ever sum past 0dBFS and clip.
+    // Sits below threshold (so inaudible) for any sane mix; only catches peaks.
+    const limiter = ctx.createDynamicsCompressor()
+    limiter.threshold.value = -2
+    limiter.knee.value = 0
+    limiter.ratio.value = 20
+    limiter.attack.value = 0.003
+    limiter.release.value = 0.25
+    master.connect(limiter)
+    limiter.connect(ctx.destination)
 
     // one global brightness low-pass everything passes through
     const tone = ctx.createBiquadFilter()
@@ -174,7 +181,6 @@ export function createAmbience() {
       nodes.push(osc)
     }
     const driftFilter = (filter, depthHz, rateHz) => driftParam(filter.frequency, depthHz, rateHz)
-    const driftGain = (gainNode, depth, rateHz) => driftParam(gainNode.gain, depth, rateHz)
 
     // ---- beds (ported from Yoru) --------------------------------------------
     function buildWarmth(level, dest) {
@@ -185,19 +191,6 @@ export function createAmbience() {
       src.connect(lp); lp.connect(hp); hp.connect(g); g.connect(dest)
       src.start(); nodes.push(src)
       driftFilter(lp, 60, 0.018)
-    }
-
-    function buildDrone(level, dest) {
-      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 300
-      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 110
-      const g = ctx.createGain(); g.gain.value = level * 0.032
-      hp.connect(lp); lp.connect(g); g.connect(dest)
-      ;[110, 164.81].forEach((f, i) => {
-        const osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = f
-        osc.detune.value = i === 0 ? -1.5 : 1.5
-        osc.connect(hp); osc.start(); nodes.push(osc)
-      })
-      driftGain(g, level * 0.006, 0.011)
     }
 
     function buildWind(level, lpHz, motion, pace, dest) {
@@ -386,7 +379,7 @@ export function createAmbience() {
       if (level <= 0) return null
       const g = ctx.createGain(); g.gain.value = level * VOICE_TRIM; g.connect(tone); return g
     }
-    const buses = { wildlife: mkBus(p.wildlife), city: mkBus(p.city), omens: mkBus(p.omens) }
+    const buses = { wildlife: mkBus(p.wildlife), omens: mkBus(p.omens) }
     function out(pan, bus) {
       const pn = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain()
       if (pn.pan) pn.pan.value = clamp(pan, -1, 1)
@@ -491,49 +484,6 @@ export function createAmbience() {
       const dest = out(pan, buses.wildlife)
       woof(t, 1, dest)
       if (Math.random() < 0.6) woof(t + 0.24 + Math.random() * 0.12, 0.9, dest)
-    }
-    function carPass(t) {
-      const dur = 5 + Math.random() * 2.5
-      const dest = out(-0.85, buses.city)
-      if (dest.pan) { dest.pan.setValueAtTime(-0.85, t); dest.pan.linearRampToValueAtTime(0.85, t + dur) }
-      const s = ctx.createBufferSource(); s.buffer = white; s.loop = true; s.playbackRate.value = 0.9
-      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 380
-      const g = ctx.createGain(); g.gain.value = 0.0001
-      s.connect(lp).connect(g).connect(dest)
-      g.gain.setValueAtTime(0.0001, t)
-      g.gain.linearRampToValueAtTime(0.03, t + dur * 0.5)
-      g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-      s.start(t, Math.random() * white.duration); s.stop(t + dur + 0.2)
-    }
-    function bikeBell(t, pan) {
-      const dest = out(pan, buses.city)
-      ;[0, 0.16].forEach((dt) => {
-        const tt = t + dt
-        const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 2500 + Math.random() * 260
-        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2650; bp.Q.value = 9
-        const g = ctx.createGain(); g.gain.value = 0.0001
-        o.connect(bp).connect(g).connect(dest)
-        g.gain.setValueAtTime(0.0001, tt)
-        g.gain.linearRampToValueAtTime(0.032, tt + 0.004)
-        g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.16)
-        o.start(tt); o.stop(tt + 0.2)
-      })
-    }
-    function airplane(t) {
-      const dur = 18 + Math.random() * 8
-      const dest = out(-0.85, buses.city)
-      if (dest.pan) { dest.pan.setValueAtTime(-0.85, t); dest.pan.linearRampToValueAtTime(0.85, t + dur) }
-      const s = ctx.createBufferSource(); s.buffer = white; s.loop = true; s.playbackRate.value = 0.5
-      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260
-      const g = ctx.createGain(); g.gain.value = 0.0001
-      s.connect(lp).connect(g).connect(dest)
-      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 95
-      const og = ctx.createGain(); og.gain.value = 0.0001
-      o.connect(og).connect(dest)
-      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.05, t + dur * 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-      og.gain.setValueAtTime(0.0001, t); og.gain.linearRampToValueAtTime(0.022, t + dur * 0.45); og.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-      s.start(t, Math.random() * white.duration); s.stop(t + dur + 0.2)
-      o.start(t); o.stop(t + dur + 0.2)
     }
     function bell(t) {
       const strikes = 1 + Math.floor(Math.random() * 2)
@@ -664,12 +614,6 @@ export function createAmbience() {
       every(64000, 150000, () => { if (running() && chance(0.6)) dog(ctx.currentTime, rpan(0.7)) })
     }
 
-    if (buses.city) {
-      every(30000, 68000, () => { if (running() && chance(0.75)) carPass(ctx.currentTime) })
-      every(60000, 130000, () => { if (running() && chance(0.5)) bikeBell(ctx.currentTime, rpan(0.6)) })
-      every(130000, 260000, () => { if (running() && chance(0.6)) airplane(ctx.currentTime) })
-    }
-
     if (buses.omens) {
       let lastOmen = -1e9
       let lastBellHour = -1
@@ -697,7 +641,6 @@ export function createAmbience() {
 
     // ---- build the beds, then fade the master in --------------------------
     if (p.warmth > 0) buildWarmth(p.warmth, tone)
-    if (p.drone > 0) buildDrone(p.drone, tone)
     if (p.wind > 0) buildWind(0.34 * p.wind, 900, p.motion, p.pace, tone)
     if (p.rain > 0) { buildRain(p.rain, p.pace, tone); buildThunder(p.rain, tone) }
     if (p.waves > 0) buildWaves(p.waves, p.motion, p.pace, tone)

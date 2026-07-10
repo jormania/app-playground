@@ -5,7 +5,7 @@ import { SCENE_PRESETS, PRESET_ORDER, PRESET_LABELS, activePreset } from './mix.
 // from Yoru (see ambientAudio.js): pick a soundscape, save your own blends, then
 // dial the eight nature layers, the Touch Grass voices, and the global shapers.
 
-// the eight blendable beds (Yoru's layers)
+// the seven blendable beds (Yoru's layers, minus its tonal drone)
 const LAYERS = [
   { key: 'rain', label: 'Rain', hint: 'soft wash, droplets, and distant thunder' },
   { key: 'waves', label: 'Waves', hint: 'slow ocean surf, rising and receding' },
@@ -14,12 +14,10 @@ const LAYERS = [
   { key: 'leaves', label: 'Leaves', hint: 'a hush of wind through the trees' },
   { key: 'chime', label: 'Chime', hint: 'a wind chime, only now and then' },
   { key: 'warmth', label: 'Warmth', hint: 'a soft noise floor beneath it all' },
-  { key: 'drone', label: 'Drone', hint: 'a deep, soft hum underneath' },
 ]
 // the Touch Grass voices — one-shots over the bed
 const VOICES = [
   { key: 'wildlife', label: 'Wildlife', hint: 'birds, crickets, a cat or a dog' },
-  { key: 'city', label: 'City', hint: 'a passing car, a bike bell, a plane' },
   { key: 'omens', label: 'Omens', hint: 'a bell, a cuckoo, a wolf — the rare ones' },
   { key: 'activity', label: 'Activity', hint: 'how often the voices speak up' },
 ]
