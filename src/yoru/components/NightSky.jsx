@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   moonPhase,
   moonPosition,
@@ -23,10 +23,32 @@ import styles from './NightSky.module.css'
 // the lower centre, an occasional quiet meteor, and season-aware drifting
 // elements — sakura (spring), fireflies (summer), momiji (autumn), snow
 // (winter). Deliberately very dim. The parent handles tap-to-peek.
-export default function NightSky({ coords }) {
+export default function NightSky({ coords, moonPath: showMoonPath = true, geoStatus, onRequestLocation }) {
   const canvasRef = useRef(null)
   const coordsRef = useRef(coords)
   coordsRef.current = coords
+  const showMoonPathRef = useRef(showMoonPath)
+  showMoonPathRef.current = showMoonPath
+
+  // A manual "enable location" prompt — normally geolocation is requested
+  // automatically and this never appears, but some contexts (installed/
+  // standalone PWA windows, in particular) have been seen to silently drop
+  // that automatic request with no native prompt and no error either. Wait
+  // out a full attempt (the request itself times out at 8s) before offering
+  // it, so an ordinary grant never flashes it.
+  const [showHint, setShowHint] = useState(false)
+  useEffect(() => {
+    if (coords) {
+      setShowHint(false)
+      return undefined
+    }
+    if (geoStatus === 'denied' || geoStatus === 'unavailable') {
+      setShowHint(true)
+      return undefined
+    }
+    const t = setTimeout(() => setShowHint(true), 8000)
+    return () => clearTimeout(t)
+  }, [coords, geoStatus])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -210,9 +232,9 @@ export default function NightSky({ coords }) {
       // barely moves frame to frame, so this would be pure waste)
       if (now - lastTrailAt > 60000) {
         lastTrailAt = now
-        moonTrail = coordsRef.current ? moonPath(now2, coordsRef.current) : null
+        moonTrail = showMoonPathRef.current && coordsRef.current ? moonPath(now2, coordsRef.current) : null
       }
-      if (moonTrail) drawMoonPath(ctx, moonTrail, w, h)
+      if (showMoonPathRef.current && moonTrail) drawMoonPath(ctx, moonTrail, w, h)
 
       const mr = Math.min(w, h) * 0.11
       drawMoon(ctx, place.x * w, place.y * h, mr, phase, 0.5 * place.presence)
@@ -305,5 +327,23 @@ export default function NightSky({ coords }) {
     }
   }, [])
 
-  return <canvas ref={canvasRef} className={styles.sky} aria-hidden="true" />
+  return (
+    <>
+      <canvas ref={canvasRef} className={styles.sky} aria-hidden="true" />
+      {showHint && onRequestLocation && (
+        <button
+          type="button"
+          className={styles.locationHint}
+          onClick={(e) => {
+            e.stopPropagation()
+            onRequestLocation()
+          }}
+        >
+          {geoStatus === 'denied'
+            ? "location's blocked — allow it in your browser's site settings for the real moon"
+            : 'enable location for the real moon'}
+        </button>
+      )}
+    </>
+  )
 }

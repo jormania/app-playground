@@ -38,7 +38,7 @@ export default function Session({ session, onNote, onFinish }) {
   // The orb (and breathwork) only make sense when the screen is lit.
   const breathwork = session.breathwork !== false && screenMode === 'lit'
 
-  const coords = useCoords(dark)
+  const { coords, status: geoStatus, request: requestLocation } = useCoords(dark)
 
   // While `veiled`, a covered mode draws its overlay (the sky for 'dark', black
   // for 'off'). A tap peeks — hiding it briefly to reveal the session and the
@@ -226,9 +226,27 @@ export default function Session({ session, onNote, onFinish }) {
       </div>
 
       {dark && veiled && (
-        <button type="button" className={styles.veil} onClick={peek} aria-label="Tap to peek">
-          <NightSky coords={coords} />
-        </button>
+        // A div, not a button: it needs to contain the sky's own "enable
+        // location" button, and buttons can't nest.
+        <div
+          className={styles.veil}
+          role="button"
+          tabIndex={0}
+          onClick={peek}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return
+            e.preventDefault()
+            peek()
+          }}
+          aria-label="Tap to peek"
+        >
+          <NightSky
+            coords={coords}
+            moonPath={session.moonPath !== false}
+            geoStatus={geoStatus}
+            onRequestLocation={requestLocation}
+          />
+        </div>
       )}
 
       {off && veiled && (

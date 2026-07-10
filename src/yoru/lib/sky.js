@@ -119,8 +119,9 @@ export function moonPath(date, coords) {
   return points.length > 1 ? { points, nowIndex: past.length } : null
 }
 
-// Small dim dots tracing the trail (the moon itself already marks "now", so
-// that point is skipped), fading out toward both ends.
+// Dim dots tracing the trail (the moon itself already marks "now", so that
+// point is skipped), fading toward both ends but staying clearly readable —
+// dim enough to belong in this sky, bright enough to actually see against it.
 export function drawMoonPath(ctx, path, w, h) {
   if (!path) return
   const { points, nowIndex } = path
@@ -129,11 +130,11 @@ export function drawMoonPath(ctx, path, w, h) {
     if (i === nowIndex) continue
     const p = points[i]
     const dist = Math.abs(i - nowIndex) / span
-    const alpha = 0.16 * (1 - dist * 0.7) * p.presence
+    const alpha = 0.4 * (1 - dist * 0.5) * p.presence
     if (alpha <= 0) continue
-    ctx.fillStyle = `rgba(176,175,205,${alpha})`
+    ctx.fillStyle = `rgba(198,197,224,${alpha})`
     ctx.beginPath()
-    ctx.arc(p.x * w, p.y * h, 1.2, 0, Math.PI * 2)
+    ctx.arc(p.x * w, p.y * h, 1.7, 0, Math.PI * 2)
     ctx.fill()
   }
 }

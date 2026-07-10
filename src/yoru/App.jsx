@@ -57,6 +57,7 @@ export default function App() {
       scene: settings.scene,
       mix: settings.mix,
       screen: settings.screen,
+      moonPath: settings.moonPath,
       note: '',
     }
     saveActiveSession(active)

@@ -77,6 +77,7 @@ export const DEFAULT_SETTINGS = {
   scene: 'rain',
   mix: { ...DEFAULT_MIX },
   screen: 'lit',
+  moonPath: true,
   palette: 'storm',
   name: '',
   hintSeen: false, // first-run "tap 夜" hint

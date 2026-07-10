@@ -44,6 +44,11 @@ const SCREEN_OPTIONS = [
   { value: 'off', label: 'Turn off' },
 ]
 
+const MOON_PATH_OPTIONS = [
+  { value: 'on', label: 'On' },
+  { value: 'off', label: 'Off' },
+]
+
 const PALETTE_OPTIONS = [
   { value: 'storm', label: 'Night' },
   { value: 'moonlight', label: 'Moonlight' },
@@ -61,6 +66,8 @@ export default function Settings({ settings, onChange, onClose }) {
   const mixKey = JSON.stringify(settings.mix)
   // The orb is only visible when the screen stays lit.
   const screenShowsOrb = (settings.screen ?? 'lit') === 'lit'
+  // The moon path only exists on the night sky, i.e. "Go dark".
+  const screenShowsSky = (settings.screen ?? 'lit') === 'dark'
 
   const preview = useRef(null)
   const restart = useRef(0)
@@ -137,6 +144,18 @@ export default function Settings({ settings, onChange, onClose }) {
           <span className={styles.label}>display mode</span>
           <SegmentedControl options={SCREEN_OPTIONS} value={settings.screen ?? 'lit'} onChange={(v) => onChange({ screen: v })} />
         </div>
+
+        {/* Only matters once the sky is actually on screen. */}
+        {screenShowsSky && (
+          <div className={styles.row}>
+            <span className={styles.label}>moon path</span>
+            <SegmentedControl
+              options={MOON_PATH_OPTIONS}
+              value={settings.moonPath === false ? 'off' : 'on'}
+              onChange={(v) => onChange({ moonPath: v === 'on' })}
+            />
+          </div>
+        )}
 
         <div className={styles.row}>
           <span className={styles.label}>atmosphere</span>
