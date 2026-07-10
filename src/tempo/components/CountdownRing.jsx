@@ -37,17 +37,6 @@ const ACTIVE_ZONES = [
   { key: 'hot', start: 0.75, end: 1, color: ACTIVE_HOT },
 ]
 
-// Degrees of empty track trimmed off both ends of every zone, so the three
-// read as separated sections (rounded caps, small gap) rather than one
-// continuous ring — see the reference screenshot this was modelled on. Round
-// line caps bulge past their geometric endpoint by half the stroke width, so
-// a naive trim gets eaten by the two caps facing each other across the gap
-// and the zones visually overlap; TRIM_DEG backs each end off far enough
-// that a real gap survives the caps, leaving VISIBLE_GAP_DEG of daylight.
-const CAP_BLEED_DEG = (STROKE_WIDTH / 2 / RADIUS) * (180 / Math.PI)
-const VISIBLE_GAP_DEG = 2
-const ZONE_GAP_DEG = VISIBLE_GAP_DEG + CAP_BLEED_DEG * 2
-
 function tintFor(kind) {
   return TINT_BY_KIND[kind] ?? 'var(--color-accent)'
 }
@@ -72,12 +61,16 @@ function arcPath(cx, cy, r, startDeg, endDeg) {
 // full colour — the shared grey `.track` circle underneath shows through
 // once a zone is consumed, same as every other kind's ring. At the very
 // start elapsed is 0, so all three zones show complete; as time passes, the
-// pointer sweeps clockwise and each zone's arc shrinks away in turn.
+// pointer sweeps clockwise and each zone's arc shrinks away in turn. Zones
+// butt up against each other with no gap — a gap is empty angular space with
+// no arc drawn in it at all, so while the pointer crosses it the visible tip
+// just sits still, reading as a stall; touching zones keep it moving every
+// frame, right through the colour change.
 function ActiveZones({ elapsedFraction, pulsing }) {
   const elapsedDeg = Math.min(1, Math.max(0, elapsedFraction)) * 360
   return ACTIVE_ZONES.map((zone) => {
-    const zoneStartDeg = zone.start * 360 + ZONE_GAP_DEG / 2
-    const zoneEndDeg = zone.end * 360 - ZONE_GAP_DEG / 2
+    const zoneStartDeg = zone.start * 360
+    const zoneEndDeg = zone.end * 360
     const overlayStartDeg = Math.max(zoneStartDeg, elapsedDeg)
     return (
       <path
