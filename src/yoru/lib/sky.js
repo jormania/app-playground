@@ -66,6 +66,78 @@ export function moonPlacement(pos) {
   }
 }
 
+// ── Moon transition trail ────────────────────────────────────────────────
+// A dotted trail either side of "now" — where the moon was, and where it's
+// headed — built from the same real placement the moon itself uses, so it
+// always passes exactly through the rendered moon. Deliberately a short
+// breadcrumb (a few hours), not the whole night: azimuth sweeps past ±90°
+// over a full transit, and since x is mapped from sin(azimuth) (see
+// moonPlacement), that means x eventually folds back on itself — harmless for
+// a single dot, but it would visibly cross itself in a trail. Each side stops
+// the instant it would double back, so the assembled trail is always one
+// continuous, non-overlapping sweep from left to right.
+const TRAIL_STEP_MIN = 5
+const TRAIL_MAX_HOURS = 4
+
+export function moonPath(date, coords) {
+  if (!coords) return null
+  const stepMs = TRAIL_STEP_MIN * 60 * 1000
+  const maxSteps = Math.round((TRAIL_MAX_HOURS * 60) / TRAIL_STEP_MIN)
+
+  const at = (offsetMs) => {
+    const pos = moonPosition(new Date(date.getTime() + offsetMs), coords)
+    return pos ? moonPlacement(pos) : null
+  }
+
+  const now = at(0)
+  if (!now || now.presence <= 0) return null
+
+  // Which way x is currently moving, so both sides extend consistently with
+  // it (and so we can tell "doubled back" from "still advancing").
+  const probe = at(stepMs)
+  const dir = probe && probe.x !== now.x ? Math.sign(probe.x - now.x) : 1
+
+  const past = []
+  let prevX = now.x
+  for (let i = 1; i <= maxSteps; i++) {
+    const p = at(-i * stepMs)
+    if (!p || p.presence <= 0 || (p.x - prevX) * dir > 0) break
+    past.unshift(p)
+    prevX = p.x
+  }
+
+  const future = []
+  prevX = now.x
+  for (let i = 1; i <= maxSteps; i++) {
+    const p = at(i * stepMs)
+    if (!p || p.presence <= 0 || (p.x - prevX) * dir < 0) break
+    future.push(p)
+    prevX = p.x
+  }
+
+  const points = [...past, now, ...future]
+  return points.length > 1 ? { points, nowIndex: past.length } : null
+}
+
+// Small dim dots tracing the trail (the moon itself already marks "now", so
+// that point is skipped), fading out toward both ends.
+export function drawMoonPath(ctx, path, w, h) {
+  if (!path) return
+  const { points, nowIndex } = path
+  const span = Math.max(points.length - 1, 1)
+  for (let i = 0; i < points.length; i++) {
+    if (i === nowIndex) continue
+    const p = points[i]
+    const dist = Math.abs(i - nowIndex) / span
+    const alpha = 0.16 * (1 - dist * 0.7) * p.presence
+    if (alpha <= 0) continue
+    ctx.fillStyle = `rgba(176,175,205,${alpha})`
+    ctx.beginPath()
+    ctx.arc(p.x * w, p.y * h, 1.2, 0, Math.PI * 2)
+    ctx.fill()
+  }
+}
+
 // ── Real star colours & sizes ────────────────────────────────────────────
 // Real stars span the blackbody range (spectral classes O through M) — hot
 // blue-white through to cool orange-red — and true brightness follows a

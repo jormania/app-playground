@@ -3,7 +3,9 @@ import {
   moonPhase,
   moonPosition,
   moonPlacement,
+  moonPath,
   drawMoon,
+  drawMoonPath,
   makeFuji,
   drawFuji,
   makeMilkyWay,
@@ -138,6 +140,8 @@ export default function NightSky({ coords }) {
 
     let raf = 0
     let last = performance.now()
+    let moonTrail = null
+    let lastTrailAt = 0
 
     const frame = (now) => {
       const dt = Math.min(0.05, (now - last) / 1000)
@@ -201,6 +205,15 @@ export default function NightSky({ coords }) {
       const now2 = new Date()
       const { phase } = moonPhase(now2)
       const place = moonPlacement(moonPosition(now2, coordsRef.current))
+
+      // its trail — recomputed every minute or so, not every frame (the moon
+      // barely moves frame to frame, so this would be pure waste)
+      if (now - lastTrailAt > 60000) {
+        lastTrailAt = now
+        moonTrail = coordsRef.current ? moonPath(now2, coordsRef.current) : null
+      }
+      if (moonTrail) drawMoonPath(ctx, moonTrail, w, h)
+
       const mr = Math.min(w, h) * 0.11
       drawMoon(ctx, place.x * w, place.y * h, mr, phase, 0.5 * place.presence)
 
