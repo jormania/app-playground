@@ -33,14 +33,16 @@ const HISTORY_STORAGE = 'tg-react-history'
 const VIEW_STORAGE = 'tg-react-view'
 const THRESHOLD_STORAGE = 'tg-react-threshold'
 const MIX_STORAGE = 'tg-react-mix'
+const MIXES_STORAGE = 'tg-react-mixes'
 const THRESHOLD_MODES = ['almanac', 'tonight', 'arc']
 const HISTORY_CAP = 300
 
 // The Chorus — every value defaults to "unchanged from today's tuned sound"
-// (10 = unity gain on each category/volume, warmth fully open); Activity
-// alone centres at 5 (a neutral multiplier, not a ceiling). See
-// ambientAudio.js's own note on this at the top of its Chorus section.
-export const DEFAULT_MIX = { place: 10, weather: 10, wildlife: 10, city: 10, events: 10, volume: 10, activity: 5, warmth: 10 }
+// (10 = unity gain on each category/volume, warmth fully open, biome null =
+// follow wherever you actually are); Activity alone centres at 5 (a neutral
+// multiplier, not a ceiling). See ambientAudio.js's own note on this at the
+// top of its Chorus section.
+export const DEFAULT_MIX = { biome: null, place: 10, weather: 10, wildlife: 10, city: 10, events: 10, volume: 10, activity: 5, warmth: 10 }
 
 function loadState() {
   try {
@@ -89,6 +91,18 @@ function loadMix() {
   return { ...DEFAULT_MIX }
 }
 
+// user-saved Chorus blends: [{ id, name, mix }] — see saveCustomMix()
+function loadCustomMixes() {
+  try {
+    const raw = localStorage.getItem(MIXES_STORAGE)
+    if (raw) {
+      const a = JSON.parse(raw)
+      if (Array.isArray(a)) return a
+    }
+  } catch (_) {}
+  return []
+}
+
 function loadHistory() {
   try {
     const raw = localStorage.getItem(HISTORY_STORAGE)
@@ -122,6 +136,7 @@ export default function App() {
   const [callOn, setCallOn] = useState(loadCall)
   const [thresholdMode, setThresholdMode] = useState(loadThreshold)
   const [mix, setMix] = useState(loadMix)
+  const [customMixes, setCustomMixes] = useState(loadCustomMixes)
   const [history, setHistory] = useState(loadHistory)
   const [showSettings, setShowSettings] = useState(() => loadView().settings)
   const [showMixer, setShowMixer] = useState(false)
@@ -144,6 +159,12 @@ export default function App() {
       localStorage.setItem(MIX_STORAGE, JSON.stringify(mix))
     } catch (_) {}
   }, [mix])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(MIXES_STORAGE, JSON.stringify(customMixes))
+    } catch (_) {}
+  }, [customMixes])
 
   useEffect(() => {
     try {
@@ -281,6 +302,18 @@ export default function App() {
   function updateMix(patch) { setMix(prev => ({ ...prev, ...patch })) }
   function resetMix() { setMix({ ...DEFAULT_MIX }) }
 
+  // "+ save this mix" in the Chorus — names are capped at two words so a chip
+  // never grows wide (mirrors Yoru's own saved-mixes UI)
+  function saveCustomMix(name) {
+    const trimmed = (name || '').trim().split(/\s+/).slice(0, 2).join(' ').slice(0, 18)
+    if (!trimmed) return
+    const entry = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, name: trimmed, mix: { ...mix } }
+    setCustomMixes(prev => [...prev, entry])
+  }
+  function deleteCustomMix(id) {
+    setCustomMixes(prev => prev.filter(m => m.id !== id))
+  }
+
   function clearAllHistory() { setHistory([]) }
   function clearLastHistory() { setHistory(prev => prev.slice(1)) }
 
@@ -289,7 +322,7 @@ export default function App() {
   let panel, title
   if (showMixer) {
     title = 'The Chorus'
-    panel = <MixerPanel mix={mix} onChange={updateMix} onReset={resetMix} onClose={() => setShowMixer(false)} />
+    panel = <MixerPanel mix={mix} onChange={updateMix} onReset={resetMix} onClose={() => setShowMixer(false)} customMixes={customMixes} onSaveMix={saveCustomMix} onDeleteMix={deleteCustomMix} />
   } else if (showSettings) {
     title = 'The Keeper'
     panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} soundOn={soundOn} onToggleSound={toggleSound} signsOn={signsOn} onToggleSigns={toggleSigns} motionOn={motionOn} onToggleMotion={toggleMotion} callOn={callOn} onToggleCall={toggleCall} thresholdMode={thresholdMode} onThreshold={chooseThreshold} onOpenMixer={() => setShowMixer(true)} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
@@ -335,7 +368,7 @@ export default function App() {
           title={title}
           showSigns={signsOn}
           motionOn={motionOn}
-          fill={showReliquary || showMixer}
+          fill={showMixer ? 'full' : (showReliquary ? 'fill' : false)}
           onSettings={(showSettings || showReliquary || showMixer) ? null : () => setShowSettings(true)}
           onReliquary={(showSettings || showReliquary || showMixer) ? null : () => setShowReliquary(true)}
         >{panel}</TarotCard>

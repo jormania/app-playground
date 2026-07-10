@@ -716,6 +716,23 @@ export function createAmbience() {
     s.start(t, Math.random() * noiseBuf.duration); s.stop(t + dur + 0.2)
   }
 
+  // city: a rare bicycle bell — two quick, close, metallic dings
+  function bikeBell(t, pan) {
+    const dest = out(pan, 'city')
+    ;[0, 0.16].forEach((dt) => {
+      const tt = t + dt
+      const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 2500 + Math.random() * 260
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2650; bp.Q.value = 9
+      const g = ctx.createGain(); g.gain.value = 0.0001
+      o.connect(bp).connect(g).connect(dest)
+      const peak = 0.032
+      g.gain.setValueAtTime(0.0001, tt)
+      g.gain.linearRampToValueAtTime(peak, tt + 0.004)
+      g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.16)
+      o.start(tt); o.stop(tt + 0.2)
+    })
+  }
+
   // mountain: a far-off cowbell — soft metallic clank, pastoral and sparse
   function cowbell(t, level, pan) {
     const dest = out(pan, 'place')
@@ -895,8 +912,11 @@ export function createAmbience() {
       const tg = SCENES[scene]
       if (enabled && !solo && tg.chime > 0 && ctx.state === 'running') chime(ctx.currentTime, tg.chime, rpan(0.5))
     })
-    every(28000, 58000, () => { if (ready() && SCENES[scene].critters && lively(0.85)) meow(ctx.currentTime, 0.7, rpan(0.7)) })
-    every(32000, 70000, () => { if (ready() && SCENES[scene].critters && lively(0.85)) dog(ctx.currentTime, 0.7, rpan(0.7)) })
+    // cats and dogs: plausible near people — city, open plain, or an unknown
+    // location — but not deep forest, high mountain, or open coast
+    const petBiome = () => biome === 'city' || biome === 'plain' || biome == null
+    every(28000, 58000, () => { if (ready() && SCENES[scene].critters && petBiome() && lively(0.85)) meow(ctx.currentTime, 0.7, rpan(0.7)) })
+    every(32000, 70000, () => { if (ready() && SCENES[scene].critters && petBiome() && lively(0.85)) dog(ctx.currentTime, 0.7, rpan(0.7)) })
     every(120000, 240000, () => { if (ready() && scene !== 'winter') airplane(ctx.currentTime, 1) })
     every(8000, 13000, () => { if (ready() && weatherCond === 'thunder') thunderClap(ctx.currentTime + 0.1) })
 
@@ -927,6 +947,7 @@ export function createAmbience() {
     every(22000, 50000, () => { if (voice('coast') && lively(0.7)) waveWash(ctx.currentTime, 0.9, rpan(0.85)) })
     every(30000, 64000, () => { if (voice('forest') && lively(0.6)) woodKnock(ctx.currentTime, 0.8, rpan(0.8)) })
     every(34000, 78000, () => { if (voice('city') && lively(0.7)) carPass(ctx.currentTime, 0.8) })
+    every(55000, 120000, () => { if (voice('city') && lively(0.45)) bikeBell(ctx.currentTime, rpan(0.6)) })
     every(38000, 84000, () => { if (voice('mountain') && lively(0.6)) cowbell(ctx.currentTime, 0.7, rpan(0.7)) })
     every(28000, 60000, () => { if (voice('plain') && lively(0.7)) grassRustle(ctx.currentTime, 0.9, rpan(0.8)) })
 

@@ -6,6 +6,9 @@ export function useAmbientSound(enabled, mix) {
   const ref = useRef(null)
   const { timeOfDay, season, weather, biome, soloBiome, moments } = useWorld()
   const meteor = (moments || []).some(m => m.meteor)
+  // the Chorus's biome picker can override the real, detected biome — so you
+  // can audition a different place's sound regardless of where you actually are
+  const effectiveBiome = (mix && mix.biome) || biome
 
   // create the engine once; resume + tap on gesture; dispose on unmount
   useEffect(() => {
@@ -49,10 +52,11 @@ export function useAmbientSound(enabled, mix) {
     if (ref.current) ref.current.setWeather(weather)
   }, [weather])
 
-  // follow the coarse biome (surf, traffic, thin wind, leaf-rustle, gulls)
+  // follow the coarse biome (surf, traffic, thin wind, leaf-rustle, gulls) —
+  // or the Chorus's override, if one is set
   useEffect(() => {
-    if (ref.current) ref.current.setBiome(biome)
-  }, [biome])
+    if (ref.current) ref.current.setBiome(effectiveBiome)
+  }, [effectiveBiome])
 
   // ?solo — mute everything but the biome bed, for auditioning each biome
   useEffect(() => {

@@ -35,7 +35,11 @@ function ReliquaryIcon() {
   )
 }
 
+// fill: false (default text panel) | 'fill' (bottom 58%, used by the Reliquary's
+// scrollable list) | 'full' (the whole card, top to bottom — used by the
+// Chorus mixer, which needs room for its presets, sliders and shapers at once)
 export default function TarotCard({ title, showSigns = true, motionOn = true, fill = false, onSettings, onReliquary, children }) {
+  const contentClass = fill === 'full' ? 'tg-card-content tg-full' : fill ? 'tg-card-content tg-fill' : 'tg-card-content'
   return (
     <div className="tg-card">
       <div className="tg-card-inner">
@@ -43,7 +47,7 @@ export default function TarotCard({ title, showSigns = true, motionOn = true, fi
           <CardScene showSigns={showSigns} motionOn={motionOn} />
         </div>
         <div className="tg-readscrim" />
-        <div className={fill ? 'tg-card-content tg-fill' : 'tg-card-content'}>{children}</div>
+        <div className={contentClass}>{children}</div>
         <div className="tg-card-banner">{title}</div>
         {onReliquary && (
           <button className="tg-card-lens" onClick={onReliquary} title="The Reliquary" aria-label="Walk history">

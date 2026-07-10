@@ -530,6 +530,87 @@ body {
 .tg-mixer .tg-row { flex: 0 0 auto; margin-bottom: 0; }
 .tg-mixer .tg-row button { margin: 0; padding: 7px 14px; font-size: 0.78rem; }
 
+.tg-mixer-note {
+  display: block;
+  font-size: 0.64rem;
+  color: #cdd3c6;
+  opacity: 0.62;
+  letter-spacing: 0.01em;
+  margin: 0 0 12px;
+}
+
+/* Attunements: biome presets + your own saved blends, as a wrap of pill chips
+   (mirrors Yoru's saved-mixes chips, in this app's gold/cream/ink language) */
+.tg-mixer-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 7px;
+}
+.tg-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  color: #e6dfcc;
+  background: rgba(20, 28, 30, 0.32);
+  border: 1.3px solid rgba(243, 234, 212, 0.35);
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  margin: 0;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+@media (hover: hover) {
+  .tg-chip:hover { border-color: rgba(243, 234, 212, 0.75); }
+}
+.tg-chip-active {
+  background: #ecc356;
+  color: #241812;
+  border-color: #ecc356;
+}
+.tg-chip-dashed { border-style: dashed; opacity: 0.85; }
+.tg-chip-pair {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1.3px solid rgba(243, 234, 212, 0.35);
+  border-radius: 20px;
+  overflow: hidden;
+}
+.tg-chip-pair .tg-chip { border: none; border-radius: 0; }
+.tg-chip-x {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  line-height: 1;
+  color: #cdd3c6;
+  background: rgba(20, 28, 30, 0.32);
+  border: none;
+  padding: 5px 10px 5px 4px;
+  cursor: pointer;
+  margin: 0;
+}
+.tg-chip-x:hover { color: #e07a5f; }
+.tg-mixer-save-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.tg-mixer-save-row input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(10, 16, 18, 0.4);
+  border: 1.3px solid rgba(243, 234, 212, 0.4);
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-family: inherit;
+  font-size: 0.76rem;
+  color: #f3ead4;
+  outline: none;
+}
+.tg-mixer-save-row input:focus { border-color: rgba(243, 234, 212, 0.85); }
+.tg-mixer-save-row button { margin: 0; padding: 6px 11px; font-size: 0.7rem; }
+
 /* Out-panel meta — three quiet, secondary lines (elapsed · departure · next
    turn of the day). Deliberately light and faded so it reads at a glance
    without pulling focus, with clear space before the button. */
@@ -592,6 +673,23 @@ body {
   /* the panel sits higher than the reading scrim reaches, so give it its own
      soft backing for legible relic text over a bright sky */
   background: linear-gradient(to bottom, rgba(8, 12, 18, 0.32) 0%, rgba(8, 12, 18, 0.5) 100%);
+}
+
+/* The Chorus takes the whole card, top to bottom — it has too much in it
+   (attunements, four slider groups) to fit the lower 58% the other panels use.
+   flex:1 (not a % height) so it exactly fills whatever the banner leaves
+   below it, growing over the sky art the other panels leave uncovered. A
+   markedly less transparent backing than .tg-fill's, since it now also sits
+   over the brightest part of the art (a clear midday sun, a full moon). */
+.tg-card-content.tg-full {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 0;
+  height: auto;
+  max-height: none;
+  overflow: hidden;
+  padding: 18px 24px 12px;
+  background: linear-gradient(to bottom, rgba(8, 12, 18, 0.6) 0%, rgba(8, 12, 18, 0.76) 100%);
 }
 
 /* ---- The Reliquary (walk history) ---- */
