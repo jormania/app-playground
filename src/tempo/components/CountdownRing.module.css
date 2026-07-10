@@ -41,20 +41,8 @@
   animation: ringPulse 1s ease-in-out infinite;
 }
 
-/* Move ring's three pre-coloured zones — see ActiveZones in CountdownRing.jsx.
-   Butt, not round: the zones butt up against each other with no gap, and a
-   round cap bulges past its own endpoint into the neighbouring zone. */
-.zoneFill {
-  stroke-linecap: butt;
-  transition: d 0.25s linear;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .progress {
-    transition: none;
-  }
-
-  .zoneFill {
     transition: none;
   }
 
