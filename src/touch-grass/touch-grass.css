@@ -518,10 +518,12 @@ body {
   border-radius: 2px;
   cursor: pointer;
   outline: none;
-  /* let a vertical finger-drag scroll the list instead of nudging the slider:
-     the browser claims vertical-pan gestures for scrolling, so only a clearly
-     horizontal drag reaches the slider and changes its value */
-  touch-action: pan-y;
+  /* touch-action: pan-y alone wasn't reliable here — the native "drag to set
+     value" gesture on a full-width slider still won some vertical scrolls.
+     touch-action: none hands the whole gesture to axisLockSlider.js instead,
+     which arbitrates drag-vs-scroll itself and forwards a decided scroll to
+     the list manually (native touch panning is off, so nothing else would). */
+  touch-action: none;
 }
 .tg-mixer-slider::-webkit-slider-thumb {
   -webkit-appearance: none;

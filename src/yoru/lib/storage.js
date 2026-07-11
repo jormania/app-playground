@@ -79,6 +79,7 @@ export const DEFAULT_SETTINGS = {
   screen: 'lit',
   moonPath: true,
   starReveal: true,
+  stereo: true, // bed stereo width — a decorrelated L/R pair per layer instead of mono
   palette: 'storm',
   name: '',
   hintSeen: false, // first-run "tap 夜" hint

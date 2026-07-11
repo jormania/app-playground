@@ -59,6 +59,7 @@ export default function App() {
       screen: settings.screen,
       moonPath: settings.moonPath,
       starReveal: settings.starReveal,
+      stereo: settings.stereo,
       note: '',
     }
     saveActiveSession(active)

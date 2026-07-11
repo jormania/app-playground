@@ -38,6 +38,11 @@ const HAPTICS_OPTIONS = [
   { value: 'off', label: 'Off' },
 ]
 
+const STEREO_OPTIONS = [
+  { value: 'on', label: 'On' },
+  { value: 'off', label: 'Off' },
+]
+
 const SCREEN_OPTIONS = [
   { value: 'lit', label: 'Stay lit' },
   { value: 'dark', label: 'Go dark' },
@@ -77,7 +82,8 @@ export default function Settings({ settings, onChange, onClose }) {
   const [mixName, setMixName] = useState('')
 
   const scene = settings.scene ?? 'rain'
-  const mixKey = JSON.stringify(settings.mix)
+  const stereo = settings.stereo !== false
+  const mixKey = JSON.stringify(settings.mix) + '|' + stereo
   const customMixes = settings.customMixes ?? []
   // The orb is only visible when the screen stays lit.
   const screenShowsOrb = (settings.screen ?? 'lit') === 'lit'
@@ -104,7 +110,7 @@ export default function Settings({ settings, onChange, onClose }) {
       if (sceneChanged) {
         // A real crossfade for a discrete preset switch: the new blend fades
         // in while the old one overlaps and fades out with it.
-        s.start({ totalSec: 100000, elapsedSec: 0, mix: settings.mix, fadeIn: 1.4 })
+        s.start({ totalSec: 100000, elapsedSec: 0, mix: settings.mix, fadeIn: 1.4, stereo })
         outgoing?.stop(1.4)
       } else {
         // A SHORT release here, not the crossfade above: this fires on every
@@ -113,7 +119,7 @@ export default function Settings({ settings, onChange, onClose }) {
         // every single change — exactly while you're trying to judge the
         // change by ear.
         outgoing?.stop(0.15)
-        s.start({ totalSec: 100000, elapsedSec: 0, mix: settings.mix, fadeIn: 0.6 })
+        s.start({ totalSec: 100000, elapsedSec: 0, mix: settings.mix, fadeIn: 0.6, stereo })
       }
     }, 140)
     return () => clearTimeout(restart.current)
@@ -161,6 +167,16 @@ export default function Settings({ settings, onChange, onClose }) {
             options={LENGTH_OPTIONS}
             value={String(settings.minutes)}
             onChange={(v) => onChange({ minutes: parseInt(v, 10) })}
+          />
+        </div>
+
+        <div className={styles.row}>
+          <span className={styles.label}>stereo</span>
+          <SegmentedControl
+            size="sm"
+            options={STEREO_OPTIONS}
+            value={stereo ? 'on' : 'off'}
+            onChange={(v) => onChange({ stereo: v === 'on' })}
           />
         </div>
 

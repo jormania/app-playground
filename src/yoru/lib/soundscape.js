@@ -120,6 +120,7 @@ export function createNightSoundscape() {
   let nodes = []
   let timers = []
   let stopped = true
+  let stereo = true // bed stereo width, set from start()'s option
 
   function scheduleEnvelope(target, totalSec, elapsedSec, fadeIn) {
     const now = ctx.currentTime
@@ -139,7 +140,7 @@ export function createNightSoundscape() {
 
   // ── warmth: pink-noise floor, band-shaped, breathing with you ──
   function buildWarmth(pink, level, dest) {
-    const src = loopSource(ctx, pink)
+    const src = stereoNoise(pink, 1.0)
     const lp = ctx.createBiquadFilter()
     lp.type = 'lowpass'
     lp.frequency.value = 900
@@ -153,12 +154,13 @@ export function createNightSoundscape() {
     lp.connect(hp)
     hp.connect(bedGain)
     bedGain.connect(dest)
-    src.start()
-    nodes.push(src)
     driftFilter(lp, 60, 0.018) // barely-there wobble — the floor should read as alive, not static
   }
 
   // ── drone: a soft fifth, high-passed + lightly detuned (no reverb ring) ──
+  // Its two oscillators are already two different pitches (a fifth apart) —
+  // spreading them to L/R when stereo is on widens the drone for free, no
+  // extra nodes beyond a panner each. (Backported from Touch Grass.)
   function buildDrone(level, dest) {
     const lp = ctx.createBiquadFilter()
     lp.type = 'lowpass'
@@ -176,13 +178,47 @@ export function createNightSoundscape() {
       osc.type = 'sine'
       osc.frequency.value = f
       osc.detune.value = i === 0 ? -1.5 : 1.5
-      osc.connect(hp)
+      if (stereo) {
+        const p = panner(ctx, i === 0 ? -0.6 : 0.6)
+        osc.connect(p)
+        p.connect(hp)
+      } else {
+        osc.connect(hp)
+      }
       osc.start()
       nodes.push(osc)
     })
     // A very slow amplitude breathing — small enough to read as alive over a
     // long session, not as a tremolo.
     driftGain(g, level * 0.006, 0.011)
+  }
+
+  // A bed's noise source. With stereo on: a decorrelated pair — two loops of
+  // the same buffer at slightly different playback rates, panned L/R — so the
+  // bed reads as wide and enveloping rather than a mono point in the middle of
+  // your head (the 0.7 trim compensates for the ~+3dB two incoherent sources
+  // sum to, keeping the tuned level). With stereo off: a single centred mono
+  // source at the same level. (Backported from Touch Grass.)
+  function stereoNoise(buffer, rate = 1, spread = 0.6) {
+    if (!stereo) {
+      const s = loopSource(ctx, buffer)
+      s.playbackRate.value = rate
+      s.start()
+      nodes.push(s)
+      return s
+    }
+    const merge = ctx.createGain()
+    merge.gain.value = 0.7
+    ;[[-spread, rate * 0.985], [spread, rate * 1.015]].forEach(([pan, r]) => {
+      const s = loopSource(ctx, buffer)
+      s.playbackRate.value = r
+      const p = panner(ctx, pan)
+      s.connect(p)
+      p.connect(merge)
+      s.start()
+      nodes.push(s)
+    })
+    return merge
   }
 
   // A slow, low-depth sine wobble summed onto an AudioParam's own constant
@@ -205,7 +241,7 @@ export function createNightSoundscape() {
 
   // ── wind: band-passed noise, drifting (pace) + gusting (motion) ──
   function buildWind(white, level, lpHz, motion, pace, dest) {
-    const wind = loopSource(ctx, white)
+    const wind = stereoNoise(white, 1.0, 0.7)
     const bp = ctx.createBiquadFilter()
     bp.type = 'bandpass'
     bp.frequency.value = 480
@@ -231,15 +267,14 @@ export function createNightSoundscape() {
     bp.connect(lp)
     lp.connect(g)
     g.connect(dest)
-    wind.start()
     drift.start()
     gust.start()
-    nodes.push(wind, drift, gust)
+    nodes.push(drift, gust)
   }
 
   // ── rain: soft high wash + stereo droplets, busier with level, faster w/ pace ──
   function buildRain(white, level, pace, dest) {
-    const rain = loopSource(ctx, white)
+    const rain = stereoNoise(white, 1.0)
     const hp = ctx.createBiquadFilter()
     hp.type = 'highpass'
     hp.frequency.value = 1300
@@ -252,8 +287,6 @@ export function createNightSoundscape() {
     hp.connect(lp)
     lp.connect(g)
     g.connect(dest)
-    rain.start()
-    nodes.push(rain)
     driftFilter(lp, 900, 0.025) // a slow drift on the wash's top end
 
     let nextAt = ctx.currentTime + 0.6
@@ -328,7 +361,7 @@ export function createNightSoundscape() {
 
   // ── waves: slow surf; level=loudness, motion=swell size, pace=speed ──
   function buildWaves(white, level, motion, pace, dest) {
-    const src = loopSource(ctx, white)
+    const src = stereoNoise(white, 1.0)
     const hp = ctx.createBiquadFilter()
     hp.type = 'highpass'
     hp.frequency.value = 160
@@ -342,8 +375,6 @@ export function createNightSoundscape() {
     hp.connect(lp)
     lp.connect(g)
     g.connect(dest)
-    src.start()
-    nodes.push(src)
 
     let nextAt = ctx.currentTime + 0.8
     g.gain.setValueAtTime(trough, nextAt)
@@ -406,7 +437,7 @@ export function createNightSoundscape() {
   // envelope), with soft, frequent "bubble" transients rather than sparse drops.
   // Level makes it both louder AND busier, matching rain's own convention. ──
   function buildStream(white, level, motion, pace, dest) {
-    const src = loopSource(ctx, white)
+    const src = stereoNoise(white, 1.0)
     const bp = ctx.createBiquadFilter()
     bp.type = 'bandpass'
     bp.frequency.value = 1600
@@ -416,8 +447,6 @@ export function createNightSoundscape() {
     src.connect(bp)
     bp.connect(g)
     g.connect(dest)
-    src.start()
-    nodes.push(src)
 
     // a slow drift on the wash's centre so it's never perfectly static, while
     // staying steadier than Waves (no swelling gain envelope). Motion scales
@@ -507,9 +536,10 @@ export function createNightSoundscape() {
     timers.push(t)
   }
 
-  async function start({ totalSec, elapsedSec = 0, mix, fadeIn = FADE_IN_SEC }) {
+  async function start({ totalSec, elapsedSec = 0, mix, fadeIn = FADE_IN_SEC, stereo: stereoOpt = true }) {
     const p = resolveMix(mix)
     if (p.master <= 0) return
+    stereo = stereoOpt
 
     const Ctx = window.AudioContext || window.webkitAudioContext
     if (!Ctx) return

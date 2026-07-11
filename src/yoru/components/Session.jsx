@@ -128,7 +128,7 @@ export default function Session({ session, onNote, onFinish }) {
     const s = createNightSoundscape()
     sound.current = s
     const elapsedSec = Math.max(0, (Date.now() - session.startedAt) / 1000)
-    s.start({ totalSec: session.totalSec, elapsedSec, mix: session.mix })
+    s.start({ totalSec: session.totalSec, elapsedSec, mix: session.mix, stereo: session.stereo !== false })
     return () => s.stop()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

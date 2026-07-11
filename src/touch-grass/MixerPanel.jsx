@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { SCENE_PRESETS, PRESET_ORDER, PRESET_LABELS, activePreset } from './mix.js'
+import { useAxisLockSlider } from '../shared/axisLockSlider.js'
 
 // "The Chorus" — Touch Grass's soundscape mixer. A layer-blend engine ported
 // from Yoru (see ambientAudio.js): pick a soundscape, save your own blends, then
@@ -32,9 +33,39 @@ const SHAPERS = [
 const MAX_CUSTOM_MIXES = 4
 const MAX_MIX_NAME_LEN = 18
 
+// one slider row — a real component (not a plain render function) so it can
+// call the axis-lock touch hook itself; see axisLockSlider.js for why a native
+// touch-action alone isn't enough to stop a scroll gesture nudging the value.
+function SliderRow({ label, hint, value, onChange, scrollRef }) {
+  const pct = (value / 10) * 100
+  const drag = useAxisLockSlider({ min: 0, max: 10, step: 1, onValue: onChange, scrollRef })
+  return (
+    <div className="tg-mixer-row">
+      <span className="tg-mixer-label">
+        {label}
+        <span className="tg-mixer-value">{value}</span>
+      </span>
+      <input
+        type="range"
+        min={0}
+        max={10}
+        step={1}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="tg-mixer-slider"
+        style={{ background: `linear-gradient(to right, #ecc356 ${pct}%, rgba(243, 234, 212, 0.18) ${pct}%)` }}
+        aria-label={`${label} — ${hint}`}
+        {...drag}
+      />
+      <span className="tg-mixer-hint">{hint}</span>
+    </div>
+  )
+}
+
 export default function MixerPanel({ mix, onChange, onReset, onClose, customMixes = [], onSaveMix, onDeleteMix, stereoOn = true, onToggleStereo, voicesOn = true, onToggleVoices }) {
   const [addingMix, setAddingMix] = useState(false)
   const [mixName, setMixName] = useState('')
+  const listRef = useRef(null)
 
   const setLevel = (key, value) => onChange({ [key]: value })
   const applyPreset = (key) => onChange({ ...SCENE_PRESETS[key] })
@@ -48,30 +79,16 @@ export default function MixerPanel({ mix, onChange, onReset, onClose, customMixe
     setAddingMix(false)
   }
 
-  const renderRow = ({ key, label, hint }) => {
-    const value = typeof mix[key] === 'number' ? mix[key] : 5
-    const pct = (value / 10) * 100
-    return (
-      <div key={key} className="tg-mixer-row">
-        <span className="tg-mixer-label">
-          {label}
-          <span className="tg-mixer-value">{value}</span>
-        </span>
-        <input
-          type="range"
-          min={0}
-          max={10}
-          step={1}
-          value={value}
-          onChange={(e) => setLevel(key, Number(e.target.value))}
-          className="tg-mixer-slider"
-          style={{ background: `linear-gradient(to right, #ecc356 ${pct}%, rgba(243, 234, 212, 0.18) ${pct}%)` }}
-          aria-label={`${label} — ${hint}`}
-        />
-        <span className="tg-mixer-hint">{hint}</span>
-      </div>
-    )
-  }
+  const renderRow = ({ key, label, hint }) => (
+    <SliderRow
+      key={key}
+      label={label}
+      hint={hint}
+      value={typeof mix[key] === 'number' ? mix[key] : 5}
+      onChange={(v) => setLevel(key, v)}
+      scrollRef={listRef}
+    />
+  )
 
   return (
     <div className="tg-mixer">
@@ -81,7 +98,7 @@ export default function MixerPanel({ mix, onChange, onReset, onClose, customMixe
           {onToggleVoices && <button type="button" className="tg-toggle" aria-pressed={voicesOn} onClick={onToggleVoices}>{voicesOn ? '♫ Voices on' : '♫ Voices off'}</button>}
         </div>
       )}
-      <div className="tg-mixer-list">
+      <div className="tg-mixer-list" ref={listRef}>
         <span className="tg-mixer-group">soundscapes</span>
         <div className="tg-mixer-chips">
           {PRESET_ORDER.map((key) => (

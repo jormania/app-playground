@@ -122,10 +122,12 @@
   background: var(--color-surface-2);
   cursor: pointer;
   margin: var(--space-2xs) 0;
-  /* let a vertical finger-drag scroll the mixer instead of nudging the slider:
-     the browser claims vertical-pan gestures, so only a clearly horizontal drag
-     reaches the slider and changes its value (backported from Touch Grass) */
-  touch-action: pan-y;
+  /* touch-action: pan-y alone wasn't reliable — the native "drag to set value"
+     gesture on a full-width slider still won some vertical scrolls. touch-action:
+     none hands the whole gesture to axisLockSlider.js instead, which arbitrates
+     drag-vs-scroll itself and forwards a decided scroll to .overlay manually
+     (native touch panning is off here, so nothing else would scroll it). */
+  touch-action: none;
 }
 .slider:disabled {
   cursor: default;
