@@ -28,6 +28,7 @@ const STORAGE_KEY = 'tg-react-state'
 const API_KEY_STORAGE = 'tg-react-apikey'
 const SOUND_STORAGE = 'tg-react-sound'
 const STEREO_STORAGE = 'tg-react-stereo'
+const VOICES_STORAGE = 'tg-react-voices'
 const SIGNS_STORAGE = 'tg-react-signs'
 const MOTION_STORAGE = 'tg-react-motion'
 const CALL_STORAGE = 'tg-react-call'
@@ -71,6 +72,10 @@ function loadMotion() {
 
 function loadStereo() {
   return localStorage.getItem(STEREO_STORAGE) !== '0' // default on
+}
+
+function loadVoices() {
+  return localStorage.getItem(VOICES_STORAGE) !== '0' // default on
 }
 
 function loadCall() {
@@ -137,6 +142,7 @@ export default function App() {
   const [apiKey, setApiKey] = useState(loadApiKey)
   const [soundOn, setSoundOn] = useState(loadSound)
   const [stereoOn, setStereoOn] = useState(loadStereo)
+  const [voicesOn, setVoicesOn] = useState(loadVoices)
   const [signsOn, setSignsOn] = useState(loadSigns)
   const [motionOn, setMotionOn] = useState(loadMotion)
   const [callOn, setCallOn] = useState(loadCall)
@@ -150,7 +156,7 @@ export default function App() {
   const [showDeparture, setShowDeparture] = useState(() => loadView().departure)
   const [departureKey, setDepartureKey] = useState(0)
 
-  const { reveal: playReveal, depart: playDepart } = useAmbientSound(soundOn, mix, stereoOn)
+  const { reveal: playReveal, depart: playDepart } = useAmbientSound(soundOn, mix, stereoOn, voicesOn)
   const world = useWorld()
   useDailyCall(callOn, world.coords, history, world.moments)
 
@@ -279,6 +285,14 @@ export default function App() {
     })
   }
 
+  function toggleVoices() {
+    setVoicesOn(prev => {
+      const next = !prev
+      localStorage.setItem(VOICES_STORAGE, next ? '1' : '0')
+      return next
+    })
+  }
+
   function toggleSigns() {
     setSignsOn(prev => {
       const next = !prev
@@ -336,7 +350,7 @@ export default function App() {
   let panel, title
   if (showMixer) {
     title = 'The Chorus'
-    panel = <MixerPanel mix={mix} onChange={updateMix} onReset={resetMix} onClose={() => setShowMixer(false)} customMixes={customMixes} onSaveMix={saveCustomMix} onDeleteMix={deleteCustomMix} stereoOn={stereoOn} onToggleStereo={toggleStereo} />
+    panel = <MixerPanel mix={mix} onChange={updateMix} onReset={resetMix} onClose={() => setShowMixer(false)} customMixes={customMixes} onSaveMix={saveCustomMix} onDeleteMix={deleteCustomMix} stereoOn={stereoOn} onToggleStereo={toggleStereo} voicesOn={voicesOn} onToggleVoices={toggleVoices} />
   } else if (showSettings) {
     title = 'The Keeper'
     panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} soundOn={soundOn} onToggleSound={toggleSound} signsOn={signsOn} onToggleSigns={toggleSigns} motionOn={motionOn} onToggleMotion={toggleMotion} callOn={callOn} onToggleCall={toggleCall} thresholdMode={thresholdMode} onThreshold={chooseThreshold} onOpenMixer={() => setShowMixer(true)} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />

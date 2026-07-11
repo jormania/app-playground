@@ -32,7 +32,7 @@ const SHAPERS = [
 const MAX_CUSTOM_MIXES = 4
 const MAX_MIX_NAME_LEN = 18
 
-export default function MixerPanel({ mix, onChange, onReset, onClose, customMixes = [], onSaveMix, onDeleteMix, stereoOn = true, onToggleStereo }) {
+export default function MixerPanel({ mix, onChange, onReset, onClose, customMixes = [], onSaveMix, onDeleteMix, stereoOn = true, onToggleStereo, voicesOn = true, onToggleVoices }) {
   const [addingMix, setAddingMix] = useState(false)
   const [mixName, setMixName] = useState('')
 
@@ -75,9 +75,10 @@ export default function MixerPanel({ mix, onChange, onReset, onClose, customMixe
 
   return (
     <div className="tg-mixer">
-      {onToggleStereo && (
+      {(onToggleStereo || onToggleVoices) && (
         <div className="tg-mixer-toggles">
-          <button type="button" className="tg-toggle" aria-pressed={stereoOn} onClick={onToggleStereo}>{stereoOn ? '↔ Stereo on' : '↔ Stereo off'}</button>
+          {onToggleStereo && <button type="button" className="tg-toggle" aria-pressed={stereoOn} onClick={onToggleStereo}>{stereoOn ? '↔ Stereo on' : '↔ Stereo off'}</button>}
+          {onToggleVoices && <button type="button" className="tg-toggle" aria-pressed={voicesOn} onClick={onToggleVoices}>{voicesOn ? '♫ Voices on' : '♫ Voices off'}</button>}
         </div>
       )}
       <div className="tg-mixer-list">

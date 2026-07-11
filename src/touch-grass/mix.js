@@ -50,10 +50,15 @@ export const SCENE_PRESETS = {
   // a living wood — a full leaf canopy over a hidden brook and a little wind,
   // rich birdsong, and woodland omens (a woodpecker, a spring cuckoo). Airy tone.
   forest: { rain: 0, waves: 0, stream: 2, wind: 4, leaves: 6, chime: 0, warmth: 4, wildlife: 5, omens: 4, activity: 5, brightness: 8, motion: 5, pace: 5 },
+  // a muffled winter hush — the quiet, still scene the others lack. A thin cold
+  // wind and a bare-branch stir over a soft blanketing floor (warmth up), a lone
+  // wind chime, a dark absorbed tone (snow eats the highs). Almost no life — a
+  // far bird, a distant bell or a night wolf — and slow, so it barely stirs.
+  snow: { rain: 0, waves: 0, stream: 0, wind: 3, leaves: 1, chime: 2, warmth: 6, wildlife: 1, omens: 2, activity: 2, brightness: 5, motion: 4, pace: 4 },
 }
 
-export const PRESET_ORDER = ['rain', 'waves', 'stream', 'wind', 'forest']
-export const PRESET_LABELS = { rain: 'Rain', waves: 'Waves', stream: 'Stream', wind: 'Wind', forest: 'Forest' }
+export const PRESET_ORDER = ['rain', 'waves', 'stream', 'wind', 'forest', 'snow']
+export const PRESET_LABELS = { rain: 'Rain', waves: 'Waves', stream: 'Stream', wind: 'Wind', forest: 'Forest', snow: 'Snow' }
 
 // The out-of-box blend is the Forest scene at a comfortable volume — the most
 // "outdoors" first impression, and one of the five curated presets, so the

@@ -122,7 +122,8 @@ export function createAmbience() {
   let mix = null
   let enabled = false
   let disposed = false
-  let stereo = true // bed stereo width (a settings toggle); mono when off
+  let stereo = true // bed stereo width (a Chorus toggle); mono when off
+  let voicesOn = true // the one-shot voices (birds + omens); when off, beds only
   let graph = null // the single live soundscape graph (built once per "sound on")
   let world = { timeOfDay: 'day', season: 'summer', meteor: false }
   let uiCtx = null // a small persistent context for tap / depart / reveal
@@ -623,7 +624,7 @@ export function createAmbience() {
     }
 
     // ---- voice scheduling (self-gating on the live level + world) -----------
-    const running = () => !stopped && ctx.state === 'running'
+    const running = () => !stopped && ctx.state === 'running' && voicesOn
     const isDay = () => world.timeOfDay === 'day' || world.timeOfDay === 'dawn'
     const isNight = () => world.timeOfDay === 'night' || world.timeOfDay === 'dusk'
     const chance = (prob) => Math.random() < prob * liveliness
@@ -706,12 +707,14 @@ export function createAmbience() {
     function applyLive(np, tc = LIVE_TC) {
       P = np
       // voices also recede in volume as the weather rises (fewer of them fire via
-      // wildChance; here they sit quieter too) — omens carry a little more than birds
+      // wildChance; here they sit quieter too) — omens carry a little more than
+      // birds. `vg` is the Voices toggle: 0 mutes the buses outright (beds only).
       const cv = coverAmt()
+      const vg = voicesOn ? 1 : 0
       set(master.gain, enabled ? P.master : 0, FADE_IN_TC)
       set(tone.frequency, P.toneHz, tc)
-      set(wildBus.gain, P.wildlife * VOICE_TRIM * (1 - 0.55 * cv), tc)
-      set(omenBus.gain, P.omens * VOICE_TRIM * (1 - 0.3 * cv), tc)
+      set(wildBus.gain, vg * P.wildlife * VOICE_TRIM * (1 - 0.55 * cv), tc)
+      set(omenBus.gain, vg * P.omens * VOICE_TRIM * (1 - 0.3 * cv), tc)
       for (const u of updaters) u(P, tc)
     }
     applyLive(P) // establishes every param + fades the master in from silence
@@ -808,6 +811,13 @@ export function createAmbience() {
         graph = buildGraph()
         old.stop(0.6)
       }
+    },
+    // the one-shot voices on/off (beds keep playing). Fully live — just re-ramps
+    // the voice buses and halts/allows their scheduling; no rebuild.
+    setVoices(on) {
+      if (disposed || on === voicesOn) return
+      voicesOn = on
+      if (graph) graph.applyLive(resolveMix(mix))
     },
     tap() {
       buzz(10)
