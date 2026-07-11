@@ -122,3 +122,11 @@ export const PaletteIcon = (p) => (
 export const CompassIcon = (p) => (
   <svg {...base} {...p}><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5z" /></svg>
 )
+// Play — a theatre mask.
+export const MaskIcon = (p) => (
+  <svg {...base} {...p}><path d="M4 6c1.6-1.3 3.2-2 4.5-2 1.8 0 2.2 1 3.5 1s1.7-1 3.5-1c1.3 0 2.9.7 4.5 2-.3 5-2 11-8 11S4.3 11 4 6z" /><circle cx="9" cy="9.5" r="1" fill="currentColor" stroke="none" /><circle cx="15" cy="9.5" r="1" fill="currentColor" stroke="none" /><path d="M9.5 13.5c.8.7 1.6 1 2.5 1s1.7-.3 2.5-1" /></svg>
+)
+// Concert — a music note.
+export const MusicIcon = (p) => (
+  <svg {...base} {...p}><path d="M9 17.5V5.5l10-2v12" /><circle cx="6.5" cy="17.5" r="2.5" /><circle cx="16.5" cy="15.5" r="2.5" /></svg>
+)

@@ -2,7 +2,7 @@
 // relying on colour alone. Categories are freeform (you can add your own inline in the
 // editor) — anything outside this curated set falls back to the generic folder glyph.
 import { createElement } from 'react'
-import { CalendarIcon, PlaceIcon, TextIcon, BulbIcon, FilmIcon, PaletteIcon, CompassIcon, CategoryIcon } from './icons.jsx'
+import { CalendarIcon, PlaceIcon, TextIcon, BulbIcon, FilmIcon, PaletteIcon, CompassIcon, MaskIcon, MusicIcon, CategoryIcon } from './icons.jsx'
 
 const MAP = {
   event: CalendarIcon,
@@ -12,6 +12,8 @@ const MAP = {
   art: PaletteIcon,
   discovery: CompassIcon,
   culture: TextIcon,
+  play: MaskIcon,
+  concert: MusicIcon,
 }
 
 export function categoryIcon(category) {
