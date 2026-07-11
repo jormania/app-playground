@@ -128,15 +128,28 @@ export function createAmbience() {
   let world = { timeOfDay: 'day', season: 'summer', meteor: false }
   let uiCtx = null // a small persistent context for tap / depart / reveal
 
+  // The continuous beds that carry an always-on noise source. Only those with a
+  // level > 0 are built, and the SET of active ones keys a rebuild — so a silent
+  // layer runs nothing at all. That idle cost is what starves the audio thread
+  // and crackles on weaker mobile CPUs, so keeping silent layers truly off is the
+  // main guard against it. (Chime and thunder are schedulers that self-gate
+  // cheaply, so they're not in this set.)
+  const BED_KEYS = ['warmth', 'wind', 'rain', 'waves', 'stream', 'leaves']
+  const activeKey = (p) => BED_KEYS.filter((k) => p[k] > 0).join(',')
+
   // ======================================================================
-  // The soundscape graph — built once, then live-tuned. `P` (resolved mix) is a
-  // mutable closure variable the schedulers read directly, so a mix change never
-  // requires a rebuild: applyLive() reassigns P and ramps every live node.
+  // The soundscape graph — built for the current mix's active beds, then
+  // live-tuned. `P` (resolved mix) is a mutable closure variable the schedulers
+  // read directly, so adjusting an audible layer only ramps (applyLive); it's
+  // only rebuilt when a layer switches on/off (the active set changes).
   // ======================================================================
   function buildGraph() {
     const Ctx = window.AudioContext || window.webkitAudioContext
     if (!Ctx) return null
-    const ctx = new Ctx()
+    // 'playback' asks the browser for a larger output buffer than the default
+    // 'interactive' — far more resistant to audio-thread underruns (the crackle),
+    // and latency doesn't matter for an ambient bed.
+    const ctx = new Ctx({ latencyHint: 'playback' })
     ctx.resume?.().catch(() => {})
     let stopped = false
     let P = resolveMix(mix)
@@ -697,11 +710,19 @@ export function createAmbience() {
     })
 
     // ---- assemble + fade in -------------------------------------------------
-    buildWarmth()
-    buildWindBed((p) => 0.34 * p.wind, 900)
-    buildRain(); buildThunder()
-    buildWaves(); buildStream(); buildLeaves(); buildChime()
+    // build only the beds that are actually audible — a silent layer must not run
+    // a noise source + filters for nothing (that constant load is what starves the
+    // audio thread and crackles on mobile). buildChime is a scheduler, always safe.
+    if (P.warmth > 0) buildWarmth()
+    if (P.wind > 0) buildWindBed((p) => 0.34 * p.wind, 900)
+    if (P.rain > 0) { buildRain(); buildThunder() }
+    if (P.waves > 0) buildWaves()
+    if (P.stream > 0) buildStream()
+    if (P.leaves > 0) buildLeaves()
+    buildChime()
     startLiveliness()
+
+    const builtKey = activeKey(P) // which beds this graph was built with
 
     // the master fades up to P.master via applyLive's own ramp (from 0.0001)
     function applyLive(np, tc = LIVE_TC) {
@@ -741,6 +762,7 @@ export function createAmbience() {
       applyLive,
       stop,
       resume() { if (ctx.state === 'suspended') ctx.resume().catch(() => {}) },
+      activeKey: builtKey,
     }
   }
 
@@ -780,13 +802,17 @@ export function createAmbience() {
   }
 
   return {
-    // The Chorus: mix is the full model from mix.js (each key 0..10). A live
-    // change just ramps the graph's params — no teardown, no rebuild. Safe to
-    // call before sound is enabled — the value is held and applied on enable.
+    // The Chorus: mix is the full model from mix.js (each key 0..10). Adjusting
+    // an audible layer just ramps the graph live (no rebuild); switching a layer
+    // on/off changes which beds run, so that rebuilds (crossfaded) to keep silent
+    // layers idle. Safe before sound is enabled — the value is held for build.
     setMix(m) {
       if (disposed) return
       mix = m
-      if (graph) graph.applyLive(resolveMix(m))
+      if (!graph) return
+      const p = resolveMix(m)
+      if (activeKey(p) === graph.activeKey) graph.applyLive(p)
+      else { const old = graph; graph = buildGraph(); old.stop(0.8) }
     },
     // world context for the light day/night gating of the voices — the running
     // schedulers read it live, so it never touches the graph.
