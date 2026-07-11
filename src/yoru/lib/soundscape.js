@@ -513,7 +513,11 @@ export function createNightSoundscape() {
 
     const Ctx = window.AudioContext || window.webkitAudioContext
     if (!Ctx) return
-    ctx = new Ctx()
+    // 'playback' asks the browser for a larger output buffer than the default
+    // 'interactive' — far more resistant to audio-thread underruns (the "dusty
+    // vinyl" crackle heard on weaker mobile CPUs over Bluetooth), and latency is
+    // irrelevant for a sleep soundscape.
+    ctx = new Ctx({ latencyHint: 'playback' })
     if (ctx.state === 'suspended') await ctx.resume().catch(() => {})
     stopped = false
 
