@@ -1,15 +1,18 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { SegmentedControl, NumberStepper, Button, StreakCounter, SettingsToggle } from '../ds';
+import AppGuideNote from './components/AppGuideNote';
 import Journal from './Journal';
 import Settings from './Settings';
 import MementoMori from './components/MementoMori';
 import FateGraph from './components/FateGraph';
+import MoodGraph from './components/MoodGraph';
 import { getDayOfYear, getQuoteForDay, formatDateLabel } from './utils/date';
 import { calculateStreak } from './utils/streak';
 import { fetchRecentReflections, fetchDatabaseProperties, validateSchema, upsertReflection, ReflectionRecord } from './services/NotionService';
 import { createIdbKv } from '../shared/notify/idbKv';
 import { QUOTES } from './data/quotes';
 import styles from './App.module.css';
+import { triggerHaptic } from '../shared/haptics';
 
 function getDateFromDayOfYear(day: number): Date {
   const year = new Date().getFullYear();
@@ -168,13 +171,13 @@ export default function App() {
       const query = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !query ||
-        q.text.toLowerCase().includes(query) ||
+        q.quote.toLowerCase().includes(query) ||
         q.author.toLowerCase().includes(query) ||
         q.source.toLowerCase().includes(query) ||
-        (q.tags || []).some((t) => t.toLowerCase().includes(query));
+        (q.theme || []).some((t) => t.toLowerCase().includes(query));
 
       if (philosophyView) {
-        return matchesSearch && q.tags?.some((t) => ['Fate', 'Acceptance', 'Resistance'].includes(t));
+        return matchesSearch && q.theme?.some((t) => ['Fate', 'Acceptance', 'Resistance'].includes(t));
       }
       return matchesSearch;
     });
@@ -194,6 +197,7 @@ export default function App() {
 
   const handleToggleFavorite = async () => {
     setIsTogglingFavorite(true);
+    triggerHaptic('light');
     const nextFavoriteState = !isCurrentQuoteFavorited;
     
     // Save to local storage cache
@@ -249,7 +253,7 @@ export default function App() {
       }
     }
 
-    return QUOTES.filter((_, index) => favoritedIds.has(index + 1));
+    return QUOTES.filter((q) => favoritedIds.has(q.day));
   }, [recentReflections]);
 
   const themeOptions = [
@@ -370,6 +374,7 @@ export default function App() {
               <div className={styles.dashboardGrid}>
                 <StreakCounter count={streak} />
                 <FateGraph records={recentReflections} />
+                <MoodGraph records={recentReflections} />
               </div>
 
               <section className={styles.dateDisplay}>
@@ -379,7 +384,7 @@ export default function App() {
 
               <blockquote className={styles.quoteBlock}>
                 <div className={styles.quoteHeaderRow}>
-                  <p className={styles.quoteText}>“{quote.text}”</p>
+                  <p className={styles.quoteText}>“{quote.quote}”</p>
                   <button
                     onClick={handleToggleFavorite}
                     disabled={isTogglingFavorite}
@@ -416,6 +421,16 @@ export default function App() {
               <p className={styles.sectionIntro}>
                 A curated selection of favorited stoic maxims for rapid reference during high-stress moments.
               </p>
+              
+              <div style={{ marginBottom: '1.5rem' }}>
+                <AppGuideNote summary="What is the Enchiridion?">
+                  <p>
+                    Epictetus's original <em>Enchiridion</em> translates to "handbook" or "ready at hand." 
+                    It was designed to be kept close, a quick reference for stressful moments. By favoriting quotes, 
+                    you are building your own personal handbook of principles that resonate with you most.
+                  </p>
+                </AppGuideNote>
+              </div>
 
               {favoritedMaxims.length === 0 ? (
                 <div className={styles.emptyEnchiridion}>
@@ -428,14 +443,15 @@ export default function App() {
                 <div className={styles.enchiridionList}>
                   {favoritedMaxims.map((q) => {
                     // Find day of year for this quote
-                    const index = QUOTES.findIndex((val) => val.text === q.text) + 1;
+                    const index = q.day;
                     return (
                       <div key={index} className={styles.enchiridionCard}>
-                        <p className={styles.enchiridionQuote}>“{q.text}”</p>
+                        <p className={styles.enchiridionQuote}>“{q.quote}”</p>
                         <div className={styles.enchiridionFooter}>
                           <span className={styles.enchiridionCite}>— {q.author}, {q.source} (Day {index})</span>
                           <button
                             onClick={async () => {
+                              triggerHaptic('light');
                               // Fast local storage toggle
                               localStorage.setItem(`daily-stoic:favorite-${index}`, 'false');
                               if (isNotionConfigured && schemaErrors.length === 0) {

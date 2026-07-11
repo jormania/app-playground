@@ -238,6 +238,23 @@ export default function Settings({ onClose }: SettingsProps) {
 
         <hr className={styles.settingsDivider} />
 
+        <div className={styles.settingsForm}>
+          <h3 className={styles.sectionTitle}>User Experience</h3>
+          <SettingsToggle
+            label="Show In-Page Guides"
+            hint="Display helpful tooltips (twisties) to explain Stoic concepts like Amor Fati and Memento Mori."
+            checked={localStorage.getItem('daily-stoic:show-guides') !== 'false'}
+            onChange={(e) => {
+              localStorage.setItem('daily-stoic:show-guides', e.target.checked.toString());
+              window.dispatchEvent(new Event('daily-stoic:settings-updated'));
+              triggerHaptic('light');
+              forceUpdate();
+            }}
+          />
+        </div>
+
+        <hr className={styles.settingsDivider} />
+
         <div className={styles.reminderSection}>
           <h3 className={styles.sectionTitle}>Habit Reminders</h3>
           <SettingsToggle

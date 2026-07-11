@@ -1,4 +1,5 @@
 import styles from '../App.module.css';
+import AppGuideNote from './AppGuideNote';
 
 interface MementoMoriProps {
   birthDateString: string;
@@ -13,6 +14,14 @@ export default function MementoMori({ birthDateString, onGoToSettings }: Memento
         <p className={styles.mementoMoriIntro}>
           "Remember you must die." A visual representation of your life in weeks.
         </p>
+        <div style={{ marginBottom: '1rem' }}>
+          <AppGuideNote summary="Why meditate on mortality?">
+            <p>
+              <strong>Memento Mori</strong> is not about being morbid. It's a tool to create urgency, 
+              clarify what truly matters, and remind you not to waste the time you have left on trivial arguments or anxieties.
+            </p>
+          </AppGuideNote>
+        </div>
         <div className={styles.mementoMoriPlaceholder}>
           <p className={styles.placeholderText}>
             Configure your birth date in settings to visualize your Memento Mori life calendar.

@@ -1,0 +1,50 @@
+.container {
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-sunken);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  user-select: none;
+  font-weight: var(--weight-medium);
+  transition: color var(--duration) var(--ease);
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.summary:hover {
+  color: var(--color-ink);
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  transition: transform var(--duration) var(--ease);
+}
+
+/* When the details is open, rotate the icon */
+.container[open] .icon {
+  transform: rotate(90deg);
+}
+
+.body {
+  margin-top: var(--space-sm);
+  padding-left: calc(14px + var(--space-xs));
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--color-muted);
+}

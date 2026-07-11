@@ -5,6 +5,8 @@ export interface NotionReflection {
   fateInput?: string;
   acceptanceTags?: string[];
   favorite?: boolean;
+  mood?: string;
+  morningIntentions?: string;
 }
 
 export interface ReflectionRecord {
@@ -14,6 +16,8 @@ export interface ReflectionRecord {
   fateInput?: string;
   acceptanceTags?: string[];
   favorite?: boolean;
+  mood?: string;
+  morningIntentions?: string;
 }
 
 export const RELAY_ENDPOINT = '/api/notion';
@@ -110,7 +114,9 @@ export function validateSchema(properties: Record<string, { type?: string }>): s
     'Date': 'date',
     'AcceptanceTags': 'multi_select',
     'FateInput': 'rich_text',
-    'Favorite': 'checkbox'
+    'Favorite': 'checkbox',
+    'Mood': 'select',
+    'MorningIntentions': 'rich_text'
   };
 
   for (const [name, type] of Object.entries(expected)) {
@@ -208,6 +214,15 @@ export async function fetchReflectionForDay(
   // Extract Favorite checkbox
   const favorite = !!props.Favorite?.checkbox;
 
+  // Extract Mood select
+  const mood = props.Mood?.select?.name || '';
+
+  // Extract MorningIntentions rich_text
+  const intentText = props.MorningIntentions?.rich_text || [];
+  const morningIntentions = Array.isArray(intentText)
+    ? intentText.map((rt: any) => rt.plain_text || '').join('')
+    : '';
+
   return {
     id: page.id,
     text,
@@ -215,6 +230,8 @@ export async function fetchReflectionForDay(
     fateInput,
     acceptanceTags,
     favorite,
+    mood,
+    morningIntentions,
   };
 }
 
@@ -229,6 +246,8 @@ export async function upsertReflection(
   fateInput = '',
   acceptanceTags: string[] = [],
   favorite = false,
+  mood = '',
+  morningIntentions = '',
   fetchImpl: typeof fetch = fetch
 ): Promise<NotionReflection> {
   const id = normalizeNotionId(databaseId);
@@ -281,6 +300,18 @@ export async function upsertReflection(
     },
   };
 
+  if (mood) {
+    properties['Mood'] = { select: { name: mood } };
+  } else {
+    properties['Mood'] = { select: null };
+  }
+
+  properties['MorningIntentions'] = {
+    rich_text: [
+      { text: { content: morningIntentions } }
+    ]
+  };
+
   let page: any;
   if (existingPageId) {
     page = await callRelay(
@@ -327,6 +358,13 @@ export async function upsertReflection(
 
   const returnFavorite = !!props.Favorite?.checkbox;
 
+  const returnMood = props.Mood?.select?.name || '';
+
+  const intentText = props.MorningIntentions?.rich_text || [];
+  const returnMorningIntentions = Array.isArray(intentText)
+    ? intentText.map((rt: any) => rt.plain_text || '').join('')
+    : '';
+
   return {
     id: page.id,
     text,
@@ -334,6 +372,8 @@ export async function upsertReflection(
     fateInput: returnFateInput,
     acceptanceTags: returnAcceptanceTags,
     favorite: returnFavorite,
+    mood: returnMood,
+    morningIntentions: returnMorningIntentions,
   };
 }
 
@@ -386,6 +426,13 @@ export async function fetchRecentReflections(
 
     const favoriteVal = !!props.Favorite?.checkbox;
 
+    const moodVal = props.Mood?.select?.name || '';
+
+    const intentText = props.MorningIntentions?.rich_text || [];
+    const morningIntentionsVal = Array.isArray(intentText)
+      ? intentText.map((rt: any) => rt.plain_text || '').join('')
+      : '';
+
     if (dateProp && typeof quoteProp === 'number') {
       records.push({
         date: dateProp,
@@ -394,6 +441,8 @@ export async function fetchRecentReflections(
         fateInput: fateInputVal,
         acceptanceTags: acceptanceTagsVal,
         favorite: favoriteVal,
+        mood: moodVal,
+        morningIntentions: morningIntentionsVal,
       });
     }
   }
