@@ -27,6 +27,7 @@ function buzz(pattern) {
 const STORAGE_KEY = 'tg-react-state'
 const API_KEY_STORAGE = 'tg-react-apikey'
 const SOUND_STORAGE = 'tg-react-sound'
+const STEREO_STORAGE = 'tg-react-stereo'
 const SIGNS_STORAGE = 'tg-react-signs'
 const MOTION_STORAGE = 'tg-react-motion'
 const CALL_STORAGE = 'tg-react-call'
@@ -66,6 +67,10 @@ function loadSigns() {
 
 function loadMotion() {
   return localStorage.getItem(MOTION_STORAGE) !== '0' // default on
+}
+
+function loadStereo() {
+  return localStorage.getItem(STEREO_STORAGE) !== '0' // default on
 }
 
 function loadCall() {
@@ -131,6 +136,7 @@ export default function App() {
   const [state, setState] = useState(loadState)
   const [apiKey, setApiKey] = useState(loadApiKey)
   const [soundOn, setSoundOn] = useState(loadSound)
+  const [stereoOn, setStereoOn] = useState(loadStereo)
   const [signsOn, setSignsOn] = useState(loadSigns)
   const [motionOn, setMotionOn] = useState(loadMotion)
   const [callOn, setCallOn] = useState(loadCall)
@@ -144,7 +150,7 @@ export default function App() {
   const [showDeparture, setShowDeparture] = useState(() => loadView().departure)
   const [departureKey, setDepartureKey] = useState(0)
 
-  const { reveal: playReveal, depart: playDepart } = useAmbientSound(soundOn, mix)
+  const { reveal: playReveal, depart: playDepart } = useAmbientSound(soundOn, mix, stereoOn)
   const world = useWorld()
   useDailyCall(callOn, world.coords, history, world.moments)
 
@@ -265,6 +271,14 @@ export default function App() {
     })
   }
 
+  function toggleStereo() {
+    setStereoOn(prev => {
+      const next = !prev
+      localStorage.setItem(STEREO_STORAGE, next ? '1' : '0')
+      return next
+    })
+  }
+
   function toggleSigns() {
     setSignsOn(prev => {
       const next = !prev
@@ -325,7 +339,7 @@ export default function App() {
     panel = <MixerPanel mix={mix} onChange={updateMix} onReset={resetMix} onClose={() => setShowMixer(false)} customMixes={customMixes} onSaveMix={saveCustomMix} onDeleteMix={deleteCustomMix} />
   } else if (showSettings) {
     title = 'The Keeper'
-    panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} soundOn={soundOn} onToggleSound={toggleSound} signsOn={signsOn} onToggleSigns={toggleSigns} motionOn={motionOn} onToggleMotion={toggleMotion} callOn={callOn} onToggleCall={toggleCall} thresholdMode={thresholdMode} onThreshold={chooseThreshold} onOpenMixer={() => setShowMixer(true)} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
+    panel = <SettingsPanel currentKey={apiKey} onSave={saveApiKey} soundOn={soundOn} onToggleSound={toggleSound} stereoOn={stereoOn} onToggleStereo={toggleStereo} signsOn={signsOn} onToggleSigns={toggleSigns} motionOn={motionOn} onToggleMotion={toggleMotion} callOn={callOn} onToggleCall={toggleCall} thresholdMode={thresholdMode} onThreshold={chooseThreshold} onOpenMixer={() => setShowMixer(true)} onClose={() => { setShowSettings(false); setDepartureKey(k => k + 1) }} />
   } else if (showReliquary) {
     title = 'The Reliquary'
     panel = <ReliquaryPanel history={history} onClearLast={clearLastHistory} onClearAll={clearAllHistory} onClose={() => { setShowReliquary(false); setDepartureKey(k => k + 1) }} />

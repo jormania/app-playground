@@ -15,7 +15,7 @@ const THRESHOLD_OPTIONS = [
 // they drive the hidden "Signs" toggle commented out below, so they read as
 // unused today.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSound, signsOn, onToggleSigns, motionOn, onToggleMotion, callOn, onToggleCall, thresholdMode, onThreshold, onOpenMixer, onClose }) {
+export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSound, stereoOn, onToggleStereo, signsOn, onToggleSigns, motionOn, onToggleMotion, callOn, onToggleCall, thresholdMode, onThreshold, onOpenMixer, onClose }) {
   const [draft, setDraft] = useState(currentKey)
   const hasKey = !!currentKey
   const hasDraft = draft.trim().length > 0
@@ -40,6 +40,7 @@ export default function SettingsPanel({ currentKey, onSave, soundOn, onToggleSou
     <div className="tg-settings">
       <div className="tg-row tg-toggles">
         <button type="button" className="tg-toggle" aria-pressed={soundOn} onClick={onToggleSound}>{soundOn ? '♪ Sound on' : '♪ Sound off'}</button>
+        <button type="button" className="tg-toggle" aria-pressed={stereoOn} onClick={onToggleStereo}>{stereoOn ? '↔ Stereo on' : '↔ Stereo off'}</button>
         {/* Signs toggle hidden for now (kept for later, still drives the card via signsOn):
         <button type="button" className="tg-toggle" aria-pressed={signsOn} onClick={onToggleSigns}>{signsOn ? '✦ Signs on' : '✦ Signs off'}</button> */}
         <button type="button" className="tg-toggle" aria-pressed={locationEnabled} onClick={toggleLocation}>{locationEnabled ? '⌖ Place on' : '⌖ Place off'}</button>

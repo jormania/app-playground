@@ -122,6 +122,7 @@ export function createAmbience() {
   let mix = null
   let enabled = false
   let disposed = false
+  let stereo = true // bed stereo width (a settings toggle); mono when off
   let graph = null // the single live soundscape graph (built once per "sound on")
   let world = { timeOfDay: 'day', season: 'summer', meteor: false }
   let uiCtx = null // a small persistent context for tap / depart / reveal
@@ -212,11 +213,19 @@ export function createAmbience() {
     }
     const driftFilter = (filter, depthHz, rateHz) => driftParam(filter.frequency, depthHz, rateHz)
 
-    // a decorrelated STEREO noise source: two loops of the same buffer at slightly
-    // different playback rates, panned L/R, so a bed reads as wide and enveloping
-    // rather than a mono point in the middle of your head. The 0.7 trim compensates
-    // for the ~+3dB two incoherent sources sum to, keeping each bed's tuned level.
+    // a bed's noise source. With stereo on: a decorrelated pair — two loops of the
+    // same buffer at slightly different playback rates, panned L/R — so the bed
+    // reads as wide and enveloping rather than a mono point in the middle of your
+    // head (the 0.7 trim compensates for the ~+3dB two incoherent sources sum to,
+    // keeping the tuned level). With stereo off: a single centred mono source at
+    // the same level. Toggling stereo rebuilds the graph (see setStereo).
     function stereoNoise(buffer, rate = 1, spread = 0.6) {
+      if (!stereo) {
+        const s = loopSource(ctx, buffer); s.playbackRate.value = rate
+        s.start(0, Math.random() * buffer.duration)
+        nodes.push(s)
+        return s
+      }
       const merge = ctx.createGain(); merge.gain.value = 0.7
       ;[[-spread, rate * 0.985], [spread, rate * 1.015]].forEach(([pan, r]) => {
         const s = loopSource(ctx, buffer); s.playbackRate.value = r
@@ -787,6 +796,18 @@ export function createAmbience() {
       enabled = on
       if (on) { if (!graph) graph = buildGraph() }
       else if (graph) { graph.stop(0.6); graph = null }
+    },
+    // bed stereo width on/off. A structural change (mono source vs L/R pair), so
+    // unlike a mix slider it rebuilds the graph — but it's a rare, deliberate
+    // toggle, and the new graph crossfades in under the old, so it never cuts.
+    setStereo(on) {
+      if (disposed || on === stereo) return
+      stereo = on
+      if (enabled && graph) {
+        const old = graph
+        graph = buildGraph()
+        old.stop(0.6)
+      }
     },
     tap() {
       buzz(10)

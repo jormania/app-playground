@@ -5,7 +5,7 @@ import { useWorld } from './world.jsx'
 // Wires the vanilla audio engine to React. The bed is driven entirely by the
 // user's mix (the Chorus); only the light day/night gating of the voices reads
 // the world (time of day, season, meteor nights).
-export function useAmbientSound(enabled, mix) {
+export function useAmbientSound(enabled, mix, stereo = true) {
   const ref = useRef(null)
   const { timeOfDay, season, moments } = useWorld()
   const meteor = (moments || []).some(m => m.meteor)
@@ -39,6 +39,12 @@ export function useAmbientSound(enabled, mix) {
   useEffect(() => {
     if (ref.current) ref.current.setWorld({ timeOfDay, season, meteor })
   }, [timeOfDay, season, meteor])
+
+  // bed stereo width (a settings toggle). Declared before the enable effect so
+  // the flag is set before the first build — no wasteful rebuild on mount.
+  useEffect(() => {
+    if (ref.current) ref.current.setStereo(stereo)
+  }, [stereo])
 
   // mute / unmute
   useEffect(() => {
