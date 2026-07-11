@@ -196,15 +196,22 @@ function ConStar({ x, y, r, op, dur }) {
 // constellation sits top-left; moon lives top-right, so they never collide
 const CON_BOX = { gx: 10, gy: 28, gw: 124, gh: 74 }
 
-function Sky({ bright, clarity = 1, dayKey, date, signs }) {
+function Sky({ bright, clarity = 1, dayKey, date, signs, moonFraction = 0 }) {
   const con = CONSTELLATIONS[getZodiac(date)] || CONSTELLATIONS.aries
   const { gx, gy, gw, gh } = CON_BOX
   const pts = con.points.map(([px, py]) => ({ x: gx + px * gw, y: gy + py * gh }))
   const base = bright ? 0.95 : 0.55
-  const conOp = base * (0.3 + 0.7 * clarity) // the sign lingers faintly through cloud
-  const scOp = base * clarity                // ambient scatter fades as cloud thickens
+  // the sign lingers through cloud (and stays put through moonlight — it's a
+  // reading, meant to stay legible) while only the faint ambient scatter washes
+  // out under a bright moon, exactly as real faint stars vanish first and named
+  // ones persist
+  const conOp = base * (0.3 + 0.7 * clarity)
+  const moonWash = Math.max(0, Math.min(1, moonFraction))
+  const scOp = base * clarity * (1 - moonWash * 0.75) // never fully to 0 — even a full moon leaves the brightest handful
 
-  // background scatter — reseeded per calendar day; small, faint, slowly drifting
+  // background scatter — reseeded per calendar day; small, faint, slowly drifting.
+  // Sorted brightest-first so moonWash below can shed the faintest end of the
+  // list first, same as a real moonlit sky loses its dimmest stars first.
   const scatter = useMemo(() => {
     const rand = rng(dayKey)
     const out = []
@@ -227,8 +234,13 @@ function Sky({ bright, clarity = 1, dayKey, date, signs }) {
         begin: (-rand() * driftDur).toFixed(1),
       })
     }
-    return out
+    return out.sort((a, b) => b.s - a.s)
   }, [dayKey, gx, gy, gw, gh])
+
+  // fewer of the (day-seeded, brightest-first) scatter stars actually render as
+  // moonlight rises — never fewer than 3, so the sky never reads as empty
+  const visibleCount = Math.max(3, Math.round(scatter.length * (1 - moonWash * 0.6)))
+  const shown = scatter.slice(0, visibleCount)
 
   return (
     <g>
@@ -250,7 +262,7 @@ function Sky({ bright, clarity = 1, dayKey, date, signs }) {
         </>
       )}
       <g fill={PARCHMENT}>
-        {scatter.map((st, i) => {
+        {shown.map((st, i) => {
           const faint = scOp * 0.55
           return (
             <g key={i}>
@@ -784,7 +796,7 @@ export default function CardScene({ showSigns = true, motionOn = true }) {
       {goldenOp > 0.01 && <rect x="0" y="0" width={W} height={H} fill="url(#tg-golden)" opacity={goldenOp.toFixed(3)} />}
       {blueOp > 0.01 && <rect x="0" y="0" width={W} height={H} fill="url(#tg-blue)" opacity={blueOp.toFixed(3)} />}
       {glow && <rect x="0" y={H * 0.45} width={W} height={H * 0.55} fill="url(#tg-glow)" />}
-      {dim && !starsHidden && <Sky bright={timeOfDay === 'night'} clarity={clarity} dayKey={dayKey} date={now} signs={showSigns} />}
+      {dim && !starsHidden && <Sky bright={timeOfDay === 'night'} clarity={clarity} dayKey={dayKey} date={now} signs={showSigns} moonFraction={moon ? moon.fraction : 0} />}
       <g opacity={celestialOpacity}>
         {showSun && <Sun cx={226} cy={82} r={41} dawn={timeOfDay === 'dawn'} golden={golden} />}
         {showMoon && <Moon cx={226} cy={82} r={43} phase={moon ? moon.phase : 0.5} />}

@@ -175,6 +175,19 @@ export function getLight(date, coords) {
   return { golden, blue }
 }
 
+// A continuous 0 (night) → 1 (comfortably risen day) progress from the sun's
+// real altitude, ramped smoothly across civil twilight — the same
+// off-real-altitude technique as getLight() above (and Yoru's twilight()):
+// a plain ramp(), not a lookup keyed by the coarse dawn/day/dusk/night bucket.
+// Lets Stage.jsx's ground lightness transition gradually through dusk/dawn
+// instead of snapping the instant timeOfDay flips. Null without a location —
+// there's no real altitude to ramp from, so the caller falls back to the
+// bucketed value, same as every other real-sun feature here degrades.
+export function getDaylightProgress(date, coords) {
+  const alt = getSunAltitude(date, coords)
+  return alt == null ? null : ramp(alt, -8, 6)
+}
+
 // The next "turn of the day" ahead of `date`, for a gentle countdown:
 //   midnight→sunrise ⇒ sunrise · sunrise→noon ⇒ noon
 //   noon→sunset ⇒ sunset · sunset→midnight ⇒ midnight

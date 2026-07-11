@@ -1,4 +1,5 @@
 import { useWorld } from './world.jsx'
+import { getDaylightProgress } from './context.js'
 
 // The ground the card rests on — the earth you're about to walk out onto. Its
 // character comes from the real place (your biome) or, without a location, the
@@ -31,8 +32,13 @@ const SURFACES = [
 ]
 
 // lightness by time of day, inverted against the card's interior:
-// bright midday → a dark surface; dim dawn/dusk/night → a pale one
+// bright midday → a dark surface; dim dawn/dusk/night → a pale one.
+// Used as-is only without a location (no real sun altitude to ramp from);
+// with one, STAGE_L_DAY/STAGE_L_NIGHT below blend continuously instead, so
+// dusk/dawn transitions gradually rather than snapping between buckets.
 const STAGE_L = { dawn: 82, day: 26, dusk: 80, night: 80 }
+const STAGE_L_DAY = STAGE_L.day
+const STAGE_L_NIGHT = STAGE_L.night
 
 // the sheen drifts with the sun — low and left at dawn, overhead by day, low and
 // right at dusk, and barely there at night
@@ -74,9 +80,12 @@ function previewSurface() {
 const hsl = (h, s, l) => `hsl(${h}, ${s}%, ${l}%)`
 
 export default function Stage() {
-  const { timeOfDay, season, biome, now } = useWorld()
+  const { timeOfDay, season, biome, now, coords } = useWorld()
   const sfc = previewSurface() || surfaceFor(biome, season, now)
-  const L = STAGE_L[timeOfDay] ?? 72
+  const dayProgress = getDaylightProgress(now, coords)
+  const L = dayProgress == null
+    ? (STAGE_L[timeOfDay] ?? 72)
+    : STAGE_L_NIGHT + (STAGE_L_DAY - STAGE_L_NIGHT) * dayProgress
   const sheen = SHEEN[timeOfDay] || SHEEN.day
 
   const top = hsl(sfc.h, Math.max(0, sfc.s - 8), Math.min(96, L + 9))

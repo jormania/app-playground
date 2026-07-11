@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'vitest'
-import { getTimeOfDay, getSeason, getMoonPhase, getLight, getSunAltitude, getNextSunAnchor, moonPhaseName, daysToFullMoon } from './context.js'
+import { getTimeOfDay, getSeason, getMoonPhase, getLight, getSunAltitude, getDaylightProgress, getNextSunAnchor, moonPhaseName, daysToFullMoon } from './context.js'
 
 function dateAt(hour, month = 5) {
   const d = new Date(2024, month, 15)
@@ -160,6 +160,39 @@ describe('getLight — golden / blue hour', () => {
       peak = Math.max(peak, getLight(new Date(Date.UTC(2026, 2, 20, 0, m)), equator).blue)
     }
     expect(peak).toBeGreaterThan(0.3)
+  })
+})
+
+describe('getDaylightProgress — continuous day/night ramp for Stage', () => {
+  const equator = { lat: 0, lon: 0 }
+  test('is null without coordinates (caller falls back to the bucketed value)', () => {
+    expect(getDaylightProgress(new Date(), null)).toBeNull()
+    expect(getDaylightProgress(new Date(), { lat: 'x' })).toBeNull()
+  })
+  test('is 0 at solar midnight and 1 at high noon', () => {
+    expect(getDaylightProgress(new Date(Date.UTC(2026, 2, 20, 0)), equator)).toBe(0)
+    expect(getDaylightProgress(new Date(Date.UTC(2026, 2, 20, 12)), equator)).toBe(1)
+  })
+  test('stays within 0..1 and rises monotonically across a sunrise', () => {
+    let prev = -1
+    for (let m = 0; m < 6 * 60; m += 5) {
+      const p = getDaylightProgress(new Date(Date.UTC(2026, 2, 20, 0, m)), equator)
+      expect(p).toBeGreaterThanOrEqual(0)
+      expect(p).toBeLessThanOrEqual(1)
+      expect(p).toBeGreaterThanOrEqual(prev)
+      prev = p
+    }
+  })
+  test('takes an intermediate value during civil twilight, not a hard 0/1 jump', () => {
+    // scan for sunrise (~06:00 near the equinox at the equator) and confirm at
+    // least one sample lands strictly between 0 and 1 — the whole point of a
+    // continuous ramp over the old dawn/day bucket snap
+    let sawMiddle = false
+    for (let m = 5 * 60; m < 7 * 60; m += 2) {
+      const p = getDaylightProgress(new Date(Date.UTC(2026, 2, 20, 0, m)), equator)
+      if (p > 0.02 && p < 0.98) sawMiddle = true
+    }
+    expect(sawMiddle).toBe(true)
   })
 })
 
