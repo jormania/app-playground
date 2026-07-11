@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Field, Modal, NumberStepper, Card, SegmentedControl, IconButton } from '../index'
+import { Button, Field, Modal, NumberStepper, Card, SegmentedControl, IconButton, StreakCounter, SettingsToggle } from '../index'
 import styles from './Showcase.module.css'
 
 const ArrowUp = () => (
@@ -161,8 +161,93 @@ export function Showcase() {
           />
         </Row>
       </Section>
+
+      <Section title="StreakCounter" note="Reflection habit streak badge">
+        <Row label="Count 0">
+          <StreakCounter count={0} />
+        </Row>
+        <Row label="Count 5">
+          <StreakCounter count={5} />
+        </Row>
+      </Section>
+
+      <Section title="SettingsToggle" note="Switch slider toggle with custom label & description">
+        <div className={styles.fields}>
+          <SettingsToggle label="Morning Reminder" hint="Receive a local push notification daily." checked={true} onChange={() => {}} />
+          <SettingsToggle label="Weekly Sync" checked={false} onChange={() => {}} />
+        </div>
+      </Section>
+
+      <Section title="Amor Fati Elements" note="Fate Badge, Acceptance Tags, and Fate Graph">
+        <Row label="Fate Badge">
+          <span style={{
+            fontSize: 'var(--text-xs)',
+            backgroundColor: 'var(--color-glow)',
+            color: 'var(--color-accent)',
+            padding: 'var(--space-2xs) var(--space-xs)',
+            borderRadius: 'var(--radius-pill)',
+            fontWeight: 'var(--weight-bold)',
+            fontFamily: 'var(--font-mono)',
+            border: '1px solid color-mix(in srgb, var(--color-accent) 20%, transparent)'
+          }}>
+            ▲ Fate Reframed
+          </span>
+        </Row>
+        <Row label="Acceptance Tags">
+          <div style={{ display: 'flex', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
+            <button style={{
+              padding: 'var(--space-2xs) var(--space-sm)',
+              borderRadius: 'var(--radius-pill)',
+              border: '1px solid var(--color-accent)',
+              backgroundColor: 'var(--color-glow)',
+              color: 'var(--color-accent)',
+              fontSize: 'var(--text-xs)',
+              fontWeight: 'var(--weight-medium)',
+              cursor: 'pointer'
+            }}>Situation</button>
+            <button style={{
+              padding: 'var(--space-2xs) var(--space-sm)',
+              borderRadius: 'var(--radius-pill)',
+              border: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-surface)',
+              color: 'var(--color-ink)',
+              fontSize: 'var(--text-xs)',
+              fontWeight: 'var(--weight-medium)',
+              cursor: 'pointer'
+            }}>Outcome</button>
+          </div>
+        </Row>
+        <Row label="Fate Graph">
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-sm)',
+            width: '100%',
+            maxWidth: '400px',
+            backgroundColor: 'var(--color-surface)',
+            padding: 'var(--space-md)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', fontSize: 'var(--text-xs)' }}>
+              <span style={{ width: '80px', fontWeight: 'var(--weight-medium)' }}>Situation</span>
+              <div style={{ flex: 1, backgroundColor: 'var(--color-bg-sunken)', height: '16px', borderRadius: 'var(--radius-sm)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ backgroundColor: 'var(--color-accent)', height: '100%', width: '80%' }} />
+              </div>
+              <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-bold)' }}>4</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', fontSize: 'var(--text-xs)' }}>
+              <span style={{ width: '80px', fontWeight: 'var(--weight-medium)' }}>Outcome</span>
+              <div style={{ flex: 1, backgroundColor: 'var(--color-bg-sunken)', height: '16px', borderRadius: 'var(--radius-sm)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ backgroundColor: 'var(--color-accent)', height: '100%', width: '40%' }} />
+              </div>
+              <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-bold)' }}>2</span>
+            </div>
+          </div>
+        </Row>
+      </Section>
     </div>
-  )
+  );
 }
 
 function Section({ title, note, children }: { title: string; note: string; children: React.ReactNode }) {

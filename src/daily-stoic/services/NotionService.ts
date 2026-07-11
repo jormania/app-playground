@@ -2,6 +2,18 @@ export interface NotionReflection {
   id: string;
   text: string;
   tags: string[];
+  fateInput?: string;
+  acceptanceTags?: string[];
+  favorite?: boolean;
+}
+
+export interface ReflectionRecord {
+  date: string;
+  quoteId: number;
+  text?: string;
+  fateInput?: string;
+  acceptanceTags?: string[];
+  favorite?: boolean;
 }
 
 export const RELAY_ENDPOINT = '/api/notion';
@@ -95,7 +107,10 @@ export function validateSchema(properties: Record<string, { type?: string }>): s
     'QuoteID': 'number',
     'Reflection': 'rich_text',
     'Tags': 'multi_select',
-    'Date': 'date'
+    'Date': 'date',
+    'AcceptanceTags': 'multi_select',
+    'FateInput': 'rich_text',
+    'Favorite': 'checkbox'
   };
 
   for (const [name, type] of Object.entries(expected)) {
@@ -130,7 +145,6 @@ export async function probeConnection(
   const id = normalizeNotionId(databaseId);
   if (!id) throw new Error('Invalid Notion database link or ID.');
 
-  // Cheap reachability check
   await callRelay(token, `databases/${id}/query`, 'POST', { page_size: 1 }, fetchImpl);
 }
 
@@ -179,10 +193,28 @@ export async function fetchReflectionForDay(
     ? multiSelect.map((o: any) => o.name || '')
     : [];
 
+  // Extract FateInput text from rich_text
+  const fateText = props.FateInput?.rich_text || [];
+  const fateInput = Array.isArray(fateText)
+    ? fateText.map((rt: any) => rt.plain_text || '').join('')
+    : '';
+
+  // Extract AcceptanceTags from multi_select
+  const acceptMultiSelect = props.AcceptanceTags?.multi_select || [];
+  const acceptanceTags = Array.isArray(acceptMultiSelect)
+    ? acceptMultiSelect.map((o: any) => o.name || '')
+    : [];
+
+  // Extract Favorite checkbox
+  const favorite = !!props.Favorite?.checkbox;
+
   return {
     id: page.id,
     text,
     tags,
+    fateInput,
+    acceptanceTags,
+    favorite,
   };
 }
 
@@ -194,6 +226,9 @@ export async function upsertReflection(
   tags: string[],
   dateStr: string,
   existingPageId?: string,
+  fateInput = '',
+  acceptanceTags: string[] = [],
+  favorite = false,
   fetchImpl: typeof fetch = fetch
 ): Promise<NotionReflection> {
   const id = normalizeNotionId(databaseId);
@@ -229,6 +264,21 @@ export async function upsertReflection(
         start: dateStr,
       },
     },
+    'FateInput': {
+      rich_text: [
+        {
+          text: {
+            content: fateInput,
+          },
+        },
+      ],
+    },
+    'AcceptanceTags': {
+      multi_select: acceptanceTags.map((t) => ({ name: t })),
+    },
+    'Favorite': {
+      checkbox: favorite,
+    },
   };
 
   let page: any;
@@ -254,6 +304,7 @@ export async function upsertReflection(
   }
 
   const props = page.properties || {};
+  
   const richText = props.Reflection?.rich_text || [];
   const text = Array.isArray(richText)
     ? richText.map((rt: any) => rt.plain_text || '').join('')
@@ -264,9 +315,88 @@ export async function upsertReflection(
     ? multiSelect.map((o: any) => o.name || '')
     : [];
 
+  const fateText = props.FateInput?.rich_text || [];
+  const returnFateInput = Array.isArray(fateText)
+    ? fateText.map((rt: any) => rt.plain_text || '').join('')
+    : '';
+
+  const acceptMultiSelect = props.AcceptanceTags?.multi_select || [];
+  const returnAcceptanceTags = Array.isArray(acceptMultiSelect)
+    ? acceptMultiSelect.map((o: any) => o.name || '')
+    : [];
+
+  const returnFavorite = !!props.Favorite?.checkbox;
+
   return {
     id: page.id,
     text,
     tags: returnTags,
+    fateInput: returnFateInput,
+    acceptanceTags: returnAcceptanceTags,
+    favorite: returnFavorite,
   };
+}
+
+export async function fetchRecentReflections(
+  token: string,
+  databaseId: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<ReflectionRecord[]> {
+  const id = normalizeNotionId(databaseId);
+  if (!id) throw new Error('Invalid Notion database link or ID.');
+
+  const data = await callRelay(
+    token,
+    `databases/${id}/query`,
+    'POST',
+    {
+      sorts: [
+        {
+          property: 'Date',
+          direction: 'descending',
+        },
+      ],
+      page_size: 100,
+    },
+    fetchImpl
+  );
+
+  const results = (data as { results?: unknown[] })?.results || [];
+  const records: ReflectionRecord[] = [];
+
+  for (const page of results as any[]) {
+    const props = page.properties || {};
+    const dateProp = props.Date?.date?.start;
+    const quoteProp = props.QuoteID?.number;
+    
+    const richText = props.Reflection?.rich_text || [];
+    const textVal = Array.isArray(richText)
+      ? richText.map((rt: any) => rt.plain_text || '').join('')
+      : '';
+
+    const fateText = props.FateInput?.rich_text || [];
+    const fateInputVal = Array.isArray(fateText)
+      ? fateText.map((rt: any) => rt.plain_text || '').join('')
+      : '';
+
+    const acceptMultiSelect = props.AcceptanceTags?.multi_select || [];
+    const acceptanceTagsVal = Array.isArray(acceptMultiSelect)
+      ? acceptMultiSelect.map((o: any) => o.name || '')
+      : [];
+
+    const favoriteVal = !!props.Favorite?.checkbox;
+
+    if (dateProp && typeof quoteProp === 'number') {
+      records.push({
+        date: dateProp,
+        quoteId: quoteProp,
+        text: textVal,
+        fateInput: fateInputVal,
+        acceptanceTags: acceptanceTagsVal,
+        favorite: favoriteVal,
+      });
+    }
+  }
+
+  return records;
 }

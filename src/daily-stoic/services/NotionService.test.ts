@@ -3,7 +3,8 @@ import {
   normalizeNotionId,
   validateSchema,
   fetchReflectionForDay,
-  upsertReflection
+  upsertReflection,
+  fetchRecentReflections
 } from './NotionService';
 
 function jsonResponse(body: unknown, status = 200) {
@@ -40,7 +41,10 @@ describe('NotionService', () => {
         'QuoteID': { type: 'number' },
         'Reflection': { type: 'rich_text' },
         'Tags': { type: 'multi_select' },
-        'Date': { type: 'date' }
+        'Date': { type: 'date' },
+        'AcceptanceTags': { type: 'multi_select' },
+        'FateInput': { type: 'rich_text' },
+        'Favorite': { type: 'checkbox' }
       };
       expect(validateSchema(validProps)).toEqual([]);
     });
@@ -54,18 +58,25 @@ describe('NotionService', () => {
       expect(errors).toContain('Missing property: "Reflection"');
       expect(errors).toContain('Missing property: "Tags"');
       expect(errors).toContain('Missing property: "Date"');
+      expect(errors).toContain('Missing property: "AcceptanceTags"');
+      expect(errors).toContain('Missing property: "FateInput"');
+      expect(errors).toContain('Missing property: "Favorite"');
     });
 
     it('detects type mismatches', () => {
       const invalidProps = {
         'Name': { type: 'title' },
-        'QuoteID': { type: 'select' }, // should be number
+        'QuoteID': { type: 'select' },
         'Reflection': { type: 'rich_text' },
         'Tags': { type: 'multi_select' },
-        'Date': { type: 'date' }
+        'Date': { type: 'date' },
+        'AcceptanceTags': { type: 'multi_select' },
+        'FateInput': { type: 'rich_text' },
+        'Favorite': { type: 'number' } // should be checkbox
       };
       const errors = validateSchema(invalidProps);
       expect(errors).toContain('Property "QuoteID" must be of type "number" (found "select")');
+      expect(errors).toContain('Property "Favorite" must be of type "checkbox" (found "number")');
     });
   });
 
@@ -81,6 +92,15 @@ describe('NotionService', () => {
               },
               Tags: {
                 multi_select: [{ name: 'Meditations' }]
+              },
+              FateInput: {
+                rich_text: [{ plain_text: 'Felt tired.' }]
+              },
+              AcceptanceTags: {
+                multi_select: [{ name: 'Limitation' }]
+              },
+              Favorite: {
+                checkbox: true
               }
             }
           }
@@ -99,6 +119,9 @@ describe('NotionService', () => {
         id: 'page-123',
         text: 'Stoic thoughts today.',
         tags: ['Meditations'],
+        fateInput: 'Felt tired.',
+        acceptanceTags: ['Limitation'],
+        favorite: true
       });
       expect(fetchImpl).toHaveBeenCalled();
     });
@@ -123,7 +146,10 @@ describe('NotionService', () => {
         id: 'new-page-id',
         properties: {
           Reflection: { rich_text: [{ plain_text: 'New thoughts.' }] },
-          Tags: { multi_select: [{ name: 'Seneca' }] }
+          Tags: { multi_select: [{ name: 'Seneca' }] },
+          FateInput: { rich_text: [{ plain_text: 'Lost keys.' }] },
+          AcceptanceTags: { multi_select: [{ name: 'Outcome' }] },
+          Favorite: { checkbox: true }
         }
       };
 
@@ -136,6 +162,9 @@ describe('NotionService', () => {
         ['Seneca'],
         '2026-07-12',
         undefined,
+        'Lost keys.',
+        ['Outcome'],
+        true,
         fetchImpl
       );
 
@@ -143,11 +172,15 @@ describe('NotionService', () => {
         id: 'new-page-id',
         text: 'New thoughts.',
         tags: ['Seneca'],
+        fateInput: 'Lost keys.',
+        acceptanceTags: ['Outcome'],
+        favorite: true
       });
 
       const body = JSON.parse((fetchImpl.mock.calls[0][1] as any).body);
       expect(body.method).toBe('POST');
       expect(body.path).toBe('pages');
+      expect(body.body.properties.Favorite.checkbox).toBe(true);
     });
 
     it('updates page (PATCH) when existingPageId is provided', async () => {
@@ -155,7 +188,10 @@ describe('NotionService', () => {
         id: 'existing-page-id',
         properties: {
           Reflection: { rich_text: [{ plain_text: 'Updated thoughts.' }] },
-          Tags: { multi_select: [{ name: 'Seneca' }] }
+          Tags: { multi_select: [{ name: 'Seneca' }] },
+          FateInput: { rich_text: [{ plain_text: 'Heavy traffic.' }] },
+          AcceptanceTags: { multi_select: [{ name: 'Time' }] },
+          Favorite: { checkbox: false }
         }
       };
 
@@ -168,6 +204,9 @@ describe('NotionService', () => {
         ['Seneca'],
         '2026-07-12',
         'existing-page-id',
+        'Heavy traffic.',
+        ['Time'],
+        false,
         fetchImpl
       );
 
@@ -175,11 +214,55 @@ describe('NotionService', () => {
         id: 'existing-page-id',
         text: 'Updated thoughts.',
         tags: ['Seneca'],
+        fateInput: 'Heavy traffic.',
+        acceptanceTags: ['Time'],
+        favorite: false
       });
 
       const body = JSON.parse((fetchImpl.mock.calls[0][1] as any).body);
       expect(body.method).toBe('PATCH');
       expect(body.path).toBe('pages/existing-page-id');
+    });
+  });
+
+  describe('fetchRecentReflections', () => {
+    it('queries database and parses records', async () => {
+      const mockResult = {
+        results: [
+          {
+            properties: {
+              Date: { date: { start: '2026-07-12' } },
+              QuoteID: { number: 42 },
+              Reflection: { rich_text: [{ plain_text: 'Thoughts.' }] },
+              FateInput: { rich_text: [{ plain_text: 'Forced.' }] },
+              AcceptanceTags: { multi_select: [{ name: 'Limitation' }] },
+              Favorite: { checkbox: true }
+            }
+          }
+        ]
+      };
+
+      const fetchImpl = vi.fn(async () => jsonResponse(mockResult));
+      const res = await fetchRecentReflections(
+        'mock-token',
+        '41c42bc4dfb543f49051810b3c5880fe',
+        fetchImpl
+      );
+
+      expect(res).toEqual([
+        {
+          date: '2026-07-12',
+          quoteId: 42,
+          text: 'Thoughts.',
+          fateInput: 'Forced.',
+          acceptanceTags: ['Limitation'],
+          favorite: true
+        }
+      ]);
+
+      const body = JSON.parse((fetchImpl.mock.calls[0][1] as any).body);
+      expect(body.method).toBe('POST');
+      expect(body.path).toBe('databases/41c42bc4dfb543f49051810b3c5880fe/query');
     });
   });
 });

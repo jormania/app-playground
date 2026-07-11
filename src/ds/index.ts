@@ -14,3 +14,8 @@ export { SegmentedControl } from './components/SegmentedControl'
 export type { SegmentedControlProps, SegmentedControlOption } from './components/SegmentedControl'
 export { IconButton } from './components/IconButton'
 export type { IconButtonProps, IconButtonSize } from './components/IconButton'
+export { StreakCounter } from './components/StreakCounter'
+export type { StreakCounterProps } from './components/StreakCounter'
+export { SettingsToggle } from './components/SettingsToggle'
+export type { SettingsToggleProps } from './components/SettingsToggle'
+
