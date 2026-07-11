@@ -15,7 +15,8 @@
     "gen:law-of-the-day-icons": "node scripts/generate-law-of-the-day-icons.mjs",
     "gen:kettlebell-icons": "node scripts/generate-kettlebell-icons.mjs",
     "gen:cabinet-icons": "node scripts/generate-cabinet-icons.mjs",
-    "gen:yoru-icons": "node scripts/generate-yoru-icons.mjs"
+    "gen:yoru-icons": "node scripts/generate-yoru-icons.mjs",
+    "gen:daily-stoic-icons": "node scripts/generate-daily-stoic-icons.mjs"
   },
   "repository": {
     "type": "git",

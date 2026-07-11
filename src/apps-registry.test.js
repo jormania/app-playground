@@ -10,6 +10,7 @@ const REACT_VITE_TITLES = [
   'Kettlebell Training',
   'Yoru',
   'Wanderlist',
+  'Daily Stoic',
 ]
 
 const STATIC_TITLES = ['Touch Grass · Original', 'Touch Grass · Thrive', 'Touch Grass · Nora', 'Codex Alchymicus — KCD2']

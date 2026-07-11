@@ -11,6 +11,7 @@ a few are self-contained static HTML pages. Either way they run entirely in your
 
 | App | Tags | Entry file |
 | --- | --- | --- |
+| [Daily Stoic](https://coneofcold.vercel.app/daily-stoic-react.html) | mindfulness · writing · react · vite | `daily-stoic-react.html` |
 | [Law of the Day](https://coneofcold.vercel.app/law-of-the-day-react.html) | quiz · strategy · reading · react · vite | `law-of-the-day-react.html` |
 | [Tempo](https://coneofcold.vercel.app/tempo-react.html) | mindfulness · fitness · breathing · react · vite | `tempo-react.html` |
 | [Sol Odyssey](https://coneofcold.vercel.app/sol-odysseys-react.html) | habits · growth · tracker · notion | `sol-odysseys-react.html` |

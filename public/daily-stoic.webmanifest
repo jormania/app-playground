@@ -1,0 +1,17 @@
+{
+  "name": "Daily Stoic",
+  "short_name": "Daily Stoic",
+  "description": "Daily quotes from Marcus Aurelius and Seneca, and a space for your own daily reflection.",
+  "id": "/daily-stoic-react.html",
+  "start_url": "/daily-stoic-react.html",
+  "scope": "/daily-stoic-react.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f5f7",
+  "theme_color": "#1b1f24",
+  "icons": [
+    { "src": "/daily-stoic-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/daily-stoic-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/daily-stoic-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

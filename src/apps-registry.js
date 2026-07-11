@@ -24,11 +24,32 @@ export const CAT_TAGS = new Set(["gaming", "fitness", "outdoor", "mindfulness", 
 
 export const APPS = [
   {
+    emoji: "🏛️",
+    iconBg: "rgba(120,120,120,0.14)",
+    title: "Daily Stoic",
+    subtitle: "stoic wisdom · daily reflection",
+    latest: true,
+    deployed: "Jul 2026",
+    tech: "React + Vite + TS",
+    tags: ["mindfulness", "writing", "react", "vite"],
+    ds: true,
+    kind: "react-vite",
+    manifest: "/daily-stoic.webmanifest",
+    description: "A daily companion to practice Stoicism. Read a curated quote from Marcus Aurelius or Seneca mapped to the current day of the year, write your daily reflection, and look back at your past entries stored privately on your device.",
+    features: [
+      "A daily Stoic quote from Marcus Aurelius or Seneca",
+      "Day-of-year quote mapping ensuring a unique reflection prompt each day",
+      "Private daily journal stored entirely in your browser's localStorage",
+      "Built with the shared design system for clean, modern aesthetics",
+      "PWA support to install on mobile or desktop and use offline"
+    ],
+    file: "daily-stoic-react.html"
+  },
+  {
     emoji: "🗺️",
     iconBg: "rgba(169,116,31,0.14)",
     title: "Wanderlist",
     subtitle: "city things to do · triage · attend",
-    latest: true,
     deployed: "Jul 2026",
     tech: "React + Vite + Notion",
     tags: ["notion", "events", "culture", "planning", "react", "vite"],
