@@ -35,7 +35,7 @@ const lerp = (a, b, t) => a + (b - a) * t
 // (it's the one control that should behave like a real volume knob); each
 // layer's own level gets a gentler taper so relative balance between layers in
 // a blended preset doesn't reshuffle too much.
-const taper = (t, exp) => Math.pow(clamp01(t), exp)
+export const taper = (t, exp) => Math.pow(clamp01(t), exp)
 const VOLUME_TAPER = 1.9
 const LAYER_TAPER = 1.4
 
@@ -87,7 +87,7 @@ function panner(ctx, pan) {
   return ctx.createGain()
 }
 
-function resolveMix(mix) {
+export function resolveMix(mix) {
   const nv = (k) => clamp01((mix && typeof mix[k] === 'number' ? mix[k] : 0) / 10)
   const gv = (k) => taper(nv(k), LAYER_TAPER) // a layer's own level, perceptually tapered
   return {
@@ -523,7 +523,17 @@ export function createNightSoundscape() {
 
     master = ctx.createGain()
     master.gain.value = 0.0001
-    master.connect(ctx.destination)
+    // A transparent brick-wall safety limiter on the final output, so no extreme
+    // blend of layers + volume can sum past 0dBFS and clip. Below threshold (so
+    // inaudible) for any sane mix; only catches peaks. (Backported from Touch Grass.)
+    const limiter = ctx.createDynamicsCompressor()
+    limiter.threshold.value = -2
+    limiter.knee.value = 0
+    limiter.ratio.value = 20
+    limiter.attack.value = 0.003
+    limiter.release.value = 0.25
+    master.connect(limiter)
+    limiter.connect(ctx.destination)
 
     // One global brightness low-pass everything passes through.
     const tone = ctx.createBiquadFilter()

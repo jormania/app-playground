@@ -122,6 +122,10 @@
   background: var(--color-surface-2);
   cursor: pointer;
   margin: var(--space-2xs) 0;
+  /* let a vertical finger-drag scroll the mixer instead of nudging the slider:
+     the browser claims vertical-pan gestures, so only a clearly horizontal drag
+     reaches the slider and changes its value (backported from Touch Grass) */
+  touch-action: pan-y;
 }
 .slider:disabled {
   cursor: default;
