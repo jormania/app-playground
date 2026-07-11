@@ -459,6 +459,20 @@ body {
 
 /* ---- The Chorus (the ambient mixer) ---- */
 .tg-mixer { display: flex; flex-direction: column; height: 100%; }
+/* a fixed row of quick toggles pinned above the scrolling slider list */
+.tg-mixer-toggles {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 9px;
+}
+.tg-mixer-toggles .tg-toggle {
+  margin: 0;
+  padding: 5px 13px;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
 .tg-mixer-list {
   flex: 1 1 auto;
   min-height: 0;
