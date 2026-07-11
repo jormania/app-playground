@@ -58,6 +58,7 @@ export default function App() {
       mix: settings.mix,
       screen: settings.screen,
       moonPath: settings.moonPath,
+      starReveal: settings.starReveal,
       note: '',
     }
     saveActiveSession(active)

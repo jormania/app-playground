@@ -274,6 +274,7 @@ export default function Session({ session, onNote, onFinish }) {
           <NightSky
             coords={coords}
             moonPath={session.moonPath !== false}
+            starReveal={session.starReveal !== false}
             geoStatus={geoStatus}
             onRequestLocation={requestLocation}
           />

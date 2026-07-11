@@ -78,6 +78,7 @@ export const DEFAULT_SETTINGS = {
   mix: { ...DEFAULT_MIX },
   screen: 'lit',
   moonPath: true,
+  starReveal: true,
   palette: 'storm',
   name: '',
   hintSeen: false, // first-run "tap 夜" hint

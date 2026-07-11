@@ -49,6 +49,11 @@ const MOON_PATH_OPTIONS = [
   { value: 'off', label: 'Off' },
 ]
 
+const STAR_REVEAL_OPTIONS = [
+  { value: 'on', label: 'On' },
+  { value: 'off', label: 'Off' },
+]
+
 const PALETTE_OPTIONS = [
   { value: 'storm', label: 'Night' },
   { value: 'moonlight', label: 'Moonlight' },
@@ -247,6 +252,19 @@ export default function Settings({ settings, onChange, onClose }) {
               options={MOON_PATH_OPTIONS}
               value={settings.moonPath === false ? 'off' : 'on'}
               onChange={(v) => onChange({ moonPath: v === 'on' })}
+            />
+          </div>
+        )}
+
+        {/* Also only meaningful on the night sky: the first-minute "settle"
+            where the stars open a little brighter, then quiet down. */}
+        {screenShowsSky && (
+          <div className={styles.row}>
+            <span className={styles.label}>star settle</span>
+            <SegmentedControl
+              options={STAR_REVEAL_OPTIONS}
+              value={settings.starReveal === false ? 'off' : 'on'}
+              onChange={(v) => onChange({ starReveal: v === 'on' })}
             />
           </div>
         )}

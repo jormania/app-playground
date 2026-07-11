@@ -14,7 +14,6 @@ import {
   makeMilkyWay,
   drawMilkyWay,
   starColor,
-  starSize,
   season,
 } from '../lib/sky'
 import styles from './NightSky.module.css'
@@ -26,12 +25,14 @@ import styles from './NightSky.module.css'
 // the lower centre, an occasional quiet meteor, and season-aware drifting
 // elements — sakura (spring), fireflies (summer), momiji (autumn), snow
 // (winter). Deliberately very dim. The parent handles tap-to-peek.
-export default function NightSky({ coords, moonPath: showMoonPath = true, geoStatus, onRequestLocation }) {
+export default function NightSky({ coords, moonPath: showMoonPath = true, starReveal = true, geoStatus, onRequestLocation }) {
   const canvasRef = useRef(null)
   const coordsRef = useRef(coords)
   coordsRef.current = coords
   const showMoonPathRef = useRef(showMoonPath)
   showMoonPathRef.current = showMoonPath
+  const starRevealRef = useRef(starReveal)
+  starRevealRef.current = starReveal
 
   // A manual "enable location" prompt — normally geolocation is requested
   // automatically and this never appears, but some contexts (installed/
@@ -78,19 +79,54 @@ export default function NightSky({ coords, moonPath: showMoonPath = true, geoSta
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     const which = season()
 
-    const stars = Array.from({ length: 160 }, () => {
+    // ── Stars ────────────────────────────────────────────────────────────
+    // A realistic population where size, brightness AND colour all follow one
+    // magnitude, so each star stays physically coherent: bright ⇒ bigger and
+    // more colourful. Crucially only the brightest carry a visible tint — that
+    // is how night vision actually works, the eye's rods being colour-blind, so
+    // faint stars read as neutral grey and only a Sirius or a Betelgeuse shows
+    // its colour. (Before, every star was tinted but so dim over near-black
+    // that the whole lovingly-built palette collapsed to the same grey.)
+    const NEUTRAL = 224 // the colourless grey that faint stars settle toward
+    const makeStar = (opts = {}) => {
       const [cr, cg, cb] = starColor()
+      const mag = opts.mag ?? Math.random() ** 1.7 // 0..1, skewed faint
+      const sat = opts.sat ?? Math.max(0, (mag - 0.55) / 0.45) ** 1.4
+      const mix = (c) => Math.round(NEUTRAL + (c - NEUTRAL) * sat)
       return {
-        x: Math.random(),
-        y: Math.random(),
-        r: starSize(),
-        color: `${cr},${cg},${cb}`,
-        base: 0.05 + Math.random() * 0.2,
+        x: opts.x ?? Math.random(),
+        y: opts.y ?? Math.random(),
+        r: opts.r ?? 0.3 + mag * 1.5,
+        color: `${mix(cr)},${mix(cg)},${mix(cb)}`,
+        base: opts.base ?? 0.05 + mag * 0.2,
         phase: Math.random() * Math.PI * 2,
-        speed: 0.3 + Math.random() * 0.6,
-        drift: 0.0018 + Math.random() * 0.0028,
+        speed: opts.speed ?? 0.3 + Math.random() * 0.6,
+        drift: opts.drift ?? 0.0018 + Math.random() * 0.0028,
+        halo: opts.halo ?? 0, // >0 only for the bright anchor stars below
       }
-    })
+    }
+
+    const stars = Array.from({ length: 160 }, () => makeStar())
+
+    // A few first-magnitude "anchor" stars: markedly brighter, fully coloured
+    // (bright enough for the eye to actually see the tint), each wrapped in a
+    // soft atmospheric halo. They give the gaze somewhere to land and rest —
+    // the settling stare that helps sleep — without adding clutter. Kept to the
+    // upper sky, off the very edges and clear of the Fuji band lower down.
+    stars.push(
+      ...Array.from({ length: 5 }, () =>
+        makeStar({
+          x: 0.12 + Math.random() * 0.76,
+          y: 0.05 + Math.random() * 0.45,
+          r: 1.5 + Math.random() * 0.8,
+          base: 0.45 + Math.random() * 0.27,
+          sat: 0.85 + Math.random() * 0.15, // clearly coloured, a hint of white
+          speed: 0.25 + Math.random() * 0.3, // slow, stately twinkle
+          drift: 0.0014 + Math.random() * 0.0012,
+          halo: 4 + Math.random() * 2.5,
+        }),
+      ),
+    )
 
     // Season-aware drifting elements.
     const parts = []
@@ -165,6 +201,11 @@ export default function NightSky({ coords, moonPath: showMoonPath = true, geoSta
 
     let raf = 0
     let last = performance.now()
+    // For the star "settle": the field opens a touch brighter and more alive,
+    // then eases to its deep-dim resting state over the first ~32s. Time-based
+    // from mount, so it's the very start of the session that gets the lift.
+    const startTime = performance.now()
+    const REVEAL_MS = 32000
     let moonArcData = null
     let lastArcAt = 0
 
@@ -202,7 +243,12 @@ export default function NightSky({ coords, moonPath: showMoonPath = true, geoSta
         moonArcData = null
       }
 
-      // stars
+      // stars. `boost` is the settle: it starts at 1.8 and eases to 1 over the
+      // first REVEAL_MS, so the sky greets you a little brighter then quiets —
+      // reinforcing the wind-down (never busier as time passes). Off (toggle,
+      // or reduced-motion) means it simply opens already at rest.
+      const reveal = starRevealRef.current && !reduced ? Math.min(1, (now - startTime) / REVEAL_MS) : 1
+      const boost = 1 + (1 - reveal) * (1 - reveal) * 0.8
       for (const s of stars) {
         if (!reduced) {
           s.phase += s.speed * dt
@@ -210,10 +256,25 @@ export default function NightSky({ coords, moonPath: showMoonPath = true, geoSta
           if (s.y > 1.05) s.y -= 1.1
         }
         const tw = reduced ? 1 : 0.55 + 0.45 * Math.sin(s.phase)
-        ctx.globalAlpha = s.base * tw
+        const px = s.x * w
+        const py = s.y * h
+        const alpha = Math.min(1, s.base * tw * boost)
+        // A soft atmospheric halo for the anchor stars, drawn under the core.
+        if (s.halo) {
+          const hr = s.r * s.halo
+          ctx.globalAlpha = 1
+          const g = ctx.createRadialGradient(px, py, 0, px, py, hr)
+          g.addColorStop(0, `rgba(${s.color},${alpha * 0.45})`)
+          g.addColorStop(1, `rgba(${s.color},0)`)
+          ctx.fillStyle = g
+          ctx.beginPath()
+          ctx.arc(px, py, hr, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        ctx.globalAlpha = alpha
         ctx.fillStyle = `rgb(${s.color})`
         ctx.beginPath()
-        ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2)
+        ctx.arc(px, py, s.r, 0, Math.PI * 2)
         ctx.fill()
       }
       ctx.globalAlpha = 1
