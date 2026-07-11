@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { SegmentedControl, NumberStepper, Button } from '../ds';
 import Journal from './Journal';
+import Settings from './Settings';
 import { getDayOfYear, getQuoteForDay, formatDateLabel } from './utils/date';
 import styles from './App.module.css';
 
@@ -17,6 +18,19 @@ export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
     return (localStorage.getItem('daily-stoic:theme') as 'light' | 'dark' | 'system') || 'system';
   });
+
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [token, setToken] = useState('');
+  const [databaseId, setDatabaseId] = useState('');
+
+  const loadCredentials = () => {
+    setToken(localStorage.getItem('daily-stoic:notion-token') || '');
+    setDatabaseId(localStorage.getItem('daily-stoic:notion-db') || '');
+  };
+
+  useEffect(() => {
+    loadCredentials();
+  }, []);
 
   // Apply theme changes to document Element
   useEffect(() => {
@@ -60,46 +74,64 @@ export default function App() {
           <span className={styles.brandEmoji} aria-hidden="true">🏛️</span>
           <h1 className={styles.brandTitle}>Daily Stoic</h1>
         </div>
-        <div className={styles.themeToggle}>
-          <SegmentedControl
-            options={themeOptions}
-            value={theme}
-            onChange={(val) => setTheme(val as 'light' | 'dark' | 'system')}
-            size="sm"
-          />
+        <div className={styles.headerActions}>
+          {!isSettingsOpen && (
+            <Button variant="ghost" size="sm" onClick={() => setIsSettingsOpen(true)}>
+              ⚙️ Settings
+            </Button>
+          )}
+          <div className={styles.themeToggle}>
+            <SegmentedControl
+              options={themeOptions}
+              value={theme}
+              onChange={(val) => setTheme(val as 'light' | 'dark' | 'system')}
+              size="sm"
+            />
+          </div>
         </div>
       </header>
 
-      <main className={styles.mainContent}>
-        <section className={styles.navigationSection}>
-          <NumberStepper
-            label="Day of Year"
-            value={dayOfYear}
-            min={1}
-            max={366}
-            onChange={(val) => setDayOfYear(val)}
+      {isSettingsOpen ? (
+        <main className={styles.mainContent}>
+          <Settings
+            onClose={() => {
+              setIsSettingsOpen(false);
+              loadCredentials();
+            }}
           />
-          {dayOfYear !== today && (
-            <Button variant="ghost" size="sm" onClick={() => setDayOfYear(today)}>
-              Back to Today
-            </Button>
-          )}
-        </section>
+        </main>
+      ) : (
+        <main className={styles.mainContent}>
+          <section className={styles.navigationSection}>
+            <NumberStepper
+              label="Day of Year"
+              value={dayOfYear}
+              min={1}
+              max={366}
+              onChange={(val) => setDayOfYear(val)}
+            />
+            {dayOfYear !== today && (
+              <Button variant="ghost" size="sm" onClick={() => setDayOfYear(today)}>
+                Back to Today
+              </Button>
+            )}
+          </section>
 
-        <section className={styles.dateDisplay}>
-          <span className={styles.dateLabel}>{formatDateLabel(currentDate)}</span>
-          <span className={styles.dayLabel}>Day {dayOfYear} of 366</span>
-        </section>
+          <section className={styles.dateDisplay}>
+            <span className={styles.dateLabel}>{formatDateLabel(currentDate)}</span>
+            <span className={styles.dayLabel}>Day {dayOfYear} of 366</span>
+          </section>
 
-        <blockquote className={styles.quoteBlock}>
-          <p className={styles.quoteText}>“{quote.text}”</p>
-          <cite className={styles.quoteCite}>
-            — {quote.author}, <span className={styles.quoteSource}>{quote.source}</span>
-          </cite>
-        </blockquote>
+          <blockquote className={styles.quoteBlock}>
+            <p className={styles.quoteText}>“{quote.text}”</p>
+            <cite className={styles.quoteCite}>
+              — {quote.author}, <span className={styles.quoteSource}>{quote.source}</span>
+            </cite>
+          </blockquote>
 
-        <Journal dayOfYear={dayOfYear} />
-      </main>
+          <Journal dayOfYear={dayOfYear} token={token} databaseId={databaseId} />
+        </main>
+      )}
 
       <footer className={styles.footer}>
         <p>Stoic wisdom is in the public domain. Your reflections are stored locally.</p>

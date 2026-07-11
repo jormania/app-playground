@@ -18,6 +18,12 @@
   box-shadow: var(--shadow-sm);
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -128,12 +134,58 @@
   box-shadow: var(--shadow-sm);
 }
 
+.journalHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .journalTitle {
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--text-base);
   font-weight: var(--weight-bold);
   color: var(--color-ink);
+}
+
+.notionBadge {
+  font-size: var(--text-xs);
+  background-color: var(--color-glow);
+  color: var(--color-accent);
+  padding: var(--space-2xs) var(--space-xs);
+  border-radius: var(--radius-pill);
+  font-weight: var(--weight-bold);
+  font-family: var(--font-mono);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
+.syncState {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  padding: var(--space-md) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.spinner {
+  display: inline-block;
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.inlineError {
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+  background-color: color-mix(in srgb, var(--color-danger) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 15%, transparent);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-2xs);
 }
 
 .textareaWrapper {
@@ -168,6 +220,12 @@
   box-shadow: 0 0 0 3px var(--color-ring);
 }
 
+.textarea:disabled {
+  background-color: var(--color-bg-sunken);
+  color: var(--color-muted);
+  cursor: not-allowed;
+}
+
 .journalActions {
   display: flex;
   align-items: center;
@@ -187,6 +245,93 @@
   font-weight: var(--weight-medium);
 }
 
+/* Settings View Styles */
+.settingsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  background-color: var(--color-surface);
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+
+.settingsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-sm);
+}
+
+.settingsTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink);
+}
+
+.settingsForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.settingsIntro {
+  margin: 0 0 var(--space-xs) 0;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  line-height: var(--leading-body);
+}
+
+.settingsActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-top: var(--space-xs);
+}
+
+.statusBoxError {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: flex-start;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background-color: color-mix(in srgb, var(--color-danger) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 20%, transparent);
+  color: var(--color-danger);
+}
+
+.statusBoxSuccess {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background-color: color-mix(in srgb, var(--color-success) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 20%, transparent);
+  color: var(--color-success);
+}
+
+.statusIcon {
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
+.statusContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.statusText {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
 .footer {
   padding: var(--space-xl) var(--space-md);
   text-align: center;
@@ -202,6 +347,11 @@
     padding: var(--space-sm) var(--space-md);
   }
   .navigationSection {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+  .settingsActions {
     flex-direction: column;
     align-items: stretch;
     gap: var(--space-sm);
