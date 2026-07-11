@@ -201,11 +201,17 @@ export default function NightSky({ coords, moonPath: showMoonPath = true, starRe
 
     let raf = 0
     let last = performance.now()
-    // For the star "settle": the field opens a touch brighter and more alive,
-    // then eases to its deep-dim resting state over the first ~32s. Time-based
-    // from mount, so it's the very start of the session that gets the lift.
+    // For the star "settle": the field swells up to greet you, then eases back
+    // to its deep-dim resting state. Time-based from mount. The rise is delayed
+    // to ~RISE_S because the sky sits in a container that fades its own opacity
+    // in over 2.5s (`.veil`) — peaking any sooner would just be hidden behind
+    // that fade. PEAK is the extra brightness multiplier at the crest (so a
+    // resting 0.2-alpha star briefly blazes near full), deliberately strong so
+    // the greeting is unmistakable, then it decays away over SETTLE_S.
     const startTime = performance.now()
-    const REVEAL_MS = 32000
+    const RISE_S = 3.5
+    const SETTLE_S = 34
+    const PEAK = 2.8
     let moonArcData = null
     let lastArcAt = 0
 
@@ -243,12 +249,18 @@ export default function NightSky({ coords, moonPath: showMoonPath = true, starRe
         moonArcData = null
       }
 
-      // stars. `boost` is the settle: it starts at 1.8 and eases to 1 over the
-      // first REVEAL_MS, so the sky greets you a little brighter then quiets —
-      // reinforcing the wind-down (never busier as time passes). Off (toggle,
-      // or reduced-motion) means it simply opens already at rest.
-      const reveal = starRevealRef.current && !reduced ? Math.min(1, (now - startTime) / REVEAL_MS) : 1
-      const boost = 1 + (1 - reveal) * (1 - reveal) * 0.8
+      // stars. `boost` is the settle: the field swells from rest up to 1+PEAK
+      // over the first RISE_S, then eases back to 1 across SETTLE_S — the sky
+      // greets you brightly, then quiets, reinforcing the wind-down (never
+      // busier as time passes). Off (toggle, or reduced-motion) means boost
+      // stays 1 and the field simply opens already at rest.
+      let boost = 1
+      if (starRevealRef.current && !reduced) {
+        const t = (now - startTime) / 1000
+        let lift = t < RISE_S ? t / RISE_S : Math.max(0, 1 - (t - RISE_S) / SETTLE_S)
+        lift = lift * lift * (3 - 2 * lift) // smoothstep — gentle in and out
+        boost = 1 + lift * PEAK
+      }
       for (const s of stars) {
         if (!reduced) {
           s.phase += s.speed * dt
