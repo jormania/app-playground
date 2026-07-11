@@ -672,23 +672,23 @@ export function createAmbience() {
     every(55000, 130000, () => { if (running() && P.wildlife > 0 && wildChance(0.6)) meow(ctx.currentTime, rpan(0.7)) })
     every(64000, 150000, () => { if (running() && P.wildlife > 0 && wildChance(0.6)) dog(ctx.currentTime, rpan(0.7)) })
 
-    // omens — rare surprises, on a cooldown, low probability
+    // omens — rare surprises drawn from whatever fits the hour. Kept alive under
+    // ordinary conditions (a daytime pool of a distant bell, woodpecker and a
+    // warm-season cuckoo) rather than locked behind narrow windows, but still
+    // spaced by a cooldown so they read as surprises, never a chorus.
     let lastOmen = -1e9
-    let lastBellHour = -1
-    every(45000, 95000, () => {
+    every(30000, 65000, () => {
       if (!running() || P.omens <= 0 || ctx.currentTime - lastOmen < 25) return
       const opts = []
-      const now = new Date()
-      if (now.getMinutes() < 2 && now.getHours() !== lastBellHour) opts.push('bell')
+      opts.push('bell') // a distant toll any time of day (was locked to the top of the hour)
       if (isDay()) opts.push('woodpecker')
-      if (isDay() && world.season === 'spring') opts.push('cuckoo')
-      if (isNight()) opts.push('wolf')
+      if (isDay() && (world.season === 'spring' || world.season === 'summer')) opts.push('cuckoo')
+      if (isNight()) opts.push('wolf') // isNight() covers dusk + night
       if (world.meteor && isNight()) opts.push('meteor')
-      if (!opts.length) return
-      if (Math.random() > 0.5 * liveliness + 0.15) return
+      if (Math.random() > 0.6 * liveliness + 0.25) return
       const pick = opts[Math.floor(Math.random() * opts.length)]
       const t = ctx.currentTime + 0.05
-      if (pick === 'bell') { bell(t); lastBellHour = now.getHours() }
+      if (pick === 'bell') bell(t)
       else if (pick === 'woodpecker') woodpecker(t)
       else if (pick === 'cuckoo') cuckoo(t)
       else if (pick === 'wolf') wolf(t)
