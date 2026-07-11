@@ -212,13 +212,28 @@ export function createAmbience() {
     }
     const driftFilter = (filter, depthHz, rateHz) => driftParam(filter.frequency, depthHz, rateHz)
 
+    // a decorrelated STEREO noise source: two loops of the same buffer at slightly
+    // different playback rates, panned L/R, so a bed reads as wide and enveloping
+    // rather than a mono point in the middle of your head. The 0.7 trim compensates
+    // for the ~+3dB two incoherent sources sum to, keeping each bed's tuned level.
+    function stereoNoise(buffer, rate = 1, spread = 0.6) {
+      const merge = ctx.createGain(); merge.gain.value = 0.7
+      ;[[-spread, rate * 0.985], [spread, rate * 1.015]].forEach(([pan, r]) => {
+        const s = loopSource(ctx, buffer); s.playbackRate.value = r
+        const pn = panner(ctx, pan)
+        s.connect(pn); pn.connect(merge)
+        s.start(0, Math.random() * buffer.duration)
+        nodes.push(s)
+      })
+      return merge
+    }
+
     // ---- beds (all built once; silent ones sit at gain 0 and are live-ramped) --
     function buildWarmth() {
-      const src = loopSource(ctx, pink)
+      const src = stereoNoise(pink, 1.0)
       const lp = biquad('lowpass', 900), hp = biquad('highpass', 95)
       const g = ctx.createGain(); g.gain.value = P.warmth * 0.85
       src.connect(lp); lp.connect(hp); hp.connect(g); g.connect(tone)
-      src.start(); nodes.push(src)
       driftFilter(lp, 60, 0.018)
       updaters.push((p, tc) => set(g.gain, p.warmth * 0.85, tc))
     }
@@ -226,7 +241,7 @@ export function createAmbience() {
     // a band-passed wind bed; `levelFn(P)` lets the standalone Wind and the
     // Leaves' inner hush share this builder with different level sources.
     function buildWindBed(levelFn, lpHz) {
-      const wind = loopSource(ctx, white)
+      const wind = stereoNoise(white, 1.0, 0.7)
       const bp = biquad('bandpass', 480); bp.Q.value = 0.55
       const lp = biquad('lowpass', lpHz)
       const g = ctx.createGain(); g.gain.value = levelFn(P)
@@ -237,7 +252,7 @@ export function createAmbience() {
       const gustDepth = ctx.createGain(); gustDepth.gain.value = levelFn(P) * 0.45 * P.motion
       gust.connect(gustDepth); gustDepth.connect(g.gain)
       wind.connect(bp); bp.connect(lp); lp.connect(g); g.connect(tone)
-      wind.start(); drift.start(); gust.start(); nodes.push(wind, drift, gust)
+      drift.start(); gust.start(); nodes.push(drift, gust)
       updaters.push((p, tc) => {
         const lv = levelFn(p)
         set(g.gain, lv, tc)
@@ -249,11 +264,10 @@ export function createAmbience() {
     }
 
     function buildRain() {
-      const rain = loopSource(ctx, white)
+      const rain = stereoNoise(white, 1.0)
       const hp = biquad('highpass', 1300), lp = biquad('lowpass', 6500)
       const g = ctx.createGain(); g.gain.value = 0.09 * P.rain
       rain.connect(hp); hp.connect(lp); lp.connect(g); g.connect(tone)
-      rain.start(); nodes.push(rain)
       driftFilter(lp, 900, 0.025)
       updaters.push((p, tc) => set(g.gain, 0.09 * p.rain, tc))
       let nextAt = ctx.currentTime + 0.6
@@ -305,12 +319,11 @@ export function createAmbience() {
     // loudness (levelG = Waves level), so the Waves slider ramps live instead of
     // waiting out the pre-scheduled swells.
     function buildWaves() {
-      const src = loopSource(ctx, white)
+      const src = stereoNoise(white, 1.0)
       const hp = biquad('highpass', 160), lp = biquad('lowpass', 500)
       const envG = ctx.createGain(); envG.gain.value = 0.03
       const levelG = ctx.createGain(); levelG.gain.value = P.waves
       src.connect(hp); hp.connect(lp); lp.connect(envG); envG.connect(levelG); levelG.connect(tone)
-      src.start(); nodes.push(src)
       updaters.push((p, tc) => set(levelG.gain, p.waves, tc))
       const trough = 0.03
       let nextAt = ctx.currentTime + 0.8
@@ -337,11 +350,10 @@ export function createAmbience() {
     }
 
     function buildStream() {
-      const src = loopSource(ctx, white)
+      const src = stereoNoise(white, 1.0)
       const bp = biquad('bandpass', 1600); bp.Q.value = 0.6
       const g = ctx.createGain(); g.gain.value = 0.05 * P.stream
       src.connect(bp); bp.connect(g); g.connect(tone)
-      src.start(); nodes.push(src)
       const drift = ctx.createOscillator(); drift.frequency.value = 0.04 * P.pace
       const driftDepth = ctx.createGain(); driftDepth.gain.value = 220 * P.motion
       drift.connect(driftDepth); driftDepth.connect(bp.frequency); drift.start(); nodes.push(drift)
@@ -606,6 +618,10 @@ export function createAmbience() {
     const isDay = () => world.timeOfDay === 'day' || world.timeOfDay === 'dawn'
     const isNight = () => world.timeOfDay === 'night' || world.timeOfDay === 'dusk'
     const chance = (prob) => Math.random() < prob * liveliness
+    // how much the weather masks the voices — birds and omens hush under rain and
+    // strong wind (rain masks more than wind). A gentle duck, never a full gate.
+    const coverAmt = () => clamp01(0.85 * P.rain + 0.5 * P.wind)
+    const wildChance = (prob) => chance(prob * (1 - 0.6 * coverAmt()))
     function every(minMs, maxMs, fn) {
       const h = { id: 0 }
       const tick = () => {
@@ -630,21 +646,21 @@ export function createAmbience() {
 
     // wildlife
     every(3200, 8000, () => {
-      if (!running() || P.wildlife <= 0 || !isDay() || !chance(0.9)) return
+      if (!running() || P.wildlife <= 0 || !isDay() || !wildChance(0.9)) return
       const burst = 1 + Math.floor(Math.random() * (world.timeOfDay === 'dawn' ? 3 : 2))
       for (let i = 0; i < burst; i++) chirp(ctx.currentTime + i * 0.16 + Math.random() * 0.08, rpan(0.6))
     })
-    every(11000, 24000, () => { if (running() && P.wildlife > 0 && isDay() && chance(0.7)) crow(ctx.currentTime, rpan(0.6)) })
+    every(11000, 24000, () => { if (running() && P.wildlife > 0 && isDay() && wildChance(0.7)) crow(ctx.currentTime, rpan(0.6)) })
     every(3200, 8000, () => {
-      if (!running() || P.wildlife <= 0 || !isNight() || !chance(0.9)) return
+      if (!running() || P.wildlife <= 0 || !isNight() || !wildChance(0.9)) return
       cricketTrill(ctx.currentTime, rpan(0.7))
       if (Math.random() < 0.4) cricketTrill(ctx.currentTime + 0.2 + Math.random() * 0.4, rpan(0.7))
     })
-    every(26000, 56000, () => { if (running() && P.wildlife > 0 && isNight() && chance(0.7)) owl(ctx.currentTime, rpan(0.5)) })
+    every(26000, 56000, () => { if (running() && P.wildlife > 0 && isNight() && wildChance(0.7)) owl(ctx.currentTime, rpan(0.5)) })
     // cat and dog are near-people sounds, kept rare and widely spaced so they read
     // as a distant "somewhere out there", never a metronome
-    every(55000, 130000, () => { if (running() && P.wildlife > 0 && chance(0.6)) meow(ctx.currentTime, rpan(0.7)) })
-    every(64000, 150000, () => { if (running() && P.wildlife > 0 && chance(0.6)) dog(ctx.currentTime, rpan(0.7)) })
+    every(55000, 130000, () => { if (running() && P.wildlife > 0 && wildChance(0.6)) meow(ctx.currentTime, rpan(0.7)) })
+    every(64000, 150000, () => { if (running() && P.wildlife > 0 && wildChance(0.6)) dog(ctx.currentTime, rpan(0.7)) })
 
     // omens — rare surprises, on a cooldown, low probability
     let lastOmen = -1e9
@@ -680,10 +696,13 @@ export function createAmbience() {
     // the master fades up to P.master via applyLive's own ramp (from 0.0001)
     function applyLive(np, tc = LIVE_TC) {
       P = np
+      // voices also recede in volume as the weather rises (fewer of them fire via
+      // wildChance; here they sit quieter too) — omens carry a little more than birds
+      const cv = coverAmt()
       set(master.gain, enabled ? P.master : 0, FADE_IN_TC)
       set(tone.frequency, P.toneHz, tc)
-      set(wildBus.gain, P.wildlife * VOICE_TRIM, tc)
-      set(omenBus.gain, P.omens * VOICE_TRIM, tc)
+      set(wildBus.gain, P.wildlife * VOICE_TRIM * (1 - 0.55 * cv), tc)
+      set(omenBus.gain, P.omens * VOICE_TRIM * (1 - 0.3 * cv), tc)
       for (const u of updaters) u(P, tc)
     }
     applyLive(P) // establishes every param + fades the master in from silence

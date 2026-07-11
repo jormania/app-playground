@@ -504,6 +504,10 @@ body {
   border-radius: 2px;
   cursor: pointer;
   outline: none;
+  /* let a vertical finger-drag scroll the list instead of nudging the slider:
+     the browser claims vertical-pan gestures for scrolling, so only a clearly
+     horizontal drag reaches the slider and changes its value */
+  touch-action: pan-y;
 }
 .tg-mixer-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
