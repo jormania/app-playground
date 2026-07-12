@@ -13,7 +13,7 @@ import {
   BookOpen,
   HelpCircle
 } from 'lucide-react';
-import { AVAILABLE_PASSIONS } from '../Journal';
+import { AVAILABLE_PASSIONS } from '../data/passions';
 
 interface PassionsAnalyticsProps {
   recentReflections: ReflectionRecord[];

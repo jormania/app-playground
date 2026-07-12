@@ -146,3 +146,6 @@ src/daily-stoic/
 - **Card Separations & Drop Shadows**: Elevated card borders to `border-secondary` and shadow strength to `shadow-md` (with `hover:shadow-lg`) for all step cards. Positioned the top header as sticky-top for scrolling visibility.
 - **Visual & Terminology Alignment**: Renamed "Acceptance Tags" to "Challenge Types" in both the Amor Fati wizard and the stats screen. Styled Step 4's "Resolve Actionable Concerns" worries checklist as clickable pill tags matching the externals reframe. Added a close button (✕) to the Spheres of Choice (Dichotomy) dashboard.
 
+### July 13, 2026 (Bugfix - Blank Page on Load)
+- **Circular Import TDZ Fix**: Resolved a blank-page crash (`ReferenceError: Cannot access 'M' before initialization`) caused by a circular module dependency. `PassionsAnalytics.tsx` imported `AVAILABLE_PASSIONS` directly from `Journal.tsx`, which itself imports `PassionsAnalytics` transitively via `App.tsx`, creating a circular graph that caused Rollup to produce a temporal dead zone violation at runtime. Fixed by extracting `AVAILABLE_PASSIONS` into a new shared constants file [`src/daily-stoic/data/passions.ts`](src/daily-stoic/data/passions.ts). Both `Journal.tsx` (re-export for backward compat) and `PassionsAnalytics.tsx` now import from this leaf module, breaking the cycle entirely.
+
