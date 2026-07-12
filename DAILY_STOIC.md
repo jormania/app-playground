@@ -96,3 +96,11 @@ src/daily-stoic/
 - **The Enchiridion (Handbook)**: Added favorite heart toggle on quote viewer. Implemented the Enchiridion handbook tab showing favorited maxims with local cache memoization to prevent duplicate fetching.
 - **Semantic Keyword Search**: Created text search bar filtering maxims by key themes (Anxiety, Gratitude, Seneca, etc.).
 - **Design System Showcase**: Showcase Memento Mori life block states, heart toggles, and collections in `Showcase.tsx`.
+
+### July 12, 2026 (Milestone 5 - Unified Journey Arc)
+- **Unified Daily Journey Stepper**: Reorganized the daily journaling tab (`/`) into an interactive 4-step stepper (`Focus` ➔ `Meditate` ➔ `Prepare` ➔ `Reflect`) coordinating all modules sequentially.
+- **Cross-linked Modules**:
+  - **Memento Mori**: Step 1 renders a mini life grid of the current year (52 weeks) using the user's birthdate.
+  - **Daily Quote & Enchiridion**: Step 2 includes the quote reader and an **Enchiridion Recall** button to draw random favorited maxims.
+  - **Spheres of Control (Dichotomy)**: Step 3 embeds the worries list inline, allowing users to categorize anxieties as *Up to Me* or *Not Up to Me*.
+  - **Amor Fati & Actionable Concerns**: Step 4 prompts users to reframe today's *Not Up to Me* concerns under Amor Fati, and to resolve active *Up to Me* concerns.
