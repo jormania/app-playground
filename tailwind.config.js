@@ -11,6 +11,8 @@ export default {
   content: [
     './sol-odysseys-react.html',
     './src/sol-odyssey/**/*.{ts,tsx}',
+    './daily-stoic.html',
+    './src/daily-stoic/**/*.{ts,tsx}',
   ],
   theme: {
     extend: {

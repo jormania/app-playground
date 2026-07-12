@@ -1,0 +1,895 @@
+<!DOCTYPE html><html lang="en"><head>
+  <script type="module">import { injectIntoGlobalHook } from "/@react-refresh";
+injectIntoGlobalHook(window);
+window.$RefreshReg$ = () => {};
+window.$RefreshSig$ = () => (type) => type;</script>
+
+  <script type="module" src="/@vite/client"></script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Cone of Cold — a cabinet of small, strange tools built with Claude.">
+<meta name="theme-color" content="#100d0a">
+<title>Cone of Cold</title>
+<link rel="icon" type="image/png" href="/cone-of-cold.png">
+<!-- Social sharing -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Cone of Cold">
+<meta property="og:description" content="A cabinet of small, strange tools — standalone web apps built with Claude that run entirely in your browser.">
+<meta property="og:image" content="/cone-of-cold.png">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:wght@300;400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:         #100d0a;
+  --bg2:        #16120d;
+  --surface:    #1a150f;
+  --surface2:   #221b13;
+  --border:     #2c2419;
+  --border2:    #40362655;
+  --gold:       #e0a955;
+  --gold-soft:  #f0c987;
+  --gold-dim:   rgba(224,169,85,0.10);
+  --rose:       #cf8a73;
+  --ink:        #ece4d4;
+  --muted:      #b0a48d;
+  --faint:      #6f6450;
+  --serif:      'Instrument Serif', Georgia, serif;
+  --sans:       'Inter', system-ui, sans-serif;
+  --mono:       'JetBrains Mono', monospace;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--sans);
+  background:
+    radial-gradient(900px 500px at 78% -8%, rgba(224,169,85,0.06), transparent 60%),
+    var(--bg);
+  color: var(--ink);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+::-moz-selection { background: rgba(224,169,85,0.25); color: #fff; }
+::selection { background: rgba(224,169,85,0.25); color: #fff; }
+.container { max-width: 1040px; margin: 0 auto; padding: 0 28px; }
+
+/* ── Footer ── */
+.site-footer { border-top: 1px solid var(--border); padding: 28px 0 40px; }
+.footer-inner {
+  display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;
+}
+.footer-credit {
+  margin-top: 16px; text-align: center;
+  font-family: var(--mono); font-size: 12px; color: var(--faint);
+}
+.footer-credit a { color: inherit; transition: color 0.18s; }
+.footer-credit a:hover { color: var(--muted); }
+.logo-mark { height: 34px; width: auto; display: block; }
+
+/* ── Hero ── */
+.hero { padding: 46px 0 34px; }
+.hero-top { display: flex; justify-content: flex-end; margin-bottom: 18px; }
+.cabinet-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 12px; color: var(--gold-soft);
+  background: var(--gold-dim); border: 1px solid rgba(224,169,85,0.35);
+  border-radius: 999px; padding: 7px 16px; white-space: nowrap;
+  transition: all 0.18s;
+}
+.cabinet-pill:hover { background: rgba(224,169,85,0.18); border-color: rgba(224,169,85,0.55); transform: translateX(2px); }
+.hero h1 {
+  font-family: var(--serif); font-weight: 400;
+  font-size: clamp(2.8rem, 7vw, 5rem); color: var(--ink);
+  line-height: 1.0; letter-spacing: -0.005em; margin-bottom: 28px; max-width: 14ch;
+}
+.hero h1 em { font-style: italic; color: var(--gold-soft); }
+.hero-desc { max-width: 580px; color: var(--muted); font-size: 17px; line-height: 1.72; font-weight: 300; }
+.hero-desc strong { color: var(--ink); font-weight: 500; }
+.collection-meta {
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0; white-space: nowrap;
+  font-family: var(--mono); font-size: 12px; color: var(--faint);
+}
+.collection-meta .dot { color: var(--border2); }
+.collection-meta #result-count { color: var(--gold); font-weight: 500; white-space: nowrap; }
+
+.rule { height: 1px; background: linear-gradient(90deg, var(--border), transparent); }
+
+/* ── Apps section ── */
+#apps { padding: 30px 0 40px; }
+
+/* ── Filter bar ── */
+.filter-bar { margin-bottom: 34px; }
+.search-row { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
+.search-wrap { position: relative; flex: 1; }
+.search-wrap::before {
+  content: '⌕'; position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+  color: var(--faint); font-size: 15px; pointer-events: none;
+}
+#search {
+  width: 100%; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 999px; padding: 11px 16px 11px 40px;
+  font-family: var(--sans); font-size: 14px; color: var(--ink); outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+#search::-moz-placeholder { color: var(--faint); }
+#search::placeholder { color: var(--faint); }
+#search:focus { border-color: rgba(224,169,85,0.5); box-shadow: 0 0 0 3px var(--gold-dim); }
+
+#clear-btn {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  background: none; border: 1px solid var(--border); border-radius: 999px;
+  padding: 9px 14px; cursor: pointer; transition: all 0.18s; white-space: nowrap; display: none;
+}
+#clear-btn.visible { display: block; }
+#clear-btn:hover { color: var(--ink); border-color: var(--border2); }
+
+.tags-row { display: flex; gap: 7px; flex-wrap: wrap; }
+.tag-chip {
+  font-family: var(--mono); font-size: 11px;
+  padding: 5px 13px; border-radius: 999px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--muted); cursor: pointer; transition: all 0.18s; line-height: 1.4;
+}
+.tag-chip:hover { border-color: var(--border2); color: var(--ink); }
+.tag-chip.active {
+  background: var(--gold-dim); color: var(--gold-soft);
+  border-color: rgba(224,169,85,0.45);
+}
+
+/* ── Card grid ── */
+#app-list {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px;
+}
+.card {
+  position: relative;
+  background: linear-gradient(180deg, var(--surface), var(--bg2));
+  border: 1px solid var(--border);
+  border-radius: 16px; overflow: hidden;
+  transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s;
+  animation: cardIn 0.3s ease both;
+  display: flex; flex-direction: column;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.card::before {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(224,169,85,0.0), transparent);
+  transition: background 0.3s;
+}
+.card:hover {
+  border-color: rgba(224,169,85,0.30);
+  box-shadow: 0 14px 50px rgba(0,0,0,0.45);
+  transform: translateY(-3px);
+}
+.card:hover::before { background: linear-gradient(90deg, transparent, rgba(224,169,85,0.6), transparent); }
+
+/* Featured (latest / complete) spans the full row */
+.card.is-latest { grid-column: 1 / -1; border-color: rgba(224,169,85,0.28); }
+.card.is-latest::before { background: linear-gradient(90deg, transparent, rgba(224,169,85,0.45), transparent); }
+
+.card-inner { padding: 26px; display: flex; flex-direction: column; flex: 1; }
+.card.is-latest .card-inner { padding: 34px; }
+
+.card-top { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+.card-icon {
+  width: 52px; height: 52px; flex-shrink: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 25px;
+  border: 1px solid var(--border2);
+}
+.card.is-latest .card-icon { width: 64px; height: 64px; font-size: 32px; }
+.card-meta { flex: 1; min-width: 0; }
+.card-title-row { display: flex; align-items: baseline; gap: 11px; flex-wrap: wrap; }
+.card-title { font-family: var(--serif); font-size: 25px; font-weight: 400; color: var(--ink); line-height: 1.1; }
+.card.is-latest .card-title { font-size: 33px; }
+.card-subtitle { font-family: var(--serif); font-style: italic; font-size: 16px; color: var(--muted); margin-top: 4px; }
+
+.card-version {
+  font-family: var(--mono); font-size: 10px;
+  padding: 2px 8px; border-radius: 999px;
+  background: rgba(207,138,115,0.10); color: var(--rose);
+  border: 1px solid rgba(207,138,115,0.22); white-space: nowrap;
+}
+.card-latest {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.05em;
+  padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+  background: var(--gold-dim); color: var(--gold-soft);
+  border: 1px solid rgba(224,169,85,0.35);
+}
+.card-guide { margin-left: auto; font-size: 11px; color: var(--faint); font-family: var(--mono); transition: color 0.18s; }
+.card-guide:hover { color: var(--gold); }
+
+.card-tags { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 15px; }
+.tag {
+  font-size: 11px; font-family: var(--mono);
+  background: transparent; border: 1px solid var(--border);
+  color: var(--muted); padding: 3px 10px; border-radius: 999px;
+  cursor: pointer; transition: all 0.18s;
+}
+.tag:hover { border-color: var(--border2); color: var(--ink); }
+.tag.cat { color: var(--rose); border-color: rgba(207,138,115,0.25); }
+.tag.cat:hover { background: rgba(207,138,115,0.10); }
+.tag.active-filter { background: var(--gold-dim); border-color: rgba(224,169,85,0.45); color: var(--gold-soft); }
+
+.card-desc { font-size: 14.5px; color: var(--muted); line-height: 1.68; margin-bottom: 16px; font-weight: 300; }
+.card.is-latest .card-desc { font-size: 16px; max-width: 64ch; }
+
+/* Features tucked into a native disclosure */
+.card-details { margin-bottom: 18px; }
+.card-details summary {
+  list-style: none; cursor: pointer; -webkit-user-select: none; -moz-user-select: none; user-select: none;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em;
+  color: var(--faint); transition: color 0.18s; display: inline-flex; align-items: center; gap: 7px;
+}
+.card-details summary::-webkit-details-marker { display: none; }
+.card-details summary::before { content: '+'; color: var(--gold); font-size: 13px; width: 10px; }
+.card-details[open] summary::before { content: '–'; }
+.card-details summary:hover { color: var(--muted); }
+.card-features { list-style: none; margin-top: 14px; display: grid; gap: 9px; }
+.card-features li {
+  font-size: 13px; color: var(--muted); line-height: 1.55; font-weight: 300;
+  display: flex; gap: 10px; align-items: baseline;
+}
+.card-features li::before { content: '✦'; color: var(--gold); font-size: 9px; flex-shrink: 0; position: relative; top: -1px; }
+
+.card-footer {
+  margin-top: auto;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding-top: 16px; border-top: 1px solid var(--border); flex-wrap: wrap;
+}
+.card-meta-row {
+  font-family: var(--mono);
+  display: flex; gap: 7px; flex-wrap: wrap; align-items: center;
+}
+.meta-chip {
+  font-size: 10px; line-height: 1.5; white-space: nowrap;
+  padding: 3px 9px; border-radius: 999px;
+  background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+}
+/* colour-coded meta chips — soft tints tuned to the warm/dark palette */
+.meta-chip.date   { color: #aec2da; background: rgba(143,166,196,0.10); border-color: rgba(143,166,196,0.28); }
+.meta-chip.stack  { color: #8fccbc; background: rgba(107,179,160,0.10); border-color: rgba(107,179,160,0.28); }
+.meta-chip.legacy { color: #d8aecb; background: rgba(192,143,180,0.10); border-color: rgba(192,143,180,0.28); }
+.card-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+
+.btn-launch {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13.5px; font-weight: 500; padding: 8px 18px; border-radius: 999px;
+  background: var(--gold); color: #1a1206; transition: all 0.18s; white-space: nowrap;
+}
+.btn-launch:hover { background: var(--gold-soft); transform: translateX(2px); }
+
+.btn-qr {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  cursor: pointer; transition: all 0.18s;
+}
+.btn-qr:hover { border-color: rgba(224,169,85,0.5); color: var(--gold); background: var(--gold-dim); }
+
+/* ── QR dialog — one native <dialog>, shared and re-rendered per app rather
+   than one per card. The UA stylesheet centres/positions a shown <dialog>
+   on its own; only its inner layout is styled here. ── */
+.qr-dialog {
+  background: linear-gradient(180deg, var(--surface), var(--bg2));
+  color: var(--ink); border: 1px solid var(--border2); border-radius: 16px;
+  padding: 28px; max-width: 320px; width: calc(100% - 40px);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.qr-dialog::backdrop { background: rgba(0,0,0,0.6); backdrop-filter: blur(3px); }
+.qr-close {
+  position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  font-size: 16px; line-height: 1; cursor: pointer; transition: all 0.18s;
+}
+.qr-close:hover { color: var(--gold); border-color: rgba(224,169,85,0.5); }
+.qr-title {
+  font-family: var(--serif); font-weight: 400; font-size: 20px; color: var(--ink);
+  margin-bottom: 18px; padding-right: 26px; line-height: 1.25;
+}
+.qr-canvas-wrap {
+  display: flex; align-items: center; justify-content: center;
+  background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px;
+}
+.qr-canvas-wrap canvas { display: block; max-width: 100%; height: auto; }
+.qr-hint { font-family: var(--mono); font-size: 12px; color: var(--faint); text-align: center; margin-bottom: 6px; }
+.qr-url { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: center; word-break: break-all; -webkit-user-select: all; -moz-user-select: all; user-select: all; }
+
+/* ── Empty state ── */
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center; padding: 4.5rem 2rem;
+  border: 1px dashed var(--border2); border-radius: 16px;
+}
+.empty-state p { font-size: 14px; color: var(--muted); font-family: var(--serif); font-style: italic; margin-bottom: 18px; }
+.empty-clear {
+  font-family: var(--mono); font-size: 12px; color: var(--muted);
+  background: none; border: 1px solid var(--border2); border-radius: 999px;
+  padding: 8px 18px; cursor: pointer; transition: all 0.18s;
+}
+.empty-clear:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ── Responsive ── */
+@media (max-width: 760px) {
+  #app-list { grid-template-columns: 1fr; gap: 18px; }
+  .card.is-latest { grid-column: auto; }
+  .hero { padding: 34px 0 26px; }
+  .card.is-latest .card-inner { padding: 26px; }
+  .card.is-latest .card-title { font-size: 27px; }
+  .card-footer { flex-direction: column; align-items: flex-start; }
+  .card-actions { width: 100%; }
+  .btn-launch { flex: 1; justify-content: center; }
+  .search-row { flex-wrap: wrap; }
+  .collection-meta { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .card { animation: none; }
+  .card:hover, .btn-launch:hover { transform: none; }
+}
+</style>
+<script defer="" src="/_vercel/insights/script.js"></script>
+  <meta name="deploy-date" content="2026-07-12T06:34:22.683Z">
+</head>
+<body>
+
+<!-- ══ HERO ══════════════════════════════════════════ -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-top">
+      <a class="cabinet-pill" href="/cabinet.html">❄ Open the Cabinet ↗</a>
+    </div>
+    <h1>A cabinet of small, <em>strange</em> tools.</h1>
+    <p class="hero-desc">
+      Standalone web apps — <strong>genuinely useful tools</strong>.
+      No download, no sign-up to explore;
+      the few that remember your work just plug into accounts you already own. Pick one and step in,
+      or scan a card's QR code to open it on your phone.
+    </p>
+  </div>
+</section>
+
+<div class="container"><div class="rule"></div></div>
+
+<!-- ══ APPS ══════════════════════════════════════════ -->
+<section id="apps">
+  <div class="container">
+
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <div class="search-row">
+        <div class="collection-meta">
+          <span id="result-count">13 apps</span>
+          <span class="dot">·</span>
+          <span id="updated-meta">updated July 12, 2026</span>
+        </div>
+        <div class="search-wrap">
+          <input id="search" type="search" aria-label="Search apps" placeholder="Search apps, tags, descriptions…" autocomplete="off" spellcheck="false">
+        </div>
+        <button id="clear-btn">✕ clear</button>
+      </div>
+      <div class="tags-row" id="tags-row"><button class="tag-chip">ambient</button><button class="tag-chip">breathing</button><button class="tag-chip">culture</button><button class="tag-chip">events</button><button class="tag-chip">fitness</button><button class="tag-chip">focus</button><button class="tag-chip">gaming</button><button class="tag-chip">growth</button><button class="tag-chip">habits</button><button class="tag-chip">kawaii</button><button class="tag-chip">meditation</button><button class="tag-chip">mindfulness</button><button class="tag-chip">notion</button><button class="tag-chip">outdoor</button><button class="tag-chip">planning</button><button class="tag-chip">quiz</button><button class="tag-chip">react</button><button class="tag-chip">reading</button><button class="tag-chip">sleep</button><button class="tag-chip">strategy</button><button class="tag-chip">svg</button><button class="tag-chip">tracker</button><button class="tag-chip">vite</button><button class="tag-chip">writing</button></div>
+    </div>
+
+    <!-- Card grid -->
+    <div id="app-list">
+    <article class="card is-latest">
+      <div class="card-inner">
+        <div class="card-top">
+          <div class="card-icon" style="background:rgba(120,120,120,0.14)">
+            🏛️
+          </div>
+          <div class="card-meta">
+            <div class="card-title-row">
+              <span class="card-title">Daily Stoic</span>
+              <span class="card-latest">✦ Latest</span>
+              
+              
+            </div>
+            <div class="card-subtitle">stoic wisdom · daily reflection</div>
+          </div>
+        </div>
+        <div class="card-tags"><span class="tag cat" data-tag="mindfulness">mindfulness</span><span class="tag" data-tag="writing">writing</span><span class="tag" data-tag="react">react</span><span class="tag" data-tag="vite">vite</span></div>
+        <p class="card-desc">A daily companion to practice Stoicism. Read a curated quote from Marcus Aurelius or Seneca mapped to the current day of the year, write your daily reflection, and look back at your past entries stored privately on your device.</p>
+        <details class="card-details" open="">
+         <summary>What's inside</summary>
+         <ul class="card-features"><li>A daily Stoic quote from Marcus Aurelius or Seneca</li><li>Day-of-year quote mapping ensuring a unique reflection prompt each day</li><li>Private daily journal stored entirely in your browser's localStorage</li><li>Built with the shared design system for clean, modern aesthetics</li><li>PWA support to install on mobile or desktop and use offline</li></ul>
+       </details>
+        <div class="card-footer">
+          <div class="card-meta-row"><span class="meta-chip date">Jul 2026</span><span class="meta-chip stack">React + Vite + TS</span></div>
+          <div class="card-actions">
+            <button type="button" class="btn-qr" data-file="daily-stoic-react.html" aria-label="Show QR code to open Daily Stoic on your phone" title="Scan to open on phone"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+  <path d="M14 14h3v3h-3zM20.5 14v3M14 20.5h3M20.5 20.5v.01"></path>
+</svg></button>
+            <a class="btn-launch" href="/daily-stoic-react.html" target="_blank" rel="noopener">Launch →</a>
+          </div>
+        </div>
+      </div>
+    </article>
+  
+    <article class="card">
+      <div class="card-inner">
+        <div class="card-top">
+          <div class="card-icon" style="background:rgba(169,116,31,0.14)">
+            🗺️
+          </div>
+          <div class="card-meta">
+            <div class="card-title-row">
+              <span class="card-title">Wanderlist</span>
+              
+              
+              <a class="card-guide" href="/wanderlist-guide.html" target="_blank" rel="noopener">guide ↗</a>
+            </div>
+            <div class="card-subtitle">city things to do · triage · attend</div>
+          </div>
+        </div>
+        <div class="card-tags"><span class="tag" data-tag="notion">notion</span><span class="tag" data-tag="events">events</span><span class="tag" data-tag="culture">culture</span><span class="tag" data-tag="planning">planning</span><span class="tag" data-tag="react">react</span><span class="tag" data-tag="vite">vite</span></div>
+        <p class="card-desc">Everything you mean to go and see, kept in one place. Wanderlist is a friendlier second doorway to a Notion database of city things to do — events, culture, art, movies, venues, plain ideas. Triage a backlog and check items off as Attended without losing them, see what's coming due on a month calendar, and get one email the day before a ticket window closes. Place search finds the real venue and keeps a map link; your list lives in your own Notion.</p>
+        <details class="card-details">
+         <summary>What's inside</summary>
+         <ul class="card-features"><li>A triage-first backlog — To-do / Attended / All, sorted by what's expiring soonest</li><li>A month calendar plotting each item's planned date, expiring deadline, and paid status, with a day agenda</li><li>A Stats screen: a forward-looking snapshot of the backlog plus tap-to-search heatmaps over Category, Tags, and Place</li><li>Add in seconds with just a name — flesh out Category, Place, Tags, a link and dates later</li><li>Mark things Attended with one tap; they stay in the list, checked off and dimmed</li><li>A photo and any number of tickets live right on the entry — tickets mark it Paid everywhere</li><li>Place search powered by Google finds the real venue and keeps a map link</li><li>Search across text, category, place or tags, and tap any chip to filter by it</li><li>One email the day before a deadline closes, sent server-side so it reaches you even with the app shut</li><li>Your own Notion database, BYO token</li></ul>
+       </details>
+        <div class="card-footer">
+          <div class="card-meta-row"><span class="meta-chip date">Jul 2026</span><span class="meta-chip stack">React + Vite + Notion</span></div>
+          <div class="card-actions">
+            <button type="button" class="btn-qr" data-file="wanderlist-react.html" aria-label="Show QR code to open Wanderlist on your phone" title="Scan to open on phone"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+  <path d="M14 14h3v3h-3zM20.5 14v3M14 20.5h3M20.5 20.5v.01"></path>
+</svg></button>
+            <a class="btn-launch" href="/wanderlist-react.html" target="_blank" rel="noopener">Launch →</a>
+          </div>
+        </div>
+      </div>
+    </article>
+  
+    <article class="card">
+      <div class="card-inner">
+        <div class="card-top">
+          <div class="card-icon" style="background:rgba(187,154,247,0.12)">
+            🌙
+          </div>
+          <div class="card-meta">
+            <div class="card-title-row">
+              <span class="card-title">Yoru</span>
+              
+              
+              <a class="card-guide" href="/yoru-guide.html" target="_blank" rel="noopener">guide ↗</a>
+            </div>
+            <div class="card-subtitle">夜 · wind down · fall asleep</div>
+          </div>
+        </div>
+        <div class="card-tags"><span class="tag cat" data-tag="mindfulness">mindfulness</span><span class="tag" data-tag="sleep">sleep</span><span class="tag" data-tag="breathing">breathing</span><span class="tag" data-tag="react">react</span><span class="tag" data-tag="vite">vite</span></div>
+        <p class="card-desc">Yoru (夜, 'night') is a wind-down for the end of the day and nothing else — one dim, frameless screen, typeset in a single Japanese hand. Everything lives behind the glyph 夜: tap it to pick a soundscape and length, tune the sound, choose how the screen behaves, and breathe along if you like. A slowing breath and a synthesised, blendable soundscape carry you down, ebbing to true silence by the end so nothing tethers you awake. Set down whatever you're carrying into tomorrow; it's held for the night and then let go.</p>
+        <details class="card-details">
+         <summary>What's inside</summary>
+         <ul class="card-features"><li>A single dim, frameless night in a Japanese mincho hand, with three moods — cool Night, lilac Moonlight, warm Candlelight</li><li>Everything's behind the glyph: tap 夜 for Settings — soundscape, session length (15–90'), a full audio tuner, display mode, breathwork</li><li>A layer-blend audio mixer (like the best ambient apps): blend Rain, Waves, Wind, Leaves, a warm noise floor and a low drone, then shape Volume, Brightness, Motion, Pace and Stereo width — all synthesised, animal- and city-free, auditioned live</li><li>Optional breathwork: a breathing orb that slows as the night goes (a lengthening exhale, or 4·7·8) — or leave it off for sound alone</li><li>The sound breathes with you and ebbs to true silence by the finish — it always flows out, never cuts</li><li>Three display modes: stay lit, go dark to a night sky, or truly turn the screen off to save power (and wake back to lit)</li><li>The 'go dark' sky is alive: drifting stars, Mount Fuji, the moon at tonight's real phase and place, and season-aware drift — sakura, fireflies, momiji or snow</li><li>Set down a single thought for tomorrow — write it, let it out of sight, and it's discarded when the night ends; greets you by name at the close</li><li>Resumes within the same night, starts fresh on a new one — all on this device, no account</li></ul>
+       </details>
+        <div class="card-footer">
+          <div class="card-meta-row"><span class="meta-chip date">Jul 2026</span><span class="meta-chip stack">React + Vite</span></div>
+          <div class="card-actions">
+            <button type="button" class="btn-qr" data-file="yoru-react.html" aria-label="Show QR code to open Yoru on your phone" title="Scan to open on phone"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+  <path d="M14 14h3v3h-3zM20.5 14v3M14 20.5h3M20.5 20.5v.01"></path>
+</svg></button>
+            <a class="btn-launch" href="/yoru-react.html" target="_blank" rel="noopener">Launch →</a>
+          </div>
+        </div>
+      </div>
+    </article>
+  
+    <article class="card">
+      <div class="card-inner">
+        <div class="card-top">
+          <div class="card-icon" style="background:rgba(184,134,11,0.12)">
+            ⚖️
+          </div>
+          <div class="card-meta">
+            <div class="card-title-row">
+              <span class="card-title">Law of the Day</span>
+              
+              
+              <a class="card-guide" href="/law-of-the-day-guide.html" target="_blank" rel="noopener">guide ↗</a>
+            </div>
+            <div class="card-subtitle">48 laws · one scenario · daily</div>
+          </div>
+        </div>
+        <div class="card-tags"><span class="tag" data-tag="quiz">quiz</span><span class="tag" data-tag="strategy">strategy</span><span class="tag" data-tag="reading">reading</span><span class="tag" data-tag="react">react</span><span class="tag" data-tag="vite">vite</span></div>
+        <p class="card-desc">A one-minute daily quiz built around Robert Greene's The 48 Laws of Power: read a short scenario, guess which law it illustrates, then see the explanation. One law a day, no repeats until all 48 have come up, with a streak that tracks showing up rather than being right.</p>
+        <details class="card-details">
+         <summary>What's inside</summary>
+         <ul class="card-features"><li>One scenario a day — pick from four laws, then reveal the answer with a short explanation</li><li>Three difficulty tiers that tune how close the wrong answers sit to the right one — from a gentle spread up to same-theme, personalized near-misses</li><li>A shuffled 'season' rotation cycles through all 48 laws with no repeats, reshuffling once every law has appeared</li><li>A streak that counts consecutive days answered, not consecutive correct answers</li><li>Locks after today's answer so there's exactly one attempt per day, with your last result shown until tomorrow</li><li>All progress lives in this device's localStorage only — no account, no sync, no server</li><li>Light/dark theme</li></ul>
+       </details>
+        <div class="card-footer">
+          <div class="card-meta-row"><span class="meta-chip date">Jul 2026</span><span class="meta-chip stack">React + Vite</span></div>
+          <div class="card-actions">
+            <button type="button" class="btn-qr" data-file="law-of-the-day-react.html" aria-label="Show QR code to open Law of the Day on your phone" title="Scan to open on phone"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+  <path d="M14 14h3v3h-3zM20.5 14v3M14 20.5h3M20.5 20.5v.01"></path>
+</svg></button>
+            <a class="btn-launch" href="/law-of-the-day-react.html" target="_blank" rel="noopener">Launch →</a>
+          </div>
+        </div>
+      </div>
+    </article>
+  
+    <article class="card">
+      <div class="card-inner">
+        <div class="card-top">
+          <div class="card-icon" style="background:rgba(47,145,135,0.12)">
+            🌿
+          </div>
+          <div class="card-meta">
+            <div class="card-title-row">
+              <span class="card-title">Tempo</span>
+              
+              
+              <a class="card-guide" href="/tempo-guide.html" target="_blank" rel="noopener">guide ↗</a>
+            </div>
+            <div class="card-subtitle">movement · focus · breath</div>
+          </div>
+        </div>
+        <div class="card-tags"><span class="tag cat" data-tag="mindfulness">mindfulness</span><span class="tag cat" data-tag="fitness">fitness</span><span class="tag" data-tag="meditation">meditation</span><span class="tag" data-tag="breathing">breathing</span><span class="tag" data-tag="focus">focus</span><span class="tag" data-tag="react">react</span><span class="tag" data-tag="vite">vite</span></div>
+        <p class="card-desc">A calm daily companion for the practices that keep body and mind well — a set on the mat, a focused work block, a few slow breaths before sleep. Tempo keeps the time quietly, with a soft cue at each change, so you can give your attention to the practice instead of the clock. Six timers: five well-worn methods plus a build-your-own, each remembering your last settings.</p>
+        <details class="card-details">
+         <summary>What's inside</summary>
+         <ul class="card-features"><li>Rounds — alternating movement and rest for interval work; defaults to a Tabata set (20s/10s × 8)</li><li>Cycles — focused stretches with real breaks; the Pomodoro rhythm, or your own</li><li>Sit–Walk — longer seated meditation broken by mindful walking, the Vipassana way (20/5/20)</li><li>4-7-8 &amp; Box Breathing — two calming breath protocols with a soft bell marking each phase</li><li>Custom — build any sequence by hand; soft bell for the mindful practices, a light ding for the rest, with a 3·2·1 count-in, Soft/Normal/Loud volume, and an optional interval chime</li><li>Reorderable home screen, light/dark theme, haptics, keep-awake, and it resumes right where you left off — even if you close the app mid-session</li></ul>
+       </details>
+        <div class="card-footer">
+          <div class="card-meta-row"><span class="meta-chip date">Jul 2026</span><span class="meta-chip stack">React + Vite</span></div>
+          <div class="card-actions">
+            <button type="button" class="btn-qr" data-file="tempo-react.html" aria-label="Show QR code to open Tempo on your phone" title="Scan to open on phone"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+  <path d="M14 14h3v3h-3zM20.5 14v3M14 20.5h3M20.5 20.5v.01"></path>
+</svg></button>
+            <a class="btn-launch" href="/tempo-react.html" target="_blank" rel="noopener">Launch →</a>
+          </div>
+        </div>
+      </div>
+    </article>
+  
+    <article class="card">
+      <div class="card-inner">
+        <div class="card-top">
+          <div class="card-icon" style="background:rgba(75,69,198,0.12)">
+            🧭
+          </div>
+          <div class="card-meta">
+            <div class="card-title-row">
+              <span class="card-title">Sol Odyssey</span>
+              
+              
+              <a class="card-guide" href="/sol-odyssey-guide.html" target="_blank" rel="noopener">guide ↗</a>
+            </div>
+            <div class="card-subtitle">one behaviour · 42 days · witnessed</div>
+          </div>
+        </div>
+        <div class="card-tags"><span class="tag" data-tag="habits">habits</span><span class="tag" data-tag="growth">growth</span><span class="tag" data-tag="tracker">tracker</span></div>
+        <p class="card-desc">Run your own six-week behaviour-change Odyssey from start to finish: pick one tiny behaviour, practise it daily, and let the app carry the whole method — the charter, the daily loop, the 42-day tracker, the weekly reflection, and a closing harvest — all witnessed by one human buddy. Plan an Odyssey ahead, set yourself a gentle safety line, draft your buddy check-ins, and reflect with an optional AI companion as you go. Learn the method once; re-run it for the rest of your life.</p>
+        <details class="card-details">
+         <summary>What's inside</summary>
+         <ul class="card-features"><li>One behaviour at a time, in a version so small it can't be failed on a bad day</li><li>A daily loop that does the remembering — do it, log one line, celebrate; flexible streaks around 'never skip two days', never guilt or red crosses</li><li>Weekly reflection that reads the week and changes one thing — then a harvest that names what installed: keep, grow, or retire</li><li>Plan an Odyssey ahead as a draft, and set an optional 'safety line' you'll honour if you ever miss two days</li><li>One human buddy (name + email): draft a tidy check-in email to them at every step, opened in your own mail app — Sol Odyssey sends nothing itself</li><li>An optional AI companion — a private, bring-your-own-key reflective witness that never replaces your buddy</li><li>Opt-in local reminders (daily · weekly · start · summit) and a Light / Dark / System theme</li><li>Notion-backed and keyless: your records live in your own Notion workspace, kept on your device — no server</li></ul>
+       </details>
+        <div class="card-footer">
+          <div class="card-meta-row"><span class="meta-chip date">Jun 2026</span><span class="meta-chip stack">React + Vite + Notion</span></div>
+          <div class="card-actions">
+            <button type="button" class="btn-qr" data-file="sol-odysseys-react.html" aria-label="Show QR code to open Sol Odyssey on your phone" title="Scan to open on phone"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+  <path d="M14 14h3v3h-3zM20.5 14v3M14 20.5h3M20.5 20.5v.01"></path>
+</svg></button>
+            <a class="btn-launch" href="/sol-odysseys-react.html" target="_blank" rel="noopener">Launch →</a>
+          </div>
+        </div>
+      </div>
+    </article>
+  
+    <article class="card">
+      <div class="card-inner">
+        <div class="card-top">
+          <div class="card-icon" style="background:rgba(224,169,85,0.10)">
+            🔮
+          </div>
+          <div class="card-meta">
+            <div class="card-title-row">
+              <span class="card-title">Touch Grass</span>
+              
+              
+              <a class="card-guide" href="/touch-grass-react-guide.html" target="_blank" rel="noopener">guide ↗</a>
+            </div>
+            <div class="card-subtitle">tarot cards · live sky &amp; weather · ai divination</div>
+          </div>
+        </div>
+        <div class="card-tags"><span class="tag cat" data-tag="outdoor">outdoor</span><span class="tag" data-tag="react">react</span><span class="tag" data-tag="vite">vite</span></div>
+        <p class="card-desc">The finished, definitive Touch Grass. Step outside, close the tab, come back — and a single strange find is waiting, conjured like a card from an unknown tarot deck. It all lives inside an illustrated tarot card that, with your permission, mirrors the real world where you are: its light, weather, moon, the lie of the land, and the rare moments of the year — with a quiet daily call to head out while the light lasts.</p>
+        <details class="card-details">
+         <summary>What's inside</summary>
+         <ul class="card-features"><li>One illustrated tarot card — parchment keyline, full-bleed painted scenes — resting on the ground you're walking onto: sand at the coast, stone in a city, meadow on a plain</li><li>Mirrors your real sky: exact sunrise, sunset and twilight, easing gradually from day to night rather than switching, with golden and blue hour warming the light along the way</li><li>Live weather painted onto the card — real clouds, rain, snow, fog banks, and thunderstorms that darken and flash</li><li>The true moon in tonight's real phase — the brighter it shines, the more it quietly washes out the stars, just like a real sky — with your zodiac constellation rising over it all after dusk</li><li>AI-divined finds — one eldritch discovery per walk in four rarity tiers (common → legendary); the longer you're out, the rarer it turns</li><li>The Chorus — a soundscape entirely yours: six ready-made scenes (rain, waves, a stream, wind, forest, snow), or blend your own from birds, wind chimes, distant thunder and rare omens, and save it</li><li>A sense of place — coast, forest, city, mountain or plain — quietly colours the finds you're given and the ground you walk on</li><li>Rare moments turn the day special — solstices, cross-quarter festivals, meteor showers with real shooting stars, full and new moons — each tinting the find</li></ul>
+       </details>
+        <div class="card-footer">
+          <div class="card-meta-row"><span class="meta-chip date">Jun 2026</span><span class="meta-chip stack">React + Vite</span><span class="meta-chip legacy">Legacy</span></div>
+          <div class="card-actions">
+            <button type="button" class="btn-qr" data-file="touch-grass-react.html" aria-label="Show QR code to open Touch Grass on your phone" title="Scan to open on phone"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+  <path d="M14 14h3v3h-3zM20.5 14v3M14 20.5h3M20.5 20.5v.01"></path>
+</svg></button>
+            <a class="btn-launch" href="/touch-grass-react.html" target="_blank" rel="noopener">Launch →</a>
+          </div>
+        </div>
+      </div>
+    </article>
+  
+    <article class="card">
+      <div class="card-inner">
+        <div class="card-top">
+          <div class="card-icon" style="background:rgba(255,158,100,0.16)">
+            🍊
+          </div>
+          <div class="card-meta">
+            <div class="card-title-row">
+              <span class="card-title">Journal of Delights</span>
+              
+              
+              <a class="card-guide" href="/journal-of-delights-guide.html" target="_blank" rel="noopener">guide ↗</a>
+            </div>
+            <div class="card-subtitle">one delight a day · calendar &amp; list</div>
+          </div>
+        </div>
+        <div class="card-tags"><span class="tag cat" data-tag="mindfulness">mindfulness</span><span class="tag" data-tag="writing">writing</span><span class="tag" data-tag="react">react</span><span class="tag" data-tag="notion">notion</span></div>
+        <p class="card-desc">A daily delight-logging app based on Ross Gay's The Book of Delights — one small thing, noticed closely and written into a short essayette. Not a gratitude log, no scoring or streaks: just attention. Entries live in a Notion database, and the app is a friendlier second doorway to it — read them as a list, a month calendar or a year heatmap, search by text, tags or people, and keep a quiet eye on the practice.</p>
+        <details class="card-details">
+         <summary>What's inside</summary>
+         <ul class="card-features"><li>One entry per calendar day — editable forever, never duplicated</li><li>One optional picture per delight, even on a past entry — a faded, grainy, tilted thumbnail in the list, uncropped and full size on the entry itself</li><li>Three ways to read: a list, a month calendar, and a year heatmap, switched from a slim sticky bar</li><li>Search across text, tags or people — and tap any tag or person to filter to it</li><li>Freeform Tags and People that emerge from what you write, created inline — never a fixed list</li><li>A quiet Stats view with tag &amp; people heatmaps and an optional 'on this day' glance — descriptive, never streaks or scores</li><li>Export the whole journal to a single self-contained HTML file</li><li>Interrupted mid-entry? Save it as a draft and resume it later from the top of the list</li><li>Runs in demo mode on sample delights until you connect Notion</li><li>Optional gentle reminders — a 9pm nudge if today's delight isn't written yet, and a 7pm 'on this day' note when past years share the date</li></ul>
+       </details>
+        <div class="card-footer">
+          <div class="card-meta-row"><span class="meta-chip date">Jun 2026</span><span class="meta-chip stack">React + Vite + Notion</span><span class="meta-chip legacy">Legacy</span></div>
+          <div class="card-actions">
+            <button type="button" class="btn-qr" data-file="journal-of-delights-react.html" aria-label="Show QR code to open Journal of Delights on your phone" title="Scan to open on phone"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+  <path d="M14 14h3v3h-3zM20.5 14v3M14 20.5h3M20.5 20.5v.01"></path>
+</svg></button>
+            <a class="btn-launch" href="/journal-of-delights-react.html" target="_blank" rel="noopener">Launch →</a>
+          </div>
+        </div>
+      </div>
+    </article>
+  
+    <article class="card">
+      <div class="card-inner">
+        <div class="card-top">
+          <div class="card-icon" style="background:rgba(255,30,30,0.14)">
+            🏋️
+          </div>
+          <div class="card-meta">
+            <div class="card-title-row">
+              <span class="card-title">Kettlebell Training</span>
+              
+              
+              
+            </div>
+            <div class="card-subtitle">12 movements · keith haring pop-art</div>
+          </div>
+        </div>
+        <div class="card-tags"><span class="tag cat" data-tag="fitness">fitness</span><span class="tag" data-tag="svg">svg</span><span class="tag" data-tag="react">react</span><span class="tag" data-tag="vite">vite</span></div>
+        <p class="card-desc">Twelve foundational kettlebell movements drawn as bold, radiating Keith Haring figures — each lift shown as a 2–3 frame sequence so you see the motion, not a single frozen pose. Form cues are researched per movement, with difficulty pips and the muscles you'll feel the next morning.</p>
+        <details class="card-details">
+         <summary>What's inside</summary>
+         <ul class="card-features"><li>Every lift is a 2–3 phase Haring sequence — hinge to snap, floor to overhead — with action lines and solid-ink kettlebells</li><li>Form cues researched per movement, not generic filler: six tight steps from setup to lockout</li><li>Difficulty pips (beginner → advanced) and primary muscle tags on every card</li><li>Sticky exercise rail that tracks whichever movement you're reading</li><li>Built in React + Vite as the foundation for dynamic content to come</li></ul>
+       </details>
+        <div class="card-footer">
+          <div class="card-meta-row"><span class="meta-chip date">Jun 2026</span><span class="meta-chip stack">React + Vite</span><span class="meta-chip legacy">Legacy</span></div>
+          <div class="card-actions">
+            <button type="button" class="btn-qr" data-file="kettlebell-training-react.html" aria-label="Show QR code to open Kettlebell Training on your phone" title="Scan to open on phone"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+  <path d="M14 14h3v3h-3zM20.5 14v3M14 20.5h3M20.5 20.5v.01"></path>
+</svg></button>
+            <a class="btn-launch" href="/kettlebell-training-react.html" target="_blank" rel="noopener">Launch →</a>
+          </div>
+        </div>
+      </div>
+    </article>
+  
+    <article class="card">
+      <div class="card-inner">
+        <div class="card-top">
+          <div class="card-icon" style="background:rgba(100,160,80,0.15)">
+            🌿
+          </div>
+          <div class="card-meta">
+            <div class="card-title-row">
+              <span class="card-title">Touch Grass · Original</span>
+              
+              <span class="card-version">v7</span>
+              <a class="card-guide" href="/touch-grass-features.html" target="_blank" rel="noopener">guide ↗</a>
+            </div>
+            <div class="card-subtitle">surreal finds · ambient audio · real-time weather</div>
+          </div>
+        </div>
+        <div class="card-tags"><span class="tag cat" data-tag="outdoor">outdoor</span><span class="tag" data-tag="ambient">ambient</span></div>
+        <p class="card-desc">Step outside, close the tab, come back. Touch Grass saves your departure so the browser can sleep, then generates surreal AI discoveries on return — scaled to how long you were gone.</p>
+        <details class="card-details">
+         <summary>What's inside</summary>
+         <ul class="card-features"><li>Departure saves across tab close — return hours later, it picks up where you left off</li><li>Sparse AI finds — 3 from an hour walk, each intentionally distinct in kind</li><li>Generative Web Audio that adapts to location, time of day, and live weather</li><li>Seasonal grass, sun/moon with real lunar phase, weather-driven sky and particles</li><li>Streak screen, walk stats, and persistent collection — all local, no account needed</li></ul>
+       </details>
+        <div class="card-footer">
+          <div class="card-meta-row"><span class="meta-chip date">Jun 2026</span><span class="meta-chip stack">Vanilla HTML</span><span class="meta-chip legacy">Legacy</span></div>
+          <div class="card-actions">
+            <button type="button" class="btn-qr" data-file="touch-grass.html" aria-label="Show QR code to open Touch Grass · Original on your phone" title="Scan to open on phone"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+  <path d="M14 14h3v3h-3zM20.5 14v3M14 20.5h3M20.5 20.5v.01"></path>
+</svg></button>
+            <a class="btn-launch" href="/touch-grass.html" target="_blank" rel="noopener">Launch →</a>
+          </div>
+        </div>
+      </div>
+    </article>
+  
+    <article class="card">
+      <div class="card-inner">
+        <div class="card-top">
+          <div class="card-icon" style="background:rgba(196,144,128,0.18)">
+            🌸
+          </div>
+          <div class="card-meta">
+            <div class="card-title-row">
+              <span class="card-title">Touch Grass · Thrive</span>
+              
+              <span class="card-version">v1</span>
+              <a class="card-guide" href="/touch-grass-features-vio.html" target="_blank" rel="noopener">guide ↗</a>
+            </div>
+            <div class="card-subtitle">mindful finds · warm palette · presence practice</div>
+          </div>
+        </div>
+        <div class="card-tags"><span class="tag cat" data-tag="outdoor">outdoor</span><span class="tag cat" data-tag="mindfulness">mindfulness</span></div>
+        <p class="card-desc">A warm version of Touch Grass built around mindful presence. Step outside without a goal, walk as long as you need, and come back to what the walk quietly left behind — small moments of noticing, not surreal objects.</p>
+        <details class="card-details">
+         <summary>What's inside</summary>
+         <ul class="card-features"><li>Finds are moments of presence — sensory, reflective, gently poetic, never heavy</li><li>Warm peach and rose palette: sky, panel, and grass all run softer and warmer</li><li>Same ambient soundscape, live weather, and seasonal canvas as the original</li><li>Separate collection and walk history — data stays distinct from the original app</li><li>Streak screen, walk stats, and collection — all local, all private</li></ul>
+       </details>
+        <div class="card-footer">
+          <div class="card-meta-row"><span class="meta-chip date">Jun 2026</span><span class="meta-chip stack">Vanilla HTML</span><span class="meta-chip legacy">Legacy</span></div>
+          <div class="card-actions">
+            <button type="button" class="btn-qr" data-file="touch-grass-vio.html" aria-label="Show QR code to open Touch Grass · Thrive on your phone" title="Scan to open on phone"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+  <path d="M14 14h3v3h-3zM20.5 14v3M14 20.5h3M20.5 20.5v.01"></path>
+</svg></button>
+            <a class="btn-launch" href="/touch-grass-vio.html" target="_blank" rel="noopener">Launch →</a>
+          </div>
+        </div>
+      </div>
+    </article>
+  
+    <article class="card">
+      <div class="card-inner">
+        <div class="card-top">
+          <div class="card-icon" style="background:rgba(255,45,120,0.16)">
+            🗻
+          </div>
+          <div class="card-meta">
+            <div class="card-title-row">
+              <span class="card-title">Touch Grass · Nora</span>
+              
+              <span class="card-version">v1</span>
+              <a class="card-guide" href="/touch-grass-features-nora.html" target="_blank" rel="noopener">guide ↗</a>
+            </div>
+            <div class="card-subtitle">tokyo finds · mount fuji · cherry blossoms</div>
+          </div>
+        </div>
+        <div class="card-tags"><span class="tag cat" data-tag="outdoor">outdoor</span><span class="tag cat" data-tag="kawaii">kawaii</span></div>
+        <p class="card-desc">Go outside anywhere — what finds you is always Japan: capsule toys and daifuku in the grass, manga pages mid-air, origami cranes that already know your face. Through it all, Mount Fuji watches from the sky, its snow and blossoms shifting with the seasons.</p>
+        <details class="card-details">
+         <summary>What's inside</summary>
+         <ul class="card-features"><li>Finds are Japan — Tokyo kawaii, Edo legend, and everything in between</li><li>Mount Fuji painted across the sky, seasonal and alive — snow in winter, blossoms in spring</li><li>Cherry blossom petals drift through the air in spring</li><li>Same ambient audio, live weather, and walk stats as the original</li><li>Built for mobile — separate collection and walk history stored on device</li></ul>
+       </details>
+        <div class="card-footer">
+          <div class="card-meta-row"><span class="meta-chip date">Jun 2026</span><span class="meta-chip stack">Vanilla HTML</span><span class="meta-chip legacy">Legacy</span></div>
+          <div class="card-actions">
+            <button type="button" class="btn-qr" data-file="touch-grass-nora.html" aria-label="Show QR code to open Touch Grass · Nora on your phone" title="Scan to open on phone"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+  <path d="M14 14h3v3h-3zM20.5 14v3M14 20.5h3M20.5 20.5v.01"></path>
+</svg></button>
+            <a class="btn-launch" href="/touch-grass-nora.html" target="_blank" rel="noopener">Launch →</a>
+          </div>
+        </div>
+      </div>
+    </article>
+  
+    <article class="card">
+      <div class="card-inner">
+        <div class="card-top">
+          <div class="card-icon" style="background:rgba(255,180,50,0.15)">
+            ⚗️
+          </div>
+          <div class="card-meta">
+            <div class="card-title-row">
+              <span class="card-title">Codex Alchymicus — KCD2</span>
+              
+              <span class="card-version">v3</span>
+              
+            </div>
+            <div class="card-subtitle">28 recipes · 6 categories · parchment UI</div>
+          </div>
+        </div>
+        <div class="card-tags"><span class="tag cat" data-tag="gaming">gaming</span></div>
+        <p class="card-desc">A parchment recipe manager for Kingdom Come: Deliverance II alchemy. All 28 learnable recipes, searchable by name and ingredient and filterable by category. Track what you've mastered, add custom brews.</p>
+        <details class="card-details">
+         <summary>What's inside</summary>
+         <ul class="card-features"><li>Animated SVG candle flames and layered parchment textures</li><li>Hand-drawn herb icons: nettle, belladonna, marigold, mint, valerian…</li><li>Category filtering, difficulty pips, mastery toggle, recipe deletion</li><li>Custom recipe input modal with ingredient + step parsing</li><li>Mobile layout with panel-switching navigation</li></ul>
+       </details>
+        <div class="card-footer">
+          <div class="card-meta-row"><span class="meta-chip date">Jun 2026</span><span class="meta-chip stack">Vanilla JS</span><span class="meta-chip legacy">Legacy</span></div>
+          <div class="card-actions">
+            <button type="button" class="btn-qr" data-file="kcd2-codex-v3.html" aria-label="Show QR code to open Codex Alchymicus — KCD2 on your phone" title="Scan to open on phone"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+  <path d="M14 14h3v3h-3zM20.5 14v3M14 20.5h3M20.5 20.5v.01"></path>
+</svg></button>
+            <a class="btn-launch" href="/kcd2-codex-v3.html" target="_blank" rel="noopener">Launch →</a>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  </div>
+</section>
+
+<!-- ══ QR DIALOG ═════════════════════════════════════════
+     One shared dialog, reused for every card (not one per app) — its
+     content is (re)rendered each time it's opened. ══ -->
+<dialog id="qr-dialog" class="qr-dialog">
+  <button type="button" id="qr-close" class="qr-close" aria-label="Close">✕</button>
+  <h3 id="qr-title" class="qr-title"></h3>
+  <div class="qr-canvas-wrap"><canvas id="qr-canvas" width="240" height="240"></canvas></div>
+  <p class="qr-hint">Scan to open on your phone</p>
+  <p id="qr-url" class="qr-url"></p>
+</dialog>
+
+<!-- ══ FOOTER ════════════════════════════════════════ -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-inner">
+      <img class="logo-mark" src="/cone-of-cold.png" alt="Cone of Cold" width="380" height="380">
+    </div>
+    <div class="footer-credit">© <span id="footer-year">2026</span> Cone of Cold · built with Claude · runs in your browser · <a href="https://github.com/jormania/app-playground" target="_blank" rel="noopener">GitHub ↗</a></div>
+  </div>
+</footer>
+
+<script type="module" src="/index.html?html-proxy&amp;index=0.js"></script>
+
+
+</body></html>

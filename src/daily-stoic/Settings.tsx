@@ -31,7 +31,8 @@ export default function Settings({ onClose }: SettingsProps) {
 
   // Reminders State
   const [reminderEnabled, setReminderEnabled] = useState(() => localStorage.getItem('daily-stoic:reminder-enabled') === 'true');
-  const [reminderTime, setReminderTime] = useState(() => localStorage.getItem('daily-stoic:reminder-time') || '08:00');
+  const [morningTime, setMorningTime] = useState(() => localStorage.getItem('daily-stoic:morning-time') || '07:00');
+  const [eveningTime, setEveningTime] = useState(() => localStorage.getItem('daily-stoic:evening-time') || '20:00');
   
   // Profile State
   const [birthDate, setBirthDate] = useState(() => localStorage.getItem('daily-stoic:birthdate') || '');
@@ -61,7 +62,8 @@ export default function Settings({ onClose }: SettingsProps) {
     const kv = createIdbKv('daily-stoic-reminders');
     await kv.set('state', {
       enabled: enabledVal,
-      time: timeVal,
+      morningTime: morningTime,
+      eveningTime: eveningTime,
       todayLogged,
     });
   };
@@ -76,19 +78,26 @@ export default function Settings({ onClose }: SettingsProps) {
       localStorage.setItem('daily-stoic:reminder-enabled', 'true');
       setReminderEnabled(true);
       void registerPeriodicSync('daily-stoic-reminders', 43200000);
-      await syncIdb(true, reminderTime);
+      await syncIdb(true, morningTime);
     } else {
       localStorage.setItem('daily-stoic:reminder-enabled', 'false');
       setReminderEnabled(false);
       void unregisterPeriodicSync('daily-stoic-reminders');
-      await syncIdb(false, reminderTime);
+      await syncIdb(false, morningTime);
     }
   };
 
-  const handleTimeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMorningTimeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = e.target.value;
-    localStorage.setItem('daily-stoic:reminder-time', newTime);
-    setReminderTime(newTime);
+    localStorage.setItem('daily-stoic:morning-time', newTime);
+    setMorningTime(newTime);
+    await syncIdb(reminderEnabled, newTime);
+  };
+
+  const handleEveningTimeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = e.target.value;
+    localStorage.setItem('daily-stoic:evening-time', newTime);
+    setEveningTime(newTime);
     await syncIdb(reminderEnabled, newTime);
   };
 
@@ -271,15 +280,26 @@ export default function Settings({ onClose }: SettingsProps) {
           />
 
           {reminderEnabled && (
-            <div className="flex items-center justify-between p-4 rounded-lg bg-background-secondary border border-tertiary mt-2">
-              <label className="font-medium text-text-primary">Reminder Time</label>
-              <input
-                type="time"
-                value={reminderTime}
-                onChange={handleTimeChange}
-                className="bg-transparent text-text-primary outline-none"
-              />
-            </div>
+            <div className="flex flex-col gap-4 mt-6 pl-2 border-l-2 border-tertiary">
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">Morning Prep Time (Premeditatio Malorum)</label>
+                    <input
+                      type="time"
+                      value={morningTime}
+                      onChange={handleMorningTimeChange}
+                      className="w-full sm:w-auto rounded-md bg-background-tertiary border border-tertiary px-3 py-2 text-text-primary focus:border-accent outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">Evening Review Time (Reflection)</label>
+                    <input
+                      type="time"
+                      value={eveningTime}
+                      onChange={handleEveningTimeChange}
+                      className="w-full sm:w-auto rounded-md bg-background-tertiary border border-tertiary px-3 py-2 text-text-primary focus:border-accent outline-none"
+                    />
+                  </div>
+                </div>
           )}
         </div>
 

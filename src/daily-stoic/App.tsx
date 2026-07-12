@@ -1,13 +1,17 @@
-import { NumberStepper, SegmentedControl } from '../ds';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import html2canvas from 'html2canvas';
 import { StreakCounter } from './components/StreakCounter';
 import { Button } from './components/Button';
 import { Switch as SettingsToggle } from './components/Switch';
 import AppGuideNote from './components/AppGuideNote';
+import Onboarding from './components/Onboarding';
 import Journal from './Journal';
 import Settings from './Settings';
 import MementoMori from './components/MementoMori';
+import { DichotomyOfControl } from './components/DichotomyOfControl';
 import FateGraph from './components/FateGraph';
 import MoodGraph from './components/MoodGraph';
+import Stats from './components/Stats';
 import { getDayOfYear, getQuoteForDay, formatDateLabel } from './utils/date';
 import { calculateStreak } from './utils/streak';
 import { fetchRecentReflections, fetchDatabaseProperties, validateSchema, upsertReflection, ReflectionRecord } from './services/NotionService';
@@ -26,6 +30,12 @@ import {
   Settings as SettingsIcon,
   Moon as DarkIcon,
   SunMedium as LightIcon,
+  Share2 as ShareIcon,
+  Heart as HeartIcon,
+  Scale as ScaleIcon,
+  BookOpen as BookOpenIcon,
+  Skull as SkullIcon,
+  Bookmark as BookmarkIcon,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -103,6 +113,9 @@ export default function App() {
   const [databaseId, setDatabaseId] = useState(() => localStorage.getItem('daily-stoic:notion-db') || '');
   const isNotionConfigured = !!token.trim() && !!databaseId.trim();
 
+  // Onboarding
+  const [onboarded, setOnboarded] = useState(() => localStorage.getItem('daily-stoic:onboarded') === 'true');
+
   // Perspective Birthdate
   const [birthDate, setBirthDate] = useState(() => localStorage.getItem('daily-stoic:birthdate') || '');
 
@@ -115,6 +128,7 @@ export default function App() {
 
   // Toggling favorites loading indicator
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+  const [localFavoritesToggle, setLocalFavoritesToggle] = useState(0);
 
   const loadCredentials = () => {
     setToken(localStorage.getItem('daily-stoic:notion-token') || '');
@@ -234,17 +248,68 @@ export default function App() {
   // Find if current quote is favorited
   const isCurrentQuoteFavorited = useMemo(() => {
     const record = recentReflections.find((r) => r.quoteId === dayOfYear);
-    if (record) return !!record.favorite;
     return localStorage.getItem(`daily-stoic:favorite-${dayOfYear}`) === 'true';
-  }, [recentReflections, dayOfYear]);
+  }, [dayOfYear, localFavoritesToggle]);
+
+  const [isSharing, setIsSharing] = useState(false);
+  const handleShareQuote = async () => {
+    setIsSharing(true);
+    triggerHaptic('light');
+    try {
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.width = '1080px';
+      container.style.height = '1080px';
+      container.style.backgroundColor = '#18181b'; // dark bg
+      container.style.color = '#f4f4f5'; // light text
+      container.style.padding = '100px';
+      container.style.display = 'flex';
+      container.style.flexDirection = 'column';
+      container.style.justifyContent = 'center';
+      
+      // We use Fraunces font for the quote
+      container.innerHTML = `
+        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; text-align: left; border-left: 12px solid #c2b5f5; padding-left: 60px;">
+          <p style="font-family: 'Fraunces Variable', Fraunces, serif; font-size: 52px; line-height: 1.4; margin-bottom: 40px; text-wrap: balance;">“${quote.quote}”</p>
+          <p style="font-family: 'Inter Variable', Inter, sans-serif; font-size: 28px; color: #a1a1aa; font-weight: 500;">— ${quote.author}, <i style="font-style: italic; font-weight: 400;">${quote.source}</i></p>
+        </div>
+        <div style="margin-top: 60px; display: flex; align-items: center; justify-content: space-between; font-family: 'Inter Variable', Inter, sans-serif; color: #a1a1aa; border-top: 2px solid #27272a; padding-top: 40px;">
+          <span style="font-size: 28px; font-weight: 600; font-family: 'Fraunces Variable', Fraunces, serif; color: #f4f4f5;">Daily Stoic</span>
+          <span style="font-size: 22px; font-weight: 500;">Take a moment.</span>
+        </div>
+      `;
+      
+      document.body.appendChild(container);
+      
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        backgroundColor: '#18181b',
+        logging: false
+      });
+      
+      const link = document.createElement('a');
+      link.download = `daily-stoic-${quote.author.replace(/\s+/g, '-').toLowerCase()}-${dayOfYear}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      triggerHaptic('success');
+      document.body.removeChild(container);
+    } catch (e) {
+      console.error('Failed to generate image', e);
+    } finally {
+      setIsSharing(false);
+    }
+  };
 
   const handleToggleFavorite = async () => {
+    if (isTogglingFavorite) return;
     setIsTogglingFavorite(true);
-    triggerHaptic('light');
+    
     const nextFavoriteState = !isCurrentQuoteFavorited;
     
     // Save to local storage cache
     localStorage.setItem(`daily-stoic:favorite-${dayOfYear}`, nextFavoriteState.toString());
+    setLocalFavoritesToggle((prev) => prev + 1);
 
     if (isNotionConfigured && schemaErrors.length === 0) {
       try {
@@ -297,7 +362,7 @@ export default function App() {
     }
 
     return QUOTES.filter((q) => favoritedIds.has(q.day));
-  }, [recentReflections]);
+  }, [recentReflections, localFavoritesToggle]);
 
   const themeOptions = [
     { value: 'light', label: 'Light' },
@@ -305,11 +370,24 @@ export default function App() {
     { value: 'system', label: 'System' },
   ];
 
-  const tabOptions = [
-    { value: 'reflection', label: 'Daily Reflection' },
-    { value: 'memento', label: 'Memento Mori' },
-    { value: 'enchiridion', label: 'Enchiridion' },
+  const tabOptions: { label: string; value: string; Icon: LucideIcon }[] = [
+    { label: 'Daily Reflection', value: '', Icon: BookOpenIcon },
+    { label: 'Memento Mori', value: 'memento', Icon: SkullIcon },
+    { label: 'Enchiridion', value: 'enchiridion', Icon: BookmarkIcon },
+    { label: 'Dichotomy', value: 'dichotomy', Icon: ScaleIcon },
   ];
+
+  if (!onboarded) {
+    return (
+      <div className="flex min-h-screen flex-col bg-background-primary text-text-primary">
+        <Onboarding onComplete={() => {
+          localStorage.setItem('daily-stoic:onboarded', 'true');
+          setOnboarded(true);
+          loadCredentials(); // Make sure to load birth date if entered
+        }} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background-primary text-text-primary">
@@ -320,20 +398,55 @@ export default function App() {
               Daily Stoic
             </h1>
           </div>
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-1 sm:gap-2">
+            {/* Main Navigation */}
+            {tabOptions.map((tab) => {
+              const Icon = tab.Icon;
+              const isActive = route === `/${tab.value}` || (route === '' && tab.value === '') || (route === '/' && tab.value === '');
+              return (
+                <button
+                  key={tab.value}
+                  onClick={() => navigate(tab.value === '' ? '/' : `/${tab.value}`)}
+                  title={tab.label}
+                  aria-label={tab.label}
+                  className={cn(
+                    "rounded-md p-2 transition-colors flex items-center justify-center",
+                    isActive
+                      ? "bg-accent/10 text-accent"
+                      : "text-text-secondary hover:bg-background-tertiary hover:text-text-primary"
+                  )}
+                >
+                  <Icon size={20} strokeWidth={2} />
+                </button>
+              );
+            })}
+
+            <div className="w-px h-6 bg-tertiary mx-1 sm:mx-2" aria-hidden="true" />
+
+            <button
+              onClick={() => navigate('/stats')}
+              className="rounded-md p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors flex items-center justify-center"
+              title="Stats & Progress"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+              </svg>
+            </button>
             <button
               onClick={() => navigate('/settings')}
-              className="rounded-full p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors"
+              className="rounded-md p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors flex items-center justify-center"
               title="Settings"
             >
-              ⚙️
+              <SettingsIcon size={20} strokeWidth={2} />
             </button>
             <ThemeToggle />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl p-4 sm:p-5">
+      <main className="mx-auto w-full max-w-3xl p-4 sm:p-5">
         {route === '/settings' && (
           <Settings
             onClose={() => {
@@ -341,6 +454,14 @@ export default function App() {
               loadCredentials();
               loadReflectionsAndCheckStreak();
             }}
+          />
+        )}
+
+        {route === '/stats' && (
+          <Stats
+            streak={streak}
+            recentReflections={recentReflections}
+            onClose={() => navigate('/')}
           />
         )}
 
@@ -365,13 +486,28 @@ export default function App() {
 
             <section className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-lg bg-background-secondary p-4 border border-tertiary">
               <div className="flex items-center gap-3">
-                <NumberStepper
-                  label="Day of Year"
-                  value={dayOfYear}
-                  min={1}
-                  max={366}
-                  onChange={(val) => setDayOfYear(val)}
-                />
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-text-secondary">Day of Year</span>
+                  <div className="flex items-center rounded-lg bg-background-tertiary border border-tertiary">
+                    <button
+                      onClick={() => setDayOfYear(Math.max(1, dayOfYear - 1))}
+                      disabled={dayOfYear <= 1}
+                      className="px-3 py-1.5 text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors"
+                    >
+                      −
+                    </button>
+                    <span className="w-10 text-center font-medium font-mono text-text-primary">
+                      {dayOfYear}
+                    </span>
+                    <button
+                      onClick={() => setDayOfYear(Math.min(366, dayOfYear + 1))}
+                      disabled={dayOfYear >= 366}
+                      className="px-3 py-1.5 text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
                 {dayOfYear !== today && (
                   <Button variant="ghost" size="sm" onClick={() => setDayOfYear(today)}>
                     Back to Today
@@ -381,9 +517,9 @@ export default function App() {
               <div>
                 <SettingsToggle
                   label="Philosophy View"
-                  hint="Filter to Fate, Acceptance, or Resistance maxims"
+                  description="Filter to Fate, Acceptance, or Resistance maxims"
                   checked={philosophyView}
-                  onChange={(e) => setPhilosophyView(e.target.checked)}
+                  onCheckedChange={(next) => setPhilosophyView(next)}
                 />
               </div>
             </section>
@@ -403,21 +539,38 @@ export default function App() {
               )}
             </div>
 
-            <div className="mb-8">
-              <StreakCounter count={streak} />
-            </div>
-
             <blockquote className="mb-8 rounded-lg bg-background-secondary p-6 border-l-4 border-l-accent shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <p className="font-display text-2xl text-text-primary mb-4">“{quote.quote}”</p>
-                <button
-                  onClick={handleToggleFavorite}
-                  disabled={isTogglingFavorite}
-                  className={cn("shrink-0 rounded-full p-2 text-xl transition-all", isCurrentQuoteFavorited ? "scale-110 opacity-100" : "opacity-40 hover:opacity-100 hover:bg-background-tertiary")}
-                  aria-label={isCurrentQuoteFavorited ? 'Remove from favorites' : 'Add to favorites'}
-                >
-                  {isCurrentQuoteFavorited ? '❤️' : '🤍'}
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={handleShareQuote}
+                    disabled={isSharing}
+                    className="rounded-full p-2 text-text-secondary hover:text-text-primary hover:bg-background-tertiary transition-all"
+                    title="Share Quote Card"
+                    aria-label="Share quote as image"
+                  >
+                    <ShareIcon size={20} strokeWidth={2} />
+                  </button>
+                  <button
+                    onClick={handleToggleFavorite}
+                    disabled={isTogglingFavorite}
+                    className={cn(
+                      "rounded-full p-2 transition-all flex items-center justify-center",
+                      isCurrentQuoteFavorited ? "scale-110 opacity-100" : "opacity-40 hover:opacity-100 hover:bg-background-tertiary"
+                    )}
+                    aria-label={isCurrentQuoteFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                  >
+                    <HeartIcon 
+                      size={20} 
+                      strokeWidth={2} 
+                      fill={isCurrentQuoteFavorited ? "currentColor" : "none"}
+                      className={cn(
+                        isCurrentQuoteFavorited ? "text-accent" : "text-text-secondary"
+                      )}
+                    />
+                  </button>
+                </div>
               </div>
               <cite className="block text-text-secondary font-medium">
                 — {quote.author}, <span className="italic">{quote.source}</span>
@@ -430,11 +583,6 @@ export default function App() {
               databaseId={databaseId}
               onSaveComplete={loadReflectionsAndCheckStreak}
             />
-
-            <div className="mt-8 grid gap-4 grid-cols-1 sm:grid-cols-2">
-              <FateGraph records={recentReflections} />
-              <MoodGraph records={recentReflections} />
-            </div>
           </>
         )}
 
@@ -445,7 +593,11 @@ export default function App() {
           />
         )}
 
-        {route === '/maxims' && (
+        {route === '/dichotomy' && (
+          <DichotomyOfControl />
+        )}
+
+        {route === '/enchiridion' && (
           <div className="mx-auto max-w-2xl">
             <h2 className="mb-2 font-display text-2xl text-text-primary">📓 The Enchiridion (Handbook)</h2>
             <p className="mb-6 text-text-secondary">
@@ -463,10 +615,11 @@ export default function App() {
             </div>
 
             {favoritedMaxims.length === 0 ? (
-              <div className="rounded-lg border border-tertiary border-dashed p-10 text-center bg-background-secondary/50">
-                <p className="text-text-primary font-medium">Your handbook is currently empty.</p>
-                <p className="mt-2 text-sm text-text-secondary">
-                  Click the heart icon next to any daily quote to add it to your Enchiridion.
+              <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-tertiary p-12 text-center bg-background-secondary mt-8">
+                <span className="text-4xl mb-4" role="img" aria-label="book">📖</span>
+                <h3 className="font-display text-xl text-text-primary mb-2">Your handbook is empty</h3>
+                <p className="text-text-secondary">
+                  Heart quotes on the Daily Reflection page to save them here for rapid reference during high-stress moments.
                 </p>
               </div>
             ) : (
@@ -482,6 +635,7 @@ export default function App() {
                           onClick={async () => {
                             triggerHaptic('light');
                             localStorage.setItem(`daily-stoic:favorite-${index}`, 'false');
+                            setLocalFavoritesToggle(prev => prev + 1);
                             if (isNotionConfigured && schemaErrors.length === 0) {
                               try {
                                 const record = recentReflections.find((r) => r.quoteId === index);

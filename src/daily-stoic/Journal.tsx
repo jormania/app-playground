@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { SegmentedControl } from '../ds';
 import { Button } from './components/Button';
 import AppGuideNote from './components/AppGuideNote';
 import { fetchReflectionForDay, upsertReflection, fetchRecentReflections } from './services/NotionService';
 import AmorFatiControl from './components/AmorFatiControl';
 import { triggerHaptic } from '../shared/haptics';
 import { cn } from './lib/cn';
+import { SmilePlus, Smile, Meh, Frown, Angry } from 'lucide-react';
 
 interface JournalProps {
   dayOfYear: number;
@@ -22,11 +22,29 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
   const localIntentionsKey = `daily-stoic:morning-intentions-${dayOfYear}`;
   const localMoodKey = `daily-stoic:mood-${dayOfYear}`;
 
-  // Evening Reflection
+  // Evening Reflection (Seneca's Interrogation)
   const [reflection, setReflection] = useState('');
   const [savedReflection, setSavedReflection] = useState('');
   
-  // Amor Fati local states
+  const [senecaQ1, setSenecaQ1] = useState('');
+  const [senecaQ2, setSenecaQ2] = useState('');
+  const [senecaQ3, setSenecaQ3] = useState('');
+
+  // Update reflection string when Qs change
+  useEffect(() => {
+    if (phase === 'evening') {
+      const combined = [
+        senecaQ1.trim() ? `### What ailment or bad habit did I cure today?\n${senecaQ1.trim()}` : '',
+        senecaQ2.trim() ? `### What failing did I resist?\n${senecaQ2.trim()}` : '',
+        senecaQ3.trim() ? `### In what matter can I show improvement tomorrow?\n${senecaQ3.trim()}` : ''
+      ].filter(Boolean).join('\n\n');
+      
+      // Only set if different to avoid infinite loops, but we use reflection to save
+      if (combined !== reflection) {
+        setReflection(combined);
+      }
+    }
+  }, [senecaQ1, senecaQ2, senecaQ3, phase]);
   const [fateInput, setFateInput] = useState('');
   const [savedFateInput, setSavedFateInput] = useState('');
   const [acceptanceTags, setAcceptanceTags] = useState<string[]>([]);
@@ -53,17 +71,6 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSaved, setIsSaved] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [moodMessage, setMoodMessage] = useState<string | null>(null);
-  const moodTimerRef = useRef<any>(null);
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (moodTimerRef.current) {
-        clearTimeout(moodTimerRef.current);
-      }
-    };
-  }, []);
 
   // Load reflection and Amor Fati data on day or config change
   useEffect(() => {
@@ -72,8 +79,21 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
     const loadData = async () => {
       if (!isNotionConfigured) {
         // Fallback to local storage
-        const saved = localStorage.getItem(localStorageKey) || '';
-        const savedFate = localStorage.getItem(localFateKey) || '';
+        const savedRef = localStorage.getItem(localStorageKey) || '';
+        setReflection(savedRef);
+        setSavedReflection(savedRef);
+        
+        if (savedRef.includes('### What ailment')) {
+          const q1Match = savedRef.match(/### What ailment or bad habit did I cure today\?\n([\s\S]*?)(?=###|$)/);
+          const q2Match = savedRef.match(/### What failing did I resist\?\n([\s\S]*?)(?=###|$)/);
+          const q3Match = savedRef.match(/### In what matter can I show improvement tomorrow\?\n([\s\S]*?)(?=###|$)/);
+          
+          setSenecaQ1(q1Match ? q1Match[1].trim() : '');
+          setSenecaQ2(q2Match ? q2Match[1].trim() : '');
+          setSenecaQ3(q3Match ? q3Match[1].trim() : '');
+        } else {
+          setSenecaQ1(savedRef);
+        }
         const savedIntentions = localStorage.getItem(localIntentionsKey) || '';
         const savedMoodVal = localStorage.getItem(localMoodKey) || '';
         let savedTags: string[] = [];
@@ -83,10 +103,9 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
           savedTags = [];
         }
 
-        setReflection(saved);
-        setSavedReflection(saved);
-        setFateInput(savedFate);
-        setSavedFateInput(savedFate);
+        setSavedReflection(savedRef);
+        setFateInput(localStorage.getItem(localFateKey) || '');
+        setSavedFateInput(localStorage.getItem(localFateKey) || '');
         setAcceptanceTags(savedTags);
         setSavedAcceptanceTags(savedTags);
         setMorningIntentions(savedIntentions);
@@ -108,8 +127,23 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
         if (!active) return;
 
         if (result) {
-          setReflection(result.text);
-          setSavedReflection(result.text);
+          const refText = result.text || '';
+          setReflection(refText);
+          setSavedReflection(refText);
+          
+          // Try to parse Seneca questions
+          if (refText.includes('### What ailment')) {
+            const q1Match = refText.match(/### What ailment or bad habit did I cure today\?\n([\s\S]*?)(?=###|$)/);
+            const q2Match = refText.match(/### What failing did I resist\?\n([\s\S]*?)(?=###|$)/);
+            const q3Match = refText.match(/### In what matter can I show improvement tomorrow\?\n([\s\S]*?)(?=###|$)/);
+            
+            setSenecaQ1(q1Match ? q1Match[1].trim() : '');
+            setSenecaQ2(q2Match ? q2Match[1].trim() : '');
+            setSenecaQ3(q3Match ? q3Match[1].trim() : '');
+          } else {
+            // Legacy reflection fallback to Q1 or just keep it
+            setSenecaQ1(refText);
+          }
           setFateInput(result.fateInput || '');
           setSavedFateInput(result.fateInput || '');
           setAcceptanceTags(result.acceptanceTags || []);
@@ -298,24 +332,30 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
     JSON.stringify(acceptanceTags) !== JSON.stringify(savedAcceptanceTags);
 
   const moodOptions = [
-    { label: '🤩', value: 'Great' },
-    { label: '🙂', value: 'Good' },
-    { label: '😐', value: 'Neutral' },
-    { label: '😔', value: 'Bad' },
-    { label: '😠', value: 'Awful' }
+    { label: <SmilePlus size={24} strokeWidth={2} />, value: 'Great' },
+    { label: <Smile size={24} strokeWidth={2} />, value: 'Good' },
+    { label: <Meh size={24} strokeWidth={2} />, value: 'Neutral' },
+    { label: <Frown size={24} strokeWidth={2} />, value: 'Bad' },
+    { label: <Angry size={24} strokeWidth={2} />, value: 'Awful' }
   ];
 
   return (
     <div className="rounded-xl bg-background-secondary border border-tertiary p-5 sm:p-8">
       <div className="flex items-center justify-center mb-6">
-        <SegmentedControl
-          options={[
-            { label: '☀️ Morning Prep', value: 'morning' },
-            { label: '🌙 Evening Review', value: 'evening' }
-          ]}
-          value={phase}
-          onChange={(v) => setPhase(v as 'morning' | 'evening')}
-        />
+        <div className="inline-flex rounded-lg bg-background-tertiary p-1">
+          <button
+            onClick={() => setPhase('morning')}
+            className={cn("px-4 py-2 text-sm font-medium rounded-md transition-all", phase === 'morning' ? "bg-accent text-accent-contrast shadow" : "text-text-secondary hover:text-text-primary")}
+          >
+            ☀️ Morning Prep
+          </button>
+          <button
+            onClick={() => setPhase('evening')}
+            className={cn("px-4 py-2 text-sm font-medium rounded-md transition-all", phase === 'evening' ? "bg-accent text-accent-contrast shadow" : "text-text-secondary hover:text-text-primary")}
+          >
+            🌙 Evening Review
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -325,8 +365,8 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
       ) : (
         <>
           {phase === 'morning' && (
-            <div className="mb-6">
-              <h3 className="font-display text-lg text-text-primary mb-3">Premeditatio Malorum</h3>
+            <section className="mb-8 rounded-lg border border-tertiary bg-background-primary/50 p-5 sm:p-6">
+              <h3 className="font-display text-xl text-text-primary mb-4 border-b border-tertiary pb-2">Premeditatio Malorum</h3>
               <textarea
                 className="w-full rounded-lg bg-background-tertiary border border-tertiary p-4 text-text-primary placeholder:text-text-secondary outline-none focus:border-accent transition-colors resize-y min-h-[120px]"
                 value={morningIntentions}
@@ -346,13 +386,13 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
                   </p>
                 </AppGuideNote>
               </div>
-            </div>
+            </section>
           )}
 
           {phase === 'evening' && (
             <>
-              <div className="mb-8">
-                <h3 className="font-display text-lg text-text-primary mb-3">Mood</h3>
+              <section className="mb-8 rounded-lg border border-tertiary bg-background-primary/50 p-5 sm:p-6">
+                <h3 className="font-display text-xl text-text-primary mb-4 border-b border-tertiary pb-2">Mood</h3>
                 <div className="flex flex-wrap gap-2">
                   {moodOptions.map(opt => (
                     <button
@@ -362,48 +402,66 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
                         setMood(opt.value);
                         setIsSaved(false);
                         triggerHaptic('light');
-                        setMoodMessage(`Recorded choice: ${opt.label} ${opt.value}`);
-                        if (moodTimerRef.current) {
-                          clearTimeout(moodTimerRef.current);
-                        }
-                        moodTimerRef.current = setTimeout(() => {
-                          setMoodMessage(null);
-                        }, 3000);
                       }}
                       className={cn(
-                        "rounded-lg border p-3 text-2xl transition-all",
+                        "rounded-lg border p-3 transition-all",
                         mood === opt.value
-                          ? "border-accent bg-accent-soft scale-105"
-                          : "border-tertiary hover:border-secondary hover:bg-background-tertiary"
+                          ? "border-accent bg-accent-soft scale-105 text-accent"
+                          : "border-tertiary text-text-secondary hover:border-secondary hover:bg-background-tertiary hover:text-text-primary"
                       )}
                     >
                       {opt.label}
                     </button>
                   ))}
                 </div>
-                {moodMessage && (
-                  <div className="mt-2 text-sm font-medium text-success" role="status">
-                    ✓ {moodMessage}
+              </section>
+
+              <section className="mb-8 rounded-lg border border-tertiary bg-background-primary/50 p-5 sm:p-6">
+                <h3 className="font-display text-xl text-text-primary mb-4 border-b border-tertiary pb-2">Seneca's Evening Interrogation</h3>
+                <div className="flex flex-col gap-5">
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">What ailment or bad habit did I cure today?</label>
+                    <textarea
+                      className="w-full resize-none rounded-lg border border-tertiary bg-background-tertiary p-3 text-text-primary outline-none focus-visible:border-accent custom-scrollbar min-h-[80px]"
+                      value={senecaQ1}
+                      onChange={(e) => {
+                        setSenecaQ1(e.target.value);
+                        setIsSaved(false);
+                      }}
+                      placeholder="e.g., I stopped myself from doomscrolling..."
+                      disabled={isLoading || isSaving}
+                    />
                   </div>
-                )}
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">What failing did I resist?</label>
+                    <textarea
+                      className="w-full resize-none rounded-lg border border-tertiary bg-background-tertiary p-3 text-text-primary outline-none focus-visible:border-accent custom-scrollbar min-h-[80px]"
+                      value={senecaQ2}
+                      onChange={(e) => {
+                        setSenecaQ2(e.target.value);
+                        setIsSaved(false);
+                      }}
+                      placeholder="e.g., I resisted the urge to complain about the traffic..."
+                      disabled={isLoading || isSaving}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">In what matter can I show improvement tomorrow?</label>
+                    <textarea
+                      className="w-full resize-none rounded-lg border border-tertiary bg-background-tertiary p-3 text-text-primary outline-none focus-visible:border-accent custom-scrollbar min-h-[80px]"
+                      value={senecaQ3}
+                      onChange={(e) => {
+                        setSenecaQ3(e.target.value);
+                        setIsSaved(false);
+                      }}
+                      placeholder="e.g., I will be more patient with my colleagues..."
+                      disabled={isLoading || isSaving}
+                    />
+                  </div>
+                </div>
+              </section>
 
               <div className="mb-8">
-                <h3 className="font-display text-lg text-text-primary mb-3">Reflection</h3>
-                <textarea
-                  className="w-full rounded-lg bg-background-tertiary border border-tertiary p-4 text-text-primary placeholder:text-text-secondary outline-none focus:border-accent transition-colors resize-y min-h-[160px]"
-                  value={reflection}
-                  onChange={(e) => {
-                    setReflection(e.target.value);
-                    setIsSaved(false);
-                  }}
-                  placeholder="Write down your thoughts and reflections on today's quote..."
-                  disabled={isLoading || isSaving}
-                />
-              </div>
-
-              <div className="mb-8">
-                <h3 className="font-display text-lg text-text-primary mb-3">Amor Fati</h3>
                 <AmorFatiControl
                   fateInput={fateInput}
                   onFateInputChange={(val) => {

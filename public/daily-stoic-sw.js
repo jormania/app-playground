@@ -69,24 +69,43 @@ function atLocalTime(now, hour, minute) {
 
 function maybeNotify() {
   var now = new Date(), today = todayKey(now), nowMs = now.getTime();
-  return Promise.all([get('state'), get('lastNudgeSent')]).then(function (v) {
-    var state = v[0], lastNudge = v[1];
+  return Promise.all([get('state'), get('lastMorningNudge'), get('lastEveningNudge')]).then(function (v) {
+    var state = v[0], lastMorning = v[1], lastEvening = v[2];
     if (!state || !state.enabled) return;
 
-    var parts = (state.time || '08:00').split(':');
-    var hour = parseInt(parts[0], 10) || 8;
-    var minute = parseInt(parts[1], 10) || 0;
+    var mParts = (state.morningTime || '07:00').split(':');
+    var mHour = parseInt(mParts[0], 10) || 7;
+    var mMin = parseInt(mParts[1], 10) || 0;
 
-    if (nowMs >= atLocalTime(now, hour, minute) && !state.todayLogged && lastNudge !== today) {
-      return self.registration.showNotification('Daily Stoic', {
-        body: "Take a moment to reflect on today's principle.",
-        tag: 'daily-stoic-nudge',
-        icon: '/daily-stoic-logo.svg',
-        badge: '/daily-stoic-logo.svg'
-      }).then(function () {
-        return set('lastNudgeSent', today);
+    var eParts = (state.eveningTime || '20:00').split(':');
+    var eHour = parseInt(eParts[0], 10) || 20;
+    var eMin = parseInt(eParts[1], 10) || 0;
+
+    var promise = Promise.resolve();
+
+    if (nowMs >= atLocalTime(now, mHour, mMin) && lastMorning !== today) {
+      promise = promise.then(function() {
+        return self.registration.showNotification('Daily Stoic', {
+          body: "Start your day with purpose. Set your morning intentions.",
+          tag: 'daily-stoic-morning',
+          icon: '/daily-stoic-logo.svg',
+          badge: '/daily-stoic-logo.svg'
+        }).then(function () { return set('lastMorningNudge', today); });
       });
     }
+
+    if (nowMs >= atLocalTime(now, eHour, eMin) && !state.todayLogged && lastEvening !== today) {
+      promise = promise.then(function() {
+        return self.registration.showNotification('Daily Stoic', {
+          body: "Take a moment to reflect on today's principle.",
+          tag: 'daily-stoic-evening',
+          icon: '/daily-stoic-logo.svg',
+          badge: '/daily-stoic-logo.svg'
+        }).then(function () { return set('lastEveningNudge', today); });
+      });
+    }
+
+    return promise;
   }).catch(function () {});
 }
 

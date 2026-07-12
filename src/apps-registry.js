@@ -35,11 +35,13 @@ export const APPS = [
     ds: true,
     kind: "react-vite",
     manifest: "/daily-stoic.webmanifest",
-    description: "A daily companion to practice Stoicism. Read a curated quote from Marcus Aurelius or Seneca mapped to the current day of the year, write your daily reflection, and look back at your past entries stored privately on your device.",
+    description: "A comprehensive daily companion to practice Stoicism. Read a curated quote from Marcus Aurelius or Seneca mapped to the day, write your daily reflection using Seneca's Evening Interrogation, practice the Dichotomy of Control to sort anxieties, and set custom morning and evening reminders. Your entries are stored privately on your device or Notion.",
     features: [
       "A daily Stoic quote from Marcus Aurelius or Seneca",
-      "Day-of-year quote mapping ensuring a unique reflection prompt each day",
-      "Private daily journal stored entirely in your browser's localStorage",
+      "Seneca's Evening Interrogation wizard for structured evening reflections",
+      "Dichotomy of Control interactive tool to sort and let go of anxieties",
+      "Custom morning prep and evening review reminders via push notifications",
+      "Private daily journal stored entirely in your browser's localStorage or Notion",
       "Built with the shared design system for clean, modern aesthetics",
       "PWA support to install on mobile or desktop and use offline"
     ],

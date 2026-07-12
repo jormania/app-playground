@@ -1,5 +1,6 @@
 import AppGuideNote from './AppGuideNote';
 import { Button } from './Button';
+import { Skull } from 'lucide-react';
 
 interface MementoMoriProps {
   birthDateString: string;
@@ -10,7 +11,10 @@ export default function MementoMori({ birthDateString, onGoToSettings }: Memento
   if (!birthDateString) {
     return (
       <div className="mx-auto max-w-2xl text-center rounded-xl bg-background-secondary border border-tertiary p-8">
-        <h3 className="mb-2 font-display text-2xl text-text-primary">💀 Memento Mori</h3>
+        <h3 className="mb-2 font-display text-2xl text-text-primary flex items-center justify-center gap-2">
+          <Skull size={24} className="text-text-secondary" />
+          Memento Mori
+        </h3>
         <p className="mb-6 text-text-secondary">
           "Remember you must die." A visual representation of your life in weeks.
         </p>
@@ -55,7 +59,7 @@ export default function MementoMori({ birthDateString, onGoToSettings }: Memento
     blocks.push(
       <div
         key={i}
-        className={`h-[3px] w-[3px] sm:h-1.5 sm:w-1.5 rounded-sm ${elapsed ? 'bg-text-primary' : 'bg-tertiary/50'}`}
+        className={`h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-sm ${elapsed ? 'bg-text-primary' : 'bg-border-secondary'}`}
         title={`Week ${i + 1} of ${totalWeeks} (${elapsed ? 'Elapsed' : 'Remaining'})`}
       />
     );
@@ -64,7 +68,10 @@ export default function MementoMori({ birthDateString, onGoToSettings }: Memento
   return (
     <div className="mx-auto max-w-4xl rounded-xl bg-background-secondary border border-tertiary p-6 sm:p-8">
       <div className="mb-8 text-center">
-        <h3 className="mb-2 font-display text-3xl text-text-primary">💀 Memento Mori</h3>
+        <h3 className="mb-2 font-display text-3xl text-text-primary flex items-center justify-center gap-3">
+          <Skull size={28} className="text-text-secondary" />
+          Memento Mori
+        </h3>
         <p className="text-text-secondary">
           "Let us prepare our minds as if we’d come to the very end of life." — Seneca
         </p>
@@ -79,8 +86,11 @@ export default function MementoMori({ birthDateString, onGoToSettings }: Memento
         </span>
       </div>
 
-      <div className="flex justify-center mb-6 overflow-x-auto">
-        <div className="grid grid-cols-[repeat(52,minmax(0,1fr))] gap-0.5 p-2 sm:p-4 rounded-lg bg-background-tertiary border border-tertiary">
+      <div className="flex justify-center mb-6 overflow-x-auto overflow-y-hidden">
+        <div 
+          className="grid gap-0.5 p-2 sm:p-4 rounded-lg bg-background-tertiary border border-tertiary w-fit mx-auto"
+          style={{ gridTemplateColumns: 'repeat(52, max-content)' }}
+        >
           {blocks}
         </div>
       </div>
