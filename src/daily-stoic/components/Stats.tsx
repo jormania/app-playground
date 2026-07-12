@@ -82,10 +82,10 @@ export default function Stats({ streak, recentReflections, onClose }: StatsProps
 
   return (
     <div className="mx-auto max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="mb-12 flex items-center justify-between border-b border-tertiary pb-8">
+      <div className="mb-6 sm:mb-12 flex items-center justify-between border-b border-tertiary pb-4 sm:pb-8">
         <div>
-          <h2 className="font-display text-2xl text-text-primary mb-4">Your Progress</h2>
-          <p className="text-sm text-text-secondary mt-2">Consistency and alignment metrics</p>
+          <h2 className="font-display text-xl sm:text-2xl text-text-primary mb-2 sm:mb-4">Your Progress</h2>
+          <p className="text-sm text-text-secondary mt-1 sm:mt-2">Consistency and alignment metrics</p>
         </div>
         <button
           onClick={onClose}
@@ -102,8 +102,8 @@ export default function Stats({ streak, recentReflections, onClose }: StatsProps
         </div>
         
         {/* Insights Review Block */}
-        <div className="rounded-lg bg-background-secondary border border-tertiary p-5">
-          <div className="flex items-center justify-between mb-6">
+        <div className="rounded-lg bg-background-secondary border border-tertiary p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
             <h3 className="font-display text-lg text-text-primary">Insights</h3>
             <div className="flex items-center gap-1 rounded-md bg-background-tertiary p-1 border border-tertiary">
               <button 
@@ -141,7 +141,7 @@ export default function Stats({ streak, recentReflections, onClose }: StatsProps
         </div>
       </div>
 
-      <div className="mb-8 rounded-lg bg-background-secondary border border-tertiary p-5 sm:p-6">
+      <div className="mb-6 sm:mb-8 rounded-lg bg-background-secondary border border-tertiary p-4 sm:p-6">
         <h3 className="font-display text-lg text-text-primary mb-4">365-Day Consistency</h3>
         <div className="flex justify-center overflow-x-auto pb-2 custom-scrollbar">
           <div className="flex gap-1 min-w-max pr-2">
@@ -150,7 +150,7 @@ export default function Stats({ streak, recentReflections, onClose }: StatsProps
         </div>
       </div>
 
-      <div className="mb-8 grid gap-4 grid-cols-1 sm:grid-cols-2">
+      <div className="mb-6 sm:mb-8 grid gap-4 grid-cols-1 sm:grid-cols-2">
         <FateGraph records={recentReflections} />
         <MoodGraph records={recentReflections} />
       </div>

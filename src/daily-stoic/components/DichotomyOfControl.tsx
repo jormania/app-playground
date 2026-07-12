@@ -3,6 +3,7 @@ import { Button } from './Button';
 import { cn } from '../lib/cn';
 import { Scale, CheckCircle2, CloudFog, X } from 'lucide-react';
 import { triggerHaptic } from '../../shared/haptics';
+import AppGuideNote from './AppGuideNote';
 
 interface Worry {
   id: string;
@@ -68,15 +69,21 @@ export function DichotomyOfControl() {
         </p>
       </div>
 
-      <form onSubmit={handleAddWorry} className="flex gap-4">
+      <AppGuideNote summary="Understanding the Dichotomy of Control">
+        <p>
+          The core Stoic discipline involves dividing your concerns into two categories: things that are completely up to you (your thoughts, actions, values) and things that are not (external events, other people's opinions, outcomes). Categorizing your anxieties helps you focus your energy where it actually has an effect.
+        </p>
+      </AppGuideNote>
+
+      <form onSubmit={handleAddWorry} className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full">
         <input
           type="text"
           value={newWorry}
           onChange={(e) => setNewWorry(e.target.value)}
           placeholder="What is troubling you right now?"
-          className="flex-1 rounded-lg border border-tertiary bg-background-secondary px-4 py-3 text-text-primary outline-none focus-visible:border-accent transition-colors"
+          className="w-full sm:flex-1 min-w-0 rounded-lg border border-tertiary bg-background-secondary px-4 py-3 text-text-primary outline-none focus-visible:border-accent transition-colors"
         />
-        <Button type="submit" disabled={!newWorry.trim()}>Record</Button>
+        <Button type="submit" className="w-full sm:w-auto shrink-0" disabled={!newWorry.trim()}>Record</Button>
       </form>
 
       {unassigned.length > 0 && (

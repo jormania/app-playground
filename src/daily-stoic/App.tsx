@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import html2canvas from 'html2canvas';
 import { Button } from './components/Button';
-import { Switch as SettingsToggle } from './components/Switch';
 import AppGuideNote from './components/AppGuideNote';
 import Onboarding from './components/Onboarding';
 import Journal from './Journal';
@@ -17,12 +16,9 @@ import { QUOTES } from './data/quotes';
 import { triggerHaptic } from '../shared/haptics';
 
 import { useHashRoute } from './lib/useHashRoute';
-import { useTheme } from './lib/themeContext';
 import { cn } from './lib/cn';
 import {
   Settings as SettingsIcon,
-  Moon as DarkIcon,
-  SunMedium as LightIcon,
   Share2 as ShareIcon,
   Heart as HeartIcon,
   Scale as ScaleIcon,
@@ -32,22 +28,6 @@ import {
   HelpCircle as HelpIcon,
   type LucideIcon,
 } from 'lucide-react';
-
-function ThemeToggle() {
-  const { mode, cycle, current } = useTheme()
-  const dark = mode === 'dark'
-  return (
-    <button
-      onClick={cycle}
-      aria-label="Toggle theme"
-      title={`${current.name} — tap to cycle`}
-      className="rounded-md p-2 text-text-secondary transition-colors duration-fast hover:bg-background-secondary"
-    >
-      {dark ? <LightIcon size={18} aria-hidden /> : <DarkIcon size={18} aria-hidden />}
-    </button>
-  )
-}
-
 
 
 export default function App() {
@@ -71,7 +51,6 @@ export default function App() {
   const [streak, setStreak] = useState(0);
   const [recentReflections, setRecentReflections] = useState<ReflectionRecord[]>([]);
   const [schemaErrors, setSchemaErrors] = useState<string[]>([]);
-  const [philosophyView, setPhilosophyView] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Toggling favorites loading indicator
@@ -170,23 +149,18 @@ export default function App() {
 
 
 
-  // Filter quote rotation based on search and Philosophy View
   const filteredQuotes = useMemo(() => {
     return QUOTES.filter((q) => {
       const query = searchQuery.toLowerCase().trim();
-      const matchesSearch =
+      return (
         !query ||
         q.quote.toLowerCase().includes(query) ||
         q.author.toLowerCase().includes(query) ||
         q.source.toLowerCase().includes(query) ||
-        (q.theme || []).some((t) => t.toLowerCase().includes(query));
-
-      if (philosophyView) {
-        return matchesSearch && q.theme?.some((t) => ['Fate', 'Acceptance', 'Resistance'].includes(t));
-      }
-      return matchesSearch;
+        (q.theme || []).some((t) => t.toLowerCase().includes(query))
+      );
     });
-  }, [searchQuery, philosophyView]);
+  }, [searchQuery]);
 
   const quoteIndex = (dayOfYear - 1) % (filteredQuotes.length || 1);
   const quote = filteredQuotes[quoteIndex] || getQuoteForDay(dayOfYear);
@@ -331,14 +305,14 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background-primary text-text-primary">
-      <header className="border-b border-tertiary bg-background-secondary px-4 py-4 sm:px-6 sm:py-5">
+      <header className="border-b border-tertiary bg-background-secondary px-4 py-3 sm:px-6 sm:py-4">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
+          <div className="flex items-center gap-3 mr-4 sm:mr-8 shrink-0">
+            <h1 className="font-display text-lg sm:text-2xl font-bold tracking-tight text-text-primary">
               Daily Stoic
             </h1>
           </div>
-          <div className="flex items-center gap-1 sm:gap-2">
+          <div className="flex items-center gap-0.5 sm:gap-1.5 min-w-0">
             {/* Main Navigation */}
             {tabOptions.map((tab) => {
               const Icon = tab.Icon;
@@ -350,25 +324,25 @@ export default function App() {
                   title={tab.label}
                   aria-label={tab.label}
                   className={cn(
-                    "rounded-md p-2 transition-colors flex items-center justify-center",
+                    "rounded-md p-1.5 sm:p-2 transition-colors flex items-center justify-center",
                     isActive
                       ? "bg-accent/10 text-accent"
                       : "text-text-secondary hover:bg-background-tertiary hover:text-text-primary"
                   )}
                 >
-                  <Icon size={20} strokeWidth={2} />
+                  <Icon size={18} className="sm:w-[20px] sm:h-[20px]" />
                 </button>
               );
             })}
 
-            <div className="w-px h-6 bg-tertiary mx-1 sm:mx-2" aria-hidden="true" />
+            <div className="w-px h-5 bg-tertiary shrink-0" aria-hidden="true" />
 
             <button
               onClick={() => navigate('/stats')}
-              className="rounded-md p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors flex items-center justify-center"
+              className="rounded-md p-1.5 sm:p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors flex items-center justify-center shrink-0"
               title="Stats & Progress"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="18" height="18" className="sm:w-[20px] sm:h-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="20" x2="18" y2="10"></line>
                 <line x1="12" y1="20" x2="12" y2="4"></line>
                 <line x1="6" y1="20" x2="6" y2="14"></line>
@@ -379,27 +353,25 @@ export default function App() {
               href="/daily-stoic-guide.html"
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-md p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors flex items-center justify-center"
+              className="rounded-md p-1.5 sm:p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors flex items-center justify-center shrink-0"
               title="Field Guide"
               aria-label="Open Field Guide in new tab"
             >
-              <HelpIcon size={20} strokeWidth={2} className="stroke-[2px] dark:stroke-[2.5px]" />
+              <HelpIcon size={18} className="sm:w-[20px] sm:h-[20px]" strokeWidth={2} />
             </a>
-
-            <ThemeToggle />
 
             <button
               onClick={() => navigate('/settings')}
-              className="rounded-md p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors flex items-center justify-center"
+              className="rounded-md p-1.5 sm:p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors flex items-center justify-center shrink-0"
               title="Settings"
             >
-              <SettingsIcon size={20} strokeWidth={2} />
+              <SettingsIcon size={18} className="sm:w-[20px] sm:h-[20px]" strokeWidth={2} />
             </button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl p-6 sm:p-8">
+      <main className="mx-auto w-full max-w-3xl p-4 sm:p-8">
         {route === '/settings' && (
           <Settings
             onClose={() => {
@@ -419,7 +391,7 @@ export default function App() {
         )}
 
         {(route === '' || route === '/') && (
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-4 sm:gap-6">
             {schemaErrors.length > 0 && (
               <div className="rounded-lg bg-background-secondary border border-caution/40 p-4" role="alert">
                 <div className="flex gap-3">
@@ -436,44 +408,34 @@ export default function App() {
                 </div>
               </div>
             )}
-            <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-lg bg-background-secondary p-4 sm:p-6 border border-tertiary">
+            <section className="flex flex-wrap items-center justify-between gap-4 rounded-lg bg-background-secondary p-4 border border-tertiary">
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-text-secondary">Day of Year</span>
-                  <div className="flex items-center rounded-lg bg-background-tertiary border border-tertiary">
-                    <button
-                      onClick={() => setDayOfYear(Math.max(1, dayOfYear - 1))}
-                      disabled={dayOfYear <= 1}
-                      className="px-3 py-1.5 text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors"
-                    >
-                      −
-                    </button>
-                    <span className="w-10 text-center font-medium font-mono text-text-primary">
-                      {dayOfYear}
-                    </span>
-                    <button
-                      onClick={() => setDayOfYear(Math.min(366, dayOfYear + 1))}
-                      disabled={dayOfYear >= 366}
-                      className="px-3 py-1.5 text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors"
-                    >
-                      +
-                    </button>
-                  </div>
+                <span className="text-sm font-medium text-text-secondary">Day of Year</span>
+                <div className="flex items-center rounded-lg bg-background-tertiary border border-tertiary">
+                  <button
+                    onClick={() => setDayOfYear(Math.max(1, dayOfYear - 1))}
+                    disabled={dayOfYear <= 1}
+                    className="px-3 py-1.5 text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors"
+                  >
+                    −
+                  </button>
+                  <span className="w-10 text-center font-medium font-mono text-text-primary">
+                    {dayOfYear}
+                  </span>
+                  <button
+                    onClick={() => setDayOfYear(Math.min(366, dayOfYear + 1))}
+                    disabled={dayOfYear >= 366}
+                    className="px-3 py-1.5 text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors"
+                  >
+                    +
+                  </button>
                 </div>
-                {dayOfYear !== today && (
-                  <Button variant="ghost" size="sm" onClick={() => setDayOfYear(today)}>
-                    Back to Today
-                  </Button>
-                )}
               </div>
-              <div>
-                <SettingsToggle
-                  label="Philosophy View"
-                  description="Filter to Fate, Acceptance, or Resistance maxims"
-                  checked={philosophyView}
-                  onCheckedChange={(next) => setPhilosophyView(next)}
-                />
-              </div>
+              {dayOfYear !== today && (
+                <Button variant="ghost" size="sm" onClick={() => setDayOfYear(today)}>
+                  Back to Today
+                </Button>
+              )}
             </section>
 
             <div className="rounded-lg bg-background-secondary p-4 border border-tertiary">
@@ -493,7 +455,7 @@ export default function App() {
               </div>
             </div>
 
-            <blockquote className="rounded-lg bg-background-secondary p-8 border-l-4 border-l-accent shadow-sm">
+            <blockquote className="rounded-lg bg-background-secondary p-4 sm:p-6 border-l-4 border-l-accent shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <p className="font-display text-2xl text-text-primary mb-4">“{quote.quote}”</p>
                 <div className="flex items-center gap-1 shrink-0">

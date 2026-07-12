@@ -24,7 +24,7 @@ export default function AmorFatiControl({
   };
 
   return (
-    <div className="rounded-xl border border-tertiary bg-background-secondary p-6 sm:p-8 h-full">
+    <div className="rounded-xl border border-tertiary bg-background-secondary p-4 sm:p-6 h-full">
       <h3 className="font-display text-xl text-text-primary mb-4 flex items-center gap-2">
         <span aria-hidden="true" className="text-2xl">🍂</span> Amor Fati (Love of Fate)
       </h3>

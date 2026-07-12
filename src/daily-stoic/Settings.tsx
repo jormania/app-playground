@@ -9,6 +9,7 @@ import { registerPeriodicSync, unregisterPeriodicSync } from '../shared/notify/p
 import { requestPermission, capabilities } from '../shared/notify/permission';
 import { gatherDiagnostics, NotifyDiagnostics } from '../shared/notify/diagnostics';
 import { useDiagnosticsReveal } from '../shared/notify/useDiagnosticsReveal';
+import { useTheme } from './lib/themeContext';
 import { triggerHaptic } from '../shared/haptics';
 
 interface SettingsProps {
@@ -19,6 +20,7 @@ export default function Settings({ onClose }: SettingsProps) {
   const [, forceUpdate] = useReducer(x => x + 1, 0);
   const [token, setToken] = useState(() => localStorage.getItem('daily-stoic:notion-token') || '');
   const [database, setDatabase] = useState(() => localStorage.getItem('daily-stoic:notion-db') || '');
+  const { current, cycle } = useTheme();
   
   const [status, setStatus] = useState<'idle' | 'testing' | 'connected' | 'error'>((() => {
     const hasToken = !!localStorage.getItem('daily-stoic:notion-token');
@@ -162,9 +164,9 @@ export default function Settings({ onClose }: SettingsProps) {
   });
 
   return (
-    <div className="mx-auto max-w-2xl pb-16">
-      <div className="flex items-center justify-between mb-8 pb-4 border-b border-tertiary">
-        <h2 className="font-display text-2xl text-text-primary" onClick={triggerDiagnosticsReveal} style={{ cursor: 'pointer' }}>
+    <div className="mx-auto max-w-lg pb-20 px-4">
+      <div className="flex items-center justify-between mb-6 pb-3 border-b border-tertiary">
+        <h2 className="font-display text-xl sm:text-2xl text-text-primary" onClick={triggerDiagnosticsReveal} style={{ cursor: 'pointer' }}>
           Settings
         </h2>
         <Button variant="ghost" size="sm" onClick={onClose}>
@@ -172,88 +174,104 @@ export default function Settings({ onClose }: SettingsProps) {
         </Button>
       </div>
 
-      <div className="flex flex-col gap-8 mb-12">
-        <h3 className="font-display text-lg text-text-primary">Profile & Perspective</h3>
-        <Field
-          label="Birth Date"
-          type="date"
-          value={birthDate}
-          onChange={(e) => {
-            localStorage.setItem('daily-stoic:birthdate', e.target.value);
-            setBirthDate(e.target.value);
-          }}
-          hint="Required to calculate the Memento Mori life progress grid."
-        />
+      <div className="flex flex-col gap-5">
+        <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-4 sm:p-6">
+          <h3 className="font-display text-lg text-text-primary">Profile & Perspective</h3>
+          <Field
+            label="Birth Date"
+            type="date"
+            value={birthDate}
+            onChange={(e) => {
+              localStorage.setItem('daily-stoic:birthdate', e.target.value);
+              setBirthDate(e.target.value);
+            }}
+            hint="Required to calculate the Memento Mori life progress grid."
+          />
+        </section>
 
-        <hr className="border-t border-tertiary my-10" />
+        <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-4 sm:p-6">
+          <h3 className="font-display text-lg text-text-primary">Notion Sync Settings</h3>
+          <p className="text-sm text-text-secondary leading-relaxed">
+            Configure your Bring-Your-Own-Key Notion connection. Your credentials are saved locally.
+          </p>
 
-        <h3 className="font-display text-lg text-text-primary">Notion Sync Settings</h3>
-        <p className="text-text-secondary">
-          Configure your Bring-Your-Own-Key Notion connection. Your token and database link are saved locally on this device.
-        </p>
+          <Field
+            label="Notion Integration Token"
+            type="password"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder="secret_..."
+            hint="Create an integration in your Notion workspace integrations page."
+          />
 
-        <Field
-          label="Notion Integration Token"
-          type="password"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          placeholder="secret_..."
-          hint="Create an integration in your Notion workspace integrations page."
-        />
+          <Field
+            label="Notion Database Link or ID"
+            type="text"
+            value={database}
+            onChange={(e) => setDatabase(e.target.value)}
+            placeholder="https://www.notion.so/workspace/My-Database-..."
+            hint="Paste the URL of your duplicated Starter Template database."
+          />
 
-        <Field
-          label="Notion Database Link or ID"
-          type="text"
-          value={database}
-          onChange={(e) => setDatabase(e.target.value)}
-          placeholder="https://www.notion.so/workspace/My-Database-..."
-          hint="Paste the URL of your duplicated Starter Template database."
-        />
-
-        <div className="flex items-center gap-3 mt-4">
-          <Button onClick={handleTestConnection} disabled={status === 'testing'}>
-            {status === 'testing' ? 'Testing...' : 'Test & Save Connection'}
-          </Button>
-
-          {status === 'connected' && (
-            <Button variant="ghost" onClick={handleDisconnect}>
-              Disconnect Database
+          <div className="flex items-center gap-3 mt-2">
+            <Button onClick={handleTestConnection} disabled={status === 'testing'}>
+              {status === 'testing' ? 'Testing...' : 'Test & Save Connection'}
             </Button>
-          )}
-        </div>
 
-        {status === 'error' && (
-          <div className="mt-4 rounded-lg bg-background-secondary border border-caution/40 p-4 flex items-start gap-3 text-caution" role="alert">
-            <span>⚠️</span>
-            <div>
-              {errors.map((err, idx) => (
-                <p key={idx}>{err}</p>
-              ))}
+            {status === 'connected' && (
+              <Button variant="ghost" onClick={handleDisconnect}>
+                Disconnect
+              </Button>
+            )}
+          </div>
+
+          {status === 'error' && (
+            <div className="rounded-lg bg-background-secondary border border-caution/40 p-4 flex items-start gap-3 text-caution text-sm" role="alert">
+              <span>⚠️</span>
+              <div>
+                {errors.map((err, idx) => (
+                  <p key={idx}>{err}</p>
+                ))}
+              </div>
             </div>
+          )}
+
+          {status === 'connected' && successMsg && (
+            <div className="rounded-lg bg-background-secondary border border-success/40 p-4 flex items-start gap-3 text-success text-sm" role="status">
+              <span>✓</span>
+              <p>{successMsg}</p>
+            </div>
+          )}
+
+          {status === 'connected' && !successMsg && (
+            <div className="rounded-lg bg-background-secondary border border-success/40 p-4 flex items-start gap-3 text-success text-sm" role="status">
+              <span>✓</span>
+              <p>Connected. Reflections are syncing to Notion.</p>
+            </div>
+          )}
+        </section>
+
+        <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-4 sm:p-6">
+          <h3 className="font-display text-lg text-text-primary">Appearance</h3>
+          <p className="text-sm text-text-secondary leading-relaxed">
+            Customize the visual style of the application. The theme cycles through four light and four dark presets.
+          </p>
+          <div className="flex items-center justify-between border border-tertiary bg-background-tertiary rounded-lg p-3">
+            <div className="flex flex-col">
+              <span className="text-xs uppercase tracking-wider text-text-secondary font-mono">Current Palette</span>
+              <span className="text-sm font-medium text-text-primary mt-0.5">{current.name}</span>
+            </div>
+            <Button onClick={cycle} variant="outline" size="sm">
+              Cycle Palette ◐
+            </Button>
           </div>
-        )}
+        </section>
 
-        {status === 'connected' && successMsg && (
-          <div className="mt-4 rounded-lg bg-background-secondary border border-success/40 p-4 flex items-start gap-3 text-success" role="status">
-            <span>✓</span>
-            <p>{successMsg}</p>
-          </div>
-        )}
-
-        {status === 'connected' && !successMsg && (
-          <div className="mt-4 rounded-lg bg-background-secondary border border-success/40 p-4 flex items-start gap-3 text-success" role="status">
-            <span>✓</span>
-            <p>Connected. Your reflections are currently syncing to Notion.</p>
-          </div>
-        )}
-
-        <hr className="border-t border-tertiary my-10" />
-
-        <div className="flex flex-col gap-8">
+        <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-4 sm:p-6">
           <h3 className="font-display text-lg text-text-primary">User Experience</h3>
           <SettingsToggle
-            label="Show In-Page Guides"
-            hint="Display helpful tooltips (twisties) to explain Stoic concepts like Amor Fati and Memento Mori."
+            label="Show Gentle Concept Guides"
+            description="Display twisties with concept details beside reflection forms."
             checked={localStorage.getItem('daily-stoic:show-guides') !== 'false'}
             onChange={(checked) => {
               localStorage.setItem('daily-stoic:show-guides', checked.toString());
@@ -262,49 +280,47 @@ export default function Settings({ onClose }: SettingsProps) {
               forceUpdate();
             }}
           />
-        </div>
+        </section>
 
-        <hr className="border-t border-tertiary my-10" />
-
-        <div className="flex flex-col gap-8">
+        <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-4 sm:p-6">
           <h3 className="font-display text-lg text-text-primary">Habit Reminders</h3>
           <SettingsToggle
-            label="Morning Reminder"
-            hint={
+            label="Morning & Evening Nudges"
+            description={
               !caps.periodicSync
                 ? 'Local reminders are only supported when the PWA is installed on Chrome/Edge.'
-                : 'Receive a local notification to reflect on today\'s principle.'
+                : 'Receive local notifications to reflect on today\'s principle.'
             }
             checked={reminderEnabled}
             onChange={handleToggleReminder}
           />
 
           {reminderEnabled && (
-            <div className="flex flex-col gap-4 mt-6 pl-2 border-l-2 border-tertiary">
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-4">Morning Prep Time (Premeditatio Malorum)</label>
-                    <input
-                      type="time"
-                      value={morningTime}
-                      onChange={handleMorningTimeChange}
-                      className="w-full sm:w-auto rounded-md bg-background-tertiary border border-tertiary px-3 py-2 text-text-primary focus:border-accent outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-4">Evening Review Time (Reflection)</label>
-                    <input
-                      type="time"
-                      value={eveningTime}
-                      onChange={handleEveningTimeChange}
-                      className="w-full sm:w-auto rounded-md bg-background-tertiary border border-tertiary px-3 py-2 text-text-primary focus:border-accent outline-none"
-                    />
-                  </div>
-                </div>
+            <div className="flex flex-col gap-4 mt-2 pl-3 border-l-2 border-accent">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Morning Prep Time</label>
+                <input
+                  type="time"
+                  value={morningTime}
+                  onChange={handleMorningTimeChange}
+                  className="w-full sm:w-auto rounded-md bg-background-tertiary border border-tertiary px-3 py-2 text-text-primary focus:border-accent outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Evening Review Time</label>
+                <input
+                  type="time"
+                  value={eveningTime}
+                  onChange={handleEveningTimeChange}
+                  className="w-full sm:w-auto rounded-md bg-background-tertiary border border-tertiary px-3 py-2 text-text-primary focus:border-accent outline-none"
+                />
+              </div>
+            </div>
           )}
-        </div>
+        </section>
 
         {isDiagnosticsVisible && diagnostics && (
-          <div className="mt-10 rounded-lg border border-tertiary p-4 bg-background-secondary text-xs font-mono text-text-secondary overflow-auto" role="dialog">
+          <div className="rounded-lg border border-tertiary p-4 bg-background-secondary text-xs font-mono text-text-secondary overflow-auto" role="dialog">
             <h4 className="font-medium mb-2">Notification Diagnostics</h4>
             <pre className="whitespace-pre-wrap">
               {JSON.stringify(diagnostics, null, 2)}

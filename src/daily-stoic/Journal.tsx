@@ -341,7 +341,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
   ];
 
   return (
-    <div className="rounded-xl bg-background-secondary border border-tertiary p-6 sm:p-10">
+    <div className="rounded-xl bg-background-secondary border border-tertiary p-4 sm:p-8">
       <div className="flex items-center justify-center mb-6">
         <div className="inline-flex rounded-lg bg-background-tertiary p-1">
           <button
@@ -366,8 +366,8 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
       ) : (
         <>
           {phase === 'morning' && (
-            <section className="mb-12 rounded-lg border border-tertiary bg-background-primary/50 p-6 sm:p-8">
-              <h3 className="font-display text-xl text-text-primary mb-10 border-b border-tertiary pb-4 flex items-center gap-2">
+            <section className="mb-6 sm:mb-8 rounded-lg border border-tertiary bg-background-primary/50 p-4 sm:p-6">
+              <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3 flex items-center gap-2">
                 <span aria-hidden="true" className="text-2xl">🛡️</span> Premeditatio Malorum
               </h3>
               <textarea
@@ -380,7 +380,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
                 placeholder="I might face..."
                 disabled={isLoading || isSaving}
               />
-              <div className="mt-8">
+              <div className="mt-6">
                 <AppGuideNote summary="Why prepare for the worst?">
                   <p>
                     <strong>Premeditatio Malorum</strong> is the Stoic practice of negative visualization. 
@@ -394,11 +394,11 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
 
           {phase === 'evening' && (
             <>
-              <section className="mb-12 rounded-lg border border-tertiary bg-background-primary/50 p-6 sm:p-8">
-                <h3 className="font-display text-xl text-text-primary mb-10 border-b border-tertiary pb-4 flex items-center gap-2">
+              <section className="mb-6 sm:mb-8 rounded-lg border border-tertiary bg-background-primary/50 p-4 sm:p-6">
+                <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3 flex items-center gap-2">
                   <span aria-hidden="true" className="text-2xl">🎭</span> Mood
                 </h3>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
                   {moodOptions.map(opt => (
                     <button
                       key={opt.value}
@@ -409,7 +409,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
                         triggerHaptic('light');
                       }}
                       className={cn(
-                        "rounded-lg border p-3 transition-all",
+                        "rounded-lg border p-2 sm:p-3 transition-all flex items-center justify-center",
                         mood === opt.value
                           ? "border-accent bg-accent-soft scale-105 text-accent"
                           : "border-tertiary text-text-secondary hover:border-secondary hover:bg-background-tertiary hover:text-text-primary"
@@ -421,13 +421,13 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
                 </div>
               </section>
 
-              <section className="mb-12 rounded-lg border border-tertiary bg-background-primary/50 p-6 sm:p-8">
-                <h3 className="font-display text-xl text-text-primary mb-10 border-b border-tertiary pb-4 flex items-center gap-2">
+              <section className="mb-6 sm:mb-8 rounded-lg border border-tertiary bg-background-primary/50 p-4 sm:p-6">
+                <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3 flex items-center gap-2">
                   <span aria-hidden="true" className="text-2xl">⚖️</span> Seneca's Evening Interrogation
                 </h3>
-                <div className="flex flex-col gap-8">
+                <div className="flex flex-col gap-4 sm:gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-4">What ailment or bad habit did I cure today?</label>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">What ailment or bad habit did I cure today?</label>
                     <textarea
                       className="w-full resize-none rounded-lg border border-tertiary bg-background-tertiary p-3 text-text-primary outline-none focus-visible:border-accent custom-scrollbar min-h-[80px]"
                       value={senecaQ1}
@@ -440,7 +440,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-4">What failing did I resist?</label>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">What failing did I resist?</label>
                     <textarea
                       className="w-full resize-none rounded-lg border border-tertiary bg-background-tertiary p-3 text-text-primary outline-none focus-visible:border-accent custom-scrollbar min-h-[80px]"
                       value={senecaQ2}
@@ -453,7 +453,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-4">In what matter can I show improvement tomorrow?</label>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">In what matter can I show improvement tomorrow?</label>
                     <textarea
                       className="w-full resize-none rounded-lg border border-tertiary bg-background-tertiary p-3 text-text-primary outline-none focus-visible:border-accent custom-scrollbar min-h-[80px]"
                       value={senecaQ3}
@@ -468,7 +468,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
                 </div>
               </section>
 
-              <div className="mb-12">
+              <div className="mb-6 sm:mb-8">
                 <AmorFatiControl
                   fateInput={fateInput}
                   onFateInputChange={(val) => {
@@ -482,7 +482,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
                   }}
                 />
 
-                <div className="mt-8">
+                <div className="mt-4">
                   <AppGuideNote summary="What is Amor Fati?">
                     <p>
                       <strong>Amor Fati</strong> (Love of Fate) is the practice of not just accepting, but embracing whatever happens. 
