@@ -93,6 +93,69 @@ export default function App() {
     setCycleStartDate(localStorage.getItem('daily-stoic:cycle-start-date') || '');
   };
 
+  const updateReminderIDB = useCallback(async (todayLogged: boolean) => {
+    const enabled = localStorage.getItem('daily-stoic:reminder-enabled') === 'true';
+    const time = localStorage.getItem('daily-stoic:reminder-time') || '08:00';
+    const kv = createIdbKv('daily-stoic-reminders');
+    await kv.set('state', {
+      enabled,
+      time,
+      todayLogged,
+    });
+  }, []);
+
+  const loadLocalStorageStreak = useCallback(async (todayVal: number) => {
+    const days = new Set<number>();
+    const records: ReflectionRecord[] = [];
+    for (let i = 1; i <= 365; i++) {
+      const val = localStorage.getItem(`daily-stoic:reflection-${i}`);
+      const fateVal = localStorage.getItem(`daily-stoic:fate-input-${i}`);
+      const favVal = localStorage.getItem(`daily-stoic:favorite-${i}`) === 'true';
+      let tagsVal: string[] = [];
+      try {
+        tagsVal = JSON.parse(localStorage.getItem(`daily-stoic:acceptance-tags-${i}`) || '[]');
+      } catch {
+        tagsVal = [];
+      }
+      
+      let passionsVal: string[] = [];
+      try {
+        passionsVal = JSON.parse(localStorage.getItem(`daily-stoic:passions-${i}`) || '[]');
+      } catch {
+        passionsVal = [];
+      }
+      const createdTimeVal = localStorage.getItem(`daily-stoic:created-time-${i}`) || '';
+      
+      const estimatedDateStr = (() => {
+        const y = new Date().getFullYear();
+        const d = new Date(y, 0, 1);
+        d.setDate(i);
+        return d.toISOString().split('T')[0];
+      })();
+
+      if (val || fateVal || tagsVal.length > 0 || favVal || passionsVal.length > 0) {
+        days.add(i);
+        records.push({
+          date: estimatedDateStr,
+          quoteId: i,
+          text: val || '',
+          fateInput: fateVal || '',
+          acceptanceTags: tagsVal,
+          favorite: favVal,
+          passions: passionsVal,
+          createdTime: createdTimeVal || `${estimatedDateStr}T12:00:00Z`,
+        });
+      }
+    }
+    setRecentReflections(records);
+    
+    const currentStreak = calculateStreak(days, todayVal);
+    setStreak(currentStreak);
+    
+    const todayLogged = days.has(todayVal);
+    await updateReminderIDB(todayLogged);
+  }, [updateReminderIDB]);
+
   const resetCycleData = useCallback(async () => {
     try {
       if (token.trim() && databaseId.trim()) {
@@ -164,69 +227,6 @@ export default function App() {
       throw new Error(e.message || e);
     }
   }, [token, databaseId, loadLocalStorageStreak, updateReminderIDB]);
-
-  const updateReminderIDB = useCallback(async (todayLogged: boolean) => {
-    const enabled = localStorage.getItem('daily-stoic:reminder-enabled') === 'true';
-    const time = localStorage.getItem('daily-stoic:reminder-time') || '08:00';
-    const kv = createIdbKv('daily-stoic-reminders');
-    await kv.set('state', {
-      enabled,
-      time,
-      todayLogged,
-    });
-  }, []);
-
-  const loadLocalStorageStreak = useCallback(async (todayVal: number) => {
-    const days = new Set<number>();
-    const records: ReflectionRecord[] = [];
-    for (let i = 1; i <= 365; i++) {
-      const val = localStorage.getItem(`daily-stoic:reflection-${i}`);
-      const fateVal = localStorage.getItem(`daily-stoic:fate-input-${i}`);
-      const favVal = localStorage.getItem(`daily-stoic:favorite-${i}`) === 'true';
-      let tagsVal: string[] = [];
-      try {
-        tagsVal = JSON.parse(localStorage.getItem(`daily-stoic:acceptance-tags-${i}`) || '[]');
-      } catch {
-        tagsVal = [];
-      }
-      
-      let passionsVal: string[] = [];
-      try {
-        passionsVal = JSON.parse(localStorage.getItem(`daily-stoic:passions-${i}`) || '[]');
-      } catch {
-        passionsVal = [];
-      }
-      const createdTimeVal = localStorage.getItem(`daily-stoic:created-time-${i}`) || '';
-      
-      const estimatedDateStr = (() => {
-        const y = new Date().getFullYear();
-        const d = new Date(y, 0, 1);
-        d.setDate(i);
-        return d.toISOString().split('T')[0];
-      })();
-
-      if (val || fateVal || tagsVal.length > 0 || favVal || passionsVal.length > 0) {
-        days.add(i);
-        records.push({
-          date: estimatedDateStr,
-          quoteId: i,
-          text: val || '',
-          fateInput: fateVal || '',
-          acceptanceTags: tagsVal,
-          favorite: favVal,
-          passions: passionsVal,
-          createdTime: createdTimeVal || `${estimatedDateStr}T12:00:00Z`,
-        });
-      }
-    }
-    setRecentReflections(records);
-    
-    const currentStreak = calculateStreak(days, todayVal);
-    setStreak(currentStreak);
-    
-    const todayLogged = days.has(todayVal);
-    await updateReminderIDB(todayLogged);
-  }, [updateReminderIDB]);
 
   const loadReflectionsAndCheckStreak = useCallback(async () => {
     const todayVal = getDayOfYear();
