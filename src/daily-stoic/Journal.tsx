@@ -367,7 +367,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
         <>
           {phase === 'morning' && (
             <section className="mb-8 rounded-lg border border-tertiary bg-background-primary/50 p-5 sm:p-6">
-              <h3 className="font-display text-xl text-text-primary mb-4 border-b border-tertiary pb-2">Premeditatio Malorum</h3>
+              <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3">Premeditatio Malorum</h3>
               <textarea
                 className="w-full rounded-lg bg-background-tertiary border border-tertiary p-4 text-text-primary placeholder:text-text-secondary outline-none focus:border-accent transition-colors resize-y min-h-[120px]"
                 value={morningIntentions}
@@ -393,7 +393,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
           {phase === 'evening' && (
             <>
               <section className="mb-8 rounded-lg border border-tertiary bg-background-primary/50 p-5 sm:p-6">
-                <h3 className="font-display text-xl text-text-primary mb-4 border-b border-tertiary pb-2">Mood</h3>
+                <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3">Mood</h3>
                 <div className="flex flex-wrap gap-2">
                   {moodOptions.map(opt => (
                     <button
@@ -418,7 +418,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
               </section>
 
               <section className="mb-8 rounded-lg border border-tertiary bg-background-primary/50 p-5 sm:p-6">
-                <h3 className="font-display text-xl text-text-primary mb-4 border-b border-tertiary pb-2">Seneca's Evening Interrogation</h3>
+                <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3">Seneca's Evening Interrogation</h3>
                 <div className="flex flex-col gap-5">
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-2">What ailment or bad habit did I cure today?</label>

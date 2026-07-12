@@ -424,17 +424,6 @@ export default function App() {
 
             <div className="w-px h-6 bg-tertiary mx-1 sm:mx-2" aria-hidden="true" />
 
-            <a
-              href="/daily-stoic-guide.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-md p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors flex items-center justify-center"
-              title="Field Guide"
-              aria-label="Open Field Guide in new tab"
-            >
-              <HelpIcon size={20} strokeWidth={2} />
-            </a>
-
             <button
               onClick={() => navigate('/stats')}
               className="rounded-md p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors flex items-center justify-center"
@@ -446,6 +435,20 @@ export default function App() {
                 <line x1="6" y1="20" x2="6" y2="14"></line>
               </svg>
             </button>
+
+            <a
+              href="/daily-stoic-guide.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-md p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors flex items-center justify-center"
+              title="Field Guide"
+              aria-label="Open Field Guide in new tab"
+            >
+              <HelpIcon size={20} strokeWidth={2} />
+            </a>
+
+            <ThemeToggle />
+
             <button
               onClick={() => navigate('/settings')}
               className="rounded-md p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors flex items-center justify-center"
@@ -453,7 +456,6 @@ export default function App() {
             >
               <SettingsIcon size={20} strokeWidth={2} />
             </button>
-            <ThemeToggle />
           </div>
         </div>
       </header>

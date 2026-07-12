@@ -67,12 +67,12 @@ export default function MementoMori({ birthDateString, onGoToSettings }: Memento
 
   return (
     <div className="mx-auto max-w-4xl rounded-xl bg-background-secondary border border-tertiary p-6 sm:p-8">
-      <div className="mb-8 text-center">
-        <h3 className="mb-2 font-display text-3xl text-text-primary flex items-center justify-center gap-3">
+      <div className="mb-10 text-center">
+        <h3 className="mb-4 font-display text-3xl text-text-primary flex items-center justify-center gap-3">
           <Skull size={28} className="text-text-secondary" />
           Memento Mori
         </h3>
-        <p className="text-text-secondary">
+        <p className="text-text-secondary mt-6 leading-relaxed">
           "Let us prepare our minds as if we’d come to the very end of life." — Seneca
         </p>
       </div>

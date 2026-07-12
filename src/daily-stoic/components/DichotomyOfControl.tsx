@@ -59,16 +59,16 @@ export function DichotomyOfControl() {
   return (
     <div className="mx-auto max-w-2xl">
       <div className="text-center mb-10">
-        <h2 className="mb-3 font-display text-3xl text-text-primary flex items-center justify-center gap-3">
+        <h2 className="mb-4 font-display text-3xl text-text-primary flex items-center justify-center gap-3">
           <Scale size={32} className="text-text-secondary" />
           Spheres of Choice
         </h2>
-        <p className="text-text-secondary">
+        <p className="text-text-secondary mt-6 leading-relaxed">
           "Some things are in our control and others not. Things in our control are opinion, pursuit, desire, aversion... Things not in our control are body, property, reputation, command..." — Epictetus
         </p>
       </div>
 
-      <form onSubmit={handleAddWorry} className="mb-8 flex gap-2">
+      <form onSubmit={handleAddWorry} className="mt-8 mb-12 flex gap-3">
         <input
           type="text"
           value={newWorry}
@@ -80,8 +80,8 @@ export function DichotomyOfControl() {
       </form>
 
       {unassigned.length > 0 && (
-        <div className="mb-10 space-y-4">
-          <h3 className="font-display text-xl text-text-primary mb-4 border-b border-tertiary pb-2">Unsorted Anxieties</h3>
+        <div className="mb-12 space-y-4">
+          <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3">Unsorted Anxieties</h3>
           {unassigned.map((worry) => (
             <div 
               key={worry.id} 
@@ -116,7 +116,7 @@ export function DichotomyOfControl() {
 
       {upToMe.length > 0 && (
         <div className="space-y-4">
-          <h3 className="font-display text-xl text-text-primary mb-4 border-b border-tertiary pb-2">Actionable Concerns</h3>
+          <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3">Actionable Concerns</h3>
           {upToMe.map((worry) => (
             <div 
               key={worry.id} 
