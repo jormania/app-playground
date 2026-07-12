@@ -18,7 +18,6 @@ export { StreakCounter } from './components/StreakCounter'
 export type { StreakCounterProps } from './components/StreakCounter'
 export { SettingsToggle } from './components/SettingsToggle'
 export type { SettingsToggleProps } from './components/SettingsToggle'
-export { BreathingWidget } from './components/BreathingWidget'
-export type { BreathingWidgetProps } from './components/BreathingWidget'
+
 export { GuideNote } from './components/GuideNote'
 export type { GuideNoteProps } from './components/GuideNote'
