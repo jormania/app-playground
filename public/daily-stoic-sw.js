@@ -1,6 +1,6 @@
 // Daily Stoic service worker: stale-while-revalidate for same-origin GETs, scoped to
 // the Daily Stoic page. Enables PWA installability and offline use after first visit.
-const CACHE = 'daily-stoic-cache-v1';
+const CACHE = 'daily-stoic-cache-v2';
 
 self.addEventListener('install', function () {
   self.skipWaiting();
