@@ -7,6 +7,8 @@ export interface NotionReflection {
   favorite?: boolean;
   mood?: string;
   morningIntentions?: string;
+  passions?: string[];
+  createdTime?: string;
 }
 
 export interface ReflectionRecord {
@@ -18,6 +20,8 @@ export interface ReflectionRecord {
   favorite?: boolean;
   mood?: string;
   morningIntentions?: string;
+  passions?: string[];
+  createdTime?: string;
 }
 
 export const RELAY_ENDPOINT = typeof window !== 'undefined' ? '/api/notion' : 'http://localhost/api/notion';
@@ -119,7 +123,8 @@ export function validateSchema(properties: Record<string, { type?: string }>): s
 
   const optional: Record<string, string> = {
     'Mood': 'select',
-    'MorningIntentions': 'rich_text'
+    'MorningIntentions': 'rich_text',
+    'Passions': 'multi_select'
   };
 
   for (const [name, type] of Object.entries(expected)) {
@@ -233,6 +238,14 @@ export async function fetchReflectionForDay(
     ? intentText.map((rt: any) => rt.plain_text || '').join('')
     : '';
 
+  // Extract Passions multi_select
+  const passMultiSelect = props.Passions?.multi_select || [];
+  const passions = Array.isArray(passMultiSelect)
+    ? passMultiSelect.map((o: any) => o.name || '')
+    : [];
+
+  const createdTime = page.created_time || '';
+
   return {
     id: page.id,
     text,
@@ -242,6 +255,8 @@ export async function fetchReflectionForDay(
     favorite,
     mood,
     morningIntentions,
+    passions,
+    createdTime,
   };
 }
 
@@ -258,6 +273,8 @@ export async function upsertReflection(
   favorite = false,
   mood = '',
   morningIntentions = '',
+  passions: string[] = [],
+  hasPassionsProperty = false,
   fetchImpl: typeof fetch = fetch
 ): Promise<NotionReflection> {
   const id = normalizeNotionId(databaseId);
@@ -322,6 +339,12 @@ export async function upsertReflection(
     ]
   };
 
+  if (hasPassionsProperty) {
+    properties['Passions'] = {
+      multi_select: passions.map((p) => ({ name: p })),
+    };
+  }
+
   let page: any;
   if (existingPageId) {
     page = await callRelay(
@@ -375,6 +398,13 @@ export async function upsertReflection(
     ? intentText.map((rt: any) => rt.plain_text || '').join('')
     : '';
 
+  const passMultiSelect = props.Passions?.multi_select || [];
+  const returnPassions = Array.isArray(passMultiSelect)
+    ? passMultiSelect.map((o: any) => o.name || '')
+    : [];
+
+  const returnCreatedTime = page.created_time || '';
+
   return {
     id: page.id,
     text,
@@ -384,6 +414,8 @@ export async function upsertReflection(
     favorite: returnFavorite,
     mood: returnMood,
     morningIntentions: returnMorningIntentions,
+    passions: returnPassions,
+    createdTime: returnCreatedTime,
   };
 }
 
@@ -443,6 +475,13 @@ export async function fetchRecentReflections(
       ? intentText.map((rt: any) => rt.plain_text || '').join('')
       : '';
 
+    const passMultiSelect = props.Passions?.multi_select || [];
+    const passionsVal = Array.isArray(passMultiSelect)
+      ? passMultiSelect.map((o: any) => o.name || '')
+      : [];
+
+    const createdTimeVal = page.created_time || '';
+
     if (dateProp && typeof quoteProp === 'number') {
       records.push({
         date: dateProp,
@@ -453,6 +492,8 @@ export async function fetchRecentReflections(
         favorite: favoriteVal,
         mood: moodVal,
         morningIntentions: morningIntentionsVal,
+        passions: passionsVal,
+        createdTime: createdTimeVal,
       });
     }
   }

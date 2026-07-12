@@ -40,6 +40,7 @@ interface JournalProps {
   isTogglingFavorite: boolean;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  hasPassionsProperty?: boolean;
 }
 
 interface Worry {
@@ -49,6 +50,15 @@ interface Worry {
   isResolved?: boolean;
   createdAt?: string;
 }
+
+export const AVAILABLE_PASSIONS = [
+  { id: 'impatience', label: 'Impatience & Anger', category: 'Desire/Distress', desc: 'Irritation, frustration, or anger at events/people not matching expectations.' },
+  { id: 'anxiety', label: 'Anxiety & Fear', category: 'Fear', desc: 'Worry or dread about future events, uncertainties, or outcomes.' },
+  { id: 'reputation', label: 'Concern for Reputation', category: 'Fear/Pride', desc: 'Worrying about others\' opinions, seeking validation or social approval.' },
+  { id: 'discontent', label: 'Discontent & Self-Pity', category: 'Distress', desc: 'Feeling victimized, complaining about circumstances, or feeling dissatisfaction.' },
+  { id: 'pride', label: 'Pride & Ego', category: 'Pleasure', desc: 'Self-satisfaction, feeling superior to others, or intellectual vanity.' },
+  { id: 'craving', label: 'Craving & Attachment', category: 'Desire', desc: 'Strong attachment to specific outcomes, status, wealth, or comfort.' }
+];
 
 export default function Journal({ 
   dayOfYear, 
@@ -66,7 +76,8 @@ export default function Journal({
   isSharing,
   isTogglingFavorite,
   searchQuery,
-  setSearchQuery
+  setSearchQuery,
+  hasPassionsProperty = false
 }: JournalProps) {
   const isNotionConfigured = !!token.trim() && !!databaseId.trim();
   const localStorageKey = `daily-stoic:reflection-${dayOfYear}`;
@@ -74,6 +85,8 @@ export default function Journal({
   const localTagsKey = `daily-stoic:acceptance-tags-${dayOfYear}`;
   const localIntentionsKey = `daily-stoic:morning-intentions-${dayOfYear}`;
   const localMoodKey = `daily-stoic:mood-${dayOfYear}`;
+  const localPassionsKey = `daily-stoic:passions-${dayOfYear}`;
+  const localCreatedTimeKey = `daily-stoic:created-time-${dayOfYear}`;
 
   // Active Journey Step (1: Focus, 2: Meditate, 3: Prepare, 4: Reflect)
   const [activeStep, setActiveStep] = useState<number>(() => {
@@ -94,6 +107,10 @@ export default function Journal({
   const [acceptanceTags, setAcceptanceTags] = useState<string[]>([]);
   const [savedAcceptanceTags, setSavedAcceptanceTags] = useState<string[]>([]);
 
+  // Passions state
+  const [passions, setPassions] = useState<string[]>([]);
+  const [savedPassions, setSavedPassions] = useState<string[]>([]);
+
   // Morning Intentions (Premeditatio Malorum)
   const [morningIntentions, setMorningIntentions] = useState('');
   const [savedMorningIntentions, setSavedMorningIntentions] = useState('');
@@ -108,6 +125,7 @@ export default function Journal({
     return saved ? JSON.parse(saved) : [];
   });
   const [newWorry, setNewWorry] = useState('');
+  const [selectedReframeIds, setSelectedReframeIds] = useState<string[]>([]);
 
   // Enchiridion random recall state
   const [recalledMaxim, setRecalledMaxim] = useState<any>(null);
@@ -116,6 +134,40 @@ export default function Journal({
   useEffect(() => {
     localStorage.setItem('daily-stoic:dichotomy', JSON.stringify(worries));
   }, [worries]);
+
+  const handleToggleReframeWorry = (id: string) => {
+    let nextIds: string[] = [];
+    if (selectedReframeIds.includes(id)) {
+      nextIds = selectedReframeIds.filter(x => x !== id);
+    } else {
+      nextIds = [...selectedReframeIds, id];
+    }
+    setSelectedReframeIds(nextIds);
+    
+    // Rebuild fateInput grammatically
+    const selectedWorries = worries.filter(w => nextIds.includes(w.id));
+    if (selectedWorries.length === 0) {
+      setFateInput('');
+    } else {
+      const texts = selectedWorries.map(w => w.text.trim());
+      let listStr = '';
+      if (texts.length === 1) {
+        listStr = texts[0].toLowerCase();
+      } else if (texts.length === 2) {
+        listStr = `${texts[0].toLowerCase()} and ${texts[1].toLowerCase()}`;
+      } else {
+        const formatted = texts.map((t, idx) => {
+          if (idx === texts.length - 1) return `and ${t.toLowerCase()}`;
+          return t.toLowerCase();
+        });
+        listStr = formatted.join(', ');
+      }
+      const verb = texts.length === 1 ? 'it as it is' : 'them as they are';
+      setFateInput(`I cannot control ${listStr}, but I embrace ${verb}.`);
+    }
+    setIsSaved(false);
+    triggerHaptic('light');
+  };
 
   // Update reflection string when Qs change
   useEffect(() => {
@@ -171,11 +223,20 @@ export default function Journal({
           savedTags = [];
         }
 
+        let savedPassionsVal: string[] = [];
+        try {
+          savedPassionsVal = JSON.parse(localStorage.getItem(localPassionsKey) || '[]');
+        } catch {
+          savedPassionsVal = [];
+        }
+
         setSavedReflection(savedRef);
         setFateInput(localStorage.getItem(localFateKey) || '');
         setSavedFateInput(localStorage.getItem(localFateKey) || '');
         setAcceptanceTags(savedTags);
         setSavedAcceptanceTags(savedTags);
+        setPassions(savedPassionsVal);
+        setSavedPassions(savedPassionsVal);
         setMorningIntentions(savedIntentions);
         setSavedMorningIntentions(savedIntentions);
         setMood(savedMoodVal);
@@ -216,6 +277,8 @@ export default function Journal({
           setSavedFateInput(result.fateInput || '');
           setAcceptanceTags(result.acceptanceTags || []);
           setSavedAcceptanceTags(result.acceptanceTags || []);
+          setPassions(result.passions || []);
+          setSavedPassions(result.passions || []);
           setMorningIntentions(result.morningIntentions || '');
           setSavedMorningIntentions(result.morningIntentions || '');
           setMood(result.mood || '');
@@ -234,6 +297,12 @@ export default function Journal({
           } catch {
             localTagsBackup = [];
           }
+          let localPassionsBackup: string[] = [];
+          try {
+            localPassionsBackup = JSON.parse(localStorage.getItem(localPassionsKey) || '[]');
+          } catch {
+            localPassionsBackup = [];
+          }
 
           setReflection(localBackup);
           setSavedReflection('');
@@ -241,13 +310,15 @@ export default function Journal({
           setSavedFateInput('');
           setAcceptanceTags(localTagsBackup);
           setSavedAcceptanceTags([]);
+          setPassions(localPassionsBackup);
+          setSavedPassions([]);
           setMorningIntentions(localIntentionsBackup);
           setSavedMorningIntentions('');
           setMood(localMoodBackup);
           setSavedMood('');
           setExistingPageId(undefined);
 
-          const empty = localBackup === '' && localFateBackup === '' && localTagsBackup.length === 0 && localIntentionsBackup === '' && localMoodBackup === '';
+          const empty = localBackup === '' && localFateBackup === '' && localTagsBackup.length === 0 && localIntentionsBackup === '' && localMoodBackup === '' && localPassionsBackup.length === 0;
           setIsSaved(empty);
         }
       } catch (err: any) {
@@ -264,9 +335,16 @@ export default function Journal({
         } catch {
           localTagsBackup = [];
         }
+        let localPassionsBackup: string[] = [];
+        try {
+          localPassionsBackup = JSON.parse(localStorage.getItem(localPassionsKey) || '[]');
+        } catch {
+          localPassionsBackup = [];
+        }
         setReflection(localBackup);
         setFateInput(localFateBackup);
         setAcceptanceTags(localTagsBackup);
+        setPassions(localPassionsBackup);
         setMorningIntentions(localIntentionsBackup);
         setMood(localMoodBackup);
       } finally {
@@ -279,7 +357,7 @@ export default function Journal({
     return () => {
       active = false;
     };
-  }, [dayOfYear, token, databaseId, isNotionConfigured, localStorageKey, localFateKey, localTagsKey, localIntentionsKey, localMoodKey]);
+  }, [dayOfYear, token, databaseId, isNotionConfigured, localStorageKey, localFateKey, localTagsKey, localIntentionsKey, localMoodKey, localPassionsKey]);
 
   const handleSave = async () => {
     const cleanedText = reflection.trim();
@@ -292,11 +370,16 @@ export default function Journal({
     localStorage.setItem(localTagsKey, JSON.stringify(acceptanceTags));
     localStorage.setItem(localIntentionsKey, cleanedIntentions);
     localStorage.setItem(localMoodKey, mood);
+    localStorage.setItem(localPassionsKey, JSON.stringify(passions));
+    if (!localStorage.getItem(localCreatedTimeKey)) {
+      localStorage.setItem(localCreatedTimeKey, new Date().toISOString());
+    }
 
     if (!isNotionConfigured) {
       setSavedReflection(cleanedText);
       setSavedFateInput(cleanedFate);
       setSavedAcceptanceTags([...acceptanceTags]);
+      setSavedPassions([...passions]);
       setSavedMorningIntentions(cleanedIntentions);
       setSavedMood(mood);
       setIsSaved(true);
@@ -326,12 +409,15 @@ export default function Journal({
         acceptanceTags,
         false, // favorite
         mood,
-        cleanedIntentions
+        cleanedIntentions,
+        passions,
+        hasPassionsProperty
       );
 
       setSavedReflection(result.text);
       setSavedFateInput(result.fateInput || '');
       setSavedAcceptanceTags(result.acceptanceTags || []);
+      setSavedPassions(result.passions || []);
       setSavedMorningIntentions(result.morningIntentions || '');
       setSavedMood(result.mood || '');
       setExistingPageId(result.id);
@@ -365,13 +451,20 @@ export default function Journal({
           } catch {
             tagsVal = [];
           }
+          let passionsVal = [];
+          try {
+            passionsVal = JSON.parse(localStorage.getItem(`daily-stoic:passions-${i}`) || '[]');
+          } catch {
+            passionsVal = [];
+          }
 
-          if (val || fateVal || tagsVal.length > 0) {
+          if (val || fateVal || tagsVal.length > 0 || passionsVal.length > 0) {
             records.push({
               quoteId: i,
               text: val || '',
               fateInput: fateVal || '',
               acceptanceTags: tagsVal,
+              passions: passionsVal,
             });
           }
         }
@@ -415,6 +508,11 @@ export default function Journal({
     }, 400);
   };
 
+  const handleToggleConcernResolved = (id: string) => {
+    setWorries((prev) => prev.map((w) => w.id === id ? { ...w, isResolved: !w.isResolved } : w));
+    triggerHaptic('light');
+  };
+
   // Enchiridion maxim recall
   const handleDrawMaxim = () => {
     if (favoritedMaxims.length === 0) return;
@@ -436,18 +534,22 @@ export default function Journal({
         return (
           reflection.trim().length > 0 ||
           fateInput.trim().length > 0 ||
-          mood !== ''
+          mood !== '' ||
+          passions.length > 0
         );
       default:
         return false;
     }
   };
 
+  const passionsChanged = JSON.stringify(passions.slice().sort()) !== JSON.stringify(savedPassions.slice().sort());
+
   const hasChanges =
     reflection.trim() !== savedReflection ||
     fateInput.trim() !== savedFateInput ||
     morningIntentions.trim() !== savedMorningIntentions ||
-    mood !== savedMood;
+    mood !== savedMood ||
+    passionsChanged;
 
   const moodOptions = [
     { label: <SmilePlus size={24} strokeWidth={2} />, value: 'Great' },
@@ -551,11 +653,26 @@ export default function Journal({
                   {(() => {
                     const birthDateObj = new Date(birthDate);
                     const today = new Date();
+                    
+                    const currentYear = today.getFullYear();
+                    const birthMonth = birthDateObj.getMonth();
+                    const birthDay = birthDateObj.getDate();
+                    
+                    const birthdayThisYear = new Date(currentYear, birthMonth, birthDay);
+                    let lastBirthday = birthdayThisYear;
+                    if (today < birthdayThisYear) {
+                      lastBirthday = new Date(currentYear - 1, birthMonth, birthDay);
+                    }
+                    
                     const diffMs = today.getTime() - birthDateObj.getTime();
                     const weeksElapsed = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24 * 7)));
                     const totalWeeks = 80 * 52;
                     const percentage = Math.min(100, Math.max(0, (weeksElapsed / totalWeeks) * 100));
-                    const weekOfCurrentYear = weeksElapsed % 52;
+                    
+                    const msSinceLastBirthday = today.getTime() - lastBirthday.getTime();
+                    const weekOfCurrentYear = Math.min(51, Math.max(0, Math.floor(msSinceLastBirthday / (1000 * 60 * 60 * 24 * 7))));
+                    
+                    const upcomingAge = lastBirthday.getFullYear() + 1 - birthDateObj.getFullYear();
                     
                     const miniBlocks = [];
                     for (let i = 0; i < 52; i++) {
@@ -588,9 +705,9 @@ export default function Journal({
                           </span>
                         </div>
 
-                        <div className="rounded-xl border border-tertiary bg-background-primary/30 p-4">
+                        <div className="rounded-xl border border-tertiary bg-background-secondary p-5 shadow-sm hover:shadow-md transition-all duration-300">
                           <h4 className="text-xs font-semibold text-text-secondary tracking-wider uppercase mb-3 text-center sm:text-left">
-                            Current Year progress (52 Weeks)
+                            Current Year progress (to {upcomingAge})
                           </h4>
                           <div 
                             className="grid gap-1 p-2 rounded-lg bg-background-tertiary border border-tertiary max-w-[420px] mx-auto sm:mx-0"
@@ -608,7 +725,7 @@ export default function Journal({
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            onClick={() => onNavigateToTab('memento')}
+                            onClick={() => onNavigateToTab('/memento')}
                           >
                             View Full 80-Year Life Grid →
                           </Button>
@@ -618,6 +735,15 @@ export default function Journal({
                   })()}
                 </div>
               )}
+              <div className="mt-6">
+                <AppGuideNote summary="Meditating on Mortality (Memento Mori)">
+                  <p>
+                    <strong>Memento Mori</strong> translates to "remember that you will die." 
+                    Stoics meditated on mortality not to become morbid, but to create absolute clarity and gratitude for the present moment. 
+                    Viewing your yearly and overall life progress reminds you that time is your most scarce resource.
+                  </p>
+                </AppGuideNote>
+              </div>
             </div>
           )}
 
@@ -727,13 +853,22 @@ export default function Journal({
                   </div>
                 )}
               </div>
+              <div className="mt-6">
+                <AppGuideNote summary="Meditating on Daily Principles">
+                  <p>
+                    <strong>Meditating</strong> on philosophical principles prepares the mind for action. 
+                    Rather than reading passively, focus on how today's maxim applies to your current circumstances. 
+                    Use the search bar to explore specific themes, or draw from your hand-picked <strong>Enchiridion</strong> handbook to reinforce lessons.
+                  </p>
+                </AppGuideNote>
+              </div>
             </div>
           )}
 
           {/* STEP 3: Prepare (Morning Prep & Spheres of Control) */}
           {activeStep === 3 && (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
-              <section className="rounded-lg border border-tertiary bg-background-primary/50 p-4 sm:p-6">
+              <section className="rounded-xl border border-tertiary bg-background-secondary p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300">
                 <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
                   <span aria-hidden="true" className="text-xl">🛡️</span> Premeditatio Malorum
                 </h3>
@@ -753,7 +888,7 @@ export default function Journal({
               </section>
 
               {/* Dichotomy of Control Integration */}
-              <section className="rounded-lg border border-tertiary bg-background-primary/50 p-4 sm:p-6">
+              <section className="rounded-xl border border-tertiary bg-background-secondary p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300">
                 <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
                   <Scale size={20} className="text-text-secondary" />
                   Spheres of Choice (Dichotomy)
@@ -846,7 +981,7 @@ export default function Journal({
           {activeStep === 4 && (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
               {/* Mood Check */}
-              <section className="rounded-lg border border-tertiary bg-background-primary/50 p-4 sm:p-6">
+              <section className="rounded-xl border border-tertiary bg-background-secondary p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300">
                 <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
                   <span aria-hidden="true" className="text-xl">🎭</span> Mood Tracking
                 </h3>
@@ -873,8 +1008,52 @@ export default function Journal({
                 </div>
               </section>
 
+              {/* Passions & Judgments Selector */}
+              <section className="rounded-xl border border-tertiary bg-background-secondary p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300">
+                <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
+                  <span aria-hidden="true" className="text-xl">🔥</span> Passions & Judgments
+                </h3>
+                <p className="text-sm text-text-secondary mb-4">
+                  Which dysfunctional judgments or passions did you notice in yourself today? (Select all that apply)
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {AVAILABLE_PASSIONS.map(p => {
+                    const active = passions.includes(p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          if (active) {
+                            setPassions(passions.filter(x => x !== p.id));
+                          } else {
+                            setPassions([...passions, p.id]);
+                          }
+                          setIsSaved(false);
+                          triggerHaptic('light');
+                        }}
+                        className={cn(
+                          "rounded-lg border p-4 text-left transition-all flex flex-col justify-between h-full",
+                          active
+                            ? "border-accent bg-accent-soft text-accent"
+                            : "border-tertiary text-text-secondary hover:border-secondary hover:bg-background-tertiary"
+                        )}
+                      >
+                        <div>
+                          <div className="font-semibold text-sm flex items-center justify-between gap-2">
+                            <span className={cn(active ? "text-accent" : "text-text-primary")}>{p.label}</span>
+                            <span className="text-[10px] uppercase font-mono tracking-wider opacity-60 px-1.5 py-0.5 rounded bg-background-secondary border border-tertiary shrink-0">{p.category}</span>
+                          </div>
+                          <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">{p.desc}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
               {/* Seneca Questions */}
-              <section className="rounded-lg border border-tertiary bg-background-primary/50 p-4 sm:p-6">
+              <section className="rounded-xl border border-tertiary bg-background-secondary p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300">
                 <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
                   <span aria-hidden="true" className="text-xl">⚖️</span> Seneca's Evening Interrogation
                 </h3>
@@ -921,79 +1100,111 @@ export default function Journal({
                 </div>
               </section>
 
-              {/* Actionable Concerns Resolve section */}
-              {activeUpToMe.length > 0 && (
-                <section className="rounded-lg border border-tertiary bg-background-primary/50 p-4 sm:p-6">
-                  <h3 className="font-display text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
-                    <span className="text-success">✓</span> Resolve Actionable Concerns
-                  </h3>
-                  <div className="space-y-2">
-                    {activeUpToMe.map(w => (
-                      <div key={w.id} className="flex items-center gap-3 bg-background-tertiary p-3 border border-tertiary rounded-lg">
-                        <button
-                          type="button"
-                          onClick={() => handleResolve(w.id)}
-                          className="w-5 h-5 rounded-full border border-tertiary hover:border-success hover:bg-success/10 flex items-center justify-center shrink-0 transition-colors"
-                          title="Mark resolved"
-                        >
-                          <div className="w-2.5 h-2.5 rounded-full bg-transparent hover:bg-success" />
-                        </button>
-                        <span className="text-sm text-text-primary">{w.text}</span>
+              {/* Spheres of Choice evening review box */}
+              <section className="rounded-xl border border-tertiary bg-background-secondary p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300">
+                <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
+                  <Scale size={20} className="text-text-secondary" />
+                  Spheres of Choice
+                </h3>
+                
+                <div className="space-y-6">
+                  {/* Part 1: Resolve Actionable Concerns */}
+                  {activeUpToMe.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="font-display text-sm font-semibold text-success flex items-center gap-2">
+                        <span>✓</span> Resolve Actionable Concerns
+                      </h4>
+                      <div className="space-y-2">
+                        {activeUpToMe.map(w => (
+                          <div 
+                            key={w.id} 
+                            onClick={() => handleToggleConcernResolved(w.id)}
+                            className="flex items-center gap-3 bg-background-tertiary p-3 border border-tertiary rounded-lg transition-all duration-300 cursor-pointer hover:bg-background-tertiary/80"
+                          >
+                            <button
+                              type="button"
+                              className={cn(
+                                "w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-all",
+                                w.isResolved 
+                                  ? "border-success bg-success text-background-primary"
+                                  : "border-tertiary hover:border-success hover:bg-success/10 text-transparent"
+                              )}
+                              title={w.isResolved ? "Mark uncompleted" : "Mark completed"}
+                            >
+                              <span className="text-[10px] font-bold leading-none select-none">✓</span>
+                            </button>
+                            <span className={cn(
+                              "text-sm transition-all duration-300 select-none",
+                              w.isResolved 
+                                ? "text-text-secondary line-through opacity-60" 
+                                : "text-text-primary"
+                            )}>
+                              {w.text}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Amor Fati Reframing section */}
-              <section className="space-y-4">
-                {/* Cross-linking with Dichotomy of Control: prompt to reframe today's Not Up To Me worries */}
-                {todaysNotUpToMe.length > 0 && (
-                  <div className="rounded-lg border border-energy/30 bg-energy/5 p-4 sm:p-5">
-                    <h4 className="text-sm font-semibold text-energy flex items-center gap-2 mb-2">
-                      <span>☁</span> Reframe today's Externals
-                    </h4>
-                    <p className="text-xs text-text-secondary mb-3">
-                      Today you recognized these factors as out of your control. Click on any to fill/help inspire your Amor Fati practice:
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {todaysNotUpToMe.map(w => (
-                        <button
-                          key={w.id}
-                          type="button"
-                          onClick={() => {
-                            setFateInput(`I cannot control ${w.text.toLowerCase()}, but I embrace it as it is.`);
-                            setIsSaved(false);
-                            triggerHaptic('light');
-                          }}
-                          className="text-xs text-text-primary bg-background-secondary border border-tertiary hover:border-accent rounded px-2.5 py-1 text-left"
-                        >
-                          "{w.text}"
-                        </button>
-                      ))}
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <AmorFatiControl
-                  fateInput={fateInput}
-                  onFateInputChange={(val) => {
-                    setFateInput(val);
-                    setIsSaved(false);
-                  }}
-                  acceptanceTags={acceptanceTags}
-                  onAcceptanceTagsChange={(tags) => {
-                    setAcceptanceTags(tags);
-                    setIsSaved(false);
-                  }}
-                />
+                  {/* Divider between parts if both exist */}
+                  {activeUpToMe.length > 0 && (todaysNotUpToMe.length > 0 || fateInput !== undefined) && (
+                    <div className="border-t border-tertiary/60 my-4" />
+                  )}
+
+                  {/* Part 2: Reframe today's Externals & Amor Fati */}
+                  <div className="space-y-4">
+                    {todaysNotUpToMe.length > 0 && (
+                      <div className="rounded-lg border border-energy/30 bg-energy/5 p-4 sm:p-5">
+                        <h4 className="text-sm font-semibold text-energy flex items-center gap-2 mb-2">
+                          <span>☁</span> Reframe today's Externals
+                        </h4>
+                        <p className="text-xs text-text-secondary mb-3">
+                          Today you recognized these factors as out of your control. Select one or more to construct your Amor Fati reframe:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {todaysNotUpToMe.map(w => {
+                            const isSelected = selectedReframeIds.includes(w.id);
+                            return (
+                              <button
+                                key={w.id}
+                                type="button"
+                                onClick={() => handleToggleReframeWorry(w.id)}
+                                className={cn(
+                                  "text-xs rounded px-2.5 py-1 text-left border transition-all duration-200",
+                                  isSelected
+                                    ? "border-accent bg-accent-soft text-accent font-medium"
+                                    : "text-text-primary bg-background-secondary border-tertiary hover:border-accent"
+                                )}
+                              >
+                                "{w.text}"
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    <AmorFatiControl
+                      fateInput={fateInput}
+                      onFateInputChange={(val) => {
+                        setFateInput(val);
+                        setIsSaved(false);
+                      }}
+                      acceptanceTags={acceptanceTags}
+                      onAcceptanceTagsChange={(tags) => {
+                        setAcceptanceTags(tags);
+                        setIsSaved(false);
+                      }}
+                    />
+                  </div>
+                </div>
               </section>
 
               <AppGuideNote summary="Reflecting on the Day">
                 <p>
                   <strong>Seneca's Interrogation</strong> balances your daily account. 
-                  Write down your progress and reframe external frictions under <strong>Amor Fati</strong>. 
-                  Clicking on an external concern above will help structure your reframing.
+                  Record your achievements or lessons, toggle completed actionable concerns, reframe external frictions under <strong>Amor Fati</strong>, and log any passions or dysfunctional judgments you noticed in yourself to track your tranquility training ground.
                 </p>
               </AppGuideNote>
             </div>
@@ -1008,60 +1219,81 @@ export default function Journal({
       )}
 
       {/* Unified Stepper Footer */}
-      <footer className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-tertiary pt-6 mt-6">
-        <div>
-          {activeStep > 1 ? (
-            <Button
-              onClick={() => {
-                setActiveStep(activeStep - 1);
-                triggerHaptic('light');
-              }}
-              variant="ghost"
-              size="sm"
-            >
-              ← Back
-            </Button>
-          ) : (
-            <div />
-          )}
+      <footer className="border-t border-tertiary pt-6 mt-6 flex flex-col gap-4">
+        {/* Navigation row: Back (left) and Next (right) */}
+        <div className="flex items-center justify-between w-full">
+          <div>
+            {activeStep > 1 ? (
+              <Button
+                onClick={() => {
+                  setActiveStep(activeStep - 1);
+                  triggerHaptic('light');
+                }}
+                variant="ghost"
+                size="sm"
+              >
+                ← Back
+              </Button>
+            ) : (
+              <div />
+            )}
+          </div>
+
+          <div>
+            {activeStep < 4 ? (
+              <Button
+                onClick={() => {
+                  setActiveStep(activeStep + 1);
+                  triggerHaptic('light');
+                }}
+                variant="primary"
+                size="sm"
+              >
+                Next →
+              </Button>
+            ) : (
+              <div />
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-          {/* Save Button available on Step 3 and Step 4 */}
-          {(activeStep >= 3) && (
-            <Button
+        {/* Action row: Save / Download on separate lines */}
+        <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-3 mt-2">
+          {activeStep >= 3 && (
+            <button
               onClick={handleSave}
               disabled={(!hasChanges && isSaved) || isLoading || isSaving}
-              variant={hasChanges ? 'primary' : 'secondary'}
-              className="w-full sm:w-auto"
-              size="sm"
+              type="button"
+              className={cn(
+                "w-full sm:max-w-xs rounded-lg py-3 px-6 text-sm font-semibold tracking-wide shadow-md transition-all duration-300 border flex items-center justify-center gap-2",
+                isSaving 
+                  ? "bg-accent-soft border-accent/20 text-accent opacity-50 cursor-not-allowed"
+                  : isSaved && !hasChanges
+                    ? "bg-background-tertiary border-tertiary text-text-secondary cursor-default shadow-none"
+                    : "bg-accent hover:bg-accent-hover text-background-primary border-accent hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0"
+              )}
             >
-              {isSaving ? 'Saving...' : isSaved ? 'Saved' : activeStep === 3 ? 'Save Prep' : 'Save Reflection'}
-            </Button>
+              {isSaving ? (
+                <>Saving...</>
+              ) : isSaved && !hasChanges ? (
+                <>✓ Reflection Saved</>
+              ) : activeStep === 3 ? (
+                <>Save Morning Prep</>
+              ) : (
+                <>Complete Reflection</>
+              )}
+            </button>
           )}
 
-          {activeStep < 4 ? (
-            <Button
-              onClick={() => {
-                setActiveStep(activeStep + 1);
-                triggerHaptic('light');
-              }}
-              variant="primary"
-              className="w-full sm:w-auto"
-              size="sm"
-            >
-              Next →
-            </Button>
-          ) : (
-            <Button
+          {activeStep === 4 && (
+            <button
               onClick={handleDownload}
-              variant="ghost"
               disabled={isLoading || isSaving || isDownloading}
-              className="w-full sm:w-auto"
-              size="sm"
+              type="button"
+              className="w-full sm:max-w-xs rounded-lg py-3 px-6 text-sm font-medium border border-tertiary bg-background-secondary text-text-secondary hover:text-text-primary hover:bg-background-tertiary transition-all flex items-center justify-center gap-2"
             >
               {isDownloading ? 'Archiving...' : '📥 Download Data'}
-            </Button>
+            </button>
           )}
         </div>
       </footer>

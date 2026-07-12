@@ -26,7 +26,14 @@ Daily Stoic combines daily stoic reflection habits, cognitive reframing, and lon
 3. **Long-Term Perspective (Memento Mori / Enchiridion - M4)**:
    - Memento Mori Life Grid: A visual calendar showing weeks lived vs remaining weeks based on a user-defined birthdate.
    - The Enchiridion (Handbook): A curated collection of favorited maxims for quick access during moments of stress.
-   - Semantic Maxim Search: Keyword search bar to search quotes by content, author, source, or tag keywords.
+   - **Semantic Keyword Search**: Keyword search bar to search quotes by content, author, source, or tag keywords.
+
+4. **Self-Knowledge & Passion Tracking (Milestone 6)**:
+   - Passions & Judgments multi-select tracking (Impatience, Anxiety, Ego, etc.).
+   - Immersive Recurring Passions analytics dashboard identifying rolling window training grounds.
+   - Recommended Stoic virtues and tailored practices mapped to the dominant passion.
+   - Chronological analysis identifying the day of week and time of day where passions are most active.
+   - Citadel empty state with interactive demo mode for previewing insights.
 
 ---
 
@@ -44,6 +51,9 @@ If configured, the app expects a database matching the following schema. Databas
 | **AcceptanceTags** | `multi_select` | Categories of challenge reframed (*Amor Fati*) |
 | **FateInput** | `rich_text` | Text describing what feels forced or heavy (*Amor Fati*) |
 | **Favorite** | `checkbox` | Toggles whether the quote has been favorited (*Enchiridion*) |
+| **Passions** | `multi_select` | Optional. Tracks recurring passions/judgments (*Self-Knowledge*) |
+| **Mood** | `select` | Optional. Tracks the user's logged daily mood (Great, Good, Neutral, etc.) |
+| **MorningIntentions** | `rich_text` | Optional. Tracks morning preparation intentions (*Premeditatio Malorum*) |
 
 ### Notion Starter Template
 To get started quickly, duplicate the official template:
@@ -104,3 +114,23 @@ src/daily-stoic/
   - **Daily Quote & Enchiridion**: Step 2 includes the quote reader and an **Enchiridion Recall** button to draw random favorited maxims.
   - **Spheres of Control (Dichotomy)**: Step 3 embeds the worries list inline, allowing users to categorize anxieties as *Up to Me* or *Not Up to Me*.
   - **Amor Fati & Actionable Concerns**: Step 4 prompts users to reframe today's *Not Up to Me* concerns under Amor Fati, and to resolve active *Up to Me* concerns.
+
+### July 12, 2026 (Milestone 6 - Recurring Passions)
+- **Notion Schema Upgrade**: Connected to Notion via the API and successfully updated the database schema, adding the optional `Passions` (`multi_select`) property.
+- **Passions & Judgments Tracker**: Embedded card-based multi-select passions tracker inside Step 4 (Reflect) of the Daily Journey.
+- **Immersive Analytics Dashboard**: Added `/passions` route and tab, exposing percentage breakdowns, dominant training ground virtues/exercises, and timestamped temporal pattern highlights (e.g. Monday mornings).
+- **Citadel Empty State & Demo Mode**: Created a premium empty state with a toggle to load spec mockup demo values.
+
+### July 12, 2026 (Milestone 7 - Advanced Dashboards & Mobile Collapse)
+- **Spheres of Choice Dashboard**: Refactored the Dichotomy page into a full learning dashboard. Added `30d`, `90d`, `365d`, and `All` filter ranges, control ratio charts, action resolution rates, and custom CSS-rendered Word Clouds for Up to Me (Internals) and Not Up to Me (Externals) keywords.
+- **Amor Fati Retrospective**: Created the new `Amor Fati` page exposing challenge tags distribution charts and a rolling timeline of past obstacles (e.g. 30, 90, 365 days ago) with interactive retrospective rating controls and textareas. Added a high-fidelity Demo Mode to preview simulated obstacles.
+- **Responsive Mobile Navigation**: Restructured the header menu to collapse the four dashboards (Spheres of Choice, Recurring Passions, Amor Fati, and Stats Screen) under a single floating dropdown menu on mobile viewports, preventing tab wrapping.
+- **Memento Mori Reflections & Age Progress**: Updated the 80-year grid header to highlight total weeks lived and prompt user with active Stoic questions (*"If this week were worth remembering, what would make it so?"*). Refactored current year grid to calculate the upcoming birthday age dynamically (e.g. `to 50`) and eliminate lifetime leap-year drift.
+- **Visual Design & UX Enhancements**:
+  - **Inline Header Logo**: Integrated a clean Greek column SVG logo to the left of the "Daily Stoic" title, adapting to light/dark themes.
+  - **Spheres of Choice Evening review**: Combined "Resolve Actionable Concerns" (green header text) and "Reframe today's Externals" sections under a single premium card titled **Spheres of Choice** (with Scale icon).
+  - **Multi-External Reframe compilation**: Enabled selecting multiple external worries in Reflect, dynamically building a grammatically correct sentence (using "and", commas, and custom pluralization) for the Amor Fati input, highlighting selected buttons.
+  - **Differentiated Navigation Footer**: Redesigned Back, Next, and Save buttons, placing Back (left) and Next (right) on the same line, and the Complete/Save reflection button on a standalone row below with distinctive high-contrast styling.
+  - **Tappable Touch Checklist Rows**: Configured checklist rows to be fully clickable, resolving mobile dismiss bugs and ensuring undo actions are 100% accessible on mobile touchscreens.
+
+

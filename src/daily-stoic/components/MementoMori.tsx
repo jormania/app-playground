@@ -66,14 +66,24 @@ export default function MementoMori({ birthDateString, onGoToSettings }: Memento
   }
 
   return (
-    <div className="mx-auto max-w-4xl rounded-xl bg-background-secondary border border-tertiary p-6 sm:p-8">
-      <div className="mb-10 text-center">
-        <h3 className="mb-4 font-display text-3xl text-text-primary flex items-center justify-center gap-3">
+    <div className="mx-auto max-w-4xl rounded-xl bg-background-secondary border border-tertiary p-6 sm:p-8 animate-in fade-in duration-500">
+      <div className="mb-8 text-center">
+        <h3 className="mb-3 font-display text-3xl text-text-primary flex items-center justify-center gap-3">
           <Skull size={28} className="text-text-secondary" />
           Memento Mori
         </h3>
-        <p className="text-text-secondary mt-6 leading-relaxed">
-          "Let us prepare our minds as if we’d come to the very end of life." — Seneca
+        <p className="text-sm text-text-secondary max-w-md mx-auto leading-relaxed">
+          "Let us prepare our minds as if we’d come to the very end of life. Let us postpone nothing. Let us balance life’s books each day." — Seneca
+        </p>
+      </div>
+
+      <div className="mb-8 rounded-xl border border-accent/25 bg-accent-soft p-5 sm:p-6 text-center max-w-2xl mx-auto shadow-sm animate-in fade-in zoom-in-95 duration-300">
+        <span className="text-[10px] uppercase font-mono tracking-widest font-semibold text-accent/80 block">Stoic Reflection</span>
+        <h4 className="font-display text-xl sm:text-2xl text-text-primary mt-1">
+          You've lived <span className="text-accent font-bold underline decoration-2 decoration-accent/40 underline-offset-4">{weeksElapsed.toLocaleString()}</span> weeks.
+        </h4>
+        <p className="text-sm text-text-secondary mt-3 leading-relaxed max-w-md mx-auto italic">
+          "If this week were worth remembering, what would make it so?"
         </p>
       </div>
 

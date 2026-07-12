@@ -8,6 +8,8 @@ import Settings from './Settings';
 import MementoMori from './components/MementoMori';
 import { DichotomyOfControl } from './components/DichotomyOfControl';
 import Stats from './components/Stats';
+import PassionsAnalytics from './components/PassionsAnalytics';
+import AmorFatiDashboard from './components/AmorFatiDashboard';
 import { getDayOfYear, getQuoteForDay } from './utils/date';
 import { calculateStreak } from './utils/streak';
 import { fetchRecentReflections, fetchDatabaseProperties, validateSchema, upsertReflection, ReflectionRecord } from './services/NotionService';
@@ -26,6 +28,8 @@ import {
   Skull as SkullIcon,
   Bookmark as BookmarkIcon,
   HelpCircle as HelpIcon,
+  Flame as FlameIcon,
+  LayoutDashboard as DashboardIcon,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -51,7 +55,9 @@ export default function App() {
   const [streak, setStreak] = useState(0);
   const [recentReflections, setRecentReflections] = useState<ReflectionRecord[]>([]);
   const [schemaErrors, setSchemaErrors] = useState<string[]>([]);
+  const [hasPassionsProperty, setHasPassionsProperty] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Toggling favorites loading indicator
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
@@ -87,16 +93,33 @@ export default function App() {
       } catch {
         tagsVal = [];
       }
+      
+      let passionsVal: string[] = [];
+      try {
+        passionsVal = JSON.parse(localStorage.getItem(`daily-stoic:passions-${i}`) || '[]');
+      } catch {
+        passionsVal = [];
+      }
+      const createdTimeVal = localStorage.getItem(`daily-stoic:created-time-${i}`) || '';
+      
+      const estimatedDateStr = (() => {
+        const y = new Date().getFullYear();
+        const d = new Date(y, 0, 1);
+        d.setDate(i);
+        return d.toISOString().split('T')[0];
+      })();
 
-      if (val || fateVal || tagsVal.length > 0 || favVal) {
+      if (val || fateVal || tagsVal.length > 0 || favVal || passionsVal.length > 0) {
         days.add(i);
         records.push({
-          date: '',
+          date: estimatedDateStr,
           quoteId: i,
           text: val || '',
           fateInput: fateVal || '',
           acceptanceTags: tagsVal,
           favorite: favVal,
+          passions: passionsVal,
+          createdTime: createdTimeVal || `${estimatedDateStr}T12:00:00Z`,
         });
       }
     }
@@ -117,6 +140,7 @@ export default function App() {
         const props = await fetchDatabaseProperties(token, databaseId);
         const errors = validateSchema(props);
         setSchemaErrors(errors);
+        setHasPassionsProperty('Passions' in props);
 
         if (errors.length === 0) {
           const records = await fetchRecentReflections(token, databaseId);
@@ -134,18 +158,21 @@ export default function App() {
       } catch (err: any) {
         console.error('Failed to load reflections/schema from cloud:', err);
         setSchemaErrors(['Could not query database schema. Running in offline/fallback mode.']);
+        setHasPassionsProperty(false);
         await loadLocalStorageStreak(todayVal);
       }
     } else {
       setSchemaErrors([]);
+      setHasPassionsProperty(false);
       await loadLocalStorageStreak(todayVal);
     }
   }, [token, databaseId, loadLocalStorageStreak, updateReminderIDB]);
 
-  // Load streak and validate schema on mount / credential change
+  // Load streak, credentials, and validate schema on route changes
   useEffect(() => {
+    loadCredentials();
     loadReflectionsAndCheckStreak();
-  }, [loadReflectionsAndCheckStreak]);
+  }, [route, loadReflectionsAndCheckStreak]);
 
 
 
@@ -288,7 +315,12 @@ export default function App() {
     { label: 'Daily Reflection', value: '', Icon: BookOpenIcon },
     { label: 'Memento Mori', value: 'memento', Icon: SkullIcon },
     { label: 'Enchiridion', value: 'enchiridion', Icon: BookmarkIcon },
-    { label: 'Dichotomy', value: 'dichotomy', Icon: ScaleIcon },
+  ];
+
+  const dashboardOptions: { label: string; value: string; Icon: LucideIcon }[] = [
+    { label: 'Spheres of Choice', value: 'dichotomy', Icon: ScaleIcon },
+    { label: 'Recurring Passions', value: 'passions', Icon: FlameIcon },
+    { label: 'Amor Fati', value: 'amorfati', Icon: HeartIcon },
   ];
 
   if (!onboarded) {
@@ -307,12 +339,23 @@ export default function App() {
     <div className="flex min-h-screen flex-col bg-background-primary text-text-primary">
       <header className="border-b border-tertiary bg-background-secondary px-4 py-3 sm:px-6 sm:py-4">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <div className="flex items-center gap-3 mr-4 sm:mr-8 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 mr-4 sm:mr-8 shrink-0">
+            <svg viewBox="0 0 64 64" className="w-5 h-5 sm:w-6 sm:h-6 text-accent" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none" aria-hidden="true">
+              <path d="M 10 12 L 54 12" />
+              <path d="M 14 18 L 50 18" />
+              <line x1="20" y1="18" x2="20" y2="46" />
+              <line x1="26" y1="18" x2="26" y2="46" />
+              <line x1="32" y1="18" x2="32" y2="46" />
+              <line x1="38" y1="18" x2="38" y2="46" />
+              <line x1="44" y1="18" x2="44" y2="46" />
+              <path d="M 14 46 L 50 46" />
+              <path d="M 10 52 L 54 52" />
+            </svg>
             <h1 className="font-display text-lg sm:text-2xl font-bold tracking-tight text-text-primary">
               Daily Stoic
             </h1>
           </div>
-          <div className="flex items-center gap-0.5 sm:gap-1.5 min-w-0">
+          <div className="flex items-center gap-0.5 sm:gap-1.5 min-w-0 relative">
             {/* Main Navigation */}
             {tabOptions.map((tab) => {
               const Icon = tab.Icon;
@@ -320,7 +363,10 @@ export default function App() {
               return (
                 <button
                   key={tab.value}
-                  onClick={() => navigate(tab.value === '' ? '/' : `/${tab.value}`)}
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    navigate(tab.value === '' ? '/' : `/${tab.value}`);
+                  }}
                   title={tab.label}
                   aria-label={tab.label}
                   className={cn(
@@ -335,19 +381,125 @@ export default function App() {
               );
             })}
 
-            <div className="w-px h-5 bg-tertiary shrink-0" aria-hidden="true" />
+            {/* Desktop Only Dashboard Navigation */}
+            <div className="hidden sm:flex items-center gap-0.5 sm:gap-1.5">
+              {dashboardOptions.map((tab) => {
+                const Icon = tab.Icon;
+                const isActive = route === `/${tab.value}`;
+                return (
+                  <button
+                    key={tab.value}
+                    onClick={() => navigate(`/${tab.value}`)}
+                    title={tab.label}
+                    aria-label={tab.label}
+                    className={cn(
+                      "rounded-md p-1.5 sm:p-2 transition-colors flex items-center justify-center",
+                      isActive
+                        ? "bg-accent/10 text-accent"
+                        : "text-text-secondary hover:bg-background-tertiary hover:text-text-primary"
+                    )}
+                  >
+                    <Icon size={18} className="sm:w-[20px] sm:h-[20px]" />
+                  </button>
+                );
+              })}
 
-            <button
-              onClick={() => navigate('/stats')}
-              className="rounded-md p-1.5 sm:p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors flex items-center justify-center shrink-0"
-              title="Stats & Progress"
-            >
-              <svg width="18" height="18" className="sm:w-[20px] sm:h-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="20" x2="18" y2="10"></line>
-                <line x1="12" y1="20" x2="12" y2="4"></line>
-                <line x1="6" y1="20" x2="6" y2="14"></line>
-              </svg>
-            </button>
+              <div className="w-px h-5 bg-tertiary shrink-0 mx-1" aria-hidden="true" />
+
+              <button
+                onClick={() => navigate('/stats')}
+                className={cn(
+                  "rounded-md p-1.5 sm:p-2 transition-colors flex items-center justify-center shrink-0",
+                  route === '/stats'
+                    ? "bg-accent/10 text-accent"
+                    : "text-text-secondary hover:bg-background-tertiary hover:text-text-primary"
+                )}
+                title="Stats & Progress"
+              >
+                <svg width="18" height="18" className="sm:w-[20px] sm:h-[20px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10"></line>
+                  <line x1="12" y1="20" x2="12" y2="4"></line>
+                  <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+              </button>
+            </div>
+
+            {/* Mobile Dropdown Collapsible Menu */}
+            <div className="sm:hidden relative">
+              <button
+                onClick={() => {
+                  triggerHaptic('light');
+                  setDropdownOpen(!dropdownOpen);
+                }}
+                className={cn(
+                  "rounded-md p-1.5 transition-colors flex items-center justify-center",
+                  dropdownOpen || ['/dichotomy', '/passions', '/amorfati', '/stats'].includes(route)
+                    ? "bg-accent/10 text-accent"
+                    : "text-text-secondary hover:bg-background-tertiary"
+                )}
+                title="More Dashboards"
+                aria-label="Toggle dashboards menu"
+              >
+                <DashboardIcon size={18} />
+              </button>
+              
+              {dropdownOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40 bg-transparent" 
+                    onClick={() => setDropdownOpen(false)} 
+                  />
+                  <div className="absolute right-0 mt-2 z-50 w-48 rounded-lg border border-tertiary bg-background-secondary p-1 shadow-lg animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="px-3 py-1.5 text-[10px] uppercase font-mono tracking-wider text-text-secondary/70 border-b border-tertiary mb-1">
+                      Stoic Dashboards
+                    </div>
+                    {dashboardOptions.map((tab) => {
+                      const Icon = tab.Icon;
+                      const isActive = route === `/${tab.value}`;
+                      return (
+                        <button
+                          key={tab.value}
+                          onClick={() => {
+                            setDropdownOpen(false);
+                            navigate(`/${tab.value}`);
+                          }}
+                          className={cn(
+                            "w-full rounded px-3 py-2 text-left text-xs font-medium transition-colors flex items-center gap-2.5",
+                            isActive
+                              ? "bg-accent/15 text-accent font-semibold"
+                              : "text-text-secondary hover:bg-background-tertiary hover:text-text-primary"
+                          )}
+                        >
+                          <Icon size={14} />
+                          {tab.label}
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={() => {
+                        setDropdownOpen(false);
+                        navigate('/stats');
+                      }}
+                      className={cn(
+                        "w-full rounded px-3 py-2 text-left text-xs font-medium transition-colors flex items-center gap-2.5 border-t border-tertiary mt-1 pt-2",
+                        route === '/stats'
+                          ? "bg-accent/15 text-accent font-semibold"
+                          : "text-text-secondary hover:bg-background-tertiary hover:text-text-primary"
+                      )}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                      </svg>
+                      Stats & Progress
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="w-px h-5 bg-tertiary shrink-0" aria-hidden="true" />
 
             <a
               href="/daily-stoic-guide.html"
@@ -361,7 +513,10 @@ export default function App() {
             </a>
 
             <button
-              onClick={() => navigate('/settings')}
+              onClick={() => {
+                setDropdownOpen(false);
+                navigate('/settings');
+              }}
               className="rounded-md p-1.5 sm:p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors flex items-center justify-center shrink-0"
               title="Settings"
             >
@@ -455,6 +610,7 @@ export default function App() {
               isTogglingFavorite={isTogglingFavorite}
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
+              hasPassionsProperty={hasPassionsProperty}
             />
           </div>
         )}
@@ -548,6 +704,20 @@ export default function App() {
               </div>
             )}
           </div>
+        )}
+
+        {route === '/passions' && (
+          <PassionsAnalytics
+            recentReflections={recentReflections}
+            onClose={() => navigate('/')}
+          />
+        )}
+
+        {route === '/amorfati' && (
+          <AmorFatiDashboard
+            recentReflections={recentReflections}
+            onClose={() => navigate('/')}
+          />
         )}
       </main>
 

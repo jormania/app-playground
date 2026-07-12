@@ -123,7 +123,9 @@ describe('NotionService', () => {
         acceptanceTags: ['Limitation'],
         favorite: true,
         mood: '',
-        morningIntentions: ''
+        morningIntentions: '',
+        passions: [],
+        createdTime: ''
       });
       expect(fetchImpl).toHaveBeenCalled();
     });
@@ -169,6 +171,8 @@ describe('NotionService', () => {
         true,
         '',
         '',
+        [],
+        false,
         fetchImpl
       );
 
@@ -180,7 +184,9 @@ describe('NotionService', () => {
         acceptanceTags: ['Outcome'],
         favorite: true,
         mood: '',
-        morningIntentions: ''
+        morningIntentions: '',
+        passions: [],
+        createdTime: ''
       });
 
       const body = JSON.parse((fetchImpl.mock.calls[0][1] as any).body);
@@ -215,6 +221,8 @@ describe('NotionService', () => {
         false,
         '',
         '',
+        [],
+        false,
         fetchImpl
       );
 
@@ -226,7 +234,9 @@ describe('NotionService', () => {
         acceptanceTags: ['Time'],
         favorite: false,
         mood: '',
-        morningIntentions: ''
+        morningIntentions: '',
+        passions: [],
+        createdTime: ''
       });
 
       const body = JSON.parse((fetchImpl.mock.calls[0][1] as any).body);
@@ -240,6 +250,7 @@ describe('NotionService', () => {
       const mockResult = {
         results: [
           {
+            created_time: '2026-07-12T10:00:00Z',
             properties: {
               Date: { date: { start: '2026-07-12' } },
               QuoteID: { number: 42 },
@@ -268,7 +279,9 @@ describe('NotionService', () => {
           acceptanceTags: ['Limitation'],
           favorite: true,
           mood: '',
-          morningIntentions: ''
+          morningIntentions: '',
+          passions: [],
+          createdTime: '2026-07-12T10:00:00Z'
         }
       ]);
 
