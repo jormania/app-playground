@@ -1,4 +1,11 @@
 import { Field } from './Field';
+import { 
+  Globe, 
+  Award, 
+  Users, 
+  Clock, 
+  Lock 
+} from 'lucide-react';
 
 interface AmorFatiControlProps {
   fateInput: string;
@@ -8,6 +15,14 @@ interface AmorFatiControlProps {
 }
 
 const AVAILABLE_TAGS = ['Situation', 'Outcome', 'People', 'Time', 'Limitation'];
+
+const TAG_ICONS: Record<string, any> = {
+  Situation: Globe,
+  Outcome: Award,
+  People: Users,
+  Time: Clock,
+  Limitation: Lock,
+};
 
 export default function AmorFatiControl({
   fateInput,
@@ -42,22 +57,24 @@ export default function AmorFatiControl({
         />
 
         <div>
-          <label className="block text-sm font-medium text-text-primary mb-3">Acceptance Tags</label>
+          <label className="block text-sm font-medium text-text-primary mb-3">Challenge Types</label>
           <div className="flex flex-wrap gap-2">
             {AVAILABLE_TAGS.map((tag) => {
               const active = acceptanceTags.includes(tag);
+              const Icon = TAG_ICONS[tag] || Globe;
               return (
                 <button
                   key={tag}
                   type="button"
                   onClick={() => handleTagToggle(tag)}
-                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors border ${
+                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all border flex items-center gap-2 ${
                     active 
-                      ? 'border-accent bg-accent text-background-primary' 
+                      ? 'border-accent bg-accent text-background-primary shadow-sm' 
                       : 'border-tertiary bg-background-tertiary text-text-secondary hover:border-secondary hover:text-text-primary'
                   }`}
                 >
-                  {tag}
+                  <Icon size={14} strokeWidth={active ? 2.5 : 2} />
+                  <span>{tag}</span>
                 </button>
               );
             })}

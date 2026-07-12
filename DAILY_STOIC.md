@@ -133,4 +133,16 @@ src/daily-stoic/
   - **Differentiated Navigation Footer**: Redesigned Back, Next, and Save buttons, placing Back (left) and Next (right) on the same line, and the Complete/Save reflection button on a standalone row below with distinctive high-contrast styling.
   - **Tappable Touch Checklist Rows**: Configured checklist rows to be fully clickable, resolving mobile dismiss bugs and ensuring undo actions are 100% accessible on mobile touchscreens.
 
+### July 12, 2026 (Milestone 8 - 365-Day Cycle Reset & Stats Upgrades)
+- **365-Day Cycle Reset**: Mapped active day and quotes tracking to a 365-day cycle based on `cycleStartDate` (defaulting to January 1st of the current year). Added a **Destructive Actions** warning panel in Settings to let users reset the cycle, which clears local journal records, archives all synced pages in Notion (keeping connection settings), sets the cycle start date to today, and triggers haptic feedback.
+- **Cycle-Aware Stats Consistency**: Refactored the 365-day consistency grid to track days relative to the active cycle start date and highlighted the current cycle day block with a pulsing ring overlay.
+- **Aligned Stats Filters & Total Percentages**: Upgraded the Stats insights period filter to match the Passions dashboard (`30d`, `90d`, `365d`, `All`), filtered reflection inputs accordingly, and displayed percentages of totals for each tag and mood entry.
+- **Unified Mood & Acceptance Tag Icons**: Ported the Reflect mood icons (`SmilePlus`, `Smile`, `Meh`, `Frown`, `Angry`) to `MoodGraph` and mapped custom Lucide icons (`Globe`, `Award`, `Users`, `Clock`, `Lock`) to each Amor Fati acceptance tag in `AmorFatiControl` and `FateGraph` for complete visual coherence.
+
+### July 12, 2026 (Milestone 9 - Spheres of Choice Notion Sync, Card Styling & Settings Fixes)
+- **Notion Database Worries Sync**: Implemented worries JSON serialization in the `Dichotomy` rich_text property in Notion. Synchronized worries from recent reflections on load to establish Notion as the single source of truth.
+- **Single Save Button & Stepper Optimization**: Removed the morning prep save button and download data button. Integrated the "Complete Reflection" save button directly into Step 4's (Reflect) navigation row (replacing Next), and added worries tracking to the "unsaved changes" warning detection.
+- **Settings Concept Guide Toggle Fix**: Resolved the property binding bug in Settings, changing `onChange` to `onCheckedChange` to allow toggling concept guides and nudge notifications on and off successfully.
+- **Card Separations & Drop Shadows**: Elevated card borders to `border-secondary` and shadow strength to `shadow-md` (with `hover:shadow-lg`) for all step cards. Positioned the top header as sticky-top for scrolling visibility.
+- **Visual & Terminology Alignment**: Renamed "Acceptance Tags" to "Challenge Types" in both the Amor Fati wizard and the stats screen. Styled Step 4's "Resolve Actionable Concerns" worries checklist as clickable pill tags matching the externals reframe. Added a close button (✕) to the Spheres of Choice (Dichotomy) dashboard.
 

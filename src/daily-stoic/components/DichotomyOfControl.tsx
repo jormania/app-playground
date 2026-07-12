@@ -49,7 +49,11 @@ function extractKeywords(texts: string[]): { text: string; value: number }[] {
     .slice(0, 15); // Top 15 keywords
 }
 
-export function DichotomyOfControl() {
+interface DichotomyOfControlProps {
+  onClose?: () => void;
+}
+
+export function DichotomyOfControl({ onClose }: DichotomyOfControlProps = {}) {
   const [insightPeriod, setInsightPeriod] = useState<'30' | '90' | '365' | 'all'>('30');
   const [demoMode, setDemoMode] = useState(false);
   const [worries, setWorries] = useState<Worry[]>([]);
@@ -215,6 +219,15 @@ export function DichotomyOfControl() {
           </h2>
           <p className="text-sm text-text-secondary mt-1">Dichotomy of control analytics & mindfulness mapping</p>
         </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="rounded-full p-2 text-text-secondary hover:bg-background-tertiary transition-colors"
+            title="Close Dashboard"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* Philosophy Intro */}

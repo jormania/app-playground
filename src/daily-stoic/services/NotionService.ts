@@ -9,6 +9,7 @@ export interface NotionReflection {
   morningIntentions?: string;
   passions?: string[];
   createdTime?: string;
+  dichotomy?: string;
 }
 
 export interface ReflectionRecord {
@@ -22,6 +23,7 @@ export interface ReflectionRecord {
   morningIntentions?: string;
   passions?: string[];
   createdTime?: string;
+  dichotomy?: string;
 }
 
 export const RELAY_ENDPOINT = typeof window !== 'undefined' ? '/api/notion' : 'http://localhost/api/notion';
@@ -124,7 +126,8 @@ export function validateSchema(properties: Record<string, { type?: string }>): s
   const optional: Record<string, string> = {
     'Mood': 'select',
     'MorningIntentions': 'rich_text',
-    'Passions': 'multi_select'
+    'Passions': 'multi_select',
+    'Dichotomy': 'rich_text'
   };
 
   for (const [name, type] of Object.entries(expected)) {
@@ -144,6 +147,26 @@ export function validateSchema(properties: Record<string, { type?: string }>): s
   }
 
   return errors;
+}
+
+export async function upgradeDatabaseSchema(
+  token: string,
+  databaseId: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<void> {
+  const id = normalizeNotionId(databaseId);
+  if (!id) throw new Error('Invalid Notion database link or ID.');
+
+  const body = {
+    properties: {
+      'Dichotomy': { rich_text: {} },
+      'Passions': { multi_select: {} },
+      'Mood': { select: {} },
+      'MorningIntentions': { rich_text: {} }
+    }
+  };
+
+  await callRelay(token, `databases/${id}`, 'PATCH', body, fetchImpl);
 }
 
 export async function fetchDatabaseProperties(
@@ -244,6 +267,12 @@ export async function fetchReflectionForDay(
     ? passMultiSelect.map((o: any) => o.name || '')
     : [];
 
+  // Extract Dichotomy rich_text
+  const dichotomyText = props.Dichotomy?.rich_text || [];
+  const dichotomy = Array.isArray(dichotomyText)
+    ? dichotomyText.map((rt: any) => rt.plain_text || '').join('')
+    : '';
+
   const createdTime = page.created_time || '';
 
   return {
@@ -257,6 +286,7 @@ export async function fetchReflectionForDay(
     morningIntentions,
     passions,
     createdTime,
+    dichotomy,
   };
 }
 
@@ -275,6 +305,8 @@ export async function upsertReflection(
   morningIntentions = '',
   passions: string[] = [],
   hasPassionsProperty = false,
+  dichotomy = '',
+  hasDichotomyProperty = false,
   fetchImpl: typeof fetch = fetch
 ): Promise<NotionReflection> {
   const id = normalizeNotionId(databaseId);
@@ -345,6 +377,14 @@ export async function upsertReflection(
     };
   }
 
+  if (hasDichotomyProperty && dichotomy) {
+    properties['Dichotomy'] = {
+      rich_text: [
+        { text: { content: dichotomy } }
+      ]
+    };
+  }
+
   let page: any;
   if (existingPageId) {
     page = await callRelay(
@@ -403,6 +443,11 @@ export async function upsertReflection(
     ? passMultiSelect.map((o: any) => o.name || '')
     : [];
 
+  const dichotomyText = props.Dichotomy?.rich_text || [];
+  const returnDichotomy = Array.isArray(dichotomyText)
+    ? dichotomyText.map((rt: any) => rt.plain_text || '').join('')
+    : '';
+
   const returnCreatedTime = page.created_time || '';
 
   return {
@@ -416,6 +461,7 @@ export async function upsertReflection(
     morningIntentions: returnMorningIntentions,
     passions: returnPassions,
     createdTime: returnCreatedTime,
+    dichotomy: returnDichotomy,
   };
 }
 
@@ -480,6 +526,11 @@ export async function fetchRecentReflections(
       ? passMultiSelect.map((o: any) => o.name || '')
       : [];
 
+    const dichotomyText = props.Dichotomy?.rich_text || [];
+    const dichotomyVal = Array.isArray(dichotomyText)
+      ? dichotomyText.map((rt: any) => rt.plain_text || '').join('')
+      : '';
+
     const createdTimeVal = page.created_time || '';
 
     if (dateProp && typeof quoteProp === 'number') {
@@ -494,9 +545,35 @@ export async function fetchRecentReflections(
         morningIntentions: morningIntentionsVal,
         passions: passionsVal,
         createdTime: createdTimeVal,
+        dichotomy: dichotomyVal,
       });
     }
   }
 
   return records;
 }
+
+export async function clearDatabaseEntries(
+  token: string,
+  databaseId: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<void> {
+  const id = normalizeNotionId(databaseId);
+  if (!id) throw new Error('Invalid Notion database link or ID.');
+
+  const data = await callRelay(
+    token,
+    `databases/${id}/query`,
+    'POST',
+    { page_size: 100 },
+    fetchImpl
+  );
+
+  const results = (data as { results?: unknown[] })?.results || [];
+  for (const page of results as any[]) {
+    if (page?.id) {
+      await callRelay(token, `pages/${page.id}`, 'PATCH', { archived: true }, fetchImpl);
+    }
+  }
+}
+

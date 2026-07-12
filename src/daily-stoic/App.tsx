@@ -10,9 +10,9 @@ import { DichotomyOfControl } from './components/DichotomyOfControl';
 import Stats from './components/Stats';
 import PassionsAnalytics from './components/PassionsAnalytics';
 import AmorFatiDashboard from './components/AmorFatiDashboard';
-import { getDayOfYear, getQuoteForDay } from './utils/date';
+import { getDayOfYear, getQuoteForDay, getLocalTodayStr } from './utils/date';
 import { calculateStreak } from './utils/streak';
-import { fetchRecentReflections, fetchDatabaseProperties, validateSchema, upsertReflection, ReflectionRecord } from './services/NotionService';
+import { fetchRecentReflections, fetchDatabaseProperties, validateSchema, upsertReflection, clearDatabaseEntries, ReflectionRecord } from './services/NotionService';
 import { createIdbKv } from '../shared/notify/idbKv';
 import { QUOTES } from './data/quotes';
 import { triggerHaptic } from '../shared/haptics';
@@ -30,13 +30,34 @@ import {
   HelpCircle as HelpIcon,
   Flame as FlameIcon,
   LayoutDashboard as DashboardIcon,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 
 
+export function getCycleDay(startDateStr: string, today: Date = new Date()): number {
+  if (!startDateStr) {
+    const currentYear = today.getFullYear();
+    const start = new Date(currentYear, 0, 1);
+    const diff = today.getTime() - start.getTime();
+    return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+  }
+  const start = new Date(startDateStr);
+  const startD = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const todayD = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const diff = todayD.getTime() - startD.getTime();
+  const diffDays = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+  return (diffDays % 365) + 1;
+}
+
 export default function App() {
-  const today = getDayOfYear();
+  const [cycleStartDate, setCycleStartDate] = useState(() => localStorage.getItem('daily-stoic:cycle-start-date') || '');
+  const today = useMemo(() => getCycleDay(cycleStartDate), [cycleStartDate]);
   const [dayOfYear, setDayOfYear] = useState(today);
+
+  useEffect(() => {
+    setDayOfYear(today);
+  }, [today]);
 
   const { route, navigate } = useHashRoute();
   
@@ -56,8 +77,10 @@ export default function App() {
   const [recentReflections, setRecentReflections] = useState<ReflectionRecord[]>([]);
   const [schemaErrors, setSchemaErrors] = useState<string[]>([]);
   const [hasPassionsProperty, setHasPassionsProperty] = useState(false);
+  const [hasDichotomyProperty, setHasDichotomyProperty] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   // Toggling favorites loading indicator
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
@@ -67,7 +90,80 @@ export default function App() {
     setToken(localStorage.getItem('daily-stoic:notion-token') || '');
     setDatabaseId(localStorage.getItem('daily-stoic:notion-db') || '');
     setBirthDate(localStorage.getItem('daily-stoic:birthdate') || '');
+    setCycleStartDate(localStorage.getItem('daily-stoic:cycle-start-date') || '');
   };
+
+  const resetCycleData = useCallback(async () => {
+    try {
+      if (token.trim() && databaseId.trim()) {
+        await clearDatabaseEntries(token, databaseId);
+      }
+
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (
+          key.startsWith('daily-stoic:reflection-') ||
+          key.startsWith('daily-stoic:fate-input-') ||
+          key.startsWith('daily-stoic:acceptance-tags-') ||
+          key.startsWith('daily-stoic:morning-intentions-') ||
+          key.startsWith('daily-stoic:mood-') ||
+          key.startsWith('daily-stoic:passions-') ||
+          key.startsWith('daily-stoic:favorite-') ||
+          key.startsWith('daily-stoic:retro-notes-') ||
+          key.startsWith('daily-stoic:retro-rating-')
+        )) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+      localStorage.setItem('daily-stoic:dichotomy', '[]');
+
+      const todayStr = getLocalTodayStr();
+      localStorage.setItem('daily-stoic:cycle-start-date', todayStr);
+      setCycleStartDate(todayStr);
+
+      localStorage.removeItem('daily-stoic:simulate-celebration');
+
+      // Reload credentials
+      setToken(localStorage.getItem('daily-stoic:notion-token') || '');
+      setDatabaseId(localStorage.getItem('daily-stoic:notion-db') || '');
+      setBirthDate(localStorage.getItem('daily-stoic:birthdate') || '');
+      
+      const todayVal = getCycleDay(todayStr);
+      setDayOfYear(todayVal);
+      
+      // Reload reflections/schema
+      if (token.trim() && databaseId.trim()) {
+        const props = await fetchDatabaseProperties(token, databaseId);
+        const errors = validateSchema(props);
+        setSchemaErrors(errors);
+        setHasPassionsProperty('Passions' in props);
+        setHasDichotomyProperty('Dichotomy' in props);
+        if (errors.length === 0) {
+          const records = await fetchRecentReflections(token, databaseId);
+          setRecentReflections(records);
+          const days = new Set(records.map((r) => r.quoteId));
+          const currentStreak = calculateStreak(days, todayVal);
+          setStreak(currentStreak);
+          const todayLogged = days.has(todayVal);
+          await updateReminderIDB(todayLogged);
+        } else {
+          await loadLocalStorageStreak(todayVal);
+        }
+      } else {
+        setSchemaErrors([]);
+        setHasPassionsProperty(false);
+        setHasDichotomyProperty(false);
+        await loadLocalStorageStreak(todayVal);
+      }
+
+      window.dispatchEvent(new Event('daily-stoic:settings-updated'));
+      triggerHaptic('success');
+    } catch (e: any) {
+      throw new Error(e.message || e);
+    }
+  }, [token, databaseId, loadLocalStorageStreak, updateReminderIDB]);
 
   const updateReminderIDB = useCallback(async (todayLogged: boolean) => {
     const enabled = localStorage.getItem('daily-stoic:reminder-enabled') === 'true';
@@ -83,7 +179,7 @@ export default function App() {
   const loadLocalStorageStreak = useCallback(async (todayVal: number) => {
     const days = new Set<number>();
     const records: ReflectionRecord[] = [];
-    for (let i = 1; i <= 366; i++) {
+    for (let i = 1; i <= 365; i++) {
       const val = localStorage.getItem(`daily-stoic:reflection-${i}`);
       const fateVal = localStorage.getItem(`daily-stoic:fate-input-${i}`);
       const favVal = localStorage.getItem(`daily-stoic:favorite-${i}`) === 'true';
@@ -141,6 +237,7 @@ export default function App() {
         const errors = validateSchema(props);
         setSchemaErrors(errors);
         setHasPassionsProperty('Passions' in props);
+        setHasDichotomyProperty('Dichotomy' in props);
 
         if (errors.length === 0) {
           const records = await fetchRecentReflections(token, databaseId);
@@ -159,14 +256,174 @@ export default function App() {
         console.error('Failed to load reflections/schema from cloud:', err);
         setSchemaErrors(['Could not query database schema. Running in offline/fallback mode.']);
         setHasPassionsProperty(false);
+        setHasDichotomyProperty(false);
         await loadLocalStorageStreak(todayVal);
       }
     } else {
       setSchemaErrors([]);
       setHasPassionsProperty(false);
+      setHasDichotomyProperty(false);
       await loadLocalStorageStreak(todayVal);
     }
   }, [token, databaseId, loadLocalStorageStreak, updateReminderIDB]);
+
+  const isCycleCompleted = useMemo(() => {
+    if (!cycleStartDate) return false;
+    const start = new Date(cycleStartDate);
+    const startD = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const today = new Date();
+    const todayD = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const diff = todayD.getTime() - startD.getTime();
+    const diffDays = Math.floor(diff / (1000 * 60 * 60 * 24));
+    return diffDays >= 365 || localStorage.getItem('daily-stoic:simulate-celebration') === 'true';
+  }, [cycleStartDate]);
+
+  useEffect(() => {
+    if (isCycleCompleted) {
+      setShowCelebration(true);
+    }
+  }, [isCycleCompleted]);
+
+  // Compute Retrospective Insights
+  const cycleReflections = useMemo(() => {
+    if (!cycleStartDate) return recentReflections;
+    const start = new Date(cycleStartDate);
+    return recentReflections.filter((r) => {
+      const d = new Date(r.date);
+      return d.getTime() >= start.getTime();
+    });
+  }, [recentReflections, cycleStartDate]);
+
+  const loggedCount = cycleReflections.length;
+  const consistencyRate = Math.min(100, Math.round((loggedCount / 365) * 100));
+
+  const reframingsCount = useMemo(() => {
+    return cycleReflections.filter(r => r.fateInput && r.fateInput.trim()).length;
+  }, [cycleReflections]);
+
+  const passionsCount = useMemo(() => {
+    let count = 0;
+    cycleReflections.forEach((r) => {
+      count += (r.passions || []).length;
+    });
+    return count;
+  }, [cycleReflections]);
+
+  const cycleWorriesStats = useMemo(() => {
+    const saved = localStorage.getItem('daily-stoic:dichotomy');
+    if (!saved) return { total: 0, resolved: 0, rate: 0 };
+    try {
+      const list: any[] = JSON.parse(saved);
+      const start = cycleStartDate ? new Date(cycleStartDate).getTime() : 0;
+      const cycleList = list.filter((w) => {
+        if (!w.createdAt) return true;
+        const d = new Date(w.createdAt).getTime();
+        return d >= start;
+      });
+      const resolved = cycleList.filter((w) => w.isResolved).length;
+      const total = cycleList.length;
+      return {
+        total,
+        resolved,
+        rate: total > 0 ? Math.round((resolved / total) * 100) : 0
+      };
+    } catch {
+      return { total: 0, resolved: 0, rate: 0 };
+    }
+  }, [cycleStartDate, showCelebration]);
+
+  const [isSharingCelebration, setIsSharingCelebration] = useState(false);
+  
+  const handleShareCelebration = async () => {
+    setIsSharingCelebration(true);
+    triggerHaptic('light');
+    try {
+      const shareContainer = document.createElement('div');
+      shareContainer.style.position = 'absolute';
+      shareContainer.style.left = '-9999px';
+      shareContainer.style.width = '800px';
+      shareContainer.style.backgroundColor = '#121127';
+      shareContainer.style.color = '#ECEBF8';
+      shareContainer.style.padding = '60px';
+      shareContainer.style.borderRadius = '24px';
+      shareContainer.style.border = '2px solid #3B3770';
+      shareContainer.style.fontFamily = "'Inter', system-ui, sans-serif";
+      shareContainer.style.display = 'flex';
+      shareContainer.style.flexDirection = 'column';
+      shareContainer.style.gap = '35px';
+
+      shareContainer.innerHTML = `
+        <div style="text-align: center; border-bottom: 2px solid #28254C; padding-bottom: 20px;">
+          <h2 style="font-family: 'Fraunces', Georgia, serif; font-size: 38px; color: #ECEBF8; margin: 0 0 10px;">🌟 A Year of Wisdom</h2>
+          <p style="font-size: 18px; color: #A7A3D4; margin: 0;">My Annual Stoic Retrospective</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div style="background: #1B1940; border: 1px solid #28254C; padding: 25px; border-radius: 16px;">
+            <span style="font-size: 14px; font-weight: 600; text-transform: uppercase; color: #A7A3D4;">Consistency Rate</span>
+            <p style="font-size: 42px; font-weight: bold; color: #9A93F5; margin: 10px 0 0;">${consistencyRate}%</p>
+            <p style="font-size: 15px; color: #7E7AB0; margin: 5px 0 0;">${loggedCount} of 365 days logged</p>
+          </div>
+          <div style="background: #1B1940; border: 1px solid #28254C; padding: 25px; border-radius: 16px;">
+            <span style="font-size: 14px; font-weight: 600; text-transform: uppercase; color: #A7A3D4;">Amor Fati Reframes</span>
+            <p style="font-size: 42px; font-weight: bold; color: #8E86FF; margin: 10px 0 0;">${reframingsCount}</p>
+            <p style="font-size: 15px; color: #7E7AB0; margin: 5px 0 0;">Frictions converted to fuel</p>
+          </div>
+          <div style="background: #1B1940; border: 1px solid #28254C; padding: 25px; border-radius: 16px;">
+            <span style="font-size: 14px; font-weight: 600; text-transform: uppercase; color: #A7A3D4;">Concerns Resolved</span>
+            <p style="font-size: 42px; font-weight: bold; color: #4FB89A; margin: 10px 0 0;">${cycleWorriesStats.rate}%</p>
+            <p style="font-size: 15px; color: #7E7AB0; margin: 5px 0 0;">${cycleWorriesStats.resolved} of ${cycleWorriesStats.total} worries cleared</p>
+          </div>
+          <div style="background: #1B1940; border: 1px solid #28254C; padding: 25px; border-radius: 16px;">
+            <span style="font-size: 14px; font-weight: 600; text-transform: uppercase; color: #A7A3D4;">Citadel Vigilance</span>
+            <p style="font-size: 42px; font-weight: bold; color: #ECEBF8; margin: 10px 0 0;">${passionsCount}</p>
+            <p style="font-size: 15px; color: #7E7AB0; margin: 5px 0 0;">Dysfunctional passions tamed</p>
+          </div>
+        </div>
+
+        <div style="background: #1B1940; border: 1px solid #28254C; padding: 25px; border-radius: 16px; font-style: italic; font-size: 18px; color: #A7A3D4; line-height: 1.6; text-align: center;">
+          "True happiness is to enjoy the present, without anxious dependence upon the future, not to amuse ourselves with either hopes or fears but to rest satisfied with what we have."
+          <span style="display: block; font-size: 15px; font-weight: 600; color: #ECEBF8; font-style: normal; margin-top: 15px;">— Seneca</span>
+        </div>
+
+        <div style="text-align: center; font-size: 16px; color: #7E7AB0; border-top: 2px solid #28254C; padding-top: 20px;">
+          Created with the <strong>Daily Stoic</strong> Companion PWA
+        </div>
+      `;
+
+      document.body.appendChild(shareContainer);
+
+      const canvas = await html2canvas(shareContainer, {
+        scale: 2,
+        backgroundColor: '#121127',
+        useCORS: true,
+        logging: false
+      });
+
+      const link = document.createElement('a');
+      link.download = 'daily-stoic-annual-retrospective.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      
+      document.body.removeChild(shareContainer);
+      triggerHaptic('success');
+    } catch (e) {
+      console.error('Failed to generate sharing image', e);
+      alert('Failed to generate sharing image: ' + e);
+    } finally {
+      setIsSharingCelebration(false);
+    }
+  };
+
+  const handleCompleteCelebrationAndReset = async () => {
+    try {
+      await resetCycleData();
+      setShowCelebration(false);
+      alert("Happy New Cycle! Day 1 begins today.");
+    } catch (e: any) {
+      alert(e.message || e);
+    }
+  };
 
   // Load streak, credentials, and validate schema on route changes
   useEffect(() => {
@@ -192,8 +449,12 @@ export default function App() {
   const quoteIndex = (dayOfYear - 1) % (filteredQuotes.length || 1);
   const quote = filteredQuotes[quoteIndex] || getQuoteForDay(dayOfYear);
   const isCurrentQuoteFavorited = useMemo(() => {
-    return localStorage.getItem(`daily-stoic:favorite-${dayOfYear}`) === 'true' && localFavoritesToggle !== undefined;
-  }, [dayOfYear, localFavoritesToggle]);
+    if (isNotionConfigured) {
+      const record = recentReflections.find((r) => r.quoteId === dayOfYear);
+      return !!record?.favorite;
+    }
+    return localStorage.getItem(`daily-stoic:favorite-${dayOfYear}`) === 'true';
+  }, [dayOfYear, recentReflections, isNotionConfigured]);
 
   const [isSharing, setIsSharing] = useState(false);
   const handleShareQuote = async () => {
@@ -300,7 +561,7 @@ export default function App() {
     });
 
     // Check localStorage fallback
-    for (let i = 1; i <= 366; i++) {
+    for (let i = 1; i <= 365; i++) {
       if (localStorage.getItem(`daily-stoic:favorite-${i}`) === 'true') {
         favoritedIds.add(i);
       }
@@ -308,6 +569,43 @@ export default function App() {
 
     return QUOTES.filter((q) => favoritedIds.has(q.day));
   }, [recentReflections, localFavoritesToggle]);
+
+  interface Worry {
+    id: string;
+    text: string;
+    category: 'unassigned' | 'up-to-me' | 'not-up-to-me';
+    isResolved?: boolean;
+    createdAt?: string;
+  }
+
+  const worries = useMemo<Worry[]>(() => {
+    if (token.trim() && databaseId.trim()) {
+      const parsedWorries: Worry[] = [];
+      const seenIds = new Set<string>();
+      recentReflections.forEach((rec) => {
+        if (rec.dichotomy) {
+          try {
+            const list: Worry[] = JSON.parse(rec.dichotomy);
+            list.forEach((w) => {
+              if (w && w.id && !seenIds.has(w.id)) {
+                seenIds.add(w.id);
+                parsedWorries.push(w);
+              }
+            });
+          } catch {}
+        }
+      });
+      return parsedWorries;
+    } else {
+      const saved = localStorage.getItem('daily-stoic:dichotomy');
+      try {
+        return saved ? JSON.parse(saved) : [];
+      } catch {
+        return [];
+      }
+    }
+  }, [recentReflections, token, databaseId]);
+
 
 
 
@@ -337,7 +635,7 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background-primary text-text-primary">
-      <header className="border-b border-tertiary bg-background-secondary px-4 py-3 sm:px-6 sm:py-4">
+      <header className="sticky top-0 z-50 border-b border-tertiary bg-background-secondary px-4 py-3 sm:px-6 sm:py-4 shadow-sm">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3 mr-4 sm:mr-8 shrink-0">
             <svg viewBox="0 0 64 64" className="w-5 h-5 sm:w-6 sm:h-6 text-accent" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none" aria-hidden="true">
@@ -534,6 +832,7 @@ export default function App() {
               loadCredentials();
               loadReflectionsAndCheckStreak();
             }}
+            onResetCycle={resetCycleData}
           />
         )}
 
@@ -565,7 +864,7 @@ export default function App() {
             )}
             <section className="flex flex-wrap items-center justify-between gap-4 rounded-lg bg-background-secondary p-4 border border-tertiary">
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-text-secondary">Day of Year</span>
+                <span className="text-sm font-medium text-text-secondary">Day of 365 Cycle</span>
                 <div className="flex items-center rounded-lg bg-background-tertiary border border-tertiary">
                   <button
                     onClick={() => setDayOfYear(Math.max(1, dayOfYear - 1))}
@@ -578,8 +877,8 @@ export default function App() {
                     {dayOfYear}
                   </span>
                   <button
-                    onClick={() => setDayOfYear(Math.min(366, dayOfYear + 1))}
-                    disabled={dayOfYear >= 366}
+                    onClick={() => setDayOfYear(Math.min(365, dayOfYear + 1))}
+                    disabled={dayOfYear >= 365}
                     className="px-3 py-1.5 text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors"
                   >
                     +
@@ -611,6 +910,8 @@ export default function App() {
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
               hasPassionsProperty={hasPassionsProperty}
+              hasDichotomyProperty={hasDichotomyProperty}
+              worries={worries}
             />
           </div>
         )}
@@ -623,7 +924,7 @@ export default function App() {
         )}
 
         {route === '/dichotomy' && (
-          <DichotomyOfControl />
+          <DichotomyOfControl onClose={() => navigate('/')} />
         )}
 
         {route === '/enchiridion' && (
@@ -720,6 +1021,77 @@ export default function App() {
           />
         )}
       </main>
+
+      {showCelebration && (
+        <div className="fixed inset-0 z-50 bg-background-primary/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto" role="dialog">
+          <div 
+            id="annual-insights-card" 
+            className="max-w-xl w-full bg-background-secondary border border-secondary rounded-2xl p-6 sm:p-8 shadow-xl text-center space-y-6 animate-in fade-in zoom-in-95 duration-300"
+          >
+            <div className="space-y-2">
+              <Sparkles className="text-accent mx-auto w-12 h-12 animate-pulse" />
+              <h2 className="font-display text-2xl sm:text-3xl text-text-primary">
+                🌟 A Year of Wisdom
+              </h2>
+              <p className="text-sm text-text-secondary max-w-md mx-auto">
+                You have completed your 365-day Stoic journey cycle. Here is a retrospective of your training in virtue and tranquility.
+              </p>
+            </div>
+            
+            {/* Insights Stats Grid */}
+            <div className="grid grid-cols-2 gap-3.5 text-left pt-2">
+              <div className="p-4 rounded-xl border border-tertiary bg-background-tertiary">
+                <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary">Consistency Rate</span>
+                <p className="text-2xl font-semibold text-accent mt-0.5">{consistencyRate}%</p>
+                <p className="text-[11px] text-text-secondary mt-1">{loggedCount} of 365 days logged</p>
+              </div>
+              
+              <div className="p-4 rounded-xl border border-tertiary bg-background-tertiary">
+                <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary">Amor Fati Reframes</span>
+                <p className="text-2xl font-semibold text-energy mt-0.5">{reframingsCount}</p>
+                <p className="text-[11px] text-text-secondary mt-1">Frictions converted to fuel</p>
+              </div>
+              
+              <div className="p-4 rounded-xl border border-tertiary bg-background-tertiary">
+                <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary">Concerns Resolved</span>
+                <p className="text-2xl font-semibold text-success mt-0.5">{cycleWorriesStats.rate}%</p>
+                <p className="text-[11px] text-text-secondary mt-1">{cycleWorriesStats.resolved} of {cycleWorriesStats.total} worries cleared</p>
+              </div>
+
+              <div className="p-4 rounded-xl border border-tertiary bg-background-tertiary">
+                <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary">Citadel Vigilance</span>
+                <p className="text-2xl font-semibold text-text-primary mt-0.5">{passionsCount}</p>
+                <p className="text-[11px] text-text-secondary mt-1">Dysfunctional passions tamed</p>
+              </div>
+            </div>
+
+            {/* Virtues summary quote */}
+            <blockquote className="text-xs text-text-secondary italic bg-background-tertiary p-3 rounded-lg border border-tertiary leading-relaxed text-center">
+              "True happiness is to enjoy the present, without anxious dependence upon the future, not to amuse ourselves with either hopes or fears but to rest satisfied with what we have." 
+              <span className="block text-[10px] font-semibold text-text-primary mt-1">— Seneca</span>
+            </blockquote>
+
+            <div className="flex flex-col sm:flex-row gap-3 items-center justify-center pt-2">
+              <Button 
+                onClick={handleShareCelebration} 
+                variant="outline" 
+                className="w-full sm:w-auto flex items-center justify-center gap-2"
+                disabled={isSharingCelebration}
+              >
+                {isSharingCelebration ? 'Generating...' : '📥 Share Insights'}
+              </Button>
+              
+              <Button 
+                onClick={handleCompleteCelebrationAndReset} 
+                variant="primary" 
+                className="w-full sm:w-auto font-semibold"
+              >
+                Begin New Cycle & Day 1
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

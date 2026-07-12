@@ -1,3 +1,11 @@
+import { 
+  Globe, 
+  Award, 
+  Users, 
+  Clock, 
+  Lock 
+} from 'lucide-react';
+
 interface FateGraphProps {
   records: Array<{ acceptanceTags?: string[] }>;
 }
@@ -11,7 +19,17 @@ export default function FateGraph({ records }: FateGraphProps) {
     Limitation: 0,
   };
 
+  const icons: Record<string, any> = {
+    Situation: Globe,
+    Outcome: Award,
+    People: Users,
+    Time: Clock,
+    Limitation: Lock,
+  };
+
   let totalAcceptances = 0;
+  let totalTagsCount = 0;
+
   records.forEach((rec) => {
     const tags = rec.acceptanceTags || [];
     if (tags.length > 0) {
@@ -20,6 +38,7 @@ export default function FateGraph({ records }: FateGraphProps) {
     tags.forEach((tag) => {
       if (tag in counts) {
         counts[tag]++;
+        totalTagsCount++;
       }
     });
   });
@@ -46,18 +65,26 @@ export default function FateGraph({ records }: FateGraphProps) {
       ) : (
         <div className="flex flex-col gap-3">
           {Object.entries(counts).map(([tag, count]) => {
-            const percentage = (count / maxVal) * 100;
+            const barWidthPercent = (count / maxVal) * 100;
+            const tagPercentage = totalTagsCount > 0 ? Math.round((count / totalTagsCount) * 100) : 0;
+            const Icon = icons[tag] || Globe;
+            
             return (
               <div key={tag} className="flex items-center gap-3 text-sm">
-                <span className="w-20 shrink-0 font-medium text-text-secondary">{tag}</span>
+                <span className="w-24 shrink-0 font-medium text-text-secondary flex items-center gap-2">
+                  <Icon size={15} className="text-accent shrink-0" strokeWidth={2.5} />
+                  <span>{tag}</span>
+                </span>
                 <div className="flex flex-1 items-center gap-2">
                   <div className="flex-1 h-2.5 overflow-hidden rounded-full bg-background-tertiary border border-tertiary">
                     <div
                       className="h-full rounded-full transition-all duration-500 ease-out bg-accent"
-                      style={{ width: `${percentage}%` }}
+                      style={{ width: `${barWidthPercent}%` }}
                     />
                   </div>
-                  <span className="w-4 shrink-0 text-right font-medium text-text-secondary">{count}</span>
+                  <span className="w-20 shrink-0 text-right font-medium font-mono text-text-secondary">
+                    {count} ({tagPercentage}%)
+                  </span>
                 </div>
               </div>
             );

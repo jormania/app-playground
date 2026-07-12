@@ -4,13 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Daily Stoic — Field Guide</title>
-<meta name="description" content="How to use the Daily Stoic app: reflections, reminders, and mastering your spheres of choice." />
+<meta name="description" content="An exhaustive guide to daily reflections, cognitive reframing, and cultivating tranquility using the Daily Stoic app." />
 <link rel="icon" href="/daily-stoic-logo.svg" type="image/svg+xml" />
 <meta name="theme-color" content="#4B45C6" />
 <script>
   try {
+    var DARK = { 'indigo-dark': 1, 'octagon': 1, 'ristretto': 1, 'spectrum': 1, 'dark': 1 };
     var p = localStorage.getItem('daily-stoic:theme') || 'system';
-    if (p === 'dark' || (p === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+    if (DARK[p] || (p === 'dark' || (p === 'system' && matchMedia('(prefers-color-scheme: dark)').matches))) {
       document.documentElement.setAttribute('data-theme', 'dark');
     }
   } catch (e) {}
@@ -19,110 +20,305 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
-  :root{
-    --bg:#F7F7FC; --surface:#EEEEF7; --surface2:#E3E2F2;
-    --ink:#1F1B4D; --muted:#5C5891; --faint:#8d8ab5;
-    --border:#C2BFE3; --border2:#D6D4EE; --hair:#E8E7F5;
-    --accent:#4B45C6; --accent-soft:#E7E5FA; --energy:#6D63F0;
-    --serif:'Fraunces',Georgia,serif; --sans:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  :root {
+    --bg: #F7F7FC; --surface: #EEEEF7; --surface2: #E3E2F2;
+    --ink: #1F1B4D; --muted: #5C5891; --faint: #8D8AB5;
+    --border: #C2BFE3; --border2: #D6D4EE; --hair: #E8E7F5;
+    --accent: #4B45C6; --accent-soft: #E7E5FA; --energy: #6D63F0;
+    --success: #2E8B73; --success-soft: #E8F5F1;
+    --caution: #C2873A;
+    --serif: 'Fraunces', Georgia, serif; --sans: 'Inter', system-ui, sans-serif; --mono: 'JetBrains Mono', ui-monospace, monospace;
   }
   @media screen {
-    html[data-theme='dark']{
-      color-scheme:dark;
-      --bg:#121127; --surface:#1B1940; --surface2:#262350;
-      --ink:#ECEBF8; --muted:#A7A3D4; --faint:#7E7AB0;
-      --border:#3B3770; --border2:#322E5E; --hair:#28254C;
-      --accent:#9A93F5; --accent-soft:#2B2960; --energy:#8E86FF;
+    html[data-theme='dark'] {
+      color-scheme: dark;
+      --bg: #121127; --surface: #1B1940; --surface2: #262350;
+      --ink: #ECEBF8; --muted: #A7A3D4; --faint: #7E7AB0;
+      --border: #3B3770; --border2: #322E5E; --hair: #28254C;
+      --accent: #9A93F5; --accent-soft: #2B2960; --energy: #8E86FF;
+      --success: #4FB89A; --success-soft: #1E3B33;
+      --caution: #D9A34D;
     }
   }
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;-webkit-font-smoothing:antialiased;}
-  .wrap{max-width:720px;margin:0 auto;padding:0 24px;}
-  a{color:var(--accent);text-decoration:none;}
-  a:hover{text-decoration:underline;}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--ink); line-height: 1.75; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+  a { color: var(--accent); text-decoration: none; font-weight: 500; }
+  a:hover { text-decoration: underline; }
 
-  .cover{display:flex;flex-direction:column;justify-content:center;gap:22px;padding:56px 0 44px;}
-  .cover .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent);}
-  .cover h1{font-family:var(--serif);font-weight:400;font-size:clamp(2.6rem,8vw,4rem);line-height:1.02;margin:18px 0 10px;}
-  .cover .sub{font-family:var(--serif);font-style:italic;font-size:clamp(1.05rem,3.4vw,1.4rem);color:var(--muted);}
+  /* Cover styling */
+  .cover { display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 60px 0 40px; }
+  .cover .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); }
+  .cover h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(2.5rem, 7vw, 3.8rem); line-height: 1.05; margin: 10px 0; }
+  .cover .sub { font-family: var(--serif); font-style: italic; font-size: clamp(1.1rem, 3vw, 1.4rem); color: var(--muted); }
   
-  section{padding:40px 0;border-top:1px solid var(--hair);}
-  h2{font-family:var(--serif);font-weight:600;font-size:clamp(1.7rem,5vw,2.2rem);line-height:1.1;margin:6px 0 4px;}
-  h3{font-family:var(--serif);font-weight:600;font-size:1.15rem;margin:24px 0 6px;}
-  p{margin:12px 0;max-width:64ch;}
-  p strong{font-weight:600;}
+  /* Sections */
+  section { padding: 40px 0; border-top: 1px solid var(--hair); }
+  h2 { font-family: var(--serif); font-weight: 600; font-size: clamp(1.6rem, 4.5vw, 2.1rem); line-height: 1.15; margin-bottom: 12px; color: var(--ink); }
+  h3 { font-family: var(--serif); font-weight: 600; font-size: 1.25rem; margin: 28px 0 8px; color: var(--ink); }
+  p { margin: 12px 0 16px; max-width: 68ch; color: var(--muted); font-size: 0.96rem; }
+  p strong { font-weight: 600; color: var(--ink); }
   
-  .card{background:var(--surface);border:1px solid var(--hair);border-radius:16px;padding:22px 24px;margin:18px 0;}
-  .card h3:first-child{margin-top:0;}
-  .kicker{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:6px;}
+  /* Special blocks */
+  .card { background: var(--surface); border: 1px solid var(--border2); border-radius: 16px; padding: 24px 28px; margin: 20px 0; box-shadow: 0 4px 12px rgba(31, 27, 77, 0.04); }
+  .card h3:first-child { margin-top: 0; }
+  .kicker { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
   
-  footer{border-top:1px solid var(--border);padding:28px 0 48px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--faint);}
+  .note { border-left: 3px solid var(--border); padding-left: 18px; color: var(--faint); font-style: italic; margin: 18px 0; font-size: 0.94rem; }
+  .inapp { border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 12px 12px 0; padding: 16px 20px; margin: 18px 0; }
+  .inapp .tag { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  .inapp p { margin: 6px 0 0; color: var(--ink); font-size: 0.92rem; }
+
+  ul, ol { margin: 12px 0 20px 6px; padding-left: 20px; }
+  li { margin: 8px 0; color: var(--muted); font-size: 0.96rem; }
+  li strong { color: var(--ink); }
+
+  /* Schema Table */
+  table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--hair); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); font-weight: 500; }
+  td:first-child { font-family: var(--mono); font-size: 0.82rem; color: var(--accent); font-weight: 500; }
+  
+  footer { border-top: 1px solid var(--border); padding: 36px 0 60px; text-align: center; font-family: var(--mono); font-size: 11px; color: var(--faint); letter-spacing: 0.05em; }
+
+  @media print {
+    body { background: #fff; color: #000; }
+    .wrap { max-width: none; padding: 0; }
+    .card { box-shadow: none; border: 1px solid #ccc; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
+  <!-- ───────────────── COVER ───────────────── -->
   <header class="cover">
-    <div class="eyebrow">Field Guide</div>
-    <h1>Daily Stoic</h1>
-    <p class="sub">A private space to build resilience, cultivate gratitude, and reflect on what truly matters.</p>
+    <div class="eyebrow">PWA Companion · Philosophy & Practice</div>
+    <h1>The Daily Stoic<br>Field Guide</h1>
+    <p class="sub">A handbook for implementing Marcus Aurelius's resilience, Seneca's self-examination, and Epictetus's freedom in modern daily life.</p>
   </header>
 
+  <!-- ───────────────── PHILOSOPHY ───────────────── -->
   <section>
-    <h2>Core Practice</h2>
-    
+    <h2>I. The Philosophical Foundation</h2>
+    <p>
+      Stoicism is not a set of abstract theories; it is a practical discipline—a operating system for the mind. This PWA acts as a private notebook and tracking ledger to build mental resilience, master dysfunctional reactions, and live in accordance with nature.
+    </p>
+
     <div class="card">
-      <p class="kicker">Daily Quote</p>
-      <h3>Wisdom mapped to the calendar</h3>
-      <p>Each day surfaces a new quote from Marcus Aurelius or Seneca. They are deterministically mapped to the day of the year (1-365), ensuring you'll receive the same sequence each year — providing a perfect anchor for annual reflection and observing your own growth against the same prompts.</p>
+      <p class="kicker">Epictetus's Axiom</p>
+      <h3>The Dichotomy of Control</h3>
+      <p>
+        The root of all tranquility is separating what is <strong>Up to Me</strong> (our thoughts, desires, values, and actions) from what is <strong>Not Up to Me</strong> (the actions of others, external events, health, reputation, and the weather). When you concern yourself solely with your own choices, you become unshakeable.
+      </p>
     </div>
 
     <div class="card">
-      <p class="kicker">Reflection</p>
-      <h3>Seneca's Evening Interrogation</h3>
-      <p>Before retiring for the night, use the built-in wizard based on Seneca's nightly review to reflect on your day. Ask yourself: <strong>What ailment or bad habit did I cure today?</strong> <strong>What failing did I resist?</strong> and <strong>In what matter can I show improvement tomorrow?</strong></p>
+      <p class="kicker">Marcus Aurelius's Formula</p>
+      <h3>Amor Fati (Love of Fate)</h3>
+      <p>
+        Marcus Aurelius wrote that the mind adapts and converts any obstacle to its path: <em>"The impediment to action advances action. What stands in the way becomes the way."</em> Amor Fati means not merely tolerating friction, but choosing to embrace it as raw material to practice patience, temperance, or courage.
+      </p>
+    </div>
+
+    <div class="card">
+      <p class="kicker">Seneca's Evening Ledger</p>
+      <h3>The Nightly Review</h3>
+      <p>
+        Seneca recommended reviewing each day before sleep, balancing the soul's accounts. By asking what ailments were cured, what vices resisted, and how one can improve, you replace self-judgment with constructive self-awareness.
+      </p>
     </div>
   </section>
 
+  <!-- ───────────────── THE STEPPER ───────────────── -->
   <section>
-    <h2>Stoic Exercises</h2>
-    
+    <h2>II. The Daily Journey (Stepper)</h2>
+    <p>
+      The application coordinates your daily practices into a structured 4-step stepper at the core of the homepage.
+    </p>
+
+    <ol>
+      <li>
+        <strong>Step 1: Focus (Memento Mori)</strong>
+        <p>
+          You are greeted by a visual grid representing the 52 weeks of the current calendar year. This keeps the reality of time close at hand. A Stoic asks: <em>"If this week were my last, how would I spend it?"</em>
+        </p>
+      </li>
+      <li>
+        <strong>Step 2: Meditate (Daily Quote & Enchiridion)</strong>
+        <p>
+          surfaces a quote tied directly to your cycle day. Tap the heart to add quotes to your custom <strong>Enchiridion</strong>—your personal emergency handbook of principles to consult in times of crisis.
+        </p>
+      </li>
+      <li>
+        <strong>Step 3: Prepare (Premeditatio Malorum)</strong>
+        <p>
+          Write down today's worries, anxieties, or obstacles. Once typed, actively sort them: categorizing each item as <strong>Up to Me</strong> (internals you can influence) or <strong>Not Up to Me</strong> (externals you must accept). 
+        </p>
+      </li>
+      <li>
+        <strong>Step 4: Reflect (Evening Review)</strong>
+        <p>
+          Log your mood, highlight any dysfunctional passions encountered (Ego, Anxiety, Impatience, Anger), record Seneca's evening questions, and select which of the four cardinal virtues was most needed to close out your day.
+        </p>
+      </li>
+    </ol>
+
+    <div class="inapp">
+      <span class="tag">Rule of Practice</span>
+      <p>
+        The daily stepper detects unsaved changes across text inputs, worry lists, and passions. Always scroll to Step 4 and tap the primary <strong>Complete Reflection</strong> button to commit your day.
+      </p>
+    </div>
+  </section>
+
+  <!-- ───────────────── CARDINAL VIRTUES ───────────────── -->
+  <section>
+    <h2>III. The Four Cardinal Virtues</h2>
+    <p>
+      Every day, the evening review prompts you to reflect on the four virtues. Ponder how they apply to the events you encountered:
+    </p>
+
+    <ul>
+      <li><strong>Wisdom (Sophia)</strong>: The ability to distinguish between what is good, what is bad, and what is indifferent. It guides our judgment in complex circumstances.</li>
+      <li><strong>Courage (Andreia)</strong>: Staying strong, acting justly, and standing firm in the face of physical danger, ethical challenges, or daily friction.</li>
+      <li><strong>Justice (Dikaiosyne)</strong>: Working for the common good. Stoics view humanity as members of a single body; acting selfishly or with anger violates our nature.</li>
+      <li><strong>Temperance (Sophrosyne)</strong>: Self-control, discipline, and moderation. Knowing when enough is enough, resisting excess, and staying anchored.</li>
+    </ul>
+  </section>
+
+  <!-- ───────────────── ANALYTICS ───────────────── -->
+  <section>
+    <h2>IV. Analytics & Dashboards</h2>
+    <p>
+      The app includes custom dashboards accessible from the top navigation dropdown on mobile, or the header links on desktop:
+    </p>
+
     <div class="card">
-      <p class="kicker">Dichotomy of Control</p>
+      <p class="kicker">Dichotomy Dashboard</p>
       <h3>Spheres of Choice</h3>
-      <p>A dedicated interactive space to practice Epictetus's core teaching. Log your current worries or anxieties, and then sort them into what is "Up to Me" (your actions, choices, and judgments) and what is "Not Up to Me" (external events, other people's opinions). Watch the externals fade away as you consciously let them go.</p>
+      <p>
+        Analyze your worries over time (30d, 90d, 365d, or All). Tracks your control ratio (percentage of concerns sorted as Up to Me) and your concern resolution rate. Custom word clouds visually display the concepts that occupy your mind.
+      </p>
     </div>
 
     <div class="card">
-      <p class="kicker">Amor Fati</p>
-      <h3>Love of Fate</h3>
-      <p>When you face friction or setbacks, log them using the Amor Fati component. Tag the source of the friction, and reframe it not as an obstacle, but as raw material to practice patience, resilience, and acceptance.</p>
+      <p class="kicker">Self-Knowledge Dashboard</p>
+      <h3>Citadel of Temperance</h3>
+      <p>
+        Tracks recurring passions and judgments. It correlates your triggers to specific days of the week or times of day, identifying when your ego or impatience is most active, and recommends specific Stoic virtues and exercises as antidotes.
+      </p>
     </div>
-    
+
     <div class="card">
-      <p class="kicker">Memento Mori</p>
-      <h3>Life in Weeks</h3>
-      <p>Remember that you will die. Enter your birth date to unlock a visualization of your life in weeks. Each filled square represents a week lived, providing a powerful visual reminder to value your remaining time.</p>
+      <p class="kicker">Fate Dashboard</p>
+      <h3>Amor Fati Retrospective</h3>
+      <p>
+        Review past challenges. Revisit the obstacles you logged, review them in a rolling historical timeline (30, 90, 365 days ago), and rate how successfully you reframed those struggles.
+      </p>
     </div>
   </section>
 
+  <!-- ───────────────── NOTION CONFIGURATION ───────────────── -->
   <section>
-    <h2>Data & Settings</h2>
-    
-    <div class="card">
-      <p class="kicker">Reminders</p>
-      <h3>Morning Prep & Evening Review</h3>
-      <p>Configure custom push notifications directly from your browser. Set a time for your Morning Preparation (Premeditatio Malorum) and a separate time for your Evening Review. Notifications are scheduled locally using the Service Worker.</p>
-    </div>
+    <h2>V. Notion Cloud Synchronization</h2>
+    <p>
+      By default, all entries are stored locally on your device (offline-first). To sync data across devices, configure a secure Notion integration in Settings:
+    </p>
 
-    <div class="card">
-      <p class="kicker">Privacy & Sync</p>
-      <h3>Local by default</h3>
-      <p>Your reflections are stored securely in your device's <code>localStorage</code>. There are no servers, no accounts, and no tracking. If you want cross-device sync, you can securely connect your own Notion database in the Settings panel.</p>
-    </div>
+    <ol>
+      <li>Go to <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener">notion.so/my-integrations</a> and create a new integration. Copy the <strong>Integration Token</strong>.</li>
+      <li>Duplicate the official <a href="https://www.notion.so/coneofcold/Daily-Stoic-Starter-Template-63a5df679efb4db8b8cb1a0283f5108b" target="_blank" rel="noopener">Starter Template Database</a>.</li>
+      <li>In the top right of your Notion database page, click the <code>...</code> and select <strong>Connections</strong>, then select your new integration.</li>
+      <li>Copy the database URL and paste it along with the token in the app's Settings panel.</li>
+    </ol>
+
+    <h3>Required Database Schema</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Property Name</th>
+          <th>Notion Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Name</td>
+          <td>title</td>
+          <td>Auto-formatted, e.g. "Day 42 Reflection"</td>
+        </tr>
+        <tr>
+          <td>QuoteID</td>
+          <td>number</td>
+          <td>Primary lookup key (Cycle Day 1-365)</td>
+        </tr>
+        <tr>
+          <td>Reflection</td>
+          <td>rich_text</td>
+          <td>Seneca questions review entry</td>
+        </tr>
+        <tr>
+          <td>Tags</td>
+          <td>multi_select</td>
+          <td>Populates with <code>['Stoic', 'Reflection']</code></td>
+        </tr>
+        <tr>
+          <td>Date</td>
+          <td>date</td>
+          <td>ISO date string <code>YYYY-MM-DD</code></td>
+        </tr>
+        <tr>
+          <td>AcceptanceTags</td>
+          <td>multi_select</td>
+          <td>Amor Fati challenge type tags</td>
+        </tr>
+        <tr>
+          <td>FateInput</td>
+          <td>rich_text</td>
+          <td>Amor Fati reframe input text</td>
+        </tr>
+        <tr>
+          <td>Favorite</td>
+          <td>checkbox</td>
+          <td>Toggles Enchiridion favorite status</td>
+        </tr>
+        <tr>
+          <td>Passions</td>
+          <td>multi_select</td>
+          <td>Tranquility tracking passions</td>
+        </tr>
+        <tr>
+          <td>Mood</td>
+          <td>select</td>
+          <td>Logged mood score</td>
+        </tr>
+        <tr>
+          <td>MorningIntentions</td>
+          <td>rich_text</td>
+          <td>Morning preparation notes</td>
+        </tr>
+        <tr>
+          <td>Dichotomy</td>
+          <td>rich_text</td>
+          <td>Serialized Worries / Spheres of Choice list</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ───────────────── CYCLES & CELEBRATIONS ───────────────── -->
+  <section>
+    <h2>VI. The 365-Day Cycle</h2>
+    <p>
+      The app operates on a 365-day cycle relative to your <strong>Cycle Start Date</strong> (set under Settings). On Day 365, upon saving your reflection, the app activates the <strong>Annual Retrospective & Celebration Screen</strong>.
+    </p>
+    <p>
+      This screen compiles your entire year's performance, summarizing your consistency, reframings, worries resolved, and passions conquered. You can download this summary card as a premium image. Once reviewed, closing the modal resets your cycle start date to today and archives your database entries, giving you a fresh ledger to begin the next year.
+    </p>
   </section>
 
   <footer>
-    <p>A companion for the Stoic practitioner.</p>
+    <p>Daily Stoic · Private, Offline-First, Virtue-Centered Reflection</p>
   </footer>
 </div>
 </body>

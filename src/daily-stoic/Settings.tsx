@@ -2,7 +2,7 @@ import { useState, useReducer } from 'react';
 import { Field } from './components/Field';
 import { Button } from './components/Button';
 import { Switch as SettingsToggle } from './components/Switch';
-import { probeConnection, fetchDatabaseProperties, validateSchema, fetchRecentReflections } from './services/NotionService';
+import { probeConnection, fetchDatabaseProperties, validateSchema, fetchRecentReflections, clearDatabaseEntries, upgradeDatabaseSchema } from './services/NotionService';
 import { getDayOfYear } from './utils/date';
 import { createIdbKv } from '../shared/notify/idbKv';
 import { registerPeriodicSync, unregisterPeriodicSync } from '../shared/notify/periodicSync';
@@ -14,9 +14,10 @@ import { triggerHaptic } from '../shared/haptics';
 
 interface SettingsProps {
   onClose: () => void;
+  onResetCycle: () => Promise<void>;
 }
 
-export default function Settings({ onClose }: SettingsProps) {
+export default function Settings({ onClose, onResetCycle }: SettingsProps) {
   const [, forceUpdate] = useReducer(x => x + 1, 0);
   const [token, setToken] = useState(() => localStorage.getItem('daily-stoic:notion-token') || '');
   const [database, setDatabase] = useState(() => localStorage.getItem('daily-stoic:notion-db') || '');
@@ -121,6 +122,11 @@ export default function Settings({ onClose }: SettingsProps) {
 
     try {
       await probeConnection(token, database);
+      try {
+        await upgradeDatabaseSchema(token, database);
+      } catch (err) {
+        console.warn('Failed to upgrade database schema automatically:', err);
+      }
       const props = await fetchDatabaseProperties(token, database);
       const schemaErrors = validateSchema(props);
 
@@ -152,6 +158,32 @@ export default function Settings({ onClose }: SettingsProps) {
     setStatus('idle');
     setErrors([]);
     setSuccessMsg('');
+  };
+
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleResetCycle = async () => {
+    const confirmMsg = 
+      "Warning: This will permanently delete all local reflections, mood logs, and passions data, " +
+      "and archive (delete) all reflections on your connected Notion database. " +
+      "This action is destructive and cannot be undone.\n\n" +
+      "Notion credentials will be kept.\n\n" +
+      "Are you sure you want to proceed?";
+    
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsResetting(true);
+    triggerHaptic('medium');
+
+    try {
+      await onResetCycle();
+      alert("Cycle reset successfully! Day 1 of the new 365-day cycle begins today.");
+      onClose();
+    } catch (err: any) {
+      alert("Error resetting cycle: " + (err.message || err));
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   const triggerDiagnosticsReveal = useDiagnosticsReveal(async () => {
@@ -273,7 +305,7 @@ export default function Settings({ onClose }: SettingsProps) {
             label="Show Gentle Concept Guides"
             description="Display twisties with concept details beside reflection forms."
             checked={localStorage.getItem('daily-stoic:show-guides') !== 'false'}
-            onChange={(checked) => {
+            onCheckedChange={(checked) => {
               localStorage.setItem('daily-stoic:show-guides', checked.toString());
               window.dispatchEvent(new Event('daily-stoic:settings-updated'));
               triggerHaptic('light');
@@ -292,7 +324,7 @@ export default function Settings({ onClose }: SettingsProps) {
                 : 'Receive local notifications to reflect on today\'s principle.'
             }
             checked={reminderEnabled}
-            onChange={handleToggleReminder}
+            onCheckedChange={handleToggleReminder}
           />
 
           {reminderEnabled && (
@@ -319,16 +351,50 @@ export default function Settings({ onClose }: SettingsProps) {
           )}
         </section>
 
+        <section className="flex flex-col gap-4 rounded-xl border border-caution/30 bg-background-secondary p-4 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300">
+          <h3 className="font-display text-lg text-caution flex items-center gap-2">
+            <span>⚠️</span> Destructive Actions
+          </h3>
+          <p className="text-sm text-text-secondary leading-relaxed">
+            Resetting your cycle starts the Stoic handbook fresh at Day 1. This permanently deletes your local journal database and archives all synced reflection records on your connected Notion workspace (credentials are kept).
+          </p>
+          <div className="mt-2">
+            <button
+              onClick={handleResetCycle}
+              disabled={isResetting}
+              className={cn(
+                "rounded-lg px-4 py-2.5 text-sm font-semibold tracking-wide border transition-all duration-200",
+                isResetting
+                  ? "bg-caution/20 text-caution border-caution/20 cursor-not-allowed"
+                  : "bg-caution text-background-primary border-caution hover:bg-caution/90 hover:shadow-md active:translate-y-0"
+              )}
+            >
+              {isResetting ? 'Resetting Cycle...' : 'Reset 365-Day Cycle'}
+            </button>
+          </div>
+        </section>
+
         {isDiagnosticsVisible && diagnostics && (
           <div className="rounded-lg border border-tertiary p-4 bg-background-secondary text-xs font-mono text-text-secondary overflow-auto" role="dialog">
             <h4 className="font-medium mb-2">Notification Diagnostics</h4>
             <pre className="whitespace-pre-wrap">
               {JSON.stringify(diagnostics, null, 2)}
             </pre>
-            <div className="mt-4">
+            <div className="mt-4 flex flex-wrap gap-2">
               <Button variant="ghost" size="sm" onClick={() => setIsDiagnosticsVisible(false)}>
                 Hide Diagnostics
               </Button>
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.setItem('daily-stoic:simulate-celebration', 'true');
+                  alert('Celebration simulation activated! Go back to the reflections dashboard to see it.');
+                  onClose();
+                }}
+                className="rounded px-2.5 py-1.5 text-xs font-medium border border-tertiary bg-background-tertiary text-text-primary hover:border-accent transition-all duration-200"
+              >
+                🧪 Simulate Year Completion
+              </button>
             </div>
           </div>
         )}

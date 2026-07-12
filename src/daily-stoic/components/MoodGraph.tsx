@@ -1,3 +1,11 @@
+import { 
+  SmilePlus, 
+  Smile, 
+  Meh, 
+  Frown, 
+  Angry 
+} from 'lucide-react';
+
 interface MoodGraphProps {
   records: Array<{ mood?: string }>;
 }
@@ -11,12 +19,20 @@ export default function MoodGraph({ records }: MoodGraphProps) {
     'Awful': 0,
   };
 
+  const icons: Record<string, any> = {
+    'Great': SmilePlus,
+    'Good': Smile,
+    'Neutral': Meh,
+    'Bad': Frown,
+    'Awful': Angry,
+  };
+
   const labels: Record<string, string> = {
-    'Great': '🤩 Great',
-    'Good': '🙂 Good',
-    'Neutral': '😐 Neutral',
-    'Bad': '😔 Bad',
-    'Awful': '😠 Awful',
+    'Great': 'Great',
+    'Good': 'Good',
+    'Neutral': 'Neutral',
+    'Bad': 'Bad',
+    'Awful': 'Awful',
   };
 
   let totalLogged = 0;
@@ -51,18 +67,26 @@ export default function MoodGraph({ records }: MoodGraphProps) {
         <div className="flex flex-col gap-3">
           {Object.keys(counts).map((key) => {
             const count = counts[key];
-            const percentage = (count / maxVal) * 100;
+            const barWidthPercent = (count / maxVal) * 100;
+            const moodPercentage = totalLogged > 0 ? Math.round((count / totalLogged) * 100) : 0;
+            const Icon = icons[key] || Meh;
+            
             return (
               <div key={key} className="flex items-center gap-3 text-sm">
-                <span className="w-20 shrink-0 font-medium text-text-secondary">{labels[key]}</span>
+                <span className="w-24 shrink-0 font-medium text-text-secondary flex items-center gap-2">
+                  <Icon size={16} className="text-accent shrink-0" strokeWidth={2.5} />
+                  <span>{labels[key]}</span>
+                </span>
                 <div className="flex flex-1 items-center gap-2">
                   <div className="flex-1 h-2.5 overflow-hidden rounded-full bg-background-tertiary border border-tertiary">
                     <div
                       className="h-full rounded-full transition-all duration-500 ease-out bg-accent"
-                      style={{ width: `${percentage}%` }}
+                      style={{ width: `${barWidthPercent}%` }}
                     />
                   </div>
-                  <span className="w-4 shrink-0 text-right font-medium text-text-secondary">{count}</span>
+                  <span className="w-20 shrink-0 text-right font-medium font-mono text-text-secondary">
+                    {count} ({moodPercentage}%)
+                  </span>
                 </div>
               </div>
             );

@@ -125,7 +125,8 @@ describe('NotionService', () => {
         mood: '',
         morningIntentions: '',
         passions: [],
-        createdTime: ''
+        createdTime: '',
+        dichotomy: ''
       });
       expect(fetchImpl).toHaveBeenCalled();
     });
@@ -173,6 +174,8 @@ describe('NotionService', () => {
         '',
         [],
         false,
+        '',
+        false,
         fetchImpl
       );
 
@@ -186,7 +189,8 @@ describe('NotionService', () => {
         mood: '',
         morningIntentions: '',
         passions: [],
-        createdTime: ''
+        createdTime: '',
+        dichotomy: ''
       });
 
       const body = JSON.parse((fetchImpl.mock.calls[0][1] as any).body);
@@ -223,6 +227,8 @@ describe('NotionService', () => {
         '',
         [],
         false,
+        '',
+        false,
         fetchImpl
       );
 
@@ -236,7 +242,8 @@ describe('NotionService', () => {
         mood: '',
         morningIntentions: '',
         passions: [],
-        createdTime: ''
+        createdTime: '',
+        dichotomy: ''
       });
 
       const body = JSON.parse((fetchImpl.mock.calls[0][1] as any).body);
@@ -281,7 +288,8 @@ describe('NotionService', () => {
           mood: '',
           morningIntentions: '',
           passions: [],
-          createdTime: '2026-07-12T10:00:00Z'
+          createdTime: '2026-07-12T10:00:00Z',
+          dichotomy: ''
         }
       ]);
 
