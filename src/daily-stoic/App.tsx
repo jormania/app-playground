@@ -438,66 +438,23 @@ export default function App() {
               )}
             </section>
 
-            <div className="rounded-lg bg-background-secondary p-4 border border-tertiary">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="🔍 Search maxims by keyword (e.g. Anxiety, Gratitude, Seneca)..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 rounded-md border border-secondary bg-background-tertiary px-3 py-2 text-text-primary outline-none focus-visible:border-accent"
-                />
-                {searchQuery && (
-                  <Button variant="ghost" size="sm" onClick={() => setSearchQuery('')}>
-                    Clear
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            <blockquote className="rounded-lg bg-background-secondary p-4 sm:p-6 border-l-4 border-l-accent shadow-sm">
-              <div className="flex items-start justify-between gap-4">
-                <p className="font-display text-2xl text-text-primary mb-4">“{quote.quote}”</p>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={handleShareQuote}
-                    disabled={isSharing}
-                    className="rounded-full p-2 text-text-secondary hover:text-text-primary hover:bg-background-tertiary transition-all"
-                    title="Share Quote Card"
-                    aria-label="Share quote as image"
-                  >
-                    <ShareIcon size={20} strokeWidth={2} />
-                  </button>
-                  <button
-                    onClick={handleToggleFavorite}
-                    disabled={isTogglingFavorite}
-                    className={cn(
-                      "rounded-full p-2 transition-all flex items-center justify-center",
-                      isCurrentQuoteFavorited ? "scale-110 opacity-100" : "opacity-40 hover:opacity-100 hover:bg-background-tertiary"
-                    )}
-                    aria-label={isCurrentQuoteFavorited ? 'Remove from favorites' : 'Add to favorites'}
-                  >
-                    <HeartIcon 
-                      size={20} 
-                      strokeWidth={2} 
-                      fill={isCurrentQuoteFavorited ? "currentColor" : "none"}
-                      className={cn(
-                        isCurrentQuoteFavorited ? "text-accent" : "text-text-secondary"
-                      )}
-                    />
-                  </button>
-                </div>
-              </div>
-              <cite className="block text-text-secondary font-medium">
-                — {quote.author}, <span className="italic">{quote.source}</span>
-              </cite>
-            </blockquote>
-
             <Journal
               dayOfYear={dayOfYear}
               token={token}
               databaseId={databaseId}
               onSaveComplete={loadReflectionsAndCheckStreak}
+              birthDate={birthDate}
+              favoritedMaxims={favoritedMaxims}
+              onGoToSettings={() => navigate('/settings')}
+              onNavigateToTab={(tab: string) => navigate(tab)}
+              quote={quote}
+              isCurrentQuoteFavorited={isCurrentQuoteFavorited}
+              handleToggleFavorite={handleToggleFavorite}
+              handleShareQuote={handleShareQuote}
+              isSharing={isSharing}
+              isTogglingFavorite={isTogglingFavorite}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
             />
           </div>
         )}
