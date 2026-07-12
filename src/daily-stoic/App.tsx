@@ -331,7 +331,7 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background-primary text-text-primary">
-      <header className="border-b border-tertiary bg-background-secondary px-4 py-3 sm:px-6">
+      <header className="border-b border-tertiary bg-background-secondary px-4 py-4 sm:px-6 sm:py-5">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
@@ -399,7 +399,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl p-4 sm:p-5">
+      <main className="mx-auto w-full max-w-3xl p-6 sm:p-8">
         {route === '/settings' && (
           <Settings
             onClose={() => {
@@ -437,7 +437,7 @@ export default function App() {
               </div>
             )}
 
-            <section className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-lg bg-background-secondary p-4 border border-tertiary">
+            <section className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-lg bg-background-secondary p-4 sm:p-6 border border-tertiary">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium text-text-secondary">Day of Year</span>
@@ -477,7 +477,7 @@ export default function App() {
               </div>
             </section>
 
-            <div className="mb-8 flex items-center gap-2">
+            <div className="mb-12 flex items-center gap-2">
               <input
                 type="text"
                 placeholder="🔍 Search maxims by keyword (e.g. Anxiety, Gratitude, Seneca)..."
@@ -492,7 +492,7 @@ export default function App() {
               )}
             </div>
 
-            <blockquote className="mb-8 rounded-lg bg-background-secondary p-6 border-l-4 border-l-accent shadow-sm">
+            <blockquote className="mb-12 rounded-lg bg-background-secondary p-8 border-l-4 border-l-accent shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <p className="font-display text-2xl text-text-primary mb-4">“{quote.quote}”</p>
                 <div className="flex items-center gap-1 shrink-0">

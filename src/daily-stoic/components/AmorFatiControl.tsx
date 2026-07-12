@@ -24,15 +24,15 @@ export default function AmorFatiControl({
   };
 
   return (
-    <div className="rounded-xl border border-tertiary bg-background-secondary p-5 sm:p-6 h-full">
-      <h3 className="font-display text-xl text-text-primary mb-2 flex items-center gap-2">
+    <div className="rounded-xl border border-tertiary bg-background-secondary p-6 sm:p-8 h-full">
+      <h3 className="font-display text-xl text-text-primary mb-4 flex items-center gap-2">
         <span aria-hidden="true" className="text-2xl">🍂</span> Amor Fati (Love of Fate)
       </h3>
-      <p className="text-sm text-text-secondary mb-6">
+      <p className="text-sm text-text-secondary mb-8">
         Frame today's resistances as necessary constraints to be embraced rather than fought.
       </p>
 
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-8">
         <Field
           label="What part of today feels forced or heavy?"
           type="text"

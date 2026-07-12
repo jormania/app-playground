@@ -341,7 +341,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
   ];
 
   return (
-    <div className="rounded-xl bg-background-secondary border border-tertiary p-5 sm:p-8">
+    <div className="rounded-xl bg-background-secondary border border-tertiary p-6 sm:p-10">
       <div className="flex items-center justify-center mb-6">
         <div className="inline-flex rounded-lg bg-background-tertiary p-1">
           <button
@@ -366,8 +366,8 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
       ) : (
         <>
           {phase === 'morning' && (
-            <section className="mb-8 rounded-lg border border-tertiary bg-background-primary/50 p-5 sm:p-6">
-              <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3 flex items-center gap-2">
+            <section className="mb-12 rounded-lg border border-tertiary bg-background-primary/50 p-6 sm:p-8">
+              <h3 className="font-display text-xl text-text-primary mb-8 border-b border-tertiary pb-3 flex items-center gap-2">
                 <span aria-hidden="true" className="text-2xl">🛡️</span> Premeditatio Malorum
               </h3>
               <textarea
@@ -380,7 +380,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
                 placeholder="I might face..."
                 disabled={isLoading || isSaving}
               />
-              <div className="mt-4">
+              <div className="mt-8">
                 <AppGuideNote summary="Why prepare for the worst?">
                   <p>
                     <strong>Premeditatio Malorum</strong> is the Stoic practice of negative visualization. 
@@ -394,8 +394,8 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
 
           {phase === 'evening' && (
             <>
-              <section className="mb-8 rounded-lg border border-tertiary bg-background-primary/50 p-5 sm:p-6">
-                <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3 flex items-center gap-2">
+              <section className="mb-12 rounded-lg border border-tertiary bg-background-primary/50 p-6 sm:p-8">
+                <h3 className="font-display text-xl text-text-primary mb-8 border-b border-tertiary pb-3 flex items-center gap-2">
                   <span aria-hidden="true" className="text-2xl">🎭</span> Mood
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -421,11 +421,11 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
                 </div>
               </section>
 
-              <section className="mb-8 rounded-lg border border-tertiary bg-background-primary/50 p-5 sm:p-6">
-                <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3 flex items-center gap-2">
+              <section className="mb-12 rounded-lg border border-tertiary bg-background-primary/50 p-6 sm:p-8">
+                <h3 className="font-display text-xl text-text-primary mb-8 border-b border-tertiary pb-3 flex items-center gap-2">
                   <span aria-hidden="true" className="text-2xl">⚖️</span> Seneca's Evening Interrogation
                 </h3>
-                <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-8">
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-4">What ailment or bad habit did I cure today?</label>
                     <textarea
@@ -468,7 +468,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
                 </div>
               </section>
 
-              <div className="mb-8">
+              <div className="mb-12">
                 <AmorFatiControl
                   fateInput={fateInput}
                   onFateInputChange={(val) => {
@@ -482,7 +482,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
                   }}
                 />
 
-                <div className="mt-4">
+                <div className="mt-8">
                   <AppGuideNote summary="What is Amor Fati?">
                     <p>
                       <strong>Amor Fati</strong> (Love of Fate) is the practice of not just accepting, but embracing whatever happens. 

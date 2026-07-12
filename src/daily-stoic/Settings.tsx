@@ -172,7 +172,7 @@ export default function Settings({ onClose }: SettingsProps) {
         </Button>
       </div>
 
-      <div className="flex flex-col gap-5 mb-10">
+      <div className="flex flex-col gap-8 mb-12">
         <h3 className="font-display text-lg text-text-primary">Profile & Perspective</h3>
         <Field
           label="Birth Date"
@@ -185,7 +185,7 @@ export default function Settings({ onClose }: SettingsProps) {
           hint="Required to calculate the Memento Mori life progress grid."
         />
 
-        <hr className="border-t border-tertiary my-8" />
+        <hr className="border-t border-tertiary my-10" />
 
         <h3 className="font-display text-lg text-text-primary">Notion Sync Settings</h3>
         <p className="text-text-secondary">
@@ -247,9 +247,9 @@ export default function Settings({ onClose }: SettingsProps) {
           </div>
         )}
 
-        <hr className="border-t border-tertiary my-8" />
+        <hr className="border-t border-tertiary my-10" />
 
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-8">
           <h3 className="font-display text-lg text-text-primary">User Experience</h3>
           <SettingsToggle
             label="Show In-Page Guides"
@@ -264,9 +264,9 @@ export default function Settings({ onClose }: SettingsProps) {
           />
         </div>
 
-        <hr className="border-t border-tertiary my-8" />
+        <hr className="border-t border-tertiary my-10" />
 
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-8">
           <h3 className="font-display text-lg text-text-primary">Habit Reminders</h3>
           <SettingsToggle
             label="Morning Reminder"

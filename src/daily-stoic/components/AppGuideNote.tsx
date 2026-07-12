@@ -22,12 +22,12 @@ export default function AppGuideNote({ summary, children }: AppGuideNoteProps) {
   if (!showGuides) return null;
 
   return (
-    <details className="group rounded-md border border-tertiary bg-background-secondary/60 px-3 py-2 [&_svg]:open:rotate-90">
+    <details className="group rounded-md border border-tertiary bg-background-secondary/60 px-4 py-3 [&_svg]:open:rotate-90">
       <summary className="flex cursor-pointer list-none items-center gap-1.5 font-sans text-sm font-medium text-text-secondary marker:hidden hover:text-text-primary transition-colors">
         <ChevronRight size={14} className="shrink-0 transition-transform duration-fast" aria-hidden />
         {summary}
       </summary>
-      <div className="mt-2 pl-[22px] font-sans text-sm leading-relaxed text-text-secondary">
+      <div className="mt-3 pl-[22px] font-sans text-sm leading-relaxed text-text-secondary">
         {children}
       </div>
     </details>
