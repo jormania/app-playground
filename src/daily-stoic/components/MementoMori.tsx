@@ -59,7 +59,7 @@ export default function MementoMori({ birthDateString, onGoToSettings }: Memento
     blocks.push(
       <div
         key={i}
-        className={`h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-sm ${elapsed ? 'bg-text-primary' : 'bg-border-secondary'}`}
+        className={`rounded-[1px] sm:rounded-sm aspect-square ${elapsed ? 'bg-text-primary' : 'bg-border-secondary'}`}
         title={`Week ${i + 1} of ${totalWeeks} (${elapsed ? 'Elapsed' : 'Remaining'})`}
       />
     );
@@ -88,8 +88,8 @@ export default function MementoMori({ birthDateString, onGoToSettings }: Memento
 
       <div className="flex justify-center mb-6 overflow-x-auto overflow-y-hidden">
         <div 
-          className="grid gap-0.5 p-2 sm:p-4 rounded-lg bg-background-tertiary border border-tertiary w-fit mx-auto"
-          style={{ gridTemplateColumns: 'repeat(52, max-content)' }}
+          className="grid gap-0.5 p-2 sm:p-4 rounded-lg bg-background-tertiary border border-tertiary mx-auto w-[326px] sm:w-[446px]"
+          style={{ gridTemplateColumns: 'repeat(52, minmax(0, 1fr))' }}
         >
           {blocks}
         </div>
