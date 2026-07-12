@@ -121,7 +121,9 @@ describe('NotionService', () => {
         tags: ['Meditations'],
         fateInput: 'Felt tired.',
         acceptanceTags: ['Limitation'],
-        favorite: true
+        favorite: true,
+        mood: '',
+        morningIntentions: ''
       });
       expect(fetchImpl).toHaveBeenCalled();
     });
@@ -165,6 +167,8 @@ describe('NotionService', () => {
         'Lost keys.',
         ['Outcome'],
         true,
+        '',
+        '',
         fetchImpl
       );
 
@@ -174,7 +178,9 @@ describe('NotionService', () => {
         tags: ['Seneca'],
         fateInput: 'Lost keys.',
         acceptanceTags: ['Outcome'],
-        favorite: true
+        favorite: true,
+        mood: '',
+        morningIntentions: ''
       });
 
       const body = JSON.parse((fetchImpl.mock.calls[0][1] as any).body);
@@ -207,6 +213,8 @@ describe('NotionService', () => {
         'Heavy traffic.',
         ['Time'],
         false,
+        '',
+        '',
         fetchImpl
       );
 
@@ -216,7 +224,9 @@ describe('NotionService', () => {
         tags: ['Seneca'],
         fateInput: 'Heavy traffic.',
         acceptanceTags: ['Time'],
-        favorite: false
+        favorite: false,
+        mood: '',
+        morningIntentions: ''
       });
 
       const body = JSON.parse((fetchImpl.mock.calls[0][1] as any).body);
@@ -256,7 +266,9 @@ describe('NotionService', () => {
           text: 'Thoughts.',
           fateInput: 'Forced.',
           acceptanceTags: ['Limitation'],
-          favorite: true
+          favorite: true,
+          mood: '',
+          morningIntentions: ''
         }
       ]);
 

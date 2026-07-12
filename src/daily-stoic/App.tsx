@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import html2canvas from 'html2canvas';
-import { StreakCounter } from './components/StreakCounter';
 import { Button } from './components/Button';
 import { Switch as SettingsToggle } from './components/Switch';
 import AppGuideNote from './components/AppGuideNote';
@@ -9,10 +8,8 @@ import Journal from './Journal';
 import Settings from './Settings';
 import MementoMori from './components/MementoMori';
 import { DichotomyOfControl } from './components/DichotomyOfControl';
-import FateGraph from './components/FateGraph';
-import MoodGraph from './components/MoodGraph';
 import Stats from './components/Stats';
-import { getDayOfYear, getQuoteForDay, formatDateLabel } from './utils/date';
+import { getDayOfYear, getQuoteForDay } from './utils/date';
 import { calculateStreak } from './utils/streak';
 import { fetchRecentReflections, fetchDatabaseProperties, validateSchema, upsertReflection, ReflectionRecord } from './services/NotionService';
 import { createIdbKv } from '../shared/notify/idbKv';
@@ -21,12 +18,8 @@ import { triggerHaptic } from '../shared/haptics';
 
 import { useHashRoute } from './lib/useHashRoute';
 import { useTheme } from './lib/themeContext';
-import { Logo } from './components/Logo';
 import { cn } from './lib/cn';
 import {
-  Sun as PracticeIcon,
-  BookOpen as MaximsIcon,
-  Hourglass as MementoIcon,
   Settings as SettingsIcon,
   Moon as DarkIcon,
   SunMedium as LightIcon,
@@ -46,7 +39,7 @@ function ThemeToggle() {
   return (
     <button
       onClick={cycle}
-      aria-label={`Theme: ${current.name}. Tap to cycle to the next palette.`}
+      aria-label="Toggle theme"
       title={`${current.name} — tap to cycle`}
       className="rounded-md p-2 text-text-secondary transition-colors duration-fast hover:bg-background-secondary"
     >
@@ -55,53 +48,7 @@ function ThemeToggle() {
   )
 }
 
-function NavLink({
-  current,
-  to,
-  label,
-  onClick,
-  icon: Icon,
-  iconOnly = false,
-}: {
-  current: string
-  to: string
-  label: string
-  onClick: (to: string) => void
-  icon: LucideIcon
-  iconOnly?: boolean
-}) {
-  const activeRoute = current === to || (to === '/' && current === '')
-  return (
-    <button
-      onClick={() => onClick(to)}
-      aria-current={activeRoute ? 'page' : undefined}
-      aria-label={label}
-      title={label}
-      className={cn(
-        'rounded-md font-sans text-sm transition-colors duration-fast',
-        iconOnly ? 'p-2' : 'p-2 sm:px-3 sm:py-1.5',
-        activeRoute ? 'bg-accent-soft text-accent' : 'text-text-secondary hover:bg-background-secondary',
-      )}
-    >
-      {iconOnly ? (
-        <Icon size={18} aria-hidden />
-      ) : (
-        <>
-          <Icon size={18} aria-hidden className="sm:hidden" />
-          <span className="hidden sm:inline">{label}</span>
-        </>
-      )}
-    </button>
-  )
-}
 
-
-function getDateFromDayOfYear(day: number): Date {
-  const year = new Date().getFullYear();
-  const date = new Date(year, 0, 1);
-  date.setDate(day);
-  return date;
-}
 
 export default function App() {
   const today = getDayOfYear();
@@ -243,13 +190,8 @@ export default function App() {
 
   const quoteIndex = (dayOfYear - 1) % (filteredQuotes.length || 1);
   const quote = filteredQuotes[quoteIndex] || getQuoteForDay(dayOfYear);
-  
-  const currentDate = getDateFromDayOfYear(dayOfYear);
-
-  // Find if current quote is favorited
   const isCurrentQuoteFavorited = useMemo(() => {
-    const record = recentReflections.find((r) => r.quoteId === dayOfYear);
-    return localStorage.getItem(`daily-stoic:favorite-${dayOfYear}`) === 'true';
+    return localStorage.getItem(`daily-stoic:favorite-${dayOfYear}`) === 'true' && localFavoritesToggle !== undefined;
   }, [dayOfYear, localFavoritesToggle]);
 
   const [isSharing, setIsSharing] = useState(false);
@@ -346,6 +288,7 @@ export default function App() {
 
   // Compile favorited maxims list (Enchiridion)
   const favoritedMaxims = useMemo(() => {
+    if (localFavoritesToggle < 0) return []; // reactivity dummy
     const favoritedIds = new Set<number>();
     
     // Check loaded reflections
@@ -365,11 +308,7 @@ export default function App() {
     return QUOTES.filter((q) => favoritedIds.has(q.day));
   }, [recentReflections, localFavoritesToggle]);
 
-  const themeOptions = [
-    { value: 'light', label: 'Light' },
-    { value: 'dark', label: 'Dark' },
-    { value: 'system', label: 'System' },
-  ];
+
 
   const tabOptions: { label: string; value: string; Icon: LucideIcon }[] = [
     { label: 'Daily Reflection', value: '', Icon: BookOpenIcon },
@@ -444,7 +383,7 @@ export default function App() {
               title="Field Guide"
               aria-label="Open Field Guide in new tab"
             >
-              <HelpIcon size={20} strokeWidth={2} />
+              <HelpIcon size={20} strokeWidth={2} className="stroke-[2px] dark:stroke-[2.5px]" />
             </a>
 
             <ThemeToggle />
@@ -630,7 +569,7 @@ export default function App() {
 
             {favoritedMaxims.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-tertiary p-12 text-center bg-background-secondary mt-8">
-                <span className="text-4xl mb-4" role="img" aria-label="book">📖</span>
+                <img src="/daily-stoic-empty-state.png" alt="Empty handbook" className="w-32 h-32 mb-4 object-contain opacity-80" />
                 <h3 className="font-display text-xl text-text-primary mb-2">Your handbook is empty</h3>
                 <p className="text-text-secondary">
                   Heart quotes on the Daily Reflection page to save them here for rapid reference during high-stress moments.

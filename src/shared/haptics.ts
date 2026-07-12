@@ -19,7 +19,7 @@ export function triggerHaptic(type: 'light' | 'heavy' | 'success' | 'transition'
         default:
           navigator.vibrate(30);
       }
-    } catch (e) {
+    } catch (_e) {
       // Ignore vibration errors (e.g. if page is not visible or user hasn't interacted)
     }
   }

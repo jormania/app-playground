@@ -43,7 +43,7 @@ export default function Settings({ onClose }: SettingsProps) {
 
   const caps = capabilities();
 
-  const syncIdb = async (enabledVal: boolean, timeVal: string) => {
+  const syncIdb = async (enabledVal: boolean) => {
     const today = getDayOfYear();
     let todayLogged = false;
 
@@ -78,12 +78,12 @@ export default function Settings({ onClose }: SettingsProps) {
       localStorage.setItem('daily-stoic:reminder-enabled', 'true');
       setReminderEnabled(true);
       void registerPeriodicSync('daily-stoic-reminders', 43200000);
-      await syncIdb(true, morningTime);
+      await syncIdb(true);
     } else {
       localStorage.setItem('daily-stoic:reminder-enabled', 'false');
       setReminderEnabled(false);
       void unregisterPeriodicSync('daily-stoic-reminders');
-      await syncIdb(false, morningTime);
+      await syncIdb(false);
     }
   };
 
@@ -91,14 +91,14 @@ export default function Settings({ onClose }: SettingsProps) {
     const newTime = e.target.value;
     localStorage.setItem('daily-stoic:morning-time', newTime);
     setMorningTime(newTime);
-    await syncIdb(reminderEnabled, newTime);
+    await syncIdb(reminderEnabled);
   };
 
   const handleEveningTimeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = e.target.value;
     localStorage.setItem('daily-stoic:evening-time', newTime);
     setEveningTime(newTime);
-    await syncIdb(reminderEnabled, newTime);
+    await syncIdb(reminderEnabled);
   };
 
   const handleTestConnection = async () => {
@@ -282,7 +282,7 @@ export default function Settings({ onClose }: SettingsProps) {
           {reminderEnabled && (
             <div className="flex flex-col gap-4 mt-6 pl-2 border-l-2 border-tertiary">
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">Morning Prep Time (Premeditatio Malorum)</label>
+                    <label className="block text-sm font-medium text-text-secondary mb-4">Morning Prep Time (Premeditatio Malorum)</label>
                     <input
                       type="time"
                       value={morningTime}
@@ -291,7 +291,7 @@ export default function Settings({ onClose }: SettingsProps) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">Evening Review Time (Reflection)</label>
+                    <label className="block text-sm font-medium text-text-secondary mb-4">Evening Review Time (Reflection)</label>
                     <input
                       type="time"
                       value={eveningTime}

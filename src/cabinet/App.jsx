@@ -98,7 +98,6 @@ export default function App() {
 
   useEffect(() => {
     refreshInstalledByManifest()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // A tile tap navigates away, but the Cabinet page itself often isn't
@@ -130,10 +129,9 @@ export default function App() {
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pageshow', onPageShow)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const appsById = new Map(CABINET_APPS.map((app) => [app.file, app]))
+
 
   function move(file, dir) {
     setOrder((prev) => {
@@ -155,8 +153,6 @@ export default function App() {
     if (next !== 'manual') setEditing(false)
   }
 
-  const manualOrderedApps = order.map((id) => appsById.get(id)).filter(Boolean)
-
   const orderedApps = useMemo(() => {
     if (sort === 'az') return [...CABINET_APPS].sort((a, b) => a.title.localeCompare(b.title))
     if (sort === 'recent') {
@@ -165,9 +161,8 @@ export default function App() {
     if (sort === 'popular') {
       return [...CABINET_APPS].sort((a, b) => (lastOpened[b.file]?.count || 0) - (lastOpened[a.file]?.count || 0))
     }
-    return manualOrderedApps
-    // manualOrderedApps is derived fresh each render from `order`, so depend on that instead.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const appsById = new Map(CABINET_APPS.map((app) => [app.file, app]))
+    return order.map((id) => appsById.get(id)).filter(Boolean)
   }, [sort, order, lastOpened])
 
   // Search is hidden and ignored while reordering — move() and the

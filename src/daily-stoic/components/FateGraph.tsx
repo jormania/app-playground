@@ -39,7 +39,7 @@ export default function FateGraph({ records }: FateGraphProps) {
 
       {totalAcceptances === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center rounded-lg border-2 border-dashed border-tertiary p-6 text-center">
-          <span className="text-3xl mb-2" role="img" aria-label="mountain">⛰️</span>
+          <img src="/daily-stoic-empty-state.png" alt="Empty focus" className="w-24 h-24 mb-4 object-contain opacity-80" />
           <p className="text-sm font-medium text-text-secondary">Embrace friction to see your data here.</p>
           <p className="text-xs text-text-secondary mt-1">Add Acceptance Tags to your daily reflections.</p>
         </div>

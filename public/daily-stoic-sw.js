@@ -120,7 +120,10 @@ self.addEventListener('notificationclick', function (e) {
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
       for (var i = 0; i < list.length; i++) {
         var c = list[i];
-        if (c.url && c.url.indexOf('daily-stoic-react') !== -1) return c.focus();
+        if (c.url && c.url.indexOf('daily-stoic-react') !== -1) {
+          if ('focus' in c) return c.focus();
+          return c;
+        }
       }
       return self.clients.openWindow(APP);
     })

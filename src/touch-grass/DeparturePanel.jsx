@@ -173,7 +173,7 @@ export default function DeparturePanel({ onDepart, apiKey, fill = 'almanac' }) {
     setTagline(null)
     setReading(null)
     setLoading(true)
-  }, [])
+  }, [world.timeOfDay])
 
   useEffect(() => {
     if (!apiKey) {
@@ -187,7 +187,7 @@ export default function DeparturePanel({ onDepart, apiKey, fill = 'almanac' }) {
       .then(({ invite, tagline, reading }) => { setInvite(invite); setTagline(tagline); setReading(reading) })
       .catch(() => { setTagline(randomFallback()); if (fill === 'tonight') setReading(randomTonight()) })
       .finally(() => setLoading(false))
-  }, [])
+  }, [apiKey, fill, world.timeOfDay, world.season, world.weather, world.moon, world.coords, world.biome, world.moments])
 
   const moments = world.moments || []
 

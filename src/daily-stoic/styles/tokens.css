@@ -7,7 +7,7 @@
 
    A preset is a full palette selected by `[data-theme="<id>"]` on <html>, chosen
    from the header cycle button / Settings picker and shared with the field guide
-   via the `sol-odyssey:theme` localStorage key (see lib/theme.ts). :root carries
+   via the `daily-stoic:theme` localStorage key (see lib/theme.ts). :root carries
    the structural tokens (radius / motion / shadows) plus the DEFAULT palette
    (Deep Indigo light), so a missing/blank attribute is always safe.
 

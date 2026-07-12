@@ -42,7 +42,6 @@ export function useMediaSession({ active, title, artist, status, onPlay, onPause
       navigator.mediaSession.setActionHandler('nexttrack', null)
       audio?.pause()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, supported, onPlay, onPause, onNext])
 
   useEffect(() => {

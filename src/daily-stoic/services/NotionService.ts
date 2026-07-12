@@ -20,7 +20,7 @@ export interface ReflectionRecord {
   morningIntentions?: string;
 }
 
-export const RELAY_ENDPOINT = '/api/notion';
+export const RELAY_ENDPOINT = typeof window !== 'undefined' ? '/api/notion' : 'http://localhost/api/notion';
 
 export function normalizeNotionId(input: string): string {
   const withoutQuery = (input || '').trim().split(/[?#]/)[0];
@@ -114,7 +114,10 @@ export function validateSchema(properties: Record<string, { type?: string }>): s
     'Date': 'date',
     'AcceptanceTags': 'multi_select',
     'FateInput': 'rich_text',
-    'Favorite': 'checkbox',
+    'Favorite': 'checkbox'
+  };
+
+  const optional: Record<string, string> = {
     'Mood': 'select',
     'MorningIntentions': 'rich_text'
   };
@@ -124,6 +127,13 @@ export function validateSchema(properties: Record<string, { type?: string }>): s
     if (!prop) {
       errors.push(`Missing property: "${name}"`);
     } else if (prop.type !== type) {
+      errors.push(`Property "${name}" must be of type "${type}" (found "${prop.type}")`);
+    }
+  }
+
+  for (const [name, type] of Object.entries(optional)) {
+    const prop = properties[name];
+    if (prop && prop.type !== type) {
       errors.push(`Property "${name}" must be of type "${type}" (found "${prop.type}")`);
     }
   }

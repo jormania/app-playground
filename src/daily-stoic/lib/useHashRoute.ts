@@ -12,7 +12,7 @@ export function useHashRoute() {
     // The reminders service worker can't set an open tab's location.hash directly (no window
     // access from a worker), so a notification tap posts the target route instead.
     const onMessage = (e: MessageEvent) => {
-      if (e.data?.type === 'sol-odyssey:navigate' && typeof e.data.hash === 'string') {
+      if (e.data?.type === 'daily-stoic:navigate' && typeof e.data.hash === 'string') {
         window.location.hash = e.data.hash
       }
     }

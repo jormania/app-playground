@@ -2,7 +2,7 @@
 // shared by BOTH the app and the standalone field guide (same origin), so one choice drives both and
 // a `storage` event keeps open pages in sync. The header button CYCLES through PRESETS in order (each
 // press flips light↔dark); Settings picks one directly. Pure-ish helpers here; the React wiring is in
-// themeContext.tsx. Keep this in step with the inline FOUC script in sol-odysseys-react.html and the
+// themeContext.tsx. Keep this in step with the inline FOUC script in daily-stoic-react.html and the
 // guide (the guide maps a preset to its light/dark MODE and keeps its own Deep Indigo palette).
 
 /** The resolved light/dark mode of a preset. */
@@ -30,7 +30,7 @@ export interface Preset {
   swatch: [string, string, string]
 }
 
-export const THEME_KEY = 'sol-odyssey:theme'
+export const THEME_KEY = 'daily-stoic:theme'
 
 /** The presets in CYCLE ORDER — brand-first, then interleaved light/dark. This order IS the header
  *  cycle sequence (index+1 wraps to 0), and it strictly alternates light → dark → light → … */

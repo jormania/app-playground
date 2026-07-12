@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './components/Button';
 import AppGuideNote from './components/AppGuideNote';
 import { fetchReflectionForDay, upsertReflection, fetchRecentReflections } from './services/NotionService';
@@ -63,7 +63,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
         setReflection(combined);
       }
     }
-  }, [senecaQ1, senecaQ2, senecaQ3, phase]);
+  }, [senecaQ1, senecaQ2, senecaQ3, phase, reflection]);
 
   const [existingPageId, setExistingPageId] = useState<string | undefined>(undefined);
   
@@ -212,7 +212,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
     return () => {
       active = false;
     };
-  }, [dayOfYear, token, databaseId, isNotionConfigured, localStorageKey, localFateKey, localTagsKey]);
+  }, [dayOfYear, token, databaseId, isNotionConfigured, localStorageKey, localFateKey, localTagsKey, localIntentionsKey, localMoodKey]);
 
   const handleSave = async () => {
     const cleanedText = reflection.trim();
@@ -367,7 +367,9 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
         <>
           {phase === 'morning' && (
             <section className="mb-8 rounded-lg border border-tertiary bg-background-primary/50 p-5 sm:p-6">
-              <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3">Premeditatio Malorum</h3>
+              <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3 flex items-center gap-2">
+                <span aria-hidden="true" className="text-2xl">🛡️</span> Premeditatio Malorum
+              </h3>
               <textarea
                 className="w-full rounded-lg bg-background-tertiary border border-tertiary p-4 text-text-primary placeholder:text-text-secondary outline-none focus:border-accent transition-colors resize-y min-h-[120px]"
                 value={morningIntentions}
@@ -393,7 +395,9 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
           {phase === 'evening' && (
             <>
               <section className="mb-8 rounded-lg border border-tertiary bg-background-primary/50 p-5 sm:p-6">
-                <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3">Mood</h3>
+                <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3 flex items-center gap-2">
+                  <span aria-hidden="true" className="text-2xl">🎭</span> Mood
+                </h3>
                 <div className="flex flex-wrap gap-2">
                   {moodOptions.map(opt => (
                     <button
@@ -418,10 +422,12 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
               </section>
 
               <section className="mb-8 rounded-lg border border-tertiary bg-background-primary/50 p-5 sm:p-6">
-                <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3">Seneca's Evening Interrogation</h3>
+                <h3 className="font-display text-xl text-text-primary mb-6 border-b border-tertiary pb-3 flex items-center gap-2">
+                  <span aria-hidden="true" className="text-2xl">⚖️</span> Seneca's Evening Interrogation
+                </h3>
                 <div className="flex flex-col gap-5">
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">What ailment or bad habit did I cure today?</label>
+                    <label className="block text-sm font-medium text-text-secondary mb-4">What ailment or bad habit did I cure today?</label>
                     <textarea
                       className="w-full resize-none rounded-lg border border-tertiary bg-background-tertiary p-3 text-text-primary outline-none focus-visible:border-accent custom-scrollbar min-h-[80px]"
                       value={senecaQ1}
@@ -434,7 +440,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">What failing did I resist?</label>
+                    <label className="block text-sm font-medium text-text-secondary mb-4">What failing did I resist?</label>
                     <textarea
                       className="w-full resize-none rounded-lg border border-tertiary bg-background-tertiary p-3 text-text-primary outline-none focus-visible:border-accent custom-scrollbar min-h-[80px]"
                       value={senecaQ2}
@@ -447,7 +453,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">In what matter can I show improvement tomorrow?</label>
+                    <label className="block text-sm font-medium text-text-secondary mb-4">In what matter can I show improvement tomorrow?</label>
                     <textarea
                       className="w-full resize-none rounded-lg border border-tertiary bg-background-tertiary p-3 text-text-primary outline-none focus-visible:border-accent custom-scrollbar min-h-[80px]"
                       value={senecaQ3}
