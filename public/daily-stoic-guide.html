@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Daily Stoic — Field Guide</title>
+<meta name="description" content="How to use the Daily Stoic app: reflections, reminders, and mastering your spheres of choice." />
+<link rel="icon" href="/daily-stoic-logo.svg" type="image/svg+xml" />
+<meta name="theme-color" content="#4B45C6" />
+<script>
+  try {
+    var p = localStorage.getItem('daily-stoic:theme') || 'system';
+    if (p === 'dark' || (p === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F7FC; --surface:#EEEEF7; --surface2:#E3E2F2;
+    --ink:#1F1B4D; --muted:#5C5891; --faint:#8d8ab5;
+    --border:#C2BFE3; --border2:#D6D4EE; --hair:#E8E7F5;
+    --accent:#4B45C6; --accent-soft:#E7E5FA; --energy:#6D63F0;
+    --serif:'Fraunces',Georgia,serif; --sans:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  @media screen {
+    html[data-theme='dark']{
+      color-scheme:dark;
+      --bg:#121127; --surface:#1B1940; --surface2:#262350;
+      --ink:#ECEBF8; --muted:#A7A3D4; --faint:#7E7AB0;
+      --border:#3B3770; --border2:#322E5E; --hair:#28254C;
+      --accent:#9A93F5; --accent-soft:#2B2960; --energy:#8E86FF;
+    }
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.7;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:720px;margin:0 auto;padding:0 24px;}
+  a{color:var(--accent);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+
+  .cover{display:flex;flex-direction:column;justify-content:center;gap:22px;padding:56px 0 44px;}
+  .cover .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent);}
+  .cover h1{font-family:var(--serif);font-weight:400;font-size:clamp(2.6rem,8vw,4rem);line-height:1.02;margin:18px 0 10px;}
+  .cover .sub{font-family:var(--serif);font-style:italic;font-size:clamp(1.05rem,3.4vw,1.4rem);color:var(--muted);}
+  
+  section{padding:40px 0;border-top:1px solid var(--hair);}
+  h2{font-family:var(--serif);font-weight:600;font-size:clamp(1.7rem,5vw,2.2rem);line-height:1.1;margin:6px 0 4px;}
+  h3{font-family:var(--serif);font-weight:600;font-size:1.15rem;margin:24px 0 6px;}
+  p{margin:12px 0;max-width:64ch;}
+  p strong{font-weight:600;}
+  
+  .card{background:var(--surface);border:1px solid var(--hair);border-radius:16px;padding:22px 24px;margin:18px 0;}
+  .card h3:first-child{margin-top:0;}
+  .kicker{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:6px;}
+  
+  footer{border-top:1px solid var(--border);padding:28px 0 48px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--faint);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="cover">
+    <div class="eyebrow">Field Guide</div>
+    <h1>Daily Stoic</h1>
+    <p class="sub">A private space to build resilience, cultivate gratitude, and reflect on what truly matters.</p>
+  </header>
+
+  <section>
+    <h2>Core Practice</h2>
+    
+    <div class="card">
+      <p class="kicker">Daily Quote</p>
+      <h3>Wisdom mapped to the calendar</h3>
+      <p>Each day surfaces a new quote from Marcus Aurelius or Seneca. They are deterministically mapped to the day of the year (1-365), ensuring you'll receive the same sequence each year — providing a perfect anchor for annual reflection and observing your own growth against the same prompts.</p>
+    </div>
+
+    <div class="card">
+      <p class="kicker">Reflection</p>
+      <h3>Seneca's Evening Interrogation</h3>
+      <p>Before retiring for the night, use the built-in wizard based on Seneca's nightly review to reflect on your day. Ask yourself: <strong>What ailment or bad habit did I cure today?</strong> <strong>What failing did I resist?</strong> and <strong>In what matter can I show improvement tomorrow?</strong></p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Stoic Exercises</h2>
+    
+    <div class="card">
+      <p class="kicker">Dichotomy of Control</p>
+      <h3>Spheres of Choice</h3>
+      <p>A dedicated interactive space to practice Epictetus's core teaching. Log your current worries or anxieties, and then sort them into what is "Up to Me" (your actions, choices, and judgments) and what is "Not Up to Me" (external events, other people's opinions). Watch the externals fade away as you consciously let them go.</p>
+    </div>
+
+    <div class="card">
+      <p class="kicker">Amor Fati</p>
+      <h3>Love of Fate</h3>
+      <p>When you face friction or setbacks, log them using the Amor Fati component. Tag the source of the friction, and reframe it not as an obstacle, but as raw material to practice patience, resilience, and acceptance.</p>
+    </div>
+    
+    <div class="card">
+      <p class="kicker">Memento Mori</p>
+      <h3>Life in Weeks</h3>
+      <p>Remember that you will die. Enter your birth date to unlock a visualization of your life in weeks. Each filled square represents a week lived, providing a powerful visual reminder to value your remaining time.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Data & Settings</h2>
+    
+    <div class="card">
+      <p class="kicker">Reminders</p>
+      <h3>Morning Prep & Evening Review</h3>
+      <p>Configure custom push notifications directly from your browser. Set a time for your Morning Preparation (Premeditatio Malorum) and a separate time for your Evening Review. Notifications are scheduled locally using the Service Worker.</p>
+    </div>
+
+    <div class="card">
+      <p class="kicker">Privacy & Sync</p>
+      <h3>Local by default</h3>
+      <p>Your reflections are stored securely in your device's <code>localStorage</code>. There are no servers, no accounts, and no tracking. If you want cross-device sync, you can securely connect your own Notion database in the Settings panel.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>A companion for the Stoic practitioner.</p>
+  </footer>
+</div>
+</body>
+</html>

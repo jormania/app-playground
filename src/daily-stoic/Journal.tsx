@@ -30,21 +30,6 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
   const [senecaQ2, setSenecaQ2] = useState('');
   const [senecaQ3, setSenecaQ3] = useState('');
 
-  // Update reflection string when Qs change
-  useEffect(() => {
-    if (phase === 'evening') {
-      const combined = [
-        senecaQ1.trim() ? `### What ailment or bad habit did I cure today?\n${senecaQ1.trim()}` : '',
-        senecaQ2.trim() ? `### What failing did I resist?\n${senecaQ2.trim()}` : '',
-        senecaQ3.trim() ? `### In what matter can I show improvement tomorrow?\n${senecaQ3.trim()}` : ''
-      ].filter(Boolean).join('\n\n');
-      
-      // Only set if different to avoid infinite loops, but we use reflection to save
-      if (combined !== reflection) {
-        setReflection(combined);
-      }
-    }
-  }, [senecaQ1, senecaQ2, senecaQ3, phase]);
   const [fateInput, setFateInput] = useState('');
   const [savedFateInput, setSavedFateInput] = useState('');
   const [acceptanceTags, setAcceptanceTags] = useState<string[]>([]);
@@ -63,6 +48,22 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
     const hours = new Date().getHours();
     return hours < 14 ? 'morning' : 'evening'; // Defaults to morning before 2 PM
   });
+
+  // Update reflection string when Qs change
+  useEffect(() => {
+    if (phase === 'evening') {
+      const combined = [
+        senecaQ1.trim() ? `### What ailment or bad habit did I cure today?\n${senecaQ1.trim()}` : '',
+        senecaQ2.trim() ? `### What failing did I resist?\n${senecaQ2.trim()}` : '',
+        senecaQ3.trim() ? `### In what matter can I show improvement tomorrow?\n${senecaQ3.trim()}` : ''
+      ].filter(Boolean).join('\n\n');
+      
+      // Only set if different to avoid infinite loops, but we use reflection to save
+      if (combined !== reflection) {
+        setReflection(combined);
+      }
+    }
+  }, [senecaQ1, senecaQ2, senecaQ3, phase]);
 
   const [existingPageId, setExistingPageId] = useState<string | undefined>(undefined);
   

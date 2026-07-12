@@ -45,6 +45,7 @@ export const APPS = [
       "Built with the shared design system for clean, modern aesthetics",
       "PWA support to install on mobile or desktop and use offline"
     ],
+    guide: "daily-stoic-guide.html",
     file: "daily-stoic-react.html"
   },
   {
