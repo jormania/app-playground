@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { Field, Button, SettingsToggle } from '../ds';
+import { useState, useReducer } from 'react';
+import { Field } from './components/Field';
+import { Button } from './components/Button';
+import { Switch as SettingsToggle } from './components/Switch';
 import { probeConnection, fetchDatabaseProperties, validateSchema, fetchRecentReflections } from './services/NotionService';
 import { getDayOfYear } from './utils/date';
 import { createIdbKv } from '../shared/notify/idbKv';
@@ -7,13 +9,14 @@ import { registerPeriodicSync, unregisterPeriodicSync } from '../shared/notify/p
 import { requestPermission, capabilities } from '../shared/notify/permission';
 import { gatherDiagnostics, NotifyDiagnostics } from '../shared/notify/diagnostics';
 import { useDiagnosticsReveal } from '../shared/notify/useDiagnosticsReveal';
-import styles from './App.module.css';
+import { triggerHaptic } from '../shared/haptics';
 
 interface SettingsProps {
   onClose: () => void;
 }
 
 export default function Settings({ onClose }: SettingsProps) {
+  const [, forceUpdate] = useReducer(x => x + 1, 0);
   const [token, setToken] = useState(() => localStorage.getItem('daily-stoic:notion-token') || '');
   const [database, setDatabase] = useState(() => localStorage.getItem('daily-stoic:notion-db') || '');
   
@@ -63,8 +66,7 @@ export default function Settings({ onClose }: SettingsProps) {
     });
   };
 
-  const handleToggleReminder = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const checked = e.target.checked;
+  const handleToggleReminder = async (checked: boolean) => {
     if (checked) {
       const perm = await requestPermission();
       if (perm !== 'granted') {
@@ -151,9 +153,9 @@ export default function Settings({ onClose }: SettingsProps) {
   });
 
   return (
-    <div className={styles.settingsPanel}>
-      <div className={styles.settingsHeader}>
-        <h2 className={styles.settingsTitle} onClick={triggerDiagnosticsReveal} style={{ cursor: 'pointer' }}>
+    <div className="mx-auto max-w-2xl pb-16">
+      <div className="flex items-center justify-between mb-8 pb-4 border-b border-tertiary">
+        <h2 className="font-display text-2xl text-text-primary" onClick={triggerDiagnosticsReveal} style={{ cursor: 'pointer' }}>
           Settings
         </h2>
         <Button variant="ghost" size="sm" onClick={onClose}>
@@ -161,8 +163,8 @@ export default function Settings({ onClose }: SettingsProps) {
         </Button>
       </div>
 
-      <div className={styles.settingsForm}>
-        <h3 className={styles.sectionTitle}>Profile & Perspective</h3>
+      <div className="flex flex-col gap-5 mb-10">
+        <h3 className="font-display text-lg text-text-primary">Profile & Perspective</h3>
         <Field
           label="Birth Date"
           type="date"
@@ -174,10 +176,10 @@ export default function Settings({ onClose }: SettingsProps) {
           hint="Required to calculate the Memento Mori life progress grid."
         />
 
-        <hr className={styles.settingsDivider} />
+        <hr className="border-t border-tertiary my-8" />
 
-        <h3 className={styles.sectionTitle}>Notion Sync Settings</h3>
-        <p className={styles.settingsIntro}>
+        <h3 className="font-display text-lg text-text-primary">Notion Sync Settings</h3>
+        <p className="text-text-secondary">
           Configure your Bring-Your-Own-Key Notion connection. Your token and database link are saved locally on this device.
         </p>
 
@@ -199,7 +201,7 @@ export default function Settings({ onClose }: SettingsProps) {
           hint="Paste the URL of your duplicated Starter Template database."
         />
 
-        <div className={styles.settingsActions}>
+        <div className="flex items-center gap-3 mt-4">
           <Button onClick={handleTestConnection} disabled={status === 'testing'}>
             {status === 'testing' ? 'Testing...' : 'Test & Save Connection'}
           </Button>
@@ -212,40 +214,40 @@ export default function Settings({ onClose }: SettingsProps) {
         </div>
 
         {status === 'error' && (
-          <div className={styles.statusBoxError} role="alert">
-            <span className={styles.statusIcon}>⚠️</span>
-            <div className={styles.statusContent}>
+          <div className="mt-4 rounded-lg bg-background-secondary border border-caution/40 p-4 flex items-start gap-3 text-caution" role="alert">
+            <span>⚠️</span>
+            <div>
               {errors.map((err, idx) => (
-                <p key={idx} className={styles.statusText}>{err}</p>
+                <p key={idx}>{err}</p>
               ))}
             </div>
           </div>
         )}
 
         {status === 'connected' && successMsg && (
-          <div className={styles.statusBoxSuccess} role="status">
-            <span className={styles.statusIcon}>✓</span>
-            <p className={styles.statusText}>{successMsg}</p>
+          <div className="mt-4 rounded-lg bg-background-secondary border border-success/40 p-4 flex items-start gap-3 text-success" role="status">
+            <span>✓</span>
+            <p>{successMsg}</p>
           </div>
         )}
 
         {status === 'connected' && !successMsg && (
-          <div className={styles.statusBoxSuccess} role="status">
-            <span className={styles.statusIcon}>✓</span>
-            <p className={styles.statusText}>Connected. Your reflections are currently syncing to Notion.</p>
+          <div className="mt-4 rounded-lg bg-background-secondary border border-success/40 p-4 flex items-start gap-3 text-success" role="status">
+            <span>✓</span>
+            <p>Connected. Your reflections are currently syncing to Notion.</p>
           </div>
         )}
 
-        <hr className={styles.settingsDivider} />
+        <hr className="border-t border-tertiary my-8" />
 
-        <div className={styles.settingsForm}>
-          <h3 className={styles.sectionTitle}>User Experience</h3>
+        <div className="flex flex-col gap-5">
+          <h3 className="font-display text-lg text-text-primary">User Experience</h3>
           <SettingsToggle
             label="Show In-Page Guides"
             hint="Display helpful tooltips (twisties) to explain Stoic concepts like Amor Fati and Memento Mori."
             checked={localStorage.getItem('daily-stoic:show-guides') !== 'false'}
-            onChange={(e) => {
-              localStorage.setItem('daily-stoic:show-guides', e.target.checked.toString());
+            onChange={(checked) => {
+              localStorage.setItem('daily-stoic:show-guides', checked.toString());
               window.dispatchEvent(new Event('daily-stoic:settings-updated'));
               triggerHaptic('light');
               forceUpdate();
@@ -253,10 +255,10 @@ export default function Settings({ onClose }: SettingsProps) {
           />
         </div>
 
-        <hr className={styles.settingsDivider} />
+        <hr className="border-t border-tertiary my-8" />
 
-        <div className={styles.reminderSection}>
-          <h3 className={styles.sectionTitle}>Habit Reminders</h3>
+        <div className="flex flex-col gap-5">
+          <h3 className="font-display text-lg text-text-primary">Habit Reminders</h3>
           <SettingsToggle
             label="Morning Reminder"
             hint={
@@ -269,27 +271,29 @@ export default function Settings({ onClose }: SettingsProps) {
           />
 
           {reminderEnabled && (
-            <div className={styles.reminderTimeRow}>
-              <label className={styles.timeLabel}>Reminder Time</label>
+            <div className="flex items-center justify-between p-4 rounded-lg bg-background-secondary border border-tertiary mt-2">
+              <label className="font-medium text-text-primary">Reminder Time</label>
               <input
                 type="time"
                 value={reminderTime}
                 onChange={handleTimeChange}
-                className={styles.timeInput}
+                className="bg-transparent text-text-primary outline-none"
               />
             </div>
           )}
         </div>
 
         {isDiagnosticsVisible && diagnostics && (
-          <div className={styles.diagnosticsPanel} role="dialog">
-            <h4 className={styles.diagnosticsTitle}>Notification Diagnostics</h4>
-            <pre className={styles.diagnosticsDump}>
+          <div className="mt-10 rounded-lg border border-tertiary p-4 bg-background-secondary text-xs font-mono text-text-secondary overflow-auto" role="dialog">
+            <h4 className="font-medium mb-2">Notification Diagnostics</h4>
+            <pre className="whitespace-pre-wrap">
               {JSON.stringify(diagnostics, null, 2)}
             </pre>
-            <Button variant="ghost" size="sm" onClick={() => setIsDiagnosticsVisible(false)}>
-              Hide Diagnostics
-            </Button>
+            <div className="mt-4">
+              <Button variant="ghost" size="sm" onClick={() => setIsDiagnosticsVisible(false)}>
+                Hide Diagnostics
+              </Button>
+            </div>
           </div>
         )}
       </div>

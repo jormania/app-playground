@@ -1,0 +1,8 @@
+/* Self-hosted fonts (bundled via @fontsource, NOT a CDN) — so the PWA works offline
+   and there is no third-party request. Three roles only:
+     · Fraunces Variable      → serif display (titles, hero copy)
+     · Inter Variable         → clean body / UI
+     · JetBrains Mono Variable → data & labels (day counts, IDs, monospace) */
+@import '@fontsource-variable/fraunces';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';

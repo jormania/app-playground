@@ -1,5 +1,3 @@
-import styles from '../App.module.css';
-
 interface MoodGraphProps {
   records: Array<{ mood?: string }>;
 }
@@ -33,27 +31,31 @@ export default function MoodGraph({ records }: MoodGraphProps) {
   const maxVal = Math.max(...Object.values(counts), 1);
 
   return (
-    <div className={styles.fateGraphCard}>
-      <h3 className={styles.fateGraphTitle}>
-        🎭 Mood Tracker
-      </h3>
-      <p className={styles.fateGraphIntro}>
-        Mood distribution ({totalLogged} total logged)
-      </p>
+    <div className="rounded-xl bg-background-secondary border border-tertiary p-6 h-full flex flex-col justify-between">
+      <div>
+        <h3 className="font-display text-xl text-text-primary mb-1">
+          🎭 Mood Tracker
+        </h3>
+        <p className="text-sm text-text-secondary mb-6">
+          Mood distribution ({totalLogged} total logged)
+        </p>
+      </div>
 
-      <div className={styles.chartContainer}>
+      <div className="flex flex-col gap-3">
         {Object.keys(counts).map((key) => {
           const count = counts[key];
           const percentage = (count / maxVal) * 100;
           return (
-            <div key={key} className={styles.chartRow}>
-              <span className={styles.chartLabel} style={{ width: '90px' }}>{labels[key]}</span>
-              <div className={styles.chartBarWrapper}>
-                <div
-                  className={styles.chartBar}
-                  style={{ width: `${percentage}%`, background: 'var(--primary)' }}
-                />
-                <span className={styles.chartCount}>{count}</span>
+            <div key={key} className="flex items-center gap-3 text-sm">
+              <span className="w-20 shrink-0 font-medium text-text-secondary">{labels[key]}</span>
+              <div className="flex flex-1 items-center gap-2">
+                <div className="flex-1 h-2.5 overflow-hidden rounded-full bg-background-tertiary border border-tertiary">
+                  <div
+                    className="h-full rounded-full transition-all duration-500 ease-out bg-accent"
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+                <span className="w-4 shrink-0 text-right font-medium text-text-secondary">{count}</span>
               </div>
             </div>
           );

@@ -1,5 +1,4 @@
-import { Field } from '../../ds';
-import styles from '../App.module.css';
+import { Field } from './Field';
 
 interface AmorFatiControlProps {
   fateInput: string;
@@ -25,15 +24,15 @@ export default function AmorFatiControl({
   };
 
   return (
-    <div className={styles.amorFatiCard}>
-      <h3 className={styles.amorFatiTitle}>
-        <span className={styles.brandEmoji} aria-hidden="true">🍂</span> Amor Fati (Love of Fate)
+    <div className="rounded-xl border border-tertiary bg-background-secondary p-5 sm:p-6 h-full">
+      <h3 className="font-display text-xl text-text-primary mb-2 flex items-center gap-2">
+        <span aria-hidden="true" className="text-2xl">🍂</span> Amor Fati (Love of Fate)
       </h3>
-      <p className={styles.amorFatiIntro}>
+      <p className="text-sm text-text-secondary mb-6">
         Frame today's resistances as necessary constraints to be embraced rather than fought.
       </p>
 
-      <div className={styles.amorFatiForm}>
+      <div className="flex flex-col gap-5">
         <Field
           label="What part of today feels forced or heavy?"
           type="text"
@@ -42,9 +41,9 @@ export default function AmorFatiControl({
           placeholder="e.g. Flight delay, difficult conversation, unexpected chore..."
         />
 
-        <div className={styles.tagsContainer}>
-          <label className={styles.tagsLabel}>Acceptance Tags</label>
-          <div className={styles.pillsRow}>
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-3">Acceptance Tags</label>
+          <div className="flex flex-wrap gap-2">
             {AVAILABLE_TAGS.map((tag) => {
               const active = acceptanceTags.includes(tag);
               return (
@@ -52,7 +51,11 @@ export default function AmorFatiControl({
                   key={tag}
                   type="button"
                   onClick={() => handleTagToggle(tag)}
-                  className={`${styles.pillButton} ${active ? styles.pillActive : ''}`}
+                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors border ${
+                    active 
+                      ? 'border-accent bg-accent text-background-primary' 
+                      : 'border-tertiary bg-background-tertiary text-text-secondary hover:border-secondary hover:text-text-primary'
+                  }`}
                 >
                   {tag}
                 </button>

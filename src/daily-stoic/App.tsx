@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { SegmentedControl, NumberStepper, Button, StreakCounter, SettingsToggle } from '../ds';
+import { NumberStepper, SegmentedControl } from '../ds';
+import { StreakCounter } from './components/StreakCounter';
+import { Button } from './components/Button';
+import { Switch as SettingsToggle } from './components/Switch';
 import AppGuideNote from './components/AppGuideNote';
 import Journal from './Journal';
 import Settings from './Settings';
@@ -11,8 +13,77 @@ import { calculateStreak } from './utils/streak';
 import { fetchRecentReflections, fetchDatabaseProperties, validateSchema, upsertReflection, ReflectionRecord } from './services/NotionService';
 import { createIdbKv } from '../shared/notify/idbKv';
 import { QUOTES } from './data/quotes';
-import styles from './App.module.css';
 import { triggerHaptic } from '../shared/haptics';
+
+import { useHashRoute } from './lib/useHashRoute';
+import { useTheme } from './lib/themeContext';
+import { Logo } from './components/Logo';
+import { cn } from './lib/cn';
+import {
+  Sun as PracticeIcon,
+  BookOpen as MaximsIcon,
+  Hourglass as MementoIcon,
+  Settings as SettingsIcon,
+  Moon as DarkIcon,
+  SunMedium as LightIcon,
+  type LucideIcon,
+} from 'lucide-react';
+
+function ThemeToggle() {
+  const { mode, cycle, current } = useTheme()
+  const dark = mode === 'dark'
+  return (
+    <button
+      onClick={cycle}
+      aria-label={`Theme: ${current.name}. Tap to cycle to the next palette.`}
+      title={`${current.name} — tap to cycle`}
+      className="rounded-md p-2 text-text-secondary transition-colors duration-fast hover:bg-background-secondary"
+    >
+      {dark ? <LightIcon size={18} aria-hidden /> : <DarkIcon size={18} aria-hidden />}
+    </button>
+  )
+}
+
+function NavLink({
+  current,
+  to,
+  label,
+  onClick,
+  icon: Icon,
+  iconOnly = false,
+}: {
+  current: string
+  to: string
+  label: string
+  onClick: (to: string) => void
+  icon: LucideIcon
+  iconOnly?: boolean
+}) {
+  const activeRoute = current === to || (to === '/' && current === '')
+  return (
+    <button
+      onClick={() => onClick(to)}
+      aria-current={activeRoute ? 'page' : undefined}
+      aria-label={label}
+      title={label}
+      className={cn(
+        'rounded-md font-sans text-sm transition-colors duration-fast',
+        iconOnly ? 'p-2' : 'p-2 sm:px-3 sm:py-1.5',
+        activeRoute ? 'bg-accent-soft text-accent' : 'text-text-secondary hover:bg-background-secondary',
+      )}
+    >
+      {iconOnly ? (
+        <Icon size={18} aria-hidden />
+      ) : (
+        <>
+          <Icon size={18} aria-hidden className="sm:hidden" />
+          <span className="hidden sm:inline">{label}</span>
+        </>
+      )}
+    </button>
+  )
+}
+
 
 function getDateFromDayOfYear(day: number): Date {
   const year = new Date().getFullYear();
@@ -24,12 +95,8 @@ function getDateFromDayOfYear(day: number): Date {
 export default function App() {
   const today = getDayOfYear();
   const [dayOfYear, setDayOfYear] = useState(today);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
-    return (localStorage.getItem('daily-stoic:theme') as 'light' | 'dark' | 'system') || 'system';
-  });
 
-  const [activeTab, setActiveTab] = useState<'reflection' | 'memento' | 'enchiridion'>('reflection');
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { route, navigate } = useHashRoute();
   
   // Credentials
   const [token, setToken] = useState(() => localStorage.getItem('daily-stoic:notion-token') || '');
@@ -123,9 +190,9 @@ export default function App() {
         } else {
           await loadLocalStorageStreak(todayVal);
         }
-      } catch (err) {
-        console.error('Failed to load reflections/schema from Notion:', err);
-        setSchemaErrors(['Could not query Notion schema. Running in offline/fallback mode.']);
+      } catch (err: any) {
+        console.error('Failed to load reflections/schema from cloud:', err);
+        setSchemaErrors(['Could not query database schema. Running in offline/fallback mode.']);
         await loadLocalStorageStreak(todayVal);
       }
     } else {
@@ -139,31 +206,7 @@ export default function App() {
     loadReflectionsAndCheckStreak();
   }, [loadReflectionsAndCheckStreak]);
 
-  // Apply theme changes to document Element
-  useEffect(() => {
-    const root = document.documentElement;
-    const metaTheme = document.querySelector('meta[name="theme-color"]');
 
-    const updateTheme = () => {
-      const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      if (isDark) {
-        root.setAttribute('data-theme', 'dark');
-        if (metaTheme) metaTheme.setAttribute('content', '#0e1115');
-      } else {
-        root.removeAttribute('data-theme');
-        if (metaTheme) metaTheme.setAttribute('content', '#f4f5f7');
-      }
-    };
-
-    updateTheme();
-    localStorage.setItem('daily-stoic:theme', theme);
-
-    if (theme === 'system') {
-      const media = window.matchMedia('(prefers-color-scheme: dark)');
-      media.addEventListener('change', updateTheme);
-      return () => media.removeEventListener('change', updateTheme);
-    }
-  }, [theme]);
 
   // Filter quote rotation based on search and Philosophy View
   const filteredQuotes = useMemo(() => {
@@ -224,9 +267,9 @@ export default function App() {
           nextFavoriteState
         );
         await loadReflectionsAndCheckStreak();
-      } catch (err) {
-        console.error('Failed to toggle favorite on Notion:', err);
-      } finally {
+          } catch (err) {
+            console.error('Failed to toggle favorite on cloud:', err);
+          } finally {
         setIsTogglingFavorite(false);
       }
     } else {
@@ -269,238 +312,218 @@ export default function App() {
   ];
 
   return (
-    <div className={styles.appShell}>
-      <header className={styles.header}>
-        <div className={styles.brand}>
-          <span className={styles.brandEmoji} aria-hidden="true">🏛️</span>
-          <h1 className={styles.brandTitle}>Daily Stoic</h1>
-        </div>
-        <div className={styles.headerActions}>
-          {!isSettingsOpen && (
-            <Button variant="ghost" size="sm" onClick={() => setIsSettingsOpen(true)}>
-              ⚙️ Settings
-            </Button>
-          )}
-          <div className={styles.themeToggle}>
-            <SegmentedControl
-              options={themeOptions}
-              value={theme}
-              onChange={(val) => setTheme(val as 'light' | 'dark' | 'system')}
-              size="sm"
-            />
+    <div className="flex min-h-screen flex-col bg-background-primary text-text-primary">
+      <header className="border-b border-tertiary bg-background-secondary px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-5xl items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
+              Daily Stoic
+            </h1>
+          </div>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <button
+              onClick={() => navigate('/settings')}
+              className="rounded-full p-2 text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors"
+              title="Settings"
+            >
+              ⚙️
+            </button>
+            <ThemeToggle />
           </div>
         </div>
       </header>
 
-      {isSettingsOpen ? (
-        <main className={styles.mainContent}>
+      <main className="mx-auto max-w-3xl p-4 sm:p-5">
+        {route === '/settings' && (
           <Settings
             onClose={() => {
-              setIsSettingsOpen(false);
+              navigate('/');
               loadCredentials();
               loadReflectionsAndCheckStreak();
             }}
           />
-        </main>
-      ) : (
-        <main className={styles.mainContent}>
-          <div className={styles.tabWrapper}>
-            <SegmentedControl
-              options={tabOptions}
-              value={activeTab}
-              onChange={(val) => setActiveTab(val as 'reflection' | 'memento' | 'enchiridion')}
-            />
-          </div>
+        )}
 
-          {schemaErrors.length > 0 && (
-            <div className={styles.schemaWarningBox} role="alert">
-              <span className={styles.statusIcon}>⚠️</span>
-              <div className={styles.statusContent}>
-                <p className={styles.statusText}>
-                  <strong>Notion Database Schema Mismatch</strong>
-                </p>
-                {schemaErrors.map((err, idx) => (
-                  <p key={idx} className={styles.schemaErrorDetail}>{err}</p>
-                ))}
-                <p className={styles.schemaWarningAction}>
-                  Please correct these columns in your Notion database.
-                </p>
+        {(route === '' || route === '/') && (
+          <>
+            {schemaErrors.length > 0 && (
+              <div className="mb-6 rounded-lg bg-background-secondary border border-caution/40 p-4" role="alert">
+                <div className="flex gap-3">
+                  <span className="text-caution">⚠️</span>
+                  <div>
+                    <p className="font-medium text-text-primary">Database Schema Mismatch</p>
+                    {schemaErrors.map((err, idx) => (
+                      <p key={idx} className="text-sm text-text-secondary mt-1">{err}</p>
+                    ))}
+                    <p className="text-sm font-medium mt-3 text-text-primary">
+                      Please correct these columns in your cloud database.
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {activeTab === 'reflection' && (
-            <>
-              <section className={styles.dashboardRow}>
-                <div className={styles.dashboardSectionLeft}>
-                  <NumberStepper
-                    label="Day of Year"
-                    value={dayOfYear}
-                    min={1}
-                    max={366}
-                    onChange={(val) => setDayOfYear(val)}
-                  />
-                  {dayOfYear !== today && (
-                    <Button variant="ghost" size="sm" onClick={() => setDayOfYear(today)}>
-                      Back to Today
-                    </Button>
-                  )}
-                </div>
-                <div className={styles.dashboardSectionRight}>
-                  <SettingsToggle
-                    label="Philosophy View"
-                    hint="Filter to Fate, Acceptance, or Resistance maxims"
-                    checked={philosophyView}
-                    onChange={(e) => setPhilosophyView(e.target.checked)}
-                  />
-                </div>
-              </section>
-
-              <div className={styles.searchRow}>
-                <input
-                  type="text"
-                  placeholder="🔍 Search maxims by keyword (e.g. Anxiety, Gratitude, Seneca)..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className={styles.searchInput}
+            <section className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-lg bg-background-secondary p-4 border border-tertiary">
+              <div className="flex items-center gap-3">
+                <NumberStepper
+                  label="Day of Year"
+                  value={dayOfYear}
+                  min={1}
+                  max={366}
+                  onChange={(val) => setDayOfYear(val)}
                 />
-                {searchQuery && (
-                  <Button variant="ghost" size="sm" onClick={() => setSearchQuery('')}>
-                    Clear
+                {dayOfYear !== today && (
+                  <Button variant="ghost" size="sm" onClick={() => setDayOfYear(today)}>
+                    Back to Today
                   </Button>
                 )}
               </div>
-
-              <div className={styles.dashboardGrid}>
-                <StreakCounter count={streak} />
-                <FateGraph records={recentReflections} />
-                <MoodGraph records={recentReflections} />
+              <div>
+                <SettingsToggle
+                  label="Philosophy View"
+                  hint="Filter to Fate, Acceptance, or Resistance maxims"
+                  checked={philosophyView}
+                  onChange={(e) => setPhilosophyView(e.target.checked)}
+                />
               </div>
+            </section>
 
-              <section className={styles.dateDisplay}>
-                <span className={styles.dateLabel}>{formatDateLabel(currentDate)}</span>
-                <span className={styles.dayLabel}>Day {dayOfYear} of 366</span>
-              </section>
-
-              <blockquote className={styles.quoteBlock}>
-                <div className={styles.quoteHeaderRow}>
-                  <p className={styles.quoteText}>“{quote.quote}”</p>
-                  <button
-                    onClick={handleToggleFavorite}
-                    disabled={isTogglingFavorite}
-                    className={`${styles.favoriteButton} ${isCurrentQuoteFavorited ? styles.favoriteActive : ''}`}
-                    aria-label={isCurrentQuoteFavorited ? 'Remove from favorites' : 'Add to favorites'}
-                  >
-                    ❤️
-                  </button>
-                </div>
-                <cite className={styles.quoteCite}>
-                  — {quote.author}, <span className={styles.quoteSource}>{quote.source}</span>
-                </cite>
-              </blockquote>
-
-              <Journal
-                dayOfYear={dayOfYear}
-                token={token}
-                databaseId={databaseId}
-                onSaveComplete={loadReflectionsAndCheckStreak}
+            <div className="mb-8 flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="🔍 Search maxims by keyword (e.g. Anxiety, Gratitude, Seneca)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 rounded-md border border-secondary bg-background-secondary px-3 py-2 text-text-primary outline-none focus-visible:border-accent"
               />
-            </>
-          )}
-
-          {activeTab === 'memento' && (
-            <MementoMori
-              birthDateString={birthDate}
-              onGoToSettings={() => setIsSettingsOpen(true)}
-            />
-          )}
-
-          {activeTab === 'enchiridion' && (
-            <div className={styles.enchiridionContainer}>
-              <h2 className={styles.sectionTitle}>📓 The Enchiridion (Handbook)</h2>
-              <p className={styles.sectionIntro}>
-                A curated selection of favorited stoic maxims for rapid reference during high-stress moments.
-              </p>
-              
-              <div style={{ marginBottom: '1.5rem' }}>
-                <AppGuideNote summary="What is the Enchiridion?">
-                  <p>
-                    Epictetus's original <em>Enchiridion</em> translates to "handbook" or "ready at hand." 
-                    It was designed to be kept close, a quick reference for stressful moments. By favoriting quotes, 
-                    you are building your own personal handbook of principles that resonate with you most.
-                  </p>
-                </AppGuideNote>
-              </div>
-
-              {favoritedMaxims.length === 0 ? (
-                <div className={styles.emptyEnchiridion}>
-                  <p>Your handbook is currently empty.</p>
-                  <p className={styles.emptyEnchiridionHint}>
-                    Click the ❤️ icon next to any daily quote to add it to your Enchiridion.
-                  </p>
-                </div>
-              ) : (
-                <div className={styles.enchiridionList}>
-                  {favoritedMaxims.map((q) => {
-                    // Find day of year for this quote
-                    const index = q.day;
-                    return (
-                      <div key={index} className={styles.enchiridionCard}>
-                        <p className={styles.enchiridionQuote}>“{q.quote}”</p>
-                        <div className={styles.enchiridionFooter}>
-                          <span className={styles.enchiridionCite}>— {q.author}, {q.source} (Day {index})</span>
-                          <button
-                            onClick={async () => {
-                              triggerHaptic('light');
-                              // Fast local storage toggle
-                              localStorage.setItem(`daily-stoic:favorite-${index}`, 'false');
-                              if (isNotionConfigured && schemaErrors.length === 0) {
-                                try {
-                                  const record = recentReflections.find((r) => r.quoteId === index);
-                                  const year = new Date().getFullYear();
-                                  const date = new Date(year, 0, 1);
-                                  date.setDate(index);
-                                  const dateStr = date.toISOString().split('T')[0];
-
-                                  await upsertReflection(
-                                    token,
-                                    databaseId,
-                                    index,
-                                    record?.text || '',
-                                    ['Stoic', 'Reflection'],
-                                    dateStr,
-                                    record?.date ? record.date : undefined,
-                                    record?.fateInput || '',
-                                    record?.acceptanceTags || [],
-                                    false
-                                  );
-                                  await loadReflectionsAndCheckStreak();
-                                } catch (err) {
-                                  console.error(err);
-                                }
-                              } else {
-                                await loadLocalStorageStreak(today);
-                              }
-                            }}
-                            className={styles.removeFavoriteButton}
-                            aria-label="Remove favorite"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+              {searchQuery && (
+                <Button variant="ghost" size="sm" onClick={() => setSearchQuery('')}>
+                  Clear
+                </Button>
               )}
             </div>
-          )}
-        </main>
-      )}
 
-      <footer className={styles.footer}>
-        <p>Stoic wisdom is in the public domain. Your reflections are stored locally.</p>
-      </footer>
+            <div className="mb-8">
+              <StreakCounter count={streak} />
+            </div>
+
+            <blockquote className="mb-8 rounded-lg bg-background-secondary p-6 border-l-4 border-l-accent shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <p className="font-display text-2xl text-text-primary mb-4">“{quote.quote}”</p>
+                <button
+                  onClick={handleToggleFavorite}
+                  disabled={isTogglingFavorite}
+                  className={cn("shrink-0 rounded-full p-2 text-xl transition-all", isCurrentQuoteFavorited ? "scale-110 opacity-100" : "opacity-40 hover:opacity-100 hover:bg-background-tertiary")}
+                  aria-label={isCurrentQuoteFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                >
+                  {isCurrentQuoteFavorited ? '❤️' : '🤍'}
+                </button>
+              </div>
+              <cite className="block text-text-secondary font-medium">
+                — {quote.author}, <span className="italic">{quote.source}</span>
+              </cite>
+            </blockquote>
+
+            <Journal
+              dayOfYear={dayOfYear}
+              token={token}
+              databaseId={databaseId}
+              onSaveComplete={loadReflectionsAndCheckStreak}
+            />
+
+            <div className="mt-8 grid gap-4 grid-cols-1 sm:grid-cols-2">
+              <FateGraph records={recentReflections} />
+              <MoodGraph records={recentReflections} />
+            </div>
+          </>
+        )}
+
+        {route === '/memento' && (
+          <MementoMori
+            birthDateString={birthDate}
+            onGoToSettings={() => navigate('/settings')}
+          />
+        )}
+
+        {route === '/maxims' && (
+          <div className="mx-auto max-w-2xl">
+            <h2 className="mb-2 font-display text-2xl text-text-primary">📓 The Enchiridion (Handbook)</h2>
+            <p className="mb-6 text-text-secondary">
+              A curated selection of favorited stoic maxims for rapid reference during high-stress moments.
+            </p>
+            
+            <div className="mb-6">
+              <AppGuideNote summary="What is the Enchiridion?">
+                <p>
+                  Epictetus's original <em>Enchiridion</em> translates to "handbook" or "ready at hand." 
+                  It was designed to be kept close, a quick reference for stressful moments. By favoriting quotes, 
+                  you are building your own personal handbook of principles that resonate with you most.
+                </p>
+              </AppGuideNote>
+            </div>
+
+            {favoritedMaxims.length === 0 ? (
+              <div className="rounded-lg border border-tertiary border-dashed p-10 text-center bg-background-secondary/50">
+                <p className="text-text-primary font-medium">Your handbook is currently empty.</p>
+                <p className="mt-2 text-sm text-text-secondary">
+                  Click the heart icon next to any daily quote to add it to your Enchiridion.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {favoritedMaxims.map((q) => {
+                  const index = q.day;
+                  return (
+                    <div key={index} className="rounded-lg bg-background-secondary p-5 border border-tertiary">
+                      <p className="mb-3 font-display text-lg text-text-primary">“{q.quote}”</p>
+                      <div className="flex items-center justify-between text-sm text-text-secondary">
+                        <span>— {q.author}, {q.source} (Day {index})</span>
+                        <button
+                          onClick={async () => {
+                            triggerHaptic('light');
+                            localStorage.setItem(`daily-stoic:favorite-${index}`, 'false');
+                            if (isNotionConfigured && schemaErrors.length === 0) {
+                              try {
+                                const record = recentReflections.find((r) => r.quoteId === index);
+                                const year = new Date().getFullYear();
+                                const date = new Date(year, 0, 1);
+                                date.setDate(index);
+                                const dateStr = date.toISOString().split('T')[0];
+                                await upsertReflection(
+                                  token,
+                                  databaseId,
+                                  index,
+                                  record?.text || '',
+                                  ['Stoic', 'Reflection'],
+                                  dateStr,
+                                  record?.date ? record.date : undefined,
+                                  record?.fateInput || '',
+                                  record?.acceptanceTags || [],
+                                  false
+                                );
+                                await loadReflectionsAndCheckStreak();
+                              } catch (err) {
+                                console.error(err);
+                              }
+                            } else {
+                              await loadLocalStorageStreak(today);
+                            }
+                          }}
+                          className="text-caution hover:underline"
+                          aria-label="Remove favorite"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
     </div>
   );
 }

@@ -1,5 +1,5 @@
-import styles from '../App.module.css';
 import AppGuideNote from './AppGuideNote';
+import { Button } from './Button';
 
 interface MementoMoriProps {
   birthDateString: string;
@@ -9,12 +9,12 @@ interface MementoMoriProps {
 export default function MementoMori({ birthDateString, onGoToSettings }: MementoMoriProps) {
   if (!birthDateString) {
     return (
-      <div className={styles.mementoMoriCard}>
-        <h3 className={styles.mementoMoriTitle}>💀 Memento Mori</h3>
-        <p className={styles.mementoMoriIntro}>
+      <div className="mx-auto max-w-2xl text-center rounded-xl bg-background-secondary border border-tertiary p-8">
+        <h3 className="mb-2 font-display text-2xl text-text-primary">💀 Memento Mori</h3>
+        <p className="mb-6 text-text-secondary">
           "Remember you must die." A visual representation of your life in weeks.
         </p>
-        <div style={{ marginBottom: '1rem' }}>
+        <div className="mb-6 text-left">
           <AppGuideNote summary="Why meditate on mortality?">
             <p>
               <strong>Memento Mori</strong> is not about being morbid. It's a tool to create urgency, 
@@ -22,13 +22,13 @@ export default function MementoMori({ birthDateString, onGoToSettings }: Memento
             </p>
           </AppGuideNote>
         </div>
-        <div className={styles.mementoMoriPlaceholder}>
-          <p className={styles.placeholderText}>
+        <div className="rounded-lg border border-tertiary border-dashed p-8 bg-background-secondary/50">
+          <p className="mb-4 text-text-primary font-medium">
             Configure your birth date in settings to visualize your Memento Mori life calendar.
           </p>
-          <button onClick={onGoToSettings} className={styles.pillButton}>
+          <Button onClick={onGoToSettings}>
             ⚙️ Go to Settings
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -55,29 +55,37 @@ export default function MementoMori({ birthDateString, onGoToSettings }: Memento
     blocks.push(
       <div
         key={i}
-        className={`${styles.lifeBlock} ${elapsed ? styles.lifeBlockFilled : styles.lifeBlockEmpty}`}
+        className={`h-[3px] w-[3px] sm:h-1.5 sm:w-1.5 rounded-sm ${elapsed ? 'bg-text-primary' : 'bg-tertiary/50'}`}
         title={`Week ${i + 1} of ${totalWeeks} (${elapsed ? 'Elapsed' : 'Remaining'})`}
       />
     );
   }
 
   return (
-    <div className={styles.mementoMoriCard}>
-      <h3 className={styles.mementoMoriTitle}>💀 Memento Mori</h3>
-      <p className={styles.mementoMoriIntro}>
-        "Let us prepare our minds as if we’d come to the very end of life." — Seneca
-      </p>
-
-      <div className={styles.mementoMoriStats}>
-        <span className={styles.statLabel}>Weeks elapsed: <strong>{weeksElapsed}</strong> / {totalWeeks}</span>
-        <span className={styles.statLabel}>Life progress: <strong>{percentage.toFixed(1)}%</strong></span>
+    <div className="mx-auto max-w-4xl rounded-xl bg-background-secondary border border-tertiary p-6 sm:p-8">
+      <div className="mb-8 text-center">
+        <h3 className="mb-2 font-display text-3xl text-text-primary">💀 Memento Mori</h3>
+        <p className="text-text-secondary">
+          "Let us prepare our minds as if we’d come to the very end of life." — Seneca
+        </p>
       </div>
 
-      <div className={styles.mementoMoriGrid}>
-        {blocks}
+      <div className="mb-6 flex flex-wrap justify-center gap-4 sm:gap-8 text-sm font-medium text-text-secondary">
+        <span className="rounded-full bg-background-tertiary px-4 py-2 border border-tertiary">
+          Weeks elapsed: <strong className="text-text-primary">{weeksElapsed}</strong> / {totalWeeks}
+        </span>
+        <span className="rounded-full bg-background-tertiary px-4 py-2 border border-tertiary">
+          Life progress: <strong className="text-text-primary">{percentage.toFixed(1)}%</strong>
+        </span>
       </div>
 
-      <p className={styles.gridHint}>
+      <div className="flex justify-center mb-6 overflow-x-auto">
+        <div className="grid grid-cols-[repeat(52,minmax(0,1fr))] gap-0.5 p-2 sm:p-4 rounded-lg bg-background-tertiary border border-tertiary">
+          {blocks}
+        </div>
+      </div>
+
+      <p className="text-center text-sm text-text-secondary mt-8">
         Each block represents one week of an 80-year lifespan. Live today as if it were a gift.
       </p>
     </div>

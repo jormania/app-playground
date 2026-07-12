@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Button, Modal, BreathingWidget, SegmentedControl } from '../ds';
+import { useState, useEffect, useRef } from 'react';
+import { SegmentedControl } from '../ds';
+import { Button } from './components/Button';
 import AppGuideNote from './components/AppGuideNote';
 import { fetchReflectionForDay, upsertReflection, fetchRecentReflections } from './services/NotionService';
 import AmorFatiControl from './components/AmorFatiControl';
-import styles from './App.module.css';
 import { triggerHaptic } from '../shared/haptics';
+import { cn } from './lib/cn';
 
 interface JournalProps {
   dayOfYear: number;
@@ -52,8 +53,17 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSaved, setIsSaved] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [moodMessage, setMoodMessage] = useState<string | null>(null);
+  const moodTimerRef = useRef<any>(null);
 
-  const [isBreathingModalOpen, setIsBreathingModalOpen] = useState(false);
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (moodTimerRef.current) {
+        clearTimeout(moodTimerRef.current);
+      }
+    };
+  }, []);
 
   // Load reflection and Amor Fati data on day or config change
   useEffect(() => {
@@ -140,7 +150,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
         }
       } catch (err: any) {
         if (!active) return;
-        setError(err.message || 'Failed to load reflection from Notion.');
+        setError(err.message || 'Failed to load reflection.');
         // Still load local storage so app is usable offline
         const localBackup = localStorage.getItem(localStorageKey) || '';
         const localFateBackup = localStorage.getItem(localFateKey) || '';
@@ -227,7 +237,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
       triggerHaptic('success');
       if (onSaveComplete) onSaveComplete();
     } catch (err: any) {
-      setError(err.message || 'Failed to save reflection to Notion.');
+      setError(err.message || 'Failed to save reflection.');
     } finally {
       setIsSaving(false);
     }
@@ -296,22 +306,8 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
   ];
 
   return (
-    <div className={styles.journalContainer}>
-      <div className={styles.journalHeaderRow}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <h2 className={styles.journalTitle}>Daily Practice</h2>
-          <Button variant="ghost" size="sm" onClick={() => setIsBreathingModalOpen(true)}>
-            🌬️ Center Yourself
-          </Button>
-        </div>
-        {isNotionConfigured && (
-          <span className={styles.notionBadge} title="Reflections sync to Notion">
-            ▲ Notion Synced
-          </span>
-        )}
-      </div>
-
-      <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+    <div className="rounded-xl bg-background-secondary border border-tertiary p-5 sm:p-8">
+      <div className="flex items-center justify-center mb-6">
         <SegmentedControl
           options={[
             { label: '☀️ Morning Prep', value: 'morning' },
@@ -323,147 +319,149 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
       </div>
 
       {isLoading ? (
-        <div className={styles.syncState}>
-          <span className={styles.spinner}>⏳</span> Syncing with Notion...
+        <div className="flex items-center justify-center p-12 text-text-secondary">
+          <span className="mr-2 animate-spin inline-block">⏳</span> Syncing...
         </div>
       ) : (
         <>
           {phase === 'morning' && (
-            <div className={styles.textareaWrapper} style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', fontWeight: 600 }}>Premeditatio Malorum</h3>
-              <AppGuideNote summary="Why prepare for the worst?">
-                <p>
-                  <strong>Premeditatio Malorum</strong> is the Stoic practice of negative visualization. 
-                  By anticipating challenges, setbacks, and difficult people, you mentally rehearse how to respond with virtue (wisdom, justice, courage, temperance). 
-                  When things inevitably go wrong, you won't be shocked—you'll be ready.
-                </p>
-              </AppGuideNote>
+            <div className="mb-6">
+              <h3 className="font-display text-lg text-text-primary mb-3">Premeditatio Malorum</h3>
               <textarea
-                className={styles.textarea}
+                className="w-full rounded-lg bg-background-tertiary border border-tertiary p-4 text-text-primary placeholder:text-text-secondary outline-none focus:border-accent transition-colors resize-y min-h-[120px]"
                 value={morningIntentions}
                 onChange={(e) => {
                   setMorningIntentions(e.target.value);
                   setIsSaved(false);
                 }}
                 placeholder="I might face..."
-                rows={4}
                 disabled={isLoading || isSaving}
               />
+              <div className="mt-4">
+                <AppGuideNote summary="Why prepare for the worst?">
+                  <p>
+                    <strong>Premeditatio Malorum</strong> is the Stoic practice of negative visualization. 
+                    By anticipating challenges, setbacks, and difficult people, you mentally rehearse how to respond with virtue (wisdom, justice, courage, temperance). 
+                    When things inevitably go wrong, you won't be shocked—you'll be ready.
+                  </p>
+                </AppGuideNote>
+              </div>
             </div>
           )}
 
           {phase === 'evening' && (
             <>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', fontWeight: 600 }}>Mood</h3>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div className="mb-8">
+                <h3 className="font-display text-lg text-text-primary mb-3">Mood</h3>
+                <div className="flex flex-wrap gap-2">
                   {moodOptions.map(opt => (
                     <button
                       key={opt.value}
                       title={opt.value}
-                      onClick={() => { setMood(opt.value); setIsSaved(false); }}
-                      style={{
-                        background: mood === opt.value ? 'var(--primary)' : 'var(--surface-hover)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 'var(--radius)',
-                        padding: '0.5rem',
-                        fontSize: '1.5rem',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
+                      onClick={() => {
+                        setMood(opt.value);
+                        setIsSaved(false);
+                        triggerHaptic('light');
+                        setMoodMessage(`Recorded choice: ${opt.label} ${opt.value}`);
+                        if (moodTimerRef.current) {
+                          clearTimeout(moodTimerRef.current);
+                        }
+                        moodTimerRef.current = setTimeout(() => {
+                          setMoodMessage(null);
+                        }, 3000);
                       }}
+                      className={cn(
+                        "rounded-lg border p-3 text-2xl transition-all",
+                        mood === opt.value
+                          ? "border-accent bg-accent-soft scale-105"
+                          : "border-tertiary hover:border-secondary hover:bg-background-tertiary"
+                      )}
                     >
                       {opt.label}
                     </button>
                   ))}
                 </div>
+                {moodMessage && (
+                  <div className="mt-2 text-sm font-medium text-success" role="status">
+                    ✓ {moodMessage}
+                  </div>
+                )}
               </div>
 
-              <div className={styles.textareaWrapper}>
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', fontWeight: 600 }}>Reflection</h3>
+              <div className="mb-8">
+                <h3 className="font-display text-lg text-text-primary mb-3">Reflection</h3>
                 <textarea
-                  className={styles.textarea}
+                  className="w-full rounded-lg bg-background-tertiary border border-tertiary p-4 text-text-primary placeholder:text-text-secondary outline-none focus:border-accent transition-colors resize-y min-h-[160px]"
                   value={reflection}
                   onChange={(e) => {
                     setReflection(e.target.value);
                     setIsSaved(false);
                   }}
-                  placeholder={
-                    isNotionConfigured
-                      ? "Write down your thoughts and reflections on today's quote (will save to Notion)..."
-                      : "Write down your thoughts and reflections on today's quote (saved locally)..."
-                  }
-                  rows={6}
+                  placeholder="Write down your thoughts and reflections on today's quote..."
                   disabled={isLoading || isSaving}
                 />
               </div>
 
-              <div style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
-                <AppGuideNote summary="What is Amor Fati?">
-                  <p>
-                    <strong>Amor Fati</strong> (Love of Fate) is the practice of not just accepting, but embracing whatever happens. 
-                    If you faced friction today, log it below and tag the source. Treat it not as an obstacle, but as raw material to practice patience, resilience, and acceptance.
-                  </p>
-                </AppGuideNote>
+              <div className="mb-8">
+                <h3 className="font-display text-lg text-text-primary mb-3">Amor Fati</h3>
+                <AmorFatiControl
+                  fateInput={fateInput}
+                  onFateInputChange={(val) => {
+                    setFateInput(val);
+                    setIsSaved(false);
+                  }}
+                  acceptanceTags={acceptanceTags}
+                  onAcceptanceTagsChange={(tags) => {
+                    setAcceptanceTags(tags);
+                    setIsSaved(false);
+                  }}
+                />
+
+                <div className="mt-4">
+                  <AppGuideNote summary="What is Amor Fati?">
+                    <p>
+                      <strong>Amor Fati</strong> (Love of Fate) is the practice of not just accepting, but embracing whatever happens. 
+                      If you faced friction today, log it below and tag the source. Treat it not as an obstacle, but as raw material to practice patience, resilience, and acceptance.
+                    </p>
+                  </AppGuideNote>
+                </div>
               </div>
-              <AmorFatiControl
-                fateInput={fateInput}
-                onFateInputChange={(val) => {
-                  setFateInput(val);
-                  setIsSaved(false);
-                }}
-                acceptanceTags={acceptanceTags}
-                onAcceptanceTagsChange={(tags) => {
-                  setAcceptanceTags(tags);
-                  setIsSaved(false);
-                }}
-              />
             </>
           )}
 
           {error && (
-            <div className={styles.inlineError} role="alert">
+            <div className="mb-6 rounded-lg bg-caution/10 border border-caution/40 p-4 text-caution" role="alert">
               ⚠️ {error}
             </div>
           )}
 
-          <div className={styles.journalActions}>
+          <div className="flex flex-col sm:flex-row items-center gap-4 border-t border-tertiary pt-6">
             <Button
               onClick={handleSave}
               disabled={(!hasChanges && isSaved) || isLoading || isSaving}
               variant={hasChanges ? 'primary' : 'secondary'}
+              className="w-full sm:w-auto"
             >
-              {isSaving ? 'Saving to Notion...' : isSaved ? 'Saved' : 'Save Reflection'}
+              {isSaving ? 'Saving...' : isSaved ? 'Saved' : 'Save Reflection'}
             </Button>
 
             <Button
               onClick={handleDownload}
               variant="ghost"
               disabled={isLoading || isSaving || isDownloading}
+              className="w-full sm:w-auto"
             >
               {isDownloading ? 'Archiving...' : '📥 Download Data'}
             </Button>
 
-            {isSaved && !hasChanges && !error && (
-              <span className={styles.saveStatus} role="status">
-                ✓ {isNotionConfigured ? 'Saved to Notion' : 'Saved locally'}
-              </span>
-            )}
             {!isSaved && hasChanges && !isSaving && (
-              <span className={styles.unsavedStatus} role="status">
+              <span className="text-sm font-medium text-accent" role="status">
                 ● Unsaved changes
               </span>
             )}
           </div>
         </>
       )}
-
-      <Modal
-        open={isBreathingModalOpen}
-        onClose={() => setIsBreathingModalOpen(false)}
-        title="Mindful Breathing"
-      >
-        <BreathingWidget onComplete={() => setIsBreathingModalOpen(false)} />
-      </Modal>
     </div>
   );
 }
