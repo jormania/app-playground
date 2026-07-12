@@ -367,7 +367,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
         <>
           {phase === 'morning' && (
             <section className="mb-12 rounded-lg border border-tertiary bg-background-primary/50 p-6 sm:p-8">
-              <h3 className="font-display text-xl text-text-primary mb-8 border-b border-tertiary pb-3 flex items-center gap-2">
+              <h3 className="font-display text-xl text-text-primary mb-10 border-b border-tertiary pb-4 flex items-center gap-2">
                 <span aria-hidden="true" className="text-2xl">🛡️</span> Premeditatio Malorum
               </h3>
               <textarea
@@ -395,7 +395,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
           {phase === 'evening' && (
             <>
               <section className="mb-12 rounded-lg border border-tertiary bg-background-primary/50 p-6 sm:p-8">
-                <h3 className="font-display text-xl text-text-primary mb-8 border-b border-tertiary pb-3 flex items-center gap-2">
+                <h3 className="font-display text-xl text-text-primary mb-10 border-b border-tertiary pb-4 flex items-center gap-2">
                   <span aria-hidden="true" className="text-2xl">🎭</span> Mood
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -422,7 +422,7 @@ export default function Journal({ dayOfYear, token, databaseId, onSaveComplete }
               </section>
 
               <section className="mb-12 rounded-lg border border-tertiary bg-background-primary/50 p-6 sm:p-8">
-                <h3 className="font-display text-xl text-text-primary mb-8 border-b border-tertiary pb-3 flex items-center gap-2">
+                <h3 className="font-display text-xl text-text-primary mb-10 border-b border-tertiary pb-4 flex items-center gap-2">
                   <span aria-hidden="true" className="text-2xl">⚖️</span> Seneca's Evening Interrogation
                 </h3>
                 <div className="flex flex-col gap-8">

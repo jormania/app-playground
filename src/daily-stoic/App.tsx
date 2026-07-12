@@ -477,7 +477,7 @@ export default function App() {
               </div>
             </section>
 
-            <div className="mb-12 flex items-center gap-2">
+            <div className="my-12 flex items-center gap-2">
               <input
                 type="text"
                 placeholder="🔍 Search maxims by keyword (e.g. Anxiety, Gratitude, Seneca)..."
@@ -492,7 +492,7 @@ export default function App() {
               )}
             </div>
 
-            <blockquote className="mb-12 rounded-lg bg-background-secondary p-8 border-l-4 border-l-accent shadow-sm">
+            <blockquote className="my-12 rounded-lg bg-background-secondary p-8 border-l-4 border-l-accent shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <p className="font-display text-2xl text-text-primary mb-4">“{quote.quote}”</p>
                 <div className="flex items-center gap-1 shrink-0">

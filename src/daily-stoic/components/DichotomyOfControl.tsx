@@ -81,7 +81,7 @@ export function DichotomyOfControl() {
 
       {unassigned.length > 0 && (
         <div className="mb-16 space-y-6">
-          <h3 className="font-display text-xl text-text-primary mb-8 border-b border-tertiary pb-3">Unsorted Anxieties</h3>
+          <h3 className="font-display text-xl text-text-primary mb-10 border-b border-tertiary pb-4">Unsorted Anxieties</h3>
           {unassigned.map((worry) => (
             <div 
               key={worry.id} 
@@ -116,7 +116,7 @@ export function DichotomyOfControl() {
 
       {upToMe.length > 0 && (
         <div className="space-y-6">
-          <h3 className="font-display text-xl text-text-primary mb-8 border-b border-tertiary pb-3">Actionable Concerns</h3>
+          <h3 className="font-display text-xl text-text-primary mb-10 border-b border-tertiary pb-4">Actionable Concerns</h3>
           {upToMe.map((worry) => (
             <div 
               key={worry.id} 
