@@ -82,10 +82,10 @@ export default function Stats({ streak, recentReflections, onClose }: StatsProps
 
   return (
     <div className="mx-auto max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="mb-8 flex items-center justify-between border-b border-tertiary pb-4">
+      <div className="mb-12 flex items-center justify-between border-b border-tertiary pb-8">
         <div>
-          <h2 className="font-display text-2xl text-text-primary">Your Progress</h2>
-          <p className="text-sm text-text-secondary mt-1">Consistency and alignment metrics</p>
+          <h2 className="font-display text-2xl text-text-primary mb-4">Your Progress</h2>
+          <p className="text-sm text-text-secondary mt-2">Consistency and alignment metrics</p>
         </div>
         <button
           onClick={onClose}

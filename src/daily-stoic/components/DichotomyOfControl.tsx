@@ -57,18 +57,18 @@ export function DichotomyOfControl() {
   const upToMe = worries.filter((w) => w.category === 'up-to-me');
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <div className="text-center mb-16">
-        <h2 className="mb-4 font-display text-3xl text-text-primary flex items-center justify-center gap-3">
+    <div className="mx-auto max-w-2xl flex flex-col gap-10">
+      <div className="text-center flex flex-col items-center gap-6">
+        <h2 className="font-display text-3xl text-text-primary flex items-center justify-center gap-3">
           <Scale size={32} className="text-text-secondary" />
           Spheres of Choice
         </h2>
-        <p className="text-text-secondary mt-6 leading-relaxed">
+        <p className="text-text-secondary leading-relaxed max-w-xl italic text-lg">
           "Some things are in our control and others not. Things in our control are opinion, pursuit, desire, aversion... Things not in our control are body, property, reputation, command..." — Epictetus
         </p>
       </div>
 
-      <form onSubmit={handleAddWorry} className="mt-12 mb-16 flex gap-4">
+      <form onSubmit={handleAddWorry} className="flex gap-4">
         <input
           type="text"
           value={newWorry}
@@ -80,8 +80,8 @@ export function DichotomyOfControl() {
       </form>
 
       {unassigned.length > 0 && (
-        <div className="mb-16 space-y-6">
-          <h3 className="font-display text-xl text-text-primary mb-10 border-b border-tertiary pb-4">Unsorted Anxieties</h3>
+        <div className="flex flex-col gap-6">
+          <h3 className="font-display text-xl text-text-primary mb-4 border-b border-tertiary pb-4">Unsorted Anxieties</h3>
           {unassigned.map((worry) => (
             <div 
               key={worry.id} 
@@ -115,8 +115,8 @@ export function DichotomyOfControl() {
       )}
 
       {upToMe.length > 0 && (
-        <div className="space-y-6">
-          <h3 className="font-display text-xl text-text-primary mb-10 border-b border-tertiary pb-4">Actionable Concerns</h3>
+        <div className="flex flex-col gap-6">
+          <h3 className="font-display text-xl text-text-primary mb-4 border-b border-tertiary pb-4">Actionable Concerns</h3>
           {upToMe.map((worry) => (
             <div 
               key={worry.id} 

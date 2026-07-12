@@ -419,9 +419,9 @@ export default function App() {
         )}
 
         {(route === '' || route === '/') && (
-          <>
+          <div className="flex flex-col gap-8">
             {schemaErrors.length > 0 && (
-              <div className="mb-6 rounded-lg bg-background-secondary border border-caution/40 p-4" role="alert">
+              <div className="rounded-lg bg-background-secondary border border-caution/40 p-4" role="alert">
                 <div className="flex gap-3">
                   <span className="text-caution">⚠️</span>
                   <div>
@@ -436,8 +436,7 @@ export default function App() {
                 </div>
               </div>
             )}
-
-            <section className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-lg bg-background-secondary p-4 sm:p-6 border border-tertiary">
+            <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-lg bg-background-secondary p-4 sm:p-6 border border-tertiary">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium text-text-secondary">Day of Year</span>
@@ -477,22 +476,24 @@ export default function App() {
               </div>
             </section>
 
-            <div className="my-12 flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="🔍 Search maxims by keyword (e.g. Anxiety, Gratitude, Seneca)..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 rounded-md border border-secondary bg-background-secondary px-3 py-2 text-text-primary outline-none focus-visible:border-accent"
-              />
-              {searchQuery && (
-                <Button variant="ghost" size="sm" onClick={() => setSearchQuery('')}>
-                  Clear
-                </Button>
-              )}
+            <div className="rounded-lg bg-background-secondary p-4 border border-tertiary">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="🔍 Search maxims by keyword (e.g. Anxiety, Gratitude, Seneca)..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1 rounded-md border border-secondary bg-background-tertiary px-3 py-2 text-text-primary outline-none focus-visible:border-accent"
+                />
+                {searchQuery && (
+                  <Button variant="ghost" size="sm" onClick={() => setSearchQuery('')}>
+                    Clear
+                  </Button>
+                )}
+              </div>
             </div>
 
-            <blockquote className="my-12 rounded-lg bg-background-secondary p-8 border-l-4 border-l-accent shadow-sm">
+            <blockquote className="rounded-lg bg-background-secondary p-8 border-l-4 border-l-accent shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <p className="font-display text-2xl text-text-primary mb-4">“{quote.quote}”</p>
                 <div className="flex items-center gap-1 shrink-0">
@@ -536,7 +537,7 @@ export default function App() {
               databaseId={databaseId}
               onSaveComplete={loadReflectionsAndCheckStreak}
             />
-          </>
+          </div>
         )}
 
         {route === '/memento' && (
