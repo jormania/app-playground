@@ -1165,6 +1165,9 @@ export default function Journal({
                   <Scale size={20} className="text-text-secondary" />
                   Spheres of Choice (Dichotomy)
                 </h3>
+                <p className="text-sm text-text-secondary mb-4">
+                  Review the concerns you sorted today. Actionable items are Up to Me; external factors are Not Up to Me.
+                </p>
                 
                 <div className="space-y-6">
                   {/* Part 1: Resolve Actionable Concerns */}
@@ -1200,60 +1203,54 @@ export default function Journal({
                     </div>
                   )}
 
-                  {/* Divider between parts if both exist */}
-                  {activeUpToMe.length > 0 && (todaysNotUpToMe.length > 0 || fateInput !== undefined) && (
-                    <div className="border-t border-tertiary/60 my-4" />
-                  )}
-
-                  {/* Part 2: Reframe today's Externals & Amor Fati */}
-                  <div className="space-y-4">
-                    {todaysNotUpToMe.length > 0 && (
-                      <div className="rounded-lg border border-energy/30 bg-energy/5 p-4 sm:p-5">
-                        <h4 className="text-sm font-semibold text-energy flex items-center gap-2 mb-2">
-                          <span>☁</span> Reframe today's Externals
-                        </h4>
-                        <p className="text-xs text-text-secondary mb-3">
-                          Today you recognized these factors as out of your control. Select one or more to construct your Amor Fati reframe:
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {todaysNotUpToMe.map(w => {
-                            const isSelected = selectedReframeIds.includes(w.id);
-                            return (
-                              <button
-                                key={w.id}
-                                type="button"
-                                onClick={() => handleToggleReframeWorry(w.id)}
-                                className={cn(
-                                  "text-xs rounded px-2.5 py-1 text-left border transition-all duration-200 flex items-center gap-1.5",
-                                  isSelected
-                                    ? "border-energy bg-energy/15 text-energy font-medium"
-                                    : "text-text-primary bg-background-secondary border-tertiary hover:border-energy"
-                                )}
-                              >
-                                <span>{isSelected ? '✓' : '○'}</span>
-                                <span>"{w.text}"</span>
-                              </button>
-                            );
-                          })}
-                        </div>
+                  {/* Part 2: Reframe today's Externals */}
+                  {todaysNotUpToMe.length > 0 && (
+                    <div className="rounded-lg border border-energy/30 bg-energy/5 p-4 sm:p-5">
+                      <h4 className="text-sm font-semibold text-energy flex items-center gap-2 mb-2">
+                        <span>☁</span> Reframe today's Externals
+                      </h4>
+                      <p className="text-xs text-text-secondary mb-3">
+                        Today you recognized these factors as out of your control. Select one or more to construct your Amor Fati reframe:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {todaysNotUpToMe.map(w => {
+                          const isSelected = selectedReframeIds.includes(w.id);
+                          return (
+                            <button
+                              key={w.id}
+                              type="button"
+                              onClick={() => handleToggleReframeWorry(w.id)}
+                              className={cn(
+                                "text-xs rounded px-2.5 py-1 text-left border transition-all duration-200 flex items-center gap-1.5",
+                                isSelected
+                                  ? "border-energy bg-energy/15 text-energy font-medium"
+                                  : "text-text-primary bg-background-secondary border-tertiary hover:border-energy"
+                              )}
+                            >
+                              <span>{isSelected ? '✓' : '○'}</span>
+                              <span>"{w.text}"</span>
+                            </button>
+                          );
+                        })}
                       </div>
-                    )}
-
-                    <AmorFatiControl
-                      fateInput={fateInput}
-                      onFateInputChange={(val) => {
-                        setFateInput(val);
-                        setIsSaved(false);
-                      }}
-                      acceptanceTags={acceptanceTags}
-                      onAcceptanceTagsChange={(tags) => {
-                        setAcceptanceTags(tags);
-                        setIsSaved(false);
-                      }}
-                    />
-                  </div>
+                    </div>
+                  )}
                 </div>
               </section>
+
+              {/* Amor Fati Card */}
+              <AmorFatiControl
+                fateInput={fateInput}
+                onFateInputChange={(val) => {
+                  setFateInput(val);
+                  setIsSaved(false);
+                }}
+                acceptanceTags={acceptanceTags}
+                onAcceptanceTagsChange={(tags) => {
+                  setAcceptanceTags(tags);
+                  setIsSaved(false);
+                }}
+              />
 
               {/* Cultivating Virtue Card */}
               <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md hover:shadow-lg transition-all duration-300">
@@ -1261,6 +1258,9 @@ export default function Journal({
                   <Shield size={20} className="text-text-secondary" />
                   Cultivating Virtue
                 </h3>
+                <p className="text-sm text-text-secondary mb-4">
+                  Identify and commit to the core Stoic virtues—Wisdom, Courage, Justice, and Temperance—to guide your behavior and actions.
+                </p>
                 
                 <div className="space-y-6">
                   <div className="rounded-lg border border-success/30 bg-success/5 p-4 sm:p-5">

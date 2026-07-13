@@ -40,11 +40,11 @@ export default function AmorFatiControl({
   };
 
   return (
-    <div className="rounded-lg border border-energy/30 bg-energy/5 p-4 sm:p-5">
-      <h4 className="text-sm font-semibold text-energy flex items-center gap-2 mb-2">
-        <span>🍂</span> Amor Fati (Love of Fate)
-      </h4>
-      <p className="text-xs text-text-secondary mb-4">
+    <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md hover:shadow-lg transition-all duration-300">
+      <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
+        <span aria-hidden="true" className="text-xl">🍂</span> Amor Fati (Love of Fate)
+      </h3>
+      <p className="text-sm text-text-secondary mb-4">
         Frame today's resistances as necessary constraints to be embraced rather than fought.
       </p>
 
@@ -55,11 +55,16 @@ export default function AmorFatiControl({
           value={fateInput}
           onChange={(e) => onFateInputChange(e.target.value)}
           placeholder="e.g. Flight delay, difficult conversation, unexpected chore..."
-          className="border-tertiary bg-background-secondary"
+          className="border-tertiary bg-background-tertiary"
         />
 
-        <div>
-          <label className="block text-xs font-semibold text-text-secondary tracking-wider uppercase mb-2">Challenge Types</label>
+        <div className="rounded-lg border border-energy/30 bg-energy/5 p-4 sm:p-5 mt-2">
+          <h4 className="text-sm font-semibold text-energy flex items-center gap-2 mb-2">
+            <span>☁</span> Challenge Types
+          </h4>
+          <p className="text-xs text-text-secondary mb-3">
+            Select the categories that best describe this challenge:
+          </p>
           <div className="flex flex-wrap gap-2">
             {AVAILABLE_TAGS.map((tag) => {
               const active = acceptanceTags.includes(tag);
@@ -85,6 +90,6 @@ export default function AmorFatiControl({
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
