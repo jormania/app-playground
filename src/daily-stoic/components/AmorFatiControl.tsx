@@ -6,6 +6,7 @@ import {
   Clock, 
   Lock 
 } from 'lucide-react';
+import { cn } from '../lib/cn';
 
 interface AmorFatiControlProps {
   fateInput: string;
@@ -67,13 +68,15 @@ export default function AmorFatiControl({
                   key={tag}
                   type="button"
                   onClick={() => handleTagToggle(tag)}
-                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all border flex items-center gap-2 ${
-                    active 
-                      ? 'border-accent bg-accent text-background-primary shadow-sm' 
-                      : 'border-tertiary bg-background-tertiary text-text-secondary hover:border-secondary hover:text-text-primary'
-                  }`}
+                  className={cn(
+                    "text-xs rounded px-2.5 py-1 text-left border transition-all duration-200 flex items-center gap-1.5",
+                    active
+                      ? "border-accent bg-accent/15 text-accent font-medium"
+                      : "text-text-primary bg-background-secondary border-tertiary hover:border-accent"
+                  )}
                 >
-                  <Icon size={14} strokeWidth={active ? 2.5 : 2} />
+                  <span>{active ? '✓' : '○'}</span>
+                  <Icon size={12} strokeWidth={active ? 2.5 : 2} />
                   <span>{tag}</span>
                 </button>
               );

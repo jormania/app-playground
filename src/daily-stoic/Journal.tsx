@@ -85,6 +85,7 @@ export default function Journal({
   const localMoodKey = `daily-stoic:mood-${dayOfYear}`;
   const localPassionsKey = `daily-stoic:passions-${dayOfYear}`;
   const localCreatedTimeKey = `daily-stoic:created-time-${dayOfYear}`;
+  const localVirtueKey = `daily-stoic:selected-virtue-${dayOfYear}`;
 
   // Active Journey Step (1: Focus, 2: Meditate, 3: Prepare, 4: Reflect)
   const [activeStep, setActiveStep] = useState<number>(() => {
@@ -125,10 +126,7 @@ export default function Journal({
   // Enchiridion random recall state
   const [recalledMaxim, setRecalledMaxim] = useState<any>(null);
   const [selectedVirtue, setSelectedVirtue] = useState<string | null>(null);
-
-  useEffect(() => {
-    setSelectedVirtue(null);
-  }, [dayOfYear]);
+  const [savedVirtue, setSavedVirtue] = useState<string | null>(null);
 
   // Sync worries with props on load or day change
   useEffect(() => {
@@ -239,6 +237,9 @@ export default function Journal({
           savedPassionsVal = [];
         }
 
+        const savedVirtueVal = localStorage.getItem(localVirtueKey) || null;
+        setSelectedVirtue(savedVirtueVal);
+        setSavedVirtue(savedVirtueVal);
         setSavedReflection(savedRef);
         setFateInput(localStorage.getItem(localFateKey) || '');
         setSavedFateInput(localStorage.getItem(localFateKey) || '');
@@ -281,6 +282,9 @@ export default function Journal({
             setSenecaQ2('');
             setSenecaQ3('');
           }
+          const savedVirtueVal = localStorage.getItem(localVirtueKey) || null;
+          setSelectedVirtue(savedVirtueVal);
+          setSavedVirtue(savedVirtueVal);
           setFateInput(result.fateInput || '');
           setSavedFateInput(result.fateInput || '');
           setAcceptanceTags(result.acceptanceTags || []);
@@ -320,6 +324,8 @@ export default function Journal({
             setExistingPageId(undefined);
             setWorries([]);
             setSavedWorries([]);
+            setSelectedVirtue(null);
+            setSavedVirtue(null);
             setIsSaved(true);
           } else {
             // Fallback to local storage
@@ -340,6 +346,7 @@ export default function Journal({
               localPassionsBackup = [];
             }
 
+            const localVirtueBackup = localStorage.getItem(localVirtueKey) || null;
             setReflection(localBackup);
             setSavedReflection('');
             setFateInput(localFateBackup);
@@ -351,6 +358,8 @@ export default function Journal({
             setSavedMorningIntentions('');
             setMood(localMoodBackup);
             setSavedMood('');
+            setSelectedVirtue(localVirtueBackup);
+            setSavedVirtue(null);
             setExistingPageId(undefined);
 
             const savedWorriesLocal = localStorage.getItem('daily-stoic:dichotomy');
@@ -361,7 +370,7 @@ export default function Journal({
             setWorries(parsedWorriesLocal);
             setSavedWorries(parsedWorriesLocal);
 
-            const empty = localBackup === '' && localFateBackup === '' && localTagsBackup.length === 0 && localIntentionsBackup === '' && localMoodBackup === '' && localPassionsBackup.length === 0;
+            const empty = localBackup === '' && localFateBackup === '' && localTagsBackup.length === 0 && localIntentionsBackup === '' && localMoodBackup === '' && localPassionsBackup.length === 0 && (localVirtueBackup === null || localVirtueBackup === '');
             setIsSaved(empty);
           }
         }
@@ -385,12 +394,14 @@ export default function Journal({
         } catch {
           localPassionsBackup = [];
         }
+        const localVirtueBackup = localStorage.getItem(localVirtueKey) || null;
         setReflection(localBackup);
         setFateInput(localFateBackup);
         setAcceptanceTags(localTagsBackup);
         setPassions(localPassionsBackup);
         setMorningIntentions(localIntentionsBackup);
         setMood(localMoodBackup);
+        setSelectedVirtue(localVirtueBackup);
 
         const savedWorriesLocal = localStorage.getItem('daily-stoic:dichotomy');
         let parsedWorriesLocal: Worry[] = [];
@@ -409,13 +420,15 @@ export default function Journal({
     return () => {
       active = false;
     };
-  }, [dayOfYear, token, databaseId, isNotionConfigured, localStorageKey, localFateKey, localTagsKey, localIntentionsKey, localMoodKey, localPassionsKey]);
+  }, [dayOfYear, token, databaseId, isNotionConfigured, localStorageKey, localFateKey, localTagsKey, localIntentionsKey, localMoodKey, localPassionsKey, localVirtueKey]);
 
   const handleSave = async () => {
     const cleanedText = reflection.trim();
     const cleanedFate = fateInput.trim();
     const cleanedIntentions = morningIntentions.trim();
     
+    localStorage.setItem(localVirtueKey, selectedVirtue || '');
+
     // Update local storage cache (only when offline)
     if (!isNotionConfigured) {
       localStorage.setItem(localStorageKey, cleanedText);
@@ -436,6 +449,7 @@ export default function Journal({
       setSavedMorningIntentions(cleanedIntentions);
       setSavedMood(mood);
       setSavedWorries([...worries]);
+      setSavedVirtue(selectedVirtue);
       setIsSaved(true);
       triggerHaptic('success');
       if (onSaveComplete) onSaveComplete();
@@ -486,6 +500,7 @@ export default function Journal({
         parsedWorries = worries;
       }
       setSavedWorries(parsedWorries);
+      setSavedVirtue(selectedVirtue);
 
       setIsSaved(true);
       triggerHaptic('success');
@@ -548,6 +563,7 @@ export default function Journal({
 
   const passionsChanged = JSON.stringify(passions.slice().sort()) !== JSON.stringify(savedPassions.slice().sort());
   const worriesChanged = JSON.stringify(worries) !== JSON.stringify(savedWorries);
+  const virtueChanged = selectedVirtue !== savedVirtue;
 
   const hasChanges =
     reflection.trim() !== savedReflection ||
@@ -555,7 +571,8 @@ export default function Journal({
     morningIntentions.trim() !== savedMorningIntentions ||
     mood !== savedMood ||
     passionsChanged ||
-    worriesChanged;
+    worriesChanged ||
+    virtueChanged;
 
   const moodOptions = [
     { label: <SmilePlus size={24} strokeWidth={2} />, value: 'Great' },
@@ -1245,44 +1262,56 @@ export default function Journal({
                   Cultivating Virtue
                 </h3>
                 
-                <div className="space-y-4">
-                  <p className="text-xs text-text-secondary leading-relaxed">
-                    Stoicism is built on four cardinal virtues:
-                  </p>
-                  <ul className="text-xs text-text-secondary space-y-2 pl-4 list-disc leading-relaxed">
-                    <li><strong>Wisdom (Sophia)</strong>: The ability to navigate complex situations in a logical, informed, and calm manner. Understanding what is good, bad, or indifferent.</li>
-                    <li><strong>Courage (Andreia)</strong>: Standing firm and acting rightly in the face of fear, adversity, pain, or difficulty.</li>
-                    <li><strong>Justice (Dikaiosyne)</strong>: Treating others with fairness, benevolence, and public duty. Stoics believe we are made for the collective good of the community.</li>
-                    <li><strong>Temperance (Sophrosyne)</strong>: Practicing self-control, moderation, and discipline. Knowing the difference between enough and too much.</li>
-                  </ul>
-                  
-                  <div className="border-t border-tertiary/60 my-3 pt-3">
-                    <p className="text-sm font-medium text-text-primary mb-2">
-                      Which virtue was most needed today?
+                <div className="space-y-6">
+                  <div className="rounded-lg border border-accent/30 bg-accent/5 p-4 sm:p-5">
+                    <h4 className="text-sm font-semibold text-accent flex items-center gap-2 mb-2">
+                      <span>🛡</span> Four Cardinal Virtues
+                    </h4>
+                    <p className="text-xs text-text-secondary mb-3">
+                      Select the Stoic virtue that was most needed or practiced in today's situations:
                     </p>
+                    
                     <div className="flex flex-wrap gap-2">
-                      {['Wisdom', 'Courage', 'Justice', 'Temperance'].map((v) => {
-                        const isSelected = selectedVirtue === v;
+                      {[
+                        { name: 'Wisdom', desc: 'Sophia: Navigating situations logically, informed, and calmly.' },
+                        { name: 'Courage', desc: 'Andreia: Standing firm and acting rightly in the face of fear or difficulty.' },
+                        { name: 'Justice', desc: 'Dikaiosyne: Treating others with fairness, benevolence, and public duty.' },
+                        { name: 'Temperance', desc: 'Sophrosyne: Practicing self-control, moderation, and discipline.' }
+                      ].map((v) => {
+                        const isSelected = selectedVirtue === v.name;
                         return (
                           <button
-                            key={v}
+                            key={v.name}
                             type="button"
                             onClick={() => {
-                              setSelectedVirtue(isSelected ? null : v);
+                              const newVal = isSelected ? null : v.name;
+                              setSelectedVirtue(newVal);
+                              setIsSaved(false);
                               triggerHaptic('light');
                             }}
+                            title={v.desc}
                             className={cn(
-                              "text-xs rounded px-3 py-1.5 border transition-all duration-200 font-medium",
+                              "text-xs rounded px-2.5 py-1 text-left border transition-all duration-200 flex items-center gap-1.5",
                               isSelected
-                                ? "border-accent bg-accent text-background-primary shadow-sm"
+                                ? "border-accent bg-accent/15 text-accent font-medium"
                                 : "text-text-primary bg-background-secondary border-tertiary hover:border-accent"
                             )}
                           >
-                            {v}
+                            <span>{isSelected ? '✓' : '○'}</span>
+                            <span>{v.name}</span>
                           </button>
                         );
                       })}
                     </div>
+                    
+                    {selectedVirtue && (
+                      <div className="mt-3 text-xs text-text-secondary italic border-l-2 border-accent pl-3 pt-0.5 pb-0.5 animate-in fade-in duration-200">
+                        {selectedVirtue === 'Wisdom' && 'Wisdom (Sophia): The ability to navigate complex situations in a logical, informed, and calm manner. Understanding what is good, bad, or indifferent.'}
+                        {selectedVirtue === 'Courage' && 'Courage (Andreia): Standing firm and acting rightly in the face of fear, adversity, pain, or difficulty.'}
+                        {selectedVirtue === 'Justice' && 'Justice (Dikaiosyne): Treating others with fairness, benevolence, and public duty. Stoics believe we are made for the collective good of the community.'}
+                        {selectedVirtue === 'Temperance' && 'Temperance (Sophrosyne): Practicing self-control, moderation, and discipline. Knowing the difference between enough and too much.'}
+                      </div>
+                    )}
                   </div>
                 </div>
               </section>
