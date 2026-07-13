@@ -10,7 +10,6 @@ import {
   Calendar,
   Frown
 } from 'lucide-react';
-import { triggerHaptic } from '../../shared/haptics';
 
 interface AmorFatiDashboardProps {
   recentReflections: ReflectionRecord[];
@@ -60,8 +59,6 @@ const ALL_TAGS = ['Situation', 'Outcome', 'People', 'Time', 'Limitation'];
 export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFatiDashboardProps) {
   const [insightPeriod, setInsightPeriod] = useState<'30' | '90' | '365' | 'all'>('30');
   const [demoMode, setDemoMode] = useState(false);
-  const [retroNotes, setRetroNotes] = useState<Record<number, string>>({});
-  const [retroRatings, setRetroRatings] = useState<Record<number, 'trivial' | 'manageable' | 'heavy'>>({});
 
   // 1. Calculate Real Statistics
   const stats = useMemo(() => {
@@ -179,21 +176,6 @@ export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFa
   // Dominant Tag advice mapping
   const dominantTagInfo = activeStats.dominantTag ? TAG_INFO[activeStats.dominantTag] : null;
 
-  // Rating handler
-  const handleRateObstacle = (quoteId: number, rating: 'trivial' | 'manageable' | 'heavy') => {
-    const key = `daily-stoic:retro-rating-${quoteId}`;
-    localStorage.setItem(key, rating);
-    setRetroRatings(prev => ({ ...prev, [quoteId]: rating }));
-    triggerHaptic('success');
-  };
-
-  // Notes handler
-  const handleSaveNotes = (quoteId: number, notes: string) => {
-    const key = `daily-stoic:retro-notes-${quoteId}`;
-    localStorage.setItem(key, notes);
-    setRetroNotes(prev => ({ ...prev, [quoteId]: notes }));
-  };
-
   // Load rating values from localStorage
   const getRating = (quoteId: number): 'trivial' | 'manageable' | 'heavy' | null => {
     if (demoMode) {
@@ -201,7 +183,7 @@ export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFa
       if (quoteId === 72) return 'trivial';
     }
     const val = localStorage.getItem(`daily-stoic:retro-rating-${quoteId}`);
-    return (val as any) || retroRatings[quoteId] || null;
+    return (val as any) || null;
   };
 
   const getNotes = (quoteId: number): string => {
@@ -209,7 +191,7 @@ export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFa
       if (quoteId === 132) return 'Actually it turned out great. I spent the delay chatting with another developer who became our main partner.';
       if (quoteId === 72) return 'The rejection forced us to pivot. The new design works much better and has 2x speed.';
     }
-    return localStorage.getItem(`daily-stoic:retro-notes-${quoteId}`) || retroNotes[quoteId] || '';
+    return localStorage.getItem(`daily-stoic:retro-notes-${quoteId}`) || '';
   };
 
   return (
@@ -384,7 +366,7 @@ export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFa
               ⌛ Trivialized Obstacles
             </h3>
             <p className="text-xs text-text-secondary mb-6 leading-relaxed">
-              "30 days ago, you thought this was a major obstacle." Looking back at past "catastrophes" is one of the best teachers of Amor Fati. Update your perspective below:
+              "30 days ago, you thought this was a major obstacle." Looking back at past "catastrophes" is one of the best teachers of Amor Fati. Review how your perspective has shifted:
             </p>
 
             <div className="space-y-6">
@@ -408,69 +390,43 @@ export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFa
                       </div>
                     </div>
 
-                    <p className="text-sm text-text-primary bg-background-tertiary p-3 border border-tertiary rounded-lg leading-relaxed">
+                    <p className="text-sm text-text-primary bg-background-tertiary p-3 border border-tertiary rounded-lg leading-relaxed italic">
                       "{w.fateInput}"
                     </p>
 
-                    {/* Retrospective perspective buttons */}
-                    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between pt-1">
-                      <span className="text-xs text-text-secondary font-medium">How trivial does this seem today?</span>
-                      <div className="flex gap-1.5 w-full sm:w-auto overflow-x-auto shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleRateObstacle(w.quoteId, 'trivial')}
-                          className={cn(
-                            "flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border transition-colors flex-1 sm:flex-none justify-center",
-                            currentRating === 'trivial'
-                              ? "bg-success border-success text-background-primary"
-                              : "bg-background-secondary border-tertiary text-text-secondary hover:text-success hover:border-success"
+                    {/* Retrospective Perspective & Notes */}
+                    <div className="space-y-2.5">
+                      {currentRating && (
+                        <div className="flex items-center gap-2 text-xs text-text-secondary">
+                          <span className="font-medium">Hindsight Perspective:</span>
+                          {currentRating === 'trivial' && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-success/15 text-success border border-success/30 flex items-center gap-1">
+                              <Smile size={10} /> Trivial
+                            </span>
                           )}
-                        >
-                          <Smile size={12} />
-                          Trivial
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRateObstacle(w.quoteId, 'manageable')}
-                          className={cn(
-                            "flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border transition-colors flex-1 sm:flex-none justify-center",
-                            currentRating === 'manageable'
-                              ? "bg-accent border-accent text-background-primary"
-                              : "bg-background-secondary border-tertiary text-text-secondary hover:text-accent hover:border-accent"
+                          {currentRating === 'manageable' && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-accent/15 text-accent border border-accent/30 flex items-center gap-1">
+                              <ChevronRight size={10} /> Manageable
+                            </span>
                           )}
-                        >
-                          <ChevronRight size={12} />
-                          Manageable
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRateObstacle(w.quoteId, 'heavy')}
-                          className={cn(
-                            "flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border transition-colors flex-1 sm:flex-none justify-center",
-                            currentRating === 'heavy'
-                              ? "bg-energy border-energy text-background-primary"
-                              : "bg-background-secondary border-tertiary text-text-secondary hover:text-energy hover:border-energy"
+                          {currentRating === 'heavy' && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-energy/15 text-energy border border-energy/30 flex items-center gap-1">
+                              <Frown size={10} /> Still Heavy
+                            </span>
                           )}
-                        >
-                          <Frown size={12} />
-                          Still Heavy
-                        </button>
-                      </div>
-                    </div>
+                        </div>
+                      )}
 
-                    {/* Retro notes text input */}
-                    <div className="space-y-1">
-                      <label htmlFor={`retro-notes-${w.quoteId}`} className="block text-[10px] font-semibold text-text-secondary tracking-wider uppercase">
-                        Retrospective Notes / Lessons learned
-                      </label>
-                      <textarea
-                        id={`retro-notes-${w.quoteId}`}
-                        rows={1}
-                        placeholder="Reframe notes today: 'It helped me develop patience...' or 'Totally fine now...'"
-                        value={currentNotes}
-                        onChange={(e) => handleSaveNotes(w.quoteId, e.target.value)}
-                        className="w-full resize-none rounded bg-background-primary/40 border border-tertiary p-2 text-xs text-text-primary placeholder:text-text-secondary/50 outline-none focus:border-accent transition-colors"
-                      />
+                      {currentNotes ? (
+                        <div className="rounded border border-tertiary/60 bg-background-primary/40 p-3 text-xs text-text-secondary leading-relaxed">
+                          <span className="font-semibold block text-[10px] uppercase tracking-wider text-text-secondary mb-1">Lessons Learned</span>
+                          “{currentNotes}”
+                        </div>
+                      ) : (
+                        <div className="rounded border border-tertiary/30 bg-background-primary/20 p-3 text-xs text-text-secondary/70 italic leading-relaxed">
+                          Reflect: Has this situation faded in importance? How did it teach you patience, acceptance, or wisdom?
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

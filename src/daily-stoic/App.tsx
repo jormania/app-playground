@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import html2canvas from 'html2canvas';
 import { Button } from './components/Button';
-import AppGuideNote from './components/AppGuideNote';
 import Onboarding from './components/Onboarding';
 import Journal from './Journal';
 import Settings from './Settings';
@@ -930,39 +929,47 @@ export default function App() {
         )}
 
         {route === '/enchiridion' && (
-          <div className="mx-auto max-w-2xl">
-            <h2 className="mb-2 font-display text-2xl text-text-primary">📓 The Enchiridion (Handbook)</h2>
-            <p className="mb-6 text-text-secondary">
-              A curated selection of favorited stoic maxims for rapid reference during high-stress moments.
-            </p>
-            
-            <div className="mb-6">
-              <AppGuideNote summary="What is the Enchiridion?">
-                <p>
-                  Epictetus's original <em>Enchiridion</em> translates to "handbook" or "ready at hand." 
-                  It was designed to be kept close, a quick reference for stressful moments. By favoriting quotes, 
-                  you are building your own personal handbook of principles that resonate with you most.
-                </p>
-              </AppGuideNote>
+          <div className="mx-auto max-w-4xl rounded-xl bg-background-secondary border border-tertiary p-6 sm:p-8 animate-in fade-in duration-500">
+            <div className="mb-8 text-center">
+              <h3 className="mb-3 font-display text-3xl text-text-primary flex items-center justify-center gap-3">
+                <BookmarkIcon size={28} className="text-text-secondary" />
+                The Enchiridion
+              </h3>
+              <p className="text-sm text-text-secondary max-w-md mx-auto leading-relaxed">
+                "Don’t explain your philosophy. Embody it." — Epictetus
+              </p>
+            </div>
+
+            <div className="mb-8 rounded-xl border border-accent/25 bg-accent-soft p-5 sm:p-6 text-center max-w-2xl mx-auto shadow-sm animate-in fade-in zoom-in-95 duration-300">
+              <span className="text-[10px] uppercase font-mono tracking-widest font-semibold text-accent/80 block">Stoic Ready-at-Hand Handbook</span>
+              <h4 className="font-display text-xl sm:text-2xl text-text-primary mt-1">
+                Your handbook contains <span className="text-accent font-bold underline decoration-2 decoration-accent/40 underline-offset-4">{favoritedMaxims.length}</span> principles.
+              </h4>
+              <p className="text-sm text-text-secondary mt-3 leading-relaxed max-w-md mx-auto italic">
+                Epictetus's original Enchiridion translates to "handbook" or "ready at hand." Keep your favorited maxims here for rapid reference during high-stress moments.
+              </p>
             </div>
 
             {favoritedMaxims.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-tertiary p-12 text-center bg-background-secondary mt-8">
+              <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-tertiary p-12 text-center bg-background-secondary/50 mt-8 max-w-2xl mx-auto">
                 <img src="/daily-stoic-empty-state.png" alt="Empty handbook" className="w-32 h-32 mb-4 object-contain opacity-80" />
                 <h3 className="font-display text-xl text-text-primary mb-2">Your handbook is empty</h3>
-                <p className="text-text-secondary">
-                  Heart quotes on the Daily Reflection page to save them here for rapid reference during high-stress moments.
+                <p className="text-sm text-text-secondary max-w-sm">
+                  Heart quotes on the Daily Reflection page to save them here for rapid reference.
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
                 {favoritedMaxims.map((q) => {
                   const index = q.day;
                   return (
-                    <div key={index} className="rounded-lg bg-background-secondary p-5 border border-tertiary">
-                      <p className="mb-3 font-display text-lg text-text-primary">“{q.quote}”</p>
-                      <div className="flex items-center justify-between text-sm text-text-secondary">
-                        <span>— {q.author}, {q.source} (Day {index})</span>
+                    <div key={index} className="rounded-xl bg-background-tertiary p-6 border border-tertiary flex flex-col justify-between hover:shadow-md transition-all duration-300 relative group">
+                      <div className="mb-4">
+                        <span className="text-[10px] font-mono text-text-secondary/60 block mb-2">DAY {index}</span>
+                        <p className="font-display text-base text-text-primary leading-relaxed">“{q.quote}”</p>
+                      </div>
+                      <div className="flex items-center justify-between border-t border-tertiary/60 pt-4 text-xs text-text-secondary mt-auto">
+                        <span className="italic font-medium">— {q.author}, {q.source}</span>
                         <button
                           onClick={async () => {
                             triggerHaptic('light');
@@ -995,10 +1002,11 @@ export default function App() {
                               await loadLocalStorageStreak(today);
                             }
                           }}
-                          className="text-caution hover:underline"
+                          className="flex items-center gap-1 text-energy hover:text-energy/80 font-medium transition-colors p-1"
                           aria-label="Remove favorite"
                         >
-                          Remove
+                          <HeartIcon size={14} className="fill-energy text-energy" />
+                          <span>Remove</span>
                         </button>
                       </div>
                     </div>
