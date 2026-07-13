@@ -21,7 +21,6 @@ import { useHashRoute } from './lib/useHashRoute';
 import { cn } from './lib/cn';
 import {
   Settings as SettingsIcon,
-  Share2 as ShareIcon,
   Heart as HeartIcon,
   Scale as ScaleIcon,
   BookOpen as BookOpenIcon,
@@ -1074,7 +1073,7 @@ export default function App() {
             <div className="flex flex-col sm:flex-row gap-3 items-center justify-center pt-2">
               <Button 
                 onClick={handleShareCelebration} 
-                variant="outline" 
+                variant="secondary" 
                 className="w-full sm:w-auto flex items-center justify-center gap-2"
                 disabled={isSharingCelebration}
               >

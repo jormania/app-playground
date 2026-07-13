@@ -1,9 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Button } from './Button';
 import { cn } from '../lib/cn';
 import { Scale, CheckCircle2, CloudFog, AlertCircle, Info, Sparkles } from 'lucide-react';
-import { triggerHaptic } from '../../shared/haptics';
-import AppGuideNote from './AppGuideNote';
 
 interface Worry {
   id: string;

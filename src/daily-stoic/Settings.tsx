@@ -2,7 +2,7 @@ import { useState, useReducer } from 'react';
 import { Field } from './components/Field';
 import { Button } from './components/Button';
 import { Switch as SettingsToggle } from './components/Switch';
-import { probeConnection, fetchDatabaseProperties, validateSchema, fetchRecentReflections, clearDatabaseEntries, upgradeDatabaseSchema } from './services/NotionService';
+import { probeConnection, fetchDatabaseProperties, validateSchema, fetchRecentReflections, upgradeDatabaseSchema } from './services/NotionService';
 import { getDayOfYear } from './utils/date';
 import { createIdbKv } from '../shared/notify/idbKv';
 import { registerPeriodicSync, unregisterPeriodicSync } from '../shared/notify/periodicSync';
@@ -11,6 +11,7 @@ import { gatherDiagnostics, NotifyDiagnostics } from '../shared/notify/diagnosti
 import { useDiagnosticsReveal } from '../shared/notify/useDiagnosticsReveal';
 import { useTheme } from './lib/themeContext';
 import { triggerHaptic } from '../shared/haptics';
+import { cn } from './lib/cn';
 
 interface SettingsProps {
   onClose: () => void;
@@ -173,7 +174,7 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
     if (!window.confirm(confirmMsg)) return;
 
     setIsResetting(true);
-    triggerHaptic('medium');
+    triggerHaptic('heavy');
 
     try {
       await onResetCycle();
@@ -293,7 +294,7 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
               <span className="text-xs uppercase tracking-wider text-text-secondary font-mono">Current Palette</span>
               <span className="text-sm font-medium text-text-primary mt-0.5">{current.name}</span>
             </div>
-            <Button onClick={cycle} variant="outline" size="sm">
+            <Button onClick={cycle} variant="secondary" size="sm">
               Cycle Palette ◐
             </Button>
           </div>

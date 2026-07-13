@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from './components/Button';
 import AppGuideNote from './components/AppGuideNote';
-import { fetchReflectionForDay, upsertReflection, fetchRecentReflections } from './services/NotionService';
+import { fetchReflectionForDay, upsertReflection } from './services/NotionService';
 import { getLocalTodayStr } from './utils/date';
 import AmorFatiControl from './components/AmorFatiControl';
 import { triggerHaptic } from '../shared/haptics';
@@ -20,8 +20,6 @@ import {
   Check, 
   Heart, 
   Share2, 
-  X, 
-  Plus,
   Shield
 } from 'lucide-react';
 
@@ -105,7 +103,6 @@ export default function Journal({
   const [fateInput, setFateInput] = useState('');
   const [savedFateInput, setSavedFateInput] = useState('');
   const [acceptanceTags, setAcceptanceTags] = useState<string[]>([]);
-  const [savedAcceptanceTags, setSavedAcceptanceTags] = useState<string[]>([]);
 
   // Passions state
   const [passions, setPassions] = useState<string[]>([]);
@@ -199,7 +196,6 @@ export default function Journal({
   
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
   const [isSaved, setIsSaved] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -247,7 +243,6 @@ export default function Journal({
         setFateInput(localStorage.getItem(localFateKey) || '');
         setSavedFateInput(localStorage.getItem(localFateKey) || '');
         setAcceptanceTags(savedTags);
-        setSavedAcceptanceTags(savedTags);
         setPassions(savedPassionsVal);
         setSavedPassions(savedPassionsVal);
         setMorningIntentions(savedIntentions);
@@ -289,7 +284,6 @@ export default function Journal({
           setFateInput(result.fateInput || '');
           setSavedFateInput(result.fateInput || '');
           setAcceptanceTags(result.acceptanceTags || []);
-          setSavedAcceptanceTags(result.acceptanceTags || []);
           setPassions(result.passions || []);
           setSavedPassions(result.passions || []);
           setMorningIntentions(result.morningIntentions || '');
@@ -317,7 +311,6 @@ export default function Journal({
             setFateInput('');
             setSavedFateInput('');
             setAcceptanceTags([]);
-            setSavedAcceptanceTags([]);
             setPassions([]);
             setSavedPassions([]);
             setMorningIntentions('');
@@ -352,7 +345,6 @@ export default function Journal({
             setFateInput(localFateBackup);
             setSavedFateInput('');
             setAcceptanceTags(localTagsBackup);
-            setSavedAcceptanceTags([]);
             setPassions(localPassionsBackup);
             setSavedPassions([]);
             setMorningIntentions(localIntentionsBackup);
@@ -440,7 +432,6 @@ export default function Journal({
     if (!isNotionConfigured) {
       setSavedReflection(cleanedText);
       setSavedFateInput(cleanedFate);
-      setSavedAcceptanceTags([...acceptanceTags]);
       setSavedPassions([...passions]);
       setSavedMorningIntentions(cleanedIntentions);
       setSavedMood(mood);
@@ -481,7 +472,6 @@ export default function Journal({
 
       setSavedReflection(result.text);
       setSavedFateInput(result.fateInput || '');
-      setSavedAcceptanceTags(result.acceptanceTags || []);
       setSavedPassions(result.passions || []);
       setSavedMorningIntentions(result.morningIntentions || '');
       setSavedMood(result.mood || '');
@@ -507,60 +497,6 @@ export default function Journal({
     }
   };
 
-  const handleDownload = async () => {
-    setIsDownloading(true);
-    setError(null);
-    try {
-      let dataToDownload: any[] = [];
-
-      if (isNotionConfigured) {
-        const records = await fetchRecentReflections(token, databaseId);
-        dataToDownload = records;
-      } else {
-        const records = [];
-        for (let i = 1; i <= 366; i++) {
-          const val = localStorage.getItem(`daily-stoic:reflection-${i}`);
-          const fateVal = localStorage.getItem(`daily-stoic:fate-input-${i}`);
-          let tagsVal = [];
-          try {
-            tagsVal = JSON.parse(localStorage.getItem(`daily-stoic:acceptance-tags-${i}`) || '[]');
-          } catch {
-            tagsVal = [];
-          }
-          let passionsVal = [];
-          try {
-            passionsVal = JSON.parse(localStorage.getItem(`daily-stoic:passions-${i}`) || '[]');
-          } catch {
-            passionsVal = [];
-          }
-
-          if (val || fateVal || tagsVal.length > 0 || passionsVal.length > 0) {
-            records.push({
-              quoteId: i,
-              text: val || '',
-              fateInput: fateVal || '',
-              acceptanceTags: tagsVal,
-              passions: passionsVal,
-            });
-          }
-        }
-        dataToDownload = records;
-      }
-
-      const blob = new Blob([JSON.stringify(dataToDownload, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `daily-stoic-reflections-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err: any) {
-      setError(err.message || 'Failed to download reflections.');
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
   // Dichotomy of Control Actions
   const handleAddWorry = (e: React.FormEvent) => {
     e.preventDefault();
@@ -573,15 +509,7 @@ export default function Journal({
 
   const handleCategorize = (id: string, category: 'up-to-me' | 'not-up-to-me') => {
     setWorries((prev) => prev.map((w) => w.id === id ? { ...w, category } : w));
-    triggerHaptic('medium');
-  };
-
-  const handleResolve = (id: string) => {
-    setWorries((prev) => prev.map((w) => w.id === id ? { ...w, isResolved: true } : w));
     triggerHaptic('light');
-    setTimeout(() => {
-      setWorries((prev) => prev.filter((w) => w.id !== id));
-    }, 400);
   };
 
   const handleToggleConcernResolved = (id: string) => {
@@ -920,7 +848,7 @@ export default function Journal({
                       )}
                     </div>
                     <Button 
-                      variant="outline" 
+                      variant="secondary" 
                       size="sm" 
                       onClick={handleDrawMaxim}
                       disabled={favoritedMaxims.length === 0}

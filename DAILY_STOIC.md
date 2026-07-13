@@ -149,3 +149,9 @@ src/daily-stoic/
 ### July 13, 2026 (Bugfix - Blank Page on Load)
 - **Circular Import TDZ Fix**: Resolved a blank-page crash (`ReferenceError: Cannot access 'M' before initialization`) caused by a circular module dependency. `PassionsAnalytics.tsx` imported `AVAILABLE_PASSIONS` directly from `Journal.tsx`, which itself imports `PassionsAnalytics` transitively via `App.tsx`, creating a circular graph that caused Rollup to produce a temporal dead zone violation at runtime. Fixed by extracting `AVAILABLE_PASSIONS` into a new shared constants file [`src/daily-stoic/data/passions.ts`](src/daily-stoic/data/passions.ts). Both `Journal.tsx` (re-export for backward compat) and `PassionsAnalytics.tsx` now import from this leaf module, breaking the cycle entirely.
 
+### July 13, 2026 (Bugfix - Settings Page Runtime Crash & Type-safety Cleanup)
+- **Settings Blank Page Fix**: Resolved a runtime crash (`ReferenceError: cn is not defined`) when loading the Settings component. Fixed by importing `cn` from `./lib/cn` in [`Settings.tsx`](src/daily-stoic/Settings.tsx).
+- **TypeScript Integration**: Added `src/daily-stoic` to [`tsconfig.json`](tsconfig.json) so the app is now actively typechecked during compilation.
+- **Type-safety and Cleanup**: Fixed various compilation issues including incorrect Button variant `outline` usages, incorrect `triggerHaptic` signatures, and cleaned up several unused imports and variables across [`App.tsx`](src/daily-stoic/App.tsx), [`Journal.tsx`](src/daily-stoic/Journal.tsx), [`Settings.tsx`](src/daily-stoic/Settings.tsx), [`AmorFatiDashboard.tsx`](src/daily-stoic/components/AmorFatiDashboard.tsx), [`DichotomyOfControl.tsx`](src/daily-stoic/components/DichotomyOfControl.tsx), [`PassionsAnalytics.tsx`](src/daily-stoic/components/PassionsAnalytics.tsx), and [`NotionService.test.ts`](src/daily-stoic/services/NotionService.test.ts).
+
+

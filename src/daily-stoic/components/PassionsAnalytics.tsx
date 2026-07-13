@@ -10,8 +10,7 @@ import {
   ShieldCheck, 
   Heart,
   Scale,
-  BookOpen,
-  HelpCircle
+  BookOpen
 } from 'lucide-react';
 import { AVAILABLE_PASSIONS } from '../data/passions';
 

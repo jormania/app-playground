@@ -5,13 +5,12 @@ import { cn } from '../lib/cn';
 import { 
   Heart, 
   Info, 
-  Sparkles, 
   ChevronRight, 
   Smile, 
-  Check, 
   Calendar,
   Frown
 } from 'lucide-react';
+import { triggerHaptic } from '../../shared/haptics';
 
 interface AmorFatiDashboardProps {
   recentReflections: ReflectionRecord[];

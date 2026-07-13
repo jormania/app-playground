@@ -193,7 +193,7 @@ describe('NotionService', () => {
         dichotomy: ''
       });
 
-      const body = JSON.parse((fetchImpl.mock.calls[0][1] as any).body);
+      const body = JSON.parse((fetchImpl as any).mock.calls[0][1].body);
       expect(body.method).toBe('POST');
       expect(body.path).toBe('pages');
       expect(body.body.properties.Favorite.checkbox).toBe(true);
@@ -246,7 +246,7 @@ describe('NotionService', () => {
         dichotomy: ''
       });
 
-      const body = JSON.parse((fetchImpl.mock.calls[0][1] as any).body);
+      const body = JSON.parse((fetchImpl as any).mock.calls[0][1].body);
       expect(body.method).toBe('PATCH');
       expect(body.path).toBe('pages/existing-page-id');
     });
@@ -293,7 +293,7 @@ describe('NotionService', () => {
         }
       ]);
 
-      const body = JSON.parse((fetchImpl.mock.calls[0][1] as any).body);
+      const body = JSON.parse((fetchImpl as any).mock.calls[0][1].body);
       expect(body.method).toBe('POST');
       expect(body.path).toBe('databases/41c42bc4dfb543f49051810b3c5880fe/query');
     });
