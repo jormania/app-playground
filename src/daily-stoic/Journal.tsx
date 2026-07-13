@@ -88,19 +88,14 @@ export default function Journal({
   const localPassionsKey = `daily-stoic:passions-${dayOfYear}`;
   const localCreatedTimeKey = `daily-stoic:created-time-${dayOfYear}`;
   const localVirtueKey = `daily-stoic:selected-virtue-${dayOfYear}`;
-  const localFocusCompletedKey = `daily-stoic:focus-completed-${dayOfYear}`;
-  const localMeditateCompletedKey = `daily-stoic:meditate-completed-${dayOfYear}`;
+
 
   // Active Journey Step (1: Focus, 2: Meditate, 3: Prepare, 4: Reflect)
   const [activeStep, setActiveStep] = useState<number>(1);
 
   // States to track step completion status
-  const [focusCompleted, setFocusCompleted] = useState<boolean>(() => {
-    return localStorage.getItem(localFocusCompletedKey) === 'true';
-  });
-  const [meditateCompleted, setMeditateCompleted] = useState<boolean>(() => {
-    return localStorage.getItem(localMeditateCompletedKey) === 'true';
-  });
+  const [focusCompleted, setFocusCompleted] = useState<boolean>(false);
+  const [meditateCompleted, setMeditateCompleted] = useState<boolean>(false);
 
   // Evening Reflection (Seneca's Interrogation)
   const [reflection, setReflection] = useState('');
@@ -147,10 +142,10 @@ export default function Journal({
 
   // Reload completed states when dayOfYear changes
   useEffect(() => {
-    setFocusCompleted(localStorage.getItem(localFocusCompletedKey) === 'true');
-    setMeditateCompleted(localStorage.getItem(localMeditateCompletedKey) === 'true');
+    setFocusCompleted(false);
+    setMeditateCompleted(false);
     setActiveStep(1);
-  }, [dayOfYear, localFocusCompletedKey, localMeditateCompletedKey]);
+  }, [dayOfYear]);
 
   // Sync worries with local storage (only when offline)
   useEffect(() => {
@@ -559,10 +554,8 @@ export default function Journal({
   const handleStepNavigation = (nextStep: number) => {
     if (activeStep === 1) {
       setFocusCompleted(true);
-      localStorage.setItem(localFocusCompletedKey, 'true');
     } else if (activeStep === 2) {
       setMeditateCompleted(true);
-      localStorage.setItem(localMeditateCompletedKey, 'true');
     }
     setActiveStep(nextStep);
   };

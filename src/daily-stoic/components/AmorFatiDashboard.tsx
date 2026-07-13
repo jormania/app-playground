@@ -5,10 +5,7 @@ import { cn } from '../lib/cn';
 import { 
   Heart, 
   Info, 
-  ChevronRight, 
-  Smile, 
-  Calendar,
-  Frown
+  Calendar
 } from 'lucide-react';
 
 interface AmorFatiDashboardProps {
@@ -176,23 +173,7 @@ export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFa
   // Dominant Tag advice mapping
   const dominantTagInfo = activeStats.dominantTag ? TAG_INFO[activeStats.dominantTag] : null;
 
-  // Load rating values from localStorage
-  const getRating = (quoteId: number): 'trivial' | 'manageable' | 'heavy' | null => {
-    if (demoMode) {
-      if (quoteId === 132) return 'trivial';
-      if (quoteId === 72) return 'trivial';
-    }
-    const val = localStorage.getItem(`daily-stoic:retro-rating-${quoteId}`);
-    return (val as any) || null;
-  };
-
-  const getNotes = (quoteId: number): string => {
-    if (demoMode) {
-      if (quoteId === 132) return 'Actually it turned out great. I spent the delay chatting with another developer who became our main partner.';
-      if (quoteId === 72) return 'The rejection forced us to pivot. The new design works much better and has 2x speed.';
-    }
-    return localStorage.getItem(`daily-stoic:retro-notes-${quoteId}`) || '';
-  };
+  // Legacy rating/notes removed for simplicity
 
   return (
     <div className="mx-auto max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-500 pb-16">
@@ -371,9 +352,6 @@ export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFa
 
             <div className="space-y-6">
               {activeStats.pastObstacles.map((w, idx) => {
-                const currentRating = getRating(w.quoteId);
-                const currentNotes = getNotes(w.quoteId);
-                
                 return (
                   <div key={idx} className="border-b border-tertiary/60 pb-5 last:border-b-0 last:pb-0 space-y-3">
                     <div className="flex justify-between items-start gap-2">
@@ -394,39 +372,11 @@ export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFa
                       "{w.fateInput}"
                     </p>
 
-                    {/* Retrospective Perspective & Notes */}
+                    {/* Retrospective Insight Note */}
                     <div className="space-y-2.5">
-                      {currentRating && (
-                        <div className="flex items-center gap-2 text-xs text-text-secondary">
-                          <span className="font-medium">Hindsight Perspective:</span>
-                          {currentRating === 'trivial' && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-success/15 text-success border border-success/30 flex items-center gap-1">
-                              <Smile size={10} /> Trivial
-                            </span>
-                          )}
-                          {currentRating === 'manageable' && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-accent/15 text-accent border border-accent/30 flex items-center gap-1">
-                              <ChevronRight size={10} /> Manageable
-                            </span>
-                          )}
-                          {currentRating === 'heavy' && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-energy/15 text-energy border border-energy/30 flex items-center gap-1">
-                              <Frown size={10} /> Still Heavy
-                            </span>
-                          )}
-                        </div>
-                      )}
-
-                      {currentNotes ? (
-                        <div className="rounded border border-tertiary/60 bg-background-primary/40 p-3 text-xs text-text-secondary leading-relaxed">
-                          <span className="font-semibold block text-[10px] uppercase tracking-wider text-text-secondary mb-1">Lessons Learned</span>
-                          “{currentNotes}”
-                        </div>
-                      ) : (
-                        <div className="rounded border border-tertiary/30 bg-background-primary/20 p-3 text-xs text-text-secondary/70 italic leading-relaxed">
-                          Reflect: Has this situation faded in importance? How did it teach you patience, acceptance, or wisdom?
-                        </div>
-                      )}
+                      <div className="rounded border border-tertiary/30 bg-background-primary/20 p-3 text-xs text-text-secondary/70 italic leading-relaxed">
+                        Insight: Notice how this situation has likely faded in importance over time. Observe how it taught you patience, acceptance, or wisdom. (No action required).
+                      </div>
                     </div>
                   </div>
                 );
