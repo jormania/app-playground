@@ -20,7 +20,8 @@ import {
   Check, 
   Heart, 
   Share2, 
-  Shield
+  Shield,
+  Flame
 } from 'lucide-react';
 
 interface JournalProps {
@@ -1070,7 +1071,7 @@ export default function Journal({
               {/* Passions & Judgments Selector */}
               <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md hover:shadow-lg transition-all duration-300">
                 <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
-                  <span aria-hidden="true" className="text-xl">🔥</span> Passions & Judgments
+                  <Flame size={20} className="text-text-secondary" /> Passions & Judgments
                 </h3>
                 <p className="text-sm text-text-secondary mb-4">
                   Which dysfunctional judgments or passions did you notice in yourself today? (Select all that apply)

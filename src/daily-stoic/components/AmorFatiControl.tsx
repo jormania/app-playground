@@ -4,7 +4,8 @@ import {
   Award, 
   Users, 
   Clock, 
-  Lock 
+  Lock,
+  Heart
 } from 'lucide-react';
 import { cn } from '../lib/cn';
 
@@ -42,7 +43,7 @@ export default function AmorFatiControl({
   return (
     <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md hover:shadow-lg transition-all duration-300">
       <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
-        <span aria-hidden="true" className="text-xl">🍂</span> Amor Fati (Love of Fate)
+        <Heart size={20} className="text-text-secondary" /> Amor Fati (Love of Fate)
       </h3>
       <p className="text-sm text-text-secondary mb-4">
         Frame today's resistances as necessary constraints to be embraced rather than fought.
