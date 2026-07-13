@@ -21,7 +21,8 @@ import {
   Heart, 
   Share2, 
   Shield,
-  Flame
+  Flame,
+  HelpCircle
 } from 'lucide-react';
 
 interface JournalProps {
@@ -181,9 +182,9 @@ export default function Journal({
   // Update reflection string when Qs change
   useEffect(() => {
     const combined = [
-      senecaQ1.trim() ? `### What ailment or bad habit did I cure today?\n${senecaQ1.trim()}` : '',
-      senecaQ2.trim() ? `### What failing did I resist?\n${senecaQ2.trim()}` : '',
-      senecaQ3.trim() ? `### In what matter can I show improvement tomorrow?\n${senecaQ3.trim()}` : ''
+      senecaQ1.trim() ? `### Which of my bad habits did I catch and correct today?\n${senecaQ1.trim()}` : '',
+      senecaQ2.trim() ? `### What negative impulse or distraction did I successfully resist?\n${senecaQ2.trim()}` : '',
+      senecaQ3.trim() ? `### Where did I stumble today, and what could I do better tomorrow?\n${senecaQ3.trim()}` : ''
     ].filter(Boolean).join('\n\n');
     
     if (combined !== reflection) {
@@ -209,10 +210,10 @@ export default function Journal({
         setReflection(savedRef);
         setSavedReflection(savedRef);
         
-        if (savedRef.includes('### What ailment')) {
-          const q1Match = savedRef.match(/### What ailment or bad habit did I cure today\?\n([\s\S]*?)(?=###|$)/);
-          const q2Match = savedRef.match(/### What failing did I resist\?\n([\s\S]*?)(?=###|$)/);
-          const q3Match = savedRef.match(/### In what matter can I show improvement tomorrow\?\n([\s\S]*?)(?=###|$)/);
+        if (savedRef.includes('### What ailment') || savedRef.includes('### Which of my bad habits')) {
+          const q1Match = savedRef.match(/### (?:What ailment or bad habit did I cure today|Which of my bad habits did I catch and correct today)\?\n([\s\S]*?)(?=###|$)/);
+          const q2Match = savedRef.match(/### (?:What failing did I resist|What negative impulse or distraction did I successfully resist)\?\n([\s\S]*?)(?=###|$)/);
+          const q3Match = savedRef.match(/### (?:In what matter can I show improvement tomorrow|Where did I stumble today, and what could I do better tomorrow)\?\n([\s\S]*?)(?=###|$)/);
           
           setSenecaQ1(q1Match ? q1Match[1].trim() : '');
           setSenecaQ2(q2Match ? q2Match[1].trim() : '');
@@ -270,10 +271,10 @@ export default function Journal({
           setReflection(refText);
           setSavedReflection(refText);
           
-          if (refText.includes('### What ailment')) {
-            const q1Match = refText.match(/### What ailment or bad habit did I cure today\?\n([\s\S]*?)(?=###|$)/);
-            const q2Match = refText.match(/### What failing did I resist\?\n([\s\S]*?)(?=###|$)/);
-            const q3Match = refText.match(/### In what matter can I show improvement tomorrow\?\n([\s\S]*?)(?=###|$)/);
+          if (refText.includes('### What ailment') || refText.includes('### Which of my bad habits')) {
+            const q1Match = refText.match(/### (?:What ailment or bad habit did I cure today|Which of my bad habits did I catch and correct today)\?\n([\s\S]*?)(?=###|$)/);
+            const q2Match = refText.match(/### (?:What failing did I resist|What negative impulse or distraction did I successfully resist)\?\n([\s\S]*?)(?=###|$)/);
+            const q3Match = refText.match(/### (?:In what matter can I show improvement tomorrow|Where did I stumble today, and what could I do better tomorrow)\?\n([\s\S]*?)(?=###|$)/);
             
             setSenecaQ1(q1Match ? q1Match[1].trim() : '');
             setSenecaQ2(q2Match ? q2Match[1].trim() : '');
@@ -898,10 +899,10 @@ export default function Journal({
               </h3>
               <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md hover:shadow-lg transition-all duration-300">
                 <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
-                  <span aria-hidden="true" className="text-xl">🛡️</span> Premeditatio Malorum
+                  <Shield size={20} className="text-text-secondary" /> Premeditatio Malorum
                 </h3>
-                <p className="text-sm text-text-secondary mb-4">
-                  Visualize upcoming obstacles, difficult people, or things that might go wrong. Rehearse response with virtue.
+                <p className="text-sm text-text-secondary mb-4 leading-relaxed">
+                  Anticipate today's friction: What obstacles, difficult people, or internal weaknesses will I encounter, and how will I respond to each with clear-headed virtue?
                 </p>
                 <textarea
                   className="w-full rounded-lg bg-background-tertiary border border-tertiary p-4 text-text-primary placeholder:text-text-secondary/60 outline-none focus:border-accent transition-colors resize-y min-h-[100px]"
@@ -921,8 +922,8 @@ export default function Journal({
                   <Scale size={20} className="text-text-secondary" />
                   Spheres of Choice (Dichotomy)
                 </h3>
-                <p className="text-sm text-text-secondary mb-4">
-                  Sort your current worries into what is completely Up to You and what is Not.
+                <p className="text-sm text-text-secondary mb-4 leading-relaxed">
+                  Divide today's concerns: What part of this situation is completely within my control, and what part is not?
                 </p>
 
                 <form onSubmit={handleAddWorry} className="flex gap-2 mb-6">
@@ -1033,7 +1034,7 @@ export default function Journal({
             </div>
           )}
 
-          {/* STEP 4: Reflect (Evening Review & Amor Fati) */}
+{/* STEP 4: Reflect (Evening Review & Amor Fati) */}
           {activeStep === 4 && (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
               <h3 className="font-display text-xl text-text-primary flex items-center gap-2">
@@ -1043,7 +1044,7 @@ export default function Journal({
               {/* Mood Check */}
               <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md hover:shadow-lg transition-all duration-300">
                 <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
-                  <span aria-hidden="true" className="text-xl">🎭</span> Mood Tracking
+                  <Smile size={20} className="text-text-secondary" /> Mood Tracking
                 </h3>
                 <div className="grid grid-cols-5 gap-2">
                   {moodOptions.map(opt => (
@@ -1115,47 +1116,58 @@ export default function Journal({
               {/* Seneca Questions */}
               <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md hover:shadow-lg transition-all duration-300">
                 <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
-                  <span aria-hidden="true" className="text-xl">⚖️</span> Seneca's Evening Interrogation
+                  <HelpCircle size={20} className="text-text-secondary" /> Seneca's Evening Interrogation
                 </h3>
-                <div className="flex flex-col gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1.5">What ailment or bad habit did I cure today?</label>
-                    <textarea
-                      className="w-full resize-y rounded-lg border border-tertiary bg-background-tertiary p-3 text-sm text-text-primary outline-none focus-visible:border-accent min-h-[60px]"
-                      value={senecaQ1}
-                      onChange={(e) => {
-                        setSenecaQ1(e.target.value);
-                        setIsSaved(false);
-                      }}
-                      placeholder="I stopped complaining about..."
-                      disabled={isLoading || isSaving}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1.5">What failing did I resist?</label>
-                    <textarea
-                      className="w-full resize-y rounded-lg border border-tertiary bg-background-tertiary p-3 text-sm text-text-primary outline-none focus-visible:border-accent min-h-[60px]"
-                      value={senecaQ2}
-                      onChange={(e) => {
-                        setSenecaQ2(e.target.value);
-                        setIsSaved(false);
-                      }}
-                      placeholder="Resisted doomscrolling or anger..."
-                      disabled={isLoading || isSaving}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1.5">In what matter can I show improvement tomorrow?</label>
-                    <textarea
-                      className="w-full resize-y rounded-lg border border-tertiary bg-background-tertiary p-3 text-sm text-text-primary outline-none focus-visible:border-accent min-h-[60px]"
-                      value={senecaQ3}
-                      onChange={(e) => {
-                        setSenecaQ3(e.target.value);
-                        setIsSaved(false);
-                      }}
-                      placeholder="I will prepare my morning more calmly..."
-                      disabled={isLoading || isSaving}
-                    />
+                <p className="text-sm text-text-secondary mb-4">
+                  Audit your day through self-examination, reviewing bad habits caught, impulse control, and tomorrow's improvements.
+                </p>
+                
+                <div className="space-y-6">
+                  <div className="rounded-lg border border-caution/30 bg-caution/5 p-4 sm:p-5">
+                    <h4 className="text-sm font-semibold text-caution flex items-center gap-2 mb-3">
+                      <span>✏️</span> Daily Self-Audit
+                    </h4>
+                    <div className="flex flex-col gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Which of my bad habits did I catch and correct today?</label>
+                        <textarea
+                          className="w-full resize-y rounded-lg border border-tertiary bg-background-tertiary p-3 text-sm text-text-primary outline-none focus-visible:border-caution min-h-[60px]"
+                          value={senecaQ1}
+                          onChange={(e) => {
+                            setSenecaQ1(e.target.value);
+                            setIsSaved(false);
+                          }}
+                          placeholder="I stopped complaining about..."
+                          disabled={isLoading || isSaving}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-1.5">What negative impulse or distraction did I successfully resist?</label>
+                        <textarea
+                          className="w-full resize-y rounded-lg border border-tertiary bg-background-tertiary p-3 text-sm text-text-primary outline-none focus-visible:border-caution min-h-[60px]"
+                          value={senecaQ2}
+                          onChange={(e) => {
+                            setSenecaQ2(e.target.value);
+                            setIsSaved(false);
+                          }}
+                          placeholder="Resisted doomscrolling or anger..."
+                          disabled={isLoading || isSaving}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Where did I stumble today, and what could I do better tomorrow?</label>
+                        <textarea
+                          className="w-full resize-y rounded-lg border border-tertiary bg-background-tertiary p-3 text-sm text-text-primary outline-none focus-visible:border-caution min-h-[60px]"
+                          value={senecaQ3}
+                          onChange={(e) => {
+                            setSenecaQ3(e.target.value);
+                            setIsSaved(false);
+                          }}
+                          placeholder="I will prepare my morning more calmly..."
+                          disabled={isLoading || isSaving}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </section>
