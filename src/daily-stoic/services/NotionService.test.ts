@@ -173,9 +173,7 @@ describe('NotionService', () => {
         '',
         '',
         [],
-        false,
         '',
-        false,
         fetchImpl
       );
 
@@ -226,9 +224,7 @@ describe('NotionService', () => {
         '',
         '',
         [],
-        false,
         '',
-        false,
         fetchImpl
       );
 

@@ -44,7 +44,6 @@ interface JournalProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   hasPassionsProperty?: boolean;
-  hasDichotomyProperty?: boolean;
   worries: Worry[];
 }
 
@@ -76,8 +75,6 @@ export default function Journal({
   isTogglingFavorite,
   searchQuery,
   setSearchQuery,
-  hasPassionsProperty = false,
-  hasDichotomyProperty = false,
   worries: initialWorries
 }: JournalProps) {
   const isNotionConfigured = !!token.trim() && !!databaseId.trim();
@@ -89,6 +86,7 @@ export default function Journal({
   const localPassionsKey = `daily-stoic:passions-${dayOfYear}`;
   const localCreatedTimeKey = `daily-stoic:created-time-${dayOfYear}`;
   const localVirtueKey = `daily-stoic:selected-virtue-${dayOfYear}`;
+
 
 
   // Active Journey Step (1: Focus, 2: Meditate, 3: Prepare, 4: Reflect)
@@ -529,9 +527,7 @@ export default function Journal({
         mood,
         cleanedIntentions,
         passions,
-        hasPassionsProperty,
-        JSON.stringify(worries),
-        hasDichotomyProperty
+        JSON.stringify(worries)
       );
 
       setSavedReflection(result.text);

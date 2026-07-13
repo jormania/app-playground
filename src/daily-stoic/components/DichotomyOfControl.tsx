@@ -48,24 +48,30 @@ function extractKeywords(texts: string[]): { text: string; value: number }[] {
 
 interface DichotomyOfControlProps {
   onClose?: () => void;
+  worries?: Worry[];
 }
 
-export function DichotomyOfControl({ onClose }: DichotomyOfControlProps = {}) {
+export function DichotomyOfControl({ onClose, worries: propWorries }: DichotomyOfControlProps = {}) {
   const [insightPeriod, setInsightPeriod] = useState<'30' | '90' | '365' | 'all'>('30');
   const [demoMode, setDemoMode] = useState(false);
-  const [worries, setWorries] = useState<Worry[]>([]);
+  const [localWorries, setLocalWorries] = useState<Worry[]>([]);
 
-  // Load worries on mount
+  // Load from localStorage only when no prop worries are provided (offline mode)
   useEffect(() => {
-    const saved = localStorage.getItem('daily-stoic:dichotomy');
-    if (saved) {
-      try {
-        setWorries(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse dichotomy worries:', e);
+    if (!propWorries) {
+      const saved = localStorage.getItem('daily-stoic:dichotomy');
+      if (saved) {
+        try {
+          setLocalWorries(JSON.parse(saved));
+        } catch (e) {
+          console.error('Failed to parse dichotomy worries:', e);
+        }
       }
     }
-  }, []);
+  }, [propWorries]);
+
+  // Use Notion-sourced prop worries when available, localStorage otherwise
+  const worries = propWorries ?? localWorries;
 
   // Calculate Real Data
   const stats = useMemo(() => {

@@ -12,7 +12,7 @@ import PassionsAnalytics from './components/PassionsAnalytics';
 import AmorFatiDashboard from './components/AmorFatiDashboard';
 import { getDayOfYear, getQuoteForDay, getLocalTodayStr } from './utils/date';
 import { calculateStreak } from './utils/streak';
-import { fetchRecentReflections, fetchDatabaseProperties, validateSchema, upsertReflection, clearDatabaseEntries, ReflectionRecord } from './services/NotionService';
+import { fetchRecentReflections, fetchDatabaseProperties, validateSchema, upgradeDatabaseSchema, upsertReflection, clearDatabaseEntries, ReflectionRecord } from './services/NotionService';
 import { createIdbKv } from '../shared/notify/idbKv';
 import { QUOTES } from './data/quotes';
 import { triggerHaptic } from '../shared/haptics';
@@ -76,7 +76,6 @@ export default function App() {
   const [recentReflections, setRecentReflections] = useState<ReflectionRecord[]>([]);
   const [schemaErrors, setSchemaErrors] = useState<string[]>([]);
   const [hasPassionsProperty, setHasPassionsProperty] = useState(false);
-  const [hasDichotomyProperty, setHasDichotomyProperty] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -204,7 +203,6 @@ export default function App() {
         const errors = validateSchema(props);
         setSchemaErrors(errors);
         setHasPassionsProperty('Passions' in props);
-        setHasDichotomyProperty('Dichotomy' in props);
         if (errors.length === 0) {
           const records = await fetchRecentReflections(token, databaseId);
           setRecentReflections(records);
@@ -219,7 +217,6 @@ export default function App() {
       } else {
         setSchemaErrors([]);
         setHasPassionsProperty(false);
-        setHasDichotomyProperty(false);
         await loadLocalStorageStreak(todayVal);
       }
 
@@ -239,7 +236,17 @@ export default function App() {
         const errors = validateSchema(props);
         setSchemaErrors(errors);
         setHasPassionsProperty('Passions' in props);
-        setHasDichotomyProperty('Dichotomy' in props);
+
+        // Auto-upgrade schema if optional columns are missing so saves never fail silently
+        const missingOptional = !('Passions' in props) || !('Dichotomy' in props) ||
+          !('Mood' in props) || !('MorningIntentions' in props);
+        if (missingOptional && errors.length === 0) {
+          try {
+            await upgradeDatabaseSchema(token, databaseId);
+          } catch (upgradeErr) {
+            console.warn('Auto-upgrade of optional schema columns failed:', upgradeErr);
+          }
+        }
 
         if (errors.length === 0) {
           const records = await fetchRecentReflections(token, databaseId);
@@ -258,13 +265,11 @@ export default function App() {
         console.error('Failed to load reflections/schema from cloud:', err);
         setSchemaErrors(['Could not query database schema. Running in offline/fallback mode.']);
         setHasPassionsProperty(false);
-        setHasDichotomyProperty(false);
         await loadLocalStorageStreak(todayVal);
       }
     } else {
       setSchemaErrors([]);
       setHasPassionsProperty(false);
-      setHasDichotomyProperty(false);
       await loadLocalStorageStreak(todayVal);
     }
   }, [token, databaseId, loadLocalStorageStreak, updateReminderIDB]);
@@ -312,27 +317,41 @@ export default function App() {
   }, [cycleReflections]);
 
   const cycleWorriesStats = useMemo(() => {
-    const saved = localStorage.getItem('daily-stoic:dichotomy');
-    if (!saved) return { total: 0, resolved: 0, rate: 0 };
-    try {
-      const list: any[] = JSON.parse(saved);
-      const start = cycleStartDate ? new Date(cycleStartDate).getTime() : 0;
-      const cycleList = list.filter((w) => {
-        if (!w.createdAt) return true;
-        const d = new Date(w.createdAt).getTime();
-        return d >= start;
+    // When Notion is configured, derive worries from recentReflections (source of truth)
+    // When offline, fall back to localStorage
+    let allWorries: any[] = [];
+    if (isNotionConfigured) {
+      recentReflections.forEach((rec) => {
+        if (rec.dichotomy) {
+          try {
+            const list: any[] = JSON.parse(rec.dichotomy);
+            allWorries.push(...list);
+          } catch {}
+        }
       });
-      const resolved = cycleList.filter((w) => w.isResolved).length;
-      const total = cycleList.length;
-      return {
-        total,
-        resolved,
-        rate: total > 0 ? Math.round((resolved / total) * 100) : 0
-      };
-    } catch {
-      return { total: 0, resolved: 0, rate: 0 };
+    } else {
+      const saved = localStorage.getItem('daily-stoic:dichotomy');
+      if (saved) {
+        try {
+          allWorries = JSON.parse(saved);
+        } catch {}
+      }
     }
-  }, [cycleStartDate, showCelebration]);
+    if (allWorries.length === 0) return { total: 0, resolved: 0, rate: 0 };
+    const start = cycleStartDate ? new Date(cycleStartDate).getTime() : 0;
+    const cycleList = allWorries.filter((w) => {
+      if (!w.createdAt) return true;
+      const d = new Date(w.createdAt).getTime();
+      return d >= start;
+    });
+    const resolved = cycleList.filter((w) => w.isResolved).length;
+    const total = cycleList.length;
+    return {
+      total,
+      resolved,
+      rate: total > 0 ? Math.round((resolved / total) * 100) : 0
+    };
+  }, [cycleStartDate, showCelebration, recentReflections, isNotionConfigured]);
 
   const [isSharingCelebration, setIsSharingCelebration] = useState(false);
   
@@ -537,7 +556,11 @@ export default function App() {
           record?.date ? record.date : undefined,
           record?.fateInput || '',
           record?.acceptanceTags || [],
-          nextFavoriteState
+          nextFavoriteState,
+          record?.mood || '',
+          record?.morningIntentions || '',
+          record?.passions || [],
+          record?.dichotomy || ''
         );
         await loadReflectionsAndCheckStreak();
           } catch (err) {
@@ -913,7 +936,6 @@ export default function App() {
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
               hasPassionsProperty={hasPassionsProperty}
-              hasDichotomyProperty={hasDichotomyProperty}
               worries={worries}
             />
           </div>
@@ -927,7 +949,7 @@ export default function App() {
         )}
 
         {route === '/dichotomy' && (
-          <DichotomyOfControl onClose={() => navigate('/')} />
+          <DichotomyOfControl onClose={() => navigate('/')} worries={worries} />
         )}
 
         {route === '/enchiridion' && (

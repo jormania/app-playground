@@ -64,3 +64,20 @@
     animation: none;
   }
 }
+
+/* Focus mode: fade out other things when typing in textareas */
+body.stoic-focus-mode header,
+body.stoic-focus-mode nav,
+body.stoic-focus-mode footer,
+body.stoic-focus-mode section:not(.focused-card),
+body.stoic-focus-mode .min-h-\[280px\] > div > div:not(.focused-card) {
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+body.stoic-focus-mode header,
+body.stoic-focus-mode nav,
+body.stoic-focus-mode footer,
+body.stoic-focus-mode section {
+  transition: opacity 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}

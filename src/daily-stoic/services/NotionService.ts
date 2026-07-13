@@ -304,9 +304,7 @@ export async function upsertReflection(
   mood = '',
   morningIntentions = '',
   passions: string[] = [],
-  hasPassionsProperty = false,
   dichotomy = '',
-  hasDichotomyProperty = false,
   fetchImpl: typeof fetch = fetch
 ): Promise<NotionReflection> {
   const id = normalizeNotionId(databaseId);
@@ -371,19 +369,15 @@ export async function upsertReflection(
     ]
   };
 
-  if (hasPassionsProperty) {
-    properties['Passions'] = {
-      multi_select: passions.map((p) => ({ name: p })),
-    };
-  }
+  properties['Passions'] = {
+    multi_select: passions.map((p) => ({ name: p })),
+  };
 
-  if (hasDichotomyProperty && dichotomy) {
-    properties['Dichotomy'] = {
-      rich_text: [
-        { text: { content: dichotomy } }
-      ]
-    };
-  }
+  properties['Dichotomy'] = {
+    rich_text: [
+      { text: { content: dichotomy } }
+    ]
+  };
 
   let page: any;
   if (existingPageId) {
