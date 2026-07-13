@@ -88,11 +88,18 @@ export default function Journal({
   const localPassionsKey = `daily-stoic:passions-${dayOfYear}`;
   const localCreatedTimeKey = `daily-stoic:created-time-${dayOfYear}`;
   const localVirtueKey = `daily-stoic:selected-virtue-${dayOfYear}`;
+  const localFocusCompletedKey = `daily-stoic:focus-completed-${dayOfYear}`;
+  const localMeditateCompletedKey = `daily-stoic:meditate-completed-${dayOfYear}`;
 
   // Active Journey Step (1: Focus, 2: Meditate, 3: Prepare, 4: Reflect)
-  const [activeStep, setActiveStep] = useState<number>(() => {
-    const hours = new Date().getHours();
-    return hours < 14 ? 3 : 4; // Default to Morning Prep (3) before 2 PM, and Evening Review (4) after 2 PM
+  const [activeStep, setActiveStep] = useState<number>(1);
+
+  // States to track step completion status
+  const [focusCompleted, setFocusCompleted] = useState<boolean>(() => {
+    return localStorage.getItem(localFocusCompletedKey) === 'true';
+  });
+  const [meditateCompleted, setMeditateCompleted] = useState<boolean>(() => {
+    return localStorage.getItem(localMeditateCompletedKey) === 'true';
   });
 
   // Evening Reflection (Seneca's Interrogation)
@@ -137,6 +144,13 @@ export default function Journal({
       setSavedWorries(initialWorries);
     }
   }, [initialWorries, dayOfYear]);
+
+  // Reload completed states when dayOfYear changes
+  useEffect(() => {
+    setFocusCompleted(localStorage.getItem(localFocusCompletedKey) === 'true');
+    setMeditateCompleted(localStorage.getItem(localMeditateCompletedKey) === 'true');
+    setActiveStep(1);
+  }, [dayOfYear, localFocusCompletedKey, localMeditateCompletedKey]);
 
   // Sync worries with local storage (only when offline)
   useEffect(() => {
@@ -542,13 +556,24 @@ export default function Journal({
     triggerHaptic('light');
   };
 
+  const handleStepNavigation = (nextStep: number) => {
+    if (activeStep === 1) {
+      setFocusCompleted(true);
+      localStorage.setItem(localFocusCompletedKey, 'true');
+    } else if (activeStep === 2) {
+      setMeditateCompleted(true);
+      localStorage.setItem(localMeditateCompletedKey, 'true');
+    }
+    setActiveStep(nextStep);
+  };
+
   // Check if a step has been completed
   const getStepCompleted = (stepId: number): boolean => {
     switch (stepId) {
       case 1:
-        return !!birthDate;
+        return focusCompleted;
       case 2:
-        return true; // Quotes are read on load
+        return meditateCompleted;
       case 3:
         return morningIntentions.trim().length > 0;
       case 4:
@@ -617,7 +642,7 @@ export default function Journal({
             <button
               key={step.id}
               onClick={() => {
-                setActiveStep(step.id);
+                handleStepNavigation(step.id);
                 triggerHaptic('light');
               }}
               className={cn(
@@ -1354,7 +1379,7 @@ export default function Journal({
             {activeStep > 1 ? (
               <Button
                 onClick={() => {
-                  setActiveStep(activeStep - 1);
+                  handleStepNavigation(activeStep - 1);
                   triggerHaptic('light');
                 }}
                 variant="ghost"
@@ -1371,7 +1396,7 @@ export default function Journal({
             {activeStep < 4 ? (
               <Button
                 onClick={() => {
-                  setActiveStep(activeStep + 1);
+                  handleStepNavigation(activeStep + 1);
                   triggerHaptic('light');
                 }}
                 variant="primary"

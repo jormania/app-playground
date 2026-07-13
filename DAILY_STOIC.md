@@ -158,5 +158,6 @@ src/daily-stoic/
 - **Icon Harmonization**: Standardized wizard headers and sections to use matching Lucide icons corresponding with the main navigation and dashboards (changed the raw fire emoji to `<Flame />` in `Journal.tsx` and changed leaf emoji to `<Heart />` in `AmorFatiControl.tsx`).
 - **Seneca Questions Redesign & Copy Updates**: Replaced Seneca's scale emoji icon with Lucide `HelpCircle`, added a descriptive introduction, and styled the inputs inside a themed caution (amber) sub-card with `focus-visible:border-caution` borders. Applied the requested balanced, middle-ground copy rewrites for Premeditatio Malorum, Spheres of Choice, and Seneca's Evening Interrogation, while ensuring full backward-compatible Markdown regex parsing for existing entries.
 - **Wizard Icon Standardization**: Replaced Step 3's `🛡️` with Lucide `Shield` and Step 4's `🎭` with Lucide `Smile` for complete visual coherence across all steps.
+- **Default Wizard Screen & Fresh Checkmarks**: Configured the wizard to always initialize on the **Focus** screen (Step 1) on load and day change. Refactored the completion checkmarks for Step 1 (Focus) and Step 2 (Meditate) to start fresh (unchecked) each day and get completed only when visited and navigated away from, while clearing their cache keys during a cycle reset.
 
 

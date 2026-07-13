@@ -173,7 +173,10 @@ export default function App() {
           key.startsWith('daily-stoic:passions-') ||
           key.startsWith('daily-stoic:favorite-') ||
           key.startsWith('daily-stoic:retro-notes-') ||
-          key.startsWith('daily-stoic:retro-rating-')
+          key.startsWith('daily-stoic:retro-rating-') ||
+          key.startsWith('daily-stoic:focus-completed-') ||
+          key.startsWith('daily-stoic:meditate-completed-') ||
+          key.startsWith('daily-stoic:selected-virtue-')
         )) {
           keysToRemove.push(key);
         }
