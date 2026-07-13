@@ -10,9 +10,11 @@ export interface NotionReflection {
   passions?: string[];
   createdTime?: string;
   dichotomy?: string;
+  virtue?: string;
 }
 
 export interface ReflectionRecord {
+  id?: string;
   date: string;
   quoteId: number;
   text?: string;
@@ -24,6 +26,7 @@ export interface ReflectionRecord {
   passions?: string[];
   createdTime?: string;
   dichotomy?: string;
+  virtue?: string;
 }
 
 export const RELAY_ENDPOINT = typeof window !== 'undefined' ? '/api/notion' : 'http://localhost/api/notion';
@@ -127,7 +130,8 @@ export function validateSchema(properties: Record<string, { type?: string }>): s
     'Mood': 'select',
     'MorningIntentions': 'rich_text',
     'Passions': 'multi_select',
-    'Dichotomy': 'rich_text'
+    'Dichotomy': 'rich_text',
+    'Virtue': 'rich_text'
   };
 
   for (const [name, type] of Object.entries(expected)) {
@@ -162,7 +166,8 @@ export async function upgradeDatabaseSchema(
       'Dichotomy': { rich_text: {} },
       'Passions': { multi_select: {} },
       'Mood': { select: {} },
-      'MorningIntentions': { rich_text: {} }
+      'MorningIntentions': { rich_text: {} },
+      'Virtue': { rich_text: {} }
     }
   };
 
@@ -273,6 +278,12 @@ export async function fetchReflectionForDay(
     ? dichotomyText.map((rt: any) => rt.plain_text || '').join('')
     : '';
 
+  // Extract Virtue rich_text
+  const virtueText = props.Virtue?.rich_text || [];
+  const virtue = Array.isArray(virtueText)
+    ? virtueText.map((rt: any) => rt.plain_text || '').join('')
+    : '';
+
   const createdTime = page.created_time || '';
 
   return {
@@ -287,6 +298,7 @@ export async function fetchReflectionForDay(
     passions,
     createdTime,
     dichotomy,
+    virtue,
   };
 }
 
@@ -305,6 +317,7 @@ export async function upsertReflection(
   morningIntentions = '',
   passions: string[] = [],
   dichotomy = '',
+  virtue = '',
   fetchImpl: typeof fetch = fetch
 ): Promise<NotionReflection> {
   const id = normalizeNotionId(databaseId);
@@ -373,9 +386,18 @@ export async function upsertReflection(
     multi_select: passions.map((p) => ({ name: p })),
   };
 
-  properties['Dichotomy'] = {
+  // Chunk dichotomy into <=2000-char blocks to respect Notion's rich_text limit
+  const CHUNK = 2000;
+  const dichotomyBlocks: { text: { content: string } }[] = [];
+  for (let i = 0; i < dichotomy.length || dichotomyBlocks.length === 0; i += CHUNK) {
+    dichotomyBlocks.push({ text: { content: dichotomy.slice(i, i + CHUNK) || '' } });
+    if (!dichotomy) break;
+  }
+  properties['Dichotomy'] = { rich_text: dichotomyBlocks };
+
+  properties['Virtue'] = {
     rich_text: [
-      { text: { content: dichotomy } }
+      { text: { content: virtue.slice(0, CHUNK) } }
     ]
   };
 
@@ -442,6 +464,11 @@ export async function upsertReflection(
     ? dichotomyText.map((rt: any) => rt.plain_text || '').join('')
     : '';
 
+  const virtueText = props.Virtue?.rich_text || [];
+  const returnVirtue = Array.isArray(virtueText)
+    ? virtueText.map((rt: any) => rt.plain_text || '').join('')
+    : '';
+
   const returnCreatedTime = page.created_time || '';
 
   return {
@@ -456,6 +483,7 @@ export async function upsertReflection(
     passions: returnPassions,
     createdTime: returnCreatedTime,
     dichotomy: returnDichotomy,
+    virtue: returnVirtue,
   };
 }
 
@@ -525,10 +553,16 @@ export async function fetchRecentReflections(
       ? dichotomyText.map((rt: any) => rt.plain_text || '').join('')
       : '';
 
+    const virtueText = props.Virtue?.rich_text || [];
+    const virtueVal = Array.isArray(virtueText)
+      ? virtueText.map((rt: any) => rt.plain_text || '').join('')
+      : '';
+
     const createdTimeVal = page.created_time || '';
 
     if (dateProp && typeof quoteProp === 'number') {
       records.push({
+        id: page.id,
         date: dateProp,
         quoteId: quoteProp,
         text: textVal,
@@ -540,6 +574,7 @@ export async function fetchRecentReflections(
         passions: passionsVal,
         createdTime: createdTimeVal,
         dichotomy: dichotomyVal,
+        virtue: virtueVal,
       });
     }
   }

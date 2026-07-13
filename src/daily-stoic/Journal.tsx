@@ -330,7 +330,7 @@ export default function Journal({
             setSenecaQ2('');
             setSenecaQ3('');
           }
-          const savedVirtueVal = localStorage.getItem(localVirtueKey) || null;
+          const savedVirtueVal = result.virtue || localStorage.getItem(localVirtueKey) || null;
           setSelectedVirtue(savedVirtueVal);
           setSavedVirtue(savedVirtueVal);
           setFateInput(result.fateInput || '');
@@ -523,11 +523,12 @@ export default function Journal({
         existingPageId,
         cleanedFate,
         acceptanceTags,
-        false, // favorite
+        isCurrentQuoteFavorited, // preserve existing favorite state
         mood,
         cleanedIntentions,
         passions,
-        JSON.stringify(worries)
+        JSON.stringify(worries),
+        selectedVirtue || ''
       );
 
       setSavedReflection(result.text);
@@ -546,7 +547,7 @@ export default function Journal({
         parsedWorries = worries;
       }
       setSavedWorries(parsedWorries);
-      setSavedVirtue(selectedVirtue);
+      setSavedVirtue(result.virtue || selectedVirtue);
 
       setIsSaved(true);
       triggerHaptic('success');

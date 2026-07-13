@@ -553,14 +553,15 @@ export default function App() {
           record?.text || '',
           ['Stoic', 'Reflection'],
           dateStr,
-          record?.date ? record.date : undefined,
+          record?.id || undefined, // real page UUID for PATCH
           record?.fateInput || '',
           record?.acceptanceTags || [],
           nextFavoriteState,
           record?.mood || '',
           record?.morningIntentions || '',
           record?.passions || [],
-          record?.dichotomy || ''
+          record?.dichotomy || '',
+          record?.virtue || ''
         );
         await loadReflectionsAndCheckStreak();
           } catch (err) {

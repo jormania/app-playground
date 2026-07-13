@@ -126,7 +126,8 @@ describe('NotionService', () => {
         morningIntentions: '',
         passions: [],
         createdTime: '',
-        dichotomy: ''
+        dichotomy: '',
+        virtue: ''
       });
       expect(fetchImpl).toHaveBeenCalled();
     });
@@ -174,6 +175,7 @@ describe('NotionService', () => {
         '',
         [],
         '',
+        '',
         fetchImpl
       );
 
@@ -188,7 +190,8 @@ describe('NotionService', () => {
         morningIntentions: '',
         passions: [],
         createdTime: '',
-        dichotomy: ''
+        dichotomy: '',
+        virtue: ''
       });
 
       const body = JSON.parse((fetchImpl as any).mock.calls[0][1].body);
@@ -225,6 +228,7 @@ describe('NotionService', () => {
         '',
         [],
         '',
+        '',
         fetchImpl
       );
 
@@ -239,7 +243,8 @@ describe('NotionService', () => {
         morningIntentions: '',
         passions: [],
         createdTime: '',
-        dichotomy: ''
+        dichotomy: '',
+        virtue: ''
       });
 
       const body = JSON.parse((fetchImpl as any).mock.calls[0][1].body);
@@ -253,6 +258,7 @@ describe('NotionService', () => {
       const mockResult = {
         results: [
           {
+            id: 'page-abc',
             created_time: '2026-07-12T10:00:00Z',
             properties: {
               Date: { date: { start: '2026-07-12' } },
@@ -275,6 +281,7 @@ describe('NotionService', () => {
 
       expect(res).toEqual([
         {
+          id: 'page-abc',
           date: '2026-07-12',
           quoteId: 42,
           text: 'Thoughts.',
@@ -285,7 +292,8 @@ describe('NotionService', () => {
           morningIntentions: '',
           passions: [],
           createdTime: '2026-07-12T10:00:00Z',
-          dichotomy: ''
+          dichotomy: '',
+          virtue: ''
         }
       ]);
 

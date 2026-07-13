@@ -54,6 +54,8 @@ If configured, the app expects a database matching the following schema. Databas
 | **Passions** | `multi_select` | Optional. Tracks recurring passions/judgments (*Self-Knowledge*) |
 | **Mood** | `select` | Optional. Tracks the user's logged daily mood (Great, Good, Neutral, etc.) |
 | **MorningIntentions** | `rich_text` | Optional. Tracks morning preparation intentions (*Premeditatio Malorum*) |
+| **Dichotomy** | `rich_text` | Optional. JSON-encoded array of Spheres of Choice (worries) entries (*Step 3*) |
+| **Virtue** | `rich_text` | Optional. The stoic virtue the user selects to cultivate that day (*Step 4*) |
 
 ### Notion Starter Template
 To get started quickly, duplicate the official template:
@@ -175,3 +177,10 @@ src/daily-stoic/
 - **Analytics Dashboard Notion Data**: `DichotomyOfControl` analytics component now accepts a `worries` prop from App.tsx (derived from Notion `recentReflections`). When Notion is configured the analytics always reflects cloud data; offline mode continues to read from `localStorage`.
 - **Dead Code Removal**: Removed unused `focusedField` / `setFocusedField` state and its associated `useEffect` from `Journal.tsx` (the setter was never called).
 
+### July 13, 2026 (Full Notion Read/Write Audit)
+- **Virtue field added to Notion**: `selectedVirtue` (the stoic virtue selected in Step 4) was only ever saved to `localStorage`. Added a new `Virtue` (`rich_text`) column to the Notion schema — written unconditionally in `upsertReflection`, read back by both `fetchReflectionForDay` and `fetchRecentReflections`, and auto-created by `upgradeDatabaseSchema`. Journal.tsx now loads virtue from `result.virtue` on Notion load and passes it to save.
+- **Favorite flag no longer overwritten on save**: `handleSave` in Journal.tsx was hardcoding `favorite = false` in the `upsertReflection` call, causing every journal save to reset the Notion `Favorite` checkbox. Now correctly passes `isCurrentQuoteFavorited` to preserve the user's favorited state.
+- **Favorite toggle now does a real PATCH**: `handleToggleFavorite` in App.tsx was passing `record?.date` (a date string like `"2024-01-15"`) as `existingPageId`, causing the Notion API to 404 on every toggle and silently fall back to creating a NEW duplicate record. Fixed to pass `record?.id` (the real Notion page UUID) now that `ReflectionRecord` includes the `id` field.
+- **`ReflectionRecord` now carries page `id` and `virtue`**: `fetchRecentReflections` now includes `id: page.id` and `virtue` in every record it pushes to state. This enables proper PATCH operations for all subsequent writes to existing records.
+- **`virtue` preserved in `handleToggleFavorite`**: App.tsx toggle call now passes `record?.virtue` to avoid clobbering the Virtue field when toggling favorites.
+- **Notion `rich_text` 2000-char chunking**: Notion enforces a 2000-character limit per rich_text block. The Dichotomy field (JSON-encoded worries) now splits its content across multiple blocks when it exceeds 2000 chars, preventing silent truncation for users with large worry lists.
