@@ -1263,8 +1263,8 @@ export default function Journal({
                 </h3>
                 
                 <div className="space-y-6">
-                  <div className="rounded-lg border border-accent/30 bg-accent/5 p-4 sm:p-5">
-                    <h4 className="text-sm font-semibold text-accent flex items-center gap-2 mb-2">
+                  <div className="rounded-lg border border-success/30 bg-success/5 p-4 sm:p-5">
+                    <h4 className="text-sm font-semibold text-success flex items-center gap-2 mb-2">
                       <span>🛡</span> Four Cardinal Virtues
                     </h4>
                     <p className="text-xs text-text-secondary mb-3">
@@ -1293,8 +1293,8 @@ export default function Journal({
                             className={cn(
                               "text-xs rounded px-2.5 py-1 text-left border transition-all duration-200 flex items-center gap-1.5",
                               isSelected
-                                ? "border-accent bg-accent/15 text-accent font-medium"
-                                : "text-text-primary bg-background-secondary border-tertiary hover:border-accent"
+                                ? "border-success bg-success/15 text-success font-medium"
+                                : "text-text-primary bg-background-secondary border-tertiary hover:border-success"
                             )}
                           >
                             <span>{isSelected ? '✓' : '○'}</span>
@@ -1305,7 +1305,7 @@ export default function Journal({
                     </div>
                     
                     {selectedVirtue && (
-                      <div className="mt-3 text-xs text-text-secondary italic border-l-2 border-accent pl-3 pt-0.5 pb-0.5 animate-in fade-in duration-200">
+                      <div className="mt-3 text-xs text-text-secondary italic border-l-2 border-success pl-3 pt-0.5 pb-0.5 animate-in fade-in duration-200">
                         {selectedVirtue === 'Wisdom' && 'Wisdom (Sophia): The ability to navigate complex situations in a logical, informed, and calm manner. Understanding what is good, bad, or indifferent.'}
                         {selectedVirtue === 'Courage' && 'Courage (Andreia): Standing firm and acting rightly in the face of fear, adversity, pain, or difficulty.'}
                         {selectedVirtue === 'Justice' && 'Justice (Dikaiosyne): Treating others with fairness, benevolence, and public duty. Stoics believe we are made for the collective good of the community.'}

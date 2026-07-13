@@ -40,25 +40,26 @@ export default function AmorFatiControl({
   };
 
   return (
-    <div className="rounded-xl border border-tertiary bg-background-secondary p-4 sm:p-6 h-full">
-      <h3 className="font-display text-xl text-text-primary mb-4 flex items-center gap-2">
-        <span aria-hidden="true" className="text-2xl">🍂</span> Amor Fati (Love of Fate)
-      </h3>
-      <p className="text-sm text-text-secondary mb-8">
+    <div className="rounded-lg border border-energy/30 bg-energy/5 p-4 sm:p-5">
+      <h4 className="text-sm font-semibold text-energy flex items-center gap-2 mb-2">
+        <span>🍂</span> Amor Fati (Love of Fate)
+      </h4>
+      <p className="text-xs text-text-secondary mb-4">
         Frame today's resistances as necessary constraints to be embraced rather than fought.
       </p>
 
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-4">
         <Field
           label="What part of today feels forced or heavy?"
           type="text"
           value={fateInput}
           onChange={(e) => onFateInputChange(e.target.value)}
           placeholder="e.g. Flight delay, difficult conversation, unexpected chore..."
+          className="border-tertiary bg-background-secondary"
         />
 
         <div>
-          <label className="block text-sm font-medium text-text-primary mb-3">Challenge Types</label>
+          <label className="block text-xs font-semibold text-text-secondary tracking-wider uppercase mb-2">Challenge Types</label>
           <div className="flex flex-wrap gap-2">
             {AVAILABLE_TAGS.map((tag) => {
               const active = acceptanceTags.includes(tag);
@@ -71,8 +72,8 @@ export default function AmorFatiControl({
                   className={cn(
                     "text-xs rounded px-2.5 py-1 text-left border transition-all duration-200 flex items-center gap-1.5",
                     active
-                      ? "border-accent bg-accent/15 text-accent font-medium"
-                      : "text-text-primary bg-background-secondary border-tertiary hover:border-accent"
+                      ? "border-energy bg-energy/15 text-energy font-medium"
+                      : "text-text-primary bg-background-secondary border-tertiary hover:border-energy"
                   )}
                 >
                   <span>{active ? '✓' : '○'}</span>
