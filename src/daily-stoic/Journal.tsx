@@ -34,7 +34,7 @@ interface JournalProps {
   birthDate: string;
   favoritedMaxims: any[];
   onGoToSettings: () => void;
-  onNavigateToTab: (tab: string) => void;
+  onNavigateToTab?: (tab: string) => void;
   quote: any;
   isCurrentQuoteFavorited: boolean;
   handleToggleFavorite: () => Promise<void>;
@@ -52,6 +52,7 @@ interface Worry {
   text: string;
   category: 'unassigned' | 'up-to-me' | 'not-up-to-me';
   isResolved?: boolean;
+  isReframed?: boolean;
   createdAt?: string;
 }
 
@@ -64,9 +65,9 @@ export default function Journal({
   databaseId, 
   onSaveComplete,
   birthDate,
-  favoritedMaxims,
+  favoritedMaxims: _favoritedMaxims,
   onGoToSettings,
-  onNavigateToTab,
+  onNavigateToTab: _onNavigateToTab,
   quote,
   isCurrentQuoteFavorited,
   handleToggleFavorite,
@@ -127,7 +128,6 @@ export default function Journal({
   const [selectedReframeIds, setSelectedReframeIds] = useState<string[]>([]);
 
   // Enchiridion random recall state
-  const [recalledMaxim, setRecalledMaxim] = useState<any>(null);
   const [selectedVirtue, setSelectedVirtue] = useState<string | null>(null);
   const [savedVirtue, setSavedVirtue] = useState<string | null>(null);
 
@@ -192,16 +192,17 @@ export default function Journal({
   ]);
 
   const handleToggleReframeWorry = (id: string) => {
-    let nextIds: string[] = [];
-    if (selectedReframeIds.includes(id)) {
-      nextIds = selectedReframeIds.filter(x => x !== id);
-    } else {
-      nextIds = [...selectedReframeIds, id];
-    }
+    // Toggle the isReframed flag on the worry itself so it persists with the Dichotomy JSON
+    const nextWorries = worries.map(w =>
+      w.id === id ? { ...w, isReframed: !w.isReframed } : w
+    );
+    setWorries(nextWorries);
+
+    const nextIds = nextWorries.filter(w => w.isReframed).map(w => w.id);
     setSelectedReframeIds(nextIds);
     
     // Rebuild fateInput grammatically
-    const selectedWorries = worries.filter(w => nextIds.includes(w.id));
+    const selectedWorries = nextWorries.filter(w => w.isReframed);
     if (selectedWorries.length === 0) {
       setFateInput('');
     } else {
@@ -354,6 +355,10 @@ export default function Journal({
           }
           setWorries(parsedWorries);
           setSavedWorries(parsedWorries);
+          // Restore reframe selections from persisted isReframed flags
+          setSelectedReframeIds(parsedWorries.filter(w => w.isReframed).map(w => w.id));
+          // Restore fateInput if already set from Notion
+          // (fateInput is set above from result.fateInput)
           
           setIsSaved(true);
         } else {
@@ -547,6 +552,7 @@ export default function Journal({
         parsedWorries = worries;
       }
       setSavedWorries(parsedWorries);
+      setSelectedReframeIds(parsedWorries.filter(w => w.isReframed).map(w => w.id));
       setSavedVirtue(result.virtue || selectedVirtue);
 
       setIsSaved(true);
@@ -579,13 +585,7 @@ export default function Journal({
     triggerHaptic('light');
   };
 
-  // Enchiridion maxim recall
-  const handleDrawMaxim = () => {
-    if (favoritedMaxims.length === 0) return;
-    const randomIndex = Math.floor(Math.random() * favoritedMaxims.length);
-    setRecalledMaxim(favoritedMaxims[randomIndex]);
-    triggerHaptic('light');
-  };
+
 
   const handleStepNavigation = (nextStep: number) => {
     if (activeStep === 1) {
@@ -749,9 +749,7 @@ export default function Journal({
                     
                     const msSinceLastBirthday = today.getTime() - lastBirthday.getTime();
                     const weekOfCurrentYear = Math.min(51, Math.max(0, Math.floor(msSinceLastBirthday / (1000 * 60 * 60 * 24 * 7))));
-                    
-                    const upcomingAge = lastBirthday.getFullYear() + 1 - birthDateObj.getFullYear();
-                    
+
                     const miniBlocks = [];
                     for (let i = 0; i < 52; i++) {
                       const elapsed = i < weekOfCurrentYear;
@@ -785,7 +783,7 @@ export default function Journal({
 
                         <div className="rounded-xl border border-secondary bg-background-secondary p-5 shadow-md hover:shadow-lg transition-all duration-300">
                           <h4 className="text-xs font-semibold text-text-secondary tracking-wider uppercase mb-3 text-center sm:text-left">
-                            Current Year progress (to {upcomingAge})
+                            Current Year progress
                           </h4>
                           <div 
                             className="grid gap-1 p-2 rounded-lg bg-background-tertiary border border-tertiary max-w-[420px] mx-auto sm:mx-0"
@@ -799,15 +797,7 @@ export default function Journal({
                           "Let us prepare our minds as if we’d come to the very end of life. Let us postpone nothing. Let us balance life’s books each day." — Seneca
                         </blockquote>
 
-                        <div className="flex justify-center sm:justify-start">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => onNavigateToTab('/memento')}
-                          >
-                            View Full 80-Year Life Grid →
-                          </Button>
-                        </div>
+
                       </div>
                     );
                   })()}
@@ -890,45 +880,6 @@ export default function Journal({
                   )}
                 </div>
               </div>
-
-              {/* Handbook (Enchiridion) Recall widget */}
-              <div className="border-t border-tertiary pt-6">
-                <h4 className="font-display text-sm font-semibold text-text-secondary mb-3">Recall your Handbook</h4>
-                {recalledMaxim ? (
-                  <div className="rounded-lg bg-background-primary/40 p-4 border border-tertiary relative animate-in fade-in duration-300">
-                    <p className="font-display text-base text-text-primary mb-2 italic">“{recalledMaxim.quote}”</p>
-                    <p className="text-xs text-text-secondary">— {recalledMaxim.author}, {recalledMaxim.source}</p>
-                    <button 
-                      onClick={handleDrawMaxim} 
-                      className="absolute top-3 right-3 text-xs text-accent hover:underline"
-                    >
-                      Draw another
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg bg-background-primary/20 p-4 border border-tertiary border-dashed">
-                    <div className="flex-1">
-                      <p className="text-sm text-text-secondary">
-                        Need additional guidance? Draw a random principle from your personal Enchiridion handbook.
-                      </p>
-                      {favoritedMaxims.length === 0 && (
-                        <p className="text-xs text-text-secondary/60 mt-1">
-                          Heart quotes during your daily readings to build your Enchiridion handbook.
-                        </p>
-                      )}
-                    </div>
-                    <Button 
-                      variant="secondary" 
-                      size="sm" 
-                      onClick={handleDrawMaxim}
-                      disabled={favoritedMaxims.length === 0}
-                      className="shrink-0"
-                    >
-                      🔮 Draw Maxim
-                    </Button>
-                  </div>
-                )}
-              </div>
               <div className="mt-6">
                 <AppGuideNote summary="Meditating on Daily Principles">
                   <p>
@@ -975,15 +926,15 @@ export default function Journal({
                   Divide today's concerns: What part of this situation is completely within my control, and what part is not?
                 </p>
 
-                <form onSubmit={handleAddWorry} className="flex gap-2 mb-6">
+                <form onSubmit={handleAddWorry} className="flex gap-2 mb-6 min-w-0">
                   <input
                     type="text"
                     value={newWorry}
                     onChange={(e) => setNewWorry(e.target.value)}
                     placeholder="Log a worry/concern for today..."
-                    className="flex-1 rounded-md border border-secondary bg-background-tertiary px-3 py-2 text-sm text-text-primary outline-none focus-visible:border-accent"
+                    className="min-w-0 flex-1 rounded-md border border-secondary bg-background-tertiary px-3 py-2 text-sm text-text-primary outline-none focus-visible:border-accent"
                   />
-                  <Button type="submit" size="sm" disabled={!newWorry.trim()}>Record</Button>
+                  <Button type="submit" size="sm" disabled={!newWorry.trim()} className="shrink-0">Record</Button>
                 </form>
 
                 {/* Unassigned worries */}

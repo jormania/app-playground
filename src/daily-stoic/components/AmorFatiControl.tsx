@@ -27,6 +27,14 @@ const TAG_ICONS: Record<string, any> = {
   Limitation: Lock,
 };
 
+const TAG_HINTS: Record<string, string> = {
+  Situation: 'Situation (Events): An external crisis, accident, or unexpected disruption that unfolded outside your wishes.',
+  Outcome: 'Outcome (Results): A failure, rejection, loss, or result that did not match your expectations.',
+  People: 'People (Frictions): A difficult conversation, rude remark, conflict, or tension with others.',
+  Time: 'Time (Delays): A delay, wasted hour, rush, waiting line, or schedule conflict beyond your control.',
+  Limitation: 'Limitation (Constraints): A lack of resources, energy, illness, physical boundary, or systemic constraint.',
+};
+
 export default function AmorFatiControl({
   fateInput,
   onFateInputChange,
@@ -91,6 +99,15 @@ export default function AmorFatiControl({
               );
             })}
           </div>
+          {acceptanceTags.length > 0 && (
+            <div className="mt-3 space-y-1">
+              {acceptanceTags.filter(t => TAG_HINTS[t]).map(tag => (
+                <p key={tag} className="text-xs text-text-secondary italic border-l-2 border-energy pl-3 pt-0.5 pb-0.5 animate-in fade-in duration-200">
+                  {TAG_HINTS[tag]}
+                </p>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </section>
