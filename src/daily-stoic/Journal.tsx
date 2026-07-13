@@ -184,7 +184,7 @@ export default function Journal({
     const combined = [
       senecaQ1.trim() ? `### Which of my bad habits did I catch and correct today?\n${senecaQ1.trim()}` : '',
       senecaQ2.trim() ? `### What negative impulse or distraction did I successfully resist?\n${senecaQ2.trim()}` : '',
-      senecaQ3.trim() ? `### Where did I stumble today, and what could I do better tomorrow?\n${senecaQ3.trim()}` : ''
+      senecaQ3.trim() ? `### Where did I stumble today, and how will I handle it better tomorrow?\n${senecaQ3.trim()}` : ''
     ].filter(Boolean).join('\n\n');
     
     if (combined !== reflection) {
@@ -213,7 +213,7 @@ export default function Journal({
         if (savedRef.includes('### What ailment') || savedRef.includes('### Which of my bad habits')) {
           const q1Match = savedRef.match(/### (?:What ailment or bad habit did I cure today|Which of my bad habits did I catch and correct today)\?\n([\s\S]*?)(?=###|$)/);
           const q2Match = savedRef.match(/### (?:What failing did I resist|What negative impulse or distraction did I successfully resist)\?\n([\s\S]*?)(?=###|$)/);
-          const q3Match = savedRef.match(/### (?:In what matter can I show improvement tomorrow|Where did I stumble today, and what could I do better tomorrow)\?\n([\s\S]*?)(?=###|$)/);
+          const q3Match = savedRef.match(/### (?:In what matter can I show improvement tomorrow|Where did I stumble today, and what could I do better tomorrow|Where did I stumble today, and how will I handle it better tomorrow)\?\n([\s\S]*?)(?=###|$)/);
           
           setSenecaQ1(q1Match ? q1Match[1].trim() : '');
           setSenecaQ2(q2Match ? q2Match[1].trim() : '');
@@ -274,7 +274,7 @@ export default function Journal({
           if (refText.includes('### What ailment') || refText.includes('### Which of my bad habits')) {
             const q1Match = refText.match(/### (?:What ailment or bad habit did I cure today|Which of my bad habits did I catch and correct today)\?\n([\s\S]*?)(?=###|$)/);
             const q2Match = refText.match(/### (?:What failing did I resist|What negative impulse or distraction did I successfully resist)\?\n([\s\S]*?)(?=###|$)/);
-            const q3Match = refText.match(/### (?:In what matter can I show improvement tomorrow|Where did I stumble today, and what could I do better tomorrow)\?\n([\s\S]*?)(?=###|$)/);
+            const q3Match = refText.match(/### (?:In what matter can I show improvement tomorrow|Where did I stumble today, and what could I do better tomorrow|Where did I stumble today, and how will I handle it better tomorrow)\?\n([\s\S]*?)(?=###|$)/);
             
             setSenecaQ1(q1Match ? q1Match[1].trim() : '');
             setSenecaQ2(q2Match ? q2Match[1].trim() : '');
@@ -1155,7 +1155,7 @@ export default function Journal({
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Where did I stumble today, and what could I do better tomorrow?</label>
+                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Where did I stumble today, and how will I handle it better tomorrow?</label>
                         <textarea
                           className="w-full resize-y rounded-lg border border-tertiary bg-background-tertiary p-3 text-sm text-text-primary outline-none focus-visible:border-caution min-h-[60px]"
                           value={senecaQ3}
@@ -1272,7 +1272,7 @@ export default function Journal({
                   Cultivating Virtue
                 </h3>
                 <p className="text-sm text-text-secondary mb-4">
-                  Identify and commit to the core Stoic virtues—Wisdom, Courage, Justice, and Temperance—to guide your behavior and actions.
+                  Ground your actions in the core Stoic virtues. Use today's challenges as the definitive testing ground for your character.
                 </p>
                 
                 <div className="space-y-6">
@@ -1281,7 +1281,7 @@ export default function Journal({
                       <span>🛡</span> Four Cardinal Virtues
                     </h4>
                     <p className="text-xs text-text-secondary mb-3">
-                      Select the Stoic virtue that was most needed or practiced in today's situations:
+                      Which virtue did today's events need the most?
                     </p>
                     
                     <div className="flex flex-wrap gap-2">
