@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button, Field } from '../../ds';
+import { triggerHaptic } from '../../shared/haptics';
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -10,6 +11,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   const [birthDate, setBirthDate] = useState(() => localStorage.getItem('daily-stoic:birthdate') || '');
 
   const handleNext = () => {
+    triggerHaptic('light');
     if (step === 2) {
       if (birthDate) {
         localStorage.setItem('daily-stoic:birthdate', birthDate);

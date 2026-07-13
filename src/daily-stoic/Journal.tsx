@@ -6,6 +6,7 @@ import { getLocalTodayStr } from './utils/date';
 import AmorFatiControl from './components/AmorFatiControl';
 import { triggerHaptic } from '../shared/haptics';
 import { cn } from './lib/cn';
+import { AutoExpandingTextarea } from './components/AutoExpandingTextarea';
 import { 
   SmilePlus, 
   Smile, 
@@ -153,6 +154,44 @@ export default function Journal({
       localStorage.setItem('daily-stoic:dichotomy', JSON.stringify(worries));
     }
   }, [worries, isNotionConfigured]);
+
+  // Debounced auto-save of all inputs to localStorage as draft/backup
+  useEffect(() => {
+    const cleanedText = reflection.trim();
+    const cleanedFate = fateInput.trim();
+    const cleanedIntentions = morningIntentions.trim();
+
+    const timer = setTimeout(() => {
+      localStorage.setItem(localStorageKey, cleanedText);
+      localStorage.setItem(localFateKey, cleanedFate);
+      localStorage.setItem(localTagsKey, JSON.stringify(acceptanceTags));
+      localStorage.setItem(localIntentionsKey, cleanedIntentions);
+      localStorage.setItem(localMoodKey, mood);
+      localStorage.setItem(localPassionsKey, JSON.stringify(passions));
+      localStorage.setItem(localVirtueKey, selectedVirtue || '');
+      if (!localStorage.getItem(localCreatedTimeKey)) {
+        localStorage.setItem(localCreatedTimeKey, new Date().toISOString());
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [
+    reflection,
+    fateInput,
+    acceptanceTags,
+    morningIntentions,
+    mood,
+    passions,
+    selectedVirtue,
+    localStorageKey,
+    localFateKey,
+    localTagsKey,
+    localIntentionsKey,
+    localMoodKey,
+    localPassionsKey,
+    localVirtueKey,
+    localCreatedTimeKey
+  ]);
 
   const handleToggleReframeWorry = (id: string) => {
     let nextIds: string[] = [];
@@ -670,10 +709,9 @@ export default function Journal({
           <span className="mr-2 animate-spin inline-block" aria-hidden="true">⏳</span> Syncing...
         </div>
       ) : (
-        <div className="min-h-[280px]">
+        <div className="min-h-[280px] relative">
           {/* STEP 1: Focus (Memento Mori) */}
-          {activeStep === 1 && (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className={cn("transition-all duration-300 ease-in-out", activeStep === 1 ? "opacity-100 translate-y-0 scale-100 h-auto" : "opacity-0 absolute inset-x-0 top-0 -translate-y-4 scale-95 pointer-events-none h-0 overflow-hidden")}>
               <h3 className="font-display text-xl text-text-primary mb-3 flex items-center gap-2">
                 <Skull size={20} className="text-text-secondary" />
                 Focus: Meditate on Mortality (Day {dayOfYear} of 365)
@@ -788,11 +826,9 @@ export default function Journal({
                 </AppGuideNote>
               </div>
             </div>
-          )}
 
           {/* STEP 2: Meditate (Daily Maxim & Enchiridion) */}
-          {activeStep === 2 && (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
+          <div className={cn("transition-all duration-300 ease-in-out space-y-6", activeStep === 2 ? "opacity-100 translate-y-0 scale-100 h-auto" : "opacity-0 absolute inset-x-0 top-0 -translate-y-4 scale-95 pointer-events-none h-0 overflow-hidden")}>
               <h3 className="font-display text-xl text-text-primary flex items-center gap-2">
                 <BookOpen size={20} className="text-text-secondary" />
                 Meditate: Today's Principle (Day {dayOfYear} of 365)
@@ -906,11 +942,9 @@ export default function Journal({
                 </AppGuideNote>
               </div>
             </div>
-          )}
 
           {/* STEP 3: Prepare (Morning Prep & Spheres of Control) */}
-          {activeStep === 3 && (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
+          <div className={cn("transition-all duration-300 ease-in-out space-y-6", activeStep === 3 ? "opacity-100 translate-y-0 scale-100 h-auto" : "opacity-0 absolute inset-x-0 top-0 -translate-y-4 scale-95 pointer-events-none h-0 overflow-hidden")}>
               <h3 className="font-display text-xl text-text-primary flex items-center gap-2">
                 <Sun size={20} className="text-text-secondary" />
                 Prepare: Morning Prep (Day {dayOfYear} of 365)
@@ -922,13 +956,13 @@ export default function Journal({
                 <p className="text-sm text-text-secondary mb-4 leading-relaxed">
                   Anticipate today's friction: What obstacles, difficult people, or internal weaknesses will I encounter, and how will I respond to each with clear-headed virtue?
                 </p>
-                <textarea
-                  className="w-full rounded-lg bg-background-tertiary border border-tertiary p-4 text-text-primary placeholder:text-text-secondary/60 outline-none focus:border-accent transition-colors resize-y min-h-[100px]"
+                <AutoExpandingTextarea
                   value={morningIntentions}
-                  onChange={(e) => {
-                    setMorningIntentions(e.target.value);
+                  onValueChange={(val) => {
+                    setMorningIntentions(val);
                     setIsSaved(false);
                   }}
+                  onCtrlEnter={() => handleStepNavigation(4)}
                   placeholder="Today I might face complaints, obstacles, delays. I will meet them with courage..."
                   disabled={isLoading || isSaving}
                 />
@@ -1050,11 +1084,9 @@ export default function Journal({
                 </p>
               </AppGuideNote>
             </div>
-          )}
 
-{/* STEP 4: Reflect (Evening Review & Amor Fati) */}
-          {activeStep === 4 && (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
+          {/* STEP 4: Reflect (Evening Review & Amor Fati) */}
+          <div className={cn("transition-all duration-300 ease-in-out space-y-6", activeStep === 4 ? "opacity-100 translate-y-0 scale-100 h-auto" : "opacity-0 absolute inset-x-0 top-0 -translate-y-4 scale-95 pointer-events-none h-0 overflow-hidden")}>
               <h3 className="font-display text-xl text-text-primary flex items-center gap-2">
                 <Moon size={20} className="text-text-secondary" />
                 Reflect: Evening Review (Day {dayOfYear} of 365)
@@ -1148,39 +1180,39 @@ export default function Journal({
                     <div className="flex flex-col gap-4">
                       <div>
                         <label className="block text-sm font-medium text-text-secondary mb-1.5">Which of my bad habits did I catch and correct today?</label>
-                        <textarea
-                          className="w-full resize-y rounded-lg border border-tertiary bg-background-tertiary p-3 text-sm text-text-primary outline-none focus-visible:border-caution min-h-[60px]"
+                        <AutoExpandingTextarea
                           value={senecaQ1}
-                          onChange={(e) => {
-                            setSenecaQ1(e.target.value);
+                          onValueChange={(val) => {
+                            setSenecaQ1(val);
                             setIsSaved(false);
                           }}
+                          onCtrlEnter={handleSave}
                           placeholder="I stopped complaining about..."
                           disabled={isLoading || isSaving}
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-text-secondary mb-1.5">What negative impulse or distraction did I successfully resist?</label>
-                        <textarea
-                          className="w-full resize-y rounded-lg border border-tertiary bg-background-tertiary p-3 text-sm text-text-primary outline-none focus-visible:border-caution min-h-[60px]"
+                        <AutoExpandingTextarea
                           value={senecaQ2}
-                          onChange={(e) => {
-                            setSenecaQ2(e.target.value);
+                          onValueChange={(val) => {
+                            setSenecaQ2(val);
                             setIsSaved(false);
                           }}
+                          onCtrlEnter={handleSave}
                           placeholder="Resisted doomscrolling or anger..."
                           disabled={isLoading || isSaving}
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-text-secondary mb-1.5">Where did I stumble today, and how will I handle it better tomorrow?</label>
-                        <textarea
-                          className="w-full resize-y rounded-lg border border-tertiary bg-background-tertiary p-3 text-sm text-text-primary outline-none focus-visible:border-caution min-h-[60px]"
+                        <AutoExpandingTextarea
                           value={senecaQ3}
-                          onChange={(e) => {
-                            setSenecaQ3(e.target.value);
+                          onValueChange={(val) => {
+                            setSenecaQ3(val);
                             setIsSaved(false);
                           }}
+                          onCtrlEnter={handleSave}
                           placeholder="I will prepare my morning more calmly..."
                           disabled={isLoading || isSaving}
                         />
@@ -1354,7 +1386,6 @@ export default function Journal({
                 </p>
               </AppGuideNote>
             </div>
-          )}
         </div>
       )}
 

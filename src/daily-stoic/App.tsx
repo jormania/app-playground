@@ -5,6 +5,7 @@ import Onboarding from './components/Onboarding';
 import Journal from './Journal';
 import Settings from './Settings';
 import MementoMori from './components/MementoMori';
+import { ToastContainer, showToast } from './components/Toast';
 import { DichotomyOfControl } from './components/DichotomyOfControl';
 import Stats from './components/Stats';
 import PassionsAnalytics from './components/PassionsAnalytics';
@@ -420,9 +421,9 @@ export default function App() {
     try {
       await resetCycleData();
       setShowCelebration(false);
-      alert("Happy New Cycle! Day 1 begins today.");
+      showToast("Happy New Cycle! Day 1 begins today.", "success");
     } catch (e: any) {
-      alert(e.message || e);
+      showToast(e.message || e, "error");
     }
   };
 
@@ -509,6 +510,7 @@ export default function App() {
 
   const handleToggleFavorite = async () => {
     if (isTogglingFavorite) return;
+    triggerHaptic('light');
     setIsTogglingFavorite(true);
     
     const nextFavoriteState = !isCurrentQuoteFavorited;
@@ -1102,7 +1104,7 @@ export default function App() {
           </div>
         </div>
       )}
-
+      <ToastContainer />
     </div>
   );
 }

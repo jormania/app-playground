@@ -12,6 +12,7 @@ import { useDiagnosticsReveal } from '../shared/notify/useDiagnosticsReveal';
 import { useTheme } from './lib/themeContext';
 import { triggerHaptic } from '../shared/haptics';
 import { cn } from './lib/cn';
+import { showToast } from './components/Toast';
 
 interface SettingsProps {
   onClose: () => void;
@@ -76,7 +77,7 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
     if (checked) {
       const perm = await requestPermission();
       if (perm !== 'granted') {
-        alert('Notification permissions are required to enable reminders. Please grant permission in your browser.');
+        showToast('Notification permissions are required to enable reminders. Please grant permission in your browser.', 'warning');
         return;
       }
       localStorage.setItem('daily-stoic:reminder-enabled', 'true');
@@ -178,10 +179,10 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
 
     try {
       await onResetCycle();
-      alert("Cycle reset successfully! Day 1 of the new 365-day cycle begins today.");
+      showToast("Cycle reset successfully! Day 1 of the new 365-day cycle begins today.", "success");
       onClose();
     } catch (err: any) {
-      alert("Error resetting cycle: " + (err.message || err));
+      showToast("Error resetting cycle: " + (err.message || err), "error");
     } finally {
       setIsResetting(false);
     }
@@ -294,7 +295,7 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
               <span className="text-xs uppercase tracking-wider text-text-secondary font-mono">Current Palette</span>
               <span className="text-sm font-medium text-text-primary mt-0.5">{current.name}</span>
             </div>
-            <Button onClick={cycle} variant="secondary" size="sm">
+            <Button onClick={() => { cycle(); triggerHaptic('light'); }} variant="secondary" size="sm">
               Cycle Palette ◐
             </Button>
           </div>
@@ -389,7 +390,7 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
                 type="button"
                 onClick={() => {
                   localStorage.setItem('daily-stoic:simulate-celebration', 'true');
-                  alert('Celebration simulation activated! Go back to the reflections dashboard to see it.');
+                  showToast('Celebration simulation activated! Go back to the reflections dashboard to see it.', 'info');
                   onClose();
                 }}
                 className="rounded px-2.5 py-1.5 text-xs font-medium border border-tertiary bg-background-tertiary text-text-primary hover:border-accent transition-all duration-200"

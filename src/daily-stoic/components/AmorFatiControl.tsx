@@ -8,6 +8,7 @@ import {
   Heart
 } from 'lucide-react';
 import { cn } from '../lib/cn';
+import { triggerHaptic } from '../../shared/haptics';
 
 interface AmorFatiControlProps {
   fateInput: string;
@@ -33,6 +34,7 @@ export default function AmorFatiControl({
   onAcceptanceTagsChange,
 }: AmorFatiControlProps) {
   const handleTagToggle = (tag: string) => {
+    triggerHaptic('light');
     if (acceptanceTags.includes(tag)) {
       onAcceptanceTagsChange(acceptanceTags.filter((t) => t !== tag));
     } else {
