@@ -410,9 +410,9 @@ export default function App() {
       
       document.body.removeChild(shareContainer);
       triggerHaptic('success');
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to generate sharing image', e);
-      alert('Failed to generate sharing image: ' + e);
+      showToast(e?.message || 'Failed to generate the sharing image.', 'error');
     } finally {
       setIsSharingCelebration(false);
     }
@@ -502,36 +502,33 @@ export default function App() {
       link.click();
       triggerHaptic('success');
       document.body.removeChild(container);
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to generate image', e);
+      showToast(e?.message || 'Failed to generate the quote image.', 'error');
     } finally {
       setIsSharing(false);
     }
   };
 
-  const handleToggleFavorite = async () => {
-    if (isTogglingFavorite) return;
-    triggerHaptic('light');
-    setIsTogglingFavorite(true);
-    
-    const nextFavoriteState = !isCurrentQuoteFavorited;
-    
-    // Save to local storage cache
-    localStorage.setItem(`daily-stoic:favorite-${dayOfYear}`, nextFavoriteState.toString());
+  // Shared by the heart toggle on the current day's quote and the Enchiridion's
+  // "Remove favorite" button, so there is exactly one place that knows how to
+  // persist a favorite change — one bug fixed here fixes both call sites.
+  const setFavoriteForDay = useCallback(async (index: number, nextFavoriteState: boolean) => {
+    localStorage.setItem(`daily-stoic:favorite-${index}`, nextFavoriteState.toString());
     setLocalFavoritesToggle((prev) => prev + 1);
 
     if (isNotionConfigured && schemaErrors.length === 0) {
       try {
-        const record = recentReflections.find((r) => r.quoteId === dayOfYear);
+        const record = recentReflections.find((r) => r.quoteId === index);
         const year = new Date().getFullYear();
         const date = new Date(year, 0, 1);
-        date.setDate(dayOfYear);
+        date.setDate(index);
         const dateStr = getLocalTodayStr(date);
 
         await upsertReflection(
           token,
           databaseId,
-          dayOfYear,
+          index,
           record?.text || '',
           dateStr,
           record?.id || undefined, // real page UUID for PATCH
@@ -545,13 +542,25 @@ export default function App() {
           record?.virtue || ''
         );
         await loadReflectionsAndCheckStreak();
-          } catch (err) {
-            console.error('Failed to toggle favorite on cloud:', err);
-          } finally {
-        setIsTogglingFavorite(false);
+      } catch (err: any) {
+        console.error('Failed to toggle favorite on cloud:', err);
+        showToast(
+          (err?.message ? err.message + ' ' : '') + 'Saved on this device, but it did not sync to Notion.',
+          'error'
+        );
       }
     } else {
       await loadLocalStorageStreak(today);
+    }
+  }, [isNotionConfigured, schemaErrors, recentReflections, token, databaseId, loadReflectionsAndCheckStreak, loadLocalStorageStreak, today]);
+
+  const handleToggleFavorite = async () => {
+    if (isTogglingFavorite) return;
+    triggerHaptic('light');
+    setIsTogglingFavorite(true);
+    try {
+      await setFavoriteForDay(dayOfYear, !isCurrentQuoteFavorited);
+    } finally {
       setIsTogglingFavorite(false);
     }
   };
@@ -950,33 +959,7 @@ export default function App() {
                         <button
                           onClick={async () => {
                             triggerHaptic('light');
-                            localStorage.setItem(`daily-stoic:favorite-${index}`, 'false');
-                            setLocalFavoritesToggle(prev => prev + 1);
-                            if (isNotionConfigured && schemaErrors.length === 0) {
-                              try {
-                                const record = recentReflections.find((r) => r.quoteId === index);
-                                const year = new Date().getFullYear();
-                                const date = new Date(year, 0, 1);
-                                date.setDate(index);
-                                const dateStr = getLocalTodayStr(date);
-                                await upsertReflection(
-                                  token,
-                                  databaseId,
-                                  index,
-                                  record?.text || '',
-                                  dateStr,
-                                  record?.date ? record.date : undefined,
-                                  record?.fateInput || '',
-                                  record?.acceptanceTags || [],
-                                  false
-                                );
-                                await loadReflectionsAndCheckStreak();
-                              } catch (err) {
-                                console.error(err);
-                              }
-                            } else {
-                              await loadLocalStorageStreak(today);
-                            }
+                            await setFavoriteForDay(index, false);
                           }}
                           className="flex items-center gap-1 text-energy hover:text-energy/80 font-medium transition-colors p-1"
                           aria-label="Remove favorite"

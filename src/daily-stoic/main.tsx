@@ -8,6 +8,7 @@ import App from './App';
 import { watchInstalled } from '../shared/installFlag';
 import { registerPeriodicSync } from '../shared/notify/periodicSync';
 import { ThemeProvider } from './lib/themeContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 watchInstalled('daily-stoic-react.html');
 
@@ -41,8 +42,10 @@ if ('serviceWorker' in navigator && new URL(window.location.href).searchParams.h
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeProvider>
-      <App />
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    </ErrorBoundary>
   </StrictMode>
 );

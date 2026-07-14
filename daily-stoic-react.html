@@ -5,17 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Daily Stoic — wisdom and reflections</title>
   <meta name="description" content="A daily Stoic companion displaying public domain quotes and a journal for reflections." />
-  <meta name="theme-color" content="#f4f5f7" />
+  <meta name="theme-color" content="#4B45C6" />
   <script>
-    // Apply the saved theme before first paint to avoid a flash.
+    // Apply the saved preset before first paint to avoid a flash of the wrong
+    // palette. Mirrors src/daily-stoic/lib/theme.ts's normalizePreset/applyPreset —
+    // keep this THEME_COLORS map in step with that file's PRESETS array.
     try {
-      var p = localStorage.getItem('daily-stoic:theme') || 'system';
-      var dark = p === 'dark' || (p === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-      if (dark) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        var m = document.querySelector('meta[name="theme-color"]');
-        if (m) m.setAttribute('content', '#0e1115');
+      var THEME_COLORS = {
+        'indigo-light': '#4B45C6',
+        'indigo-dark': '#121127',
+        'quiet-light': '#F5F5F5',
+        'octagon': '#1E1F2B',
+        'filter-sun': '#FAF4F2',
+        'ristretto': '#211C1C',
+        'solarized-light': '#FDF6E3',
+        'spectrum': '#191919'
+      };
+      var raw = localStorage.getItem('daily-stoic:theme');
+      var id;
+      if (raw && THEME_COLORS.hasOwnProperty(raw)) {
+        id = raw;
+      } else if (raw === 'light') {
+        id = 'indigo-light';
+      } else if (raw === 'dark') {
+        id = 'indigo-dark';
+      } else {
+        id = matchMedia('(prefers-color-scheme: dark)').matches ? 'indigo-dark' : 'indigo-light';
       }
+      document.documentElement.setAttribute('data-theme', id);
+      var m = document.querySelector('meta[name="theme-color"]');
+      if (m) m.setAttribute('content', THEME_COLORS[id]);
     } catch (e) {}
   </script>
   <link rel="icon" type="image/svg+xml" href="/daily-stoic-logo.svg" />
