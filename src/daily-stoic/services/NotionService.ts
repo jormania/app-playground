@@ -1,7 +1,6 @@
 export interface NotionReflection {
   id: string;
   text: string;
-  tags: string[];
   fateInput?: string;
   acceptanceTags?: string[];
   favorite?: boolean;
@@ -119,7 +118,6 @@ export function validateSchema(properties: Record<string, { type?: string }>): s
     'Name': 'title',
     'QuoteID': 'number',
     'Reflection': 'rich_text',
-    'Tags': 'multi_select',
     'Date': 'date',
     'AcceptanceTags': 'multi_select',
     'FateInput': 'rich_text',
@@ -236,12 +234,6 @@ export async function fetchReflectionForDay(
     ? richText.map((rt: any) => rt.plain_text || '').join('')
     : '';
 
-  // Extract tags from multi_select
-  const multiSelect = props.Tags?.multi_select || [];
-  const tags = Array.isArray(multiSelect)
-    ? multiSelect.map((o: any) => o.name || '')
-    : [];
-
   // Extract FateInput text from rich_text
   const fateText = props.FateInput?.rich_text || [];
   const fateInput = Array.isArray(fateText)
@@ -289,7 +281,6 @@ export async function fetchReflectionForDay(
   return {
     id: page.id,
     text,
-    tags,
     fateInput,
     acceptanceTags,
     favorite,
@@ -307,7 +298,6 @@ export async function upsertReflection(
   databaseId: string,
   dayOfYear: number,
   reflection: string,
-  tags: string[],
   dateStr: string,
   existingPageId?: string,
   fateInput = '',
@@ -344,9 +334,6 @@ export async function upsertReflection(
           },
         },
       ],
-    },
-    'Tags': {
-      multi_select: tags.map((t) => ({ name: t })),
     },
     'Date': {
       date: {
@@ -430,11 +417,6 @@ export async function upsertReflection(
     ? richText.map((rt: any) => rt.plain_text || '').join('')
     : '';
 
-  const multiSelect = props.Tags?.multi_select || [];
-  const returnTags = Array.isArray(multiSelect)
-    ? multiSelect.map((o: any) => o.name || '')
-    : [];
-
   const fateText = props.FateInput?.rich_text || [];
   const returnFateInput = Array.isArray(fateText)
     ? fateText.map((rt: any) => rt.plain_text || '').join('')
@@ -474,7 +456,6 @@ export async function upsertReflection(
   return {
     id: page.id,
     text,
-    tags: returnTags,
     fateInput: returnFateInput,
     acceptanceTags: returnAcceptanceTags,
     favorite: returnFavorite,

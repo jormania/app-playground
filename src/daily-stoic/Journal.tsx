@@ -524,7 +524,6 @@ export default function Journal({
         databaseId,
         dayOfYear,
         cleanedText,
-        ['Stoic', 'Reflection'],
         dateStr,
         existingPageId,
         cleanedFate,
@@ -570,7 +569,7 @@ export default function Journal({
   const handleAddWorry = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWorry.trim()) return;
-    const dateStr = new Date().toISOString().split('T')[0];
+    const dateStr = getLocalTodayStr();
     setWorries([{ id: Date.now().toString(), text: newWorry.trim(), category: 'unassigned', createdAt: dateStr }, ...worries]);
     setNewWorry('');
     triggerHaptic('light');

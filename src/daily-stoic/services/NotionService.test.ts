@@ -40,7 +40,6 @@ describe('NotionService', () => {
         'Name': { type: 'title' },
         'QuoteID': { type: 'number' },
         'Reflection': { type: 'rich_text' },
-        'Tags': { type: 'multi_select' },
         'Date': { type: 'date' },
         'AcceptanceTags': { type: 'multi_select' },
         'FateInput': { type: 'rich_text' },
@@ -56,7 +55,6 @@ describe('NotionService', () => {
       };
       const errors = validateSchema(invalidProps);
       expect(errors).toContain('Missing property: "Reflection"');
-      expect(errors).toContain('Missing property: "Tags"');
       expect(errors).toContain('Missing property: "Date"');
       expect(errors).toContain('Missing property: "AcceptanceTags"');
       expect(errors).toContain('Missing property: "FateInput"');
@@ -68,7 +66,6 @@ describe('NotionService', () => {
         'Name': { type: 'title' },
         'QuoteID': { type: 'select' },
         'Reflection': { type: 'rich_text' },
-        'Tags': { type: 'multi_select' },
         'Date': { type: 'date' },
         'AcceptanceTags': { type: 'multi_select' },
         'FateInput': { type: 'rich_text' },
@@ -89,9 +86,6 @@ describe('NotionService', () => {
             properties: {
               Reflection: {
                 rich_text: [{ plain_text: 'Stoic thoughts today.' }]
-              },
-              Tags: {
-                multi_select: [{ name: 'Meditations' }]
               },
               FateInput: {
                 rich_text: [{ plain_text: 'Felt tired.' }]
@@ -118,7 +112,6 @@ describe('NotionService', () => {
       expect(res).toEqual({
         id: 'page-123',
         text: 'Stoic thoughts today.',
-        tags: ['Meditations'],
         fateInput: 'Felt tired.',
         acceptanceTags: ['Limitation'],
         favorite: true,
@@ -152,7 +145,6 @@ describe('NotionService', () => {
         id: 'new-page-id',
         properties: {
           Reflection: { rich_text: [{ plain_text: 'New thoughts.' }] },
-          Tags: { multi_select: [{ name: 'Seneca' }] },
           FateInput: { rich_text: [{ plain_text: 'Lost keys.' }] },
           AcceptanceTags: { multi_select: [{ name: 'Outcome' }] },
           Favorite: { checkbox: true }
@@ -165,7 +157,6 @@ describe('NotionService', () => {
         '41c42bc4dfb543f49051810b3c5880fe',
         42,
         'New thoughts.',
-        ['Seneca'],
         '2026-07-12',
         undefined,
         'Lost keys.',
@@ -182,7 +173,6 @@ describe('NotionService', () => {
       expect(res).toEqual({
         id: 'new-page-id',
         text: 'New thoughts.',
-        tags: ['Seneca'],
         fateInput: 'Lost keys.',
         acceptanceTags: ['Outcome'],
         favorite: true,
@@ -205,7 +195,6 @@ describe('NotionService', () => {
         id: 'existing-page-id',
         properties: {
           Reflection: { rich_text: [{ plain_text: 'Updated thoughts.' }] },
-          Tags: { multi_select: [{ name: 'Seneca' }] },
           FateInput: { rich_text: [{ plain_text: 'Heavy traffic.' }] },
           AcceptanceTags: { multi_select: [{ name: 'Time' }] },
           Favorite: { checkbox: false }
@@ -218,7 +207,6 @@ describe('NotionService', () => {
         '41c42bc4dfb543f49051810b3c5880fe',
         42,
         'Updated thoughts.',
-        ['Seneca'],
         '2026-07-12',
         'existing-page-id',
         'Heavy traffic.',
@@ -235,7 +223,6 @@ describe('NotionService', () => {
       expect(res).toEqual({
         id: 'existing-page-id',
         text: 'Updated thoughts.',
-        tags: ['Seneca'],
         fateInput: 'Heavy traffic.',
         acceptanceTags: ['Time'],
         favorite: false,

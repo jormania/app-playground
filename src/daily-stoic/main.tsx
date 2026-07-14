@@ -7,7 +7,6 @@ import './styles/index.css'; // Replaces ds/tokens.css
 import App from './App';
 import { watchInstalled } from '../shared/installFlag';
 import { registerPeriodicSync } from '../shared/notify/periodicSync';
-import { GuideProvider } from './GuideContext';
 import { ThemeProvider } from './lib/themeContext';
 
 watchInstalled('daily-stoic-react.html');
@@ -43,9 +42,7 @@ if ('serviceWorker' in navigator && new URL(window.location.href).searchParams.h
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
-      <GuideProvider>
-        <App />
-      </GuideProvider>
+      <App />
     </ThemeProvider>
   </StrictMode>
 );

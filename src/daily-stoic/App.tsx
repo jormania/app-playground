@@ -103,16 +103,17 @@ export default function App() {
       } catch {
         passionsVal = [];
       }
+      const moodVal = localStorage.getItem(`daily-stoic:mood-${i}`) || '';
       const createdTimeVal = localStorage.getItem(`daily-stoic:created-time-${i}`) || '';
       
       const estimatedDateStr = (() => {
         const y = new Date().getFullYear();
         const d = new Date(y, 0, 1);
         d.setDate(i);
-        return d.toISOString().split('T')[0];
+        return getLocalTodayStr(d);
       })();
 
-      if (val || fateVal || tagsVal.length > 0 || favVal || passionsVal.length > 0) {
+      if (val || fateVal || tagsVal.length > 0 || favVal || passionsVal.length > 0 || moodVal) {
         days.add(i);
         records.push({
           date: estimatedDateStr,
@@ -122,6 +123,7 @@ export default function App() {
           acceptanceTags: tagsVal,
           favorite: favVal,
           passions: passionsVal,
+          mood: moodVal,
           createdTime: createdTimeVal || `${estimatedDateStr}T12:00:00Z`,
         });
       }
@@ -524,14 +526,13 @@ export default function App() {
         const year = new Date().getFullYear();
         const date = new Date(year, 0, 1);
         date.setDate(dayOfYear);
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = getLocalTodayStr(date);
 
         await upsertReflection(
           token,
           databaseId,
           dayOfYear,
           record?.text || '',
-          ['Stoic', 'Reflection'],
           dateStr,
           record?.id || undefined, // real page UUID for PATCH
           record?.fateInput || '',
@@ -957,13 +958,12 @@ export default function App() {
                                 const year = new Date().getFullYear();
                                 const date = new Date(year, 0, 1);
                                 date.setDate(index);
-                                const dateStr = date.toISOString().split('T')[0];
+                                const dateStr = getLocalTodayStr(date);
                                 await upsertReflection(
                                   token,
                                   databaseId,
                                   index,
                                   record?.text || '',
-                                  ['Stoic', 'Reflection'],
                                   dateStr,
                                   record?.date ? record.date : undefined,
                                   record?.fateInput || '',

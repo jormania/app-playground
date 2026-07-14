@@ -82,7 +82,7 @@ export function AutoExpandingTextarea({
             status === 'typing' ? "text-text-secondary/40 opacity-100" : "text-success/70 opacity-100"
           )}
         >
-          {status === 'typing' ? 'Saving...' : 'Draft saved'}
+          {status === 'typing' ? 'Saving draft...' : 'Draft saved on this device'}
         </span>
       )}
     </div>
