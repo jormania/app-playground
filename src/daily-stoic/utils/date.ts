@@ -27,3 +27,20 @@ export function getLocalTodayStr(date: Date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+// The app's "day number" (QuoteID) is a position in the user's 365-day cycle,
+// not the calendar day-of-year — it must always be computed from cycleStartDate.
+export function getCycleDay(startDateStr: string, today: Date = new Date()): number {
+  if (!startDateStr) {
+    const currentYear = today.getFullYear();
+    const start = new Date(currentYear, 0, 1);
+    const diff = today.getTime() - start.getTime();
+    return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+  }
+  const start = new Date(startDateStr);
+  const startD = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const todayD = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const diff = todayD.getTime() - startD.getTime();
+  const diffDays = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+  return (diffDays % 365) + 1;
+}
+

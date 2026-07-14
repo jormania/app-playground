@@ -13,69 +13,21 @@ interface StatsProps {
 
 export default function Stats({ streak, recentReflections, onClose }: StatsProps) {
   const [insightPeriod, setInsightPeriod] = useState<'30' | '90' | '365' | 'all'>('30');
-  
-  // 1. Calculate current day of the 365-day cycle
-  const todayCycleDay = useMemo(() => {
-    const cycleStartDate = localStorage.getItem('daily-stoic:cycle-start-date') || '';
-    const today = new Date();
-    if (!cycleStartDate) {
-      const currentYear = today.getFullYear();
-      const start = new Date(currentYear, 0, 1);
-      const diff = today.getTime() - start.getTime();
-      return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
-    }
-    const start = new Date(cycleStartDate);
-    const startD = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-    const todayD = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const diff = todayD.getTime() - startD.getTime();
-    const diffDays = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
-    return (diffDays % 365) + 1;
-  }, []);
 
-  // 2. Consistency Graph Data (365 days)
-  const weeks = useMemo(() => {
-    const cols = [];
-    for (let w = 0; w < 53; w++) {
-      const days = [];
-      for (let d = 0; d < 7; d++) {
-        const dayOfYear = w * 7 + d + 1;
-        if (dayOfYear > 365) break;
-        
-        const hasLog = recentReflections.some(r => r.quoteId === dayOfYear);
-        const isToday = dayOfYear === todayCycleDay;
-        
-        days.push(
-          <div 
-            key={dayOfYear} 
-            className={cn(
-              "h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0 rounded-[2px] transition-all border",
-              hasLog 
-                ? "bg-accent border-accent/20 shadow-[0_0_8px_var(--color-accent-soft)]" 
-                : "bg-background-tertiary border-transparent hover:bg-border-tertiary",
-              isToday && "ring-2 ring-accent ring-offset-2 ring-offset-background-secondary animate-pulse"
-            )} 
-            title={`Day ${dayOfYear}${isToday ? ' (Today)' : ''}${hasLog ? ': Journaled' : ''}`}
-          />
-        );
-      }
-      cols.push(<div key={w} className="flex flex-col gap-1 shrink-0">{days}</div>);
-    }
-    return cols;
-  }, [recentReflections, todayCycleDay]);
-
-  // 3. Filter reflections based on insight period
+  // Filter reflections based on insight period, by actual calendar date
   const filteredReflections = useMemo(() => {
-    const periodDays = insightPeriod === 'all' ? 366 : parseInt(insightPeriod, 10);
+    if (insightPeriod === 'all') return recentReflections;
+    const periodDays = parseInt(insightPeriod, 10);
+    const now = new Date();
     return recentReflections.filter(r => {
-      if (insightPeriod === 'all') return true;
-      const diff = todayCycleDay - r.quoteId;
-      // Handle cycle wrap around (365 days)
-      const normalizedDiff = diff >= 0 ? diff : (365 + diff);
-      return normalizedDiff < periodDays;
+      if (!r.date) return true;
+      const recordDate = new Date(r.date + 'T00:00:00');
+      const diffDays = (now.getTime() - recordDate.getTime()) / (1000 * 60 * 60 * 24);
+      return diffDays <= periodDays;
     });
-  }, [recentReflections, insightPeriod, todayCycleDay]);
+  }, [recentReflections, insightPeriod]);
 
-  // 4. Insights Review Data
+  // Insights Review Data
   const insights = useMemo(() => {
     const periodDays = insightPeriod === 'all' ? 365 : parseInt(insightPeriod, 10);
     
@@ -162,15 +114,6 @@ export default function Stats({ streak, recentReflections, onClose }: StatsProps
               <span className="text-text-secondary">Words Written</span>
               <span className="font-medium text-text-primary">{insights.words.toLocaleString()}</span>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-6 sm:mb-8 rounded-lg bg-background-secondary border border-tertiary p-4 sm:p-6">
-        <h3 className="font-display text-lg text-text-primary mb-4">365-Day Consistency</h3>
-        <div className="flex justify-center overflow-x-auto pb-2 custom-scrollbar">
-          <div className="flex gap-1 min-w-max pr-2">
-            {weeks}
           </div>
         </div>
       </div>

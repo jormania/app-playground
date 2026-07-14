@@ -122,8 +122,8 @@ export default function Journal({
   const [savedMood, setSavedMood] = useState('');
 
   // Dichotomy of Control (Spheres of Choice) integration
-  const [worries, setWorries] = useState<Worry[]>(initialWorries || []);
-  const [savedWorries, setSavedWorries] = useState<Worry[]>(initialWorries || []);
+  const [worries, setWorries] = useState<Worry[]>(isNotionConfigured ? [] : (initialWorries || []));
+  const [savedWorries, setSavedWorries] = useState<Worry[]>(isNotionConfigured ? [] : (initialWorries || []));
   const [newWorry, setNewWorry] = useState('');
   const [selectedReframeIds, setSelectedReframeIds] = useState<string[]>([]);
 
@@ -131,13 +131,16 @@ export default function Journal({
   const [selectedVirtue, setSelectedVirtue] = useState<string | null>(null);
   const [savedVirtue, setSavedVirtue] = useState<string | null>(null);
 
-  // Sync worries with props on load or day change
+  // Offline mode has no per-day storage for worries (single shared bucket in
+  // localStorage), so mirror the parent's list directly. When Notion is
+  // configured, the day-scoped fetch below is the source of truth — syncing
+  // from initialWorries here would leak other days' entries into today.
   useEffect(() => {
-    if (initialWorries) {
+    if (!isNotionConfigured && initialWorries) {
       setWorries(initialWorries);
       setSavedWorries(initialWorries);
     }
-  }, [initialWorries, dayOfYear]);
+  }, [initialWorries, isNotionConfigured]);
 
   // Reload completed states when dayOfYear changes
   useEffect(() => {
@@ -350,8 +353,6 @@ export default function Journal({
             try {
               parsedWorries = JSON.parse(result.dichotomy);
             } catch {}
-          } else {
-            parsedWorries = initialWorries || [];
           }
           setWorries(parsedWorries);
           setSavedWorries(parsedWorries);
@@ -646,11 +647,11 @@ export default function Journal({
     { id: 4, label: 'Reflect', icon: <Moon size={16} /> }
   ];
 
-  // Filter today's worries for Step 4
-  const dateStr = new Date().toISOString().split('T')[0];
+  // "worries" is already scoped to the day being viewed (loaded per-day from
+  // Notion, or the single shared offline bucket), so no extra date filter is needed.
   const todaysNotUpToMe = useMemo(() => {
-    return worries.filter(w => w.category === 'not-up-to-me' && w.createdAt === dateStr);
-  }, [worries, dateStr]);
+    return worries.filter(w => w.category === 'not-up-to-me');
+  }, [worries]);
 
   const activeUpToMe = useMemo(() => {
     return worries.filter(w => w.category === 'up-to-me');

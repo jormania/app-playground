@@ -3,7 +3,7 @@ import { Field } from './components/Field';
 import { Button } from './components/Button';
 import { Switch as SettingsToggle } from './components/Switch';
 import { probeConnection, fetchDatabaseProperties, validateSchema, fetchRecentReflections, upgradeDatabaseSchema } from './services/NotionService';
-import { getDayOfYear } from './utils/date';
+import { getCycleDay } from './utils/date';
 import { createIdbKv } from '../shared/notify/idbKv';
 import { registerPeriodicSync, unregisterPeriodicSync } from '../shared/notify/periodicSync';
 import { requestPermission, capabilities } from '../shared/notify/permission';
@@ -49,7 +49,8 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
   const caps = capabilities();
 
   const syncIdb = async (enabledVal: boolean) => {
-    const today = getDayOfYear();
+    const cycleStartDate = localStorage.getItem('daily-stoic:cycle-start-date') || '';
+    const today = getCycleDay(cycleStartDate);
     let todayLogged = false;
 
     if (token.trim() && database.trim()) {

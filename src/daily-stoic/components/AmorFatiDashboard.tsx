@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { ReflectionRecord } from '../services/NotionService';
-import { getDayOfYear } from '../utils/date';
 import { cn } from '../lib/cn';
 import { 
   Heart, 
@@ -59,14 +58,15 @@ export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFa
 
   // 1. Calculate Real Statistics
   const stats = useMemo(() => {
-    const today = getDayOfYear();
-    const periodDays = insightPeriod === 'all' ? 366 : parseInt(insightPeriod, 10);
+    const periodDays = insightPeriod === 'all' ? Infinity : parseInt(insightPeriod, 10);
+    const now = new Date();
 
     const filtered = recentReflections.filter(r => {
       if (insightPeriod === 'all') return true;
-      const diff = today - r.quoteId;
-      const normalizedDiff = diff >= 0 ? diff : (366 + diff);
-      return normalizedDiff <= periodDays;
+      if (!r.date) return true;
+      const recordDate = new Date(r.date + 'T00:00:00');
+      const diffDays = (now.getTime() - recordDate.getTime()) / (1000 * 60 * 60 * 24);
+      return diffDays <= periodDays;
     });
 
     const reframedLogs = filtered.filter(r => r.fateInput && r.fateInput.trim().length > 0);
@@ -96,16 +96,17 @@ export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFa
       }
     });
 
-    // Extract historical obstacles (at least 7 days ago, sorted chronologically)
+    // Extract historical obstacles (at least 7 days ago, sorted by date)
     const pastObstacles = recentReflections
       .filter(r => r.fateInput && r.fateInput.trim().length > 0)
       .filter(r => {
-        const diff = today - r.quoteId;
-        const normalizedDiff = diff >= 0 ? diff : (366 + diff);
-        return normalizedDiff >= 7; // Only show things older than 7 days
+        if (!r.date) return false;
+        const recordDate = new Date(r.date + 'T00:00:00');
+        const diffDays = (now.getTime() - recordDate.getTime()) / (1000 * 60 * 60 * 24);
+        return diffDays >= 7; // Only show things older than 7 days
       })
-      .sort((a, b) => b.quoteId - a.quoteId) // Newest past obstacles first
-      .slice(0, 5); // Show top 5 past concerns
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) // Newest first
+      .slice(0, 5);
 
     return {
       totalLogs: filtered.length,

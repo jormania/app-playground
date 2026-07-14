@@ -10,7 +10,7 @@ import { DichotomyOfControl } from './components/DichotomyOfControl';
 import Stats from './components/Stats';
 import PassionsAnalytics from './components/PassionsAnalytics';
 import AmorFatiDashboard from './components/AmorFatiDashboard';
-import { getDayOfYear, getQuoteForDay, getLocalTodayStr } from './utils/date';
+import { getQuoteForDay, getLocalTodayStr, getCycleDay } from './utils/date';
 import { calculateStreak } from './utils/streak';
 import { fetchRecentReflections, fetchDatabaseProperties, validateSchema, upgradeDatabaseSchema, upsertReflection, clearDatabaseEntries, ReflectionRecord } from './services/NotionService';
 import { createIdbKv } from '../shared/notify/idbKv';
@@ -34,29 +34,10 @@ import {
 } from 'lucide-react';
 
 
-export function getCycleDay(startDateStr: string, today: Date = new Date()): number {
-  if (!startDateStr) {
-    const currentYear = today.getFullYear();
-    const start = new Date(currentYear, 0, 1);
-    const diff = today.getTime() - start.getTime();
-    return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
-  }
-  const start = new Date(startDateStr);
-  const startD = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-  const todayD = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const diff = todayD.getTime() - startD.getTime();
-  const diffDays = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
-  return (diffDays % 365) + 1;
-}
-
 export default function App() {
   const [cycleStartDate, setCycleStartDate] = useState(() => localStorage.getItem('daily-stoic:cycle-start-date') || '');
   const today = useMemo(() => getCycleDay(cycleStartDate), [cycleStartDate]);
-  const [dayOfYear, setDayOfYear] = useState(today);
-
-  useEffect(() => {
-    setDayOfYear(today);
-  }, [today]);
+  const dayOfYear = today;
 
   const { route, navigate } = useHashRoute();
   
@@ -195,8 +176,7 @@ export default function App() {
       setBirthDate(localStorage.getItem('daily-stoic:birthdate') || '');
       
       const todayVal = getCycleDay(todayStr);
-      setDayOfYear(todayVal);
-      
+
       // Reload reflections/schema
       if (token.trim() && databaseId.trim()) {
         const props = await fetchDatabaseProperties(token, databaseId);
@@ -228,8 +208,8 @@ export default function App() {
   }, [token, databaseId, loadLocalStorageStreak, updateReminderIDB]);
 
   const loadReflectionsAndCheckStreak = useCallback(async () => {
-    const todayVal = getDayOfYear();
-    
+    const todayVal = getCycleDay(cycleStartDate);
+
     if (token.trim() && databaseId.trim()) {
       try {
         const props = await fetchDatabaseProperties(token, databaseId);
@@ -272,7 +252,7 @@ export default function App() {
       setHasPassionsProperty(false);
       await loadLocalStorageStreak(todayVal);
     }
-  }, [token, databaseId, loadLocalStorageStreak, updateReminderIDB]);
+  }, [token, databaseId, cycleStartDate, loadLocalStorageStreak, updateReminderIDB]);
 
   const isCycleCompleted = useMemo(() => {
     if (!cycleStartDate) return false;
@@ -644,7 +624,7 @@ export default function App() {
 
   const dashboardOptions: { label: string; value: string; Icon: LucideIcon }[] = [
     { label: 'Spheres of Choice', value: 'dichotomy', Icon: ScaleIcon },
-    { label: 'Recurring Passions', value: 'passions', Icon: FlameIcon },
+    { label: 'Passions & Judgments', value: 'passions', Icon: FlameIcon },
     { label: 'Amor Fati', value: 'amorfati', Icon: HeartIcon },
   ];
 
@@ -889,35 +869,6 @@ export default function App() {
                 </div>
               </div>
             )}
-            <section className="flex flex-wrap items-center justify-between gap-4 rounded-lg bg-background-secondary p-4 border border-tertiary">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-text-secondary">Day of 365 Cycle</span>
-                <div className="flex items-center rounded-lg bg-background-tertiary border border-tertiary">
-                  <button
-                    onClick={() => setDayOfYear(Math.max(1, dayOfYear - 1))}
-                    disabled={dayOfYear <= 1}
-                    className="px-3 py-1.5 text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors"
-                  >
-                    −
-                  </button>
-                  <span className="w-10 text-center font-medium font-mono text-text-primary">
-                    {dayOfYear}
-                  </span>
-                  <button
-                    onClick={() => setDayOfYear(Math.min(365, dayOfYear + 1))}
-                    disabled={dayOfYear >= 365}
-                    className="px-3 py-1.5 text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-              {dayOfYear !== today && (
-                <Button variant="ghost" size="sm" onClick={() => setDayOfYear(today)}>
-                  Back to Today
-                </Button>
-              )}
-            </section>
 
             <Journal
               dayOfYear={dayOfYear}

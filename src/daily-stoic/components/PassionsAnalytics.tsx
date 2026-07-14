@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { ReflectionRecord } from '../services/NotionService';
-import { getDayOfYear } from '../utils/date';
 import { cn } from '../lib/cn';
 import { 
   Flame, 
@@ -79,16 +78,17 @@ export default function PassionsAnalytics({ recentReflections, onClose }: Passio
 
   // 1. Filter and Calculate Real Data
   const stats = useMemo(() => {
-    const today = getDayOfYear();
-    const periodDays = insightPeriod === 'all' ? 366 : parseInt(insightPeriod, 10);
+    const periodDays = insightPeriod === 'all' ? Infinity : parseInt(insightPeriod, 10);
+    const now = new Date();
     
-    // Filter records in the selected period
+    // Filter records in the selected period by actual calendar date
     const filteredRecords = recentReflections.filter(r => {
       if (insightPeriod === 'all') return true;
-      const diff = today - r.quoteId;
-      // Handle leap year wrap around
-      const normalizedDiff = diff >= 0 ? diff : (366 + diff);
-      return normalizedDiff < periodDays;
+      if (!r.date) return true; // include if no date available
+      const recordDate = new Date(r.date + 'T00:00:00');
+      const diffMs = now.getTime() - recordDate.getTime();
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      return diffDays <= periodDays;
     });
 
     const passionsCount: Record<string, number> = {};
@@ -211,7 +211,7 @@ export default function PassionsAnalytics({ recentReflections, onClose }: Passio
         <div>
           <h2 className="font-display text-2xl text-text-primary flex items-center gap-2">
             <Flame size={24} className="text-accent" />
-            Recurring Passions
+            Passions & Judgments
           </h2>
           <p className="text-sm text-text-secondary mt-1">Philosophical self-knowledge & judgment analytics</p>
         </div>
