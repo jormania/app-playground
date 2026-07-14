@@ -151,6 +151,25 @@
   max-width: 20rem;
 }
 
+.donePill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  background: var(--color-bg-sunken);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: var(--space-2xs) var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.donePillIcon {
+  color: var(--color-muted);
+}
+
 .settingsGroup {
   display: flex;
   flex-direction: column;
