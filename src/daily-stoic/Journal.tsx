@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Button } from './components/Button';
-import AppGuideNote from './components/AppGuideNote';
+import { Button, GuideNote } from '../ds';
+import { useShowGuides } from './lib/useShowGuides';
 import { fetchReflectionForDay, upsertReflection } from './services/NotionService';
-import { getLocalTodayStr } from './utils/date';
+import { getLocalTodayStr, cycleDayToDateStr } from './utils/date';
 import AmorFatiControl from './components/AmorFatiControl';
 import { triggerHaptic } from '../shared/haptics';
 import { cn } from './lib/cn';
@@ -79,6 +79,7 @@ export default function Journal({
   worries: initialWorries
 }: JournalProps) {
   const isNotionConfigured = !!token.trim() && !!databaseId.trim();
+  const showGuides = useShowGuides();
   const localStorageKey = `daily-stoic:reflection-${dayOfYear}`;
   const localFateKey = `daily-stoic:fate-input-${dayOfYear}`;
   const localTagsKey = `daily-stoic:acceptance-tags-${dayOfYear}`;
@@ -514,10 +515,8 @@ export default function Journal({
     setError(null);
 
     try {
-      const cycleStartStr = localStorage.getItem('daily-stoic:cycle-start-date') || `${new Date().getFullYear()}-01-01`;
-      const cycleStart = new Date(cycleStartStr);
-      const pageDate = new Date(cycleStart.getFullYear(), cycleStart.getMonth(), cycleStart.getDate() + (dayOfYear - 1));
-      const dateStr = getLocalTodayStr(pageDate);
+      const cycleStartStr = localStorage.getItem('daily-stoic:cycle-start-date') || '';
+      const dateStr = cycleDayToDateStr(dayOfYear, cycleStartStr);
 
       const result = await upsertReflection(
         token,
@@ -804,13 +803,13 @@ export default function Journal({
                 </div>
               )}
               <div className="mt-6">
-                <AppGuideNote summary="Meditating on Mortality (Memento Mori)">
+                <GuideNote hidden={!showGuides} summary="Meditating on Mortality (Memento Mori)">
                   <p>
                     <strong>Memento Mori</strong> translates to "remember that you will die." 
                     Stoics meditated on mortality not to become morbid, but to create absolute clarity and gratitude for the present moment. 
                     Viewing your yearly and overall life progress reminds you that time is your most scarce resource.
                   </p>
-                </AppGuideNote>
+                </GuideNote>
               </div>
             </div>
 
@@ -881,13 +880,13 @@ export default function Journal({
                 </div>
               </div>
               <div className="mt-6">
-                <AppGuideNote summary="Meditating on Daily Principles">
+                <GuideNote hidden={!showGuides} summary="Meditating on Daily Principles">
                   <p>
                     <strong>Meditating</strong> on philosophical principles prepares the mind for action. 
                     Rather than reading passively, focus on how today's maxim applies to your current circumstances. 
                     Use the search bar to explore specific themes, or draw from your hand-picked <strong>Enchiridion</strong> handbook to reinforce lessons.
                   </p>
-                </AppGuideNote>
+                </GuideNote>
               </div>
             </div>
 
@@ -1024,13 +1023,13 @@ export default function Journal({
                 )}
               </section>
 
-              <AppGuideNote summary="Preparing for the Day">
+              <GuideNote hidden={!showGuides} summary="Preparing for the Day">
                 <p>
                   <strong>Premeditatio Malorum</strong> coupled with the <strong>Dichotomy of Control</strong> aligns your focus. 
                   Identify what is up to you (your actions, focus, temper) and let go of the rest (delays, comments). 
                   Save your progress now or proceed directly to the evening reflection.
                 </p>
-              </AppGuideNote>
+              </GuideNote>
             </div>
 
           {/* STEP 4: Reflect (Evening Review & Amor Fati) */}
@@ -1327,12 +1326,12 @@ export default function Journal({
                 </div>
               </section>
 
-              <AppGuideNote summary="Reflecting on the Day">
+              <GuideNote hidden={!showGuides} summary="Reflecting on the Day">
                 <p>
                   <strong>Seneca's Interrogation</strong> balances your daily account. 
                   Record your achievements or lessons, toggle completed actionable concerns, reframe external frictions under <strong>Amor Fati</strong>, log any passions or dysfunctional judgments you noticed in yourself to track your tranquility training ground, and close by reflecting on the four cardinal Stoic virtues (Wisdom, Courage, Justice, and Temperance) to identify which one was most required for today's events, reinforcing your progress as a practicing Stoic.
                 </p>
-              </AppGuideNote>
+              </GuideNote>
             </div>
         </div>
       )}

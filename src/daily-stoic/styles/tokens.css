@@ -75,6 +75,53 @@
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ── src/ds/ compatibility bridge ─────────────────────────────────────────
+   Daily Stoic keeps its own token names above rather than loading
+   ds/tokens.css directly — the two systems don't share a naming scheme, and
+   swapping would break every other component's styling and all eight
+   presets here. But the app now imports Button/Field/SettingsToggle/
+   GuideNote/StreakCounter straight from src/ds/, and their CSS Modules read
+   a handful of ds/-only token names. Alias those to the closest Daily Stoic
+   equivalent so components render in the active preset's own colours
+   (never ds/'s default blue); adopt ds/'s own scale for spacing/type/
+   weight/motion-duration, which Daily Stoic never had as CSS variables (it
+   applied Tailwind utilities directly instead). Keep this in step if the
+   src/ds/ import list changes — a name used by a newly-imported ds/
+   component but missing here silently collapses to 0/unset, not an error. */
+:root {
+  --color-on-accent: var(--color-accent-contrast);
+  --color-surface:   var(--color-background-secondary);
+  --color-surface-2: var(--color-background-tertiary);
+  --color-bg-sunken: var(--color-background-primary);
+  --color-ink:       var(--color-text-primary);
+  --color-muted:     var(--color-text-secondary);
+  --color-faint:     var(--color-text-secondary);
+  --color-border:    var(--color-border-secondary);
+  --color-border-2:  var(--color-border-primary);
+  --color-danger:    var(--color-caution); /* Daily Stoic's palette never uses red */
+  --color-glow:      var(--color-accent-soft);
+  --duration:        var(--motion-base);
+
+  --font-sans: 'Inter Variable', Inter, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
+
+  --text-xs:   0.75rem;
+  --text-sm:   0.875rem;
+  --text-base: 1rem;
+  --text-xl:   1.5rem;
+  --text-2xl:  2rem;
+  --weight-medium: 500;
+  --weight-bold:   700;
+  --leading-body:  1.6;
+
+  --space-3xs: 2px;
+  --space-2xs: 4px;
+  --space-xs:  8px;
+  --space-sm:  12px;
+  --space-md:  16px;
+  --space-lg:  24px;
+}
+
 /* Shared dark-preset overrides: scrim + elevation darken (text-primary is now
    light, so scrim must NOT derive from it). Applied to every dark palette. */
 [data-theme='indigo-dark'],

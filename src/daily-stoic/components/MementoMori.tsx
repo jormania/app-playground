@@ -1,5 +1,5 @@
-import AppGuideNote from './AppGuideNote';
-import { Button } from './Button';
+import { Button, GuideNote } from '../../ds';
+import { useShowGuides } from '../lib/useShowGuides';
 import { Skull } from 'lucide-react';
 
 interface MementoMoriProps {
@@ -8,6 +8,8 @@ interface MementoMoriProps {
 }
 
 export default function MementoMori({ birthDateString, onGoToSettings }: MementoMoriProps) {
+  const showGuides = useShowGuides();
+
   if (!birthDateString) {
     return (
       <div className="mx-auto max-w-2xl text-center rounded-xl bg-background-secondary border border-tertiary p-8">
@@ -19,12 +21,12 @@ export default function MementoMori({ birthDateString, onGoToSettings }: Memento
           "Remember you must die." A visual representation of your life in weeks.
         </p>
         <div className="mb-6 text-left">
-          <AppGuideNote summary="Why meditate on mortality?">
+          <GuideNote hidden={!showGuides} summary="Why meditate on mortality?">
             <p>
-              <strong>Memento Mori</strong> is not about being morbid. It's a tool to create urgency, 
+              <strong>Memento Mori</strong> is not about being morbid. It's a tool to create urgency,
               clarify what truly matters, and remind you not to waste the time you have left on trivial arguments or anxieties.
             </p>
-          </AppGuideNote>
+          </GuideNote>
         </div>
         <div className="rounded-lg border border-tertiary border-dashed p-8 bg-background-secondary/50">
           <p className="mb-4 text-text-primary font-medium">

@@ -11,8 +11,11 @@ export function StreakCounter({ count, label = 'Reflection Streak', className, .
     <div className={cx(styles.container, className)} {...props}>
       <span className={styles.fireEmoji} role="img" aria-label="streak fire">🔥</span>
       <div className={styles.details}>
-        <span className={styles.count}>{count}</span>
-        <span className={styles.label}>{count === 1 ? `${label} (1 day)` : `${label} (${count} days)`}</span>
+        <div className={styles.countRow}>
+          <span className={styles.count}>{count}</span>
+          <span className={styles.unit}>{count === 1 ? 'day' : 'days'}</span>
+        </div>
+        <span className={styles.label}>{label}</span>
       </div>
     </div>
   );

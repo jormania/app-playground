@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { StreakCounter } from './StreakCounter';
+import { StreakCounter } from '../../ds';
 import FateGraph from './FateGraph';
 import MoodGraph from './MoodGraph';
 import { ReflectionRecord } from '../services/NotionService';

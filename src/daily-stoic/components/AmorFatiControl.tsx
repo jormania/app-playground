@@ -1,4 +1,4 @@
-import { Field } from './Field';
+import { Field } from '../../ds';
 import { 
   Globe, 
   Award, 

@@ -5,13 +5,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-md);
+  padding: var(--space-md, 16px);
 }
 
 .scrim {
   position: absolute;
   inset: 0;
-  background: var(--color-scrim);
+  background: var(--color-scrim, rgba(16, 20, 26, 0.50));
 }
 
 .dialog {
@@ -19,15 +19,15 @@
   z-index: 1;
   width: 100%;
   max-width: 28rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  padding: var(--space-lg);
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #e3e6ea);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: var(--shadow-lg, 0 12px 32px rgba(16, 20, 26, 0.14));
+  padding: var(--space-lg, 24px);
 }
 
 .dialog:focus-visible {
-  outline: 2px solid var(--color-ring);
+  outline: 2px solid var(--color-ring, rgba(59, 110, 245, 0.35));
   outline-offset: 2px;
 }
 
@@ -35,17 +35,17 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-md);
+  gap: var(--space-sm, 12px);
+  margin-bottom: var(--space-md, 16px);
 }
 
 .title {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  font-weight: var(--weight-bold);
-  line-height: var(--leading-tight);
-  color: var(--color-ink);
+  font-family: var(--font-display, "Inter", system-ui, sans-serif);
+  font-size: var(--text-lg, 1.125rem);
+  font-weight: var(--weight-bold, 700);
+  line-height: var(--leading-tight, 1.15);
+  color: var(--color-ink, #1b1f24);
 }
 
 .close {
@@ -55,29 +55,29 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  font-size: var(--text-xl);
+  font-size: var(--text-xl, 1.5rem);
   line-height: 1;
-  color: var(--color-muted);
+  color: var(--color-muted, #5a636e);
   background: transparent;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-sm, 6px);
   cursor: pointer;
   transition:
-    background-color var(--duration) var(--ease),
-    color var(--duration) var(--ease);
+    background-color var(--duration, 180ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1)),
+    color var(--duration, 180ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
 }
 .close:hover {
-  background: var(--color-surface-2);
-  color: var(--color-ink);
+  background: var(--color-surface-2, #f8f9fb);
+  color: var(--color-ink, #1b1f24);
 }
 .close:focus-visible {
-  outline: 2px solid var(--color-ring);
+  outline: 2px solid var(--color-ring, rgba(59, 110, 245, 0.35));
   outline-offset: 2px;
 }
 
 .body {
-  font-family: var(--font-sans);
-  font-size: var(--text-base);
-  line-height: var(--leading-body);
-  color: var(--color-ink);
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+  font-size: var(--text-base, 1rem);
+  line-height: var(--leading-body, 1.6);
+  color: var(--color-ink, #1b1f24);
 }

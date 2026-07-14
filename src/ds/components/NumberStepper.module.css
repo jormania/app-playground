@@ -1,37 +1,37 @@
 .stepper {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2xs);
+  gap: var(--space-2xs, 4px);
 }
 
 .label {
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  color: var(--color-ink);
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: var(--weight-medium, 500);
+  color: var(--color-ink, #1b1f24);
 }
 
 .control {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: var(--space-xs, 8px);
 }
 
 .input {
   width: 4.5rem;
   height: 44px;
   text-align: center;
-  font-family: var(--font-mono);
-  font-size: var(--text-lg);
+  font-family: var(--font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: var(--text-lg, 1.125rem);
   font-variant-numeric: tabular-nums;
-  color: var(--color-ink);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-2);
-  border-radius: var(--radius-md);
+  color: var(--color-ink, #1b1f24);
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border-2, #cdd2d9);
+  border-radius: var(--radius-md, 10px);
   -moz-appearance: textfield;
   transition:
-    border-color var(--duration) var(--ease),
-    box-shadow var(--duration) var(--ease);
+    border-color var(--duration, 180ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1)),
+    box-shadow var(--duration, 180ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
 }
 
 .input::-webkit-outer-spin-button,
@@ -42,12 +42,12 @@
 
 .input:focus-visible {
   outline: none;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-ring);
+  border-color: var(--color-accent, #3b6ef5);
+  box-shadow: 0 0 0 3px var(--color-ring, rgba(59, 110, 245, 0.35));
 }
 
 .hint {
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  color: var(--color-muted);
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--color-muted, #5a636e);
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getDayOfYear, getQuoteForDay, getCycleDay } from './date';
+import { getDayOfYear, getQuoteForDay, getCycleDay, cycleDayToDateStr } from './date';
 import { QUOTES } from '../data/quotes';
 
 describe('Daily Stoic Date Utilities', () => {
@@ -66,6 +66,36 @@ describe('Daily Stoic Date Utilities', () => {
     it('falls back to the real day-of-year when no cycle start date is set', () => {
       const today = new Date(2026, 1, 1); // Feb 1, 2026
       expect(getCycleDay('', today)).toBe(getDayOfYear(today));
+    });
+  });
+
+  describe('cycleDayToDateStr', () => {
+    // Regression: the favorite-toggle write path used to anchor a cycle day to
+    // Jan 1 of the current year unconditionally, while the journal save path
+    // anchored to the real cycleStartDate — so a page created only via
+    // favoriting (never a full save) got a Date field disconnected from
+    // reality by months, silently falling outside every dashboard's date
+    // filter. Every write path must resolve to the same date for the same
+    // cycle day.
+    it('is the inverse of getCycleDay for the cycle start date itself', () => {
+      expect(cycleDayToDateStr(1, '2026-07-13')).toBe('2026-07-13');
+    });
+
+    it('advances by exactly one calendar day per cycle day', () => {
+      expect(cycleDayToDateStr(2, '2026-07-13')).toBe('2026-07-14');
+      expect(cycleDayToDateStr(10, '2026-07-13')).toBe('2026-07-22');
+    });
+
+    it('anchors to Jan 1 of the current year only when no cycle has started, matching getCycleDay\'s own fallback', () => {
+      const today = new Date(2026, 6, 14); // July 14, 2026
+      expect(cycleDayToDateStr(2, '', today)).toBe('2026-01-02');
+    });
+
+    it('agrees with getCycleDay round-trip: today\'s cycle day maps back to today', () => {
+      const today = new Date(2026, 6, 20); // July 20, 2026
+      const cycleStart = '2026-07-13';
+      const todaysCycleDay = getCycleDay(cycleStart, today);
+      expect(cycleDayToDateStr(todaysCycleDay, cycleStart, today)).toBe('2026-07-20');
     });
   });
 });

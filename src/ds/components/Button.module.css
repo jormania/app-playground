@@ -2,22 +2,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-xs);
-  font-family: var(--font-sans);
-  font-weight: var(--weight-medium);
+  gap: var(--space-xs, 8px);
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+  font-weight: var(--weight-medium, 500);
   line-height: 1;
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md, 10px);
   cursor: pointer;
   white-space: nowrap;
   transition:
-    background-color var(--duration) var(--ease),
-    border-color var(--duration) var(--ease),
-    color var(--duration) var(--ease);
+    background-color var(--duration, 180ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1)),
+    border-color var(--duration, 180ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1)),
+    color var(--duration, 180ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
 }
 
 .button:focus-visible {
-  outline: 2px solid var(--color-ring);
+  outline: 2px solid var(--color-ring, rgba(59, 110, 245, 0.35));
   outline-offset: 2px;
 }
 
@@ -29,39 +29,39 @@
 /* ── Sizes ─────────────────────────────────────────────────────────────── */
 .sm {
   height: 36px;
-  padding: 0 var(--space-sm);
-  font-size: var(--text-sm);
+  padding: 0 var(--space-sm, 12px);
+  font-size: var(--text-sm, 0.875rem);
 }
 
 .md {
   height: 44px;
-  padding: 0 var(--space-lg);
-  font-size: var(--text-base);
+  padding: 0 var(--space-lg, 24px);
+  font-size: var(--text-base, 1rem);
 }
 
 /* ── Variants ──────────────────────────────────────────────────────────── */
 .primary {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+  background: var(--color-accent, #3b6ef5);
+  color: var(--color-on-accent, #ffffff);
 }
 .primary:hover:not(:disabled) {
-  background: var(--color-accent-hover);
+  background: var(--color-accent-hover, #2f59c9);
 }
 
 .secondary {
-  background: var(--color-surface);
-  color: var(--color-ink);
-  border-color: var(--color-border);
+  background: var(--color-surface, #ffffff);
+  color: var(--color-ink, #1b1f24);
+  border-color: var(--color-border, #e3e6ea);
 }
 .secondary:hover:not(:disabled) {
-  background: var(--color-surface-2);
-  border-color: var(--color-border-2);
+  background: var(--color-surface-2, #f8f9fb);
+  border-color: var(--color-border-2, #cdd2d9);
 }
 
 .ghost {
   background: transparent;
-  color: var(--color-accent);
+  color: var(--color-accent, #3b6ef5);
 }
 .ghost:hover:not(:disabled) {
-  background: var(--color-glow);
+  background: var(--color-glow, rgba(59, 110, 245, 0.10));
 }

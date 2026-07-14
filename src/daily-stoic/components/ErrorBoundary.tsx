@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { Button } from './Button';
+import { Button } from '../../ds';
 import { Skull } from 'lucide-react';
 
 interface ErrorBoundaryProps {

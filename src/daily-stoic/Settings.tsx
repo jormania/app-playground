@@ -1,7 +1,5 @@
 import { useState, useReducer } from 'react';
-import { Field } from './components/Field';
-import { Button } from './components/Button';
-import { Switch as SettingsToggle } from './components/Switch';
+import { Button, Field, SettingsToggle } from '../ds';
 import { probeConnection, fetchDatabaseProperties, validateSchema, fetchRecentReflections, upgradeDatabaseSchema } from './services/NotionService';
 import { getCycleDay } from './utils/date';
 import { createIdbKv } from '../shared/notify/idbKv';
@@ -306,9 +304,10 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
           <h3 className="font-display text-lg text-text-primary">User Experience</h3>
           <SettingsToggle
             label="Show Gentle Concept Guides"
-            description="Display twisties with concept details beside reflection forms."
+            hint="Display twisties with concept details beside reflection forms."
             checked={localStorage.getItem('daily-stoic:show-guides') !== 'false'}
-            onCheckedChange={(checked) => {
+            onChange={(e) => {
+              const checked = e.target.checked;
               localStorage.setItem('daily-stoic:show-guides', checked.toString());
               window.dispatchEvent(new Event('daily-stoic:settings-updated'));
               triggerHaptic('light');
@@ -321,13 +320,13 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
           <h3 className="font-display text-lg text-text-primary">Habit Reminders</h3>
           <SettingsToggle
             label="Morning & Evening Nudges"
-            description={
+            hint={
               !caps.periodicSync
                 ? 'Local reminders are only supported when the PWA is installed on Chrome/Edge.'
                 : 'Receive local notifications to reflect on today\'s principle.'
             }
             checked={reminderEnabled}
-            onCheckedChange={handleToggleReminder}
+            onChange={(e) => handleToggleReminder(e.target.checked)}
           />
 
           {reminderEnabled && (

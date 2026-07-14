@@ -44,3 +44,16 @@ export function getCycleDay(startDateStr: string, today: Date = new Date()): num
   return (diffDays % 365) + 1;
 }
 
+// The inverse of getCycleDay: the calendar date a given cycle-day position maps
+// to, anchored at cycleStartDate (or Jan 1 of the current year if no cycle has
+// been started yet — matching getCycleDay's own fallback). Every write path that
+// needs "what real date does cycle day N correspond to" must go through this, or
+// they silently drift apart (as the favorite-toggle path once did, anchoring to
+// Jan 1 unconditionally regardless of the actual cycle start).
+export function cycleDayToDateStr(dayNum: number, cycleStartDate: string, today: Date = new Date()): string {
+  const startStr = cycleStartDate || `${today.getFullYear()}-01-01`;
+  const start = new Date(startStr);
+  const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + (dayNum - 1));
+  return getLocalTodayStr(date);
+}
+

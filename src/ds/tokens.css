@@ -80,6 +80,7 @@ body {
   --weight-bold:    700;
 
   /* ── Spacing (4px base; use these instead of raw px) ──────────────────── */
+  --space-3xs: 2px;
   --space-2xs: 4px;
   --space-xs:  8px;
   --space-sm:  12px;

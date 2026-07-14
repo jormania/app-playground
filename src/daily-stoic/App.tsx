@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import html2canvas from 'html2canvas';
-import { Button } from './components/Button';
+import { Button } from '../ds';
 import Onboarding from './components/Onboarding';
 import Journal from './Journal';
 import Settings from './Settings';
@@ -10,7 +10,7 @@ import { DichotomyOfControl } from './components/DichotomyOfControl';
 import Stats from './components/Stats';
 import PassionsAnalytics from './components/PassionsAnalytics';
 import AmorFatiDashboard from './components/AmorFatiDashboard';
-import { getQuoteForDay, getLocalTodayStr, getCycleDay } from './utils/date';
+import { getQuoteForDay, getLocalTodayStr, getCycleDay, cycleDayToDateStr } from './utils/date';
 import { calculateStreak } from './utils/streak';
 import { fetchRecentReflections, fetchDatabaseProperties, validateSchema, upgradeDatabaseSchema, upsertReflection, clearDatabaseEntries, ReflectionRecord } from './services/NotionService';
 import { createIdbKv } from '../shared/notify/idbKv';
@@ -106,12 +106,7 @@ export default function App() {
       const moodVal = localStorage.getItem(`daily-stoic:mood-${i}`) || '';
       const createdTimeVal = localStorage.getItem(`daily-stoic:created-time-${i}`) || '';
       
-      const estimatedDateStr = (() => {
-        const y = new Date().getFullYear();
-        const d = new Date(y, 0, 1);
-        d.setDate(i);
-        return getLocalTodayStr(d);
-      })();
+      const estimatedDateStr = cycleDayToDateStr(i, cycleStartDate);
 
       if (val || fateVal || tagsVal.length > 0 || favVal || passionsVal.length > 0 || moodVal) {
         days.add(i);
@@ -135,7 +130,7 @@ export default function App() {
     
     const todayLogged = days.has(todayVal);
     await updateReminderIDB(todayLogged);
-  }, [updateReminderIDB]);
+  }, [updateReminderIDB, cycleStartDate]);
 
   const resetCycleData = useCallback(async () => {
     try {
@@ -520,10 +515,7 @@ export default function App() {
     if (isNotionConfigured && schemaErrors.length === 0) {
       try {
         const record = recentReflections.find((r) => r.quoteId === index);
-        const year = new Date().getFullYear();
-        const date = new Date(year, 0, 1);
-        date.setDate(index);
-        const dateStr = getLocalTodayStr(date);
+        const dateStr = cycleDayToDateStr(index, cycleStartDate);
 
         await upsertReflection(
           token,
@@ -552,7 +544,7 @@ export default function App() {
     } else {
       await loadLocalStorageStreak(today);
     }
-  }, [isNotionConfigured, schemaErrors, recentReflections, token, databaseId, loadReflectionsAndCheckStreak, loadLocalStorageStreak, today]);
+  }, [isNotionConfigured, schemaErrors, recentReflections, token, databaseId, cycleStartDate, loadReflectionsAndCheckStreak, loadLocalStorageStreak, today]);
 
   const handleToggleFavorite = async () => {
     if (isTogglingFavorite) return;
