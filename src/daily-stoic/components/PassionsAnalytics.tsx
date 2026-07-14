@@ -430,7 +430,17 @@ export default function PassionsAnalytics({ recentReflections, onClose }: Passio
                         <div
                           className={cn(
                             "h-full rounded-full transition-all duration-700 ease-out",
-                            isDominant ? "bg-accent shadow-[0_0_8px_var(--color-accent-soft)]" : "bg-text-secondary/40"
+                            // Tailwind opacity modifiers (bg-accent/NN) silently
+                            // render fully transparent in this app — every colour
+                            // token is a plain var(--color-*) hex string, which
+                            // Tailwind 3's opacity mechanism can't blend without
+                            // the <alpha-value> RGB-channel pattern (a separate,
+                            // app-wide issue beyond this fix's scope). Use a solid
+                            // token instead: border-primary is deliberately the
+                            // strongest/most visible border tone in every preset,
+                            // so it reads clearly against background-tertiary
+                            // without depending on opacity at all.
+                            isDominant ? "bg-accent shadow-[0_0_8px_var(--color-accent-soft)]" : "bg-border-primary"
                           )}
                           style={{ width: `${p.percentage}%` }}
                         />

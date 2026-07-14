@@ -43,8 +43,6 @@ export default function FateGraph({ records }: FateGraphProps) {
     });
   });
 
-  const maxVal = Math.max(...Object.values(counts), 1);
-
   return (
     <div className="rounded-xl bg-background-secondary border border-tertiary p-6 h-full flex flex-col justify-between">
       <div>
@@ -65,8 +63,11 @@ export default function FateGraph({ records }: FateGraphProps) {
       ) : (
         <div className="flex flex-col gap-3">
           {Object.entries(counts).map(([tag, count]) => {
-            const barWidthPercent = (count / maxVal) * 100;
+            // Bar width must match the printed percentage exactly — it's a
+            // share of the total, not scaled relative to the top category,
+            // or a "25%" label would render as a visually full bar.
             const tagPercentage = totalTagsCount > 0 ? Math.round((count / totalTagsCount) * 100) : 0;
+            const barWidthPercent = tagPercentage;
             const Icon = icons[tag] || Globe;
             
             return (

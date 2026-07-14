@@ -1,3 +1,5 @@
+import { getCycleInfo } from '../utils/date';
+
 export interface NotionReflection {
   id: string;
   text: string;
@@ -129,7 +131,9 @@ export function validateSchema(properties: Record<string, { type?: string }>): s
     'MorningIntentions': 'rich_text',
     'Passions': 'multi_select',
     'Dichotomy': 'rich_text',
-    'Virtue': 'rich_text'
+    'Virtue': 'rich_text',
+    'Cycle': 'number',
+    'WeekOfCycle': 'number'
   };
 
   for (const [name, type] of Object.entries(expected)) {
@@ -165,7 +169,9 @@ export async function upgradeDatabaseSchema(
       'Passions': { multi_select: {} },
       'Mood': { select: {} },
       'MorningIntentions': { rich_text: {} },
-      'Virtue': { rich_text: {} }
+      'Virtue': { rich_text: {} },
+      'Cycle': { number: {} },
+      'WeekOfCycle': { number: {} }
     }
   };
 
@@ -387,6 +393,15 @@ export async function upsertReflection(
       { text: { content: virtue.slice(0, CHUNK) } }
     ]
   };
+
+  // Cycle/WeekOfCycle are fully derived from dayOfYear (an unbounded day count
+  // since cycleStartDate — see utils/date.ts's getCycleInfo) — written here
+  // purely so the cycle a day belonged to is visible/filterable in Notion
+  // itself. The app never reads these back; it always recomputes from
+  // dayOfYear + cycleStartDate directly, so there's no staleness risk.
+  const cycleInfo = getCycleInfo(dayOfYear);
+  properties['Cycle'] = { number: cycleInfo.cycle };
+  properties['WeekOfCycle'] = { number: cycleInfo.week };
 
   let page: any;
   if (existingPageId) {

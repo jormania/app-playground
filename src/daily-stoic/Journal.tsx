@@ -2,29 +2,43 @@ import { useState, useEffect, useMemo } from 'react';
 import { Button, GuideNote } from '../ds';
 import { useShowGuides } from './lib/useShowGuides';
 import { fetchReflectionForDay, upsertReflection } from './services/NotionService';
-import { getLocalTodayStr, cycleDayToDateStr } from './utils/date';
+import { getLocalTodayStr, cycleDayToDateStr, getCycleInfo, getVirtueForWeek, formatCycleLabel, getQuoteOfTheWeek } from './utils/date';
 import AmorFatiControl from './components/AmorFatiControl';
 import { triggerHaptic } from '../shared/haptics';
 import { cn } from './lib/cn';
 import { AutoExpandingTextarea } from './components/AutoExpandingTextarea';
-import { 
-  SmilePlus, 
-  Smile, 
-  Meh, 
-  Frown, 
-  Angry, 
-  Skull, 
-  BookOpen, 
-  Sun, 
-  Moon, 
-  Scale, 
-  Check, 
-  Heart, 
-  Share2, 
+import {
+  SmilePlus,
+  Smile,
+  Meh,
+  Frown,
+  Angry,
+  Skull,
+  BookOpen,
+  Sun,
+  Moon,
+  Scale,
+  Check,
+  Heart,
+  Share2,
   Shield,
   Flame,
-  HelpCircle
+  HelpCircle,
+  Lightbulb,
+  Swords,
+  Gavel,
+  Anchor,
 } from 'lucide-react';
+
+// The Four Cardinal Virtues — shared by the Step 4 picker and the weekly
+// virtue theme (see utils/date.ts's WEEK_VIRTUES, which must stay in the
+// same order: Wisdom, Courage, Justice, Temperance).
+const CARDINAL_VIRTUES = [
+  { name: 'Wisdom', Icon: Lightbulb, desc: 'Sophia: Navigating situations logically, informed, and calmly.' },
+  { name: 'Courage', Icon: Swords, desc: 'Andreia: Standing firm and acting rightly in the face of fear or difficulty.' },
+  { name: 'Justice', Icon: Gavel, desc: 'Dikaiosyne: Treating others with fairness, benevolence, and public duty.' },
+  { name: 'Temperance', Icon: Anchor, desc: 'Sophrosyne: Practicing self-control, moderation, and discipline.' },
+] as const;
 
 interface JournalProps {
   dayOfYear: number;
@@ -80,6 +94,16 @@ export default function Journal({
 }: JournalProps) {
   const isNotionConfigured = !!token.trim() && !!databaseId.trim();
   const showGuides = useShowGuides();
+
+  // The 28-day cycle (four 7-day weeks, each themed to a Cardinal Virtue) is
+  // fully derived from dayOfYear — the same unbounded day count already used
+  // for the Notion QuoteID — so no extra prop is needed here.
+  const cycleInfo = useMemo(() => getCycleInfo(dayOfYear), [dayOfYear]);
+  const weekVirtue = getVirtueForWeek(cycleInfo.week);
+  const cycleLabel = formatCycleLabel(cycleInfo);
+  const weekQuote = useMemo(() => getQuoteOfTheWeek(cycleInfo), [cycleInfo]);
+  const WeekVirtueIcon = CARDINAL_VIRTUES.find((v) => v.name === weekVirtue)?.Icon ?? Shield;
+
   const localStorageKey = `daily-stoic:reflection-${dayOfYear}`;
   const localFateKey = `daily-stoic:fate-input-${dayOfYear}`;
   const localTagsKey = `daily-stoic:acceptance-tags-${dayOfYear}`;
@@ -710,7 +734,7 @@ export default function Journal({
           <div className={cn("transition-all duration-300 ease-in-out", activeStep === 1 ? "opacity-100 translate-y-0 scale-100 h-auto" : "opacity-0 absolute inset-x-0 top-0 -translate-y-4 scale-95 pointer-events-none h-0 overflow-hidden")}>
               <h3 className="font-display text-xl text-text-primary mb-3 flex items-center gap-2">
                 <Skull size={20} className="text-text-secondary" />
-                Focus: Meditate on Mortality (Day {dayOfYear} of 365)
+                Focus: Meditate on Mortality ({cycleLabel})
               </h3>
               <p className="text-sm text-text-secondary mb-6">
                 Remember you will die. Framing today within the scale of your entire lifespan clears away trivial concerns.
@@ -817,7 +841,7 @@ export default function Journal({
           <div className={cn("transition-all duration-300 ease-in-out space-y-6", activeStep === 2 ? "opacity-100 translate-y-0 scale-100 h-auto" : "opacity-0 absolute inset-x-0 top-0 -translate-y-4 scale-95 pointer-events-none h-0 overflow-hidden")}>
               <h3 className="font-display text-xl text-text-primary flex items-center gap-2">
                 <BookOpen size={20} className="text-text-secondary" />
-                Meditate: Today's Principle (Day {dayOfYear} of 365)
+                Meditate: Today's Principle ({cycleLabel})
               </h3>
 
               {/* Quote Card */}
@@ -859,6 +883,24 @@ export default function Journal({
                 </cite>
               </blockquote>
 
+              {/* Quote of the Week — this week's Cardinal Virtue focus, distinct from the daily quote above */}
+              {weekQuote && (
+                <div className="rounded-lg border border-accent/25 bg-accent-soft p-4 sm:p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <WeekVirtueIcon size={14} className="text-accent" />
+                    <span className="text-[10px] uppercase font-mono tracking-widest font-semibold text-accent/80">
+                      This Week's Focus: {weekVirtue}
+                    </span>
+                  </div>
+                  <p className="font-display text-base text-text-primary leading-relaxed italic">
+                    “{weekQuote.quote}”
+                  </p>
+                  <cite className="block text-text-secondary text-xs mt-2 not-italic">
+                    — {weekQuote.author}, <span className="italic">{weekQuote.source}</span>
+                  </cite>
+                </div>
+              )}
+
               {/* Keyword Search */}
               <div className="rounded-lg bg-background-primary/40 p-4 border border-tertiary">
                 <label className="block text-xs font-semibold text-text-secondary tracking-wider uppercase mb-2">
@@ -882,9 +924,11 @@ export default function Journal({
               <div className="mt-6">
                 <GuideNote hidden={!showGuides} summary="Meditating on Daily Principles">
                   <p>
-                    <strong>Meditating</strong> on philosophical principles prepares the mind for action. 
-                    Rather than reading passively, focus on how today's maxim applies to your current circumstances. 
+                    <strong>Meditating</strong> on philosophical principles prepares the mind for action.
+                    Rather than reading passively, focus on how today's maxim applies to your current circumstances.
                     Use the search bar to explore specific themes, or draw from your hand-picked <strong>Enchiridion</strong> handbook to reinforce lessons.
+                    Below it, the <strong>Quote of the Week</strong> stays fixed for all seven days of the week and speaks
+                    to that week's Cardinal Virtue — a second, slower thread alongside the maxim that changes daily.
                   </p>
                 </GuideNote>
               </div>
@@ -894,7 +938,7 @@ export default function Journal({
           <div className={cn("transition-all duration-300 ease-in-out space-y-6", activeStep === 3 ? "opacity-100 translate-y-0 scale-100 h-auto" : "opacity-0 absolute inset-x-0 top-0 -translate-y-4 scale-95 pointer-events-none h-0 overflow-hidden")}>
               <h3 className="font-display text-xl text-text-primary flex items-center gap-2">
                 <Sun size={20} className="text-text-secondary" />
-                Prepare: Morning Prep (Day {dayOfYear} of 365)
+                Prepare: Morning Prep ({cycleLabel})
               </h3>
               <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md hover:shadow-lg transition-all duration-300">
                 <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
@@ -1025,9 +1069,10 @@ export default function Journal({
 
               <GuideNote hidden={!showGuides} summary="Preparing for the Day">
                 <p>
-                  <strong>Premeditatio Malorum</strong> coupled with the <strong>Dichotomy of Control</strong> aligns your focus. 
-                  Identify what is up to you (your actions, focus, temper) and let go of the rest (delays, comments). 
-                  Save your progress now or proceed directly to the evening reflection.
+                  <strong>Premeditatio Malorum</strong> coupled with the <strong>Dichotomy of Control</strong> aligns your focus.
+                  Identify what is up to you (your actions, focus, temper) and let go of the rest (delays, comments).
+                  Drafts save automatically as you type — proceed to the evening reflection whenever you're ready;
+                  the reflection is only committed to your record when you tap <strong>Complete Reflection</strong> at the end.
                 </p>
               </GuideNote>
             </div>
@@ -1036,7 +1081,7 @@ export default function Journal({
           <div className={cn("transition-all duration-300 ease-in-out space-y-6", activeStep === 4 ? "opacity-100 translate-y-0 scale-100 h-auto" : "opacity-0 absolute inset-x-0 top-0 -translate-y-4 scale-95 pointer-events-none h-0 overflow-hidden")}>
               <h3 className="font-display text-xl text-text-primary flex items-center gap-2">
                 <Moon size={20} className="text-text-secondary" />
-                Reflect: Evening Review (Day {dayOfYear} of 365)
+                Reflect: Evening Review ({cycleLabel})
               </h3>
               {/* Mood Check */}
               <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md hover:shadow-lg transition-all duration-300">
@@ -1282,13 +1327,9 @@ export default function Journal({
                     </p>
                     
                     <div className="flex flex-wrap gap-2">
-                      {[
-                        { name: 'Wisdom', desc: 'Sophia: Navigating situations logically, informed, and calmly.' },
-                        { name: 'Courage', desc: 'Andreia: Standing firm and acting rightly in the face of fear or difficulty.' },
-                        { name: 'Justice', desc: 'Dikaiosyne: Treating others with fairness, benevolence, and public duty.' },
-                        { name: 'Temperance', desc: 'Sophrosyne: Practicing self-control, moderation, and discipline.' }
-                      ].map((v) => {
+                      {CARDINAL_VIRTUES.map((v) => {
                         const isSelected = selectedVirtue === v.name;
+                        const VirtueIcon = v.Icon;
                         return (
                           <button
                             key={v.name}
@@ -1308,6 +1349,7 @@ export default function Journal({
                             )}
                           >
                             <span>{isSelected ? '✓' : '○'}</span>
+                            <VirtueIcon size={12} strokeWidth={isSelected ? 2.5 : 2} />
                             <span>{v.name}</span>
                           </button>
                         );
@@ -1328,8 +1370,9 @@ export default function Journal({
 
               <GuideNote hidden={!showGuides} summary="Reflecting on the Day">
                 <p>
-                  <strong>Seneca's Interrogation</strong> balances your daily account. 
+                  <strong>Seneca's Interrogation</strong> balances your daily account.
                   Record your achievements or lessons, toggle completed actionable concerns, reframe external frictions under <strong>Amor Fati</strong>, log any passions or dysfunctional judgments you noticed in yourself to track your tranquility training ground, and close by reflecting on the four cardinal Stoic virtues (Wisdom, Courage, Justice, and Temperance) to identify which one was most required for today's events, reinforcing your progress as a practicing Stoic.
+                  This daily pick is your own — it doesn't have to match the week's theme (shown in the header and the Quote of the Week above), which cycles through all four virtues in order, one per week.
                 </p>
               </GuideNote>
             </div>

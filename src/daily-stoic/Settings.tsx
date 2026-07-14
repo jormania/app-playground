@@ -164,13 +164,16 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
   const [isResetting, setIsResetting] = useState(false);
 
   const handleResetCycle = async () => {
-    const confirmMsg = 
+    const confirmMsg =
       "Warning: This will permanently delete all local reflections, mood logs, and passions data, " +
       "and archive (delete) all reflections on your connected Notion database. " +
       "This action is destructive and cannot be undone.\n\n" +
+      "This is separate from normal cycle progress — cycles already advance automatically every " +
+      "28 days without deleting anything. Only use this to wipe everything and start over from " +
+      "Cycle 1.\n\n" +
       "Notion credentials will be kept.\n\n" +
       "Are you sure you want to proceed?";
-    
+
     if (!window.confirm(confirmMsg)) return;
 
     setIsResetting(true);
@@ -178,10 +181,10 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
 
     try {
       await onResetCycle();
-      showToast("Cycle reset successfully! Day 1 of the new 365-day cycle begins today.", "success");
+      showToast("Everything cleared. Cycle 1, Week 1 begins today.", "success");
       onClose();
     } catch (err: any) {
-      showToast("Error resetting cycle: " + (err.message || err), "error");
+      showToast("Error starting over: " + (err.message || err), "error");
     } finally {
       setIsResetting(false);
     }
@@ -358,7 +361,10 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
             <span>⚠️</span> Destructive Actions
           </h3>
           <p className="text-sm text-text-secondary leading-relaxed">
-            Resetting your cycle starts the Stoic handbook fresh at Day 1. This permanently deletes your local journal database and archives all synced reflection records on your connected Notion workspace (credentials are kept).
+            Cycles already advance automatically every 28 days — nothing is ever deleted by normal
+            progress. This button is a separate, manual reset: it wipes your local journal database
+            and archives every synced record on your connected Notion workspace (credentials are
+            kept), then starts fresh at Cycle 1, Week 1.
           </p>
           <div className="mt-2">
             <button
@@ -371,7 +377,7 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
                   : "bg-caution text-background-primary border-caution hover:bg-caution/90 hover:shadow-md active:translate-y-0"
               )}
             >
-              {isResetting ? 'Resetting Cycle...' : 'Reset 365-Day Cycle'}
+              {isResetting ? 'Starting Over...' : 'Start Over From Cycle 1'}
             </button>
           </div>
         </section>
@@ -395,7 +401,7 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
                 }}
                 className="rounded px-2.5 py-1.5 text-xs font-medium border border-tertiary bg-background-tertiary text-text-primary hover:border-accent transition-all duration-200"
               >
-                🧪 Simulate Year Completion
+                🧪 Simulate Cycle Completion
               </button>
             </div>
           </div>

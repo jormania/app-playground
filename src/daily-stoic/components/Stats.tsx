@@ -78,8 +78,7 @@ export default function Stats({ streak, recentReflections, onClose }: StatsProps
         
         {/* Insights Review Block */}
         <div className="rounded-lg bg-background-secondary border border-tertiary p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h3 className="font-display text-lg text-text-primary">Insights</h3>
+          <div className="flex items-center justify-end mb-4 sm:mb-6">
             <div className="flex items-center gap-1 rounded-md bg-background-tertiary p-1 border border-tertiary overflow-x-auto max-w-full">
               {(['30', '90', '365', 'all'] as const).map((period) => (
                 <button

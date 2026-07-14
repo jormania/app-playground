@@ -44,8 +44,6 @@ export default function MoodGraph({ records }: MoodGraphProps) {
     }
   });
 
-  const maxVal = Math.max(...Object.values(counts), 1);
-
   return (
     <div className="rounded-xl bg-background-secondary border border-tertiary p-6 h-full flex flex-col justify-between">
       <div>
@@ -67,8 +65,11 @@ export default function MoodGraph({ records }: MoodGraphProps) {
         <div className="flex flex-col gap-3">
           {Object.keys(counts).map((key) => {
             const count = counts[key];
-            const barWidthPercent = (count / maxVal) * 100;
+            // Bar width must match the printed percentage exactly — a share
+            // of the total, not scaled relative to the top mood, or a "25%"
+            // label would render as a visually full bar.
             const moodPercentage = totalLogged > 0 ? Math.round((count / totalLogged) * 100) : 0;
+            const barWidthPercent = moodPercentage;
             const Icon = icons[key] || Meh;
             
             return (

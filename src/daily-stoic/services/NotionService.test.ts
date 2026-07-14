@@ -188,6 +188,11 @@ describe('NotionService', () => {
       expect(body.method).toBe('POST');
       expect(body.path).toBe('pages');
       expect(body.body.properties.Favorite.checkbox).toBe(true);
+
+      // Cycle/WeekOfCycle are derived from dayOfYear (42) via getCycleInfo:
+      // day 42 falls in Cycle 2 (days 29-56), Week 2 (days 36-42 of the cycle).
+      expect(body.body.properties.Cycle.number).toBe(2);
+      expect(body.body.properties.WeekOfCycle.number).toBe(2);
     });
 
     it('updates page (PATCH) when existingPageId is provided', async () => {

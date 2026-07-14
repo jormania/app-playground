@@ -10,7 +10,7 @@ import { DichotomyOfControl } from './components/DichotomyOfControl';
 import Stats from './components/Stats';
 import PassionsAnalytics from './components/PassionsAnalytics';
 import AmorFatiDashboard from './components/AmorFatiDashboard';
-import { getQuoteForDay, getLocalTodayStr, getCycleDay, cycleDayToDateStr } from './utils/date';
+import { getQuoteForDay, getLocalTodayStr, getCycleDay, cycleDayToDateStr, getCycleInfo, mostRecentMonday } from './utils/date';
 import { calculateStreak } from './utils/streak';
 import { fetchRecentReflections, fetchDatabaseProperties, validateSchema, upgradeDatabaseSchema, upsertReflection, clearDatabaseEntries, ReflectionRecord } from './services/NotionService';
 import { createIdbKv } from '../shared/notify/idbKv';
@@ -38,6 +38,7 @@ export default function App() {
   const [cycleStartDate, setCycleStartDate] = useState(() => localStorage.getItem('daily-stoic:cycle-start-date') || '');
   const today = useMemo(() => getCycleDay(cycleStartDate), [cycleStartDate]);
   const dayOfYear = today;
+  const cycleInfo = useMemo(() => getCycleInfo(today), [today]);
 
   const { route, navigate } = useHashRoute();
   
@@ -60,6 +61,9 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [lastCelebratedCycle, setLastCelebratedCycle] = useState(() =>
+    parseInt(localStorage.getItem('daily-stoic:last-celebrated-cycle') || '0', 10)
+  );
 
   // Toggling favorites loading indicator
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
@@ -161,10 +165,16 @@ export default function App() {
       keysToRemove.forEach(k => localStorage.removeItem(k));
       localStorage.setItem('daily-stoic:dichotomy', '[]');
 
-      const todayStr = getLocalTodayStr();
+      // Cycles always start on a Monday (so week boundaries land on real
+      // Mondays) — the automatic 28-day rollover preserves this on its own,
+      // but a manual reset can happen on any day, so snap back to the most
+      // recent Monday rather than "today" directly.
+      const todayStr = getLocalTodayStr(mostRecentMonday());
       localStorage.setItem('daily-stoic:cycle-start-date', todayStr);
       setCycleStartDate(todayStr);
 
+      localStorage.setItem('daily-stoic:last-celebrated-cycle', '0');
+      setLastCelebratedCycle(0);
       localStorage.removeItem('daily-stoic:simulate-celebration');
 
       // Reload credentials
@@ -251,16 +261,29 @@ export default function App() {
     }
   }, [token, databaseId, cycleStartDate, loadLocalStorageStreak, updateReminderIDB]);
 
+  // The most recently fully-completed cycle, if any (0 before Cycle 1 finishes).
+  // Cycle rollover itself is automatic and non-destructive — this only tracks
+  // whether that most recent completion has been shown to the user yet, so
+  // the celebration fires exactly once per cycle no matter when they next
+  // open the app (not just if they happen to open it on the exact day a new
+  // cycle begins). Kept separate from displayCycleNumber below: this is the
+  // only value ever written to "last-celebrated-cycle" bookkeeping, so a
+  // simulated preview (before any cycle has really finished) can never mark
+  // a cycle as seen that hasn't actually completed.
+  const completedCycleNumber = cycleInfo.cycle - 1;
+
+  // What to show in the celebration UI: the real completed cycle once one
+  // exists, or the in-progress cycle when previewing via the Settings
+  // diagnostics "Simulate Cycle Completion" toggle before that's happened —
+  // otherwise the preview would nonsensically read "Cycle 0 Complete".
+  const displayCycleNumber = completedCycleNumber >= 1 ? completedCycleNumber : cycleInfo.cycle;
+
   const isCycleCompleted = useMemo(() => {
-    if (!cycleStartDate) return false;
-    const start = new Date(cycleStartDate);
-    const startD = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-    const today = new Date();
-    const todayD = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const diff = todayD.getTime() - startD.getTime();
-    const diffDays = Math.floor(diff / (1000 * 60 * 60 * 24));
-    return diffDays >= 365 || localStorage.getItem('daily-stoic:simulate-celebration') === 'true';
-  }, [cycleStartDate]);
+    return (
+      (completedCycleNumber >= 1 && completedCycleNumber > lastCelebratedCycle) ||
+      localStorage.getItem('daily-stoic:simulate-celebration') === 'true'
+    );
+  }, [completedCycleNumber, lastCelebratedCycle]);
 
   useEffect(() => {
     if (isCycleCompleted) {
@@ -268,18 +291,27 @@ export default function App() {
     }
   }, [isCycleCompleted]);
 
-  // Compute Retrospective Insights
+  // The celebrated cycle's own 28-day date range (not all-time —
+  // cycleStartDate itself never moves under the new non-destructive
+  // rollover, so "since cycleStartDate" would otherwise mean "since the
+  // beginning of time").
+  const completedCycleRange = useMemo(() => {
+    const firstDay = (displayCycleNumber - 1) * 28 + 1;
+    const lastDay = displayCycleNumber * 28;
+    return {
+      start: cycleDayToDateStr(firstDay, cycleStartDate),
+      end: cycleDayToDateStr(lastDay, cycleStartDate),
+    };
+  }, [cycleStartDate, displayCycleNumber]);
+
   const cycleReflections = useMemo(() => {
-    if (!cycleStartDate) return recentReflections;
-    const start = new Date(cycleStartDate);
-    return recentReflections.filter((r) => {
-      const d = new Date(r.date);
-      return d.getTime() >= start.getTime();
-    });
-  }, [recentReflections, cycleStartDate]);
+    return recentReflections.filter(
+      (r) => r.date >= completedCycleRange.start && r.date <= completedCycleRange.end
+    );
+  }, [recentReflections, completedCycleRange]);
 
   const loggedCount = cycleReflections.length;
-  const consistencyRate = Math.min(100, Math.round((loggedCount / 365) * 100));
+  const consistencyRate = Math.min(100, Math.round((loggedCount / 28) * 100));
 
   const reframingsCount = useMemo(() => {
     return cycleReflections.filter(r => r.fateInput && r.fateInput.trim()).length;
@@ -315,11 +347,9 @@ export default function App() {
       }
     }
     if (allWorries.length === 0) return { total: 0, resolved: 0, rate: 0 };
-    const start = cycleStartDate ? new Date(cycleStartDate).getTime() : 0;
     const cycleList = allWorries.filter((w) => {
       if (!w.createdAt) return true;
-      const d = new Date(w.createdAt).getTime();
-      return d >= start;
+      return w.createdAt >= completedCycleRange.start && w.createdAt <= completedCycleRange.end;
     });
     const resolved = cycleList.filter((w) => w.isResolved).length;
     const total = cycleList.length;
@@ -328,7 +358,7 @@ export default function App() {
       resolved,
       rate: total > 0 ? Math.round((resolved / total) * 100) : 0
     };
-  }, [cycleStartDate, showCelebration, recentReflections, isNotionConfigured]);
+  }, [completedCycleRange, showCelebration, recentReflections, isNotionConfigured]);
 
   const [isSharingCelebration, setIsSharingCelebration] = useState(false);
   
@@ -352,15 +382,15 @@ export default function App() {
 
       shareContainer.innerHTML = `
         <div style="text-align: center; border-bottom: 2px solid #28254C; padding-bottom: 20px;">
-          <h2 style="font-family: 'Fraunces', Georgia, serif; font-size: 38px; color: #ECEBF8; margin: 0 0 10px;">🌟 A Year of Wisdom</h2>
-          <p style="font-size: 18px; color: #A7A3D4; margin: 0;">My Annual Stoic Retrospective</p>
+          <h2 style="font-family: 'Fraunces', Georgia, serif; font-size: 38px; color: #ECEBF8; margin: 0 0 10px;">🌟 Cycle ${displayCycleNumber} Complete</h2>
+          <p style="font-size: 18px; color: #A7A3D4; margin: 0;">My 28-Day Stoic Retrospective</p>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
           <div style="background: #1B1940; border: 1px solid #28254C; padding: 25px; border-radius: 16px;">
             <span style="font-size: 14px; font-weight: 600; text-transform: uppercase; color: #A7A3D4;">Consistency Rate</span>
             <p style="font-size: 42px; font-weight: bold; color: #9A93F5; margin: 10px 0 0;">${consistencyRate}%</p>
-            <p style="font-size: 15px; color: #7E7AB0; margin: 5px 0 0;">${loggedCount} of 365 days logged</p>
+            <p style="font-size: 15px; color: #7E7AB0; margin: 5px 0 0;">${loggedCount} of 28 days logged</p>
           </div>
           <div style="background: #1B1940; border: 1px solid #28254C; padding: 25px; border-radius: 16px;">
             <span style="font-size: 14px; font-weight: 600; text-transform: uppercase; color: #A7A3D4;">Amor Fati Reframes</span>
@@ -413,14 +443,15 @@ export default function App() {
     }
   };
 
-  const handleCompleteCelebrationAndReset = async () => {
-    try {
-      await resetCycleData();
-      setShowCelebration(false);
-      showToast("Happy New Cycle! Day 1 begins today.", "success");
-    } catch (e: any) {
-      showToast(e.message || e, "error");
-    }
+  const handleAcknowledgeCelebration = () => {
+    // Cycle rollover already happened automatically and non-destructively —
+    // this just marks the completed cycle as seen so the celebration doesn't
+    // fire again, and keeps every prior day's history intact.
+    localStorage.setItem('daily-stoic:last-celebrated-cycle', String(completedCycleNumber));
+    setLastCelebratedCycle(completedCycleNumber);
+    localStorage.removeItem('daily-stoic:simulate-celebration');
+    setShowCelebration(false);
+    triggerHaptic('success');
   };
 
   // Load streak, credentials, and validate schema on route changes
@@ -985,26 +1016,26 @@ export default function App() {
 
       {showCelebration && (
         <div className="fixed inset-0 z-50 bg-background-primary/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto" role="dialog">
-          <div 
-            id="annual-insights-card" 
+          <div
+            id="cycle-insights-card"
             className="max-w-xl w-full bg-background-secondary border border-secondary rounded-2xl p-6 sm:p-8 shadow-xl text-center space-y-6 animate-in fade-in zoom-in-95 duration-300"
           >
             <div className="space-y-2">
               <Sparkles className="text-accent mx-auto w-12 h-12 animate-pulse" />
               <h2 className="font-display text-2xl sm:text-3xl text-text-primary">
-                🌟 A Year of Wisdom
+                🌟 Cycle {displayCycleNumber} Complete
               </h2>
               <p className="text-sm text-text-secondary max-w-md mx-auto">
-                You have completed your 365-day Stoic journey cycle. Here is a retrospective of your training in virtue and tranquility.
+                You've completed a 28-day cycle through all Four Cardinal Virtues. Cycle {cycleInfo.cycle} has already begun — here's a retrospective of the one you just finished.
               </p>
             </div>
-            
+
             {/* Insights Stats Grid */}
             <div className="grid grid-cols-2 gap-3.5 text-left pt-2">
               <div className="p-4 rounded-xl border border-tertiary bg-background-tertiary">
                 <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary">Consistency Rate</span>
                 <p className="text-2xl font-semibold text-accent mt-0.5">{consistencyRate}%</p>
-                <p className="text-[11px] text-text-secondary mt-1">{loggedCount} of 365 days logged</p>
+                <p className="text-[11px] text-text-secondary mt-1">{loggedCount} of 28 days logged</p>
               </div>
               
               <div className="p-4 rounded-xl border border-tertiary bg-background-tertiary">
@@ -1042,12 +1073,12 @@ export default function App() {
                 {isSharingCelebration ? 'Generating...' : '📥 Share Insights'}
               </Button>
               
-              <Button 
-                onClick={handleCompleteCelebrationAndReset} 
-                variant="primary" 
+              <Button
+                onClick={handleAcknowledgeCelebration}
+                variant="primary"
                 className="w-full sm:w-auto font-semibold"
               >
-                Begin New Cycle & Day 1
+                Continue to Cycle {cycleInfo.cycle}
               </Button>
             </div>
           </div>

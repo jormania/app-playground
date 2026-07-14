@@ -21,13 +21,13 @@ describe('calculateStreak', () => {
     expect(calculateStreak(days, 10)).toBe(2);
   });
 
-  it('handles leap year wrap-around (Day 1 follows Day 366)', () => {
-    const days = new Set([365, 366, 1]);
-    expect(calculateStreak(days, 1)).toBe(3);
-  });
-
-  it('handles leap year wrap-around ending yesterday', () => {
-    const days = new Set([365, 366]);
-    expect(calculateStreak(days, 1)).toBe(2);
+  it('does not wrap around at any fixed day count (day numbers are unbounded)', () => {
+    // Day numbers are an unbounded count since cycleStartDate — day 400 is a
+    // real day, not a wrapped "day 34". A gap right before day 1 must not
+    // register as connected to some high day number the way the old
+    // 365/366-wrapping implementation would have.
+    const days = new Set([398, 399, 400]);
+    expect(calculateStreak(days, 400)).toBe(3);
+    expect(calculateStreak(new Set([1]), 1)).toBe(1);
   });
 });
