@@ -1,59 +1,85 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { StreakCounter } from '../../ds';
-import FateGraph from './FateGraph';
 import MoodGraph from './MoodGraph';
+import WeekdayChart from './WeekdayChart';
+import VirtueWeekBreakdown from './VirtueWeekBreakdown';
+import CycleHeatmap from './CycleHeatmap';
+import InsightPeriodFilter from './InsightPeriodFilter';
 import { ReflectionRecord } from '../services/NotionService';
-import { cn } from '../lib/cn';
+import { getCycleInfo } from '../utils/date';
+import { calculateLongestStreak } from '../utils/streak';
+import { computeVirtueWeekStats, computeWeekdayStats, computeCurrentCycleHeatmap } from '../utils/stats';
+import { getInsightPeriodRange } from '../utils/insightPeriod';
+import { useInsightPeriod } from '../lib/useInsightPeriod';
 
 interface StatsProps {
   streak: number;
-  recentReflections: ReflectionRecord[];
+  today: number;
+  cycleStartDate: string;
+  reflections: ReflectionRecord[];
+  loading: boolean;
   onClose: () => void;
 }
 
-export default function Stats({ streak, recentReflections, onClose }: StatsProps) {
-  const [insightPeriod, setInsightPeriod] = useState<'30' | '90' | '365' | 'all'>('30');
+export default function Stats({ streak, today, cycleStartDate, reflections, loading, onClose }: StatsProps) {
+  const [insightPeriod, setInsightPeriod] = useInsightPeriod();
 
-  // Filter reflections based on insight period, by actual calendar date
+  const periodRange = useMemo(
+    () => getInsightPeriodRange(insightPeriod, cycleStartDate, today),
+    [insightPeriod, cycleStartDate, today]
+  );
+
+  // Filter reflections to the selected period, by actual calendar date
   const filteredReflections = useMemo(() => {
-    if (insightPeriod === 'all') return recentReflections;
-    const periodDays = parseInt(insightPeriod, 10);
-    const now = new Date();
-    return recentReflections.filter(r => {
-      if (!r.date) return true;
-      const recordDate = new Date(r.date + 'T00:00:00');
-      const diffDays = (now.getTime() - recordDate.getTime()) / (1000 * 60 * 60 * 24);
-      return diffDays <= periodDays;
-    });
-  }, [recentReflections, insightPeriod]);
+    if (!periodRange) return reflections;
+    return reflections.filter((r) => r.date >= periodRange.start && r.date <= periodRange.end);
+  }, [reflections, periodRange]);
 
-  // Insights Review Data
-  const insights = useMemo(() => {
-    const periodDays = insightPeriod === 'all' ? 365 : parseInt(insightPeriod, 10);
-    
+  // Period totals — plain counts and rates, no interpretation. Amor Fati,
+  // Passions & Judgments, and Spheres of Choice each own the "here's what it
+  // means" framing for their own data; this screen only reports numbers.
+  const totals = useMemo(() => {
+    const periodDays = periodRange ? periodRange.totalDays : today;
+
     let words = 0;
+    let premeditatioCount = 0;
     const moods: Record<string, number> = {};
-    const tags: Record<string, number> = {};
-    
+
     filteredReflections.forEach(r => {
       if (r.text) words += r.text.trim().split(/\s+/).length;
       if (r.mood) moods[r.mood] = (moods[r.mood] || 0) + 1;
-      if (r.acceptanceTags) {
-        r.acceptanceTags.forEach(t => tags[t] = (tags[t] || 0) + 1);
-      }
+      if (r.morningIntentions && r.morningIntentions.trim()) premeditatioCount++;
     });
 
-    const dominantMood = Object.entries(moods).sort((a,b) => b[1] - a[1])[0]?.[0] || 'None';
-    const dominantTag = Object.entries(tags).sort((a,b) => b[1] - a[1])[0]?.[0] || 'None';
+    const dominantMood = Object.entries(moods).sort((a, b) => b[1] - a[1])[0]?.[0] || 'None';
+    const count = filteredReflections.length;
 
-    return { 
-      words, 
-      dominantMood, 
-      dominantTag, 
-      count: filteredReflections.length,
-      periodDays 
+    return {
+      words,
+      dominantMood,
+      count,
+      periodDays,
+      premeditatioCount,
+      premeditatioRate: count > 0 ? Math.round((premeditatioCount / count) * 100) : 0,
     };
-  }, [filteredReflections, insightPeriod]);
+  }, [filteredReflections, periodRange, today]);
+
+  // The rest of these are all-time (not period-scoped) — they're about the
+  // whole history, the same way "Cycles Completed" wouldn't make sense
+  // limited to the last 30 days.
+  const longestStreak = useMemo(
+    () => calculateLongestStreak(new Set(reflections.map((r) => r.quoteId))),
+    [reflections]
+  );
+  const currentCycle = useMemo(() => getCycleInfo(today).cycle, [today]);
+  const cyclesCompleted = currentCycle - 1;
+  const totalFavorites = useMemo(() => reflections.filter((r) => r.favorite).length, [reflections]);
+  const virtueWeekStats = useMemo(() => computeVirtueWeekStats(reflections, today), [reflections, today]);
+  const weekdayStats = useMemo(() => computeWeekdayStats(filteredReflections), [filteredReflections]);
+  const currentCycleHeatmap = useMemo(
+    () => computeCurrentCycleHeatmap(reflections, today),
+    [reflections, today]
+  );
 
   return (
     <div className="mx-auto max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -71,56 +97,83 @@ export default function Stats({ streak, recentReflections, onClose }: StatsProps
         </button>
       </div>
 
-      <div className="mb-8 grid gap-4 grid-cols-1 sm:grid-cols-2">
-        <div className="rounded-lg bg-background-secondary border border-tertiary p-6 flex flex-col justify-center">
-          <StreakCounter count={streak} />
+      {loading ? (
+        <div className="flex items-center justify-center rounded-xl border-2 border-dashed border-tertiary p-12 text-center bg-background-secondary text-sm text-text-secondary">
+          Loading your full history…
         </div>
-        
-        {/* Insights Review Block */}
-        <div className="rounded-lg bg-background-secondary border border-tertiary p-4 sm:p-5">
-          <div className="flex items-center justify-end mb-4 sm:mb-6">
-            <div className="flex items-center gap-1 rounded-md bg-background-tertiary p-1 border border-tertiary overflow-x-auto max-w-full">
-              {(['30', '90', '365', 'all'] as const).map((period) => (
-                <button
-                  key={period}
-                  onClick={() => setInsightPeriod(period)}
-                  className={cn(
-                    "px-3 py-1 text-xs font-medium rounded-sm transition-all text-center min-w-[3.5rem]",
-                    insightPeriod === period
-                      ? 'bg-background-secondary text-text-primary shadow-sm border border-tertiary'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-background-secondary/50 border border-transparent'
-                  )}
-                >
-                  {period === 'all' ? 'All' : `${period}d`}
-                </button>
-              ))}
+      ) : (
+        <>
+          <div className="mb-8 grid gap-4 grid-cols-1 sm:grid-cols-2">
+            <div className="rounded-lg bg-background-secondary border border-tertiary p-6 flex flex-col justify-center">
+              <StreakCounter count={streak} />
             </div>
-          </div>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between items-center border-b border-tertiary pb-2">
-              <span className="text-text-secondary">Days Journaled</span>
-              <span className="font-medium text-text-primary">{insights.count} / {insights.periodDays}</span>
-            </div>
-            <div className="flex justify-between items-center border-b border-tertiary pb-2">
-              <span className="text-text-secondary">Dominant Mood</span>
-              <span className="font-medium text-text-primary">{insights.dominantMood}</span>
-            </div>
-            <div className="flex justify-between items-center border-b border-tertiary pb-2">
-              <span className="text-text-secondary">Primary Friction</span>
-              <span className="font-medium text-text-primary">{insights.dominantTag}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-text-secondary">Words Written</span>
-              <span className="font-medium text-text-primary">{insights.words.toLocaleString()}</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="mb-6 sm:mb-8 grid gap-4 grid-cols-1 sm:grid-cols-2">
-        <FateGraph records={filteredReflections} />
-        <MoodGraph records={filteredReflections} />
-      </div>
+            {/* Period Totals */}
+            <div className="rounded-lg bg-background-secondary border border-tertiary p-4 sm:p-5">
+              <div className="flex items-center justify-end mb-4 sm:mb-6">
+                <InsightPeriodFilter value={insightPeriod} onChange={setInsightPeriod} className="max-w-full" />
+              </div>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between items-center border-b border-tertiary pb-2">
+                  <span className="text-text-secondary">Days Journaled</span>
+                  <span className="font-medium text-text-primary">{totals.count} / {totals.periodDays}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-tertiary pb-2">
+                  <span className="text-text-secondary">Dominant Mood</span>
+                  <span className="font-medium text-text-primary">{totals.dominantMood}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-tertiary pb-2">
+                  <span className="text-text-secondary">Premeditatio Malorum</span>
+                  <span className="font-medium text-text-primary">
+                    {totals.premeditatioRate}% ({totals.premeditatioCount}/{totals.count})
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-text-secondary">Words Written</span>
+                  <span className="font-medium text-text-primary">{totals.words.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* All-Time Tallies */}
+          <div className="mb-6 sm:mb-8 grid gap-4 grid-cols-1 sm:grid-cols-3">
+            <div className="rounded-lg bg-background-secondary border border-tertiary p-4 text-center">
+              <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary block mb-1">
+                Cycles Completed
+              </span>
+              <span className="text-2xl font-display font-semibold text-text-primary">{cyclesCompleted}</span>
+            </div>
+            <div className="rounded-lg bg-background-secondary border border-tertiary p-4 text-center">
+              <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary block mb-1">
+                Longest Streak
+              </span>
+              <span className="text-2xl font-display font-semibold text-text-primary">
+                {longestStreak} {longestStreak === 1 ? 'day' : 'days'}
+              </span>
+            </div>
+            <div className="rounded-lg bg-background-secondary border border-tertiary p-4 text-center">
+              <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary block mb-1">
+                Favorited Quotes
+              </span>
+              <span className="text-2xl font-display font-semibold text-text-primary">{totalFavorites}</span>
+            </div>
+          </div>
+
+          <div className="mb-6 sm:mb-8">
+            <VirtueWeekBreakdown stats={virtueWeekStats} />
+          </div>
+
+          <div className="mb-6 sm:mb-8 grid gap-4 grid-cols-1 sm:grid-cols-2">
+            <WeekdayChart stats={weekdayStats} />
+            <MoodGraph records={filteredReflections} />
+          </div>
+
+          <div className="mb-6 sm:mb-8">
+            <CycleHeatmap days={currentCycleHeatmap} cycle={currentCycle} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

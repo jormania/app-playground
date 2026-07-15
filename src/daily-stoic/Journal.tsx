@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Button, GuideNote } from '../ds';
 import { useShowGuides } from './lib/useShowGuides';
 import { fetchReflectionForDay, upsertReflection } from './services/NotionService';
-import { getLocalTodayStr, cycleDayToDateStr, getCycleInfo, getVirtueForWeek, formatCycleLabel, getQuoteOfTheWeek } from './utils/date';
+import { getLocalTodayStr, cycleDayToDateStr, getCycleInfo, getVirtueForWeek, formatCycleLabelCompact, getQuoteOfTheWeek } from './utils/date';
 import AmorFatiControl from './components/AmorFatiControl';
 import { triggerHaptic } from '../shared/haptics';
 import { cn } from './lib/cn';
@@ -55,8 +55,6 @@ interface JournalProps {
   handleShareQuote: () => Promise<void>;
   isSharing: boolean;
   isTogglingFavorite: boolean;
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
   hasPassionsProperty?: boolean;
   worries: Worry[];
 }
@@ -88,8 +86,6 @@ export default function Journal({
   handleShareQuote,
   isSharing,
   isTogglingFavorite,
-  searchQuery,
-  setSearchQuery,
   worries: initialWorries
 }: JournalProps) {
   const isNotionConfigured = !!token.trim() && !!databaseId.trim();
@@ -100,7 +96,7 @@ export default function Journal({
   // for the Notion QuoteID — so no extra prop is needed here.
   const cycleInfo = useMemo(() => getCycleInfo(dayOfYear), [dayOfYear]);
   const weekVirtue = getVirtueForWeek(cycleInfo.week);
-  const cycleLabel = formatCycleLabel(cycleInfo);
+  const cycleLabelCompact = formatCycleLabelCompact(cycleInfo);
   const weekQuote = useMemo(() => getQuoteOfTheWeek(cycleInfo), [cycleInfo]);
   const WeekVirtueIcon = CARDINAL_VIRTUES.find((v) => v.name === weekVirtue)?.Icon ?? Shield;
 
@@ -732,10 +728,13 @@ export default function Journal({
         <div className="min-h-[280px] relative">
           {/* STEP 1: Focus (Memento Mori) */}
           <div className={cn("transition-all duration-300 ease-in-out", activeStep === 1 ? "opacity-100 translate-y-0 scale-100 h-auto" : "opacity-0 absolute inset-x-0 top-0 -translate-y-4 scale-95 pointer-events-none h-0 overflow-hidden")}>
-              <h3 className="font-display text-xl text-text-primary mb-3 flex items-center gap-2">
-                <Skull size={20} className="text-text-secondary" />
-                Focus: Meditate on Mortality ({cycleLabel})
-              </h3>
+              <div className="mb-3">
+                <h3 className="font-display text-xl text-text-primary flex items-center gap-2">
+                  <Skull size={20} className="text-text-secondary" />
+                  Focus: Meditate on Mortality
+                </h3>
+                <p className="text-xs text-text-secondary mt-1">{cycleLabelCompact}</p>
+              </div>
               <p className="text-sm text-text-secondary mb-6">
                 Remember you will die. Framing today within the scale of your entire lifespan clears away trivial concerns.
               </p>
@@ -839,10 +838,13 @@ export default function Journal({
 
           {/* STEP 2: Meditate (Daily Maxim & Enchiridion) */}
           <div className={cn("transition-all duration-300 ease-in-out space-y-6", activeStep === 2 ? "opacity-100 translate-y-0 scale-100 h-auto" : "opacity-0 absolute inset-x-0 top-0 -translate-y-4 scale-95 pointer-events-none h-0 overflow-hidden")}>
-              <h3 className="font-display text-xl text-text-primary flex items-center gap-2">
-                <BookOpen size={20} className="text-text-secondary" />
-                Meditate: Today's Principle ({cycleLabel})
-              </h3>
+              <div>
+                <h3 className="font-display text-xl text-text-primary flex items-center gap-2">
+                  <BookOpen size={20} className="text-text-secondary" />
+                  Meditate: Today's Principle
+                </h3>
+                <p className="text-xs text-text-secondary mt-1">{cycleLabelCompact}</p>
+              </div>
 
               {/* Quote Card */}
               <blockquote className="rounded-lg bg-background-tertiary p-5 sm:p-6 border-l-4 border-l-accent shadow-sm relative">
@@ -901,32 +903,12 @@ export default function Journal({
                 </div>
               )}
 
-              {/* Keyword Search */}
-              <div className="rounded-lg bg-background-primary/40 p-4 border border-tertiary">
-                <label className="block text-xs font-semibold text-text-secondary tracking-wider uppercase mb-2">
-                  Search other maxims
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="🔍 Filter by keyword (Anxiety, Gratitude, Seneca)..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 rounded-md border border-secondary bg-background-tertiary px-3 py-2 text-sm text-text-primary outline-none focus-visible:border-accent"
-                  />
-                  {searchQuery && (
-                    <Button variant="ghost" size="sm" onClick={() => setSearchQuery('')}>
-                      Clear
-                    </Button>
-                  )}
-                </div>
-              </div>
               <div className="mt-6">
                 <GuideNote hidden={!showGuides} summary="Meditating on Daily Principles">
                   <p>
                     <strong>Meditating</strong> on philosophical principles prepares the mind for action.
-                    Rather than reading passively, focus on how today's maxim applies to your current circumstances.
-                    Use the search bar to explore specific themes, or draw from your hand-picked <strong>Enchiridion</strong> handbook to reinforce lessons.
+                    Rather than reading passively, focus on how today's maxim applies to your current circumstances,
+                    or draw from your hand-picked <strong>Enchiridion</strong> handbook to reinforce lessons.
                     Below it, the <strong>Quote of the Week</strong> stays fixed for all seven days of the week and speaks
                     to that week's Cardinal Virtue — a second, slower thread alongside the maxim that changes daily.
                   </p>
@@ -936,10 +918,13 @@ export default function Journal({
 
           {/* STEP 3: Prepare (Morning Prep & Spheres of Control) */}
           <div className={cn("transition-all duration-300 ease-in-out space-y-6", activeStep === 3 ? "opacity-100 translate-y-0 scale-100 h-auto" : "opacity-0 absolute inset-x-0 top-0 -translate-y-4 scale-95 pointer-events-none h-0 overflow-hidden")}>
-              <h3 className="font-display text-xl text-text-primary flex items-center gap-2">
-                <Sun size={20} className="text-text-secondary" />
-                Prepare: Morning Prep ({cycleLabel})
-              </h3>
+              <div>
+                <h3 className="font-display text-xl text-text-primary flex items-center gap-2">
+                  <Sun size={20} className="text-text-secondary" />
+                  Prepare: Morning Prep
+                </h3>
+                <p className="text-xs text-text-secondary mt-1">{cycleLabelCompact}</p>
+              </div>
               <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md hover:shadow-lg transition-all duration-300">
                 <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
                   <Shield size={20} className="text-text-secondary" /> Premeditatio Malorum
@@ -1079,10 +1064,13 @@ export default function Journal({
 
           {/* STEP 4: Reflect (Evening Review & Amor Fati) */}
           <div className={cn("transition-all duration-300 ease-in-out space-y-6", activeStep === 4 ? "opacity-100 translate-y-0 scale-100 h-auto" : "opacity-0 absolute inset-x-0 top-0 -translate-y-4 scale-95 pointer-events-none h-0 overflow-hidden")}>
-              <h3 className="font-display text-xl text-text-primary flex items-center gap-2">
-                <Moon size={20} className="text-text-secondary" />
-                Reflect: Evening Review ({cycleLabel})
-              </h3>
+              <div>
+                <h3 className="font-display text-xl text-text-primary flex items-center gap-2">
+                  <Moon size={20} className="text-text-secondary" />
+                  Reflect: Evening Review
+                </h3>
+                <p className="text-xs text-text-secondary mt-1">{cycleLabelCompact}</p>
+              </div>
               {/* Mood Check */}
               <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md hover:shadow-lg transition-all duration-300">
                 <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">

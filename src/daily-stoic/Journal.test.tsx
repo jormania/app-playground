@@ -62,8 +62,6 @@ const baseProps = {
   handleShareQuote: async () => {},
   isSharing: false,
   isTogglingFavorite: false,
-  searchQuery: '',
-  setSearchQuery: () => {},
   hasPassionsProperty: true,
 };
 

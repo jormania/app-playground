@@ -82,6 +82,12 @@ export function formatCycleLabel(info: CycleInfo): string {
   return `Day ${info.dayOfWeek} of Week ${info.week} of Cycle ${info.cycle}`;
 }
 
+// A shorter variant for tight spaces (e.g. a subheader under a wizard step
+// title) — same information as formatCycleLabel, middle-dot separated.
+export function formatCycleLabelCompact(info: CycleInfo): string {
+  return `Day ${info.dayOfWeek} · Week ${info.week} · Cycle ${info.cycle}`;
+}
+
 // Theme tags (from data/quotes.ts) that count as "about" each virtue, for the
 // weekly Quote of the Week banner. Deliberately doesn't touch the existing
 // daily quote rotation (getQuoteForDay) — this is a separate, second quote.

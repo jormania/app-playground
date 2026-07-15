@@ -2,9 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   normalizeNotionId,
   validateSchema,
+  getMissingOptionalColumns,
+  upgradeDatabaseSchema,
   fetchReflectionForDay,
   upsertReflection,
-  fetchRecentReflections
+  fetchRecentReflections,
+  fetchAllReflections
 } from './NotionService';
 
 function jsonResponse(body: unknown, status = 200) {
@@ -74,6 +77,69 @@ describe('NotionService', () => {
       const errors = validateSchema(invalidProps);
       expect(errors).toContain('Property "QuoteID" must be of type "number" (found "select")');
       expect(errors).toContain('Property "Favorite" must be of type "checkbox" (found "number")');
+    });
+  });
+
+  describe('getMissingOptionalColumns', () => {
+    it('reports every optional column absent from an empty schema', () => {
+      const missing = getMissingOptionalColumns({});
+      expect(missing).toEqual(
+        expect.arrayContaining(['Mood', 'MorningIntentions', 'Passions', 'Dichotomy', 'Virtue', 'Cycle', 'WeekOfCycle'])
+      );
+    });
+
+    // Regression test: an earlier version of the auto-upgrade trigger in
+    // App.tsx hand-listed only 4 of the 7 optional columns. A database that
+    // already had those 4 (from an older upgrade) but not Cycle/WeekOfCycle
+    // never triggered a re-upgrade, so upsertReflection's unconditional
+    // write to Cycle/WeekOfCycle failed with "Cycle is not a property that
+    // exists" on every save. This must catch that column pair specifically,
+    // not just "is anything at all missing."
+    it('still flags Cycle and WeekOfCycle as missing even when every other optional column is present', () => {
+      const partiallyUpgradedProps = {
+        'Mood': { type: 'select' },
+        'MorningIntentions': { type: 'rich_text' },
+        'Passions': { type: 'multi_select' },
+        'Dichotomy': { type: 'rich_text' },
+        'Virtue': { type: 'rich_text' },
+      };
+      expect(getMissingOptionalColumns(partiallyUpgradedProps)).toEqual(
+        expect.arrayContaining(['Cycle', 'WeekOfCycle'])
+      );
+    });
+
+    it('returns an empty array once every optional column is present', () => {
+      const fullyUpgradedProps = {
+        'Mood': { type: 'select' },
+        'MorningIntentions': { type: 'rich_text' },
+        'Passions': { type: 'multi_select' },
+        'Dichotomy': { type: 'rich_text' },
+        'Virtue': { type: 'rich_text' },
+        'Cycle': { type: 'number' },
+        'WeekOfCycle': { type: 'number' },
+      };
+      expect(getMissingOptionalColumns(fullyUpgradedProps)).toEqual([]);
+    });
+  });
+
+  describe('upgradeDatabaseSchema', () => {
+    it('PATCHes every optional column, including Cycle and WeekOfCycle, in one request', async () => {
+      const fetchImpl = vi.fn(async () => jsonResponse({ id: 'db-id', properties: {} }));
+      await upgradeDatabaseSchema('mock-token', '41c42bc4dfb543f49051810b3c5880fe', fetchImpl);
+
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      const body = JSON.parse((fetchImpl as any).mock.calls[0][1].body);
+      expect(body.method).toBe('PATCH');
+      expect(body.path).toBe('databases/41c42bc4dfb543f49051810b3c5880fe');
+      expect(body.body.properties).toEqual({
+        'Mood': { select: {} },
+        'MorningIntentions': { rich_text: {} },
+        'Passions': { multi_select: {} },
+        'Dichotomy': { rich_text: {} },
+        'Virtue': { rich_text: {} },
+        'Cycle': { number: {} },
+        'WeekOfCycle': { number: {} },
+      });
     });
   });
 
@@ -292,6 +358,73 @@ describe('NotionService', () => {
       const body = JSON.parse((fetchImpl as any).mock.calls[0][1].body);
       expect(body.method).toBe('POST');
       expect(body.path).toBe('databases/41c42bc4dfb543f49051810b3c5880fe/query');
+    });
+
+    it('only fetches a single page, even if Notion reports more are available', async () => {
+      const page = (quoteId: number) => ({
+        id: `page-${quoteId}`,
+        created_time: '2026-07-12T10:00:00Z',
+        properties: {
+          Date: { date: { start: '2026-07-12' } },
+          QuoteID: { number: quoteId },
+          Reflection: { rich_text: [] },
+        },
+      });
+      const fetchImpl = vi.fn(async () =>
+        jsonResponse({ results: [page(1)], has_more: true, next_cursor: 'cursor-a' })
+      );
+
+      const res = await fetchRecentReflections('mock-token', '41c42bc4dfb543f49051810b3c5880fe', fetchImpl);
+
+      expect(res).toHaveLength(1);
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('fetchAllReflections', () => {
+    it('follows has_more/next_cursor until the full history is retrieved', async () => {
+      const page = (quoteId: number) => ({
+        id: `page-${quoteId}`,
+        created_time: '2026-07-12T10:00:00Z',
+        properties: {
+          Date: { date: { start: '2026-07-12' } },
+          QuoteID: { number: quoteId },
+          Reflection: { rich_text: [] },
+        },
+      });
+
+      let call = 0;
+      const fetchImpl = vi.fn(async () => {
+        call++;
+        if (call === 1) return jsonResponse({ results: [page(3)], has_more: true, next_cursor: 'cursor-a' });
+        if (call === 2) return jsonResponse({ results: [page(2)], has_more: true, next_cursor: 'cursor-b' });
+        return jsonResponse({ results: [page(1)], has_more: false, next_cursor: null });
+      });
+
+      const res = await fetchAllReflections('mock-token', '41c42bc4dfb543f49051810b3c5880fe', fetchImpl);
+
+      expect(fetchImpl).toHaveBeenCalledTimes(3);
+      expect(res.map((r) => r.quoteId)).toEqual([3, 2, 1]);
+
+      // The second and third requests must pass the cursor from the previous response.
+      const secondBody = JSON.parse((fetchImpl as any).mock.calls[1][1].body);
+      expect(secondBody.body.start_cursor).toBe('cursor-a');
+      const thirdBody = JSON.parse((fetchImpl as any).mock.calls[2][1].body);
+      expect(thirdBody.body.start_cursor).toBe('cursor-b');
+    });
+
+    it('stops after a single page when has_more is false', async () => {
+      const fetchImpl = vi.fn(async () =>
+        jsonResponse({
+          results: [{ id: 'page-1', properties: { Date: { date: { start: '2026-07-12' } }, QuoteID: { number: 1 }, Reflection: { rich_text: [] } } }],
+          has_more: false,
+        })
+      );
+
+      const res = await fetchAllReflections('mock-token', '41c42bc4dfb543f49051810b3c5880fe', fetchImpl);
+
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      expect(res).toHaveLength(1);
     });
   });
 });

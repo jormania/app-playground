@@ -113,30 +113,38 @@ async function callRelay(
   return data;
 }
 
+const REQUIRED_SCHEMA: Record<string, string> = {
+  'Name': 'title',
+  'QuoteID': 'number',
+  'Reflection': 'rich_text',
+  'Date': 'date',
+  'AcceptanceTags': 'multi_select',
+  'FateInput': 'rich_text',
+  'Favorite': 'checkbox'
+};
+
+// The single source of truth for every optional (auto-upgradeable) column —
+// validateSchema, upgradeDatabaseSchema, and getMissingOptionalColumns all
+// derive from this one map, so adding a new optional property here is
+// enough; a name added to only one of those three previously caused a real
+// bug (Cycle/WeekOfCycle were written by upsertReflection and checked by
+// validateSchema, but missing from the App.tsx auto-upgrade trigger, so an
+// older database's save silently failed with "Cycle is not a property that
+// exists" until the user happened to hit a schema-error path some other way).
+const OPTIONAL_SCHEMA: Record<string, string> = {
+  'Mood': 'select',
+  'MorningIntentions': 'rich_text',
+  'Passions': 'multi_select',
+  'Dichotomy': 'rich_text',
+  'Virtue': 'rich_text',
+  'Cycle': 'number',
+  'WeekOfCycle': 'number'
+};
+
 export function validateSchema(properties: Record<string, { type?: string }>): string[] {
   const errors: string[] = [];
-  
-  const expected: Record<string, string> = {
-    'Name': 'title',
-    'QuoteID': 'number',
-    'Reflection': 'rich_text',
-    'Date': 'date',
-    'AcceptanceTags': 'multi_select',
-    'FateInput': 'rich_text',
-    'Favorite': 'checkbox'
-  };
 
-  const optional: Record<string, string> = {
-    'Mood': 'select',
-    'MorningIntentions': 'rich_text',
-    'Passions': 'multi_select',
-    'Dichotomy': 'rich_text',
-    'Virtue': 'rich_text',
-    'Cycle': 'number',
-    'WeekOfCycle': 'number'
-  };
-
-  for (const [name, type] of Object.entries(expected)) {
+  for (const [name, type] of Object.entries(REQUIRED_SCHEMA)) {
     const prop = properties[name];
     if (!prop) {
       errors.push(`Missing property: "${name}"`);
@@ -145,7 +153,7 @@ export function validateSchema(properties: Record<string, { type?: string }>): s
     }
   }
 
-  for (const [name, type] of Object.entries(optional)) {
+  for (const [name, type] of Object.entries(OPTIONAL_SCHEMA)) {
     const prop = properties[name];
     if (prop && prop.type !== type) {
       errors.push(`Property "${name}" must be of type "${type}" (found "${prop.type}")`);
@@ -153,6 +161,13 @@ export function validateSchema(properties: Record<string, { type?: string }>): s
   }
 
   return errors;
+}
+
+// Which optional columns a database is missing (regardless of type
+// mismatches, which validateSchema already reports separately) — the signal
+// App.tsx uses to decide whether to call upgradeDatabaseSchema.
+export function getMissingOptionalColumns(properties: Record<string, { type?: string }>): string[] {
+  return Object.keys(OPTIONAL_SCHEMA).filter((name) => !properties[name]);
 }
 
 export async function upgradeDatabaseSchema(
@@ -164,15 +179,9 @@ export async function upgradeDatabaseSchema(
   if (!id) throw new Error('Invalid Notion database link or ID.');
 
   const body = {
-    properties: {
-      'Dichotomy': { rich_text: {} },
-      'Passions': { multi_select: {} },
-      'Mood': { select: {} },
-      'MorningIntentions': { rich_text: {} },
-      'Virtue': { rich_text: {} },
-      'Cycle': { number: {} },
-      'WeekOfCycle': { number: {} }
-    }
+    properties: Object.fromEntries(
+      Object.entries(OPTIONAL_SCHEMA).map(([name, type]) => [name, { [type]: {} }])
+    ),
   };
 
   await callRelay(token, `databases/${id}`, 'PATCH', body, fetchImpl);
@@ -483,99 +492,127 @@ export async function upsertReflection(
   };
 }
 
+function parsePageToRecord(page: any): ReflectionRecord | null {
+  const props = page.properties || {};
+  const dateProp = props.Date?.date?.start;
+  const quoteProp = props.QuoteID?.number;
+
+  if (!dateProp || typeof quoteProp !== 'number') return null;
+
+  const richText = props.Reflection?.rich_text || [];
+  const textVal = Array.isArray(richText)
+    ? richText.map((rt: any) => rt.plain_text || '').join('')
+    : '';
+
+  const fateText = props.FateInput?.rich_text || [];
+  const fateInputVal = Array.isArray(fateText)
+    ? fateText.map((rt: any) => rt.plain_text || '').join('')
+    : '';
+
+  const acceptMultiSelect = props.AcceptanceTags?.multi_select || [];
+  const acceptanceTagsVal = Array.isArray(acceptMultiSelect)
+    ? acceptMultiSelect.map((o: any) => o.name || '')
+    : [];
+
+  const favoriteVal = !!props.Favorite?.checkbox;
+
+  const moodVal = props.Mood?.select?.name || '';
+
+  const intentText = props.MorningIntentions?.rich_text || [];
+  const morningIntentionsVal = Array.isArray(intentText)
+    ? intentText.map((rt: any) => rt.plain_text || '').join('')
+    : '';
+
+  const passMultiSelect = props.Passions?.multi_select || [];
+  const passionsVal = Array.isArray(passMultiSelect)
+    ? passMultiSelect.map((o: any) => o.name || '')
+    : [];
+
+  const dichotomyText = props.Dichotomy?.rich_text || [];
+  const dichotomyVal = Array.isArray(dichotomyText)
+    ? dichotomyText.map((rt: any) => rt.plain_text || '').join('')
+    : '';
+
+  const virtueText = props.Virtue?.rich_text || [];
+  const virtueVal = Array.isArray(virtueText)
+    ? virtueText.map((rt: any) => rt.plain_text || '').join('')
+    : '';
+
+  const createdTimeVal = page.created_time || '';
+
+  return {
+    id: page.id,
+    date: dateProp,
+    quoteId: quoteProp,
+    text: textVal,
+    fateInput: fateInputVal,
+    acceptanceTags: acceptanceTagsVal,
+    favorite: favoriteVal,
+    mood: moodVal,
+    morningIntentions: morningIntentionsVal,
+    passions: passionsVal,
+    createdTime: createdTimeVal,
+    dichotomy: dichotomyVal,
+    virtue: virtueVal,
+  };
+}
+
+// Queries pages sorted newest-first. maxPages caps how many page_size-sized
+// requests to make (1 = a single page, matching the old fixed page_size:100
+// behavior); pass null to follow Notion's has_more/next_cursor until the
+// entire database has been retrieved.
+async function fetchReflectionPages(
+  token: string,
+  databaseId: string,
+  pageSize: number,
+  maxPages: number | null,
+  fetchImpl: typeof fetch
+): Promise<any[]> {
+  const id = normalizeNotionId(databaseId);
+  if (!id) throw new Error('Invalid Notion database link or ID.');
+
+  const allResults: any[] = [];
+  let cursor: string | undefined;
+  let pagesFetched = 0;
+
+  do {
+    const body: Record<string, unknown> = {
+      sorts: [{ property: 'Date', direction: 'descending' }],
+      page_size: pageSize,
+    };
+    if (cursor) body.start_cursor = cursor;
+
+    const data: any = await callRelay(token, `databases/${id}/query`, 'POST', body, fetchImpl);
+    allResults.push(...(data?.results || []));
+    pagesFetched++;
+
+    cursor = data?.has_more ? data?.next_cursor ?? undefined : undefined;
+  } while (cursor && (maxPages === null || pagesFetched < maxPages));
+
+  return allResults;
+}
+
 export async function fetchRecentReflections(
   token: string,
   databaseId: string,
   fetchImpl: typeof fetch = fetch
 ): Promise<ReflectionRecord[]> {
-  const id = normalizeNotionId(databaseId);
-  if (!id) throw new Error('Invalid Notion database link or ID.');
+  const pages = await fetchReflectionPages(token, databaseId, 100, 1, fetchImpl);
+  return pages.map(parsePageToRecord).filter((r): r is ReflectionRecord => r !== null);
+}
 
-  const data = await callRelay(
-    token,
-    `databases/${id}/query`,
-    'POST',
-    {
-      sorts: [
-        {
-          property: 'Date',
-          direction: 'descending',
-        },
-      ],
-      page_size: 100,
-    },
-    fetchImpl
-  );
-
-  const results = (data as { results?: unknown[] })?.results || [];
-  const records: ReflectionRecord[] = [];
-
-  for (const page of results as any[]) {
-    const props = page.properties || {};
-    const dateProp = props.Date?.date?.start;
-    const quoteProp = props.QuoteID?.number;
-    
-    const richText = props.Reflection?.rich_text || [];
-    const textVal = Array.isArray(richText)
-      ? richText.map((rt: any) => rt.plain_text || '').join('')
-      : '';
-
-    const fateText = props.FateInput?.rich_text || [];
-    const fateInputVal = Array.isArray(fateText)
-      ? fateText.map((rt: any) => rt.plain_text || '').join('')
-      : '';
-
-    const acceptMultiSelect = props.AcceptanceTags?.multi_select || [];
-    const acceptanceTagsVal = Array.isArray(acceptMultiSelect)
-      ? acceptMultiSelect.map((o: any) => o.name || '')
-      : [];
-
-    const favoriteVal = !!props.Favorite?.checkbox;
-
-    const moodVal = props.Mood?.select?.name || '';
-
-    const intentText = props.MorningIntentions?.rich_text || [];
-    const morningIntentionsVal = Array.isArray(intentText)
-      ? intentText.map((rt: any) => rt.plain_text || '').join('')
-      : '';
-
-    const passMultiSelect = props.Passions?.multi_select || [];
-    const passionsVal = Array.isArray(passMultiSelect)
-      ? passMultiSelect.map((o: any) => o.name || '')
-      : [];
-
-    const dichotomyText = props.Dichotomy?.rich_text || [];
-    const dichotomyVal = Array.isArray(dichotomyText)
-      ? dichotomyText.map((rt: any) => rt.plain_text || '').join('')
-      : '';
-
-    const virtueText = props.Virtue?.rich_text || [];
-    const virtueVal = Array.isArray(virtueText)
-      ? virtueText.map((rt: any) => rt.plain_text || '').join('')
-      : '';
-
-    const createdTimeVal = page.created_time || '';
-
-    if (dateProp && typeof quoteProp === 'number') {
-      records.push({
-        id: page.id,
-        date: dateProp,
-        quoteId: quoteProp,
-        text: textVal,
-        fateInput: fateInputVal,
-        acceptanceTags: acceptanceTagsVal,
-        favorite: favoriteVal,
-        mood: moodVal,
-        morningIntentions: morningIntentionsVal,
-        passions: passionsVal,
-        createdTime: createdTimeVal,
-        dichotomy: dichotomyVal,
-        virtue: virtueVal,
-      });
-    }
-  }
-
-  return records;
+// Follows pagination to retrieve the complete history — for the Digest
+// dashboard, which is meant to be a genuine archive rather than a windowed
+// view like the other dashboards (which stay on fetchRecentReflections'
+// single-page fetch; they don't need full history since they already offer
+// their own 30d/90d/365d/All filters over whatever they do have).
+export async function fetchAllReflections(
+  token: string,
+  databaseId: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<ReflectionRecord[]> {
+  const pages = await fetchReflectionPages(token, databaseId, 100, null, fetchImpl);
+  return pages.map(parsePageToRecord).filter((r): r is ReflectionRecord => r !== null);
 }
 
 export async function clearDatabaseEntries(

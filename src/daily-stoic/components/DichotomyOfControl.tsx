@@ -1,6 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { cn } from '../lib/cn';
 import { Scale, CheckCircle2, CloudFog, AlertCircle, Info, Sparkles } from 'lucide-react';
+import InsightPeriodFilter from './InsightPeriodFilter';
+import { getInsightPeriodRange } from '../utils/insightPeriod';
+import { useInsightPeriod } from '../lib/useInsightPeriod';
 
 interface Worry {
   id: string;
@@ -47,12 +50,15 @@ function extractKeywords(texts: string[]): { text: string; value: number }[] {
 }
 
 interface DichotomyOfControlProps {
+  today: number;
+  cycleStartDate: string;
   onClose?: () => void;
   worries?: Worry[];
+  loading?: boolean;
 }
 
-export function DichotomyOfControl({ onClose, worries: propWorries }: DichotomyOfControlProps = {}) {
-  const [insightPeriod, setInsightPeriod] = useState<'30' | '90' | '365' | 'all'>('30');
+export function DichotomyOfControl({ today, cycleStartDate, onClose, worries: propWorries, loading }: DichotomyOfControlProps) {
+  const [insightPeriod, setInsightPeriod] = useInsightPeriod();
   const [demoMode, setDemoMode] = useState(false);
   const [localWorries, setLocalWorries] = useState<Worry[]>([]);
 
@@ -73,18 +79,17 @@ export function DichotomyOfControl({ onClose, worries: propWorries }: DichotomyO
   // Use Notion-sourced prop worries when available, localStorage otherwise
   const worries = propWorries ?? localWorries;
 
+  const periodRange = useMemo(
+    () => getInsightPeriodRange(insightPeriod, cycleStartDate, today),
+    [insightPeriod, cycleStartDate, today]
+  );
+
   // Calculate Real Data
   const stats = useMemo(() => {
-    const today = new Date();
-    const periodDays = insightPeriod === 'all' ? 366 : parseInt(insightPeriod, 10);
-
     const filtered = worries.filter(w => {
-      if (insightPeriod === 'all') return true;
+      if (!periodRange) return true;
       if (!w.createdAt) return true; // Include unsaved timestamps as general entries
-      const date = new Date(w.createdAt);
-      const diffMs = today.getTime() - date.getTime();
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      return diffDays <= periodDays;
+      return w.createdAt >= periodRange.start && w.createdAt <= periodRange.end;
     });
 
     const upToMe = filtered.filter(w => w.category === 'up-to-me');
@@ -112,7 +117,7 @@ export function DichotomyOfControl({ onClose, worries: propWorries }: DichotomyO
       upToMeKeywords,
       notUpToMeKeywords
     };
-  }, [worries, insightPeriod]);
+  }, [worries, periodRange]);
 
   // Demo Mock Data
   const demoStats = useMemo(() => {
@@ -233,6 +238,12 @@ export function DichotomyOfControl({ onClose, worries: propWorries }: DichotomyO
         )}
       </div>
 
+      {loading ? (
+        <div className="flex items-center justify-center rounded-xl border-2 border-dashed border-tertiary p-12 text-center bg-background-secondary text-sm text-text-secondary">
+          Loading your full history…
+        </div>
+      ) : (
+        <>
       {/* Philosophy Intro */}
       <blockquote className="rounded-lg bg-background-secondary p-5 border border-tertiary italic text-sm text-text-secondary mb-8 leading-relaxed">
         "Some things are in our control and others not. Things in our control are opinion, pursuit, desire, aversion... Things not in our control are body, property, reputation, command..."
@@ -242,22 +253,7 @@ export function DichotomyOfControl({ onClose, worries: propWorries }: DichotomyO
       {/* Controls & Demo Toggle */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center mb-6">
         {/* Insight Period Selection */}
-        <div className="flex items-center gap-1 rounded-md bg-background-tertiary p-1 border border-tertiary w-full sm:w-auto overflow-x-auto">
-          {(['30', '90', '365', 'all'] as const).map((period) => (
-            <button
-              key={period}
-              onClick={() => setInsightPeriod(period)}
-              className={cn(
-                "px-3 py-1 text-xs font-medium rounded-sm transition-all text-center flex-1 sm:flex-none min-w-[3.5rem]",
-                insightPeriod === period
-                  ? 'bg-background-secondary text-text-primary shadow-sm border border-tertiary'
-                  : 'text-text-secondary hover:text-text-primary'
-              )}
-            >
-              {period === 'all' ? 'All' : `${period}d`}
-            </button>
-          ))}
-        </div>
+        <InsightPeriodFilter value={insightPeriod} onChange={setInsightPeriod} />
 
         {/* Demo Mode Toggle */}
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
@@ -417,6 +413,8 @@ export function DichotomyOfControl({ onClose, worries: propWorries }: DichotomyO
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

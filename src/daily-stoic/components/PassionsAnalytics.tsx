@@ -12,9 +12,15 @@ import {
   BookOpen
 } from 'lucide-react';
 import { AVAILABLE_PASSIONS } from '../data/passions';
+import InsightPeriodFilter from './InsightPeriodFilter';
+import { getInsightPeriodRange, INSIGHT_PERIOD_OPTIONS } from '../utils/insightPeriod';
+import { useInsightPeriod } from '../lib/useInsightPeriod';
 
 interface PassionsAnalyticsProps {
-  recentReflections: ReflectionRecord[];
+  reflections: ReflectionRecord[];
+  loading: boolean;
+  today: number;
+  cycleStartDate: string;
   onClose: () => void;
 }
 
@@ -72,23 +78,22 @@ function getTimeOfDayLabel(hour: number): string {
   return 'night';
 }
 
-export default function PassionsAnalytics({ recentReflections, onClose }: PassionsAnalyticsProps) {
-  const [insightPeriod, setInsightPeriod] = useState<'30' | '90' | '365' | 'all'>('30');
+export default function PassionsAnalytics({ reflections, loading, today, cycleStartDate, onClose }: PassionsAnalyticsProps) {
+  const [insightPeriod, setInsightPeriod] = useInsightPeriod();
   const [demoMode, setDemoMode] = useState(false);
+
+  const periodRange = useMemo(
+    () => getInsightPeriodRange(insightPeriod, cycleStartDate, today),
+    [insightPeriod, cycleStartDate, today]
+  );
 
   // 1. Filter and Calculate Real Data
   const stats = useMemo(() => {
-    const periodDays = insightPeriod === 'all' ? Infinity : parseInt(insightPeriod, 10);
-    const now = new Date();
-    
     // Filter records in the selected period by actual calendar date
-    const filteredRecords = recentReflections.filter(r => {
-      if (insightPeriod === 'all') return true;
+    const filteredRecords = reflections.filter(r => {
+      if (!periodRange) return true;
       if (!r.date) return true; // include if no date available
-      const recordDate = new Date(r.date + 'T00:00:00');
-      const diffMs = now.getTime() - recordDate.getTime();
-      const diffDays = diffMs / (1000 * 60 * 60 * 24);
-      return diffDays <= periodDays;
+      return r.date >= periodRange.start && r.date <= periodRange.end;
     });
 
     const passionsCount: Record<string, number> = {};
@@ -153,7 +158,7 @@ export default function PassionsAnalytics({ recentReflections, onClose }: Passio
       dominantPassionId,
       dominantPattern,
     };
-  }, [recentReflections, insightPeriod]);
+  }, [reflections, periodRange]);
 
   // 2. Mock / Demo Data (matching user specs)
   const demoStats = useMemo(() => {
@@ -204,6 +209,11 @@ export default function PassionsAnalytics({ recentReflections, onClose }: Passio
     return `${activeStats.dominantPattern}s`;
   }, [activeStats.dominantPattern]);
 
+  const periodPhrase =
+    insightPeriod === 'all'
+      ? 'your history'
+      : INSIGHT_PERIOD_OPTIONS.find((o) => o.value === insightPeriod)!.label.toLowerCase();
+
   return (
     <div className="mx-auto max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-500 pb-16">
       {/* Header */}
@@ -224,31 +234,22 @@ export default function PassionsAnalytics({ recentReflections, onClose }: Passio
         </button>
       </div>
 
+      {loading ? (
+        <div className="flex items-center justify-center rounded-xl border-2 border-dashed border-tertiary p-12 text-center bg-background-secondary text-sm text-text-secondary">
+          Loading your full history…
+        </div>
+      ) : (
+        <>
       {/* Epictetus Intro Quote */}
       <blockquote className="rounded-lg bg-background-secondary p-5 border border-tertiary italic text-sm text-text-secondary mb-8 leading-relaxed">
-        "First, do not be swept away by the intensity of the impression; say, ‘Wait for me a little, impression; let me see what you are, and what you are about. Let me test you.’" 
+        "First, do not be swept away by the intensity of the impression; say, ‘Wait for me a little, impression; let me see what you are, and what you are about. Let me test you.’"
         <cite className="block text-right not-italic text-xs font-semibold mt-2 text-text-primary">— Epictetus, Discourses 2.18</cite>
       </blockquote>
 
       {/* Controls & Demo Toggle */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center mb-6">
         {/* Insight Period Selection */}
-        <div className="flex items-center gap-1 rounded-md bg-background-tertiary p-1 border border-tertiary w-full sm:w-auto overflow-x-auto">
-          {(['30', '90', '365', 'all'] as const).map((period) => (
-            <button
-              key={period}
-              onClick={() => setInsightPeriod(period)}
-              className={cn(
-                "px-3 py-1 text-xs font-medium rounded-sm transition-all text-center flex-1 sm:flex-none min-w-[3.5rem]",
-                insightPeriod === period
-                  ? 'bg-background-secondary text-text-primary shadow-sm border border-tertiary'
-                  : 'text-text-secondary hover:text-text-primary'
-              )}
-            >
-              {period === 'all' ? 'All' : `${period}d`}
-            </button>
-          ))}
-        </div>
+        <InsightPeriodFilter value={insightPeriod} onChange={setInsightPeriod} />
 
         {/* Demo Mode Toggle */}
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
@@ -281,7 +282,7 @@ export default function PassionsAnalytics({ recentReflections, onClose }: Passio
           </div>
           <h3 className="font-display text-xl text-text-primary mb-2">The Citadel of Mind is Clear</h3>
           <p className="text-sm text-text-secondary max-w-sm mb-6 leading-relaxed">
-            No recurring passions or judgments have been recorded in the past {insightPeriod === 'all' ? 'year' : `${insightPeriod} days`}.
+            No recurring passions or judgments have been recorded in the past {periodPhrase}.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <button
@@ -317,7 +318,7 @@ export default function PassionsAnalytics({ recentReflections, onClose }: Passio
                   </div>
 
                   <p className="text-sm text-text-secondary leading-relaxed">
-                    Over the past {insightPeriod === 'all' ? 'year' : `${insightPeriod} days`}, the primary judgment pattern holding back your tranquility is <strong className="text-text-primary">{dominantPassionObj.label.toLowerCase()}</strong>.
+                    Over the past {periodPhrase}, the primary judgment pattern holding back your tranquility is <strong className="text-text-primary">{dominantPassionObj.label.toLowerCase()}</strong>.
                   </p>
 
                   <div className="border-t border-accent/20 pt-3 mt-3">
@@ -452,6 +453,8 @@ export default function PassionsAnalytics({ recentReflections, onClose }: Passio
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

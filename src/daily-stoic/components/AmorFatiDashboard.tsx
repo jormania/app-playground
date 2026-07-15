@@ -1,14 +1,20 @@
 import { useState, useMemo } from 'react';
 import { ReflectionRecord } from '../services/NotionService';
 import { cn } from '../lib/cn';
-import { 
-  Heart, 
-  Info, 
+import InsightPeriodFilter from './InsightPeriodFilter';
+import { getInsightPeriodRange } from '../utils/insightPeriod';
+import { useInsightPeriod } from '../lib/useInsightPeriod';
+import {
+  Heart,
+  Info,
   Calendar
 } from 'lucide-react';
 
 interface AmorFatiDashboardProps {
-  recentReflections: ReflectionRecord[];
+  reflections: ReflectionRecord[];
+  loading: boolean;
+  today: number;
+  cycleStartDate: string;
   onClose: () => void;
 }
 
@@ -52,21 +58,23 @@ const TAG_INFO: Record<string, { label: string; desc: string; advice: string; qu
 
 const ALL_TAGS = ['Situation', 'Outcome', 'People', 'Time', 'Limitation'];
 
-export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFatiDashboardProps) {
-  const [insightPeriod, setInsightPeriod] = useState<'30' | '90' | '365' | 'all'>('30');
+export default function AmorFatiDashboard({ reflections, loading, today, cycleStartDate, onClose }: AmorFatiDashboardProps) {
+  const [insightPeriod, setInsightPeriod] = useInsightPeriod();
   const [demoMode, setDemoMode] = useState(false);
+
+  const periodRange = useMemo(
+    () => getInsightPeriodRange(insightPeriod, cycleStartDate, today),
+    [insightPeriod, cycleStartDate, today]
+  );
 
   // 1. Calculate Real Statistics
   const stats = useMemo(() => {
-    const periodDays = insightPeriod === 'all' ? Infinity : parseInt(insightPeriod, 10);
     const now = new Date();
 
-    const filtered = recentReflections.filter(r => {
-      if (insightPeriod === 'all') return true;
+    const filtered = reflections.filter(r => {
+      if (!periodRange) return true;
       if (!r.date) return true;
-      const recordDate = new Date(r.date + 'T00:00:00');
-      const diffDays = (now.getTime() - recordDate.getTime()) / (1000 * 60 * 60 * 24);
-      return diffDays <= periodDays;
+      return r.date >= periodRange.start && r.date <= periodRange.end;
     });
 
     const reframedLogs = filtered.filter(r => r.fateInput && r.fateInput.trim().length > 0);
@@ -97,7 +105,7 @@ export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFa
     });
 
     // Extract historical obstacles (at least 7 days ago, sorted by date)
-    const pastObstacles = recentReflections
+    const pastObstacles = reflections
       .filter(r => r.fateInput && r.fateInput.trim().length > 0)
       .filter(r => {
         if (!r.date) return false;
@@ -116,7 +124,7 @@ export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFa
       dominantTag,
       pastObstacles
     };
-  }, [recentReflections, insightPeriod]);
+  }, [reflections, periodRange]);
 
   // 2. Demo Mock Data
   const demoStats = useMemo(() => {
@@ -196,6 +204,12 @@ export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFa
         </button>
       </div>
 
+      {loading ? (
+        <div className="flex items-center justify-center rounded-xl border-2 border-dashed border-tertiary p-12 text-center bg-background-secondary text-sm text-text-secondary">
+          Loading your full history…
+        </div>
+      ) : (
+        <>
       {/* Intro Quote */}
       <blockquote className="rounded-lg bg-background-secondary p-5 border border-tertiary italic text-sm text-text-secondary mb-8 leading-relaxed">
         "My formula for greatness in a human being is amor fati: that one wants nothing to be different, not forward, not backward, not in all eternity. Not merely bear what is necessary, still less conceal it... but love it."
@@ -205,22 +219,7 @@ export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFa
       {/* Controls & Demo Toggle */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center mb-6">
         {/* Insight Period Selection */}
-        <div className="flex items-center gap-1 rounded-md bg-background-tertiary p-1 border border-tertiary w-full sm:w-auto overflow-x-auto">
-          {(['30', '90', '365', 'all'] as const).map((period) => (
-            <button
-              key={period}
-              onClick={() => setInsightPeriod(period)}
-              className={cn(
-                "px-3 py-1 text-xs font-medium rounded-sm transition-all text-center flex-1 sm:flex-none min-w-[3.5rem]",
-                insightPeriod === period
-                  ? 'bg-background-secondary text-text-primary shadow-sm border border-tertiary'
-                  : 'text-text-secondary hover:text-text-primary'
-              )}
-            >
-              {period === 'all' ? 'All' : `${period}d`}
-            </button>
-          ))}
-        </div>
+        <InsightPeriodFilter value={insightPeriod} onChange={setInsightPeriod} />
 
         {/* Demo Mode Toggle */}
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
@@ -435,6 +434,8 @@ export default function AmorFatiDashboard({ recentReflections, onClose }: AmorFa
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateStreak } from './streak';
+import { calculateStreak, calculateLongestStreak } from './streak';
 
 describe('calculateStreak', () => {
   it('returns 0 when no reflections exist', () => {
@@ -29,5 +29,26 @@ describe('calculateStreak', () => {
     const days = new Set([398, 399, 400]);
     expect(calculateStreak(days, 400)).toBe(3);
     expect(calculateStreak(new Set([1]), 1)).toBe(1);
+  });
+});
+
+describe('calculateLongestStreak', () => {
+  it('returns 0 when no reflections exist', () => {
+    expect(calculateLongestStreak(new Set())).toBe(0);
+  });
+
+  it('returns the longest run, even if it is not the most recent one', () => {
+    // A 4-day run early on, then a gap, then a 2-day run at the end.
+    const days = new Set([1, 2, 3, 4, 10, 11]);
+    expect(calculateLongestStreak(days)).toBe(4);
+  });
+
+  it('is unaffected by insertion order', () => {
+    const days = new Set([50, 12, 13, 11, 49]);
+    expect(calculateLongestStreak(days)).toBe(3);
+  });
+
+  it('treats a single logged day as a streak of 1', () => {
+    expect(calculateLongestStreak(new Set([7]))).toBe(1);
   });
 });

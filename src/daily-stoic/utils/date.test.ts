@@ -7,6 +7,7 @@ import {
   getCycleInfo,
   getVirtueForWeek,
   formatCycleLabel,
+  formatCycleLabelCompact,
   mostRecentMonday,
   getQuoteOfTheWeek,
   WEEK_VIRTUES,
@@ -148,6 +149,12 @@ describe('Daily Stoic Date Utilities', () => {
   describe('formatCycleLabel', () => {
     it('formats as "Day D of Week W of Cycle C"', () => {
       expect(formatCycleLabel({ cycle: 5, week: 2, dayOfWeek: 4 })).toBe('Day 4 of Week 2 of Cycle 5');
+    });
+  });
+
+  describe('formatCycleLabelCompact', () => {
+    it('formats as "Day D · Week W · Cycle C"', () => {
+      expect(formatCycleLabelCompact({ cycle: 5, week: 2, dayOfWeek: 4 })).toBe('Day 4 · Week 2 · Cycle 5');
     });
   });
 

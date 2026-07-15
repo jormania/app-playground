@@ -10,9 +10,12 @@ import { DichotomyOfControl } from './components/DichotomyOfControl';
 import Stats from './components/Stats';
 import PassionsAnalytics from './components/PassionsAnalytics';
 import AmorFatiDashboard from './components/AmorFatiDashboard';
+import CycleRetrospectiveCard from './components/CycleRetrospectiveCard';
+import DigestDashboard from './components/DigestDashboard';
 import { getQuoteForDay, getLocalTodayStr, getCycleDay, cycleDayToDateStr, getCycleInfo, mostRecentMonday } from './utils/date';
 import { calculateStreak } from './utils/streak';
-import { fetchRecentReflections, fetchDatabaseProperties, validateSchema, upgradeDatabaseSchema, upsertReflection, clearDatabaseEntries, ReflectionRecord } from './services/NotionService';
+import { fetchRecentReflections, fetchAllReflections, fetchDatabaseProperties, validateSchema, upgradeDatabaseSchema, getMissingOptionalColumns, upsertReflection, clearDatabaseEntries, ReflectionRecord } from './services/NotionService';
+import { computeCycleRetrospective, extractWorriesFromReflections, Worry } from './utils/retrospective';
 import { createIdbKv } from '../shared/notify/idbKv';
 import { QUOTES } from './data/quotes';
 import { triggerHaptic } from '../shared/haptics';
@@ -30,9 +33,13 @@ import {
   Flame as FlameIcon,
   LayoutDashboard as DashboardIcon,
   Sparkles,
+  History as HistoryIcon,
   type LucideIcon,
 } from 'lucide-react';
 
+// Screens that need the full, unbounded Notion history rather than the
+// ~100-record window (see the effect below that fetches it).
+const FULL_HISTORY_ROUTES = ['/digest', '/stats', '/passions', '/amorfati', '/dichotomy'];
 
 export default function App() {
   const [cycleStartDate, setCycleStartDate] = useState(() => localStorage.getItem('daily-stoic:cycle-start-date') || '');
@@ -56,9 +63,19 @@ export default function App() {
   // Habit metrics, schema validation, and search/philosophy states
   const [streak, setStreak] = useState(0);
   const [recentReflections, setRecentReflections] = useState<ReflectionRecord[]>([]);
+  const [notionFullReflections, setNotionFullReflections] = useState<ReflectionRecord[]>([]);
+  const [fullReflectionsLoading, setFullReflectionsLoading] = useState(false);
+  // Offline, there's nothing to fetch — recentReflections already holds the
+  // complete unbounded local history — so this just passes it through. See
+  // the effect further below that populates notionFullReflections; it
+  // deliberately doesn't depend on recentReflections (that would double-fire
+  // the fetch the moment recentReflections updates a beat after route entry).
+  const fullReflections = useMemo(
+    () => (isNotionConfigured ? notionFullReflections : recentReflections),
+    [isNotionConfigured, notionFullReflections, recentReflections]
+  );
   const [schemaErrors, setSchemaErrors] = useState<string[]>([]);
   const [hasPassionsProperty, setHasPassionsProperty] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [lastCelebratedCycle, setLastCelebratedCycle] = useState(() =>
@@ -90,7 +107,11 @@ export default function App() {
   const loadLocalStorageStreak = useCallback(async (todayVal: number) => {
     const days = new Set<number>();
     const records: ReflectionRecord[] = [];
-    for (let i = 1; i <= 365; i++) {
+    // Day numbers are unbounded now (see utils/date.ts's getCycleDay), not
+    // capped at 365 — loop through every day that could actually exist so
+    // offline history past a year doesn't silently vanish from every
+    // dashboard, including the new Digest archive.
+    for (let i = 1; i <= todayVal; i++) {
       const val = localStorage.getItem(`daily-stoic:reflection-${i}`);
       const fateVal = localStorage.getItem(`daily-stoic:fate-input-${i}`);
       const favVal = localStorage.getItem(`daily-stoic:favorite-${i}`) === 'true';
@@ -109,10 +130,12 @@ export default function App() {
       }
       const moodVal = localStorage.getItem(`daily-stoic:mood-${i}`) || '';
       const createdTimeVal = localStorage.getItem(`daily-stoic:created-time-${i}`) || '';
-      
+      const morningIntentionsVal = localStorage.getItem(`daily-stoic:morning-intentions-${i}`) || '';
+      const virtueVal = localStorage.getItem(`daily-stoic:selected-virtue-${i}`) || '';
+
       const estimatedDateStr = cycleDayToDateStr(i, cycleStartDate);
 
-      if (val || fateVal || tagsVal.length > 0 || favVal || passionsVal.length > 0 || moodVal) {
+      if (val || fateVal || tagsVal.length > 0 || favVal || passionsVal.length > 0 || moodVal || morningIntentionsVal) {
         days.add(i);
         records.push({
           date: estimatedDateStr,
@@ -123,6 +146,8 @@ export default function App() {
           favorite: favVal,
           passions: passionsVal,
           mood: moodVal,
+          morningIntentions: morningIntentionsVal,
+          virtue: virtueVal,
           createdTime: createdTimeVal || `${estimatedDateStr}T12:00:00Z`,
         });
       }
@@ -190,6 +215,13 @@ export default function App() {
         const errors = validateSchema(props);
         setSchemaErrors(errors);
         setHasPassionsProperty('Passions' in props);
+        if (getMissingOptionalColumns(props).length > 0 && errors.length === 0) {
+          try {
+            await upgradeDatabaseSchema(token, databaseId);
+          } catch (upgradeErr) {
+            console.warn('Auto-upgrade of optional schema columns failed:', upgradeErr);
+          }
+        }
         if (errors.length === 0) {
           const records = await fetchRecentReflections(token, databaseId);
           setRecentReflections(records);
@@ -224,10 +256,8 @@ export default function App() {
         setSchemaErrors(errors);
         setHasPassionsProperty('Passions' in props);
 
-        // Auto-upgrade schema if optional columns are missing so saves never fail silently
-        const missingOptional = !('Passions' in props) || !('Dichotomy' in props) ||
-          !('Mood' in props) || !('MorningIntentions' in props);
-        if (missingOptional && errors.length === 0) {
+        // Auto-upgrade schema if any optional column is missing so saves never fail silently
+        if (getMissingOptionalColumns(props).length > 0 && errors.length === 0) {
           try {
             await upgradeDatabaseSchema(token, databaseId);
           } catch (upgradeErr) {
@@ -270,6 +300,31 @@ export default function App() {
   // only value ever written to "last-celebrated-cycle" bookkeeping, so a
   // simulated preview (before any cycle has really finished) can never mark
   // a cycle as seen that hasn't actually completed.
+  const worries = useMemo<Worry[]>(() => {
+    if (token.trim() && databaseId.trim()) {
+      return extractWorriesFromReflections(recentReflections);
+    } else {
+      const saved = localStorage.getItem('daily-stoic:dichotomy');
+      try {
+        return saved ? JSON.parse(saved) : [];
+      } catch {
+        return [];
+      }
+    }
+  }, [recentReflections, token, databaseId]);
+
+  // Same as `worries`, but derived from the full (unbounded) history rather
+  // than the ~100-record window — for Spheres of Choice and Digest, which
+  // both need every worry ever logged, not just the recent ones. Offline,
+  // there's no windowing to begin with (a single localStorage key already
+  // holds everything), so it's identical to `worries`.
+  const fullWorries = useMemo<Worry[]>(() => {
+    if (token.trim() && databaseId.trim()) {
+      return extractWorriesFromReflections(fullReflections);
+    }
+    return worries;
+  }, [fullReflections, token, databaseId, worries]);
+
   const completedCycleNumber = cycleInfo.cycle - 1;
 
   // What to show in the celebration UI: the real completed cycle once one
@@ -295,70 +350,12 @@ export default function App() {
   // cycleStartDate itself never moves under the new non-destructive
   // rollover, so "since cycleStartDate" would otherwise mean "since the
   // beginning of time").
-  const completedCycleRange = useMemo(() => {
-    const firstDay = (displayCycleNumber - 1) * 28 + 1;
-    const lastDay = displayCycleNumber * 28;
-    return {
-      start: cycleDayToDateStr(firstDay, cycleStartDate),
-      end: cycleDayToDateStr(lastDay, cycleStartDate),
-    };
-  }, [cycleStartDate, displayCycleNumber]);
-
-  const cycleReflections = useMemo(() => {
-    return recentReflections.filter(
-      (r) => r.date >= completedCycleRange.start && r.date <= completedCycleRange.end
-    );
-  }, [recentReflections, completedCycleRange]);
-
-  const loggedCount = cycleReflections.length;
-  const consistencyRate = Math.min(100, Math.round((loggedCount / 28) * 100));
-
-  const reframingsCount = useMemo(() => {
-    return cycleReflections.filter(r => r.fateInput && r.fateInput.trim()).length;
-  }, [cycleReflections]);
-
-  const passionsCount = useMemo(() => {
-    let count = 0;
-    cycleReflections.forEach((r) => {
-      count += (r.passions || []).length;
-    });
-    return count;
-  }, [cycleReflections]);
-
-  const cycleWorriesStats = useMemo(() => {
-    // When Notion is configured, derive worries from recentReflections (source of truth)
-    // When offline, fall back to localStorage
-    let allWorries: any[] = [];
-    if (isNotionConfigured) {
-      recentReflections.forEach((rec) => {
-        if (rec.dichotomy) {
-          try {
-            const list: any[] = JSON.parse(rec.dichotomy);
-            allWorries.push(...list);
-          } catch {}
-        }
-      });
-    } else {
-      const saved = localStorage.getItem('daily-stoic:dichotomy');
-      if (saved) {
-        try {
-          allWorries = JSON.parse(saved);
-        } catch {}
-      }
-    }
-    if (allWorries.length === 0) return { total: 0, resolved: 0, rate: 0 };
-    const cycleList = allWorries.filter((w) => {
-      if (!w.createdAt) return true;
-      return w.createdAt >= completedCycleRange.start && w.createdAt <= completedCycleRange.end;
-    });
-    const resolved = cycleList.filter((w) => w.isResolved).length;
-    const total = cycleList.length;
-    return {
-      total,
-      resolved,
-      rate: total > 0 ? Math.round((resolved / total) * 100) : 0
-    };
-  }, [completedCycleRange, showCelebration, recentReflections, isNotionConfigured]);
+  const retrospective = useMemo(
+    () => computeCycleRetrospective(displayCycleNumber, cycleStartDate, recentReflections, worries),
+    [displayCycleNumber, cycleStartDate, recentReflections, worries]
+  );
+  const { loggedCount, consistencyRate, reframingsCount, passionsCount } = retrospective;
+  const cycleWorriesStats = retrospective.worriesStats;
 
   const [isSharingCelebration, setIsSharingCelebration] = useState(false);
   
@@ -460,23 +457,39 @@ export default function App() {
     loadReflectionsAndCheckStreak();
   }, [route, loadReflectionsAndCheckStreak]);
 
+  // Every dashboard (Digest, Stats, Amor Fati, Passions & Judgments, Spheres
+  // of Choice) needs the FULL Notion history, not the ~100-record window the
+  // main wizard uses (fetchRecentReflections caps at one page) — otherwise a
+  // "Year" or "All" filter would silently under-report for anyone with more
+  // than ~100 logged days. Fetch it lazily only when one of those routes is
+  // actually opened. Deliberately does NOT depend on recentReflections —
+  // that value gets set a moment later by the route-change effect above, and
+  // depending on it here would re-fire this fetch a second time right after
+  // the first one finishes (the "double load" this is guarding against).
+  // Offline, there's nothing to fetch at all — recentReflections already
+  // holds the complete unbounded local history (see loadLocalStorageStreak
+  // above), so the derived fullReflections below just reads it directly.
+  useEffect(() => {
+    if (!FULL_HISTORY_ROUTES.includes(route) || !isNotionConfigured) return;
+    let cancelled = false;
+    setFullReflectionsLoading(true);
+    fetchAllReflections(token, databaseId)
+      .then((records) => {
+        if (!cancelled) setNotionFullReflections(records);
+      })
+      .catch((err) => {
+        console.error('Failed to load full reflection history:', err);
+        showToast('Could not load your full history.', 'error');
+      })
+      .finally(() => {
+        if (!cancelled) setFullReflectionsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [route, isNotionConfigured, token, databaseId]);
 
-
-  const filteredQuotes = useMemo(() => {
-    return QUOTES.filter((q) => {
-      const query = searchQuery.toLowerCase().trim();
-      return (
-        !query ||
-        q.quote.toLowerCase().includes(query) ||
-        q.author.toLowerCase().includes(query) ||
-        q.source.toLowerCase().includes(query) ||
-        (q.theme || []).some((t) => t.toLowerCase().includes(query))
-      );
-    });
-  }, [searchQuery]);
-
-  const quoteIndex = (dayOfYear - 1) % (filteredQuotes.length || 1);
-  const quote = filteredQuotes[quoteIndex] || getQuoteForDay(dayOfYear);
+  const quote = getQuoteForDay(dayOfYear);
   const isCurrentQuoteFavorited = useMemo(() => {
     if (isNotionConfigured) {
       const record = recentReflections.find((r) => r.quoteId === dayOfYear);
@@ -600,53 +613,15 @@ export default function App() {
       }
     });
 
-    // Check localStorage fallback
-    for (let i = 1; i <= 365; i++) {
+    // Check localStorage fallback (unbounded day count — see loadLocalStorageStreak above)
+    for (let i = 1; i <= today; i++) {
       if (localStorage.getItem(`daily-stoic:favorite-${i}`) === 'true') {
         favoritedIds.add(i);
       }
     }
 
     return QUOTES.filter((q) => favoritedIds.has(q.day));
-  }, [recentReflections, localFavoritesToggle]);
-
-  interface Worry {
-    id: string;
-    text: string;
-    category: 'unassigned' | 'up-to-me' | 'not-up-to-me';
-    isResolved?: boolean;
-    createdAt?: string;
-  }
-
-  const worries = useMemo<Worry[]>(() => {
-    if (token.trim() && databaseId.trim()) {
-      const parsedWorries: Worry[] = [];
-      const seenIds = new Set<string>();
-      recentReflections.forEach((rec) => {
-        if (rec.dichotomy) {
-          try {
-            const list: Worry[] = JSON.parse(rec.dichotomy);
-            list.forEach((w) => {
-              if (w && w.id && !seenIds.has(w.id)) {
-                seenIds.add(w.id);
-                parsedWorries.push(w);
-              }
-            });
-          } catch {}
-        }
-      });
-      return parsedWorries;
-    } else {
-      const saved = localStorage.getItem('daily-stoic:dichotomy');
-      try {
-        return saved ? JSON.parse(saved) : [];
-      } catch {
-        return [];
-      }
-    }
-  }, [recentReflections, token, databaseId]);
-
-
+  }, [recentReflections, localFavoritesToggle, today]);
 
 
   const tabOptions: { label: string; value: string; Icon: LucideIcon }[] = [
@@ -659,6 +634,7 @@ export default function App() {
     { label: 'Spheres of Choice', value: 'dichotomy', Icon: ScaleIcon },
     { label: 'Passions & Judgments', value: 'passions', Icon: FlameIcon },
     { label: 'Amor Fati', value: 'amorfati', Icon: HeartIcon },
+    { label: 'Digest', value: 'digest', Icon: HistoryIcon },
   ];
 
   if (!onboarded) {
@@ -771,7 +747,7 @@ export default function App() {
                 }}
                 className={cn(
                   "rounded-md p-1.5 transition-colors flex items-center justify-center",
-                  dropdownOpen || ['/dichotomy', '/passions', '/amorfati', '/stats'].includes(route)
+                  dropdownOpen || ['/dichotomy', '/passions', '/amorfati', '/digest', '/stats'].includes(route)
                     ? "bg-accent/10 text-accent"
                     : "text-text-secondary hover:bg-background-tertiary"
                 )}
@@ -879,7 +855,10 @@ export default function App() {
         {route === '/stats' && (
           <Stats
             streak={streak}
-            recentReflections={recentReflections}
+            today={today}
+            cycleStartDate={cycleStartDate}
+            reflections={fullReflections}
+            loading={fullReflectionsLoading}
             onClose={() => navigate('/')}
           />
         )}
@@ -918,8 +897,6 @@ export default function App() {
               handleShareQuote={handleShareQuote}
               isSharing={isSharing}
               isTogglingFavorite={isTogglingFavorite}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
               hasPassionsProperty={hasPassionsProperty}
               worries={worries}
             />
@@ -934,7 +911,13 @@ export default function App() {
         )}
 
         {route === '/dichotomy' && (
-          <DichotomyOfControl onClose={() => navigate('/')} worries={worries} />
+          <DichotomyOfControl
+            today={today}
+            cycleStartDate={cycleStartDate}
+            onClose={() => navigate('/')}
+            worries={fullWorries}
+            loading={fullReflectionsLoading}
+          />
         )}
 
         {route === '/enchiridion' && (
@@ -1001,14 +984,31 @@ export default function App() {
 
         {route === '/passions' && (
           <PassionsAnalytics
-            recentReflections={recentReflections}
+            reflections={fullReflections}
+            loading={fullReflectionsLoading}
+            today={today}
+            cycleStartDate={cycleStartDate}
             onClose={() => navigate('/')}
           />
         )}
 
         {route === '/amorfati' && (
           <AmorFatiDashboard
-            recentReflections={recentReflections}
+            reflections={fullReflections}
+            loading={fullReflectionsLoading}
+            today={today}
+            cycleStartDate={cycleStartDate}
+            onClose={() => navigate('/')}
+          />
+        )}
+
+        {route === '/digest' && (
+          <DigestDashboard
+            today={today}
+            cycleStartDate={cycleStartDate}
+            reflections={fullReflections}
+            worries={fullWorries}
+            loading={fullReflectionsLoading}
             onClose={() => navigate('/')}
           />
         )}
@@ -1031,30 +1031,8 @@ export default function App() {
             </div>
 
             {/* Insights Stats Grid */}
-            <div className="grid grid-cols-2 gap-3.5 text-left pt-2">
-              <div className="p-4 rounded-xl border border-tertiary bg-background-tertiary">
-                <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary">Consistency Rate</span>
-                <p className="text-2xl font-semibold text-accent mt-0.5">{consistencyRate}%</p>
-                <p className="text-[11px] text-text-secondary mt-1">{loggedCount} of 28 days logged</p>
-              </div>
-              
-              <div className="p-4 rounded-xl border border-tertiary bg-background-tertiary">
-                <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary">Amor Fati Reframes</span>
-                <p className="text-2xl font-semibold text-energy mt-0.5">{reframingsCount}</p>
-                <p className="text-[11px] text-text-secondary mt-1">Frictions converted to fuel</p>
-              </div>
-              
-              <div className="p-4 rounded-xl border border-tertiary bg-background-tertiary">
-                <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary">Concerns Resolved</span>
-                <p className="text-2xl font-semibold text-success mt-0.5">{cycleWorriesStats.rate}%</p>
-                <p className="text-[11px] text-text-secondary mt-1">{cycleWorriesStats.resolved} of {cycleWorriesStats.total} worries cleared</p>
-              </div>
-
-              <div className="p-4 rounded-xl border border-tertiary bg-background-tertiary">
-                <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary">Citadel Vigilance</span>
-                <p className="text-2xl font-semibold text-text-primary mt-0.5">{passionsCount}</p>
-                <p className="text-[11px] text-text-secondary mt-1">Dysfunctional passions tamed</p>
-              </div>
+            <div className="pt-2">
+              <CycleRetrospectiveCard retrospective={retrospective} />
             </div>
 
             {/* Virtues summary quote */}
