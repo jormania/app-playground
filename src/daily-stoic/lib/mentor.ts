@@ -362,8 +362,13 @@ export async function requestMentor(
     },
     body: JSON.stringify({
       model: MENTOR_MODEL,
-      max_tokens: 320,
-      temperature: 0.6,
+      max_tokens: 512,
+      // claude-sonnet-5 rejects temperature/top_p/top_k with a 400, so we steer
+      // tone through the system prompt only. Thinking is disabled deliberately:
+      // the mentor's reply is short and bounded, and adaptive thinking (the
+      // default when omitted on Sonnet 5) would spend the token budget before
+      // the visible answer.
+      thinking: { type: 'disabled' },
       system: prompt.system,
       messages: [{ role: 'user', content: prompt.user }],
     }),
@@ -391,8 +396,12 @@ export async function verifyAnthropicKey(
       'content-type': 'application/json',
     },
     body: JSON.stringify({
+      // Mirror the real mentor call's parameter surface (model + thinking, no
+      // temperature) so "Test Key" actually validates that this request shape is
+      // accepted — not just that the key authenticates.
       model: MENTOR_MODEL,
-      max_tokens: 1,
+      max_tokens: 16,
+      thinking: { type: 'disabled' },
       messages: [{ role: 'user', content: 'ping' }],
     }),
   });
