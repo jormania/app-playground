@@ -137,6 +137,50 @@ describe('Journal — worry day-scoping (regression for cross-day worry leakage)
     expect(savedWorries[0].text).toBe('Fresh concern');
   });
 
+  it('saves the morning prep to Notion when leaving Prepare via Next, so it syncs even if Reflect is never completed', async () => {
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+    vi.mocked(NotionService.upsertReflection).mockResolvedValue(blankReflection('[]'));
+
+    const user = userEvent.setup();
+    render(<Journal {...baseProps} dayOfYear={2} worries={[]} />);
+
+    await waitFor(() => expect(NotionService.fetchReflectionForDay).toHaveBeenCalled());
+
+    // Do the morning's work on the Prepare step.
+    await user.click(screen.getByRole('button', { name: 'Prepare' }));
+    await user.type(
+      screen.getByPlaceholderText(/Today I might face complaints/),
+      'Expect delays; meet them calmly.'
+    );
+    await user.type(screen.getByPlaceholderText('Log a worry/concern for today...'), 'Fresh concern');
+    await user.click(screen.getByRole('button', { name: 'Record' }));
+
+    // Leaving Prepare via Next (before ever reaching Reflect) should commit it.
+    await user.click(screen.getByRole('button', { name: /Next/ }));
+
+    await waitFor(() => expect(NotionService.upsertReflection).toHaveBeenCalled());
+    const args = vi.mocked(NotionService.upsertReflection).mock.calls[0];
+    expect(args[10]).toBe('Expect delays; meet them calmly.'); // morningIntentions
+    const savedWorries = JSON.parse(args[12] as string);
+    expect(savedWorries).toHaveLength(1);
+    expect(savedWorries[0].text).toBe('Fresh concern');
+  });
+
+  it('does not save when leaving Prepare with no morning-prep changes', async () => {
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+    vi.mocked(NotionService.upsertReflection).mockResolvedValue(blankReflection('[]'));
+
+    const user = userEvent.setup();
+    render(<Journal {...baseProps} dayOfYear={2} worries={[]} />);
+
+    await waitFor(() => expect(NotionService.fetchReflectionForDay).toHaveBeenCalled());
+
+    await user.click(screen.getByRole('button', { name: 'Prepare' }));
+    await user.click(screen.getByRole('button', { name: /Next/ }));
+
+    expect(NotionService.upsertReflection).not.toHaveBeenCalled();
+  });
+
   it('the Reflect step shows both Up to Me and Not Up to Me sections for today\'s own worries', async () => {
     vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(
       blankReflection(

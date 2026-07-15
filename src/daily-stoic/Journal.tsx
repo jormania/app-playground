@@ -611,6 +611,19 @@ export default function Journal({
       setFocusCompleted(true);
     } else if (activeStep === 2) {
       setMeditateCompleted(true);
+    } else if (activeStep === 3) {
+      // Leaving Prepare (typically via Next → Reflect): commit the morning's
+      // work — Premeditatio Malorum and the Spheres of Choice worries — to the
+      // record now, so it's saved even if the evening Reflect step is never
+      // completed. Only fires when one of those two actually changed; handleSave
+      // no-ops the network call when offline, and the existing isSaving guard
+      // prevents a duplicate page if a save is already in flight.
+      const prepareChanged =
+        morningIntentions.trim() !== savedMorningIntentions ||
+        JSON.stringify(worries) !== JSON.stringify(savedWorries);
+      if (prepareChanged && !isSaving) {
+        void handleSave();
+      }
     }
     setActiveStep(nextStep);
   };
