@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Button, NumberStepper } from '../../ds'
 import { loadModeConfig, saveModeConfig } from '../lib/storage'
+import { DurationPill } from './DurationPill'
+import { sumSeconds } from '../lib/duration'
 import styles from './Setup.module.css'
 
 // One setup screen for every numeric preset (Rounds, Cycles, Sit–Walk, 4-7-8,
@@ -9,6 +11,10 @@ import styles from './Setup.module.css'
 // mode registry owns everything mode-specific; this component owns none of it.
 export function PresetSetup({ mode, onStart, onBack }) {
   const [config, setConfig] = useState(() => loadModeConfig(mode.id, mode.defaults))
+
+  // Live total — rebuilt from the same `build()` the mode will actually run,
+  // so what's shown here always matches what Begin hands to the Player.
+  const totalDurationSeconds = useMemo(() => sumSeconds(mode.build(config)), [mode, config])
 
   function set(key, value) {
     setConfig((prev) => ({ ...prev, [key]: value }))
@@ -32,6 +38,7 @@ export function PresetSetup({ mode, onStart, onBack }) {
       <form className={styles.panel} onSubmit={handleSubmit}>
         <div className={styles.header}>
           <h1 className={styles.title}>{mode.name}</h1>
+          <DurationPill seconds={totalDurationSeconds} className={styles.headerDuration} />
         </div>
 
         <p className={styles.lede}>{mode.blurb}</p>

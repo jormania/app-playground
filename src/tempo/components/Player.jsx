@@ -10,25 +10,15 @@ import { soundIsOn } from '../lib/preferences'
 import { usePreferences } from '../lib/preferencesContext'
 import { SettingsModal } from './SettingsModal'
 import { CountdownRing } from './CountdownRing'
-import { IconSettings, IconPause, IconPlay, IconSkipForward, IconExitDoor, IconConfirm, IconFocus } from './icons'
+import { DurationPill } from './DurationPill'
+import { sumSeconds } from '../lib/duration'
+import { IconSettings, IconPause, IconPlay, IconSkipForward, IconExitDoor, IconConfirm } from './icons'
 import styles from './Player.module.css'
 
 function formatTime(totalSeconds) {
   const m = Math.floor(totalSeconds / 60)
   const s = totalSeconds % 60
   return `${m}:${String(s).padStart(2, '0')}`
-}
-
-// Nominal duration of the practice — sum of the planned steps, not actual
-// wall-clock time (which would count pauses and pull in the "Get ready"
-// count-in). Shown once on the done screen so "that's rounds complete" comes
-// with "and here's how long it was".
-function formatDuration(totalSeconds) {
-  const totalMinutes = Math.round(totalSeconds / 60)
-  if (totalMinutes < 60) return `${totalMinutes} min`
-  const h = Math.floor(totalMinutes / 60)
-  const m = totalMinutes % 60
-  return m === 0 ? `${h}h` : `${h}h ${m}min`
 }
 
 const EXIT_CONFIRM_MS = 2000
@@ -52,10 +42,7 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
   const { status, currentSegment, currentIndex, totalSegments, secondsRemaining, start, pause, resume, skip, reset } =
     useTimerEngine(playSegments, resumeFrom)
 
-  const totalDurationSeconds = useMemo(
-    () => playSegments.filter((s) => s.kind !== 'prepare').reduce((sum, s) => sum + s.seconds, 0),
-    [playSegments],
-  )
+  const totalDurationSeconds = useMemo(() => sumSeconds(playSegments), [playSegments])
 
   const cue = useMemo(() => cueSet(mode.cue, preferences.volume), [mode.cue, preferences.volume])
   useWakeLock(preferences.wakeLock && status === 'running')
@@ -236,10 +223,7 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
         <>
           <h1 className={styles.doneTitle}>Done — nicely paced.</h1>
           <p className={styles.doneNote}>That’s {mode.name.toLowerCase()} complete. Come back whenever it suits you.</p>
-          <div className={styles.donePill}>
-            <IconFocus width={16} height={16} className={styles.donePillIcon} />
-            <span>{formatDuration(totalDurationSeconds)}</span>
-          </div>
+          <DurationPill seconds={totalDurationSeconds} />
           <div className={styles.controls}>
             <Button variant="secondary" className={styles.secondaryControl} onClick={onExit}>
               Home

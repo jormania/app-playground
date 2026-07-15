@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Button, Field, NumberStepper, SegmentedControl } from '../../ds'
 import { loadModeConfig, saveModeConfig } from '../lib/storage'
+import { DurationPill } from './DurationPill'
+import { sumSeconds } from '../lib/duration'
 import styles from './Setup.module.css'
 import rowStyles from './CustomSetup.module.css'
 
@@ -25,6 +27,8 @@ export function CustomSetup({ onStart, onBack }) {
     const saved = loadModeConfig('custom', null)
     return saved && saved.length ? saved : [blankRow()]
   })
+
+  const totalDurationSeconds = useMemo(() => sumSeconds(rows), [rows])
 
   function updateRow(id, patch) {
     setRows((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)))
@@ -66,6 +70,7 @@ export function CustomSetup({ onStart, onBack }) {
       <form className={styles.panel} onSubmit={handleSubmit}>
         <div className={styles.header}>
           <h1 className={styles.title}>Custom</h1>
+          <DurationPill seconds={totalDurationSeconds} className={styles.headerDuration} />
         </div>
 
         {rows.length === 0 ? (
