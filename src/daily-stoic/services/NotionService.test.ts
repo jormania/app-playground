@@ -7,7 +7,8 @@ import {
   fetchReflectionForDay,
   upsertReflection,
   fetchRecentReflections,
-  fetchAllReflections
+  fetchAllReflections,
+  clearDatabaseEntries
 } from './NotionService';
 
 function jsonResponse(body: unknown, status = 200) {
@@ -425,6 +426,38 @@ describe('NotionService', () => {
 
       expect(fetchImpl).toHaveBeenCalledTimes(1);
       expect(res).toHaveLength(1);
+    });
+  });
+
+  describe('clearDatabaseEntries', () => {
+    it('paginates the query and archives every page, not just the first 100', async () => {
+      // Two query pages (has_more chains them), then one archive PATCH each.
+      let queryCall = 0;
+      const fetchImpl = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+        const body = JSON.parse((init as any).body);
+        if (body.path.endsWith('/query')) {
+          queryCall++;
+          if (queryCall === 1) {
+            return jsonResponse({ results: [{ id: 'p1' }, { id: 'p2' }], has_more: true, next_cursor: 'cur-1' });
+          }
+          return jsonResponse({ results: [{ id: 'p3' }], has_more: false, next_cursor: null });
+        }
+        return jsonResponse({ id: body.path.split('/')[1] });
+      });
+
+      await clearDatabaseEntries('mock-token', '41c42bc4dfb543f49051810b3c5880fe', fetchImpl);
+
+      const calls = (fetchImpl as any).mock.calls.map((c: any) => JSON.parse(c[1].body));
+      const queries = calls.filter((b: any) => b.path.endsWith('/query'));
+      const archives = calls.filter((b: any) => b.method === 'PATCH');
+
+      // Second query passed the cursor from the first response.
+      expect(queries).toHaveLength(2);
+      expect(queries[1].body.start_cursor).toBe('cur-1');
+
+      // All three pages across both query pages were archived.
+      expect(archives.map((b: any) => b.path)).toEqual(['pages/p1', 'pages/p2', 'pages/p3']);
+      expect(archives.every((b: any) => b.body.archived === true)).toBe(true);
     });
   });
 });

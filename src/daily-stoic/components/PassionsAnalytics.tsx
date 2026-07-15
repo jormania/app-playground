@@ -376,7 +376,7 @@ export default function PassionsAnalytics({ reflections, loading, today, cycleSt
                 <span className="text-[10px] uppercase font-mono tracking-widest font-semibold text-text-secondary block">Summary Metrics</span>
                 <h4 className="font-display text-lg text-text-primary mt-1 flex items-center gap-2">
                   <Calendar size={18} className="text-text-secondary" />
-                  30-Day Judgment Volume
+                  Judgment Volume
                 </h4>
               </div>
 

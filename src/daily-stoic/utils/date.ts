@@ -27,6 +27,18 @@ export function getLocalTodayStr(date: Date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+// Parse a 'YYYY-MM-DD' string as a LOCAL calendar date. `new Date('YYYY-MM-DD')`
+// parses the string as UTC midnight, but getFullYear/getMonth/getDate then read
+// it back in local time — so for anyone west of UTC (all of the Americas) that
+// date lands on the day *before*, shifting every cycle-day number and every
+// stored date by one. Building the Date from split parts keeps the intended
+// calendar day intact in every timezone. Every place that turns a stored
+// date string back into a Date for day math must go through this.
+export function parseLocalDateStr(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
 // The app's "day number" (QuoteID) is an unbounded count of days since
 // cycleStartDate — not the calendar day-of-year, and (as of the 28-day cycle
 // rewrite) not wrapped at any fixed length either. Cycles/weeks are a pure
@@ -42,8 +54,7 @@ export function getCycleDay(startDateStr: string, today: Date = new Date()): num
     const diff = today.getTime() - start.getTime();
     return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
   }
-  const start = new Date(startDateStr);
-  const startD = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const startD = parseLocalDateStr(startDateStr);
   const todayD = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const diff = todayD.getTime() - startD.getTime();
   const diffDays = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
@@ -132,7 +143,7 @@ export function mostRecentMonday(date: Date = new Date()): Date {
 // Jan 1 unconditionally regardless of the actual cycle start).
 export function cycleDayToDateStr(dayNum: number, cycleStartDate: string, today: Date = new Date()): string {
   const startStr = cycleStartDate || `${today.getFullYear()}-01-01`;
-  const start = new Date(startStr);
+  const start = parseLocalDateStr(startStr);
   const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + (dayNum - 1));
   return getLocalTodayStr(date);
 }

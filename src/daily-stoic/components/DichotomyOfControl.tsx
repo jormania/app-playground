@@ -286,7 +286,7 @@ export function DichotomyOfControl({ today, cycleStartDate, onClose, worries: pr
           </div>
           <h3 className="font-display text-xl text-text-primary mb-2">No Worries Logged</h3>
           <p className="text-sm text-text-secondary max-w-sm mb-6 leading-relaxed">
-            Practice the Dichotomy of Control by logging and sorting your worries under the **Daily Reflection** tab.
+            Practice the Dichotomy of Control by logging and sorting your worries under the <strong className="text-text-primary">Daily Reflection</strong> tab.
           </p>
           <button
             onClick={() => setDemoMode(true)}
@@ -396,7 +396,7 @@ export function DichotomyOfControl({ today, cycleStartDate, onClose, worries: pr
                 <p className="text-xs text-text-secondary leading-relaxed">
                   Common terms representing your choices, reactions, and efforts.
                 </p>
-                {renderWordCloud(activeStats.upToMeKeywords, 'text-success hover:text-success-hover')}
+                {renderWordCloud(activeStats.upToMeKeywords, 'text-success')}
               </div>
 
               {/* Not Up to Me Cloud */}
@@ -408,7 +408,7 @@ export function DichotomyOfControl({ today, cycleStartDate, onClose, worries: pr
                 <p className="text-xs text-text-secondary leading-relaxed">
                   Common terms representing external circumstances and constraints.
                 </p>
-                {renderWordCloud(activeStats.notUpToMeKeywords, 'text-energy hover:text-energy-hover')}
+                {renderWordCloud(activeStats.notUpToMeKeywords, 'text-energy')}
               </div>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Field } from '../../ds';
 import { triggerHaptic } from '../../shared/haptics';
+import { getLocalTodayStr, mostRecentMonday } from '../utils/date';
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -15,6 +16,15 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     if (step === 2) {
       if (birthDate) {
         localStorage.setItem('daily-stoic:birthdate', birthDate);
+      }
+      // Anchor the very first cycle at the current week's Monday, so a brand-new
+      // user starts at Cycle 1 / Week 1. Without this the cycle start stays
+      // empty and getCycleDay falls back to the raw day-of-year — showing a new
+      // user something like "Cycle 7, Week 4" mid-year instead of Cycle 1.
+      // Snapped to Monday to match resetCycleData's week-boundary invariant.
+      // Guarded so re-running onboarding can never move an existing anchor.
+      if (!localStorage.getItem('daily-stoic:cycle-start-date')) {
+        localStorage.setItem('daily-stoic:cycle-start-date', getLocalTodayStr(mostRecentMonday()));
       }
       onComplete();
     } else {

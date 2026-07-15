@@ -94,12 +94,18 @@ export default function App() {
   };
 
   const updateReminderIDB = useCallback(async (todayLogged: boolean) => {
+    // Must write the exact shape the service worker reads (morningTime /
+    // eveningTime / todayLogged — see public/daily-stoic-sw.js) and the exact
+    // localStorage keys Settings writes, or this refresh-on-every-route-change
+    // would clobber the user's custom reminder times back to the SW defaults.
     const enabled = localStorage.getItem('daily-stoic:reminder-enabled') === 'true';
-    const time = localStorage.getItem('daily-stoic:reminder-time') || '08:00';
+    const morningTime = localStorage.getItem('daily-stoic:morning-time') || '07:00';
+    const eveningTime = localStorage.getItem('daily-stoic:evening-time') || '20:00';
     const kv = createIdbKv('daily-stoic-reminders');
     await kv.set('state', {
       enabled,
-      time,
+      morningTime,
+      eveningTime,
       todayLogged,
     });
   }, []);

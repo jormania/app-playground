@@ -10,6 +10,7 @@ import {
   formatCycleLabelCompact,
   mostRecentMonday,
   getQuoteOfTheWeek,
+  parseLocalDateStr,
   WEEK_VIRTUES,
 } from './date';
 import { QUOTES } from '../data/quotes';
@@ -108,6 +109,25 @@ describe('Daily Stoic Date Utilities', () => {
       const cycleStart = '2026-07-13';
       const todaysCycleDay = getCycleDay(cycleStart, today);
       expect(cycleDayToDateStr(todaysCycleDay, cycleStart, today)).toBe('2026-07-20');
+    });
+  });
+
+  describe('parseLocalDateStr (timezone-shift regression)', () => {
+    // new Date('YYYY-MM-DD') parses as UTC midnight, which reads back as the
+    // previous calendar day for anyone west of UTC. parseLocalDateStr must
+    // return the exact calendar day, with its month/day intact, no matter the
+    // host timezone.
+    it('keeps the exact calendar day (no UTC-parse drift)', () => {
+      const d = parseLocalDateStr('2026-03-09');
+      expect(d.getFullYear()).toBe(2026);
+      expect(d.getMonth()).toBe(2); // March (0-indexed)
+      expect(d.getDate()).toBe(9);
+    });
+
+    it('round-trips through getLocalTodayStr for the first of a month', () => {
+      const d = parseLocalDateStr('2026-06-01');
+      expect(d.getMonth()).toBe(5); // June, not May (the UTC-parse bug)
+      expect(d.getDate()).toBe(1);
     });
   });
 

@@ -252,7 +252,7 @@ export default function AmorFatiDashboard({ reflections, loading, today, cycleSt
           </div>
           <h3 className="font-display text-xl text-text-primary mb-2">No Obstacles Reframed</h3>
           <p className="text-sm text-text-secondary max-w-sm mb-6 leading-relaxed">
-            Record what feels forced or heavy and reframe it under **Amor Fati** during your Daily Reflections to populate this dashboard.
+            Record what feels forced or heavy and reframe it under <strong className="text-text-primary">Amor Fati</strong> during your Daily Reflections to populate this dashboard.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <button

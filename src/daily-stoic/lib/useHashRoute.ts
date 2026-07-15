@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 
-/** Minimal hash router: `#/`, `#/charter`, `#/settings`. (Full react-router arrives in M3 when
- *  Today/Tracker/Weekly each need a route.) */
+/** Minimal hash router for Daily Stoic's screens (`#/`, `#/settings`, `#/stats`,
+ *  `#/digest`, `#/dichotomy`, `#/passions`, `#/amorfati`, `#/memento`,
+ *  `#/enchiridion`). A notification tap can also post a target route in via the
+ *  service-worker message below. */
 export function useHashRoute() {
   const read = () => window.location.hash.replace(/^#/, '') || '/'
   const [route, setRoute] = useState(read)

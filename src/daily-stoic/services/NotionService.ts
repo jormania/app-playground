@@ -601,11 +601,11 @@ export async function fetchRecentReflections(
   return pages.map(parsePageToRecord).filter((r): r is ReflectionRecord => r !== null);
 }
 
-// Follows pagination to retrieve the complete history — for the Digest
-// dashboard, which is meant to be a genuine archive rather than a windowed
-// view like the other dashboards (which stay on fetchRecentReflections'
-// single-page fetch; they don't need full history since they already offer
-// their own 30d/90d/365d/All filters over whatever they do have).
+// Follows pagination to retrieve the complete history. Used by every dashboard
+// route (Digest, Stats, Amor Fati, Passions & Judgments, Spheres of Choice) —
+// the Digest is a genuine archive, and the others' Cycle/Quarter/Year/All
+// filters would silently under-report on the "Year"/"All" settings for anyone
+// with more than one page (~100) of logged days if they only saw the window.
 export async function fetchAllReflections(
   token: string,
   databaseId: string,
@@ -623,19 +623,24 @@ export async function clearDatabaseEntries(
   const id = normalizeNotionId(databaseId);
   if (!id) throw new Error('Invalid Notion database link or ID.');
 
-  const data = await callRelay(
-    token,
-    `databases/${id}/query`,
-    'POST',
-    { page_size: 100 },
-    fetchImpl
-  );
-
-  const results = (data as { results?: unknown[] })?.results || [];
-  for (const page of results as any[]) {
-    if (page?.id) {
-      await callRelay(token, `pages/${page.id}`, 'PATCH', { archived: true }, fetchImpl);
+  // Collect every page id by following pagination first, then archive. A
+  // single page_size:100 query would silently leave the 101st-and-older
+  // records behind, so "Start Over" on a long history wouldn't actually wipe
+  // everything — leaving orphaned pages that reappear in the dashboards.
+  const ids: string[] = [];
+  let cursor: string | undefined;
+  do {
+    const body: Record<string, unknown> = { page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const data: any = await callRelay(token, `databases/${id}/query`, 'POST', body, fetchImpl);
+    for (const page of (data?.results || []) as any[]) {
+      if (page?.id) ids.push(page.id);
     }
+    cursor = data?.has_more ? data?.next_cursor ?? undefined : undefined;
+  } while (cursor);
+
+  for (const pageId of ids) {
+    await callRelay(token, `pages/${pageId}`, 'PATCH', { archived: true }, fetchImpl);
   }
 }
 
