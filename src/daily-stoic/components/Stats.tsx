@@ -11,6 +11,8 @@ import { calculateLongestStreak } from '../utils/streak';
 import { computeVirtueWeekStats, computeWeekdayStats, computeCurrentCycleHeatmap } from '../utils/stats';
 import { getInsightPeriodRange } from '../utils/insightPeriod';
 import { useInsightPeriod } from '../lib/useInsightPeriod';
+import { useCommitments } from '../lib/useCommitments';
+import { commitmentsInDayRange, ledgerStats } from '../lib/commitments';
 
 interface StatsProps {
   streak: number;
@@ -23,11 +25,18 @@ interface StatsProps {
 
 export default function Stats({ streak, today, cycleStartDate, reflections, loading, onClose }: StatsProps) {
   const [insightPeriod, setInsightPeriod] = useInsightPeriod();
+  const { commitments } = useCommitments();
 
   const periodRange = useMemo(
     () => getInsightPeriodRange(insightPeriod, cycleStartDate, today),
     [insightPeriod, cycleStartDate, today]
   );
+
+  // Ledger, scoped to the same period as the totals below.
+  const periodLedger = useMemo(() => {
+    const startDay = periodRange ? periodRange.startDay : 1;
+    return ledgerStats(commitmentsInDayRange(commitments, startDay, today));
+  }, [commitments, periodRange, today]);
 
   // Filter reflections to the selected period, by actual calendar date
   const filteredReflections = useMemo(() => {
@@ -128,9 +137,17 @@ export default function Stats({ streak, today, cycleStartDate, reflections, load
                     {totals.premeditatioRate}% ({totals.premeditatioCount}/{totals.count})
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center border-b border-tertiary pb-2">
                   <span className="text-text-secondary">Words Written</span>
                   <span className="font-medium text-text-primary">{totals.words.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-text-secondary">Promises Kept</span>
+                  <span className="font-medium text-text-primary">
+                    {periodLedger.kept + periodLedger.broken > 0
+                      ? `${periodLedger.keptRate}% (${periodLedger.kept}/${periodLedger.kept + periodLedger.broken})`
+                      : '—'}
+                  </span>
                 </div>
               </div>
             </div>

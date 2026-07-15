@@ -3,6 +3,8 @@ import {
   buildMorningChallengePrompt,
   buildEveningReckoningPrompt,
   buildPatternInterventionPrompt,
+  buildCouncilPrompt,
+  buildCharacterArcPrompt,
   requestMentor,
   verifyAnthropicKey,
 } from './mentor';
@@ -126,6 +128,66 @@ describe('buildPatternInterventionPrompt', () => {
     expect(user).toContain('kept 55%');
     expect(user).toContain('ship the draft');
     expect(user).toMatch(/single, concrete discipline/i);
+  });
+});
+
+describe('buildCouncilPrompt', () => {
+  it('convenes the week data and charges the next week', () => {
+    const { user } = buildCouncilPrompt({
+      cycle: 1,
+      week: 2,
+      virtue: 'Courage',
+      discipline: 'Desire',
+      disciplineGloss: 'wanting and being averse rightly',
+      focusQuestion: 'What did I avoid today?',
+      daysLogged: 5,
+      daysInSpan: 7,
+      keptRate: 60,
+      reckonedCount: 5,
+      brokenPromises: ['gym at six'],
+      topPassions: [{ label: 'Anxiety & Fear', count: 4 }],
+      dominantMood: 'Neutral',
+    });
+    expect(user).toContain('Week 2 of cycle 1');
+    expect(user).toContain('virtue of Courage through the discipline of Desire');
+    expect(user).toContain('5 of 7 days');
+    expect(user).toContain('kept 60%');
+    expect(user).toContain('gym at six');
+    expect(user).toContain('Anxiety & Fear (4)');
+    expect(user).toContain('What did I avoid today?');
+    expect(user).toMatch(/charge\s+them with one concrete discipline/i);
+  });
+});
+
+describe('buildCharacterArcPrompt', () => {
+  it('speaks to the arc and ends in an enduring question', () => {
+    const { user } = buildCharacterArcPrompt({
+      span: 'all 3 cycles',
+      cyclesCompleted: 3,
+      daysPracticed: 70,
+      keptRate: 72,
+      reckonedCount: 40,
+      recurringPassions: [{ label: 'Craving & Attachment', count: 12 }],
+      strongestVirtue: 'Temperance',
+    });
+    expect(user).toContain('70 days across 3 completed cycles');
+    expect(user).toContain('kept 72%');
+    expect(user).toContain('Craving & Attachment (12)');
+    expect(user).toContain('Temperance');
+    expect(user).toMatch(/through-line/i);
+  });
+
+  it('singularises a single completed cycle', () => {
+    const { user } = buildCharacterArcPrompt({
+      span: 'cycle 1',
+      cyclesCompleted: 1,
+      daysPracticed: 20,
+      keptRate: 0,
+      reckonedCount: 0,
+      recurringPassions: [],
+    });
+    expect(user).toContain('1 completed cycle');
+    expect(user).not.toContain('completed cycles');
   });
 });
 

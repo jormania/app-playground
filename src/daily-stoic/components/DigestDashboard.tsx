@@ -6,6 +6,7 @@ import { buildDigestEntries, DayDigestEntry, CycleDigestEntry, parseReflectionQA
 import { buildDigestMarkdown, buildDigestExportPayload, collectRecordedDays } from '../utils/digestExport';
 import { getQuoteForDay, getLocalTodayStr } from '../utils/date';
 import { triggerHaptic } from '../../shared/haptics';
+import { useCommitments } from '../lib/useCommitments';
 import CycleRetrospectiveCard from './CycleRetrospectiveCard';
 import { cn } from '../lib/cn';
 import {
@@ -21,6 +22,9 @@ import {
   Scale,
   ArrowRight,
   Download,
+  Handshake,
+  Check,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -89,10 +93,11 @@ export default function DigestDashboard({
   const [selectedDay, setSelectedDay] = useState<DayDigestEntry | null>(null);
   const [selectedCycle, setSelectedCycle] = useState<CycleDigestEntry | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const { commitments } = useCommitments();
 
   const entries = useMemo(
-    () => buildDigestEntries(today, cycleStartDate, reflections, worries),
-    [today, cycleStartDate, reflections, worries]
+    () => buildDigestEntries(today, cycleStartDate, reflections, worries, commitments),
+    [today, cycleStartDate, reflections, worries, commitments]
   );
 
   // Only days with something actually captured are exportable — no point
@@ -207,10 +212,24 @@ export default function DigestDashboard({
                     </div>
                     <div className="text-[11px] text-text-secondary">{entry.date}</div>
                   </div>
+                  {entry.commitments.length > 0 && (() => {
+                    const kept = entry.commitments.filter((c) => c.status === 'kept').length;
+                    const broken = entry.commitments.filter((c) => c.status === 'broken').length;
+                    return (
+                      <span
+                        className="flex items-center gap-1 text-[10px] font-mono text-text-secondary shrink-0"
+                        title={`${entry.commitments.length} commitment${entry.commitments.length === 1 ? '' : 's'}`}
+                      >
+                        <Handshake size={12} className="text-accent" />
+                        {kept > 0 && <span className="text-success">{kept}✓</span>}
+                        {broken > 0 && <span className="text-energy">{broken}✕</span>}
+                      </span>
+                    );
+                  })()}
                   {entry.reflection?.favorite && (
                     <Star size={14} className="text-caution fill-caution shrink-0" />
                   )}
-                  {!hasEntry && (
+                  {!hasEntry && entry.commitments.length === 0 && (
                     <span className="text-[10px] uppercase font-mono tracking-wide text-text-secondary shrink-0">
                       No entry
                     </span>
@@ -234,6 +253,13 @@ export default function DigestDashboard({
                   </div>
                   <div className="text-[11px] text-text-secondary mb-2">
                     {entry.dateRange.start} – {entry.dateRange.end} · {entry.loggedCount} of 7 days logged
+                    {entry.ledger.total > 0 && (
+                      <span className="text-text-secondary">
+                        {' · '}
+                        <Handshake size={11} className="inline align-[-1px] text-accent" />{' '}
+                        {entry.ledger.kept}/{entry.ledger.kept + entry.ledger.broken} promises kept
+                      </span>
+                    )}
                   </div>
                   {entry.quoteOfWeek && (
                     <blockquote className="text-xs text-text-secondary italic leading-relaxed border-t border-tertiary pt-2">
@@ -259,6 +285,9 @@ export default function DigestDashboard({
                 <div className="text-[11px] text-text-secondary mb-3">
                   {entry.retrospective.dateRange.start} – {entry.retrospective.dateRange.end} ·{' '}
                   {entry.retrospective.consistencyRate}% consistency
+                  {entry.ledger.kept + entry.ledger.broken > 0 && (
+                    <span> · {entry.ledger.keptRate}% promises kept</span>
+                  )}
                 </div>
                 <button
                   onClick={() => setSelectedCycle(entry)}
@@ -447,7 +476,43 @@ export default function DigestDashboard({
                     </div>
                   )}
 
-                  {!hasReflectionContent && dayWorries.length === 0 && (
+                  {selectedDay.commitments.length > 0 && (
+                    <div>
+                      <span className="text-[10px] uppercase font-mono tracking-wider text-text-secondary flex items-center gap-1.5 mb-1">
+                        <Handshake size={12} /> Commitments
+                      </span>
+                      <div className="space-y-2 bg-background-tertiary p-3 border border-tertiary rounded-lg">
+                        {selectedDay.commitments.map((c) => (
+                          <div key={c.id} className="flex items-start justify-between gap-3">
+                            <span
+                              className={cn(
+                                'text-sm text-text-primary',
+                                c.status === 'broken' && 'line-through text-text-secondary'
+                              )}
+                            >
+                              {c.text}
+                            </span>
+                            <span
+                              className={cn(
+                                'text-[10px] font-semibold uppercase shrink-0 flex items-center gap-1',
+                                c.status === 'kept'
+                                  ? 'text-success'
+                                  : c.status === 'broken'
+                                    ? 'text-energy'
+                                    : 'text-text-secondary'
+                              )}
+                            >
+                              {c.status === 'kept' && <Check size={11} />}
+                              {c.status === 'broken' && <X size={11} />}
+                              {c.status === 'open' ? 'unreckoned' : c.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {!hasReflectionContent && dayWorries.length === 0 && selectedDay.commitments.length === 0 && (
                     <p className="text-sm text-text-secondary italic">No reflection recorded for this day.</p>
                   )}
                 </>

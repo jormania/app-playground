@@ -6,6 +6,7 @@ import { getLocalTodayStr, cycleDayToDateStr, getCycleInfo, getVirtueForWeek, fo
 import AmorFatiControl from './components/AmorFatiControl';
 import MentorPanel from './components/MentorPanel';
 import CommitmentsPanel from './components/CommitmentsPanel';
+import PathCard from './components/PathCard';
 import { triggerHaptic } from '../shared/haptics';
 import { cn } from './lib/cn';
 import { AutoExpandingTextarea } from './components/AutoExpandingTextarea';
@@ -997,6 +998,9 @@ export default function Journal({
                 </div>
               )}
 
+              {/* Enhance 2 — this week on the Path (virtue + Stoic discipline + practice) */}
+              <PathCard week={cycleInfo.week} />
+
               <div className="mt-6">
                 <GuideNote hidden={!showGuides} summary="Meditating on Daily Principles">
                   <p>
@@ -1146,10 +1150,14 @@ export default function Journal({
                 )}
               </section>
 
-              {/* The mentor's morning challenge — reads the foreseen friction above and demands one provable promise */}
+              {/* The Commitments ledger — make today's provable promise */}
+              <CommitmentsPanel today={dayOfYear} mode="prepare" />
+
+              {/* The mentor's morning challenge — the last section, mirroring Reflect: it reads the
+                  foreseen friction and the promise you just made, and presses you on what you avoid */}
               <MentorPanel
                 title="The Mentor’s Challenge"
-                intro="Before you commit, let the mentor press you on what you wrote — and on what you might be avoiding."
+                intro="Once you’ve made your promise, let the mentor press you on it — and on what you might be avoiding."
                 cta="Ask for today’s challenge"
                 prompt={morningPrompt}
                 disabledHint="Write your Premeditatio Malorum or log a concern above, then ask the mentor."
@@ -1157,9 +1165,6 @@ export default function Journal({
                 onGoToSettings={onGoToSettings}
                 icon={Sunrise}
               />
-
-              {/* The Commitments ledger — make today's provable promise */}
-              <CommitmentsPanel today={dayOfYear} mode="prepare" />
 
               <GuideNote hidden={!showGuides} summary="Preparing for the Day">
                 <p>

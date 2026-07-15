@@ -195,6 +195,30 @@ export function commitmentsResolvedOn(list: Commitment[], day: number): Commitme
   return list.filter((c) => c.resolvedDay === day);
 }
 
+/** Commitments made within an inclusive absolute-day-number range — the unit the
+ *  cycle-aware period filter (utils/insightPeriod) works in. */
+export function commitmentsInDayRange(
+  list: Commitment[],
+  startDay: number,
+  endDay: number,
+): Commitment[] {
+  return list.filter((c) => c.createdDay >= startDay && c.createdDay <= endDay);
+}
+
+/** Consecutive kept promises, counting back from the most recently reckoned one.
+ *  A broken promise ends the run; still-open promises are skipped (not yet failed). */
+export function keptStreak(list: Commitment[]): number {
+  const reckoned = list
+    .filter((c) => c.status === 'kept' || c.status === 'broken')
+    .sort((a, b) => (b.resolvedDay ?? 0) - (a.resolvedDay ?? 0));
+  let streak = 0;
+  for (const c of reckoned) {
+    if (c.status === 'kept') streak += 1;
+    else break;
+  }
+  return streak;
+}
+
 /** Ledger tallies, optionally scoped to a subset (e.g. one cycle's range). */
 export function ledgerStats(
   list: Commitment[],

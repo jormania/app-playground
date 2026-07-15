@@ -252,6 +252,90 @@ export function buildPatternInterventionPrompt(ctx: PatternContext): MentorPromp
   return { system: SYSTEM_PROMPT, user: lines.join('\n') };
 }
 
+export interface CouncilContext {
+  cycle: number;
+  week: number;
+  virtue: string;
+  discipline: string;
+  disciplineGloss: string;
+  focusQuestion: string;
+  daysLogged: number;
+  daysInSpan: number;
+  keptRate: number;
+  reckonedCount: number;
+  brokenPromises: string[];
+  topPassions: PatternPassion[];
+  dominantMood: string;
+}
+
+/** The weekly Council (Enhance 2): the mentor convenes the week's own evidence
+ *  and confronts the practitioner with it, adapting to their demonstrated
+ *  weakness, then charges them for the week ahead. */
+export function buildCouncilPrompt(ctx: CouncilContext): MentorPrompt {
+  const lines: string[] = [
+    `A weekly Council review. Week ${ctx.week} of cycle ${ctx.cycle} is closing. This week trained the virtue of ${clean(ctx.virtue)} through the discipline of ${clean(ctx.discipline)} — ${clean(ctx.disciplineGloss)}.`,
+    `They journaled ${ctx.daysLogged} of ${ctx.daysInSpan} days.`,
+  ];
+  if (ctx.reckonedCount > 0) {
+    lines.push(`They kept ${ctx.keptRate}% of the promises they reckoned this span.`);
+  }
+  if (ctx.brokenPromises.length) {
+    lines.push(`Promises they broke: ${ctx.brokenPromises.map((p) => `"${clean(p)}"`).join('; ')}.`);
+  }
+  if (ctx.topPassions.length) {
+    lines.push(
+      `The passions they most admit to: ${ctx.topPassions
+        .map((p) => `${clean(p.label)} (${p.count})`)
+        .join(', ')}.`,
+    );
+  }
+  if (ctx.dominantMood) lines.push(`Their prevailing mood: ${clean(ctx.dominantMood)}.`);
+  lines.push(`This week's focus question was: "${clean(ctx.focusQuestion)}".`);
+  lines.push(
+    'Hold a brief council with them: name the single most important truth this week\'s data tells — ' +
+      'especially where their practice and their intentions diverge — without shaming them. Then charge ' +
+      'them with one concrete discipline for the coming week, tied to the virtue and discipline named above.',
+  );
+  return { system: SYSTEM_PROMPT, user: lines.join('\n') };
+}
+
+export interface CharacterArcContext {
+  span: string;
+  cyclesCompleted: number;
+  daysPracticed: number;
+  keptRate: number;
+  reckonedCount: number;
+  recurringPassions: PatternPassion[];
+  strongestVirtue?: string;
+}
+
+/** The character-arc synthesis (Enhance 3): a longitudinal read of who the
+ *  practitioner is becoming across the whole record — the through-line and the
+ *  one enduring work still ahead. */
+export function buildCharacterArcPrompt(ctx: CharacterArcContext): MentorPrompt {
+  const lines: string[] = [
+    `A longitudinal character review across ${clean(ctx.span) || 'their whole practice'}.`,
+    `They have practised ${ctx.daysPracticed} days across ${ctx.cyclesCompleted} completed cycle${ctx.cyclesCompleted === 1 ? '' : 's'}.`,
+  ];
+  if (ctx.reckonedCount > 0) {
+    lines.push(`Over that time they kept ${ctx.keptRate}% of their reckoned promises.`);
+  }
+  if (ctx.recurringPassions.length) {
+    lines.push(
+      `The passions that recur most across the whole span: ${ctx.recurringPassions
+        .map((p) => `${clean(p.label)} (${p.count})`)
+        .join(', ')}.`,
+    );
+  }
+  if (ctx.strongestVirtue) lines.push(`The virtue they most often claim to have practised: ${clean(ctx.strongestVirtue)}.`);
+  lines.push(
+    'Speak to the arc, not the day: name the through-line of who they are becoming, the real progress ' +
+      'the record shows, and the one enduring work still ahead of them. End by naming that work as a ' +
+      'question they must keep answering.',
+  );
+  return { system: SYSTEM_PROMPT, user: lines.join('\n') };
+}
+
 /** Turn an Anthropic error into a calm, user-facing sentence. */
 function friendlyMentorError(status: number): string {
   if (status === 401) return 'Anthropic rejected the key — check it in Settings.';

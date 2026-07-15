@@ -2,6 +2,13 @@ import { ReflectionRecord } from '../services/NotionService';
 import { getQuoteForDay } from './date';
 import { DigestEntry, DayDigestEntry, parseReflectionQA } from './digest';
 import { Worry } from './retrospective';
+import { Commitment } from '../lib/commitments';
+
+const COMMITMENT_STATUS_LABELS: Record<Commitment['status'], string> = {
+  open: 'unreckoned',
+  kept: 'kept',
+  broken: 'broken',
+};
 
 // Same obstacle-tag and worry-category labels the Digest day modal shows, so
 // the export reads with the app's own wording rather than the raw stored codes.
@@ -26,9 +33,14 @@ export interface DigestExportMeta {
 // same test the day modal uses to decide "No reflection recorded". Empty
 // scaffold days (which the Digest still lists as "No entry") are skipped so the
 // export is a genuine archive of captured entries, not a day-by-day skeleton.
-function dayHasContent(r: ReflectionRecord | null, dayWorries: Worry[]): boolean {
+function dayHasContent(
+  r: ReflectionRecord | null,
+  dayWorries: Worry[],
+  commitments: Commitment[] = []
+): boolean {
   return (
     dayWorries.length > 0 ||
+    commitments.length > 0 ||
     !!(r && (r.text || r.morningIntentions || r.fateInput || r.mood || r.virtue || (r.passions && r.passions.length > 0)))
   );
 }
@@ -42,7 +54,7 @@ function worriesForDay(worries: Worry[], date: string): Worry[] {
 export function collectRecordedDays(entries: DigestEntry[], worries: Worry[]): DayDigestEntry[] {
   return entries.filter(
     (e): e is DayDigestEntry =>
-      e.type === 'day' && dayHasContent(e.reflection, worriesForDay(worries, e.date))
+      e.type === 'day' && dayHasContent(e.reflection, worriesForDay(worries, e.date), e.commitments)
   );
 }
 
@@ -75,6 +87,7 @@ export function buildDigestMarkdown(
         `- Amor Fati reframes: ${r.reframingsCount}`,
         `- Passions tamed: ${r.passionsCount}`,
         `- Concerns cleared: ${r.worriesStats.resolved} of ${r.worriesStats.total} (${r.worriesStats.rate}%)`,
+        `- Commitments kept: ${entry.ledger.kept} of ${entry.ledger.kept + entry.ledger.broken} reckoned (${entry.ledger.keptRate}%)`,
         ''
       );
     } else if (entry.type === 'week') {
@@ -84,12 +97,18 @@ export function buildDigestMarkdown(
         `${entry.dateRange.start} – ${entry.dateRange.end} · ${entry.loggedCount} of 7 days logged`,
         ''
       );
+      if (entry.ledger.total > 0) {
+        lines.push(
+          `Commitments: ${entry.ledger.kept} kept, ${entry.ledger.broken} broken, ${entry.ledger.open} open (${entry.ledger.keptRate}% kept)`,
+          ''
+        );
+      }
       if (entry.quoteOfWeek) {
         lines.push(`> "${entry.quoteOfWeek.quote}" — ${entry.quoteOfWeek.author}`, '');
       }
     } else {
       const dayWorries = worriesForDay(worries, entry.date);
-      if (!dayHasContent(entry.reflection, dayWorries)) continue;
+      if (!dayHasContent(entry.reflection, dayWorries, entry.commitments)) continue;
       const r = entry.reflection;
 
       lines.push(`### ${entry.label} (${entry.virtue}) — ${entry.date}${r?.favorite ? ' ⭐' : ''}`, '');
@@ -135,6 +154,14 @@ export function buildDigestMarkdown(
         lines.push(`**Passions tamed:** ${r.passions.join(', ')}`, '');
       }
 
+      if (entry.commitments.length > 0) {
+        lines.push('**Commitments**');
+        for (const c of entry.commitments) {
+          lines.push(`- ${c.text} — ${COMMITMENT_STATUS_LABELS[c.status]}`);
+        }
+        lines.push('');
+      }
+
       if (r?.virtue) lines.push(`**Virtue practiced:** ${r.virtue}`, '');
     }
   }
@@ -152,7 +179,7 @@ export function buildDigestExportPayload(entries: DigestEntry[], worries: Worry[
 
   for (const entry of entries) {
     if (entry.type === 'cycle') {
-      cycles.push({ cycle: entry.cycle, ...entry.retrospective });
+      cycles.push({ cycle: entry.cycle, ...entry.retrospective, ledger: entry.ledger });
     } else if (entry.type === 'week') {
       weeks.push({
         cycle: entry.cycle,
@@ -161,10 +188,11 @@ export function buildDigestExportPayload(entries: DigestEntry[], worries: Worry[
         dateRange: entry.dateRange,
         loggedCount: entry.loggedCount,
         quoteOfWeek: entry.quoteOfWeek,
+        ledger: entry.ledger,
       });
     } else {
       const dayWorries = worriesForDay(worries, entry.date);
-      if (!dayHasContent(entry.reflection, dayWorries)) continue;
+      if (!dayHasContent(entry.reflection, dayWorries, entry.commitments)) continue;
       days.push({
         day: entry.day,
         date: entry.date,
@@ -175,6 +203,7 @@ export function buildDigestExportPayload(entries: DigestEntry[], worries: Worry[
         quote: getQuoteForDay(entry.day),
         reflection: entry.reflection,
         worries: dayWorries,
+        commitments: entry.commitments,
       });
     }
   }

@@ -10,6 +10,13 @@ import {
   formatCycleLabel,
 } from './date';
 import { computeCycleRetrospective, CycleRetrospective, Worry } from './retrospective';
+import {
+  Commitment,
+  LedgerStats,
+  commitmentsCreatedOn,
+  commitmentsInDayRange,
+  ledgerStats,
+} from '../lib/commitments';
 
 export interface DayDigestEntry {
   type: 'day';
@@ -19,6 +26,8 @@ export interface DayDigestEntry {
   virtue: WeekVirtue;
   label: string;
   reflection: ReflectionRecord | null;
+  /** Promises made on this day, with their kept/broken/open reckoning. */
+  commitments: Commitment[];
 }
 
 export interface WeekDigestEntry {
@@ -29,12 +38,16 @@ export interface WeekDigestEntry {
   dateRange: { start: string; end: string };
   quoteOfWeek: Quote | null;
   loggedCount: number;
+  /** The week's ledger tally (promises made this week, kept vs broken). */
+  ledger: LedgerStats;
 }
 
 export interface CycleDigestEntry {
   type: 'cycle';
   cycle: number;
   retrospective: CycleRetrospective;
+  /** The cycle's ledger tally (promises made this cycle, kept vs broken). */
+  ledger: LedgerStats;
 }
 
 export type DigestEntry = DayDigestEntry | WeekDigestEntry | CycleDigestEntry;
@@ -77,7 +90,8 @@ export function buildDigestEntries(
   today: number,
   cycleStartDate: string,
   reflections: ReflectionRecord[],
-  worries: Worry[]
+  worries: Worry[],
+  commitments: Commitment[] = []
 ): DigestEntry[] {
   const entries: DigestEntry[] = [];
   const reflectionsByDay = new Map<number, ReflectionRecord>();
@@ -89,10 +103,12 @@ export function buildDigestEntries(
     const isCycleEnd = isWeekEnd && info.week === 4;
 
     if (isCycleEnd) {
+      // day is this cycle's final day, so the 28-day span is [day-27, day].
       entries.push({
         type: 'cycle',
         cycle: info.cycle,
         retrospective: computeCycleRetrospective(info.cycle, cycleStartDate, reflections, worries),
+        ledger: ledgerStats(commitmentsInDayRange(commitments, day - 27, day)),
       });
     }
 
@@ -112,6 +128,7 @@ export function buildDigestEntries(
         dateRange,
         quoteOfWeek: getQuoteOfTheWeek(info),
         loggedCount,
+        ledger: ledgerStats(commitmentsInDayRange(commitments, day - 6, day)),
       });
     }
 
@@ -123,6 +140,7 @@ export function buildDigestEntries(
       virtue: getVirtueForWeek(info.week),
       label: formatCycleLabel(info),
       reflection: reflectionsByDay.get(day) || null,
+      commitments: commitmentsCreatedOn(commitments, day),
     });
   }
 

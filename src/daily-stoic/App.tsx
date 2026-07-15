@@ -12,6 +12,9 @@ import PassionsAnalytics from './components/PassionsAnalytics';
 import AmorFatiDashboard from './components/AmorFatiDashboard';
 import CycleRetrospectiveCard from './components/CycleRetrospectiveCard';
 import DigestDashboard from './components/DigestDashboard';
+import CommitmentsDashboard from './components/CommitmentsDashboard';
+import Council from './components/Council';
+import PauseDrill from './components/PauseDrill';
 import Ornament from './components/Ornament';
 import { getQuoteForDay, getLocalTodayStr, getCycleDay, cycleDayToDateStr, getCycleInfo, mostRecentMonday } from './utils/date';
 import { calculateStreak } from './utils/streak';
@@ -35,12 +38,15 @@ import {
   LayoutDashboard as DashboardIcon,
   Sparkles,
   History as HistoryIcon,
+  Handshake as HandshakeIcon,
+  Users as UsersIcon,
+  Wind as WindIcon,
   type LucideIcon,
 } from 'lucide-react';
 
 // Screens that need the full, unbounded Notion history rather than the
 // ~100-record window (see the effect below that fetches it).
-const FULL_HISTORY_ROUTES = ['/digest', '/stats', '/passions', '/amorfati', '/dichotomy'];
+const FULL_HISTORY_ROUTES = ['/digest', '/stats', '/passions', '/amorfati', '/dichotomy', '/commitments', '/council'];
 
 export default function App() {
   const [cycleStartDate, setCycleStartDate] = useState(() => localStorage.getItem('daily-stoic:cycle-start-date') || '');
@@ -86,6 +92,10 @@ export default function App() {
   // Toggling favorites loading indicator
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const [localFavoritesToggle, setLocalFavoritesToggle] = useState(0);
+
+  // Enhance 3 — the in-the-moment Pause drill (a 60-second reset for when a
+  // passion flares in real life). Reachable from the header on any screen.
+  const [showPause, setShowPause] = useState(false);
 
   const loadCredentials = () => {
     setToken(localStorage.getItem('daily-stoic:notion-token') || '');
@@ -642,6 +652,8 @@ export default function App() {
   ];
 
   const dashboardOptions: { label: string; value: string; Icon: LucideIcon }[] = [
+    { label: 'Commitments', value: 'commitments', Icon: HandshakeIcon },
+    { label: 'The Council', value: 'council', Icon: UsersIcon },
     { label: 'Spheres of Choice', value: 'dichotomy', Icon: ScaleIcon },
     { label: 'Passions & Judgments', value: 'passions', Icon: FlameIcon },
     { label: 'Amor Fati', value: 'amorfati', Icon: HeartIcon },
@@ -758,7 +770,7 @@ export default function App() {
                 }}
                 className={cn(
                   "rounded-md p-1.5 transition-colors flex items-center justify-center",
-                  dropdownOpen || ['/dichotomy', '/passions', '/amorfati', '/digest', '/stats'].includes(route)
+                  dropdownOpen || ['/commitments', '/council', '/dichotomy', '/passions', '/amorfati', '/digest', '/stats'].includes(route)
                     ? "bg-accent/10 text-accent"
                     : "text-text-secondary hover:bg-background-tertiary"
                 )}
@@ -825,6 +837,18 @@ export default function App() {
             </div>
 
             <div className="w-px h-5 bg-tertiary shrink-0" aria-hidden="true" />
+
+            <button
+              onClick={() => {
+                triggerHaptic('light');
+                setShowPause(true);
+              }}
+              className="rounded-md p-1.5 sm:p-2 text-text-secondary hover:bg-background-tertiary hover:text-accent transition-colors flex items-center justify-center shrink-0"
+              title="Pause — a 60-second reset when a passion flares"
+              aria-label="Open the Pause drill"
+            >
+              <WindIcon size={18} className="sm:w-[20px] sm:h-[20px]" strokeWidth={2} />
+            </button>
 
             <a
               href="/daily-stoic-guide.html"
@@ -1024,6 +1048,27 @@ export default function App() {
             onClose={() => navigate('/')}
           />
         )}
+
+        {route === '/commitments' && (
+          <CommitmentsDashboard
+            today={today}
+            cycleStartDate={cycleStartDate}
+            reflections={fullReflections}
+            onClose={() => navigate('/')}
+            onGoToSettings={() => navigate('/settings')}
+          />
+        )}
+
+        {route === '/council' && (
+          <Council
+            today={today}
+            cycleStartDate={cycleStartDate}
+            reflections={fullReflections}
+            loading={fullReflectionsLoading}
+            onClose={() => navigate('/')}
+            onGoToSettings={() => navigate('/settings')}
+          />
+        )}
       </main>
 
       {showCelebration && (
@@ -1075,6 +1120,9 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <PauseDrill open={showPause} onClose={() => setShowPause(false)} />
+
       <ToastContainer />
     </div>
   );
