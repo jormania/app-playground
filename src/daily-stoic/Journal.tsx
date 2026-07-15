@@ -4,9 +4,20 @@ import { useShowGuides } from './lib/useShowGuides';
 import { fetchReflectionForDay, upsertReflection } from './services/NotionService';
 import { getLocalTodayStr, cycleDayToDateStr, getCycleInfo, getVirtueForWeek, formatCycleLabelCompact, getQuoteOfTheWeek } from './utils/date';
 import AmorFatiControl from './components/AmorFatiControl';
+import MentorPanel from './components/MentorPanel';
+import CommitmentsPanel from './components/CommitmentsPanel';
 import { triggerHaptic } from '../shared/haptics';
 import { cn } from './lib/cn';
 import { AutoExpandingTextarea } from './components/AutoExpandingTextarea';
+import { useCommitments } from './lib/useCommitments';
+import { useMentorEnabled } from './lib/useMentor';
+import { dueCommitments, commitmentsResolvedOn, ledgerStats } from './lib/commitments';
+import {
+  buildMorningChallengePrompt,
+  buildEveningReckoningPrompt,
+  type MentorPrompt,
+} from './lib/mentor';
+import { Compass, Sunrise } from 'lucide-react';
 import {
   SmilePlus,
   Smile,
@@ -692,6 +703,77 @@ export default function Journal({
     return worries.filter(w => w.category === 'unassigned');
   }, [worries]);
 
+  // --- Socratic mentor (Enhance 1) ---------------------------------------
+  // The Commitments ledger is the spine; the mentor drives through it. Both
+  // read the same ledger (event-synced), so the CommitmentsPanel below and
+  // these prompt builders always agree on what's open, kept, or broken.
+  const mentorEnabled = useMentorEnabled();
+  const { commitments } = useCommitments();
+  const ledger = useMemo(() => ledgerStats(commitments), [commitments]);
+
+  const passionLabels = useMemo(
+    () => passions.map((id) => AVAILABLE_PASSIONS.find((p) => p.id === id)?.label || id),
+    [passions],
+  );
+
+  // Promises made before today and still unreckoned — real debts the morning
+  // challenge should not let slide.
+  const openDebts = useMemo(
+    () =>
+      dueCommitments(commitments, dayOfYear)
+        .filter((c) => c.createdDay < dayOfYear)
+        .map((c) => ({ text: c.text, ageDays: dayOfYear - c.createdDay })),
+    [commitments, dayOfYear],
+  );
+
+  const morningPrompt = useMemo<MentorPrompt | null>(() => {
+    const hasMaterial =
+      morningIntentions.trim().length > 0 || worries.length > 0 || openDebts.length > 0;
+    if (!hasMaterial) return null;
+    return buildMorningChallengePrompt({
+      cycle: cycleInfo.cycle,
+      week: cycleInfo.week,
+      virtue: weekVirtue,
+      premeditatio: morningIntentions,
+      worries: worries.map((w) => ({ text: w.text, category: w.category })),
+      openDebts,
+      keptRate: ledger.keptRate,
+      reckonedCount: ledger.kept + ledger.broken,
+    });
+  }, [morningIntentions, worries, openDebts, cycleInfo, weekVirtue, ledger]);
+
+  const eveningPrompt = useMemo<MentorPrompt | null>(() => {
+    const reckonings = commitmentsResolvedOn(commitments, dayOfYear).map((c) => ({
+      text: c.text,
+      status: c.status as 'kept' | 'broken',
+      note: c.note,
+    }));
+    const stillOpen = dueCommitments(commitments, dayOfYear).map((c) => ({
+      text: c.text,
+      ageDays: dayOfYear - c.createdDay,
+    }));
+    const reframes = worries.filter((w) => w.isReframed).map((w) => w.text);
+    const cleanReflection = reflection.replace(/###\s*/g, '').trim();
+    const hasMaterial =
+      reckonings.length > 0 ||
+      stillOpen.length > 0 ||
+      cleanReflection.length > 0 ||
+      mood.length > 0 ||
+      passionLabels.length > 0;
+    if (!hasMaterial) return null;
+    return buildEveningReckoningPrompt({
+      cycle: cycleInfo.cycle,
+      week: cycleInfo.week,
+      virtue: weekVirtue,
+      reckonings,
+      stillOpen,
+      reflection: cleanReflection,
+      mood,
+      passions: passionLabels,
+      reframes,
+    });
+  }, [commitments, dayOfYear, worries, reflection, mood, passionLabels, cycleInfo, weekVirtue]);
+
   return (
     <div className="rounded-xl bg-background-secondary border border-tertiary p-4 sm:p-8">
       {/* 4-Step Journey Stepper */}
@@ -1064,6 +1146,21 @@ export default function Journal({
                 )}
               </section>
 
+              {/* The mentor's morning challenge — reads the foreseen friction above and demands one provable promise */}
+              <MentorPanel
+                title="The Mentor’s Challenge"
+                intro="Before you commit, let the mentor press you on what you wrote — and on what you might be avoiding."
+                cta="Ask for today’s challenge"
+                prompt={morningPrompt}
+                disabledHint="Write your Premeditatio Malorum or log a concern above, then ask the mentor."
+                enabled={mentorEnabled}
+                onGoToSettings={onGoToSettings}
+                icon={Sunrise}
+              />
+
+              {/* The Commitments ledger — make today's provable promise */}
+              <CommitmentsPanel today={dayOfYear} mode="prepare" />
+
               <GuideNote hidden={!showGuides} summary="Preparing for the Day">
                 <p>
                   <strong>Premeditatio Malorum</strong> coupled with the <strong>Dichotomy of Control</strong> aligns your focus.
@@ -1367,6 +1464,21 @@ export default function Journal({
                   </div>
                 </div>
               </section>
+
+              {/* The Commitments ledger — reckon today's promises, kept or broken */}
+              <CommitmentsPanel today={dayOfYear} mode="reckon" />
+
+              {/* The mentor's evening reckoning — collects on the ledger and the day's audit */}
+              <MentorPanel
+                title="The Mentor’s Reckoning"
+                intro="Now let the mentor balance the books with you — no excuses accepted at face value, no praise without a harder next step."
+                cta="Face the reckoning"
+                prompt={eveningPrompt}
+                disabledHint="Reckon a promise, set your mood, or write your evening audit above, then ask the mentor."
+                enabled={mentorEnabled}
+                onGoToSettings={onGoToSettings}
+                icon={Compass}
+              />
 
               <GuideNote hidden={!showGuides} summary="Reflecting on the Day">
                 <p>

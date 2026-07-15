@@ -1,6 +1,8 @@
 import { useState, useReducer } from 'react';
+import { Compass } from 'lucide-react';
 import { Button, Field, SettingsToggle } from '../ds';
 import { probeConnection, fetchDatabaseProperties, validateSchema, fetchRecentReflections, upgradeDatabaseSchema } from './services/NotionService';
+import { verifyAnthropicKey, MENTOR_KEY_STORAGE, MENTOR_ENABLED_STORAGE } from './lib/mentor';
 import { getCycleDay } from './utils/date';
 import { createIdbKv } from '../shared/notify/idbKv';
 import { registerPeriodicSync, unregisterPeriodicSync } from '../shared/notify/periodicSync';
@@ -39,6 +41,12 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
   
   // Profile State
   const [birthDate, setBirthDate] = useState(() => localStorage.getItem('daily-stoic:birthdate') || '');
+
+  // Socratic Mentor (Enhance 1) State
+  const [mentorKey, setMentorKey] = useState(() => localStorage.getItem(MENTOR_KEY_STORAGE) || '');
+  const [mentorEnabled, setMentorEnabled] = useState(() => localStorage.getItem(MENTOR_ENABLED_STORAGE) === 'true');
+  const [mentorStatus, setMentorStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
+  const [mentorMsg, setMentorMsg] = useState('');
 
   // Diagnostics State
   const [isDiagnosticsVisible, setIsDiagnosticsVisible] = useState(false);
@@ -148,6 +156,40 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
     } catch (err: any) {
       setStatus('error');
       setErrors([err.message || 'Failed to connect to Notion.']);
+    }
+  };
+
+  const handleMentorKeyChange = (value: string) => {
+    setMentorKey(value);
+    localStorage.setItem(MENTOR_KEY_STORAGE, value.trim());
+    setMentorStatus('idle');
+    setMentorMsg('');
+    // Let the journal's useMentorEnabled re-read immediately.
+    window.dispatchEvent(new Event('daily-stoic:settings-updated'));
+  };
+
+  const handleToggleMentor = (checked: boolean) => {
+    localStorage.setItem(MENTOR_ENABLED_STORAGE, checked ? 'true' : 'false');
+    setMentorEnabled(checked);
+    triggerHaptic('light');
+    window.dispatchEvent(new Event('daily-stoic:settings-updated'));
+  };
+
+  const handleTestMentorKey = async () => {
+    if (!mentorKey.trim()) {
+      setMentorStatus('error');
+      setMentorMsg('Add your Anthropic key first.');
+      return;
+    }
+    setMentorStatus('testing');
+    setMentorMsg('');
+    try {
+      await verifyAnthropicKey(mentorKey);
+      setMentorStatus('ok');
+      setMentorMsg('Key verified — the mentor is ready.');
+    } catch (err: any) {
+      setMentorStatus('error');
+      setMentorMsg(err?.message || 'Could not verify the key.');
     }
   };
 
@@ -285,6 +327,57 @@ export default function Settings({ onClose, onResetCycle }: SettingsProps) {
               <p>Connected. Reflections are syncing to Notion.</p>
             </div>
           )}
+        </section>
+
+        <section className="flex flex-col gap-4 rounded-lg border border-accent/30 bg-background-secondary p-4 sm:p-6">
+          <h3 className="font-display text-lg text-text-primary flex items-center gap-2">
+            <Compass size={18} className="text-accent" /> The Socratic Mentor
+          </h3>
+          <p className="text-sm text-text-secondary leading-relaxed">
+            An optional AI guide who reads your practice — the frictions you foresee, the promises you
+            keep or break, the passions you admit — and drives it forward: a Stoic challenge each
+            morning, a reckoning each night. It is <strong className="text-text-primary">Socratic</strong> —
+            it asks the question you can’t dodge and never merely echoes you.
+          </p>
+          <p className="text-xs text-text-secondary leading-relaxed">
+            Bring your own Anthropic API key. It’s stored only on this device and calls Anthropic
+            directly from your browser — nothing passes through our servers, and no reply is ever saved.
+          </p>
+
+          <Field
+            label="Anthropic API Key"
+            type="password"
+            value={mentorKey}
+            onChange={(e) => handleMentorKeyChange(e.target.value)}
+            placeholder="sk-ant-..."
+            hint="Create a key at console.anthropic.com. Used only to wake the mentor."
+          />
+
+          <div className="flex items-center gap-3">
+            <Button variant="secondary" onClick={handleTestMentorKey} disabled={mentorStatus === 'testing'}>
+              {mentorStatus === 'testing' ? 'Testing...' : 'Test Key'}
+            </Button>
+          </div>
+
+          {mentorStatus === 'error' && (
+            <div className="rounded-lg bg-background-secondary border border-caution/40 p-4 flex items-start gap-3 text-caution text-sm" role="alert">
+              <span>⚠️</span>
+              <p>{mentorMsg}</p>
+            </div>
+          )}
+          {mentorStatus === 'ok' && (
+            <div className="rounded-lg bg-background-secondary border border-success/40 p-4 flex items-start gap-3 text-success text-sm" role="status">
+              <span>✓</span>
+              <p>{mentorMsg}</p>
+            </div>
+          )}
+
+          <SettingsToggle
+            label="Enable the mentor"
+            hint="Show the mentor’s morning challenge and evening reckoning in the daily journey. The Commitments ledger works with or without this."
+            checked={mentorEnabled}
+            onChange={(e) => handleToggleMentor(e.target.checked)}
+          />
         </section>
 
         <section className="flex flex-col gap-4 rounded-lg border border-tertiary bg-background-secondary p-4 sm:p-6">

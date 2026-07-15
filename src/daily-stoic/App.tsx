@@ -196,6 +196,10 @@ export default function App() {
       }
       keysToRemove.forEach(k => localStorage.removeItem(k));
       localStorage.setItem('daily-stoic:dichotomy', '[]');
+      // The Commitments ledger is practice history too — wipe it for a clean
+      // Cycle 1 (the mentor's API key/enable flag are kept, like Notion creds).
+      localStorage.removeItem('daily-stoic:commitments');
+      window.dispatchEvent(new Event('daily-stoic:commitments-updated'));
 
       // Cycles always start on a Monday (so week boundaries land on real
       // Mondays) — the automatic 28-day rollover preserves this on its own,
