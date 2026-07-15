@@ -1,6 +1,7 @@
 import { Button, GuideNote } from '../../ds';
 import { useShowGuides } from '../lib/useShowGuides';
 import { Skull } from 'lucide-react';
+import Ornament from './Ornament';
 
 interface MementoMoriProps {
   birthDateString: string;
@@ -77,6 +78,7 @@ export default function MementoMori({ birthDateString, onGoToSettings }: Memento
         <p className="text-sm text-text-secondary max-w-md mx-auto leading-relaxed">
           "Let us prepare our minds as if we’d come to the very end of life. Let us postpone nothing. Let us balance life’s books each day." — Seneca
         </p>
+        <Ornament className="mt-5" />
       </div>
 
       <div className="mb-8 rounded-xl border border-accent/25 bg-accent-soft p-5 sm:p-6 text-center max-w-2xl mx-auto shadow-sm animate-in fade-in zoom-in-95 duration-300">

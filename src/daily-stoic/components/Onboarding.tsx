@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button, Field } from '../../ds';
 import { triggerHaptic } from '../../shared/haptics';
 import { getLocalTodayStr, mostRecentMonday } from '../utils/date';
+import Ornament from './Ornament';
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -38,7 +39,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         {step === 1 && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
             <span className="text-5xl mb-4 block" role="img" aria-label="stoic temple">🏛️</span>
-            <h2 className="font-display text-3xl font-bold text-text-primary mb-3">Welcome to Daily Stoic</h2>
+            <h2 className="font-display text-3xl font-semibold text-text-primary mb-4">Welcome to Daily Stoic</h2>
+            <Ornament className="mb-5" />
             <p className="text-text-secondary mb-8 leading-relaxed">
               A private, minimalist space to build resilience, cultivate gratitude, and reflect on what truly matters.
             </p>

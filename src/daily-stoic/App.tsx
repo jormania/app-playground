@@ -12,6 +12,7 @@ import PassionsAnalytics from './components/PassionsAnalytics';
 import AmorFatiDashboard from './components/AmorFatiDashboard';
 import CycleRetrospectiveCard from './components/CycleRetrospectiveCard';
 import DigestDashboard from './components/DigestDashboard';
+import Ornament from './components/Ornament';
 import { getQuoteForDay, getLocalTodayStr, getCycleDay, cycleDayToDateStr, getCycleInfo, mostRecentMonday } from './utils/date';
 import { calculateStreak } from './utils/streak';
 import { fetchRecentReflections, fetchAllReflections, fetchDatabaseProperties, validateSchema, upgradeDatabaseSchema, getMissingOptionalColumns, upsertReflection, clearDatabaseEntries, ReflectionRecord } from './services/NotionService';
@@ -657,7 +658,7 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background-primary text-text-primary">
-      <header className="sticky top-0 z-50 border-b border-tertiary bg-background-secondary px-4 py-3 sm:px-6 sm:py-4 shadow-sm">
+      <header className="safe-top sticky top-0 z-50 border-b border-tertiary bg-background-secondary px-4 pb-3 sm:px-6 sm:pb-4 shadow-sm">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3 mr-4 sm:mr-8 shrink-0">
             <svg viewBox="0 0 64 64" className="w-5 h-5 sm:w-6 sm:h-6 text-accent" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none" aria-hidden="true">
@@ -671,7 +672,7 @@ export default function App() {
               <path d="M 14 46 L 50 46" />
               <path d="M 10 52 L 54 52" />
             </svg>
-            <h1 className="font-display text-lg sm:text-2xl font-bold tracking-tight text-text-primary">
+            <h1 className="font-display text-lg sm:text-2xl font-semibold tracking-[0.02em] text-text-primary">
               Daily Stoic
             </h1>
           </div>
@@ -846,7 +847,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl p-4 sm:p-8">
+      <main className="safe-bottom mx-auto w-full max-w-3xl p-4 sm:p-8">
         {route === '/settings' && (
           <Settings
             onClose={() => {
@@ -936,6 +937,7 @@ export default function App() {
               <p className="text-sm text-text-secondary max-w-md mx-auto leading-relaxed">
                 "Don’t explain your philosophy. Embody it." — Epictetus
               </p>
+              <Ornament className="mt-5" />
             </div>
 
             <div className="mb-8 rounded-xl border border-accent/25 bg-accent-soft p-5 sm:p-6 text-center max-w-2xl mx-auto shadow-sm animate-in fade-in zoom-in-95 duration-300">
@@ -964,10 +966,10 @@ export default function App() {
                     <div key={index} className="rounded-xl bg-background-tertiary p-6 border border-tertiary flex flex-col justify-between hover:shadow-md transition-all duration-300 relative group">
                       <div className="mb-4">
                         <span className="text-[10px] font-mono text-text-secondary/60 block mb-2">DAY {index}</span>
-                        <p className="font-display text-base text-text-primary leading-relaxed">“{q.quote}”</p>
+                        <p className="font-display text-base text-text-primary leading-relaxed" style={{ letterSpacing: '-0.01em' }}>“{q.quote}”</p>
                       </div>
                       <div className="flex items-center justify-between border-t border-tertiary/60 pt-4 text-xs text-text-secondary mt-auto">
-                        <span className="italic font-medium">— {q.author}, {q.source}</span>
+                        <span className="almanac-cite font-medium">— {q.author}, {q.source}</span>
                         <button
                           onClick={async () => {
                             triggerHaptic('light');
@@ -1034,6 +1036,7 @@ export default function App() {
               <p className="text-sm text-text-secondary max-w-md mx-auto">
                 You've completed a 28-day cycle through all Four Cardinal Virtues. Cycle {cycleInfo.cycle} has already begun — here's a retrospective of the one you just finished.
               </p>
+              <Ornament className="pt-2" />
             </div>
 
             {/* Insights Stats Grid */}

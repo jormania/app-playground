@@ -859,42 +859,41 @@ export default function Journal({
                 <p className="text-xs text-text-secondary mt-1">{cycleLabelCompact}</p>
               </div>
 
-              {/* Quote Card */}
-              <blockquote className="rounded-lg bg-background-tertiary p-5 sm:p-6 border-l-4 border-l-accent shadow-sm relative">
-                <div className="flex items-start justify-between gap-4">
-                  <p className="font-display text-xl sm:text-2xl text-text-primary mb-4">“{quote.quote}”</p>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={handleShareQuote}
-                      disabled={isSharing}
-                      className="rounded-full p-2 text-text-secondary hover:text-text-primary hover:bg-background-secondary transition-all"
-                      title="Share Quote Card"
-                      aria-label="Share quote as image"
-                    >
-                      <Share2 size={20} strokeWidth={2} />
-                    </button>
-                    <button
-                      onClick={handleToggleFavorite}
-                      disabled={isTogglingFavorite}
+              {/* Daily Maxim — set as an almanac pull-quote */}
+              <blockquote className="relative rounded-lg bg-background-tertiary px-5 pt-5 pb-6 sm:px-8 sm:pt-6 sm:pb-8 shadow-sm">
+                <div className="absolute right-2.5 top-2.5 flex items-center gap-1">
+                  <button
+                    onClick={handleShareQuote}
+                    disabled={isSharing}
+                    className="rounded-full p-2 text-text-secondary hover:text-text-primary hover:bg-background-secondary transition-all"
+                    title="Share Quote Card"
+                    aria-label="Share quote as image"
+                  >
+                    <Share2 size={18} strokeWidth={2} />
+                  </button>
+                  <button
+                    onClick={handleToggleFavorite}
+                    disabled={isTogglingFavorite}
+                    className={cn(
+                      "rounded-full p-2 transition-all flex items-center justify-center",
+                      isCurrentQuoteFavorited ? "scale-110 opacity-100" : "opacity-40 hover:opacity-100 hover:bg-background-secondary"
+                    )}
+                    aria-label={isCurrentQuoteFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                  >
+                    <Heart
+                      size={18}
+                      strokeWidth={2}
+                      fill={isCurrentQuoteFavorited ? "currentColor" : "none"}
                       className={cn(
-                        "rounded-full p-2 transition-all flex items-center justify-center",
-                        isCurrentQuoteFavorited ? "scale-110 opacity-100" : "opacity-40 hover:opacity-100 hover:bg-background-secondary"
+                        isCurrentQuoteFavorited ? "text-accent" : "text-text-secondary"
                       )}
-                      aria-label={isCurrentQuoteFavorited ? 'Remove from favorites' : 'Add to favorites'}
-                    >
-                      <Heart 
-                        size={20} 
-                        strokeWidth={2} 
-                        fill={isCurrentQuoteFavorited ? "currentColor" : "none"}
-                        className={cn(
-                          isCurrentQuoteFavorited ? "text-accent" : "text-text-secondary"
-                        )}
-                      />
-                    </button>
-                  </div>
+                    />
+                  </button>
                 </div>
-                <cite className="block text-text-secondary font-medium not-italic text-sm">
-                  — {quote.author}, <span className="italic">{quote.source}</span>
+                <span className="almanac-openquote text-5xl sm:text-6xl">“</span>
+                <p className="almanac-maxim text-text-primary pr-6">{quote.quote}</p>
+                <cite className="almanac-cite mt-4 block text-sm text-text-secondary">
+                  — {quote.author}, <span className="italic normal-case">{quote.source}</span>
                 </cite>
               </blockquote>
 

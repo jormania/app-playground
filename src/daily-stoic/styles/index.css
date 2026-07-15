@@ -30,6 +30,10 @@
     color: var(--color-text-primary);
     line-height: 1.15;
     font-weight: 600;
+    /* Almanac: let Fraunces pick its display optical size at large sizes and
+       tuck the letters a hair tighter, the way a typeset title page reads. */
+    font-optical-sizing: auto;
+    letter-spacing: -0.011em;
   }
 
   /* Visible, on-brand focus ring for keyboard users on every interactive element. */
@@ -38,7 +42,75 @@
     outline-offset: 2px;
     border-radius: var(--radius-sm);
   }
+
+  /* Almanac "page under lamplight" wash: a single fixed layer (cheap — no
+     repaint on scroll, unlike background-attachment: fixed) that lifts the flat
+     canvas into a soft-lit page. Re-tints per preset via the token, kept faint
+     so it never muddies the dark palettes. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(135% 62% at 50% -12%,
+        color-mix(in srgb, var(--color-background-secondary) 62%, transparent),
+        transparent 60%);
+  }
 }
+
+/* ── Almanac typographic primitives ─────────────────────────────────────────
+   Small set of book-typesetting helpers used at the "hero" reading moments
+   (the daily maxim, the handbook, empty-state invitations). Kept as plain
+   classes because they do things Tailwind utilities can't express cleanly —
+   fluid clamp sizing, a hanging quotation mark, a drop cap, small-caps. */
+
+.almanac-maxim {
+  font-family: "Fraunces Variable", Fraunces, Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-size: clamp(1.4rem, 5.4vw, 2rem);
+  line-height: 1.32;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+/* Oversized hanging opening quotation mark that sits in the left margin. */
+.almanac-openquote {
+  font-family: "Fraunces Variable", Fraunces, Georgia, serif;
+  font-weight: 600;
+  color: var(--color-accent);
+  line-height: 1;
+  display: block;
+  margin-bottom: -0.35em;
+  user-select: none;
+}
+
+/* Drop cap for a reading block's first letter — the almanac's opening flourish. */
+.almanac-dropcap::first-letter {
+  float: left;
+  font-family: "Fraunces Variable", Fraunces, Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: 3.1em;
+  line-height: 0.8;
+  padding-right: 0.09em;
+  margin-top: 0.04em;
+  color: var(--color-accent);
+}
+
+/* Small-caps, letterspaced attribution line — "— Marcus Aurelius, Meditations". */
+.almanac-cite {
+  font-style: normal;
+  font-variant-caps: small-caps;
+  letter-spacing: 0.06em;
+}
+
+/* Honour the S24 (and any notched/cutout display) status-bar and gesture areas
+   when the PWA runs full-bleed (viewport-fit=cover is set in the entry HTML). */
+.safe-top { padding-top: max(0.75rem, env(safe-area-inset-top)); }
+.safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
 
 /* The celebration beat on marking a day Done — a brief, calm pop in the energy violet. */
 @keyframes sol-celebrate {
