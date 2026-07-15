@@ -39,6 +39,26 @@ export interface CycleDigestEntry {
 
 export type DigestEntry = DayDigestEntry | WeekDigestEntry | CycleDigestEntry;
 
+// The saved reflection text is built as "### Question\nAnswer" blocks joined
+// by blank lines (see Journal.tsx's Seneca-question combiner) — split it back
+// into question/answer pairs. Falls back to the raw text as a single block for
+// older entries that don't follow this shape. Shared by the Digest's day modal
+// and the Digest export so both render the interrogation identically.
+export function parseReflectionQA(text?: string): { question: string; answer: string }[] {
+  if (!text) return [];
+  const blocks = text
+    .split(/\n{0,2}###\s+/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+  if (blocks.length === 0) return [];
+  return blocks.map((block) => {
+    const breakIdx = block.indexOf('\n');
+    return breakIdx === -1
+      ? { question: block, answer: '' }
+      : { question: block.slice(0, breakIdx).trim(), answer: block.slice(breakIdx + 1).trim() };
+  });
+}
+
 // Newest-first, matching the "Newest first" convention already used by the
 // other dashboards (see AmorFatiDashboard.tsx). Walking backward from `today`
 // day-by-day, a week/cycle marker is emitted the moment its own last day
