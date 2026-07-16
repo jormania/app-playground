@@ -118,6 +118,19 @@ describe('getDailyStatus', () => {
     expect(status2.phase).toBe('locked')
     expect(status2.lastResult).toEqual({ correct: true })
   })
+
+  it('keeps showing a live streak the day after an answer', () => {
+    recordAnswer(1, true, new Date(2026, 0, 1))
+    const status = getDailyStatus(laws, new Date(2026, 0, 2))
+    expect(status.streak).toBe(1)
+  })
+
+  it('shows a streak of 0 once a gap has broken it, without waiting for the next answer', () => {
+    recordAnswer(1, true, new Date(2026, 0, 1))
+    recordAnswer(2, true, new Date(2026, 0, 2))
+    const status = getDailyStatus(laws, new Date(2026, 0, 5))
+    expect(status.streak).toBe(0)
+  })
 })
 
 describe('recordAnswer', () => {

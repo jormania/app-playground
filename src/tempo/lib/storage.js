@@ -52,7 +52,7 @@ export function loadLastOpened() {
 
 export function recordOpened(modeId) {
   const map = loadLastOpened()
-  const prevCount = typeof map[modeId] === 'object' && map[modeId] ? map[modeId].count : 0
+  const prevCount = Number(map[modeId]?.count) || 0
   map[modeId] = { count: prevCount + 1, last: Date.now() }
   write('lastOpened', map)
 }

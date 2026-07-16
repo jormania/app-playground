@@ -38,7 +38,7 @@ export function loadLastOpened() {
 
 export function recordOpened(file) {
   const map = loadLastOpened()
-  const prevCount = typeof map[file] === 'object' && map[file] ? map[file].count : 0
+  const prevCount = Number(map[file]?.count) || 0
   map[file] = { count: prevCount + 1, last: Date.now() }
   write('lastOpened', map)
 }
@@ -50,7 +50,7 @@ export function clearLastOpened() {
   write('lastOpened', {})
 }
 
-// ── Sort mode: 'manual' | 'recent' | 'az' ───────────────────────────────────
+// ── Sort mode: 'manual' | 'recent' | 'popular' | 'az' ───────────────────────
 export function loadSort() {
   return read('sort', 'manual')
 }

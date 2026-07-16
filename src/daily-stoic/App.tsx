@@ -21,7 +21,6 @@ import { calculateStreak } from './utils/streak';
 import { fetchRecentReflections, fetchAllReflections, fetchDatabaseProperties, validateSchema, upgradeDatabaseSchema, getMissingOptionalColumns, upsertReflection, clearDatabaseEntries, ReflectionRecord } from './services/NotionService';
 import { computeCycleRetrospective, extractWorriesFromReflections, Worry } from './utils/retrospective';
 import { createIdbKv } from '../shared/notify/idbKv';
-import { QUOTES } from './data/quotes';
 import { triggerHaptic } from '../shared/haptics';
 
 import { useHashRoute } from './lib/useHashRoute';
@@ -641,7 +640,15 @@ export default function App() {
       }
     }
 
-    return QUOTES.filter((q) => favoritedIds.has(q.day));
+    // Day numbers are unbounded (they keep counting past QUOTES.length), but
+    // each maps to a quote via the same modulo getQuoteForDay uses — filtering
+    // QUOTES by q.day directly would silently drop any favorite made after the
+    // first 366 days. Keep the favorited day as `day` so the card label and the
+    // Remove button both keep addressing the day the favorite was actually
+    // stored under.
+    return Array.from(favoritedIds)
+      .sort((a, b) => a - b)
+      .map((id) => ({ ...getQuoteForDay(id), day: id }));
   }, [recentReflections, localFavoritesToggle, today]);
 
 

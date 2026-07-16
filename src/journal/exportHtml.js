@@ -5,7 +5,7 @@
 // still simple to unit-test) — `downloadJournal` does the async photo-fetching
 // (via the same CORS-workaround proxy share.js uses) before calling it, then
 // wraps the result in a Blob download.
-import { sortByDateDesc, formatHuman } from './dates.js'
+import { sortByDateDesc, formatHuman, todayKey } from './dates.js'
 import { fetchPhotoBlob } from './notionPhoto.js'
 
 function esc(s) {
@@ -80,7 +80,7 @@ footer{text-align:center;font-family:ui-monospace,monospace;font-size:11px;color
 <header>
   <div class="eyebrow">a daily practice of attention</div>
   <h1>Journal of <em>Delights</em></h1>
-  <div class="sub">${count} ${count === 1 ? 'delight' : 'delights'} · exported ${esc(formatHuman(exportedOn.toISOString().slice(0, 10)))}</div>
+  <div class="sub">${count} ${count === 1 ? 'delight' : 'delights'} · exported ${esc(formatHuman(todayKey(exportedOn)))}</div>
 </header>
 ${list.map(renderEntry).join('\n')}
 <footer>based on Ross Gay’s The Book of Delights</footer>
@@ -120,7 +120,7 @@ export async function downloadJournal(entries) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `journal-of-delights-${new Date().toISOString().slice(0, 10)}.html`
+  a.download = `journal-of-delights-${todayKey()}.html`
   document.body.appendChild(a)
   a.click()
   a.remove()

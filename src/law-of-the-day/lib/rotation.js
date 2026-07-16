@@ -91,8 +91,13 @@ export function getDailyStatus(laws, now = new Date()) {
   const today = getTodayKey(now)
   const lawId = getDailyLawId(laws, now)
   const law = laws.find((l) => l.id === lawId)
-  const streak = loadStreak()
   const lastAnsweredDate = loadLastAnsweredDate()
+  // The stored streak only resets when the NEXT answer is recorded — so after
+  // a multi-day gap it still holds the old run. Don't display that: a streak
+  // is only alive if the last answer was today or yesterday.
+  const streakAlive =
+    lastAnsweredDate === today || (lastAnsweredDate && addDays(lastAnsweredDate, 1) === today)
+  const streak = streakAlive ? loadStreak() : 0
 
   if (lastAnsweredDate === today) {
     const history = loadHistory()
