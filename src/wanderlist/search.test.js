@@ -80,6 +80,23 @@ describe('sortEntries', () => {
   })
 })
 
+describe('sortEntries — planned (Going, then Planned)', () => {
+  const today = '2026-07-08'
+  const set = [
+    { id: 'going-far', name: 'Going far out', attended: false, going: true, dateAdded: '2026-06-01', plannedDate: '2026-08-01' },
+    { id: 'going-near', name: 'Going soon', attended: false, going: true, dateAdded: '2026-06-01', plannedDate: '2026-07-10' },
+    { id: 'undecided-near', name: 'Undecided, soon', attended: false, going: false, dateAdded: '2026-06-01', plannedDate: '2026-07-09' },
+    { id: 'undecided-far', name: 'Undecided, far', attended: false, going: false, dateAdded: '2026-06-01', plannedDate: '2026-09-01' },
+    { id: 'none', name: 'No planned date', attended: false, going: false, dateAdded: '2026-06-01', plannedDate: null },
+    { id: 'past', name: 'Planned date passed', attended: false, going: false, dateAdded: '2026-06-01', plannedDate: '2026-07-01' },
+    { id: 'attended', name: 'Attended, was planned', attended: true, going: true, dateAdded: '2026-06-01', plannedDate: '2026-07-20' },
+  ]
+  test('every Going entry ranks before every undecided Planned entry, each soonest-first; undated/attended sit in the middle; past-planned sinks to the bottom', () => {
+    expect(sortEntries(set, 'planned', today).map(e => e.id))
+      .toEqual(['going-near', 'going-far', 'undecided-near', 'undecided-far', 'attended', 'none', 'past'])
+  })
+})
+
 describe('triage pipeline', () => {
   test('status → search → sort in one call', () => {
     const out = triage(items, { status: 'todo', query: 'outdoor', scope: 'tags', sort: 'expiring', today: '2026-07-08' })

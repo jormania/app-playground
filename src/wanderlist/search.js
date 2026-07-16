@@ -34,6 +34,7 @@ export function isIdea(entry) {
 
 export const SORTS = [
   { value: 'expiring', label: 'Expiring first' },
+  { value: 'planned', label: 'Going, then Planned' },
   { value: 'added', label: 'Recently added' },
   { value: 'az', label: 'A–Z' },
 ]
@@ -74,6 +75,15 @@ export function filterByStatus(entries, status = 'todo') {
 // carry expiry weight, since the deadline no longer matters once you've gone.
 const NO_EXPIRY_RANK = 1e9
 const PAST_RANK_BASE = 2e9
+// "Going, then Planned" tiers: confirmed-Going entries (soonest first), then Planned-but-
+// undecided entries (soonest first) — a fixed offset keeps every Going entry ahead of every
+// undecided one regardless of how their dates compare, per the owner's ask to see Going
+// events first and Planned ones after, not interleaved by date. A past Planned Date that's
+// still unattended sinks into its own bottom tier, most-recently-passed first, mirroring
+// expRank's past-due tier; no Planned Date (or an attended entry) sits in the plain middle.
+const PLANNED_RANK_OFFSET = 1e6
+const NO_PLANNED_RANK = 1e9
+const PAST_PLANNED_RANK_BASE = 2e9
 export function sortEntries(entries, sort = 'expiring', today = todayKey()) {
   const list = [...(entries || [])]
   const addedRank = (e) => e?.dateAdded || ''
@@ -83,10 +93,24 @@ export function sortEntries(entries, sort = 'expiring', today = todayKey()) {
     if (n == null) return NO_EXPIRY_RANK
     return n < 0 ? PAST_RANK_BASE - n : n
   }
+  const plannedRank = (e) => {
+    if (!e?.plannedDate || e.attended) return NO_PLANNED_RANK
+    const n = daysUntil(e.plannedDate, today)
+    if (n == null) return NO_PLANNED_RANK
+    if (n < 0) return PAST_PLANNED_RANK_BASE - n
+    return e.going ? n : PLANNED_RANK_OFFSET + n
+  }
   if (sort === 'az') {
     list.sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), undefined, { sensitivity: 'base' }))
   } else if (sort === 'added') {
     list.sort((a, b) => String(addedRank(b)).localeCompare(String(addedRank(a))))
+  } else if (sort === 'planned') {
+    list.sort((a, b) => {
+      const ra = plannedRank(a), rb = plannedRank(b)
+      if (ra !== rb) return ra - rb
+      const added = String(addedRank(b)).localeCompare(String(addedRank(a)))
+      return added !== 0 ? added : String(a?.name || '').localeCompare(String(b?.name || ''))
+    })
   } else {
     list.sort((a, b) => {
       const ra = expRank(a), rb = expRank(b)
