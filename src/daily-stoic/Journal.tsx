@@ -52,6 +52,23 @@ const CARDINAL_VIRTUES = [
   { name: 'Temperance', Icon: Anchor, desc: 'Sophrosyne: Practicing self-control, moderation, and discipline.' },
 ] as const;
 
+// The evening reflection is stored as one combined markdown string (see the
+// "Update reflection string when Qs change" effect below) — this recovers
+// the three Seneca question answers from it. Used everywhere a saved or
+// drafted reflection needs to be split back into its fields (loading from
+// Notion, from a local backup, or from a localStorage draft). Older entries
+// (pre-3-question format) have no headers at all; the whole text is treated
+// as the first answer, matching the app's original single-question shape.
+function parseSenecaQuestions(text: string): [string, string, string] {
+  if (!text.includes('### What ailment') && !text.includes('### Which of my bad habits')) {
+    return [text, '', ''];
+  }
+  const q1 = text.match(/### (?:What ailment or bad habit did I cure today|Which of my bad habits did I catch and correct today)\?\n([\s\S]*?)(?=###|$)/);
+  const q2 = text.match(/### (?:What failing did I resist|What negative impulse or distraction did I successfully resist)\?\n([\s\S]*?)(?=###|$)/);
+  const q3 = text.match(/### (?:In what matter can I show improvement tomorrow|Where did I stumble today, and what could I do better tomorrow|Where did I stumble today, and how will I handle it better tomorrow)\?\n([\s\S]*?)(?=###|$)/);
+  return [q1 ? q1[1].trim() : '', q2 ? q2[1].trim() : '', q3 ? q3[1].trim() : ''];
+}
+
 interface JournalProps {
   dayOfYear: number;
   token: string;
@@ -293,19 +310,10 @@ export default function Journal({
         setReflection(savedRef);
         setSavedReflection(savedRef);
         
-        if (savedRef.includes('### What ailment') || savedRef.includes('### Which of my bad habits')) {
-          const q1Match = savedRef.match(/### (?:What ailment or bad habit did I cure today|Which of my bad habits did I catch and correct today)\?\n([\s\S]*?)(?=###|$)/);
-          const q2Match = savedRef.match(/### (?:What failing did I resist|What negative impulse or distraction did I successfully resist)\?\n([\s\S]*?)(?=###|$)/);
-          const q3Match = savedRef.match(/### (?:In what matter can I show improvement tomorrow|Where did I stumble today, and what could I do better tomorrow|Where did I stumble today, and how will I handle it better tomorrow)\?\n([\s\S]*?)(?=###|$)/);
-          
-          setSenecaQ1(q1Match ? q1Match[1].trim() : '');
-          setSenecaQ2(q2Match ? q2Match[1].trim() : '');
-          setSenecaQ3(q3Match ? q3Match[1].trim() : '');
-        } else {
-          setSenecaQ1(savedRef);
-          setSenecaQ2('');
-          setSenecaQ3('');
-        }
+        const [savedQ1, savedQ2, savedQ3] = parseSenecaQuestions(savedRef);
+        setSenecaQ1(savedQ1);
+        setSenecaQ2(savedQ2);
+        setSenecaQ3(savedQ3);
         const savedIntentions = localStorage.getItem(localIntentionsKey) || '';
         const savedMoodVal = localStorage.getItem(localMoodKey) || '';
         let savedTags: string[] = [];
@@ -354,19 +362,10 @@ export default function Journal({
           setReflection(refText);
           setSavedReflection(refText);
           
-          if (refText.includes('### What ailment') || refText.includes('### Which of my bad habits')) {
-            const q1Match = refText.match(/### (?:What ailment or bad habit did I cure today|Which of my bad habits did I catch and correct today)\?\n([\s\S]*?)(?=###|$)/);
-            const q2Match = refText.match(/### (?:What failing did I resist|What negative impulse or distraction did I successfully resist)\?\n([\s\S]*?)(?=###|$)/);
-            const q3Match = refText.match(/### (?:In what matter can I show improvement tomorrow|Where did I stumble today, and what could I do better tomorrow|Where did I stumble today, and how will I handle it better tomorrow)\?\n([\s\S]*?)(?=###|$)/);
-            
-            setSenecaQ1(q1Match ? q1Match[1].trim() : '');
-            setSenecaQ2(q2Match ? q2Match[1].trim() : '');
-            setSenecaQ3(q3Match ? q3Match[1].trim() : '');
-          } else {
-            setSenecaQ1(refText);
-            setSenecaQ2('');
-            setSenecaQ3('');
-          }
+          const [refQ1, refQ2, refQ3] = parseSenecaQuestions(refText);
+          setSenecaQ1(refQ1);
+          setSenecaQ2(refQ2);
+          setSenecaQ3(refQ3);
           const savedVirtueVal = result.virtue || localStorage.getItem(localVirtueKey) || null;
           setSelectedVirtue(savedVirtueVal);
           setSavedVirtue(savedVirtueVal);
@@ -397,23 +396,59 @@ export default function Journal({
           setIsSaved(true);
         } else {
           if (isNotionConfigured) {
-            setReflection('');
+            // No Notion record for this day yet — but the debounced auto-save
+            // effect below writes drafts to these same localStorage keys
+            // regardless of whether Notion is configured. Hydrate from that
+            // backup instead of blanking the form, so reloading before the
+            // first Save on a day doesn't silently discard what was typed.
+            // Nothing has actually reached Notion for this day, so the
+            // `saved*` baselines stay at their "nothing saved" values (same
+            // as the offline-fallback branch below) — hasChanges correctly
+            // reads true off a non-empty backup and the Save button stays
+            // live until the user actually commits it. Worries have no
+            // day-scoped local backup in Notion mode (only the offline path
+            // mirrors them to localStorage), so they still reset to empty.
+            const localBackup = localStorage.getItem(localStorageKey) || '';
+            const localFateBackup = localStorage.getItem(localFateKey) || '';
+            const localIntentionsBackup = localStorage.getItem(localIntentionsKey) || '';
+            const localMoodBackup = localStorage.getItem(localMoodKey) || '';
+            let localTagsBackup: string[] = [];
+            try {
+              localTagsBackup = JSON.parse(localStorage.getItem(localTagsKey) || '[]');
+            } catch {
+              localTagsBackup = [];
+            }
+            let localPassionsBackup: string[] = [];
+            try {
+              localPassionsBackup = JSON.parse(localStorage.getItem(localPassionsKey) || '[]');
+            } catch {
+              localPassionsBackup = [];
+            }
+            const localVirtueBackup = localStorage.getItem(localVirtueKey) || null;
+
+            setReflection(localBackup);
             setSavedReflection('');
-            setFateInput('');
+            const [backupQ1, backupQ2, backupQ3] = parseSenecaQuestions(localBackup);
+            setSenecaQ1(backupQ1);
+            setSenecaQ2(backupQ2);
+            setSenecaQ3(backupQ3);
+            setFateInput(localFateBackup);
             setSavedFateInput('');
-            setAcceptanceTags([]);
-            setPassions([]);
+            setAcceptanceTags(localTagsBackup);
+            setPassions(localPassionsBackup);
             setSavedPassions([]);
-            setMorningIntentions('');
+            setMorningIntentions(localIntentionsBackup);
             setSavedMorningIntentions('');
-            setMood('');
+            setMood(localMoodBackup);
             setSavedMood('');
+            setSelectedVirtue(localVirtueBackup);
+            setSavedVirtue(null);
             setExistingPageId(undefined);
             setWorries([]);
             setSavedWorries([]);
-            setSelectedVirtue(null);
-            setSavedVirtue(null);
-            setIsSaved(true);
+
+            const empty = localBackup === '' && localFateBackup === '' && localTagsBackup.length === 0 && localIntentionsBackup === '' && localMoodBackup === '' && localPassionsBackup.length === 0 && (localVirtueBackup === null || localVirtueBackup === '');
+            setIsSaved(empty);
           } else {
             // Fallback to local storage
             const localBackup = localStorage.getItem(localStorageKey) || '';
@@ -483,6 +518,10 @@ export default function Journal({
         }
         const localVirtueBackup = localStorage.getItem(localVirtueKey) || null;
         setReflection(localBackup);
+        const [errQ1, errQ2, errQ3] = parseSenecaQuestions(localBackup);
+        setSenecaQ1(errQ1);
+        setSenecaQ2(errQ2);
+        setSenecaQ3(errQ3);
         setFateInput(localFateBackup);
         setAcceptanceTags(localTagsBackup);
         setPassions(localPassionsBackup);

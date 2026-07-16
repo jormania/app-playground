@@ -90,6 +90,51 @@ function blankReflection(dichotomy: string) {
   };
 }
 
+describe('Journal — draft hydration when Notion is configured but has no record yet', () => {
+  it('restores a locally-drafted reflection instead of blanking the form', async () => {
+    localStorage.setItem('daily-stoic:reflection-2', 'Caught myself complaining about traffic.');
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+
+    const user = userEvent.setup();
+    render(<Journal {...baseProps} dayOfYear={2} worries={[]} />);
+
+    await waitFor(() => expect(NotionService.fetchReflectionForDay).toHaveBeenCalled());
+    await user.click(screen.getByRole('button', { name: 'Reflect' }));
+
+    expect((screen.getByPlaceholderText('I stopped complaining about...') as HTMLTextAreaElement).value).toBe(
+      'Caught myself complaining about traffic.'
+    );
+    // Nothing has actually reached Notion for this day yet, so the draft
+    // reads as unsaved, not "✓ Saved".
+    expect(screen.getByRole('button', { name: /Complete Reflection/i })).toBeTruthy();
+  });
+
+  it('restores a drafted morning prep and Spheres of Choice tags too', async () => {
+    localStorage.setItem('daily-stoic:morning-intentions-2', 'Expect delays; meet them calmly.');
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+
+    render(<Journal {...baseProps} dayOfYear={2} worries={[]} />);
+
+    await waitFor(() => expect(NotionService.fetchReflectionForDay).toHaveBeenCalled());
+
+    expect((screen.getByPlaceholderText(/Today I might face complaints/) as HTMLTextAreaElement).value).toBe(
+      'Expect delays; meet them calmly.'
+    );
+  });
+
+  it('leaves the form blank when there is no local draft either', async () => {
+    vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);
+
+    const user = userEvent.setup();
+    render(<Journal {...baseProps} dayOfYear={2} worries={[]} />);
+
+    await waitFor(() => expect(NotionService.fetchReflectionForDay).toHaveBeenCalled());
+    await user.click(screen.getByRole('button', { name: 'Reflect' }));
+
+    expect((screen.getByPlaceholderText('I stopped complaining about...') as HTMLTextAreaElement).value).toBe('');
+  });
+});
+
 describe('Journal — worry day-scoping (regression for cross-day worry leakage)', () => {
   it('starts a fresh day empty even when the merged cross-day worries prop has entries', async () => {
     vi.mocked(NotionService.fetchReflectionForDay).mockResolvedValue(null);

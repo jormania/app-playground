@@ -6,6 +6,7 @@ import {
   getDailyStatus,
   recordAnswer,
 } from './rotation'
+import { loadSeasonsCompleted } from './storage'
 
 // Tests run in vitest's 'node' environment (vitest.config.js), so localStorage
 // isn't provided — stub a minimal in-memory version, matching what the browser
@@ -86,6 +87,23 @@ describe('getDailyLawId', () => {
     // The 49th day starts a new season — still a valid law id.
     const next = getDailyLawId(laws, day)
     expect(laws.map((l) => l.id)).toContain(next)
+  })
+
+  it('counts a completed season only when the rotation actually reshuffles, not on first creation', () => {
+    expect(loadSeasonsCompleted()).toBe(0)
+    getDailyLawId(laws, new Date(2026, 0, 1)) // first-ever season — not a completion
+    expect(loadSeasonsCompleted()).toBe(0)
+  })
+
+  it('increments the persisted seasons-completed count on reshuffle, even for days never answered', () => {
+    let day = new Date(2026, 0, 1)
+    for (let i = 0; i < 48; i++) {
+      getDailyLawId(laws, day) // opened, but never answered — no recordAnswer call
+      day = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1)
+    }
+    expect(loadSeasonsCompleted()).toBe(0)
+    getDailyLawId(laws, day) // the 49th distinct day — triggers the reshuffle
+    expect(loadSeasonsCompleted()).toBe(1)
   })
 
   it('does not backfill missed days — a multi-day gap still advances only one step', () => {

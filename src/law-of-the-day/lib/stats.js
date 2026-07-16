@@ -1,7 +1,8 @@
 // Aggregates the per-law answer history into display-ready stats. Pure —
-// takes the static laws array and the history object loaded from storage.js,
-// returns everything the stats screen needs to render.
-export function computeStats(laws, history) {
+// takes the static laws array, the history object, and the real completed-
+// season count (both loaded from storage.js) — returns everything the stats
+// screen needs to render.
+export function computeStats(laws, history, seasonsCompleted = 0) {
   const perLaw = laws
     .filter((law) => history[law.id])
     .map((law) => {
@@ -21,9 +22,6 @@ export function computeStats(laws, history) {
   const incorrectCount = perLaw.reduce((sum, l) => sum + l.incorrectCount, 0)
   const totalAnswers = correctCount + incorrectCount
   const accuracyPercent = totalAnswers > 0 ? Math.round((correctCount / totalAnswers) * 100) : 0
-  // A "season" is one full shuffled cycle through every law (see rotation.js) —
-  // completed seasons is just how many full 48-answer cycles have passed.
-  const seasonsCompleted = Math.floor(totalAnswers / laws.length)
 
   return {
     lawsSeen: perLaw.length,

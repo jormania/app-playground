@@ -3,7 +3,7 @@ import laws from './data/laws.json'
 import { getDailyStatus, recordAnswer } from './lib/rotation'
 import { buildOptions, gradeAnswer } from './lib/quiz'
 import { fetchFreshContent } from './lib/fetchFreshContent'
-import { loadHistory, loadBestStreak, loadDifficulty, saveDifficulty } from './lib/storage'
+import { loadHistory, loadBestStreak, loadDifficulty, saveDifficulty, loadSeasonsCompleted } from './lib/storage'
 import { computeStats } from './lib/stats'
 import {
   normalizeDifficulty,
@@ -31,7 +31,7 @@ export default function App() {
   const [reveal, setReveal] = useState(null)
   const [contentOverride, setContentOverride] = useState(null)
   const [statsOpen, setStatsOpen] = useState(false)
-  const stats = computeStats(laws, loadHistory())
+  const stats = computeStats(laws, loadHistory(), loadSeasonsCompleted())
   const bestStreak = loadBestStreak()
 
   // Progressive enhancement: try to swap in a fresher, cron-generated

@@ -79,3 +79,15 @@ export function loadDifficulty() {
 export function saveDifficulty(difficulty) {
   write('difficulty', difficulty)
 }
+
+// ── Completed seasons (a season = one full shuffled rotation reshuffling —
+// see rotation.js's getDailyLawId) — incremented there, not derived from
+// answer counts, since a season advances on days the app was merely OPENED,
+// not just days actually answered. ─────────────────────────────────────────
+export function loadSeasonsCompleted() {
+  return read('seasonsCompleted', 0)
+}
+
+export function saveSeasonsCompleted(count) {
+  write('seasonsCompleted', count)
+}

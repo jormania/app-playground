@@ -615,6 +615,81 @@ export async function fetchAllReflections(
   return pages.map(parsePageToRecord).filter((r): r is ReflectionRecord => r !== null);
 }
 
+// Same backward walk as utils/streak.ts's calculateStreak, but also reports
+// the first day (going backward from today) it found missing — so the
+// caller can tell whether that gap is a CONFIRMED absence (already within
+// the contiguous, date-sorted range fetched so far) or merely "not yet
+// fetched", and only needs to keep paging in the latter case.
+function walkStreakFromToday(
+  days: Set<number>,
+  todayDayNumber: number
+): { streak: number; firstMissingDay: number | null } {
+  let currentDay = todayDayNumber;
+  if (!days.has(currentDay)) {
+    const yesterday = currentDay - 1;
+    if (!days.has(yesterday)) return { streak: 0, firstMissingDay: null };
+    currentDay = yesterday;
+  }
+  let streak = 0;
+  while (days.has(currentDay)) {
+    streak++;
+    currentDay -= 1;
+  }
+  return { streak, firstMissingDay: currentDay };
+}
+
+// fetchRecentReflections caps at one page (~100 records) for speed — fine
+// for most reads, but a streak longer than that would be silently
+// undercounted (the streak walk hits the edge of the fetched window before
+// it hits a real gap). This instead pages only as far as it actually needs
+// to: it stops the moment the streak's first missing day is confirmed
+// absent within what's been fetched (see walkStreakFromToday), which is
+// almost always still just the first page — it only pages further when a
+// genuinely long unbroken streak requires it. MAX_PAGES is a defensive cap,
+// not an expected ceiling (a real streak that long, ~5000 days, won't occur).
+const STREAK_MAX_PAGES = 50;
+export async function fetchReflectionsForStreak(
+  token: string,
+  databaseId: string,
+  todayVal: number,
+  fetchImpl: typeof fetch = fetch
+): Promise<{ records: ReflectionRecord[]; streak: number }> {
+  const id = normalizeNotionId(databaseId);
+  if (!id) throw new Error('Invalid Notion database link or ID.');
+
+  const allRecords: ReflectionRecord[] = [];
+  const days = new Set<number>();
+  let oldestQuoteIdFetched = Infinity;
+  let cursor: string | undefined;
+  let pagesFetched = 0;
+
+  do {
+    const body: Record<string, unknown> = {
+      sorts: [{ property: 'Date', direction: 'descending' }],
+      page_size: 100,
+    };
+    if (cursor) body.start_cursor = cursor;
+
+    const data: any = await callRelay(token, `databases/${id}/query`, 'POST', body, fetchImpl);
+    const pageRecords = (data?.results || [])
+      .map(parsePageToRecord)
+      .filter((r: ReflectionRecord | null): r is ReflectionRecord => r !== null);
+    for (const r of pageRecords) {
+      allRecords.push(r);
+      days.add(r.quoteId);
+      if (r.quoteId < oldestQuoteIdFetched) oldestQuoteIdFetched = r.quoteId;
+    }
+    pagesFetched++;
+    cursor = data?.has_more ? data?.next_cursor ?? undefined : undefined;
+
+    const { streak, firstMissingDay } = walkStreakFromToday(days, todayVal);
+    const closed = firstMissingDay === null || firstMissingDay >= oldestQuoteIdFetched;
+    if (closed || !cursor) return { records: allRecords, streak };
+  } while (pagesFetched < STREAK_MAX_PAGES);
+
+  return { records: allRecords, streak: walkStreakFromToday(days, todayVal).streak };
+}
+
 export async function clearDatabaseEntries(
   token: string,
   databaseId: string,

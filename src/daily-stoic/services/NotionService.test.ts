@@ -8,6 +8,7 @@ import {
   upsertReflection,
   fetchRecentReflections,
   fetchAllReflections,
+  fetchReflectionsForStreak,
   clearDatabaseEntries
 } from './NotionService';
 
@@ -426,6 +427,77 @@ describe('NotionService', () => {
 
       expect(fetchImpl).toHaveBeenCalledTimes(1);
       expect(res).toHaveLength(1);
+    });
+  });
+
+  describe('fetchReflectionsForStreak', () => {
+    const page = (quoteId: number) => ({
+      id: `page-${quoteId}`,
+      created_time: '2026-07-12T10:00:00Z',
+      properties: {
+        Date: { date: { start: '2026-07-12' } },
+        QuoteID: { number: quoteId },
+        Reflection: { rich_text: [] },
+      },
+    });
+
+    it('computes the streak from a single page when the gap is found within it', async () => {
+      const fetchImpl = vi.fn(async () =>
+        jsonResponse({ results: [page(100), page(99), page(98)], has_more: false })
+      );
+
+      const res = await fetchReflectionsForStreak('mock-token', '41c42bc4dfb543f49051810b3c5880fe', 100, fetchImpl);
+
+      expect(res.streak).toBe(3);
+      expect(res.records).toHaveLength(3);
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops paging as soon as the gap is confirmed, even if more pages remain', async () => {
+      // today=100, yesterday=99 found, then a real gap at 98 — but the same
+      // page also happens to carry an older, disconnected cluster (50, 49)
+      // that pushes the fetched range's oldest edge well past 98, so the
+      // gap is confirmed without needing the (available) next page at all.
+      const fetchImpl = vi.fn(async () =>
+        jsonResponse({ results: [page(100), page(99), page(50), page(49)], has_more: true, next_cursor: 'cursor-a' })
+      );
+
+      const res = await fetchReflectionsForStreak('mock-token', '41c42bc4dfb543f49051810b3c5880fe', 100, fetchImpl);
+
+      expect(res.streak).toBe(2);
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    });
+
+    it('pages further when a long unbroken streak reaches the edge of what has been fetched', async () => {
+      // Page 1: an unbroken run from today (100) down to 51 — the gap hasn't
+      // been found yet, so it must keep paging to be sure.
+      const page1 = Array.from({ length: 50 }, (_, i) => page(100 - i)) // 100..51
+      // Page 2: continues unbroken from 50 down to 26, then a real gap at 25.
+      const page2 = Array.from({ length: 25 }, (_, i) => page(50 - i)) // 50..26
+
+      let call = 0
+      const fetchImpl = vi.fn(async () => {
+        call++
+        if (call === 1) return jsonResponse({ results: page1, has_more: true, next_cursor: 'cursor-a' })
+        if (call === 2) return jsonResponse({ results: page2, has_more: false })
+        throw new Error('should not fetch a third page')
+      })
+
+      const res = await fetchReflectionsForStreak('mock-token', '41c42bc4dfb543f49051810b3c5880fe', 100, fetchImpl)
+
+      expect(res.streak).toBe(75) // 100 down to 26, inclusive
+      expect(fetchImpl).toHaveBeenCalledTimes(2)
+    })
+
+    it('returns a streak of 0 without paging when neither today nor yesterday is recorded', async () => {
+      const fetchImpl = vi.fn(async () =>
+        jsonResponse({ results: [page(50), page(49)], has_more: true, next_cursor: 'cursor-a' })
+      );
+
+      const res = await fetchReflectionsForStreak('mock-token', '41c42bc4dfb543f49051810b3c5880fe', 100, fetchImpl);
+
+      expect(res.streak).toBe(0);
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
     });
   });
 

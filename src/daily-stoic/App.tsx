@@ -18,7 +18,7 @@ import PauseDrill from './components/PauseDrill';
 import Ornament from './components/Ornament';
 import { getQuoteForDay, getLocalTodayStr, getCycleDay, cycleDayToDateStr, getCycleInfo, mostRecentMonday } from './utils/date';
 import { calculateStreak } from './utils/streak';
-import { fetchRecentReflections, fetchAllReflections, fetchDatabaseProperties, validateSchema, upgradeDatabaseSchema, getMissingOptionalColumns, upsertReflection, clearDatabaseEntries, ReflectionRecord } from './services/NotionService';
+import { fetchReflectionsForStreak, fetchAllReflections, fetchDatabaseProperties, validateSchema, upgradeDatabaseSchema, getMissingOptionalColumns, upsertReflection, clearDatabaseEntries, ReflectionRecord } from './services/NotionService';
 import { computeCycleRetrospective, extractWorriesFromReflections, Worry } from './utils/retrospective';
 import { createIdbKv } from '../shared/notify/idbKv';
 import { triggerHaptic } from '../shared/haptics';
@@ -49,7 +49,37 @@ const FULL_HISTORY_ROUTES = ['/digest', '/stats', '/passions', '/amorfati', '/di
 
 export default function App() {
   const [cycleStartDate, setCycleStartDate] = useState(() => localStorage.getItem('daily-stoic:cycle-start-date') || '');
-  const today = useMemo(() => getCycleDay(cycleStartDate), [cycleStartDate]);
+
+  // The calendar date driving `today` below. A plain `new Date()` read once at
+  // mount would freeze the app on whatever day it happened to be opened —
+  // installed as a PWA and left running (or backgrounded) across midnight, it
+  // would keep showing yesterday's quote and writing into yesterday's
+  // day-slot until force-closed. Refreshed on refocus/visibility (the common
+  // "came back to the app" case) and via a precise timeout at the next local
+  // midnight (the "left it open and focused straight through midnight" case).
+  const [todayDate, setTodayDate] = useState(() => new Date());
+  const refreshTodayDate = useCallback(() => {
+    setTodayDate((prev) => (getLocalTodayStr(new Date()) === getLocalTodayStr(prev) ? prev : new Date()));
+  }, []);
+  useEffect(() => {
+    function onVisibility() {
+      if (document.visibilityState === 'visible') refreshTodayDate();
+    }
+    window.addEventListener('focus', refreshTodayDate);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', refreshTodayDate);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [refreshTodayDate]);
+  useEffect(() => {
+    const now = new Date();
+    const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+    const id = setTimeout(refreshTodayDate, nextMidnight.getTime() - now.getTime());
+    return () => clearTimeout(id);
+  }, [todayDate, refreshTodayDate]);
+
+  const today = useMemo(() => getCycleDay(cycleStartDate, todayDate), [cycleStartDate, todayDate]);
   const dayOfYear = today;
   const cycleInfo = useMemo(() => getCycleInfo(today), [today]);
 
@@ -243,12 +273,10 @@ export default function App() {
           }
         }
         if (errors.length === 0) {
-          const records = await fetchRecentReflections(token, databaseId);
+          const { records, streak: currentStreak } = await fetchReflectionsForStreak(token, databaseId, todayVal);
           setRecentReflections(records);
-          const days = new Set(records.map((r) => r.quoteId));
-          const currentStreak = calculateStreak(days, todayVal);
           setStreak(currentStreak);
-          const todayLogged = days.has(todayVal);
+          const todayLogged = records.some((r) => r.quoteId === todayVal);
           await updateReminderIDB(todayLogged);
         } else {
           await loadLocalStorageStreak(todayVal);
@@ -286,14 +314,11 @@ export default function App() {
         }
 
         if (errors.length === 0) {
-          const records = await fetchRecentReflections(token, databaseId);
+          const { records, streak: currentStreak } = await fetchReflectionsForStreak(token, databaseId, todayVal);
           setRecentReflections(records);
-
-          const days = new Set(records.map((r) => r.quoteId));
-          const currentStreak = calculateStreak(days, todayVal);
           setStreak(currentStreak);
 
-          const todayLogged = days.has(todayVal);
+          const todayLogged = records.some((r) => r.quoteId === todayVal);
           await updateReminderIDB(todayLogged);
         } else {
           await loadLocalStorageStreak(todayVal);
@@ -471,18 +496,22 @@ export default function App() {
     triggerHaptic('success');
   };
 
-  // Load streak, credentials, and validate schema on route changes
+  // Load streak, credentials, and validate schema on route changes — and
+  // again whenever the day itself rolls over (todayDate), so the streak and
+  // schema state are recomputed against the new day rather than lingering
+  // from whichever day the app was last actually loaded on.
   useEffect(() => {
     loadCredentials();
     loadReflectionsAndCheckStreak();
-  }, [route, loadReflectionsAndCheckStreak]);
+  }, [route, todayDate, loadReflectionsAndCheckStreak]);
 
   // Every dashboard (Digest, Stats, Amor Fati, Passions & Judgments, Spheres
   // of Choice) needs the FULL Notion history, not the ~100-record window the
-  // main wizard uses (fetchRecentReflections caps at one page) — otherwise a
-  // "Year" or "All" filter would silently under-report for anyone with more
-  // than ~100 logged days. Fetch it lazily only when one of those routes is
-  // actually opened. Deliberately does NOT depend on recentReflections —
+  // main wizard fetches by default (fetchReflectionsForStreak only pages
+  // past that when a long unbroken streak actually requires it) — a "Year"
+  // or "All" filter would otherwise silently under-report. Fetch it lazily
+  // only when one of those routes is actually opened. Deliberately does NOT
+  // depend on recentReflections —
   // that value gets set a moment later by the route-change effect above, and
   // depending on it here would re-fire this fetch a second time right after
   // the first one finishes (the "double load" this is guarding against).

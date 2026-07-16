@@ -63,21 +63,36 @@ function mapRow(page) {
   }
 }
 
-// One Notion query helper — POSTs a filter, returns mapped rows (or throws with a message).
+// One Notion query helper — POSTs a filter, follows has_more/next_cursor until the whole
+// match set is retrieved (a single page_size:100 request was silently truncating the
+// weekly stale-ideas nudge once the someday-pile grew past 100), returns mapped rows (or
+// throws with a message). MAX_PAGES is a defensive cap, not an expected ceiling — a
+// personal backlog database won't realistically hit it.
+const MAX_PAGES = 20
 async function queryNotion(dbId, token, filter) {
-  const nres = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Notion-Version': NOTION_VERSION, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ page_size: 100, filter }),
-  })
-  if (!nres.ok) {
-    const text = await nres.text()
-    const err = new Error(`Notion query failed (${nres.status})`)
-    err.detail = text.slice(0, 300)
-    throw err
-  }
-  const data = await nres.json()
-  return (data.results || []).map(mapRow)
+  const results = []
+  let cursor
+  let pagesFetched = 0
+  do {
+    const body = { page_size: 100, filter }
+    if (cursor) body.start_cursor = cursor
+    const nres = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Notion-Version': NOTION_VERSION, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!nres.ok) {
+      const text = await nres.text()
+      const err = new Error(`Notion query failed (${nres.status})`)
+      err.detail = text.slice(0, 300)
+      throw err
+    }
+    const data = await nres.json()
+    results.push(...(data.results || []))
+    pagesFetched++
+    cursor = data.has_more ? data.next_cursor ?? undefined : undefined
+  } while (cursor && pagesFetched < MAX_PAGES)
+  return results.map(mapRow)
 }
 
 export default async function handler(req, res) {

@@ -28,7 +28,7 @@ describe('computeStats', () => {
     expect(stats.lawsSeen).toBe(1)
     expect(stats.totalLaws).toBe(3)
     expect(stats.totalAnswers).toBe(4)
-    expect(stats.seasonsCompleted).toBe(1)
+    expect(stats.seasonsCompleted).toBe(0)
     expect(stats.correctCount).toBe(3)
     expect(stats.incorrectCount).toBe(1)
     expect(stats.accuracyPercent).toBe(75)
@@ -63,15 +63,21 @@ describe('computeStats', () => {
     expect(stats.correctCount).toBe(0)
   })
 
-  it('counts completed seasons as full cycles through every law', () => {
-    // 3 laws, 7 total answers -> 2 completed cycles (6) plus 1 into the 3rd.
+  it('passes seasonsCompleted through as given, independent of answer count', () => {
+    // seasonsCompleted is tracked in rotation.js (a real rotation reshuffle),
+    // not derived here — a season advances on days the app was merely
+    // opened, not just days actually answered, so it can't be reconstructed
+    // from totalAnswers alone. computeStats just carries the number through.
     const history = {
       1: { correctCount: 3, incorrectCount: 0, lastAnsweredCorrect: true, lastAnsweredDate: '2026-07-01' },
-      2: { correctCount: 2, incorrectCount: 1, lastAnsweredCorrect: false, lastAnsweredDate: '2026-07-02' },
-      3: { correctCount: 1, incorrectCount: 0, lastAnsweredCorrect: true, lastAnsweredDate: '2026-07-03' },
     }
-    const stats = computeStats(laws, history)
-    expect(stats.totalAnswers).toBe(7)
-    expect(stats.seasonsCompleted).toBe(2)
+    const stats = computeStats(laws, history, 5)
+    expect(stats.totalAnswers).toBe(3)
+    expect(stats.seasonsCompleted).toBe(5)
+  })
+
+  it('defaults seasonsCompleted to 0 when not provided', () => {
+    const stats = computeStats(laws, {})
+    expect(stats.seasonsCompleted).toBe(0)
   })
 })

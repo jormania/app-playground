@@ -11,6 +11,8 @@ import {
   saveBestStreak,
   loadHistory,
   saveHistory,
+  loadSeasonsCompleted,
+  saveSeasonsCompleted,
 } from './storage'
 
 // Local YYYY-MM-DD for a Date (NOT toISOString, which is UTC and shifts the
@@ -77,10 +79,16 @@ export function getDailyLawId(laws, now = new Date()) {
   }
 
   const nextPosition = season.position + 1
-  season =
-    nextPosition < season.order.length
-      ? { order: season.order, position: nextPosition }
-      : startNewSeason(lawIds)
+  if (nextPosition < season.order.length) {
+    season = { order: season.order, position: nextPosition }
+  } else {
+    // The rotation just cycled through every law and is reshuffling — a real
+    // completed season, tracked here (not derived from answer counts: a
+    // season advances on days the app was merely opened, not just days
+    // actually answered, so "totalAnswers / 48" can under-count).
+    saveSeasonsCompleted(loadSeasonsCompleted() + 1)
+    season = startNewSeason(lawIds)
+  }
   saveSeason(season)
   saveLastShownDate(today)
   return season.order[season.position]

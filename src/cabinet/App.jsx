@@ -10,10 +10,12 @@ import { AppTile } from './components/AppTile'
 import { IconReorder } from './components/icons'
 import styles from './App.module.css'
 
-// The Cabinet lists every app that has a `kind` — the six Vite+React PWAs
+// The Cabinet lists every app that has a `kind` — the Vite+React PWAs
 // (kind: "react-vite") plus the hand-authored legacy HTML apps
 // (kind: "static"), always, with no toggle to hide either group. Entries
 // with no `kind` at all (e.g. ds-showcase.html) aren't Cabinet apps.
+// (Deliberately not naming a count here — it goes stale the moment an app
+// ships; REACT_VITE_APPS.length below is always the live number.)
 const REACT_VITE_APPS = APPS.filter((app) => app.kind === 'react-vite')
 const CABINET_APPS = APPS.filter((app) => app.kind === 'react-vite' || app.kind === 'static')
 
