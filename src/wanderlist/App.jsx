@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import './wanderlist.css'
 import { getClient, isLive, loadPreset, savePreset, applyPreset, nextPreset, presetById, modeOf, THEME_KEY, loadViewPrefs, saveViewPrefs } from './store.js'
 import { todayKey } from './dates.js'
-import { triage, filterByStatus, filterBySearch } from './search.js'
+import { triage, filterByStatus, filterByFlags, filterBySearch } from './search.js'
 import MenuBar from './MenuBar.jsx'
 import ListView from './ListView.jsx'
 import CalendarView from './CalendarView.jsx'
@@ -12,11 +12,12 @@ import SettingsModal from './SettingsModal.jsx'
 import StatsModal from './StatsModal.jsx'
 import MapModal from './MapModal.jsx'
 
-// The list's empty state, tailored to *why* it's empty — a search with no hits, a To-do
-// filter with nothing left to do, or an Attended filter with nothing checked off yet. When
-// there are no entries at all, undefined falls through to ListView's own first-run copy.
-function emptyMessage(searching, status, totalCount) {
-  if (searching) return 'Nothing matches that search.'
+// The list's empty state, tailored to *why* it's empty — a search or flag with no hits, a
+// Backlog filter with nothing left to do, or an Attended filter with nothing checked off
+// yet. When there are no entries at all, undefined falls through to ListView's own
+// first-run copy.
+function emptyMessage(filtering, status, totalCount) {
+  if (filtering) return 'Nothing matches these filters.'
   if (totalCount === 0) return undefined
   if (status === 'todo') return 'Your backlog is clear — everything’s marked attended.'
   if (status === 'ideas') return 'No loose ideas right now — everything has a date or is done.'
@@ -45,6 +46,8 @@ export default function App() {
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState('all')
   const [sort, setSort] = useState(initialViewPrefs.sort)
+  const [goingOnly, setGoingOnly] = useState(initialViewPrefs.goingOnly)
+  const [ticketsOnly, setTicketsOnly] = useState(initialViewPrefs.ticketsOnly)
   const [preset, setPresetState] = useState(loadPreset())
 
   const today = todayKey()
@@ -52,8 +55,8 @@ export default function App() {
   // Apply <html data-theme> + mobile bar colour and persist whenever the preset changes.
   useEffect(() => { applyPreset(preset); savePreset(preset) }, [preset])
 
-  // Remember the last view/status/sort so a reload opens back up where you left it.
-  useEffect(() => { saveViewPrefs({ view, status, sort }) }, [view, status, sort])
+  // Remember the last view/status/flags/sort so a reload opens back up where you left it.
+  useEffect(() => { saveViewPrefs({ view, status, sort, goingOnly, ticketsOnly }) }, [view, status, sort, goingOnly, ticketsOnly])
 
   // Live-sync the palette with the guide (and other tabs) via the shared theme key.
   useEffect(() => {
@@ -110,28 +113,31 @@ export default function App() {
   }, [load])
 
   const filtered = useMemo(
-    () => triage(entries, { status, query, scope, sort, today }),
-    [entries, status, query, scope, sort, today]
+    () => triage(entries, { status, query, scope, sort, today, goingOnly, ticketsOnly }),
+    [entries, status, query, scope, sort, today, goingOnly, ticketsOnly]
   )
-  // Calendar uses the same status + search filter (so markers respect To-do/Attended and
-  // any search), but not the list sort — the grid places entries by their dates.
+  // Calendar uses the same status + flags + search filter (so markers respect
+  // Backlog/Attended, Going-only/Has-tickets, and any search), but not the list sort — the
+  // grid places entries by their dates.
   const calendarEntries = useMemo(
-    () => filterBySearch(filterByStatus(entries, status), query, scope),
-    [entries, status, query, scope]
+    () => filterBySearch(filterByFlags(filterByStatus(entries, status), { goingOnly, ticketsOnly }), query, scope),
+    [entries, status, query, scope, goingOnly, ticketsOnly]
   )
-  const searching = query.trim().length > 0
+  const filtering = query.trim().length > 0 || goingOnly || ticketsOnly
 
   function openAdd() {
     setSaveError('')
     setFocus({ kind: 'edit', initial: {} })
   }
 
-  // Tapping a chip filters by it across the whole list (status → all so nothing is hidden;
-  // returns to the list so the results are visible).
+  // Tapping a chip filters by it across the whole list (status → all and both flags off so
+  // nothing is hidden; returns to the list so the results are visible).
   function filterByChip(chipScope, value) {
     setScope(chipScope)
     setQuery(value)
     setStatus('all')
+    setGoingOnly(false)
+    setTicketsOnly(false)
     setView('list')
     setFocus(null)
   }
@@ -141,7 +147,16 @@ export default function App() {
     setSaveError('')
     try {
       const client = getClient()
+      const wasNew = !entry.id
       let saved = entry.id ? await client.updateEntry(entry.id, entry) : await client.createEntry(entry)
+      // A brand-new entry now has a real (or queued-offline) id. Retarget the still-open
+      // editor at it immediately — before the photo/ticket steps below, which can still
+      // throw. Without this, a failure there leaves the editor's `initial.id` at null, so
+      // pressing Save again re-submits as a create and duplicates the entry instead of
+      // patching the one that already exists.
+      if (wasNew && saved.id) {
+        setFocus(f => (f?.kind === 'edit' ? { kind: 'edit', initial: { ...f.initial, id: saved.id } } : f))
+      }
       // Photo/ticket actions need a real page id, and Notion itself — skip if the base save
       // just got queued offline (saved.pending); nothing to attach to yet.
       if (photoAction && !saved.pending) {
@@ -209,6 +224,10 @@ export default function App() {
         onScope={setScope}
         sort={sort}
         onSort={setSort}
+        goingOnly={goingOnly}
+        onGoingOnly={setGoingOnly}
+        ticketsOnly={ticketsOnly}
+        onTicketsOnly={setTicketsOnly}
         view={view}
         onView={(v) => { setFocus(null); setView(v) }}
         onAdd={openAdd}
@@ -276,7 +295,7 @@ export default function App() {
               onToggleGoing={toggleGoing}
               today={today}
               sort={sort}
-              emptyMessage={emptyMessage(searching, status, entries.length)}
+              emptyMessage={emptyMessage(filtering, status, entries.length)}
             />
           )}
         </div>

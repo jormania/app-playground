@@ -283,14 +283,21 @@ button { font-family: inherit; cursor: pointer; }
 .menubar-inner.searching .btn-today,
 .menubar-inner.searching .actions-overflow { display: none; }
 
-/* Status filter as a dropdown pill (To-do / Attended / All). */
+/* Filter: a dropdown pill showing the Backlog/Ideas/Attended/All segment, plus the two
+   independent Going-only/Has-tickets toggles beneath a divider in the same popover. */
 .pill-btn {
   display: inline-flex; align-items: center; gap: 8px;
   background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
   color: var(--ink); padding: 7px 13px; font-size: 0.78rem; white-space: nowrap;
+  max-width: 40vw; overflow: hidden; text-overflow: ellipsis;
 }
+.pill-btn span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (hover: hover) { .pill-btn:hover { border-color: var(--border2); } }
-.pill-btn .caret { width: 0; height: 0; border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; border-top: 4px solid var(--faint); }
+.pill-btn .caret { width: 0; height: 0; flex: none; border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; border-top: 4px solid var(--faint); }
+/* A flag being on top of the status segment gets its own accent colour on the caret, so a
+   glance at the closed pill hints "there's more narrowing it down than just the label". */
+.pill-btn.has-flags .caret { border-top-color: var(--blue); }
+.menu-divider { height: 1px; margin: 4px 6px; background: var(--border); flex: none; }
 .more-menu.left { right: auto; left: 0; }
 .more-menu button.active, .more-menu a.active { color: var(--ink); background: var(--surface); }
 .more-scrim { position: fixed; inset: 0; z-index: 60; }

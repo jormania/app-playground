@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'vitest'
-import { filterBySearch, filterByStatus, sortEntries, triage, isIdea } from './search.js'
+import { filterBySearch, filterByStatus, filterByFlags, sortEntries, triage, isIdea } from './search.js'
 
 const items = [
   { id: 'a', name: 'Jazz in the garden', description: 'free sunday sessions', category: 'Event', place: 'Grădina Uranus', tags: ['free', 'outdoor'], attended: false, dateAdded: '2026-06-30', dateExpiring: null },
@@ -80,7 +80,7 @@ describe('sortEntries', () => {
   })
 })
 
-describe('sortEntries — planned (Going, then Planned)', () => {
+describe('sortEntries — planned vs. going (split, single-purpose sorts)', () => {
   const today = '2026-07-08'
   const set = [
     { id: 'going-far', name: 'Going far out', attended: false, going: true, dateAdded: '2026-06-01', plannedDate: '2026-08-01' },
@@ -91,15 +91,48 @@ describe('sortEntries — planned (Going, then Planned)', () => {
     { id: 'past', name: 'Planned date passed', attended: false, going: false, dateAdded: '2026-06-01', plannedDate: '2026-07-01' },
     { id: 'attended', name: 'Attended, was planned', attended: true, going: true, dateAdded: '2026-06-01', plannedDate: '2026-07-20' },
   ]
-  test('every Going entry ranks before every undecided Planned entry, each soonest-first; undated/attended sit in the middle; past-planned sinks to the bottom', () => {
+  test('planned first: pure chronological order, Going status doesn\'t matter (undecided-near sorts ahead of going-near since 07-09 is sooner than 07-10)', () => {
     expect(sortEntries(set, 'planned', today).map(e => e.id))
+      .toEqual(['undecided-near', 'going-near', 'going-far', 'undecided-far', 'attended', 'none', 'past'])
+  })
+  test('going first: every Going entry ranks before every undecided entry, each soonest-first; undated/attended sit in the middle; past-planned sinks to the bottom', () => {
+    expect(sortEntries(set, 'going', today).map(e => e.id))
       .toEqual(['going-near', 'going-far', 'undecided-near', 'undecided-far', 'attended', 'none', 'past'])
   })
 })
 
+describe('filterByFlags', () => {
+  const set = [
+    { id: 'both', going: true, tickets: [{ url: 'a' }] },
+    { id: 'going-only', going: true, tickets: [] },
+    { id: 'tickets-only', going: false, tickets: [{ url: 'b' }] },
+    { id: 'neither', going: false, tickets: [] },
+  ]
+  test('both flags off is a no-op', () => {
+    expect(filterByFlags(set, {}).map(e => e.id)).toEqual(['both', 'going-only', 'tickets-only', 'neither'])
+  })
+  test('goingOnly keeps only going:true', () => {
+    expect(filterByFlags(set, { goingOnly: true }).map(e => e.id)).toEqual(['both', 'going-only'])
+  })
+  test('ticketsOnly keeps only entries with at least one ticket file', () => {
+    expect(filterByFlags(set, { ticketsOnly: true }).map(e => e.id)).toEqual(['both', 'tickets-only'])
+  })
+  test('both flags AND together', () => {
+    expect(filterByFlags(set, { goingOnly: true, ticketsOnly: true }).map(e => e.id)).toEqual(['both'])
+  })
+})
+
 describe('triage pipeline', () => {
-  test('status → search → sort in one call', () => {
+  test('status → flags → search → sort in one call', () => {
     const out = triage(items, { status: 'todo', query: 'outdoor', scope: 'tags', sort: 'expiring', today: '2026-07-08' })
     expect(out.map(e => e.id)).toEqual(['c', 'a']) // c has a deadline, a doesn't
+  })
+  test('goingOnly/ticketsOnly narrow the status-filtered set before search and sort apply', () => {
+    const set = [
+      { id: 'keep', attended: false, going: true, tickets: [{ url: 'x' }], dateAdded: '2026-07-01', dateExpiring: null },
+      { id: 'not-going', attended: false, going: false, tickets: [{ url: 'x' }], dateAdded: '2026-07-01', dateExpiring: null },
+      { id: 'attended-going', attended: true, going: true, tickets: [{ url: 'x' }], dateAdded: '2026-07-01', dateExpiring: null },
+    ]
+    expect(triage(set, { status: 'todo', goingOnly: true, ticketsOnly: true }).map(e => e.id)).toEqual(['keep'])
   })
 })

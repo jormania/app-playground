@@ -40,8 +40,12 @@ export default function ListView({ entries, total, onOpen, onChip, onToggleAtten
     <div className="list">
       <div className="list-count">{countText}</div>
       {entries.map((e, i) => {
-        const sunk = sort === 'expiring' && isPastExpired(e, today)
-        const divider = sunk && !(i > 0 && sort === 'expiring' && isPastExpired(entries[i - 1], today))
+        // The "past" tier: Expiring sort sinks unattended items whose deadline has passed;
+        // Planned/Going sort sinks unattended items whose Planned Date has slipped by —
+        // same bottom-tier idea, keyed off whichever date that sort orders by.
+        const isPast = sort === 'expiring' ? isPastExpired : (sort === 'planned' || sort === 'going') ? isPlannedPast : null
+        const sunk = Boolean(isPast && isPast(e, today))
+        const divider = sunk && !(i > 0 && isPast(entries[i - 1], today))
         return (
         <div key={e.id}>
           {divider && <div className="past-divider"><span>past</span></div>}

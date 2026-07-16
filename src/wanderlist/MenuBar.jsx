@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { ListIcon, CalendarIcon, GuideIcon, GearIcon, PlusIcon, MoreIcon, CloseIcon, SearchIcon, SortIcon, StatsIcon, MapIcon, SunIcon, MoonIcon, CheckIcon } from './icons.jsx'
-import { SCOPES, STATUSES, SORTS } from './search.js'
+import { SCOPES, STATUSES, FLAGS, SORTS } from './search.js'
 
 const GUIDE_URL = '/wanderlist-guide.html'
 const VIEWS = [
@@ -29,12 +29,18 @@ function usePopover() {
   return { open, setOpen, triggerRef, menuRef }
 }
 
-// One bar, same on every width. Two packed groups: the view switcher, Search, the To-do
-// filter and Sort all sit left-aligned in a fixed order; Add and ⋯ push to the far right
+// One bar, same on every width. Two packed groups: the view switcher, Search, the Filter
+// pill and Sort all sit left-aligned in a fixed order; Add and ⋯ push to the far right
 // (via .btn-today's margin-left: auto), with the secondary actions (theme, guide, settings)
 // tucked under the ⋯ menu. Search is a focused mode: while the field is open it takes the
 // whole row (closes only via its own ✕), everything else hides, and the field grows to fill.
-export default function MenuBar({ status, onStatus, query, scope, onQuery, onScope, sort, onSort, view, onView, onAdd, onMap, onStats, onSettings, themeMode, themeName, onCycleTheme }) {
+// Filter and Sort are two different tools, not one — Filter narrows WHICH entries show
+// (Status segment plus the Going-only/Has-tickets toggles), Sort only reorders. Both are
+// single popovers, so adding options to either costs zero extra toolbar width regardless of
+// screen size — the earlier design questions ("is there room for a Going toggle", "should
+// Going/Planned be separate sorts") are resolved by putting everything into the two
+// popovers that already exist rather than adding new always-visible controls.
+export default function MenuBar({ status, onStatus, query, scope, onQuery, onScope, sort, onSort, goingOnly, onGoingOnly, ticketsOnly, onTicketsOnly, view, onView, onAdd, onMap, onStats, onSettings, themeMode, themeName, onCycleTheme }) {
   const more = usePopover()
   const statusPop = usePopover()
   const sortPop = usePopover()
@@ -44,6 +50,10 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
   const searchActive = searchOpen || query.trim().length > 0
   const currentStatus = STATUSES.find(s => s.value === status) || STATUSES[0]
   const currentSort = SORTS.find(s => s.value === sort) || SORTS[0]
+  const flagValues = { goingOnly, ticketsOnly }
+  const flagSetters = { goingOnly: onGoingOnly, ticketsOnly: onTicketsOnly }
+  const activeFlags = FLAGS.filter(f => flagValues[f.key])
+  const filterLabel = activeFlags.length ? `${currentStatus.label} — ${activeFlags.map(f => f.label).join(', ')}` : currentStatus.label
 
   useEffect(() => { if (searchActive) searchRef.current?.focus() }, [searchActive])
 
@@ -94,10 +104,14 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
             <button className="icon-btn" onClick={() => setSearchOpen(true)} aria-label="Search" title="Search"><SearchIcon /></button>
           )}
 
-          {/* Status filter (Backlog / Ideas / Attended / All) */}
+          {/* Filter: the Backlog/Ideas/Attended/All segment (mutually exclusive, picking
+              one closes the popover) plus two independent Going-only/Has-tickets toggles
+              below a divider (ANDed on top of the segment, don't close the popover so both
+              can be flipped before dismissing). The pill shows the segment name, with the
+              active toggles appended so the compound state stays visible at a glance. */}
           <div className="status-wrap">
-            <button ref={statusPop.triggerRef} className="pill-btn" onClick={() => statusPop.setOpen(o => !o)} aria-haspopup="menu" aria-expanded={statusPop.open} aria-label="Filter by status" title="Filter">
-              <span>{currentStatus.label}</span><span className="caret" />
+            <button ref={statusPop.triggerRef} className={`pill-btn${activeFlags.length ? ' has-flags' : ''}`} onClick={() => statusPop.setOpen(o => !o)} aria-haspopup="menu" aria-expanded={statusPop.open} aria-label={`Filter — ${filterLabel}`} title="Filter">
+              <span>{filterLabel}</span><span className="caret" />
             </button>
             {statusPop.open && (
               <>
@@ -106,6 +120,12 @@ export default function MenuBar({ status, onStatus, query, scope, onQuery, onSco
                   {STATUSES.map(s => (
                     <button key={s.value} role="menuitem" className={status === s.value ? 'active' : ''} onClick={() => { statusPop.setOpen(false); onStatus(s.value) }}>
                       {s.label}
+                    </button>
+                  ))}
+                  <div className="menu-divider" role="separator" />
+                  {FLAGS.map(f => (
+                    <button key={f.key} role="menuitem" aria-pressed={flagValues[f.key]} className={flagValues[f.key] ? 'active' : ''} onClick={() => flagSetters[f.key](!flagValues[f.key])}>
+                      {flagValues[f.key] ? <CheckIcon /> : <span style={{ width: '1em' }} />} {f.label}
                     </button>
                   ))}
                 </div>

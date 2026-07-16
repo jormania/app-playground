@@ -41,11 +41,11 @@ export function isLive() {
 }
 
 // ── View prefs ────────────────────────────────────────────────────────────────
-// Remembers the last view (List/Calendar), status filter (To-do/Attended/All), and sort
-// order across reloads — so the app opens back up where you left it, not reset to
-// defaults every time. Search text is deliberately not persisted (stale search on reload
-// would be more confusing than helpful).
-export const DEFAULT_VIEW_PREFS = { view: 'list', status: 'todo', sort: 'expiring' }
+// Remembers the last view (List/Calendar), status filter (Backlog/Ideas/Attended/All), the
+// two independent flags (Going only, Has tickets), and sort order across reloads — so the
+// app opens back up where you left it, not reset to defaults every time. Search text is
+// deliberately not persisted (stale search on reload would be more confusing than helpful).
+export const DEFAULT_VIEW_PREFS = { view: 'list', status: 'todo', sort: 'expiring', goingOnly: false, ticketsOnly: false }
 export function loadViewPrefs() {
   try {
     const raw = localStorage.getItem(VIEW_PREFS_KEY)
