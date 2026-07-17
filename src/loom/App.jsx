@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useLoom } from './lib/useLoom.js'
+import { useTheme } from './lib/themeContext.jsx'
 import { loadViewPrefs, saveViewPrefs } from './lib/store.js'
 import { weekDays, startOfWeek, addDays, dateKey, orderForMove, threadStats } from './lib/model.js'
 import SkeinView from './components/SkeinView.jsx'
@@ -20,6 +21,7 @@ function weekLabel(anchor) {
 
 export default function App() {
   const loom = useLoom()
+  const theme = useTheme()
   const [prefs, setPrefs] = useState(loadViewPrefs)
   const [anchor, setAnchor] = useState(() => new Date())
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -55,6 +57,22 @@ export default function App() {
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
+        <div className={styles.controls}>
+          <button
+            type="button"
+            className={styles.iconBtn}
+            onClick={theme.cycle}
+            aria-label={`Switch theme (now ${theme.preset.name})`}
+            title={`Theme: ${theme.preset.name}`}
+          >◐</button>
+          <button
+            type="button"
+            className={styles.iconBtn}
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Settings"
+            title="Settings"
+          >⚙</button>
+        </div>
         <div className={styles.rule} aria-hidden="true"><span>✦</span></div>
         <h1 className={styles.wordmark}>Loom</h1>
         <p className={styles.tagline}>weave your week, thread by thread</p>

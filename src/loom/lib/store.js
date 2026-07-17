@@ -9,6 +9,12 @@ const TOKEN_KEY = 'loom_token'
 const DB_KEY = 'loom_database'
 const VIEW_KEY = 'loom_view_prefs'
 
+// The app's built-in default database — the owner's live "Loom" database (see
+// the App Databases Notion page). Used out of the box once a token is set, so a
+// user only needs to paste a token; any user overrides it in Settings with their
+// own copy of the Starter Template. This is a data-source id, not a secret.
+export const DEFAULT_DATABASE_ID = '11a0e2d61c8f49c4b92b91fc45add2f5'
+
 export function getToken() {
   try { return localStorage.getItem(TOKEN_KEY) || '' } catch { return '' }
 }
@@ -19,8 +25,12 @@ export function clearToken() {
   try { localStorage.removeItem(TOKEN_KEY) } catch { /* ignore */ }
 }
 
+// The configured database id, defaulting to the built-in one when unset.
 export function getDatabaseId() {
-  try { return localStorage.getItem(DB_KEY) || '' } catch { return '' }
+  try { return localStorage.getItem(DB_KEY) || DEFAULT_DATABASE_ID } catch { return DEFAULT_DATABASE_ID }
+}
+export function hasCustomDatabase() {
+  try { return Boolean(localStorage.getItem(DB_KEY)) } catch { return false }
 }
 export function setDatabaseId(raw) {
   const id = parseNotionId(raw)
@@ -31,10 +41,10 @@ export function setDatabaseId(raw) {
   return id
 }
 
-// Live only when BOTH a token and a database id are set — a token alone has
-// nowhere to read from, so we fall back to the demo store rather than erroring.
+// A saved token means live Notion — the database id defaults to the built-in one
+// when the user hasn't set their own. No token means the demo store.
 export function isLive() {
-  return Boolean(getToken() && getDatabaseId())
+  return Boolean(getToken())
 }
 
 // ── View prefs ──────────────────────────────────────────────────────────────
@@ -55,11 +65,13 @@ export function saveViewPrefs(prefs) {
 // Settings → "Test connection": build a live client from the typed-but-unsaved
 // values and do a cheap reachability check.
 export async function testConnection(token, dbRaw) {
-  const databaseId = parseNotionId(dbRaw)
-  if (!databaseId) throw new Error('That doesn’t look like a Notion database link or id.')
+  const databaseId = parseNotionId(dbRaw) || DEFAULT_DATABASE_ID
   const client = createNotionClient((token || '').trim(), { databaseId })
   return client.probe()
 }
+
+// Re-export the theme surface so the app and Settings import palettes from one place.
+export { PRESETS, presetById, loadThemePref, saveThemePref, nextTheme, applyTheme, THEME_KEY } from './theme.js'
 
 // Build the active client fresh on demand, so just-saved settings take effect
 // without a reload.

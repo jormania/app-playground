@@ -44,8 +44,9 @@ export const APPS = [
       "Drag to reorder within a day or skein, or nudge with the arrow keys; move a thread along the warp to another day inline",
       "A distaff backlog of unspun threads to pull onto the week when you're ready",
       "Notion-backed and keyless — your threads live in your own database (BYO token), with a full offline demo until you connect",
-      "One committed 'twilight loom' look — deep petrol-teal, Guild gold and parchment, Cinzel lettering; installs as a PWA",
+      "Two SCUMM-flavoured palettes — a dark 'Twilight' and a light 'Parchment', Cinzel lettering throughout; installs as a PWA",
     ],
+    guide: "loom-guide.html",
     file: "loom-react.html",
   },
   {

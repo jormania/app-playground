@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Loom — Guide</title>
+<meta name="description" content="What Loom is, how threads, skeins, the warp and the Ivy-Lee heatmap work, and how to back it with your own Notion database in a few minutes — including a one-click database template to duplicate." />
+<meta name="theme-color" content="#0b1f1f" />
+<script>
+  // Follow the app's theme (shared localStorage key), set before paint to avoid a flash.
+  try {
+    var id = localStorage.getItem('loom:theme');
+    document.documentElement.setAttribute('data-theme', id === 'parchment' ? 'light' : 'dark');
+  } catch (e) {}
+</script>
+<link rel="icon" type="image/svg+xml" href="/loom-logo.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=Alegreya:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* Twilight (dark) is the default. */
+    --bg: #0b1f1f;
+    --bg2: #071414;
+    --surface: #123230;
+    --surface2: #17403b;
+    --border: #285049;
+    --border2: #3c6f63;
+    --ink: #efe6cc;
+    --muted: #a7b6a2;
+    --faint: #6d8279;
+    --accent: #c9a44c;
+    --accent2: #e0bd67;
+    --ember: #d6452f;
+    --gold-line: color-mix(in srgb, var(--accent) 55%, transparent);
+    --maxw: 47rem;
+    --display: 'Cinzel', 'Trajan Pro', Georgia, serif;
+    --thread: 'Alegreya', Georgia, serif;
+    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  html[data-theme='light'] {
+    --bg: #e7d9b6;
+    --bg2: #dcca9f;
+    --surface: #f3ead0;
+    --surface2: #ece0bf;
+    --border: #ccb890;
+    --border2: #b39a68;
+    --ink: #2a2116;
+    --muted: #6a5a3e;
+    --faint: #927c58;
+    --accent: #8f6316;
+    --accent2: #a9761d;
+    --ember: #b23a22;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--thread);
+    font-size: 1.06rem;
+    line-height: 1.65;
+    color: var(--ink);
+    background-color: var(--bg);
+    background-image:
+      repeating-linear-gradient(90deg, color-mix(in srgb, var(--accent) 5%, transparent) 0 1px, transparent 1px 7px),
+      radial-gradient(120% 90% at 50% -10%, var(--surface) 0%, var(--bg) 55%, var(--bg2) 100%);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 2.5rem 1.25rem 5rem; }
+
+  .topbar { display: flex; justify-content: flex-end; margin-bottom: 0.5rem; }
+  .toggle {
+    width: 40px; height: 40px; border-radius: 999px;
+    border: 1px solid var(--border); background: color-mix(in srgb, var(--surface) 70%, transparent);
+    color: var(--muted); font-size: 1.2rem; cursor: pointer; line-height: 1;
+  }
+  .toggle:hover { color: var(--accent); border-color: var(--border2); }
+
+  header.brand { text-align: center; margin-bottom: 2.5rem; }
+  .rule { display: flex; align-items: center; gap: 0.75rem; color: var(--gold-line); }
+  .rule::before, .rule::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-line), transparent); }
+  .rule span { color: var(--accent); }
+  h1 {
+    font-family: var(--display); font-weight: 900;
+    font-size: clamp(2.6rem, 10vw, 3.8rem); letter-spacing: 0.22em; text-indent: 0.22em;
+    margin: 0.5rem 0 0; color: var(--accent);
+    text-shadow: 0 2px 0 rgba(0,0,0,0.35);
+  }
+  .tagline { font-family: var(--thread); font-style: italic; font-size: 1.15rem; color: var(--muted); margin: 0.35rem 0 0; }
+
+  h2 {
+    font-family: var(--display); font-weight: 700; letter-spacing: 0.05em;
+    font-size: 1.4rem; margin: 2.75rem 0 0.6rem; color: var(--accent);
+    border-bottom: 1px solid var(--gold-line); padding-bottom: 0.3rem;
+  }
+  h3 { font-family: var(--display); font-weight: 600; letter-spacing: 0.04em; font-size: 1.08rem; margin: 1.5rem 0 0.35rem; color: var(--ink); }
+  p { margin: 0.65rem 0; }
+  ul, ol { margin: 0.6rem 0; padding-left: 1.3rem; }
+  li { margin: 0.4rem 0; }
+  a { color: var(--accent2); text-underline-offset: 3px; }
+  b, strong { color: var(--ink); }
+  code {
+    font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size: 0.86em;
+    background: var(--bg2); color: var(--ink); padding: 1px 6px; border-radius: 5px;
+    border: 1px solid var(--border);
+  }
+  .card {
+    background: color-mix(in srgb, var(--surface) 80%, transparent);
+    border: 1px solid var(--border); border-radius: 14px; padding: 1rem 1.25rem; margin: 1rem 0;
+  }
+  .lede { font-size: 1.16rem; color: var(--muted); }
+  .cta {
+    display: inline-block; margin: 0.4rem 0; padding: 0.6rem 1.1rem;
+    font-family: var(--display); font-size: 0.95rem; letter-spacing: 0.05em;
+    background: var(--accent); color: #10201c; border-radius: 999px; text-decoration: none;
+  }
+  html[data-theme='light'] .cta { color: #fbf3d9; }
+  .cta:hover { background: var(--accent2); }
+  .muted { color: var(--faint); font-size: 0.95rem; }
+  .heat {
+    display: inline-block; width: 100%; height: 8px; border-radius: 999px; margin: 0.4rem 0 0.2rem;
+    background: linear-gradient(90deg, #d6452f, #d98a2b 24%, #c9a44c 48%, #6f9e7a 74%, #4a6d74 92%, #3f4d50);
+  }
+  footer { margin-top: 3rem; text-align: center; color: var(--faint); font-style: italic; }
+  .backlink { display: block; text-align: center; margin-top: 2.5rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <button class="toggle" id="themeToggle" aria-label="Switch theme" title="Switch theme">◐</button>
+  </div>
+
+  <header class="brand">
+    <div class="rule"><span>✦</span></div>
+    <h1>Loom</h1>
+    <p class="tagline">weave your week, thread by thread</p>
+  </header>
+
+  <p class="lede">
+    Loom is a five-minute weekly planner and a tribute to LucasArts' <em>Loom</em> (1990) and
+    the SCUMM adventures. Every task is a <b>thread</b>: spin it, warp it across the days, gather
+    it into a <b>skein</b>, and rank your threads by hand. It runs offline out of the box and can
+    be backed by your own Notion database.
+  </p>
+
+  <h2>The idea</h2>
+  <ul>
+    <li><b>Threads &amp; skeins.</b> A thread is one task. A skein is a project or category you gather threads into — the <b>Skeins</b> view groups by skein.</li>
+    <li><b>The Week (the warp).</b> The same threads, warped across the seven days. Add a thread straight into a day; fling it along the warp to another day; park anything undated on <b>the distaff</b> (a backlog rail) until you're ready.</li>
+    <li><b>The heatmap (no priority tags).</b> Drag threads to rank them. Position alone sets the colour — the top thread burns ember-hot and each below cools through copper, gold and sage to slate. Past the top six, threads fall to a cold grey, so an overloaded day grows its own grey tail — no hard limit needed. (An Ivy-Lee idea: pick your few, in order.)</li>
+    <li><span class="heat"></span><span class="muted">hottest → coolest → overflow</span></li>
+    <li><b>Tactile gestures.</b> Swipe a thread <b>right to weave</b> it done, <b>left to unravel</b> (delete) it. Tap the knot to weave, tap the title to edit. Drag the grip to reorder (or focus it and use ↑/↓).</li>
+  </ul>
+
+  <h2>Frictionless entry</h2>
+  <p>
+    Everything is inline — no pop-ups. In <b>Skeins</b>, name a skein and spin a thread into it, or add
+    straight to any skein's foot. In <b>The Week</b>, type into a day column. That's the whole five-minute
+    ritual: lay the week out, drag the top few into order, and go.
+  </p>
+
+  <h2>Offline, or your own Notion</h2>
+  <p>
+    Loom keeps your week on the loom locally by default — a full <b>demo</b> on sample threads stored only
+    on this device. To keep real threads and back them up, bind Loom to a Notion database. It takes a few
+    minutes and needs no coding.
+  </p>
+
+  <h3>1 · Get a database</h3>
+  <div class="card">
+    <p><b>Easiest — duplicate the ready-made template.</b> Open the
+      <a href="https://app.notion.com/p/dba6e3838f574321b137552d7aa21bf9" target="_blank" rel="noopener">Loom — Starter Template</a>,
+      an empty database with the exact columns already set up. Use the top-right <code>•••</code> menu →
+      <b>Duplicate</b> to make your own private copy in your workspace.</p>
+    <a class="cta" href="https://app.notion.com/p/dba6e3838f574321b137552d7aa21bf9" target="_blank" rel="noopener">Open the Starter Template →</a>
+  </div>
+  <p><b>Or build your own</b> — a Notion database with these five properties (names are exact):</p>
+  <ul>
+    <li><code>Name</code> — <b>Title</b> — the thread's text</li>
+    <li><code>Skein</code> — <b>Select</b> — its project / category</li>
+    <li><code>Day</code> — <b>Date</b> — the day it's warped to (leave empty for the backlog)</li>
+    <li><code>Order</code> — <b>Number</b> — its manual rank (Loom writes this when you drag; drives the heat)</li>
+    <li><code>Done</code> — <b>Checkbox</b> — woven</li>
+  </ul>
+  <p class="muted">Any extra columns Notion adds by default are fine to keep or delete, as long as those five exist with these exact names.</p>
+
+  <h3>2 · Create an integration &amp; connect</h3>
+  <p>An <b>internal integration</b> is just a key that lets this one app reach your database.</p>
+  <ol>
+    <li><b>Create it.</b> Go to <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener">notion.so/my-integrations</a> → <em>New integration</em>. Name it (e.g. <em>Loom</em>), pick the workspace your database lives in, leave the type <em>Internal</em>, and save.</li>
+    <li><b>Copy the token.</b> On the integration's page open <em>Configuration</em> (or <em>Secrets</em>), find the <em>Internal Integration Secret</em>, <em>Show</em> then <em>Copy</em>. It starts with <code>ntn_</code> (older ones with <code>secret_</code>). Treat it like a password.</li>
+    <li><b>Share the database with it.</b> Open your Loom database in Notion → top-right <code>•••</code> → <em>Connections</em> (or <em>Add connections</em>) → search your integration → select it. Without this the app sees nothing.</li>
+    <li><b>Paste both into Loom.</b> Open Loom → the <b>⚙ Settings</b> (or the <b>Guild</b> verb) → paste the token and your database link, hit <b>Test connection</b>, then <b>Weave live</b>. Leave the database blank to use the app's built-in default.</li>
+  </ol>
+  <p class="muted">Your token and database id are kept only in this browser and relayed to Notion through this site's proxy — never stored on a server.</p>
+
+  <h2>Two moods</h2>
+  <p>
+    Loom ships with two SCUMM-flavoured palettes — a dark <b>Twilight</b> and a light <b>Parchment</b>.
+    The <b>◐</b> button (top-right here and in the app) cycles them, and this guide follows your choice.
+  </p>
+
+  <a class="cta backlink" href="/loom-react.html">Open Loom →</a>
+
+  <footer>For Bobbin, and for the Guild of Weavers. ✧</footer>
+</div>
+
+<script>
+  // Theme toggle — writes the same localStorage key the app reads, so the two stay in sync
+  // (and cross-tab via the storage event). Mirrors lib/theme.js's two presets.
+  (function () {
+    var btn = document.getElementById('themeToggle');
+    function currentId() {
+      try { return localStorage.getItem('loom:theme') === 'parchment' ? 'parchment' : 'twilight'; }
+      catch (e) { return 'twilight'; }
+    }
+    function apply(id) {
+      document.documentElement.setAttribute('data-theme', id === 'parchment' ? 'light' : 'dark');
+      var m = document.querySelector('meta[name="theme-color"]');
+      if (m) m.setAttribute('content', id === 'parchment' ? '#e7d9b6' : '#0b1f1f');
+    }
+    btn.addEventListener('click', function () {
+      var next = currentId() === 'twilight' ? 'parchment' : 'twilight';
+      try { localStorage.setItem('loom:theme', next); } catch (e) {}
+      apply(next);
+    });
+    // Keep in sync if the app changes the theme in another tab.
+    window.addEventListener('storage', function (e) { if (e.key === 'loom:theme') apply(currentId()); });
+  })();
+</script>
+</body>
+</html>

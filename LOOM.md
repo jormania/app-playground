@@ -69,15 +69,29 @@ See [`lib/useLoom.js`](src/loom/lib/useLoom.js).
 
 Which client is active is decided in [`lib/store.js`](src/loom/lib/store.js):
 
-- **No token (or no database) → the demo store** — a full offline board in
-  `localStorage`, seeded once from [`lib/fixtures.js`](src/loom/lib/fixtures.js)
-  (which generates threads onto the *current* week so both views are populated).
-- **Token + database id set → live Notion** — via the same stateless
+- **No token → the demo store** — a full offline board in `localStorage`, seeded
+  once from [`lib/fixtures.js`](src/loom/lib/fixtures.js) (which generates threads
+  onto the *current* week so both views are populated).
+- **Token set → live Notion** — the database id defaults to the built-in
+  `DEFAULT_DATABASE_ID` (the owner's live "Loom" database) when the user hasn't
+  set their own, so a token alone is enough. All calls go via the same stateless
   same-origin proxy (`/api/notion`) every Notion app here uses (BYO token in the
   `x-notion-token` header; classic Notion-Version 2022-06-28). See
   [`lib/notionClient.js`](src/loom/lib/notionClient.js). A reorder patches **only**
   `Order`; a weave patches only `Done` — `patchProps` prunes the payload so a lone
   field write never clobbers the title.
+
+### Notion paperwork (per the "Building an App" playbook)
+
+- **Live database** — the owner's "Loom" DB under Notion's **App Databases** page
+  (data-source id recorded as `DEFAULT_DATABASE_ID` in `store.js`; not a secret).
+- **Starter Template** — an empty, de-personalized copy under **Starter
+  Templates**, documented as "duplicate this to start" in the guide (Notion's
+  own one-click Duplicate).
+- **Guide** — [`public/loom-guide.html`](public/loom-guide.html), a self-contained
+  page in the Loom aesthetic (theme-synced to the app) that walks the whole setup:
+  duplicate the template, create an integration, share the DB, paste the token.
+  Linked from Settings and from the registry `guide` field.
 
 ### Notion schema (documented in-app under "The Guild")
 
@@ -94,14 +108,23 @@ Five properties, names exact:
 The pure Notion↔app mapping lives in [`lib/notion.js`](src/loom/lib/notion.js)
 (`toThread` / `toNotionProps` / `parseNotionId`), the most heavily tested piece.
 
-## The look (distinct, committed, single palette)
+## The look (two SCUMM-flavoured palettes)
 
-One fixed "twilight loom" palette — no theme toggle, like Yoru. Deep petrol-teal
-dusk, aged Guild gold, candlelit-parchment ink, and the ember→slate dyed-thread
-heat scale. Set entirely as `:root` token overrides in
-[`loom.css`](src/loom/loom.css), loaded after `ds/tokens.css`, so every DS
-component (Modal, Field, Button) adopts the palette with no per-component
-special-casing.
+Loom ships **two** committed, SCUMM-flavoured palettes — a dark **Twilight**
+(deep petrol-teal dusk, aged Guild gold, candlelit-parchment ink) and a light
+**Parchment** (aged daylight paper, brown ink, ochre-gold). Deliberately *not*
+the six-palette Journal/Wanderlist system — just two moods for now. Both are set
+as `[data-theme]` token overrides in [`loom.css`](src/loom/loom.css), loaded
+after `ds/tokens.css`, so every DS component (Modal, Field, Button) adopts the
+palette with no per-component special-casing. The theme lives in
+[`lib/theme.js`](src/loom/lib/theme.js) + [`lib/themeContext.jsx`](src/loom/lib/themeContext.jsx)
+(one `loom:theme` localStorage key shared with the guide, a `storage`-event sync,
+and a pre-paint FOUC script in `loom-react.html`); the header **◐** button
+cycles it and Settings → Appearance jumps straight to one. The ember→slate
+dyed-thread heat scale is constant across both themes — dye is dye.
+
+Settings ("The Guild") is reachable from the header **⚙** gear and the verb bar;
+it holds the Notion connection *and* the Appearance picker.
 
 - **Type:** Cinzel for the ceremonial Guild lettering (the wordmark, section
   titles, the verbs); Alegreya for thread text (a literary, hand-woven feel);

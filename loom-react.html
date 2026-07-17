@@ -6,6 +6,17 @@
   <title>Loom — weave your week</title>
   <meta name="description" content="A tactile weekly planner backed by Notion. Spin tasks as threads, warp them across the days, and sort by hand — the Ivy-Lee heatmap dyes the top thread ember-hot and cools the rest. A tribute to LucasArts' Loom." />
   <meta name="theme-color" content="#0b1f1f" />
+  <script>
+    // Apply the saved Loom theme before first paint (shared with the guide) to
+    // avoid a flash. Twilight (dark) is the default. Keep in step with lib/theme.js.
+    try {
+      var id = localStorage.getItem('loom:theme');
+      var mode = id === 'parchment' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', mode);
+      var m = document.querySelector('meta[name="theme-color"]');
+      if (m) m.setAttribute('content', mode === 'light' ? '#e7d9b6' : '#0b1f1f');
+    } catch (e) {}
+  </script>
   <link rel="icon" type="image/svg+xml" href="/loom-logo.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="/loom-favicon-32.png" />
   <link rel="apple-touch-icon" href="/loom-icon-192.png" />
