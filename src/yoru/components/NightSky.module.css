@@ -2,6 +2,12 @@
   display: block;
   width: 100%;
   height: 100%;
+  /* The sky handles its own gestures (hold to stir, pinch to lean in toward
+     the moon), so the browser must not claim the touch first — without this a
+     pinch zooms the page and a hold-drag tries to scroll it. There is nothing
+     to scroll in this overlay, so nothing is lost. A plain tap still becomes a
+     click, which is what the parent's tap-to-peek listens for. */
+  touch-action: none;
 }
 
 /* A quiet, easy-to-miss-on-purpose prompt — only appears once location has had

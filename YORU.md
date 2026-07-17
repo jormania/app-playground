@@ -88,16 +88,56 @@ released so the display can power down.
 [`components/NightSky.jsx`](src/yoru/components/NightSky.jsx) +
 [`lib/sky.js`](src/yoru/lib/sky.js), all on one dim canvas:
 
-- **Generic drifting stars** (no constellations/zodiac, unlike Touch Grass).
+- **Generic drifting stars** (no constellations/zodiac, unlike Touch Grass),
+  fading into the horizon as real ones do (atmospheric extinction) over a sky
+  that is faintly darkest at the zenith.
 - **The real moon** at tonight's true phase, placed by the device location where
   granted (via `suncalc`; geolocation requested only in this mode, degrades to a
-  gentle default). Rendered as a body, not a plate — surface maria, limb
-  darkening, a photometric lit face, a barely-visible earthshine dark side.
-- **Mount Fuji** — a static, dim, moonlit silhouette rising from the lower
-  centre: concave slopes, a flat summit with a crater notch, a snow cap with soft
-  tongues, faint gullies for volume. Unchanged across seasons.
+  gentle default). Rendered as a body, not a plate — the **real near-side maria**
+  (the man in the moon), **Tycho**'s ray splash fading in only near full, limb
+  darkening, a photometric lit face, a soft terminator, a barely-visible
+  earthshine dark side. It **leans** the way it really does: the bright limb
+  points at the sun, tilting through the night (`moonBrightLimb` — needs a
+  location, so without one the moon stays upright). Low down it **reddens** and
+  its glow spreads, as anything seen through a long slant of air does.
+- **Mount Fuji** — a static, dim silhouette rising from the lower centre:
+  concave slopes, a flat summit with a crater notch, a snow cap with soft
+  tongues, radial ridges, a veil of haze pooled at its foot, and a faint scatter
+  of light around its rim. Unchanged across seasons. The **Hōei crater** swells
+  one flank — Fuji's one famous asymmetry, and the thing that stops a cone
+  reading as a pictogram (it sits higher up the slope than it really does,
+  because the cone is wider than the frame and its true height is cropped off).
+  **Shaded for real, by the moon itself**: direction from where the moon sits
+  across the frame, elevation from its true altitude, strength from its
+  illuminated fraction × presence. One light source, and the mountain obeys it
+  exactly as the moon's own face does — the moon-facing flank takes the light,
+  the far one falls away, and the terminator between them moves as the moon
+  crosses the sky. A moon on the horizon rakes across and models it hard; one at
+  mid-arc has culminated in the south, *behind* Fuji, and rims it; a new moon
+  leaves it a shape in the dark. It is never brighter overall than the flat fill
+  it replaced — the point is form, not glare.
+- **Meteors** — rare, quiet sporadics as always, but on the **real shower
+  nights** (`meteorShower`: Perseids, Geminids, Quadrantids, …) they come several
+  times more often and stream away from the shower's true **radiant**, which
+  rises and sets like anything else (`starPosition`) — so a shower whose radiant
+  is still down stays quiet. Same honesty as the twilight wash: on an ordinary
+  night none of this applies. Each meteor flares as it breaks up, and the
+  brightest leave a train hanging for a second.
 - **Season-aware drift** (astronomical, N. hemisphere): **sakura** (spring),
   **fireflies** (summer), **momiji** (autumn), **snow** (winter).
+
+**The sky answers to touch**, on one rule — *it opens toward you* — with nothing
+on screen to advertise it and no way to get stuck:
+
+- **Hold and stir.** Rest a finger on the sky and the field swells and turns
+  under your hand like still water round a spoon, rings pushing out from it. Lift
+  and it settles back. The displacement is render-time only, so it always returns
+  exactly where it started.
+- **Pinch to lean in** toward the moon, which glides to the centre as its maria
+  come up. Let go and it drifts home. One uniform transform over the whole scene,
+  so nothing can fall out of register; stars keep their size, being point sources.
+- A plain **tap still just peeks** — only a hold (>350ms), a drag or a pinch
+  swallows the tap.
 
 ## The note — offloading, not record-keeping
 
