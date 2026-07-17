@@ -7,7 +7,7 @@ import { useWakeLock } from '../lib/useWakeLock'
 import { useCoords } from '../lib/useCoords'
 import { createNightSoundscape } from '../lib/soundscape'
 import { phaseLabel } from '../lib/breath'
-import { moonPhase, moonArc, moonPhaseName } from '../lib/sky'
+import { moonBrief } from '../lib/sky'
 import styles from './Session.module.css'
 
 // The three display modes, as a quiet in-session control. Short forms of the
@@ -39,7 +39,12 @@ export default function Session({ session, onNote, onFinish }) {
   // The orb (and breathwork) only make sense when the screen is lit.
   const breathwork = session.breathwork !== false && screenMode === 'lit'
 
-  const { coords, status: geoStatus, request: requestLocation } = useCoords(dark)
+  // Location is asked for in EVERY display mode, not just "go dark" as it used
+  // to be: the moon line below is shown in all three, and without coordinates it
+  // can only name the phase — it can't say where the moon is or when it's due,
+  // which is the useful half. Still fully optional; declining just shortens the
+  // line to the phase.
+  const { coords, status: geoStatus, request: requestLocation } = useCoords(true)
 
   // While `veiled`, a covered mode draws its overlay (the sky for 'dark', black
   // for 'off'). A tap peeks — hiding it briefly to reveal the session and the
@@ -66,32 +71,22 @@ export default function Session({ session, onNote, onFinish }) {
   // 'lit', and during a peek in the covered modes.
   const showModes = screenMode === 'lit' || !veiled
 
-  // A quiet caption for the moon, computed independently of NightSky (which is
-  // unmounted while peeking — the sky itself is what a peek hides) so the info
-  // is available exactly when there's nowhere else to see it. Refreshed every
-  // few minutes; the phase and the moon's rise/set window both move slowly.
+  // A quiet line on the moon — what it is, and either where it's hanging or when
+  // it's next due. Shown in ALL THREE display modes: only "go dark" ever draws
+  // the sky, so lit and off would otherwise give you no way of knowing there's a
+  // moon out at all, which is half the reason you'd think to look.
+  //
+  // Computed here rather than inside NightSky, which is unmounted while peeking
+  // — the sky itself is what a peek hides — so the line is there exactly when
+  // there's nowhere else to see it. Refreshed every few minutes; the phase and
+  // the moon's whole rise/set window both move slowly.
   const [moonCaption, setMoonCaption] = useState('')
   useEffect(() => {
-    if (!dark || !coords) {
-      setMoonCaption('')
-      return undefined
-    }
-    const refresh = () => {
-      const now = new Date()
-      const name = moonPhaseName(moonPhase(now).phase)
-      const arc = moonArc(now, coords)
-      let clause = ''
-      if (arc) {
-        const t = now.getTime()
-        if (t >= arc.riseAt && t <= arc.setAt) clause = ` · sets ${formatClock(arc.setAt)}`
-        else if (t < arc.riseAt) clause = ` · rises ${formatClock(arc.riseAt)}`
-      }
-      setMoonCaption(name + clause)
-    }
+    const refresh = () => setMoonCaption(moonBrief(new Date(), coords))
     refresh()
     const id = setInterval(refresh, 5 * 60000)
     return () => clearInterval(id)
-  }, [dark, coords])
+  }, [coords])
 
   // On returning to the app: revive the soundscape if the browser suspended it
   // while backgrounded (iOS Safari does this on tab-hide / screen-lock, in every
@@ -214,7 +209,7 @@ export default function Session({ session, onNote, onFinish }) {
                 </button>
               ))}
             </div>
-            {dark && !veiled && moonCaption && <p className={styles.moonCaption}>{moonCaption}</p>}
+            {moonCaption && <p className={styles.moonCaption}>{moonCaption}</p>}
           </div>
         )}
       </div>
@@ -287,13 +282,6 @@ export default function Session({ session, onNote, onFinish }) {
       {ending && <div className={styles.endFade} aria-hidden="true" />}
     </main>
   )
-}
-
-// HH:MM, local 24-hour — deliberately not toLocaleTimeString, which defaults
-// to 12-hour + AM/PM in several locales; a rise/set time reads better plain.
-function formatClock(ms) {
-  const d = new Date(ms)
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 // mm:ss for the discrete countdown.

@@ -1,4 +1,5 @@
 import { getMoonIllumination, getMoonPosition, getPosition as getSunPosition } from 'suncalc'
+import { nightKey } from './night'
 
 // Real lunar data for Yoru's "Go dark" sky. The moon's PHASE is the same the
 // world over at a given instant; its POSITION (whether it's up, and where) is
@@ -451,6 +452,74 @@ export function drawMilkyWay(ctx, mw, h, field = null, zoom = 1) {
   ctx.globalAlpha = 1
 }
 
+// ── Telling you where the moon is ────────────────────────────────────────
+// A quiet line of plain language, for the top bar. Yoru only ever draws the sky
+// in "go dark", so in the other two modes there is otherwise nothing at all to
+// say whether there's a moon out — and knowing that is half of why you'd look up.
+
+const COMPASS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west']
+const compass = (azDeg) => COMPASS[Math.round((((azDeg % 360) + 360) % 360) / 45) % 8]
+const heightWord = (altDeg) => (altDeg < 12 ? 'low ' : altDeg > 50 ? 'high ' : '')
+
+// Approximate on purpose — to the nearest half hour, and prefixed "around" by
+// the caller. Nobody lying in bed needs the moon to the minute, and a precise
+// 23:47 reads like a timetable. 24-hour, like the rest of the app (see
+// Session's formatClock: toLocaleTimeString hands back 12-hour AM/PM in several
+// locales, which reads worse here).
+function aboutClock(ms) {
+  const d = new Date(ms)
+  d.setMinutes(Math.round(d.getMinutes() / 30) * 30, 0, 0) // 60 rolls the hour for us
+  if (d.getHours() === 0 && d.getMinutes() === 0) return 'midnight'
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+// "tonight" or "tomorrow", by Yoru's OWN night — which rolls at 4am, not
+// midnight. That's the whole point: at 11pm, a moon coming up at 1am is still
+// tonight to anyone awake to see it, even though the calendar disagrees.
+const whenWord = (ms, now) => (nightKey(ms) === nightKey(now.getTime()) ? 'tonight' : 'tomorrow')
+
+// The next time the moon actually comes up. moonArc deliberately resolves the
+// window NEAREST now — so a moon that set an hour ago still shows the path it
+// came down — which is the wrong question once it's gone: we want the next
+// rise, not the last one. Scans forward for the first crossing up through the
+// horizon, then refines it off the 10-minute grid.
+const RISE_STEP_MIN = 10
+const RISE_SPAN_H = 30 // a moon rises ~50 min later each day, so this always finds one
+export function nextMoonrise(date, coords) {
+  if (!coords) return null
+  const t0 = date.getTime()
+  const step = RISE_STEP_MIN * 60000
+  let prev = moonPosition(date, coords)
+  if (!prev) return null
+  for (let i = 1; i <= (RISE_SPAN_H * 60) / RISE_STEP_MIN; i++) {
+    const cur = moonPosition(new Date(t0 + i * step), coords)
+    if (!cur) return null
+    if (prev.altitude <= 0 && cur.altitude > 0) {
+      const f = -prev.altitude / (cur.altitude - prev.altitude) // linear-interpolate the crossing
+      const at = t0 + (i - 1 + f) * step
+      const rp = moonPosition(new Date(at), coords)
+      return { at, azimuth: rp ? rp.azimuth : cur.azimuth }
+    }
+    prev = cur
+  }
+  return null
+}
+
+// One line: what the moon is, and either where it is or when it's due.
+// Without a location we can still name the phase — that's the same the world
+// over at a given instant — but nothing about where it sits, so we say only
+// what we actually know.
+export function moonBrief(date = new Date(), coords = null) {
+  const name = moonPhaseName(moonPhase(date).phase)
+  if (!coords) return name
+  const pos = moonPosition(date, coords)
+  if (!pos) return name
+  if (pos.altitude > 0) return `${name} · ${heightWord(pos.altitude)}in the ${compass(pos.azimuth)}`
+  const rise = nextMoonrise(date, coords)
+  if (!rise) return `${name} · below the horizon`
+  return `${name} · rises ${whenWord(rise.at, date)} around ${aboutClock(rise.at)}, in the ${compass(rise.azimuth)}`
+}
+
 // ── Fixed points on the sky ──────────────────────────────────────────────
 // Where a point at a given RA/Dec — a star, or a meteor shower's radiant —
 // sits right now, in the same altitude/azimuth terms suncalc hands back for
@@ -707,14 +776,22 @@ export function makeFuji(w, h) {
 // never allowed to get BRIGHTER overall than it was — the point of shading it
 // properly is form, not glare. The far flank now goes darker than the old flat
 // fill ever did while the near one picks up an edge.
-// Tuned so that the brightest case there is — a full moon riding high, lighting
-// the whole cone at once — lands at roughly the brightness the old flat fill had
-// at its peak. Every other moon is dimmer than before AND modelled. That's the
-// deal: form, not glare.
+// Tuned at both ends. The brightest case there is — a full moon riding high,
+// lighting the whole cone at once — lands near the brightness the old flat fill
+// had at its peak (form, not glare). The darkest — no moon at all — still has to
+// leave the SLOPES readable, not just a snow cap floating alone in the dark.
 const ROCK_DARK = [8, 8, 14]
-const ROCK_LIT = [28, 28, 38]
+const ROCK_LIT = [34, 34, 46]
 const SNOW_DARK = [26, 26, 40]
-const SNOW_LIT = [96, 96, 120]
+const SNOW_LIT = [104, 104, 130]
+// Starlight and skyglow: the floor, and deliberately NOT scaled by the moon —
+// a real landscape is never black. Even at new moon the whole sky dome is a
+// dim source, and because it hangs overhead it favours whatever faces up, hence
+// the cosT weighting. This is what keeps Fuji present on a moonless night.
+const AMBIENT = 0.34
+// How hard the moon's own directional light drives on top of that floor. Held
+// back so the ambient lift doesn't push a full moon into glare.
+const MOON_GAIN = 0.62
 // The moon's arc runs x = 0.24 … 0.76, so ±0.26 from centre is its whole
 // east→west swing — the scale that turns its screen x into a light direction.
 const HALF_SWEEP = 0.26
@@ -732,11 +809,15 @@ const HALF_SWEEP = 0.26
 // flanks in a single frame as the moon passed the meridian.)
 //
 // A full moon riding high silvers the snow; a thin crescent barely touches it;
-// a new moon, or one still below the horizon, leaves Fuji a shape in the dark.
+// a new moon, or one still below the horizon, leaves Fuji lit by starlight
+// alone — faint, but its slopes still there.
 export function drawFuji(ctx, fuji, moon) {
   const { outline, snow, bands, ridges, cx, peakY, half, baseY, height, hoeiAt } = fuji
   const light = Math.min(1, Math.max(0, moon?.light ?? 1))
-  const lit = 0.16 + 0.84 * light
+  // What the surface markings (ridges, the Hōei hollow, the rim scatter) are
+  // worth. They keep a floor of their own: they're most of what makes the
+  // slopes read as slopes, so they must not vanish with the moon.
+  const lit = 0.3 + 0.7 * light
 
   // The light's direction. Elevation comes from the moon's REAL altitude, not
   // from where it happens to sit on screen relative to the mountain: Fuji stands
@@ -780,8 +861,10 @@ export function drawFuji(ctx, fuji, moon) {
         // away edge-on (0), in the middle it faces us squarely (1) — so the
         // middle is what the southward backlight can't reach.
         const cosPhi = Math.sqrt(Math.max(0, 1 - nx * nx))
-        const shade = Math.max(0, nx * b.sinT * lx + b.cosT * ly + cosPhi * b.sinT * lz)
-        g.addColorStop(t, tone(dark, bright, shade * lit))
+        const moonlit = Math.max(0, nx * b.sinT * lx + b.cosT * ly + cosPhi * b.sinT * lz)
+        // starlight floor + whatever the moon adds on top of it
+        const shade = AMBIENT * b.cosT + moonlit * light * MOON_GAIN
+        g.addColorStop(t, tone(dark, bright, shade))
       }
       return g
     }

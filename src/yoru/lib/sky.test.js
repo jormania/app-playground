@@ -8,6 +8,9 @@ import {
   extinction,
   moonBrightLimb,
   moonPhase,
+  moonBrief,
+  nextMoonrise,
+  moonPosition,
 } from './sky'
 
 // Bucharest, and a latitude in the south for the hemisphere checks.
@@ -129,6 +132,70 @@ describe('extinction', () => {
     expect(extinction(0.5)).toBe(1)
     expect(extinction(1)).toBeLessThan(0.5)
     expect(extinction(0.8)).toBeLessThan(extinction(0.7))
+  })
+})
+
+// Verified against the real sky for this location. HIGH/LOW/DOWN are the three
+// cases moonBrief has to tell apart.
+const MOON_HIGH = new Date('2026-01-02T22:00:00Z') // 73° up, due south
+const MOON_LOW = new Date('2026-07-17T19:00:00Z') // 7.6° up, in the west
+const MOON_DOWN = new Date('2026-07-07T20:00:00Z') // 14.9° BELOW the horizon
+const MOON_DOWN_LATE = new Date('2026-07-17T23:00:00Z') // 02:00 local, well down
+
+describe('nextMoonrise', () => {
+  it('finds a rise in the future that the moon is genuinely down before and up after', () => {
+    expect(moonPosition(MOON_DOWN, HERE).altitude).toBeLessThan(0)
+    const rise = nextMoonrise(MOON_DOWN, HERE)
+    expect(rise).not.toBeNull()
+    expect(rise.at).toBeGreaterThan(MOON_DOWN.getTime())
+    expect(moonPosition(new Date(rise.at - 10 * 60000), HERE).altitude).toBeLessThan(0)
+    expect(moonPosition(new Date(rise.at + 20 * 60000), HERE).altitude).toBeGreaterThan(0)
+  })
+  it('rises in the eastern half of the sky, as everything up there does', () => {
+    const rise = nextMoonrise(MOON_DOWN, HERE)
+    expect(rise.azimuth).toBeGreaterThan(20) // north-based: east is 0..180
+    expect(rise.azimuth).toBeLessThan(160)
+  })
+  it('looks FORWARD, unlike moonArc, which resolves the window nearest now', () => {
+    // The distinction that matters: once the moon has set, the interesting
+    // question is the next rise, not the last one.
+    const rise = nextMoonrise(MOON_LOW, HERE) // moon is UP here, so the next rise is a day off
+    expect(rise.at).toBeGreaterThan(MOON_LOW.getTime())
+  })
+  it('needs a location', () => {
+    expect(nextMoonrise(new Date(), null)).toBeNull()
+  })
+})
+
+describe('moonBrief', () => {
+  it('says where the moon is when it is up, and says nothing about rising', () => {
+    expect(moonBrief(MOON_HIGH, HERE)).toBe('waxing gibbous · high in the south')
+    expect(moonBrief(MOON_LOW, HERE)).toBe('waxing crescent · low in the west')
+  })
+  it('drops the height word for a moon at no particular height', () => {
+    // 16° up — neither low nor high, so it just says where
+    expect(moonBrief(new Date('2026-07-29T20:00:00Z'), HERE)).toBe('full moon · in the south-east')
+  })
+  it('says when and where it is due when the moon is down', () => {
+    expect(moonBrief(MOON_DOWN, HERE)).toBe('last quarter · rises tonight around 00:30, in the east')
+  })
+  it("counts the small hours as tonight, by Yoru's 4am night, not the calendar's midnight", () => {
+    // MOON_DOWN is 23:00 local: a rise at 00:30 is still "tonight" to anyone
+    // awake for it, though the calendar has already turned over.
+    expect(moonBrief(MOON_DOWN, HERE)).toContain('rises tonight')
+    // MOON_DOWN_LATE is 02:00 local — still the same Yoru night — so a rise the
+    // following morning is properly "tomorrow".
+    expect(moonBrief(MOON_DOWN_LATE, HERE)).toContain('rises tomorrow')
+  })
+  it('keeps the time approximate — never to the minute', () => {
+    for (const at of [MOON_DOWN, MOON_DOWN_LATE]) {
+      const time = moonBrief(at, HERE).match(/around (\S+?),/)[1]
+      expect(time === 'midnight' || /^\d{2}:(00|30)$/.test(time)).toBe(true)
+    }
+  })
+  it('names the phase and nothing more without a location — the phase is all we honestly know', () => {
+    expect(moonBrief(MOON_HIGH, null)).toBe('waxing gibbous')
+    expect(moonBrief(MOON_DOWN, null)).toBe('last quarter')
   })
 })
 

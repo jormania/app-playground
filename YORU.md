@@ -75,7 +75,19 @@ discrete mm:ss countdown sits in the bottom-right.
 Settings picks the *starting* mode; from then on it's **switchable mid-session**
 via a quiet `lit · dark · off` control in the top bar — shown always in lit, and
 during a peek in the covered modes (tap the sky / black to peek, the control
-appears, pick a mode). Every transition is reachable and none disturb the running
+appears, pick a mode).
+
+Under that control sits **one quiet line about the moon** (`moonBrief` in
+[`lib/sky.js`](src/yoru/lib/sky.js)) — *"waxing gibbous · high in the south"*, or
+when it's down, *"last quarter · rises tonight around 00:30, in the east"*.
+Shown in **all three modes**: only *go dark* ever draws the sky, so lit and off
+would otherwise give you no way of knowing there's a moon out at all. The time is
+approximate on purpose (nearest half hour, "around"), and *tonight* / *tomorrow*
+follow **Yoru's own 4am night**, not the calendar's midnight — at 11pm a moon
+rising at 00:30 is still tonight. Because of this line, **geolocation is now
+requested in every display mode**, not just *go dark* as it was: without
+coordinates the line can only name the phase (which is the same the world over),
+never where the moon is or when it's due. Declining just shortens the line. Every transition is reachable and none disturb the running
 session: the sound, the clock and the breath all keep going, only the screen's
 behaviour changes. Lives in [`components/Session.jsx`](src/yoru/components/Session.jsx)
 (`switchMode`) — a covered mode draws its overlay at once, *lit* clears it.
@@ -92,8 +104,8 @@ released so the display can power down.
   fading into the horizon as real ones do (atmospheric extinction) over a sky
   that is faintly darkest at the zenith.
 - **The real moon** at tonight's true phase, placed by the device location where
-  granted (via `suncalc`; geolocation requested only in this mode, degrades to a
-  gentle default). Rendered as a body, not a plate — the **real near-side maria**
+  granted (via `suncalc`; degrades to a gentle default). Rendered as a body, not
+  a plate — the **real near-side maria**
   (the man in the moon), **Tycho**'s ray splash fading in only near full, limb
   darkening, a photometric lit face, a soft terminator, a barely-visible
   earthshine dark side. It **leans** the way it really does: the bright limb
@@ -113,9 +125,12 @@ released so the display can power down.
   exactly as the moon's own face does — the moon-facing flank takes the light,
   the far one falls away, and the terminator between them moves as the moon
   crosses the sky. A moon on the horizon rakes across and models it hard; one at
-  mid-arc has culminated in the south, *behind* Fuji, and rims it; a new moon
-  leaves it a shape in the dark. It is never brighter overall than the flat fill
-  it replaced — the point is form, not glare.
+  mid-arc has culminated in the south, *behind* Fuji, and rims it. Under it all
+  sits a **starlight floor** that the moon doesn't scale — a real landscape is
+  never black, and the sky dome is a dim source of its own favouring whatever
+  faces up — so at a new moon, or with the moon down, Fuji keeps its **slopes**
+  and not just a snow cap floating in the dark. At its brightest it is still no
+  brighter than the flat fill it replaced: the point is form, not glare.
 - **Meteors** — rare, quiet sporadics as always, but on the **real shower
   nights** (`meteorShower`: Perseids, Geminids, Quadrantids, …) they come several
   times more often and stream away from the shower's true **radiant**, which
