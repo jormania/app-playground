@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import {
   skyToScreen,
   twilight,
@@ -169,6 +169,21 @@ describe('nextMoonrise', () => {
 })
 
 describe('moonBrief', () => {
+  // moonBrief formats rise times and the tonight/tomorrow word in the VIEWER's
+  // local zone (correct for a user in bed) — so these expected strings are
+  // Bucharest-local, matching HERE and the "23:00 local" / "02:00 local" notes
+  // below. Pin the zone for the block so the suite is deterministic on any
+  // machine (a UTC CI box, another contributor's laptop) instead of only
+  // passing where the developer happens to live. Restored after, so it can't
+  // leak into other test files sharing this worker.
+  const realTZ = process.env.TZ
+  beforeAll(() => {
+    process.env.TZ = 'Europe/Bucharest'
+  })
+  afterAll(() => {
+    process.env.TZ = realTZ
+  })
+
   it('says where the moon is when it is up, and says nothing about rising', () => {
     expect(moonBrief(MOON_HIGH, HERE)).toBe('waxing gibbous · high in the south')
     expect(moonBrief(MOON_LOW, HERE)).toBe('waxing crescent · low in the west')
