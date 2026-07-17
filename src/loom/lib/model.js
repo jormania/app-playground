@@ -208,3 +208,156 @@ export function threadStats(threads) {
   const woven = threads.filter(t => t.done).length
   return { total, woven, open: total - woven }
 }
+
+// ── Carry-over (the re-warp ritual) ─────────────────────────────────────────
+// 0 = Monday … 6 = Sunday, from a 'YYYY-MM-DD' day key (parsed local).
+export function weekdayIndex(dayKey) {
+  const [y, m, d] = String(dayKey).split('-').map(Number)
+  return (new Date(y, m - 1, d).getDay() + 6) % 7
+}
+
+// The unfinished threads left hanging from *before* the given week — anything
+// dated strictly earlier than this week's Monday and not yet woven. Day keys are
+// 'YYYY-MM-DD', so a lexical compare is a date compare. Sorted oldest-first, then
+// by manual order, so the ritual walks them in a natural sequence.
+export function carryThreads(threads, weekStartKey) {
+  return threads
+    .filter(t => t.day && !t.done && t.day < weekStartKey)
+    .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : (a.order ?? 0) - (b.order ?? 0)))
+}
+
+// ── Drafts (recurring weaves) ────────────────────────────────────────────────
+// A draft is a saved set of threads with a day-of-week (0–6) or null (distaff).
+// Casting it onto a week turns each item into a real thread on that week's dates.
+export function threadsForDraftWeek(draft, weekStartDate) {
+  const start = startOfWeek(weekStartDate)
+  return (draft?.items || []).map((it, i) => ({
+    title: it.title,
+    skein: it.skein || null,
+    day: typeof it.dayIndex === 'number' ? dateKey(addDays(start, it.dayIndex)) : null,
+    order: typeof it.order === 'number' ? it.order : i * 1000,
+    done: false,
+  }))
+}
+
+// Snapshot a week's open threads as draft items (day → day-of-week index, or null
+// for distaff). Woven threads and off-week dates are left out.
+export function draftItemsFromWeek(threads, days) {
+  const keyToIndex = new Map(days.map((d, i) => [d.key, i]))
+  return sortByOrder(threads.filter(t => !t.done && (t.day == null || keyToIndex.has(t.day))))
+    .map(t => ({
+      title: t.title,
+      skein: t.skein || null,
+      dayIndex: keyToIndex.has(t.day) ? keyToIndex.get(t.day) : null,
+      order: t.order ?? 0,
+    }))
+}
+
+// ── Search & focus ───────────────────────────────────────────────────────────
+export function matchesQuery(thread, query) {
+  const q = (query || '').trim().toLowerCase()
+  if (!q) return true
+  return `${thread.title || ''} ${thread.skein || ''}`.toLowerCase().includes(q)
+}
+
+// The "hot few" of an order-sorted group — the top HEAT_CAP+1 (Ivy Lee's six).
+export function topOfGroup(tasks, cap = HEAT_CAP) {
+  return tasks.slice(0, cap + 1)
+}
+
+// Skein-group ordering in List view (row order within a group is always manual).
+// 'manual' keeps first-appearance; loose threads stay last in every mode.
+export function sortSkeinGroups(groups, mode = 'manual') {
+  const openCount = g => g.tasks.filter(t => !t.done).length
+  const arr = [...groups]
+  if (mode === 'name') arr.sort((a, b) => (a.isLoose - b.isLoose) || a.skein.localeCompare(b.skein))
+  else if (mode === 'size') arr.sort((a, b) => (a.isLoose - b.isLoose) || (b.tasks.length - a.tasks.length))
+  else if (mode === 'heat') arr.sort((a, b) => (a.isLoose - b.isLoose) || (openCount(b) - openCount(a)))
+  return arr
+}
+
+// ── The Tapestry (descriptive history — never scored or streaked) ────────────
+// An N-week heatmap over Day+Done: for each day cell, how many threads sit there
+// and how many are woven. Plus completion rate, the hottest skein, the busiest
+// weekday, and what's still unwoven from past weeks — all read across every
+// thread regardless of the week the app is currently showing.
+export function tapestryStats(threads, { weeks = 8, now = new Date() } = {}) {
+  const thisMonday = startOfWeek(now)
+  const firstMonday = addDays(thisMonday, -7 * (weeks - 1))
+  const windowStartKey = dateKey(firstMonday)
+  const windowEndKey = dateKey(addDays(thisMonday, 6))
+
+  const rows = []
+  const cellByKey = new Map()
+  for (let w = 0; w < weeks; w++) {
+    const monday = addDays(firstMonday, 7 * w)
+    const dayCells = WEEKDAY_LABELS.map((label, i) => {
+      const cell = { key: dateKey(addDays(monday, i)), dayIndex: i, total: 0, woven: 0 }
+      cellByKey.set(cell.key, cell)
+      return cell
+    })
+    rows.push({ weekStartKey: dateKey(monday), monday, days: dayCells })
+  }
+
+  let total = 0
+  let woven = 0
+  const bySkein = new Map()
+  const byWeekday = new Array(7).fill(0)
+  for (const t of threads) {
+    if (!t.day || t.day < windowStartKey || t.day > windowEndKey) continue
+    total++
+    if (t.done) woven++
+    const cell = cellByKey.get(t.day)
+    if (cell) { cell.total++; if (t.done) cell.woven++ }
+    const sk = t.skein || LOOSE_SKEIN
+    const rec = bySkein.get(sk) || { skein: sk, total: 0, woven: 0 }
+    rec.total++; if (t.done) rec.woven++
+    bySkein.set(sk, rec)
+    byWeekday[weekdayIndex(t.day)]++
+  }
+
+  let hottestSkein = null
+  for (const rec of bySkein.values()) {
+    if (!hottestSkein || rec.total > hottestSkein.total) hottestSkein = rec
+  }
+  let busyIdx = -1
+  let busyMax = 0
+  byWeekday.forEach((n, i) => { if (n > busyMax) { busyMax = n; busyIdx = i } })
+
+  const thisMondayKey = dateKey(thisMonday)
+  const unwovenPast = threads.filter(t => t.day && !t.done && t.day < thisMondayKey).length
+  const maxWoven = rows.reduce((m, r) => r.days.reduce((mm, c) => Math.max(mm, c.woven), m), 0)
+
+  return {
+    rows,
+    weeks,
+    total,
+    woven,
+    completionRate: total ? woven / total : 0,
+    hottestSkein,
+    busiestWeekday: busyMax > 0 ? { index: busyIdx, label: WEEKDAY_LABELS[busyIdx], count: busyMax } : null,
+    unwovenPast,
+    maxWoven,
+  }
+}
+
+// The lightweight end-of-week review — the no-server version of the Tapestry for
+// a single week: N woven, M still open (carried), and its hottest skein.
+export function weekReview(threads, weekStartDate) {
+  const start = startOfWeek(weekStartDate)
+  const startKey = dateKey(start)
+  const endKey = dateKey(addDays(start, 6))
+  let woven = 0
+  let open = 0
+  const bySkein = new Map()
+  for (const t of threads) {
+    if (!t.day || t.day < startKey || t.day > endKey) continue
+    if (t.done) woven++; else open++
+    const sk = t.skein || LOOSE_SKEIN
+    bySkein.set(sk, (bySkein.get(sk) || 0) + 1)
+  }
+  let hottestSkein = null
+  let max = 0
+  for (const [sk, n] of bySkein) if (n > max) { max = n; hottestSkein = sk }
+  return { woven, carried: open, hottestSkein }
+}

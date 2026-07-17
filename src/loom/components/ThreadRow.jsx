@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { heatColor } from '../lib/model.js'
+import { useLexicon } from '../lib/lexiconContext.jsx'
 import { tap } from '../lib/haptics.js'
 import styles from './ThreadRow.module.css'
 
@@ -16,6 +17,7 @@ export default function ThreadRow({
   thread, index, onToggle, onDelete, onEdit,
   onNudge, onDragStart, dragging, assign,
 }) {
+  const { t } = useLexicon()
   const [dx, setDx] = useState(0)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(thread.title)
@@ -78,8 +80,8 @@ export default function ThreadRow({
     >
       {/* Action hints revealed behind the sliding body */}
       <div className={`${styles.behind} ${revealing ? styles[revealing] : ''}`} aria-hidden="true">
-        <span className={styles.behindWeave}>✧ weave</span>
-        <span className={styles.behindUnravel}>unravel ✂</span>
+        <span className={styles.behindWeave}>✧ {t('weave')}</span>
+        <span className={styles.behindUnravel}>{t('unravel')} ✂</span>
       </div>
 
       <div
@@ -96,7 +98,7 @@ export default function ThreadRow({
           type="button"
           className={styles.knot}
           aria-pressed={thread.done}
-          aria-label={thread.done ? 'Unweave (mark undone)' : 'Weave (mark done)'}
+          aria-label={thread.done ? `Un${t('weave')} (mark undone)` : `${t('Weave')} (mark done)`}
           onClick={() => { tap(8); onToggle(!thread.done) }}
         >
           <span className={styles.knotDot} />
@@ -121,7 +123,7 @@ export default function ThreadRow({
             onClick={() => { setDraft(thread.title); setEditing(true) }}
             title="Tap to edit"
           >
-            {thread.title || <span className={styles.untitled}>untitled thread</span>}
+            {thread.title || <span className={styles.untitled}>untitled {t('thread')}</span>}
           </button>
         )}
 
@@ -130,19 +132,21 @@ export default function ThreadRow({
           <button
             type="button"
             className={styles.unravel}
-            aria-label="Unravel (delete)"
+            aria-label={`${t('Unravel')} (delete)`}
             onClick={() => { tap([6, 30, 10]); onDelete() }}
           >✂</button>
-          <button
-            type="button"
-            className={styles.grip}
-            aria-label="Reorder — drag, or use up and down arrows"
-            onPointerDown={e => { if (e.button === 0 || e.pointerType !== 'mouse') onDragStart(e) }}
-            onKeyDown={e => {
-              if (e.key === 'ArrowUp') { e.preventDefault(); onNudge(-1) }
-              else if (e.key === 'ArrowDown') { e.preventDefault(); onNudge(1) }
-            }}
-          >⠿</button>
+          {onDragStart && (
+            <button
+              type="button"
+              className={styles.grip}
+              aria-label="Reorder — drag, or use up and down arrows"
+              onPointerDown={e => { if (e.button === 0 || e.pointerType !== 'mouse') onDragStart(e) }}
+              onKeyDown={e => {
+                if (e.key === 'ArrowUp') { e.preventDefault(); if (onNudge) onNudge(-1) }
+                else if (e.key === 'ArrowDown') { e.preventDefault(); if (onNudge) onNudge(1) }
+              }}
+            >⠿</button>
+          )}
         </div>
       </div>
     </li>

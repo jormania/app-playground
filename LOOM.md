@@ -20,17 +20,77 @@ Every task is a **thread**. Spin it, warp it across a **day** of the week, gathe
 it into a **skein** (a project), and rank your threads by hand — the **Ivy-Lee
 heatmap** dyes the top thread ember-hot and cools the rest.
 
-## The two views are one dataset
+## The three views are one dataset
 
-There is a single array of threads (the app's source of truth). The two views are
-just different groupings of it — toggling never moves data between silos:
+There is a single array of threads (the app's source of truth). The views are
+just different groupings/readings of it — toggling never moves data between silos:
 
 - **Skeins** (List view) — threads grouped by skein (project/category). Each skein
   is its own ordered, heat-dyed stack. A skein-and-thread composer up top starts
-  new work; each skein has its own inline adder.
+  new work; each skein has its own inline adder, and a group-level sort
+  (manual/heat/size/name — rows within a group always stay manual by hand).
 - **The Week** (Weekly view) — the same threads warped across the seven days of the
   current week (Mon→Sun, with prev/next/"this week"), plus **the distaff** — a
   backlog rail of unspun (day-less) threads to pull onto a day.
+- **The Tapestry** (History view) — a descriptive read *across all weeks* (see
+  below). It ignores the live search/focus filters by design.
+
+## Beyond the core loop (added features)
+
+All of these sit on the same one thread array; none needs a Notion schema change.
+
+- **Re-warp the week (carry-over ritual)** —
+  [`components/RewarpRitual.jsx`](src/loom/components/RewarpRitual.jsx). A guided,
+  one-at-a-time pass over the threads still hanging from *past* weeks
+  (`carryThreads` in model.js = unwoven and dated before this week's Monday). For
+  each: flick it forward onto a day of the new week (its own weekday pre-lit), drop
+  it to the distaff, weave it done, or leave it. Batch escapes handle "all → their
+  weekday" / "all → the distaff". The toolbar's Re-warp button carries a badge of
+  how many are waiting.
+- **Drafts (recurring weaves)** —
+  [`components/DraftsModal.jsx`](src/loom/components/DraftsModal.jsx) +
+  [`lib/drafts.js`](src/loom/lib/drafts.js). Save this week's open threads as a
+  named draft (each item pinned to a day-of-week or the distaff) and weave it onto
+  any week in one tap (`threadsForDraftWeek` maps day-of-week → real dates). A
+  draft flagged **repeat** is offered by the week view on each fresh week (an
+  opt-in banner; a cast log stops it nagging). Drafts are **device-local**
+  (localStorage) whether you're in demo or live — they're personal templates, not
+  board data, so casting one just creates ordinary threads in whatever store is
+  active. A single repeating thread is just a one-line draft — that's the app's
+  "weekly on day X" recurrence, deliberately kept short of a calendar-grade RRULE.
+- **The Tapestry** — [`components/Tapestry.jsx`](src/loom/components/Tapestry.jsx),
+  aggregated purely by `tapestryStats` (model.js). An N-week (4/8/12) heatmap over
+  `Day`+`Done` — the cloth you've woven — plus completion rate, hottest skein,
+  busiest weekday, and "still unwoven from past weeks". Reuses **Recharts** (already
+  a dep) for the by-week bar chart; the heatmap is CSS grid. Descriptive, **never
+  scored or streaked** (Journal of Delights' ethos). `weekReview` is the same idea
+  for a single week (the no-server "this week — N woven, M carried" summary).
+- **Find & focus** — one search field (`matchesQuery` over title+skein) plus
+  toggles for *unwoven only* and *top of each group* (the hot few, `topOfGroup`),
+  cross-view. Woven threads can be **folded** per group
+  ([`components/WovenFold.jsx`](src/loom/components/WovenFold.jsx)) rather than just
+  hidden. Row-level sort is deliberately absent — manual position is the identity;
+  only skein-**group** order is sortable.
+- **Cross-column drag** —
+  [`lib/dragContext.jsx`](src/loom/lib/dragContext.jsx). A single shared drag
+  controller lets a thread be flung within its group **or onto another day / the
+  distaff / another skein**, resolving to a single `Day`/`Skein`+`Order` write.
+  Empty columns keep a real drop target (the list grows to fill its column). The
+  day-mover / skein chips stay for keyboard and precision.
+- **Undo on unravel (re-ravel)** — a swipe-left delete leaves a 5-second toast that
+  re-weaves the thread back (App.jsx `removeWithUndo` / `reravel`).
+
+## Two voices (the terminology toggle)
+
+Every SCUMM-flavoured word on screen is an **alias**.
+[`lib/lexicon.js`](src/loom/lib/lexicon.js) holds two maps with identical keys —
+the default **loom** voice (thread · skein · weave · the distaff · the Guild) and a
+**plain** voice (task · project · complete · the backlog · Settings) — and
+[`lib/lexiconContext.jsx`](src/loom/lib/lexiconContext.jsx) exposes `t(key)`.
+Nothing about behaviour changes with the voice; it's pure wording, chosen in
+Settings → Vocabulary and remembered in the `loom:lexicon` key (with a
+`storage`-event sync, same as the theme). The base SCUMM flavour is the "vanilla"
+default.
 
 ## The heatmap (Ivy-Lee, no priority tags)
 

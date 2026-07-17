@@ -48,9 +48,16 @@ export function isLive() {
 }
 
 // ── View prefs ──────────────────────────────────────────────────────────────
-// Remembers the last view (skeins/loom) and whether woven threads are shown, so
-// the app reopens where you left it.
-export const DEFAULT_VIEW_PREFS = { view: 'loom', showWoven: false }
+// Remembers the last view (skeins/loom/tapestry), whether woven threads are
+// shown, the focus toggles (unwoven-only, top-of-group-only, collapse-woven) and
+// the List-view skein-group sort — so the app reopens exactly where you left it.
+export const DEFAULT_VIEW_PREFS = {
+  view: 'loom',
+  showWoven: false,   // the "unwoven only" focus is simply this turned off
+  topOnly: false,     // show only the hot few (top of each group)
+  collapseWoven: false, // fold woven threads under a per-group toggle
+  skeinSort: 'manual', // 'manual' | 'name' | 'size' | 'heat'
+}
 export function loadViewPrefs() {
   try {
     const raw = localStorage.getItem(VIEW_KEY)

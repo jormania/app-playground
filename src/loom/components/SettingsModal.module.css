@@ -58,6 +58,10 @@
 .swatch span { display: block; }
 .themeName { font-family: var(--font-display); font-size: var(--text-sm); letter-spacing: 0.04em; }
 
+/* Vocabulary picker — a stacked label + preview line, no swatch. */
+.voiceOption { flex-direction: column; align-items: flex-start; gap: 3px; }
+.voiceHint { font-family: var(--loom-thread); font-style: italic; font-size: var(--text-xs); color: var(--color-faint); }
+
 .probe { margin: 0; font-size: var(--text-sm); }
 .testing { color: var(--color-muted); }
 .ok { color: var(--color-success); }

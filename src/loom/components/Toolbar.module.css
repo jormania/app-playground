@@ -1,0 +1,99 @@
+.bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.searchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.glass {
+  position: absolute;
+  left: 12px;
+  color: var(--color-faint);
+  font-size: var(--text-base);
+  pointer-events: none;
+}
+.search {
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-pill);
+  padding: 8px 34px 8px 34px;
+  font-family: var(--loom-thread);
+  font-size: 1rem; /* >=16px so mobile Safari doesn't zoom */
+  color: var(--color-ink);
+  outline: none;
+}
+.search:focus { border-color: var(--color-accent); }
+.search::placeholder { color: var(--color-faint); font-style: italic; }
+.clear {
+  position: absolute;
+  right: 8px;
+  border: none;
+  background: none;
+  color: var(--color-faint);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  padding: 4px 6px;
+  border-radius: var(--radius-pill);
+}
+.clear:hover { color: var(--color-ink); }
+
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chip {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
+  color: var(--color-muted);
+  background: color-mix(in srgb, var(--color-surface-2) 70%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 4px 11px;
+  cursor: pointer;
+  transition: color var(--duration) var(--ease), background var(--duration) var(--ease), border-color var(--duration) var(--ease);
+}
+.chip:hover { color: var(--color-ink); border-color: var(--color-border-2); }
+.chip:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 1px; }
+.on { color: var(--color-on-accent); background: var(--color-accent); border-color: var(--color-accent); }
+
+.spacer { flex: 1 1 auto; }
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  color: var(--color-accent);
+  background: none;
+  border: 1px solid var(--loom-gold-line);
+  border-radius: var(--radius-pill);
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background var(--duration) var(--ease), color var(--duration) var(--ease);
+}
+.action:hover { background: color-mix(in srgb, var(--color-accent) 14%, transparent); color: var(--color-ink); }
+.action:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 1px; }
+.badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-danger);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 0.66rem;
+  line-height: 1;
+}

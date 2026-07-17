@@ -4,6 +4,8 @@ import {
   sortByOrder, rankBetween, orderForNew, orderForMove,
   dateKey, addDays, startOfWeek, weekDays,
   groupBySkein, collectSkeins, groupByWeek, threadStats, LOOSE_SKEIN,
+  weekdayIndex, carryThreads, threadsForDraftWeek, draftItemsFromWeek,
+  matchesQuery, topOfGroup, sortSkeinGroups, tapestryStats, weekReview,
 } from './model.js'
 
 describe('heatmap dye', () => {
@@ -158,5 +160,114 @@ describe('stats', () => {
       { id: '1', done: true }, { id: '2', done: false }, { id: '3', done: false },
     ])
     expect(s).toEqual({ total: 3, woven: 1, open: 2 })
+  })
+})
+
+describe('carry-over (the re-warp ritual)', () => {
+  it('weekdayIndex is Monday-based', () => {
+    expect(weekdayIndex('2026-07-13')).toBe(0) // Monday
+    expect(weekdayIndex('2026-07-19')).toBe(6) // Sunday
+  })
+
+  it('carries only unfinished threads dated before this week', () => {
+    const threads = [
+      { id: 'a', day: '2026-07-06', done: false, order: 0 }, // last week, open → carry
+      { id: 'b', day: '2026-07-07', done: true, order: 0 },  // last week, woven → skip
+      { id: 'c', day: '2026-07-14', done: false, order: 0 }, // this week → skip
+      { id: 'd', day: null, done: false, order: 0 },         // distaff → skip
+      { id: 'e', day: '2026-06-29', done: false, order: 0 }, // two weeks ago → carry
+    ]
+    const carried = carryThreads(threads, '2026-07-13')
+    expect(carried.map(t => t.id)).toEqual(['e', 'a']) // oldest first
+  })
+})
+
+describe('drafts', () => {
+  const draft = {
+    id: 'd1',
+    name: 'Work week',
+    items: [
+      { title: 'Standup', skein: 'Work', dayIndex: 0, order: 0 },
+      { title: 'Ship it', skein: 'Work', dayIndex: 4, order: 1000 },
+      { title: 'Idea parking', skein: null, dayIndex: null, order: 2000 },
+    ],
+  }
+
+  it('casts a draft onto a week, mapping day-of-week to real dates', () => {
+    const built = threadsForDraftWeek(draft, new Date(2026, 6, 15)) // week of Mon 13th
+    expect(built[0]).toMatchObject({ title: 'Standup', skein: 'Work', day: '2026-07-13', done: false })
+    expect(built[1].day).toBe('2026-07-17') // Friday
+    expect(built[2].day).toBeNull()         // distaff item
+  })
+
+  it('snapshots a week back into draft items (open threads only)', () => {
+    const days = weekDays(new Date(2026, 6, 15))
+    const threads = [
+      { id: '1', title: 'Keep', skein: 'Work', day: days[0].key, order: 0, done: false },
+      { id: '2', title: 'Woven — skip', skein: 'Work', day: days[1].key, order: 10, done: true },
+      { id: '3', title: 'Distaff', skein: null, day: null, order: 20, done: false },
+      { id: '4', title: 'Off-week — skip', skein: null, day: '2020-01-01', order: 30, done: false },
+    ]
+    const items = draftItemsFromWeek(threads, days)
+    expect(items.map(i => i.title)).toEqual(['Keep', 'Distaff'])
+    expect(items[0].dayIndex).toBe(0)
+    expect(items[1].dayIndex).toBeNull()
+  })
+})
+
+describe('search & focus', () => {
+  it('matchesQuery scans title and skein, case-insensitively', () => {
+    const t = { title: 'Dye the wool', skein: 'Weaving' }
+    expect(matchesQuery(t, '')).toBe(true)
+    expect(matchesQuery(t, 'WOOL')).toBe(true)
+    expect(matchesQuery(t, 'weav')).toBe(true)
+    expect(matchesQuery(t, 'garden')).toBe(false)
+  })
+
+  it('topOfGroup keeps the hot few (cap + 1)', () => {
+    const tasks = Array.from({ length: 10 }, (_, i) => ({ id: String(i) }))
+    expect(topOfGroup(tasks)).toHaveLength(HEAT_CAP + 1)
+  })
+
+  it('sortSkeinGroups orders by name/size/heat with loose always last', () => {
+    const groups = [
+      { skein: 'Beta', isLoose: false, tasks: [{ done: false }, { done: false }] },
+      { skein: LOOSE_SKEIN, isLoose: true, tasks: [{ done: false }] },
+      { skein: 'Alpha', isLoose: false, tasks: [{ done: true }] },
+    ]
+    expect(sortSkeinGroups(groups, 'name').map(g => g.skein)).toEqual(['Alpha', 'Beta', LOOSE_SKEIN])
+    expect(sortSkeinGroups(groups, 'size').map(g => g.skein)).toEqual(['Beta', 'Alpha', LOOSE_SKEIN])
+    expect(sortSkeinGroups(groups, 'heat').map(g => g.skein)).toEqual(['Beta', 'Alpha', LOOSE_SKEIN])
+    expect(sortSkeinGroups(groups, 'manual').map(g => g.skein)).toEqual(['Beta', LOOSE_SKEIN, 'Alpha'])
+  })
+})
+
+describe('the Tapestry', () => {
+  const now = new Date(2026, 6, 15) // Wed of week starting Mon 2026-07-13
+  const threads = [
+    { id: '1', title: 'a', skein: 'Weaving', day: '2026-07-13', order: 0, done: true },
+    { id: '2', title: 'b', skein: 'Weaving', day: '2026-07-13', order: 1, done: false },
+    { id: '3', title: 'c', skein: 'Hearth', day: '2026-07-06', order: 0, done: false }, // last week, open
+    { id: '4', title: 'd', skein: 'Weaving', day: '2020-01-01', order: 0, done: true },  // out of window
+    { id: '5', title: 'e', skein: null, day: null, order: 0, done: false },              // no day
+  ]
+
+  it('aggregates completion, hottest skein, busiest day and past debt', () => {
+    const s = tapestryStats(threads, { weeks: 4, now })
+    expect(s.weeks).toBe(4)
+    expect(s.rows).toHaveLength(4)
+    expect(s.total).toBe(3)   // threads 1,2,3 are in-window and dated
+    expect(s.woven).toBe(1)   // only thread 1
+    expect(s.completionRate).toBeCloseTo(1 / 3)
+    expect(s.hottestSkein.skein).toBe('Weaving')
+    expect(s.busiestWeekday.index).toBe(0) // Monday (threads 1 & 2)
+    expect(s.unwovenPast).toBe(1)          // thread 3
+  })
+
+  it('weekReview counts this week woven vs carried', () => {
+    const r = weekReview(threads, now)
+    expect(r.woven).toBe(1)
+    expect(r.carried).toBe(1)
+    expect(r.hottestSkein).toBe('Weaving')
   })
 })

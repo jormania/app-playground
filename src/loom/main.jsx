@@ -10,6 +10,7 @@ import '../ds/tokens.css'
 import './loom.css'
 import { watchInstalled } from '../shared/installFlag'
 import { ThemeProvider } from './lib/themeContext'
+import { LexiconProvider } from './lib/lexiconContext'
 import App from './App.jsx'
 
 watchInstalled('loom-react.html')
@@ -25,7 +26,9 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ThemeProvider>
-      <App />
+      <LexiconProvider>
+        <App />
+      </LexiconProvider>
     </ThemeProvider>
   </StrictMode>,
 )

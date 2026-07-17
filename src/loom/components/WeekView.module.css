@@ -33,6 +33,50 @@
 .weekLabel:hover { color: var(--color-ink); }
 .current { color: var(--color-accent); border-color: var(--loom-gold-line); }
 
+/* Repeating-draft offer — a gentle, opt-in banner when a fresh week has a
+   repeating draft not yet cast. */
+.repeats { display: flex; flex-direction: column; gap: var(--space-2xs); }
+.repeat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
+  border: 1px solid var(--loom-gold-line);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+}
+.repeatText {
+  font-family: var(--loom-thread);
+  font-style: italic;
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  min-width: 0;
+}
+.repeatBtns { display: flex; align-items: center; gap: var(--space-xs); flex: 0 0 auto; }
+.repeatCast {
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+  cursor: pointer;
+}
+.repeatCast:hover { background: var(--color-accent-hover); }
+.repeatSkip {
+  border: none;
+  background: none;
+  color: var(--color-faint);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+}
+.repeatSkip:hover { color: var(--color-danger); }
+
 /* The warp: seven day columns. Horizontal scroll-snap on narrow screens (a real
    week planner), a 7-track grid once there's room. */
 .warp {

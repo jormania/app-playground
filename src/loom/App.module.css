@@ -126,3 +126,26 @@
   box-shadow: var(--shadow-lg);
   cursor: pointer;
 }
+
+/* Re-ravel undo — sits just above the verb bar, its own accent edge. */
+.undoToast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  border-color: var(--loom-gold-line);
+  cursor: default;
+  font-family: var(--loom-thread);
+}
+.undoBtn {
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.undoBtn:hover { background: var(--color-accent-hover); }

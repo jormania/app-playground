@@ -1,12 +1,20 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLoom } from './lib/useLoom.js'
 import { useTheme } from './lib/themeContext.jsx'
+import { useLexicon } from './lib/lexiconContext.jsx'
 import { loadViewPrefs, saveViewPrefs } from './lib/store.js'
-import { weekDays, startOfWeek, addDays, dateKey, orderForMove, threadStats } from './lib/model.js'
+import {
+  weekDays, startOfWeek, addDays, dateKey, orderForMove, threadStats,
+  carryThreads, threadsForDraftWeek,
+} from './lib/model.js'
 import SkeinView from './components/SkeinView.jsx'
 import WeekView from './components/WeekView.jsx'
+import Tapestry from './components/Tapestry.jsx'
+import Toolbar from './components/Toolbar.jsx'
 import VerbBar from './components/VerbBar.jsx'
 import SettingsModal from './components/SettingsModal.jsx'
+import RewarpRitual from './components/RewarpRitual.jsx'
+import DraftsModal from './components/DraftsModal.jsx'
 import styles from './App.module.css'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -22,37 +30,72 @@ function weekLabel(anchor) {
 export default function App() {
   const loom = useLoom()
   const theme = useTheme()
+  const { t } = useLexicon()
   const [prefs, setPrefs] = useState(loadViewPrefs)
+  const [query, setQuery] = useState('')
   const [anchor, setAnchor] = useState(() => new Date())
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [rewarpOpen, setRewarpOpen] = useState(false)
+  const [draftsOpen, setDraftsOpen] = useState(false)
+  const [undo, setUndo] = useState(null)
+  const undoTimer = useRef(null)
 
   const setView = useCallback((view) => {
     setPrefs(p => { const next = { ...p, view }; saveViewPrefs(next); return next })
   }, [])
-  const toggleWoven = useCallback(() => {
-    setPrefs(p => { const next = { ...p, showWoven: !p.showWoven }; saveViewPrefs(next); return next })
+  const setFilter = useCallback((key, val) => {
+    if (key === 'query') { setQuery(val); return }
+    setPrefs(p => { const next = { ...p, [key]: val }; saveViewPrefs(next); return next })
   }, [])
 
   const days = useMemo(() => weekDays(anchor), [anchor])
   const isThisWeek = dateKey(startOfWeek(anchor)) === dateKey(startOfWeek(new Date()))
 
-  const visible = useMemo(
-    () => (prefs.showWoven ? loom.threads : loom.threads.filter(t => !t.done)),
-    [loom.threads, prefs.showWoven],
-  )
+  // The re-warp ritual always targets the real current week, whatever week the
+  // planner is currently scrolled to.
+  const thisWeekDays = useMemo(() => weekDays(new Date()), [])
+  const thisMondayKey = dateKey(startOfWeek(new Date()))
+  const carried = useMemo(() => carryThreads(loom.threads, thisMondayKey), [loom.threads, thisMondayKey])
+
   const stats = useMemo(() => threadStats(loom.threads), [loom.threads])
 
-  // The action surface both views share. reorderWithin turns a drop target index
-  // into a fractional rank and persists it as a single Order write.
+  const filters = useMemo(
+    () => ({ query, showWoven: prefs.showWoven, topOnly: prefs.topOnly, collapseWoven: prefs.collapseWoven, skeinSort: prefs.skeinSort }),
+    [query, prefs.showWoven, prefs.topOnly, prefs.collapseWoven, prefs.skeinSort],
+  )
+
+  // Undo (re-ravel): a deleted thread is held for 5s and can be re-woven back.
+  const removeWithUndo = useCallback((id) => {
+    const thread = loom.threads.find(x => x.id === id)
+    loom.removeThread(id)
+    if (!thread) return
+    setUndo({ title: thread.title, skein: thread.skein, day: thread.day, order: thread.order, done: thread.done })
+    if (undoTimer.current) clearTimeout(undoTimer.current)
+    undoTimer.current = setTimeout(() => setUndo(null), 5000)
+  }, [loom])
+  const reravel = useCallback(() => {
+    setUndo(cur => { if (cur) loom.addThread(cur); return null })
+    if (undoTimer.current) clearTimeout(undoTimer.current)
+  }, [loom])
+  useEffect(() => () => { if (undoTimer.current) clearTimeout(undoTimer.current) }, [])
+
+  // Cast a draft's threads onto the given week.
+  const castDraft = useCallback((draft, weekStartDate) => {
+    threadsForDraftWeek(draft, weekStartDate).forEach(th => loom.addThread(th))
+  }, [loom])
+
   const actions = useMemo(() => ({
     addThread: loom.addThread,
     patchThread: loom.patchThread,
-    removeThread: loom.removeThread,
+    removeThread: removeWithUndo,
     toggleWoven: loom.toggleWoven,
+    castDraft,
     reorderWithin: (group, id, targetIndex) => {
       loom.patchThread(id, { order: orderForMove(group, id, targetIndex) })
     },
-  }), [loom])
+  }), [loom, removeWithUndo, castDraft])
+
+  const showToolbar = loom.status === 'ready' && prefs.view !== 'tapestry'
 
   return (
     <div className={styles.shell}>
@@ -69,8 +112,8 @@ export default function App() {
             type="button"
             className={styles.iconBtn}
             onClick={() => setSettingsOpen(true)}
-            aria-label="Settings"
-            title="Settings"
+            aria-label={t('Guild')}
+            title={t('Guild')}
           >⚙</button>
         </div>
         <div className={styles.rule} aria-hidden="true"><span>✦</span></div>
@@ -80,7 +123,7 @@ export default function App() {
 
       <main className={styles.main}>
         {loom.status === 'loading' && (
-          <p className={styles.state}>Warping the loom…</p>
+          <p className={styles.state}>{t('loadingLoom')}</p>
         )}
 
         {loom.status === 'error' && (
@@ -89,24 +132,37 @@ export default function App() {
             <p className={styles.errorMsg}>{loom.error}</p>
             <div className={styles.errorBtns}>
               <button className={styles.retry} onClick={loom.reload}>Try again</button>
-              <button className={styles.retry} onClick={() => setSettingsOpen(true)}>Open the Guild</button>
+              <button className={styles.retry} onClick={() => setSettingsOpen(true)}>Open {t('guild')}</button>
             </div>
           </div>
         )}
 
+        {showToolbar && (
+          <Toolbar
+            filters={filters}
+            setFilter={setFilter}
+            carryCount={carried.length}
+            onRewarp={() => setRewarpOpen(true)}
+            onDrafts={() => setDraftsOpen(true)}
+          />
+        )}
+
         {loom.status === 'ready' && (
           prefs.view === 'skeins'
-            ? <SkeinView threads={visible} actions={actions} />
-            : <WeekView
-                threads={visible}
-                days={days}
-                actions={actions}
-                weekLabel={weekLabel(anchor)}
-                isThisWeek={isThisWeek}
-                onPrevWeek={() => setAnchor(a => addDays(startOfWeek(a), -7))}
-                onNextWeek={() => setAnchor(a => addDays(startOfWeek(a), 7))}
-                onThisWeek={() => setAnchor(new Date())}
-              />
+            ? <SkeinView threads={loom.threads} actions={actions} filters={filters} onSkeinSort={id => setFilter('skeinSort', id)} />
+            : prefs.view === 'tapestry'
+              ? <Tapestry threads={loom.threads} />
+              : <WeekView
+                  threads={loom.threads}
+                  days={days}
+                  actions={actions}
+                  filters={filters}
+                  weekLabel={weekLabel(anchor)}
+                  isThisWeek={isThisWeek}
+                  onPrevWeek={() => setAnchor(a => addDays(startOfWeek(a), -7))}
+                  onNextWeek={() => setAnchor(a => addDays(startOfWeek(a), 7))}
+                  onThisWeek={() => setAnchor(new Date())}
+                />
         )}
       </main>
 
@@ -115,11 +171,17 @@ export default function App() {
         <div className={styles.toast} role="status" onClick={loom.dismissError}>{loom.error}</div>
       )}
 
+      {/* Re-ravel — the 5-second undo after an unravel. */}
+      {undo && (
+        <div className={`${styles.toast} ${styles.undoToast}`} role="status">
+          <span>{t('Thread')} unravelled.</span>
+          <button type="button" className={styles.undoBtn} onClick={reravel}>{t('reravel')}</button>
+        </div>
+      )}
+
       <VerbBar
         view={prefs.view}
         onView={setView}
-        showWoven={prefs.showWoven}
-        onToggleWoven={toggleWoven}
         stats={stats}
         mode={loom.mode}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -130,6 +192,25 @@ export default function App() {
         mode={loom.mode}
         onClose={() => setSettingsOpen(false)}
         onSaved={loom.reload}
+      />
+
+      <RewarpRitual
+        open={rewarpOpen}
+        carried={carried}
+        threads={loom.threads}
+        days={thisWeekDays}
+        actions={actions}
+        onClose={() => setRewarpOpen(false)}
+      />
+
+      <DraftsModal
+        open={draftsOpen}
+        onClose={() => setDraftsOpen(false)}
+        threads={loom.threads}
+        days={days}
+        weekStartDate={days[0].date}
+        weekLabel={weekLabel(anchor)}
+        actions={actions}
       />
     </div>
   )

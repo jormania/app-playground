@@ -1,12 +1,20 @@
+import { useLexicon } from '../lib/lexiconContext.jsx'
 import styles from './VerbBar.module.css'
 
 // A nod to the SCUMM verb interface: a sentence line above a row of chunky
 // verbs, pinned to the foot of the screen. It's functional chrome — the view
-// toggle and the app's controls — so the tribute never gets in the mission's way.
-export default function VerbBar({ view, onView, showWoven, onToggleWoven, stats, mode, onOpenSettings }) {
+// switch and the app's controls — so the tribute never gets in the mission's way.
+export default function VerbBar({ view, onView, stats, mode, onOpenSettings }) {
+  const { t } = useLexicon()
   const sentence = stats.total === 0
-    ? 'The loom stands empty.'
-    : `${stats.open} thread${stats.open === 1 ? '' : 's'} on the loom${stats.woven ? ` · ${stats.woven} woven` : ''}`
+    ? t('emptyLoom')
+    : `${stats.open} ${stats.open === 1 ? t('thread') : t('threads')} ${t('onLoom')}${stats.woven ? ` · ${stats.woven} ${t('woven')}` : ''}`
+
+  const views = [
+    { id: 'skeins', label: t('skeinView') },
+    { id: 'loom', label: t('weekView') },
+    { id: 'tapestry', label: t('tapestryView') },
+  ]
 
   return (
     <nav className={styles.bar} aria-label="Loom controls">
@@ -17,25 +25,16 @@ export default function VerbBar({ view, onView, showWoven, onToggleWoven, stats,
         </span>
       </div>
       <div className={styles.verbs}>
-        <button
-          type="button"
-          className={`${styles.verb} ${view === 'skeins' ? styles.on : ''}`}
-          aria-pressed={view === 'skeins'}
-          onClick={() => onView('skeins')}
-        >Skeins</button>
-        <button
-          type="button"
-          className={`${styles.verb} ${view === 'loom' ? styles.on : ''}`}
-          aria-pressed={view === 'loom'}
-          onClick={() => onView('loom')}
-        >The Week</button>
-        <button
-          type="button"
-          className={`${styles.verb} ${showWoven ? styles.on : ''}`}
-          aria-pressed={showWoven}
-          onClick={onToggleWoven}
-        >Woven</button>
-        <button type="button" className={styles.verb} onClick={onOpenSettings}>Guild</button>
+        {views.map(v => (
+          <button
+            key={v.id}
+            type="button"
+            className={`${styles.verb} ${view === v.id ? styles.on : ''}`}
+            aria-pressed={view === v.id}
+            onClick={() => onView(v.id)}
+          >{v.label}</button>
+        ))}
+        <button type="button" className={styles.verb} onClick={onOpenSettings}>{t('guildVerb')}</button>
       </div>
     </nav>
   )

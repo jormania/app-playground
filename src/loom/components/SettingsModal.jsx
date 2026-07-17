@@ -6,6 +6,7 @@ import {
   getToken, getDatabaseId, setToken, setDatabaseId, clearToken, hasCustomDatabase, testConnection,
 } from '../lib/store.js'
 import { useTheme } from '../lib/themeContext.jsx'
+import { useLexicon } from '../lib/lexiconContext.jsx'
 import { PRESETS } from '../lib/theme.js'
 import styles from './SettingsModal.module.css'
 
@@ -42,8 +43,38 @@ function ThemePicker({ current, onPick }) {
 // "The Guild" — where you bind Loom to your own Notion database (BYO token), pick
 // a palette, or stay in the offline demo. Deliberately tiny schema, documented in
 // the guide (a duplicatable Starter Template) and summarised right here.
+// The two voices, previewed as a live line so you can see what each does before
+// you pick. Loom's SCUMM flavour is the default; "Plain" aliases every term to a
+// common planner word without changing a thing about how the app works.
+function VoicePicker({ voice, onPick }) {
+  const options = [
+    { id: 'loom', name: 'Loom words', hint: 'threads · skeins · weave · the distaff' },
+    { id: 'plain', name: 'Plain words', hint: 'tasks · projects · complete · the backlog' },
+  ]
+  return (
+    <div className={styles.themeGrid}>
+      {options.map(o => {
+        const selected = o.id === voice
+        return (
+          <button
+            key={o.id}
+            type="button"
+            className={`${styles.themeOption} ${styles.voiceOption} ${selected ? styles.themeSelected : ''}`}
+            aria-pressed={selected}
+            onClick={() => onPick(o.id)}
+          >
+            <span className={styles.themeName}>{o.name}{selected ? ' ✓' : ''}</span>
+            <span className={styles.voiceHint}>{o.hint}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function SettingsModal({ open, onClose, onSaved, mode }) {
   const theme = useTheme()
+  const lex = useLexicon()
   const [token, setTok] = useState(getToken())
   const [db, setDb] = useState(hasCustomDatabase() ? getDatabaseId() : '')
   const [probe, setProbe] = useState({ state: 'idle', msg: '' })
@@ -77,7 +108,7 @@ export default function SettingsModal({ open, onClose, onSaved, mode }) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="The Guild">
+    <Modal open={open} onClose={onClose} title={lex.t('Guild')}>
       <div className={styles.body}>
         <p className={`${styles.status} ${mode === 'live' ? styles.live : styles.demo}`}>
           {mode === 'live'
@@ -138,6 +169,16 @@ export default function SettingsModal({ open, onClose, onSaved, mode }) {
           <h3 className={styles.sectionTitle}>Appearance</h3>
           <p className={styles.sectionHint}>Two moods for the Guild — the header ◐ button cycles them, and the guide follows your choice.</p>
           <ThemePicker current={theme.themeId} onPick={theme.setTheme} />
+        </div>
+
+        {/* ── Vocabulary ── */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Vocabulary</h3>
+          <p className={styles.sectionHint}>
+            Loom speaks the loom-house tongue by default. Prefer plain planner words? Switch the whole
+            app over — every feature works exactly the same, only the names change.
+          </p>
+          <VoicePicker voice={lex.voice} onPick={lex.setVoice} />
         </div>
 
         <details className={styles.schema}>

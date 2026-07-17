@@ -5,9 +5,29 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2xs);
+  /* Grow to fill a day column and keep a floor when empty, so an empty column
+     still offers a real drop target for cross-column drag (not a 0px sliver). */
+  flex: 1 1 auto;
+  min-height: 40px;
 }
 
 .slot { position: relative; }
+
+/* While a cross-column drag hovers this list, warm its ground so the target
+   column reads clearly under the finger. */
+.target {
+  outline: 2px dashed var(--loom-gold-line);
+  outline-offset: 3px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+}
+/* A landing pad when dragging onto an empty column. */
+.emptyDrop {
+  height: 34px;
+  border: 1px dashed var(--loom-gold-line);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
 
 /* Insertion line where a dragged thread will land — a taut gold warp thread. */
 .caret {
