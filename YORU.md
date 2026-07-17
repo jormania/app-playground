@@ -77,9 +77,13 @@ via a quiet `lit · dark · off` control in the top bar — shown always in lit,
 during a peek in the covered modes (tap the sky / black to peek, the control
 appears, pick a mode).
 
-Under that control sits **one quiet line about the moon** (`moonBrief` in
-[`lib/sky.js`](src/yoru/lib/sky.js)) — *"waxing gibbous · high in the south"*, or
-when it's down, *"last quarter · rises tonight around 00:30, in the east"*.
+Under that control sits **one quiet line about the moon**, led by tonight's moon
+drawn at its real phase ([`MoonGlyph`](src/yoru/components/MoonGlyph.jsx), sized
+in `em` so it tracks the text) and then said in words (`moonBrief` in
+[`lib/sky.js`](src/yoru/lib/sky.js)) — *"◑ waxing gibbous · high in the south"*,
+or when it's down, *"◑ last quarter · rises tonight around 00:30, in the east"*.
+The glyph keeps its outline ring even at new moon, when there's no lit face at
+all and it would otherwise be a blank gap where a moon should be.
 Shown in **all three modes**: only *go dark* ever draws the sky, so lit and off
 would otherwise give you no way of knowing there's a moon out at all. The time is
 approximate on purpose (nearest half hour, "around"), and *tonight* / *tomorrow*

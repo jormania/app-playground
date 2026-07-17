@@ -1,26 +1,25 @@
-import { useEffect, useRef } from 'react'
-import { moonPhase, drawMoonGlyph } from '../lib/sky'
+import { moonPhase, moonGlyphPath } from '../lib/sky'
 import styles from './MoonGlyph.module.css'
 
-// A tiny, quiet teaser of tonight's real moon phase, sitting beside the 夜
-// glyph on Home — no location needed (phase alone is the same worldwide).
-// Drawn once on mount: the phase moves far too slowly for Home's brief
-// lifetime to warrant a refresh timer.
-export default function MoonGlyph() {
-  const canvasRef = useRef(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const dpr = Math.min(2, window.devicePixelRatio || 1)
-    const size = canvas.clientWidth || 18
-    canvas.width = size * dpr
-    canvas.height = size * dpr
-    const ctx = canvas.getContext('2d')
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    const { phase } = moonPhase(new Date())
-    drawMoonGlyph(ctx, size / 2, size / 2, size / 2 - 1, phase, '#c8c4e8')
-  }, [])
-
-  return <canvas ref={canvasRef} className={styles.glyph} aria-hidden="true" />
+// Tonight's real moon at its true phase, small enough to sit in a line of text
+// — the teaser beside the 夜 on Home, and the prefix on the session's moon line.
+// No location needed: the phase alone is the same the world over.
+//
+// SVG rather than canvas (which is what this was) so it scales with whatever
+// font-size it's dropped into and stays crisp at any density. `phase` is a prop
+// so a caller already holding one can pass it and be sure the shape and the
+// words beside it describe the same instant; omit it and we read the clock.
+//
+// The ring is always drawn, under the lit face. At new moon there IS no lit
+// face — moonGlyphPath returns nothing — and without the ring the glyph would
+// be a blank gap where a moon should be.
+export default function MoonGlyph({ phase, className }) {
+  const lit = moonGlyphPath(phase ?? moonPhase(new Date()).phase)
+  return (
+    // roomier than the unit disc, so the ring's stroke isn't clipped
+    <svg viewBox="-1.15 -1.15 2.3 2.3" className={className || styles.glyph} aria-hidden="true">
+      <circle cx="0" cy="0" r="1" fill="rgba(0,0,0,0.32)" stroke="#c8c4e8" strokeOpacity="0.45" strokeWidth="0.07" />
+      {lit && <path d={lit} fill="#c8c4e8" />}
+    </svg>
+  )
 }

@@ -177,6 +177,19 @@
    moon's real phase, and when it next rises or sets. Only ever present while
    peeking (the sky itself is hidden then), so it's the one place this
    information can actually be read. */
+/* Tonight's moon, at its real phase, sat in front of the words. Sized in `em`
+   so it tracks the caption's own font rather than pinning a pixel size that
+   would drift out of step with it. */
+.moonCaptionGlyph {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.24em;
+  /* the caption is letter-spaced, which lands after the glyph too — take that
+     back off so the gap is the one set here */
+  margin-inline-end: calc(0.45em - 0.1em);
+}
+
 .moonCaption {
   margin: 0;
   font-size: var(--text-xs);

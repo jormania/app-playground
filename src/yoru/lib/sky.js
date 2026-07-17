@@ -1209,25 +1209,30 @@ export function drawMoon(ctx, cx, cy, r, phase, alpha, opts = {}) {
   ctx.restore()
 }
 
-// A tiny flat silhouette of the moon at its real phase — for icon-sized use
-// (the Home screen's quiet teaser), where drawMoon's gradients/maria/halo
-// would just read as mud at a few pixels. Same terminator-ellipse
-// construction as drawMoon, just flatly filled: a dim full disc (a hint of
-// earthshine) with the true lit crescent/gibbous over it.
-export function drawMoonGlyph(ctx, cx, cy, r, phase, litColor, shadowAlpha = 0.32) {
-  ctx.save()
-  ctx.beginPath()
-  ctx.arc(cx, cy, r, 0, Math.PI * 2)
-  ctx.fillStyle = `rgba(0,0,0,${shadowAlpha})`
-  ctx.fill()
-
+// The moon's lit face at `phase`, as an SVG path over a unit disc centred on
+// (0,0) — for icon-sized use, where drawMoon's gradients, maria and halo would
+// only read as mud at a few pixels across. Same terminator-ellipse construction
+// as drawMoon, just flat: the limb on the lit side, closed by the terminator.
+//
+// A path rather than a canvas drawing (which is what this was) so a glyph can
+// sit inline in a line of TEXT and scale with the font, at any pixel density,
+// with no backing store to size and nothing to redraw on a resize or a zoom.
+//
+// Returns '' at new moon — there is genuinely no lit face — so the caller can
+// draw its outline alone rather than an empty space where a moon should be.
+export function moonGlyphPath(phase) {
+  const fraction = (1 - Math.cos(phase * 2 * Math.PI)) / 2
+  if (fraction < 0.02) return ''
   const waxing = phase <= 0.5
-  const ellipseW = r * Math.cos(phase * 2 * Math.PI)
-  ctx.beginPath()
-  ctx.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2, !waxing)
-  ctx.ellipse(cx, cy, Math.abs(ellipseW), r, 0, Math.PI / 2, -Math.PI / 2, ellipseW > 0 ? waxing : !waxing)
-  ctx.closePath()
-  ctx.fillStyle = litColor
-  ctx.fill()
-  ctx.restore()
+  const ellipseW = Math.cos(phase * 2 * Math.PI)
+  // The same two cases canvas encodes in its `anticlockwise` flags, in SVG's
+  // terms: sweep-flag 1 is clockwise (y runs down the screen). The lit limb is
+  // the right half waxing and the left half waning; the terminator bulges
+  // toward the lit side for a crescent and away from it for a gibbous. At the
+  // quarters the terminator's radius falls to 0, which SVG draws as a straight
+  // line — exactly what a half-lit moon's edge is. At full it grows to the
+  // whole disc and the two arcs close a plain circle. Neither needs a case.
+  const limbSweep = waxing ? 1 : 0
+  const termSweep = (ellipseW > 0 ? waxing : !waxing) ? 0 : 1
+  return `M 0 -1 A 1 1 0 0 ${limbSweep} 0 1 A ${Math.abs(ellipseW).toFixed(4)} 1 0 0 ${termSweep} 0 -1 Z`
 }

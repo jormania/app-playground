@@ -9,6 +9,7 @@ import {
   moonBrightLimb,
   moonPhase,
   moonBrief,
+  moonGlyphPath,
   nextMoonrise,
   moonPosition,
 } from './sky'
@@ -196,6 +197,37 @@ describe('moonBrief', () => {
   it('names the phase and nothing more without a location — the phase is all we honestly know', () => {
     expect(moonBrief(MOON_HIGH, null)).toBe('waxing gibbous')
     expect(moonBrief(MOON_DOWN, null)).toBe('last quarter')
+  })
+})
+
+describe('moonGlyphPath', () => {
+  it('draws nothing at new moon — there is genuinely no lit face', () => {
+    expect(moonGlyphPath(0)).toBe('')
+    expect(moonGlyphPath(1)).toBe('')
+  })
+  it('closes to a plain full disc at full moon, with no case for it', () => {
+    // the terminator's radius has grown to the whole disc, so the two arcs meet
+    // as a circle and nothing is bitten out of it
+    expect(moonGlyphPath(0.5)).toBe('M 0 -1 A 1 1 0 0 1 0 1 A 1.0000 1 0 0 1 0 -1 Z')
+  })
+  it('draws a straight terminator at the quarters', () => {
+    // radius 0 — SVG renders a zero-radius arc as a straight line, which is
+    // exactly what a half-lit moon's edge is
+    expect(moonGlyphPath(0.25)).toContain('A 0.0000 1 ')
+    expect(moonGlyphPath(0.75)).toContain('A 0.0000 1 ')
+  })
+  it('mirrors a waxing crescent against a waning one', () => {
+    // same sliver of light, opposite limb: sweep 1 (the right half, clockwise)
+    // waxing, sweep 0 (the left) waning
+    expect(moonGlyphPath(0.125).startsWith('M 0 -1 A 1 1 0 0 1 0 1')).toBe(true)
+    expect(moonGlyphPath(0.875).startsWith('M 0 -1 A 1 1 0 0 0 0 1')).toBe(true)
+  })
+  it('bulges the terminator the other way once past a quarter', () => {
+    // crescent: the terminator curves toward the lit limb; gibbous: away from it
+    const crescent = moonGlyphPath(0.125).split('A')[2].trim()
+    const gibbous = moonGlyphPath(0.375).split('A')[2].trim()
+    expect(crescent.split(' ')[4]).toBe('0') // sweep
+    expect(gibbous.split(' ')[4]).toBe('1')
   })
 })
 

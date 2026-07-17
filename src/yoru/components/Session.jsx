@@ -7,7 +7,8 @@ import { useWakeLock } from '../lib/useWakeLock'
 import { useCoords } from '../lib/useCoords'
 import { createNightSoundscape } from '../lib/soundscape'
 import { phaseLabel } from '../lib/breath'
-import { moonBrief } from '../lib/sky'
+import MoonGlyph from './MoonGlyph'
+import { moonBrief, moonPhase } from '../lib/sky'
 import styles from './Session.module.css'
 
 // The three display modes, as a quiet in-session control. Short forms of the
@@ -80,9 +81,14 @@ export default function Session({ session, onNote, onFinish }) {
   // — the sky itself is what a peek hides — so the line is there exactly when
   // there's nowhere else to see it. Refreshed every few minutes; the phase and
   // the moon's whole rise/set window both move slowly.
-  const [moonCaption, setMoonCaption] = useState('')
+  // The shape and the words come off ONE reading of the clock, so the glyph can
+  // never show a phase the line beside it doesn't name.
+  const [moon, setMoon] = useState(null)
   useEffect(() => {
-    const refresh = () => setMoonCaption(moonBrief(new Date(), coords))
+    const refresh = () => {
+      const now = new Date()
+      setMoon({ phase: moonPhase(now).phase, text: moonBrief(now, coords) })
+    }
     refresh()
     const id = setInterval(refresh, 5 * 60000)
     return () => clearInterval(id)
@@ -209,7 +215,12 @@ export default function Session({ session, onNote, onFinish }) {
                 </button>
               ))}
             </div>
-            {moonCaption && <p className={styles.moonCaption}>{moonCaption}</p>}
+            {moon && (
+              <p className={styles.moonCaption}>
+                <MoonGlyph phase={moon.phase} className={styles.moonCaptionGlyph} />
+                {moon.text}
+              </p>
+            )}
           </div>
         )}
       </div>
