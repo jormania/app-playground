@@ -237,17 +237,22 @@ export default function Session({ session, onNote, onFinish }) {
         onContextMenu={(e) => e.preventDefault()}
         aria-label="Press and hold to end the night"
       >
-        {breathwork ? (
-          <BreathOrb scale={scale} label={label} />
-        ) : (
-          <span className={styles.ambient} aria-hidden="true">夜</span>
-        )}
+        {/* Wraps the glyph/orb with the hint, so the hint anchors to the top of
+            whichever is showing — it sits just above the small 夜 or the much
+            larger orb without a fixed offset that could only suit one. */}
+        <span className={styles.glyphWrap}>
+          <span className={tapHint ? `${styles.holdHint} ${styles.holdHintShow}` : styles.holdHint}>
+            hold to end the night
+          </span>
+          {breathwork ? (
+            <BreathOrb scale={scale} label={label} />
+          ) : (
+            <span className={styles.ambient} aria-hidden="true">夜</span>
+          )}
+        </span>
         <svg className={styles.ring} viewBox="0 0 100 100" aria-hidden="true">
           <circle className={styles.ringFill} cx="50" cy="50" r="47" style={{ animationDuration: `${HOLD_MS}ms` }} />
         </svg>
-        <span className={tapHint ? `${styles.holdHint} ${styles.holdHintShow}` : styles.holdHint}>
-          hold to end the night
-        </span>
       </button>
 
       <div className={styles.bottom}>

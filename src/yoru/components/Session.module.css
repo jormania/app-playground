@@ -203,9 +203,21 @@
 }
 
 /* Above the orb, clear of the note prompt below it. */
+/* Holds the glyph/orb and the hint together, so the hint can anchor to the top
+   of the actual element rather than to the tall flex button that fills the
+   screen (which put the hint far up near the top edge, adrift from the glyph). */
+.glyphWrap {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .holdHint {
   position: absolute;
-  top: -2.6rem;
+  bottom: calc(100% + 0.85rem); /* just above the glyph/orb, within the ring */
+  left: 50%;
+  transform: translateX(-50%);
   font-size: var(--text-xs);
   letter-spacing: 0.14em;
   color: var(--color-faint);
