@@ -584,14 +584,10 @@ export default function NightSky({ coords, moonPath: showMoonPath = true, starRe
 
       // the moon's arc — drawn here so it sits IN FRONT OF the Milky Way but
       // BEHIND the stars and the moon: a faint guide in the deep sky, not a
-      // foreground mark. The moon's own disc is cut out of it (see drawMoonArc):
-      // the moon sits ON the arc and is drawn half-transparent, so the dots
-      // would otherwise show through its face.
+      // foreground mark. The moon, being opaque, covers the stretch of it that
+      // runs behind the disc.
       const mr = Math.min(w, h) * 0.11
-      if (showMoonPathRef.current) {
-        const hide = place.presence > 0 ? { x: place.x * w, y: place.y * h, r: mr * 1.1 } : null
-        drawMoonArc(ctx, moonArcData, w, h, hide)
-      }
+      if (showMoonPathRef.current) drawMoonArc(ctx, moonArcData, w, h)
 
       // stars. `boost` is the settle: the field swells from rest up to 1+PEAK
       // over the first RISE_S, then eases back to 1 across SETTLE_S — the sky

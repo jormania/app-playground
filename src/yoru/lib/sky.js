@@ -309,13 +309,12 @@ export function moonOnArc(date, coords, arc) {
 const ARC_PEAK_ALPHA = 0.26
 const ARC_DOT_R = 1.3
 const ARC_FADE = 0.12 // fraction of the arc each end fades over
-// `hide` — {x, y, r} in px, the moon's own disc. The moon rides ON this arc and
-// is drawn at half opacity, so without cutting the dots out from under it the
-// path shows straight THROUGH the disc as a dashed line ruled across the moon's
-// face — most obvious near culmination, where the apex crosses it horizontally.
-// The arc simply passes behind the moon, which is what it does in the sky and
-// in every sky-path diagram this is drawn from.
-export function drawMoonArc(ctx, arc, w, h, hide = null) {
+// Drawn before the moon, and simply passes behind it — which is what it does in
+// the sky, and in every sky-path diagram this is drawn from. (This used to have
+// to cut its own dots out from under the moon's disc, because the moon was drawn
+// half-transparent and the path showed straight through its face as a dashed
+// line. The moon is opaque now — see drawMoon — so it occludes this by itself.)
+export function drawMoonArc(ctx, arc, w, h) {
   if (!arc) return
   const pts = arc.points
   const n = pts.length
@@ -323,12 +322,9 @@ export function drawMoonArc(ctx, arc, w, h, hide = null) {
     const edge = Math.min(i, n - 1 - i) / (n * ARC_FADE)
     const alpha = ARC_PEAK_ALPHA * Math.min(1, edge)
     if (alpha <= 0.004) continue
-    const px = pts[i].x * w
-    const py = pts[i].y * h
-    if (hide && Math.hypot(px - hide.x, py - hide.y) < hide.r) continue
     ctx.fillStyle = `rgba(200,199,226,${alpha})`
     ctx.beginPath()
-    ctx.arc(px, py, ARC_DOT_R, 0, Math.PI * 2)
+    ctx.arc(pts[i].x * w, pts[i].y * h, ARC_DOT_R, 0, Math.PI * 2)
     ctx.fill()
   }
 }
@@ -1039,8 +1035,10 @@ const TYCHO_RAYS = [
 ]
 
 const lerp = (a, b, t) => a + (b - a) * t
-const rgbLerp = (a, b, t) =>
-  `${Math.round(lerp(a[0], b[0], t))},${Math.round(lerp(a[1], b[1], t))},${Math.round(lerp(a[2], b[2], t))}`
+// `mix` stays numeric so blends can be chained (warm THEN dimmed, say);
+// `rgbLerp` is the same thing rendered out for a fillStyle.
+const mix = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)]
+const rgbLerp = (a, b, t) => mix(a, b, t).map(Math.round).join(',')
 
 // Moonlight, cold overhead and warm at the horizon (see `warm` in drawMoon).
 const MOON_COOL_DIM = [120, 119, 150]
@@ -1050,6 +1048,31 @@ const MOON_WARM_BRIGHT = [228, 176, 136]
 const HALO_COOL = [188, 186, 224]
 const HALO_WARM = [230, 168, 122]
 
+// The dark side, once the sky behind it can no longer show through. Near enough
+// to the sky's own tone to stay "barely visible" — but it is now genuinely the
+// moon, and it occludes.
+const EARTHSHINE = [20, 19, 32]
+// Every other tone on the body, named so it can be dimmed with the rest rather
+// than sitting inline at full brightness while everything around it scales.
+const MARE_TONE = [36, 34, 56]
+const TYCHO_TONE = [226, 224, 246]
+const TYCHO_CORE = [232, 230, 250]
+const LIMB_TONE = [0, 0, 14]
+
+// `strength` — 0..1, how present the moon is (its altitude, via presence, and
+// the deliberate dimness that keeps it from lighting a dark room).
+//
+// It is NOT an opacity on the body. It used to be — the whole disc was drawn at
+// globalAlpha ~0.5 — which meant the stars, the Milky Way and the twilight
+// behind the moon showed straight through its face. The moon is 384,000km of
+// rock: it occludes. So the disc is opaque now and `strength` scales its
+// COLOURS instead, toward black rather than toward the sky. That's the same
+// arithmetic globalAlpha was doing, minus the part where the sky bled in, so it
+// looks as quiet as it ever did and finally hides what's behind it.
+//
+// The halo keeps its transparency, and should: it's light scattered in the air
+// in FRONT of the stars, not a body, so they stay visible through it.
+//
 // opts:
 //   limbAngle — where the lit edge really points (moonBrightLimb), radians CCW
 //     from up. Null leaves the moon upright, the old fallback look.
@@ -1058,16 +1081,19 @@ const HALO_WARM = [230, 168, 122]
 //     spreads its glow. Same physics as the twilight wash.
 //   reveal — 0..1, how far a pinch has leaned in; blooms the halo and brings
 //     up the fine detail that's too small to read at rest.
-export function drawMoon(ctx, cx, cy, r, phase, alpha, opts = {}) {
+export function drawMoon(ctx, cx, cy, r, phase, strength, opts = {}) {
   const { limbAngle = null, warm = 0, reveal = 0 } = opts
-  if (alpha <= 0.002) return
+  if (strength <= 0.002) return
+  // every colour on the body, dimmed toward black by how present the moon is
+  const dim = (rgb) => rgbLerp([0, 0, 0], rgb, strength)
   ctx.save()
-  ctx.globalAlpha = alpha
 
-  // faint halo — wider and warmer down at the horizon, blooming under a pinch
+  // faint halo — wider and warmer down at the horizon, blooming under a pinch.
+  // The one part that stays translucent.
   const haloR = r * (2.6 + warm * 0.85 + reveal * 1.2)
   const halo = ctx.createRadialGradient(cx, cy, r * 0.7, cx, cy, haloR)
-  halo.addColorStop(0, `rgba(${rgbLerp(HALO_COOL, HALO_WARM, warm)},${0.07 + warm * 0.05 + reveal * 0.05})`)
+  const haloA = (0.07 + warm * 0.05 + reveal * 0.05) * strength
+  halo.addColorStop(0, `rgba(${rgbLerp(HALO_COOL, HALO_WARM, warm)},${haloA})`)
   halo.addColorStop(1, 'rgba(0,0,0,0)')
   ctx.fillStyle = halo
   ctx.beginPath()
@@ -1099,9 +1125,11 @@ export function drawMoon(ctx, cx, cy, r, phase, alpha, opts = {}) {
     ctx.translate(-cx, -cy)
   }
 
-  // earthshine (dark side) — barely visible, so a crescent still reads as a
-  // crescent, not a full grey disc with a bright edge
-  ctx.fillStyle = 'rgba(42,40,62,0.28)'
+  // Earthshine (the dark side) — barely visible, so a crescent still reads as a
+  // crescent and not a full grey disc with a bright edge. OPAQUE: this is the
+  // fill that makes the moon a body. Everything after it lays over this rather
+  // than over the sky, so those can stay translucent and still occlude.
+  ctx.fillStyle = `rgb(${dim(EARTHSHINE)})`
   ctx.fillRect(cx - r * 1.5, cy - r * 1.5, r * 3, r * 3)
 
   // The lit face, bounded by the terminator ellipse. Traced as a helper
@@ -1120,8 +1148,8 @@ export function drawMoon(ctx, cx, cy, r, phase, alpha, opts = {}) {
   const brightX = waxing ? cx + r : cx - r
   const termX = waxing ? cx - r : cx + r
   const lit = ctx.createLinearGradient(termX, 0, brightX, 0)
-  lit.addColorStop(0, `rgba(${rgbLerp(MOON_COOL_DIM, MOON_WARM_DIM, warm)},1)`)
-  lit.addColorStop(1, `rgba(${rgbLerp(MOON_COOL_BRIGHT, MOON_WARM_BRIGHT, warm)},1)`)
+  lit.addColorStop(0, `rgb(${dim(mix(MOON_COOL_DIM, MOON_WARM_DIM, warm))})`)
+  lit.addColorStop(1, `rgb(${dim(mix(MOON_COOL_BRIGHT, MOON_WARM_BRIGHT, warm))})`)
   litPath()
   ctx.fillStyle = lit
   ctx.fill()
@@ -1138,7 +1166,7 @@ export function drawMoon(ctx, cx, cy, r, phase, alpha, opts = {}) {
   ctx.clip()
   for (let i = 0; i < 5; i++) {
     const t = i / 4
-    ctx.strokeStyle = `rgba(20,19,32,${0.3 * (1 - t)})`
+    ctx.strokeStyle = `rgba(${dim(EARTHSHINE)},${0.3 * (1 - t)})`
     ctx.lineWidth = r * (0.03 + t * 0.17)
     ctx.beginPath()
     ctx.ellipse(cx, cy, ew, r, 0, Math.PI / 2, -Math.PI / 2, ellipseW > 0 ? waxing : !waxing)
@@ -1152,10 +1180,11 @@ export function drawMoon(ctx, cx, cy, r, phase, alpha, opts = {}) {
     ctx.translate(cx + mx * r, cy + my * r)
     ctx.rotate(mrot)
     ctx.scale(mrx * r, mry * r) // a unit circle, stretched into the sea's real shape
+    const sea = dim(MARE_TONE)
     const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1)
-    g.addColorStop(0, `rgba(36,34,56,${md})`)
-    g.addColorStop(0.6, `rgba(36,34,56,${md * 0.74})`)
-    g.addColorStop(1, 'rgba(36,34,56,0)')
+    g.addColorStop(0, `rgba(${sea},${md})`)
+    g.addColorStop(0.6, `rgba(${sea},${md * 0.74})`)
+    g.addColorStop(1, `rgba(${sea},0)`)
     ctx.fillStyle = g
     ctx.beginPath()
     ctx.arc(0, 0, 1, 0, Math.PI * 2)
@@ -1179,18 +1208,20 @@ export function drawMoon(ctx, cx, cy, r, phase, alpha, opts = {}) {
       ctx.rotate(a)
       ctx.translate(r * len * 0.5, 0) // push the smudge out clear of the crater
       ctx.scale(r * len * 0.5, r * wid) // a unit circle drawn out along the ray
+      const ray = dim(TYCHO_TONE)
       const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1)
-      g.addColorStop(0, `rgba(226,224,246,${rayA})`)
-      g.addColorStop(1, 'rgba(226,224,246,0)')
+      g.addColorStop(0, `rgba(${ray},${rayA})`)
+      g.addColorStop(1, `rgba(${ray},0)`)
       ctx.fillStyle = g
       ctx.beginPath()
       ctx.arc(0, 0, 1, 0, Math.PI * 2)
       ctx.fill()
       ctx.restore()
     }
+    const crater = dim(TYCHO_CORE)
     const cg = ctx.createRadialGradient(tx, ty, 0, tx, ty, TYCHO.r * r * 2)
-    cg.addColorStop(0, `rgba(232,230,250,${Math.min(1, rayA * 1.6)})`)
-    cg.addColorStop(1, 'rgba(232,230,250,0)')
+    cg.addColorStop(0, `rgba(${crater},${Math.min(1, rayA * 1.6)})`)
+    cg.addColorStop(1, `rgba(${crater},0)`)
     ctx.fillStyle = cg
     ctx.beginPath()
     ctx.arc(tx, ty, TYCHO.r * r * 2, 0, Math.PI * 2)
@@ -1199,9 +1230,10 @@ export function drawMoon(ctx, cx, cy, r, phase, alpha, opts = {}) {
   }
 
   // limb darkening — a shaded rim so it reads as a sphere, not a disc
+  const rim = dim(LIMB_TONE)
   const limb = ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r)
-  limb.addColorStop(0, 'rgba(0,0,12,0)')
-  limb.addColorStop(1, 'rgba(0,0,14,0.3)')
+  limb.addColorStop(0, `rgba(${rim},0)`)
+  limb.addColorStop(1, `rgba(${rim},0.3)`)
   ctx.fillStyle = limb
   ctx.fillRect(cx - r * 1.5, cy - r * 1.5, r * 3, r * 3)
 
