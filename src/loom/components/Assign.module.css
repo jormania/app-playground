@@ -1,0 +1,62 @@
+.wrap { position: relative; display: inline-flex; }
+
+/* The little day / skein chip that sits at the trailing edge of a row. */
+.chip {
+  border: 1px solid var(--color-border-2);
+  background: color-mix(in srgb, var(--color-surface-2) 70%, transparent);
+  color: var(--color-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  transition: border-color var(--duration) var(--ease), color var(--duration) var(--ease);
+}
+.chip:hover { border-color: var(--color-accent); color: var(--color-ink); }
+.skein { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* The warp: the week's days as a row of dots to fling a thread onto. */
+.warp { display: flex; gap: 3px; }
+.warpDot {
+  width: 30px; height: 34px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-muted);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.warpDot:hover { border-color: var(--color-accent); color: var(--color-ink); }
+.here { background: var(--color-accent); color: var(--color-on-accent); border-color: var(--color-accent); }
+.backlog { color: var(--color-faint); }
+
+/* Skein picker. */
+.skeinPick { display: flex; flex-direction: column; gap: var(--space-xs); min-width: 190px; }
+.skeinInput {
+  background: var(--color-bg-sunken);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+  font-size: 1rem;
+  font-family: var(--loom-thread);
+  color: var(--color-ink);
+  outline: none;
+}
+.skeinInput:focus { border-color: var(--color-accent); }
+.skeinList { display: flex; flex-wrap: wrap; gap: 4px; }
+.skeinOption {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  padding: 4px 9px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.skeinOption:hover { border-color: var(--color-accent); color: var(--color-ink); }
+.loosen { color: var(--color-faint); font-style: italic; }

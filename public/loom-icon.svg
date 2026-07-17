@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#164039"/>
+      <stop offset="0.55" stop-color="#0b1f1f"/>
+      <stop offset="1" stop-color="#071414"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e0bd67"/>
+      <stop offset="1" stop-color="#b08a35"/>
+    </linearGradient>
+  </defs>
+
+  <!-- full-bleed ground (maskable-safe: colour reaches every edge) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- loom beams (top & bottom) -->
+  <rect x="96" y="150" width="320" height="26" rx="8" fill="url(#gold)"/>
+  <rect x="96" y="336" width="320" height="26" rx="8" fill="url(#gold)"/>
+
+  <!-- the dyed weft: ember at the top, cooling down — the Ivy-Lee heat scale -->
+  <g stroke-linecap="round">
+    <line x1="120" y1="204" x2="392" y2="204" stroke="#d6452f" stroke-width="13"/>
+    <line x1="120" y1="238" x2="392" y2="238" stroke="#d98a2b" stroke-width="12"/>
+    <line x1="120" y1="272" x2="392" y2="272" stroke="#c9a44c" stroke-width="12"/>
+    <line x1="120" y1="306" x2="392" y2="306" stroke="#6f9e7a" stroke-width="12"/>
+  </g>
+
+  <!-- the warp: taut vertical gold threads, drawn over the weft -->
+  <g stroke="url(#gold)" stroke-width="5" stroke-linecap="round" opacity="0.92">
+    <line x1="132" y1="168" x2="132" y2="344"/>
+    <line x1="167" y1="168" x2="167" y2="344"/>
+    <line x1="202" y1="168" x2="202" y2="344"/>
+    <line x1="237" y1="168" x2="237" y2="344"/>
+    <line x1="272" y1="168" x2="272" y2="344"/>
+    <line x1="307" y1="168" x2="307" y2="344"/>
+    <line x1="342" y1="168" x2="342" y2="344"/>
+    <line x1="377" y1="168" x2="377" y2="344"/>
+  </g>
+</svg>

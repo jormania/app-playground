@@ -1,0 +1,12 @@
+.pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 20;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-xs);
+}
+.end { right: 0; }
+.start { left: 0; }

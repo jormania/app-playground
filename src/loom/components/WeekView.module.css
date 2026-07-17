@@ -1,0 +1,118 @@
+.view { display: flex; flex-direction: column; gap: var(--space-md); width: 100%; }
+
+.weekNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+}
+.navBtn {
+  border: 1px solid var(--color-border-2);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  width: 34px; height: 34px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-lg);
+  cursor: pointer;
+  line-height: 1;
+}
+.navBtn:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.weekLabel {
+  border: 1px solid transparent;
+  background: none;
+  color: var(--color-muted);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  letter-spacing: 0.06em;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  min-width: 190px;
+  text-align: center;
+}
+.weekLabel:hover { color: var(--color-ink); }
+.current { color: var(--color-accent); border-color: var(--loom-gold-line); }
+
+/* The warp: seven day columns. Horizontal scroll-snap on narrow screens (a real
+   week planner), a 7-track grid once there's room. */
+.warp {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 78%;
+  gap: var(--space-sm);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: var(--space-xs);
+  -webkit-overflow-scrolling: touch;
+}
+.warp > .day { scroll-snap-align: start; }
+
+@media (min-width: 900px) {
+  .warp {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-columns: auto;
+    overflow-x: visible;
+  }
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xs);
+  min-height: 120px;
+}
+.today {
+  border-color: var(--loom-gold-line);
+  box-shadow: inset 0 0 0 1px var(--loom-gold-line), var(--shadow-sm);
+}
+
+.dayHead {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 4px 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+.dayName {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.today .dayName { color: var(--color-accent); }
+.dayNum { font-family: var(--font-sans); font-size: var(--text-sm); color: var(--color-faint); }
+.dayCount {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+  background: var(--color-surface-2);
+  border-radius: var(--radius-pill);
+  padding: 0 7px;
+}
+.dayAdd { margin-top: auto; padding-top: 2px; }
+
+/* The distaff — backlog rail below the week. */
+.distaff {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  background: color-mix(in srgb, var(--color-bg-sunken) 55%, transparent);
+  border: 1px dashed var(--color-border-2);
+  border-radius: var(--radius-lg);
+  padding: var(--space-sm);
+}
+.distaffHead { display: flex; align-items: baseline; gap: var(--space-sm); flex-wrap: wrap; }
+.distaffTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  letter-spacing: 0.06em;
+  color: var(--color-accent);
+}
+.distaffSub { font-family: var(--loom-thread); font-style: italic; font-size: var(--text-sm); color: var(--color-faint); }

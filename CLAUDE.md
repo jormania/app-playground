@@ -31,6 +31,7 @@ call a change complete on green-looking code alone.
 | Law of the Day | `src/law-of-the-day/` | plain JSX, builds on `src/ds/` |
 | Yoru | `src/yoru/` | plain JSX, builds on `src/ds/`; night-only wind-down, one fixed Tokyo Night palette (no theme toggle) — see [`YORU.md`](YORU.md) |
 | The Cabinet | `src/cabinet/` | plain JSX, builds on `src/ds/`; dashboard listing every `react-vite` and legacy `static` app, always, with no toggle to hide either — see [`CABINET.md`](CABINET.md) |
+| Loom | `src/loom/` | plain JSX, builds on `src/ds/`; a tactile weekly task planner (tribute to LucasArts' Loom / SCUMM) — Notion-backed with an offline demo, dual List/Weekly views over one dataset, swipe gestures, and an Ivy-Lee heatmap; one fixed "twilight loom" palette (no theme toggle) — see [`LOOM.md`](LOOM.md) |
 | Wanderlist | `src/wanderlist/` | plain JSX + Notion; a triaged backlog of city things-to-do. **Self-styled like Journal of Delights — does NOT build on `src/ds/`** (deliberate, per brief); "atlas" identity reusing JoD's **six-palette** theme system (header cycle + a Settings → Appearance picker). Server-side email reminder (Vercel Cron + Resend + KV), Google Places autocomplete, an Add-to-Calendar link, a keyless Google Maps embed view, and an optional Cost (lei) field — see [`WANDERLIST.md`](WANDERLIST.md) |
 | Journal of Delights | `src/journal/` | plain JSX, no type checking; six-palette theme system (header cycle + a Settings → Appearance picker) |
 | Kettlebell Training | `src/kettlebell/` | plain JSX, no type checking |

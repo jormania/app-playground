@@ -1,0 +1,17 @@
+{
+  "name": "Loom — weave your week",
+  "short_name": "Loom",
+  "description": "A tactile weekly planner backed by Notion, in tribute to LucasArts' Loom.",
+  "id": "/loom-react.html",
+  "start_url": "/loom-react.html",
+  "scope": "/loom-react.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1f1f",
+  "theme_color": "#0b1f1f",
+  "icons": [
+    { "src": "/loom-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/loom-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/loom-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

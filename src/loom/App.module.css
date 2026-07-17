@@ -1,0 +1,104 @@
+.shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 var(--space-md);
+}
+
+/* ── Header: the Guild wordmark ─────────────────────────────────────────────*/
+.header {
+  text-align: center;
+  padding: var(--space-lg) 0 var(--space-md);
+}
+.rule {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--loom-gold-line);
+  font-size: var(--text-sm);
+}
+.rule::before, .rule::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--loom-gold-line), transparent);
+}
+.rule span { color: var(--color-accent); }
+
+.wordmark {
+  margin: var(--space-xs) 0 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(2.4rem, 9vw, 3.6rem);
+  letter-spacing: 0.22em;
+  text-indent: 0.22em; /* balance the trailing letter-spacing */
+  color: var(--color-accent);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4), 0 0 26px color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+.tagline {
+  margin: var(--space-2xs) 0 0;
+  font-family: var(--loom-thread);
+  font-style: italic;
+  font-size: var(--text-base);
+  color: var(--color-muted);
+  letter-spacing: 0.02em;
+}
+
+/* ── Main ───────────────────────────────────────────────────────────────────*/
+.main {
+  flex: 1 1 auto;
+  padding-bottom: var(--space-lg);
+}
+
+.state {
+  text-align: center;
+  color: var(--color-muted);
+  font-family: var(--loom-thread);
+  font-style: italic;
+  padding: var(--space-2xl) 0;
+}
+
+.errorState {
+  max-width: 460px;
+  margin: var(--space-2xl) auto;
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  font-family: var(--loom-thread);
+}
+.errorState > p { margin: 0 0 var(--space-xs); color: var(--color-ink); }
+.errorMsg { color: var(--color-danger) !important; font-size: var(--text-sm); }
+.errorBtns { display: flex; gap: var(--space-sm); justify-content: center; margin-top: var(--space-sm); }
+.retry {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.retry:last-child { background: var(--color-surface-2); color: var(--color-ink); border: 1px solid var(--color-border-2); }
+
+/* ── Toast (failed background write) ────────────────────────────────────────*/
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 108px;
+  transform: translateX(-50%);
+  z-index: 40;
+  max-width: min(92vw, 460px);
+  background: var(--color-surface);
+  border: 1px solid var(--color-danger);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+}

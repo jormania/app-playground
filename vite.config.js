@@ -188,6 +188,7 @@ export default defineConfig({
         yoru: resolve(__dirname, 'yoru-react.html'),
         wanderlist: resolve(__dirname, 'wanderlist-react.html'),
         dailyStoic: resolve(__dirname, 'daily-stoic-react.html'),
+        loom: resolve(__dirname, 'loom-react.html'),
         dsShowcase: resolve(__dirname, 'ds-showcase.html'),
         cabinet: resolve(__dirname, 'cabinet.html'),
       }

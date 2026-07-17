@@ -1,0 +1,68 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Loom — one fixed "twilight loom" palette. A tribute to LucasArts' Loom (1990)
+   and the SCUMM adventures: deep petrol-teal dusk, aged gold, parchment ink, and
+   the ember→slate "dyed thread" heat scale used by the Ivy-Lee heatmap.
+
+   Like Yoru, Loom has exactly ONE look — no theme toggle. This file loads AFTER
+   ds/tokens.css at the app root, so these :root overrides win and every DS
+   component (Button, Modal, Field…) adopts the palette with no per-component
+   special-casing.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surfaces — the loom frame, back to front. */
+  --color-bg:        #0b1f1f; /* deepest dusk behind the frame */
+  --color-bg-sunken: #081818;
+  --color-surface:   #123230; /* the raised loom frame / cards */
+  --color-surface-2: #17403b; /* nested surface (a thread on the frame) */
+  --color-border:    #285049; /* hairline warp threads */
+  --color-border-2:  #3c6f63; /* stronger edges, focused inputs */
+
+  /* Ink — parchment and lichen. */
+  --color-ink:    #efe6cc; /* primary: candlelit parchment */
+  --color-muted:  #a7b6a2; /* secondary: pale lichen */
+  --color-faint:  #6d8279; /* hints, placeholders */
+
+  /* Accents — aged Guild gold, with the game's ember and swan-green. */
+  --color-accent:        #c9a44c;
+  --color-accent-hover:  #e0bd67;
+  --color-on-accent:     #10201c;
+  --color-success:       #6f9e7a; /* woven green */
+  --color-warning:       #d98a2b; /* copper */
+  --color-danger:        #d6452f; /* the Third Shadow's ember */
+
+  --color-ring:  color-mix(in srgb, var(--color-accent) 40%, transparent);
+  --color-glow:  color-mix(in srgb, var(--color-accent) 12%, transparent);
+  --color-scrim: rgba(4, 12, 12, 0.66);
+
+  /* Type — Cinzel for the ceremonial Guild lettering (logo, section titles,
+     verbs); Alegreya for thread text (a literary, hand-woven feel); Inter for
+     small UI/meta so numbers and inputs stay crisp. */
+  --font-display: 'Cinzel', 'Trajan Pro', Georgia, serif;
+  --font-sans:    'Inter', system-ui, sans-serif;
+  --loom-thread:  'Alegreya Variable', 'Alegreya', Georgia, serif;
+
+  /* Loom-specific tokens. */
+  --loom-gold-line: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  --loom-vignette:  radial-gradient(120% 90% at 50% -10%, #16403b 0%, #0b1f1f 55%, #071414 100%);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.62);
+}
+
+/* The woven ground: a warm vignette plus a whisper of warp/weft so the whole
+   surface reads like cloth on a frame. Deliberately very low-contrast. */
+body {
+  background-color: var(--color-bg);
+  background-image:
+    repeating-linear-gradient(90deg, rgba(207, 176, 92, 0.030) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg,  rgba(0, 0, 0, 0.055) 0 1px, transparent 1px 7px),
+    var(--loom-vignette);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Selection in Guild gold. */
+::selection { background: color-mix(in srgb, var(--color-accent) 40%, transparent); color: var(--color-ink); }
