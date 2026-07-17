@@ -27,6 +27,7 @@ call a change complete on green-looking code alone.
 | App | Location | Type |
 |-----|----------|------|
 | Sol Odyssey | `src/sol-odyssey/` | **strict TypeScript** — has its own [`CLAUDE.md`](src/sol-odyssey/CLAUDE.md) + `DESIGN.md`; **defer to those** inside that dir |
+| Daily Stoic | `src/daily-stoic/` | **strict TypeScript**, builds on `src/ds/`; a daily Stoic-practice companion — curated quote of the day, Evening Interrogation reflection wizard, Dichotomy of Control tool, morning/evening push reminders; Notion-backed with a localStorage-only mode — see [`DAILY_STOIC.md`](DAILY_STOIC.md) |
 | Tempo | `src/tempo/` | plain JSX, builds on `src/ds/` |
 | Law of the Day | `src/law-of-the-day/` | plain JSX, builds on `src/ds/` |
 | Yoru | `src/yoru/` | plain JSX, builds on `src/ds/`; night-only wind-down, one fixed Tokyo Night palette (no theme toggle) — see [`YORU.md`](YORU.md) |
@@ -43,10 +44,10 @@ Every app's card/tile data (name, icon, blurb, tags) lives in one place —
 card grid and The Cabinet. See [`CABINET.md`](CABINET.md) for the checklist
 when shipping a new app.
 
-`tsconfig.json` covers the TypeScript code — **`src/sol-odyssey`, `src/ds`, and
-`src/shared`**; `npm run typecheck` type-checks all three. The other React apps
-are plain JS/JSX by design and intentionally left out (they still import from
-`src/shared`, just without typechecking at those call sites).
+`tsconfig.json` covers the TypeScript code — **`src/sol-odyssey`, `src/daily-stoic`,
+`src/ds`, and `src/shared`**; `npm run typecheck` type-checks all four. The other
+React apps are plain JS/JSX by design and intentionally left out (they still
+import from `src/shared`, just without typechecking at those call sites).
 
 ## Cross-app shared logic (`src/shared/`) — distinct from `src/ds/`
 
