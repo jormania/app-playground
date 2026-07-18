@@ -70,7 +70,12 @@ All of these sit on the same one thread array; none needs a Notion schema change
   cross-view. Woven threads can be **folded** per group
   ([`components/WovenFold.jsx`](src/loom/components/WovenFold.jsx)) rather than just
   hidden. Row-level sort is deliberately absent — manual position is the identity;
-  only skein-**group** order is sortable.
+  only skein-**group** order is sortable. The whole toolbar (search + these
+  toggles + Re-warp + Drafts) is **icon-only**
+  ([`components/icons.jsx`](src/loom/components/icons.jsx), small line SVGs in the
+  style of Journal of Delights' `icons.jsx`) so it holds a single row on every
+  screen and interface style — a tooltip (sourced from the lexicon) carries the
+  label a text chip used to show.
 - **Cross-column drag** —
   [`lib/dragContext.jsx`](src/loom/lib/dragContext.jsx). A single shared drag
   controller lets a thread be flung within its group **or onto another day / the

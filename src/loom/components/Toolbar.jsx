@@ -1,21 +1,21 @@
 import { useLexicon } from '../lib/lexiconContext.jsx'
 import { useUiStyle } from '../lib/uiStyleContext.jsx'
+import { UnwovenIcon, HotFewIcon, FoldIcon, RewarpIcon, DraftsIcon } from './icons.jsx'
 import styles from './Toolbar.module.css'
 
 // The top control surface — search, the focus toggles, and the two week rituals
-// (Re-warp, Drafts). It takes the SAME interface style as the bottom bar so the
-// two always read as a coordinated pair: a slim frosted row, floating pills, or a
-// flat glyph+label strip. Hidden on the Tapestry, which ignores the live filters.
+// (Re-warp, Drafts) — as ICON-ONLY buttons (a tooltip carries the localized
+// label) so the whole thing holds a single row on every screen and interface
+// style, coordinated with the bottom bar. Hidden on the Tapestry, which ignores
+// the live filters.
 export default function Toolbar({ filters, setFilter, carryCount, onRewarp, onDrafts }) {
   const { t } = useLexicon()
   const { style } = useUiStyle()
 
-  // Focus toggles carry a glyph that only shows in the "tabs" style (matching the
-  // bottom icon tabs); in row/pill they read as plain chips.
   const toggles = [
-    { key: 'unwoven', glyph: '◑', label: t('unwovenOnly'), on: !filters.showWoven, title: 'Hide woven threads', onClick: () => setFilter('showWoven', !filters.showWoven) },
-    { key: 'top', glyph: '▲', label: t('topOnly'), on: filters.topOnly, title: 'Show only the hot few in each group', onClick: () => setFilter('topOnly', !filters.topOnly) },
-    { key: 'fold', glyph: '▾', label: t('foldWoven'), on: filters.collapseWoven, title: 'Fold woven threads under a per-group toggle', onClick: () => setFilter('collapseWoven', !filters.collapseWoven) },
+    { key: 'unwoven', Icon: UnwovenIcon, label: t('unwovenOnly'), on: !filters.showWoven, onClick: () => setFilter('showWoven', !filters.showWoven) },
+    { key: 'top', Icon: HotFewIcon, label: t('topOnly'), on: filters.topOnly, onClick: () => setFilter('topOnly', !filters.topOnly) },
+    { key: 'fold', Icon: FoldIcon, label: t('foldWoven'), on: filters.collapseWoven, onClick: () => setFilter('collapseWoven', !filters.collapseWoven) },
   ]
 
   return (
@@ -35,34 +35,28 @@ export default function Toolbar({ filters, setFilter, carryCount, onRewarp, onDr
         )}
       </div>
 
-      <div className={styles.controls}>
-        <div className={styles.group}>
-          {toggles.map(tg => (
-            <button
-              key={tg.key}
-              type="button"
-              className={`${styles.chip} ${tg.on ? styles.on : ''}`}
-              aria-pressed={tg.on}
-              title={tg.title}
-              onClick={tg.onClick}
-            >
-              <span className={styles.tabGlyph} aria-hidden="true">{tg.glyph}</span>
-              <span className={styles.label}>{tg.label}</span>
-            </button>
-          ))}
-        </div>
+      <div className={styles.group}>
+        {toggles.map(tg => (
+          <button
+            key={tg.key}
+            type="button"
+            className={`${styles.iconBtn} ${tg.on ? styles.on : ''}`}
+            aria-pressed={tg.on}
+            aria-label={tg.label}
+            title={tg.label}
+            onClick={tg.onClick}
+          ><tg.Icon /></button>
+        ))}
+      </div>
 
-        <div className={styles.actions}>
-          <button type="button" className={styles.action} onClick={onRewarp} title={t('rewarp')}>
-            <span className={styles.actionGlyph} aria-hidden="true">⟳</span>
-            <span className={styles.label}>{t('rewarpVerb')}</span>
-            {carryCount > 0 && <span className={styles.badge}>{carryCount}</span>}
-          </button>
-          <button type="button" className={styles.action} onClick={onDrafts} title={t('Drafts')}>
-            <span className={styles.actionGlyph} aria-hidden="true">◈</span>
-            <span className={styles.label}>{t('Drafts')}</span>
-          </button>
-        </div>
+      <div className={styles.actions}>
+        <button type="button" className={styles.iconBtn} aria-label={t('rewarp')} title={t('rewarp')} onClick={onRewarp}>
+          <RewarpIcon />
+          {carryCount > 0 && <span className={styles.badge}>{carryCount}</span>}
+        </button>
+        <button type="button" className={styles.iconBtn} aria-label={t('Drafts')} title={t('Drafts')} onClick={onDrafts}>
+          <DraftsIcon />
+        </button>
       </div>
     </div>
   )
