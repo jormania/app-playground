@@ -7,7 +7,9 @@ import {
 } from '../lib/store.js'
 import { useTheme } from '../lib/themeContext.jsx'
 import { useLexicon } from '../lib/lexiconContext.jsx'
+import { useBarStyle } from '../lib/barStyleContext.jsx'
 import { PRESETS } from '../lib/theme.js'
+import { BAR_STYLES } from '../lib/barStyle.js'
 import styles from './SettingsModal.module.css'
 
 // The Appearance picker — Loom's two SCUMM palettes as live swatches. The header
@@ -75,6 +77,7 @@ function VoicePicker({ voice, onPick }) {
 export default function SettingsModal({ open, onClose, onSaved, mode }) {
   const theme = useTheme()
   const lex = useLexicon()
+  const bar = useBarStyle()
   const [token, setTok] = useState(getToken())
   const [db, setDb] = useState(hasCustomDatabase() ? getDatabaseId() : '')
   const [probe, setProbe] = useState({ state: 'idle', msg: '' })
@@ -111,16 +114,13 @@ export default function SettingsModal({ open, onClose, onSaved, mode }) {
     <Modal open={open} onClose={onClose} title={lex.t('Guild')}>
       <div className={styles.body}>
         <p className={`${styles.status} ${mode === 'live' ? styles.live : styles.demo}`}>
-          {mode === 'live'
-            ? '◆ Bound to Notion — reading and writing your real threads.'
-            : '◇ Demo loom — sample threads kept only on this device.'}
+          {mode === 'live' ? lex.t('settingsLive') : lex.t('settingsDemo')}
         </p>
 
         <p className={styles.intro}>
-          Loom keeps your week on the loom locally by default. Bind it to your own Notion
-          database and every thread is backed up there — the single source of truth. The{' '}
+          {lex.t('settingsIntroA')}{' '}
           <a className={styles.link} href="/loom-guide.html" target="_blank" rel="noopener">guide</a>{' '}
-          walks the whole setup, including a database you can duplicate in one click.
+          {lex.t('settingsIntroB')}
         </p>
 
         <Field
@@ -145,7 +145,7 @@ export default function SettingsModal({ open, onClose, onSaved, mode }) {
 
         {probe.state !== 'idle' && (
           <p className={`${styles.probe} ${styles[probe.state]}`}>
-            {probe.state === 'testing' ? 'Reaching the loom…' : probe.msg}
+            {probe.state === 'testing' ? lex.t('reachingLoom') : probe.msg}
           </p>
         )}
 
@@ -154,21 +154,38 @@ export default function SettingsModal({ open, onClose, onSaved, mode }) {
             Test connection
           </Button>
           <Button variant="primary" onClick={save} disabled={busy || !token}>
-            Weave live
+            {lex.t('weaveLive')}
           </Button>
         </div>
 
         {mode === 'live' && (
           <button type="button" className={styles.disconnect} onClick={disconnect}>
-            Disconnect — return to the demo loom
+            {lex.t('disconnectDemo')}
           </button>
         )}
 
         {/* ── Appearance ── */}
         <div className={styles.section}>
           <h3 className={styles.sectionTitle}>Appearance</h3>
-          <p className={styles.sectionHint}>Two moods for the Guild — the header ◐ button cycles them, and the guide follows your choice.</p>
+          <p className={styles.sectionHint}>Two moods — the header ◐ button cycles them, and the guide follows your choice.</p>
           <ThemePicker current={theme.themeId} onPick={theme.setTheme} />
+        </div>
+
+        {/* ── Navigation bar ── */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Navigation bar</h3>
+          <p className={styles.sectionHint}>The shape of the bottom bar. Remembered on this device.</p>
+          <div className={styles.barGrid}>
+            {BAR_STYLES.map(o => (
+              <button
+                key={o.id}
+                type="button"
+                className={`${styles.barOpt} ${bar.style === o.id ? styles.barOptOn : ''}`}
+                aria-pressed={bar.style === o.id}
+                onClick={() => bar.setStyle(o.id)}
+              >{o.name}{bar.style === o.id ? ' ✓' : ''}</button>
+            ))}
+          </div>
         </div>
 
         {/* ── Vocabulary ── */}

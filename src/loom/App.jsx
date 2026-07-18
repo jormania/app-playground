@@ -4,7 +4,7 @@ import { useTheme } from './lib/themeContext.jsx'
 import { useLexicon } from './lib/lexiconContext.jsx'
 import { loadViewPrefs, saveViewPrefs } from './lib/store.js'
 import {
-  weekDays, startOfWeek, addDays, dateKey, orderForMove, threadStats,
+  weekDays, startOfWeek, addDays, dateKey, orderForMove,
   carryThreads, threadsForDraftWeek,
 } from './lib/model.js'
 import SkeinView from './components/SkeinView.jsx'
@@ -56,8 +56,6 @@ export default function App() {
   const thisWeekDays = useMemo(() => weekDays(new Date()), [])
   const thisMondayKey = dateKey(startOfWeek(new Date()))
   const carried = useMemo(() => carryThreads(loom.threads, thisMondayKey), [loom.threads, thisMondayKey])
-
-  const stats = useMemo(() => threadStats(loom.threads), [loom.threads])
 
   const filters = useMemo(
     () => ({ query, showWoven: prefs.showWoven, topOnly: prefs.topOnly, collapseWoven: prefs.collapseWoven, skeinSort: prefs.skeinSort }),
@@ -182,7 +180,6 @@ export default function App() {
       <VerbBar
         view={prefs.view}
         onView={setView}
-        stats={stats}
         mode={loom.mode}
         onOpenSettings={() => setSettingsOpen(true)}
       />

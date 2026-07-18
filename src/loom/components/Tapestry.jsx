@@ -51,7 +51,7 @@ export default function Tapestry({ threads }) {
         <Tile value={`${stats.woven}/${stats.total}`} label={`${t('threads')} ${t('woven')}`} />
         <Tile value={hottest} label={`hottest ${t('skein')}`} wide />
         <Tile value={stats.busiestWeekday ? stats.busiestWeekday.label : '—'} label="busiest day" />
-        <Tile value={stats.unwovenPast} label={`unwoven from past weeks`} danger={stats.unwovenPast > 0} wide />
+        <Tile value={stats.unwovenPast} label={t('pastDebt')} danger={stats.unwovenPast > 0} wide />
       </div>
 
       <div className={styles.card}>
@@ -90,7 +90,7 @@ export default function Tapestry({ threads }) {
       </div>
 
       <div className={styles.card}>
-        <h3 className={styles.cardTitle}>The cloth you've woven</h3>
+        <h3 className={styles.cardTitle}>{t('clothWoven')}</h3>
         <div className={styles.heatmap}>
           <div className={styles.hmHeadRow}>
             <span className={styles.hmWeekLabel} />
@@ -117,12 +117,12 @@ export default function Tapestry({ threads }) {
           ))}
         </div>
         <p className={styles.legend}>
-          <span className={styles.legendSwatch} /> woven · <span className={`${styles.legendSwatch} ${styles.legendOpen}`} /> still open
+          <span className={styles.legendSwatch} /> {t('woven')} · <span className={`${styles.legendSwatch} ${styles.legendOpen}`} /> {t('stillOpen')}
         </p>
       </div>
 
       {stats.total === 0 && (
-        <p className={styles.empty}>No woven cloth yet — this fills in as you weave your weeks.</p>
+        <p className={styles.empty}>{t('tapestryEmpty')}</p>
       )}
     </div>
   )

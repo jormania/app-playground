@@ -58,6 +58,25 @@ const TERMS = {
   guild: { loom: 'the Guild', plain: 'Settings' },
   Guild: { loom: 'The Guild', plain: 'Settings' },
   guildVerb: { loom: 'Guild', plain: 'Settings' },
+  settingsLive: {
+    loom: '◆ Bound to Notion — reading and writing your real threads.',
+    plain: '◆ Connected to Notion — reading and writing your real tasks.',
+  },
+  settingsDemo: {
+    loom: '◇ Demo loom — sample threads kept only on this device.',
+    plain: '◇ Demo — sample tasks kept only on this device.',
+  },
+  settingsIntroA: {
+    loom: 'Loom keeps your week on the loom locally by default. Bind it to your own Notion database and every thread is backed up there — the single source of truth. The',
+    plain: 'Loom keeps your week on this device by default. Connect your own Notion database and every task is backed up there — the single source of truth. The',
+  },
+  settingsIntroB: {
+    loom: 'walks the whole setup, including a database you can duplicate in one click.',
+    plain: 'walks the whole setup, including a database you can duplicate in one click.',
+  },
+  weaveLive: { loom: 'Weave live', plain: 'Connect' },
+  disconnectDemo: { loom: 'Disconnect — return to the demo loom', plain: 'Disconnect — return to the demo' },
+  reachingLoom: { loom: 'Reaching the loom…', plain: 'Connecting…' },
 
   // ── Re-warp ritual (carry-over) ──
   rewarp: { loom: 'Re-warp the week', plain: 'Carry over' },
@@ -104,8 +123,18 @@ const TERMS = {
   },
   loadingLoom: { loom: 'Warping the loom…', plain: 'Loading…' },
   spinLoose: { loom: 'Spin a loose thread…', plain: 'Add a task…' },
-  addThread: { loom: '＋ thread', plain: '＋ task' },
-  addUnspun: { loom: '＋ unspun thread', plain: '＋ backlog task' },
+  // These sit beside the ✚ spindle icon, so they carry no plus of their own.
+  addThread: { loom: 'thread', plain: 'task' },
+  addUnspun: { loom: 'unspun thread', plain: 'backlog task' },
+
+  // ── The Tapestry ──
+  pastDebt: { loom: 'unwoven from past weeks', plain: 'unfinished from past weeks' },
+  clothWoven: { loom: 'The cloth you’ve woven', plain: 'What you’ve completed' },
+  tapestryEmpty: {
+    loom: 'No woven cloth yet — this fills in as you weave your weeks.',
+    plain: 'Nothing here yet — this fills in as you finish tasks.',
+  },
+  stillOpen: { loom: 'still open', plain: 'still open' },
 }
 
 // Build the flat term map for a voice — { key: string }.
