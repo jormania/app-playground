@@ -6,12 +6,27 @@
    visible text. Comes in the same three shapes as the bottom bar (row/pill/tabs)
    so the two always read as a coordinated pair. */
 
+.wrap { margin-bottom: var(--space-md); }
+
 .bar {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap; /* safety net only — the widths below are sized not to need it */
-  margin-bottom: var(--space-md);
+}
+
+/* Which filters are on — the only state a tooltip can't reach on a touch screen,
+   since a tooltip needs hover. Nothing rendered (no reserved height) when no
+   filter is active. */
+.hint {
+  margin: 5px 4px 0;
+  font-family: var(--loom-thread);
+  font-style: italic;
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── Search ────────────────────────────────────────────────────────────────── */
