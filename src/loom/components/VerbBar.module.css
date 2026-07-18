@@ -107,7 +107,9 @@
 
 /* ── Icon tabs — full-width, glyph + label ─────────────────────────────────── */
 .tabsBar {
-  position: relative;
+  /* No `position` override here — the base .bar is `sticky`, which both pins the
+     bar to the foot (like the other two styles) AND acts as the containing block
+     for the absolutely-positioned mode dot. Setting `relative` would un-stick it. */
   display: flex;
   align-items: stretch;
   gap: 2px;
