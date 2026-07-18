@@ -128,7 +128,7 @@
        minmax() gives the tracks a readable floor and lets them share the row;
        overflow-x:auto keeps any remainder inside the board, so the header,
        toolbar and distaff never scroll off. */
-    grid-template-columns: repeat(7, minmax(200px, 1fr));
+    grid-template-columns: repeat(7, minmax(220px, 1fr));
     grid-auto-columns: auto;
     overflow-x: auto;
     scroll-snap-type: none; /* snapping is for the narrow one-day-at-a-time view */
