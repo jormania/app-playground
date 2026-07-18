@@ -2,11 +2,13 @@
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  /* A week board wants width: seven readable day columns need ~1450px, so the
-     shell opens up on desktop rather than capping at a reading measure. The
-     Skeins and Tapestry views set their own narrower max-widths, so only the
-     week board (and its distaff) actually spend it. */
-  max-width: 1680px;
+  /* A week board wants width. Seven 255px day columns + six 12px gaps + the
+     shell's own padding come to ~1889px, so the shell opens to 1920 and the
+     whole week lands unscrolled on a large desktop; narrower screens show
+     fewer, still-readable days and scroll the board itself. Skeins and the
+     Tapestry set their own narrower max-widths, so only the week board (and
+     its distaff) actually spend this. */
+  max-width: 1920px;
   margin: 0 auto;
   padding: 0 var(--space-md);
 }
