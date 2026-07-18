@@ -120,6 +120,21 @@
 }
 .warp > .day { scroll-snap-align: start; }
 
+/* The board scrolls itself when the week doesn't fit, so give it a slim, themed
+   bar — the native one is a heavy grey slab across the cloth. Both themes pick
+   it up through the accent token. */
+.warp {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-accent) 45%, transparent) transparent;
+}
+.warp::-webkit-scrollbar { height: 8px; }
+.warp::-webkit-scrollbar-track { background: transparent; }
+.warp::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-accent) 38%, transparent);
+  border-radius: var(--radius-pill);
+}
+.warp::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--color-accent) 60%, transparent); }
+
 @media (min-width: 900px) {
   .warp {
     grid-auto-flow: row;
