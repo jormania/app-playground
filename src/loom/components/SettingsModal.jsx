@@ -7,9 +7,9 @@ import {
 } from '../lib/store.js'
 import { useTheme } from '../lib/themeContext.jsx'
 import { useLexicon } from '../lib/lexiconContext.jsx'
-import { useBarStyle } from '../lib/barStyleContext.jsx'
+import { useUiStyle } from '../lib/uiStyleContext.jsx'
 import { PRESETS } from '../lib/theme.js'
-import { BAR_STYLES } from '../lib/barStyle.js'
+import { UI_STYLES } from '../lib/uiStyle.js'
 import styles from './SettingsModal.module.css'
 
 // The Appearance picker — Loom's two SCUMM palettes as live swatches. The header
@@ -77,7 +77,7 @@ function VoicePicker({ voice, onPick }) {
 export default function SettingsModal({ open, onClose, onSaved, mode }) {
   const theme = useTheme()
   const lex = useLexicon()
-  const bar = useBarStyle()
+  const ui = useUiStyle()
   const [token, setTok] = useState(getToken())
   const [db, setDb] = useState(hasCustomDatabase() ? getDatabaseId() : '')
   const [probe, setProbe] = useState({ state: 'idle', msg: '' })
@@ -171,19 +171,19 @@ export default function SettingsModal({ open, onClose, onSaved, mode }) {
           <ThemePicker current={theme.themeId} onPick={theme.setTheme} />
         </div>
 
-        {/* ── Navigation bar ── */}
+        {/* ── Interface style ── */}
         <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Navigation bar</h3>
-          <p className={styles.sectionHint}>The shape of the bottom bar. Remembered on this device.</p>
+          <h3 className={styles.sectionTitle}>Interface style</h3>
+          <p className={styles.sectionHint}>The shape of the top toolbar and bottom bar together. Remembered on this device.</p>
           <div className={styles.barGrid}>
-            {BAR_STYLES.map(o => (
+            {UI_STYLES.map(o => (
               <button
                 key={o.id}
                 type="button"
-                className={`${styles.barOpt} ${bar.style === o.id ? styles.barOptOn : ''}`}
-                aria-pressed={bar.style === o.id}
-                onClick={() => bar.setStyle(o.id)}
-              >{o.name}{bar.style === o.id ? ' ✓' : ''}</button>
+                className={`${styles.barOpt} ${ui.style === o.id ? styles.barOptOn : ''}`}
+                aria-pressed={ui.style === o.id}
+                onClick={() => ui.setStyle(o.id)}
+              >{o.name}{ui.style === o.id ? ' ✓' : ''}</button>
             ))}
           </div>
         </div>

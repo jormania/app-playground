@@ -184,19 +184,26 @@ cycles it and Settings → Appearance jumps straight to one. The ember→slate
 dyed-thread heat scale is constant across both themes — dye is dye.
 
 Settings ("The Guild") is reachable from the header **⚙** gear and the bottom bar;
-it holds the Notion connection, the Appearance picker, the **Navigation bar**
+it holds the Notion connection, the Appearance picker, the **Interface style**
 picker, and the **Vocabulary** toggle (see "Two voices").
 
 - **Type:** Cinzel for the ceremonial Guild lettering (the wordmark, section
   titles, the verbs); Alegreya for thread text (a literary, hand-woven feel);
   Inter for small UI/meta so numbers and inputs stay crisp.
-- **The bottom bar** ([`components/VerbBar.jsx`](src/loom/components/VerbBar.jsx))
-  is a slim, translucent (backdrop-blurred) nav with the view switch and Settings
-  access. Its shape is user-chosen and device-remembered
-  ([`lib/barStyle.js`](src/loom/lib/barStyle.js), `loom:barstyle`): a **slim row**
-  (default), a **floating pill**, or an **icon tab bar**. The demo/Notion state
-  rides along as a small dot; the old status "sentence line" was dropped when the
-  bar was slimmed.
+- **Interface style — one coordinated pair, top and bottom.** A single choice
+  ([`lib/uiStyle.js`](src/loom/lib/uiStyle.js), `loom:uistyle`, device-remembered,
+  back-compat with the old `loom:barstyle`) drives BOTH the top toolbar
+  ([`components/Toolbar.jsx`](src/loom/components/Toolbar.jsx)), the week nav, and
+  the bottom bar ([`components/VerbBar.jsx`](src/loom/components/VerbBar.jsx)) so
+  they always match:
+  - **slim row** (default) — frosted, edge-to-edge; filters gather into a sunken
+    segmented pill echoing the bottom's view switch.
+  - **floating pill** — detached, blurred, shadowed clusters: a search pill, a
+    filters pill, an actions pill, a week-nav pill, and the bottom pill.
+  - **icon tabs** — one flat translucent strip of glyph+label items top and
+    bottom.
+  All are backdrop-blurred and translucent; the demo/Notion state rides along as a
+  small dot; the old status "sentence line" was dropped when the bar was slimmed.
 - **Language:** threads · skeins · the warp · the distaff · spin · weave · unravel
   · the Guild (all aliased to plain planner words by the Vocabulary toggle).
 

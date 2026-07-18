@@ -1,3 +1,8 @@
+/* The top toolbar comes in the same three shapes as the bottom bar so they read
+   as a coordinated pair. Shared material values are kept in step with
+   VerbBar.module.css: row/tabs = surface 70% + blur(12px); pill = surface 78% +
+   blur(14px) + shadow. */
+
 .bar {
   display: flex;
   flex-direction: column;
@@ -5,51 +10,42 @@
   margin-bottom: var(--space-md);
 }
 
-.searchWrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.glass {
-  position: absolute;
-  left: 12px;
-  color: var(--color-faint);
-  font-size: var(--text-base);
-  pointer-events: none;
-}
+/* ── Search (base) ─────────────────────────────────────────────────────────── */
+.searchWrap { position: relative; display: flex; align-items: center; }
+.glass { position: absolute; left: 13px; color: var(--color-faint); font-size: var(--text-base); pointer-events: none; }
 .search {
   width: 100%;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-2);
-  border-radius: var(--radius-pill);
-  padding: 8px 34px 8px 34px;
+  padding: 8px 34px;
   font-family: var(--loom-thread);
   font-size: 1rem; /* >=16px so mobile Safari doesn't zoom */
   color: var(--color-ink);
   outline: none;
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-pill);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  backdrop-filter: blur(10px) saturate(1.2);
 }
 .search:focus { border-color: var(--color-accent); }
 .search::placeholder { color: var(--color-faint); font-style: italic; }
 .clear {
-  position: absolute;
-  right: 8px;
-  border: none;
-  background: none;
-  color: var(--color-faint);
-  cursor: pointer;
-  font-size: var(--text-sm);
-  padding: 4px 6px;
-  border-radius: var(--radius-pill);
+  position: absolute; right: 9px;
+  border: none; background: none; color: var(--color-faint);
+  cursor: pointer; font-size: var(--text-sm); padding: 4px 6px; border-radius: var(--radius-pill);
 }
 .clear:hover { color: var(--color-ink); }
 
-.chips {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
+/* ── Controls (base) ───────────────────────────────────────────────────────── */
+.controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.group, .actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.actions { margin-left: auto; }
+
+.label { white-space: nowrap; }
+.tabGlyph { display: none; }        /* only the tabs style shows filter glyphs */
+.actionGlyph { font-size: 0.95em; } /* action glyphs (⟳ ◈) show in every style */
+
 .chip {
+  display: inline-flex; align-items: center; gap: 5px;
   font-family: var(--font-sans);
   font-size: var(--text-xs);
   letter-spacing: 0.02em;
@@ -62,15 +58,11 @@
   transition: color var(--duration) var(--ease), background var(--duration) var(--ease), border-color var(--duration) var(--ease);
 }
 .chip:hover { color: var(--color-ink); border-color: var(--color-border-2); }
-.chip:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 1px; }
+.chip:focus-visible, .action:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 1px; }
 .on { color: var(--color-on-accent); background: var(--color-accent); border-color: var(--color-accent); }
 
-.spacer { flex: 1 1 auto; }
-
 .action {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+  display: inline-flex; align-items: center; gap: 5px;
   font-family: var(--font-display);
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
@@ -83,17 +75,73 @@
   transition: background var(--duration) var(--ease), color var(--duration) var(--ease);
 }
 .action:hover { background: color-mix(in srgb, var(--color-accent) 14%, transparent); color: var(--color-ink); }
-.action:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 1px; }
 .badge {
-  display: inline-grid;
-  place-items: center;
-  min-width: 17px;
-  height: 17px;
-  padding: 0 4px;
+  display: inline-grid; place-items: center;
+  min-width: 17px; height: 17px; padding: 0 4px;
   border-radius: var(--radius-pill);
-  background: var(--color-danger);
-  color: #fff;
-  font-family: var(--font-sans);
-  font-size: 0.66rem;
-  line-height: 1;
+  background: var(--color-danger); color: #fff;
+  font-family: var(--font-sans); font-size: 0.66rem; line-height: 1;
 }
+
+/* ── ROW — filters gather into a sunken segmented pill, echoing the bottom seg ── */
+.row .group {
+  padding: 3px;
+  gap: 2px;
+  background: color-mix(in srgb, var(--color-bg-sunken) 60%, transparent);
+  border-radius: var(--radius-pill);
+}
+.row .chip { background: none; border: none; padding: 5px 12px; }
+.row .chip:hover { background: color-mix(in srgb, var(--color-surface-2) 60%, transparent); }
+.row .on, .row .on:hover { color: var(--color-on-accent); background: var(--color-accent); }
+
+/* ── PILL — everything floats: a search pill, a filters pill, an actions pill ── */
+.pill { align-items: stretch; }
+.pill .search {
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+  border-color: var(--color-border-2);
+  box-shadow: var(--shadow-md);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
+}
+.pill .controls { justify-content: center; }
+.pill .group, .pill .actions {
+  margin-left: 0;
+  padding: 5px 8px;
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-lg);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
+}
+.pill .chip { background: none; border-color: transparent; }
+.pill .chip:hover { background: color-mix(in srgb, var(--color-surface-2) 55%, transparent); border-color: transparent; }
+.pill .on, .pill .on:hover { color: var(--color-on-accent); background: var(--color-accent); }
+.pill .action { border-color: transparent; background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+.pill .action:hover { background: color-mix(in srgb, var(--color-accent) 24%, transparent); }
+
+/* ── TABS — one flat translucent strip of glyph+label items ────────────────── */
+.tabs .search {
+  border-radius: var(--radius-sm);
+  border-color: var(--color-border);
+}
+.tabs .controls {
+  padding: 4px 6px;
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  backdrop-filter: blur(12px) saturate(1.2);
+}
+.tabs .tabGlyph { display: inline; font-size: 0.9em; }
+.tabs .chip, .tabs .action {
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-muted);
+  font-family: var(--font-display);
+  padding: 5px 10px;
+}
+.tabs .action { color: var(--color-accent); }
+.tabs .chip:hover, .tabs .action:hover { color: var(--color-ink); background: color-mix(in srgb, var(--color-surface-2) 45%, transparent); }
+.tabs .on, .tabs .on:hover { color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 14%, transparent); }

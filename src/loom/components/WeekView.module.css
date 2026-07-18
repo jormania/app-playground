@@ -33,6 +33,35 @@
 .weekLabel:hover { color: var(--color-ink); }
 .current { color: var(--color-accent); border-color: var(--loom-gold-line); }
 
+/* Week nav takes the same interface style as the rest of the chrome. Row keeps
+   the plain centered arrows + pill label; pill floats the group; tabs flattens it. */
+.nav_pill {
+  align-self: center;
+  gap: var(--space-2xs);
+  padding: 4px 6px;
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-lg);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
+}
+.nav_pill .navBtn { border-color: transparent; background: color-mix(in srgb, var(--color-surface-2) 55%, transparent); }
+.nav_pill .weekLabel { min-width: 150px; }
+
+.nav_tabs {
+  align-self: center;
+  gap: 4px;
+  padding: 3px 6px;
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  backdrop-filter: blur(12px) saturate(1.2);
+}
+.nav_tabs .navBtn { border-color: transparent; background: none; }
+.nav_tabs .weekLabel { min-width: 150px; }
+
 /* Repeating-draft offer — a gentle, opt-in banner when a fresh week has a
    repeating draft not yet cast. */
 .repeats { display: flex; flex-direction: column; gap: var(--space-2xs); }

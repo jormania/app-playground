@@ -5,6 +5,7 @@ import QuickAdd from './QuickAdd.jsx'
 import DayMover from './DayMover.jsx'
 import { DragProvider } from '../lib/dragContext.jsx'
 import { useLexicon } from '../lib/lexiconContext.jsx'
+import { useUiStyle } from '../lib/uiStyleContext.jsx'
 import { groupByWeek, orderForNew, orderForMove, dateKey, matchesQuery, topOfGroup } from '../lib/model.js'
 import { pendingRepeats, settleForWeek } from '../lib/drafts.js'
 import styles from './WeekView.module.css'
@@ -17,6 +18,7 @@ export default function WeekView({
   threads, days, actions, filters, weekLabel, onPrevWeek, onNextWeek, onThisWeek, isThisWeek,
 }) {
   const { t } = useLexicon()
+  const { style } = useUiStyle()
   const { columns, backlog } = groupByWeek(threads, days)
   const todayKey = dateKey(new Date())
   const weekStartDate = days[0].date
@@ -76,7 +78,7 @@ export default function WeekView({
   return (
     <DragProvider onDrop={handleDrop}>
       <div className={styles.view}>
-        <div className={styles.weekNav}>
+        <div className={`${styles.weekNav} ${styles[`nav_${style}`]}`}>
           <button type="button" className={styles.navBtn} onClick={onPrevWeek} aria-label="Previous week">‹</button>
           <button
             type="button"

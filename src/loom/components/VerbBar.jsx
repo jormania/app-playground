@@ -1,5 +1,5 @@
 import { useLexicon } from '../lib/lexiconContext.jsx'
-import { useBarStyle } from '../lib/barStyleContext.jsx'
+import { useUiStyle } from '../lib/uiStyleContext.jsx'
 import styles from './VerbBar.module.css'
 
 // The bottom navigation — a nod to the SCUMM verb interface, but slimmed to one
@@ -10,7 +10,7 @@ const ICONS = { skeins: '❋', loom: '▦', tapestry: '▤', guild: '⚙' }
 
 export default function VerbBar({ view, onView, mode, onOpenSettings }) {
   const { t } = useLexicon()
-  const { style } = useBarStyle()
+  const { style } = useUiStyle()
 
   const views = [
     { id: 'skeins', label: t('skeinView') },

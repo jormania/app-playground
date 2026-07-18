@@ -11,7 +11,7 @@ import './loom.css'
 import { watchInstalled } from '../shared/installFlag'
 import { ThemeProvider } from './lib/themeContext'
 import { LexiconProvider } from './lib/lexiconContext'
-import { BarStyleProvider } from './lib/barStyleContext'
+import { UiStyleProvider } from './lib/uiStyleContext'
 import App from './App.jsx'
 
 watchInstalled('loom-react.html')
@@ -28,9 +28,9 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ThemeProvider>
       <LexiconProvider>
-        <BarStyleProvider>
+        <UiStyleProvider>
           <App />
-        </BarStyleProvider>
+        </UiStyleProvider>
       </LexiconProvider>
     </ThemeProvider>
   </StrictMode>,

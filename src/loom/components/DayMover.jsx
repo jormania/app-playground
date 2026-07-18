@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react'
 import InlinePopover from './InlinePopover.jsx'
+import { useLexicon } from '../lib/lexiconContext.jsx'
 import styles from './Assign.module.css'
 
 // Move a thread along the warp — reassign it to another day of the week, or to
 // the backlog. No modal: tap the day, pick a new one. `days` is weekDays().
 export default function DayMover({ thread, days, onMove }) {
+  const { t } = useLexicon()
   const [open, setOpen] = useState(false)
   const btnRef = useRef(null)
   const current = days.find(d => d.key === thread.day)
@@ -35,7 +37,7 @@ export default function DayMover({ thread, days, onMove }) {
               type="button"
               className={`${styles.warpDot} ${styles.backlog} ${!thread.day ? styles.here : ''}`}
               onClick={() => { onMove(null); setOpen(false) }}
-              title="Backlog — unspun"
+              title={t('Distaff')}
             >⌂</button>
           </div>
         </InlinePopover>
