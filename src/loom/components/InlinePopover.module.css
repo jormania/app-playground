@@ -1,12 +1,11 @@
+/* Positioned in the viewport from JS (portal + fixed); this only styles the box.
+   z-index sits above the verb bar (30) and the toasts (40). */
 .pop {
-  position: absolute;
-  top: calc(100% + 6px);
-  z-index: 20;
+  z-index: 60;
+  max-width: calc(100vw - 16px);
   background: var(--color-surface);
   border: 1px solid var(--color-border-2);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   padding: var(--space-xs);
 }
-.end { right: 0; }
-.start { left: 0; }

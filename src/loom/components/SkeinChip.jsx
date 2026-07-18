@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import InlinePopover from './InlinePopover.jsx'
 import styles from './Assign.module.css'
 
@@ -8,6 +8,7 @@ import styles from './Assign.module.css'
 export default function SkeinChip({ thread, skeins, onSetSkein }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(thread.skein || '')
+  const btnRef = useRef(null)
 
   function commit(name) {
     const next = (name ?? draft).trim()
@@ -20,11 +21,12 @@ export default function SkeinChip({ thread, skeins, onSetSkein }) {
       <button
         type="button"
         className={`${styles.chip} ${styles.skein}`}
+        ref={btnRef}
         aria-label="Change skein"
         onClick={() => { setDraft(thread.skein || ''); setOpen(o => !o) }}
       >{thread.skein || '+ skein'}</button>
       {open && (
-        <InlinePopover onClose={() => setOpen(false)}>
+        <InlinePopover anchorRef={btnRef} onClose={() => setOpen(false)}>
           <div className={styles.skeinPick}>
             <input
               className={styles.skeinInput}

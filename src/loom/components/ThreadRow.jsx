@@ -28,6 +28,10 @@ export default function ThreadRow({
   function onBodyPointerDown(e) {
     if (editing) return
     if (e.pointerType === 'mouse' && e.button !== 0) return
+    // Never let a swipe start on the row's controls — the grip owns drag-to-move,
+    // and the knot / chips / ✂ are taps. Otherwise a leftward grip-drag would cross
+    // the swipe-left threshold and unravel the thread mid-move.
+    if (e.target.closest('[data-loom-controls]')) return
     gesture.current = { startX: e.clientX, startY: e.clientY, axis: null, id: e.pointerId }
   }
   function onBodyPointerMove(e) {
@@ -97,6 +101,7 @@ export default function ThreadRow({
         <button
           type="button"
           className={styles.knot}
+          data-loom-controls
           aria-pressed={thread.done}
           aria-label={thread.done ? `Un${t('weave')} (mark undone)` : `${t('Weave')} (mark done)`}
           onClick={() => { tap(8); onToggle(!thread.done) }}
@@ -127,7 +132,7 @@ export default function ThreadRow({
           </button>
         )}
 
-        <div className={styles.trailing}>
+        <div className={styles.trailing} data-loom-controls>
           {assign}
           <button
             type="button"
@@ -140,7 +145,7 @@ export default function ThreadRow({
               type="button"
               className={styles.grip}
               aria-label="Reorder — drag, or use up and down arrows"
-              onPointerDown={e => { if (e.button === 0 || e.pointerType !== 'mouse') onDragStart(e) }}
+              onPointerDown={e => { if (e.button === 0 || e.pointerType !== 'mouse') { e.stopPropagation(); onDragStart(e) } }}
               onKeyDown={e => {
                 if (e.key === 'ArrowUp') { e.preventDefault(); if (onNudge) onNudge(-1) }
                 else if (e.key === 'ArrowDown') { e.preventDefault(); if (onNudge) onNudge(1) }

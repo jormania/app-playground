@@ -32,7 +32,7 @@ function extractKeywords(texts: string[]): { text: string; value: number }[] {
   texts.forEach(text => {
     const words = text
       .toLowerCase()
-      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?\n]/g, '')
+      .replace(/[.,/#!$%^&*;:{}=\-_`~()?\n]/g, '')
       .split(/\s+/);
       
     words.forEach(word => {

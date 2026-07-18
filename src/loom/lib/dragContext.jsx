@@ -49,7 +49,10 @@ export function DragProvider({ children, onDrop }) {
     function up() {
       const a = activeRef.current
       const o = overRef.current
-      if (a && o) {
+      // Only a drop with a resolved landing index counts — a bare press-and-release
+      // on the grip (no pointer movement, index still null) must be a no-op, never a
+      // silent reorder to the end of the column.
+      if (a && o && o.index != null) {
         const from = containers.current.get(a.fromId)
         const to = containers.current.get(o.id)
         if (to && onDrop) {

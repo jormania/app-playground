@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import InlinePopover from './InlinePopover.jsx'
 import styles from './Assign.module.css'
 
@@ -6,6 +6,7 @@ import styles from './Assign.module.css'
 // the backlog. No modal: tap the day, pick a new one. `days` is weekDays().
 export default function DayMover({ thread, days, onMove }) {
   const [open, setOpen] = useState(false)
+  const btnRef = useRef(null)
   const current = days.find(d => d.key === thread.day)
   const label = current ? current.label[0] : '·'
 
@@ -14,11 +15,12 @@ export default function DayMover({ thread, days, onMove }) {
       <button
         type="button"
         className={styles.chip}
+        ref={btnRef}
         aria-label="Move to another day"
         onClick={() => setOpen(o => !o)}
       >{label}</button>
       {open && (
-        <InlinePopover onClose={() => setOpen(false)}>
+        <InlinePopover anchorRef={btnRef} onClose={() => setOpen(false)}>
           <div className={styles.warp}>
             {days.map(d => (
               <button
