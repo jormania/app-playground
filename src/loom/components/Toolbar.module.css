@@ -36,9 +36,16 @@
 .clear:hover { color: var(--color-ink); }
 
 /* ── Controls (base) ───────────────────────────────────────────────────────── */
+/* One rule for every style: filters left, actions right — on the same line when
+   they fit, and with the actions keeping the right edge when they wrap onto their
+   own line. Deliberately identical across row/pill/tabs so the Re-warp + Drafts
+   pair never moves when you switch interface style. */
 .controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .group, .actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.actions { margin-left: auto; }
+/* No grow — the group hugs its content (so the pill style's container doesn't
+   stretch); `margin-left:auto` alone holds the actions to the right edge. */
+.group { flex: 0 1 auto; min-width: 0; }
+.actions { flex: 0 0 auto; margin-left: auto; }
 
 .label { white-space: nowrap; }
 .tabGlyph { display: none; }        /* only the tabs style shows filter glyphs */
@@ -103,9 +110,7 @@
   -webkit-backdrop-filter: blur(14px) saturate(1.3);
   backdrop-filter: blur(14px) saturate(1.3);
 }
-.pill .controls { justify-content: center; }
 .pill .group, .pill .actions {
-  margin-left: 0;
   padding: 5px 8px;
   background: color-mix(in srgb, var(--color-surface) 78%, transparent);
   border: 1px solid var(--color-border-2);
@@ -145,3 +150,16 @@
 .tabs .action { color: var(--color-accent); }
 .tabs .chip:hover, .tabs .action:hover { color: var(--color-ink); background: color-mix(in srgb, var(--color-surface-2) 45%, transparent); }
 .tabs .on, .tabs .on:hover { color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+
+/* ── QoL ───────────────────────────────────────────────────────────────────── */
+/* Comfortable touch targets on finger-driven devices, without bulking up the
+   toolbar on the desktop. */
+@media (hover: none) {
+  .chip, .action { min-height: 34px; }
+}
+/* On a phone the display-font chips of the tabs style are the widest; tighten
+   them so the three filters still hold a single line. */
+@media (max-width: 560px) {
+  .tabs .chip, .tabs .action { padding: 5px 8px; letter-spacing: 0.01em; }
+  .chip, .action { gap: 4px; }
+}

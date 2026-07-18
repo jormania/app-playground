@@ -11,6 +11,7 @@
 /* ── Segmented view switch (shared by pill + row) ──────────────────────────── */
 .seg {
   display: inline-flex;
+  min-width: 0; /* let the switch shrink rather than push the bar past the viewport */
   gap: 2px;
   padding: 3px;
   background: color-mix(in srgb, var(--color-bg-sunken) 60%, transparent);
@@ -54,6 +55,10 @@
 
 .modeDot {
   flex: 0 0 auto;
+  /* Explicit display: in the tabs style this sits inside an absolutely-positioned
+     block, where an inline span would ignore width/height and render as a stray
+     1px line. Flex parents blockify it anyway, so this is safe everywhere. */
+  display: block;
   width: 8px;
   height: 8px;
   border-radius: var(--radius-pill);
@@ -139,3 +144,10 @@
 .tabLabel { font-family: var(--font-display); font-size: var(--text-xs); letter-spacing: 0.03em; }
 .tabOn { color: var(--color-accent); }
 .tabsMode { position: absolute; top: 5px; right: 9px; }
+
+/* ── Narrow screens: tighten so no style pushes the page sideways ──────────── */
+@media (max-width: 560px) {
+  .rowBar { padding-left: var(--space-sm); padding-right: var(--space-sm); }
+  .segBtn { padding: 6px 11px; min-width: 0; }
+  .pill { padding-left: 5px; padding-right: 7px; }
+}

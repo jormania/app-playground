@@ -112,7 +112,9 @@ const TERMS = {
     plain: 'Search tasks and projects…',
   },
   unwovenOnly: { loom: 'Unwoven only', plain: 'Unfinished only' },
-  topOnly: { loom: 'Top of each group', plain: 'Top of each group' },
+  // Kept short so the three filters hold one tidy line on a phone; the full
+  // meaning lives in each chip's tooltip.
+  topOnly: { loom: 'Hot few', plain: 'Top few' },
   foldWoven: { loom: 'Fold woven', plain: 'Fold done' },
   onLoom: { loom: 'on the loom', plain: 'open' },
 
