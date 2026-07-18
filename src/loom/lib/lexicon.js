@@ -107,9 +107,12 @@ const TERMS = {
   repeatWeekly: { loom: 'Re-weave every week', plain: 'Repeat every week' },
 
   // ── Search / focus ──
-  searchPlaceholder: {
-    loom: 'Search threads and skeins…',
-    plain: 'Search tasks and projects…',
+  // Short so it never truncates in the compact toolbar; the fuller sentence
+  // lives in searchLabel for screen readers.
+  searchPlaceholder: { loom: 'Search', plain: 'Search' },
+  searchLabel: {
+    loom: 'Search threads and skeins',
+    plain: 'Search tasks and projects',
   },
   unwovenOnly: { loom: 'Unwoven only', plain: 'Unfinished only' },
   // Kept short so the three filters hold one tidy line on a phone; the full

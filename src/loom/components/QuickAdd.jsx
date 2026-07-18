@@ -1,10 +1,14 @@
 import { useState } from 'react'
+import { useLexicon } from '../lib/lexiconContext.jsx'
 import styles from './QuickAdd.module.css'
 
 // Frictionless entry — an inline input, never a modal. Enter spins the thread
-// and keeps focus so you can rack up a whole day (or skein) in one flow.
-export default function QuickAdd({ placeholder = 'Spin a thread…', onAdd, compact = false }) {
+// (or adds the task, in plain voice) and keeps focus so you can rack up a whole
+// day (or skein) in one flow.
+export default function QuickAdd({ placeholder, onAdd, compact = false }) {
+  const { t } = useLexicon()
   const [value, setValue] = useState('')
+  const ph = placeholder ?? t('spinLoose')
 
   function submit(e) {
     e.preventDefault()
@@ -20,13 +24,13 @@ export default function QuickAdd({ placeholder = 'Spin a thread…', onAdd, comp
       <input
         className={styles.input}
         value={value}
-        placeholder={placeholder}
+        placeholder={ph}
         onChange={e => setValue(e.target.value)}
         enterKeyHint="done"
-        aria-label={placeholder}
+        aria-label={ph}
       />
       {value.trim() && (
-        <button type="submit" className={styles.go} aria-label="Spin thread">spin</button>
+        <button type="submit" className={styles.go} aria-label={t('Spin')}>{t('Spin')}</button>
       )}
     </form>
   )

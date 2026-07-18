@@ -1,7 +1,10 @@
+import { useEffect, useRef, useState } from 'react'
 import { useLexicon } from '../lib/lexiconContext.jsx'
 import { useUiStyle } from '../lib/uiStyleContext.jsx'
 import { UnwovenIcon, HotFewIcon, FoldIcon, RewarpIcon, DraftsIcon } from './icons.jsx'
 import styles from './Toolbar.module.css'
+
+const FLASH_MS = 1800
 
 // The top control surface — search, the focus toggles, and the two week rituals
 // (Re-warp, Drafts) — as ICON-ONLY buttons (a tooltip carries the localized
@@ -10,9 +13,10 @@ import styles from './Toolbar.module.css'
 // the live filters.
 //
 // A tooltip needs hover, which a touch screen never fires — so once a filter is
-// toggled, its icon alone can't say WHICH one is on. A slim caption line under
-// the row names whichever toggles are active (nothing shown when none are), so
-// the state stays legible without hover and without bringing text chips back.
+// toggled, its icon alone can't say WHICH one is on. Rather than a permanent
+// caption line (costs a row's worth of height on every screen, all the time), a
+// brief toast names whichever toggles are active right after you change one,
+// then fades — no hover needed, no space reserved once it's gone.
 export default function Toolbar({ filters, setFilter, carryCount, onRewarp, onDrafts }) {
   const { t } = useLexicon()
   const { style } = useUiStyle()
@@ -22,7 +26,25 @@ export default function Toolbar({ filters, setFilter, carryCount, onRewarp, onDr
     { key: 'top', Icon: HotFewIcon, label: t('topOnly'), on: filters.topOnly, onClick: () => setFilter('topOnly', !filters.topOnly) },
     { key: 'fold', Icon: FoldIcon, label: t('foldWoven'), on: filters.collapseWoven, onClick: () => setFilter('collapseWoven', !filters.collapseWoven) },
   ]
-  const activeLabels = toggles.filter(tg => tg.on).map(tg => tg.label)
+  const activeKey = toggles.filter(tg => tg.on).map(tg => tg.label).join(' · ')
+
+  // Flash the active set on CHANGE only — never on mount (a fresh load shouldn't
+  // toast just because "Unwoven only" defaults on), and only while there's
+  // something to say (turning the last toggle off just goes quiet).
+  const [flash, setFlash] = useState(null)
+  const prevKey = useRef(null)
+  useEffect(() => {
+    if (prevKey.current === null) { prevKey.current = activeKey; return }
+    if (activeKey !== prevKey.current) {
+      prevKey.current = activeKey
+      setFlash(activeKey || null)
+    }
+  }, [activeKey])
+  useEffect(() => {
+    if (!flash) return undefined
+    const timer = setTimeout(() => setFlash(null), FLASH_MS)
+    return () => clearTimeout(timer)
+  }, [flash])
 
   return (
     <div className={styles.wrap}>
@@ -34,7 +56,7 @@ export default function Toolbar({ filters, setFilter, carryCount, onRewarp, onDr
             type="search"
             value={filters.query}
             placeholder={t('searchPlaceholder')}
-            aria-label={t('searchPlaceholder')}
+            aria-label={t('searchLabel')}
             onChange={e => setFilter('query', e.target.value)}
           />
           {filters.query && (
@@ -67,8 +89,8 @@ export default function Toolbar({ filters, setFilter, carryCount, onRewarp, onDr
         </div>
       </div>
 
-      {activeLabels.length > 0 && (
-        <p className={styles.hint} title={activeLabels.join(' · ')}>{activeLabels.join(' · ')}</p>
+      {flash && (
+        <p className={styles.flash} role="status" style={{ '--flash-ms': `${FLASH_MS}ms` }}>{flash}</p>
       )}
     </div>
   )

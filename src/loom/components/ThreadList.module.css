@@ -5,10 +5,14 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2xs);
-  /* Grow to fill a day column and keep a floor when empty, so an empty column
-     still offers a real drop target for cross-column drag (not a 0px sliver). */
+  /* Grow to fill a day column; a small floor keeps an empty list from
+     collapsing to a 0px sliver — it still needs SOME height for a cross-column
+     drag to hit-test onto it — but a live drag already gets its own generous
+     landing pad (.emptyDrop, below), so this floor only has to be non-zero, not
+     roomy. Kept low on purpose: at 40px it read as dead space, especially
+     stretched across the full-width distaff. */
   flex: 1 1 auto;
-  min-height: 40px;
+  min-height: 14px;
 }
 
 .slot { position: relative; }
