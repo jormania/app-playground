@@ -269,7 +269,9 @@ export function draftItemsFromWeek(threads, days, { excludeSkein } = {}) {
 // Build the threads to create when casting a rhythm onto a week. Returns an array
 // of { title, skein, day, order, done } — one per day per canonical thread, minus
 // any that already exist on that day (duplication guard).
-export function rhythmThreadsForWeek(threads, rhythmSkein, days) {
+// `daysMask` is an optional array of weekday indices (0 = Mon … 6 = Sun). When
+// provided, only those day columns receive rhythm threads. null = all seven days.
+export function rhythmThreadsForWeek(threads, rhythmSkein, days, daysMask = null) {
   if (!rhythmSkein) return []
   // Canonical list: undone threads in the rhythm skein that are on the distaff
   // (day == null) or on any day — we take all unique titles.
@@ -284,8 +286,12 @@ export function rhythmThreadsForWeek(threads, rhythmSkein, days) {
   }
   if (templates.length === 0) return []
 
+  const activeDays = daysMask
+    ? days.filter((_, i) => daysMask.includes(i))
+    : days
+
   const result = []
-  for (const day of days) {
+  for (const day of activeDays) {
     // What rhythm-skein titles already sit on this day?
     const existing = new Set(
       threads.filter(t => t.day === day.key && t.skein === rhythmSkein).map(t => t.title)

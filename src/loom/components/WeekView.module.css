@@ -135,6 +135,11 @@
   color: var(--color-accent);
   font-weight: 500;
 }
+.rhythmOfferDays {
+  color: var(--color-muted);
+  font-style: normal;
+  font-size: var(--text-xs);
+}
 
 /* Rhythm block — the tinted section at the top of each day column where rhythm
    threads sit, visually separated from the rest of the day's work. */
@@ -250,3 +255,48 @@
   color: var(--color-accent);
 }
 .distaffSub { font-family: var(--loom-thread); font-style: italic; font-size: var(--text-sm); color: var(--color-faint); }
+
+/* Long-press context menu ("Edit in rhythm") — fixed-position popover anchored
+   to the pointer coordinates. Slim, scrim-less; a tap outside dismisses via the
+   blur/pointer logic in the component. */
+.lpMenu {
+  position: fixed;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  border: 1px solid var(--loom-gold-line);
+  border-radius: var(--radius-md);
+  padding: 6px 8px;
+  box-shadow: var(--shadow-md);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  backdrop-filter: blur(12px) saturate(1.3);
+  /* Offset so the menu doesn't sit exactly under the finger */
+  transform: translate(-50%, -120%);
+}
+.lpItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  white-space: nowrap;
+}
+.lpItem:hover { color: var(--color-accent-hover); }
+.lpDismiss {
+  background: none;
+  border: none;
+  color: var(--color-faint);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+}
+.lpDismiss:hover { color: var(--color-danger); }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import ThreadList from './ThreadList.jsx'
 import WovenFold from './WovenFold.jsx'
 import QuickAdd from './QuickAdd.jsx'
@@ -18,7 +18,7 @@ import styles from './WeekView.module.css'
 // drop target for cross-column drag, and honours the search + focus toggles.
 export default function WeekView({
   threads, days, actions, filters, weekLabel, onPrevWeek, onNextWeek, onThisWeek, isThisWeek,
-  rhythmSkein,
+  rhythmSkein, rhythmDays: _rhythmDays, onEditInRhythm,
 }) {
   const { t } = useLexicon()
   const { style } = useUiStyle()
@@ -27,6 +27,10 @@ export default function WeekView({
   const weekStartDate = days[0].date
   const weekStartKey = days[0].key
   const [castTick, setCastTick] = useState(0)
+  // Long-press state for "Edit in rhythm" context menu: { x, y } or null.
+  const [longPress, setLongPress] = useState(null)
+  const lpTimer = useRef(null)
+  const lpThread = useRef(null)
   // Repeating drafts not yet cast or dismissed for this week; castTick re-reads
   // the cast log (a localStorage side channel the linter can't see) after a
   // cast/dismiss so the offer clears.
@@ -51,6 +55,23 @@ export default function WeekView({
     const group = threads.filter(th => th.day === dayKey)
     actions.addThread({ title, skein: null, day: dayKey, order: orderForNew(group) })
   }
+
+  // Long-press handlers for rhythm threads
+  const startLongPress = useCallback((e, thread) => {
+    if (e.button > 0) return
+    lpThread.current = thread
+    const { clientX: x, clientY: y } = e
+    lpTimer.current = setTimeout(() => {
+      setLongPress({ x, y })
+    }, 400)
+  }, [])
+  const cancelLongPress = useCallback(() => {
+    clearTimeout(lpTimer.current)
+  }, [])
+  const commitEditInRhythm = useCallback(() => {
+    setLongPress(null)
+    if (onEditInRhythm && rhythmSkein) onEditInRhythm(rhythmSkein)
+  }, [onEditInRhythm, rhythmSkein])
   function addToBacklog(title) {
     const group = threads.filter(th => !th.day || !days.some(d => d.key === th.day))
     actions.addThread({ title, skein: null, day: null, order: orderForNew(group) })
@@ -117,18 +138,25 @@ export default function WeekView({
         </div>
 
         {/* Rhythm cast offer — gentle banner, same pattern as repeating drafts. */}
-        {rhythmPending && rhythmCount > 0 && (
-          <div className={styles.rhythmOffer}>
-            <span className={styles.rhythmOfferIcon}><RhythmIcon /></span>
-            <span className={styles.rhythmOfferText}>
-              {t('rhythmBanner')} <span className={styles.rhythmOfferCount}>{rhythmCount} {rhythmCount === 1 ? t('thread') : t('threads')}</span>
-            </span>
-            <span className={styles.repeatBtns}>
-              <button type="button" className={styles.repeatCast} onClick={castRhythm}>{t('castRhythm')}</button>
-              <button type="button" className={styles.repeatSkip} onClick={dismissRhythm} aria-label="Not this week">✕</button>
-            </span>
-          </div>
-        )}
+        {rhythmPending && rhythmCount > 0 && (() => {
+          const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+          const maskText = rhythmPending.days
+            ? rhythmPending.days.map(i => dayLabels[i]).join(', ')
+            : null
+          return (
+            <div className={styles.rhythmOffer}>
+              <span className={styles.rhythmOfferIcon}><RhythmIcon /></span>
+              <span className={styles.rhythmOfferText}>
+                {t('rhythmBanner')} <span className={styles.rhythmOfferCount}>{rhythmCount} {rhythmCount === 1 ? t('thread') : t('threads')}</span>
+                {maskText && <span className={styles.rhythmOfferDays}> · {maskText}</span>}
+              </span>
+              <span className={styles.repeatBtns}>
+                <button type="button" className={styles.repeatCast} onClick={castRhythm}>{t('castRhythm')}</button>
+                <button type="button" className={styles.repeatSkip} onClick={dismissRhythm} aria-label="Not this week">✕</button>
+              </span>
+            </div>
+          )
+        })()}
 
         {repeats.length > 0 && (
           <div className={styles.repeats}>
@@ -159,7 +187,13 @@ export default function WeekView({
                 </header>
                 {/* Rhythm threads render at the top in a tinted block. */}
                 {hasRhythm && (
-                  <div className={styles.rhythmBlock}>
+                  <div
+                    className={styles.rhythmBlock}
+                    onPointerDown={e => startLongPress(e, rhythm[0])}
+                    onPointerUp={cancelLongPress}
+                    onPointerCancel={cancelLongPress}
+                    onPointerMove={cancelLongPress}
+                  >
                     <ThreadList
                       tasks={rhythm}
                       containerId={`day-rhythm:${col.key}`}
@@ -230,6 +264,31 @@ export default function WeekView({
           </div>
         </section>
       </div>
+
+      {/* Long-press context menu — "Edit in rhythm" */}
+      {longPress && (
+        <div
+          className={styles.lpMenu}
+          style={{ top: longPress.y, left: longPress.x }}
+          role="menu"
+        >
+          <button
+            type="button"
+            className={styles.lpItem}
+            role="menuitem"
+            onClick={commitEditInRhythm}
+          >
+            <RhythmIcon />
+            Edit in rhythm
+          </button>
+          <button
+            type="button"
+            className={styles.lpDismiss}
+            onClick={() => setLongPress(null)}
+            aria-label="Dismiss"
+          >✕</button>
+        </div>
+      )}
     </DragProvider>
   )
 }
