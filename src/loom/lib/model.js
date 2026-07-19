@@ -241,16 +241,81 @@ export function threadsForDraftWeek(draft, weekStartDate) {
 }
 
 // Snapshot a week's open threads as draft items (day → day-of-week index, or null
-// for distaff). Woven threads and off-week dates are left out.
-export function draftItemsFromWeek(threads, days) {
+// for distaff). Woven threads and off-week dates are left out. If `excludeSkein`
+// is set, threads from that skein are filtered out — used to keep rhythm threads
+// out of draft snapshots (they're placed by the rhythm, not by drafts).
+export function draftItemsFromWeek(threads, days, { excludeSkein } = {}) {
   const keyToIndex = new Map(days.map((d, i) => [d.key, i]))
-  return sortByOrder(threads.filter(t => !t.done && (t.day == null || keyToIndex.has(t.day))))
+  return sortByOrder(threads.filter(t => {
+    if (t.done) return false
+    if (excludeSkein && t.skein === excludeSkein) return false
+    return t.day == null || keyToIndex.has(t.day)
+  }))
     .map(t => ({
       title: t.title,
       skein: t.skein || null,
       dayIndex: keyToIndex.has(t.day) ? keyToIndex.get(t.day) : null,
       order: t.order ?? 0,
     }))
+}
+
+// ── Rhythm (daily routine) ───────────────────────────────────────────────────
+// A rhythm is a skein whose threads are placed onto every day of a fresh week.
+// `rhythmThreadsForWeek` builds the list of threads to create; the duplication
+// guard skips any title+skein that already exists on a given day (from carry-over
+// or a prior cast). `splitRhythmThreads` partitions a day's task list into the
+// rhythm block (rendered at the top) and the rest.
+
+// Build the threads to create when casting a rhythm onto a week. Returns an array
+// of { title, skein, day, order, done } — one per day per canonical thread, minus
+// any that already exist on that day (duplication guard).
+export function rhythmThreadsForWeek(threads, rhythmSkein, days) {
+  if (!rhythmSkein) return []
+  // Canonical list: undone threads in the rhythm skein that are on the distaff
+  // (day == null) or on any day — we take all unique titles.
+  const canonical = sortByOrder(
+    threads.filter(t => t.skein === rhythmSkein && !t.done)
+  )
+  // Deduplicate by title (keep first occurrence = lowest order = highest position).
+  const seen = new Set()
+  const templates = []
+  for (const t of canonical) {
+    if (!seen.has(t.title)) { seen.add(t.title); templates.push(t) }
+  }
+  if (templates.length === 0) return []
+
+  const result = []
+  for (const day of days) {
+    // What rhythm-skein titles already sit on this day?
+    const existing = new Set(
+      threads.filter(t => t.day === day.key && t.skein === rhythmSkein).map(t => t.title)
+    )
+    for (const tpl of templates) {
+      if (!existing.has(tpl.title)) {
+        result.push({
+          title: tpl.title,
+          skein: rhythmSkein,
+          day: day.key,
+          order: tpl.order ?? 0,
+          done: false,
+        })
+      }
+    }
+  }
+  return result
+}
+
+// Split a day's order-sorted task list into { rhythm, rest } so the week view
+// can render the rhythm block at the top with a visual separator.
+export function splitRhythmThreads(tasks, rhythmSkein) {
+  if (!rhythmSkein) return { rhythm: [], rest: tasks }
+  const rhythm = []
+  const rest = []
+  for (const t of tasks) {
+    if (t.skein === rhythmSkein) rhythm.push(t)
+    else rest.push(t)
+  }
+  return { rhythm, rest }
 }
 
 // ── Search & focus ───────────────────────────────────────────────────────────

@@ -106,6 +106,25 @@ const TERMS = {
   saveDraft: { loom: 'Save this week as a draft', plain: 'Save this week as a template' },
   repeatWeekly: { loom: 'Re-weave every week', plain: 'Repeat every week' },
 
+  // ── Rhythm (daily routine) ──
+  rhythm: { loom: 'rhythm', plain: 'routine' },
+  Rhythm: { loom: 'Rhythm', plain: 'Routine' },
+  rhythmLede: {
+    loom: 'A rhythm is the pattern the loom already knows — threads it places on the warp before you sit down.',
+    plain: 'A routine is your daily checklist — tasks placed on every day of the week automatically.',
+  },
+  castRhythm: { loom: 'Weave your rhythm onto this week', plain: 'Add routine to this week' },
+  setAsRhythm: { loom: 'Set as your rhythm', plain: 'Set as your routine' },
+  unsetRhythm: { loom: 'Unset as rhythm', plain: 'Unset as routine' },
+  rhythmCast: {
+    loom: 'Your rhythm was woven onto the week.',
+    plain: 'Your routine was added to the week.',
+  },
+  rhythmBanner: {
+    loom: 'Your rhythm is ready. Weave it onto this week?',
+    plain: 'Your routine is ready. Add it to this week?',
+  },
+
   // ── Search / focus ──
   // Short so it never truncates in the compact toolbar; the fuller sentence
   // lives in searchLabel for screen readers.

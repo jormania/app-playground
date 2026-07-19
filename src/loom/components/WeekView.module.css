@@ -106,6 +106,46 @@
 }
 .repeatSkip:hover { color: var(--color-danger); }
 
+/* Rhythm cast offer — sits above the repeating-draft offers, same visual family
+   but with its own accent tint to distinguish it. */
+.rhythmOffer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+  border: 1px solid var(--loom-gold-line);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+}
+.rhythmOfferIcon {
+  flex: 0 0 auto;
+  font-size: 1.15em;
+  color: var(--color-accent);
+  line-height: 1;
+}
+.rhythmOfferText {
+  font-family: var(--loom-thread);
+  font-style: italic;
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.rhythmOfferCount {
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+/* Rhythm block — the tinted section at the top of each day column where rhythm
+   threads sit, visually separated from the rest of the day's work. */
+.rhythmBlock {
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 2px 0;
+  margin-bottom: 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
 /* The warp: seven day columns. Horizontal scroll-snap on narrow screens (a real
    week planner), a 7-track grid once there's room. */
 .warp {

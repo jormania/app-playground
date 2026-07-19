@@ -6,8 +6,10 @@ import DayMover from './DayMover.jsx'
 import { DragProvider } from '../lib/dragContext.jsx'
 import { useLexicon } from '../lib/lexiconContext.jsx'
 import { useUiStyle } from '../lib/uiStyleContext.jsx'
-import { groupByWeek, orderForNew, orderForMove, dateKey, matchesQuery, topOfGroup } from '../lib/model.js'
+import { RhythmIcon } from './icons.jsx'
+import { groupByWeek, orderForNew, orderForMove, dateKey, matchesQuery, topOfGroup, splitRhythmThreads } from '../lib/model.js'
 import { pendingRepeats, settleForWeek } from '../lib/drafts.js'
+import { pendingRhythm, settleRhythmForWeek } from '../lib/rhythm.js'
 import styles from './WeekView.module.css'
 
 // Weekly view: the week warped across seven days, plus the distaff — a backlog
@@ -16,6 +18,7 @@ import styles from './WeekView.module.css'
 // drop target for cross-column drag, and honours the search + focus toggles.
 export default function WeekView({
   threads, days, actions, filters, weekLabel, onPrevWeek, onNextWeek, onThisWeek, isThisWeek,
+  rhythmSkein,
 }) {
   const { t } = useLexicon()
   const { style } = useUiStyle()
@@ -29,6 +32,20 @@ export default function WeekView({
   // cast/dismiss so the offer clears.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const repeats = useMemo(() => pendingRepeats(weekStartKey), [weekStartKey, castTick])
+
+  // Rhythm banner: show if there's a rhythm skein and it hasn't been cast/dismissed
+  // for this week. Re-reads on castTick just like repeating drafts.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const rhythmPending = useMemo(() => pendingRhythm(weekStartKey), [weekStartKey, castTick])
+  // Count of canonical rhythm threads (for the banner text).
+  const rhythmCount = useMemo(() => {
+    if (!rhythmSkein) return 0
+    const seen = new Set()
+    for (const t of threads) {
+      if (t.skein === rhythmSkein && !t.done && !seen.has(t.title)) seen.add(t.title)
+    }
+    return seen.size
+  }, [threads, rhythmSkein])
 
   function addToDay(dayKey, title) {
     const group = threads.filter(th => th.day === dayKey)
@@ -75,6 +92,16 @@ export default function WeekView({
     setCastTick(n => n + 1)
   }
 
+  function castRhythm() {
+    actions.castRhythm(weekStartDate)
+    settleRhythmForWeek(weekStartKey)
+    setCastTick(n => n + 1)
+  }
+  function dismissRhythm() {
+    settleRhythmForWeek(weekStartKey)
+    setCastTick(n => n + 1)
+  }
+
   return (
     <DragProvider onDrop={handleDrop}>
       <div className={styles.view}>
@@ -89,11 +116,25 @@ export default function WeekView({
           <button type="button" className={styles.navBtn} onClick={onNextWeek} aria-label="Next week">›</button>
         </div>
 
+        {/* Rhythm cast offer — gentle banner, same pattern as repeating drafts. */}
+        {rhythmPending && rhythmCount > 0 && (
+          <div className={styles.rhythmOffer}>
+            <span className={styles.rhythmOfferIcon}><RhythmIcon /></span>
+            <span className={styles.rhythmOfferText}>
+              {t('rhythmBanner')} <span className={styles.rhythmOfferCount}>{rhythmCount} {rhythmCount === 1 ? t('thread') : t('threads')}</span>
+            </span>
+            <span className={styles.repeatBtns}>
+              <button type="button" className={styles.repeatCast} onClick={castRhythm}>{t('castRhythm')}</button>
+              <button type="button" className={styles.repeatSkip} onClick={dismissRhythm} aria-label="Not this week">✕</button>
+            </span>
+          </div>
+        )}
+
         {repeats.length > 0 && (
           <div className={styles.repeats}>
             {repeats.map(d => (
               <div key={d.id} className={styles.repeat}>
-                <span className={styles.repeatText}>“{d.name}” — a repeating {t('draft')}. {t('castDraft')}?</span>
+                <span className={styles.repeatText}>"{d.name}" — a repeating {t('draft')}. {t('castDraft')}?</span>
                 <span className={styles.repeatBtns}>
                   <button type="button" className={styles.repeatCast} onClick={() => castRepeat(d)}>{t('castDraft')}</button>
                   <button type="button" className={styles.repeatSkip} onClick={() => dismissRepeat(d)} aria-label="Not this week">✕</button>
@@ -106,6 +147,9 @@ export default function WeekView({
         <div className={styles.warp}>
           {columns.map(col => {
             const { main, fold } = view(col.tasks)
+            // Split rhythm threads to the top of the column.
+            const { rhythm, rest } = splitRhythmThreads(main, rhythmSkein)
+            const hasRhythm = rhythm.length > 0
             return (
               <section key={col.key} className={`${styles.day} ${col.key === todayKey ? styles.today : ''}`}>
                 <header className={styles.dayHead}>
@@ -113,10 +157,26 @@ export default function WeekView({
                   <span className={styles.dayNum}>{col.dayNum}</span>
                   {col.tasks.length > 0 && <span className={styles.dayCount}>{col.tasks.length}</span>}
                 </header>
+                {/* Rhythm threads render at the top in a tinted block. */}
+                {hasRhythm && (
+                  <div className={styles.rhythmBlock}>
+                    <ThreadList
+                      tasks={rhythm}
+                      containerId={`day-rhythm:${col.key}`}
+                      meta={{ kind: 'day', key: col.key, tasks: rhythm }}
+                      onReorder={(id, target) => actions.reorderWithin(col.tasks, id, target)}
+                      onToggle={actions.toggleWoven}
+                      onDelete={actions.removeThread}
+                      onEdit={(id, title) => actions.patchThread(id, { title })}
+                      renderAssign={dayMover}
+                    />
+                  </div>
+                )}
+                {/* The rest of the day's threads. */}
                 <ThreadList
-                  tasks={main}
+                  tasks={rest}
                   containerId={`day:${col.key}`}
-                  meta={{ kind: 'day', key: col.key, tasks: main }}
+                  meta={{ kind: 'day', key: col.key, tasks: rest }}
                   onReorder={(id, target) => actions.reorderWithin(col.tasks, id, target)}
                   onToggle={actions.toggleWoven}
                   onDelete={actions.removeThread}

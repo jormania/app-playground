@@ -5,8 +5,9 @@ import { useLexicon } from './lib/lexiconContext.jsx'
 import { loadViewPrefs, saveViewPrefs } from './lib/store.js'
 import {
   weekDays, startOfWeek, addDays, dateKey, orderForMove,
-  carryThreads, threadsForDraftWeek,
+  carryThreads, threadsForDraftWeek, rhythmThreadsForWeek,
 } from './lib/model.js'
+import { loadRhythm, saveRhythm } from './lib/rhythm.js'
 import SkeinView from './components/SkeinView.jsx'
 import WeekView from './components/WeekView.jsx'
 import Tapestry from './components/Tapestry.jsx'
@@ -37,6 +38,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [rewarpOpen, setRewarpOpen] = useState(false)
   const [draftsOpen, setDraftsOpen] = useState(false)
+  const [rhythmSkein, setRhythmSkein] = useState(loadRhythm)
   const [undo, setUndo] = useState(null)
   const undoTimer = useRef(null)
 
@@ -82,16 +84,30 @@ export default function App() {
     threadsForDraftWeek(draft, weekStartDate).forEach(th => loom.addThread(th))
   }, [loom])
 
+  // Cast the rhythm: place each canonical thread onto every day of the given week,
+  // skipping any that already exist (duplication guard in rhythmThreadsForWeek).
+  const castRhythm = useCallback((weekStartDate) => {
+    const wDays = weekDays(weekStartDate)
+    rhythmThreadsForWeek(loom.threads, rhythmSkein, wDays).forEach(th => loom.addThread(th))
+  }, [loom, rhythmSkein])
+
+  // Set or unset the rhythm skein (persists to localStorage).
+  const handleSetRhythm = useCallback((skeinName) => {
+    saveRhythm(skeinName)
+    setRhythmSkein(skeinName)
+  }, [])
+
   const actions = useMemo(() => ({
     addThread: loom.addThread,
     patchThread: loom.patchThread,
     removeThread: removeWithUndo,
     toggleWoven: loom.toggleWoven,
     castDraft,
+    castRhythm,
     reorderWithin: (group, id, targetIndex) => {
       loom.patchThread(id, { order: orderForMove(group, id, targetIndex) })
     },
-  }), [loom, removeWithUndo, castDraft])
+  }), [loom, removeWithUndo, castDraft, castRhythm])
 
   const showToolbar = loom.status === 'ready' && prefs.view !== 'tapestry'
 
@@ -147,7 +163,7 @@ export default function App() {
 
         {loom.status === 'ready' && (
           prefs.view === 'skeins'
-            ? <SkeinView threads={loom.threads} actions={actions} filters={filters} onSkeinSort={id => setFilter('skeinSort', id)} />
+            ? <SkeinView threads={loom.threads} actions={actions} filters={filters} onSkeinSort={id => setFilter('skeinSort', id)} rhythmSkein={rhythmSkein} onSetRhythm={handleSetRhythm} />
             : prefs.view === 'tapestry'
               ? <Tapestry threads={loom.threads} />
               : <WeekView
@@ -157,6 +173,7 @@ export default function App() {
                   filters={filters}
                   weekLabel={weekLabel(anchor)}
                   isThisWeek={isThisWeek}
+                  rhythmSkein={rhythmSkein}
                   onPrevWeek={() => setAnchor(a => addDays(startOfWeek(a), -7))}
                   onNextWeek={() => setAnchor(a => addDays(startOfWeek(a), 7))}
                   onThisWeek={() => setAnchor(new Date())}
@@ -208,6 +225,7 @@ export default function App() {
         weekStartDate={days[0].date}
         weekLabel={weekLabel(anchor)}
         actions={actions}
+        rhythmSkein={rhythmSkein}
       />
     </div>
   )

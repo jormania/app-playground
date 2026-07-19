@@ -9,7 +9,7 @@ import styles from './DraftsModal.module.css'
 // Drafts — recurring weaves. Save this week's open threads as a named set, then
 // weave any draft onto the shown week in one tap. Flag a draft to re-weave every
 // week and the week view will offer it on each fresh Monday. All device-local.
-export default function DraftsModal({ open, onClose, threads, days, weekStartDate, weekLabel, actions }) {
+export default function DraftsModal({ open, onClose, threads, days, weekStartDate, weekLabel, actions, rhythmSkein }) {
   const { t } = useLexicon()
   const [drafts, setDrafts] = useState([])
   const [name, setName] = useState('')
@@ -17,10 +17,10 @@ export default function DraftsModal({ open, onClose, threads, days, weekStartDat
 
   useEffect(() => { if (open) { refresh(); setName('') } }, [open])
 
-  const snapshot = draftItemsFromWeek(threads, days)
+  const snapshot = draftItemsFromWeek(threads, days, { excludeSkein: rhythmSkein || undefined })
 
   function save() {
-    const items = draftItemsFromWeek(threads, days)
+    const items = draftItemsFromWeek(threads, days, { excludeSkein: rhythmSkein || undefined })
     if (items.length === 0) return
     addDraft({ name: name.trim() || 'Untitled week', items })
     setName('')

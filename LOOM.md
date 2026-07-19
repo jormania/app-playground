@@ -58,6 +58,7 @@ All of these sit on the same one thread array; none needs a Notion schema change
   board data, so casting one just creates ordinary threads in whatever store is
   active. A single repeating thread is just a one-line draft — that's the app's
   "weekly on day X" recurrence, deliberately kept short of a calendar-grade RRULE.
+  Draft snapshots automatically **exclude rhythm-skein threads** (see Rhythm below).
 - **The Tapestry** — [`components/Tapestry.jsx`](src/loom/components/Tapestry.jsx),
   aggregated purely by `tapestryStats` (model.js). An N-week (4/8/12) heatmap over
   `Day`+`Done` — the cloth you've woven — plus completion rate, hottest skein,
@@ -84,6 +85,18 @@ All of these sit on the same one thread array; none needs a Notion schema change
   day-mover / skein chips stay for keyboard and precision.
 - **Undo on unravel (re-ravel)** — a swipe-left delete leaves a 5-second toast that
   re-weaves the thread back (App.jsx `removeWithUndo` / `reravel`).
+- **The Rhythm (daily routines)** —
+  [`lib/rhythm.js`](src/loom/lib/rhythm.js) +
+  [`lib/model.js`](src/loom/lib/model.js) (`rhythmThreadsForWeek`,
+  `splitRhythmThreads`). Flag one skein as **the rhythm** (a single `loom_rhythm_skein`
+  localStorage key, zero Notion schema changes). On each fresh week, a gentle banner
+  in the Week view offers to cast it — placing one copy of each thread on all seven
+  days, **duplicate-guarded** so carry-overs aren't doubled. Rhythm threads render at
+  the **top of each day column** in a lightly-tinted block (`rhythmBlock` CSS),
+  visually separating the daily givens from one-off work below. The skein view lets
+  you set/unset the rhythm with a wave-icon button on the skein header. Drafts
+  exclude rhythm-skein threads from snapshots. Full design rationale:
+  [`LOOM_RHYTHM_DESIGN.md`](LOOM_RHYTHM_DESIGN.md).
 
 ## Two voices (the terminology toggle)
 
@@ -222,4 +235,6 @@ picker, and the **Vocabulary** toggle (see "Two voices").
 - `public/loom.webmanifest`'s absolute URL added to `related_applications` in
   `public/cabinet.webmanifest`.
 - `loom-react.html` added to `vite.config.js`'s build inputs.
-- Pure logic covered by `model.test.js`, `notion.test.js`, `notionClient.test.js`.
+- Pure logic covered by `model.test.js`, `notion.test.js`, `notionClient.test.js`,
+  `rhythm.test.js`.
+

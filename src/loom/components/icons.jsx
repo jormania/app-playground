@@ -28,3 +28,7 @@ export const RewarpIcon = (p) => (
 export const DraftsIcon = (p) => (
   <svg {...base} {...p}><path d="M8.5 3.5h9a2 2 0 0 1 2 2v9" /><rect x="4.5" y="8.5" width="11" height="11" rx="2" /></svg>
 )
+// Rhythm — a wave/pulse: your daily pattern, already known.
+export const RhythmIcon = (p) => (
+  <svg {...base} {...p}><path d="M3 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0" /></svg>
+)

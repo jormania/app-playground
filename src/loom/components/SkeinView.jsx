@@ -5,6 +5,7 @@ import QuickAdd from './QuickAdd.jsx'
 import SkeinChip from './SkeinChip.jsx'
 import { DragProvider } from '../lib/dragContext.jsx'
 import { useLexicon } from '../lib/lexiconContext.jsx'
+import { RhythmIcon } from './icons.jsx'
 import {
   groupBySkein, collectSkeins, orderForNew, orderForMove, sortSkeinGroups, matchesQuery, topOfGroup,
 } from '../lib/model.js'
@@ -21,7 +22,7 @@ const SORTS = [
 // skein is its own ordered stack, dyed by the Ivy-Lee heatmap. A skein-and-thread
 // composer up top starts new work; every skein has its own inline adder. Search,
 // the focus toggles and the group-sort all sharpen it without adding columns.
-export default function SkeinView({ threads, actions, filters, onSkeinSort }) {
+export default function SkeinView({ threads, actions, filters, onSkeinSort, rhythmSkein, onSetRhythm }) {
   const { t } = useLexicon()
   const groups = sortSkeinGroups(groupBySkein(threads), filters.skeinSort)
   const skeins = collectSkeins(threads)
@@ -104,9 +105,19 @@ export default function SkeinView({ threads, actions, filters, onSkeinSort }) {
           <section key={group.skein} className={styles.skein}>
             <header className={styles.skeinHead}>
               <h2 className={`${styles.skeinTitle} ${group.isLoose ? styles.loose : ''}`}>
+                {!group.isLoose && rhythmSkein === group.skein && <RhythmIcon className={styles.rhythmBadge} />}
                 {group.isLoose ? t('loose') : group.skein}
               </h2>
               <span className={styles.count}>{group.tasks.length}</span>
+              {!group.isLoose && onSetRhythm && (
+                <button
+                  type="button"
+                  className={`${styles.rhythmBtn} ${rhythmSkein === group.skein ? styles.rhythmOn : ''}`}
+                  title={rhythmSkein === group.skein ? t('unsetRhythm') : t('setAsRhythm')}
+                  aria-pressed={rhythmSkein === group.skein}
+                  onClick={() => onSetRhythm(rhythmSkein === group.skein ? null : group.skein)}
+                ><RhythmIcon /></button>
+              )}
             </header>
             <ThreadList
               tasks={main}

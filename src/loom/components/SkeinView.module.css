@@ -94,3 +94,32 @@
   padding: 1px 8px;
 }
 .skeinAdd { margin-top: 2px; }
+
+/* Rhythm — the wave badge next to the skein name + the toggle button. */
+.rhythmBadge {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: 0.75em;
+  color: var(--color-accent);
+  margin-right: 4px;
+  flex: 0 0 auto;
+}
+.rhythmBtn {
+  margin-left: auto;
+  border: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-faint);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  line-height: 1;
+  transition: color var(--duration) var(--ease), border-color var(--duration) var(--ease), background var(--duration) var(--ease);
+}
+.rhythmBtn:hover { color: var(--color-accent); border-color: var(--color-accent); }
+.rhythmOn {
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.rhythmOn:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
