@@ -102,6 +102,20 @@
 }
 .skeinAdd { margin-top: 2px; }
 
+/* Drag handle and drop-target feedback for manual skein reordering. */
+.skeinDragHandle {
+  cursor: grab;
+  color: var(--color-faint);
+  font-size: 1em;
+  padding: 0 4px 0 0;
+  user-select: none;
+  flex: 0 0 auto;
+  opacity: 0;
+  transition: opacity var(--duration) var(--ease);
+}
+.skein:hover .skeinDragHandle { opacity: 1; }
+.skeinDragOver { outline: 2px dashed var(--color-accent); outline-offset: 2px; border-radius: var(--radius-md); }
+
 /* Rhythm — the wave badge next to the skein name + the toggle button. */
 .rhythmBadge {
   display: inline-block;
@@ -143,24 +157,21 @@
   outline-offset: 2px;
 }
 
-/* Day-picker — appears under the rhythm skein's header. */
+/* Day-picker — compact single-row under a rhythm skein's header.
+   Preset chips (Daily / M–F / S–S) then individual day toggles, all
+   on one line. No 'Cast on' label; no wrapping on most screens. */
 .dayPicker {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 6px 4px 4px;
+  flex-wrap: nowrap;
+  gap: 4px;
+  padding: 4px 4px 4px;
   margin-bottom: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
   border-bottom: 1px dashed color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
-.dayPickerLabel {
-  font-family: var(--loom-thread);
-  font-style: italic;
-  font-size: var(--text-xs);
-  color: var(--color-faint);
-  margin-right: 2px;
-}
-.dayPickerPresets { display: flex; gap: 4px; flex-wrap: wrap; }
+.dayPicker::-webkit-scrollbar { display: none; }
 .dayPresetBtn {
   font-family: var(--font-sans);
   font-size: var(--text-xs);
@@ -168,8 +179,10 @@
   background: none;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
-  padding: 2px 9px;
+  padding: 2px 8px;
+  white-space: nowrap;
   cursor: pointer;
+  flex: 0 0 auto;
   transition: color var(--duration) var(--ease), border-color var(--duration) var(--ease);
 }
 .dayPresetBtn:hover { color: var(--color-ink); border-color: var(--color-border-2); }
@@ -179,14 +192,9 @@
   border-color: var(--color-accent);
   font-weight: 600;
 }
-.dayPickerDays {
-  display: flex;
-  gap: 3px;
-  margin-left: auto;
-}
 .dayChip {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   display: grid;
   place-items: center;
   font-family: var(--font-sans);
@@ -198,6 +206,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
   cursor: pointer;
+  flex: 0 0 auto;
   transition: color var(--duration) var(--ease), background var(--duration) var(--ease), border-color var(--duration) var(--ease);
 }
 .dayChip:hover { color: var(--color-ink); border-color: var(--color-border-2); }

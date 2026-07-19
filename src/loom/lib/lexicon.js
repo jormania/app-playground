@@ -30,12 +30,14 @@ const TERMS = {
 
   // ── Views ──
   skeinView: { loom: 'Skeins', plain: 'Projects' },
-  weekView: { loom: 'The Week', plain: 'Week' },
+  weekView: { loom: 'The Warp', plain: 'Week' },
   tapestryView: { loom: 'Tapestry', plain: 'History' },
   Tapestry: { loom: 'The Tapestry', plain: 'History' },
 
   // ── The week furniture ──
   warp: { loom: 'the warp', plain: 'the week' },
+  Warp: { loom: 'The warp', plain: 'The week' },
+  warpLabel: { loom: 'Warp', plain: 'Week' },   // short nav label
   distaff: { loom: 'the distaff', plain: 'the backlog' },
   Distaff: { loom: 'The distaff', plain: 'Backlog' },
   distaffSub: {
@@ -67,7 +69,7 @@ const TERMS = {
     plain: '◇ Demo — sample tasks kept only on this device.',
   },
   settingsIntroA: {
-    loom: 'Loom keeps your week on the loom locally by default. Bind it to your own Notion database and every thread is backed up there — the single source of truth. The',
+    loom: 'Loom keeps your warp locally by default. Bind it to your own Notion database and every thread is backed up there — the single source of truth. The',
     plain: 'Loom keeps your week on this device by default. Connect your own Notion database and every task is backed up there — the single source of truth. The',
   },
   settingsIntroB: {
@@ -79,19 +81,19 @@ const TERMS = {
   reachingLoom: { loom: 'Reaching the loom…', plain: 'Connecting…' },
 
   // ── Re-warp ritual (carry-over) ──
-  rewarp: { loom: 'Re-warp the week', plain: 'Carry over' },
+  rewarp: { loom: 'Re-warp the loom', plain: 'Carry over' },
   rewarpVerb: { loom: 'Re-warp', plain: 'Carry over' },
   rewarpLede: {
-    loom: 'Threads still on the loom from past weeks. Flick each one forward onto the new week, or back to the distaff.',
+    loom: 'Threads still on the loom from past warps. Flick each one forward onto the new warp, or back to the distaff.',
     plain: 'Tasks left unfinished from past weeks. Flick each one forward onto the new week, or back to the backlog.',
   },
   rewarpEmpty: {
-    loom: 'Nothing left hanging — the old weeks are woven clean.',
+    loom: 'Nothing left hanging — the past threads are woven clean.',
     plain: 'Nothing left over — past weeks are all wrapped up.',
   },
   rewarpDone: {
-    loom: 'The week is re-warped. Weave on.',
-    plain: 'Carried over. You’re set for the week.',
+    loom: 'The warp is re-warped. Weave on.',
+    plain: 'Carried over. You\'re set for the week.',
   },
 
   // ── Drafts (recurring weaves) ──
@@ -99,44 +101,55 @@ const TERMS = {
   drafts: { loom: 'drafts', plain: 'templates' },
   Drafts: { loom: 'Drafts', plain: 'Templates' },
   draftsLede: {
-    loom: 'A draft is a saved set of threads — a “Work week”, a “Long weekend”. Weave one onto any week in a single tap.',
-    plain: 'A template is a saved set of tasks — a “Work week”, a “Long weekend”. Add one to any week in a single tap.',
+    loom: 'A draft is a saved set of threads — a "Work warp", a "Long weekend". Weave one onto any warp in a single tap.',
+    plain: 'A template is a saved set of tasks — a "Work week", a "Long weekend". Add one to any week in a single tap.',
   },
-  castDraft: { loom: 'Weave onto this week', plain: 'Add to this week' },
-  saveDraft: { loom: 'Save this week as a draft', plain: 'Save this week as a template' },
-  repeatWeekly: { loom: 'Re-weave every week', plain: 'Repeat every week' },
+  castDraft: { loom: 'Weave onto this warp', plain: 'Add to this week' },
+  saveDraft: { loom: 'Save this warp as a draft', plain: 'Save this week as a template' },
+  repeatWeekly: { loom: 'Re-weave every warp', plain: 'Repeat every week' },
 
   // ── Rhythm (daily routine) ──
   rhythm: { loom: 'rhythm', plain: 'routine' },
   Rhythm: { loom: 'Rhythm', plain: 'Routine' },
+  rhythms: { loom: 'rhythms', plain: 'routines' },
+  Rhythms: { loom: 'Rhythms', plain: 'Routines' },
   rhythmLede: {
     loom: 'A rhythm is the pattern the loom already knows — threads it places on the warp before you sit down.',
     plain: 'A routine is your daily checklist — tasks placed on every day of the week automatically.',
   },
-  castRhythm: { loom: 'Weave your rhythm onto this week', plain: 'Add routine to this week' },
-  setAsRhythm: { loom: 'Set as your rhythm', plain: 'Set as your routine' },
-  unsetRhythm: { loom: 'Unset as rhythm', plain: 'Unset as routine' },
+  castRhythm: { loom: 'Weave onto this warp', plain: 'Add to this week' },
+  setAsRhythm: { loom: 'Set as rhythm', plain: 'Set as routine' },
+  unsetRhythm: { loom: 'Unset rhythm', plain: 'Unset routine' },
   rhythmCast: {
-    loom: 'Your rhythm was woven onto the week.',
+    loom: 'Your rhythm was woven onto the warp.',
     plain: 'Your routine was added to the week.',
   },
+  // Single rhythm
   rhythmBanner: {
-    loom: 'Your rhythm is ready. Weave it onto this week?',
+    loom: 'Your rhythm is ready. Weave it onto this warp?',
     plain: 'Your routine is ready. Add it to this week?',
   },
+  // Multiple rhythms
+  rhythmsBanner: {
+    loom: 'Your rhythms are ready. Weave them onto this warp?',
+    plain: 'Your routines are ready. Add them to this week?',
+  },
+  rhythmSortLabel: { loom: 'Rhythm order', plain: 'Routine order' },
+  resetBanners: { loom: 'Reset warp banners', plain: 'Reset week banners' },
+  resetBannersHint: {
+    loom: 'Brings back the rhythm and draft offers for the current warp if you dismissed them by accident.',
+    plain: 'Brings back the routine and template offers for this week if you dismissed them by accident.',
+  },
 
-  // ── Search / focus ──
-  // Short so it never truncates in the compact toolbar; the fuller sentence
-  // lives in searchLabel for screen readers.
-  searchPlaceholder: { loom: 'Search', plain: 'Search' },
+  // ── Search / trace ──
+  // Short so it never truncates in the compact toolbar.
+  searchPlaceholder: { loom: 'Trace…', plain: 'Search' },
   searchLabel: {
-    loom: 'Search threads and skeins',
+    loom: 'Trace threads and skeins',
     plain: 'Search tasks and projects',
   },
   unwovenOnly: { loom: 'Unwoven only', plain: 'Unfinished only' },
-  // Kept short so the three filters hold one tidy line on a phone; the full
-  // meaning lives in each chip's tooltip.
-  topOnly: { loom: 'Hot few', plain: 'Top few' },
+  rhythmSort: { loom: 'Rhythm order', plain: 'Routine order' },
   foldWoven: { loom: 'Fold woven', plain: 'Fold done' },
   onLoom: { loom: 'on the loom', plain: 'open' },
 
@@ -147,15 +160,14 @@ const TERMS = {
   },
   loadingLoom: { loom: 'Warping the loom…', plain: 'Loading…' },
   spinLoose: { loom: 'Spin a loose thread…', plain: 'Add a task…' },
-  // These sit beside the ✚ spindle icon, so they carry no plus of their own.
   addThread: { loom: 'thread', plain: 'task' },
   addUnspun: { loom: 'unspun thread', plain: 'backlog task' },
 
   // ── The Tapestry ──
-  pastDebt: { loom: 'unwoven from past weeks', plain: 'unfinished from past weeks' },
-  clothWoven: { loom: 'The cloth you’ve woven', plain: 'What you’ve completed' },
+  pastDebt: { loom: 'unwoven from past warps', plain: 'unfinished from past weeks' },
+  clothWoven: { loom: 'The cloth you\'ve woven', plain: 'What you\'ve completed' },
   tapestryEmpty: {
-    loom: 'No woven cloth yet — this fills in as you weave your weeks.',
+    loom: 'No woven cloth yet — this fills in as you weave your warps.',
     plain: 'Nothing here yet — this fills in as you finish tasks.',
   },
   stillOpen: { loom: 'still open', plain: 'still open' },

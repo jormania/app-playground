@@ -1,63 +1,91 @@
-// Rhythm — Loom's "daily routine". A rhythm is a skein (project) whose threads
-// are placed onto selected days of a fresh week in one tap — the "givens" before
-// the live work. Instead of splitting threads into "tasks vs. habits", one skein
-// is flagged as the rhythm — a single localStorage key, zero Notion schema changes.
+// Rhythm — Loom's "daily routine". Any number of skeins can be flagged as rhythms.
+// Each rhythm entry is { skeinName, days } where `days` is an optional weekday-index
+// mask (0 = Mon … 6 = Sun, null = every day). Zero Notion schema changes.
 //
-// The rhythm flag now carries an optional `days` mask: an array of weekday indices
-// (0 = Monday … 6 = Sunday) that restricts which days receive the rhythm. A null
-// `days` means all seven days (original behaviour). This is purely client-local.
+// Storage: loom_rhythm_skeins = JSON array of { skeinName, days }.
+// Backward-compat: the old single-entry key loom_rhythm_skein is migrated on first read.
 //
-// A cast log remembers which weeks have already been cast/dismissed, same pattern
-// as drafts. Device-local, like drafts, theme and vocabulary.
+// Cast log: one settlement key per week covers all rhythms together (one banner, one
+// dismiss — consistent with the repeating-drafts pattern).
 
-const RHYTHM_KEY = 'loom_rhythm_skein'
-const CAST_LOG_KEY = 'loom_rhythm_cast_log'
+const RHYTHMS_KEY   = 'loom_rhythm_skeins'   // the new array key
+const LEGACY_KEY    = 'loom_rhythm_skein'     // single-entry compat
+const CAST_LOG_KEY  = 'loom_rhythm_cast_log'
 
-// ── The rhythm flag: { skeinName, days } ─────────────────────────────────────
-// Stored as JSON so we can carry the days mask. Backward-compatible: if the old
-// value was a plain string it is treated as { skeinName: value, days: null }.
-
-export function loadRhythm() {
+// ── Migrate legacy single-entry format on first access ───────────────────────
+function migrate() {
   try {
-    const raw = localStorage.getItem(RHYTHM_KEY)
-    if (!raw) return null
+    if (localStorage.getItem(RHYTHMS_KEY) !== null) return  // already migrated
+    const raw = localStorage.getItem(LEGACY_KEY)
+    if (!raw) return
+    let skeinName = null
     try {
       const parsed = JSON.parse(raw)
-      // New format: { skeinName, days }
-      if (parsed && typeof parsed === 'object' && parsed.skeinName) return parsed
-      // Old format was a plain string — migrate on read
-      if (typeof parsed === 'string') return { skeinName: parsed, days: null }
-    } catch {
-      // Legacy: the stored value was never JSON-encoded (just a raw string)
-      if (typeof raw === 'string') return { skeinName: raw, days: null }
+      skeinName = (parsed && typeof parsed === 'object') ? parsed.skeinName : String(parsed)
+    } catch { skeinName = raw }
+    if (skeinName) {
+      localStorage.setItem(RHYTHMS_KEY, JSON.stringify([{ skeinName, days: null }]))
     }
+    localStorage.removeItem(LEGACY_KEY)
   } catch { /* ignore */ }
-  return null
 }
 
-// Save a rhythm object { skeinName, days } or null to clear.
-// `days` is an array like [0,1,2,3,4] (Mon–Fri) or null (every day).
-export function saveRhythm({ skeinName, days = null } = {}) {
+// ── Core CRUD ────────────────────────────────────────────────────────────────
+
+export function loadRhythms() {
   try {
-    if (skeinName) localStorage.setItem(RHYTHM_KEY, JSON.stringify({ skeinName, days }))
-    else localStorage.removeItem(RHYTHM_KEY)
-  } catch { /* quota */ }
+    migrate()
+    const raw = localStorage.getItem(RHYTHMS_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) return parsed
+  } catch { /* ignore */ }
+  return []
 }
 
-export function clearRhythm() {
-  try { localStorage.removeItem(RHYTHM_KEY) } catch { /* ignore */ }
+function saveRhythms(list) {
+  try { localStorage.setItem(RHYTHMS_KEY, JSON.stringify(list)) } catch { /* quota */ }
 }
 
-// ── Convenience accessors ─────────────────────────────────────────────────────
-
-// The skein name currently flagged, or null.
-export function loadRhythmSkein() {
-  return loadRhythm()?.skeinName ?? null
+// Add or update a rhythm entry for a skein. Days = null means every day.
+export function addRhythm(skeinName, days = null) {
+  const list = loadRhythms()
+  const idx = list.findIndex(r => r.skeinName === skeinName)
+  if (idx >= 0) list[idx] = { skeinName, days }
+  else list.push({ skeinName, days })
+  saveRhythms(list)
 }
 
-// The days mask currently set, or null (= all days).
-export function loadRhythmDays() {
-  return loadRhythm()?.days ?? null
+// Remove a skein from the rhythm list.
+export function removeRhythm(skeinName) {
+  saveRhythms(loadRhythms().filter(r => r.skeinName !== skeinName))
+}
+
+// Update only the days mask for an existing rhythm entry.
+export function setRhythmDays(skeinName, days) {
+  const list = loadRhythms()
+  const entry = list.find(r => r.skeinName === skeinName)
+  if (entry) { entry.days = days; saveRhythms(list) }
+}
+
+// Whether a given skein is currently flagged as a rhythm.
+export function isRhythm(skeinName) {
+  return loadRhythms().some(r => r.skeinName === skeinName)
+}
+
+// The rhythm entry for a specific skein, or null.
+export function getRhythmEntry(skeinName) {
+  return loadRhythms().find(r => r.skeinName === skeinName) ?? null
+}
+
+// All rhythm skein names (for quick Set lookups).
+export function rhythmSkeinNames() {
+  return loadRhythms().map(r => r.skeinName)
+}
+
+// Clear all rhythms.
+export function clearAllRhythms() {
+  try { localStorage.removeItem(RHYTHMS_KEY) } catch { /* ignore */ }
 }
 
 // ── Cast log: has the rhythm been cast or dismissed for a given week? ─────────
@@ -71,8 +99,7 @@ function loadCastLog() {
 }
 
 export function isRhythmSettledForWeek(weekStartKey) {
-  const log = loadCastLog()
-  return Boolean(log[weekStartKey])
+  return Boolean(loadCastLog()[weekStartKey])
 }
 
 export function settleRhythmForWeek(weekStartKey) {
@@ -81,11 +108,13 @@ export function settleRhythmForWeek(weekStartKey) {
   try { localStorage.setItem(CAST_LOG_KEY, JSON.stringify(log)) } catch { /* quota */ }
 }
 
-// The rhythm object { skeinName, days } if it exists and hasn't been settled for
-// the given week; null otherwise.
-export function pendingRhythm(weekStartKey) {
-  const rhythm = loadRhythm()
-  if (!rhythm) return null
-  if (isRhythmSettledForWeek(weekStartKey)) return null
-  return rhythm
+// Clear the entire cast log so the rhythm offer re-appears for the current week.
+export function resetRhythmBanners() {
+  try { localStorage.removeItem(CAST_LOG_KEY) } catch { /* ignore */ }
+}
+
+// Returns the unsettled rhythms for the given week (array), or [] if all settled.
+export function pendingRhythms(weekStartKey) {
+  if (isRhythmSettledForWeek(weekStartKey)) return []
+  return loadRhythms()
 }

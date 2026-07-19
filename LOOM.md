@@ -85,29 +85,37 @@ All of these sit on the same one thread array; none needs a Notion schema change
   day-mover / skein chips stay for keyboard and precision.
 - **Undo on unravel (re-ravel)** — a swipe-left delete leaves a 5-second toast that
   re-weaves the thread back (App.jsx `removeWithUndo` / `reravel`).
-- **The Rhythm (daily routines)** —
+- **Rhythms (daily routines — multiple)** —
   [`lib/rhythm.js`](src/loom/lib/rhythm.js) +
-  [`lib/model.js`](src/loom/lib/model.js) (`rhythmThreadsForWeek`,
-  `splitRhythmThreads`). Flag one skein as **the rhythm** (a single `loom_rhythm_skein`
-  localStorage key, zero Notion schema changes). On each fresh week, a gentle banner
-  in the Week view offers to cast it — placing one copy of each thread on all seven
-  days, **duplicate-guarded** so carry-overs aren't doubled. Rhythm threads render at
-  the **top of each day column** in a lightly-tinted block (`rhythmBlock` CSS),
-  visually separating the daily givens from one-off work below. The skein view lets
-  you set/unset the rhythm with a wave-icon button on the skein header. Drafts
-  exclude rhythm-skein threads from snapshots. Full design rationale:
-  [`LOOM_RHYTHM_DESIGN.md`](LOOM_RHYTHM_DESIGN.md).
+  [`lib/model.js`](src/loom/lib/model.js) (`rhythmThreadsForWeek`, `splitRhythmThreads`).
+  **Any number of skeins** may be flagged as rhythms (stored as a JSON array under
+  `loom_rhythm_skeins`, zero Notion schema changes; legacy single-entry key migrated on
+  first read). Each rhythm carries an optional `days` mask (`[0..6]`, 0 = Mon; `null` =
+  every day). On a fresh warp a gentle banner offers to cast all rhythms at once —
+  placing a copy of each thread on the allowed days, **duplicate-guarded**. Rhythm
+  threads render at the **top of each day column** in a tinted block (`rhythmBlock` CSS),
+  excluded from the distaff. Draft snapshots silently exclude **all** rhythm threads.
+  The **Rhythm order** toolbar toggle sorts the rhythm block by skein-then-order instead
+  of heat. Skeins can be **drag-reordered** (handle ⠿ appears in Manual sort mode;
+  order saved as `prefs.skeinOrder`). A **Reset warp banners** button in the Guild
+  re-surfaces accidentally dismissed rhythm/draft offers. Long-press a rhythm thread in
+  the Warp → "Edit in rhythm" jumps back to Skeins with the skein flashed. Design
+  rationale: [`LOOM_RHYTHM_DESIGN.md`](LOOM_RHYTHM_DESIGN.md).
 
 ## Two voices (the terminology toggle)
 
 Every SCUMM-flavoured word on screen is an **alias**.
 [`lib/lexicon.js`](src/loom/lib/lexicon.js) holds two maps with identical keys —
-the default **loom** voice (thread · skein · weave · the distaff · the Guild) and a
-**plain** voice (task · project · complete · the backlog · Settings) — and
-[`lib/lexiconContext.jsx`](src/loom/lib/lexiconContext.jsx) exposes `t(key)`.
-Nothing about behaviour changes with the voice; it's pure wording, chosen in
-Settings → Vocabulary and remembered in the `loom:lexicon` key (with a
-`storage`-event sync, same as the theme). The base SCUMM flavour is the "vanilla"
+the default **loom** voice (thread · skein · weave · the distaff · the warp · trace ·
+the Guild) and a **plain** voice (task · project · complete · the backlog · the week ·
+Search · Settings) — and [`lib/lexiconContext.jsx`](src/loom/lib/lexiconContext.jsx)
+exposes `t(key)`. New keys added in this session: `warp`/`Warp`/`warpLabel` (week),
+`searchPlaceholder` → "Trace…", `rhythmsBanner` (plural), `resetBanners` /
+`resetBannersHint` (Settings reset), `rhythmSort` (toolbar label). Re-warp empty text
+now reads: *"Nothing left hanging — the past threads are woven clean."* Nothing about
+behaviour changes with the voice; it's pure wording, chosen in Settings → Vocabulary
+and remembered in the `loom:lexicon` key (with a `storage`-event sync, same as the
+theme). The base SCUMM flavour is the "vanilla"
 default.
 
 ## The heatmap (Ivy-Lee, no priority tags)

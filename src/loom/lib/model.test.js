@@ -283,7 +283,7 @@ describe('rhythmThreadsForWeek', () => {
       { id: 'r1', title: 'Meditate', skein: 'Morning', day: null, order: 0, done: false },
       { id: 'r2', title: 'Journal', skein: 'Morning', day: null, order: 1000, done: false },
     ]
-    const result = rhythmThreadsForWeek(threads, 'Morning', days)
+    const result = rhythmThreadsForWeek(threads, [{ skeinName: 'Morning', days: null }], days)
     expect(result.length).toBe(14) // 2 titles × 7 days
     expect(result[0].title).toBe('Meditate')
     expect(result[0].day).toBe('2026-07-13')
@@ -298,7 +298,7 @@ describe('rhythmThreadsForWeek', () => {
       // Already exists on Monday:
       { id: 'existing', title: 'Meditate', skein: 'Morning', day: '2026-07-13', order: 0, done: false },
     ]
-    const result = rhythmThreadsForWeek(threads, 'Morning', days)
+    const result = rhythmThreadsForWeek(threads, [{ skeinName: 'Morning', days: null }], days)
     // Should create 6 (Tue–Sun), not 7
     expect(result.length).toBe(6)
     expect(result.every(t => t.day !== '2026-07-13')).toBe(true)
@@ -306,15 +306,15 @@ describe('rhythmThreadsForWeek', () => {
 
   it('returns empty for null or missing rhythm skein', () => {
     const threads = [{ id: '1', title: 'X', skein: 'A', day: null, order: 0, done: false }]
+    expect(rhythmThreadsForWeek(threads, [], days)).toEqual([])
     expect(rhythmThreadsForWeek(threads, null, days)).toEqual([])
-    expect(rhythmThreadsForWeek(threads, '', days)).toEqual([])
   })
 
   it('ignores done threads in the canonical list', () => {
     const threads = [
       { id: 'r1', title: 'Meditate', skein: 'Morning', day: null, order: 0, done: true },
     ]
-    expect(rhythmThreadsForWeek(threads, 'Morning', days)).toEqual([])
+    expect(rhythmThreadsForWeek(threads, [{ skeinName: 'Morning', days: null }], days)).toEqual([])
   })
 
   it('deduplicates canonical titles (keeps lowest-order)', () => {
@@ -322,7 +322,7 @@ describe('rhythmThreadsForWeek', () => {
       { id: 'r1', title: 'Meditate', skein: 'Morning', day: null, order: 0, done: false },
       { id: 'r2', title: 'Meditate', skein: 'Morning', day: '2026-07-15', order: 2000, done: false },
     ]
-    const result = rhythmThreadsForWeek(threads, 'Morning', days)
+    const result = rhythmThreadsForWeek(threads, [{ skeinName: 'Morning', days: null }], days)
     // Only 1 unique title, but '2026-07-15' already has it = 6 new threads
     expect(result.length).toBe(6)
     expect(result.every(t => t.order === 0)).toBe(true) // from the lower-order duplicate
@@ -336,14 +336,14 @@ describe('splitRhythmThreads', () => {
       { id: '2', title: 'Review PR', skein: 'Work', order: 1000 },
       { id: '3', title: 'Journal', skein: 'Morning', order: 2000 },
     ]
-    const { rhythm, rest } = splitRhythmThreads(tasks, 'Morning')
+    const { rhythm, rest } = splitRhythmThreads(tasks, new Set(['Morning']))
     expect(rhythm.map(t => t.id)).toEqual(['1', '3'])
     expect(rest.map(t => t.id)).toEqual(['2'])
   })
 
   it('returns all as rest when no rhythm skein', () => {
     const tasks = [{ id: '1', title: 'X', skein: 'A', order: 0 }]
-    const { rhythm, rest } = splitRhythmThreads(tasks, null)
+    const { rhythm, rest } = splitRhythmThreads(tasks, new Set())
     expect(rhythm).toEqual([])
     expect(rest).toBe(tasks)
   })
@@ -358,7 +358,7 @@ describe('draftItemsFromWeek with excludeSkein', () => {
       { id: '1', title: 'Meditate', skein: 'Morning', day: '2026-07-13', order: 0, done: false },
       { id: '2', title: 'Review PR', skein: 'Work', day: '2026-07-14', order: 1000, done: false },
     ]
-    const items = draftItemsFromWeek(threads, days, { excludeSkein: 'Morning' })
+    const items = draftItemsFromWeek(threads, days, { excludeSkeins: new Set(['Morning']) })
     expect(items.length).toBe(1)
     expect(items[0].title).toBe('Review PR')
   })

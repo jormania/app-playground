@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-// Provide a minimal localStorage stub for the node test environment.
 const store = {}
 const localStorageStub = {
   getItem: (key) => store[key] ?? null,
@@ -10,53 +9,97 @@ const localStorageStub = {
 vi.stubGlobal('localStorage', localStorageStub)
 
 import {
-  loadRhythm, loadRhythmSkein, loadRhythmDays,
-  saveRhythm, clearRhythm,
-  isRhythmSettledForWeek, settleRhythmForWeek, pendingRhythm,
+  loadRhythms, addRhythm, removeRhythm, setRhythmDays,
+  isRhythm, getRhythmEntry, rhythmSkeinNames, clearAllRhythms,
+  isRhythmSettledForWeek, settleRhythmForWeek, pendingRhythms, resetRhythmBanners,
 } from './rhythm.js'
 
-// Clear store before each test.
 beforeEach(() => {
   for (const key of Object.keys(store)) delete store[key]
 })
 
-describe('rhythm flag', () => {
-  it('returns null when no rhythm is set', () => {
-    expect(loadRhythm()).toBe(null)
-    expect(loadRhythmSkein()).toBe(null)
-    expect(loadRhythmDays()).toBe(null)
+describe('loadRhythms / addRhythm / removeRhythm', () => {
+  it('returns [] when nothing is set', () => {
+    expect(loadRhythms()).toEqual([])
   })
 
-  it('round-trips save and load — all days (days: null)', () => {
-    saveRhythm({ skeinName: 'Morning' })
-    expect(loadRhythm()).toEqual({ skeinName: 'Morning', days: null })
-    expect(loadRhythmSkein()).toBe('Morning')
-    expect(loadRhythmDays()).toBe(null)
+  it('adds a rhythm and reads it back (all days)', () => {
+    addRhythm('Body')
+    expect(loadRhythms()).toEqual([{ skeinName: 'Body', days: null }])
+    expect(isRhythm('Body')).toBe(true)
+    expect(getRhythmEntry('Body')).toEqual({ skeinName: 'Body', days: null })
   })
 
-  it('round-trips save and load — with days mask', () => {
-    saveRhythm({ skeinName: 'Morning', days: [0, 1, 2, 3, 4] })
-    expect(loadRhythm()).toEqual({ skeinName: 'Morning', days: [0, 1, 2, 3, 4] })
-    expect(loadRhythmDays()).toEqual([0, 1, 2, 3, 4])
+  it('adds a rhythm with a days mask', () => {
+    addRhythm('Focus', [0, 1, 2, 3, 4])
+    expect(getRhythmEntry('Focus')).toEqual({ skeinName: 'Focus', days: [0, 1, 2, 3, 4] })
   })
 
-  it('clears the rhythm via clearRhythm()', () => {
-    saveRhythm({ skeinName: 'Morning' })
-    clearRhythm()
-    expect(loadRhythm()).toBe(null)
+  it('adds multiple rhythms independently', () => {
+    addRhythm('Body')
+    addRhythm('Focus', [0, 1, 2, 3, 4])
+    addRhythm('Reflection')
+    expect(loadRhythms()).toHaveLength(3)
+    expect(isRhythm('Body')).toBe(true)
+    expect(isRhythm('Focus')).toBe(true)
+    expect(isRhythm('Reflection')).toBe(true)
+    expect(isRhythm('Work')).toBe(false)
   })
 
-  it('saveRhythm({}) clears the flag (no skeinName)', () => {
-    saveRhythm({ skeinName: 'Morning' })
-    saveRhythm({})
-    expect(loadRhythm()).toBe(null)
+  it('removes a rhythm, leaving others intact', () => {
+    addRhythm('Body')
+    addRhythm('Focus')
+    removeRhythm('Body')
+    expect(isRhythm('Body')).toBe(false)
+    expect(isRhythm('Focus')).toBe(true)
+    expect(loadRhythms()).toHaveLength(1)
   })
 
-  it('backward-compat: reads a legacy plain-string value', () => {
-    // Simulate old storage format
+  it('addRhythm updates an existing entry (no duplicates)', () => {
+    addRhythm('Body')
+    addRhythm('Body', [0, 1, 2, 3, 4])
+    expect(loadRhythms()).toHaveLength(1)
+    expect(getRhythmEntry('Body')?.days).toEqual([0, 1, 2, 3, 4])
+  })
+
+  it('rhythmSkeinNames returns an array of names', () => {
+    addRhythm('Body'); addRhythm('Focus')
+    expect(rhythmSkeinNames()).toEqual(['Body', 'Focus'])
+  })
+
+  it('clearAllRhythms empties the list', () => {
+    addRhythm('Body'); addRhythm('Focus')
+    clearAllRhythms()
+    expect(loadRhythms()).toEqual([])
+  })
+})
+
+describe('setRhythmDays', () => {
+  it('updates days for an existing rhythm', () => {
+    addRhythm('Body')
+    setRhythmDays('Body', [0, 1, 2, 3, 4])
+    expect(getRhythmEntry('Body')?.days).toEqual([0, 1, 2, 3, 4])
+  })
+
+  it('does nothing for a non-existent rhythm', () => {
+    setRhythmDays('NonExistent', [0, 1])
+    expect(loadRhythms()).toHaveLength(0)
+  })
+})
+
+describe('backward-compat migration from old loom_rhythm_skein key', () => {
+  it('migrates a plain string value', () => {
     store['loom_rhythm_skein'] = 'Daily'
-    expect(loadRhythm()).toEqual({ skeinName: 'Daily', days: null })
-    expect(loadRhythmSkein()).toBe('Daily')
+    const result = loadRhythms()
+    expect(result).toEqual([{ skeinName: 'Daily', days: null }])
+    // Old key should be removed after migration
+    expect(store['loom_rhythm_skein']).toBeUndefined()
+  })
+
+  it('migrates a JSON object value', () => {
+    store['loom_rhythm_skein'] = JSON.stringify({ skeinName: 'Morning', days: [0, 1, 2, 3, 4] })
+    const result = loadRhythms()
+    expect(result[0].skeinName).toBe('Morning')
   })
 })
 
@@ -74,28 +117,35 @@ describe('rhythm cast log', () => {
     settleRhythmForWeek('2026-07-14')
     expect(isRhythmSettledForWeek('2026-07-21')).toBe(false)
   })
+
+  it('resetRhythmBanners clears the entire log', () => {
+    settleRhythmForWeek('2026-07-14')
+    resetRhythmBanners()
+    expect(isRhythmSettledForWeek('2026-07-14')).toBe(false)
+  })
 })
 
-describe('pendingRhythm', () => {
-  it('returns null when no rhythm is set', () => {
-    expect(pendingRhythm('2026-07-14')).toBe(null)
+describe('pendingRhythms', () => {
+  it('returns [] when no rhythms are set', () => {
+    expect(pendingRhythms('2026-07-14')).toEqual([])
   })
 
-  it('returns the rhythm object when not settled', () => {
-    saveRhythm({ skeinName: 'Daily', days: [0, 1, 2, 3, 4] })
-    expect(pendingRhythm('2026-07-14')).toEqual({ skeinName: 'Daily', days: [0, 1, 2, 3, 4] })
+  it('returns all rhythms when not settled', () => {
+    addRhythm('Body'); addRhythm('Focus', [0, 1, 2, 3, 4])
+    const p = pendingRhythms('2026-07-14')
+    expect(p).toHaveLength(2)
+    expect(p.find(r => r.skeinName === 'Focus')?.days).toEqual([0, 1, 2, 3, 4])
   })
 
-  it('returns null once the week is settled', () => {
-    saveRhythm({ skeinName: 'Daily' })
+  it('returns [] once the week is settled', () => {
+    addRhythm('Body')
     settleRhythmForWeek('2026-07-14')
-    expect(pendingRhythm('2026-07-14')).toBe(null)
+    expect(pendingRhythms('2026-07-14')).toEqual([])
   })
 
-  it('still returns the rhythm for an unsettled week', () => {
-    saveRhythm({ skeinName: 'Daily' })
+  it('still returns rhythms for a different (unsettled) week', () => {
+    addRhythm('Body')
     settleRhythmForWeek('2026-07-14')
-    expect(pendingRhythm('2026-07-21')).not.toBe(null)
-    expect(pendingRhythm('2026-07-21')?.skeinName).toBe('Daily')
+    expect(pendingRhythms('2026-07-21')).toHaveLength(1)
   })
 })

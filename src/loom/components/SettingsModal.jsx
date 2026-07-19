@@ -5,6 +5,8 @@ import { Button } from '../../ds/components/Button'
 import {
   getToken, getDatabaseId, setToken, setDatabaseId, clearToken, hasCustomDatabase, testConnection,
 } from '../lib/store.js'
+import { resetRhythmBanners } from '../lib/rhythm.js'
+import { resetDraftBanners } from '../lib/drafts.js'
 import { useTheme } from '../lib/themeContext.jsx'
 import { useLexicon } from '../lib/lexiconContext.jsx'
 import { useUiStyle } from '../lib/uiStyleContext.jsx'
@@ -213,6 +215,19 @@ export default function SettingsModal({ open, onClose, onSaved, mode }) {
             <a className={styles.link} href="/loom-guide.html" target="_blank" rel="noopener">guide</a>.
           </p>
         </details>
+
+        {/* ── Warp banners ── */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>{lex.t('resetBanners')}</h3>
+          <p className={styles.sectionHint}>{lex.t('resetBannersHint')}</p>
+          <button
+            type="button"
+            className={styles.resetBannersBtn}
+            onClick={() => { resetRhythmBanners(); resetDraftBanners() }}
+          >
+            Reset banners
+          </button>
+        </div>
 
         <p className={styles.tribute}>For Bobbin, and for the Guild of Weavers. ✧</p>
       </div>

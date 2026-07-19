@@ -7,18 +7,21 @@ import { DragProvider } from '../lib/dragContext.jsx'
 import { useLexicon } from '../lib/lexiconContext.jsx'
 import { useUiStyle } from '../lib/uiStyleContext.jsx'
 import { RhythmIcon } from './icons.jsx'
-import { groupByWeek, orderForNew, orderForMove, dateKey, matchesQuery, topOfGroup, splitRhythmThreads } from '../lib/model.js'
+import { groupByWeek, orderForNew, orderForMove, dateKey, matchesQuery, splitRhythmThreads } from '../lib/model.js'
 import { pendingRepeats, settleForWeek } from '../lib/drafts.js'
-import { pendingRhythm, settleRhythmForWeek } from '../lib/rhythm.js'
+import { pendingRhythms, settleRhythmForWeek } from '../lib/rhythm.js'
 import styles from './WeekView.module.css'
 
 // Weekly view: the week warped across seven days, plus the distaff — a backlog
-// rail of unspun (day-less) threads to pull onto a day. Same threads as List
+// rail of unspun (day-less) threads to pull onto a day. Same threads as Skeins
 // view; here they're grouped by day. Each column is its own heat-dyed stack, a
 // drop target for cross-column drag, and honours the search + focus toggles.
+// Rhythm threads (from any flagged skein) sit in a tinted block at the top of
+// each day column. The distaff never shows rhythm threads — they belong to the
+// cast, not the backlog.
 export default function WeekView({
   threads, days, actions, filters, weekLabel, onPrevWeek, onNextWeek, onThisWeek, isThisWeek,
-  rhythmSkein, rhythmDays: _rhythmDays, onEditInRhythm,
+  rhythms, rhythmSkeinNames, onEditInRhythm,
 }) {
   const { t } = useLexicon()
   const { style } = useUiStyle()
@@ -27,58 +30,55 @@ export default function WeekView({
   const weekStartDate = days[0].date
   const weekStartKey = days[0].key
   const [castTick, setCastTick] = useState(0)
-  // Long-press state for "Edit in rhythm" context menu: { x, y } or null.
   const [longPress, setLongPress] = useState(null)
   const lpTimer = useRef(null)
-  const lpThread = useRef(null)
-  // Repeating drafts not yet cast or dismissed for this week; castTick re-reads
-  // the cast log (a localStorage side channel the linter can't see) after a
-  // cast/dismiss so the offer clears.
+  const lpSkein = useRef(null)
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const repeats = useMemo(() => pendingRepeats(weekStartKey), [weekStartKey, castTick])
 
-  // Rhythm banner: show if there's a rhythm skein and it hasn't been cast/dismissed
-  // for this week. Re-reads on castTick just like repeating drafts.
+  // Rhythm banner: returns unsettled rhythms for this week, or [] if all settled.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const rhythmPending = useMemo(() => pendingRhythm(weekStartKey), [weekStartKey, castTick])
-  // Count of canonical rhythm threads (for the banner text).
+  const pendingRhythmsList = useMemo(() => pendingRhythms(weekStartKey), [weekStartKey, castTick])
+  const hasPendingRhythm = pendingRhythmsList.length > 0
+
+  // Total canonical thread count across all pending rhythms (for banner text).
   const rhythmCount = useMemo(() => {
-    if (!rhythmSkein) return 0
+    if (!hasPendingRhythm || !rhythmSkeinNames.size) return 0
     const seen = new Set()
-    for (const t of threads) {
-      if (t.skein === rhythmSkein && !t.done && !seen.has(t.title)) seen.add(t.title)
+    for (const th of threads) {
+      if (rhythmSkeinNames.has(th.skein) && !th.done) {
+        const key = `${th.skein}:::${th.title}`
+        if (!seen.has(key)) seen.add(key)
+      }
     }
     return seen.size
-  }, [threads, rhythmSkein])
+  }, [threads, rhythmSkeinNames, hasPendingRhythm])
 
   function addToDay(dayKey, title) {
     const group = threads.filter(th => th.day === dayKey)
     actions.addThread({ title, skein: null, day: dayKey, order: orderForNew(group) })
   }
 
-  // Long-press handlers for rhythm threads
-  const startLongPress = useCallback((e, thread) => {
+  // Long-press handlers for rhythm threads — long-press (400ms) opens the
+  // "Edit in rhythm" context menu anchored to the pointer position.
+  const startLongPress = useCallback((e, skeinName) => {
     if (e.button > 0) return
-    lpThread.current = thread
+    lpSkein.current = skeinName
     const { clientX: x, clientY: y } = e
-    lpTimer.current = setTimeout(() => {
-      setLongPress({ x, y })
-    }, 400)
+    lpTimer.current = setTimeout(() => setLongPress({ x, y }), 400)
   }, [])
-  const cancelLongPress = useCallback(() => {
-    clearTimeout(lpTimer.current)
-  }, [])
+  const cancelLongPress = useCallback(() => clearTimeout(lpTimer.current), [])
   const commitEditInRhythm = useCallback(() => {
     setLongPress(null)
-    if (onEditInRhythm && rhythmSkein) onEditInRhythm(rhythmSkein)
-  }, [onEditInRhythm, rhythmSkein])
+    if (onEditInRhythm && lpSkein.current) onEditInRhythm(lpSkein.current)
+  }, [onEditInRhythm])
+
   function addToBacklog(title) {
     const group = threads.filter(th => !th.day || !days.some(d => d.key === th.day))
     actions.addThread({ title, skein: null, day: null, order: orderForNew(group) })
   }
 
-  // Cross-column drag resolves here: reorder within, or re-day + reorder, in one
-  // write. `null` day means the distaff.
   function handleDrop({ thread, toMeta, toIndex }) {
     const targetTasks = toMeta.tasks || []
     const order = orderForMove(targetTasks, thread.id, toIndex ?? targetTasks.length)
@@ -93,14 +93,23 @@ export default function WeekView({
   )
 
   // Per-group display subset, honouring search + focus toggles.
-  function view(tasks) {
+  // "Rhythm order" sort: within the rhythm block, sort by skein then by order
+  // (so all Body threads come first, ordered, then all Focus threads, etc.).
+  function view(tasks, isRhythmBlock = false) {
     const all = tasks.filter(th => matchesQuery(th, filters.query))
     const open = all.filter(th => !th.done)
     const woven = all.filter(th => th.done)
-    if (filters.topOnly) return { main: topOfGroup(open), fold: [] }
-    if (!filters.showWoven) return { main: open, fold: [] }
-    if (filters.collapseWoven) return { main: open, fold: woven }
-    return { main: all, fold: [] }
+    let main = !filters.showWoven ? open : filters.collapseWoven ? open : all
+    const fold = !filters.showWoven ? [] : filters.collapseWoven ? woven : []
+    if (isRhythmBlock && filters.rhythmSort) {
+      // Sort rhythm block by skein-canonical order: group by skein, maintain
+      // the within-skein order from the Skeins view (thread.order).
+      main = [...main].sort((a, b) => {
+        if (a.skein !== b.skein) return (a.skein || '').localeCompare(b.skein || '')
+        return (a.order ?? 0) - (b.order ?? 0)
+      })
+    }
+    return { main, fold }
   }
 
   function castRepeat(draft) {
@@ -123,40 +132,36 @@ export default function WeekView({
     setCastTick(n => n + 1)
   }
 
+  const multiRhythm = (rhythms?.length ?? 0) > 1
+
   return (
     <DragProvider onDrop={handleDrop}>
       <div className={styles.view}>
         <div className={`${styles.weekNav} ${styles[`nav_${style}`]}`}>
-          <button type="button" className={styles.navBtn} onClick={onPrevWeek} aria-label="Previous week">‹</button>
+          <button type="button" className={styles.navBtn} onClick={onPrevWeek} aria-label="Previous warp">‹</button>
           <button
             type="button"
             className={`${styles.weekLabel} ${isThisWeek ? styles.current : ''}`}
             onClick={onThisWeek}
-            title="Back to this week"
+            title="Back to this warp"
           >{weekLabel}</button>
-          <button type="button" className={styles.navBtn} onClick={onNextWeek} aria-label="Next week">›</button>
+          <button type="button" className={styles.navBtn} onClick={onNextWeek} aria-label="Next warp">›</button>
         </div>
 
-        {/* Rhythm cast offer — gentle banner, same pattern as repeating drafts. */}
-        {rhythmPending && rhythmCount > 0 && (() => {
-          const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-          const maskText = rhythmPending.days
-            ? rhythmPending.days.map(i => dayLabels[i]).join(', ')
-            : null
-          return (
-            <div className={styles.rhythmOffer}>
-              <span className={styles.rhythmOfferIcon}><RhythmIcon /></span>
-              <span className={styles.rhythmOfferText}>
-                {t('rhythmBanner')} <span className={styles.rhythmOfferCount}>{rhythmCount} {rhythmCount === 1 ? t('thread') : t('threads')}</span>
-                {maskText && <span className={styles.rhythmOfferDays}> · {maskText}</span>}
-              </span>
-              <span className={styles.repeatBtns}>
-                <button type="button" className={styles.repeatCast} onClick={castRhythm}>{t('castRhythm')}</button>
-                <button type="button" className={styles.repeatSkip} onClick={dismissRhythm} aria-label="Not this week">✕</button>
-              </span>
-            </div>
-          )
-        })()}
+        {/* Rhythm cast offer */}
+        {hasPendingRhythm && rhythmCount > 0 && (
+          <div className={styles.rhythmOffer}>
+            <span className={styles.rhythmOfferIcon}><RhythmIcon /></span>
+            <span className={styles.rhythmOfferText}>
+              {t(multiRhythm ? 'rhythmsBanner' : 'rhythmBanner')}{' '}
+              <span className={styles.rhythmOfferCount}>{rhythmCount} {rhythmCount === 1 ? t('thread') : t('threads')}</span>
+            </span>
+            <span className={styles.repeatBtns}>
+              <button type="button" className={styles.repeatCast} onClick={castRhythm}>{t('castRhythm')}</button>
+              <button type="button" className={styles.repeatSkip} onClick={dismissRhythm} aria-label="Not this warp">✕</button>
+            </span>
+          </div>
+        )}
 
         {repeats.length > 0 && (
           <div className={styles.repeats}>
@@ -165,7 +170,7 @@ export default function WeekView({
                 <span className={styles.repeatText}>"{d.name}" — a repeating {t('draft')}. {t('castDraft')}?</span>
                 <span className={styles.repeatBtns}>
                   <button type="button" className={styles.repeatCast} onClick={() => castRepeat(d)}>{t('castDraft')}</button>
-                  <button type="button" className={styles.repeatSkip} onClick={() => dismissRepeat(d)} aria-label="Not this week">✕</button>
+                  <button type="button" className={styles.repeatSkip} onClick={() => dismissRepeat(d)} aria-label="Not this warp">✕</button>
                 </span>
               </div>
             ))}
@@ -175,9 +180,14 @@ export default function WeekView({
         <div className={styles.warp}>
           {columns.map(col => {
             const { main, fold } = view(col.tasks)
-            // Split rhythm threads to the top of the column.
-            const { rhythm, rest } = splitRhythmThreads(main, rhythmSkein)
-            const hasRhythm = rhythm.length > 0
+            // Split rhythm threads (from any rhythm skein) to the top.
+            const { rhythm, rest } = splitRhythmThreads(main, rhythmSkeinNames)
+            const { main: rhythmMain, fold: rhythmFold } = view(rhythm, true)
+            const hasRhythm = rhythmMain.length > 0
+
+            // The first rhythm skein present in this column (for "Edit in rhythm" menu).
+            const firstRhythmSkein = hasRhythm ? rhythmMain[0]?.skein : null
+
             return (
               <section key={col.key} className={`${styles.day} ${col.key === todayKey ? styles.today : ''}`}>
                 <header className={styles.dayHead}>
@@ -185,28 +195,39 @@ export default function WeekView({
                   <span className={styles.dayNum}>{col.dayNum}</span>
                   {col.tasks.length > 0 && <span className={styles.dayCount}>{col.tasks.length}</span>}
                 </header>
-                {/* Rhythm threads render at the top in a tinted block. */}
+
+                {/* Rhythm block — tinted, long-pressable for "Edit in rhythm". */}
                 {hasRhythm && (
                   <div
                     className={styles.rhythmBlock}
-                    onPointerDown={e => startLongPress(e, rhythm[0])}
+                    onPointerDown={e => startLongPress(e, firstRhythmSkein)}
                     onPointerUp={cancelLongPress}
                     onPointerCancel={cancelLongPress}
                     onPointerMove={cancelLongPress}
                   >
                     <ThreadList
-                      tasks={rhythm}
+                      tasks={rhythmMain}
                       containerId={`day-rhythm:${col.key}`}
-                      meta={{ kind: 'day', key: col.key, tasks: rhythm }}
+                      meta={{ kind: 'day', key: col.key, tasks: rhythmMain }}
                       onReorder={(id, target) => actions.reorderWithin(col.tasks, id, target)}
                       onToggle={actions.toggleWoven}
                       onDelete={actions.removeThread}
                       onEdit={(id, title) => actions.patchThread(id, { title })}
                       renderAssign={dayMover}
+                      rhythmSkeins={rhythmSkeinNames}
                     />
+                    {rhythmFold.length > 0 && (
+                      <WovenFold
+                        tasks={rhythmFold}
+                        onToggle={actions.toggleWoven}
+                        onDelete={actions.removeThread}
+                        onEdit={(id, title) => actions.patchThread(id, { title })}
+                      />
+                    )}
                   </div>
                 )}
-                {/* The rest of the day's threads. */}
+
+                {/* Non-rhythm threads. */}
                 <ThreadList
                   tasks={rest}
                   containerId={`day:${col.key}`}
@@ -218,7 +239,7 @@ export default function WeekView({
                   renderAssign={dayMover}
                 />
                 <WovenFold
-                  tasks={fold}
+                  tasks={fold.filter(th => !rhythmSkeinNames.has(th.skein))}
                   onToggle={actions.toggleWoven}
                   onDelete={actions.removeThread}
                   onEdit={(id, title) => actions.patchThread(id, { title })}
@@ -231,20 +252,22 @@ export default function WeekView({
           })}
         </div>
 
+        {/* Distaff — rhythm threads are excluded; they belong to the cast. */}
         <section className={styles.distaff}>
           <header className={styles.distaffHead}>
             <h2 className={styles.distaffTitle}>{t('Distaff')}</h2>
             <span className={styles.distaffSub}>{t('distaffSub')}</span>
           </header>
           {(() => {
-            const { main, fold } = view(backlog)
+            const nonRhythmBacklog = backlog.filter(th => !rhythmSkeinNames.has(th.skein))
+            const { main, fold } = view(nonRhythmBacklog)
             return (
               <>
                 <ThreadList
                   tasks={main}
                   containerId="backlog"
                   meta={{ kind: 'backlog', tasks: main }}
-                  onReorder={(id, target) => actions.reorderWithin(backlog, id, target)}
+                  onReorder={(id, target) => actions.reorderWithin(nonRhythmBacklog, id, target)}
                   onToggle={actions.toggleWoven}
                   onDelete={actions.removeThread}
                   onEdit={(id, title) => actions.patchThread(id, { title })}
@@ -272,21 +295,11 @@ export default function WeekView({
           style={{ top: longPress.y, left: longPress.x }}
           role="menu"
         >
-          <button
-            type="button"
-            className={styles.lpItem}
-            role="menuitem"
-            onClick={commitEditInRhythm}
-          >
+          <button type="button" className={styles.lpItem} role="menuitem" onClick={commitEditInRhythm}>
             <RhythmIcon />
             Edit in rhythm
           </button>
-          <button
-            type="button"
-            className={styles.lpDismiss}
-            onClick={() => setLongPress(null)}
-            aria-label="Dismiss"
-          >✕</button>
+          <button type="button" className={styles.lpDismiss} onClick={() => setLongPress(null)} aria-label="Dismiss">✕</button>
         </div>
       )}
     </DragProvider>

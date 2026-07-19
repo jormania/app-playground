@@ -242,13 +242,15 @@ export function threadsForDraftWeek(draft, weekStartDate) {
 
 // Snapshot a week's open threads as draft items (day → day-of-week index, or null
 // for distaff). Woven threads and off-week dates are left out. If `excludeSkein`
-// is set, threads from that skein are filtered out — used to keep rhythm threads
-// out of draft snapshots (they're placed by the rhythm, not by drafts).
-export function draftItemsFromWeek(threads, days, { excludeSkein } = {}) {
+// is set, threads from those skeins are filtered out — used to keep all rhythm
+// threads out of draft snapshots (they're placed by the rhythm, not by drafts).
+// `excludeSkeins` is a Set (or array) of skein names.
+export function draftItemsFromWeek(threads, days, { excludeSkeins } = {}) {
+  const skipSet = excludeSkeins instanceof Set ? excludeSkeins : new Set(excludeSkeins || [])
   const keyToIndex = new Map(days.map((d, i) => [d.key, i]))
   return sortByOrder(threads.filter(t => {
     if (t.done) return false
-    if (excludeSkein && t.skein === excludeSkein) return false
+    if (skipSet.size > 0 && skipSet.has(t.skein)) return false
     return t.day == null || keyToIndex.has(t.day)
   }))
     .map(t => ({
@@ -260,51 +262,40 @@ export function draftItemsFromWeek(threads, days, { excludeSkein } = {}) {
 }
 
 // ── Rhythm (daily routine) ───────────────────────────────────────────────────
-// A rhythm is a skein whose threads are placed onto every day of a fresh week.
-// `rhythmThreadsForWeek` builds the list of threads to create; the duplication
-// guard skips any title+skein that already exists on a given day (from carry-over
-// or a prior cast). `splitRhythmThreads` partitions a day's task list into the
-// rhythm block (rendered at the top) and the rest.
+// Multiple skeins can be flagged as rhythms. Each rhythm entry is { skeinName, days }
+// where `days` is a weekday-index mask (0=Mon…6=Sun, null = all seven days).
+// `rhythmThreadsForWeek` processes every entry and returns the combined list of
+// threads to create. `splitRhythmThreads` partitions a day's task list into the
+// rhythm block (top) and the rest using a Set of rhythm skein names.
 
-// Build the threads to create when casting a rhythm onto a week. Returns an array
-// of { title, skein, day, order, done } — one per day per canonical thread, minus
-// any that already exist on that day (duplication guard).
-// `daysMask` is an optional array of weekday indices (0 = Mon … 6 = Sun). When
-// provided, only those day columns receive rhythm threads. null = all seven days.
-export function rhythmThreadsForWeek(threads, rhythmSkein, days, daysMask = null) {
-  if (!rhythmSkein) return []
-  // Canonical list: undone threads in the rhythm skein that are on the distaff
-  // (day == null) or on any day — we take all unique titles.
-  const canonical = sortByOrder(
-    threads.filter(t => t.skein === rhythmSkein && !t.done)
-  )
-  // Deduplicate by title (keep first occurrence = lowest order = highest position).
-  const seen = new Set()
-  const templates = []
-  for (const t of canonical) {
-    if (!seen.has(t.title)) { seen.add(t.title); templates.push(t) }
-  }
-  if (templates.length === 0) return []
-
-  const activeDays = daysMask
-    ? days.filter((_, i) => daysMask.includes(i))
-    : days
-
+// Build threads to create when casting all rhythms onto a week.
+// `rhythms` is Array<{ skeinName, days }>.
+// Returns Array<{ title, skein, day, order, done }> — dup-guarded per skein per day.
+export function rhythmThreadsForWeek(threads, rhythms, days) {
+  if (!rhythms || rhythms.length === 0) return []
   const result = []
-  for (const day of activeDays) {
-    // What rhythm-skein titles already sit on this day?
-    const existing = new Set(
-      threads.filter(t => t.day === day.key && t.skein === rhythmSkein).map(t => t.title)
-    )
-    for (const tpl of templates) {
-      if (!existing.has(tpl.title)) {
-        result.push({
-          title: tpl.title,
-          skein: rhythmSkein,
-          day: day.key,
-          order: tpl.order ?? 0,
-          done: false,
-        })
+  for (const { skeinName, days: daysMask } of rhythms) {
+    // Canonical templates: unique titles from undone threads in this skein.
+    const canonical = sortByOrder(threads.filter(t => t.skein === skeinName && !t.done))
+    const seen = new Set()
+    const templates = []
+    for (const t of canonical) {
+      if (!seen.has(t.title)) { seen.add(t.title); templates.push(t) }
+    }
+    if (templates.length === 0) continue
+
+    const activeDays = daysMask
+      ? days.filter((_, i) => daysMask.includes(i))
+      : days
+
+    for (const day of activeDays) {
+      const existing = new Set(
+        threads.filter(t => t.day === day.key && t.skein === skeinName).map(t => t.title)
+      )
+      for (const tpl of templates) {
+        if (!existing.has(tpl.title)) {
+          result.push({ title: tpl.title, skein: skeinName, day: day.key, order: tpl.order ?? 0, done: false })
+        }
       }
     }
   }
@@ -313,12 +304,13 @@ export function rhythmThreadsForWeek(threads, rhythmSkein, days, daysMask = null
 
 // Split a day's order-sorted task list into { rhythm, rest } so the week view
 // can render the rhythm block at the top with a visual separator.
-export function splitRhythmThreads(tasks, rhythmSkein) {
-  if (!rhythmSkein) return { rhythm: [], rest: tasks }
+// `rhythmNames` is a Set<string> of all rhythm skein names.
+export function splitRhythmThreads(tasks, rhythmNames) {
+  if (!rhythmNames || rhythmNames.size === 0) return { rhythm: [], rest: tasks }
   const rhythm = []
   const rest = []
   for (const t of tasks) {
-    if (t.skein === rhythmSkein) rhythm.push(t)
+    if (rhythmNames.has(t.skein)) rhythm.push(t)
     else rest.push(t)
   }
   return { rhythm, rest }
@@ -337,15 +329,26 @@ export function topOfGroup(tasks, cap = HEAT_CAP) {
 }
 
 // Skein-group ordering in List view (row order within a group is always manual).
-// 'manual' keeps first-appearance; loose threads stay last in every mode.
-export function sortSkeinGroups(groups, mode = 'manual') {
+// 'manual' keeps first-appearance order or respects `skeinOrder` when provided
+// (a saved drag-order array). Loose threads stay last in every mode.
+export function sortSkeinGroups(groups, mode = 'manual', skeinOrder = []) {
   const openCount = g => g.tasks.filter(t => !t.done).length
   const arr = [...groups]
   if (mode === 'name') arr.sort((a, b) => (a.isLoose - b.isLoose) || a.skein.localeCompare(b.skein))
   else if (mode === 'size') arr.sort((a, b) => (a.isLoose - b.isLoose) || (b.tasks.length - a.tasks.length))
   else if (mode === 'heat') arr.sort((a, b) => (a.isLoose - b.isLoose) || (openCount(b) - openCount(a)))
+  else if (mode === 'manual' && skeinOrder.length > 0) {
+    const pos = new Map(skeinOrder.map((name, i) => [name, i]))
+    arr.sort((a, b) => {
+      if (a.isLoose !== b.isLoose) return a.isLoose - b.isLoose
+      const ai = pos.has(a.skein) ? pos.get(a.skein) : Infinity
+      const bi = pos.has(b.skein) ? pos.get(b.skein) : Infinity
+      return ai - bi
+    })
+  }
   return arr
 }
+
 
 // ── The Tapestry (descriptive history — never scored or streaked) ────────────
 // An N-week heatmap over Day+Done: for each day cell, how many threads sit there

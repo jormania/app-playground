@@ -7,7 +7,7 @@ import {
   weekDays, startOfWeek, addDays, dateKey, orderForMove,
   carryThreads, threadsForDraftWeek, rhythmThreadsForWeek,
 } from './lib/model.js'
-import { loadRhythmSkein, loadRhythmDays, saveRhythm } from './lib/rhythm.js'
+import { loadRhythms } from './lib/rhythm.js'
 import SkeinView from './components/SkeinView.jsx'
 import WeekView from './components/WeekView.jsx'
 import Tapestry from './components/Tapestry.jsx'
@@ -38,11 +38,14 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [rewarpOpen, setRewarpOpen] = useState(false)
   const [draftsOpen, setDraftsOpen] = useState(false)
-  const [rhythmSkein, setRhythmSkein] = useState(loadRhythmSkein)  // the skein name
-  const [rhythmDays, setRhythmDays] = useState(loadRhythmDays)    // null = all 7, or [0..6]
-  const [focusedSkein, setFocusedSkein] = useState(null)          // "Edit in rhythm" target
+  // rhythms: Array<{ skeinName, days }> — any number of rhythm skeins
+  const [rhythms, setRhythms] = useState(loadRhythms)
+  const [focusedSkein, setFocusedSkein] = useState(null) // "Edit in rhythm" target
   const [undo, setUndo] = useState(null)
   const undoTimer = useRef(null)
+
+  // Derived: set of rhythm skein names for fast membership checks.
+  const rhythmSkeinNames = useMemo(() => new Set(rhythms.map(r => r.skeinName)), [rhythms])
 
   const setView = useCallback((view) => {
     setPrefs(p => { const next = { ...p, view }; saveViewPrefs(next); return next })
@@ -55,15 +58,13 @@ export default function App() {
   const days = useMemo(() => weekDays(anchor), [anchor])
   const isThisWeek = dateKey(startOfWeek(anchor)) === dateKey(startOfWeek(new Date()))
 
-  // The re-warp ritual always targets the real current week, whatever week the
-  // planner is currently scrolled to.
   const thisWeekDays = useMemo(() => weekDays(new Date()), [])
   const thisMondayKey = dateKey(startOfWeek(new Date()))
   const carried = useMemo(() => carryThreads(loom.threads, thisMondayKey), [loom.threads, thisMondayKey])
 
   const filters = useMemo(
-    () => ({ query, showWoven: prefs.showWoven, topOnly: prefs.topOnly, collapseWoven: prefs.collapseWoven, skeinSort: prefs.skeinSort }),
-    [query, prefs.showWoven, prefs.topOnly, prefs.collapseWoven, prefs.skeinSort],
+    () => ({ query, showWoven: prefs.showWoven, rhythmSort: prefs.rhythmSort, collapseWoven: prefs.collapseWoven, skeinSort: prefs.skeinSort }),
+    [query, prefs.showWoven, prefs.rhythmSort, prefs.collapseWoven, prefs.skeinSort],
   )
 
   // Undo (re-ravel): a deleted thread is held for 5s and can be re-woven back.
@@ -81,23 +82,32 @@ export default function App() {
   }, [loom])
   useEffect(() => () => { if (undoTimer.current) clearTimeout(undoTimer.current) }, [])
 
-  // Cast a draft's threads onto the given week.
   const castDraft = useCallback((draft, weekStartDate) => {
     threadsForDraftWeek(draft, weekStartDate).forEach(th => loom.addThread(th))
   }, [loom])
 
-  // Cast the rhythm: place each canonical thread onto selected days of the given week,
-  // skipping any that already exist (duplication guard in rhythmThreadsForWeek).
+  // Cast all rhythms: place each rhythm skein's canonical threads onto their
+  // allowed days, skipping existing threads (duplication guard in model).
   const castRhythm = useCallback((weekStartDate) => {
     const wDays = weekDays(weekStartDate)
-    rhythmThreadsForWeek(loom.threads, rhythmSkein, wDays, rhythmDays).forEach(th => loom.addThread(th))
-  }, [loom, rhythmSkein, rhythmDays])
+    rhythmThreadsForWeek(loom.threads, rhythms, wDays).forEach(th => loom.addThread(th))
+  }, [loom, rhythms])
 
-  // Set or unset the rhythm skein + days. Accepts null to clear, or { skeinName, days }.
-  const handleSetRhythm = useCallback(({ skeinName, days = null } = {}) => {
-    saveRhythm(skeinName ? { skeinName, days } : {})
-    setRhythmSkein(skeinName || null)
-    setRhythmDays(days)
+  // Toggle a skein in/out of the rhythm list (persists to localStorage).
+  const handleToggleRhythm = useCallback((skeinName) => {
+    import('./lib/rhythm.js').then(({ addRhythm, removeRhythm, loadRhythms: lr }) => {
+      if (rhythmSkeinNames.has(skeinName)) removeRhythm(skeinName)
+      else addRhythm(skeinName, null)
+      setRhythms(lr())
+    })
+  }, [rhythmSkeinNames])
+
+  // Update the day mask for an existing rhythm skein.
+  const handleSetRhythmDays = useCallback((skeinName, days) => {
+    import('./lib/rhythm.js').then(({ setRhythmDays, loadRhythms: lr }) => {
+      setRhythmDays(skeinName, days)
+      setRhythms(lr())
+    })
   }, [])
 
   // Long-press a rhythm thread in WeekView → jump to Skeins with that skein focused.
@@ -117,6 +127,11 @@ export default function App() {
       loom.patchThread(id, { order: orderForMove(group, id, targetIndex) })
     },
   }), [loom, removeWithUndo, castDraft, castRhythm])
+
+  // Save a new manual drag order for skeins.
+  const handleSkeinReorder = useCallback((newOrder) => {
+    setPrefs(p => { const next = { ...p, skeinOrder: newOrder }; saveViewPrefs(next); return next })
+  }, [])
 
   const showToolbar = loom.status === 'ready' && prefs.view !== 'tapestry'
 
@@ -161,9 +176,11 @@ export default function App() {
                 actions={actions}
                 filters={filters}
                 onSkeinSort={id => setFilter('skeinSort', id)}
-                rhythmSkein={rhythmSkein}
-                rhythmDays={rhythmDays}
-                onSetRhythm={handleSetRhythm}
+                onSkeinReorder={handleSkeinReorder}
+                rhythms={rhythms}
+                rhythmSkeinNames={rhythmSkeinNames}
+                onToggleRhythm={handleToggleRhythm}
+                onSetRhythmDays={handleSetRhythmDays}
                 focusedSkein={focusedSkein}
                 onFocusedSkeinClear={() => setFocusedSkein(null)}
               />
@@ -176,8 +193,8 @@ export default function App() {
                   filters={filters}
                   weekLabel={weekLabel(anchor)}
                   isThisWeek={isThisWeek}
-                  rhythmSkein={rhythmSkein}
-                  rhythmDays={rhythmDays}
+                  rhythms={rhythms}
+                  rhythmSkeinNames={rhythmSkeinNames}
                   onEditInRhythm={handleEditInRhythm}
                   onPrevWeek={() => setAnchor(a => addDays(startOfWeek(a), -7))}
                   onNextWeek={() => setAnchor(a => addDays(startOfWeek(a), 7))}
@@ -186,12 +203,10 @@ export default function App() {
         )}
       </main>
 
-      {/* Live error toast (a failed background write) — distinct from the load error. */}
       {loom.status === 'ready' && loom.error && (
         <div className={styles.toast} role="status" onClick={loom.dismissError}>{loom.error}</div>
       )}
 
-      {/* Re-ravel — the 5-second undo after an unravel. */}
       {undo && (
         <div className={`${styles.toast} ${styles.undoToast}`} role="status">
           <span>{t('Thread')} unravelled.</span>
@@ -230,7 +245,7 @@ export default function App() {
         weekStartDate={days[0].date}
         weekLabel={weekLabel(anchor)}
         actions={actions}
-        rhythmSkein={rhythmSkein}
+        rhythmSkeinNames={rhythmSkeinNames}
       />
     </div>
   )

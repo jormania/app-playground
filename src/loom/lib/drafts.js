@@ -75,3 +75,8 @@ export function settleForWeek(draftId, weekStartKey) {
 export function pendingRepeats(weekStartKey) {
   return loadDrafts().filter(d => d.repeat && !isSettledForWeek(d.id, weekStartKey))
 }
+
+// Clear the draft cast log so repeating-draft offers re-appear for the current week.
+export function resetDraftBanners() {
+  try { localStorage.removeItem(CAST_LOG_KEY) } catch { /* ignore */ }
+}
