@@ -9,7 +9,8 @@ export function GameEditorModal({ game, onSave, onClose }) {
     tags: [],
     status: 'Backlog',
     rating: null,
-    journal: ''
+    journal: '',
+    coverUrl: ''
   })
 
   useEffect(() => {
@@ -58,6 +59,11 @@ export function GameEditorModal({ game, onSave, onClose }) {
         <div className="cd-form-group">
           <label>TITLE</label>
           <input name="title" value={formData.title} onChange={handleChange} autoFocus />
+        </div>
+        
+        <div className="cd-form-group">
+          <label>COVER_URL (Optional)</label>
+          <input name="coverUrl" placeholder="https://..." value={formData.coverUrl || ''} onChange={handleChange} />
         </div>
         
         <div className="cd-form-row">

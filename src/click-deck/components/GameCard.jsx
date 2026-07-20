@@ -12,6 +12,9 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
 
   return (
     <div className="cd-panel cd-game-card">
+      {game.coverUrl && (
+        <div className="cd-game-cover" style={{ backgroundImage: `url(${game.coverUrl})` }}></div>
+      )}
       <div className="cd-game-header">
         <h3 className="cd-game-title">{game.title}</h3>
         <div className="cd-game-actions">
@@ -71,6 +74,20 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
         .cd-game-card {
           margin-bottom: 1rem;
           position: relative;
+        }
+        .cd-game-cover {
+          height: 180px;
+          background-size: cover;
+          background-position: center;
+          margin: -1rem -1rem 1rem -1rem;
+          border-bottom: 1px solid var(--cd-border-accent);
+          position: relative;
+        }
+        .cd-game-cover::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(to bottom, transparent 0%, var(--cd-bg-panel) 100%);
         }
         .cd-game-header {
           display: flex;

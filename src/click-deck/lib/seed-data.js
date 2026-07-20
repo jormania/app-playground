@@ -6,7 +6,8 @@ export const PIVOT_TITLES = [
     tags: ["SCUMM", "Puzzle-Heavy", "Comedy", "Pirates"],
     status: "Completed",
     rating: 5,
-    journal: "I am rubber, you are glue. The foundational text of insult sword fighting, establishing a comedic tone that defined an entire era of adventure games."
+    journal: "I am rubber, you are glue. The foundational text of insult sword fighting, establishing a comedic tone that defined an entire era of adventure games.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/32360/header.jpg"
   },
   {
     title: "Monkey Island 2: LeChuck's Revenge",
@@ -51,7 +52,8 @@ export const PIVOT_TITLES = [
     tags: ["Cyberpunk", "Dystopian", "Sci-Fi", "Comic Book Style"],
     status: "Completed",
     rating: 5,
-    journal: "Dave Gibbons' art direction creates a suffocating yet beautiful dystopian metropolis. Foster and Joey's banter is the beating heart of Union City."
+    journal: "Dave Gibbons' art direction creates a suffocating yet beautiful dystopian metropolis. Foster and Joey's banter is the beating heart of Union City.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1368340/header.jpg"
   },
   {
     title: "Full Throttle",
@@ -60,7 +62,8 @@ export const PIVOT_TITLES = [
     tags: ["SCUMM", "Biker", "Action-Adventure", "Cinematic"],
     status: "Backlog",
     rating: null,
-    journal: "Whenever I smell asphalt, I think of Maureen. That's the last sensation I had before I blacked out; that thick smell of asphalt."
+    journal: "Whenever I smell asphalt, I think of Maureen. That's the last sensation I had before I blacked out; that thick smell of asphalt.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/228360/header.jpg"
   },
   {
     title: "The Dig",
@@ -78,7 +81,8 @@ export const PIVOT_TITLES = [
     tags: ["3D", "Noir", "Comedy", "Afterlife", "Tank Controls"],
     status: "Completed",
     rating: 5,
-    journal: "Manny Calavera is iconic. A brilliant fusion of Aztec mythology and film noir. The tank controls are painful, but the writing is unparalleled."
+    journal: "Manny Calavera is iconic. A brilliant fusion of Aztec mythology and film noir. The tank controls are painful, but the writing is unparalleled.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/316790/header.jpg"
   },
   {
     title: "The Longest Journey",

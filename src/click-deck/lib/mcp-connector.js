@@ -29,7 +29,8 @@ const mapPageToGame = (page) => ({
   status: page.properties['Status']?.select?.name || 'Backlog',
   rating: page.properties['Rating']?.number || null,
   journal: page.properties['Journal/Notes']?.rich_text?.map(rt => rt.plain_text).join('') || '',
-  createdTime: page.created_time || new Date().toISOString()
+  createdTime: page.created_time || new Date().toISOString(),
+  coverUrl: page.cover?.external?.url || page.cover?.file?.url || ''
 })
 
 const mapGameToProperties = (game) => {
