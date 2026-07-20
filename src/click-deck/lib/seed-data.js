@@ -106,7 +106,7 @@ export const PIVOT_TITLES = [
     status: "Backlog",
     rating: null,
     journal: "Kate Walker's journey across a frozen, clockwork Europe. The atmosphere is melancholic and beautiful, driven by a deep sense of wanderlust.",
-    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3660220/header.jpg"
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/46500/header.jpg"
   },
   {
     title: "Gemini Rue",

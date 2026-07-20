@@ -12,6 +12,7 @@ const REACT_VITE_TITLES = [
   'Wanderlist',
   'Daily Stoic',
   'Loom',
+  'Click Deck',
 ]
 
 const STATIC_TITLES = ['Touch Grass · Original', 'Touch Grass · Thrive', 'Touch Grass · Nora', 'Codex Alchymicus — KCD2']
