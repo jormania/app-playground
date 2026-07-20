@@ -32,6 +32,47 @@ export function App() {
   useEffect(() => {
     if (isInitialized) {
       loadGames()
+      
+      // ONE-TIME MIGRATION FOR COVERS AND NEW GAMES
+      if (typeof localStorage !== 'undefined' && !localStorage.getItem('cd_migrated_v1')) {
+        localStorage.setItem('cd_migrated_v1', 'true')
+        const runMigration = async () => {
+          try {
+            console.log('Running one-time DB migration...')
+            const allGames = await McpConnector.getGames()
+            const fixes = {
+              'Indiana Jones and the Fate of Atlantis': '6010',
+              'Gemini Rue': '80310',
+              'Thimbleweed Park': '569860',
+              'What Remains of Edith Finch': '501300',
+              'Unavowed': '336140',
+              'Disco Elysium': '632470',
+              'Return to Monkey Island': '2060130'
+            }
+            for (const [title, appId] of Object.entries(fixes)) {
+              const game = allGames.find(g => g.title === title)
+              if (game) await McpConnector.updateGameCover(game.id, `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`)
+            }
+            
+            const adds = [
+              { title: "Loom", year: 1990, developer: "LucasArts", tags: ["SCUMM", "Fantasy", "Puzzle-Heavy", "Atmospheric"], status: "Completed", rating: 4, coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/32340/header.jpg" },
+              { title: "Indiana Jones and the Last Crusade", year: 1989, developer: "LucasArts", tags: ["SCUMM", "Action-Adventure", "Movie Tie-in"], status: "Backlog", coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/32310/header.jpg" },
+              { title: "The Silent Age", year: 2012, developer: "House on Fire", tags: ["Time Travel", "Sci-Fi", "Puzzle-Heavy"], status: "Backlog", coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/352520/header.jpg" },
+              { title: "Broken Age", year: 2014, developer: "Double Fine", tags: ["Sci-Fi", "Fantasy", "Comedy", "Coming of Age"], status: "Backlog", coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/232790/header.jpg" }
+            ]
+            
+            for (const newGame of adds) {
+              if (!allGames.find(g => g.title === newGame.title)) {
+                const added = await McpConnector.addGame(newGame)
+                if (newGame.coverUrl) await McpConnector.updateGameCover(added.id, newGame.coverUrl)
+              }
+            }
+            console.log('Migration complete.')
+            loadGames()
+          } catch(e) { console.error('Migration failed', e) }
+        }
+        runMigration()
+      }
     }
   }, [isInitialized])
 

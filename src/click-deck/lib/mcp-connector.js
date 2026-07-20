@@ -174,7 +174,29 @@ export const McpConnector = {
       return db[index]
     }
   },
-  
+  updateGameCover: async (id, coverUrl) => {
+    const token = getToken()
+    const dbId = getDbId()
+    if (token && dbId) {
+      const data = await fetchNotion(`pages/${id}`, 'PATCH', {
+        cover: {
+          type: 'external',
+          external: { url: coverUrl }
+        }
+      })
+      return mapPageToGame(data)
+    } else {
+      await new Promise(res => setTimeout(res, 300))
+      const db = getLocalDb() || []
+      const index = db.findIndex(g => g.id === id)
+      if (index !== -1) {
+        db[index].coverUrl = coverUrl
+        saveLocalDb(db)
+      }
+      return db[index]
+    }
+  },
+
   updateGame: async (id, gameData) => {
     const token = getToken()
     const dbId = getDbId()

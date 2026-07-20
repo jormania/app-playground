@@ -198,6 +198,46 @@ export const PIVOT_TITLES = [
     rating: null,
     journal: "A brilliant deductive reasoning game. Piecing together the morbid tableaus requires true detective work, not just exhausting dialogue trees.",
     coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1677770/header.jpg"
+  },
+  {
+    title: "Loom",
+    year: 1990,
+    developer: "LucasArts",
+    tags: ["SCUMM", "Fantasy", "Puzzle-Heavy", "Atmospheric"],
+    status: "Completed",
+    rating: 4,
+    journal: "A beautiful, musical departure from the standard SCUMM formula. Weaving drafts instead of combining inventory items felt revolutionary.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/32340/header.jpg"
+  },
+  {
+    title: "Indiana Jones and the Last Crusade",
+    year: 1989,
+    developer: "LucasArts",
+    tags: ["SCUMM", "Action-Adventure", "Movie Tie-in"],
+    status: "Backlog",
+    rating: null,
+    journal: "One of the best movie tie-ins ever made, pioneering the dialogue tree and introducing the IQ (Indy Quotient) point system.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/32310/header.jpg"
+  },
+  {
+    title: "The Silent Age",
+    year: 2012,
+    developer: "House on Fire",
+    tags: ["Time Travel", "Sci-Fi", "Puzzle-Heavy"],
+    status: "Backlog",
+    rating: null,
+    journal: "A slick, minimalist point-and-click where time travel is the primary puzzle-solving mechanic. Brilliant atmosphere.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/352520/header.jpg"
+  },
+  {
+    title: "Broken Age",
+    year: 2014,
+    developer: "Double Fine",
+    tags: ["Sci-Fi", "Fantasy", "Comedy", "Coming of Age"],
+    status: "Backlog",
+    rating: null,
+    journal: "The Kickstarter darling that revived the genre. Splitting the narrative between two very different worlds kept things constantly engaging.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/232790/header.jpg"
   }
 ];
 
