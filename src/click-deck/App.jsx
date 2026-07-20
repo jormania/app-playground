@@ -105,13 +105,13 @@ export function App() {
             className={view === 'timeline' ? 'primary' : ''} 
             onClick={() => setView('timeline')}
           >
-            Timeline
+            [T]
           </button>
           <button 
             className={view === 'analytics' ? 'primary' : ''} 
             onClick={() => setView('analytics')}
           >
-            Analytics
+            [A]
           </button>
           <button onClick={() => {
             setEditingGame(null)
@@ -127,7 +127,7 @@ export function App() {
               setIsEditorOpen(true)
             }
           }}>
-            [R]ANDOM
+            [R]
           </button>
           <button onClick={() => setIsSettingsOpen(true)}>⚙</button>
         </nav>
