@@ -1,0 +1,204 @@
+:root {
+  --cd-bg-dark: #12151c;
+  --cd-bg-panel: #1e222b;
+  --cd-bg-rust: #4a3424;
+  --cd-bg-steel: #2a313e;
+
+  --cd-accent-cyan: #00e5ff;
+  --cd-accent-cyan-glow: rgba(0, 229, 255, 0.3);
+  --cd-accent-cyan-dim: rgba(0, 229, 255, 0.1);
+  --cd-accent-amber: #ffb300;
+  --cd-accent-amber-glow: rgba(255, 179, 0, 0.3);
+
+  --cd-text-primary: #e0e6ed;
+  --cd-text-muted: #8b96a8;
+
+  --cd-border-color: #384252;
+  --cd-border-accent: var(--cd-accent-cyan);
+
+  --cd-font-terminal: 'JetBrains Mono', monospace;
+  --cd-font-sans: 'JetBrains Mono', monospace;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--cd-bg-dark);
+  color: var(--cd-text-primary);
+  font-family: var(--cd-font-sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Typography Overrides */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--cd-font-terminal);
+  color: var(--cd-accent-cyan);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: normal;
+  margin-top: 0;
+}
+
+/* Mechanical Borders */
+.cd-panel {
+  background-color: var(--cd-bg-panel);
+  border: 1px solid var(--cd-border-color);
+  border-radius: 0; /* No rounded corners */
+  padding: 1rem;
+}
+
+/* Interactive Elements */
+button {
+  font-family: var(--cd-font-terminal);
+  text-transform: uppercase;
+  font-size: 1.2rem;
+  background: var(--cd-bg-steel);
+  color: var(--cd-text-primary);
+  border: 1px solid var(--cd-border-color);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border-radius: 0;
+  transition: all 0.1s ease-in-out;
+}
+
+button:hover {
+  border-color: var(--cd-accent-cyan);
+  color: var(--cd-accent-cyan);
+  box-shadow: 0 0 8px var(--cd-accent-cyan-glow);
+}
+
+button:active {
+  background: var(--cd-accent-cyan-dim);
+}
+
+button.primary {
+  color: var(--cd-accent-amber);
+  border-color: var(--cd-accent-amber);
+}
+
+button.primary:hover {
+  box-shadow: 0 0 8px var(--cd-accent-amber-glow);
+}
+
+input, select, textarea {
+  background: var(--cd-bg-dark);
+  color: var(--cd-text-primary);
+  border: 1px solid var(--cd-border-color);
+  padding: 0.75rem;
+  font-family: var(--cd-font-sans);
+  border-radius: 0;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--cd-accent-amber);
+  box-shadow: 0 0 5px var(--cd-accent-amber-glow);
+}
+
+/* Scrollbar styling for webkit */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--cd-bg-dark);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--cd-border-color);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cd-accent-cyan);
+}
+
+/* Modal and Form Shared Styles */
+.cd-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(18, 21, 28, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.cd-modal {
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 0 30px rgba(0, 229, 255, 0.1);
+  background-color: var(--cd-bg-panel);
+}
+
+.cd-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--cd-border-color);
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+}
+
+.cd-modal-header h2 {
+  margin: 0;
+}
+
+.cd-form-group {
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cd-form-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.cd-form-row > .cd-form-group {
+  flex: 1;
+}
+
+.cd-form-group label {
+  font-family: var(--cd-font-terminal);
+  color: var(--cd-accent-cyan);
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+}
+
+.cd-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cd-border-color);
+}
+
+/* Responsive Overrides */
+@media (max-width: 600px) {
+  .cd-form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+  .cd-modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .cd-modal {
+    max-height: 95vh;
+    border-top: 2px solid var(--cd-accent-cyan);
+  }
+  .cd-modal-header {
+    margin-bottom: 1rem;
+  }
+}
+

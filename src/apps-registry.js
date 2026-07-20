@@ -24,6 +24,28 @@ export const CAT_TAGS = new Set(["gaming", "fitness", "outdoor", "mindfulness", 
 
 export const APPS = [
   {
+    emoji: "🖱️",
+    iconBg: "rgba(0,229,255,0.15)",
+    title: "Click Deck",
+    subtitle: "adventure games · timeline · tags",
+    latest: true,
+    deployed: "Jul 2026",
+    tech: "React + Vite + Notion",
+    tags: ["gaming", "notion", "react", "vite"],
+    ds: false,
+    kind: "react-vite",
+    manifest: "/click-deck.webmanifest",
+    description: "Catalogue your journey through graphic narrative and point-and-click adventure games from the 90s to the present. Uses an industrial Beneath a Steel Sky aesthetic and a live Notion database backend.",
+    features: [
+      "Onboarding Wizard to rapidly seed the timeline with genre classics",
+      "Timeline View mapping your history by Release Year",
+      "Dynamic Tag Word Cloud for discovering and filtering intersections",
+      "Live Notion backend syncs via MCP proxy proxy"
+    ],
+    guide: "click-deck-react.html",
+    file: "click-deck-react.html",
+  },
+  {
     emoji: "🧵",
     iconBg: "rgba(201,164,76,0.15)",
     title: "Loom",
