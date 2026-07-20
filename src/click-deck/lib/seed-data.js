@@ -258,6 +258,16 @@ export const PIVOT_TITLES = [
     rating: null,
     journal: "",
     coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1346360/header.jpg"
+  },
+  {
+    title: "STASIS",
+    year: 2015,
+    developer: "THE BROTHERHOOD",
+    tags: ["Point & Click", "Sci-Fi", "Horror"],
+    status: "Backlog",
+    rating: null,
+    journal: "",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/380150/header.jpg"
   }
 ];
 
