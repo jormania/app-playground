@@ -99,59 +99,61 @@ export function App() {
   return (
     <div className="cd-app-container">
       <header className="cd-header">
-        <h1>Click Deck</h1>
-        <nav className="cd-nav">
-          <button 
-            className={view === 'timeline' ? 'primary' : ''} 
-            onClick={() => setView('timeline')}
-          >
-            [T]
-          </button>
-          <button 
-            className={view === 'analytics' ? 'primary' : ''} 
-            onClick={() => setView('analytics')}
-          >
-            [A]
-          </button>
-          <button onClick={() => {
-            setEditingGame(null)
-            setIsEditorOpen(true)
-          }}>
-            +
-          </button>
-          <button onClick={() => {
-            const backlogGames = games.filter(g => g.status === 'Backlog')
-            if (backlogGames.length > 0) {
-              const randomGame = backlogGames[Math.floor(Math.random() * backlogGames.length)]
-              setEditingGame(randomGame)
-              setIsEditorOpen(true)
-            }
-          }}>
-            [R]
-          </button>
-          <button onClick={() => setIsSettingsOpen(true)}>⚙</button>
-        </nav>
-      </header>
+        <div className="cd-header-top">
+          <h1>Click Deck</h1>
+          <nav className="cd-nav">
+            <button className={view === 'timeline' ? 'primary' : ''} onClick={() => setView('timeline')}>[T]</button>
+            <button className={view === 'analytics' ? 'primary' : ''} onClick={() => setView('analytics')}>[A]</button>
+            <button onClick={() => { setEditingGame(null); setIsEditorOpen(true) }}>+</button>
+            <button onClick={() => {
+              const backlogGames = games.filter(g => g.status === 'Backlog')
+              if (backlogGames.length > 0) {
+                const randomGame = backlogGames[Math.floor(Math.random() * backlogGames.length)]
+                setEditingGame(randomGame)
+                setIsEditorOpen(true)
+              }
+            }}>[R]</button>
+            <button onClick={() => setIsSettingsOpen(true)}>⚙</button>
+          </nav>
+        </div>
 
-      {isInitialized && (
-        <div className="cd-global-toolbar cd-panel">
-          <input 
-            type="text" 
-            placeholder="SEARCH DATABASE..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="cd-search-input"
-          />
-          <div className="cd-active-filters">
-            {activeTags.length > 0 && <span className="cd-filter-label">ACTIVE_TAGS:</span>}
+        {isInitialized && (
+          <div className="cd-header-controls">
+            <input 
+              type="text" 
+              placeholder="SEARCH..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="cd-search-input-slim"
+            />
+            {view === 'timeline' && (
+              <select 
+                value={sortBy} 
+                onChange={e => setSortBy(e.target.value)}
+                className="cd-sort-select-slim"
+              >
+                <option value="timeline">Timeline (By Year)</option>
+                <option value="recent">Recently Added</option>
+                <option value="status_backlog">Status: Backlog ({games.filter(g => g.status === 'Backlog').length})</option>
+                <option value="status_playing">Status: Playing ({games.filter(g => g.status === 'Playing').length})</option>
+                <option value="status_completed">Status: Completed ({games.filter(g => g.status === 'Completed').length})</option>
+                <option value="status_abandoned">Status: Abandoned ({games.filter(g => g.status === 'Abandoned').length})</option>
+              </select>
+            )}
+          </div>
+        )}
+        
+        {isInitialized && activeTags.length > 0 && (
+          <div className="cd-active-filters-slim">
+            <span className="cd-filter-label">ACTIVE_TAGS:</span>
             {activeTags.map(tag => (
               <button key={tag} className="cd-active-tag" onClick={() => setActiveTags(activeTags.filter(t => t !== tag))}>
                 {tag} [X]
               </button>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </header>
 
       <main className="cd-main">
         {!isInitialized ? (
@@ -160,20 +162,6 @@ export function App() {
           <>
             {view === 'timeline' && (
               <div className="cd-timeline-container">
-                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '1rem', borderBottom: '1px solid var(--cd-border-color)' }}>
-                  <select 
-                    value={sortBy} 
-                    onChange={e => setSortBy(e.target.value)}
-                    style={{ background: 'var(--cd-bg-panel)', color: 'var(--cd-accent-cyan)', border: '1px solid var(--cd-border-color)', padding: '0.5rem', outline: 'none', fontFamily: 'var(--cd-font-terminal)' }}
-                  >
-                    <option value="timeline">Timeline (By Year)</option>
-                    <option value="recent">Recently Added</option>
-                    <option value="status_backlog">Status: Backlog ({games.filter(g => g.status === 'Backlog').length})</option>
-                    <option value="status_playing">Status: Playing ({games.filter(g => g.status === 'Playing').length})</option>
-                    <option value="status_completed">Status: Completed ({games.filter(g => g.status === 'Completed').length})</option>
-                    <option value="status_abandoned">Status: Abandoned ({games.filter(g => g.status === 'Abandoned').length})</option>
-                  </select>
-                </div>
                 <TimelineView 
                   games={filteredGames} 
                   onEdit={(g) => { setEditingGame(g); setIsEditorOpen(true) }}
@@ -218,64 +206,94 @@ export function App() {
         }
         .cd-header {
           display: flex;
+          flex-direction: column;
+          gap: 0.8rem;
+          margin-bottom: 1.5rem;
+          border-bottom: 1px solid var(--cd-border-color);
+          padding-bottom: 0.8rem;
+        }
+        .cd-header-top {
+          display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 2rem;
-          border-bottom: 2px solid var(--cd-border-color);
-          padding-bottom: 1rem;
-        }
-        .cd-global-toolbar {
-          margin-bottom: 2rem;
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-        .cd-search-input {
-          width: 100%;
-          font-family: var(--cd-font-terminal);
-          font-size: 1.2rem;
-          padding: 0.8rem;
-          text-transform: uppercase;
-        }
-        .cd-active-filters {
-          display: flex;
           flex-wrap: wrap;
           gap: 0.5rem;
-          align-items: center;
-        }
-        .cd-filter-label {
-          font-family: var(--cd-font-terminal);
-          color: var(--cd-accent-cyan);
-        }
-        .cd-active-tag {
-          font-size: 0.8rem;
-          background: var(--cd-accent-cyan-dim);
-          border-color: var(--cd-accent-cyan);
-          color: var(--cd-accent-cyan);
         }
         .cd-header h1 {
           margin: 0;
           line-height: 1;
+          font-size: 1.8rem;
+          letter-spacing: 2px;
+        }
+        .cd-header-controls {
+          display: flex;
+          gap: 0.5rem;
+          width: 100%;
+        }
+        .cd-search-input-slim {
+          flex: 1;
+          font-family: var(--cd-font-terminal);
+          font-size: 1rem;
+          padding: 0.5rem 0.8rem;
+          text-transform: uppercase;
+          background: rgba(0, 0, 0, 0.2);
+          color: var(--cd-text-primary);
+          border: 1px solid var(--cd-border-color);
+          outline: none;
+        }
+        .cd-search-input-slim:focus {
+          border-color: var(--cd-accent-cyan);
+        }
+        .cd-sort-select-slim {
+          background: var(--cd-bg-dark);
+          color: var(--cd-accent-cyan);
+          border: 1px solid var(--cd-border-color);
+          padding: 0.5rem;
+          outline: none;
+          font-family: var(--cd-font-terminal);
+          font-size: 0.9rem;
         }
         .cd-nav {
           display: flex;
-          gap: 1rem;
+          gap: 0.5rem;
           align-items: center;
         }
-        @media (max-width: 768px) {
-          .cd-header {
+        .cd-nav button {
+          padding: 0.4rem 0.6rem;
+          font-size: 0.9rem;
+        }
+        .cd-active-filters-slim {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          align-items: center;
+          margin-top: 0.2rem;
+        }
+        .cd-filter-label {
+          font-family: var(--cd-font-terminal);
+          color: var(--cd-accent-cyan);
+          font-size: 0.8rem;
+        }
+        .cd-active-tag {
+          font-size: 0.7rem;
+          background: var(--cd-accent-cyan-dim);
+          border-color: var(--cd-accent-cyan);
+          color: var(--cd-accent-cyan);
+          padding: 0.2rem 0.4rem;
+        }
+        @media (max-width: 600px) {
+          .cd-header-top {
             flex-direction: column;
-            align-items: flex-start;
-            gap: 1rem;
+            align-items: stretch;
+          }
+          .cd-header-controls {
+            flex-direction: column;
           }
           .cd-nav {
-            flex-wrap: wrap;
-            width: 100%;
+            justify-content: space-between;
           }
           .cd-nav button {
             flex: 1;
-            font-size: 1rem;
-            padding: 0.5rem;
             text-align: center;
           }
         }
