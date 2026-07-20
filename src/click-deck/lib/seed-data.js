@@ -268,6 +268,46 @@ export const PIVOT_TITLES = [
     rating: null,
     journal: "",
     coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/380150/header.jpg"
+  },
+  {
+    title: "STASIS: BONE TOTEM",
+    year: 2023,
+    developer: "THE BROTHERHOOD",
+    tags: ["Point & Click", "Sci-Fi", "Horror"],
+    status: "Backlog",
+    rating: null,
+    journal: "",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1426010/header.jpg"
+  },
+  {
+    title: "Beautiful Desolation",
+    year: 2020,
+    developer: "THE BROTHERHOOD",
+    tags: ["Point & Click", "Sci-Fi", "Post-Apocalyptic"],
+    status: "Backlog",
+    rating: null,
+    journal: "",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/912570/header.jpg"
+  },
+  {
+    title: "Sanitarium",
+    year: 1998,
+    developer: "DreamForge Intertainment",
+    tags: ["Point & Click", "Horror", "Psychological"],
+    status: "Backlog",
+    rating: null,
+    journal: "",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/284050/header.jpg"
+  },
+  {
+    title: "I Have No Mouth, and I Must Scream",
+    year: 1995,
+    developer: "Cyberdreams",
+    tags: ["Point & Click", "Sci-Fi", "Horror"],
+    status: "Backlog",
+    rating: null,
+    journal: "",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/245390/header.jpg"
   }
 ];
 
