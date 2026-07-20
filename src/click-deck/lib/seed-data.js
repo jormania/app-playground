@@ -20,6 +20,36 @@ export const PIVOT_TITLES = [
     coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/32460/header.jpg"
   },
   {
+    title: "The Curse of Monkey Island",
+    year: 1997,
+    developer: "LucasArts",
+    tags: ["SCUMM", "Comedy", "Pirates", "Hand-Drawn", "Classic"],
+    status: "Backlog",
+    rating: null,
+    journal: "The transition to cel-shaded animation was controversial but yielded one of the most beautiful adventure games ever made. Murray the Demonic Talking Skull is a legend.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/730820/header.jpg"
+  },
+  {
+    title: "Escape from Monkey Island",
+    year: 2000,
+    developer: "LucasArts",
+    tags: ["3D", "Comedy", "Pirates", "Tank Controls"],
+    status: "Backlog",
+    rating: null,
+    journal: "The jump to 3D and tank controls was jarring for many. Monkey Kombat is arguably the most frustrating puzzle in the entire series, but the humor is still there.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/730830/header.jpg"
+  },
+  {
+    title: "Tales of Monkey Island",
+    year: 2009,
+    developer: "Telltale Games",
+    tags: ["Episodic", "Comedy", "Pirates", "3D"],
+    status: "Backlog",
+    rating: null,
+    journal: "Telltale's episodic approach breathed new life into the franchise after a long hiatus. The narrative arc across the five chapters is surprisingly emotional.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/31170/header.jpg"
+  },
+  {
     title: "Indiana Jones and the Fate of Atlantis",
     year: 1992,
     developer: "LucasArts",
