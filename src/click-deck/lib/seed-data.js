@@ -217,7 +217,7 @@ export const PIVOT_TITLES = [
     status: "Backlog",
     rating: null,
     journal: "One of the best movie tie-ins ever made, pioneering the dialogue tree and introducing the IQ (Indy Quotient) point system.",
-    coverUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1x4n.jpg"
+    coverUrl: "https://upload.wikimedia.org/wikipedia/en/0/07/Indiana_Jones_and_the_Last_Crusade_-_The_Graphic_Adventure_Coverart.png"
   },
   {
     title: "The Silent Age",
@@ -236,8 +236,28 @@ export const PIVOT_TITLES = [
     tags: ["Sci-Fi", "Fantasy", "Comedy", "Coming of Age"],
     status: "Backlog",
     rating: null,
-    journal: "The Kickstarter darling that revived the genre. Splitting the narrative between two very different worlds kept things constantly engaging.",
+    journal: "Gorgeous hand-painted art and a brilliant dual-narrative structure, even if the second act gets bogged down in backtracking.",
     coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/232790/header.jpg"
+  },
+  {
+    title: "Technobabylon",
+    year: 2015,
+    developer: "Wadjet Eye Games",
+    tags: ["Point & Click", "Sci-Fi", "Cyberpunk"],
+    status: "Backlog",
+    rating: null,
+    journal: "",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/307580/header.jpg"
+  },
+  {
+    title: "Old Skies",
+    year: 2024,
+    developer: "Wadjet Eye Games",
+    tags: ["Point & Click", "Sci-Fi", "Cyberpunk", "Time Travel"],
+    status: "Backlog",
+    rating: null,
+    journal: "",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1346360/header.jpg"
   }
 ];
 
