@@ -217,7 +217,7 @@ export const PIVOT_TITLES = [
     status: "Backlog",
     rating: null,
     journal: "One of the best movie tie-ins ever made, pioneering the dialogue tree and introducing the IQ (Indy Quotient) point system.",
-    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/32310/header.jpg"
+    coverUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1x4n.jpg"
   },
   {
     title: "The Silent Age",
