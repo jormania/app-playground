@@ -168,10 +168,10 @@ export function App() {
                   >
                     <option value="timeline">Timeline (By Year)</option>
                     <option value="recent">Recently Added</option>
-                    <option value="status_backlog">Status: Backlog</option>
-                    <option value="status_playing">Status: Playing</option>
-                    <option value="status_completed">Status: Completed</option>
-                    <option value="status_abandoned">Status: Abandoned</option>
+                    <option value="status_backlog">Status: Backlog ({games.filter(g => g.status === 'Backlog').length})</option>
+                    <option value="status_playing">Status: Playing ({games.filter(g => g.status === 'Playing').length})</option>
+                    <option value="status_completed">Status: Completed ({games.filter(g => g.status === 'Completed').length})</option>
+                    <option value="status_abandoned">Status: Abandoned ({games.filter(g => g.status === 'Abandoned').length})</option>
                   </select>
                 </div>
                 <TimelineView 
