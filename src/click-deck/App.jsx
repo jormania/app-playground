@@ -73,13 +73,14 @@ export function App() {
         activeTags.every(t => g.tags.includes(t))
       )
     }
-    if (sortBy === 'timeline') {
+    if (sortBy.startsWith('status_')) {
+      const targetStatus = sortBy.split('_')[1]
+      result = result.filter(g => g.status.toLowerCase() === targetStatus)
+      result.sort((a, b) => a.year - b.year)
+    } else if (sortBy === 'timeline') {
       result.sort((a, b) => a.year - b.year)
     } else if (sortBy === 'recent') {
       result.sort((a, b) => new Date(b.createdTime) - new Date(a.createdTime))
-    } else if (sortBy === 'status') {
-      const statusOrder = { 'Playing': 1, 'Backlog': 2, 'Completed': 3, 'Abandoned': 4 }
-      result.sort((a, b) => (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99))
     }
     return result
   }, [games, searchQuery, activeTags, sortBy])
@@ -124,9 +125,12 @@ export function App() {
                     onChange={e => setSortBy(e.target.value)}
                     style={{ background: 'var(--cd-bg-color)', color: 'var(--cd-accent-cyan)', border: '1px solid var(--cd-border-color)', padding: '0.5rem', outline: 'none' }}
                   >
-                    <option value="timeline">Sort: Timeline (Year)</option>
-                    <option value="recent">Sort: Recently Added</option>
-                    <option value="status">Sort: By Status</option>
+                    <option value="timeline">Timeline (By Year)</option>
+                    <option value="recent">Recently Added</option>
+                    <option value="status_backlog">Status: Backlog</option>
+                    <option value="status_playing">Status: Playing</option>
+                    <option value="status_completed">Status: Completed</option>
+                    <option value="status_abandoned">Status: Abandoned</option>
                   </select>
                 </div>
                 <TimelineView 
