@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 export function SettingsModal({ onClose, onSaveToken }) {
   const [token, setToken] = useState(localStorage.getItem('cd_notion_token') || '')
   const [dbId, setDbId] = useState(localStorage.getItem('cd_notion_db') || '')
+  const [theme, setTheme] = useState(localStorage.getItem('cd_theme') || 'union')
   const [status, setStatus] = useState('')
 
   const handleCreateDb = async () => {
@@ -73,6 +74,8 @@ export function SettingsModal({ onClose, onSaveToken }) {
   const handleSave = () => {
     localStorage.setItem('cd_notion_token', token)
     localStorage.setItem('cd_notion_db', dbId)
+    localStorage.setItem('cd_theme', theme)
+    document.documentElement.setAttribute('data-theme', theme)
     if (onSaveToken) onSaveToken()
     onClose()
   }
@@ -103,6 +106,22 @@ export function SettingsModal({ onClose, onSaveToken }) {
             onChange={e => setDbId(e.target.value)} 
             placeholder="UUID of existing DB"
           />
+        </div>
+
+        <div className="cd-form-group">
+          <label>AESTHETIC THEME</label>
+          <select 
+            value={theme}
+            onChange={e => {
+              setTheme(e.target.value)
+              document.documentElement.setAttribute('data-theme', e.target.value)
+            }}
+            style={{ width: '100%', padding: '0.8rem', background: 'var(--cd-bg-dark)', color: 'var(--cd-accent-cyan)', border: '1px solid var(--cd-border-color)', fontFamily: 'var(--cd-font-terminal)', fontSize: '1rem', outline: 'none' }}
+          >
+            <option value="union">Union City (Cyan/Amber)</option>
+            <option value="voodoo">Voodoo (Toxic/Purple)</option>
+            <option value="noir">Noir (Grayscale/Gold)</option>
+          </select>
         </div>
 
         <div className="cd-form-group" style={{ marginTop: '1.5rem', padding: '1.5rem', border: '1px solid var(--cd-border-color)', background: 'rgba(0, 0, 0, 0.2)' }}>

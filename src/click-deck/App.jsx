@@ -25,6 +25,11 @@ export function App() {
   }
 
   useEffect(() => {
+    const savedTheme = typeof localStorage !== 'undefined' ? (localStorage.getItem('cd_theme') || 'union') : 'union'
+    document.documentElement.setAttribute('data-theme', savedTheme)
+  }, [])
+
+  useEffect(() => {
     if (isInitialized) {
       loadGames()
     }

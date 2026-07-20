@@ -7,7 +7,11 @@ Click Deck is a standalone web application designed for cataloguing and tracking
 ## Architecture
 
 - **Stack**: React, Vite, CSS Modules (for component scoping), and standard global CSS (for layout resets and theme).
-- **Aesthetics**: A stark, industrial aesthetic heavily inspired by *Beneath a Steel Sky*. It utilizes `JetBrains Mono` terminal fonts, sharp edges with zero border radius, and a high-contrast palette of toxic cyan, warning amber, and deep greys.
+- **Aesthetics**: A stark, industrial aesthetic initially inspired by *Beneath a Steel Sky*. It utilizes `JetBrains Mono` terminal fonts, sharp edges with zero border radius, and a high-contrast palette.
+- **Theme System**: The app supports dynamically toggling CSS variables to shift aesthetics:
+  - **Union City**: Cyan/Amber (Classic Cyberpunk).
+  - **Voodoo**: Toxic Green/Purple (Monkey Island inspired).
+  - **Noir**: Grayscale/Gold (Grim Fandango inspired).
 - **Backend**: Live Notion Database Integration via a proxy layer.
 - **Test Suite**: A comprehensive Vitest + React Testing Library component suite ensuring robustness across all core UI components. 
 
@@ -42,3 +46,8 @@ Click Deck diverges from simpler `localStorage` apps by requiring a real Notion 
 - Deployed as a full Progressive Web App (PWA) with a `.webmanifest` file.
 - Correctly referenced in `cabinet.webmanifest` via `related_applications` to allow native installation checks across the Cone of Cold ecosystem.
 - Fully responsive on mobile, including wrapping navigation bars and collapsing modal forms.
+
+## Usage Guide
+
+- A comprehensive standalone HTML guide (`public/click-deck-guide.html`) provides step-by-step instructions for integrating the Notion backend, initializing the database schema, and populating seed data.
+- The guide is linked directly from the Cone of Cold app catalog (`index.html`).

@@ -42,7 +42,7 @@ export const APPS = [
       "Dynamic Tag Word Cloud for discovering and filtering intersections",
       "Live Notion backend syncs via MCP proxy proxy"
     ],
-    guide: "click-deck-react.html",
+    guide: "click-deck-guide.html",
     file: "click-deck-react.html",
   },
   {

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Click Deck — Guide</title>
+<meta name="description" content="How to set up Click Deck from scratch: connect Notion, initialize the database schema, and populate seed data." />
+<meta name="theme-color" content="#12151c" />
+<link rel="icon" href="/cone-of-cold.png" type="image/png" />
+<style>
+  /* Standard Cone of Cold Guide Theme - adapted for Click Deck aesthetic */
+  :root{
+    --bg:#12151c;--bg2:#1e222b;--surface:#1e222b;--border:#384252;--border2:#00e5ff;
+    --ink:#e0e6ed;--muted:#8b96a8;--faint:#6d8183;--brass:#00e5ff;--cat:#ffb300;--place:#2aa198;--green:#859900;
+    --serif:'JetBrains Mono',monospace;--sans:'JetBrains Mono',system-ui,monospace;--mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.65;-webkit-font-smoothing:antialiased;padding:0 20px 90px}
+  .wrap{max-width:720px;margin:0 auto}
+  header{text-align:center;padding:52px 0 22px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--cat);margin-bottom:12px}
+  h1{font-family:var(--serif);font-weight:600;font-size:clamp(2rem,6vw,2.8rem);line-height:1.03;color:var(--brass);}
+  h1 em{font-style:italic;color:var(--cat)}
+  .lede{color:var(--muted);max-width:52ch;margin:12px auto 0}
+  h2{font-family:var(--serif);font-weight:600;font-size:1.5rem;margin:36px 0 8px;padding-top:20px;border-top:1px solid var(--border);color:var(--brass);}
+  h3{font-size:1.02rem;margin:20px 0 6px;color:var(--ink);}
+  p{margin:10px 0;color:var(--ink)}
+  p.muted{color:var(--muted);font-size:.95rem}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:6px 0}
+  code{font-family:var(--mono);font-size:.82em;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:var(--brass)}
+  a{color:var(--brass);text-decoration:underline}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:0;padding:18px 20px;margin:14px 0}
+  .env{font-family:var(--mono);font-size:.8rem;line-height:1.9;background:var(--bg2);border:1px solid var(--border);border-radius:0;padding:14px 16px;overflow-x:auto;white-space:pre;color:var(--ink)}
+  .pill{display:inline-block;font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--green);border:1px solid var(--green);border-radius:999px;padding:2px 8px;margin-left:8px}
+  .steps{counter-reset:step;list-style:none;margin:14px 0 10px;padding:0;display:grid;gap:13px}
+  .steps li{counter-increment:step;position:relative;padding-left:34px;margin:0}
+  .steps li::before{content:counter(step);position:absolute;left:0;top:1px;color:#12151c;background:var(--brass);font-family:var(--mono);font-size:11px;font-weight:600;width:22px;height:22px;border-radius:0;display:inline-flex;align-items:center;justify-content:center}
+  table.schema{width:100%;border-collapse:collapse;margin:12px 0;font-size:.85rem}
+  table.schema th,table.schema td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  table.schema th{font-family:var(--mono);font-size:.65rem;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-weight:500}
+  table.schema td:first-child{font-family:var(--mono);font-size:.78rem;color:var(--place);white-space:nowrap}
+  table.schema td:nth-child(2){color:var(--cat);white-space:nowrap}
+  .back{display:inline-flex;gap:6px;font-family:var(--mono);font-size:.72rem;color:var(--muted);margin-top:30px;text-transform:uppercase;}
+  footer{text-align:center;font-family:var(--mono);font-size:.68rem;color:var(--faint);margin-top:40px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">catalogue your journey</div>
+    <h1>Click <em>Deck</em> — guide</h1>
+    <p class="lede">A standalone web application for tracking graphic narrative and point-and-click adventure games, backed by your own live Notion database.</p>
+  </header>
+
+  <h2>What it is</h2>
+  <p>Click Deck is a specialized catalog for tracking your adventure game backlog, what you're currently playing, and what you've finished. It utilizes a retro-futuristic, cyberpunk aesthetic and synchronizes live with your own Notion database via our MCP proxy.</p>
+  <p class="muted">Everything is stored in <b>your</b> Notion. The app works on any device and installs as a Progressive Web App (PWA).</p>
+
+  <h2>1. Quick Setup (Onboarding Wizard)</h2>
+  <p>Click Deck features an automated Onboarding Wizard that will help you set up your database automatically in seconds. Here's how to run it:</p>
+  <ol class="steps">
+    <li><b>Create an Integration:</b> Go to <a href="https://www.notion.so/my-integrations" target="_blank">Notion Integrations</a> and create a new integration. Call it "Click Deck".</li>
+    <li><b>Copy the Token:</b> Copy the Internal Integration Secret.</li>
+    <li><b>Share a Page:</b> Create a new blank page in your Notion workspace (e.g., "Gaming Setup"). In the top right corner of Notion, click `...`, go to <b>Connections</b>, and add your "Click Deck" integration to this page.</li>
+    <li><b>Get the Page ID:</b> Copy the link to this page. The long string of characters at the end of the URL is your Page ID.</li>
+    <li><b>Run the Wizard:</b> Open Click Deck, paste your Integration Token and the Page ID into the wizard, and click <b>Initialize Database</b>. Click Deck will automatically build the entire database schema for you!</li>
+  </ol>
+
+  <h2>2. Populating Seed Data</h2>
+  <p>Once your database is initialized, you can start adding games manually, or you can populate it with our curated list of classics.</p>
+  <p>In the <b>Settings (⚙)</b> menu, click the <b>Populate Seed Data</b> button. This will automatically inject legendary games like <i>Grim Fandango</i>, <i>The Secret of Monkey Island</i>, and <i>Disco Elysium</i> straight into your Notion database, complete with high-resolution box art covers.</p>
+
+  <h2>3. Usage & Features</h2>
+  <ul>
+    <li><b>Timeline View:</b> Scroll through your games sorted chronologically by release year. The timeline features dynamic neon micro-animations as you scroll.</li>
+    <li><b>Analytics View:</b> Check out the global word cloud of tags to see what themes dominate your library.</li>
+    <li><b>Global Filtering:</b> Use the top toolbar to search by title/developer, or filter by tags (like "Cyberpunk" or "SCUMM").</li>
+    <li><b>Random Game:</b> Can't decide what to play? Click the <code>[R]ANDOM</code> button to pull a random game from your Backlog!</li>
+    <li><b>Themes:</b> Switch between three distinct aesthetics in the Settings menu (Union City, Voodoo, and Noir) to match your current vibe.</li>
+  </ul>
+
+  <div style="text-align: center;">
+    <a href="/" class="back">← Back to Cone of Cold</a>
+  </div>
+  
+  <footer>
+    <p>Cone of Cold</p>
+  </footer>
+</div>
+</body>
+</html>
