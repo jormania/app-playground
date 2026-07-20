@@ -16,7 +16,8 @@ export const PIVOT_TITLES = [
     tags: ["SCUMM", "Puzzle-Heavy", "Comedy", "Voodoo"],
     status: "Backlog",
     rating: null,
-    journal: "A darker, more surreal follow-up. The spitting contest and the bone dance remain etched in my memory. The ending is still a subject of intense debate."
+    journal: "A darker, more surreal follow-up. The spitting contest and the bone dance remain etched in my memory. The ending is still a subject of intense debate.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/32460/header.jpg"
   },
   {
     title: "Indiana Jones and the Fate of Atlantis",
@@ -34,7 +35,8 @@ export const PIVOT_TITLES = [
     tags: ["SCUMM", "Time Travel", "Comedy", "Moon Logic Puzzles"],
     status: "Completed",
     rating: 4,
-    journal: "A masterpiece of interlocking chronological puzzles. Putting a hamster in a microwave is a crime I'll carry with me to the grave."
+    journal: "A masterpiece of interlocking chronological puzzles. Putting a hamster in a microwave is a crime I'll carry with me to the grave.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/388210/header.jpg"
   },
   {
     title: "Gabriel Knight: Sins of the Fathers",
@@ -43,7 +45,8 @@ export const PIVOT_TITLES = [
     tags: ["Mystery", "Supernatural", "Text-Heavy", "Mature"],
     status: "Playing",
     rating: null,
-    journal: "The shadows of New Orleans hide dark secrets. Tim Curry's drawl as Gabriel brings a gritty, noir-infused reality to this Voodoo murder mystery."
+    journal: "The shadows of New Orleans hide dark secrets. Tim Curry's drawl as Gabriel brings a gritty, noir-infused reality to this Voodoo murder mystery.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/262000/header.jpg"
   },
   {
     title: "Beneath a Steel Sky",
@@ -72,7 +75,8 @@ export const PIVOT_TITLES = [
     tags: ["SCUMM", "Sci-Fi", "Serious", "Cinematic", "Alien"],
     status: "Backlog",
     rating: null,
-    journal: "A sobering, Spielberg-penned exploration of alien desolation. The puzzles are brutal, but the sweeping orchestral score and sheer isolation are unmatched."
+    journal: "A sobering, Spielberg-penned exploration of alien desolation. The puzzles are brutal, but the sweeping orchestral score and sheer isolation are unmatched.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/6040/header.jpg"
   },
   {
     title: "Grim Fandango",
@@ -91,7 +95,8 @@ export const PIVOT_TITLES = [
     tags: ["Fantasy", "Sci-Fi", "Text-Heavy", "Epic"],
     status: "Backlog",
     rating: null,
-    journal: "April Ryan's dimension-hopping odyssey between Stark and Arcadia. A dense, sprawling narrative that redefined the scale of adventure games."
+    journal: "April Ryan's dimension-hopping odyssey between Stark and Arcadia. A dense, sprawling narrative that redefined the scale of adventure games.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/6310/header.jpg"
   },
   {
     title: "Syberia",
@@ -100,7 +105,8 @@ export const PIVOT_TITLES = [
     tags: ["Steampunk", "Automata", "Atmospheric", "Linear"],
     status: "Backlog",
     rating: null,
-    journal: "Kate Walker's journey across a frozen, clockwork Europe. The atmosphere is melancholic and beautiful, driven by a deep sense of wanderlust."
+    journal: "Kate Walker's journey across a frozen, clockwork Europe. The atmosphere is melancholic and beautiful, driven by a deep sense of wanderlust.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3660220/header.jpg"
   },
   {
     title: "Gemini Rue",
@@ -118,7 +124,8 @@ export const PIVOT_TITLES = [
     tags: ["Magical Realism", "Narrative", "Surreal", "Text-Heavy", "Americana"],
     status: "Completed",
     rating: 5,
-    journal: "More of a play than a game. A hauntingly beautiful, surreal drive through a forgotten America that lingers in the mind long after."
+    journal: "More of a play than a game. A hauntingly beautiful, surreal drive through a forgotten America that lingers in the mind long after.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/231200/header.jpg"
   },
   {
     title: "Thimbleweed Park",
@@ -163,7 +170,8 @@ export const PIVOT_TITLES = [
     tags: ["Southern Gothic", "Cyberpunk", "Pixel Art", "Surreal", "Text-Heavy"],
     status: "Backlog",
     rating: null,
-    journal: "A surreal, grounded exploration of a sinking Louisiana town. It weaves industrial decay and strange mysticism into something truly unique."
+    journal: "A surreal, grounded exploration of a sinking Louisiana town. It weaves industrial decay and strange mysticism into something truly unique.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1221250/header.jpg"
   },
   {
     title: "Return to Monkey Island",
@@ -181,7 +189,8 @@ export const PIVOT_TITLES = [
     tags: ["Mystery", "Detective", "Moon Logic Puzzles", "Pixel Art"],
     status: "Backlog",
     rating: null,
-    journal: "A brilliant deductive reasoning game. Piecing together the morbid tableaus requires true detective work, not just exhausting dialogue trees."
+    journal: "A brilliant deductive reasoning game. Piecing together the morbid tableaus requires true detective work, not just exhausting dialogue trees.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1677770/header.jpg"
   }
 ];
 
