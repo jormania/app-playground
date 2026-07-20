@@ -97,6 +97,12 @@ input, select, textarea {
   box-sizing: border-box;
 }
 
+option, optgroup {
+  background: var(--cd-bg-panel);
+  color: var(--cd-accent-cyan);
+  font-family: var(--cd-font-terminal);
+}
+
 input:focus, select:focus, textarea:focus {
   border-color: var(--cd-accent-amber);
   box-shadow: 0 0 5px var(--cd-accent-amber-glow);

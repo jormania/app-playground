@@ -123,7 +123,7 @@ export function App() {
                   <select 
                     value={sortBy} 
                     onChange={e => setSortBy(e.target.value)}
-                    style={{ background: 'var(--cd-bg-color)', color: 'var(--cd-accent-cyan)', border: '1px solid var(--cd-border-color)', padding: '0.5rem', outline: 'none' }}
+                    style={{ background: 'var(--cd-bg-panel)', color: 'var(--cd-accent-cyan)', border: '1px solid var(--cd-border-color)', padding: '0.5rem', outline: 'none', fontFamily: 'var(--cd-font-terminal)' }}
                   >
                     <option value="timeline">Timeline (By Year)</option>
                     <option value="recent">Recently Added</option>
