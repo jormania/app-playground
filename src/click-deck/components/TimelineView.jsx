@@ -124,6 +124,7 @@ export function TimelineView({ games, onEdit, onUpdateStatus }) {
         }
         .cd-timeline-content {
           flex: 1;
+          min-width: 0;
           padding-left: 2rem;
         }
         .cd-empty {

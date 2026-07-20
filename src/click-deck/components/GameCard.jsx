@@ -139,6 +139,7 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
         }
         .cd-quick-update {
           display: flex;
+          flex-wrap: wrap;
           gap: 0.5rem;
           border-top: 1px solid var(--cd-border-color);
           padding-top: 0.8rem;
