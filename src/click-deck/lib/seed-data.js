@@ -6,7 +6,7 @@ export const PIVOT_TITLES = [
     tags: ["SCUMM", "Puzzle-Heavy", "Comedy", "Pirates"],
     status: "Completed",
     rating: 5,
-    journal: "Classic insult sword fighting."
+    journal: "I am rubber, you are glue. The foundational text of insult sword fighting, establishing a comedic tone that defined an entire era of adventure games."
   },
   {
     title: "Monkey Island 2: LeChuck's Revenge",
@@ -15,7 +15,7 @@ export const PIVOT_TITLES = [
     tags: ["SCUMM", "Puzzle-Heavy", "Comedy", "Voodoo"],
     status: "Backlog",
     rating: null,
-    journal: ""
+    journal: "A darker, more surreal follow-up. The spitting contest and the bone dance remain etched in my memory. The ending is still a subject of intense debate."
   },
   {
     title: "Indiana Jones and the Fate of Atlantis",
@@ -24,7 +24,7 @@ export const PIVOT_TITLES = [
     tags: ["SCUMM", "Action-Adventure", "Mythology"],
     status: "Backlog",
     rating: null,
-    journal: ""
+    journal: "Often considered the true fourth Indiana Jones movie. The three distinct paths (Wits, Fists, Team) offered unprecedented replayability for the genre."
   },
   {
     title: "Day of the Tentacle",
@@ -33,7 +33,7 @@ export const PIVOT_TITLES = [
     tags: ["SCUMM", "Time Travel", "Comedy", "Moon Logic Puzzles"],
     status: "Completed",
     rating: 4,
-    journal: "The microwave hamster puzzle was weird."
+    journal: "A masterpiece of interlocking chronological puzzles. Putting a hamster in a microwave is a crime I'll carry with me to the grave."
   },
   {
     title: "Gabriel Knight: Sins of the Fathers",
@@ -42,7 +42,7 @@ export const PIVOT_TITLES = [
     tags: ["Mystery", "Supernatural", "Text-Heavy", "Mature"],
     status: "Playing",
     rating: null,
-    journal: "Gathering clues in New Orleans."
+    journal: "The shadows of New Orleans hide dark secrets. Tim Curry's drawl as Gabriel brings a gritty, noir-infused reality to this Voodoo murder mystery."
   },
   {
     title: "Beneath a Steel Sky",
@@ -51,7 +51,7 @@ export const PIVOT_TITLES = [
     tags: ["Cyberpunk", "Dystopian", "Sci-Fi", "Comic Book Style"],
     status: "Completed",
     rating: 5,
-    journal: "Amazing Dave Gibbons art."
+    journal: "Dave Gibbons' art direction creates a suffocating yet beautiful dystopian metropolis. Foster and Joey's banter is the beating heart of Union City."
   },
   {
     title: "Full Throttle",
@@ -60,7 +60,7 @@ export const PIVOT_TITLES = [
     tags: ["SCUMM", "Biker", "Action-Adventure", "Cinematic"],
     status: "Backlog",
     rating: null,
-    journal: ""
+    journal: "Whenever I smell asphalt, I think of Maureen. That's the last sensation I had before I blacked out; that thick smell of asphalt."
   },
   {
     title: "The Dig",
@@ -69,7 +69,7 @@ export const PIVOT_TITLES = [
     tags: ["SCUMM", "Sci-Fi", "Serious", "Cinematic", "Alien"],
     status: "Backlog",
     rating: null,
-    journal: ""
+    journal: "A sobering, Spielberg-penned exploration of alien desolation. The puzzles are brutal, but the sweeping orchestral score and sheer isolation are unmatched."
   },
   {
     title: "Grim Fandango",
@@ -78,7 +78,7 @@ export const PIVOT_TITLES = [
     tags: ["3D", "Noir", "Comedy", "Afterlife", "Tank Controls"],
     status: "Completed",
     rating: 5,
-    journal: "Manny Calavera is iconic."
+    journal: "Manny Calavera is iconic. A brilliant fusion of Aztec mythology and film noir. The tank controls are painful, but the writing is unparalleled."
   },
   {
     title: "The Longest Journey",
@@ -87,7 +87,7 @@ export const PIVOT_TITLES = [
     tags: ["Fantasy", "Sci-Fi", "Text-Heavy", "Epic"],
     status: "Backlog",
     rating: null,
-    journal: ""
+    journal: "April Ryan's dimension-hopping odyssey between Stark and Arcadia. A dense, sprawling narrative that redefined the scale of adventure games."
   },
   {
     title: "Syberia",
@@ -96,7 +96,7 @@ export const PIVOT_TITLES = [
     tags: ["Steampunk", "Automata", "Atmospheric", "Linear"],
     status: "Backlog",
     rating: null,
-    journal: ""
+    journal: "Kate Walker's journey across a frozen, clockwork Europe. The atmosphere is melancholic and beautiful, driven by a deep sense of wanderlust."
   },
   {
     title: "Gemini Rue",
@@ -105,7 +105,7 @@ export const PIVOT_TITLES = [
     tags: ["Cyberpunk", "Noir", "Retro", "Pixel Art"],
     status: "Playing",
     rating: null,
-    journal: "Love the atmosphere."
+    journal: "Rain-slicked streets and memory wipes. It perfectly captures the spirit of 90s cyberpunk adventures while delivering a gripping, dual-perspective narrative."
   },
   {
     title: "Kentucky Route Zero",
@@ -114,7 +114,7 @@ export const PIVOT_TITLES = [
     tags: ["Magical Realism", "Narrative", "Surreal", "Text-Heavy", "Americana"],
     status: "Completed",
     rating: 5,
-    journal: "More of a play than a game. Beautiful."
+    journal: "More of a play than a game. A hauntingly beautiful, surreal drive through a forgotten America that lingers in the mind long after."
   },
   {
     title: "Thimbleweed Park",
@@ -123,7 +123,7 @@ export const PIVOT_TITLES = [
     tags: ["SCUMM-like", "Mystery", "Retro", "Meta", "Comedy"],
     status: "Completed",
     rating: 4,
-    journal: ""
+    journal: "A loving homage to the golden age. The murder mystery serves as a perfect vehicle for relentless meta-humor and classic verb-coin puzzles."
   },
   {
     title: "What Remains of Edith Finch",
@@ -132,7 +132,7 @@ export const PIVOT_TITLES = [
     tags: ["Walking Simulator", "Narrative", "Tragedy", "Magical Realism"],
     status: "Completed",
     rating: 5,
-    journal: "The cannery sequence..."
+    journal: "The cannery sequence is a masterclass in interactive storytelling. A tragic, beautiful meditation on family curses and the inevitability of death."
   },
   {
     title: "Unavowed",
@@ -141,7 +141,7 @@ export const PIVOT_TITLES = [
     tags: ["Supernatural", "Urban Fantasy", "Pixel Art", "Party Based"],
     status: "Backlog",
     rating: null,
-    journal: ""
+    journal: "Blending point-and-click mechanics with RPG party dynamics. A dark, gripping journey through a demon-infested New York City."
   },
   {
     title: "Disco Elysium",
@@ -150,7 +150,7 @@ export const PIVOT_TITLES = [
     tags: ["RPG", "Text-Heavy", "Existential", "Politics", "Surreal"],
     status: "Playing",
     rating: null,
-    journal: "I am a superstar cop."
+    journal: "I am a superstar cop. A staggering achievement in writing, where your own fragmented psyche is both your greatest asset and worst enemy."
   },
   {
     title: "Norco",
@@ -159,7 +159,7 @@ export const PIVOT_TITLES = [
     tags: ["Southern Gothic", "Cyberpunk", "Pixel Art", "Surreal", "Text-Heavy"],
     status: "Backlog",
     rating: null,
-    journal: ""
+    journal: "A surreal, grounded exploration of a sinking Louisiana town. It weaves industrial decay and strange mysticism into something truly unique."
   },
   {
     title: "Return to Monkey Island",
@@ -168,7 +168,7 @@ export const PIVOT_TITLES = [
     tags: ["Comedy", "Pirates", "Nostalgia", "Puzzle-Heavy"],
     status: "Completed",
     rating: 4,
-    journal: "A nice return to form."
+    journal: "A nice return to form. It manages to balance profound nostalgia with a touching, bittersweet reflection on the nature of revisiting the past."
   },
   {
     title: "The Case of the Golden Idol",
@@ -177,7 +177,7 @@ export const PIVOT_TITLES = [
     tags: ["Mystery", "Detective", "Moon Logic Puzzles", "Pixel Art"],
     status: "Backlog",
     rating: null,
-    journal: ""
+    journal: "A brilliant deductive reasoning game. Piecing together the morbid tableaus requires true detective work, not just exhausting dialogue trees."
   }
 ];
 
