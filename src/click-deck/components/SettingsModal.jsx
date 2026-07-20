@@ -102,14 +102,12 @@ export function SettingsModal({ onClose, onSaveToken }) {
         </div>
 
         <div className="cd-form-group" style={{ marginTop: '1.5rem', padding: '1.5rem', border: '1px solid var(--cd-border-color)', background: 'rgba(0, 0, 0, 0.2)' }}>
-          <label style={{ marginBottom: '0.5rem', display: 'block' }}>DATABASE INITIALIZATION</label>
+          <label style={{ marginBottom: '0.5rem', display: 'block' }}>DATABASE ACTIONS</label>
           <p style={{ fontSize: '0.95rem', color: 'var(--cd-text-muted)', marginBottom: '1.5rem', lineHeight: '1.4' }}>
-            Creates the DB schema under the configured App Databases page. Requires Integration Token.
+            Initialize a new schema, seed mock data, or factory reset the local application state.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <button type="button" onClick={handleCreateDb}>Initialize Database via MCP</button>
-            {status && <div style={{ color: 'var(--cd-accent-cyan)', fontSize: '0.9rem' }}>{status}</div>}
-            
             <button type="button" onClick={async () => {
               setStatus('Seeding database... please wait.')
               try {
@@ -120,6 +118,14 @@ export function SettingsModal({ onClose, onSaveToken }) {
                 setStatus('Seeding failed: ' + e.message)
               }
             }}>Populate Seed Data</button>
+            <button type="button" onClick={() => {
+              if(window.confirm('Are you sure you want to completely wipe the local DB state?')) {
+                if (onResetDb) onResetDb()
+              }
+            }} style={{ color: 'var(--cd-accent-amber)', borderColor: 'var(--cd-accent-amber)' }}>
+              ⚠️ Factory Reset DB State
+            </button>
+            {status && <div style={{ color: 'var(--cd-accent-cyan)', fontSize: '0.9rem' }}>{status}</div>}
           </div>
         </div>
 

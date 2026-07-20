@@ -28,7 +28,8 @@ const mapPageToGame = (page) => ({
   tags: page.properties['Tags']?.multi_select?.map(t => t.name) || [],
   status: page.properties['Status']?.select?.name || 'Backlog',
   rating: page.properties['Rating']?.number || null,
-  journal: page.properties['Journal/Notes']?.rich_text?.map(rt => rt.plain_text).join('') || ''
+  journal: page.properties['Journal/Notes']?.rich_text?.map(rt => rt.plain_text).join('') || '',
+  createdTime: page.created_time || new Date().toISOString()
 })
 
 const mapGameToProperties = (game) => {

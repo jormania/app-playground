@@ -24,10 +24,20 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
         <span className="cd-status" style={{ color: getStatusColor(game.status) }}>
           [{game.status}]
         </span>
-        {game.status === 'Completed' && game.rating && (
+        {game.status === 'Completed' && (
           <>
             <span className="cd-separator">|</span>
-            <span className="cd-rating">{'★'.repeat(game.rating)}{'☆'.repeat(5 - game.rating)}</span>
+            <span className="cd-rating">
+              {[1, 2, 3, 4, 5].map(star => (
+                <span 
+                  key={star} 
+                  style={{ cursor: 'pointer', color: game.rating >= star ? 'inherit' : 'var(--cd-text-muted)' }}
+                  onClick={() => onUpdateStatus(game.id, game.status, star)}
+                >
+                  {game.rating >= star ? '★' : '☆'}
+                </span>
+              ))}
+            </span>
           </>
         )}
       </div>

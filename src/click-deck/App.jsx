@@ -17,6 +17,7 @@ export function App() {
   // Analytics filters
   const [activeTags, setActiveTags] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState('timeline')
 
   const loadGames = async () => {
     const data = await McpConnector.getGames()
@@ -72,10 +73,16 @@ export function App() {
         activeTags.every(t => g.tags.includes(t))
       )
     }
-    // Sort chronologically
-    result.sort((a, b) => a.year - b.year)
+    if (sortBy === 'timeline') {
+      result.sort((a, b) => a.year - b.year)
+    } else if (sortBy === 'recent') {
+      result.sort((a, b) => new Date(b.createdTime) - new Date(a.createdTime))
+    } else if (sortBy === 'status') {
+      const statusOrder = { 'Playing': 1, 'Backlog': 2, 'Completed': 3, 'Abandoned': 4 }
+      result.sort((a, b) => (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99))
+    }
     return result
-  }, [games, searchQuery, activeTags])
+  }, [games, searchQuery, activeTags, sortBy])
 
   return (
     <div className="cd-app-container">
@@ -98,10 +105,9 @@ export function App() {
             setEditingGame(null)
             setIsEditorOpen(true)
           }}>
-            [+] Add Game
+            +
           </button>
-          <button onClick={() => setIsSettingsOpen(true)}>⚙ Settings</button>
-          <button onClick={resetDb}>Reset DB</button>
+          <button onClick={() => setIsSettingsOpen(true)}>⚙</button>
         </nav>
       </header>
 
@@ -111,11 +117,24 @@ export function App() {
         ) : (
           <>
             {view === 'timeline' && (
-              <TimelineView 
-                games={filteredGames} 
-                onEdit={(g) => { setEditingGame(g); setIsEditorOpen(true) }}
-                onUpdateStatus={handleUpdateStatus}
-              />
+              <div className="cd-timeline-container">
+                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '1rem', borderBottom: '1px solid var(--cd-border-color)' }}>
+                  <select 
+                    value={sortBy} 
+                    onChange={e => setSortBy(e.target.value)}
+                    style={{ background: 'var(--cd-bg-color)', color: 'var(--cd-accent-cyan)', border: '1px solid var(--cd-border-color)', padding: '0.5rem', outline: 'none' }}
+                  >
+                    <option value="timeline">Sort: Timeline (Year)</option>
+                    <option value="recent">Sort: Recently Added</option>
+                    <option value="status">Sort: By Status</option>
+                  </select>
+                </div>
+                <TimelineView 
+                  games={filteredGames} 
+                  onEdit={(g) => { setEditingGame(g); setIsEditorOpen(true) }}
+                  onUpdateStatus={handleUpdateStatus}
+                />
+              </div>
             )}
             {view === 'analytics' && (
               <AnalyticsView 
@@ -141,7 +160,8 @@ export function App() {
 
       {isSettingsOpen && (
         <SettingsModal 
-          onClose={() => setIsSettingsOpen(false)}
+          onClose={() => setIsSettingsOpen(false)} 
+          onResetDb={() => { setIsSettingsOpen(false); resetDb(); }}
         />
       )}
 

@@ -45,6 +45,13 @@ export function OnboardingWizard({ onComplete }) {
           border-bottom: 1px solid var(--cd-accent-cyan);
           padding-bottom: 1rem;
           margin-bottom: 2rem;
+          word-break: break-word;
+          font-size: 1.5rem;
+        }
+        @media (max-width: 480px) {
+          .cd-onboarding h2 {
+            font-size: 1.25rem;
+          }
         }
         .cd-onboarding-content p {
           font-family: var(--cd-font-terminal);
