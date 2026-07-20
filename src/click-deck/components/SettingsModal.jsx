@@ -10,6 +10,10 @@ export function SettingsModal({ onClose, onSaveToken }) {
       setStatus('Please enter a Notion Integration Token first.')
       return
     }
+    if (dbId) {
+      const confirm = window.confirm('You already have a Database ID entered. Initializing a new schema will ignore it. Continue?')
+      if (!confirm) return
+    }
     setStatus('Creating database in Notion...')
     
     // Hardcoded parent page ID provided by user
@@ -107,11 +111,23 @@ export function SettingsModal({ onClose, onSaveToken }) {
             Initialize a new schema, seed mock data, or factory reset the local application state.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <button type="button" onClick={handleCreateDb}>Initialize Database via MCP</button>
+            <button type="button" onClick={handleCreateDb}>Initialize New Database Schema</button>
             <button type="button" onClick={async () => {
-              setStatus('Seeding database... please wait.')
+              setStatus('Checking database state...')
               try {
                 const { McpConnector } = await import('../lib/mcp-connector.js')
+                
+                // Safety check: is DB already populated?
+                const existingGames = await McpConnector.getGames()
+                if (existingGames && existingGames.length > 0) {
+                  const confirm = window.confirm('This database already contains data. Seeding it again will create duplicates. Are you absolutely sure?')
+                  if (!confirm) {
+                    setStatus('Seeding cancelled.')
+                    return
+                  }
+                }
+                
+                setStatus('Seeding database... please wait.')
                 await McpConnector.initializeMockData()
                 setStatus('Seeding complete! You may close settings.')
               } catch(e) {
@@ -119,8 +135,12 @@ export function SettingsModal({ onClose, onSaveToken }) {
               }
             }}>Populate Seed Data</button>
             <button type="button" onClick={() => {
-              if(window.confirm('Are you sure you want to completely wipe the local DB state?')) {
+              const confirm = window.prompt('Are you sure you want to completely wipe the local DB state? Type "RESET" to confirm.')
+              if(confirm === 'RESET') {
                 if (onResetDb) onResetDb()
+                setStatus('Database state reset successfully.')
+              } else {
+                setStatus('Factory reset cancelled.')
               }
             }} style={{ color: 'var(--cd-accent-amber)', borderColor: 'var(--cd-accent-amber)' }}>
               ⚠️ Factory Reset DB State
