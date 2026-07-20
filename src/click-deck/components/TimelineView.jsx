@@ -27,7 +27,12 @@ export function TimelineView({ games, onEdit, onUpdateStatus }) {
   }, [games])
 
   if (games.length === 0) {
-    return <div className="cd-empty">No entries found. Adjust your filters or add a game.</div>
+    return (
+      <div className="cd-empty-terminal cd-panel">
+        <p className="cd-empty-line">&gt; QUERY EXECUTED...</p>
+        <p className="cd-empty-line blink">&gt; 0 RECORDS FOUND. WAITING FOR INPUT_</p>
+      </div>
+    )
   }
 
   // Group by year or just render sequentially
@@ -148,6 +153,25 @@ export function TimelineView({ games, onEdit, onUpdateStatus }) {
             padding-left: 1rem;
             width: calc(100% - 3rem); /* Ensure content doesn't overflow */
           }
+        }
+        .cd-empty-terminal {
+          padding: 3rem;
+          text-align: center;
+          font-family: var(--cd-font-terminal);
+          color: var(--cd-accent-amber);
+          background: rgba(255, 179, 0, 0.05);
+          border-color: var(--cd-accent-amber);
+        }
+        .cd-empty-line {
+          margin: 0.5rem 0;
+          font-size: 1.2rem;
+        }
+        .blink {
+          animation: blink-cursor 1s step-end infinite;
+        }
+        @keyframes blink-cursor {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
         }
       `}</style>
     </div>

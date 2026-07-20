@@ -52,6 +52,17 @@ h1, h2, h3, h4, h5, h6 {
   padding: 1rem;
 }
 
+/* Game Card Aesthetics */
+.cd-game-card {
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.cd-game-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--cd-accent-cyan);
+  box-shadow: 0 4px 12px var(--cd-accent-cyan-glow);
+}
+
 /* Interactive Elements */
 button {
   font-family: var(--cd-font-terminal);

@@ -26,7 +26,8 @@ export const PIVOT_TITLES = [
     tags: ["SCUMM", "Action-Adventure", "Mythology"],
     status: "Backlog",
     rating: null,
-    journal: "Often considered the true fourth Indiana Jones movie. The three distinct paths (Wits, Fists, Team) offered unprecedented replayability for the genre."
+    journal: "Often considered the true fourth Indiana Jones movie. The three distinct paths (Wits, Fists, Team) offered unprecedented replayability for the genre.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/6010/header.jpg"
   },
   {
     title: "Day of the Tentacle",
@@ -115,7 +116,8 @@ export const PIVOT_TITLES = [
     tags: ["Cyberpunk", "Noir", "Retro", "Pixel Art"],
     status: "Playing",
     rating: null,
-    journal: "Rain-slicked streets and memory wipes. It perfectly captures the spirit of 90s cyberpunk adventures while delivering a gripping, dual-perspective narrative."
+    journal: "Rain-slicked streets and memory wipes. It perfectly captures the spirit of 90s cyberpunk adventures while delivering a gripping, dual-perspective narrative.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/80310/header.jpg"
   },
   {
     title: "Kentucky Route Zero",
@@ -134,7 +136,8 @@ export const PIVOT_TITLES = [
     tags: ["SCUMM-like", "Mystery", "Retro", "Meta", "Comedy"],
     status: "Completed",
     rating: 4,
-    journal: "A loving homage to the golden age. The murder mystery serves as a perfect vehicle for relentless meta-humor and classic verb-coin puzzles."
+    journal: "A loving homage to the golden age. The murder mystery serves as a perfect vehicle for relentless meta-humor and classic verb-coin puzzles.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/569860/header.jpg"
   },
   {
     title: "What Remains of Edith Finch",
@@ -143,7 +146,8 @@ export const PIVOT_TITLES = [
     tags: ["Walking Simulator", "Narrative", "Tragedy", "Magical Realism"],
     status: "Completed",
     rating: 5,
-    journal: "The cannery sequence is a masterclass in interactive storytelling. A tragic, beautiful meditation on family curses and the inevitability of death."
+    journal: "The cannery sequence is a masterclass in interactive storytelling. A tragic, beautiful meditation on family curses and the inevitability of death.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/501300/header.jpg"
   },
   {
     title: "Unavowed",
@@ -152,7 +156,8 @@ export const PIVOT_TITLES = [
     tags: ["Supernatural", "Urban Fantasy", "Pixel Art", "Party Based"],
     status: "Backlog",
     rating: null,
-    journal: "Blending point-and-click mechanics with RPG party dynamics. A dark, gripping journey through a demon-infested New York City."
+    journal: "Blending point-and-click mechanics with RPG party dynamics. A dark, gripping journey through a demon-infested New York City.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/336140/header.jpg"
   },
   {
     title: "Disco Elysium",
@@ -161,7 +166,8 @@ export const PIVOT_TITLES = [
     tags: ["RPG", "Text-Heavy", "Existential", "Politics", "Surreal"],
     status: "Playing",
     rating: null,
-    journal: "I am a superstar cop. A staggering achievement in writing, where your own fragmented psyche is both your greatest asset and worst enemy."
+    journal: "I am a superstar cop. A staggering achievement in writing, where your own fragmented psyche is both your greatest asset and worst enemy.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/632470/header.jpg"
   },
   {
     title: "Norco",
@@ -180,7 +186,8 @@ export const PIVOT_TITLES = [
     tags: ["Comedy", "Pirates", "Nostalgia", "Puzzle-Heavy"],
     status: "Completed",
     rating: 4,
-    journal: "A nice return to form. It manages to balance profound nostalgia with a touching, bittersweet reflection on the nature of revisiting the past."
+    journal: "A nice return to form. It manages to balance profound nostalgia with a touching, bittersweet reflection on the nature of revisiting the past.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2060130/header.jpg"
   },
   {
     title: "The Case of the Golden Idol",

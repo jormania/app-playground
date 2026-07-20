@@ -23,24 +23,7 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
 
   return (
     <div className="cd-analytics">
-      <div className="cd-filters cd-panel">
-        <h3>SYS_QUERY_INTERFACE</h3>
-        <input 
-          type="text" 
-          placeholder="SEARCH TITLE OR DEVELOPER..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="cd-search-input"
-        />
-        <div className="cd-active-filters">
-          {activeTags.length > 0 && <span className="cd-filter-label">ACTIVE_TAGS:</span>}
-          {activeTags.map(tag => (
-            <button key={tag} className="cd-active-tag" onClick={() => toggleTag(tag)}>
-              {tag} [X]
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Global filters have been extracted to App.jsx */}
 
       <div className="cd-word-cloud cd-panel">
         <h3>GLOBAL_TAG_MATRIX</h3>
@@ -79,30 +62,6 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
           display: flex;
           flex-direction: column;
           gap: 1.5rem;
-        }
-        .cd-search-input {
-          width: 100%;
-          margin-bottom: 1rem;
-          font-family: var(--cd-font-terminal);
-          font-size: 1.2rem;
-          padding: 0.8rem;
-          text-transform: uppercase;
-        }
-        .cd-active-filters {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-          align-items: center;
-        }
-        .cd-filter-label {
-          font-family: var(--cd-font-terminal);
-          color: var(--cd-accent-cyan);
-        }
-        .cd-active-tag {
-          font-size: 0.8rem;
-          background: var(--cd-accent-cyan-dim);
-          border-color: var(--cd-accent-cyan);
-          color: var(--cd-accent-cyan);
         }
         .cd-cloud-container {
           display: flex;

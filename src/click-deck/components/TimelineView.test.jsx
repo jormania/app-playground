@@ -39,7 +39,7 @@ describe('TimelineView', () => {
   afterEach(() => cleanup());
   it('renders empty state correctly', () => {
     render(<TimelineView games={[]} onEdit={() => {}} onUpdateStatus={() => {}} />)
-    expect(screen.getByText('No entries found. Adjust your filters or add a game.')).toBeTruthy()
+    expect(screen.getByText('> QUERY EXECUTED...')).toBeTruthy()
   })
 
   it('renders timeline with games', () => {

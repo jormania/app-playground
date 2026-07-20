@@ -108,9 +108,39 @@ export function App() {
           }}>
             +
           </button>
+          <button onClick={() => {
+            const backlogGames = games.filter(g => g.status === 'Backlog')
+            if (backlogGames.length > 0) {
+              const randomGame = backlogGames[Math.floor(Math.random() * backlogGames.length)]
+              setEditingGame(randomGame)
+              setIsEditorOpen(true)
+            }
+          }}>
+            [R]ANDOM
+          </button>
           <button onClick={() => setIsSettingsOpen(true)}>⚙</button>
         </nav>
       </header>
+
+      {isInitialized && (
+        <div className="cd-global-toolbar cd-panel">
+          <input 
+            type="text" 
+            placeholder="SEARCH DATABASE..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="cd-search-input"
+          />
+          <div className="cd-active-filters">
+            {activeTags.length > 0 && <span className="cd-filter-label">ACTIVE_TAGS:</span>}
+            {activeTags.map(tag => (
+              <button key={tag} className="cd-active-tag" onClick={() => setActiveTags(activeTags.filter(t => t !== tag))}>
+                {tag} [X]
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <main className="cd-main">
         {!isInitialized ? (
@@ -182,6 +212,35 @@ export function App() {
           margin-bottom: 2rem;
           border-bottom: 2px solid var(--cd-border-color);
           padding-bottom: 1rem;
+        }
+        .cd-global-toolbar {
+          margin-bottom: 2rem;
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+        .cd-search-input {
+          width: 100%;
+          font-family: var(--cd-font-terminal);
+          font-size: 1.2rem;
+          padding: 0.8rem;
+          text-transform: uppercase;
+        }
+        .cd-active-filters {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          align-items: center;
+        }
+        .cd-filter-label {
+          font-family: var(--cd-font-terminal);
+          color: var(--cd-accent-cyan);
+        }
+        .cd-active-tag {
+          font-size: 0.8rem;
+          background: var(--cd-accent-cyan-dim);
+          border-color: var(--cd-accent-cyan);
+          color: var(--cd-accent-cyan);
         }
         .cd-header h1 {
           margin: 0;
