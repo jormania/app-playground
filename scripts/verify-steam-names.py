@@ -91,11 +91,12 @@ def main():
         except KeyError:
             notion_name = "Unknown"
 
-        games_to_verify.append({
-            "notion_name": notion_name,
-            "app_id": app_id,
-            "page_id": page["id"]
-        })
+        if app_id > 0:
+            games_to_verify.append({
+                "notion_name": notion_name,
+                "app_id": app_id,
+                "page_id": page["id"]
+            })
 
     if not games_to_verify:
         print("No games found with Steam App IDs.")

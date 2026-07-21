@@ -81,11 +81,12 @@ def main():
         app_id_val = page["properties"]["Steam App ID"]["number"]
         app_id = int(app_id_val) if app_id_val is not None else 0
         current_price = page["properties"].get("Current Price", {}).get("number")
-        games_to_update.append({
-            "page_id": page["id"],
-            "app_id": app_id,
-            "current_price": current_price
-        })
+        if app_id > 0:
+            games_to_update.append({
+                "page_id": page["id"],
+                "app_id": app_id,
+                "current_price": current_price
+            })
 
     if not games_to_update:
         print("No games found with Steam App IDs.")

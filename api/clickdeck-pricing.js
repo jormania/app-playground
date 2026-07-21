@@ -47,9 +47,9 @@ export default async function handler(req, res) {
 
     const gamesToUpdate = rows.map(page => ({
       pageId: page.id,
-      appId: page.properties['Steam App ID']?.number,
+      appId: parseInt(page.properties['Steam App ID']?.number || 0, 10),
       currentPrice: page.properties['Current Price']?.number
-    })).filter(g => g.appId)
+    })).filter(g => g.appId > 0)
 
     if (gamesToUpdate.length === 0) {
       res.status(200).json({ message: 'No games with Steam App IDs found to update.' })
