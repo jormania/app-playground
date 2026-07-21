@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ThreadList from './ThreadList.jsx'
 import WovenFold from './WovenFold.jsx'
 import QuickAdd from './QuickAdd.jsx'
@@ -33,6 +33,16 @@ export default function WeekView({
   const [longPress, setLongPress] = useState(null)
   const lpTimer = useRef(null)
   const lpSkein = useRef(null)
+  const todayRef = useRef(null)
+
+  // Snap the horizontally-scrolling Warp to today's column on open — both on
+  // first mount and whenever the current week comes back into view (prev/next
+  // navigation, or the "back to this warp" label). On any other week there's no
+  // today column to find, so this is a no-op. Desktop's 7-track row layout
+  // doesn't scroll-snap, but scrollIntoView is harmless there too.
+  useEffect(() => {
+    if (isThisWeek) todayRef.current?.scrollIntoView({ inline: 'start', block: 'nearest' })
+  }, [weekStartKey, isThisWeek])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const repeats = useMemo(() => pendingRepeats(weekStartKey), [weekStartKey, castTick])
@@ -219,7 +229,11 @@ export default function WeekView({
             const firstRhythmSkein = hasRhythm ? rawRhythm[0]?.skein : null
 
             return (
-              <section key={col.key} className={`${styles.day} ${col.key === todayKey ? styles.today : ''}`}>
+              <section
+                key={col.key}
+                ref={col.key === todayKey ? todayRef : undefined}
+                className={`${styles.day} ${col.key === todayKey ? styles.today : ''}`}
+              >
                 <header className={styles.dayHead}>
                   <span className={styles.dayName}>{col.label}</span>
                   <span className={styles.dayNum}>{col.dayNum}</span>
