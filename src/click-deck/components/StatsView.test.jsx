@@ -60,6 +60,21 @@ describe('StatsView', () => {
     // 2 completed, 1 playing, 0 backlog, 1 abandoned
     expect(screen.getByText('COMPLETED')).toBeTruthy()
     // Find the value associated with completed
-    expect(screen.getAllByText('2')[0]).toBeTruthy() 
+    expect(screen.getAllByText('2')[0]).toBeTruthy()
+  })
+
+  it('shows "never synced" when no game has a priceUpdatedAt', () => {
+    render(<StatsView games={mockGames} />)
+    expect(screen.getByText('PRICES LAST SYNCED: NEVER')).toBeTruthy()
+  })
+
+  it('surfaces the most recent priceUpdatedAt across the collection', () => {
+    const withSyncDates = [
+      { ...mockGames[0], priceUpdatedAt: '2026-07-01T00:00:00.000Z' },
+      { ...mockGames[1], priceUpdatedAt: '2026-07-20T00:00:00.000Z' }
+    ]
+    render(<StatsView games={withSyncDates} />)
+    const expected = new Date('2026-07-20T00:00:00.000Z').toLocaleDateString()
+    expect(screen.getByText(`PRICES LAST SYNCED: ${expected}`)).toBeTruthy()
   })
 })

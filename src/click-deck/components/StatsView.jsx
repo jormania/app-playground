@@ -88,12 +88,19 @@ export function StatsView({ games }) {
     const completedValue = gamesWithPrice.filter(g => g.status === 'Completed').reduce((sum, g) => sum + g.price, 0).toFixed(2);
     const avgPrice = gamesWithPrice.length > 0 ? (gamesWithPrice.reduce((sum, g) => sum + g.price, 0) / gamesWithPrice.length).toFixed(2) : 'N/A';
 
+    // The most recent nightly-cron sync across the whole collection — with no
+    // indicator of this anywhere, there's no way to tell whether prices are
+    // current or the cron silently stopped running.
+    const syncTimestamps = games.map(g => g.priceUpdatedAt).filter(Boolean).map(d => new Date(d).getTime());
+    const lastPriceSync = syncTimestamps.length > 0 ? new Date(Math.max(...syncTimestamps)) : null;
+
     return {
       totalGames, completed, backlog, playing, abandoned, avgRating,
       oldest, newest, sortedDecades,
       topDevs, highestRatedDevs,
       topTags, highestRatedTags,
-      totalSpent, backlogValue, completedValue, avgPrice, gamesWithPriceCount: gamesWithPrice.length
+      totalSpent, backlogValue, completedValue, avgPrice, gamesWithPriceCount: gamesWithPrice.length,
+      lastPriceSync
     };
   }, [games]);
 
@@ -152,6 +159,11 @@ export function StatsView({ games }) {
             <li><span className="label">AVG PRICE</span> <span className="val">${stats.avgPrice}</span></li>
             <li><span className="label">PRICED GAMES</span> <span className="val">{stats.gamesWithPriceCount}</span></li>
           </ul>
+          <p className="cd-price-sync-note">
+            {stats.lastPriceSync
+              ? `PRICES LAST SYNCED: ${stats.lastPriceSync.toLocaleDateString()}`
+              : 'PRICES LAST SYNCED: NEVER'}
+          </p>
         </div>
 
         {/* Timeline Breakdown */}
@@ -305,6 +317,12 @@ export function StatsView({ games }) {
           font-size: 0.85rem;
           color: var(--cd-accent-cyan);
           opacity: 0.8;
+        }
+        .cd-price-sync-note {
+          margin: 1rem 0 0;
+          font-size: 0.75rem;
+          color: var(--cd-text-muted);
+          letter-spacing: 0.5px;
         }
         .cd-stat-list {
           list-style: none;

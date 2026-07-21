@@ -22,10 +22,10 @@ export function OnboardingWizard({ onComplete }) {
             <p>Connecting to external data node (Simulated MCP)...</p>
             <p>Preparing batch payload of canonical pivot titles.</p>
             <ul className="cd-terminal-list">
-              <li>&gt; The Secret of Monkey Island... queued.</li>
-              <li>&gt; Beneath a Steel Sky... queued.</li>
-              <li>&gt; Grim Fandango... queued.</li>
-              <li>&gt; Disco Elysium... queued.</li>
+              <li>&gt; The Curse of Monkey Island... queued.</li>
+              <li>&gt; Blade Runner... queued.</li>
+              <li>&gt; Firewatch... queued.</li>
+              <li>&gt; Pentiment... queued.</li>
             </ul>
             <div className="cd-onboarding-actions">
               <button className="primary" onClick={onComplete}>EXECUTE_BATCH_INSERT</button>

@@ -20,23 +20,39 @@ function uuidv4() {
 }
 
 // === Notion Mapping ===
-const mapPageToGame = (page) => ({
-  id: page.id,
-  title: page.properties['Title']?.title?.[0]?.plain_text || 'Unknown',
-  year: page.properties['Release Year']?.number || 0,
-  developer: page.properties['Developer/Studio']?.select?.name || '',
-  tags: page.properties['Tags']?.multi_select?.map(t => t.name) || [],
-  status: page.properties['Status']?.select?.name || 'Backlog',
-  rating: page.properties['Rating']?.number || null,
-  journal: page.properties['Journal/Notes']?.rich_text?.map(rt => rt.plain_text).join('') || '',
-  journalRich: page.properties['Journal/Notes']?.rich_text || [],
-  createdTime: page.created_time || new Date().toISOString(),
-  coverUrl: page.cover?.external?.url || page.cover?.file?.url || '',
-  price: page.properties['Current Price']?.number !== undefined ? page.properties['Current Price']?.number : null,
-  discountPercent: page.properties['Discount Percent']?.number || 0,
-  initialPrice: page.properties['Initial Price']?.number || null,
-  appId: page.properties['Steam App ID']?.number || null
-})
+const mapPageToGame = (page) => {
+  const discountPercent = page.properties['Discount Percent']?.number || 0
+  return {
+    id: page.id,
+    title: page.properties['Title']?.title?.[0]?.plain_text || 'Unknown',
+    year: page.properties['Release Year']?.number || 0,
+    developer: page.properties['Developer/Studio']?.select?.name || '',
+    tags: page.properties['Tags']?.multi_select?.map(t => t.name) || [],
+    status: page.properties['Status']?.select?.name || 'Backlog',
+    rating: page.properties['Rating']?.number || null,
+    journal: page.properties['Journal/Notes']?.rich_text?.map(rt => rt.plain_text).join('') || '',
+    journalRich: page.properties['Journal/Notes']?.rich_text || [],
+    createdTime: page.created_time || new Date().toISOString(),
+    coverUrl: page.cover?.external?.url || page.cover?.file?.url || '',
+    price: page.properties['Current Price']?.number !== undefined ? page.properties['Current Price']?.number : null,
+    discountPercent,
+    // Drives the "% SALE" badge across the card, gallery and random views.
+    isDiscounted: discountPercent > 0,
+    initialPrice: page.properties['Initial Price']?.number || null,
+    appId: page.properties['Steam App ID']?.number || null,
+    priceUpdatedAt: page.properties['Price Updated At']?.date?.start || null
+  }
+}
+
+// Converts a stored (read-shaped) rich_text array back into the shape
+// Notion's PATCH API expects for writes, preserving the original
+// bold/italic/color annotations exactly as read — used to avoid clobbering
+// an entry's formatting when the plain-text journal itself hasn't changed.
+const richTextArrayToNotionPatch = (richTextArray) =>
+  richTextArray.map(rt => ({
+    text: { content: rt.plain_text, link: rt.href ? { url: rt.href } : null },
+    annotations: rt.annotations
+  }))
 
 const mapGameToProperties = (game) => {
   const props = {
@@ -52,7 +68,12 @@ const mapGameToProperties = (game) => {
   if (game.rating) props['Rating'] = { number: parseInt(game.rating) }
   else props['Rating'] = { number: null }
   
-  if (game.journal) props['Journal/Notes'] = { rich_text: [{ text: { content: game.journal } }] }
+  // Preserve the original Notion rich-text formatting (bold/color/italic) whenever
+  // the caller confirms the plain-text journal is unchanged from what was loaded —
+  // otherwise a routine edit to an unrelated field (rating, status, tags) would
+  // silently flatten a richly-formatted entry down to plain text on every save.
+  if (game.journalRich && game.journalRich.length > 0) props['Journal/Notes'] = { rich_text: richTextArrayToNotionPatch(game.journalRich) }
+  else if (game.journal) props['Journal/Notes'] = { rich_text: [{ text: { content: game.journal } }] }
   else props['Journal/Notes'] = { rich_text: [] }
   
   if (game.price !== undefined && game.price !== null) props['Current Price'] = { number: parseFloat(game.price) }
@@ -104,14 +125,12 @@ export const McpConnector = {
       const existingGames = await McpConnector.getGames()
       const existingTitles = new Set(existingGames.map(g => g.title.toLowerCase()))
 
-      let addedCount = 0
       for (const game of PIVOT_TITLES) {
         if (!existingTitles.has(game.title.toLowerCase())) {
           await fetchNotion('pages', 'POST', {
             parent: { database_id: dbId },
             properties: mapGameToProperties(game)
           })
-          addedCount++
         }
       }
       return true
@@ -159,30 +178,23 @@ export const McpConnector = {
     const dbId = getDbId()
     
     if (token && dbId) {
-      try {
-        let results = []
-        let hasMore = true
-        let cursor = undefined
-        while (hasMore) {
-          const data = await fetchNotion(`databases/${dbId}/query`, 'POST', cursor ? { start_cursor: cursor } : {})
-          results = results.concat(data.results.map(mapPageToGame))
-          hasMore = data.has_more
-          cursor = data.next_cursor
-        }
-        return results
-      } catch (err) {
-        console.error("Failed to load from Notion:", err)
-        return []
+      // Let a failure here propagate to the caller rather than swallowing it to
+      // an empty array — an expired token or a rate-limit otherwise looked
+      // indistinguishable from a genuinely empty collection.
+      let results = []
+      let hasMore = true
+      let cursor = undefined
+      while (hasMore) {
+        const data = await fetchNotion(`databases/${dbId}/query`, 'POST', cursor ? { start_cursor: cursor } : {})
+        results = results.concat(data.results.map(mapPageToGame))
+        hasMore = data.has_more
+        cursor = data.next_cursor
       }
+      return results
     } else {
       await new Promise(res => setTimeout(res, 300))
-      let db = getLocalDb() || []
-      if (db.length > 0) {
-        db[0].discountPercent = 0.85
-        db[0].initialPrice = 19.99
-        db[0].price = 2.99
-      }
-      return db
+      const db = getLocalDb() || []
+      return db.map(g => ({ ...g, isDiscounted: (g.discountPercent || 0) > 0 }))
     }
   },
 

@@ -2,14 +2,34 @@ import React from 'react'
 import ReactMarkdown from 'react-markdown'
 
 export function GameCard({ game, onEdit, onUpdateStatus }) {
+  const CoverTag = game.appId ? 'a' : 'div'
   const statusColors = {
-    'Backlog': 'var(--cd-text-muted)',
-    'Playing': 'var(--cd-accent-cyan)',
-    'Completed': 'var(--cd-accent-amber)',
-    'Abandoned': '#d9381e'
+    'Backlog': 'var(--cd-status-backlog)',
+    'Playing': 'var(--cd-status-playing)',
+    'Completed': 'var(--cd-status-completed)',
+    'Abandoned': 'var(--cd-status-abandoned)'
   }
 
-  const getStatusColor = (status) => statusColors[status] || 'var(--cd-text-muted)'
+  const getStatusColor = (status) => statusColors[status] || 'var(--cd-status-backlog)'
+
+  // Some Journal/Notes entries have literal `**bold**`/`*italic*` markdown syntax
+  // typed into a Notion rich-text segment instead of using Notion's own bold/italic
+  // formatting — the multi-segment branch below otherwise renders each segment's
+  // plain_text verbatim, so those asterisks show up literally. This converts just
+  // that inline emphasis syntax (not full markdown) within a single segment's text.
+  const renderInlineMarkdown = (text) => {
+    if (!text) return text;
+    const parts = text.split(/(\*\*.+?\*\*|\*.+?\*|_.+?_)/g).filter(Boolean);
+    // A plain string with no markdown syntax splits into exactly its own single,
+    // unmatched part — checking startsWith/endsWith below (rather than array
+    // length) correctly distinguishes that from a segment that's ENTIRELY one
+    // matched span, e.g. "**classic**" also splits to a single part.
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>;
+      if ((part.startsWith('*') && part.endsWith('*')) || (part.startsWith('_') && part.endsWith('_'))) return <em key={i}>{part.slice(1, -1)}</em>;
+      return part;
+    });
+  }
 
   const renderNotionRichText = (richTextArray) => {
     if (!Array.isArray(richTextArray) || richTextArray.length === 0) return null;
@@ -46,7 +66,7 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
         props.rel = 'noreferrer';
       }
 
-      const content = rt.plain_text;
+      const content = renderInlineMarkdown(rt.plain_text);
       return React.createElement(Tag, props, content);
     });
   }
@@ -54,21 +74,23 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
   return (
     <div className="cd-panel cd-game-card">
       {game.coverUrl ? (
-        <div 
-          className="cd-game-cover" 
-          onClick={() => game.appId && window.open(`https://store.steampowered.com/app/${game.appId}`, '_blank')}
-          style={{ cursor: game.appId ? 'pointer' : 'default' }}
+        // A real <a> (rather than a div+onClick window.open()) so the link is a
+        // genuine browser navigation — never popup-blocked, and works the same in
+        // an installed PWA as in a regular tab. Plain div when there's no appId to link to.
+        <CoverTag
+          className="cd-game-cover"
+          {...(game.appId ? { href: `https://store.steampowered.com/app/${game.appId}`, target: '_blank', rel: 'noopener noreferrer' } : {})}
         >
-          <img 
-            src={game.coverUrl} 
-            alt={game.title} 
-            loading="lazy" 
+          <img
+            src={game.coverUrl}
+            alt={game.title}
+            loading="lazy"
             onError={(e) => {
               e.target.style.display = 'none';
               e.target.parentElement.classList.add('fallback-cover');
-            }} 
+            }}
           />
-        </div>
+        </CoverTag>
       ) : (
         <div className="cd-game-cover fallback-cover"></div>
       )}
@@ -88,15 +110,19 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
         {game.status === 'Completed' && (
           <>
             <span className="cd-separator">|</span>
-            <span className="cd-rating">
+            <span className="cd-rating" role="group" aria-label={`Rating: ${game.rating || 0} of 5 stars`}>
               {[1, 2, 3, 4, 5].map(star => (
-                <span 
-                  key={star} 
-                  style={{ cursor: 'pointer', color: game.rating >= star ? 'inherit' : 'var(--cd-text-muted)' }}
+                <button
+                  key={star}
+                  type="button"
+                  className="cd-rating-star"
+                  style={{ color: game.rating >= star ? 'inherit' : 'var(--cd-text-muted)' }}
                   onClick={() => onUpdateStatus(game.id, game.status, star)}
+                  aria-label={`Rate ${star} star${star === 1 ? '' : 's'}`}
+                  aria-pressed={game.rating === star}
                 >
                   {game.rating >= star ? '★' : '☆'}
-                </span>
+                </button>
               ))}
             </span>
           </>
@@ -146,12 +172,17 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
           position: relative;
         }
         .cd-game-cover {
+          display: block;
           height: 180px;
           margin: -1rem -1rem 1rem -1rem;
           border-bottom: 1px solid var(--cd-border-accent);
           position: relative;
           overflow: hidden;
           background: var(--cd-bg-dark);
+          cursor: default;
+        }
+        a.cd-game-cover {
+          cursor: pointer;
         }
         .cd-game-cover img {
           width: 100%;
@@ -191,6 +222,21 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
         .cd-separator {
           margin: 0 0.5rem;
           color: var(--cd-border-color);
+        }
+        .cd-rating-star {
+          background: none;
+          border: none;
+          box-shadow: none;
+          padding: 0;
+          margin: 0;
+          font-family: inherit;
+          font-size: inherit;
+          text-transform: none;
+          cursor: pointer;
+          line-height: 1;
+        }
+        .cd-rating-star:hover {
+          box-shadow: none;
         }
         .cd-tags {
           display: flex;

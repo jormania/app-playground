@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Click Deck — Guide</title>
-<meta name="description" content="How to set up Click Deck from scratch: connect Notion, initialize the database schema, and populate seed data." />
+<meta name="description" content="How to set up Click Deck from scratch: connect Notion, initialize the database schema, and get the most out of every view, theme and automation." />
 <meta name="theme-color" content="#12151c" />
 <link rel="icon" href="/cone-of-cold.png" type="image/png" />
 <style>
@@ -33,6 +33,8 @@
   .card{background:var(--surface);border:1px solid var(--border);border-radius:0;padding:18px 20px;margin:14px 0}
   .env{font-family:var(--mono);font-size:.8rem;line-height:1.9;background:var(--bg2);border:1px solid var(--border);border-radius:0;padding:14px 16px;overflow-x:auto;white-space:pre;color:var(--ink)}
   .pill{display:inline-block;font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--green);border:1px solid var(--green);border-radius:999px;padding:2px 8px;margin-left:8px}
+  .pill.warn{color:var(--cat);border-color:var(--cat)}
+  .pill.off{color:var(--muted);border-color:var(--border)}
   .steps{counter-reset:step;list-style:none;margin:14px 0 10px;padding:0;display:grid;gap:13px}
   .steps li{counter-increment:step;position:relative;padding-left:34px;margin:0}
   .steps li::before{content:counter(step);position:absolute;left:0;top:1px;color:#12151c;background:var(--brass);font-family:var(--mono);font-size:11px;font-weight:600;width:22px;height:22px;border-radius:0;display:inline-flex;align-items:center;justify-content:center}
@@ -41,8 +43,14 @@
   table.schema th{font-family:var(--mono);font-size:.65rem;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-weight:500}
   table.schema td:first-child{font-family:var(--mono);font-size:.78rem;color:var(--place);white-space:nowrap}
   table.schema td:nth-child(2){color:var(--cat);white-space:nowrap}
+  .note{border-left:2px solid var(--border2);padding-left:14px;color:var(--faint);font-size:.92rem;margin:14px 0}
+  .note.warn{border-left-color:var(--cat)}
   .back{display:inline-flex;gap:6px;font-family:var(--mono);font-size:.72rem;color:var(--muted);margin-top:30px;text-transform:uppercase;}
   footer{text-align:center;font-family:var(--mono);font-size:.68rem;color:var(--faint);margin-top:40px}
+  .theme-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:14px 0}
+  .theme-swatch{border:1px solid var(--border);padding:10px 12px;font-size:.82rem}
+  .theme-swatch b{display:block;font-family:var(--mono);margin-bottom:2px}
+  .kbd{display:inline-block;font-family:var(--mono);font-size:.78rem;background:var(--bg2);border:1px solid var(--border);border-bottom-width:2px;padding:1px 7px;color:var(--ink)}
 </style>
 </head>
 <body>
@@ -54,38 +62,119 @@
   </header>
 
   <h2>What it is</h2>
-  <p>Click Deck is a specialized catalog for tracking your adventure game backlog, what you're currently playing, and what you've finished. It utilizes a retro-futuristic, cyberpunk aesthetic and synchronizes live with your own Notion database via our MCP proxy.</p>
-  <p class="muted">Everything is stored in <b>your</b> Notion. The app works on any device and installs as a Progressive Web App (PWA).</p>
+  <p>Click Deck is a specialized catalog for tracking your adventure-game backlog, what you're currently playing, and what you've finished — from 90s SCUMM classics to today's narrative indies. It leans hard into an industrial, terminal-flavored aesthetic (bracket-notation buttons, scan-line animations, a genuine "NO SIGNAL" static pattern for missing covers) inspired by <em>Beneath a Steel Sky</em>, and it synchronizes live with your own Notion database via this repo's serverless MCP proxy.</p>
+  <p class="muted">Everything is stored in <b>your</b> Notion, under <b>your</b> Notion integration token — Click Deck holds no data of its own beyond a few device-local preferences (theme, weighting mode, banner settings). The app installs as a Progressive Web App (PWA) on desktop or mobile, and once installed its shell — the timeline, analytics and stats views — keeps working offline. Loading fresh data still needs a connection to Notion, of course.</p>
 
   <h2>1. Quick Setup (Onboarding Wizard)</h2>
-  <p>Click Deck features an automated Onboarding Wizard that will help you set up your database automatically in seconds. Here's how to run it:</p>
+  <p>The very first time you open Click Deck with no Notion token saved, it shows a two-step Onboarding Wizard that walks you through connecting a real Notion database. Nothing is written anywhere until you complete it — until then, or if you skip it, the app runs entirely in a local-storage demo mode (more on that in <a href="#byo">§7</a>).</p>
   <ol class="steps">
     <li><b>Create an Integration:</b> Go to <a href="https://www.notion.so/my-integrations" target="_blank">Notion Integrations</a> and create a new integration. Call it "Click Deck".</li>
-    <li><b>Copy the Token:</b> Copy the Internal Integration Secret.</li>
-    <li><b>Share a Page:</b> Create a new blank page in your Notion workspace (e.g., "Gaming Setup"). In the top right corner of Notion, click `...`, go to <b>Connections</b>, and add your "Click Deck" integration to this page.</li>
-    <li><b>Get the Page ID:</b> Copy the link to this page. The long string of characters at the end of the URL is your Page ID.</li>
-    <li><b>Run the Wizard:</b> Open Click Deck, paste your Integration Token and the Page ID into the wizard, and click <b>Initialize Database</b>. Click Deck will automatically build the entire database schema for you!</li>
+    <li><b>Copy the Token:</b> Copy the Internal Integration Secret — it starts with <code>secret_</code>.</li>
+    <li><b>Share a Page:</b> Create a new blank page in your Notion workspace (e.g. "Gaming Setup"). In the top-right corner of that page, click <code>...</code>, go to <b>Connections</b>, and add your "Click Deck" integration.</li>
+    <li><b>Get the Page ID:</b> Copy the link to this page. The long hexadecimal string at the end of the URL is your Page ID — Click Deck uses it as the parent under which it builds the database.</li>
+    <li><b>Run the Wizard:</b> Open Click Deck, paste your Integration Token and Page ID into the wizard, and click <b>Initialize Database</b>. Click Deck builds the full property schema for you — see the table in <a href="#schema">§2</a> for exactly what gets created.</li>
   </ol>
+  <p class="note">You can also do this later or redo it from scratch: the same "Initialize New Database Schema" action lives permanently in <b>Settings (⚙) → Database Actions</b>. If a Database ID is already saved there, Click Deck asks you to confirm before building a second one, so you can't accidentally orphan your existing collection.</p>
 
-  <h2>2. Populating Seed Data</h2>
-  <p>Once your database is initialized, you can start adding games manually, or you can populate it with our curated list of classics.</p>
-  <p>In the <b>Settings (⚙)</b> menu, click the <b>Populate Seed Data</b> button. This will automatically inject legendary games like <i>Grim Fandango</i>, <i>The Secret of Monkey Island</i>, and <i>Disco Elysium</i> straight into your Notion database, complete with high-resolution box art covers.</p>
+  <h2 id="schema">2. The Notion Database Schema</h2>
+  <p>Whether it's built by the wizard or by hand, Click Deck expects a database with these exact property names. Getting a name slightly wrong (extra space, different casing) means that property silently won't sync.</p>
+  <table class="schema">
+    <thead><tr><th>Property</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Title</td><td>Title</td><td>The game's name. The only property Notion requires by default.</td></tr>
+      <tr><td>Release Year</td><td>Number</td><td>Drives the Timeline view's sort order and the Stats decade chart.</td></tr>
+      <tr><td>Developer/Studio</td><td>Select</td><td>One studio per game. Powers the Analytics <code>STUDIO_MATRIX</code> word cloud.</td></tr>
+      <tr><td>Tags</td><td>Multi-select</td><td>See the 5–7 tag policy in <a href="#editor">§5</a>. Powers the <code>TAG_MATRIX</code> word cloud.</td></tr>
+      <tr><td>Status</td><td>Select</td><td>One of <code>Backlog</code>, <code>Playing</code>, <code>Completed</code>, <code>Abandoned</code>.</td></tr>
+      <tr><td>Rating</td><td>Number</td><td>1–5. Typically only set once a game reaches <code>Completed</code>.</td></tr>
+      <tr><td>Journal/Notes</td><td>Rich text</td><td>Your review. Supports full Notion formatting — see <a href="#richtext">§5</a>.</td></tr>
+      <tr><td>Current Price</td><td>Number ($)</td><td>Synced nightly by the pricing cron. Set only for games with a Steam App ID.</td></tr>
+      <tr><td>Discount Percent</td><td>Number (%)</td><td>Drives the sale banner and the <code>% SALE</code> badge.</td></tr>
+      <tr><td>Initial Price</td><td>Number ($)</td><td>The pre-discount price, shown struck-through in the Discounts modal.</td></tr>
+      <tr><td>Steam App ID</td><td>Number</td><td>Powers cover-art fetching, the Steam store link on every cover, and the pricing cron. See <a href="#steammatch">§9</a>.</td></tr>
+      <tr><td>Price Updated At</td><td>Date</td><td>Timestamp of the last successful pricing sync — surfaced in the Stats screen.</td></tr>
+    </tbody>
+  </table>
+  <p class="note warn">The last five properties (<code>Current Price</code> through <code>Price Updated At</code>) aren't part of the wizard's initial schema — they're added by a separate <b>"Patch Database for Pricing Schema"</b> button in Settings. Run that once, after initializing, if you want Steam pricing and discounts to work. Skipping it is harmless — the app just won't have anywhere to write prices.</p>
 
-  <h2>3. Usage & Features</h2>
+  <h2>3. Populating Seed Data</h2>
+  <p>Once your database is initialized (and optionally patched for pricing), you can start adding games one at a time through the Editor, or fast-forward with a curated starter set. In <b>Settings (⚙) → Database Actions</b>, click <b>Populate Seed Data</b>. This injects ten genre-spanning classics — <i>Loom</i>, <i>The Curse of Monkey Island</i>, <i>Sanitarium</i>, <i>Blade Runner</i>, <i>Machinarium</i>, <i>Broken Age</i>, <i>Firewatch</i>, <i>Oxenfree</i>, <i>The Wolf Among Us</i>, and <i>Pentiment</i> — straight into your Notion database, each with real Steam App IDs so their cover art and pricing work immediately, five tags apiece, and a written-in-voice journal entry to show what a good one looks like.</p>
+  <p class="muted">This button checks for existing data first: if your database already has entries, it asks you to confirm before seeding again, since running it twice creates duplicate rows (matched only by exact title).</p>
+
+  <h2>4. Core Views</h2>
+  <p>Three tabs in the header — <code>[T]</code>, <code>[A]</code>, <code>[S]</code> — switch between three different lenses on the same collection.</p>
+
+  <h3>Timeline <span class="pill">[T]</span></h3>
+  <p>The chronologically sorted default view, and the heart of the app. A glowing scan line tracks continuously up and down the vertical track using an <code>IntersectionObserver</code>; individual game cards slide in and their year badges ignite with a neon glow as they enter the viewport, giving the whole page a "living" quality as you scroll. Sort order isn't fixed to release year — a dropdown next to the search box also offers <b>Recently Added</b>, <b>Highest Rated</b>, and <b>Alphabetical</b>. A row of status chips (<code>[ALL]</code> <code>[BACKLOG]</code> <code>[PLAYING]</code> <code>[COMPLETED]</code> <code>[ABANDONED]</code>, each with a live count) narrows the list further, and stacks with the search box and any active tag filters carried over from Analytics.</p>
+  <p>Each card shows the cover (click it to open the Steam store page, when a Steam App ID is set), title, developer, status, price, tags, and journal excerpt — plus, for <code>Completed</code> games, five clickable star buttons that update the rating in Notion the moment you click one. A row of quick-status buttons at the bottom of every card lets you move a game between Backlog/Playing/Completed/Abandoned without opening the full Editor.</p>
+
+  <h3>Analytics <span class="pill">[A]</span></h3>
+  <p>A dashboard for slicing the collection along dimensions the Timeline doesn't surface. Three filter rows — <code>PRICE</code> (Free / &lt;$10 / $10–$30 / $30+), <code>RATING</code> (1★–5★), and <code>ERA</code> (80s/90s/00s/10s/20s) — layer on top of the global search and status filters. A fourth row, <code>TAGS</code>, filters to entries with <b>Under 5</b> or <b>Over 7</b> tags — a data-quality tool for spotting entries that drift outside the collection's own 5–7 tag policy (see <a href="#editor">§5</a>).</p>
+  <p>Below the filters sit two clickable word clouds — <code>TAG_MATRIX</code> and <code>STUDIO_MATRIX</code> — sized and counted from whatever's currently matching, so clicking a tag drills the whole view (and the Timeline, since the filter is shared) down further. The results render as a responsive gallery grid with hover overlays showing status, year, rating and price. Two export buttons, <code>[EXPORT HTML]</code> and <code>[EXPORT JSON]</code>, download whatever's currently filtered: HTML for a clean printable report, JSON as a genuine portable backup of your data (useful precisely because the BYO-token model means there's no other export path).</p>
+
+  <h3>Stats <span class="pill">[S]</span></h3>
+  <p>A pure data-crunching screen, unaffected by search/filter state. Four headline numbers — total entries, average rating, completion rate, and total collection value — sit above five panels: <code>STATUS_MATRIX</code> (a breakdown by play status), <code>FINANCIAL_OVERVIEW</code> (backlog value vs. completed value vs. average price, plus a <code>PRICES LAST SYNCED</code> line so you can tell at a glance whether last night's pricing cron actually ran), <code>TEMPORAL_DISTRIBUTION</code> (oldest/newest release year, and a bar chart of your collection by decade), <code>STUDIO_PROFILES</code> (your most-frequent and highest-rated developers), and <code>TAG_CORRELATIONS</code> (your most-frequent and highest-rated tags — a nice way to notice, e.g., that everything you've rated 5★ happens to be tagged <code>Atmospheric</code>).</p>
+
+  <h2 id="editor">5. The Game Editor</h2>
+  <p>Click <code>+</code> in the header (or press <span class="kbd">n</span> anywhere outside a text field) to add a new game; click <code>[E]DIT</code> on any card to edit an existing one. The Editor covers every property in the schema: Title, Cover URL, Release Year, Developer/Studio, Status, Rating (only shown once Status isn't Backlog), Tags, and Journal/Notes.</p>
+  <p><b>Cover art:</b> paste an external image URL directly, or click <b>FETCH STEAM</b> to search Steam's store by the current title and auto-fill both the cover URL <em>and</em> the Steam App ID from the best-matching result — not just the literal first hit, since Steam's search is fuzzy-ranked and classics are frequently re-listed with a "Remastered" or "Anniversary Edition" suffix that a plain string compare would miss. Matching the App ID (not just the cover) matters: it's also what makes the cover clickable through to the Steam store page and what the nightly pricing cron uses to find the game at all.</p>
+  <p><b>Tags:</b> the picker enforces a maximum of 7 (the button simply does nothing on an 8th click) and shows a live <code>(N/7)</code> count. It also warns — without blocking the save — when an entry has fewer than 5 tags, or when a legacy entry already has more than 7 from before the cap existed, since the collection's own policy calls for 5–7 tags per game: enough for the Analytics word clouds and filters to stay meaningful, not so many that they get noisy. Mix broad genres (<code>Point & Click</code>, <code>Sci-Fi</code>) with specific vibes (<code>Atmospheric</code>, <code>Choices Matter</code>). Any tag already on a game but missing from the canonical picker list (an older or retired tag) still shows up and stays removable — it just won't be offered for new selections.</p>
+
+  <h3 id="richtext">Journal/Notes & the Expressive Rich-Text Policy</h3>
+  <p>Notes should never read as dry factual summaries ("a game where you click on things") — they're meant to be punchy, opinionated, flavorful mini-reviews that capture what actually made a game land or fall flat. When writing or updating an entry's Journal/Notes (by hand in Notion, or via the <code>dramatize-journal.py</code> script — see <a href="#scripts">§8</a>), lean on real Notion rich-text formatting: <b>bold + color</b> (red, orange, green, purple, pink) for strong emotional or thematic words; <em>italic + gray</em> for sarcasm or subtle mystery; strikethrough or underline for dramatic misdirection. The goal is a reading experience that feels vibrant and dramatically punctuated, not a wall of plain text.</p>
+  <p class="note warn">Editing an existing game through the in-app Editor is safe for this formatting <em>as long as you don't touch the Journal/Notes text box</em> — Click Deck detects that the plain text is unchanged and writes the original formatted segments straight back. If you do edit the journal text itself, the Editor shows an inline warning and will save it as plain text on top of whatever was there — full rich-text authoring (colors, bold spans mid-sentence) isn't something a plain textarea can do, so that trade-off is inherent to editing in-app rather than in Notion directly.</p>
+
+  <h2>6. The Discount Banner & Price Tracking</h2>
+  <p>Whenever any <code>Backlog</code> game has an active discount, a banner appears above the Timeline: <code>🔥 N GAMES ON SALE! [VIEW DISCOUNTS]</code>. Clicking it opens a modal with every discounted game, its original and sale price, and a percent-off badge. The banner has a small <code>[X]</code> to dismiss it — doing so snoozes it for 24 hours, after which it reappears automatically if anything's still on sale.</p>
+  <p>Two Settings controls give you more control over that behavior: a checkbox — <b>"Sale Banner: Always Show"</b> — makes it permanently persistent, ignoring the snooze entirely (the dismiss button hides itself in this mode, since there'd be nothing for it to do). Independent of that toggle, a <b>"Show Sale Banner Now"</b> button clears an active snooze immediately — the safety net for dismissing it by accident and wanting it back right away, rather than waiting out the full 24 hours.</p>
+  <p>Separately, every time Click Deck loads your collection it quietly compares each game's current price against the last price it saw for that game (kept in a small on-device cache) and toasts <code>PRICE DROP: [title]</code> if anything actually dropped since your last visit — the client-side equivalent of a push notification, since the nightly pricing cron has no way to reach an already-open browser tab.</p>
+
+  <h2>7. Random Game <span class="pill">[R]</span></h2>
+  <p>Can't decide what to play next? Click <code>[R]</code> for a short slot-machine roll through your Backlog that settles on one game, with <code>[RE-ROLL]</code> to try again and <code>[BEGIN PLAYTHROUGH]</code> to move it straight to <code>Playing</code> (preserving any rating it already had). By default every Backlog game has equal odds. A Settings dropdown — <b>Random Pick Weighting</b> — can instead bias the roll toward your <b>oldest</b> backlog entries (the ones that have been sitting the longest) or your <b>cheapest</b> ones; the active mode shows as a small badge in the roll modal so it's never a mystery why a particular game keeps coming up.</p>
+
+  <h2>8. Themes & Visual Flourishes</h2>
+  <p>Six full palettes live in <b>Settings → Aesthetic Theme</b>, each shifting every accent color and glow in the app at once:</p>
+  <div class="theme-grid">
+    <div class="theme-swatch"><b>Union City</b>Cyan / Amber — classic cyberpunk, the default.</div>
+    <div class="theme-swatch"><b>Voodoo</b>Toxic Green / Purple — Monkey Island inspired.</div>
+    <div class="theme-swatch"><b>Noir</b>Grayscale / Gold — Grim Fandango inspired.</div>
+    <div class="theme-swatch"><b>Sierra Nights</b>Indigo / Gold — King's Quest-era Sierra VGA.</div>
+    <div class="theme-swatch"><b>Amber Terminal</b>Amber / Burnt Orange — classic monochrome DOS/BBS CRT.</div>
+    <div class="theme-swatch"><b>CGA</b>Cyan / Magenta — early-90s DOS composite CGA.</div>
+  </div>
+  <p>A separate, independent toggle — <b>Retro CRT Mode</b> — layers scanlines, a screen vignette, and viewfinder-style corner brackets on every panel over whichever theme is active. It's off by default (with dozens of cards on screen at once it reads as clutter unless you specifically want the look), and works with any of the six palettes above.</p>
+
+  <h2>9. Search, Filters & Keyboard Shortcuts</h2>
+  <p>The search box (press <span class="kbd">/</span> anywhere to jump to it) matches against title, developer, tags, <em>and</em> journal text — so searching "cyberpunk" surfaces both games tagged that way and games whose review happens to mention it, even if the tag itself was omitted. Two more shortcuts: <span class="kbd">n</span> opens the Editor for a new game, and <span class="kbd">Escape</span> closes whatever modal or menu is currently open. Both are suppressed while you're typing in any input, textarea or select, so they never fight with normal text entry.</p>
+
+  <h2 id="byo">10. Notion Backend, Data Ownership & Sync Errors</h2>
+  <p>Click Deck deliberately doesn't ship with any shared or hardcoded data. It uses a <b>Bring Your Own (BYO)</b> token model: your Notion Integration Token and Database ID live in Settings, are stored only in your browser's local storage, and are sent to Notion's API via a thin, stateless serverless proxy (<code>/api/notion</code>) that exists purely to get around the browser's CORS restrictions — the proxy itself logs and stores nothing.</p>
+  <p>Without a token and database configured, the app falls back to a small local-storage-only demo (the same seed titles from <a href="#schema">§3</a>), so the Timeline, Analytics and Stats views are fully explorable before you've connected anything real — this demo data is never written to Notion, and switching to a real connection in Settings replaces it entirely.</p>
+  <p>If a sync ever fails outright — an expired token, a revoked integration, a Notion rate limit — Click Deck shows a distinct <code>SYNC FAILED</code> banner with a <code>[RETRY]</code> button, rather than quietly showing "0 records found" as if your collection were simply empty; those two situations used to look identical, which was more alarming than an actual outage. Day-to-day interactions (rating a game, changing its status, editing or deleting an entry) also update instantly in the interface itself rather than waiting on a full re-fetch of the whole collection — if the underlying write to Notion does fail, the change is rolled back and a toast explains what happened.</p>
+
+  <h2 id="steammatch">11. Steam Pricing & Cover Art</h2>
+  <p>A Vercel-hosted cron job (<code>api/clickdeck-pricing.js</code>) runs nightly against every game that has a <code>Steam App ID</code>, pulling its current price, initial price and discount percentage from Steam's public store API and writing them back to Notion (plus the <code>Price Updated At</code> timestamp). Nothing needs to be running in your browser for this to happen.</p>
+  <p>Cover art and the Steam App ID itself both come from Steam's search API, matched by title — see <a href="#editor">§5</a> for how the in-app "Fetch Steam" button does this, and normalizes away "Remastered"/"Special Edition"/"Anniversary Edition" suffixes so classics still match their modern re-releases correctly rather than matching nothing (or matching the wrong game) on a literal title compare.</p>
+
+  <h2 id="scripts">12. Administration Scripts</h2>
+  <p>Four Python utilities in <code>scripts/</code> talk directly to your Notion database for bulk maintenance that doesn't belong in the UI. Each expects <code>CLICKDECK_NOTION_TOKEN</code> and <code>CLICKDECK_DB_ID</code> as environment variables.</p>
   <ul>
-    <li><b>Timeline View:</b> Scroll through your games sorted chronologically by release year. The timeline features dynamic neon micro-animations as you scroll.</li>
-    <li><b>Analytics View:</b> Advanced multi-dimensional filtering, Tag Word Cloud, and HTML Export functionality to slice and dice your collection.</li>
-    <li><b>Stats Screen:</b> Deep dive into completion rates, top developer studios, and a financial breakdown of your collection's value.</li>
-    <li><b>Steam Pricing:</b> A nightly automated cron job securely fetches real-time prices for your entire library based on the Steam App ID.</li>
-    <li><b>Administration Scripts:</b> You can find maintenance scripts in the <code>scripts/</code> directory to manually force-sync prices or verify any incorrectly tagged Steam App IDs.</li>
-    <li><b>Random Game:</b> Can't decide what to play? Click the <code>[R]ANDOM</code> button to pull a random game from your Backlog!</li>
-    <li><b>Themes:</b> Switch between three distinct aesthetics in the Settings menu (Union City, Voodoo, and Noir) to match your current vibe.</li>
+    <li><b><code>backfill-steam-ids.py</code></b> — finds every game missing a Steam App ID and searches Steam for a confident title match (same normalization as the in-app fetch), skipping rather than guessing when nothing matches well enough. Useful for entries added directly in Notion without ever going through the Editor.</li>
+    <li><b><code>verify-steam-names.py</code></b> — the read-only counterpart: checks every game that <em>already has</em> a Steam App ID against what Steam actually reports for that ID, flagging title or developer/publisher mismatches (including known studio aliases, e.g. LucasArts/Lucasfilm) without changing anything.</li>
+    <li><b><code>force-sync-prices.py</code></b> — an on-demand version of the nightly pricing cron, for when you don't want to wait until 2am UTC to see a price update reflected.</li>
+    <li><b><code>dramatize-journal.py</code></b> — pulls any plain-text Journal/Notes and injects the expressive rich-text formatting described in <a href="#richtext">§5</a> using a dictionary of thematic keyword-to-color mappings, safely skipping entries that are already manually styled.</li>
   </ul>
+
+  <h2>13. Factory Reset</h2>
+  <p>Settings → Database Actions → <b>"⚠️ Factory Reset DB State"</b> wipes your saved Notion token, database ID, and any local-demo data, dropping you back to the Onboarding Wizard. It's guarded behind a prompt requiring you to type <code>RESET</code> exactly, so it's never triggered by a stray click — and since your actual game data lives in Notion, not in the browser, this only clears the <em>connection</em>, not your collection.</p>
+
+  <h2>14. PWA & Offline Support</h2>
+  <p>Click Deck ships a web manifest and a scoped service worker, so it's installable as a standalone app on both desktop and mobile, and its shell keeps working without a network connection once installed: the app boots, the timeline/analytics/stats views render, and your last-synced data is still there. What doesn't work offline is fetching <em>fresh</em> data from Notion, or anything that hits the Steam API (cover fetching, pricing). JetBrains Mono is loaded from Google Fonts rather than self-hosted, so the very first load still needs a connection to render with the right typeface; after that it's cached too.</p>
 
   <div style="text-align: center;">
     <a href="/" class="back">← Back to Cone of Cold</a>
   </div>
-  
+
   <footer>
     <p>Cone of Cold</p>
   </footer>

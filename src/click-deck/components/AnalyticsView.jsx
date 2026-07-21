@@ -1,10 +1,13 @@
 import React, { useMemo, useState } from 'react'
 
-export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags, searchQuery, setSearchQuery }) {
+export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
   
   const [priceFilter, setPriceFilter] = useState('All')
   const [ratingFilter, setRatingFilter] = useState('All')
   const [eraFilter, setEraFilter] = useState('All')
+  // Surfaces entries that fall outside the collection's documented 5-7 tag
+  // policy (CLICK_DECK.md), so drifted entries are easy to find and fix.
+  const [tagCountFilter, setTagCountFilter] = useState('All')
   const [activeDevs, setActiveDevs] = useState([])
 
   const matrixFilteredGames = useMemo(() => {
@@ -36,8 +39,17 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
         return false
       })
     }
+
+    if (tagCountFilter !== 'All') {
+      result = result.filter(g => {
+        const count = g.tags?.length || 0
+        if (tagCountFilter === 'Under 5') return count < 5
+        if (tagCountFilter === 'Over 7') return count > 7
+        return true
+      })
+    }
     return result
-  }, [filteredGames, eraFilter, ratingFilter, priceFilter])
+  }, [filteredGames, eraFilter, ratingFilter, priceFilter, tagCountFilter])
 
   // Calculate tag frequencies based on currently filtered games
   const tagCounts = useMemo(() => {
@@ -92,6 +104,40 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
     }
   }
 
+  const downloadBlob = (content, mimeType, filename) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // A plain-data backup of the currently filtered entries — useful for the BYO-token
+  // model, where "your data isn't locked in" should mean an actual portable export,
+  // not just a human-readable report.
+  const handleExportJson = () => {
+    const data = deepFilteredGames.map(g => ({
+      title: g.title,
+      year: g.year,
+      developer: g.developer,
+      status: g.status,
+      rating: g.rating,
+      tags: g.tags,
+      journal: g.journal,
+      coverUrl: g.coverUrl,
+      price: g.price,
+      initialPrice: g.initialPrice,
+      discountPercent: g.discountPercent,
+      appId: g.appId,
+      createdTime: g.createdTime
+    }));
+    downloadBlob(JSON.stringify(data, null, 2), 'application/json', 'click_deck_export.json');
+  }
+
   const handleExportHtml = () => {
     const htmlContent = `
       <!DOCTYPE html>
@@ -134,15 +180,7 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
       </body>
       </html>
     `;
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'click_deck_export.html';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadBlob(htmlContent, 'text/html', 'click_deck_export.html');
   }
 
   return (
@@ -166,6 +204,12 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
           <span className="cd-filter-label">ERA:</span>
           {['All', '80s', '90s', '00s', '10s', '20s'].map(e => (
             <button key={e} className={`cd-filter-btn ${eraFilter === e ? 'active' : ''}`} onClick={() => setEraFilter(e)}>{e}</button>
+          ))}
+        </div>
+        <div className="cd-filter-row">
+          <span className="cd-filter-label">TAGS:</span>
+          {['All', 'Under 5', 'Over 7'].map(t => (
+            <button key={t} className={`cd-filter-btn ${tagCountFilter === t ? 'active' : ''}`} onClick={() => setTagCountFilter(t)}>{t}</button>
           ))}
         </div>
       </div>
@@ -215,12 +259,23 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
       <div className="cd-analytics-results">
         <div className="cd-results-header">
           <p className="cd-results-count">MATCHING ENTRIES: {deepFilteredGames.length}</p>
-          <button className="cd-btn-icon" onClick={handleExportHtml}>[EXPORT HTML]</button>
+          <div className="cd-export-buttons">
+            <button className="cd-btn-icon" onClick={handleExportHtml}>[EXPORT HTML]</button>
+            <button className="cd-btn-icon" onClick={handleExportJson}>[EXPORT JSON]</button>
+          </div>
         </div>
         {deepFilteredGames.length === 0 && <p className="cd-text-muted">NO DATA FOUND MATCHING CURRENT PARAMETERS.</p>}
         <div className="cd-gallery-grid">
-          {deepFilteredGames.map(g => (
-            <div key={g.id} className="cd-gallery-item" onClick={() => g.appId && window.open(`https://store.steampowered.com/app/${g.appId}`, '_blank')} style={{ cursor: g.appId ? 'pointer' : 'default' }}>
+          {deepFilteredGames.map(g => {
+            // A real <a> (rather than a div+onClick window.open()) so the link is a
+            // genuine browser navigation — never popup-blocked, and works the same in
+            // an installed PWA as in a regular tab. Plain div when there's no appId.
+            const GalleryTag = g.appId ? 'a' : 'div'
+            const linkProps = g.appId
+              ? { href: `https://store.steampowered.com/app/${g.appId}`, target: '_blank', rel: 'noopener noreferrer' }
+              : {}
+            return (
+            <GalleryTag key={g.id} className="cd-gallery-item" {...linkProps}>
               {g.coverUrl ? (
                 <img 
                   src={g.coverUrl} 
@@ -238,7 +293,7 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
               <div className="cd-gallery-overlay">
                 <h4>{g.title}</h4>
                 <div className="cd-gallery-meta">
-                  <span className="cd-gallery-status" style={{ color: `var(--cd-accent-${g.status === 'Completed' ? 'amber' : g.status === 'Playing' ? 'cyan' : g.status === 'Abandoned' ? 'red' : 'muted'})`}}>
+                  <span className="cd-gallery-status" style={{ color: `var(--cd-status-${(g.status || 'Backlog').toLowerCase()})` }}>
                     [{g.status}]
                   </span>
                   {g.year && <span className="cd-gallery-year">{g.year}</span>}
@@ -252,8 +307,9 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
                   )}
                 </div>
               </div>
-            </div>
-          ))}
+            </GalleryTag>
+            )
+          })}
         </div>
       </div>
 
@@ -360,6 +416,10 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
           padding-bottom: 0.5rem;
           margin-bottom: 1rem;
         }
+        .cd-export-buttons {
+          display: flex;
+          gap: 0.5rem;
+        }
         .cd-results-count {
           font-family: var(--cd-font-terminal);
           color: var(--cd-accent-cyan);
@@ -384,11 +444,16 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
           margin-top: 1rem;
         }
         .cd-gallery-item {
+          display: block;
           position: relative;
           height: 100px;
           border: 1px solid var(--cd-border-accent);
           overflow: hidden;
           background: var(--cd-bg-dark);
+          cursor: default;
+        }
+        a.cd-gallery-item {
+          cursor: pointer;
         }
         .cd-gallery-item img {
           width: 100%;
@@ -446,6 +511,9 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
             flex-direction: column;
             align-items: stretch;
             gap: 1rem;
+          }
+          .cd-export-buttons {
+            flex-direction: column;
           }
           .cd-results-header .cd-btn-icon {
             width: 100%;

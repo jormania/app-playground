@@ -4,20 +4,31 @@ export function DiscountModal({ games, onClose }) {
   return (
     <div className="cd-modal-overlay" style={{ alignItems: 'flex-start', paddingTop: '4rem' }} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="cd-modal-content cd-discount-modal cd-panel">
-        <button className="cd-modal-close" onClick={onClose}>[X]</button>
+        <button className="cd-modal-close" onClick={onClose} aria-label="Close">[X]</button>
         
         <h2 className="cd-modal-title" style={{ margin: '0 0 0.2rem 0' }}>ACTIVE_DISCOUNT</h2>
         <p className="cd-text-muted" style={{ margin: '0 0 0.5rem 0' }}>The following items from your backlog are currently on sale.</p>
 
         <div className="cd-discount-grid">
-          {games.map(g => (
-            <div key={g.id} className="cd-discount-card" style={{ cursor: 'pointer' }} onClick={() => g.appId && window.open(`https://store.steampowered.com/app/${g.appId}`, '_blank')}>
+          {games.map(g => {
+            // A real <a> (rather than a div+onClick window.open()) so the link is a
+            // genuine browser navigation — never popup-blocked, and works the same in
+            // an installed PWA as in a regular tab. Plain div when there's no appId.
+            const CardTag = g.appId ? 'a' : 'div'
+            const linkProps = g.appId
+              ? { href: `https://store.steampowered.com/app/${g.appId}`, target: '_blank', rel: 'noopener noreferrer' }
+              : {}
+            return (
+            <CardTag key={g.id} className="cd-discount-card" {...linkProps}>
               <div className="cd-discount-cover">
                 {g.coverUrl ? (
-                  <img src={g.coverUrl} alt={g.title} />
+                  <img src={g.coverUrl} alt={g.title} onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.parentElement.classList.add('fallback-cover');
+                  }} />
                 ) : (
-                <div className="fallback-cover cd-discount-cover"></div>
-              )}
+                  <div className="fallback-cover" style={{ width: '100%', height: '100%' }}></div>
+                )}
                 {g.discountPercent > 0 && (
                   <div className="cd-discount-badge">
                     -{Math.round(g.discountPercent * 100)}%
@@ -35,19 +46,38 @@ export function DiscountModal({ games, onClose }) {
                   </span>
                 </div>
               </div>
-            </div>
-          ))}
+            </CardTag>
+            )
+          })}
         </div>
       </div>
 
       <style>{`
         .cd-discount-modal {
+          position: relative;
           max-width: 800px;
           width: 90%;
           max-height: 80vh;
           overflow-y: auto;
           display: flex;
           flex-direction: column;
+        }
+        .cd-modal-close {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          background: transparent;
+          border: 1px solid var(--cd-border-color);
+          color: var(--cd-text-muted);
+          font-size: 0.9rem;
+          padding: 0.2rem 0.5rem;
+        }
+        .cd-modal-close:hover {
+          color: var(--cd-accent-cyan);
+          border-color: var(--cd-accent-cyan);
+        }
+        .cd-modal-title {
+          color: var(--cd-accent-cyan);
         }
         .cd-discount-grid {
           display: grid;
@@ -61,6 +91,10 @@ export function DiscountModal({ games, onClose }) {
           display: flex;
           flex-direction: column;
           transition: all 0.2s ease;
+          cursor: default;
+        }
+        a.cd-discount-card {
+          cursor: pointer;
         }
         .cd-discount-card:hover {
           border-color: var(--cd-accent-cyan);
@@ -73,14 +107,15 @@ export function DiscountModal({ games, onClose }) {
           width: 100%;
           border-bottom: 1px solid var(--cd-border-accent);
           overflow: hidden;
+          background: var(--cd-bg-dark);
         }
-        .cd-discount-cover {
-          width: 80px;
-          height: 110px;
+        .cd-discount-cover img {
+          width: 100%;
+          height: 100%;
           object-fit: cover;
-          border-radius: 4px;
+          display: block;
         }
-        .cd-discount-details {
+        .cd-discount-badge {
           position: absolute;
           top: 0.5rem;
           right: 0.5rem;

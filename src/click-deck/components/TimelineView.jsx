@@ -44,7 +44,7 @@ export function TimelineView({ games, onEdit, onUpdateStatus }) {
       <div className="cd-timeline-line">
         <div className="cd-timeline-glow" style={{ animationDuration: `${scanDuration}s` }}></div>
       </div>
-      {games.map((game, index) => (
+      {games.map((game) => (
         <div key={game.id} className="cd-timeline-node">
           <div className="cd-timeline-marker"></div>
           <div className="cd-timeline-content">

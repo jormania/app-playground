@@ -1,3 +1,10 @@
+// Treat sub-cent / sub-percent differences as unchanged so floating-point noise
+// (and null vs. absent) doesn't trigger a needless Notion write every night.
+function changed(next, prev) {
+  if (prev === null || prev === undefined) return next !== null && next !== undefined
+  return Math.abs(Number(next) - Number(prev)) > 0.001
+}
+
 export default async function handler(req, res) {
   const token = process.env.CLICKDECK_NOTION_TOKEN
   const dbId = process.env.CLICKDECK_DB_ID
@@ -48,7 +55,9 @@ export default async function handler(req, res) {
     const gamesToUpdate = rows.map(page => ({
       pageId: page.id,
       appId: parseInt(page.properties['Steam App ID']?.number || 0, 10),
-      currentPrice: page.properties['Current Price']?.number
+      currentPrice: page.properties['Current Price']?.number,
+      initialPrice: page.properties['Initial Price']?.number,
+      discountPercent: page.properties['Discount Percent']?.number
     })).filter(g => g.appId > 0)
 
     if (gamesToUpdate.length === 0) {
@@ -80,16 +89,23 @@ export default async function handler(req, res) {
         // Steam sometimes returns an empty array [] for invalid/delisted appids instead of an object
         if (appData && typeof appData === 'object' && !Array.isArray(appData)) {
           if (appData.success && appData.data && !Array.isArray(appData.data) && appData.data.price_overview) {
-            // price_overview.final is in cents (e.g. 999 for $9.99)
-            const newPrice = appData.data.price_overview.final / 100
-            
-            if (newPrice !== game.currentPrice) {
-              results.push({ pageId: game.pageId, newPrice })
+            const po = appData.data.price_overview
+            // Steam reports money in cents (999 → $9.99) and discount as a whole
+            // percent (55). We store the fraction (0.55) to match the Notion
+            // "Discount Percent" percent-format column.
+            const newPrice = po.final / 100
+            const newInitial = po.initial / 100
+            const newDiscount = (po.discount_percent || 0) / 100
+
+            if (changed(newPrice, game.currentPrice) ||
+                changed(newInitial, game.initialPrice) ||
+                changed(newDiscount, game.discountPercent)) {
+              results.push({ pageId: game.pageId, newPrice, newInitial, newDiscount })
             }
           } else if (appData.success && (!appData.data || Array.isArray(appData.data) || !appData.data.price_overview)) {
-            // Likely free or no longer available for purchase
-            if (game.currentPrice !== 0) {
-              results.push({ pageId: game.pageId, newPrice: 0 })
+            // Likely free or no longer available for purchase — clear any stale sale.
+            if (changed(0, game.currentPrice) || (game.discountPercent || 0) !== 0) {
+              results.push({ pageId: game.pageId, newPrice: 0, newInitial: null, newDiscount: 0 })
             }
           }
         }
@@ -112,6 +128,8 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           properties: {
             'Current Price': { number: update.newPrice },
+            'Initial Price': { number: update.newInitial },
+            'Discount Percent': { number: update.newDiscount },
             'Price Updated At': { date: { start: new Date().toISOString() } }
           }
         })

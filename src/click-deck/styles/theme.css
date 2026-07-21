@@ -16,6 +16,14 @@
   --cd-border-color: #384252;
   --cd-border-accent: var(--cd-accent-cyan);
 
+  /* Play-status colours — one source of truth, shared by every view.
+     Derived from the theme accents so they shift with Union/Voodoo/Noir,
+     except Abandoned which stays a constant danger-red across all themes. */
+  --cd-status-backlog: var(--cd-text-muted);
+  --cd-status-playing: var(--cd-accent-cyan);
+  --cd-status-completed: var(--cd-accent-amber);
+  --cd-status-abandoned: #d9381e;
+
   --cd-font-terminal: 'JetBrains Mono', monospace;
   --cd-font-sans: 'JetBrains Mono', monospace;
 }
@@ -44,6 +52,51 @@
   --cd-accent-amber-glow: rgba(255, 255, 255, 0.3);
   --cd-text-primary: #e6e6e6;
   --cd-border-color: #404040;
+}
+
+/* Sierra Nights — the dusky indigo skies and warm gold parser text of Sierra
+   On-Line's King's Quest / Space Quest VGA era. */
+[data-theme="sierra"] {
+  --cd-bg-dark: #14122b;
+  --cd-bg-panel: #1d1a3d;
+  --cd-bg-steel: #29244f;
+  --cd-accent-cyan: #e0b04f; /* Parser Gold */
+  --cd-accent-cyan-glow: rgba(224, 176, 79, 0.3);
+  --cd-accent-cyan-dim: rgba(224, 176, 79, 0.1);
+  --cd-accent-amber: #c76b8a; /* Dusk Rose */
+  --cd-accent-amber-glow: rgba(199, 107, 138, 0.3);
+  --cd-text-primary: #ece6f5;
+  --cd-border-color: #3a3363;
+}
+
+/* Amber Terminal — classic monochrome DOS/BBS CRT: warm amber phosphor on
+   near-black, the same register as this app's own ">" terminal chrome. */
+[data-theme="amber-terminal"] {
+  --cd-bg-dark: #0d0805;
+  --cd-bg-panel: #170f08;
+  --cd-bg-steel: #221709;
+  --cd-accent-cyan: #ffb000; /* Amber Phosphor */
+  --cd-accent-cyan-glow: rgba(255, 176, 0, 0.3);
+  --cd-accent-cyan-dim: rgba(255, 176, 0, 0.1);
+  --cd-accent-amber: #ff6b00; /* Burnt Orange */
+  --cd-accent-amber-glow: rgba(255, 107, 0, 0.3);
+  --cd-text-primary: #ffe0b3;
+  --cd-border-color: #3d2a10;
+}
+
+/* CGA — early-90s DOS composite CGA's iconic cyan/magenta 4-colour palette,
+   before VGA became the standard. */
+[data-theme="cga"] {
+  --cd-bg-dark: #0a0a1a;
+  --cd-bg-panel: #14142a;
+  --cd-bg-steel: #1e1e3a;
+  --cd-accent-cyan: #55ffff; /* CGA Cyan */
+  --cd-accent-cyan-glow: rgba(85, 255, 255, 0.3);
+  --cd-accent-cyan-dim: rgba(85, 255, 255, 0.1);
+  --cd-accent-amber: #ff55ff; /* CGA Magenta */
+  --cd-accent-amber-glow: rgba(255, 85, 255, 0.3);
+  --cd-text-primary: #ffffff;
+  --cd-border-color: #2a2a4a;
 }
 
 html, body {
@@ -77,6 +130,59 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid var(--cd-border-color);
   border-radius: 0; /* No rounded corners */
   padding: 1rem;
+}
+
+/* Retro CRT Mode (Settings toggle, opt-in): viewfinder-style corner brackets on
+   every panel, echoing the same bracket motif as the header logo and the
+   [T]/[E]DIT UI language. Off by default — with ~70 timeline cards on screen
+   at once this reads as clutter unless the user specifically wants the look. */
+[data-crt="true"] .cd-panel {
+  position: relative;
+}
+[data-crt="true"] .cd-panel::before,
+[data-crt="true"] .cd-panel::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--cd-accent-cyan);
+  opacity: 0.5;
+  pointer-events: none;
+}
+[data-crt="true"] .cd-panel::before {
+  top: -1px;
+  left: -1px;
+  border-right: none;
+  border-bottom: none;
+}
+[data-crt="true"] .cd-panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-left: none;
+  border-top: none;
+}
+
+.cd-crt-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9997;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 1px,
+      rgba(0, 0, 0, 0.12) 2px,
+      rgba(0, 0, 0, 0.12) 3px
+    ),
+    radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.4) 100%);
+  mix-blend-mode: multiply;
+  animation: crtFlicker 6s infinite;
+}
+@keyframes crtFlicker {
+  0%, 96%, 100% { opacity: 1; }
+  97% { opacity: 0.92; }
+  98% { opacity: 1; }
 }
 
 /* Game Card Aesthetics */
@@ -174,24 +280,37 @@ input:focus, select:focus, textarea:focus {
   animation: simpleFadeIn 0.3s ease-out;
 }
 
-/* Fallback Cover */
+/* Fallback Cover — a drifting static pattern rather than a flat stripe set,
+   so a missing cover reads as "signal lost" rather than a plain placeholder. */
 .fallback-cover {
-  background: repeating-linear-gradient(
+  background-image: repeating-linear-gradient(
     0deg,
     #111,
     #111 2px,
     #222 2px,
     #222 4px
   );
+  background-size: 200% 200%;
+  animation: staticDrift 8s linear infinite;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+@keyframes staticDrift {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 0% 100%; }
+}
+@keyframes signalFlicker {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.3; }
+  60% { opacity: 0.6; }
 }
 .fallback-cover::before {
   content: 'NO SIGNAL';
   font-family: var(--cd-font-terminal);
   color: var(--cd-accent-amber);
   font-size: 1.5rem;
+  animation: signalFlicker 3s ease-in-out infinite;
   letter-spacing: 4px;
   opacity: 0.5;
 }
@@ -318,11 +437,20 @@ input:focus, select:focus, textarea:focus {
 }
 
 .cd-random-cover-wrapper {
+  display: block;
   position: relative;
-  width: 200px;
-  height: 300px;
+  width: 100%;
+  max-width: 320px;
+  /* Steam store header.jpg proportions (460x215) — covers are landscape, not
+     portrait box art, so the box must match or object-fit: cover crops most
+     of the image away. */
+  aspect-ratio: 460 / 215;
   margin: 0 auto 1.5rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+a.cd-random-cover-wrapper {
+  cursor: pointer;
 }
 
 .cd-random-cover {
@@ -359,6 +487,14 @@ input:focus, select:focus, textarea:focus {
 .cd-random-header-prefix {
   font-size: 0.9rem;
   color: var(--cd-text-muted);
+}
+
+.cd-random-weight-badge {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--cd-accent-amber);
+  letter-spacing: 1px;
+  margin-top: 0.3rem;
 }
 
 .cd-random-actions {
@@ -434,8 +570,7 @@ input:focus, select:focus, textarea:focus {
   }
   
   .cd-random-cover-wrapper {
-    width: 150px;
-    height: 225px;
+    max-width: 260px;
   }
   .cd-random-title {
     font-size: 1.4rem;

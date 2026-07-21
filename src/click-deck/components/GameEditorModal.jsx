@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { ALL_TAGS } from '../lib/seed-data'
+import { pickBestSteamMatch } from '../lib/steamMatch'
 
 export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
   const [formData, setFormData] = useState({
@@ -43,6 +44,14 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
     })
   }
 
+  // True only when the plain-text journal shown in the textarea is exactly what was
+  // loaded from the original rich-text entry — i.e. the user hasn't touched it, so
+  // it's safe to write the original formatted segments straight back on save.
+  const journalUnchanged = Boolean(game) && Array.isArray(game.journalRich) && game.journalRich.length > 0 && formData.journal === game.journal
+  const journalHasRichFormatting = Array.isArray(game?.journalRich) && game.journalRich.some(rt =>
+    rt.annotations && (rt.annotations.bold || rt.annotations.italic || rt.annotations.strikethrough || rt.annotations.underline || rt.annotations.code || (rt.annotations.color && rt.annotations.color !== 'default'))
+  )
+
   const handleSave = () => {
     if (!formData.title) {
       setValidationError('TITLE REQUIRED')
@@ -50,7 +59,12 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
     }
     if (!formData.status) return // simple validation
     setValidationError('')
-    onSave(formData)
+    // Only forward journalRich when it's confirmed unchanged — otherwise a stale
+    // rich-text array (from the initial `...game` spread) would override the
+    // edited plain text, or worse, silently resurrect formatting the user just
+    // tried to remove. mapGameToProperties falls back to plain text when absent.
+    const dataToSave = journalUnchanged ? formData : { ...formData, journalRich: undefined }
+    onSave(dataToSave)
   }
 
   const fetchCover = async () => {
@@ -60,11 +74,21 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
       const targetUrl = `/api/steam-search?term=${encodeURIComponent(formData.title)}`;
       const res = await fetch(targetUrl);
       const json = await res.json();
-      
-      if (json.items && json.items.length > 0) {
+
+      // Steam's search is fuzzy-ranked, not exact — classics are frequently
+      // re-listed with a "Remastered"/"Special Edition" suffix, so the
+      // literal first result isn't always the right game. Score candidates
+      // by normalized title instead of trusting items[0] blindly.
+      const match = pickBestSteamMatch(json.items, formData.title);
+      if (match) {
         setFormData(prev => ({
           ...prev,
-          coverUrl: `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${json.items[0].id}/header.jpg`
+          coverUrl: `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${match.id}/header.jpg`,
+          // Previously only the cover URL was saved here, never the App ID —
+          // meaning a game whose cover came from this button would silently
+          // never get pricing (the nightly cron only picks up games with a
+          // Steam App ID) and its cover would never link to the store page.
+          appId: match.id
         }));
       } else {
         if (onToast) onToast('No cover found on Steam for that title.');
@@ -83,7 +107,7 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
       <div className="cd-modal cd-panel">
         <div className="cd-modal-header">
           <h2>{game ? 'EDIT_ENTRY' : 'NEW_ENTRY'}</h2>
-          <button className="cd-btn-icon" onClick={onClose}>[X]</button>
+          <button className="cd-btn-icon" onClick={onClose} aria-label="Close">[X]</button>
         </div>
         
         <div className="cd-form-group">
@@ -136,9 +160,11 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
         </div>
 
         <div className="cd-form-group">
-          <label>TAGS (Max 7)</label>
+          <label>TAGS ({formData.tags.length}/7)</label>
           <div className="cd-tag-picker">
-            {ALL_TAGS.map(tag => {
+            {/* Canonical tags plus any already on this entry that predate the list,
+                so off-list tags stay visible and removable instead of vanishing. */}
+            {[...ALL_TAGS, ...formData.tags.filter(t => !ALL_TAGS.includes(t))].map(tag => {
               const isActive = formData.tags.includes(tag)
               return (
                 <span 
@@ -151,16 +177,25 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
               )
             })}
           </div>
+          {formData.tags.length > 0 && formData.tags.length < 5 && (
+            <p className="cd-tag-warning">⚠ Collection policy calls for 5–7 tags per entry — only {formData.tags.length} selected.</p>
+          )}
+          {formData.tags.length > 7 && (
+            <p className="cd-tag-warning">⚠ Collection policy calls for 5–7 tags per entry — {formData.tags.length} selected (predates the current cap).</p>
+          )}
         </div>
 
         <div className="cd-form-group">
           <label>JOURNAL/NOTES</label>
-          <textarea 
-            name="journal" 
-            value={formData.journal || ''} 
+          <textarea
+            name="journal"
+            value={formData.journal || ''}
             onChange={handleChange}
             rows={4}
           />
+          {journalHasRichFormatting && !journalUnchanged && (
+            <p className="cd-tag-warning">⚠ This entry has Notion rich-text formatting (bold/color). Saving your edit here will replace it with plain text.</p>
+          )}
         </div>
 
         <div className="cd-modal-actions" style={{ justifyContent: game ? 'space-between' : 'flex-end', display: 'flex', flexWrap: 'wrap-reverse', gap: '1rem', width: '100%', alignItems: 'center' }}>
@@ -189,6 +224,11 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
           padding: 0.5rem;
           border: 1px solid var(--cd-border-color);
           background: var(--cd-bg-dark);
+        }
+        .cd-tag-warning {
+          margin: 0.5rem 0 0;
+          font-size: 0.85rem;
+          color: var(--cd-accent-amber);
         }
         .cd-picker-tag {
           font-size: 0.8rem;
