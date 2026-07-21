@@ -1,4 +1,5 @@
 import React from 'react'
+import ReactMarkdown from 'react-markdown'
 
 export function GameCard({ game, onEdit, onUpdateStatus }) {
   const statusColors = {
@@ -12,8 +13,20 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
 
   return (
     <div className="cd-panel cd-game-card">
-      {game.coverUrl && (
-        <div className="cd-game-cover" style={{ backgroundImage: `url(${game.coverUrl})` }}></div>
+      {game.coverUrl ? (
+        <div className="cd-game-cover">
+          <img 
+            src={game.coverUrl} 
+            alt={game.title} 
+            loading="lazy" 
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.parentElement.classList.add('fallback-cover');
+            }} 
+          />
+        </div>
+      ) : (
+        <div className="cd-game-cover fallback-cover"></div>
       )}
       <div className="cd-game-header">
         <h3 className="cd-game-title">{game.title}</h3>
@@ -53,7 +66,7 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
 
       {game.journal && (
         <div className="cd-journal">
-          <p>{game.journal}</p>
+          <ReactMarkdown>{game.journal}</ReactMarkdown>
         </div>
       )}
 
@@ -77,11 +90,37 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
         }
         .cd-game-cover {
           height: 180px;
-          background-size: cover;
-          background-position: center;
           margin: -1rem -1rem 1rem -1rem;
           border-bottom: 1px solid var(--cd-border-accent);
           position: relative;
+          overflow: hidden;
+          background: var(--cd-bg-dark);
+        }
+        .cd-game-cover img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .fallback-cover {
+          background: repeating-linear-gradient(
+            0deg,
+            #111,
+            #111 2px,
+            #222 2px,
+            #222 4px
+          );
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .fallback-cover::before {
+          content: 'NO SIGNAL';
+          font-family: var(--cd-font-terminal);
+          color: var(--cd-accent-amber);
+          font-size: 1.5rem;
+          letter-spacing: 4px;
+          opacity: 0.5;
         }
         .cd-game-cover::after {
           content: '';
@@ -135,7 +174,13 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
           padding-left: 1rem;
           margin-bottom: 1rem;
           color: var(--cd-text-muted);
+        }
+        .cd-journal p {
+          margin-top: 0;
           font-style: italic;
+        }
+        .cd-journal strong {
+          color: var(--cd-text-primary);
         }
         .cd-quick-update {
           display: flex;

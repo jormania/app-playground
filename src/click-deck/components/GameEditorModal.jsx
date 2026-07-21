@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { ALL_TAGS } from '../lib/seed-data'
 
-export function GameEditorModal({ game, onSave, onDelete, onClose }) {
+export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
   const [formData, setFormData] = useState({
     title: '',
     year: new Date().getFullYear(),
@@ -67,11 +67,11 @@ export function GameEditorModal({ game, onSave, onDelete, onClose }) {
           coverUrl: `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${json.items[0].id}/header.jpg`
         }));
       } else {
-        alert('No cover found on Steam for that title.');
+        if (onToast) onToast('No cover found on Steam for that title.');
       }
     } catch (err) {
       console.error(err);
-      alert('Error fetching cover from Steam.');
+      if (onToast) onToast('Error fetching cover from Steam.');
     }
     setIsFetchingCover(false);
   };

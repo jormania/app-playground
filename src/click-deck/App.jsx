@@ -21,6 +21,37 @@ export function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('timeline')
 
+  const [toastMessage, setToastMessage] = useState(null)
+  const showToast = (msg) => {
+    setToastMessage(msg)
+    setTimeout(() => setToastMessage(null), 3000)
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+        if (e.key === 'Escape') {
+          setIsEditorOpen(false)
+          setIsSettingsOpen(false)
+        }
+        return
+      }
+      if (e.key === '/') {
+        e.preventDefault()
+        document.querySelector('.cd-search-input-slim')?.focus()
+      } else if (e.key.toLowerCase() === 'n') {
+        e.preventDefault()
+        setEditingGame(null)
+        setIsEditorOpen(true)
+      } else if (e.key === 'Escape') {
+        setIsEditorOpen(false)
+        setIsSettingsOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   const loadGames = async () => {
     setIsLoading(true)
     const data = await McpConnector.getGames()
@@ -123,7 +154,7 @@ export function App() {
                 setEditingGame(randomGame)
                 setIsEditorOpen(true)
               } else {
-                alert('NO BACKLOG GAMES FOUND.')
+                showToast('NO BACKLOG GAMES FOUND.')
               }
             }}>[R]</button>
             <button className={view === 'stats' ? 'primary' : ''} onClick={() => setView('stats')}>[S]</button>
@@ -212,6 +243,7 @@ export function App() {
           onSave={handleSaveGame} 
           onDelete={handleDeleteGame}
           onClose={() => { setIsEditorOpen(false); setEditingGame(null) }} 
+          onToast={showToast}
         />
       )}
 
@@ -221,6 +253,8 @@ export function App() {
           onResetDb={() => { setIsSettingsOpen(false); resetDb(); }}
         />
       )}
+
+      {toastMessage && <div className="cd-toast">[{toastMessage}]</div>}
 
       <style>{`
         .cd-app-container {
@@ -311,7 +345,10 @@ export function App() {
             align-items: stretch;
           }
           .cd-header-controls {
-            flex-direction: column;
+            flex-direction: row;
+          }
+          .cd-search-input-slim {
+            width: 50%;
           }
           .cd-nav {
             justify-content: space-between;
@@ -320,6 +357,23 @@ export function App() {
             flex: 1;
             text-align: center;
           }
+        }
+        .cd-toast {
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          background: var(--cd-bg-panel);
+          border: 1px solid var(--cd-accent-cyan);
+          color: var(--cd-accent-cyan);
+          padding: 1rem 1.5rem;
+          font-family: var(--cd-font-terminal);
+          z-index: 9999;
+          box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);
+          animation: slideIn 0.3s ease-out forwards;
+        }
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
         }
       `}</style>
     </div>
