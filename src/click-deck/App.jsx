@@ -196,20 +196,20 @@ export function App() {
                   className="cd-sort-select-btn" 
                   onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
                 >
-                  {sortBy === 'timeline' ? 'Timeline (By Year)' : 
+                  {sortBy === 'timeline' ? 'Timeline' : 
                    sortBy === 'recent' ? 'Recently Added' : 
-                   sortBy === 'rating' ? 'Highest Rated' : 'Alphabetical (A-Z)'}
+                   sortBy === 'rating' ? 'Highest Rated' : 'Alphabetical'}
                   <span className="cd-chevron">▼</span>
                 </button>
                 {isSortMenuOpen && (
                   <div className="cd-sort-menu cd-panel">
                     <div className="cd-sort-group">--- TIME ---</div>
-                    <button className={`cd-sort-option ${sortBy === 'timeline' ? 'active' : ''}`} onClick={() => { setSortBy('timeline'); setIsSortMenuOpen(false) }}>Timeline (By Year)</button>
+                    <button className={`cd-sort-option ${sortBy === 'timeline' ? 'active' : ''}`} onClick={() => { setSortBy('timeline'); setIsSortMenuOpen(false) }}>Timeline</button>
                     <button className={`cd-sort-option ${sortBy === 'recent' ? 'active' : ''}`} onClick={() => { setSortBy('recent'); setIsSortMenuOpen(false) }}>Recently Added</button>
                     
                     <div className="cd-sort-group">--- METRICS ---</div>
                     <button className={`cd-sort-option ${sortBy === 'rating' ? 'active' : ''}`} onClick={() => { setSortBy('rating'); setIsSortMenuOpen(false) }}>Highest Rated</button>
-                    <button className={`cd-sort-option ${sortBy === 'alpha' ? 'active' : ''}`} onClick={() => { setSortBy('alpha'); setIsSortMenuOpen(false) }}>Alphabetical (A-Z)</button>
+                    <button className={`cd-sort-option ${sortBy === 'alpha' ? 'active' : ''}`} onClick={() => { setSortBy('alpha'); setIsSortMenuOpen(false) }}>Alphabetical</button>
                   </div>
                 )}
               </div>
@@ -324,7 +324,7 @@ export function App() {
         .cd-header h1 {
           margin: 0;
           line-height: 1;
-          font-size: 1.8rem;
+          font-size: 1.5rem;
           letter-spacing: 2px;
         }
         .cd-header-controls {
@@ -444,8 +444,8 @@ export function App() {
           align-items: center;
         }
         .cd-nav button {
-          padding: 0.4rem 0.6rem;
-          font-size: 0.9rem;
+          padding: 0.3rem 0.5rem;
+          font-size: 0.8rem;
         }
         .cd-active-filters-slim {
           display: flex;

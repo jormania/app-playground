@@ -2,16 +2,20 @@ import React, { useMemo } from 'react'
 
 export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags, searchQuery, setSearchQuery }) {
   
-  // Calculate word cloud (tag frequencies)
+  // Calculate tag frequencies based on currently filtered games
   const tagCounts = useMemo(() => {
     const counts = {}
-    games.forEach(g => {
+    filteredGames.forEach(g => {
       g.tags.forEach(t => {
         counts[t] = (counts[t] || 0) + 1
       })
     })
+    // Ensure active tags are always rendered so they can be un-toggled
+    activeTags.forEach(t => {
+      if (counts[t] === undefined) counts[t] = 0
+    })
     return Object.entries(counts).sort((a, b) => b[1] - a[1])
-  }, [games])
+  }, [filteredGames, activeTags])
 
   const toggleTag = (tag) => {
     if (activeTags.includes(tag)) {
@@ -75,7 +79,7 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
       {/* Global filters have been extracted to App.jsx */}
 
       <div className="cd-word-cloud cd-panel">
-        <h3>GLOBAL_TAG_MATRIX</h3>
+        <h3>TAG_MATRIX</h3>
         <div className="cd-cloud-container">
           {tagCounts.map(([tag, count]) => {
             const isActive = activeTags.includes(tag)
@@ -174,7 +178,7 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
         }
         
         .cd-analytics-results {
-          margin-top: 2rem;
+          margin-top: 0.5rem;
         }
         .cd-results-header {
           display: flex;
