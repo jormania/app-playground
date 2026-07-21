@@ -159,7 +159,7 @@ export function App() {
         {!isInitialized ? (
           <OnboardingWizard onComplete={handleOnboardingComplete} />
         ) : (
-          <>
+          <div key={view} className="cd-view-transition">
             {view === 'timeline' && (
               <div className="cd-timeline-container">
                 <TimelineView 
@@ -179,7 +179,7 @@ export function App() {
                 setSearchQuery={setSearchQuery}
               />
             )}
-          </>
+          </div>
         )}
       </main>
 

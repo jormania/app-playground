@@ -46,6 +46,28 @@ export function GameEditorModal({ game, onSave, onClose }) {
     onSave(formData)
   }
 
+  const fetchCover = async () => {
+    if (!formData.title) return;
+    try {
+      const targetUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(formData.title)}&l=english&cc=US`;
+      const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
+      const proxyData = await res.json();
+      const json = JSON.parse(proxyData.contents);
+      
+      if (json.items && json.items.length > 0) {
+        setFormData(prev => ({
+          ...prev,
+          coverUrl: `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${json.items[0].id}/header.jpg`
+        }));
+      } else {
+        alert('No cover found on Steam for that title.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error fetching cover from Steam.');
+    }
+  };
+
   const showRating = ['Completed', 'Playing', 'Abandoned'].includes(formData.status)
 
   return (
@@ -63,7 +85,10 @@ export function GameEditorModal({ game, onSave, onClose }) {
         
         <div className="cd-form-group">
           <label>COVER_URL (Optional)</label>
-          <input name="coverUrl" placeholder="https://..." value={formData.coverUrl || ''} onChange={handleChange} />
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <input name="coverUrl" placeholder="https://..." value={formData.coverUrl || ''} onChange={handleChange} />
+            <button type="button" onClick={fetchCover} style={{ whiteSpace: 'nowrap', fontSize: '0.9rem', padding: '0 1rem' }}>FETCH STEAM</button>
+          </div>
         </div>
         
         <div className="cd-form-row">

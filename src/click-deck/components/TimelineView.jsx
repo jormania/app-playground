@@ -43,8 +43,9 @@ export function TimelineView({ games, onEdit, onUpdateStatus }) {
       </div>
       {games.map((game, index) => (
         <div key={game.id} className="cd-timeline-node">
-          <div className="cd-timeline-year">{game.year}</div>
+          <div className="cd-timeline-marker"></div>
           <div className="cd-timeline-content">
+            <div className="cd-timeline-year-badge">YEAR: {game.year}</div>
             <GameCard game={game} onEdit={onEdit} onUpdateStatus={onUpdateStatus} />
           </div>
         </div>
@@ -59,7 +60,7 @@ export function TimelineView({ games, onEdit, onUpdateStatus }) {
           position: absolute;
           top: 0;
           bottom: 0;
-          left: 5rem;
+          left: 1rem;
           width: 2px;
           background: var(--cd-border-color);
           overflow: hidden;
@@ -90,24 +91,9 @@ export function TimelineView({ games, onEdit, onUpdateStatus }) {
           opacity: 1;
           transform: translateX(0);
         }
-        .cd-timeline-year {
-          width: 5rem;
-          font-family: var(--cd-font-terminal);
-          font-size: 1.5rem;
-          color: var(--cd-text-muted);
-          text-align: right;
-          padding-right: 2rem;
-          position: relative;
-          transition: color 0.5s ease;
-        }
-        .cd-timeline-node.in-view .cd-timeline-year {
-          color: var(--cd-accent-cyan);
-          text-shadow: 0 0 8px var(--cd-accent-cyan-glow);
-        }
-        .cd-timeline-year::after {
-          content: '';
+        .cd-timeline-marker {
           position: absolute;
-          right: -5px;
+          left: calc(1rem - 5px);
           top: 0.5rem;
           width: 12px;
           height: 12px;
@@ -116,7 +102,7 @@ export function TimelineView({ games, onEdit, onUpdateStatus }) {
           z-index: 1;
           transition: all 0.5s ease;
         }
-        .cd-timeline-node.in-view .cd-timeline-year::after {
+        .cd-timeline-node.in-view .cd-timeline-marker {
           border-color: var(--cd-accent-cyan);
           background: var(--cd-accent-cyan-dim);
           box-shadow: 0 0 10px var(--cd-accent-cyan-glow);
@@ -125,7 +111,23 @@ export function TimelineView({ games, onEdit, onUpdateStatus }) {
         .cd-timeline-content {
           flex: 1;
           min-width: 0;
-          padding-left: 2rem;
+          padding-left: 3rem;
+        }
+        .cd-timeline-year-badge {
+          display: inline-block;
+          font-family: var(--cd-font-terminal);
+          font-size: 0.85rem;
+          color: var(--cd-text-muted);
+          background: var(--cd-bg-panel);
+          border: 1px solid var(--cd-border-color);
+          padding: 0.2rem 0.6rem;
+          margin-bottom: 0.8rem;
+          transition: all 0.5s ease;
+        }
+        .cd-timeline-node.in-view .cd-timeline-year-badge {
+          color: var(--cd-accent-cyan);
+          border-color: var(--cd-accent-cyan);
+          box-shadow: 0 0 8px var(--cd-accent-cyan-glow);
         }
         .cd-empty {
           padding: 2rem;
@@ -136,23 +138,8 @@ export function TimelineView({ games, onEdit, onUpdateStatus }) {
         }
 
         @media (max-width: 600px) {
-          .cd-timeline-line {
-            left: 3.5rem;
-          }
-          .cd-timeline-year {
-            width: 3.5rem;
-            font-size: 1.2rem;
-            padding-right: 1.5rem;
-          }
-          .cd-timeline-year::after {
-            right: -5px;
-            top: 0.25rem;
-            width: 10px;
-            height: 10px;
-          }
           .cd-timeline-content {
-            padding-left: 1rem;
-            width: calc(100% - 3rem); /* Ensure content doesn't overflow */
+            padding-left: 2.5rem;
           }
         }
         .cd-empty-terminal {

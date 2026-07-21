@@ -15,12 +15,27 @@ Click Deck is a standalone web application designed for cataloguing and tracking
 - **Backend**: Live Notion Database Integration via a proxy layer.
 - **Test Suite**: A comprehensive Vitest + React Testing Library component suite ensuring robustness across all core UI components. 
 
-## Timeline Micro-Animations
+## Core Views
 
-The core view of Click Deck is a chronologically sorted Timeline. This timeline leans heavily into the retro-futuristic, cyberpunk aesthetic by utilizing an `IntersectionObserver` to trigger scroll-based micro-animations. 
+Click Deck features two primary perspectives over your game collection, toggled via the main navigation:
+
+### 1. Timeline View (Micro-Animations)
+The chronologically sorted timeline is the core of the application. It leans heavily into a retro-futuristic, cyberpunk aesthetic by utilizing an `IntersectionObserver` to trigger scroll-based micro-animations.
 - A persistent, glowing cyan "scan line" tracks up and down the vertical timeline track.
 - As individual game nodes enter the viewport, they smoothly slide in from the side.
 - Year markers and game cards ignite with a neon glow effect, creating a highly dynamic, "living" interface that reacts continuously to user scroll position.
+
+### 2. Analytics View
+A high-level dashboard providing insights into your collection.
+- Features a **Dynamic Tag Word Cloud** that lets you visually filter your library by genre or theme (e.g., *SCUMM*, *Comedy*, *Sci-Fi*).
+- Displays detailed breakdowns of your completion status and ratings.
+
+## Game Editor
+
+Click Deck includes a dedicated **Game Editor Modal** for manual collection management.
+- Users can manually add unlisted games or edit existing ones.
+- Includes fields for Title, Developer, Year, Status, Rating, Tags, and a custom Journal entry.
+- Supports pasting external image URLs to fetch high-resolution cover art.
 
 ## Notion Backend & Database Initialization
 

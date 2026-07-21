@@ -338,6 +338,16 @@ export const PIVOT_TITLES = [
     rating: null,
     journal: "",
     coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/245390/header.jpg"
+  },
+  {
+    title: "Zak McKracken and the Alien Mindbenders",
+    year: 1988,
+    developer: "Lucasfilm Games",
+    tags: ["SCUMM", "Comedy", "Sci-Fi", "Classic"],
+    status: "Backlog",
+    rating: null,
+    journal: "A bizarre globetrotting adventure to stop aliens from reducing humanity's intelligence via the phone company.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/559070/header.jpg"
   }
 ];
 

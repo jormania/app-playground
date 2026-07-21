@@ -39,8 +39,10 @@ export const APPS = [
     features: [
       "Onboarding Wizard to rapidly seed the timeline with genre classics",
       "Timeline View mapping your history by Release Year",
-      "Dynamic Tag Word Cloud for discovering and filtering intersections",
-      "Live Notion backend syncs via MCP proxy proxy"
+      "Game Editor to manually add, edit, or rate your collection",
+      "Analytics View with a dynamic Tag Word Cloud and detailed breakdowns",
+      "Live Notion backend syncs via MCP proxy proxy",
+      "PWA support to install on mobile or desktop and use offline"
     ],
     guide: "click-deck-guide.html",
     file: "click-deck-react.html",
