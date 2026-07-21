@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { ALL_TAGS } from '../lib/seed-data'
 
-export function GameEditorModal({ game, onSave, onClose }) {
+export function GameEditorModal({ game, onSave, onDelete, onClose }) {
   const [formData, setFormData] = useState({
     title: '',
     year: new Date().getFullYear(),
@@ -12,6 +12,8 @@ export function GameEditorModal({ game, onSave, onClose }) {
     journal: '',
     coverUrl: ''
   })
+  const [isFetchingCover, setIsFetchingCover] = useState(false)
+  const [validationError, setValidationError] = useState('')
 
   useEffect(() => {
     if (game) {
@@ -42,12 +44,18 @@ export function GameEditorModal({ game, onSave, onClose }) {
   }
 
   const handleSave = () => {
-    if (!formData.title || !formData.status) return // simple validation
+    if (!formData.title) {
+      setValidationError('TITLE REQUIRED')
+      return
+    }
+    if (!formData.status) return // simple validation
+    setValidationError('')
     onSave(formData)
   }
 
   const fetchCover = async () => {
     if (!formData.title) return;
+    setIsFetchingCover(true)
     try {
       const targetUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(formData.title)}&l=english&cc=US`;
       const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
@@ -66,6 +74,7 @@ export function GameEditorModal({ game, onSave, onClose }) {
       console.error(err);
       alert('Error fetching cover from Steam.');
     }
+    setIsFetchingCover(false);
   };
 
   const showRating = ['Completed', 'Playing', 'Abandoned'].includes(formData.status)
@@ -87,7 +96,9 @@ export function GameEditorModal({ game, onSave, onClose }) {
           <label>COVER_URL (Optional)</label>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <input name="coverUrl" placeholder="https://..." value={formData.coverUrl || ''} onChange={handleChange} />
-            <button type="button" onClick={fetchCover} style={{ whiteSpace: 'nowrap', fontSize: '0.9rem', padding: '0 1rem' }}>FETCH STEAM</button>
+            <button type="button" onClick={fetchCover} disabled={isFetchingCover} style={{ whiteSpace: 'nowrap', fontSize: '0.9rem', padding: '0 1rem' }}>
+              {isFetchingCover ? 'FETCHING...' : 'FETCH STEAM'}
+            </button>
           </div>
         </div>
         
@@ -153,9 +164,19 @@ export function GameEditorModal({ game, onSave, onClose }) {
           />
         </div>
 
-        <div className="cd-modal-actions">
-          <button onClick={onClose}>CANCEL</button>
-          <button className="primary" onClick={handleSave}>SAVE_DATA</button>
+        <div className="cd-modal-actions" style={{ justifyContent: game ? 'space-between' : 'flex-end', display: 'flex', width: '100%', alignItems: 'center' }}>
+          {game && (
+            <button 
+              onClick={() => { if(window.confirm('Are you sure you want to completely delete this entry?')) onDelete(game.id) }} 
+              style={{ color: 'var(--cd-accent-amber)', borderColor: 'var(--cd-accent-amber)' }}>
+              [ DELETE ENTRY ]
+            </button>
+          )}
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            {validationError && <span style={{ color: 'var(--cd-accent-amber)', fontSize: '0.9rem', fontWeight: 'bold' }}>* {validationError}</span>}
+            <button onClick={onClose}>CANCEL</button>
+            <button className="primary" onClick={handleSave}>SAVE_DATA</button>
+          </div>
         </div>
       </div>
 

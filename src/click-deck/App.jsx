@@ -13,6 +13,7 @@ export function App() {
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [editingGame, setEditingGame] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
   
   // Analytics filters
   const [activeTags, setActiveTags] = useState([])
@@ -20,8 +21,10 @@ export function App() {
   const [sortBy, setSortBy] = useState('timeline')
 
   const loadGames = async () => {
+    setIsLoading(true)
     const data = await McpConnector.getGames()
     setGames(data)
+    setIsLoading(false)
   }
 
   useEffect(() => {
@@ -60,6 +63,13 @@ export function App() {
   const handleUpdateStatus = async (id, status, rating) => {
     await McpConnector.updateGameStatus(id, status, rating)
     await loadGames()
+  }
+
+  const handleDeleteGame = async (id) => {
+    await McpConnector.deleteGame(id)
+    await loadGames()
+    setIsEditorOpen(false)
+    setEditingGame(null)
   }
   
   const resetDb = () => {
@@ -111,6 +121,8 @@ export function App() {
                 const randomGame = backlogGames[Math.floor(Math.random() * backlogGames.length)]
                 setEditingGame(randomGame)
                 setIsEditorOpen(true)
+              } else {
+                alert('NO BACKLOG GAMES FOUND.')
               }
             }}>[R]</button>
             <button onClick={() => setIsSettingsOpen(true)}>⚙</button>
@@ -158,6 +170,10 @@ export function App() {
       <main className="cd-main">
         {!isInitialized ? (
           <OnboardingWizard onComplete={handleOnboardingComplete} />
+        ) : isLoading && games.length === 0 ? (
+          <div className="cd-empty-terminal cd-panel">
+            <p className="cd-empty-line blink">&gt; QUERYING DATABASE...</p>
+          </div>
         ) : (
           <div key={view} className="cd-view-transition">
             {view === 'timeline' && (
@@ -187,6 +203,7 @@ export function App() {
         <GameEditorModal 
           game={editingGame} 
           onSave={handleSaveGame} 
+          onDelete={handleDeleteGame}
           onClose={() => { setIsEditorOpen(false); setEditingGame(null) }} 
         />
       )}

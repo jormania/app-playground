@@ -215,5 +215,20 @@ export const McpConnector = {
       }
       return db[index]
     }
+  },
+
+  deleteGame: async (id) => {
+    const token = getToken()
+    const dbId = getDbId()
+    if (token && dbId) {
+      await fetchNotion(`pages/${id}`, 'PATCH', { archived: true })
+      return { id, archived: true }
+    } else {
+      await new Promise(res => setTimeout(res, 300))
+      let db = getLocalDb() || []
+      db = db.filter(g => g.id !== id)
+      saveLocalDb(db)
+      return { id, archived: true }
+    }
   }
 }

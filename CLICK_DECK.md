@@ -33,9 +33,9 @@ A high-level dashboard providing insights into your collection.
 ## Game Editor
 
 Click Deck includes a dedicated **Game Editor Modal** for manual collection management.
-- Users can manually add unlisted games or edit existing ones.
+- Users can manually add unlisted games, edit existing ones, or completely delete/archive entries from their database.
 - Includes fields for Title, Developer, Year, Status, Rating, Tags, and a custom Journal entry.
-- Supports pasting external image URLs to fetch high-resolution cover art.
+- Supports pasting external image URLs or automatically fetching high-resolution cover art from the Steam API.
 
 ## Notion Backend & Database Initialization
 
