@@ -44,8 +44,8 @@ describe('TimelineView', () => {
 
   it('renders timeline with games', () => {
     render(<TimelineView games={mockGames} onEdit={() => {}} onUpdateStatus={() => {}} />)
-    expect(screen.getByText('1990')).toBeTruthy()
-    expect(screen.getByText('1995')).toBeTruthy()
+    expect(screen.getByText('YEAR: 1990')).toBeTruthy()
+    expect(screen.getByText('YEAR: 1995')).toBeTruthy()
     expect(screen.getByText('Game 1')).toBeTruthy()
     expect(screen.getByText('Game 2')).toBeTruthy()
   })
