@@ -348,8 +348,19 @@ export const PIVOT_TITLES = [
     rating: null,
     journal: "A bizarre globetrotting adventure to stop aliens from reducing humanity's intelligence via the phone company.",
     coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/559070/header.jpg"
+  },
+  {
+    title: "Esoteric Ebb",
+    year: 2024,
+    developer: "Christoffer Bodegård",
+    tags: ["RPG", "Text-Heavy", "Existential", "Politics"],
+    status: "Playing",
+    rating: null,
+    journal: "A CRPG where you play as a cleric in a city on the brink of an election.",
+    coverUrl: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2057760/header.jpg"
   }
 ];
+
 
 export const ALL_TAGS = [
   "SCUMM", "SCUMM-like", "Text-Heavy", "Magical Realism", "Moon Logic Puzzles", 
