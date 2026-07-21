@@ -107,7 +107,7 @@
   font-family: var(--font-display);
   font-size: var(--text-sm);
   color: var(--color-on-accent);
-  background: var(--color-accent);
+  background: var(--color-accent-strong);
   border: none;
   border-radius: var(--radius-sm);
   padding: 8px 14px;
@@ -144,7 +144,7 @@
 }
 .undoBtn {
   border: none;
-  background: var(--color-accent);
+  background: var(--color-accent-strong);
   color: var(--color-on-accent);
   font-family: var(--font-display);
   font-size: var(--text-xs);
@@ -154,4 +154,4 @@
   border-radius: var(--radius-pill);
   cursor: pointer;
 }
-.undoBtn:hover { background: var(--color-accent-hover); }
+.undoBtn:hover { background: var(--color-accent-strong-hover); }

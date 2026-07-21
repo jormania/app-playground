@@ -49,14 +49,14 @@ export function isLive() {
 
 // ── View prefs ──────────────────────────────────────────────────────────────
 // Remembers the last view (skeins/loom/tapestry), whether woven threads are
-// shown, the focus toggles and sorts, the skein-group sort and manual skein
-// order — so the app reopens exactly where you left it.
+// shown, the focus toggles and sorts, and the manual skein order — so the app
+// reopens exactly where you left it. Skeins have one sort behaviour (first
+// appearance + manual drag order) — no separate sort mode to remember.
 export const DEFAULT_VIEW_PREFS = {
   view: 'loom',
   showWoven: false,    // the "unwoven only" focus is simply this turned off
   rhythmSort: false,   // sort rhythm block by skein order instead of heat
   collapseWoven: false, // fold woven threads under a per-group toggle
-  skeinSort: 'manual', // 'manual' | 'name' | 'size' | 'heat'
   skeinOrder: [],      // manual drag order of skeins by name
 }
 export function loadViewPrefs() {

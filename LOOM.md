@@ -27,8 +27,13 @@ just different groupings/readings of it — toggling never moves data between si
 
 - **Skeins** (List view) — threads grouped by skein (project/category). Each skein
   is its own ordered, heat-dyed stack. A skein-and-thread composer up top starts
-  new work; each skein has its own inline adder, and a group-level sort
-  (manual/heat/size/name — rows within a group always stay manual by hand).
+  new work; each skein has its own inline adder. Skeins sort by first appearance
+  plus whatever order you've dragged them into by hand (persisted as
+  `prefs.skeinOrder`) — there's no separate sort-mode picker; rows within a group
+  always stay manual by hand regardless. Drag the grip (always visible, not a
+  hover reveal) to reorder skeins — a real pointer drag, the same technique as
+  every other drag in Loom, not native HTML5 drag-and-drop (which never worked
+  on touch).
 - **The Week** (Weekly view) — the same threads warped across the seven days of the
   current week (Mon→Sun, with prev/next/"this week"), plus **the distaff** — a
   backlog rail of unspun (day-less) threads to pull onto a day.
@@ -59,13 +64,16 @@ All of these sit on the same one thread array; none needs a Notion schema change
   active. A single repeating thread is just a one-line draft — that's the app's
   "weekly on day X" recurrence, deliberately kept short of a calendar-grade RRULE.
   Draft snapshots automatically **exclude rhythm-skein threads** (see Rhythm below).
-- **The Tapestry** — [`components/Tapestry.jsx`](src/loom/components/Tapestry.jsx),
-  aggregated purely by `tapestryStats` (model.js). An N-week (4/8/12) heatmap over
-  `Day`+`Done` — the cloth you've woven — plus completion rate, hottest skein,
-  busiest weekday, and "still unwoven from past weeks". Reuses **Recharts** (already
-  a dep) for the by-week bar chart; the heatmap is CSS grid. Descriptive, **never
-  scored or streaked** (Journal of Delights' ethos). `weekReview` is the same idea
-  for a single week (the no-server "this week — N woven, M carried" summary).
+- **The Tapestry** — [`components/Tapestry.jsx`](src/loom/components/Tapestry.jsx).
+  Two modes behind the range picker: **This week** — the no-server single-week
+  snapshot (`weekReview`: N woven, M still on the loom, hottest skein), a
+  purpose-built tile row rather than a one-bar slice of the history charts — and
+  the **4w/8w/12w history**, aggregated purely by `tapestryStats` (model.js): a
+  bar chart of threads woven by week (Recharts) plus a day-by-day heatmap
+  ("**The days you've woven**" — renamed from "the cloth you've woven", with a
+  one-line caption spelling out what the cells/dot mean), completion rate,
+  hottest skein, busiest weekday, and "still unwoven from past weeks".
+  Descriptive, **never scored or streaked** (Journal of Delights' ethos).
 - **Find & focus** — one search field (`matchesQuery` over title+skein) plus
   toggles for *unwoven only* and *top of each group* (the hot few, `topOfGroup`),
   cross-view. Woven threads can be **folded** per group
@@ -87,7 +95,8 @@ All of these sit on the same one thread array; none needs a Notion schema change
   re-weaves the thread back (App.jsx `removeWithUndo` / `reravel`).
 - **Rhythms (daily routines — multiple)** —
   [`lib/rhythm.js`](src/loom/lib/rhythm.js) +
-  [`lib/model.js`](src/loom/lib/model.js) (`rhythmThreadsForWeek`, `splitRhythmThreads`).
+  [`lib/model.js`](src/loom/lib/model.js) (`rhythmThreadsForWeek`, `splitRhythmThreads`,
+  `rhythmHeatIndexes`, `rhythmTemplateGroups`).
   **Any number of skeins** may be flagged as rhythms (stored as a JSON array under
   `loom_rhythm_skeins`, zero Notion schema changes; legacy single-entry key migrated on
   first read). Each rhythm carries an optional `days` mask (`[0..6]`, 0 = Mon; `null` =
@@ -96,11 +105,32 @@ All of these sit on the same one thread array; none needs a Notion schema change
   threads render at the **top of each day column** in a tinted block (`rhythmBlock` CSS),
   excluded from the distaff. Draft snapshots silently exclude **all** rhythm threads.
   The **Rhythm order** toolbar toggle sorts the rhythm block by skein-then-order instead
-  of heat. Skeins can be **drag-reordered** (handle ⠿ appears in Manual sort mode;
-  order saved as `prefs.skeinOrder`). A **Reset warp banners** button in the Guild
-  re-surfaces accidentally dismissed rhythm/draft offers. Long-press a rhythm thread in
-  the Warp → "Edit in rhythm" jumps back to Skeins with the skein flashed. Design
-  rationale: [`LOOM_RHYTHM_DESIGN.md`](LOOM_RHYTHM_DESIGN.md).
+  of heat. A **Reset warp banners** button in the Guild re-surfaces accidentally
+  dismissed rhythm/draft offers. Long-press a rhythm thread in the Warp → "Edit in
+  rhythm" jumps back to Skeins with the skein flashed.
+
+  - **Heat resets per rhythm skein.** Within a day's rhythm block, each skein's own
+    thread sequence restarts the Ivy-Lee ramp at 0 (1st = ember, 2nd = copper…),
+    independent of every other skein sharing that block — rather than one
+    continuous ramp across the whole block. Non-rhythm threads keep the single
+    global per-day ramp, unaffected. `rhythmHeatIndexes` computes this; only the
+    colour changes, never the array position used for reordering.
+  - **A daily rhythm thread has no day-mover.** The day-letter chip + move popover
+    only make sense if there's somewhere else to move a thread *to* — a thread on
+    a `days: null` (every day) rhythm is already on every day, so it's suppressed
+    for those specifically. A partial-pattern rhythm (M–F, custom days) still gets
+    the mover, since moving it off-pattern is a real action.
+  - **The Skeins view shows one row per unique cast thread, not one row per cast
+    day.** A rhythm skein cast across a week used to repeat "Deep work" once for
+    every day it landed on — `rhythmTemplateGroups` consolidates same-titled
+    instances (any skein, any day, regardless of done-state — a template
+    deliberately doesn't distinguish "some instances are woven") into a single row
+    carrying a **×N** count chip. The row has no done-toggle knot (there's no
+    single done-state to show); renaming or deleting it (`actions.patchRhythmTemplate` /
+    `removeRhythmTemplate` in App.jsx) acts on every instance sharing that title at
+    once. Per-instance done-state stays exactly where it belongs — The Warp.
+
+  Design rationale: [`LOOM_RHYTHM_DESIGN.md`](LOOM_RHYTHM_DESIGN.md).
 
 ## Two voices (the terminology toggle)
 
@@ -179,9 +209,11 @@ Which client is active is decided in [`lib/store.js`](src/loom/lib/store.js):
   duplicate the template, create an integration, share the DB, paste the token.
   Linked from Settings and from the registry `guide` field.
 
-### Notion schema (documented in-app under "The Guild")
+### Notion schema (documented once, in the guide)
 
-Five properties, names exact:
+Five properties, names exact. This used to be duplicated in Settings too (a
+`<details>` block); removed — the guide is the one place that documents it now,
+linked from Settings' intro paragraph.
 
 | Property | Type | App field |
 |----------|------|-----------|
@@ -208,6 +240,17 @@ palette with no per-component special-casing. The theme lives in
 and a pre-paint FOUC script in `loom-react.html`); the header **◐** button
 cycles it and Settings → Appearance jumps straight to one. The ember→slate
 dyed-thread heat scale is constant across both themes — dye is dye.
+
+Every "selected/on" pill (a rhythm badge, a day-preset/day chip, a filter icon,
+a Tapestry range tab…) fills solid with `--color-on-accent` text over `--color-accent` — on
+Parchment that pairing only clears ~4.8:1 contrast, noticeably weaker than
+Twilight's ~7:1 for the same pattern. Rather than darken `--color-accent`
+itself (used everywhere — links, icons, borders — where it already reads
+fine), a dedicated `--color-accent-strong` / `--color-accent-strong-hover` pair
+exists purely for solid on-accent fills; Twilight's just aliases the ordinary
+accent (no change), Parchment's is a deeper ochre (`#6b4a10`, ~7.2:1). Every
+solid-fill "on" state in the app uses it now, including the DS primary Button
+in Settings (scoped via an inline CSS-custom-property override, no DS change).
 
 Settings ("The Guild") is reachable from the header **⚙** gear and the bottom bar;
 it holds the Notion connection, the Appearance picker, the **Interface style**

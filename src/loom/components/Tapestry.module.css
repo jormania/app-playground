@@ -27,7 +27,7 @@
   cursor: pointer;
 }
 .rangeBtn:hover { color: var(--color-ink); border-color: var(--color-border-2); }
-.rangeOn { color: var(--color-on-accent); background: var(--color-accent); border-color: var(--color-accent); }
+.rangeOn { color: var(--color-on-accent); background: var(--color-accent-strong); border-color: var(--color-accent-strong); }
 
 /* Stat tiles — descriptive, never a score. */
 .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-xs); }
@@ -67,6 +67,15 @@
   font-size: var(--text-sm);
   letter-spacing: 0.05em;
   color: var(--color-muted);
+}
+/* A one-line caption right under a card title that needs a touch more context
+   than its name alone gives (what the heatmap's cells/dots actually mean). */
+.cardHint {
+  margin: -6px 0 var(--space-sm);
+  font-family: var(--loom-thread);
+  font-style: italic;
+  font-size: var(--text-xs);
+  color: var(--color-faint);
 }
 .chart { width: 100%; }
 

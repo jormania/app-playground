@@ -67,12 +67,12 @@ export default function WeekView({
     lpSkein.current = skeinName
     const { clientX: x, clientY: y } = e
     lpTimer.current = setTimeout(() => setLongPress({ x, y }), 400)
-  }, [])
+  }, [setLongPress])
   const cancelLongPress = useCallback(() => clearTimeout(lpTimer.current), [])
   const commitEditInRhythm = useCallback(() => {
     setLongPress(null)
     if (onEditInRhythm && lpSkein.current) onEditInRhythm(lpSkein.current)
-  }, [onEditInRhythm])
+  }, [onEditInRhythm, setLongPress])
 
   function addToBacklog(title) {
     const group = threads.filter(th => !th.day || !days.some(d => d.key === th.day))
@@ -88,9 +88,15 @@ export default function WeekView({
     actions.patchThread(thread.id, patch)
   }
 
-  const dayMover = thread => (
-    <DayMover thread={thread} days={days} onMove={day => actions.patchThread(thread.id, { day })} />
-  )
+  // A DAILY rhythm thread (days = null, every day) has nowhere meaningful to
+  // move to — it's already on every day of the week — so its day-letter chip
+  // and move popover are just noise. A rhythm on a partial pattern (M–F, custom
+  // days) still gets the mover, since moving it off-pattern is a real action.
+  const dayMover = thread => {
+    const entry = rhythmSkeinNames.has(thread.skein) ? rhythms?.find(r => r.skeinName === thread.skein) : null
+    if (entry && entry.days == null) return null
+    return <DayMover thread={thread} days={days} onMove={day => actions.patchThread(thread.id, { day })} />
+  }
 
   // Per-group display subset, honouring search + focus toggles.
   // "Rhythm order" sort: within the rhythm block, sort by skein then by order
@@ -179,14 +185,20 @@ export default function WeekView({
 
         <div className={styles.warp}>
           {columns.map(col => {
-            const { main, fold } = view(col.tasks)
-            // Split rhythm threads (from any rhythm skein) to the top.
-            const { rhythm, rest } = splitRhythmThreads(main, rhythmSkeinNames)
-            const { main: rhythmMain, fold: rhythmFold } = view(rhythm, true)
-            const hasRhythm = rhythmMain.length > 0
+            // Split rhythm threads (from any rhythm skein) off the RAW day list
+            // first, then apply the show/fold view to each half separately. Doing
+            // it in the other order (view() first, split second) let a day's
+            // rhythm block vanish — fold and all — the moment every rhythm thread
+            // on it was woven: view() had already routed them into the outer
+            // fold bucket before the split ever saw them, so the rhythm-only
+            // view() call downstream started from an empty array.
+            const { rhythm: rawRhythm, rest: rawRest } = splitRhythmThreads(col.tasks, rhythmSkeinNames)
+            const { main: rhythmMain, fold: rhythmFold } = view(rawRhythm, true)
+            const { main: rest, fold } = view(rawRest)
+            const hasRhythm = rhythmMain.length > 0 || rhythmFold.length > 0
 
             // The first rhythm skein present in this column (for "Edit in rhythm" menu).
-            const firstRhythmSkein = hasRhythm ? rhythmMain[0]?.skein : null
+            const firstRhythmSkein = hasRhythm ? rawRhythm[0]?.skein : null
 
             return (
               <section key={col.key} className={`${styles.day} ${col.key === todayKey ? styles.today : ''}`}>
@@ -239,7 +251,7 @@ export default function WeekView({
                   renderAssign={dayMover}
                 />
                 <WovenFold
-                  tasks={fold.filter(th => !rhythmSkeinNames.has(th.skein))}
+                  tasks={fold}
                   onToggle={actions.toggleWoven}
                   onDelete={actions.removeThread}
                   onEdit={(id, title) => actions.patchThread(id, { title })}

@@ -32,7 +32,7 @@
   cursor: pointer;
 }
 .warpDot:hover { border-color: var(--color-accent); color: var(--color-ink); }
-.here { background: var(--color-accent); color: var(--color-on-accent); border-color: var(--color-accent); }
+.here { background: var(--color-accent-strong); color: var(--color-on-accent); border-color: var(--color-accent-strong); }
 .backlog { color: var(--color-faint); }
 
 /* Skein picker. */

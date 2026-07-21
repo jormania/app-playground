@@ -88,13 +88,13 @@
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
   color: var(--color-on-accent);
-  background: var(--color-accent);
+  background: var(--color-accent-strong);
   border: none;
   border-radius: var(--radius-pill);
   padding: 5px 12px;
   cursor: pointer;
 }
-.repeatCast:hover { background: var(--color-accent-hover); }
+.repeatCast:hover { background: var(--color-accent-strong-hover); }
 .repeatSkip {
   border: none;
   background: none;

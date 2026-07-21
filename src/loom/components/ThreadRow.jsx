@@ -10,12 +10,16 @@ import styles from './ThreadRow.module.css'
 //   • grab the grip to drag-reorder (or focus it and use ↑/↓) — reorder drives
 //     the heat colour on the left edge (top = ember, cooling down the group)
 // The `assign` render slot carries the per-view reassignment control (a day
-// mover in the Weekly view, a skein chip in the List view).
+// mover in the Weekly view, a skein chip in the List view, or a rhythm-template
+// frequency badge). `hideWeave` drops the knot and the swipe-right gesture —
+// used for a rhythm template row in the Skeins view, which represents every
+// cast instance of a recurring thread at once and deliberately has no single
+// done/undone state of its own to show.
 const SWIPE_THRESHOLD = 72
 
 export default function ThreadRow({
   thread, index, onToggle, onDelete, onEdit,
-  onNudge, onDragStart, dragging, assign,
+  onNudge, onDragStart, dragging, assign, hideWeave,
 }) {
   const { t } = useLexicon()
   const [dx, setDx] = useState(0)
@@ -64,7 +68,7 @@ export default function ThreadRow({
     gesture.current = null
     if (!g || g.axis !== 'x') { setDx(0); return }
     const mx = e.clientX - g.startX
-    if (mx > SWIPE_THRESHOLD) { tap(10); onToggle(!thread.done) }
+    if (!hideWeave && mx > SWIPE_THRESHOLD) { tap(10); onToggle(!thread.done) }
     else if (mx < -SWIPE_THRESHOLD) { tap([6, 30, 10]); onDelete() }
     setDx(0)
   }
@@ -84,7 +88,7 @@ export default function ThreadRow({
     >
       {/* Action hints revealed behind the sliding body */}
       <div className={`${styles.behind} ${revealing ? styles[revealing] : ''}`} aria-hidden="true">
-        <span className={styles.behindWeave}>✧ {t('weave')}</span>
+        {!hideWeave && <span className={styles.behindWeave}>✧ {t('weave')}</span>}
         <span className={styles.behindUnravel}>{t('unravel')} ✂</span>
       </div>
 
@@ -98,16 +102,18 @@ export default function ThreadRow({
       >
         <span className={styles.heat} style={{ background: heat, boxShadow: `0 0 10px ${heat}` }} aria-hidden="true" />
 
-        <button
-          type="button"
-          className={styles.knot}
-          data-loom-controls
-          aria-pressed={thread.done}
-          aria-label={thread.done ? `Un${t('weave')} (mark undone)` : `${t('Weave')} (mark done)`}
-          onClick={() => { tap(8); onToggle(!thread.done) }}
-        >
-          <span className={styles.knotDot} />
-        </button>
+        {!hideWeave && (
+          <button
+            type="button"
+            className={styles.knot}
+            data-loom-controls
+            aria-pressed={thread.done}
+            aria-label={thread.done ? `Un${t('weave')} (mark undone)` : `${t('Weave')} (mark done)`}
+            onClick={() => { tap(8); onToggle(!thread.done) }}
+          >
+            <span className={styles.knotDot} />
+          </button>
+        )}
 
         {editing ? (
           <input

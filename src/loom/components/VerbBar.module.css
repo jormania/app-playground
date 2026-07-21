@@ -32,8 +32,8 @@
 }
 .segBtn:hover { color: var(--color-ink); }
 .segBtn:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 1px; }
-.segOn { color: var(--color-on-accent); background: var(--color-accent); }
-.segOn:hover { color: var(--color-on-accent); background: var(--color-accent-hover); }
+.segOn { color: var(--color-on-accent); background: var(--color-accent-strong); }
+.segOn:hover { color: var(--color-on-accent); background: var(--color-accent-strong-hover); }
 
 .gear {
   flex: 0 0 auto;

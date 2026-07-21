@@ -6,7 +6,7 @@ import {
   groupBySkein, collectSkeins, groupByWeek, threadStats, LOOSE_SKEIN,
   weekdayIndex, carryThreads, threadsForDraftWeek, draftItemsFromWeek,
   matchesQuery, topOfGroup, sortSkeinGroups, tapestryStats, weekReview,
-  rhythmThreadsForWeek, splitRhythmThreads,
+  rhythmThreadsForWeek, splitRhythmThreads, rhythmHeatIndexes, rhythmTemplateGroups,
 } from './model.js'
 
 describe('heatmap dye', () => {
@@ -346,6 +346,68 @@ describe('splitRhythmThreads', () => {
     const { rhythm, rest } = splitRhythmThreads(tasks, new Set())
     expect(rhythm).toEqual([])
     expect(rest).toBe(tasks)
+  })
+})
+
+describe('rhythmHeatIndexes', () => {
+  it('restarts the ramp at 0 for each skein independently, in display order', () => {
+    const tasks = [
+      { id: '1', skein: 'Focus' },
+      { id: '2', skein: 'Focus' },
+      { id: '3', skein: 'Reading' },
+      { id: '4', skein: 'Focus' },
+      { id: '5', skein: 'Reading' },
+    ]
+    // Even interleaved (not grouped contiguously by skein), each skein's own
+    // count restarts at 0 and climbs independently of the other skein's count:
+    // Focus -> 0,1,(2); Reading -> 0,(1) — read off in the tasks' own order.
+    expect(rhythmHeatIndexes(tasks)).toEqual([0, 1, 0, 2, 1])
+  })
+
+  it('groups a skein-grouped block the same way (contiguous input)', () => {
+    const tasks = [
+      { id: '1', skein: 'Focus' },
+      { id: '2', skein: 'Focus' },
+      { id: '3', skein: 'Focus' },
+      { id: '4', skein: 'Reading' },
+      { id: '5', skein: 'Reading' },
+    ]
+    expect(rhythmHeatIndexes(tasks)).toEqual([0, 1, 2, 0, 1])
+  })
+
+  it('treats loose (no-skein) threads as their own shared group', () => {
+    const tasks = [{ id: '1', skein: null }, { id: '2', skein: null }]
+    expect(rhythmHeatIndexes(tasks)).toEqual([0, 1])
+  })
+})
+
+describe('rhythmTemplateGroups', () => {
+  it('collapses one row per cast day into a single template, counting instances', () => {
+    const tasks = [
+      { id: 'mon', title: 'Deep work', skein: 'Focus', order: 5, done: false },
+      { id: 'tue', title: 'Deep work', skein: 'Focus', order: 3, done: true },
+      { id: 'wed', title: 'Deep work', skein: 'Focus', order: 9, done: false },
+      { id: 'r1', title: 'Reading', skein: 'Focus', order: 1, done: false },
+    ]
+    const groups = rhythmTemplateGroups(tasks)
+    expect(groups).toHaveLength(2)
+    const deepWork = groups.find(g => g.title === 'Deep work')
+    expect(deepWork.count).toBe(3)
+    expect(deepWork.instanceIds.sort()).toEqual(['mon', 'tue', 'wed'])
+    // Order is the lowest among the instances (tue=3), regardless of done-state.
+    expect(deepWork.order).toBe(3)
+  })
+
+  it('sorts templates by their (lowest-instance) order', () => {
+    const tasks = [
+      { id: 'a', title: 'B', skein: 'X', order: 10, done: false },
+      { id: 'b', title: 'A', skein: 'X', order: 0, done: false },
+    ]
+    expect(rhythmTemplateGroups(tasks).map(g => g.title)).toEqual(['A', 'B'])
+  })
+
+  it('is empty for an empty list', () => {
+    expect(rhythmTemplateGroups([])).toEqual([])
   })
 })
 

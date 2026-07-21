@@ -155,7 +155,12 @@ export default function SettingsModal({ open, onClose, onSaved, mode }) {
           <Button variant="secondary" onClick={test} disabled={!token || probe.state === 'testing'}>
             Test connection
           </Button>
-          <Button variant="primary" onClick={save} disabled={busy || !token}>
+          <Button
+            variant="primary"
+            onClick={save}
+            disabled={busy || !token}
+            style={{ '--color-accent': 'var(--color-accent-strong)', '--color-accent-hover': 'var(--color-accent-strong-hover)' }}
+          >
             {lex.t('weaveLive')}
           </Button>
         </div>
@@ -199,22 +204,6 @@ export default function SettingsModal({ open, onClose, onSaved, mode }) {
           </p>
           <VoicePicker voice={lex.voice} onPick={lex.setVoice} />
         </div>
-
-        <details className={styles.schema}>
-          <summary>The database schema</summary>
-          <p>Give your Notion database these five properties (names are exact):</p>
-          <ul>
-            <li><code>Name</code> — title (the thread)</li>
-            <li><code>Skein</code> — select (its project / category)</li>
-            <li><code>Day</code> — date (the day it's warped to; empty = backlog)</li>
-            <li><code>Order</code> — number (its manual rank; drives the heat)</li>
-            <li><code>Done</code> — checkbox (woven)</li>
-          </ul>
-          <p className={styles.schemaNote}>
-            Easiest: duplicate the ready-made template from the{' '}
-            <a className={styles.link} href="/loom-guide.html" target="_blank" rel="noopener">guide</a>.
-          </p>
-        </details>
 
         {/* ── Warp banners ── */}
         <div className={styles.section}>

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import ThreadRow from './ThreadRow.jsx'
 import { useDrag } from '../lib/dragContext.jsx'
 import { tap } from '../lib/haptics.js'
+import { rhythmHeatIndexes } from '../lib/model.js'
 import styles from './ThreadList.module.css'
 
 // An ordered stack of threads with drag-to-reorder AND cross-column drag. The
@@ -10,7 +11,12 @@ import styles from './ThreadList.module.css'
 // list registers itself as a drop container; a gold insertion line marks where
 // the dragged thread will land and the source row dims in place — robust on touch
 // and mouse alike, no layout maths chasing the finger.
-export default function ThreadList({ tasks, containerId, meta, onReorder, onToggle, onDelete, onEdit, renderAssign }) {
+//
+// `rhythmSkeins`, when passed (only for a rhythm block), makes each skein's own
+// heat ramp restart at 0 instead of one continuous ramp across the whole block
+// — this only changes the colour ThreadRow paints, never the array position
+// used for reordering (nudge / drag caret keep using the plain index).
+export default function ThreadList({ tasks, containerId, meta, onReorder, onToggle, onDelete, onEdit, renderAssign, rhythmSkeins }) {
   const drag = useDrag()
   const rowRefs = useRef(new Map())
   const listRef = useRef(null)
@@ -56,6 +62,13 @@ export default function ThreadList({ tasks, containerId, meta, onReorder, onTogg
     onReorder(thread.id, target)
   }
 
+  // Heat colour only: a rhythm block re-derives a per-skein index; every other
+  // list (day, distaff, skein) keeps the plain array position it always had.
+  const heatIndexes = useMemo(
+    () => (rhythmSkeins ? rhythmHeatIndexes(tasks) : null),
+    [rhythmSkeins, tasks],
+  )
+
   return (
     <ul className={`${styles.list} ${isTarget ? styles.target : ''}`} ref={listRef}>
       {tasks.map((thread, i) => (
@@ -63,7 +76,7 @@ export default function ThreadList({ tasks, containerId, meta, onReorder, onTogg
           {isTarget && over.index === i && draggingId !== thread.id && <div className={styles.caret} aria-hidden="true" />}
           <ThreadRow
             thread={thread}
-            index={i}
+            index={heatIndexes ? heatIndexes[i] : i}
             dragging={draggingId === thread.id}
             onToggle={done => onToggle(thread.id, done)}
             onDelete={() => onDelete(thread.id)}

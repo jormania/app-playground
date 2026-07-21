@@ -316,6 +316,47 @@ export function splitRhythmThreads(tasks, rhythmNames) {
   return { rhythm, rest }
 }
 
+// Consolidate a rhythm skein's exploded per-day instances (one real thread per
+// cast day) into one row per unique canonical title — what the Skeins view
+// shows for a rhythm skein, instead of the same "Deep work" repeated once for
+// every day it's been woven onto. Order is the lowest `order` among threads
+// sharing that title (so a template's position tracks whichever instance
+// Loom would currently offer as the cast template); `count` and `instanceIds`
+// carry every matching thread so the caller can act on the whole group at
+// once (rename / delete / reorder), regardless of done-state — a rhythm
+// template deliberately doesn't distinguish "some instances are woven".
+export function rhythmTemplateGroups(tasks) {
+  const byTitle = new Map()
+  for (const t of tasks) {
+    const key = t.title
+    const existing = byTitle.get(key)
+    if (!existing) {
+      byTitle.set(key, { title: t.title, skein: t.skein, order: t.order ?? 0, count: 1, instanceIds: [t.id] })
+    } else {
+      existing.count++
+      existing.instanceIds.push(t.id)
+      if ((t.order ?? 0) < existing.order) existing.order = t.order ?? 0
+    }
+  }
+  return [...byTitle.values()].sort((a, b) => a.order - b.order)
+}
+
+// Heat-ramp indices for a rhythm block: each SKEIN's own thread sequence
+// restarts the ramp at 0 (1st thread of that skein = ember, 2nd = copper…),
+// independent of every other skein in the block — rather than one continuous
+// ramp across the whole block. Returns an array parallel to `tasks`, one heat
+// index per thread, in `tasks`' own display order (so this is correct whether
+// or not the block is grouped contiguously by skein).
+export function rhythmHeatIndexes(tasks) {
+  const runningBySkein = new Map()
+  return tasks.map(t => {
+    const key = t.skein || ''
+    const idx = runningBySkein.get(key) ?? 0
+    runningBySkein.set(key, idx + 1)
+    return idx
+  })
+}
+
 // ── Search & focus ───────────────────────────────────────────────────────────
 export function matchesQuery(thread, query) {
   const q = (query || '').trim().toLowerCase()

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLoom } from './lib/useLoom.js'
-import { useTheme } from './lib/themeContext.jsx'
 import { useLexicon } from './lib/lexiconContext.jsx'
 import { loadViewPrefs, saveViewPrefs } from './lib/store.js'
 import {
@@ -30,7 +29,6 @@ function weekLabel(anchor) {
 
 export default function App() {
   const loom = useLoom()
-  const theme = useTheme()
   const { t } = useLexicon()
   const [prefs, setPrefs] = useState(loadViewPrefs)
   const [query, setQuery] = useState('')
@@ -63,8 +61,8 @@ export default function App() {
   const carried = useMemo(() => carryThreads(loom.threads, thisMondayKey), [loom.threads, thisMondayKey])
 
   const filters = useMemo(
-    () => ({ query, showWoven: prefs.showWoven, rhythmSort: prefs.rhythmSort, collapseWoven: prefs.collapseWoven, skeinSort: prefs.skeinSort }),
-    [query, prefs.showWoven, prefs.rhythmSort, prefs.collapseWoven, prefs.skeinSort],
+    () => ({ query, showWoven: prefs.showWoven, rhythmSort: prefs.rhythmSort, collapseWoven: prefs.collapseWoven, skeinOrder: prefs.skeinOrder }),
+    [query, prefs.showWoven, prefs.rhythmSort, prefs.collapseWoven, prefs.skeinOrder],
   )
 
   // Undo (re-ravel): a deleted thread is held for 5s and can be re-woven back.
@@ -116,6 +114,20 @@ export default function App() {
     setView('skeins')
   }, [setView])
 
+  // A rhythm template row in the Skeins view stands for every cast instance of
+  // a recurring thread at once (see rhythmTemplateGroups) — renaming or
+  // deleting it should act on all of them together, not just one day's copy.
+  const patchRhythmTemplate = useCallback((skeinName, title, patch) => {
+    loom.threads
+      .filter(th => th.skein === skeinName && th.title === title)
+      .forEach(th => loom.patchThread(th.id, patch))
+  }, [loom])
+  const removeRhythmTemplate = useCallback((skeinName, title) => {
+    loom.threads
+      .filter(th => th.skein === skeinName && th.title === title)
+      .forEach(th => loom.removeThread(th.id))
+  }, [loom])
+
   const actions = useMemo(() => ({
     addThread: loom.addThread,
     patchThread: loom.patchThread,
@@ -123,10 +135,12 @@ export default function App() {
     toggleWoven: loom.toggleWoven,
     castDraft,
     castRhythm,
+    patchRhythmTemplate,
+    removeRhythmTemplate,
     reorderWithin: (group, id, targetIndex) => {
       loom.patchThread(id, { order: orderForMove(group, id, targetIndex) })
     },
-  }), [loom, removeWithUndo, castDraft, castRhythm])
+  }), [loom, removeWithUndo, castDraft, castRhythm, patchRhythmTemplate, removeRhythmTemplate])
 
   // Save a new manual drag order for skeins.
   const handleSkeinReorder = useCallback((newOrder) => {
@@ -175,7 +189,6 @@ export default function App() {
                 threads={loom.threads}
                 actions={actions}
                 filters={filters}
-                onSkeinSort={id => setFilter('skeinSort', id)}
                 onSkeinReorder={handleSkeinReorder}
                 rhythms={rhythms}
                 rhythmSkeinNames={rhythmSkeinNames}

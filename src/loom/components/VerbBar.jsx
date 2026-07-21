@@ -47,6 +47,7 @@ export default function VerbBar({ view, onView, mode, onOpenSettings }) {
             </button>
           )
         })}
+        <span className={styles.tabsMode}>{modeDot}</span>
       </nav>
     )
   }
@@ -78,6 +79,7 @@ export default function VerbBar({ view, onView, mode, onOpenSettings }) {
           {seg}
           <span className={styles.pillDivider} aria-hidden="true" />
           {gear}
+          {modeDot}
         </div>
       </nav>
     )
@@ -88,6 +90,7 @@ export default function VerbBar({ view, onView, mode, onOpenSettings }) {
     <nav className={`${styles.bar} ${styles.rowBar}`} aria-label="Loom navigation">
       {seg}
       <div className={styles.rowRight}>
+        {modeDot}
         {gear}
       </div>
     </nav>

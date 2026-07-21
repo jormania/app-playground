@@ -38,6 +38,13 @@
   --color-success:       #6f9e7a;
   --color-warning:       #d98a2b;
   --color-danger:        #d6452f;
+  /* A dedicated "solid fill behind on-accent text" pair — selected pills/toggles,
+     not the general accent (links, icons, borders). Twilight's base accent
+     already clears ~7:1 against on-accent, so no change here; Parchment's does
+     not (see below) — this token exists so that fix lands without darkening the
+     whole palette's ordinary accent colour. */
+  --color-accent-strong:       var(--color-accent);
+  --color-accent-strong-hover: var(--color-accent-hover);
 
   --color-ring:  color-mix(in srgb, var(--color-accent) 40%, transparent);
   --color-glow:  color-mix(in srgb, var(--color-accent) 12%, transparent);
@@ -73,6 +80,13 @@
   --color-success:       #4c7a49;
   --color-warning:       #a9701c;
   --color-danger:        #b23a22;
+  /* --color-accent only clears ~4.8:1 against --color-on-accent — legible but
+     noticeably weaker than Twilight's ~7:1 for the same "solid fill + on-accent
+     text" pattern (a selected sort/rhythm/day pill). This deeper ochre clears
+     ~7.2:1 without darkening the accent used everywhere else (links, icons,
+     borders), which reads fine as-is. */
+  --color-accent-strong:       #6b4a10;
+  --color-accent-strong-hover: #7a5412;
 
   --color-ring:  color-mix(in srgb, var(--color-accent) 38%, transparent);
   --color-glow:  color-mix(in srgb, var(--color-accent) 10%, transparent);

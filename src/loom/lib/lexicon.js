@@ -165,7 +165,13 @@ const TERMS = {
 
   // ── The Tapestry ──
   pastDebt: { loom: 'unwoven from past warps', plain: 'unfinished from past weeks' },
-  clothWoven: { loom: 'The cloth you\'ve woven', plain: 'What you\'ve completed' },
+  // Renamed from "The cloth you've woven" — poetic but didn't say what the grid
+  // actually shows; the hint line underneath now spells out the color encoding.
+  clothWoven: { loom: 'The days you\'ve woven', plain: 'Days completed' },
+  clothWovenHint: {
+    loom: 'Each cell is a day — the deeper the dye, the more you wove that day; a dot marks anything still on the loom.',
+    plain: 'Each cell is a day — the darker it is, the more you completed that day; a dot marks anything still open.',
+  },
   tapestryEmpty: {
     loom: 'No woven cloth yet — this fills in as you weave your warps.',
     plain: 'Nothing here yet — this fills in as you finish tasks.',

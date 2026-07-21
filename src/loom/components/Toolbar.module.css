@@ -104,8 +104,8 @@
 }
 .iconBtn:hover { color: var(--color-ink); border-color: var(--color-border-2); }
 .iconBtn:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 1px; }
-.on { color: var(--color-on-accent); background: var(--color-accent); border-color: var(--color-accent); }
-.on:hover { color: var(--color-on-accent); background: var(--color-accent-hover); }
+.on { color: var(--color-on-accent); background: var(--color-accent-strong); border-color: var(--color-accent-strong); }
+.on:hover { color: var(--color-on-accent); background: var(--color-accent-strong-hover); }
 
 .badge {
   position: absolute;
@@ -133,7 +133,7 @@
 }
 .row .iconBtn { background: none; border-color: transparent; }
 .row .iconBtn:hover { background: color-mix(in srgb, var(--color-surface-2) 60%, transparent); }
-.row .on, .row .on:hover { color: var(--color-on-accent); background: var(--color-accent); }
+.row .on, .row .on:hover { color: var(--color-on-accent); background: var(--color-accent-strong); }
 
 /* ── PILL — everything floats: a search pill, a filters pill, an actions pill ── */
 .pill .search {
@@ -154,7 +154,7 @@
 }
 .pill .iconBtn { background: none; border-color: transparent; }
 .pill .iconBtn:hover { background: color-mix(in srgb, var(--color-surface-2) 55%, transparent); }
-.pill .on, .pill .on:hover { color: var(--color-on-accent); background: var(--color-accent); }
+.pill .on, .pill .on:hover { color: var(--color-on-accent); background: var(--color-accent-strong); }
 
 /* ── TABS — flat translucent clusters, matching the bottom icon-tab strip ──── */
 .tabs .search { border-radius: var(--radius-sm); border-color: var(--color-border); }

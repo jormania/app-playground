@@ -29,43 +29,6 @@
 .skeinName::placeholder { color: var(--color-faint); }
 .composerAdd { flex: 1 1 auto; min-width: 0; }
 
-/* Skein-group sort — the only sort worth having (rows stay manual by hand). */
-.sortBar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-  margin-top: calc(-1 * var(--space-xs));
-}
-.sortLabel {
-  font-family: var(--loom-thread);
-  font-style: italic;
-  font-size: var(--text-xs);
-  color: var(--color-faint);
-  margin-right: 2px;
-}
-.sortBtn {
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  letter-spacing: 0.03em;
-  color: var(--color-muted);
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  padding: 2px 10px;
-  cursor: pointer;
-  transition: color var(--duration) var(--ease), border-color var(--duration) var(--ease);
-}
-.sortBtn:hover { color: var(--color-ink); border-color: var(--color-border-2); }
-.sortOn {
-  color: var(--color-on-accent);
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  font-weight: 600;
-  letter-spacing: 0.05em;
-}
-.sortOn:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
-
 .empty {
   text-align: center;
   color: var(--color-muted);
@@ -102,19 +65,33 @@
 }
 .skeinAdd { margin-top: 2px; }
 
-/* Drag handle and drop-target feedback for manual skein reordering. */
+/* A pointer-driven drag (see SkeinView.jsx) — same technique as a thread row's
+   grip, scaled up to a whole section. Slot wraps each section so an insertion
+   caret can sit between sections without disturbing their own layout; the
+   handle is always visible (not hover-only — hover never fires on touch, which
+   made the old handle invisible on a phone, on top of native HTML5 drag-and-drop
+   not working there at all). */
+.skeinSlot { position: relative; }
+.skeinCaret {
+  height: 0;
+  border-top: 2px solid var(--color-accent);
+  box-shadow: 0 0 8px var(--loom-gold-line);
+  margin: 2px 6px;
+  border-radius: var(--radius-pill);
+}
 .skeinDragHandle {
   cursor: grab;
+  touch-action: none;
   color: var(--color-faint);
   font-size: 1em;
-  padding: 0 4px 0 0;
-  user-select: none;
+  padding: 2px 4px 2px 0;
+  border: none;
+  background: none;
   flex: 0 0 auto;
-  opacity: 0;
-  transition: opacity var(--duration) var(--ease);
+  transition: color var(--duration) var(--ease);
 }
-.skein:hover .skeinDragHandle { opacity: 1; }
-.skeinDragOver { outline: 2px dashed var(--color-accent); outline-offset: 2px; border-radius: var(--radius-md); }
+.skeinDragHandle:hover { color: var(--color-accent); }
+.skeinDragging { opacity: 0.5; }
 
 /* Rhythm — the wave badge next to the skein name + the toggle button. */
 .rhythmBadge {
@@ -140,10 +117,10 @@
 .rhythmBtn:hover { color: var(--color-accent); border-color: var(--color-accent); }
 .rhythmOn {
   color: var(--color-on-accent);
-  background: var(--color-accent);
-  border-color: var(--color-accent);
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
 }
-.rhythmOn:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
+.rhythmOn:hover { background: var(--color-accent-strong-hover); border-color: var(--color-accent-strong-hover); }
 
 /* "Edit in rhythm" jump: briefly highlight the target skein. */
 @keyframes skeinFlash {
@@ -188,8 +165,8 @@
 .dayPresetBtn:hover { color: var(--color-ink); border-color: var(--color-border-2); }
 .dayPresetOn {
   color: var(--color-on-accent);
-  background: var(--color-accent);
-  border-color: var(--color-accent);
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
   font-weight: 600;
 }
 .dayChip {
@@ -211,7 +188,37 @@
 }
 .dayChip:hover { color: var(--color-ink); border-color: var(--color-border-2); }
 .dayChipOn {
+  /* Fully opaque (not a color-mix tint) — these chips are tiny single letters,
+     so diluting toward the surface behind them only made the contrast worse. */
   color: var(--color-on-accent);
-  background: color-mix(in srgb, var(--color-accent) 80%, transparent);
-  border-color: var(--color-accent);
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+}
+
+/* Rhythm template list — one consolidated row per unique cast thread, instead
+   of one row per day it happens to be woven onto. Same list rhythm as
+   ThreadList's own .list/.slot, just without the drag/drop machinery a
+   template row doesn't use. */
+.templateList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+.templateSlot { position: relative; }
+.templateCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-surface-2) 70%, transparent);
+  color: var(--color-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
 }
