@@ -29,6 +29,7 @@ const mapPageToGame = (page) => ({
   status: page.properties['Status']?.select?.name || 'Backlog',
   rating: page.properties['Rating']?.number || null,
   journal: page.properties['Journal/Notes']?.rich_text?.map(rt => rt.plain_text).join('') || '',
+  journalRich: page.properties['Journal/Notes']?.rich_text || [],
   createdTime: page.created_time || new Date().toISOString(),
   coverUrl: page.cover?.external?.url || page.cover?.file?.url || '',
   price: page.properties['Current Price']?.number !== undefined ? page.properties['Current Price']?.number : null,

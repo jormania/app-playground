@@ -11,6 +11,45 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
 
   const getStatusColor = (status) => statusColors[status] || 'var(--cd-text-muted)'
 
+  const renderNotionRichText = (richTextArray) => {
+    if (!Array.isArray(richTextArray) || richTextArray.length === 0) return null;
+    
+    // Check if it's just a single unformatted string (which is what we create on local edit)
+    // If so, fall back to ReactMarkdown so that manually typed markdown works.
+    if (richTextArray.length === 1 && Object.keys(richTextArray[0].annotations).every(k => richTextArray[0].annotations[k] === false || richTextArray[0].annotations[k] === 'default')) {
+      return <ReactMarkdown>{richTextArray[0].plain_text}</ReactMarkdown>;
+    }
+
+    return richTextArray.map((rt, i) => {
+      let classes = [];
+      let style = {};
+      if (rt.annotations.bold) classes.push('cd-rt-bold');
+      if (rt.annotations.italic) classes.push('cd-rt-italic');
+      if (rt.annotations.strikethrough) classes.push('cd-rt-strike');
+      if (rt.annotations.underline) classes.push('cd-rt-underline');
+      if (rt.annotations.code) classes.push('cd-rt-code');
+      
+      if (rt.annotations.color && rt.annotations.color !== 'default') {
+        const colorMap = {
+          orange: '#d97736', purple: '#9065b0', red: '#e03e3e',
+          blue: '#337ea9', yellow: '#d9971c', green: '#448361',
+          brown: '#8f6e30', gray: '#9b9a97', pink: '#c14c8a'
+        };
+        style.color = colorMap[rt.annotations.color] || rt.annotations.color;
+      }
+
+      const Tag = rt.href ? 'a' : 'span';
+      const props = { key: i, className: classes.join(' ') || undefined, style: Object.keys(style).length ? style : undefined };
+      if (rt.href) {
+        props.href = rt.href;
+        props.target = '_blank';
+        props.rel = 'noreferrer';
+      }
+
+      return React.createElement(Tag, props, rt.plain_text);
+    });
+  }
+
   return (
     <div className="cd-panel cd-game-card">
       {game.coverUrl ? (
@@ -72,7 +111,11 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
         ))}
       </div>
 
-      {game.journal && (
+      {game.journalRich && game.journalRich.length > 0 ? (
+        <div className="cd-journal cd-journal-rich">
+          {renderNotionRichText(game.journalRich)}
+        </div>
+      ) : game.journal && (
         <div className="cd-journal">
           <ReactMarkdown>{game.journal}</ReactMarkdown>
         </div>
@@ -188,7 +231,20 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
           font-style: italic;
         }
         .cd-journal strong {
-          color: var(--cd-text-primary);
+          color: var(--cd-accent-amber);
+        }
+        .cd-journal-rich {
+          white-space: pre-wrap;
+        }
+        .cd-rt-bold { font-weight: bold; }
+        .cd-rt-italic { font-style: italic; }
+        .cd-rt-strike { text-decoration: line-through; }
+        .cd-rt-underline { text-decoration: underline; }
+        .cd-rt-code {
+          font-family: var(--cd-font-terminal);
+          background: rgba(0, 0, 0, 0.4);
+          padding: 0.1rem 0.3rem;
+          border-radius: 3px;
         }
         .cd-quick-update {
           display: flex;
