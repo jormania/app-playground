@@ -161,7 +161,10 @@ export function App() {
     <div className="cd-app-container">
       <header className="cd-header">
         <div className="cd-header-top">
-          <h1>Click Deck</h1>
+          <div className="cd-header-title">
+            <img src="/click-deck-icon-192.png" alt="" className="cd-logo-icon" />
+            <h1>Click Deck</h1>
+          </div>
           <nav className="cd-nav">
             <button className={view === 'timeline' ? 'primary' : ''} onClick={() => setView('timeline')}>[T]</button>
             <button className={view === 'analytics' ? 'primary' : ''} onClick={() => setView('analytics')}>[A]</button>
@@ -320,6 +323,17 @@ export function App() {
           align-items: center;
           flex-wrap: wrap;
           gap: 0.5rem;
+          margin-bottom: 1rem;
+        }
+        .cd-header-title {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .cd-logo-icon {
+          width: 24px;
+          height: 24px;
+          border-radius: 4px;
         }
         .cd-header h1 {
           margin: 0;
