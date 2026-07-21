@@ -1,5 +1,8 @@
 // Treat sub-cent / sub-percent differences as unchanged so floating-point noise
-// (and null vs. absent) doesn't trigger a needless Notion write every night.
+// (and null vs. absent) doesn't trigger a needless rewrite of the price fields
+// every night. Price Updated At still gets patched on every successful Steam
+// check regardless — it's the "did we actually check" signal, not a "did the
+// price move" signal, and StatsView's sync indicator depends on that distinction.
 function changed(next, prev) {
   if (prev === null || prev === undefined) return next !== null && next !== undefined
   return Math.abs(Number(next) - Number(prev)) > 0.001
@@ -96,17 +99,14 @@ export default async function handler(req, res) {
             const newPrice = po.final / 100
             const newInitial = po.initial / 100
             const newDiscount = (po.discount_percent || 0) / 100
-
-            if (changed(newPrice, game.currentPrice) ||
+            const priceChanged = changed(newPrice, game.currentPrice) ||
                 changed(newInitial, game.initialPrice) ||
-                changed(newDiscount, game.discountPercent)) {
-              results.push({ pageId: game.pageId, newPrice, newInitial, newDiscount })
-            }
+                changed(newDiscount, game.discountPercent)
+            results.push({ pageId: game.pageId, newPrice, newInitial, newDiscount, priceChanged })
           } else if (appData.success && (!appData.data || Array.isArray(appData.data) || !appData.data.price_overview)) {
             // Likely free or no longer available for purchase — clear any stale sale.
-            if (changed(0, game.currentPrice) || (game.discountPercent || 0) !== 0) {
-              results.push({ pageId: game.pageId, newPrice: 0, newInitial: null, newDiscount: 0 })
-            }
+            const priceChanged = changed(0, game.currentPrice) || (game.discountPercent || 0) !== 0
+            results.push({ pageId: game.pageId, newPrice: 0, newInitial: null, newDiscount: 0, priceChanged })
           }
         }
       }
@@ -115,24 +115,30 @@ export default async function handler(req, res) {
       await new Promise(r => setTimeout(r, 1000))
     }
 
-    // 3. Patch the updated prices back to Notion
+    // 3. Patch Notion for every game we successfully checked against Steam.
+    // Price Updated At always gets stamped so StatsView's sync indicator is a
+    // trustworthy "last checked" timestamp — the price/discount fields only
+    // get rewritten when they actually differ, to avoid nightly no-op noise
+    // on stable-priced games.
     let patched = 0
     for (const update of results) {
+      const properties = {
+        'Price Updated At': { date: { start: new Date().toISOString() } }
+      }
+      if (update.priceChanged) {
+        properties['Current Price'] = { number: update.newPrice }
+        properties['Initial Price'] = { number: update.newInitial }
+        properties['Discount Percent'] = { number: update.newDiscount }
+      }
+
       const patchRes = await fetch(`https://api.notion.com/v1/pages/${update.pageId}`, {
         method: 'PATCH',
-        headers: { 
-          Authorization: `Bearer ${token}`, 
-          'Notion-Version': '2022-06-28', 
-          'Content-Type': 'application/json' 
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          properties: {
-            'Current Price': { number: update.newPrice },
-            'Initial Price': { number: update.newInitial },
-            'Discount Percent': { number: update.newDiscount },
-            'Price Updated At': { date: { start: new Date().toISOString() } }
-          }
-        })
+        body: JSON.stringify({ properties })
       })
 
       if (patchRes.ok) {
@@ -144,9 +150,10 @@ export default async function handler(req, res) {
       await new Promise(r => setTimeout(r, 300))
     }
 
-    res.status(200).json({ 
+    res.status(200).json({
       processed: gamesToUpdate.length,
-      updatesFound: results.length,
+      checked: results.length,
+      priceChanges: results.filter(r => r.priceChanged).length,
       successfullyPatched: patched
     })
 

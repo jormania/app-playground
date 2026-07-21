@@ -51,16 +51,20 @@ def get_games_with_app_ids():
             break
     return games
 
-def update_game_price(page_id, new_price, discount=0, initial=None):
-    if initial is None: initial = new_price
-    payload = {
-        "properties": {
-            "Current Price": { "number": new_price },
-            "Discount Percent": { "number": discount / 100.0 },
-            "Initial Price": { "number": initial },
-            "Price Updated At": { "date": { "start": datetime.now(timezone.utc).isoformat() } }
-        }
+def update_game_price(page_id, new_price, discount=0, initial=None, price_changed=True):
+    # Price Updated At is stamped on every successful Steam check, changed or
+    # not — it's the "did we actually check" signal StatsView reads to show
+    # the sync is alive. The price fields themselves only get rewritten when
+    # they differ, so stable-priced games don't churn Notion's edit history.
+    properties = {
+        "Price Updated At": { "date": { "start": datetime.now(timezone.utc).isoformat() } }
     }
+    if price_changed:
+        if initial is None: initial = new_price
+        properties["Current Price"] = { "number": new_price }
+        properties["Discount Percent"] = { "number": discount / 100.0 }
+        properties["Initial Price"] = { "number": initial }
+    payload = { "properties": properties }
     req = urllib.request.Request(
         f"https://api.notion.com/v1/pages/{page_id}",
         data=json.dumps(payload).encode('utf-8'),
@@ -130,18 +134,18 @@ def main():
                                 new_price = data_obj["price_overview"]["final"] / 100.0
                                 discount = data_obj["price_overview"].get("discount_percent", 0)
                                 initial = data_obj["price_overview"].get("initial", data_obj["price_overview"]["final"]) / 100.0
-                                
-                                if new_price != game["current_price"] or discount != game["current_discount"] or initial != game["current_initial"]:
-                                    results.append({
-                                        "page_id": game["page_id"], 
-                                        "new_price": new_price,
-                                        "discount": discount,
-                                        "initial": initial
-                                    })
+                                price_changed = (new_price != game["current_price"] or discount != game["current_discount"] or initial != game["current_initial"])
+                                results.append({
+                                    "page_id": game["page_id"],
+                                    "new_price": new_price,
+                                    "discount": discount,
+                                    "initial": initial,
+                                    "price_changed": price_changed
+                                })
                             elif app_data.get("success"):
                                 # Free or unavailable
-                                if game["current_price"] != 0.0 or game["current_discount"] != 0:
-                                    results.append({"page_id": game["page_id"], "new_price": 0.0, "discount": 0, "initial": 0.0})
+                                price_changed = (game["current_price"] != 0.0 or game["current_discount"] != 0)
+                                results.append({"page_id": game["page_id"], "new_price": 0.0, "discount": 0, "initial": 0.0, "price_changed": price_changed})
                             else:
                                 print(f"Skipping app_id {app_id_str}: success is False (delisted or region locked)")
                         else:
@@ -152,16 +156,18 @@ def main():
         time.sleep(1) # Polite delay
 
     if not results:
-        print("All prices are already up to date!")
+        print("No games could be checked against Steam (all requests failed).")
         return
-        
-    print(f"Found {len(results)} price updates. Patching Notion...")
-    
+
+    changed_count = sum(1 for r in results if r["price_changed"])
+    print(f"Checked {len(results)} games against Steam ({changed_count} price change(s)). Patching Notion...")
+
     patched = 0
     for res in results:
-        update_game_price(res["page_id"], res["new_price"], res.get("discount", 0), res.get("initial", res["new_price"]))
+        update_game_price(res["page_id"], res["new_price"], res.get("discount", 0), res.get("initial", res["new_price"]), res["price_changed"])
         patched += 1
-        print(f"Patched {patched}/{len(results)} (Price: {res['new_price']}, Discount: {res.get('discount', 0)}%)")
+        tag = f"Price: {res['new_price']}, Discount: {res.get('discount', 0)}%" if res["price_changed"] else "date refresh only, price unchanged"
+        print(f"Patched {patched}/{len(results)} ({tag})")
         time.sleep(0.3)
 
     print("✅ Finished updating prices!")
