@@ -5,6 +5,7 @@ import urllib.request
 import urllib.parse
 import urllib.error
 import ssl
+from datetime import datetime, timezone
 
 NOTION_TOKEN = os.environ.get("CLICKDECK_NOTION_TOKEN", "YOUR_NOTION_TOKEN_HERE")
 DB_ID = os.environ.get("CLICKDECK_DB_ID", "YOUR_DB_ID_HERE")
@@ -56,7 +57,8 @@ def update_game_price(page_id, new_price, discount=0, initial=None):
         "properties": {
             "Current Price": { "number": new_price },
             "Discount Percent": { "number": discount / 100.0 },
-            "Initial Price": { "number": initial }
+            "Initial Price": { "number": initial },
+            "Price Updated At": { "date": { "start": datetime.now(timezone.utc).isoformat() } }
         }
     }
     req = urllib.request.Request(
