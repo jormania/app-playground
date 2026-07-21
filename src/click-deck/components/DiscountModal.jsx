@@ -2,16 +2,16 @@ import React from 'react'
 
 export function DiscountModal({ games, onClose }) {
   return (
-    <div className="cd-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div className="cd-modal-overlay" style={{ alignItems: 'flex-start', paddingTop: '4rem' }} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="cd-modal-content cd-discount-modal cd-panel">
         <button className="cd-modal-close" onClick={onClose}>[X]</button>
         
-        <h2 className="cd-modal-title">ACTIVE_STEAM_DISCOUNTS</h2>
-        <p className="cd-text-muted">The following items from your backlog are currently on sale.</p>
+        <h2 className="cd-modal-title" style={{ margin: '0 0 0.2rem 0' }}>ACTIVE_DISCOUNT</h2>
+        <p className="cd-text-muted" style={{ margin: '0 0 0.5rem 0' }}>The following items from your backlog are currently on sale.</p>
 
         <div className="cd-discount-grid">
           {games.map(g => (
-            <div key={g.id} className="cd-discount-card">
+            <div key={g.id} className="cd-discount-card" style={{ cursor: 'pointer' }} onClick={() => g.appId && window.open(`https://store.steampowered.com/app/${g.appId}`, '_blank')}>
               <div className="cd-discount-cover">
                 {g.coverUrl ? (
                   <img src={g.coverUrl} alt={g.title} />
@@ -48,13 +48,12 @@ export function DiscountModal({ games, onClose }) {
           overflow-y: auto;
           display: flex;
           flex-direction: column;
-          gap: 1rem;
         }
         .cd-discount-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
           gap: 1.5rem;
-          margin-top: 1rem;
+          margin-top: 0.5rem;
         }
         .cd-discount-card {
           background: rgba(0, 0, 0, 0.4);
