@@ -41,7 +41,10 @@ export function RandomGameModal({ backlogGames, onClose, onUpdateStatus }) {
     <div className="cd-modal-overlay cd-view-transition" onClick={onClose}>
       <div className="cd-modal cd-random-modal" onClick={e => e.stopPropagation()}>
         <div className="cd-modal-header">
-          <h2>SYSTEM DIRECTIVE: NEXT PLAYTHROUGH</h2>
+          <h2>
+            <span className="cd-random-header-prefix">SYSTEM DIRECTIVE:</span><br/>
+            NEXT PLAYTHROUGH
+          </h2>
           <button className="cd-btn-icon" onClick={onClose}>[X]</button>
         </div>
         

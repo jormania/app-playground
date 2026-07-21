@@ -16,8 +16,8 @@ export function DiscountModal({ games, onClose }) {
                 {g.coverUrl ? (
                   <img src={g.coverUrl} alt={g.title} />
                 ) : (
-                  <div className="fallback-cover">NO SIGNAL</div>
-                )}
+                <div className="fallback-cover cd-discount-cover"></div>
+              )}
                 {g.discountPercent > 0 && (
                   <div className="cd-discount-badge">
                     -{Math.round(g.discountPercent * 100)}%
@@ -74,24 +74,13 @@ export function DiscountModal({ games, onClose }) {
           border-bottom: 1px solid var(--cd-border-accent);
           overflow: hidden;
         }
-        .cd-discount-cover img {
-          width: 100%;
-          height: 100%;
+        .cd-discount-cover {
+          width: 80px;
+          height: 110px;
           object-fit: cover;
-          display: block;
+          border-radius: 4px;
         }
-        .cd-discount-cover .fallback-cover {
-          width: 100%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: repeating-linear-gradient(0deg, #111, #111 2px, #222 2px, #222 4px);
-          font-family: var(--cd-font-terminal);
-          color: var(--cd-accent-amber);
-          opacity: 0.5;
-        }
-        .cd-discount-badge {
+        .cd-discount-details {
           position: absolute;
           top: 0.5rem;
           right: 0.5rem;

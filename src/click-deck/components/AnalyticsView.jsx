@@ -394,30 +394,6 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
           width: 100%;
           height: 100%;
           object-fit: cover;
-          display: block;
-          transition: transform 0.3s ease;
-        }
-        .fallback-cover {
-          width: 100%;
-          height: 100%;
-          background: repeating-linear-gradient(
-            0deg,
-            #111,
-            #111 2px,
-            #222 2px,
-            #222 4px
-          );
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .fallback-cover::before {
-          content: 'NO SIGNAL';
-          font-family: var(--cd-font-terminal);
-          color: var(--cd-accent-amber);
-          font-size: 1rem;
-          letter-spacing: 2px;
-          opacity: 0.5;
         }
         .cd-gallery-overlay {
           position: absolute;

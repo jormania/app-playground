@@ -159,26 +159,6 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
           object-fit: cover;
           display: block;
         }
-        .fallback-cover {
-          background: repeating-linear-gradient(
-            0deg,
-            #111,
-            #111 2px,
-            #222 2px,
-            #222 4px
-          );
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .fallback-cover::before {
-          content: 'NO SIGNAL';
-          font-family: var(--cd-font-terminal);
-          color: var(--cd-accent-amber);
-          font-size: 1.5rem;
-          letter-spacing: 4px;
-          opacity: 0.5;
-        }
         .cd-game-cover::after {
           content: '';
           position: absolute;
