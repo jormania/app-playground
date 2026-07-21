@@ -221,9 +221,6 @@ export function StatsView({ games }) {
         </div>
 
         </div>
-
-      </div>
-
       <style>{`
         .cd-stats-container {
           display: flex;
