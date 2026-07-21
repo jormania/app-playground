@@ -10,7 +10,7 @@ import { tap } from '../lib/haptics.js'
 import { RhythmIcon } from './icons.jsx'
 import {
   groupBySkein, collectSkeins, orderForNew, orderForMove, sortSkeinGroups, matchesQuery,
-  rhythmTemplateGroups,
+  rhythmTemplateGroups, currentOrFutureThreads, startOfWeek, dateKey,
 } from '../lib/model.js'
 import styles from './SkeinView.module.css'
 
@@ -33,6 +33,7 @@ export default function SkeinView({
   focusedSkein, onFocusedSkeinClear,
 }) {
   const { t } = useLexicon()
+  const weekStartKey = dateKey(startOfWeek(new Date()))
   const skeinOrder = filters.skeinOrder || []
   const groups = sortSkeinGroups(groupBySkein(threads), 'manual', skeinOrder)
   const skeins = collectSkeins(threads)
@@ -281,9 +282,15 @@ export default function SkeinView({
                   // One consolidated row per unique cast thread — not one row
                   // per day it's been woven onto. No done-state shown (that's
                   // per-instance and belongs to The Warp); rename/delete act on
-                  // every instance sharing the title at once.
+                  // every instance sharing the title at once. The count is
+                  // scoped to this week onward (currentOrFutureThreads) so
+                  // stale, never-cleaned-up past-week debt doesn't pad the
+                  // number forever — a hint below the list makes that scope
+                  // visible instead of leaving "×N" looking like an all-time total.
+                  <>
+                  <p className={styles.templateScopeHint}>Counts cover this week onward</p>
                   <ul className={styles.templateList}>
-                    {rhythmTemplateGroups(main).map((tpl, i) => (
+                    {rhythmTemplateGroups(currentOrFutureThreads(main, weekStartKey)).map((tpl, i) => (
                       <li key={tpl.title} className={styles.templateSlot}>
                         <ThreadRow
                           thread={{ id: `tpl:${group.skein}:${tpl.title}`, title: tpl.title, done: false }}
@@ -293,7 +300,7 @@ export default function SkeinView({
                           onDelete={() => actions.removeRhythmTemplate(group.skein, tpl.title)}
                           onEdit={newTitle => actions.patchRhythmTemplate(group.skein, tpl.title, { title: newTitle })}
                           assign={
-                            <span className={styles.templateCount} title={`Cast on ${tpl.count} day${tpl.count === 1 ? '' : 's'} this week`}>
+                            <span className={styles.templateCount} title={`Cast on ${tpl.count} day${tpl.count === 1 ? '' : 's'}, this week onward`}>
                               ×{tpl.count}
                             </span>
                           }
@@ -301,6 +308,7 @@ export default function SkeinView({
                       </li>
                     ))}
                   </ul>
+                  </>
                 ) : (
                   <>
                     <ThreadList

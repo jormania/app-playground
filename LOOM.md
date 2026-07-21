@@ -96,7 +96,8 @@ All of these sit on the same one thread array; none needs a Notion schema change
 - **Rhythms (daily routines — multiple)** —
   [`lib/rhythm.js`](src/loom/lib/rhythm.js) +
   [`lib/model.js`](src/loom/lib/model.js) (`rhythmThreadsForWeek`, `splitRhythmThreads`,
-  `rhythmHeatIndexes`, `rhythmTemplateGroups`).
+  `rhythmTemplateGroups`, `currentOrFutureThreads`, `rhythmTemplateHeatRanks`,
+  `rhythmHeatRankFor`).
   **Any number of skeins** may be flagged as rhythms (stored as a JSON array under
   `loom_rhythm_skeins`, zero Notion schema changes; legacy single-entry key migrated on
   first read). Each rhythm carries an optional `days` mask (`[0..6]`, 0 = Mon; `null` =
@@ -104,17 +105,26 @@ All of these sit on the same one thread array; none needs a Notion schema change
   placing a copy of each thread on the allowed days, **duplicate-guarded**. Rhythm
   threads render at the **top of each day column** in a tinted block (`rhythmBlock` CSS),
   excluded from the distaff. Draft snapshots silently exclude **all** rhythm threads.
-  The **Rhythm order** toolbar toggle sorts the rhythm block by skein-then-order instead
-  of heat. A **Reset warp banners** button in the Guild re-surfaces accidentally
+  The **Rhythm order** toolbar toggle groups the rhythm block by skein, in the
+  same order the skeins sit in the Skeins view (drag-reordered there), then by
+  each thread's own order within its skein — i.e. real cross-skein priority
+  top-to-bottom, not alphabetical and not plain cast order (`filters.skeinOrder`
+  drives the grouping; see WeekView's `view()`). A **Reset warp banners** button in the Guild re-surfaces accidentally
   dismissed rhythm/draft offers. Long-press a rhythm thread in the Warp → "Edit in
   rhythm" jumps back to Skeins with the skein flashed.
 
-  - **Heat resets per rhythm skein.** Within a day's rhythm block, each skein's own
-    thread sequence restarts the Ivy-Lee ramp at 0 (1st = ember, 2nd = copper…),
-    independent of every other skein sharing that block — rather than one
-    continuous ramp across the whole block. Non-rhythm threads keep the single
-    global per-day ramp, unaffected. `rhythmHeatIndexes` computes this; only the
-    colour changes, never the array position used for reordering.
+  - **A rhythm thread's heat is fixed per (skein, title), matching its rank in the
+    Skeins view.** Turning "Deep work" red (hottest) in the Focus skein's own
+    consolidated template list makes it red in The Warp too — on every day it's
+    cast to, regardless of that day's own local thread order or how many other
+    threads share the block. `rhythmTemplateHeatRanks(threads, rhythmSkeinNames,
+    weekStartKey)` builds a `skein␀title → rank` map from the same consolidated
+    order the Skeins view itself shows (via `rhythmTemplateGroups`, scoped through
+    `currentOrFutureThreads`); `rhythmHeatRankFor` looks a thread's rank up from
+    it. WeekView builds the map once per render and passes it to the rhythm
+    block's `ThreadList` as `rhythmHeatRanks`; only the colour changes, never the
+    array position used for reordering (nudge / drag caret keep the plain index).
+    Non-rhythm threads are unaffected — they keep the single global per-day ramp.
   - **A daily rhythm thread has no day-mover.** The day-letter chip + move popover
     only make sense if there's somewhere else to move a thread *to* — a thread on
     a `days: null` (every day) rhythm is already on every day, so it's suppressed
@@ -129,6 +139,15 @@ All of these sit on the same one thread array; none needs a Notion schema change
     single done-state to show); renaming or deleting it (`actions.patchRhythmTemplate` /
     `removeRhythmTemplate` in App.jsx) acts on every instance sharing that title at
     once. Per-instance done-state stays exactly where it belongs — The Warp.
+  - **The ×N count is scoped to this week onward, not an all-time total.**
+    `currentOrFutureThreads` filters out instances dated before the current
+    week's Monday before the templates are grouped, so an abandoned cast from
+    weeks ago doesn't pad the count forever — a thread that's genuinely stale
+    debt is the Re-warp ritual's problem, not a reason for this number to keep
+    climbing. A cast thread on a *future* week still counts (it's real, upcoming
+    work), and day-less threads always count. A "Counts cover this week onward"
+    hint under each rhythm skein's template list makes the scope visible instead
+    of leaving ×N looking like a lifetime total.
 
   Design rationale: [`LOOM_RHYTHM_DESIGN.md`](LOOM_RHYTHM_DESIGN.md).
 

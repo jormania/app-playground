@@ -6,7 +6,8 @@ import {
   groupBySkein, collectSkeins, groupByWeek, threadStats, LOOSE_SKEIN,
   weekdayIndex, carryThreads, threadsForDraftWeek, draftItemsFromWeek,
   matchesQuery, topOfGroup, sortSkeinGroups, tapestryStats, weekReview,
-  rhythmThreadsForWeek, splitRhythmThreads, rhythmHeatIndexes, rhythmTemplateGroups,
+  rhythmThreadsForWeek, splitRhythmThreads, rhythmTemplateGroups,
+  currentOrFutureThreads, rhythmTemplateHeatRanks, rhythmHeatRankFor,
 } from './model.js'
 
 describe('heatmap dye', () => {
@@ -349,35 +350,65 @@ describe('splitRhythmThreads', () => {
   })
 })
 
-describe('rhythmHeatIndexes', () => {
-  it('restarts the ramp at 0 for each skein independently, in display order', () => {
-    const tasks = [
-      { id: '1', skein: 'Focus' },
-      { id: '2', skein: 'Focus' },
-      { id: '3', skein: 'Reading' },
-      { id: '4', skein: 'Focus' },
-      { id: '5', skein: 'Reading' },
+describe('currentOrFutureThreads', () => {
+  it('keeps this week, future weeks, and day-less threads; drops past debt', () => {
+    const threads = [
+      { id: 'past', day: '2026-07-06' },
+      { id: 'thisWeek', day: '2026-07-13' },
+      { id: 'future', day: '2026-07-27' },
+      { id: 'dayless', day: null },
     ]
-    // Even interleaved (not grouped contiguously by skein), each skein's own
-    // count restarts at 0 and climbs independently of the other skein's count:
-    // Focus -> 0,1,(2); Reading -> 0,(1) — read off in the tasks' own order.
-    expect(rhythmHeatIndexes(tasks)).toEqual([0, 1, 0, 2, 1])
+    const kept = currentOrFutureThreads(threads, '2026-07-13').map(t => t.id)
+    expect(kept).toEqual(['thisWeek', 'future', 'dayless'])
+  })
+})
+
+describe('rhythmTemplateHeatRanks / rhythmHeatRankFor', () => {
+  const weekStart = '2026-07-13'
+  const rhythmNames = new Set(['Focus'])
+
+  it('ranks each rhythm skein\'s templates by the Skeins-view order (lowest instance order first)', () => {
+    const threads = [
+      // "Reading" has an earlier (lower) order than "Deep work" among its instances.
+      { id: 'r1', title: 'Reading', skein: 'Focus', day: '2026-07-14', order: 5, done: false },
+      { id: 'd1', title: 'Deep work', skein: 'Focus', day: '2026-07-13', order: 10, done: false },
+      { id: 'd2', title: 'Deep work', skein: 'Focus', day: '2026-07-15', order: 20, done: true },
+    ]
+    const ranks = rhythmTemplateHeatRanks(threads, rhythmNames, weekStart)
+    expect(rhythmHeatRankFor(ranks, threads[0])).toBe(0) // Reading — hottest
+    expect(rhythmHeatRankFor(ranks, threads[1])).toBe(1) // Deep work, Monday instance
+    expect(rhythmHeatRankFor(ranks, threads[2])).toBe(1) // Deep work, Wednesday instance — SAME rank as Monday's
   })
 
-  it('groups a skein-grouped block the same way (contiguous input)', () => {
-    const tasks = [
-      { id: '1', skein: 'Focus' },
-      { id: '2', skein: 'Focus' },
-      { id: '3', skein: 'Focus' },
-      { id: '4', skein: 'Reading' },
-      { id: '5', skein: 'Reading' },
+  it('excludes stale past-week instances from the ranking, matching the Skeins-view scope', () => {
+    const threads = [
+      { id: 'stale', title: 'Old debt', skein: 'Focus', day: '2026-07-06', order: 0, done: false },
+      { id: 'd1', title: 'Deep work', skein: 'Focus', day: '2026-07-13', order: 10, done: false },
     ]
-    expect(rhythmHeatIndexes(tasks)).toEqual([0, 1, 2, 0, 1])
+    const ranks = rhythmTemplateHeatRanks(threads, rhythmNames, weekStart)
+    expect(rhythmHeatRankFor(ranks, threads[1])).toBe(0) // only remaining template -> hottest
+    expect(ranks.has('Focus' + String.fromCharCode(0) + 'Old debt')).toBe(false)
   })
 
-  it('treats loose (no-skein) threads as their own shared group', () => {
-    const tasks = [{ id: '1', skein: null }, { id: '2', skein: null }]
-    expect(rhythmHeatIndexes(tasks)).toEqual([0, 1])
+  it('keys are scoped per skein — same title in two different rhythm skeins never collides', () => {
+    const threads = [
+      { id: 'a', title: 'Review', skein: 'Focus', day: '2026-07-13', order: 0, done: false },
+      { id: 'b', title: 'Review', skein: 'Reflection', day: '2026-07-13', order: 0, done: false },
+    ]
+    const ranks = rhythmTemplateHeatRanks(threads, new Set(['Focus', 'Reflection']), weekStart)
+    expect(rhythmHeatRankFor(ranks, threads[0])).toBe(0)
+    expect(rhythmHeatRankFor(ranks, threads[1])).toBe(0)
+    expect(ranks.size).toBe(2)
+  })
+
+  it('falls back to 0 for a thread the map has no entry for', () => {
+    const ranks = rhythmTemplateHeatRanks([], rhythmNames, weekStart)
+    expect(rhythmHeatRankFor(ranks, { skein: 'Focus', title: 'Unknown' })).toBe(0)
+  })
+
+  it('returns an empty map when there are no rhythm skeins', () => {
+    const ranks = rhythmTemplateHeatRanks([{ id: '1', skein: 'X', title: 'Y' }], new Set(), weekStart)
+    expect(ranks.size).toBe(0)
   })
 })
 

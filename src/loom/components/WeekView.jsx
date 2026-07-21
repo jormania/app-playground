@@ -7,7 +7,7 @@ import { DragProvider } from '../lib/dragContext.jsx'
 import { useLexicon } from '../lib/lexiconContext.jsx'
 import { useUiStyle } from '../lib/uiStyleContext.jsx'
 import { RhythmIcon } from './icons.jsx'
-import { groupByWeek, orderForNew, orderForMove, dateKey, matchesQuery, splitRhythmThreads } from '../lib/model.js'
+import { groupByWeek, orderForNew, orderForMove, dateKey, matchesQuery, splitRhythmThreads, rhythmTemplateHeatRanks } from '../lib/model.js'
 import { pendingRepeats, settleForWeek } from '../lib/drafts.js'
 import { pendingRhythms, settleRhythmForWeek } from '../lib/rhythm.js'
 import styles from './WeekView.module.css'
@@ -55,6 +55,14 @@ export default function WeekView({
     return seen.size
   }, [threads, rhythmSkeinNames, hasPendingRhythm])
 
+  // Fixed heat rank per (skein, title) rhythm thread, matching the Skeins
+  // view's own template order — every day-instance of the same thread paints
+  // the same colour, regardless of its position within that day's block.
+  const rhythmHeatRanks = useMemo(
+    () => rhythmTemplateHeatRanks(threads, rhythmSkeinNames, weekStartKey),
+    [threads, rhythmSkeinNames, weekStartKey],
+  )
+
   function addToDay(dayKey, title) {
     const group = threads.filter(th => th.day === dayKey)
     actions.addThread({ title, skein: null, day: dayKey, order: orderForNew(group) })
@@ -99,8 +107,13 @@ export default function WeekView({
   }
 
   // Per-group display subset, honouring search + focus toggles.
-  // "Rhythm order" sort: within the rhythm block, sort by skein then by order
-  // (so all Body threads come first, ordered, then all Focus threads, etc.).
+  // "Rhythm order" sort: within the rhythm block, group by skein — in the
+  // SAME order the skeins themselves sit in the Skeins view (filters.skeinOrder,
+  // drag-reordered there), not alphabetically — then by each thread's own order
+  // within that skein (which already matches its fixed heat rank). A skein not
+  // yet in skeinOrder (brand new, never touched in Skeins) sorts after every
+  // known skein, alphabetically among itself. On means "top-to-bottom by real
+  // priority across every rhythm skein on this day"; off keeps plain cast order.
   function view(tasks, isRhythmBlock = false) {
     const all = tasks.filter(th => matchesQuery(th, filters.query))
     const open = all.filter(th => !th.done)
@@ -108,9 +121,14 @@ export default function WeekView({
     let main = !filters.showWoven ? open : filters.collapseWoven ? open : all
     const fold = !filters.showWoven ? [] : filters.collapseWoven ? woven : []
     if (isRhythmBlock && filters.rhythmSort) {
-      // Sort rhythm block by skein-canonical order: group by skein, maintain
-      // the within-skein order from the Skeins view (thread.order).
+      const skeinOrder = filters.skeinOrder || []
+      const skeinRank = skein => {
+        const i = skeinOrder.indexOf(skein)
+        return i === -1 ? Infinity : i
+      }
       main = [...main].sort((a, b) => {
+        const ra = skeinRank(a.skein), rb = skeinRank(b.skein)
+        if (ra !== rb) return ra - rb
         if (a.skein !== b.skein) return (a.skein || '').localeCompare(b.skein || '')
         return (a.order ?? 0) - (b.order ?? 0)
       })
@@ -226,7 +244,7 @@ export default function WeekView({
                       onDelete={actions.removeThread}
                       onEdit={(id, title) => actions.patchThread(id, { title })}
                       renderAssign={dayMover}
-                      rhythmSkeins={rhythmSkeinNames}
+                      rhythmHeatRanks={rhythmHeatRanks}
                     />
                     {rhythmFold.length > 0 && (
                       <WovenFold

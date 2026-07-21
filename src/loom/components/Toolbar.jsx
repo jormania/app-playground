@@ -12,9 +12,11 @@ const FLASH_MS = 1800
 // interface style, coordinated with the bottom bar. Hidden on the Tapestry.
 //
 // "Rhythm order" replaces the old "Top few" toggle: when active, rhythm-skein
-// threads in the day columns are sorted by their canonical skein order (project
-// by project) instead of the default heat ranking. Non-rhythm threads are
-// unaffected. See WeekView for the sort implementation.
+// threads in the day columns are grouped skein by skein, in the SAME order the
+// skeins sit in the Skeins view (drag-reordered there) — not alphabetically —
+// then by each thread's own rank within its skein, so the block reads
+// top-to-bottom by real cross-skein priority. Off keeps plain cast order.
+// Non-rhythm threads are unaffected. See WeekView for the sort implementation.
 export default function Toolbar({ filters, setFilter, carryCount, onRewarp, onDrafts }) {
   const { t } = useLexicon()
   const { style } = useUiStyle()

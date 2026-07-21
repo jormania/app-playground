@@ -316,6 +316,19 @@ export function splitRhythmThreads(tasks, rhythmNames) {
   return { rhythm, rest }
 }
 
+// Threads dated this week or later, or day-less — i.e. everything EXCEPT
+// genuinely stale debt from a week that's already passed. Shared by the
+// rhythm template count (Skeins view) and the rhythm heat-rank derivation (The
+// Warp) so both agree on the same "current" scope: a rhythm cast ahead onto a
+// future week still counts (it's real, upcoming work), but an abandoned
+// instance from three weeks ago — never woven, never carried over — doesn't
+// pad the number forever. Stale past debt is the Re-warp ritual's job, not a
+// reason for a Skeins-view count to keep climbing across every week the app
+// has ever been used.
+export function currentOrFutureThreads(threads, weekStartKey) {
+  return threads.filter(t => !t.day || t.day >= weekStartKey)
+}
+
 // Consolidate a rhythm skein's exploded per-day instances (one real thread per
 // cast day) into one row per unique canonical title — what the Skeins view
 // shows for a rhythm skein, instead of the same "Deep work" repeated once for
@@ -324,7 +337,10 @@ export function splitRhythmThreads(tasks, rhythmNames) {
 // Loom would currently offer as the cast template); `count` and `instanceIds`
 // carry every matching thread so the caller can act on the whole group at
 // once (rename / delete / reorder), regardless of done-state — a rhythm
-// template deliberately doesn't distinguish "some instances are woven".
+// template deliberately doesn't distinguish "some instances are woven". Pass
+// an already-scoped `tasks` array (see `currentOrFutureThreads`) if stale past
+// instances shouldn't inflate the count — this function itself is a pure
+// consolidation, agnostic of any date scoping.
 export function rhythmTemplateGroups(tasks) {
   const byTitle = new Map()
   for (const t of tasks) {
@@ -341,20 +357,36 @@ export function rhythmTemplateGroups(tasks) {
   return [...byTitle.values()].sort((a, b) => a.order - b.order)
 }
 
-// Heat-ramp indices for a rhythm block: each SKEIN's own thread sequence
-// restarts the ramp at 0 (1st thread of that skein = ember, 2nd = copper…),
-// independent of every other skein in the block — rather than one continuous
-// ramp across the whole block. Returns an array parallel to `tasks`, one heat
-// index per thread, in `tasks`' own display order (so this is correct whether
-// or not the block is grouped contiguously by skein).
-export function rhythmHeatIndexes(tasks) {
-  const runningBySkein = new Map()
-  return tasks.map(t => {
-    const key = t.skein || ''
-    const idx = runningBySkein.get(key) ?? 0
-    runningBySkein.set(key, idx + 1)
-    return idx
-  })
+// A rhythm thread's heat rank is FIXED per (skein, title) — matching its
+// position in the Skeins view's own consolidated template order — and applied
+// identically to every instance of that thread across every day it's cast to.
+// Turning a thread "red" (hottest) in the Skeins list makes it red everywhere
+// in The Warp, on whichever days it's on, regardless of each day's own local
+// thread order. Scoped to `weekStartKey` onward via `currentOrFutureThreads`,
+// so the ranks always match what the Skeins view itself currently shows for
+// each rhythm skein. Returns a Map keyed by a joined skein+title pair (not a
+// plain space or any other printable separator, which a real skein/title
+// could contain and risk a collision) to a zero-based rank; look it up with
+// `rhythmHeatRankFor`.
+const HEAT_RANK_SEP = String.fromCharCode(0)
+function heatRankKey(skein, title) { return skein + HEAT_RANK_SEP + title }
+
+export function rhythmTemplateHeatRanks(threads, rhythmSkeinNames, weekStartKey) {
+  const ranks = new Map()
+  if (!rhythmSkeinNames || rhythmSkeinNames.size === 0) return ranks
+  const scoped = currentOrFutureThreads(threads, weekStartKey)
+  for (const skeinName of rhythmSkeinNames) {
+    const templates = rhythmTemplateGroups(scoped.filter(t => t.skein === skeinName))
+    templates.forEach((tpl, i) => ranks.set(heatRankKey(skeinName, tpl.title), i))
+  }
+  return ranks
+}
+
+// Look up a thread's fixed heat rank from `rhythmTemplateHeatRanks`'s map,
+// falling back to 0 (hottest) for a thread the map doesn't know about yet
+// (e.g. a title just renamed, not yet re-scanned).
+export function rhythmHeatRankFor(ranks, thread) {
+  return ranks.get(heatRankKey(thread.skein, thread.title)) ?? 0
 }
 
 // ── Search & focus ───────────────────────────────────────────────────────────
