@@ -153,6 +153,12 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
               )
             })}
           </div>
+          {formData.tags.length > 0 && formData.tags.length < 5 && (
+            <p className="cd-tag-warning">⚠ Collection policy calls for 5–7 tags per entry — only {formData.tags.length} selected.</p>
+          )}
+          {formData.tags.length > 7 && (
+            <p className="cd-tag-warning">⚠ Collection policy calls for 5–7 tags per entry — {formData.tags.length} selected (predates the current cap).</p>
+          )}
         </div>
 
         <div className="cd-form-group">
@@ -191,6 +197,11 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
           padding: 0.5rem;
           border: 1px solid var(--cd-border-color);
           background: var(--cd-bg-dark);
+        }
+        .cd-tag-warning {
+          margin: 0.5rem 0 0;
+          font-size: 0.85rem;
+          color: var(--cd-accent-amber);
         }
         .cd-picker-tag {
           font-size: 0.8rem;

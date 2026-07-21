@@ -8,6 +8,7 @@ import { GameEditorModal } from './components/GameEditorModal'
 import { SettingsModal } from './components/SettingsModal'
 import { DiscountModal } from './components/DiscountModal'
 import { RandomGameModal } from './components/RandomGameModal'
+import { isDiscountBannerSnoozed, snoozeDiscountBanner, detectPriceDrops } from './lib/priceTracking'
 
 export function App() {
   const [isInitialized, setIsInitialized] = useState(McpConnector.isInitialized())
@@ -31,6 +32,12 @@ export function App() {
   const showToast = (msg) => {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(null), 3000)
+  }
+
+  const [isBannerSnoozed, setIsBannerSnoozed] = useState(() => isDiscountBannerSnoozed())
+  const dismissDiscountBanner = () => {
+    snoozeDiscountBanner(24)
+    setIsBannerSnoozed(true)
   }
 
   useEffect(() => {
@@ -77,6 +84,15 @@ export function App() {
     const data = await McpConnector.getGames()
     setGames(data)
     setIsLoading(false)
+
+    // Compare against prices we've seen before (e.g. after last night's pricing
+    // cron ran) and surface any drops — the cron itself has no way to reach an
+    // open browser tab, so this is the client-side equivalent of a push.
+    const drops = detectPriceDrops(data)
+    if (drops.length > 0) {
+      const label = drops.length === 1 ? drops[0].title : `${drops.length} GAMES`
+      showToast(`PRICE DROP: ${label}`)
+    }
   }
 
   useEffect(() => {
@@ -253,13 +269,21 @@ export function App() {
         )}
       </header>
 
-      {discountedGames.length > 0 && view === 'timeline' && (
-        <div className="cd-discount-banner" onClick={() => setIsDiscountOpen(true)}>
+      {discountedGames.length > 0 && !isBannerSnoozed && view === 'timeline' && (
+        <div className="cd-discount-banner">
           <span className="cd-banner-icon">🔥</span>
-          <span className="cd-banner-text">
+          <span className="cd-banner-text" onClick={() => setIsDiscountOpen(true)}>
             {discountedGames.length} {discountedGames.length === 1 ? 'GAME' : 'GAMES'} ON SALE!
           </span>
-          <span className="cd-banner-cta">[VIEW DISCOUNTS]</span>
+          <span className="cd-banner-cta" onClick={() => setIsDiscountOpen(true)}>[VIEW DISCOUNTS]</span>
+          <button
+            type="button"
+            className="cd-banner-dismiss"
+            onClick={(e) => { e.stopPropagation(); dismissDiscountBanner() }}
+            aria-label="Dismiss for 24 hours"
+          >
+            [X]
+          </button>
         </div>
       )}
 
@@ -566,9 +590,26 @@ export function App() {
           display: flex;
           align-items: center;
           gap: 1rem;
-          cursor: pointer;
           transition: all 0.2s ease;
           animation: pulseBanner 2s infinite alternate;
+        }
+        .cd-banner-text, .cd-banner-cta {
+          cursor: pointer;
+        }
+        .cd-banner-dismiss {
+          background: transparent;
+          border: 1px solid transparent;
+          color: #a4d007;
+          font-family: var(--cd-font-terminal);
+          font-size: 0.8rem;
+          padding: 0.1rem 0.4rem;
+          opacity: 0.7;
+        }
+        .cd-banner-dismiss:hover {
+          opacity: 1;
+          border-color: #a4d007;
+          color: #a4d007;
+          box-shadow: none;
         }
         .cd-discount-banner:hover {
           background: linear-gradient(90deg, rgba(76, 107, 34, 1), rgba(0, 0, 0, 0.8));

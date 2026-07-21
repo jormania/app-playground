@@ -79,4 +79,51 @@ describe('AnalyticsView', () => {
     expect(screen.getByText('[Abandoned]').style.color).toBe('var(--cd-status-abandoned)')
     expect(screen.getByText('[Backlog]').style.color).toBe('var(--cd-status-backlog)')
   })
+
+  describe('tag-count data-quality filter', () => {
+    const withTagCounts = [
+      { id: '1', title: 'Under', year: 2000, status: 'Backlog', tags: ['A', 'B'] },
+      { id: '2', title: 'InRange', year: 2001, status: 'Backlog', tags: ['A', 'B', 'C', 'D', 'E'] },
+      { id: '3', title: 'Over', year: 2002, status: 'Backlog', tags: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] }
+    ]
+
+    it('shows only entries with fewer than 5 tags under "Under 5"', () => {
+      render(<AnalyticsView filteredGames={withTagCounts} activeTags={[]} setActiveTags={() => {}} />)
+      fireEvent.click(screen.getByText('Under 5'))
+      expect(screen.getByText('MATCHING ENTRIES: 1')).toBeTruthy()
+      expect(screen.getByText('Under')).toBeTruthy()
+    })
+
+    it('shows only entries with more than 7 tags under "Over 7"', () => {
+      render(<AnalyticsView filteredGames={withTagCounts} activeTags={[]} setActiveTags={() => {}} />)
+      fireEvent.click(screen.getByText('Over 7'))
+      expect(screen.getByText('MATCHING ENTRIES: 1')).toBeTruthy()
+      expect(screen.getByText('Over')).toBeTruthy()
+    })
+  })
+
+  describe('JSON export', () => {
+    it('downloads a JSON blob of the currently filtered entries', () => {
+      const createObjectURL = vi.fn(() => 'blob:mock')
+      const revokeObjectURL = vi.fn()
+      const originalCreate = global.URL.createObjectURL
+      const originalRevoke = global.URL.revokeObjectURL
+      global.URL.createObjectURL = createObjectURL
+      global.URL.revokeObjectURL = revokeObjectURL
+      const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+      render(<AnalyticsView filteredGames={mockGames} activeTags={[]} setActiveTags={() => {}} />)
+      fireEvent.click(screen.getByText('[EXPORT JSON]'))
+
+      expect(createObjectURL).toHaveBeenCalledTimes(1)
+      const [blobArg] = createObjectURL.mock.calls[0]
+      expect(blobArg.type).toBe('application/json')
+      expect(clickSpy).toHaveBeenCalled()
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock')
+
+      clickSpy.mockRestore()
+      global.URL.createObjectURL = originalCreate
+      global.URL.revokeObjectURL = originalRevoke
+    })
+  })
 })

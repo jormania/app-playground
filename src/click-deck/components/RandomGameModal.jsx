@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react'
+import { pickWeightedGame } from '../lib/randomWeighting'
 
 export function RandomGameModal({ backlogGames, onClose, onUpdateStatus }) {
   const [selectedGame, setSelectedGame] = useState(null)
   const [isRolling, setIsRolling] = useState(true)
+  // Settings → "Random pick weighting"; defaults to a plain uniform roll.
+  const weightMode = typeof localStorage !== 'undefined' ? (localStorage.getItem('cd_random_weight') || 'uniform') : 'uniform'
 
   const roll = () => {
     if (backlogGames.length === 0) return
@@ -10,7 +13,7 @@ export function RandomGameModal({ backlogGames, onClose, onUpdateStatus }) {
     let rolls = 0
     const maxRolls = 15
     const interval = setInterval(() => {
-      setSelectedGame(backlogGames[Math.floor(Math.random() * backlogGames.length)])
+      setSelectedGame(pickWeightedGame(backlogGames, weightMode))
       rolls++
       if (rolls >= maxRolls) {
         clearInterval(interval)
@@ -49,6 +52,11 @@ export function RandomGameModal({ backlogGames, onClose, onUpdateStatus }) {
           <h2>
             <span className="cd-random-header-prefix">SYSTEM DIRECTIVE:</span><br/>
             NEXT PLAYTHROUGH
+            {weightMode !== 'uniform' && (
+              <span className="cd-random-weight-badge">
+                {weightMode === 'oldest' ? 'FAVORING OLDEST BACKLOG' : 'FAVORING CHEAPEST'}
+              </span>
+            )}
           </h2>
           <button className="cd-btn-icon" onClick={onClose}>[X]</button>
         </div>

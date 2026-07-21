@@ -15,7 +15,7 @@ const { games } = vi.hoisted(() => ({
     },
     {
       id: '2', title: 'The Last Express', year: 1997, developer: 'Smoking Car',
-      status: 'Backlog', tags: ['Mystery'], journal: '', isDiscounted: true, discountPercent: 0.8
+      status: 'Backlog', tags: ['Mystery'], journal: '', isDiscounted: true, discountPercent: 0.8, price: 1.39
     }
   ]
 }))
@@ -43,6 +43,9 @@ describe('App', () => {
 
   beforeEach(() => {
     document.body.innerHTML = ''
+    // App reads/writes discount-snooze and price-tracking state via localStorage;
+    // clear it so tests don't leak state into each other.
+    localStorage.clear()
   })
 
   it('renders games correctly', async () => {
@@ -82,10 +85,32 @@ describe('App', () => {
     await waitFor(() => expect(screen.getByText('Monkey Island')).toBeTruthy())
 
     expect(screen.getByText(/GAME ON SALE/)).toBeTruthy()
-    fireEvent.click(screen.getByText(/GAME ON SALE/).closest('.cd-discount-banner'))
+    fireEvent.click(screen.getByText(/GAME ON SALE/))
 
     await waitFor(() => {
       expect(screen.getByText('ACTIVE_DISCOUNT')).toBeTruthy()
+    })
+  })
+
+  it('hides the discount banner for 24h after it is dismissed', async () => {
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/GAME ON SALE/)).toBeTruthy())
+
+    fireEvent.click(screen.getByLabelText('Dismiss for 24 hours'))
+    expect(screen.queryByText(/GAME ON SALE/)).toBeNull()
+
+    cleanup()
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('Monkey Island')).toBeTruthy())
+    expect(screen.queryByText(/GAME ON SALE/)).toBeNull()
+  })
+
+  it('toasts a price drop detected against the previously seen price', async () => {
+    localStorage.setItem('cd_last_prices', JSON.stringify({ '2': 99.99 }))
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/PRICE DROP/)).toBeTruthy()
     })
   })
 })

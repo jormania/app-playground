@@ -369,6 +369,14 @@ input:focus, select:focus, textarea:focus {
   color: var(--cd-text-muted);
 }
 
+.cd-random-weight-badge {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--cd-accent-amber);
+  letter-spacing: 1px;
+  margin-top: 0.3rem;
+}
+
 .cd-random-actions {
   display: flex;
   justify-content: space-between;

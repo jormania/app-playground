@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react'
 import { RandomGameModal } from './RandomGameModal'
 
@@ -11,6 +11,8 @@ const backlogGames = [
 ]
 
 describe('RandomGameModal', () => {
+  beforeEach(() => localStorage.clear())
+
   afterEach(() => {
     cleanup()
     vi.useRealTimers()
@@ -46,5 +48,16 @@ describe('RandomGameModal', () => {
     expect(rating).not.toBe(0)
 
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('does not show a weighting badge in the default uniform mode', () => {
+    render(<RandomGameModal backlogGames={backlogGames} onClose={() => {}} onUpdateStatus={() => {}} />)
+    expect(screen.queryByText(/FAVORING/)).toBeNull()
+  })
+
+  it('shows the active weighting mode from Settings when non-uniform', () => {
+    localStorage.setItem('cd_random_weight', 'oldest')
+    render(<RandomGameModal backlogGames={backlogGames} onClose={() => {}} onUpdateStatus={() => {}} />)
+    expect(screen.getByText('FAVORING OLDEST BACKLOG')).toBeTruthy()
   })
 })

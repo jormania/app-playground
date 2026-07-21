@@ -4,6 +4,7 @@ export function SettingsModal({ onClose, onSaveToken, onResetDb }) {
   const [token, setToken] = useState(localStorage.getItem('cd_notion_token') || '')
   const [dbId, setDbId] = useState(localStorage.getItem('cd_notion_db') || '')
   const [theme, setTheme] = useState(localStorage.getItem('cd_theme') || 'union')
+  const [randomWeight, setRandomWeight] = useState(localStorage.getItem('cd_random_weight') || 'uniform')
   const [status, setStatus] = useState('')
 
   const handleCreateDb = async () => {
@@ -75,6 +76,7 @@ export function SettingsModal({ onClose, onSaveToken, onResetDb }) {
     localStorage.setItem('cd_notion_token', token)
     localStorage.setItem('cd_notion_db', dbId)
     localStorage.setItem('cd_theme', theme)
+    localStorage.setItem('cd_random_weight', randomWeight)
     document.documentElement.setAttribute('data-theme', theme)
     if (onSaveToken) onSaveToken()
     onClose()
@@ -122,6 +124,22 @@ export function SettingsModal({ onClose, onSaveToken, onResetDb }) {
             <option value="voodoo">Voodoo (Toxic/Purple)</option>
             <option value="noir">Noir (Grayscale/Gold)</option>
           </select>
+        </div>
+
+        <div className="cd-form-group">
+          <label>RANDOM PICK WEIGHTING</label>
+          <select
+            value={randomWeight}
+            onChange={e => setRandomWeight(e.target.value)}
+            style={{ width: '100%', padding: '0.8rem', background: 'var(--cd-bg-dark)', color: 'var(--cd-accent-cyan)', border: '1px solid var(--cd-border-color)', fontFamily: 'var(--cd-font-terminal)', fontSize: '1rem', outline: 'none' }}
+          >
+            <option value="uniform">Uniform (equal odds)</option>
+            <option value="oldest">Favor oldest backlog entries</option>
+            <option value="cheapest">Favor cheapest entries</option>
+          </select>
+          <p style={{ fontSize: '0.85rem', color: 'var(--cd-text-muted)', margin: '0.3rem 0 0' }}>
+            Controls how [R] picks your next playthrough from the backlog.
+          </p>
         </div>
 
         <div className="cd-form-group" style={{ marginTop: '1.5rem', padding: '1.5rem', border: '1px solid var(--cd-border-color)', background: 'rgba(0, 0, 0, 0.2)' }}>

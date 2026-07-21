@@ -74,4 +74,29 @@ describe('GameEditorModal', () => {
     expect(screen.getByText('TAGS (7/7)')).toBeTruthy()
     expect(screen.getByText('Comedy').className).not.toContain('active')
   })
+
+  it('warns when an entry has fewer than 5 tags', () => {
+    const game = {
+      title: 'Sparse', year: 2000, developer: '', status: 'Backlog',
+      tags: ['Comedy', 'Sci-Fi'], journal: ''
+    }
+    render(<GameEditorModal game={game} onSave={() => {}} onClose={() => {}} />)
+    expect(screen.getByText(/Collection policy calls for 5–7 tags/)).toBeTruthy()
+  })
+
+  it('warns when a legacy entry has more than 7 tags, but not for a valid entry', () => {
+    const overTagged = {
+      title: 'Over', year: 2000, developer: '', status: 'Backlog',
+      tags: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], journal: ''
+    }
+    const { rerender } = render(<GameEditorModal game={overTagged} onSave={() => {}} onClose={() => {}} />)
+    expect(screen.getByText(/predates the current cap/)).toBeTruthy()
+
+    const inRange = {
+      title: 'InRange', year: 2000, developer: '', status: 'Backlog',
+      tags: ['Point & Click', 'Sci-Fi', 'Cyberpunk', 'Mystery', 'Detective'], journal: ''
+    }
+    rerender(<GameEditorModal game={inRange} onSave={() => {}} onClose={() => {}} />)
+    expect(screen.queryByText(/Collection policy calls for 5–7 tags/)).toBeNull()
+  })
 })

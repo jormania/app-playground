@@ -75,6 +75,58 @@ function solOdysseyPWA() {
   });
 }
 
+// PWA for Click Deck only. Distinct service-worker filename keeps it from colliding
+// with the other apps' workers. Click Deck already ships a hand-authored
+// public/click-deck.webmanifest (linked directly from click-deck-react.html), so
+// manifest generation is turned off here (manifest: false) — this plugin only emits
+// the service worker. Registered ourselves from the Click Deck entry (injectRegister:
+// null), scoped to its page.
+function clickDeckPWA() {
+  return VitePWA({
+    filename: 'click-deck-sw.js',
+    manifest: false,
+    injectRegister: null,
+    registerType: 'autoUpdate',
+    scope: '/click-deck-react.html',
+    includeAssets: [
+      'click-deck-favicon-32.png',
+      'click-deck-icon-192.png',
+      'click-deck-icon-512.png',
+      'click-deck-icon-512-maskable.png',
+    ],
+    workbox: {
+      // Precache Click Deck's shell so it boots offline: its entry HTML, its own JS/CSS,
+      // and the shared React runtime chunk it needs. Scoped so the other apps' bundles
+      // are never swept in.
+      globPatterns: [
+        'click-deck-react.html',
+        'assets/clickDeck*.{js,css}',
+        'assets/jsx-runtime-*.js',
+      ],
+      navigateFallback: null,
+      // Click Deck loads JetBrains Mono from Google Fonts (not self-hosted like Sol
+      // Odyssey), so cache the stylesheet + woff2 responses at runtime instead of via
+      // precache globs — the standard Workbox recipe for cross-origin Google Fonts.
+      runtimeCaching: [
+        {
+          urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+          handler: 'StaleWhileRevalidate',
+          options: { cacheName: 'click-deck-google-fonts-stylesheets' },
+        },
+        {
+          urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'click-deck-google-fonts-webfonts',
+            expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            cacheableResponse: { statuses: [0, 200] },
+          },
+        },
+      ],
+    },
+  });
+}
+
 // Dev-only: mount the SAME stateless relay handler at /api/notion under `vite dev`, so
 // Settings → "Test connection" works on localhost without deploying. On Vercel the real
 // serverless function (api/notion.js) serves this route instead; this never runs in prod.
@@ -169,6 +221,7 @@ export default defineConfig({
     react(),
     deployDatePlugin(),
     solOdysseyPWA(),
+    clickDeckPWA(),
     devNotionRelay(),
     devApiRelay('/api/generate-law-of-the-day', generateLawOfTheDayHandler, 'dev-generate-law-of-the-day-relay'),
     devApiRelay('/api/law-of-the-day-content', lawOfTheDayContentHandler, 'dev-law-of-the-day-content-relay'),
