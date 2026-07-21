@@ -3,13 +3,13 @@ import ReactMarkdown from 'react-markdown'
 
 export function GameCard({ game, onEdit, onUpdateStatus }) {
   const statusColors = {
-    'Backlog': 'var(--cd-text-muted)',
-    'Playing': 'var(--cd-accent-cyan)',
-    'Completed': 'var(--cd-accent-amber)',
-    'Abandoned': '#d9381e'
+    'Backlog': 'var(--cd-status-backlog)',
+    'Playing': 'var(--cd-status-playing)',
+    'Completed': 'var(--cd-status-completed)',
+    'Abandoned': 'var(--cd-status-abandoned)'
   }
 
-  const getStatusColor = (status) => statusColors[status] || 'var(--cd-text-muted)'
+  const getStatusColor = (status) => statusColors[status] || 'var(--cd-status-backlog)'
 
   const renderNotionRichText = (richTextArray) => {
     if (!Array.isArray(richTextArray) || richTextArray.length === 0) return null;

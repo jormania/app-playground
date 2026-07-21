@@ -14,10 +14,13 @@ export function DiscountModal({ games, onClose }) {
             <div key={g.id} className="cd-discount-card" style={{ cursor: 'pointer' }} onClick={() => g.appId && window.open(`https://store.steampowered.com/app/${g.appId}`, '_blank')}>
               <div className="cd-discount-cover">
                 {g.coverUrl ? (
-                  <img src={g.coverUrl} alt={g.title} />
+                  <img src={g.coverUrl} alt={g.title} onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.parentElement.classList.add('fallback-cover');
+                  }} />
                 ) : (
-                <div className="fallback-cover cd-discount-cover"></div>
-              )}
+                  <div className="fallback-cover" style={{ width: '100%', height: '100%' }}></div>
+                )}
                 {g.discountPercent > 0 && (
                   <div className="cd-discount-badge">
                     -{Math.round(g.discountPercent * 100)}%
@@ -42,12 +45,30 @@ export function DiscountModal({ games, onClose }) {
 
       <style>{`
         .cd-discount-modal {
+          position: relative;
           max-width: 800px;
           width: 90%;
           max-height: 80vh;
           overflow-y: auto;
           display: flex;
           flex-direction: column;
+        }
+        .cd-modal-close {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          background: transparent;
+          border: 1px solid var(--cd-border-color);
+          color: var(--cd-text-muted);
+          font-size: 0.9rem;
+          padding: 0.2rem 0.5rem;
+        }
+        .cd-modal-close:hover {
+          color: var(--cd-accent-cyan);
+          border-color: var(--cd-accent-cyan);
+        }
+        .cd-modal-title {
+          color: var(--cd-accent-cyan);
         }
         .cd-discount-grid {
           display: grid;
@@ -73,14 +94,15 @@ export function DiscountModal({ games, onClose }) {
           width: 100%;
           border-bottom: 1px solid var(--cd-border-accent);
           overflow: hidden;
+          background: var(--cd-bg-dark);
         }
-        .cd-discount-cover {
-          width: 80px;
-          height: 110px;
+        .cd-discount-cover img {
+          width: 100%;
+          height: 100%;
           object-fit: cover;
-          border-radius: 4px;
+          display: block;
         }
-        .cd-discount-details {
+        .cd-discount-badge {
           position: absolute;
           top: 0.5rem;
           right: 0.5rem;

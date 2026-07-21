@@ -21,7 +21,7 @@ import { afterEach } from 'vitest';
 describe('GameCard', () => {
   afterEach(() => cleanup());
   it('renders correctly', () => {
-    const { container } = render(<GameCard game={mockGame} onEdit={() => {}} onUpdateStatus={() => {}} />)
+    render(<GameCard game={mockGame} onEdit={() => {}} onUpdateStatus={() => {}} />)
     expect(screen.getByText('Test Game')).toBeTruthy()
     expect(screen.getByText('Test Dev')).toBeTruthy()
     expect(screen.getByText('[Backlog]')).toBeTruthy()
@@ -42,5 +42,29 @@ describe('GameCard', () => {
     render(<GameCard game={completedGame} onEdit={() => {}} onUpdateStatus={() => {}} />)
     const stars = screen.getAllByText(/★|☆/)
     expect(stars.length).toBe(5)
+  })
+
+  it('shows a % SALE badge only when the game is discounted', () => {
+    const { rerender } = render(<GameCard game={mockGame} onEdit={() => {}} onUpdateStatus={() => {}} />)
+    expect(screen.queryByText('% SALE')).toBeNull()
+
+    rerender(<GameCard game={{ ...mockGame, isDiscounted: true }} onEdit={() => {}} onUpdateStatus={() => {}} />)
+    expect(screen.getByText('% SALE')).toBeTruthy()
+  })
+
+  it('applies a distinct color per status, including Abandoned', () => {
+    const statuses = ['Backlog', 'Playing', 'Completed', 'Abandoned']
+    const colors = statuses.map(status => {
+      render(<GameCard game={{ ...mockGame, status }} onEdit={() => {}} onUpdateStatus={() => {}} />)
+      const el = screen.getByText(`[${status}]`)
+      const color = el.style.color
+      cleanup()
+      return color
+    })
+    // Every status should resolve to its own CSS variable, not all fall back
+    // to the same default (the bug this guards: an undefined --cd-accent-red
+    // silently rendering identically to the muted default).
+    expect(new Set(colors).size).toBe(statuses.length)
+    expect(colors[3]).toBe('var(--cd-status-abandoned)')
   })
 })

@@ -19,8 +19,13 @@ export function RandomGameModal({ backlogGames, onClose, onUpdateStatus }) {
     }, 100)
   }
 
+  // Intentionally mount-once: `roll` is re-created every render (it closes over
+  // backlogGames), so including it would re-trigger the roll animation on every
+  // parent re-render. [RE-ROLL] and the auto-roll-on-open both call the latest
+  // closure directly, so staleness isn't a concern here.
   useEffect(() => {
     roll()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (backlogGames.length === 0) {
@@ -93,7 +98,9 @@ export function RandomGameModal({ backlogGames, onClose, onUpdateStatus }) {
             disabled={isRolling || !selectedGame}
             onClick={() => {
               if (selectedGame) {
-                onUpdateStatus(selectedGame.id, 'Playing', 0)
+                // Preserve any existing rating rather than stamping a 0 onto a
+                // 1–5 scale (backlog picks are simply unrated → null).
+                onUpdateStatus(selectedGame.id, 'Playing', selectedGame.rating ?? null)
                 onClose()
               }
             }}

@@ -35,4 +35,43 @@ describe('GameEditorModal', () => {
     fireEvent.click(closeButtons[0])
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('shows validation error and does not save when title is missing', () => {
+    const onSave = vi.fn()
+    render(<GameEditorModal game={null} onSave={onSave} onClose={() => {}} />)
+    fireEvent.click(screen.getByText('SAVE_DATA'))
+    expect(screen.getByText(/TITLE REQUIRED/)).toBeTruthy()
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it('keeps a legacy off-list tag visible and removable', () => {
+    const game = {
+      title: 'Old Entry', year: 2000, developer: '', status: 'Backlog',
+      tags: ['Some Retired Tag'], journal: ''
+    }
+    render(<GameEditorModal game={game} onSave={() => {}} onClose={() => {}} />)
+    const tagEl = screen.getByText('Some Retired Tag')
+    expect(tagEl.className).toContain('active')
+
+    // Clicking it removes it from formData.tags; since it's not in the
+    // canonical ALL_TAGS list either, it should disappear from the picker
+    // entirely rather than linger unselected.
+    fireEvent.click(tagEl)
+    expect(screen.queryByText('Some Retired Tag')).toBeNull()
+  })
+
+  it('blocks adding a new tag once 7 are already selected', () => {
+    const game = {
+      title: 'Tag Heavy', year: 2000, developer: '', status: 'Backlog',
+      // 7 real tags from the picker, so no 8th can be added.
+      tags: ['Point & Click', 'Sci-Fi', 'Cyberpunk', 'Mystery', 'Detective', 'Noir', 'Classic'],
+      journal: ''
+    }
+    render(<GameEditorModal game={game} onSave={() => {}} onClose={() => {}} />)
+    expect(screen.getByText('TAGS (7/7)')).toBeTruthy()
+    fireEvent.click(screen.getByText('Comedy'))
+    // Still 7 — the 8th click is a no-op.
+    expect(screen.getByText('TAGS (7/7)')).toBeTruthy()
+    expect(screen.getByText('Comedy').className).not.toContain('active')
+  })
 })

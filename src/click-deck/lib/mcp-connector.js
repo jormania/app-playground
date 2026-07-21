@@ -20,23 +20,28 @@ function uuidv4() {
 }
 
 // === Notion Mapping ===
-const mapPageToGame = (page) => ({
-  id: page.id,
-  title: page.properties['Title']?.title?.[0]?.plain_text || 'Unknown',
-  year: page.properties['Release Year']?.number || 0,
-  developer: page.properties['Developer/Studio']?.select?.name || '',
-  tags: page.properties['Tags']?.multi_select?.map(t => t.name) || [],
-  status: page.properties['Status']?.select?.name || 'Backlog',
-  rating: page.properties['Rating']?.number || null,
-  journal: page.properties['Journal/Notes']?.rich_text?.map(rt => rt.plain_text).join('') || '',
-  journalRich: page.properties['Journal/Notes']?.rich_text || [],
-  createdTime: page.created_time || new Date().toISOString(),
-  coverUrl: page.cover?.external?.url || page.cover?.file?.url || '',
-  price: page.properties['Current Price']?.number !== undefined ? page.properties['Current Price']?.number : null,
-  discountPercent: page.properties['Discount Percent']?.number || 0,
-  initialPrice: page.properties['Initial Price']?.number || null,
-  appId: page.properties['Steam App ID']?.number || null
-})
+const mapPageToGame = (page) => {
+  const discountPercent = page.properties['Discount Percent']?.number || 0
+  return {
+    id: page.id,
+    title: page.properties['Title']?.title?.[0]?.plain_text || 'Unknown',
+    year: page.properties['Release Year']?.number || 0,
+    developer: page.properties['Developer/Studio']?.select?.name || '',
+    tags: page.properties['Tags']?.multi_select?.map(t => t.name) || [],
+    status: page.properties['Status']?.select?.name || 'Backlog',
+    rating: page.properties['Rating']?.number || null,
+    journal: page.properties['Journal/Notes']?.rich_text?.map(rt => rt.plain_text).join('') || '',
+    journalRich: page.properties['Journal/Notes']?.rich_text || [],
+    createdTime: page.created_time || new Date().toISOString(),
+    coverUrl: page.cover?.external?.url || page.cover?.file?.url || '',
+    price: page.properties['Current Price']?.number !== undefined ? page.properties['Current Price']?.number : null,
+    discountPercent,
+    // Drives the "% SALE" badge across the card, gallery and random views.
+    isDiscounted: discountPercent > 0,
+    initialPrice: page.properties['Initial Price']?.number || null,
+    appId: page.properties['Steam App ID']?.number || null
+  }
+}
 
 const mapGameToProperties = (game) => {
   const props = {
@@ -104,14 +109,12 @@ export const McpConnector = {
       const existingGames = await McpConnector.getGames()
       const existingTitles = new Set(existingGames.map(g => g.title.toLowerCase()))
 
-      let addedCount = 0
       for (const game of PIVOT_TITLES) {
         if (!existingTitles.has(game.title.toLowerCase())) {
           await fetchNotion('pages', 'POST', {
             parent: { database_id: dbId },
             properties: mapGameToProperties(game)
           })
-          addedCount++
         }
       }
       return true
@@ -176,13 +179,8 @@ export const McpConnector = {
       }
     } else {
       await new Promise(res => setTimeout(res, 300))
-      let db = getLocalDb() || []
-      if (db.length > 0) {
-        db[0].discountPercent = 0.85
-        db[0].initialPrice = 19.99
-        db[0].price = 2.99
-      }
-      return db
+      const db = getLocalDb() || []
+      return db.map(g => ({ ...g, isDiscounted: (g.discountPercent || 0) > 0 }))
     }
   },
 

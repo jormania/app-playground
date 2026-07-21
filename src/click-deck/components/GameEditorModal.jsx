@@ -136,9 +136,11 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
         </div>
 
         <div className="cd-form-group">
-          <label>TAGS (Max 7)</label>
+          <label>TAGS ({formData.tags.length}/7)</label>
           <div className="cd-tag-picker">
-            {ALL_TAGS.map(tag => {
+            {/* Canonical tags plus any already on this entry that predate the list,
+                so off-list tags stay visible and removable instead of vanishing. */}
+            {[...ALL_TAGS, ...formData.tags.filter(t => !ALL_TAGS.includes(t))].map(tag => {
               const isActive = formData.tags.includes(tag)
               return (
                 <span 

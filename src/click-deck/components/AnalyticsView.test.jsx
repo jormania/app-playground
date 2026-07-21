@@ -16,16 +16,12 @@ describe('AnalyticsView', () => {
 
   it('renders global tag matrix word cloud', () => {
     const setActiveTags = vi.fn()
-    const setSearchQuery = vi.fn()
 
     render(
-      <AnalyticsView 
-        games={mockGames}
+      <AnalyticsView
         filteredGames={mockGames}
         activeTags={[]}
         setActiveTags={setActiveTags}
-        searchQuery=""
-        setSearchQuery={setSearchQuery}
       />
     )
 
@@ -38,16 +34,12 @@ describe('AnalyticsView', () => {
 
   it('displays the correct number of matching entries', () => {
     const setActiveTags = vi.fn()
-    const setSearchQuery = vi.fn()
 
     render(
-      <AnalyticsView 
-        games={mockGames}
+      <AnalyticsView
         filteredGames={mockGames}
         activeTags={[]}
         setActiveTags={setActiveTags}
-        searchQuery=""
-        setSearchQuery={setSearchQuery}
       />
     )
 
@@ -58,16 +50,12 @@ describe('AnalyticsView', () => {
 
   it('calls setActiveTags when a tag is clicked', () => {
     const setActiveTags = vi.fn()
-    const setSearchQuery = vi.fn()
 
     render(
-      <AnalyticsView 
-        games={mockGames}
+      <AnalyticsView
         filteredGames={mockGames}
         activeTags={[]}
         setActiveTags={setActiveTags}
-        searchQuery=""
-        setSearchQuery={setSearchQuery}
       />
     )
 
@@ -75,5 +63,20 @@ describe('AnalyticsView', () => {
     // It's safer to get it by text using regex
     fireEvent.click(screen.getByText(/SCUMM/i))
     expect(setActiveTags).toHaveBeenCalledWith(['SCUMM'])
+  })
+
+  it('applies the correct status colour class per game in the gallery grid', () => {
+    const withStatuses = [
+      { id: '1', title: 'A', year: 2000, status: 'Completed', tags: [] },
+      { id: '2', title: 'B', year: 2001, status: 'Playing', tags: [] },
+      { id: '3', title: 'C', year: 2002, status: 'Abandoned', tags: [] },
+      { id: '4', title: 'D', year: 2003, status: 'Backlog', tags: [] }
+    ]
+    render(<AnalyticsView filteredGames={withStatuses} activeTags={[]} setActiveTags={() => {}} />)
+
+    expect(screen.getByText('[Completed]').style.color).toBe('var(--cd-status-completed)')
+    expect(screen.getByText('[Playing]').style.color).toBe('var(--cd-status-playing)')
+    expect(screen.getByText('[Abandoned]').style.color).toBe('var(--cd-status-abandoned)')
+    expect(screen.getByText('[Backlog]').style.color).toBe('var(--cd-status-backlog)')
   })
 })

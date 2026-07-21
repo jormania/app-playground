@@ -37,4 +37,30 @@ describe('SettingsModal', () => {
     expect(onClose).toHaveBeenCalled()
     expect(onSave).toHaveBeenCalled()
   })
+
+  it('persists the token, db id and theme to localStorage on save', () => {
+    render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} />)
+    fireEvent.change(screen.getByPlaceholderText('secret_...'), { target: { value: 'secret_abc123' } })
+    fireEvent.change(screen.getByPlaceholderText('UUID of existing DB'), { target: { value: 'db-xyz' } })
+    fireEvent.click(screen.getByText('SAVE_SETTINGS'))
+
+    expect(window.localStorage.setItem).toHaveBeenCalledWith('cd_notion_token', 'secret_abc123')
+    expect(window.localStorage.setItem).toHaveBeenCalledWith('cd_notion_db', 'db-xyz')
+    expect(window.localStorage.setItem).toHaveBeenCalledWith('cd_theme', 'union')
+  })
+
+  it('requires typing RESET to confirm factory reset', () => {
+    const onResetDb = vi.fn()
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('nope')
+    render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} onResetDb={onResetDb} />)
+
+    fireEvent.click(screen.getByText(/Factory Reset DB State/))
+    expect(onResetDb).not.toHaveBeenCalled()
+
+    promptSpy.mockReturnValue('RESET')
+    fireEvent.click(screen.getByText(/Factory Reset DB State/))
+    expect(onResetDb).toHaveBeenCalled()
+
+    promptSpy.mockRestore()
+  })
 })

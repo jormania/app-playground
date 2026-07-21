@@ -16,6 +16,14 @@
   --cd-border-color: #384252;
   --cd-border-accent: var(--cd-accent-cyan);
 
+  /* Play-status colours — one source of truth, shared by every view.
+     Derived from the theme accents so they shift with Union/Voodoo/Noir,
+     except Abandoned which stays a constant danger-red across all themes. */
+  --cd-status-backlog: var(--cd-text-muted);
+  --cd-status-playing: var(--cd-accent-cyan);
+  --cd-status-completed: var(--cd-accent-amber);
+  --cd-status-abandoned: #d9381e;
+
   --cd-font-terminal: 'JetBrains Mono', monospace;
   --cd-font-sans: 'JetBrains Mono', monospace;
 }

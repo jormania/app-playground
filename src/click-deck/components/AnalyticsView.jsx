@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 
-export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags, searchQuery, setSearchQuery }) {
+export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
   
   const [priceFilter, setPriceFilter] = useState('All')
   const [ratingFilter, setRatingFilter] = useState('All')
@@ -238,7 +238,7 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
               <div className="cd-gallery-overlay">
                 <h4>{g.title}</h4>
                 <div className="cd-gallery-meta">
-                  <span className="cd-gallery-status" style={{ color: `var(--cd-accent-${g.status === 'Completed' ? 'amber' : g.status === 'Playing' ? 'cyan' : g.status === 'Abandoned' ? 'red' : 'muted'})`}}>
+                  <span className="cd-gallery-status" style={{ color: `var(--cd-status-${(g.status || 'Backlog').toLowerCase()})` }}>
                     [{g.status}]
                   </span>
                   {g.year && <span className="cd-gallery-year">{g.year}</span>}

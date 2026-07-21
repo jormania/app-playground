@@ -12,7 +12,7 @@ import { RandomGameModal } from './components/RandomGameModal'
 export function App() {
   const [isInitialized, setIsInitialized] = useState(McpConnector.isInitialized())
   const [games, setGames] = useState([])
-  const [view, setView] = useState('timeline') // 'timeline', 'analytics'
+  const [view, setView] = useState('timeline') // 'timeline' | 'analytics' | 'stats'
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isDiscountOpen, setIsDiscountOpen] = useState(false)
@@ -282,13 +282,10 @@ export function App() {
               </div>
             )}
             {view === 'analytics' && (
-              <AnalyticsView 
-                games={games} 
+              <AnalyticsView
                 filteredGames={filteredGames}
                 activeTags={activeTags}
                 setActiveTags={setActiveTags}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
               />
             )}
             {view === 'stats' && (
@@ -311,8 +308,16 @@ export function App() {
       )}
 
       {isSettingsOpen && (
-        <SettingsModal 
-          onClose={() => setIsSettingsOpen(false)} 
+        <SettingsModal
+          onClose={() => setIsSettingsOpen(false)}
+          onSaveToken={() => {
+            // Credentials may have just been added/changed — re-evaluate whether
+            // we're connected and pull fresh data so it takes effect without a reload.
+            if (McpConnector.isInitialized()) {
+              setIsInitialized(true)
+              loadGames()
+            }
+          }}
           onResetDb={() => { setIsSettingsOpen(false); resetDb(); }}
         />
       )}

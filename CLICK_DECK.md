@@ -65,7 +65,8 @@ Click Deck diverges from simpler `localStorage` apps by requiring a real Notion 
 
 ### Adding Data & Cover Art
 
-- The app relies strictly on the Notion database for canonical data. Hardcoded seed data is no longer utilized; all entries should be added directly via the UI Editor or via the Notion MCP integration.
+- The app relies on the Notion database for canonical data — once a token + database ID are configured in Settings, every entry is read from and written to Notion. All entries should be added directly via the UI Editor or via the Notion MCP integration.
+- Without a Notion connection the app falls back to a **local-storage demo**: the Onboarding Wizard seeds a small curated set of genre classics (`PIVOT_TITLES` in `src/click-deck/lib/seed-data.js`) so the timeline, analytics and stats views are explorable offline. This demo data is never written to Notion.
 - **Cover Art System**: The Notion integration includes full support for high-resolution external image URLs mapped to the `cover` property of each Notion page. This populates the UI with rich game box art.
 - **Interactive Ratings**: Users can click the stars directly on the Game Cards on the main timeline to immediately update their rating in the Notion database, minimizing friction.
 
@@ -93,7 +94,7 @@ When generating or updating the `Journal/Notes` property in the Notion database,
 ## PWA & Cabinet Integration
 
 - Registered in `src/apps-registry.js` under the `react-vite` kind.
-- Deployed as a full Progressive Web App (PWA) with a `.webmanifest` file.
+- Ships a `.webmanifest` so it is **installable** as a standalone-window PWA on mobile and desktop. (It does not yet register a service worker, so it is not offline-capable — see the Ideas/Improvements notes.)
 - Correctly referenced in `cabinet.webmanifest` via `related_applications` to allow native installation checks across the Cone of Cold ecosystem.
 - Fully responsive on mobile, including wrapping navigation bars and collapsing modal forms.
 

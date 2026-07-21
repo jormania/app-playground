@@ -45,7 +45,7 @@ export const APPS = [
       "Live Notion backend syncs via MCP proxy",
       "Automated Vercel cron job for nightly real-time Steam price syncing",
       "Maintenance Python scripts (force-sync, verify-names) for easy administration",
-      "PWA support to install on mobile or desktop and use offline"
+      "Installable PWA for a standalone app window on mobile or desktop"
     ],
     guide: "click-deck-guide.html",
     file: "click-deck-react.html",
