@@ -46,7 +46,8 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
         props.rel = 'noreferrer';
       }
 
-      return React.createElement(Tag, props, rt.plain_text);
+      const content = <ReactMarkdown components={{ p: ({node, ...pProps}) => <React.Fragment>{pProps.children}</React.Fragment> }}>{rt.plain_text}</ReactMarkdown>;
+      return React.createElement(Tag, props, content);
     });
   }
 
