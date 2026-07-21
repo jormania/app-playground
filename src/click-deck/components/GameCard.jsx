@@ -56,6 +56,14 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
             </span>
           </>
         )}
+        {game.price !== null && game.price !== undefined && (
+          <>
+            <span className="cd-separator">|</span>
+            <span className="cd-price" style={{ color: game.price === 0 ? 'var(--cd-accent-cyan)' : 'var(--cd-accent-amber)' }}>
+              {game.price === 0 ? 'FREE' : `$${game.price.toFixed(2)}`}
+            </span>
+          </>
+        )}
       </div>
       
       <div className="cd-tags">

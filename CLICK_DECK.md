@@ -13,6 +13,7 @@ Click Deck is a standalone web application designed for cataloguing and tracking
   - **Voodoo**: Toxic Green/Purple (Monkey Island inspired).
   - **Noir**: Grayscale/Gold (Grim Fandango inspired).
 - **Backend**: Live Notion Database Integration (`3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8`) via a proxy layer and MCP.
+- **Automated Pricing**: Features a Vercel-hosted cron job (`api/clickdeck-pricing.js`) that nightly syncs real-time Steam Store prices for all games in the collection using the Steam App ID.
 - **Test Suite**: A comprehensive Vitest + React Testing Library component suite ensuring robustness across all core UI components. 
 
 ## Core Views
@@ -26,16 +27,19 @@ The chronologically sorted timeline is the core of the application. It leans hea
 - Year markers and game cards ignite with a neon glow effect, creating a highly dynamic, "living" interface that reacts continuously to user scroll position.
 
 ### 2. Analytics View
-A high-level dashboard providing insights into your collection.
-- Features a **Dynamic Tag Word Cloud** that lets you visually filter your library by genre or theme (e.g., *SCUMM*, *Comedy*, *Sci-Fi*).
-- Displays detailed breakdowns of your completion status and ratings.
+A high-level dashboard providing advanced multi-dimensional filtering over your collection.
+- **Advanced Querying**: Clickable toggle rows for `PRICE`, `RATING`, and `ERA` that layer perfectly with global `Status` and `Search` parameters.
+- Features a **Dynamic Tag Word Cloud** (`TAG_MATRIX`) and a **Developer Word Cloud** (`STUDIO_MATRIX`) that let you visually drill down by genre or studio.
+- Displays a responsive Gallery Grid featuring game metadata (Release Year, Price, Rating, and Status) that dynamically updates based on the active query.
+- Supports exporting the currently filtered dataset to a clean HTML report.
 
 ### 3. Stats Screen
 A pure data-crunching dashboard designed specifically for adventure game collectors, denoted by the `[S]` icon.
-- Calculates your exact collection completion rate and mean average rating.
+- Calculates your exact collection completion rate, mean average rating, and **Total Collection Value** in glowing amber.
 - Plots your games on a timeline bar chart by decade.
 - Profiles your top and highest-rated Developer Studios.
 - Analyzes which tags and genres consistently earn the highest ratings.
+- A **Financial Overview** breaks down the monetary value tied up in your Backlog vs Completed games.
 
 ## Game Editor
 

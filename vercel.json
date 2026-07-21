@@ -3,6 +3,7 @@
   "crons": [
     { "path": "/api/generate-law-of-the-day", "schedule": "0 5 * * *" },
     { "path": "/api/wanderlist-remind", "schedule": "0 16 * * *" },
-    { "path": "/api/wanderlist-remind", "schedule": "0 17 * * *" }
+    { "path": "/api/wanderlist-remind", "schedule": "0 17 * * *" },
+    { "path": "/api/clickdeck-pricing", "schedule": "0 2 * * *" }
   ]
 }

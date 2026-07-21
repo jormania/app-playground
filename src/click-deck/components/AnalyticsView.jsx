@@ -1,7 +1,12 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 
 export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags, searchQuery, setSearchQuery }) {
   
+  const [priceFilter, setPriceFilter] = useState('All')
+  const [ratingFilter, setRatingFilter] = useState('All')
+  const [eraFilter, setEraFilter] = useState('All')
+  const [activeDevs, setActiveDevs] = useState([])
+
   // Calculate tag frequencies based on currently filtered games
   const tagCounts = useMemo(() => {
     const counts = {}
@@ -10,18 +15,75 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
         counts[t] = (counts[t] || 0) + 1
       })
     })
-    // Ensure active tags are always rendered so they can be un-toggled
-    activeTags.forEach(t => {
-      if (counts[t] === undefined) counts[t] = 0
+    activeDevs.forEach(d => {
+      if (counts[d] === undefined) counts[d] = 0
     })
     return Object.entries(counts).sort((a, b) => b[1] - a[1])
-  }, [filteredGames, activeTags])
+  }, [filteredGames, activeDevs])
+
+  const devCounts = useMemo(() => {
+    const counts = {}
+    filteredGames.forEach(g => {
+      if (g.developer) {
+        counts[g.developer] = (counts[g.developer] || 0) + 1
+      }
+    })
+    activeDevs.forEach(d => {
+      if (counts[d] === undefined) counts[d] = 0
+    })
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])
+  }, [filteredGames, activeDevs])
+
+  const deepFilteredGames = useMemo(() => {
+    let result = [...filteredGames]
+    
+    if (activeDevs.length > 0) {
+      result = result.filter(g => activeDevs.includes(g.developer))
+    }
+
+    if (eraFilter !== 'All') {
+      result = result.filter(g => {
+        if (!g.year) return false
+        const year = g.year
+        if (eraFilter === '90s') return year >= 1990 && year < 2000
+        if (eraFilter === '00s') return year >= 2000 && year < 2010
+        if (eraFilter === '10s') return year >= 2010 && year < 2020
+        if (eraFilter === '20s') return year >= 2020 && year < 2030
+        return false
+      })
+    }
+
+    if (ratingFilter !== 'All') {
+      result = result.filter(g => g.rating === parseInt(ratingFilter))
+    }
+
+    if (priceFilter !== 'All') {
+      result = result.filter(g => {
+        if (g.price === null || g.price === undefined) return false
+        if (priceFilter === 'Free') return g.price === 0
+        if (priceFilter === '<$10') return g.price < 10
+        if (priceFilter === '$10-$30') return g.price >= 10 && g.price <= 30
+        if (priceFilter === '$30+') return g.price >= 30
+        return false
+      })
+    }
+
+    return result
+  }, [filteredGames, activeDevs, eraFilter, ratingFilter, priceFilter])
 
   const toggleTag = (tag) => {
     if (activeTags.includes(tag)) {
       setActiveTags(activeTags.filter(t => t !== tag))
     } else {
       setActiveTags([...activeTags, tag])
+    }
+  }
+
+  const toggleDev = (dev) => {
+    if (activeDevs.includes(dev)) {
+      setActiveDevs(activeDevs.filter(d => d !== dev))
+    } else {
+      setActiveDevs([...activeDevs, dev])
     }
   }
 
@@ -47,15 +109,19 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
               <th>Year</th>
               <th>Studio</th>
               <th>Status</th>
+              <th>Rating</th>
+              <th>Price</th>
             </tr>
           </thead>
           <tbody>
-            ${filteredGames.map(g => `
+            ${deepFilteredGames.map(g => `
               <tr>
                 <td>${g.title}</td>
                 <td>${g.year || 'N/A'}</td>
                 <td>${g.developer || 'N/A'}</td>
                 <td>${g.status}</td>
+                <td>${g.rating ? g.rating + '★' : 'N/A'}</td>
+                <td>${g.price !== null && g.price !== undefined ? (g.price === 0 ? 'FREE' : '$'+g.price.toFixed(2)) : 'N/A'}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -78,34 +144,77 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
     <div className="cd-analytics">
       {/* Global filters have been extracted to App.jsx */}
 
-      <div className="cd-word-cloud cd-panel">
-        <h3>TAG_MATRIX</h3>
-        <div className="cd-cloud-container">
-          {tagCounts.map(([tag, count]) => {
-            const isActive = activeTags.includes(tag)
-            const style = isActive ? {} : { opacity: count === 1 ? 0.7 : 1 }
-            return (
-              <span 
-                key={tag} 
-                className={`cd-cloud-tag ${isActive ? 'active' : ''}`}
-                style={style}
-                onClick={() => toggleTag(tag)}
-              >
-                {tag} <span className="cd-tag-count">({count})</span>
-              </span>
-            )
-          })}
+      <div className="cd-analytics-filters cd-panel">
+        <div className="cd-filter-row">
+          <span className="cd-filter-label">PRICE:</span>
+          {['All', 'Free', '<$10', '$10-$30', '$30+'].map(p => (
+            <button key={p} className={`cd-filter-btn ${priceFilter === p ? 'active' : ''}`} onClick={() => setPriceFilter(p)}>{p}</button>
+          ))}
+        </div>
+        <div className="cd-filter-row">
+          <span className="cd-filter-label">RATING:</span>
+          {['All', '5', '4', '3', '2', '1'].map(r => (
+            <button key={r} className={`cd-filter-btn ${ratingFilter === r ? 'active' : ''}`} onClick={() => setRatingFilter(r)}>{r === 'All' ? 'All' : r + '★'}</button>
+          ))}
+        </div>
+        <div className="cd-filter-row">
+          <span className="cd-filter-label">ERA:</span>
+          {['All', '90s', '00s', '10s', '20s'].map(e => (
+            <button key={e} className={`cd-filter-btn ${eraFilter === e ? 'active' : ''}`} onClick={() => setEraFilter(e)}>{e}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="cd-clouds-container">
+        <div className="cd-word-cloud cd-panel">
+          <h3>TAG_MATRIX</h3>
+          <div className="cd-cloud-wrapper">
+            {tagCounts.map(([tag, count]) => {
+              const isActive = activeTags.includes(tag)
+              const style = isActive ? {} : { opacity: count === 1 ? 0.7 : 1 }
+              return (
+                <span 
+                  key={tag} 
+                  className={`cd-cloud-tag ${isActive ? 'active' : ''}`}
+                  style={style}
+                  onClick={() => toggleTag(tag)}
+                >
+                  {tag} <span className="cd-tag-count">({count})</span>
+                </span>
+              )
+            })}
+          </div>
+        </div>
+        
+        <div className="cd-word-cloud cd-panel">
+          <h3>STUDIO_MATRIX</h3>
+          <div className="cd-cloud-wrapper">
+            {devCounts.map(([dev, count]) => {
+              const isActive = activeDevs.includes(dev)
+              const style = isActive ? {} : { opacity: count === 1 ? 0.7 : 1 }
+              return (
+                <span 
+                  key={dev} 
+                  className={`cd-cloud-tag ${isActive ? 'active' : ''}`}
+                  style={style}
+                  onClick={() => toggleDev(dev)}
+                >
+                  {dev} <span className="cd-tag-count">({count})</span>
+                </span>
+              )
+            })}
+          </div>
         </div>
       </div>
       
       <div className="cd-analytics-results">
         <div className="cd-results-header">
-          <p className="cd-results-count">MATCHING ENTRIES: {filteredGames.length}</p>
+          <p className="cd-results-count">MATCHING ENTRIES: {deepFilteredGames.length}</p>
           <button className="cd-btn-icon" onClick={handleExportHtml}>[EXPORT HTML]</button>
         </div>
-        {filteredGames.length === 0 && <p className="cd-text-muted">NO DATA FOUND MATCHING CURRENT PARAMETERS.</p>}
+        {deepFilteredGames.length === 0 && <p className="cd-text-muted">NO DATA FOUND MATCHING CURRENT PARAMETERS.</p>}
         <div className="cd-gallery-grid">
-          {filteredGames.map(g => (
+          {deepFilteredGames.map(g => (
             <div key={g.id} className="cd-gallery-item">
               {g.coverUrl ? (
                 <img 
@@ -122,9 +231,20 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
               )}
               <div className="cd-gallery-overlay">
                 <h4>{g.title}</h4>
-                <span className="cd-gallery-status" style={{ color: `var(--cd-accent-${g.status === 'Completed' ? 'amber' : g.status === 'Playing' ? 'cyan' : g.status === 'Abandoned' ? 'red' : 'muted'})`}}>
-                  [{g.status}]
-                </span>
+                <div className="cd-gallery-meta">
+                  <span className="cd-gallery-status" style={{ color: `var(--cd-accent-${g.status === 'Completed' ? 'amber' : g.status === 'Playing' ? 'cyan' : g.status === 'Abandoned' ? 'red' : 'muted'})`}}>
+                    [{g.status}]
+                  </span>
+                  {g.year && <span className="cd-gallery-year">{g.year}</span>}
+                </div>
+                <div className="cd-gallery-meta-bottom">
+                  {g.rating ? <span className="cd-gallery-rating">{g.rating}★</span> : <span></span>}
+                  {g.price !== null && g.price !== undefined && (
+                    <span className="cd-gallery-price" style={{ color: g.price === 0 ? 'var(--cd-accent-cyan)' : 'var(--cd-accent-amber)' }}>
+                      {g.price === 0 ? 'FREE' : `$${g.price.toFixed(2)}`}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -137,7 +257,17 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
           flex-direction: column;
           gap: 1.5rem;
         }
-        .cd-cloud-container {
+        .cd-clouds-container {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.5rem;
+        }
+        @media (max-width: 800px) {
+          .cd-clouds-container {
+            grid-template-columns: 1fr;
+          }
+        }
+        .cd-cloud-wrapper {
           display: flex;
           flex-wrap: wrap;
           gap: 0.6rem;
@@ -146,6 +276,42 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
           border: 1px inset var(--cd-border-color);
           max-height: 250px;
           overflow-y: auto;
+        }
+        .cd-analytics-filters {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 1.5rem;
+          background: rgba(0, 0, 0, 0.2);
+        }
+        .cd-filter-row {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+        .cd-filter-label {
+          font-family: var(--cd-font-terminal);
+          color: var(--cd-accent-cyan);
+          font-size: 0.8rem;
+          min-width: 60px;
+        }
+        .cd-filter-btn {
+          font-family: var(--cd-font-terminal);
+          font-size: 0.8rem;
+          background: transparent;
+          border: 1px solid var(--cd-border-color);
+          color: var(--cd-text-muted);
+          padding: 0.2rem 0.5rem;
+          cursor: pointer;
+        }
+        .cd-filter-btn:hover {
+          color: var(--cd-accent-cyan);
+          border-color: var(--cd-accent-cyan);
+        }
+        .cd-filter-btn.active {
+          color: var(--cd-accent-amber);
+          border-color: var(--cd-accent-amber);
+          background: rgba(255, 171, 0, 0.1);
         }
         .cd-cloud-tag {
           cursor: pointer;
@@ -272,9 +438,26 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
           font-size: 0.9rem;
           color: var(--cd-text-primary);
         }
-        .cd-gallery-status {
+        .cd-gallery-meta {
+          display: flex;
+          gap: 0.5rem;
           font-family: var(--cd-font-terminal);
           font-size: 0.8rem;
+          margin-bottom: 0.5rem;
+        }
+        .cd-gallery-meta-bottom {
+          display: flex;
+          justify-content: space-between;
+          width: 100%;
+          font-family: var(--cd-font-terminal);
+          font-size: 0.85rem;
+          padding: 0 1rem;
+        }
+        .cd-gallery-year {
+          color: var(--cd-text-muted);
+        }
+        .cd-gallery-rating {
+          color: var(--cd-accent-amber);
         }
         @media (max-width: 600px) {
           .cd-results-header {

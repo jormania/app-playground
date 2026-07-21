@@ -81,11 +81,19 @@ export function StatsView({ games }) {
       .sort((a, b) => b.avgRating - a.avgRating)
       .slice(0, 5);
 
+    // 5. Financials
+    const gamesWithPrice = games.filter(g => g.price !== null && g.price !== undefined);
+    const totalSpent = gamesWithPrice.reduce((sum, g) => sum + g.price, 0).toFixed(2);
+    const backlogValue = gamesWithPrice.filter(g => g.status === 'Backlog').reduce((sum, g) => sum + g.price, 0).toFixed(2);
+    const completedValue = gamesWithPrice.filter(g => g.status === 'Completed').reduce((sum, g) => sum + g.price, 0).toFixed(2);
+    const avgPrice = gamesWithPrice.length > 0 ? (gamesWithPrice.reduce((sum, g) => sum + g.price, 0) / gamesWithPrice.length).toFixed(2) : 'N/A';
+
     return {
       totalGames, completed, backlog, playing, abandoned, avgRating,
       oldest, newest, sortedDecades,
       topDevs, highestRatedDevs,
-      topTags, highestRatedTags
+      topTags, highestRatedTags,
+      totalSpent, backlogValue, completedValue, avgPrice, gamesWithPriceCount: gamesWithPrice.length
     };
   }, [games]);
 
@@ -116,6 +124,10 @@ export function StatsView({ games }) {
             <span className="cd-stat-val">{toPercent(stats.completed, stats.totalGames)}</span>
             <span className="cd-stat-label">COMPLETION RATE</span>
           </div>
+          <div className="cd-stat-box">
+            <span className="cd-stat-val" style={{ color: 'var(--cd-accent-amber)' }}>${stats.totalSpent}</span>
+            <span className="cd-stat-label">TOTAL VALUE</span>
+          </div>
         </div>
       </div>
 
@@ -128,6 +140,17 @@ export function StatsView({ games }) {
             <li><span className="label">PLAYING</span> <span className="val">{stats.playing}</span></li>
             <li><span className="label">BACKLOG</span> <span className="val">{stats.backlog}</span></li>
             <li><span className="label">ABANDONED</span> <span className="val">{stats.abandoned}</span></li>
+          </ul>
+        </div>
+
+        {/* Financials Breakdown */}
+        <div className="cd-panel">
+          <h3>FINANCIAL_OVERVIEW</h3>
+          <ul className="cd-stat-list">
+            <li><span className="label">BACKLOG VALUE</span> <span className="val">${stats.backlogValue}</span></li>
+            <li><span className="label">COMPLETED VALUE</span> <span className="val">${stats.completedValue}</span></li>
+            <li><span className="label">AVG PRICE</span> <span className="val">${stats.avgPrice}</span></li>
+            <li><span className="label">PRICED GAMES</span> <span className="val">{stats.gamesWithPriceCount}</span></li>
           </ul>
         </div>
 
@@ -195,6 +218,8 @@ export function StatsView({ games }) {
               ))}
             </ul>
           </div>
+        </div>
+
         </div>
 
       </div>

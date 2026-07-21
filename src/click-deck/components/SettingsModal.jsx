@@ -153,6 +153,16 @@ export function SettingsModal({ onClose, onSaveToken }) {
                 setStatus('Seeding failed: ' + e.message)
               }
             }}>Populate Seed Data</button>
+            <button type="button" onClick={async () => {
+              setStatus('Patching database schema...')
+              try {
+                const { McpConnector } = await import('../lib/mcp-connector.js')
+                await McpConnector.updateDatabaseSchema()
+                setStatus('Database schema successfully patched for Live Pricing!')
+              } catch (err) {
+                setStatus('Failed to patch schema: ' + err.message)
+              }
+            }}>Patch Database for Pricing Schema</button>
             <button type="button" onClick={() => {
               const confirm = window.prompt('Are you sure you want to completely wipe the local DB state? Type "RESET" to confirm.')
               if(confirm === 'RESET') {

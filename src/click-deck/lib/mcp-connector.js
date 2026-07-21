@@ -30,7 +30,9 @@ const mapPageToGame = (page) => ({
   rating: page.properties['Rating']?.number || null,
   journal: page.properties['Journal/Notes']?.rich_text?.map(rt => rt.plain_text).join('') || '',
   createdTime: page.created_time || new Date().toISOString(),
-  coverUrl: page.cover?.external?.url || page.cover?.file?.url || ''
+  coverUrl: page.cover?.external?.url || page.cover?.file?.url || '',
+  price: page.properties['Current Price']?.number !== undefined ? page.properties['Current Price']?.number : null,
+  appId: page.properties['Steam App ID']?.number || null
 })
 
 const mapGameToProperties = (game) => {
@@ -49,6 +51,12 @@ const mapGameToProperties = (game) => {
   
   if (game.journal) props['Journal/Notes'] = { rich_text: [{ text: { content: game.journal } }] }
   else props['Journal/Notes'] = { rich_text: [] }
+  
+  if (game.price !== undefined && game.price !== null) props['Current Price'] = { number: parseFloat(game.price) }
+  else props['Current Price'] = { number: null }
+
+  if (game.appId !== undefined && game.appId !== null) props['Steam App ID'] = { number: parseInt(game.appId) }
+  else props['Steam App ID'] = { number: null }
   
   return props
 }
@@ -111,6 +119,21 @@ export const McpConnector = {
         saveLocalDb([...existingDb, ...newGames])
       }
       return [...existingDb, ...newGames]
+    }
+  },
+
+  updateDatabaseSchema: async () => {
+    const token = getToken()
+    const dbId = getDbId()
+    if (token && dbId) {
+      const payload = {
+        properties: {
+          'Current Price': { number: { format: 'dollar' } },
+          'Steam App ID': { number: { format: 'number' } },
+          'Price Updated At': { date: {} }
+        }
+      }
+      return await fetchNotion(`databases/${dbId}`, 'PATCH', payload)
     }
   },
 
