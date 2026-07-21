@@ -7,44 +7,13 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
   const [eraFilter, setEraFilter] = useState('All')
   const [activeDevs, setActiveDevs] = useState([])
 
-  // Calculate tag frequencies based on currently filtered games
-  const tagCounts = useMemo(() => {
-    const counts = {}
-    filteredGames.forEach(g => {
-      g.tags.forEach(t => {
-        counts[t] = (counts[t] || 0) + 1
-      })
-    })
-    activeDevs.forEach(d => {
-      if (counts[d] === undefined) counts[d] = 0
-    })
-    return Object.entries(counts).sort((a, b) => b[1] - a[1])
-  }, [filteredGames, activeDevs])
-
-  const devCounts = useMemo(() => {
-    const counts = {}
-    filteredGames.forEach(g => {
-      if (g.developer) {
-        counts[g.developer] = (counts[g.developer] || 0) + 1
-      }
-    })
-    activeDevs.forEach(d => {
-      if (counts[d] === undefined) counts[d] = 0
-    })
-    return Object.entries(counts).sort((a, b) => b[1] - a[1])
-  }, [filteredGames, activeDevs])
-
-  const deepFilteredGames = useMemo(() => {
+  const matrixFilteredGames = useMemo(() => {
     let result = [...filteredGames]
-    
-    if (activeDevs.length > 0) {
-      result = result.filter(g => activeDevs.includes(g.developer))
-    }
-
     if (eraFilter !== 'All') {
       result = result.filter(g => {
         if (!g.year) return false
         const year = g.year
+        if (eraFilter === '80s') return year >= 1980 && year < 1990
         if (eraFilter === '90s') return year >= 1990 && year < 2000
         if (eraFilter === '00s') return year >= 2000 && year < 2010
         if (eraFilter === '10s') return year >= 2010 && year < 2020
@@ -67,9 +36,45 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
         return false
       })
     }
+    return result
+  }, [filteredGames, eraFilter, ratingFilter, priceFilter])
+
+  // Calculate tag frequencies based on currently filtered games
+  const tagCounts = useMemo(() => {
+    const counts = {}
+    matrixFilteredGames.forEach(g => {
+      g.tags.forEach(t => {
+        counts[t] = (counts[t] || 0) + 1
+      })
+    })
+    activeTags.forEach(t => {
+      if (counts[t] === undefined) counts[t] = 0
+    })
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])
+  }, [matrixFilteredGames, activeTags])
+
+  const devCounts = useMemo(() => {
+    const counts = {}
+    matrixFilteredGames.forEach(g => {
+      if (g.developer) {
+        counts[g.developer] = (counts[g.developer] || 0) + 1
+      }
+    })
+    activeDevs.forEach(d => {
+      if (counts[d] === undefined) counts[d] = 0
+    })
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])
+  }, [matrixFilteredGames, activeDevs])
+
+  const deepFilteredGames = useMemo(() => {
+    let result = [...matrixFilteredGames]
+    
+    if (activeDevs.length > 0) {
+      result = result.filter(g => activeDevs.includes(g.developer))
+    }
 
     return result
-  }, [filteredGames, activeDevs, eraFilter, ratingFilter, priceFilter])
+  }, [matrixFilteredGames, activeDevs])
 
   const toggleTag = (tag) => {
     if (activeTags.includes(tag)) {
@@ -159,7 +164,7 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
         </div>
         <div className="cd-filter-row">
           <span className="cd-filter-label">ERA:</span>
-          {['All', '90s', '00s', '10s', '20s'].map(e => (
+          {['All', '80s', '90s', '00s', '10s', '20s'].map(e => (
             <button key={e} className={`cd-filter-btn ${eraFilter === e ? 'active' : ''}`} onClick={() => setEraFilter(e)}>{e}</button>
           ))}
         </div>
@@ -215,7 +220,7 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
         {deepFilteredGames.length === 0 && <p className="cd-text-muted">NO DATA FOUND MATCHING CURRENT PARAMETERS.</p>}
         <div className="cd-gallery-grid">
           {deepFilteredGames.map(g => (
-            <div key={g.id} className="cd-gallery-item">
+            <div key={g.id} className="cd-gallery-item" onClick={() => g.appId && window.open(`https://store.steampowered.com/app/${g.appId}`, '_blank')} style={{ cursor: g.appId ? 'pointer' : 'default' }}>
               {g.coverUrl ? (
                 <img 
                   src={g.coverUrl} 

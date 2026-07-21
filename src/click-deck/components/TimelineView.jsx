@@ -35,11 +35,14 @@ export function TimelineView({ games, onEdit, onUpdateStatus }) {
     )
   }
 
+  // Adjust scan duration based on the number of games so it doesn't zip too fast
+  const scanDuration = Math.max(4, games.length * 0.6);
+
   // Group by year or just render sequentially
   return (
     <div className="cd-timeline" ref={timelineRef}>
       <div className="cd-timeline-line">
-        <div className="cd-timeline-glow"></div>
+        <div className="cd-timeline-glow" style={{ animationDuration: `${scanDuration}s` }}></div>
       </div>
       {games.map((game, index) => (
         <div key={game.id} className="cd-timeline-node">
@@ -72,7 +75,9 @@ export function TimelineView({ games, onEdit, onUpdateStatus }) {
           width: 100%;
           height: 15vh;
           background: linear-gradient(to bottom, transparent, var(--cd-accent-cyan), transparent);
-          animation: scan 4s linear infinite;
+          animation-name: scan;
+          animation-timing-function: linear;
+          animation-iteration-count: infinite;
         }
         @keyframes scan {
           0% { top: -20%; }

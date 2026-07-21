@@ -46,7 +46,7 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
         props.rel = 'noreferrer';
       }
 
-      const content = <ReactMarkdown components={{ p: ({node, ...pProps}) => <React.Fragment>{pProps.children}</React.Fragment> }}>{rt.plain_text}</ReactMarkdown>;
+      const content = <ReactMarkdown components={{ p: ({node, ...pProps}) => <span className="cd-rt-p">{pProps.children}</span> }}>{rt.plain_text}</ReactMarkdown>;
       return React.createElement(Tag, props, content);
     });
   }
@@ -54,7 +54,11 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
   return (
     <div className="cd-panel cd-game-card">
       {game.coverUrl ? (
-        <div className="cd-game-cover">
+        <div 
+          className="cd-game-cover" 
+          onClick={() => game.appId && window.open(`https://store.steampowered.com/app/${game.appId}`, '_blank')}
+          style={{ cursor: game.appId ? 'pointer' : 'default' }}
+        >
           <img 
             src={game.coverUrl} 
             alt={game.title} 
@@ -246,6 +250,11 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
           background: rgba(0, 0, 0, 0.4);
           padding: 0.1rem 0.3rem;
           border-radius: 3px;
+        }
+        .cd-rt-p { display: inline; }
+        .cd-rt-p + .cd-rt-p::before {
+          content: "\\A\\A";
+          white-space: pre-wrap;
         }
         .cd-quick-update {
           display: flex;

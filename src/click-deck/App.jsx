@@ -129,13 +129,13 @@ export function App() {
 
 
 
-  const filteredGames = useMemo(() => {
+  const baseFilteredGames = useMemo(() => {
     let result = [...games]
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       result = result.filter(g => 
         g.title.toLowerCase().includes(q) || 
-        g.developer.toLowerCase().includes(q)
+        (g.developer && g.developer.toLowerCase().includes(q))
       )
     }
     if (activeTags.length > 0) {
@@ -143,6 +143,11 @@ export function App() {
         activeTags.every(t => g.tags.includes(t))
       )
     }
+    return result
+  }, [games, searchQuery, activeTags])
+
+  const filteredGames = useMemo(() => {
+    let result = [...baseFilteredGames]
 
     if (statusFilter !== 'All') {
       result = result.filter(g => g.status === statusFilter)
@@ -158,7 +163,7 @@ export function App() {
       result.sort((a, b) => a.title.localeCompare(b.title))
     }
     return result
-  }, [games, searchQuery, activeTags, sortBy, statusFilter])
+  }, [baseFilteredGames, sortBy, statusFilter])
 
   const discountedGames = useMemo(() => {
     return games.filter(g => g.status === 'Backlog' && g.discountPercent > 0)
@@ -236,7 +241,7 @@ export function App() {
                 onClick={() => setStatusFilter(s)}
               >
                 {s === 'All' ? '[ALL]' : `[${s.toUpperCase()}]`}
-                {s !== 'All' && <span className="cd-status-count">({games.filter(g => g.status === s).length})</span>}
+                {s !== 'All' && <span className="cd-status-count">({baseFilteredGames.filter(g => g.status === s).length})</span>}
               </button>
             ))}
           </div>
