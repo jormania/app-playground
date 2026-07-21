@@ -72,6 +72,7 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
       ) : (
         <div className="cd-game-cover fallback-cover"></div>
       )}
+      {game.isDiscounted && <div className="cd-sale-badge">% SALE</div>}
       <div className="cd-game-header">
         <h3 className="cd-game-title">{game.title}</h3>
         <div className="cd-game-actions">

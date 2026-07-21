@@ -7,6 +7,7 @@ import { OnboardingWizard } from './components/OnboardingWizard'
 import { GameEditorModal } from './components/GameEditorModal'
 import { SettingsModal } from './components/SettingsModal'
 import { DiscountModal } from './components/DiscountModal'
+import { RandomGameModal } from './components/RandomGameModal'
 
 export function App() {
   const [isInitialized, setIsInitialized] = useState(McpConnector.isInitialized())
@@ -15,6 +16,7 @@ export function App() {
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isDiscountOpen, setIsDiscountOpen] = useState(false)
+  const [isRandomOpen, setIsRandomOpen] = useState(false)
   const [editingGame, setEditingGame] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   
@@ -52,6 +54,7 @@ export function App() {
         setIsSettingsOpen(false)
         setIsSortMenuOpen(false)
         setIsDiscountOpen(false)
+        setIsRandomOpen(false)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -181,16 +184,7 @@ export function App() {
             <button className={view === 'timeline' ? 'primary' : ''} onClick={() => setView('timeline')}>[T]</button>
             <button className={view === 'analytics' ? 'primary' : ''} onClick={() => setView('analytics')}>[A]</button>
             <button onClick={() => { setEditingGame(null); setIsEditorOpen(true) }}>+</button>
-            <button onClick={() => {
-              const backlogGames = games.filter(g => g.status === 'Backlog')
-              if (backlogGames.length > 0) {
-                const randomGame = backlogGames[Math.floor(Math.random() * backlogGames.length)]
-                setEditingGame(randomGame)
-                setIsEditorOpen(true)
-              } else {
-                showToast('NO BACKLOG GAMES FOUND.')
-              }
-            }}>[R]</button>
+            <button onClick={() => setIsRandomOpen(true)}>[R]</button>
             <button className={view === 'stats' ? 'primary' : ''} onClick={() => setView('stats')}>[S]</button>
             <button onClick={() => setIsSettingsOpen(true)}>⚙</button>
           </nav>
@@ -327,6 +321,14 @@ export function App() {
         <DiscountModal 
           games={discountedGames} 
           onClose={() => setIsDiscountOpen(false)} 
+        />
+      )}
+
+      {isRandomOpen && (
+        <RandomGameModal 
+          backlogGames={games.filter(g => g.status === 'Backlog')}
+          onClose={() => setIsRandomOpen(false)}
+          onUpdateStatus={handleUpdateStatus}
         />
       )}
 

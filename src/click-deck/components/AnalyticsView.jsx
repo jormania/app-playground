@@ -234,6 +234,7 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
               ) : (
                 <div className="fallback-cover"></div>
               )}
+              {g.isDiscounted && <div className="cd-sale-badge">%</div>}
               <div className="cd-gallery-overlay">
                 <h4>{g.title}</h4>
                 <div className="cd-gallery-meta">
