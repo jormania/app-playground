@@ -29,7 +29,7 @@ describe('AnalyticsView', () => {
       />
     )
 
-    expect(screen.getByText('GLOBAL_TAG_MATRIX')).toBeTruthy()
+    expect(screen.getByText('TAG_MATRIX')).toBeTruthy()
     // Check tags exist
     expect(screen.getByText(/SCUMM/i)).toBeTruthy()
     expect(screen.getByText(/Comedy/i)).toBeTruthy()

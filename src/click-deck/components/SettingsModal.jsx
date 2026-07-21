@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 
-export function SettingsModal({ onClose, onSaveToken }) {
+export function SettingsModal({ onClose, onSaveToken, onResetDb }) {
   const [token, setToken] = useState(localStorage.getItem('cd_notion_token') || '')
   const [dbId, setDbId] = useState(localStorage.getItem('cd_notion_db') || '')
   const [theme, setTheme] = useState(localStorage.getItem('cd_theme') || 'union')

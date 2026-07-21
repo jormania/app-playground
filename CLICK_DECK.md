@@ -13,8 +13,15 @@ Click Deck is a standalone web application designed for cataloguing and tracking
   - **Voodoo**: Toxic Green/Purple (Monkey Island inspired).
   - **Noir**: Grayscale/Gold (Grim Fandango inspired).
 - **Backend**: Live Notion Database Integration (`3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8`) via a proxy layer and MCP.
-- **Automated Pricing**: Features a Vercel-hosted cron job (`api/clickdeck-pricing.js`) that nightly syncs real-time Steam Store prices for all games in the collection using the Steam App ID.
+- **Automated Pricing & Discounts**: Features a Vercel-hosted cron job (`api/clickdeck-pricing.js`) that nightly syncs real-time Steam Store prices and active discount states for all games in the collection using the Steam App ID.
 - **Test Suite**: A comprehensive Vitest + React Testing Library component suite ensuring robustness across all core UI components. 
+
+## Scripts & Automation
+
+Located in the `scripts/` directory, these Python utilities interact directly with the Notion backend to automate and verify collection data:
+
+- **`verify-steam-names.py`**: A diagnostic script that verifies your Notion games against the Steam API using their `Steam App ID`. It intelligently cross-references the Notion `Developer` field against both Steam Developers and Publishers (including studio aliases like LucasArts/Lucasfilm) and normalizes titles to prevent false-positive mismatches.
+- **`dramatize-journal.py`**: An automated formatting script that pulls plain-text `Journal/Notes` from the Notion database and injects expressive rich-text formatting. It uses a predefined dictionary of thematic keywords (e.g., coloring "horror" red, "cyberpunk" purple) and safely skips entries that have already been manually styled.
 
 ## Core Views
 
