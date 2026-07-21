@@ -84,18 +84,33 @@ export const McpConnector = {
 
     if (token && dbId) {
       // Seed real Notion DB
+      const existingGames = await McpConnector.getGames()
+      const existingTitles = new Set(existingGames.map(g => g.title.toLowerCase()))
+
+      let addedCount = 0
       for (const game of PIVOT_TITLES) {
-        await fetchNotion('pages', 'POST', {
-          parent: { database_id: dbId },
-          properties: mapGameToProperties(game)
-        })
+        if (!existingTitles.has(game.title.toLowerCase())) {
+          await fetchNotion('pages', 'POST', {
+            parent: { database_id: dbId },
+            properties: mapGameToProperties(game)
+          })
+          addedCount++
+        }
       }
       return true
     } else {
       // Seed local storage
-      const initialGames = PIVOT_TITLES.map(game => ({ id: uuidv4(), ...game }))
-      saveLocalDb(initialGames)
-      return initialGames
+      const existingDb = getLocalDb() || []
+      const existingTitles = new Set(existingDb.map(g => g.title.toLowerCase()))
+      
+      const newGames = PIVOT_TITLES
+        .filter(game => !existingTitles.has(game.title.toLowerCase()))
+        .map(game => ({ id: uuidv4(), ...game }))
+      
+      if (newGames.length > 0) {
+        saveLocalDb([...existingDb, ...newGames])
+      }
+      return [...existingDb, ...newGames]
     }
   },
 

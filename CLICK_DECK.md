@@ -12,7 +12,7 @@ Click Deck is a standalone web application designed for cataloguing and tracking
   - **Union City**: Cyan/Amber (Classic Cyberpunk).
   - **Voodoo**: Toxic Green/Purple (Monkey Island inspired).
   - **Noir**: Grayscale/Gold (Grim Fandango inspired).
-- **Backend**: Live Notion Database Integration via a proxy layer.
+- **Backend**: Live Notion Database Integration (`3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8`) via a proxy layer and MCP.
 - **Test Suite**: A comprehensive Vitest + React Testing Library component suite ensuring robustness across all core UI components. 
 
 ## Core Views
@@ -45,10 +45,9 @@ Click Deck diverges from simpler `localStorage` apps by requiring a real Notion 
 - The **"Initialize New Database Schema"** button hits the repository's serverless `/api/notion` proxy to dynamically create the full database schema under a target parent page.
 - **Safety Checks**: The initialization process is guarded to prevent accidental duplications. If a database ID is already present, the user must explicitly confirm before creating a new schema, preventing them from overwriting their existing connection.
 
-### Seed Data & Cover Art
+### Adding Data & Cover Art
 
-- A **"Populate Seed Data"** button allows users to instantly fill their empty Notion database with a curated batch of canonical point-and-click classics.
-- **Data Protection**: Before seeding, the app checks the current Notion database. If games are already present, it throws a strict warning to prevent duplicate data population, protecting the user's curated lists.
+- The app relies strictly on the Notion database for canonical data. Hardcoded seed data is no longer utilized; all entries should be added directly via the UI Editor or via the Notion MCP integration.
 - **Cover Art System**: The Notion integration includes full support for high-resolution external image URLs mapped to the `cover` property of each Notion page. This populates the UI with rich game box art.
 - **Interactive Ratings**: Users can click the stars directly on the Game Cards on the main timeline to immediately update their rating in the Notion database, minimizing friction.
 
@@ -62,7 +61,5 @@ Click Deck diverges from simpler `localStorage` apps by requiring a real Notion 
 - Correctly referenced in `cabinet.webmanifest` via `related_applications` to allow native installation checks across the Cone of Cold ecosystem.
 - Fully responsive on mobile, including wrapping navigation bars and collapsing modal forms.
 
-## Usage Guide
-
-- A comprehensive standalone HTML guide (`public/click-deck-guide.html`) provides step-by-step instructions for integrating the Notion backend, initializing the database schema, and populating seed data.
+- A comprehensive standalone HTML guide (`public/click-deck-guide.html`) provides step-by-step instructions for integrating the Notion backend and initializing the database schema.
 - The guide is linked directly from the Cone of Cold app catalog (`index.html`).
