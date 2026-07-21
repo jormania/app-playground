@@ -51,20 +51,33 @@ def get_games_with_app_ids():
             break
     return games
 
-def normalize_name(name):
+def normalize_title(name):
     if not name: return ""
     name = name.lower()
-    # remove all non-alphanumeric characters
+    name = name.replace('&', 'and')
+    # remove common subtitle garbage before stripping
+    name = re.sub(r'\b(remastered|remaster|edition|director\'?s\s*cut|special|reforged|anniversary|gold)\b', '', name)
+    name = re.sub(r'^the\b', '', name)
     name = re.sub(r'[^a-z0-9]', '', name)
-    # remove common suffixes
-    name = re.sub(r'edition$', '', name)
-    name = re.sub(r'directorscut$', '', name)
-    name = re.sub(r'^the', '', name)
     return name
 
-def is_similar(notion_name, steam_name):
-    norm_notion = normalize_name(notion_name)
-    norm_steam = normalize_name(steam_name)
+def normalize_dev(name):
+    if not name: return ""
+    name = name.lower()
+    name = name.replace('&', 'and')
+    name = name.replace('lucasarts', 'lucasfilm')
+    name = re.sub(r'\b(studios|studio|software|games|productions|ltd|inc|entertainment|intertainment|the)\b', '', name)
+    name = re.sub(r'[^a-z0-9]', '', name)
+    return name
+
+def is_similar(notion_name, steam_name, is_dev=False):
+    if is_dev:
+        norm_notion = normalize_dev(notion_name)
+        norm_steam = normalize_dev(steam_name)
+    else:
+        norm_notion = normalize_title(notion_name)
+        norm_steam = normalize_title(steam_name)
+        
     if not norm_notion or not norm_steam:
         return False
     # If one contains the other entirely, it's probably fine
@@ -119,7 +132,7 @@ def main():
         chunk = games_to_verify[i:i + CHUNK_SIZE]
         app_ids_str = ",".join([str(g["app_id"]) for g in chunk])
         
-        url = f"https://store.steampowered.com/api/appdetails?appids={app_ids_str}&cc=US&filters=basic,developers"
+        url = f"https://store.steampowered.com/api/appdetails?appids={app_ids_str}&cc=US&filters=basic,developers,publishers"
         req = urllib.request.Request(url)
         try:
             with urllib.request.urlopen(req, context=ctx) as response:
@@ -135,17 +148,24 @@ def main():
                             if isinstance(data_obj, dict):
                                 steam_name = data_obj.get("name", "")
                                 steam_devs = data_obj.get("developers", [])
+                                steam_pubs = data_obj.get("publishers", [])
                                 steam_dev = steam_devs[0] if steam_devs else ""
                                 
                                 name_mismatch = False
                                 dev_mismatch = False
                                 
-                                if steam_name and not is_similar(game["notion_name"], steam_name):
+                                if steam_name and not is_similar(game["notion_name"], steam_name, is_dev=False):
                                     name_mismatch = True
                                 
                                 # Only warn about dev mismatch if Notion actually has a developer
-                                if game["notion_dev"] and steam_dev and not is_similar(game["notion_dev"], steam_dev):
-                                    dev_mismatch = True
+                                if game["notion_dev"]:
+                                    match_found = False
+                                    for d in steam_devs + steam_pubs:
+                                        if is_similar(game["notion_dev"], d, is_dev=True):
+                                            match_found = True
+                                            break
+                                    if not match_found and (steam_devs or steam_pubs):
+                                        dev_mismatch = True
                                     
                                 if name_mismatch or dev_mismatch:
                                     mismatches.append({
