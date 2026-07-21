@@ -163,18 +163,18 @@ export function GameEditorModal({ game, onSave, onDelete, onClose }) {
           />
         </div>
 
-        <div className="cd-modal-actions" style={{ justifyContent: game ? 'space-between' : 'flex-end', display: 'flex', width: '100%', alignItems: 'center' }}>
+        <div className="cd-modal-actions" style={{ justifyContent: game ? 'space-between' : 'flex-end', display: 'flex', flexWrap: 'wrap-reverse', gap: '1rem', width: '100%', alignItems: 'center' }}>
           {game && (
             <button 
               onClick={() => { if(window.confirm('Are you sure you want to completely delete this entry?')) onDelete(game.id) }} 
-              style={{ color: 'var(--cd-accent-amber)', borderColor: 'var(--cd-accent-amber)' }}>
+              style={{ color: 'var(--cd-accent-amber)', borderColor: 'var(--cd-accent-amber)', whiteSpace: 'nowrap' }}>
               [ DELETE ENTRY ]
             </button>
           )}
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            {validationError && <span style={{ color: 'var(--cd-accent-amber)', fontSize: '0.9rem', fontWeight: 'bold' }}>* {validationError}</span>}
-            <button onClick={onClose}>CANCEL</button>
-            <button className="primary" onClick={handleSave}>SAVE_DATA</button>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            {validationError && <span style={{ color: 'var(--cd-accent-amber)', fontSize: '0.9rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>* {validationError}</span>}
+            <button onClick={onClose} style={{ whiteSpace: 'nowrap' }}>CANCEL</button>
+            <button className="primary" onClick={handleSave} style={{ whiteSpace: 'nowrap' }}>SAVE_DATA</button>
           </div>
         </div>
       </div>
