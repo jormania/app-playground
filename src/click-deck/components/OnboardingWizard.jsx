@@ -40,6 +40,7 @@ export function OnboardingWizard({ onComplete }) {
           margin: 10vh auto;
           border-color: var(--cd-accent-cyan);
           box-shadow: 0 0 20px var(--cd-accent-cyan-dim);
+          animation: fadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
         .cd-onboarding h2 {
           border-bottom: 1px solid var(--cd-accent-cyan);

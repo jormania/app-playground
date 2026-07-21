@@ -171,7 +171,7 @@ export function App() {
         {!isInitialized ? (
           <OnboardingWizard onComplete={handleOnboardingComplete} />
         ) : isLoading && games.length === 0 ? (
-          <div className="cd-empty-terminal cd-panel">
+          <div className="cd-view-transition cd-empty-terminal cd-panel">
             <p className="cd-empty-line blink">&gt; QUERYING DATABASE...</p>
           </div>
         ) : (

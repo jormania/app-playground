@@ -57,10 +57,9 @@ export function GameEditorModal({ game, onSave, onDelete, onClose }) {
     if (!formData.title) return;
     setIsFetchingCover(true)
     try {
-      const targetUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(formData.title)}&l=english&cc=US`;
-      const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
-      const proxyData = await res.json();
-      const json = JSON.parse(proxyData.contents);
+      const targetUrl = `/api/steam-search?term=${encodeURIComponent(formData.title)}`;
+      const res = await fetch(targetUrl);
+      const json = await res.json();
       
       if (json.items && json.items.length > 0) {
         setFormData(prev => ({
