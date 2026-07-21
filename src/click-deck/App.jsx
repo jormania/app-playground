@@ -181,7 +181,7 @@ export function App() {
           </nav>
         </div>
 
-        {isInitialized && (
+        {isInitialized && view !== 'stats' && (
           <div className="cd-header-controls">
             <input 
               type="text" 
