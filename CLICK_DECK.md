@@ -65,7 +65,15 @@ When adding a new game to the database (whether manually or via automation), ens
 1.  **Core Metadata**: Always include the **Title**, **Release Year**, and **Developer/Studio**.
 2.  **Cover Art**: The cover must be an external URL fetched from Steam using the format: `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/<APP_ID>/header.jpg`.
 3.  **Tags (Strict Limits)**: Each game **MUST** have a minimum of 5 and a maximum of 7 tags to ensure the Analytics View remains rich but uncluttered. Mix broad genres (e.g., `Point & Click`, `Sci-Fi`) with specific vibes (e.g., `Atmospheric`, `Choices Matter`).
-4.  **Journal/Notes (Spicy & Flavorful)**: Notes should *never* be dry factual summaries (e.g., "A game where you click on things"). They should be punchy, opinionated, and flavorful mini-reviews that capture the essence, humor, or tragedy of the game.
+4.  **Journal/Notes (Spicy & Flavorful)**: Notes should *never* be dry factual summaries (e.g., "A game where you click on things"). They should be punchy, opinionated, and flavorful mini-reviews that capture the essence, humor, or tragedy of the game. Use the `Settings` menu (⚙ icon) to edit the raw game data if necessary.
+
+### 🎭 Expressive Rich Text Policy (Journal/Notes)
+When generating or updating the `Journal/Notes` property in the Notion database, **you must use expressive Rich Text formatting** to highlight, enforce, and create dramatic tension. 
+- Use **colors** (e.g., `red`, `orange`, `green`, `purple`, `pink`) combined with **bolding** for strong emotional or thematic words (e.g., *murder*, *masterclass*, *beautiful*, *dread*).
+- Use **italics** and `gray` to denote sarcasm, cynicism, or subtle mystery.
+- Use **strikethrough** or **underline** for dramatic misdirection, controversy, or fourth-wall-breaking concepts.
+- Be deliberate and dynamic. Do not settle for plain text—ensure the reading experience feels vibrant and dramatically punctuated.
+
 5.  **Status & Rating**: Ensure the play status (`Backlog`, `Playing`, `Completed`, `Abandoned`) is accurate, and rate `Completed` games from 1 to 5.
 
 ### Factory Reset

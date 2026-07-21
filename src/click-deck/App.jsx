@@ -331,9 +331,9 @@ export function App() {
           gap: 0.5rem;
         }
         .cd-logo-icon {
-          width: 24px;
-          height: 24px;
-          border-radius: 4px;
+          width: 36px;
+          height: 36px;
+          border-radius: 6px;
         }
         .cd-header h1 {
           margin: 0;
