@@ -132,6 +132,59 @@ h1, h2, h3, h4, h5, h6 {
   padding: 1rem;
 }
 
+/* Retro CRT Mode (Settings toggle, opt-in): viewfinder-style corner brackets on
+   every panel, echoing the same bracket motif as the header logo and the
+   [T]/[E]DIT UI language. Off by default — with ~70 timeline cards on screen
+   at once this reads as clutter unless the user specifically wants the look. */
+[data-crt="true"] .cd-panel {
+  position: relative;
+}
+[data-crt="true"] .cd-panel::before,
+[data-crt="true"] .cd-panel::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--cd-accent-cyan);
+  opacity: 0.5;
+  pointer-events: none;
+}
+[data-crt="true"] .cd-panel::before {
+  top: -1px;
+  left: -1px;
+  border-right: none;
+  border-bottom: none;
+}
+[data-crt="true"] .cd-panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-left: none;
+  border-top: none;
+}
+
+.cd-crt-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9997;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 1px,
+      rgba(0, 0, 0, 0.12) 2px,
+      rgba(0, 0, 0, 0.12) 3px
+    ),
+    radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.4) 100%);
+  mix-blend-mode: multiply;
+  animation: crtFlicker 6s infinite;
+}
+@keyframes crtFlicker {
+  0%, 96%, 100% { opacity: 1; }
+  97% { opacity: 0.92; }
+  98% { opacity: 1; }
+}
+
 /* Game Card Aesthetics */
 .cd-game-card {
   transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -227,24 +280,37 @@ input:focus, select:focus, textarea:focus {
   animation: simpleFadeIn 0.3s ease-out;
 }
 
-/* Fallback Cover */
+/* Fallback Cover — a drifting static pattern rather than a flat stripe set,
+   so a missing cover reads as "signal lost" rather than a plain placeholder. */
 .fallback-cover {
-  background: repeating-linear-gradient(
+  background-image: repeating-linear-gradient(
     0deg,
     #111,
     #111 2px,
     #222 2px,
     #222 4px
   );
+  background-size: 200% 200%;
+  animation: staticDrift 8s linear infinite;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+@keyframes staticDrift {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 0% 100%; }
+}
+@keyframes signalFlicker {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.3; }
+  60% { opacity: 0.6; }
 }
 .fallback-cover::before {
   content: 'NO SIGNAL';
   font-family: var(--cd-font-terminal);
   color: var(--cd-accent-amber);
   font-size: 1.5rem;
+  animation: signalFlicker 3s ease-in-out infinite;
   letter-spacing: 4px;
   opacity: 0.5;
 }

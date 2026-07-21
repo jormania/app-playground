@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import re
 import urllib.parse
 import urllib.request
 import urllib.error
@@ -45,15 +46,45 @@ def get_games():
             break
     return games
 
+def normalize_title(name):
+    # Kept in sync with verify-steam-names.py's normalize_title — classic
+    # titles are frequently re-listed on Steam with a "Remastered" / "Special
+    # Edition" / "20th Anniversary Edition" / "The Final Cut" suffix, which a
+    # plain string compare would treat as a non-match.
+    if not name: return ""
+    name = name.lower()
+    name = name.replace('&', 'and')
+    name = re.sub(r'\b(remastered|remaster|edition|director\'?s\s*cut|special|reforged|anniversary|gold|final\s*cut)\b', '', name)
+    name = re.sub(r'\b\d+(st|nd|rd|th)\b', '', name)
+    name = re.sub(r'\bthe\b', '', name)
+    name = re.sub(r'[^a-z0-9]', '', name)
+    return name
+
+def is_similar(a, b):
+    norm_a, norm_b = normalize_title(a), normalize_title(b)
+    if not norm_a or not norm_b:
+        return False
+    return norm_a in norm_b or norm_b in norm_a
+
 def search_steam(title):
     try:
         encoded_title = urllib.parse.quote(title)
         req = urllib.request.Request(f"https://store.steampowered.com/api/storesearch/?term={encoded_title}&l=english&cc=US")
         with urllib.request.urlopen(req, context=ctx) as response:
             data = json.loads(response.read().decode('utf-8'))
-            if data.get("total", 0) > 0:
-                # Return the exact or closest match appid
-                return data["items"][0]["id"]
+            items = data.get("items", [])
+            if not items:
+                return None
+            # Steam's search is fuzzy-ranked, not exact — score candidates by
+            # normalized title instead of trusting the first result blindly,
+            # which was silently writing wrong App IDs for generic-sounding
+            # queries and missing legitimate matches that only differ by a
+            # "Remastered"/edition suffix.
+            for item in items:
+                if is_similar(title, item.get("name", "")):
+                    return item["id"]
+            print(f"   (no confident title match among {len(items)} results — skipping rather than guessing)")
+            return None
     except Exception as e:
         print(f"Error searching steam for {title}: {e}")
     return None

@@ -44,6 +44,20 @@ describe('GameCard', () => {
     expect(stars.length).toBe(5)
   })
 
+  it('exposes rating stars as keyboard-reachable, labeled buttons', () => {
+    const completedGame = { ...mockGame, status: 'Completed', rating: 3 }
+    const onUpdateStatus = vi.fn()
+    render(<GameCard game={completedGame} onEdit={() => {}} onUpdateStatus={onUpdateStatus} />)
+
+    const star4 = screen.getByLabelText('Rate 4 stars')
+    expect(star4.tagName).toBe('BUTTON')
+    expect(screen.getByLabelText('Rate 3 stars').getAttribute('aria-pressed')).toBe('true')
+    expect(star4.getAttribute('aria-pressed')).toBe('false')
+
+    fireEvent.click(star4)
+    expect(onUpdateStatus).toHaveBeenCalledWith('123', 'Completed', 4)
+  })
+
   it('shows a % SALE badge only when the game is discounted', () => {
     const { rerender } = render(<GameCard game={mockGame} onEdit={() => {}} onUpdateStatus={() => {}} />)
     expect(screen.queryByText('% SALE')).toBeNull()

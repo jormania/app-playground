@@ -1,10 +1,14 @@
 import React, { useState } from 'react'
+import { isDiscountBannerPersistent, setDiscountBannerPersistent, clearDiscountBannerSnooze } from '../lib/priceTracking'
 
-export function SettingsModal({ onClose, onSaveToken, onResetDb }) {
+export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onResetDb }) {
   const [token, setToken] = useState(localStorage.getItem('cd_notion_token') || '')
   const [dbId, setDbId] = useState(localStorage.getItem('cd_notion_db') || '')
   const [theme, setTheme] = useState(localStorage.getItem('cd_theme') || 'union')
+  const [crtEffect, setCrtEffect] = useState(localStorage.getItem('cd_crt_effect') === 'true')
   const [randomWeight, setRandomWeight] = useState(localStorage.getItem('cd_random_weight') || 'uniform')
+  const [bannerPersistent, setBannerPersistent] = useState(() => isDiscountBannerPersistent())
+  const [bannerStatus, setBannerStatus] = useState('')
   const [status, setStatus] = useState('')
 
   const handleCreateDb = async () => {
@@ -76,10 +80,21 @@ export function SettingsModal({ onClose, onSaveToken, onResetDb }) {
     localStorage.setItem('cd_notion_token', token)
     localStorage.setItem('cd_notion_db', dbId)
     localStorage.setItem('cd_theme', theme)
+    localStorage.setItem('cd_crt_effect', crtEffect ? 'true' : 'false')
     localStorage.setItem('cd_random_weight', randomWeight)
+    setDiscountBannerPersistent(bannerPersistent)
     document.documentElement.setAttribute('data-theme', theme)
     if (onSaveToken) onSaveToken()
     onClose()
+  }
+
+  // The safety net for "I dismissed the sale banner by accident and want it
+  // back now" — acts immediately, independent of Save, rather than making the
+  // user wait out the 24h snooze.
+  const handleShowBannerNow = () => {
+    clearDiscountBannerSnooze()
+    if (onShowBannerNow) onShowBannerNow()
+    setBannerStatus('Banner will show again now (if there are active discounts).')
   }
 
   return (
@@ -87,7 +102,7 @@ export function SettingsModal({ onClose, onSaveToken, onResetDb }) {
       <div className="cd-modal cd-panel" style={{ maxWidth: '500px' }}>
         <div className="cd-modal-header">
           <h2>SYSTEM_SETTINGS</h2>
-          <button className="cd-btn-icon" onClick={onClose}>[X]</button>
+          <button className="cd-btn-icon" onClick={onClose} aria-label="Close">[X]</button>
         </div>
         
         <div className="cd-form-group">
@@ -130,6 +145,24 @@ export function SettingsModal({ onClose, onSaveToken, onResetDb }) {
         </div>
 
         <div className="cd-form-group">
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={crtEffect}
+              onChange={e => {
+                setCrtEffect(e.target.checked)
+                document.documentElement.setAttribute('data-crt', e.target.checked ? 'true' : 'false')
+              }}
+              style={{ width: 'auto' }}
+            />
+            RETRO CRT MODE
+          </label>
+          <p style={{ fontSize: '0.85rem', color: 'var(--cd-text-muted)', margin: '0.3rem 0 0' }}>
+            Scanlines, a screen vignette, and viewfinder corner brackets on every panel.
+          </p>
+        </div>
+
+        <div className="cd-form-group">
           <label>RANDOM PICK WEIGHTING</label>
           <select
             value={randomWeight}
@@ -143,6 +176,28 @@ export function SettingsModal({ onClose, onSaveToken, onResetDb }) {
           <p style={{ fontSize: '0.85rem', color: 'var(--cd-text-muted)', margin: '0.3rem 0 0' }}>
             Controls how [R] picks your next playthrough from the backlog.
           </p>
+        </div>
+
+        <div className="cd-form-group">
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={bannerPersistent}
+              onChange={e => setBannerPersistent(e.target.checked)}
+              style={{ width: 'auto' }}
+            />
+            SALE BANNER: ALWAYS SHOW (DON'T AUTO-DISMISS)
+          </label>
+          <p style={{ fontSize: '0.85rem', color: 'var(--cd-text-muted)', margin: '0.3rem 0 0' }}>
+            Off by default: dismissing the banner snoozes it for 24 hours. Turn this on to keep it visible permanently whenever anything's on sale.
+          </p>
+          <div style={{ marginTop: '0.8rem' }}>
+            <button type="button" onClick={handleShowBannerNow}>Show Sale Banner Now</button>
+            <p style={{ fontSize: '0.85rem', color: 'var(--cd-text-muted)', margin: '0.4rem 0 0' }}>
+              Dismissed it by accident? This clears the snooze immediately — no need to wait for tomorrow.
+            </p>
+            {bannerStatus && <div style={{ color: 'var(--cd-accent-cyan)', fontSize: '0.9rem', marginTop: '0.4rem' }}>{bannerStatus}</div>}
+          </div>
         </div>
 
         <div className="cd-form-group" style={{ marginTop: '1.5rem', padding: '1.5rem', border: '1px solid var(--cd-border-color)', background: 'rgba(0, 0, 0, 0.2)' }}>

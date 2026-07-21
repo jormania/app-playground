@@ -4,7 +4,7 @@ export function DiscountModal({ games, onClose }) {
   return (
     <div className="cd-modal-overlay" style={{ alignItems: 'flex-start', paddingTop: '4rem' }} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="cd-modal-content cd-discount-modal cd-panel">
-        <button className="cd-modal-close" onClick={onClose}>[X]</button>
+        <button className="cd-modal-close" onClick={onClose} aria-label="Close">[X]</button>
         
         <h2 className="cd-modal-title" style={{ margin: '0 0 0.2rem 0' }}>ACTIVE_DISCOUNT</h2>
         <p className="cd-text-muted" style={{ margin: '0 0 0.5rem 0' }}>The following items from your backlog are currently on sale.</p>

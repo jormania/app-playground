@@ -8,7 +8,10 @@ import { GameEditorModal } from './components/GameEditorModal'
 import { SettingsModal } from './components/SettingsModal'
 import { DiscountModal } from './components/DiscountModal'
 import { RandomGameModal } from './components/RandomGameModal'
-import { isDiscountBannerSnoozed, snoozeDiscountBanner, detectPriceDrops } from './lib/priceTracking'
+import {
+  isDiscountBannerSnoozed, snoozeDiscountBanner, detectPriceDrops,
+  isDiscountBannerPersistent
+} from './lib/priceTracking'
 
 export function App() {
   const [isInitialized, setIsInitialized] = useState(McpConnector.isInitialized())
@@ -35,10 +38,13 @@ export function App() {
   }
 
   const [isBannerSnoozed, setIsBannerSnoozed] = useState(() => isDiscountBannerSnoozed())
+  const [isBannerPersistent, setIsBannerPersistent] = useState(() => isDiscountBannerPersistent())
   const dismissDiscountBanner = () => {
     snoozeDiscountBanner(24)
     setIsBannerSnoozed(true)
   }
+
+  const [syncError, setSyncError] = useState(null)
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -81,24 +87,36 @@ export function App() {
 
   const loadGames = async () => {
     setIsLoading(true)
-    const data = await McpConnector.getGames()
-    setGames(data)
-    setIsLoading(false)
+    try {
+      const data = await McpConnector.getGames()
+      setGames(data)
+      setSyncError(null)
 
-    // Compare against prices we've seen before (e.g. after last night's pricing
-    // cron ran) and surface any drops — the cron itself has no way to reach an
-    // open browser tab, so this is the client-side equivalent of a push.
-    const drops = detectPriceDrops(data)
-    if (drops.length > 0) {
-      const label = drops.length === 1 ? drops[0].title : `${drops.length} GAMES`
-      showToast(`PRICE DROP: ${label}`)
+      // Compare against prices we've seen before (e.g. after last night's pricing
+      // cron ran) and surface any drops — the cron itself has no way to reach an
+      // open browser tab, so this is the client-side equivalent of a push.
+      const drops = detectPriceDrops(data)
+      if (drops.length > 0) {
+        const label = drops.length === 1 ? drops[0].title : `${drops.length} GAMES`
+        showToast(`PRICE DROP: ${label}`)
+      }
+    } catch (err) {
+      // Distinct from "0 records found" — a bad token or a rate-limit previously
+      // looked identical to a genuinely empty collection.
+      setSyncError(err.message || 'Failed to reach Notion.')
     }
+    setIsLoading(false)
   }
 
   useEffect(() => {
     const savedTheme = typeof localStorage !== 'undefined' ? (localStorage.getItem('cd_theme') || 'union') : 'union'
     document.documentElement.setAttribute('data-theme', savedTheme)
   }, [])
+
+  const [crtEffect, setCrtEffect] = useState(() => localStorage.getItem('cd_crt_effect') === 'true')
+  useEffect(() => {
+    document.documentElement.setAttribute('data-crt', crtEffect ? 'true' : 'false')
+  }, [crtEffect])
 
   useEffect(() => {
     if (isInitialized) {
@@ -111,33 +129,59 @@ export function App() {
     setIsInitialized(true)
   }
 
+  // These three mutations used to end with a full loadGames() re-fetch of the
+  // entire (paginated) collection just to reflect one edit — slow, and a visible
+  // flicker as every card re-rendered. They now update local state immediately
+  // and roll back with a toast if the underlying write actually fails.
   const handleSaveGame = async (gameData) => {
-    if (gameData.id) {
-      await McpConnector.updateGame(gameData.id, gameData)
-      if (gameData.coverUrl !== undefined) {
-        await McpConnector.updateGameCover(gameData.id, gameData.coverUrl)
-      }
-    } else {
-      const added = await McpConnector.addGame(gameData)
-      if (gameData.coverUrl) {
-        await McpConnector.updateGameCover(added.id, gameData.coverUrl)
-      }
+    const isNew = !gameData.id
+    const previousGames = games
+    if (!isNew) {
+      setGames(prev => prev.map(g => g.id === gameData.id ? { ...g, ...gameData } : g))
     }
-    await loadGames()
     setIsEditorOpen(false)
     setEditingGame(null)
+    try {
+      if (!isNew) {
+        await McpConnector.updateGame(gameData.id, gameData)
+        if (gameData.coverUrl !== undefined) {
+          await McpConnector.updateGameCover(gameData.id, gameData.coverUrl)
+        }
+      } else {
+        const added = await McpConnector.addGame(gameData)
+        if (gameData.coverUrl) {
+          await McpConnector.updateGameCover(added.id, gameData.coverUrl)
+        }
+        setGames(prev => [...prev, { ...gameData, ...added }])
+      }
+    } catch (err) {
+      setGames(previousGames)
+      showToast(`SAVE FAILED: ${err.message || 'unknown error'}`)
+    }
   }
 
   const handleUpdateStatus = async (id, status, rating) => {
-    await McpConnector.updateGameStatus(id, status, rating)
-    await loadGames()
+    const previousGames = games
+    setGames(prev => prev.map(g => g.id === id ? { ...g, status, rating } : g))
+    try {
+      await McpConnector.updateGameStatus(id, status, rating)
+    } catch (err) {
+      setGames(previousGames)
+      showToast(`UPDATE FAILED: ${err.message || 'unknown error'}`)
+    }
   }
 
   const handleDeleteGame = async (id) => {
-    await McpConnector.deleteGame(id)
-    await loadGames()
+    const previousGames = games
+    setGames(prev => prev.filter(g => g.id !== id))
     setIsEditorOpen(false)
     setEditingGame(null)
+    try {
+      await McpConnector.deleteGame(id)
+    } catch (err) {
+      setGames(previousGames)
+      showToast(`DELETE FAILED: ${err.message || 'unknown error'}`)
+    }
   }
   
   const resetDb = () => {
@@ -152,9 +196,11 @@ export function App() {
     let result = [...games]
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
-      result = result.filter(g => 
-        g.title.toLowerCase().includes(q) || 
-        (g.developer && g.developer.toLowerCase().includes(q))
+      result = result.filter(g =>
+        g.title.toLowerCase().includes(q) ||
+        (g.developer && g.developer.toLowerCase().includes(q)) ||
+        (g.tags && g.tags.some(t => t.toLowerCase().includes(q))) ||
+        (g.journal && g.journal.toLowerCase().includes(q))
       )
     }
     if (activeTags.length > 0) {
@@ -197,12 +243,12 @@ export function App() {
             <h1>Click Deck</h1>
           </div>
           <nav className="cd-nav">
-            <button className={view === 'timeline' ? 'primary' : ''} onClick={() => setView('timeline')}>[T]</button>
-            <button className={view === 'analytics' ? 'primary' : ''} onClick={() => setView('analytics')}>[A]</button>
-            <button onClick={() => { setEditingGame(null); setIsEditorOpen(true) }}>+</button>
-            <button onClick={() => setIsRandomOpen(true)}>[R]</button>
-            <button className={view === 'stats' ? 'primary' : ''} onClick={() => setView('stats')}>[S]</button>
-            <button onClick={() => setIsSettingsOpen(true)}>⚙</button>
+            <button aria-label="Timeline view" className={view === 'timeline' ? 'primary' : ''} onClick={() => setView('timeline')}>[T]</button>
+            <button aria-label="Analytics view" className={view === 'analytics' ? 'primary' : ''} onClick={() => setView('analytics')}>[A]</button>
+            <button aria-label="Add new game" onClick={() => { setEditingGame(null); setIsEditorOpen(true) }}>+</button>
+            <button aria-label="Random game from backlog" onClick={() => setIsRandomOpen(true)}>[R]</button>
+            <button aria-label="Stats view" className={view === 'stats' ? 'primary' : ''} onClick={() => setView('stats')}>[S]</button>
+            <button aria-label="Settings" onClick={() => setIsSettingsOpen(true)}>⚙</button>
           </nav>
         </div>
 
@@ -269,21 +315,37 @@ export function App() {
         )}
       </header>
 
-      {discountedGames.length > 0 && !isBannerSnoozed && view === 'timeline' && (
+      {discountedGames.length > 0 && (isBannerPersistent || !isBannerSnoozed) && view === 'timeline' && (
         <div className="cd-discount-banner">
           <span className="cd-banner-icon">🔥</span>
           <span className="cd-banner-text" onClick={() => setIsDiscountOpen(true)}>
             {discountedGames.length} {discountedGames.length === 1 ? 'GAME' : 'GAMES'} ON SALE!
           </span>
           <span className="cd-banner-cta" onClick={() => setIsDiscountOpen(true)}>[VIEW DISCOUNTS]</span>
-          <button
-            type="button"
-            className="cd-banner-dismiss"
-            onClick={(e) => { e.stopPropagation(); dismissDiscountBanner() }}
-            aria-label="Dismiss for 24 hours"
-          >
-            [X]
-          </button>
+          {/* Nothing to dismiss in persistent mode — hiding this avoids a button
+              that would appear to do nothing (the banner just reappears). */}
+          {!isBannerPersistent && (
+            <button
+              type="button"
+              className="cd-banner-dismiss"
+              onClick={(e) => { e.stopPropagation(); dismissDiscountBanner() }}
+              aria-label="Dismiss for 24 hours"
+            >
+              [X]
+            </button>
+          )}
+        </div>
+      )}
+
+      {isInitialized && syncError && (
+        // Distinct from "0 records found" — a bad token, a revoked integration,
+        // or a rate-limit previously looked identical to a genuinely empty
+        // collection. Shown as a banner (not a full-view replacement) so any
+        // already-loaded data stays visible and usable underneath.
+        <div className="cd-sync-error-banner cd-panel">
+          <span className="cd-sync-error-icon">⚠</span>
+          <span className="cd-sync-error-text">SYNC FAILED: {syncError} — check your token/database in Settings.</span>
+          <button type="button" className="cd-btn-icon" onClick={loadGames}>[RETRY]</button>
         </div>
       )}
 
@@ -294,6 +356,11 @@ export function App() {
           <div className="cd-view-transition cd-empty-terminal cd-panel">
             <p className="cd-empty-line blink">&gt; QUERYING DATABASE...</p>
           </div>
+        ) : syncError && games.length === 0 ? (
+          // Nothing to fall back on — rendering the normal (empty) view here would
+          // show "0 RECORDS FOUND", which reads as "your collection is empty"
+          // rather than "the sync failed", directly contradicting the banner above.
+          null
         ) : (
           <div key={view} className="cd-view-transition">
             {view === 'timeline' && (
@@ -341,7 +408,10 @@ export function App() {
               setIsInitialized(true)
               loadGames()
             }
+            setIsBannerPersistent(isDiscountBannerPersistent())
+            setCrtEffect(localStorage.getItem('cd_crt_effect') === 'true')
           }}
+          onShowBannerNow={() => setIsBannerSnoozed(false)}
           onResetDb={() => { setIsSettingsOpen(false); resetDb(); }}
         />
       )}
@@ -362,6 +432,8 @@ export function App() {
       )}
 
       {toastMessage && <div className="cd-toast">[{toastMessage}]</div>}
+
+      {crtEffect && <div className="cd-crt-overlay" aria-hidden="true"></div>}
 
       <style>{`
         .cd-app-container {
@@ -580,6 +652,25 @@ export function App() {
           to { transform: translateX(0); opacity: 1; }
         }
         
+        .cd-sync-error-banner {
+          background: rgba(217, 56, 30, 0.1);
+          border-color: #d9381e;
+          margin-bottom: 1.5rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+        .cd-sync-error-icon {
+          font-size: 1.2rem;
+          color: #d9381e;
+        }
+        .cd-sync-error-text {
+          font-family: var(--cd-font-terminal);
+          color: #d9381e;
+          font-size: 0.9rem;
+          flex: 1;
+        }
+
         .cd-discount-banner {
           background: linear-gradient(90deg, rgba(76, 107, 34, 0.8), rgba(0, 0, 0, 0.6));
           border: 1px solid #a4d007;

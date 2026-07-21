@@ -110,15 +110,19 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
         {game.status === 'Completed' && (
           <>
             <span className="cd-separator">|</span>
-            <span className="cd-rating">
+            <span className="cd-rating" role="group" aria-label={`Rating: ${game.rating || 0} of 5 stars`}>
               {[1, 2, 3, 4, 5].map(star => (
-                <span 
-                  key={star} 
-                  style={{ cursor: 'pointer', color: game.rating >= star ? 'inherit' : 'var(--cd-text-muted)' }}
+                <button
+                  key={star}
+                  type="button"
+                  className="cd-rating-star"
+                  style={{ color: game.rating >= star ? 'inherit' : 'var(--cd-text-muted)' }}
                   onClick={() => onUpdateStatus(game.id, game.status, star)}
+                  aria-label={`Rate ${star} star${star === 1 ? '' : 's'}`}
+                  aria-pressed={game.rating === star}
                 >
                   {game.rating >= star ? '★' : '☆'}
-                </span>
+                </button>
               ))}
             </span>
           </>
@@ -218,6 +222,21 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
         .cd-separator {
           margin: 0 0.5rem;
           color: var(--cd-border-color);
+        }
+        .cd-rating-star {
+          background: none;
+          border: none;
+          box-shadow: none;
+          padding: 0;
+          margin: 0;
+          font-family: inherit;
+          font-size: inherit;
+          text-transform: none;
+          cursor: pointer;
+          line-height: 1;
+        }
+        .cd-rating-star:hover {
+          box-shadow: none;
         }
         .cd-tags {
           display: flex;

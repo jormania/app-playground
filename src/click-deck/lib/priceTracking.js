@@ -3,6 +3,7 @@
 // toast about them without needing a server-side push mechanism.
 
 const SNOOZE_KEY = 'cd_discount_snooze_until'
+const PERSISTENT_KEY = 'cd_discount_banner_persistent'
 const LAST_PRICES_KEY = 'cd_last_prices'
 
 export function isDiscountBannerSnoozed(now = Date.now()) {
@@ -12,6 +13,22 @@ export function isDiscountBannerSnoozed(now = Date.now()) {
 
 export function snoozeDiscountBanner(hours = 24, now = Date.now()) {
   localStorage.setItem(SNOOZE_KEY, String(now + hours * 60 * 60 * 1000))
+}
+
+// The safety net for an accidental dismiss: forces the banner back immediately,
+// regardless of how much of the 24h snooze window remains.
+export function clearDiscountBannerSnooze() {
+  localStorage.removeItem(SNOOZE_KEY)
+}
+
+// Settings toggle: when on, the banner never auto-hides (the dismiss button
+// and the 24h snooze it sets are both moot while this is active).
+export function isDiscountBannerPersistent() {
+  return localStorage.getItem(PERSISTENT_KEY) === 'true'
+}
+
+export function setDiscountBannerPersistent(value) {
+  localStorage.setItem(PERSISTENT_KEY, value ? 'true' : 'false')
 }
 
 function readLastPrices() {

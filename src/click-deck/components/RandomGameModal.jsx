@@ -37,7 +37,7 @@ export function RandomGameModal({ backlogGames, onClose, onUpdateStatus }) {
         <div className="cd-modal" onClick={e => e.stopPropagation()}>
           <div className="cd-modal-header">
             <h2>SYSTEM DIRECTIVE</h2>
-            <button className="cd-btn-icon" onClick={onClose}>[X]</button>
+            <button className="cd-btn-icon" onClick={onClose} aria-label="Close">[X]</button>
           </div>
           <p className="cd-text-muted">NO GAMES FOUND IN BACKLOG. ADD GAMES OR CHANGE STATUS TO BEGIN.</p>
         </div>
@@ -58,7 +58,7 @@ export function RandomGameModal({ backlogGames, onClose, onUpdateStatus }) {
               </span>
             )}
           </h2>
-          <button className="cd-btn-icon" onClick={onClose}>[X]</button>
+          <button className="cd-btn-icon" onClick={onClose} aria-label="Close">[X]</button>
         </div>
         
         <div className="cd-random-content">

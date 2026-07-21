@@ -8,6 +8,10 @@ out/
 .next/
 .turbo/
 
+# Python bytecode cache (scripts/*.py)
+__pycache__/
+*.pyc
+
 # Logs
 *.log
 npm-debug.log*

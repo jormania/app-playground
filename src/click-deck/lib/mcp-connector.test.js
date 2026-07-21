@@ -183,4 +183,71 @@ describe('McpConnector (Notion-backed, token + db configured)', () => {
     await expect(McpConnector.addGame({ title: 'Bad', tags: [], status: 'Backlog' }))
       .rejects.toThrow('Unauthorized')
   })
+
+  it('propagates getGames failures instead of silently returning an empty collection', async () => {
+    // A caller needs to be able to distinguish "sync failed" from "genuinely
+    // empty" — swallowing this to [] made an expired token indistinguishable
+    // from having zero games.
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ message: 'Invalid token' })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(McpConnector.getGames()).rejects.toThrow('Invalid token')
+  })
+
+  it('maps Price Updated At into priceUpdatedAt', async () => {
+    const page = {
+      id: 'page-1', created_time: '2024-01-01T00:00:00.000Z',
+      properties: {
+        'Title': { title: [{ plain_text: 'Priced Game' }] },
+        'Status': { select: { name: 'Backlog' } },
+        'Price Updated At': { date: { start: '2026-07-20' } }
+      }
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ results: [page], has_more: false, next_cursor: null })
+    }))
+    const games = await McpConnector.getGames()
+    expect(games[0].priceUpdatedAt).toBe('2026-07-20')
+  })
+
+  it('preserves the original rich-text journal when journalRich is passed through unchanged', async () => {
+    const journalRich = [
+      { plain_text: 'A ', annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: 'default' }, href: null },
+      { plain_text: 'masterclass', annotations: { bold: true, italic: false, strikethrough: false, underline: false, code: false, color: 'orange' }, href: null }
+    ]
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'page-1', properties: { Title: { title: [{ plain_text: 'X' }] } } })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await McpConnector.updateGame('page-1', { title: 'X', journal: 'A masterclass', journalRich, tags: [], status: 'Completed' })
+
+    const [, opts] = fetchMock.mock.calls[0]
+    const body = JSON.parse(opts.body)
+    expect(body.body.properties['Journal/Notes'].rich_text).toEqual([
+      { text: { content: 'A ', link: null }, annotations: journalRich[0].annotations },
+      { text: { content: 'masterclass', link: null }, annotations: journalRich[1].annotations }
+    ])
+  })
+
+  it('falls back to plain text when journalRich is absent (e.g. the user edited the journal)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'page-1', properties: { Title: { title: [{ plain_text: 'X' }] } } })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await McpConnector.updateGame('page-1', { title: 'X', journal: 'Edited plain text', tags: [], status: 'Completed' })
+
+    const [, opts] = fetchMock.mock.calls[0]
+    const body = JSON.parse(opts.body)
+    expect(body.body.properties['Journal/Notes'].rich_text).toEqual([
+      { text: { content: 'Edited plain text' } }
+    ])
+  })
 })
