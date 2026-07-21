@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { McpConnector } from './lib/mcp-connector'
 import { TimelineView } from './components/TimelineView'
 import { AnalyticsView } from './components/AnalyticsView'
+import { StatsView } from './components/StatsView'
 import { OnboardingWizard } from './components/OnboardingWizard'
 import { GameEditorModal } from './components/GameEditorModal'
 import { SettingsModal } from './components/SettingsModal'
@@ -125,6 +126,7 @@ export function App() {
                 alert('NO BACKLOG GAMES FOUND.')
               }
             }}>[R]</button>
+            <button className={view === 'stats' ? 'primary' : ''} onClick={() => setView('stats')}>[S]</button>
             <button onClick={() => setIsSettingsOpen(true)}>⚙</button>
           </nav>
         </div>
@@ -194,6 +196,11 @@ export function App() {
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
               />
+            )}
+            {view === 'stats' && (
+              <div className="cd-timeline-container">
+                <StatsView games={games} />
+              </div>
             )}
           </div>
         )}

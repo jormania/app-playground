@@ -51,6 +51,16 @@ Click Deck diverges from simpler `localStorage` apps by requiring a real Notion 
 - **Cover Art System**: The Notion integration includes full support for high-resolution external image URLs mapped to the `cover` property of each Notion page. This populates the UI with rich game box art.
 - **Interactive Ratings**: Users can click the stars directly on the Game Cards on the main timeline to immediately update their rating in the Notion database, minimizing friction.
 
+### Adding a New Game Requirements
+
+When adding a new game to the database (whether manually or via automation), ensure the following requirements are strictly met:
+
+1.  **Core Metadata**: Always include the **Title**, **Release Year**, and **Developer/Studio**.
+2.  **Cover Art**: The cover must be an external URL fetched from Steam using the format: `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/<APP_ID>/header.jpg`.
+3.  **Tags (Strict Limits)**: Each game **MUST** have a minimum of 5 and a maximum of 7 tags to ensure the Analytics View remains rich but uncluttered. Mix broad genres (e.g., `Point & Click`, `Sci-Fi`) with specific vibes (e.g., `Atmospheric`, `Choices Matter`).
+4.  **Journal/Notes (Spicy & Flavorful)**: Notes should *never* be dry factual summaries (e.g., "A game where you click on things"). They should be punchy, opinionated, and flavorful mini-reviews that capture the essence, humor, or tragedy of the game.
+5.  **Status & Rating**: Ensure the play status (`Backlog`, `Playing`, `Completed`, `Abandoned`) is accurate, and rate `Completed` games from 1 to 5.
+
 ### Factory Reset
 - The "Factory Reset DB State" action is safeguarded behind a prompt requiring the user to type `RESET`, ensuring that destroying local state and API tokens is never accidental.
 
