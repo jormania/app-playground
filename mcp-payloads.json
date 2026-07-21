@@ -1,0 +1,2156 @@
+[
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "The Secret of Monkey Island"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Completed"
+        }
+      },
+      "Release Year": {
+        "number": 1990
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "LucasArts"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "SCUMM"
+          },
+          {
+            "name": "Puzzle-Heavy"
+          },
+          {
+            "name": "Comedy"
+          },
+          {
+            "name": "Pirates"
+          }
+        ]
+      },
+      "Rating": {
+        "number": 5
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "I am rubber, you are glue. The foundational text of insult sword fighting, establishing a comedic tone that defined an entire era of adventure games."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/32360/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Monkey Island 2: LeChuck's Revenge"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 1991
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "LucasArts"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "SCUMM"
+          },
+          {
+            "name": "Puzzle-Heavy"
+          },
+          {
+            "name": "Comedy"
+          },
+          {
+            "name": "Voodoo"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "A darker, more surreal follow-up. The spitting contest and the bone dance remain etched in my memory. The ending is still a subject of intense debate."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/32460/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "The Curse of Monkey Island"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 1997
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "LucasArts"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "SCUMM"
+          },
+          {
+            "name": "Comedy"
+          },
+          {
+            "name": "Pirates"
+          },
+          {
+            "name": "Hand-Drawn"
+          },
+          {
+            "name": "Classic"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "The transition to cel-shaded animation was controversial but yielded one of the most beautiful adventure games ever made. Murray the Demonic Talking Skull is a legend."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/730820/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Escape from Monkey Island"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 2000
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "LucasArts"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "3D"
+          },
+          {
+            "name": "Comedy"
+          },
+          {
+            "name": "Pirates"
+          },
+          {
+            "name": "Tank Controls"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "The jump to 3D and tank controls was jarring for many. Monkey Kombat is arguably the most frustrating puzzle in the entire series, but the humor is still there."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/730830/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Tales of Monkey Island"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 2009
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Telltale Games"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Episodic"
+          },
+          {
+            "name": "Comedy"
+          },
+          {
+            "name": "Pirates"
+          },
+          {
+            "name": "3D"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "Telltale's episodic approach breathed new life into the franchise after a long hiatus. The narrative arc across the five chapters is surprisingly emotional."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/31170/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Indiana Jones and the Fate of Atlantis"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 1992
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "LucasArts"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "SCUMM"
+          },
+          {
+            "name": "Action-Adventure"
+          },
+          {
+            "name": "Mythology"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "Often considered the true fourth Indiana Jones movie. The three distinct paths (Wits, Fists, Team) offered unprecedented replayability for the genre."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/6010/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Day of the Tentacle"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Completed"
+        }
+      },
+      "Release Year": {
+        "number": 1993
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "LucasArts"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "SCUMM"
+          },
+          {
+            "name": "Time Travel"
+          },
+          {
+            "name": "Comedy"
+          },
+          {
+            "name": "Moon Logic Puzzles"
+          }
+        ]
+      },
+      "Rating": {
+        "number": 4
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "A masterpiece of interlocking chronological puzzles. Putting a hamster in a microwave is a crime I'll carry with me to the grave."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/388210/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Gabriel Knight: Sins of the Fathers"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Playing"
+        }
+      },
+      "Release Year": {
+        "number": 1993
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Sierra"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Mystery"
+          },
+          {
+            "name": "Supernatural"
+          },
+          {
+            "name": "Text-Heavy"
+          },
+          {
+            "name": "Mature"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "The shadows of New Orleans hide dark secrets. Tim Curry's drawl as Gabriel brings a gritty, noir-infused reality to this Voodoo murder mystery."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/262000/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Beneath a Steel Sky"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Completed"
+        }
+      },
+      "Release Year": {
+        "number": 1994
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Revolution Software"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Cyberpunk"
+          },
+          {
+            "name": "Dystopian"
+          },
+          {
+            "name": "Sci-Fi"
+          },
+          {
+            "name": "Comic Book Style"
+          }
+        ]
+      },
+      "Rating": {
+        "number": 5
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "Dave Gibbons' art direction creates a suffocating yet beautiful dystopian metropolis. Foster and Joey's banter is the beating heart of Union City."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1368340/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Full Throttle"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 1995
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "LucasArts"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "SCUMM"
+          },
+          {
+            "name": "Biker"
+          },
+          {
+            "name": "Action-Adventure"
+          },
+          {
+            "name": "Cinematic"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "Whenever I smell asphalt, I think of Maureen. That's the last sensation I had before I blacked out; that thick smell of asphalt."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/228360/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "The Dig"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 1995
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "LucasArts"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "SCUMM"
+          },
+          {
+            "name": "Sci-Fi"
+          },
+          {
+            "name": "Serious"
+          },
+          {
+            "name": "Cinematic"
+          },
+          {
+            "name": "Alien"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "A sobering, Spielberg-penned exploration of alien desolation. The puzzles are brutal, but the sweeping orchestral score and sheer isolation are unmatched."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/6040/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Grim Fandango"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Completed"
+        }
+      },
+      "Release Year": {
+        "number": 1998
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "LucasArts"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "3D"
+          },
+          {
+            "name": "Noir"
+          },
+          {
+            "name": "Comedy"
+          },
+          {
+            "name": "Afterlife"
+          },
+          {
+            "name": "Tank Controls"
+          }
+        ]
+      },
+      "Rating": {
+        "number": 5
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "Manny Calavera is iconic. A brilliant fusion of Aztec mythology and film noir. The tank controls are painful, but the writing is unparalleled."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/316790/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "The Longest Journey"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 1999
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Funcom"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Fantasy"
+          },
+          {
+            "name": "Sci-Fi"
+          },
+          {
+            "name": "Text-Heavy"
+          },
+          {
+            "name": "Epic"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "April Ryan's dimension-hopping odyssey between Stark and Arcadia. A dense, sprawling narrative that redefined the scale of adventure games."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/6310/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Syberia"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 2002
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Microïds"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Steampunk"
+          },
+          {
+            "name": "Automata"
+          },
+          {
+            "name": "Atmospheric"
+          },
+          {
+            "name": "Linear"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "Kate Walker's journey across a frozen, clockwork Europe. The atmosphere is melancholic and beautiful, driven by a deep sense of wanderlust."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/46500/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Gemini Rue"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Playing"
+        }
+      },
+      "Release Year": {
+        "number": 2011
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Wadjet Eye"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Cyberpunk"
+          },
+          {
+            "name": "Noir"
+          },
+          {
+            "name": "Retro"
+          },
+          {
+            "name": "Pixel Art"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "Rain-slicked streets and memory wipes. It perfectly captures the spirit of 90s cyberpunk adventures while delivering a gripping, dual-perspective narrative."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/80310/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Kentucky Route Zero"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Completed"
+        }
+      },
+      "Release Year": {
+        "number": 2013
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Cardboard Computer"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Magical Realism"
+          },
+          {
+            "name": "Narrative"
+          },
+          {
+            "name": "Surreal"
+          },
+          {
+            "name": "Text-Heavy"
+          },
+          {
+            "name": "Americana"
+          }
+        ]
+      },
+      "Rating": {
+        "number": 5
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "More of a play than a game. A hauntingly beautiful, surreal drive through a forgotten America that lingers in the mind long after."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/231200/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Thimbleweed Park"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Completed"
+        }
+      },
+      "Release Year": {
+        "number": 2017
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Terrible Toybox"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "SCUMM-like"
+          },
+          {
+            "name": "Mystery"
+          },
+          {
+            "name": "Retro"
+          },
+          {
+            "name": "Meta"
+          },
+          {
+            "name": "Comedy"
+          }
+        ]
+      },
+      "Rating": {
+        "number": 4
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "A loving homage to the golden age. The murder mystery serves as a perfect vehicle for relentless meta-humor and classic verb-coin puzzles."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/569860/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "What Remains of Edith Finch"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Completed"
+        }
+      },
+      "Release Year": {
+        "number": 2017
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Giant Sparrow"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Walking Simulator"
+          },
+          {
+            "name": "Narrative"
+          },
+          {
+            "name": "Tragedy"
+          },
+          {
+            "name": "Magical Realism"
+          }
+        ]
+      },
+      "Rating": {
+        "number": 5
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "The cannery sequence is a masterclass in interactive storytelling. A tragic, beautiful meditation on family curses and the inevitability of death."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/501300/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Unavowed"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 2018
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Wadjet Eye"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Supernatural"
+          },
+          {
+            "name": "Urban Fantasy"
+          },
+          {
+            "name": "Pixel Art"
+          },
+          {
+            "name": "Party Based"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "Blending point-and-click mechanics with RPG party dynamics. A dark, gripping journey through a demon-infested New York City."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/336140/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Disco Elysium"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Playing"
+        }
+      },
+      "Release Year": {
+        "number": 2019
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "ZA/UM"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "RPG"
+          },
+          {
+            "name": "Text-Heavy"
+          },
+          {
+            "name": "Existential"
+          },
+          {
+            "name": "Politics"
+          },
+          {
+            "name": "Surreal"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "I am a superstar cop. A staggering achievement in writing, where your own fragmented psyche is both your greatest asset and worst enemy."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/632470/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Norco"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 2022
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Geography of Robots"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Southern Gothic"
+          },
+          {
+            "name": "Cyberpunk"
+          },
+          {
+            "name": "Pixel Art"
+          },
+          {
+            "name": "Surreal"
+          },
+          {
+            "name": "Text-Heavy"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "A surreal, grounded exploration of a sinking Louisiana town. It weaves industrial decay and strange mysticism into something truly unique."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1221250/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Return to Monkey Island"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Completed"
+        }
+      },
+      "Release Year": {
+        "number": 2022
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Terrible Toybox"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Comedy"
+          },
+          {
+            "name": "Pirates"
+          },
+          {
+            "name": "Nostalgia"
+          },
+          {
+            "name": "Puzzle-Heavy"
+          }
+        ]
+      },
+      "Rating": {
+        "number": 4
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "A nice return to form. It manages to balance profound nostalgia with a touching, bittersweet reflection on the nature of revisiting the past."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2060130/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "The Case of the Golden Idol"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 2022
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Color Gray Games"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Mystery"
+          },
+          {
+            "name": "Detective"
+          },
+          {
+            "name": "Moon Logic Puzzles"
+          },
+          {
+            "name": "Pixel Art"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "A brilliant deductive reasoning game. Piecing together the morbid tableaus requires true detective work, not just exhausting dialogue trees."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1677770/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Loom"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Completed"
+        }
+      },
+      "Release Year": {
+        "number": 1990
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "LucasArts"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "SCUMM"
+          },
+          {
+            "name": "Fantasy"
+          },
+          {
+            "name": "Puzzle-Heavy"
+          },
+          {
+            "name": "Atmospheric"
+          }
+        ]
+      },
+      "Rating": {
+        "number": 4
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "A beautiful, musical departure from the standard SCUMM formula. Weaving drafts instead of combining inventory items felt revolutionary."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/32340/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Indiana Jones and the Last Crusade"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 1989
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "LucasArts"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "SCUMM"
+          },
+          {
+            "name": "Action-Adventure"
+          },
+          {
+            "name": "Movie Tie-in"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "One of the best movie tie-ins ever made, pioneering the dialogue tree and introducing the IQ (Indy Quotient) point system."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://upload.wikimedia.org/wikipedia/en/0/07/Indiana_Jones_and_the_Last_Crusade_-_The_Graphic_Adventure_Coverart.png"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "The Silent Age"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 2012
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "House on Fire"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Time Travel"
+          },
+          {
+            "name": "Sci-Fi"
+          },
+          {
+            "name": "Puzzle-Heavy"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "A slick, minimalist point-and-click where time travel is the primary puzzle-solving mechanic. Brilliant atmosphere."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/352520/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Broken Age"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 2014
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Double Fine"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Sci-Fi"
+          },
+          {
+            "name": "Fantasy"
+          },
+          {
+            "name": "Comedy"
+          },
+          {
+            "name": "Coming of Age"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "Gorgeous hand-painted art and a brilliant dual-narrative structure, even if the second act gets bogged down in backtracking."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/232790/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Technobabylon"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 2015
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Wadjet Eye Games"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Point & Click"
+          },
+          {
+            "name": "Sci-Fi"
+          },
+          {
+            "name": "Cyberpunk"
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/307580/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Old Skies"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 2024
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Wadjet Eye Games"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Point & Click"
+          },
+          {
+            "name": "Sci-Fi"
+          },
+          {
+            "name": "Cyberpunk"
+          },
+          {
+            "name": "Time Travel"
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1346360/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "STASIS"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 2015
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "THE BROTHERHOOD"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Point & Click"
+          },
+          {
+            "name": "Sci-Fi"
+          },
+          {
+            "name": "Horror"
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/380150/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "STASIS: BONE TOTEM"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 2023
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "THE BROTHERHOOD"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Point & Click"
+          },
+          {
+            "name": "Sci-Fi"
+          },
+          {
+            "name": "Horror"
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1426010/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Beautiful Desolation"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 2020
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "THE BROTHERHOOD"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Point & Click"
+          },
+          {
+            "name": "Sci-Fi"
+          },
+          {
+            "name": "Post-Apocalyptic"
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/912570/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Sanitarium"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 1998
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "DreamForge Intertainment"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Point & Click"
+          },
+          {
+            "name": "Horror"
+          },
+          {
+            "name": "Psychological"
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/284050/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "I Have No Mouth, and I Must Scream"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 1995
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Cyberdreams"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "Point & Click"
+          },
+          {
+            "name": "Sci-Fi"
+          },
+          {
+            "name": "Horror"
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/245390/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Zak McKracken and the Alien Mindbenders"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Backlog"
+        }
+      },
+      "Release Year": {
+        "number": 1988
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Lucasfilm Games"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "SCUMM"
+          },
+          {
+            "name": "Comedy"
+          },
+          {
+            "name": "Sci-Fi"
+          },
+          {
+            "name": "Classic"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "A bizarre globetrotting adventure to stop aliens from reducing humanity's intelligence via the phone company."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/559070/header.jpg"
+      }
+    }
+  },
+  {
+    "parent": {
+      "type": "database_id",
+      "database_id": "3a3d3e6d-60db-81b2-a8d9-ca78e8100ef8"
+    },
+    "properties": {
+      "Title": {
+        "title": [
+          {
+            "text": {
+              "content": "Esoteric Ebb"
+            }
+          }
+        ]
+      },
+      "Status": {
+        "select": {
+          "name": "Playing"
+        }
+      },
+      "Release Year": {
+        "number": 2024
+      },
+      "Developer/Studio": {
+        "select": {
+          "name": "Christoffer Bodegård"
+        }
+      },
+      "Tags": {
+        "multi_select": [
+          {
+            "name": "RPG"
+          },
+          {
+            "name": "Text-Heavy"
+          },
+          {
+            "name": "Existential"
+          },
+          {
+            "name": "Politics"
+          }
+        ]
+      },
+      "Journal/Notes": {
+        "rich_text": [
+          {
+            "text": {
+              "content": "A CRPG where you play as a cleric in a city on the brink of an election."
+            }
+          }
+        ]
+      }
+    },
+    "cover": {
+      "type": "external",
+      "external": {
+        "url": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2057760/header.jpg"
+      }
+    }
+  }
+]
