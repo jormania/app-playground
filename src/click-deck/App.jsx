@@ -6,6 +6,7 @@ import { StatsView } from './components/StatsView'
 import { OnboardingWizard } from './components/OnboardingWizard'
 import { GameEditorModal } from './components/GameEditorModal'
 import { SettingsModal } from './components/SettingsModal'
+import { DiscountModal } from './components/DiscountModal'
 
 export function App() {
   const [isInitialized, setIsInitialized] = useState(McpConnector.isInitialized())
@@ -13,6 +14,7 @@ export function App() {
   const [view, setView] = useState('timeline') // 'timeline', 'analytics'
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isDiscountOpen, setIsDiscountOpen] = useState(false)
   const [editingGame, setEditingGame] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   
@@ -49,6 +51,7 @@ export function App() {
         setIsEditorOpen(false)
         setIsSettingsOpen(false)
         setIsSortMenuOpen(false)
+        setIsDiscountOpen(false)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -157,6 +160,10 @@ export function App() {
     return result
   }, [games, searchQuery, activeTags, sortBy, statusFilter])
 
+  const discountedGames = useMemo(() => {
+    return games.filter(g => g.status === 'Backlog' && g.discountPercent > 0)
+  }, [games])
+
   return (
     <div className="cd-app-container">
       <header className="cd-header">
@@ -247,6 +254,16 @@ export function App() {
         )}
       </header>
 
+      {discountedGames.length > 0 && view === 'timeline' && (
+        <div className="cd-discount-banner" onClick={() => setIsDiscountOpen(true)}>
+          <span className="cd-banner-icon">🔥</span>
+          <span className="cd-banner-text">
+            {discountedGames.length} {discountedGames.length === 1 ? 'GAME' : 'GAMES'} ON SALE!
+          </span>
+          <span className="cd-banner-cta">[VIEW DISCOUNTS]</span>
+        </div>
+      )}
+
       <main className="cd-main">
         {!isInitialized ? (
           <OnboardingWizard onComplete={handleOnboardingComplete} />
@@ -298,6 +315,13 @@ export function App() {
         <SettingsModal 
           onClose={() => setIsSettingsOpen(false)} 
           onResetDb={() => { setIsSettingsOpen(false); resetDb(); }}
+        />
+      )}
+
+      {isDiscountOpen && (
+        <DiscountModal 
+          games={discountedGames} 
+          onClose={() => setIsDiscountOpen(false)} 
         />
       )}
 
@@ -519,6 +543,47 @@ export function App() {
         @keyframes slideIn {
           from { transform: translateX(100%); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .cd-discount-banner {
+          background: linear-gradient(90deg, rgba(76, 107, 34, 0.8), rgba(0, 0, 0, 0.6));
+          border: 1px solid #a4d007;
+          border-radius: 4px;
+          padding: 0.5rem 1rem;
+          margin-bottom: 1.5rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          animation: pulseBanner 2s infinite alternate;
+        }
+        .cd-discount-banner:hover {
+          background: linear-gradient(90deg, rgba(76, 107, 34, 1), rgba(0, 0, 0, 0.8));
+          box-shadow: 0 0 15px rgba(164, 208, 7, 0.3);
+          transform: translateY(-2px);
+        }
+        .cd-banner-icon {
+          font-size: 1.2rem;
+        }
+        .cd-banner-text {
+          font-family: var(--cd-font-terminal);
+          color: #a4d007;
+          font-weight: bold;
+          font-size: 1rem;
+          letter-spacing: 1px;
+          flex: 1;
+        }
+        .cd-banner-cta {
+          font-family: var(--cd-font-terminal);
+          color: #a4d007;
+          font-size: 0.8rem;
+          border-bottom: 1px dashed #a4d007;
+        }
+        
+        @keyframes pulseBanner {
+          0% { box-shadow: 0 0 5px rgba(164, 208, 7, 0.1); }
+          100% { box-shadow: 0 0 15px rgba(164, 208, 7, 0.4); }
         }
       `}</style>
     </div>

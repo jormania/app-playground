@@ -32,6 +32,8 @@ const mapPageToGame = (page) => ({
   createdTime: page.created_time || new Date().toISOString(),
   coverUrl: page.cover?.external?.url || page.cover?.file?.url || '',
   price: page.properties['Current Price']?.number !== undefined ? page.properties['Current Price']?.number : null,
+  discountPercent: page.properties['Discount Percent']?.number || 0,
+  initialPrice: page.properties['Initial Price']?.number || null,
   appId: page.properties['Steam App ID']?.number || null
 })
 
@@ -54,6 +56,12 @@ const mapGameToProperties = (game) => {
   
   if (game.price !== undefined && game.price !== null) props['Current Price'] = { number: parseFloat(game.price) }
   else props['Current Price'] = { number: null }
+
+  if (game.discountPercent !== undefined && game.discountPercent !== null) props['Discount Percent'] = { number: parseFloat(game.discountPercent) }
+  else props['Discount Percent'] = { number: null }
+
+  if (game.initialPrice !== undefined && game.initialPrice !== null) props['Initial Price'] = { number: parseFloat(game.initialPrice) }
+  else props['Initial Price'] = { number: null }
 
   if (game.appId !== undefined && game.appId !== null) props['Steam App ID'] = { number: parseInt(game.appId) }
   else props['Steam App ID'] = { number: null }
@@ -129,6 +137,8 @@ export const McpConnector = {
       const payload = {
         properties: {
           'Current Price': { number: { format: 'dollar' } },
+          'Discount Percent': { number: { format: 'percent' } },
+          'Initial Price': { number: { format: 'dollar' } },
           'Steam App ID': { number: { format: 'number' } },
           'Price Updated At': { date: {} }
         }
@@ -165,7 +175,13 @@ export const McpConnector = {
       }
     } else {
       await new Promise(res => setTimeout(res, 300))
-      return getLocalDb() || []
+      let db = getLocalDb() || []
+      if (db.length > 0) {
+        db[0].discountPercent = 0.85
+        db[0].initialPrice = 19.99
+        db[0].price = 2.99
+      }
+      return db
     }
   },
 

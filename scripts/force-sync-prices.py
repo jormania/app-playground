@@ -50,10 +50,13 @@ def get_games_with_app_ids():
             break
     return games
 
-def update_game_price(page_id, new_price):
+def update_game_price(page_id, new_price, discount=0, initial=None):
+    if initial is None: initial = new_price
     payload = {
         "properties": {
-            "Current Price": { "number": new_price }
+            "Current Price": { "number": new_price },
+            "Discount Percent": { "number": discount / 100.0 },
+            "Initial Price": { "number": initial }
         }
     }
     req = urllib.request.Request(
@@ -81,11 +84,18 @@ def main():
         app_id_val = page["properties"]["Steam App ID"]["number"]
         app_id = int(app_id_val) if app_id_val is not None else 0
         current_price = page["properties"].get("Current Price", {}).get("number")
+        current_discount = page["properties"].get("Discount Percent", {}).get("number")
+        if current_discount is not None: current_discount = int(current_discount * 100)
+        else: current_discount = 0
+        current_initial = page["properties"].get("Initial Price", {}).get("number")
+        
         if app_id > 0:
             games_to_update.append({
                 "page_id": page["id"],
                 "app_id": app_id,
-                "current_price": current_price
+                "current_price": current_price,
+                "current_discount": current_discount,
+                "current_initial": current_initial
             })
 
     if not games_to_update:
@@ -116,12 +126,20 @@ def main():
                             data_obj = app_data.get("data")
                             if app_data.get("success") and isinstance(data_obj, dict) and data_obj.get("price_overview"):
                                 new_price = data_obj["price_overview"]["final"] / 100.0
-                                if new_price != game["current_price"]:
-                                    results.append({"page_id": game["page_id"], "new_price": new_price})
+                                discount = data_obj["price_overview"].get("discount_percent", 0)
+                                initial = data_obj["price_overview"].get("initial", data_obj["price_overview"]["final"]) / 100.0
+                                
+                                if new_price != game["current_price"] or discount != game["current_discount"] or initial != game["current_initial"]:
+                                    results.append({
+                                        "page_id": game["page_id"], 
+                                        "new_price": new_price,
+                                        "discount": discount,
+                                        "initial": initial
+                                    })
                             elif app_data.get("success"):
                                 # Free or unavailable
-                                if game["current_price"] != 0.0:
-                                    results.append({"page_id": game["page_id"], "new_price": 0.0})
+                                if game["current_price"] != 0.0 or game["current_discount"] != 0:
+                                    results.append({"page_id": game["page_id"], "new_price": 0.0, "discount": 0, "initial": 0.0})
                             else:
                                 print(f"Skipping app_id {app_id_str}: success is False (delisted or region locked)")
                         else:
@@ -139,9 +157,9 @@ def main():
     
     patched = 0
     for res in results:
-        update_game_price(res["page_id"], res["new_price"])
+        update_game_price(res["page_id"], res["new_price"], res.get("discount", 0), res.get("initial", res["new_price"]))
         patched += 1
-        print(f"Patched {patched}/{len(results)} (Price: {res['new_price']})")
+        print(f"Patched {patched}/{len(results)} (Price: {res['new_price']}, Discount: {res.get('discount', 0)}%)")
         time.sleep(0.3)
 
     print("✅ Finished updating prices!")
