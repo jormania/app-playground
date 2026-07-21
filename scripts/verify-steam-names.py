@@ -102,9 +102,10 @@ def main():
         print("No games found with Steam App IDs.")
         return
 
-    print(f"Verifying {len(games_to_verify)} games against Steam...\n")
+    print(f"Verifying {len(games_to_verify)} games against Steam (this will take about {len(games_to_verify)} seconds)...\n")
     
-    CHUNK_SIZE = 15
+    # Steam API only allows 1 appid per request unless using the price_overview filter!
+    CHUNK_SIZE = 1
     mismatches = []
 
     for i in range(0, len(games_to_verify), CHUNK_SIZE):
