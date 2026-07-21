@@ -40,8 +40,11 @@ export const APPS = [
       "Onboarding Wizard to rapidly seed the timeline with genre classics",
       "Timeline View mapping your history by Release Year",
       "Game Editor to manually add, edit, or rate your collection",
-      "Analytics View with a dynamic Tag Word Cloud and detailed breakdowns",
-      "Live Notion backend syncs via MCP proxy proxy",
+      "Analytics View with a dynamic Tag Word Cloud, advanced filters, and HTML export",
+      "Stats Screen with multi-dimensional tracking and financial breakdown",
+      "Live Notion backend syncs via MCP proxy",
+      "Automated Vercel cron job for nightly real-time Steam price syncing",
+      "Maintenance Python scripts (force-sync, verify-names) for easy administration",
       "PWA support to install on mobile or desktop and use offline"
     ],
     guide: "click-deck-guide.html",
