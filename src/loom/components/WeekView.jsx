@@ -33,15 +33,24 @@ export default function WeekView({
   const [longPress, setLongPress] = useState(null)
   const lpTimer = useRef(null)
   const lpSkein = useRef(null)
+  const warpRef = useRef(null)
   const todayRef = useRef(null)
 
   // Snap the horizontally-scrolling Warp to today's column on open — both on
   // first mount and whenever the current week comes back into view (prev/next
   // navigation, or the "back to this warp" label). On any other week there's no
-  // today column to find, so this is a no-op. Desktop's 7-track row layout
-  // doesn't scroll-snap, but scrollIntoView is harmless there too.
+  // today column to find, so this is a no-op. Nudges ONLY the Warp strip's own
+  // horizontal scroll (via getBoundingClientRect, not scrollIntoView) — a day
+  // column is often taller than the viewport, and scrollIntoView's vertical
+  // "nearest" alignment was also dragging the whole PAGE down to bring the
+  // column's bottom into view, shoving the header off-screen. Desktop's
+  // 7-track row layout doesn't scroll-snap, but this is harmless there too.
   useEffect(() => {
-    if (isThisWeek) todayRef.current?.scrollIntoView({ inline: 'start', block: 'nearest' })
+    if (isThisWeek && warpRef.current && todayRef.current) {
+      const warpRect = warpRef.current.getBoundingClientRect()
+      const todayRect = todayRef.current.getBoundingClientRect()
+      warpRef.current.scrollLeft += todayRect.left - warpRect.left
+    }
   }, [weekStartKey, isThisWeek])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -211,7 +220,7 @@ export default function WeekView({
           </div>
         )}
 
-        <div className={styles.warp}>
+        <div className={styles.warp} ref={warpRef}>
           {columns.map(col => {
             // Split rhythm threads (from any rhythm skein) off the RAW day list
             // first, then apply the show/fold view to each half separately. Doing
