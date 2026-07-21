@@ -266,8 +266,16 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
         </div>
         {deepFilteredGames.length === 0 && <p className="cd-text-muted">NO DATA FOUND MATCHING CURRENT PARAMETERS.</p>}
         <div className="cd-gallery-grid">
-          {deepFilteredGames.map(g => (
-            <div key={g.id} className="cd-gallery-item" onClick={() => g.appId && window.open(`https://store.steampowered.com/app/${g.appId}`, '_blank')} style={{ cursor: g.appId ? 'pointer' : 'default' }}>
+          {deepFilteredGames.map(g => {
+            // A real <a> (rather than a div+onClick window.open()) so the link is a
+            // genuine browser navigation — never popup-blocked, and works the same in
+            // an installed PWA as in a regular tab. Plain div when there's no appId.
+            const GalleryTag = g.appId ? 'a' : 'div'
+            const linkProps = g.appId
+              ? { href: `https://store.steampowered.com/app/${g.appId}`, target: '_blank', rel: 'noopener noreferrer' }
+              : {}
+            return (
+            <GalleryTag key={g.id} className="cd-gallery-item" {...linkProps}>
               {g.coverUrl ? (
                 <img 
                   src={g.coverUrl} 
@@ -299,8 +307,9 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
                   )}
                 </div>
               </div>
-            </div>
-          ))}
+            </GalleryTag>
+            )
+          })}
         </div>
       </div>
 
@@ -435,11 +444,16 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
           margin-top: 1rem;
         }
         .cd-gallery-item {
+          display: block;
           position: relative;
           height: 100px;
           border: 1px solid var(--cd-border-accent);
           overflow: hidden;
           background: var(--cd-bg-dark);
+          cursor: default;
+        }
+        a.cd-gallery-item {
+          cursor: pointer;
         }
         .cd-gallery-item img {
           width: 100%;

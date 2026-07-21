@@ -193,7 +193,7 @@ export function App() {
       <header className="cd-header">
         <div className="cd-header-top">
           <div className="cd-header-title">
-            <img src="/click-deck-icon-192.png" alt="" className="cd-logo-icon" />
+            <img src="/click-deck-logo.svg" alt="" className="cd-logo-icon" />
             <h1>Click Deck</h1>
           </div>
           <nav className="cd-nav">
@@ -393,7 +393,6 @@ export function App() {
         .cd-logo-icon {
           width: 36px;
           height: 36px;
-          border-radius: 6px;
         }
         .cd-header h1 {
           margin: 0;

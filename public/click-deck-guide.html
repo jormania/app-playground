@@ -55,7 +55,7 @@
 
   <h2>What it is</h2>
   <p>Click Deck is a specialized catalog for tracking your adventure game backlog, what you're currently playing, and what you've finished. It utilizes a retro-futuristic, cyberpunk aesthetic and synchronizes live with your own Notion database via our MCP proxy.</p>
-  <p class="muted">Everything is stored in <b>your</b> Notion. The app works on any device and installs as a Progressive Web App (PWA).</p>
+  <p class="muted">Everything is stored in <b>your</b> Notion. The app works on any device, installs as a Progressive Web App (PWA), and its shell keeps working offline once installed.</p>
 
   <h2>1. Quick Setup (Onboarding Wizard)</h2>
   <p>Click Deck features an automated Onboarding Wizard that will help you set up your database automatically in seconds. Here's how to run it:</p>
@@ -69,17 +69,17 @@
 
   <h2>2. Populating Seed Data</h2>
   <p>Once your database is initialized, you can start adding games manually, or you can populate it with our curated list of classics.</p>
-  <p>In the <b>Settings (⚙)</b> menu, click the <b>Populate Seed Data</b> button. This will automatically inject legendary games like <i>Grim Fandango</i>, <i>The Secret of Monkey Island</i>, and <i>Disco Elysium</i> straight into your Notion database, complete with high-resolution box art covers.</p>
+  <p>In the <b>Settings (⚙)</b> menu, click the <b>Populate Seed Data</b> button. This will automatically inject a small curated set of genre classics — <i>Loom</i>, <i>The Curse of Monkey Island</i>, <i>Sanitarium</i>, <i>Blade Runner</i>, <i>Firewatch</i>, <i>Oxenfree</i> and more — straight into your Notion database, complete with high-resolution box art covers.</p>
 
   <h2>3. Usage & Features</h2>
   <ul>
-    <li><b>Timeline View:</b> Scroll through your games sorted chronologically by release year. The timeline features dynamic neon micro-animations as you scroll.</li>
-    <li><b>Analytics View:</b> Advanced multi-dimensional filtering, Tag Word Cloud, and HTML Export functionality to slice and dice your collection.</li>
+    <li><b>Timeline View:</b> Scroll through your games sorted chronologically by release year. The timeline features dynamic neon micro-animations as you scroll, and a dismissible banner surfaces anything currently on sale.</li>
+    <li><b>Analytics View:</b> Advanced multi-dimensional filtering (price, rating, era, and tag-count for spotting under- or over-tagged entries), a Tag Word Cloud, and HTML or JSON export to slice, dice, and back up your collection.</li>
     <li><b>Stats Screen:</b> Deep dive into completion rates, top developer studios, and a financial breakdown of your collection's value.</li>
-    <li><b>Steam Pricing:</b> A nightly automated cron job securely fetches real-time prices for your entire library based on the Steam App ID.</li>
+    <li><b>Steam Pricing:</b> A nightly automated cron job securely fetches real-time prices and discounts for your entire library based on the Steam App ID — and a toast lets you know if anything dropped in price since your last visit.</li>
     <li><b>Administration Scripts:</b> You can find maintenance scripts in the <code>scripts/</code> directory to manually force-sync prices or verify any incorrectly tagged Steam App IDs.</li>
-    <li><b>Random Game:</b> Can't decide what to play? Click the <code>[R]ANDOM</code> button to pull a random game from your Backlog!</li>
-    <li><b>Themes:</b> Switch between three distinct aesthetics in the Settings menu (Union City, Voodoo, and Noir) to match your current vibe.</li>
+    <li><b>Random Game:</b> Can't decide what to play? Click the <code>[R]ANDOM</code> button to pull a game from your Backlog — optionally weighted in Settings toward your oldest or cheapest unplayed entries.</li>
+    <li><b>Themes:</b> Switch between six distinct aesthetics in the Settings menu — Union City (Cyan/Amber), Voodoo (Toxic/Purple), Noir (Grayscale/Gold), Sierra Nights (Indigo/Gold), Amber Terminal (classic DOS CRT), and CGA (Cyan/Magenta) — to match your current vibe.</li>
   </ul>
 
   <div style="text-align: center;">

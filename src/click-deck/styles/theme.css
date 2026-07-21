@@ -54,6 +54,51 @@
   --cd-border-color: #404040;
 }
 
+/* Sierra Nights — the dusky indigo skies and warm gold parser text of Sierra
+   On-Line's King's Quest / Space Quest VGA era. */
+[data-theme="sierra"] {
+  --cd-bg-dark: #14122b;
+  --cd-bg-panel: #1d1a3d;
+  --cd-bg-steel: #29244f;
+  --cd-accent-cyan: #e0b04f; /* Parser Gold */
+  --cd-accent-cyan-glow: rgba(224, 176, 79, 0.3);
+  --cd-accent-cyan-dim: rgba(224, 176, 79, 0.1);
+  --cd-accent-amber: #c76b8a; /* Dusk Rose */
+  --cd-accent-amber-glow: rgba(199, 107, 138, 0.3);
+  --cd-text-primary: #ece6f5;
+  --cd-border-color: #3a3363;
+}
+
+/* Amber Terminal — classic monochrome DOS/BBS CRT: warm amber phosphor on
+   near-black, the same register as this app's own ">" terminal chrome. */
+[data-theme="amber-terminal"] {
+  --cd-bg-dark: #0d0805;
+  --cd-bg-panel: #170f08;
+  --cd-bg-steel: #221709;
+  --cd-accent-cyan: #ffb000; /* Amber Phosphor */
+  --cd-accent-cyan-glow: rgba(255, 176, 0, 0.3);
+  --cd-accent-cyan-dim: rgba(255, 176, 0, 0.1);
+  --cd-accent-amber: #ff6b00; /* Burnt Orange */
+  --cd-accent-amber-glow: rgba(255, 107, 0, 0.3);
+  --cd-text-primary: #ffe0b3;
+  --cd-border-color: #3d2a10;
+}
+
+/* CGA — early-90s DOS composite CGA's iconic cyan/magenta 4-colour palette,
+   before VGA became the standard. */
+[data-theme="cga"] {
+  --cd-bg-dark: #0a0a1a;
+  --cd-bg-panel: #14142a;
+  --cd-bg-steel: #1e1e3a;
+  --cd-accent-cyan: #55ffff; /* CGA Cyan */
+  --cd-accent-cyan-glow: rgba(85, 255, 255, 0.3);
+  --cd-accent-cyan-dim: rgba(85, 255, 255, 0.1);
+  --cd-accent-amber: #ff55ff; /* CGA Magenta */
+  --cd-accent-amber-glow: rgba(255, 85, 255, 0.3);
+  --cd-text-primary: #ffffff;
+  --cd-border-color: #2a2a4a;
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -326,11 +371,20 @@ input:focus, select:focus, textarea:focus {
 }
 
 .cd-random-cover-wrapper {
+  display: block;
   position: relative;
-  width: 200px;
-  height: 300px;
+  width: 100%;
+  max-width: 320px;
+  /* Steam store header.jpg proportions (460x215) — covers are landscape, not
+     portrait box art, so the box must match or object-fit: cover crops most
+     of the image away. */
+  aspect-ratio: 460 / 215;
   margin: 0 auto 1.5rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+a.cd-random-cover-wrapper {
+  cursor: pointer;
 }
 
 .cd-random-cover {
@@ -450,8 +504,7 @@ input:focus, select:focus, textarea:focus {
   }
   
   .cd-random-cover-wrapper {
-    width: 150px;
-    height: 225px;
+    max-width: 260px;
   }
   .cd-random-title {
     font-size: 1.4rem;

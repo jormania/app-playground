@@ -126,4 +126,22 @@ describe('AnalyticsView', () => {
       global.URL.revokeObjectURL = originalRevoke
     })
   })
+
+  describe('gallery cover links', () => {
+    it('renders the gallery item as a real link to Steam when an appId is present', () => {
+      const withAppId = [{ id: '1', title: 'Monkey Island', year: 1990, status: 'Completed', tags: [], appId: 730820 }]
+      render(<AnalyticsView filteredGames={withAppId} activeTags={[]} setActiveTags={() => {}} />)
+      const link = document.querySelector('a.cd-gallery-item')
+      expect(link).toBeTruthy()
+      expect(link.getAttribute('href')).toBe('https://store.steampowered.com/app/730820')
+      expect(link.getAttribute('target')).toBe('_blank')
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer')
+    })
+
+    it('renders the gallery item as a plain non-link element when there is no appId', () => {
+      render(<AnalyticsView filteredGames={mockGames} activeTags={[]} setActiveTags={() => {}} />)
+      expect(document.querySelector('a.cd-gallery-item')).toBeNull()
+      expect(document.querySelectorAll('div.cd-gallery-item').length).toBe(mockGames.length)
+    })
+  })
 })

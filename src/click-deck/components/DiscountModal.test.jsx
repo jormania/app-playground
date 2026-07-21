@@ -47,4 +47,14 @@ describe('DiscountModal', () => {
     fireEvent.click(container.querySelector('.cd-modal-overlay'))
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('renders a card as a real Steam link when an appId is present, and a plain element otherwise', () => {
+    render(<DiscountModal games={mockGames} onClose={() => {}} />)
+    const links = document.querySelectorAll('a.cd-discount-card')
+    expect(links.length).toBe(1)
+    expect(links[0].getAttribute('href')).toBe('https://store.steampowered.com/app/252710')
+    expect(links[0].getAttribute('target')).toBe('_blank')
+    expect(links[0].getAttribute('rel')).toBe('noopener noreferrer')
+    expect(document.querySelectorAll('div.cd-discount-card').length).toBe(1)
+  })
 })

@@ -64,18 +64,30 @@ export function RandomGameModal({ backlogGames, onClose, onUpdateStatus }) {
         <div className="cd-random-content">
           {selectedGame ? (
             <div className={`cd-random-game ${isRolling ? 'rolling' : 'settled'}`}>
-              <div className="cd-random-cover-wrapper">
-                {selectedGame.coverUrl ? (
-                  <img 
-                    src={selectedGame.coverUrl} 
-                    alt={selectedGame.title} 
-                    className="cd-random-cover"
-                  />
-                ) : (
-                  <div className="cd-random-cover fallback-cover"></div>
-                )}
-                {selectedGame.isDiscounted && <div className="cd-sale-badge">SALE</div>}
-              </div>
+              {(() => {
+                // A real <a> (rather than a div+onClick window.open()) so the link is a
+                // genuine browser navigation — never popup-blocked, and works the same in
+                // an installed PWA as in a regular tab. Plain div when there's no appId,
+                // matching the timeline/analytics/discount covers.
+                const CoverTag = selectedGame.appId ? 'a' : 'div'
+                const linkProps = selectedGame.appId
+                  ? { href: `https://store.steampowered.com/app/${selectedGame.appId}`, target: '_blank', rel: 'noopener noreferrer' }
+                  : {}
+                return (
+                  <CoverTag className="cd-random-cover-wrapper" {...linkProps}>
+                    {selectedGame.coverUrl ? (
+                      <img
+                        src={selectedGame.coverUrl}
+                        alt={selectedGame.title}
+                        className="cd-random-cover"
+                      />
+                    ) : (
+                      <div className="cd-random-cover fallback-cover"></div>
+                    )}
+                    {selectedGame.isDiscounted && <div className="cd-sale-badge">SALE</div>}
+                  </CoverTag>
+                )
+              })()}
               
               <h3 className="cd-random-title">{selectedGame.title}</h3>
               <p className="cd-developer cd-random-dev">{selectedGame.developer} | {selectedGame.year}</p>

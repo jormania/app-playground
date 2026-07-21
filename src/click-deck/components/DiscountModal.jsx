@@ -10,8 +10,16 @@ export function DiscountModal({ games, onClose }) {
         <p className="cd-text-muted" style={{ margin: '0 0 0.5rem 0' }}>The following items from your backlog are currently on sale.</p>
 
         <div className="cd-discount-grid">
-          {games.map(g => (
-            <div key={g.id} className="cd-discount-card" style={{ cursor: 'pointer' }} onClick={() => g.appId && window.open(`https://store.steampowered.com/app/${g.appId}`, '_blank')}>
+          {games.map(g => {
+            // A real <a> (rather than a div+onClick window.open()) so the link is a
+            // genuine browser navigation — never popup-blocked, and works the same in
+            // an installed PWA as in a regular tab. Plain div when there's no appId.
+            const CardTag = g.appId ? 'a' : 'div'
+            const linkProps = g.appId
+              ? { href: `https://store.steampowered.com/app/${g.appId}`, target: '_blank', rel: 'noopener noreferrer' }
+              : {}
+            return (
+            <CardTag key={g.id} className="cd-discount-card" {...linkProps}>
               <div className="cd-discount-cover">
                 {g.coverUrl ? (
                   <img src={g.coverUrl} alt={g.title} onError={(e) => {
@@ -38,8 +46,9 @@ export function DiscountModal({ games, onClose }) {
                   </span>
                 </div>
               </div>
-            </div>
-          ))}
+            </CardTag>
+            )
+          })}
         </div>
       </div>
 
@@ -82,6 +91,10 @@ export function DiscountModal({ games, onClose }) {
           display: flex;
           flex-direction: column;
           transition: all 0.2s ease;
+          cursor: default;
+        }
+        a.cd-discount-card {
+          cursor: pointer;
         }
         .cd-discount-card:hover {
           border-color: var(--cd-accent-cyan);

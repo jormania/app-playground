@@ -60,4 +60,28 @@ describe('RandomGameModal', () => {
     render(<RandomGameModal backlogGames={backlogGames} onClose={() => {}} onUpdateStatus={() => {}} />)
     expect(screen.getByText('FAVORING OLDEST BACKLOG')).toBeTruthy()
   })
+
+  it('renders the settled cover as a real link to Steam when the game has an appId', async () => {
+    vi.useFakeTimers()
+    // A single-game pool makes the settled selection deterministic.
+    const onlyGame = [{ id: '1', title: 'Game One', developer: 'Dev A', year: 2001, tags: [], coverUrl: '', rating: null, appId: 32340 }]
+    render(<RandomGameModal backlogGames={onlyGame} onClose={() => {}} onUpdateStatus={() => {}} />)
+    await act(async () => { vi.advanceTimersByTime(1600) })
+
+    const link = document.querySelector('a.cd-random-cover-wrapper')
+    expect(link).toBeTruthy()
+    expect(link.getAttribute('href')).toBe('https://store.steampowered.com/app/32340')
+    expect(link.getAttribute('target')).toBe('_blank')
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer')
+  })
+
+  it('renders the settled cover as a plain non-link element when the game has no appId', async () => {
+    vi.useFakeTimers()
+    const onlyGame = [{ id: '1', title: 'Game One', developer: 'Dev A', year: 2001, tags: [], coverUrl: '', rating: null }]
+    render(<RandomGameModal backlogGames={onlyGame} onClose={() => {}} onUpdateStatus={() => {}} />)
+    await act(async () => { vi.advanceTimersByTime(1600) })
+
+    expect(document.querySelector('a.cd-random-cover-wrapper')).toBeNull()
+    expect(document.querySelector('div.cd-random-cover-wrapper')).toBeTruthy()
+  })
 })

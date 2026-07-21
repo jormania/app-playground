@@ -123,6 +123,9 @@ export function SettingsModal({ onClose, onSaveToken, onResetDb }) {
             <option value="union">Union City (Cyan/Amber)</option>
             <option value="voodoo">Voodoo (Toxic/Purple)</option>
             <option value="noir">Noir (Grayscale/Gold)</option>
+            <option value="sierra">Sierra Nights (Indigo/Gold)</option>
+            <option value="amber-terminal">Amber Terminal (DOS CRT)</option>
+            <option value="cga">CGA (Cyan/Magenta)</option>
           </select>
         </div>
 

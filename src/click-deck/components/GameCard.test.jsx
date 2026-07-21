@@ -67,4 +67,36 @@ describe('GameCard', () => {
     expect(new Set(colors).size).toBe(statuses.length)
     expect(colors[3]).toBe('var(--cd-status-abandoned)')
   })
+
+  it('renders the cover as a real link to the Steam store page when an appId is present', () => {
+    render(<GameCard game={{ ...mockGame, appId: 730820 }} onEdit={() => {}} onUpdateStatus={() => {}} />)
+    const link = document.querySelector('a.cd-game-cover')
+    expect(link).toBeTruthy()
+    expect(link.getAttribute('href')).toBe('https://store.steampowered.com/app/730820')
+    expect(link.getAttribute('target')).toBe('_blank')
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer')
+  })
+
+  it('renders the cover as a plain non-link element when there is no appId', () => {
+    render(<GameCard game={mockGame} onEdit={() => {}} onUpdateStatus={() => {}} />)
+    expect(document.querySelector('a.cd-game-cover')).toBeNull()
+    expect(document.querySelector('div.cd-game-cover')).toBeTruthy()
+  })
+
+  it('renders literal markdown emphasis inside a multi-segment rich-text journal as real formatting', () => {
+    const richGame = {
+      ...mockGame,
+      journalRich: [
+        { plain_text: 'A British comedy ', annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: 'default' } },
+        { plain_text: '**classic**', annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: 'orange' } },
+        { plain_text: ' worth playing.', annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: 'default' } }
+      ]
+    }
+    render(<GameCard game={richGame} onEdit={() => {}} onUpdateStatus={() => {}} />)
+    // The literal ** characters must not appear as visible text...
+    expect(screen.queryByText(/\*\*classic\*\*/)).toBeNull()
+    // ...and "classic" must render as actual bold emphasis instead.
+    const bolded = screen.getByText('classic')
+    expect(bolded.tagName).toBe('STRONG')
+  })
 })
