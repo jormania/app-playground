@@ -30,6 +30,13 @@ A high-level dashboard providing insights into your collection.
 - Features a **Dynamic Tag Word Cloud** that lets you visually filter your library by genre or theme (e.g., *SCUMM*, *Comedy*, *Sci-Fi*).
 - Displays detailed breakdowns of your completion status and ratings.
 
+### 3. Stats Screen
+A pure data-crunching dashboard designed specifically for adventure game collectors, denoted by the `[S]` icon.
+- Calculates your exact collection completion rate and mean average rating.
+- Plots your games on a timeline bar chart by decade.
+- Profiles your top and highest-rated Developer Studios.
+- Analyzes which tags and genres consistently earn the highest ratings.
+
 ## Game Editor
 
 Click Deck includes a dedicated **Game Editor Modal** for manual collection management.
