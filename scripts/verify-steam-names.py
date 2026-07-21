@@ -84,9 +84,9 @@ def main():
     for page in pages:
         app_id_val = page["properties"]["Steam App ID"]["number"]
         app_id = int(app_id_val) if app_id_val is not None else 0
-        # In Notion, title is in the "Name" property, which is a title array
+        # In Notion, title is in the "Title" property, which is a title array
         try:
-            title_arr = page["properties"]["Name"]["title"]
+            title_arr = page["properties"]["Title"]["title"]
             notion_name = "".join([t["plain_text"] for t in title_arr])
         except KeyError:
             notion_name = "Unknown"
