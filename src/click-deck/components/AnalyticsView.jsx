@@ -78,13 +78,13 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
         <h3>GLOBAL_TAG_MATRIX</h3>
         <div className="cd-cloud-container">
           {tagCounts.map(([tag, count]) => {
-            // Calculate a relative size class based on frequency
-            const sizeClass = count > 5 ? 'cd-tag-xl' : count > 2 ? 'cd-tag-lg' : count > 1 ? 'cd-tag-md' : 'cd-tag-sm'
             const isActive = activeTags.includes(tag)
+            const style = isActive ? {} : { opacity: count === 1 ? 0.7 : 1 }
             return (
               <span 
                 key={tag} 
-                className={`cd-cloud-tag ${sizeClass} ${isActive ? 'active' : ''}`}
+                className={`cd-cloud-tag ${isActive ? 'active' : ''}`}
+                style={style}
                 onClick={() => toggleTag(tag)}
               >
                 {tag} <span className="cd-tag-count">({count})</span>
@@ -136,35 +136,42 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
         .cd-cloud-container {
           display: flex;
           flex-wrap: wrap;
-          gap: 1rem;
-          align-items: baseline;
+          gap: 0.6rem;
           padding: 1rem;
           background: var(--cd-bg-dark);
           border: 1px inset var(--cd-border-color);
+          max-height: 250px;
+          overflow-y: auto;
         }
         .cd-cloud-tag {
           cursor: pointer;
-          font-family: var(--cd-font-sans);
+          font-family: var(--cd-font-terminal);
+          font-size: 0.9rem;
           transition: all 0.2s ease;
           color: var(--cd-text-muted);
+          background: rgba(0, 229, 255, 0.05);
+          border: 1px solid var(--cd-border-color);
+          padding: 0.3rem 0.6rem;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.3rem;
         }
         .cd-cloud-tag:hover {
           color: var(--cd-accent-cyan);
-          text-shadow: 0 0 5px var(--cd-accent-cyan-glow);
+          border-color: var(--cd-accent-cyan);
+          background: rgba(0, 229, 255, 0.1);
         }
         .cd-cloud-tag.active {
-          color: var(--cd-accent-amber);
-          text-shadow: 0 0 5px var(--cd-accent-amber-glow);
-          text-decoration: underline;
+          color: var(--cd-bg-panel);
+          background: var(--cd-accent-amber);
+          border-color: var(--cd-accent-amber);
+          text-shadow: none;
+          text-decoration: none;
         }
         .cd-tag-count {
-          font-size: 0.7em;
-          opacity: 0.7;
+          font-size: 0.8em;
+          opacity: 0.8;
         }
-        .cd-tag-xl { font-size: 1.6rem; font-weight: bold; }
-        .cd-tag-lg { font-size: 1.3rem; }
-        .cd-tag-md { font-size: 1rem; }
-        .cd-tag-sm { font-size: 0.8rem; }
         
         .cd-analytics-results {
           margin-top: 2rem;
@@ -264,6 +271,18 @@ export function AnalyticsView({ games, filteredGames, activeTags, setActiveTags,
         .cd-gallery-status {
           font-family: var(--cd-font-terminal);
           font-size: 0.8rem;
+        }
+        @media (max-width: 600px) {
+          .cd-results-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+          }
+          .cd-results-header .cd-btn-icon {
+            width: 100%;
+            text-align: center;
+            padding: 0.6rem;
+          }
         }
       `}</style>
     </div>
