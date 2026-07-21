@@ -90,10 +90,17 @@ def main():
             notion_name = "".join([t["plain_text"] for t in title_arr])
         except KeyError:
             notion_name = "Unknown"
+            
+        try:
+            dev_val = page["properties"]["Developer/Studio"]["select"]
+            notion_dev = dev_val["name"] if dev_val else ""
+        except KeyError:
+            notion_dev = ""
 
         if app_id > 0:
             games_to_verify.append({
                 "notion_name": notion_name,
+                "notion_dev": notion_dev,
                 "app_id": app_id,
                 "page_id": page["id"]
             })
@@ -112,7 +119,7 @@ def main():
         chunk = games_to_verify[i:i + CHUNK_SIZE]
         app_ids_str = ",".join([str(g["app_id"]) for g in chunk])
         
-        url = f"https://store.steampowered.com/api/appdetails?appids={app_ids_str}&cc=US&filters=basic"
+        url = f"https://store.steampowered.com/api/appdetails?appids={app_ids_str}&cc=US&filters=basic,developers"
         req = urllib.request.Request(url)
         try:
             with urllib.request.urlopen(req, context=ctx) as response:
@@ -127,12 +134,28 @@ def main():
                             data_obj = app_data.get("data", {})
                             if isinstance(data_obj, dict):
                                 steam_name = data_obj.get("name", "")
+                                steam_devs = data_obj.get("developers", [])
+                                steam_dev = steam_devs[0] if steam_devs else ""
+                                
+                                name_mismatch = False
+                                dev_mismatch = False
                                 
                                 if steam_name and not is_similar(game["notion_name"], steam_name):
+                                    name_mismatch = True
+                                
+                                # Only warn about dev mismatch if Notion actually has a developer
+                                if game["notion_dev"] and steam_dev and not is_similar(game["notion_dev"], steam_dev):
+                                    dev_mismatch = True
+                                    
+                                if name_mismatch or dev_mismatch:
                                     mismatches.append({
                                         "notion": game["notion_name"],
                                         "steam": steam_name,
-                                        "app_id": game["app_id"]
+                                        "app_id": game["app_id"],
+                                        "notion_dev": game["notion_dev"],
+                                        "steam_dev": steam_dev,
+                                        "name_mismatch": name_mismatch,
+                                        "dev_mismatch": dev_mismatch
                                     })
                         elif isinstance(app_data, dict) and not app_data.get("success"):
                             print(f"[!] App ID {game['app_id']} ({game['notion_name']}) returned success: false on Steam (Delisted?)")
@@ -145,9 +168,14 @@ def main():
     if mismatches:
         print(f"Found {len(mismatches)} potential mismatches:")
         for m in mismatches:
-            print(f"❌ Notion: '{m['notion']}'  -->  Steam: '{m['steam']}' (ID: {m['app_id']})")
+            reasons = []
+            if m["name_mismatch"]: reasons.append("NAME")
+            if m["dev_mismatch"]: reasons.append("DEVELOPER")
+            
+            reason_str = " & ".join(reasons)
+            print(f"❌ [{reason_str}] Notion: '{m['notion']}' ({m['notion_dev']})  -->  Steam: '{m['steam']}' ({m['steam_dev']}) (ID: {m['app_id']})")
     else:
-        print("All games seem to match reasonably well!")
+        print("All games and developers seem to match reasonably well!")
 
 if __name__ == "__main__":
     main()
