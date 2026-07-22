@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeSteamTitle, pickBestSteamMatch, findBestSteamMatch } from './steamMatch'
+import { normalizeSteamTitle, pickBestSteamMatch, findBestSteamMatch, findDuplicateInCollection } from './steamMatch'
 
 describe('normalizeSteamTitle', () => {
   it('strips remaster/edition/anniversary suffixes so classics match their re-releases', () => {
@@ -85,5 +85,47 @@ describe('findBestSteamMatch', () => {
   it('returns null match and confident: false for an empty result set', () => {
     expect(findBestSteamMatch([], 'Anything')).toEqual({ match: null, confident: false })
     expect(findBestSteamMatch(null, 'Anything')).toEqual({ match: null, confident: false })
+  })
+})
+
+describe('findDuplicateInCollection (the [W] two-tier dedupe check)', () => {
+  it('reports an exact match when the candidate\'s App ID is already in the collection — the hard-block case', () => {
+    const games = [{ title: 'Gibbous - A Cthulhu Adventure', appId: 12345 }]
+    const candidate = { title: 'Some Other Listing Name', appId: 12345 }
+    const result = findDuplicateInCollection(candidate, games)
+    expect(result).toEqual({ kind: 'exact', match: games[0] })
+  })
+
+  it('reports a possible match by title when the existing row has no App ID on file — the soft-block case (this is exactly Gibbous\'s real situation)', () => {
+    const games = [{ title: 'Gibbous - A Cthulhu Adventure', appId: null }]
+    const candidate = { title: 'Gibbous: A Cthulhu Adventure', appId: 999 }
+    const result = findDuplicateInCollection(candidate, games)
+    expect(result.kind).toBe('possible')
+    expect(result.match).toBe(games[0])
+  })
+
+  it('an App-ID match always wins over and skips the fuzzy-title pass entirely', () => {
+    const games = [
+      { title: 'Totally Different Title', appId: 555 },
+      { title: 'Some Other Game', appId: null }
+    ]
+    const candidate = { title: 'Some Other Game', appId: 555 }
+    expect(findDuplicateInCollection(candidate, games).kind).toBe('exact')
+  })
+
+  it('returns null when nothing matches either way — genuinely new', () => {
+    const games = [{ title: 'Jordi & Oslo: The Lost Tail', appId: 2966330 }]
+    const candidate = { title: 'Completely Unrelated Game', appId: 4242 }
+    expect(findDuplicateInCollection(candidate, games)).toBeNull()
+  })
+
+  it('ignores existing rows that already have an App ID when doing the fuzzy-title pass (they were already handled by the exact-match check)', () => {
+    const games = [{ title: 'Loom', appId: 32340 }]
+    const candidate = { title: 'Loom', appId: 999999 } // different (wrong/new) appId, same title
+    // Not an exact appId match, and the existing "Loom" row DOES have an
+    // appId, so it must not surface as a fuzzy 'possible' duplicate either —
+    // that would just be re-flagging what the exact-match tier already
+    // legitimately decided wasn't a match.
+    expect(findDuplicateInCollection(candidate, games)).toBeNull()
   })
 })

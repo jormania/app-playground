@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { McpConnector } from './lib/mcp-connector'
+import { readReleaseStatus } from './lib/releaseStatus'
 import { TimelineView } from './components/TimelineView'
 import { AnalyticsView } from './components/AnalyticsView'
 import { StatsView } from './components/StatsView'
+import { WatchlistView } from './components/WatchlistView'
 import { OnboardingWizard } from './components/OnboardingWizard'
 import { GameEditorModal } from './components/GameEditorModal'
 import { SettingsModal } from './components/SettingsModal'
@@ -12,6 +14,10 @@ import {
   isDiscountBannerSnoozed, snoozeDiscountBanner, detectPriceDrops,
   isDiscountBannerPersistent
 } from './lib/priceTracking'
+import {
+  isReleaseBannerSnoozed, snoozeReleaseBanner, isReleaseBannerPersistent,
+  getRecentlyReleasedGames, takeUnnudgedRecentlyReleased
+} from './lib/releaseTracking'
 
 const SORT_OPTIONS = [
   { value: 'timeline', label: 'Timeline', group: 'TIME' },
@@ -24,7 +30,7 @@ const STATUS_FILTERS = ['All', 'Backlog', 'Playing', 'Completed', 'Abandoned']
 export function App() {
   const [isInitialized, setIsInitialized] = useState(McpConnector.isInitialized())
   const [games, setGames] = useState([])
-  const [view, setView] = useState('timeline') // 'timeline' | 'analytics' | 'stats'
+  const [view, setView] = useState('timeline') // 'timeline' | 'analytics' | 'stats' | 'watchlist'
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isDiscountOpen, setIsDiscountOpen] = useState(false)
@@ -61,6 +67,13 @@ export function App() {
   const dismissDiscountBanner = () => {
     snoozeDiscountBanner(24)
     setIsBannerSnoozed(true)
+  }
+
+  const [isReleaseSnoozed, setIsReleaseSnoozed] = useState(() => isReleaseBannerSnoozed())
+  const [isReleasePersistent, setIsReleasePersistent] = useState(() => isReleaseBannerPersistent())
+  const dismissReleaseBanner = () => {
+    snoozeReleaseBanner(24)
+    setIsReleaseSnoozed(true)
   }
 
   const [syncError, setSyncError] = useState(null)
@@ -172,6 +185,17 @@ export function App() {
         const label = drops.length === 1 ? drops[0].title : `${drops.length} GAMES`
         showToast(`PRICE DROP: ${label}`)
       }
+
+      // One-time nudge per game the first time we see it as recently
+      // released — closes the empty-tags/journal gap a Watchlist add leaves
+      // behind, right when it's most relevant to fill in.
+      const freshlyReleased = takeUnnudgedRecentlyReleased(data)
+      if (freshlyReleased.length > 0) {
+        const label = freshlyReleased.length === 1
+          ? `🎉 ${freshlyReleased[0].title} just released — add tags & notes?`
+          : `🎉 ${freshlyReleased.length} games just released — check [W] to add tags & notes.`
+        showToast(label)
+      }
     } catch (err) {
       // Distinct from "0 records found" — a bad token or a rate-limit previously
       // looked identical to a genuinely empty collection.
@@ -262,6 +286,17 @@ export function App() {
     setGames([])
   }
 
+  // Merges a batch of already-written game updates (from [W]'s "Refresh
+  // Release Dates") into local state by id — the writes themselves already
+  // happened in watchlistActions.js via the normal McpConnector.updateGame
+  // path, this just avoids a full reload to reflect them.
+  const handleApplyGameUpdates = (updatedGames) => {
+    setGames(prev => {
+      const byId = new Map(updatedGames.map(g => [g.id, g]))
+      return prev.map(g => byId.has(g.id) ? { ...g, ...byId.get(g.id) } : g)
+    })
+  }
+
 
 
   const baseFilteredGames = useMemo(() => {
@@ -302,9 +337,31 @@ export function App() {
     return result
   }, [baseFilteredGames, sortBy, statusFilter])
 
+  // Timeline permanently excludes Coming Soon games — no toggle, a hard
+  // rule (see project memory "click-deck-watchlist-plan"). [W] is the
+  // dedicated home for anything not yet released; Analytics keeps its own
+  // independent RELEASE: filter and is deliberately NOT restricted here, so
+  // it can still optionally include Coming Soon in its queries.
+  const timelineEligibleGames = useMemo(
+    () => baseFilteredGames.filter(g => readReleaseStatus(g) !== 'Coming Soon'),
+    [baseFilteredGames]
+  )
+  const timelineGames = useMemo(
+    () => filteredGames.filter(g => readReleaseStatus(g) !== 'Coming Soon'),
+    [filteredGames]
+  )
+
   const discountedGames = useMemo(() => {
     return games.filter(g => g.status === 'Backlog' && g.discountPercent > 0)
   }, [games])
+
+  const recentlyReleasedGames = useMemo(() => getRecentlyReleasedGames(games), [games])
+
+  // Whether the Watchlist schema patch has been applied — a database-level
+  // property, so if any loaded game carries the key, all of them do. Gates
+  // whether the Editor offers the Release Status control at all (see its
+  // own comment for why this matters for unpatched-schema safety).
+  const watchlistSchemaReady = useMemo(() => games.some(g => g.releaseStatus !== undefined), [games])
 
   return (
     <div className="cd-app-container">
@@ -317,6 +374,7 @@ export function App() {
           <nav className="cd-nav">
             <button aria-label="Timeline view" className={view === 'timeline' ? 'primary' : ''} onClick={() => setView('timeline')}>[T]</button>
             <button aria-label="Analytics view" className={view === 'analytics' ? 'primary' : ''} onClick={() => setView('analytics')}>[A]</button>
+            <button aria-label="Watchlist view" className={view === 'watchlist' ? 'primary' : ''} onClick={() => setView('watchlist')}>[W]</button>
             <button aria-label="Add new game" onClick={() => { setEditingGame(null); setIsEditorOpen(true) }}>+</button>
             <button aria-label="Random game from backlog" onClick={() => setIsRandomOpen(true)}>[R]</button>
             <button aria-label="Stats view" className={view === 'stats' ? 'primary' : ''} onClick={() => setView('stats')}>[S]</button>
@@ -324,7 +382,7 @@ export function App() {
           </nav>
         </div>
 
-        {isInitialized && view !== 'stats' && (
+        {isInitialized && view !== 'stats' && view !== 'watchlist' && (
           <div className="cd-header-controls">
             <input 
               type="text" 
@@ -380,7 +438,7 @@ export function App() {
                 onClick={() => setStatusFilter(s)}
               >
                 {s === 'All' ? '[ALL]' : `[${s.toUpperCase()}]`}
-                {s !== 'All' && <span className="cd-status-count">({baseFilteredGames.filter(g => g.status === s).length})</span>}
+                {s !== 'All' && <span className="cd-status-count">({timelineEligibleGames.filter(g => g.status === s).length})</span>}
               </button>
             ))}
           </div>
@@ -420,6 +478,26 @@ export function App() {
         </div>
       )}
 
+      {recentlyReleasedGames.length > 0 && (isReleasePersistent || !isReleaseSnoozed) && view === 'timeline' && (
+        <div className="cd-release-banner">
+          <span className="cd-banner-icon">🎉</span>
+          <span className="cd-banner-text cd-release-banner-text" onClick={() => setView('watchlist')}>
+            {recentlyReleasedGames.length} {recentlyReleasedGames.length === 1 ? 'GAME' : 'GAMES'} JUST RELEASED!
+          </span>
+          <span className="cd-banner-cta cd-release-banner-cta" onClick={() => setView('watchlist')}>[VIEW]</span>
+          {!isReleasePersistent && (
+            <button
+              type="button"
+              className="cd-banner-dismiss cd-release-banner-dismiss"
+              onClick={(e) => { e.stopPropagation(); dismissReleaseBanner() }}
+              aria-label="Dismiss for 24 hours"
+            >
+              [X]
+            </button>
+          )}
+        </div>
+      )}
+
       {isInitialized && syncError && (
         // Distinct from "0 records found" — a bad token, a revoked integration,
         // or a rate-limit previously looked identical to a genuinely empty
@@ -448,8 +526,8 @@ export function App() {
           <div key={view} className="cd-view-transition">
             {view === 'timeline' && (
               <div className="cd-timeline-container">
-                <TimelineView 
-                  games={filteredGames} 
+                <TimelineView
+                  games={timelineGames}
                   onEdit={(g) => { setEditingGame(g); setIsEditorOpen(true) }}
                   onUpdateStatus={handleUpdateStatus}
                 />
@@ -462,9 +540,20 @@ export function App() {
                 setActiveTags={setActiveTags}
               />
             )}
+            {view === 'watchlist' && (
+              <WatchlistView
+                games={games}
+                onEdit={(g) => { setEditingGame(g); setIsEditorOpen(true) }}
+                onApplyGameUpdates={handleApplyGameUpdates}
+                onAddGame={handleSaveGame}
+                onToast={showToast}
+              />
+            )}
             {view === 'stats' && (
               <div className="cd-timeline-container">
-                <StatsView games={games} />
+                {/* Coming Soon games have no real price and can't be played —
+                    excluded from every stat here, same as Random Game below. */}
+                <StatsView games={games.filter(g => readReleaseStatus(g) !== 'Coming Soon')} />
               </div>
             )}
           </div>
@@ -472,12 +561,13 @@ export function App() {
       </main>
 
       {isEditorOpen && (
-        <GameEditorModal 
-          game={editingGame} 
-          onSave={handleSaveGame} 
+        <GameEditorModal
+          game={editingGame}
+          onSave={handleSaveGame}
           onDelete={handleDeleteGame}
-          onClose={() => { setIsEditorOpen(false); setEditingGame(null) }} 
+          onClose={() => { setIsEditorOpen(false); setEditingGame(null) }}
           onToast={showToast}
+          watchlistSchemaReady={watchlistSchemaReady}
         />
       )}
 
@@ -492,9 +582,11 @@ export function App() {
               loadGames()
             }
             setIsBannerPersistent(isDiscountBannerPersistent())
+            setIsReleasePersistent(isReleaseBannerPersistent())
             setCrtEffect(localStorage.getItem('cd_crt_effect') === 'true')
           }}
           onShowBannerNow={() => setIsBannerSnoozed(false)}
+          onShowReleaseBannerNow={() => setIsReleaseSnoozed(false)}
           onResetDb={() => { setIsSettingsOpen(false); resetDb(); }}
         />
       )}
@@ -507,8 +599,8 @@ export function App() {
       )}
 
       {isRandomOpen && (
-        <RandomGameModal 
-          backlogGames={games.filter(g => g.status === 'Backlog')}
+        <RandomGameModal
+          backlogGames={games.filter(g => g.status === 'Backlog' && readReleaseStatus(g) !== 'Coming Soon')}
           onClose={() => setIsRandomOpen(false)}
           onUpdateStatus={handleUpdateStatus}
         />
@@ -826,6 +918,69 @@ export function App() {
         @keyframes pulseBanner {
           0% { box-shadow: 0 0 5px rgba(164, 208, 7, 0.1); }
           100% { box-shadow: 0 0 15px rgba(164, 208, 7, 0.4); }
+        }
+
+        /* Release banner — same structure/animation as the discount banner
+           above, but its own accent color and icon (🎉 vs 🔥) so the two are
+           never visually confused, per feedback: "keep these 2 in sync from
+           a styling perspective but use different SVGs and colours." */
+        .cd-release-banner {
+          background: linear-gradient(90deg, rgba(0, 229, 255, 0.25), rgba(0, 0, 0, 0.6));
+          border: 1px solid var(--cd-accent-cyan);
+          border-radius: 4px;
+          padding: 0.5rem 1rem;
+          margin-bottom: 1.5rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          transition: all 0.2s ease;
+          animation: pulseReleaseBanner 2s infinite alternate;
+        }
+        .cd-release-banner:hover {
+          background: linear-gradient(90deg, rgba(0, 229, 255, 0.4), rgba(0, 0, 0, 0.8));
+          box-shadow: 0 0 15px var(--cd-accent-cyan-glow);
+          transform: translateY(-2px);
+        }
+        .cd-release-banner-text, .cd-release-banner-cta {
+          color: var(--cd-accent-cyan);
+        }
+        .cd-release-banner-text {
+          font-family: var(--cd-font-terminal);
+          font-weight: bold;
+          font-size: 1rem;
+          letter-spacing: 1px;
+          flex: 1;
+          cursor: pointer;
+        }
+        .cd-release-banner-cta {
+          font-family: var(--cd-font-terminal);
+          font-size: 0.8rem;
+          border-bottom: 1px dashed var(--cd-accent-cyan);
+          cursor: pointer;
+        }
+        .cd-release-banner-dismiss {
+          color: var(--cd-accent-cyan);
+        }
+        .cd-release-banner-dismiss:hover {
+          border-color: var(--cd-accent-cyan);
+          color: var(--cd-accent-cyan);
+        }
+        @keyframes pulseReleaseBanner {
+          0% { box-shadow: 0 0 5px rgba(0, 229, 255, 0.1); }
+          100% { box-shadow: 0 0 15px rgba(0, 229, 255, 0.4); }
+        }
+        @media (max-width: 600px) {
+          .cd-release-banner {
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+          }
+          .cd-release-banner-text {
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+          }
+          .cd-release-banner-cta {
+            font-size: 0.7rem;
+          }
         }
       `}</style>
     </div>

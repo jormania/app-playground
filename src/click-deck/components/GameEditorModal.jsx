@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import { ALL_TAGS } from '../lib/seed-data'
 import { findBestSteamMatch } from '../lib/steamMatch'
+import { readReleaseStatus } from '../lib/releaseStatus'
 
-export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
+export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watchlistSchemaReady = false }) {
+  // Only offer the Release Status control once we know Notion actually has
+  // the property — either the collection already has at least one game
+  // carrying it (watchlistSchemaReady, computed in App.jsx), or this
+  // specific game already carries it individually. Otherwise formData never
+  // gets a releaseStatus key at all, so mapGameToProperties correctly omits
+  // it from the save and an ordinary edit never references a Notion
+  // property that doesn't exist yet for anyone who hasn't patched.
+  const schemaSupportsReleaseStatus = watchlistSchemaReady || (game && game.releaseStatus !== undefined)
   const [formData, setFormData] = useState({
     title: '',
     year: new Date().getFullYear(),
@@ -166,6 +175,23 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
           )}
         </div>
 
+        {schemaSupportsReleaseStatus && (
+          <div className="cd-form-group">
+            <label>RELEASE STATUS</label>
+            <select
+              name="releaseStatus"
+              value={formData.releaseStatus ?? (game ? readReleaseStatus(game) : 'Released')}
+              onChange={handleChange}
+            >
+              <option value="Released">Released</option>
+              <option value="Coming Soon">Coming Soon</option>
+            </select>
+            <p className="cd-tag-warning" style={{ color: 'var(--cd-text-muted)' }}>
+              Coming Soon games are hidden from the Timeline, Stats and Random Game — see them on the [W] Watchlist view instead.
+            </p>
+          </div>
+        )}
+
         <div className="cd-form-group">
           <label>TAGS ({formData.tags.length}/7)</label>
           <div className="cd-tag-picker">
@@ -184,10 +210,14 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
               )
             })}
           </div>
-          {formData.tags.length > 0 && formData.tags.length < 5 && (
+          {/* The 5-7 tag policy is for played/owned games — a Coming Soon
+              entry deliberately ships with no tags until it's actually
+              released, so the warning would otherwise be a permanent,
+              unfixable false positive. */}
+          {readReleaseStatus(formData) !== 'Coming Soon' && formData.tags.length > 0 && formData.tags.length < 5 && (
             <p className="cd-tag-warning">⚠ Collection policy calls for 5–7 tags per entry — only {formData.tags.length} selected.</p>
           )}
-          {formData.tags.length > 7 && (
+          {readReleaseStatus(formData) !== 'Coming Soon' && formData.tags.length > 7 && (
             <p className="cd-tag-warning">⚠ Collection policy calls for 5–7 tags per entry — {formData.tags.length} selected (predates the current cap).</p>
           )}
         </div>

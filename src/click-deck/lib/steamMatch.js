@@ -79,3 +79,34 @@ export function findBestSteamMatch(items, title) {
 export function pickBestSteamMatch(items, title) {
   return findBestSteamMatch(items, title).match
 }
+
+// Two-tier duplicate check for the [W] "New Candidates" review list — a
+// Steam-discovered candidate can be a duplicate of something already in the
+// collection even without a matching App ID, because not every existing row
+// has one (an entry added before "Fetch Steam" existed, or with the App ID
+// never backfilled). Checking title alone isn't as certain as an App ID
+// match, so callers get told which kind of match fired:
+//   - 'exact': the candidate's App ID matches a game already in the
+//     collection. Certain — callers should hard-disable adding it.
+//   - 'possible': no App ID match, but the normalized title overlaps a
+//     collection entry that has no App ID on file. Uncertain — callers
+//     should require an explicit confirm rather than silently blocking.
+//   - null: no match found either way, genuinely new.
+export function findDuplicateInCollection(candidate, games) {
+  if (candidate.appId) {
+    const exact = games.find(g => g.appId === candidate.appId)
+    if (exact) return { kind: 'exact', match: exact }
+  }
+
+  const target = normalizeSteamTitle(candidate.title)
+  if (!target) return null
+
+  for (const g of games) {
+    if (g.appId) continue // already covered by the exact-match pass above
+    if (containmentScore(target, normalizeSteamTitle(g.title)) >= CONFIDENCE_THRESHOLD) {
+      return { kind: 'possible', match: g }
+    }
+  }
+
+  return null
+}

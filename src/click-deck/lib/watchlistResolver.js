@@ -1,0 +1,55 @@
+// Client-side twin of api/_lib/clickdeckWatchlist.js, used by the manual
+// "Refresh Release Dates" action on [W]. Deliberately duplicated rather than
+// imported across the api/ <-> src/ boundary (same convention as
+// scripts/backfill-steam-ids.py mirroring steamMatch.js) — keep the flip
+// RULES identical between the two copies if either changes. The shapes
+// differ on purpose: this one returns plain game-field updates (merged into
+// a game object before calling McpConnector.updateGame), since the server
+// copy returns raw Notion PATCH properties instead.
+
+export function parseYearFromReleaseDateString(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return null
+  const match = dateStr.match(/\b(19|20)\d{2}\b/)
+  return match ? parseInt(match[0], 10) : null
+}
+
+// See api/_lib/clickdeckWatchlist.js's resolveReleaseFlip for the full
+// rationale behind these rules — kept identical here.
+export function resolveReleaseFlip(game, appData, now = new Date()) {
+  if (!game || game.releaseStatus !== 'Coming Soon') return null
+  if (!appData || typeof appData !== 'object' || Array.isArray(appData)) return null
+  if (!appData.success) return null
+
+  const data = appData.data
+  if (!data || Array.isArray(data)) return null
+
+  const releaseDateStr = data.release_date?.date || ''
+  const comingSoon = data.release_date?.coming_soon
+
+  if (comingSoon !== false) {
+    return {
+      flipped: false,
+      releaseDateString: releaseDateStr,
+      year: parseYearFromReleaseDateString(releaseDateStr)
+    }
+  }
+
+  return {
+    flipped: true,
+    releaseDateString: releaseDateStr,
+    year: parseYearFromReleaseDateString(releaseDateStr),
+    releasedAt: now.toISOString()
+  }
+}
+
+// Turns a resolved flip into the partial game-object fields to merge in
+// before calling McpConnector.updateGame(id, { ...game, ...fields }).
+export function buildWatchlistUpdateFields(resolved) {
+  const fields = { releaseDate: resolved.releaseDateString }
+  if (resolved.year !== null && resolved.year !== undefined) fields.year = resolved.year
+  if (resolved.flipped) {
+    fields.releaseStatus = 'Released'
+    fields.releasedAt = resolved.releasedAt
+  }
+  return fields
+}

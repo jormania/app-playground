@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react'
+import { readReleaseStatus } from '../lib/releaseStatus'
 
 export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
-  
+
   const [priceFilter, setPriceFilter] = useState('All')
   const [ratingFilter, setRatingFilter] = useState('All')
   const [eraFilter, setEraFilter] = useState('All')
@@ -9,9 +10,18 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
   // policy (CLICK_DECK.md), so drifted entries are easy to find and fix.
   const [tagCountFilter, setTagCountFilter] = useState('All')
   const [activeDevs, setActiveDevs] = useState([])
+  // Defaults to hiding Coming Soon games — same instinct as Timeline's hard
+  // exclusion, just not hard-coded here since Analytics is explicitly the
+  // one view allowed to include them on request.
+  const [releaseFilter, setReleaseFilter] = useState('Released')
 
   const matrixFilteredGames = useMemo(() => {
     let result = [...filteredGames]
+
+    if (releaseFilter !== 'All') {
+      result = result.filter(g => readReleaseStatus(g) === releaseFilter)
+    }
+
     if (eraFilter !== 'All') {
       result = result.filter(g => {
         if (!g.year) return false
@@ -42,6 +52,10 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
 
     if (tagCountFilter !== 'All') {
       result = result.filter(g => {
+        // An unplayed Coming Soon entry deliberately ships with no tags —
+        // the 5-7 policy is for played/owned games, so it would otherwise
+        // permanently show as a false-positive "Under 5" data-quality issue.
+        if (readReleaseStatus(g) === 'Coming Soon') return false
         const count = g.tags?.length || 0
         if (tagCountFilter === 'Under 5') return count < 5
         if (tagCountFilter === 'Over 7') return count > 7
@@ -49,7 +63,7 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
       })
     }
     return result
-  }, [filteredGames, eraFilter, ratingFilter, priceFilter, tagCountFilter])
+  }, [filteredGames, eraFilter, ratingFilter, priceFilter, tagCountFilter, releaseFilter])
 
   // Calculate tag frequencies based on currently filtered games
   const tagCounts = useMemo(() => {
@@ -210,6 +224,12 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
           <span className="cd-filter-label">TAGS:</span>
           {['All', 'Under 5', 'Over 7'].map(t => (
             <button key={t} className={`cd-filter-btn ${tagCountFilter === t ? 'active' : ''}`} onClick={() => setTagCountFilter(t)}>{t}</button>
+          ))}
+        </div>
+        <div className="cd-filter-row">
+          <span className="cd-filter-label">RELEASE:</span>
+          {['All', 'Released', 'Coming Soon'].map(r => (
+            <button key={r} className={`cd-filter-btn ${releaseFilter === r ? 'active' : ''}`} onClick={() => setReleaseFilter(r)}>{r}</button>
           ))}
         </div>
       </div>

@@ -22,6 +22,17 @@ function uuidv4() {
 // === Notion Mapping ===
 const mapPageToGame = (page) => {
   const discountPercent = page.properties['Discount Percent']?.number || 0
+  // The three Watchlist properties (Release Status/Released At/Release Date) only
+  // exist in Notion once a user has clicked "Patch Database for Watchlist Schema".
+  // Before that, page.properties simply won't contain these keys at all — so we
+  // key off actual key-presence (not a value check) and leave the fields
+  // `undefined` on the returned game object rather than defaulting them. This
+  // matters for mapGameToProperties below: an `undefined` field is omitted from
+  // every write, so editing/saving any pre-existing game never sends Notion a
+  // property name it doesn't recognize yet and breaks ordinary saves for anyone
+  // who hasn't patched their schema. Once patched, Notion starts returning these
+  // keys (even with a null value) and the fields activate themselves naturally.
+  const hasWatchlistSchema = page.properties['Release Status'] !== undefined
   return {
     id: page.id,
     title: page.properties['Title']?.title?.[0]?.plain_text || 'Unknown',
@@ -40,9 +51,19 @@ const mapPageToGame = (page) => {
     isDiscounted: discountPercent > 0,
     initialPrice: page.properties['Initial Price']?.number || null,
     appId: page.properties['Steam App ID']?.number || null,
-    priceUpdatedAt: page.properties['Price Updated At']?.date?.start || null
+    priceUpdatedAt: page.properties['Price Updated At']?.date?.start || null,
+    // Blank/missing is always treated as 'Released' everywhere the app reads
+    // this field — see readReleaseStatus() below, used instead of a raw
+    // fallback here so pre-schema-patch games stay `undefined` (not 'Released')
+    // and therefore still get omitted from writes.
+    releaseStatus: hasWatchlistSchema ? (page.properties['Release Status']?.select?.name || 'Released') : undefined,
+    releasedAt: hasWatchlistSchema ? (page.properties['Released At']?.date?.start || null) : undefined,
+    releaseDate: hasWatchlistSchema ? (page.properties['Release Date']?.rich_text?.map(rt => rt.plain_text).join('') || '') : undefined
   }
 }
+
+// readReleaseStatus/isComingSoon live in ./releaseStatus.js, not here — see
+// that file's header comment for why (App.test.jsx mocks this whole module).
 
 // Converts a stored (read-shaped) rich_text array back into the shape
 // Notion's PATCH API expects for writes, preserving the original
@@ -87,7 +108,16 @@ const mapGameToProperties = (game) => {
 
   if (game.appId !== undefined && game.appId !== null) props['Steam App ID'] = { number: parseInt(game.appId) }
   else props['Steam App ID'] = { number: null }
-  
+
+  // Conditionally included (unlike every field above) — see the comment on
+  // mapPageToGame's hasWatchlistSchema check. A game loaded before the schema
+  // patch has these as `undefined`, so a routine edit never references a
+  // Notion property that doesn't exist yet. A freshly-added Watchlist
+  // candidate sets them explicitly (never `undefined`), so they always write.
+  if (game.releaseStatus !== undefined) props['Release Status'] = { select: { name: game.releaseStatus || 'Released' } }
+  if (game.releasedAt !== undefined) props['Released At'] = game.releasedAt ? { date: { start: game.releasedAt } } : { date: null }
+  if (game.releaseDate !== undefined) props['Release Date'] = { rich_text: game.releaseDate ? [{ text: { content: game.releaseDate } }] : [] }
+
   return props
 }
 
@@ -161,6 +191,31 @@ export const McpConnector = {
           'Initial Price': { number: { format: 'dollar' } },
           'Steam App ID': { number: { format: 'number' } },
           'Price Updated At': { date: {} }
+        }
+      }
+      return await fetchNotion(`databases/${dbId}`, 'PATCH', payload)
+    }
+  },
+
+  // Separate from updateDatabaseSchema (pricing) so a user who only wants
+  // Watchlist tracking isn't forced through the pricing patch first, and
+  // vice versa — mirrors the existing two-button pattern in Settings.
+  updateWatchlistSchema: async () => {
+    const token = getToken()
+    const dbId = getDbId()
+    if (token && dbId) {
+      const payload = {
+        properties: {
+          'Release Status': {
+            select: {
+              options: [
+                { name: 'Coming Soon', color: 'blue' },
+                { name: 'Released', color: 'gray' }
+              ]
+            }
+          },
+          'Released At': { date: {} },
+          'Release Date': { rich_text: {} }
         }
       }
       return await fetchNotion(`databases/${dbId}`, 'PATCH', payload)

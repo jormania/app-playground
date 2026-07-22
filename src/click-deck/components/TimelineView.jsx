@@ -1,5 +1,12 @@
 import React, { useEffect, useRef } from 'react'
 import { GameCard } from './GameCard'
+import { isRecentlyReleasedWithinDays } from '../lib/releaseTracking'
+
+// A freshly-flipped Coming Soon -> Released game also appears in [W]'s
+// Recently Released section for a full 365 days — this tighter 30-day
+// window is what makes the Timeline card read as "this just landed" rather
+// than the two views looking like they're showing duplicated entries.
+const NEW_RIBBON_DAYS = 30
 
 export function TimelineView({ games, onEdit, onUpdateStatus }) {
   const timelineRef = useRef(null)
@@ -49,7 +56,7 @@ export function TimelineView({ games, onEdit, onUpdateStatus }) {
           <div className="cd-timeline-marker"></div>
           <div className="cd-timeline-content">
             <div className="cd-timeline-year-badge">YEAR: {game.year}</div>
-            <GameCard game={game} onEdit={onEdit} onUpdateStatus={onUpdateStatus} />
+            <GameCard game={game} onEdit={onEdit} onUpdateStatus={onUpdateStatus} isNew={isRecentlyReleasedWithinDays(game, NEW_RIBBON_DAYS)} />
           </div>
         </div>
       ))}

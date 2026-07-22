@@ -1,7 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { isDiscountBannerPersistent, setDiscountBannerPersistent, clearDiscountBannerSnooze } from '../lib/priceTracking'
+import { isReleaseBannerPersistent, setReleaseBannerPersistent, clearReleaseBannerSnooze } from '../lib/releaseTracking'
+import { StudiosConnector, SEED_STUDIOS } from '../lib/studios-connector'
 
-export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onResetDb }) {
+export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onShowReleaseBannerNow, onResetDb }) {
   const [token, setToken] = useState(localStorage.getItem('cd_notion_token') || '')
   const [dbId, setDbId] = useState(localStorage.getItem('cd_notion_db') || '')
   const [theme, setTheme] = useState(localStorage.getItem('cd_theme') || 'union')
@@ -9,7 +11,28 @@ export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onResetDb
   const [randomWeight, setRandomWeight] = useState(localStorage.getItem('cd_random_weight') || 'uniform')
   const [bannerPersistent, setBannerPersistent] = useState(() => isDiscountBannerPersistent())
   const [bannerStatus, setBannerStatus] = useState('')
+  const [releaseBannerPersistentState, setReleaseBannerPersistentState] = useState(() => isReleaseBannerPersistent())
+  const [releaseBannerStatus, setReleaseBannerStatus] = useState('')
   const [status, setStatus] = useState('')
+
+  const [studios, setStudios] = useState([])
+  const [studiosLoading, setStudiosLoading] = useState(false)
+  const [newStudioName, setNewStudioName] = useState('')
+  const [newStudioDev, setNewStudioDev] = useState('')
+  const [studiosStatus, setStudiosStatus] = useState('')
+
+  const loadStudios = async () => {
+    if (!StudiosConnector.isInitialized()) return
+    setStudiosLoading(true)
+    try {
+      setStudios(await StudiosConnector.getStudios())
+    } catch (err) {
+      setStudiosStatus(`Failed to load studios: ${err.message}`)
+    }
+    setStudiosLoading(false)
+  }
+
+  useEffect(() => { loadStudios() }, [])
 
   const handleCreateDb = async () => {
     if (!token) {
@@ -76,6 +99,72 @@ export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onResetDb
     }
   }
 
+  const handleInitStudiosDb = async () => {
+    if (!token) {
+      setStudiosStatus('Please enter a Notion Integration Token first.')
+      return
+    }
+    if (StudiosConnector.getDbId()) {
+      const confirmed = window.confirm('You already have a Followed Studios database configured. Initializing a new one will replace it. Continue?')
+      if (!confirmed) return
+    }
+    setStudiosStatus('Creating Followed Studios database in Notion...')
+    // Same parent page as the main Click Deck DB, so both sit under the same
+    // Click Deck heading in the workspace's App Databases section.
+    const parentPageId = '390d3e6d-60db-81a7-92dd-de76b056e2d2'
+    const schema = {
+      parent: { type: 'page_id', page_id: parentPageId },
+      title: [{ type: 'text', text: { content: 'Click Deck — Followed Studios' } }],
+      properties: {
+        'Title': { title: {} },
+        'Steam Developer': { rich_text: {} },
+        'Notes': { rich_text: {} }
+      }
+    }
+    try {
+      const res = await fetch('/api/notion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-notion-token': token },
+        body: JSON.stringify({ path: 'databases', method: 'POST', body: schema })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        StudiosConnector.setDbId(data.id)
+        setStudiosStatus('Database created — seeding starter studios...')
+        await StudiosConnector.seedIfEmpty()
+        await loadStudios()
+        setStudiosStatus('Followed Studios database ready.')
+      } else {
+        setStudiosStatus(`Error: ${data.message || JSON.stringify(data)}`)
+      }
+    } catch (err) {
+      setStudiosStatus(`Failed to reach proxy: ${err.message}`)
+    }
+  }
+
+  const handleAddStudio = async () => {
+    if (!newStudioName.trim()) return
+    try {
+      const added = await StudiosConnector.addStudio({ name: newStudioName.trim(), steamDeveloper: newStudioDev.trim() })
+      setStudios(prev => [...prev, added])
+      setNewStudioName('')
+      setNewStudioDev('')
+    } catch (err) {
+      setStudiosStatus(`Failed to add studio: ${err.message}`)
+    }
+  }
+
+  const handleRemoveStudio = async (id) => {
+    const previous = studios
+    setStudios(prev => prev.filter(s => s.id !== id))
+    try {
+      await StudiosConnector.removeStudio(id)
+    } catch (err) {
+      setStudios(previous)
+      setStudiosStatus(`Failed to remove studio: ${err.message}`)
+    }
+  }
+
   const handleSave = () => {
     localStorage.setItem('cd_notion_token', token)
     localStorage.setItem('cd_notion_db', dbId)
@@ -83,6 +172,7 @@ export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onResetDb
     localStorage.setItem('cd_crt_effect', crtEffect ? 'true' : 'false')
     localStorage.setItem('cd_random_weight', randomWeight)
     setDiscountBannerPersistent(bannerPersistent)
+    setReleaseBannerPersistent(releaseBannerPersistentState)
     document.documentElement.setAttribute('data-theme', theme)
     if (onSaveToken) onSaveToken()
     onClose()
@@ -95,6 +185,13 @@ export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onResetDb
     clearDiscountBannerSnooze()
     if (onShowBannerNow) onShowBannerNow()
     setBannerStatus('Banner will show again now (if there are active discounts).')
+  }
+
+  // Same recovery pattern, own key, for the release banner.
+  const handleShowReleaseBannerNow = () => {
+    clearReleaseBannerSnooze()
+    if (onShowReleaseBannerNow) onShowReleaseBannerNow()
+    setReleaseBannerStatus('Banner will show again now (if anything released recently).')
   }
 
   return (
@@ -200,6 +297,78 @@ export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onResetDb
           </div>
         </div>
 
+        <div className="cd-form-group">
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={releaseBannerPersistentState}
+              onChange={e => setReleaseBannerPersistentState(e.target.checked)}
+              style={{ width: 'auto' }}
+            />
+            RELEASE BANNER: ALWAYS SHOW (DON'T AUTO-DISMISS)
+          </label>
+          <p style={{ fontSize: '0.85rem', color: 'var(--cd-text-muted)', margin: '0.3rem 0 0' }}>
+            Same idea as the sale banner: off by default (24h snooze on dismiss), or keep it permanently visible whenever something released recently.
+          </p>
+          <div style={{ marginTop: '0.8rem' }}>
+            <button type="button" onClick={handleShowReleaseBannerNow}>Show Release Banner Now</button>
+            <p style={{ fontSize: '0.85rem', color: 'var(--cd-text-muted)', margin: '0.4rem 0 0' }}>
+              Dismissed it by accident? This clears the snooze immediately.
+            </p>
+            {releaseBannerStatus && <div style={{ color: 'var(--cd-accent-cyan)', fontSize: '0.9rem', marginTop: '0.4rem' }}>{releaseBannerStatus}</div>}
+          </div>
+        </div>
+
+        <div className="cd-form-group" style={{ marginTop: '1.5rem', padding: '1.5rem', border: '1px solid var(--cd-border-color)', background: 'rgba(0, 0, 0, 0.2)' }}>
+          <label style={{ marginBottom: '0.5rem', display: 'block' }}>FOLLOWED STUDIOS</label>
+          <p style={{ fontSize: '0.95rem', color: 'var(--cd-text-muted)', marginBottom: '1rem', lineHeight: '1.4' }}>
+            The studios [W]'s "Find New Games" searches for unreleased/uncollected titles. Lives in its own Notion database so it syncs across devices, same as your collection.
+          </p>
+          {!StudiosConnector.getDbId() ? (
+            <button type="button" onClick={handleInitStudiosDb}>Initialize Followed Studios Database</button>
+          ) : (
+            <>
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                <input
+                  type="text"
+                  placeholder="Studio name..."
+                  value={newStudioName}
+                  onChange={e => setNewStudioName(e.target.value)}
+                  style={{ flex: 1 }}
+                />
+                <input
+                  type="text"
+                  placeholder="Exact Steam developer tag (optional)"
+                  value={newStudioDev}
+                  onChange={e => setNewStudioDev(e.target.value)}
+                  style={{ flex: 1 }}
+                />
+                <button type="button" onClick={handleAddStudio} style={{ whiteSpace: 'nowrap' }}>+ ADD</button>
+              </div>
+              {studiosLoading ? (
+                <p className="cd-text-muted">Loading...</p>
+              ) : studios.length === 0 ? (
+                <p className="cd-text-muted">No studios yet — add one above, or seed the {SEED_STUDIOS.length} starter studios below.</p>
+              ) : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {studios.map(s => (
+                    <li key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem' }}>
+                      <span>{s.name}{s.steamDeveloper ? ` (${s.steamDeveloper})` : ''}</span>
+                      <button type="button" className="cd-btn-icon" onClick={() => handleRemoveStudio(s.id)}>[X]</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {studios.length === 0 && !studiosLoading && (
+                <button type="button" style={{ marginTop: '0.8rem' }} onClick={async () => { await StudiosConnector.seedIfEmpty(); await loadStudios() }}>
+                  Seed Starter Studios
+                </button>
+              )}
+            </>
+          )}
+          {studiosStatus && <div style={{ color: 'var(--cd-accent-cyan)', fontSize: '0.9rem', marginTop: '0.6rem' }}>{studiosStatus}</div>}
+        </div>
+
         <div className="cd-form-group" style={{ marginTop: '1.5rem', padding: '1.5rem', border: '1px solid var(--cd-border-color)', background: 'rgba(0, 0, 0, 0.2)' }}>
           <label style={{ marginBottom: '0.5rem', display: 'block' }}>DATABASE ACTIONS</label>
           <p style={{ fontSize: '0.95rem', color: 'var(--cd-text-muted)', marginBottom: '1.5rem', lineHeight: '1.4' }}>
@@ -239,6 +408,16 @@ export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onResetDb
                 setStatus('Failed to patch schema: ' + err.message)
               }
             }}>Patch Database for Pricing Schema</button>
+            <button type="button" onClick={async () => {
+              setStatus('Patching database schema...')
+              try {
+                const { McpConnector } = await import('../lib/mcp-connector.js')
+                await McpConnector.updateWatchlistSchema()
+                setStatus('Database schema successfully patched for the Watchlist!')
+              } catch (err) {
+                setStatus('Failed to patch schema: ' + err.message)
+              }
+            }}>Patch Database for Watchlist Schema</button>
             <button type="button" onClick={() => {
               const confirm = window.prompt('Are you sure you want to completely wipe the local DB state? Type "RESET" to confirm.')
               if(confirm === 'RESET') {

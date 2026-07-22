@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
 
-export function GameCard({ game, onEdit, onUpdateStatus }) {
+export function GameCard({ game, onEdit, onUpdateStatus, isNew = false }) {
   const CoverTag = game.appId ? 'a' : 'div'
   const statusColors = {
     'Backlog': 'var(--cd-status-backlog)',
@@ -95,6 +95,7 @@ export function GameCard({ game, onEdit, onUpdateStatus }) {
         <div className="cd-game-cover fallback-cover"></div>
       )}
       {game.isDiscounted && <div className="cd-sale-badge">% SALE</div>}
+      {isNew && <div className="cd-new-badge">NEW</div>}
       <div className="cd-game-header">
         <h3 className="cd-game-title">{game.title}</h3>
         <div className="cd-game-actions">

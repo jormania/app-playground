@@ -1,4 +1,5 @@
 import { resolvePriceUpdate, buildPatchProperties } from './_lib/clickdeckPricing.js'
+import { resolveReleaseFlip, buildWatchlistPatchProperties } from './_lib/clickdeckWatchlist.js'
 
 export default async function handler(req, res) {
   const token = process.env.CLICKDECK_NOTION_TOKEN
@@ -52,7 +53,11 @@ export default async function handler(req, res) {
       appId: parseInt(page.properties['Steam App ID']?.number || 0, 10),
       currentPrice: page.properties['Current Price']?.number,
       initialPrice: page.properties['Initial Price']?.number,
-      discountPercent: page.properties['Discount Percent']?.number
+      discountPercent: page.properties['Discount Percent']?.number,
+      // Only present once a user has clicked "Patch Database for Watchlist
+      // Schema" — undefined key means resolveReleaseFlip's releaseStatus
+      // check below always safely no-ops for anyone who hasn't patched yet.
+      releaseStatus: page.properties['Release Status']?.select?.name
     })).filter(g => g.appId > 0)
 
     if (gamesToUpdate.length === 0) {
@@ -70,7 +75,11 @@ export default async function handler(req, res) {
       const chunk = gamesToUpdate.slice(i, i + CHUNK_SIZE)
       const appIdsStr = chunk.map(g => g.appId).join(',')
 
-      const steamRes = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appIdsStr}&cc=US&filters=price_overview`)
+      // Widened from price_overview-only so the same call also tells us
+      // whether a Coming Soon game has launched — previously "no price" and
+      // "unreleased" were indistinguishable, which is exactly the ambiguity
+      // the Watchlist feature's release_date.coming_soon check replaces.
+      const steamRes = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appIdsStr}&cc=US&filters=price_overview,release_date`)
 
       if (!steamRes.ok) {
         console.error(`Steam API failed for chunk ${appIdsStr}`)
@@ -82,9 +91,11 @@ export default async function handler(req, res) {
       for (const game of chunk) {
         // Steam sometimes returns an empty array [] for invalid/delisted
         // appids instead of an object — resolvePriceUpdate handles that.
-        const update = resolvePriceUpdate(game, steamData[game.appId.toString()])
-        if (update) {
-          results.push({ pageId: game.pageId, ...update })
+        const appData = steamData[game.appId.toString()]
+        const update = resolvePriceUpdate(game, appData)
+        const releaseFlip = resolveReleaseFlip(game, appData)
+        if (update || releaseFlip) {
+          results.push({ pageId: game.pageId, update, releaseFlip, flipped: Boolean(releaseFlip?.flipped) })
         }
       }
 
@@ -98,21 +109,35 @@ export default async function handler(req, res) {
     // get rewritten when they actually differ, to avoid nightly no-op noise
     // on stable-priced games.
     let patched = 0
-    for (const update of results) {
-      const patchRes = await fetch(`https://api.notion.com/v1/pages/${update.pageId}`, {
+    const flippedThisRun = []
+    for (const result of results) {
+      // Merge the pricing patch and the watchlist patch into one PATCH per
+      // page — same rate-limit budget as before this feature, just a wider
+      // properties object when a game happens to need both.
+      const properties = {
+        ...(result.update ? buildPatchProperties(result.update) : {}),
+        ...(result.releaseFlip ? buildWatchlistPatchProperties(result.releaseFlip) : {})
+      }
+      const patchRes = await fetch(`https://api.notion.com/v1/pages/${result.pageId}`, {
         method: 'PATCH',
         headers: {
           Authorization: `Bearer ${token}`,
           'Notion-Version': '2022-06-28',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ properties: buildPatchProperties(update) })
+        body: JSON.stringify({ properties })
       })
 
       if (patchRes.ok) {
         patched++
+        // Every flip is logged so the first production run (and every run
+        // after) is auditable without needing to query Notion separately.
+        if (result.flipped) {
+          console.log(`[watchlist] Coming Soon -> Released: page ${result.pageId} (${result.releaseFlip.releaseDateString || 'no date given'})`)
+          flippedThisRun.push({ pageId: result.pageId, releaseDate: result.releaseFlip.releaseDateString })
+        }
       } else {
-        console.error(`Failed to patch Notion for page ${update.pageId}`, await patchRes.text())
+        console.error(`Failed to patch Notion for page ${result.pageId}`, await patchRes.text())
       }
       // polite delay
       await new Promise(r => setTimeout(r, 300))
@@ -121,7 +146,9 @@ export default async function handler(req, res) {
     res.status(200).json({
       processed: gamesToUpdate.length,
       checked: results.length,
-      priceChanges: results.filter(r => r.priceChanged).length,
+      priceChanges: results.filter(r => r.update?.priceChanged).length,
+      releaseFlips: flippedThisRun.length,
+      flippedGames: flippedThisRun,
       successfullyPatched: patched
     })
 
