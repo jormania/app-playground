@@ -258,10 +258,17 @@ export const McpConnector = {
     const token = getToken()
     const dbId = getDbId()
     if (token && dbId) {
-      const data = await fetchNotion('pages', 'POST', {
+      const payload = {
         parent: { database_id: dbId },
         properties: mapGameToProperties(gameData)
-      })
+      }
+      if (gameData.coverUrl) {
+        payload.cover = {
+          type: 'external',
+          external: { url: gameData.coverUrl }
+        }
+      }
+      const data = await fetchNotion('pages', 'POST', payload)
       return mapPageToGame(data)
     } else {
       await new Promise(res => setTimeout(res, 300))

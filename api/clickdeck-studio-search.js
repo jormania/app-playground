@@ -84,7 +84,7 @@ async function fetchAppDetailsBatch(appIds) {
   const combined = {}
   for (let i = 0; i < appIds.length; i += CHUNK_SIZE) {
     const chunk = appIds.slice(i, i + CHUNK_SIZE)
-    const res = await fetch(`https://store.steampowered.com/api/appdetails?appids=${chunk.join(',')}&cc=US&filters=basic,release_date,price_overview,developers,publishers`)
+    const res = await fetch(`https://store.steampowered.com/api/appdetails?appids=${chunk.join(',')}&cc=US&filters=basic,release_date,price_overview,developers,publishers,genres`)
     if (res.ok) {
       const data = await res.json()
       if (data && typeof data === 'object' && !Array.isArray(data)) Object.assign(combined, data)
@@ -166,6 +166,11 @@ export default async function handler(req, res) {
         }
       }
 
+      let tags = []
+      if (data.genres && Array.isArray(data.genres)) {
+        tags = data.genres.map(g => g.description).filter(Boolean)
+      }
+
       candidates.push({
         appId,
         title: data.name || '',
@@ -176,7 +181,8 @@ export default async function handler(req, res) {
         year: parseYearFromReleaseDateString(releaseDateStr),
         price: data.price_overview ? data.price_overview.final / 100 : null,
         headerImage: data.header_image || `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`,
-        shortDescription: data.short_description || ''
+        shortDescription: data.short_description || '',
+        tags
       })
     }
 

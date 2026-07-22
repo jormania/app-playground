@@ -71,13 +71,17 @@ export function candidateToNewGame(candidate) {
     title: candidate.title,
     year: candidate.year || null,
     developer: candidate.developer || candidate.matchedStudio || '',
-    tags: [],
+    tags: candidate.tags || [],
     status: 'Backlog',
     rating: null,
     journal: candidate.shortDescription || '',
     appId: candidate.appId,
     releaseStatus: candidate.comingSoon ? 'Coming Soon' : 'Released',
     releasedAt: null,
-    releaseDate: candidate.releaseDateString || ''
+    releaseDate: candidate.releaseDateString || '',
+    coverUrl: candidate.headerImage,
+    price: candidate.price,
+    initialPrice: candidate.price,
+    discountPercent: 0
   }
 }
