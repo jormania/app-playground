@@ -5,7 +5,6 @@
 // call rather than managing Steam's practical per-request limit itself.
 import { originAllowed, rateLimited, clientIp } from './_shared.js'
 
-const CHUNK_SIZE = 15
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -37,16 +36,15 @@ export default async function handler(req, res) {
 
   const combined = {}
   try {
-    for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
-      const chunk = ids.slice(i, i + CHUNK_SIZE)
-      const steamRes = await fetch(`https://store.steampowered.com/api/appdetails?appids=${chunk.join(',')}&cc=US&filters=price_overview,release_date`)
+    for (const id of ids) {
+      const steamRes = await fetch(`https://store.steampowered.com/api/appdetails?appids=${id}&cc=US&filters=price_overview,release_date`)
       if (!steamRes.ok) continue
       const data = await steamRes.json()
       if (data && typeof data === 'object' && !Array.isArray(data)) {
         Object.assign(combined, data)
       }
-      // Polite delay between chunks, same as the nightly cron.
-      if (i + CHUNK_SIZE < ids.length) await new Promise(r => setTimeout(r, 500))
+      // Polite delay between individual requests
+      await new Promise(r => setTimeout(r, 200))
     }
     res.status(200).json(combined)
   } catch (err) {

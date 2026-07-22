@@ -13,7 +13,6 @@
 // only ever talks to Steam.
 import { originAllowed, rateLimited, clientIp } from './_shared.js'
 
-const CHUNK_SIZE = 1
 const CONFIDENCE_THRESHOLD = 0.5
 
 // Deliberately duplicated (not imported) from src/click-deck/lib/steamMatch.js
@@ -82,14 +81,13 @@ async function searchSteamForStudio(name) {
 
 async function fetchAppDetailsBatch(appIds) {
   const combined = {}
-  for (let i = 0; i < appIds.length; i += CHUNK_SIZE) {
-    const chunk = appIds.slice(i, i + CHUNK_SIZE)
-    const res = await fetch(`https://store.steampowered.com/api/appdetails?appids=${chunk.join(',')}&cc=US&filters=basic,release_date,price_overview,developers,publishers,genres`)
+  for (const appId of appIds) {
+    const res = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appId}&cc=US&filters=basic,release_date,price_overview,developers,publishers,genres`)
     if (res.ok) {
       const data = await res.json()
       if (data && typeof data === 'object' && !Array.isArray(data)) Object.assign(combined, data)
     }
-    if (i + CHUNK_SIZE < appIds.length) await new Promise(r => setTimeout(r, 100))
+    await new Promise(r => setTimeout(r, 200))
   }
   return combined
 }
