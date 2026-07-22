@@ -64,7 +64,8 @@ function parseYearFromReleaseDateString(dateStr) {
 }
 
 async function searchSteamForStudio(name) {
-  const url = `https://store.steampowered.com/search/?term=${encodeURIComponent(name)}&l=english&cc=US`
+  const searchTerm = normalizeStudioName(name) || name;
+  const url = `https://store.steampowered.com/search/?term=${encodeURIComponent(searchTerm)}&l=english&cc=US`
   const res = await fetch(url)
   if (!res.ok) return []
   const html = await res.text()
