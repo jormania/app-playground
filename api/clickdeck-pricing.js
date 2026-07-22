@@ -1,5 +1,6 @@
 import { resolvePriceUpdate, buildPatchProperties } from './_lib/clickdeckPricing.js'
 import { resolveReleaseFlip, buildWatchlistPatchProperties } from './_lib/clickdeckWatchlist.js'
+import { alreadyHasThemeHighlight, dramatizeRichText } from './_lib/clickdeckDramatize.js'
 
 // One Steam request per App ID (the multi-appid form is dead — see the loop
 // below) means a few-hundred-game collection needs well over the default
@@ -28,30 +29,40 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Fetch all games from Notion that have a Steam App ID
-    // We fetch ALL games because the user wants prices for everything (Backlog, Playing, Completed, Abandoned)
-    const notionRes = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Notion-Version': '2022-06-28',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        page_size: 100,
-        filter: {
-          property: 'Steam App ID',
-          number: { is_not_empty: true }
-        }
+    // 1. Fetch all games from Notion that have a Steam App ID.
+    // We fetch ALL games because the user wants prices for everything (Backlog, Playing, Completed, Abandoned).
+    // Paginated — a single page_size:100 request silently capped this at the
+    // first 100 rows forever once the collection grew past that (confirmed
+    // live: 121 games have a Steam App ID as of 2026-07-23, so 21 of them
+    // were never being checked at all — no price, no release-flip, nothing).
+    let rows = []
+    let notionCursor
+    do {
+      const notionRes = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          page_size: 100,
+          filter: {
+            property: 'Steam App ID',
+            number: { is_not_empty: true }
+          },
+          ...(notionCursor ? { start_cursor: notionCursor } : {})
+        })
       })
-    })
 
-    if (!notionRes.ok) {
-      throw new Error(`Notion query failed (${notionRes.status}): ${await notionRes.text()}`)
-    }
+      if (!notionRes.ok) {
+        throw new Error(`Notion query failed (${notionRes.status}): ${await notionRes.text()}`)
+      }
 
-    const data = await notionRes.json()
-    const rows = data.results || []
+      const data = await notionRes.json()
+      rows = rows.concat(data.results || [])
+      notionCursor = data.has_more ? data.next_cursor : undefined
+    } while (notionCursor)
 
     const gamesToUpdate = rows.map(page => ({
       pageId: page.id,
@@ -167,13 +178,75 @@ export default async function handler(req, res) {
       await new Promise(r => setTimeout(r, 300))
     }
 
+    // 4. Journal dramatization — a separate pass, decoupled from the Steam
+    // price/release loop above: it needs no external API call, just the raw
+    // Journal/Notes rich_text, and shouldn't be limited to App-ID-having
+    // rows the way pricing is. Mirrors scripts/dramatize-journal.py's logic
+    // exactly (see api/_lib/clickdeckDramatize.js's header comment) — this
+    // used to be a manual-only maintenance script; folding it in here means
+    // a freshly-written or Steam-derived journal entry gets its keyword
+    // highlight automatically on the very next nightly run, no manual step
+    // required. Wrapped in its own try/catch so a failure here (cosmetic)
+    // never discards the pricing/release-flip results already computed above.
+    let journalsDramatized = 0
+    try {
+      let journalRows = []
+      let journalCursor
+      do {
+        const journalRes = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Notion-Version': '2022-06-28',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            page_size: 100,
+            filter: { property: 'Journal/Notes', rich_text: { is_not_empty: true } },
+            ...(journalCursor ? { start_cursor: journalCursor } : {})
+          })
+        })
+        if (!journalRes.ok) throw new Error(`Journal query failed (${journalRes.status}): ${await journalRes.text()}`)
+        const journalData = await journalRes.json()
+        journalRows = journalRows.concat(journalData.results || [])
+        journalCursor = journalData.has_more ? journalData.next_cursor : undefined
+      } while (journalCursor)
+
+      for (const page of journalRows) {
+        const richTextArray = page.properties['Journal/Notes']?.rich_text || []
+        if (richTextArray.length === 0 || alreadyHasThemeHighlight(richTextArray)) continue
+
+        const { segments, highlighted } = dramatizeRichText(richTextArray)
+        if (highlighted === 0) continue
+
+        const patchRes = await fetch(`https://api.notion.com/v1/pages/${page.id}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Notion-Version': '2022-06-28',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ properties: { 'Journal/Notes': { rich_text: segments } } })
+        })
+        if (patchRes.ok) {
+          journalsDramatized++
+        } else {
+          console.error(`Failed to dramatize journal for page ${page.id}`, await patchRes.text())
+        }
+        await new Promise(r => setTimeout(r, 300))
+      }
+    } catch (err) {
+      console.error('Journal dramatization pass failed:', err.message)
+    }
+
     res.status(200).json({
       processed: gamesToUpdate.length,
       checked: results.length,
       priceChanges: results.filter(r => r.update?.priceChanged).length,
       releaseFlips: flippedThisRun.length,
       flippedGames: flippedThisRun,
-      successfullyPatched: patched
+      successfullyPatched: patched,
+      journalsDramatized
     })
 
   } catch (err) {
