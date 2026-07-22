@@ -108,10 +108,21 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
     setIsRefreshing(false)
   }
 
+
   const handleAddCandidate = async (candidate) => {
     setAddingAppId(candidate.appId)
     try {
       await onAddGame(candidateToNewGame(candidate))
+      
+      // Fire and forget the background scripts
+      fetch('/api/run-python-scripts', { 
+        method: 'POST',
+        headers: {
+          'x-notion-token': localStorage.getItem('cd_notion_token') || '',
+          'x-notion-db': localStorage.getItem('cd_notion_db') || ''
+        }
+      }).catch(() => {})
+
       // Remove it from the local candidate list so it can't be added twice
       // in the same session without a fresh search.
       setCandidates(prev => {

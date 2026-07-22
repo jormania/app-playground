@@ -117,6 +117,7 @@ const mapGameToProperties = (game) => {
   if (game.releaseStatus !== undefined) props['Release Status'] = { select: { name: game.releaseStatus || 'Released' } }
   if (game.releasedAt !== undefined) props['Released At'] = game.releasedAt ? { date: { start: game.releasedAt } } : { date: null }
   if (game.releaseDate !== undefined) props['Release Date'] = { rich_text: game.releaseDate ? [{ text: { content: game.releaseDate } }] : [] }
+  if (game.priceUpdatedAt !== undefined) props['Price Updated At'] = game.priceUpdatedAt ? { date: { start: game.priceUpdatedAt } } : { date: null }
 
   return props
 }

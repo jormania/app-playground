@@ -30,7 +30,8 @@ export function resolveReleaseFlip(game, appData, now = new Date()) {
     return {
       flipped: false,
       releaseDateString: releaseDateStr,
-      year: parseYearFromReleaseDateString(releaseDateStr)
+      year: parseYearFromReleaseDateString(releaseDateStr),
+      checkedAt: now.toISOString()
     }
   }
 
@@ -38,14 +39,18 @@ export function resolveReleaseFlip(game, appData, now = new Date()) {
     flipped: true,
     releaseDateString: releaseDateStr,
     year: parseYearFromReleaseDateString(releaseDateStr),
-    releasedAt: now.toISOString()
+    releasedAt: now.toISOString(),
+    checkedAt: now.toISOString()
   }
 }
 
 // Turns a resolved flip into the partial game-object fields to merge in
 // before calling McpConnector.updateGame(id, { ...game, ...fields }).
 export function buildWatchlistUpdateFields(resolved) {
-  const fields = { releaseDate: resolved.releaseDateString }
+  const fields = { 
+    releaseDate: resolved.releaseDateString,
+    priceUpdatedAt: resolved.checkedAt 
+  }
   if (resolved.year !== null && resolved.year !== undefined) fields.year = resolved.year
   if (resolved.flipped) {
     fields.releaseStatus = 'Released'

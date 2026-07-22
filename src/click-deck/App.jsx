@@ -247,6 +247,7 @@ export function App() {
         const added = await McpConnector.addGame(gameData)
         if (gameData.coverUrl) {
           await McpConnector.updateGameCover(added.id, gameData.coverUrl)
+          added.coverUrl = gameData.coverUrl
         }
         setGames(prev => [...prev, { ...gameData, ...added }])
       }
