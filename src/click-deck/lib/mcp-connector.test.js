@@ -191,6 +191,79 @@ describe('McpConnector (Notion-backed, token + db configured)', () => {
     await expect(McpConnector.getGames()).rejects.toThrow('Invalid token')
   })
 
+  it('leaves completedAt/lengthHours undefined when the R2 schema patch has not been applied', async () => {
+    const page = {
+      id: 'page-1', created_time: '2024-01-01T00:00:00.000Z',
+      properties: {
+        'Title': { title: [{ plain_text: 'Unpatched Game' }] },
+        'Status': { select: { name: 'Backlog' } }
+      }
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ results: [page], has_more: false, next_cursor: null })
+    }))
+    const games = await McpConnector.getGames()
+    expect(games[0].completedAt).toBeUndefined()
+    expect(games[0].lengthHours).toBeUndefined()
+  })
+
+  it('maps Completed At and Length (hrs) once the R2 schema patch is present', async () => {
+    const page = {
+      id: 'page-1', created_time: '2024-01-01T00:00:00.000Z',
+      properties: {
+        'Title': { title: [{ plain_text: 'Patched Game' }] },
+        'Status': { select: { name: 'Completed' } },
+        'Completed At': { date: { start: '2026-07-22' } },
+        'Length (hrs)': { number: 12.5 }
+      }
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ results: [page], has_more: false, next_cursor: null })
+    }))
+    const games = await McpConnector.getGames()
+    expect(games[0].completedAt).toBe('2026-07-22')
+    expect(games[0].lengthHours).toBe(12.5)
+  })
+
+  it('omits Completed At / Length (hrs) from a write when the caller never set them', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'page-1', properties: { Title: { title: [{ plain_text: 'X' }] } } })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await McpConnector.updateGame('page-1', { title: 'X', tags: [], status: 'Backlog' })
+
+    const [, opts] = fetchMock.mock.calls[0]
+    const body = JSON.parse(opts.body)
+    expect(body.body.properties).not.toHaveProperty('Completed At')
+    expect(body.body.properties).not.toHaveProperty('Length (hrs)')
+  })
+
+  it('writes Completed At and Length (hrs) when the caller sets them, clearing on null', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'page-1', properties: { Title: { title: [{ plain_text: 'X' }] } } })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await McpConnector.updateGame('page-1', {
+      title: 'X', tags: [], status: 'Completed', completedAt: '2026-07-22', lengthHours: 8
+    })
+    let body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.body.properties['Completed At']).toEqual({ date: { start: '2026-07-22' } })
+    expect(body.body.properties['Length (hrs)']).toEqual({ number: 8 })
+
+    await McpConnector.updateGame('page-1', {
+      title: 'X', tags: [], status: 'Playing', completedAt: null, lengthHours: null
+    })
+    body = JSON.parse(fetchMock.mock.calls[1][1].body)
+    expect(body.body.properties['Completed At']).toEqual({ date: null })
+    expect(body.body.properties['Length (hrs)']).toEqual({ number: null })
+  })
+
   it('maps Price Updated At into priceUpdatedAt', async () => {
     const page = {
       id: 'page-1', created_time: '2024-01-01T00:00:00.000Z',

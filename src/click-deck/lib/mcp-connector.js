@@ -58,7 +58,13 @@ const mapPageToGame = (page) => {
     // and therefore still get omitted from writes.
     releaseStatus: hasWatchlistSchema ? (page.properties['Release Status']?.select?.name || 'Released') : undefined,
     releasedAt: hasWatchlistSchema ? (page.properties['Released At']?.date?.start || null) : undefined,
-    releaseDate: hasWatchlistSchema ? (page.properties['Release Date']?.rich_text?.map(rt => rt.plain_text).join('') || '') : undefined
+    releaseDate: hasWatchlistSchema ? (page.properties['Release Date']?.rich_text?.map(rt => rt.plain_text).join('') || '') : undefined,
+    // Same presence-gated pattern as the Watchlist fields above — 'Completed At'
+    // and 'Length (hrs)' only exist in Notion once the R2 schema patch has been
+    // applied, so we key off key-presence and leave these `undefined` (never
+    // defaulted) until then, keeping ordinary saves safe for unpatched schemas.
+    completedAt: page.properties['Completed At'] !== undefined ? (page.properties['Completed At']?.date?.start || null) : undefined,
+    lengthHours: page.properties['Length (hrs)'] !== undefined ? (page.properties['Length (hrs)']?.number ?? null) : undefined
   }
 }
 
@@ -118,6 +124,13 @@ const mapGameToProperties = (game) => {
   if (game.releasedAt !== undefined) props['Released At'] = game.releasedAt ? { date: { start: game.releasedAt } } : { date: null }
   if (game.releaseDate !== undefined) props['Release Date'] = { rich_text: game.releaseDate ? [{ text: { content: game.releaseDate } }] : [] }
   if (game.priceUpdatedAt !== undefined) props['Price Updated At'] = game.priceUpdatedAt ? { date: { start: game.priceUpdatedAt } } : { date: null }
+
+  // Same conditional-write pattern as the Watchlist fields — see the comment
+  // on mapPageToGame's hasWatchlistSchema check. Only sent when the caller
+  // has actually set the field (never `undefined`), so a pre-patch schema
+  // never gets a PATCH referencing a property it doesn't recognize yet.
+  if (game.completedAt !== undefined) props['Completed At'] = game.completedAt ? { date: { start: game.completedAt } } : { date: null }
+  if (game.lengthHours !== undefined) props['Length (hrs)'] = { number: game.lengthHours !== null ? parseFloat(game.lengthHours) : null }
 
   return props
 }
