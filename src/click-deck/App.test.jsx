@@ -265,6 +265,45 @@ describe('App', () => {
     })
   })
 
+  describe('Longest/Shortest sort', () => {
+    const lengthGames = [
+      { id: 'a', title: 'Short Game', year: 2000, developer: '', status: 'Backlog', tags: [], journal: '', lengthHours: 2 },
+      { id: 'b', title: 'Long Game', year: 2001, developer: '', status: 'Backlog', tags: [], journal: '', lengthHours: 40 },
+      { id: 'c', title: 'Unknown Length Game', year: 2002, developer: '', status: 'Backlog', tags: [], journal: '' },
+      { id: 'd', title: 'Mid Game', year: 2003, developer: '', status: 'Backlog', tags: [], journal: '', lengthHours: 10 }
+    ]
+
+    const titlesInOrder = () => [...document.querySelectorAll('.cd-game-title')].map(el => el.textContent)
+
+    it('sorts Longest first, with an unknown length pushed last rather than treated as longest', async () => {
+      const { McpConnector } = await import('./lib/mcp-connector')
+      McpConnector.getGames.mockResolvedValueOnce(lengthGames)
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Short Game')).toBeTruthy())
+
+      fireEvent.click(screen.getByText('Timeline'))
+      fireEvent.click(screen.getByText('Longest'))
+
+      await waitFor(() => {
+        expect(titlesInOrder()).toEqual(['Long Game', 'Mid Game', 'Short Game', 'Unknown Length Game'])
+      })
+    })
+
+    it('sorts Shortest first, with an unknown length pushed last rather than treated as shortest', async () => {
+      const { McpConnector } = await import('./lib/mcp-connector')
+      McpConnector.getGames.mockResolvedValueOnce(lengthGames)
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Short Game')).toBeTruthy())
+
+      fireEvent.click(screen.getByText('Timeline'))
+      fireEvent.click(screen.getByText('Shortest'))
+
+      await waitFor(() => {
+        expect(titlesInOrder()).toEqual(['Short Game', 'Mid Game', 'Long Game', 'Unknown Length Game'])
+      })
+    })
+  })
+
   describe('sort menu keyboard navigation', () => {
     it('opens the menu and moves focus through the options with arrow keys', async () => {
       render(<App />)
@@ -284,7 +323,7 @@ describe('App', () => {
 
       // Wraps from the last option back to the first.
       fireEvent.keyDown(document.activeElement, { key: 'End' })
-      expect(document.activeElement.textContent).toBe('Alphabetical')
+      expect(document.activeElement.textContent).toBe('Shortest')
       fireEvent.keyDown(document.activeElement, { key: 'ArrowDown' })
       expect(document.activeElement.textContent).toBe('Timeline')
     })

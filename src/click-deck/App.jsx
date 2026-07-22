@@ -23,7 +23,9 @@ const SORT_OPTIONS = [
   { value: 'timeline', label: 'Timeline', group: 'TIME' },
   { value: 'recent', label: 'Recently Added', group: 'TIME' },
   { value: 'rating', label: 'Highest Rated', group: 'METRICS' },
-  { value: 'alpha', label: 'Alphabetical', group: 'METRICS' }
+  { value: 'alpha', label: 'Alphabetical', group: 'METRICS' },
+  { value: 'longest', label: 'Longest', group: 'METRICS' },
+  { value: 'shortest', label: 'Shortest', group: 'METRICS' }
 ]
 const STATUS_FILTERS = ['All', 'Backlog', 'Playing', 'Completed', 'Abandoned']
 
@@ -349,6 +351,15 @@ export function App() {
       result.sort((a, b) => (b.rating || 0) - (a.rating || 0))
     } else if (sortBy === 'alpha') {
       result.sort((a, b) => a.title.localeCompare(b.title))
+    } else if (sortBy === 'longest') {
+      // A game with no recorded length sorts last, not first — treating
+      // "unknown" as if it were the longest would be misleading.
+      result.sort((a, b) => (b.lengthHours ?? -1) - (a.lengthHours ?? -1))
+    } else if (sortBy === 'shortest') {
+      // Same "unknown sorts last" rule, mirrored for ascending order —
+      // matches randomWeighting.js's convention of treating a missing value
+      // as least-favored rather than excluding it outright.
+      result.sort((a, b) => (a.lengthHours ?? Infinity) - (b.lengthHours ?? Infinity))
     }
     return result
   }, [baseFilteredGames, sortBy, statusFilter])
