@@ -144,13 +144,22 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
     const isExactDup = isDup?.kind === 'exact'
     return (
       <div key={candidate.appId} className={`cd-candidate-row ${isExactDup ? 'is-dup' : ''}`}>
-        <img
-          className="cd-candidate-cover"
-          src={candidate.headerImage}
-          alt=""
-          loading="lazy"
-          onError={(e) => { e.target.style.visibility = 'hidden' }}
-        />
+        <div className="cd-candidate-cover-container">
+          {candidate.headerImage ? (
+            <img
+              className="cd-candidate-cover"
+              src={candidate.headerImage}
+              alt=""
+              loading="lazy"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.parentElement.classList.add('fallback-cover');
+              }}
+            />
+          ) : (
+            <div className="cd-candidate-cover fallback-cover"></div>
+          )}
+        </div>
         <div className="cd-candidate-info">
           <a
             className="cd-candidate-title"
@@ -246,7 +255,22 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
               const isStale = age !== null && age > STALE_DAYS
               return (
                 <div key={game.id} className="cd-watchlist-card cd-panel">
-                  {game.coverUrl && <img className="cd-watchlist-card-cover" src={game.coverUrl} alt="" loading="lazy" />}
+                  <div className="cd-watchlist-cover-container">
+                    {game.coverUrl ? (
+                      <img
+                        className="cd-watchlist-card-cover"
+                        src={game.coverUrl}
+                        alt=""
+                        loading="lazy"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.parentElement.classList.add('fallback-cover');
+                        }}
+                      />
+                    ) : (
+                      <div className="cd-watchlist-card-cover fallback-cover"></div>
+                    )}
+                  </div>
                   <div className="cd-watchlist-card-body">
                     <h4>{game.title}</h4>
                     <p className="cd-watchlist-expected">🔭 EXPECTED: {game.releaseDate || (game.year ? String(game.year) : 'TBA')}</p>
@@ -270,7 +294,22 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
           <div className="cd-watchlist-grid">
             {recentlyReleased.map(game => (
               <div key={game.id} className="cd-watchlist-card cd-panel">
-                {game.coverUrl && <img className="cd-watchlist-card-cover" src={game.coverUrl} alt="" loading="lazy" />}
+                <div className="cd-watchlist-cover-container">
+                  {game.coverUrl ? (
+                    <img
+                      className="cd-watchlist-card-cover"
+                      src={game.coverUrl}
+                      alt=""
+                      loading="lazy"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.classList.add('fallback-cover');
+                      }}
+                    />
+                  ) : (
+                    <div className="cd-watchlist-card-cover fallback-cover"></div>
+                  )}
+                </div>
                 <div className="cd-watchlist-card-body">
                   <h4>{game.title}</h4>
                   <p className="cd-watchlist-released">✓ RELEASED: {game.releaseDate || new Date(game.releasedAt).toLocaleDateString()}</p>
@@ -339,12 +378,25 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
         .cd-candidate-row.is-dup {
           opacity: 0.7;
         }
-        .cd-candidate-cover {
+        .cd-watchlist-card {
+          padding: 0;
+          overflow: hidden;
+        }
+        .cd-candidate-cover-container {
           width: 80px;
           height: 38px;
-          object-fit: cover;
           flex-shrink: 0;
           background: var(--cd-bg-steel);
+        }
+        .cd-candidate-cover-container.fallback-cover::before {
+          font-size: 0.5rem;
+          letter-spacing: 1px;
+        }
+        .cd-candidate-cover {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
         }
         .cd-candidate-info {
           flex: 1;
@@ -383,9 +435,18 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
           padding: 0;
           overflow: hidden;
         }
-        .cd-watchlist-card-cover {
+        .cd-watchlist-cover-container {
           width: 100%;
           height: 90px;
+          background: var(--cd-bg-steel);
+        }
+        .cd-watchlist-cover-container.fallback-cover::before {
+          font-size: 1rem;
+          letter-spacing: 2px;
+        }
+        .cd-watchlist-card-cover {
+          width: 100%;
+          height: 100%;
           object-fit: cover;
           display: block;
         }
