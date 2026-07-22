@@ -723,7 +723,23 @@ export function App() {
           font-size: 0.8rem;
           border-bottom: 1px dashed #a4d007;
         }
-        
+        @media (max-width: 600px) {
+          .cd-discount-banner {
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+          }
+          .cd-banner-icon {
+            font-size: 1rem;
+          }
+          .cd-banner-text {
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+          }
+          .cd-banner-cta {
+            font-size: 0.7rem;
+          }
+        }
+
         @keyframes pulseBanner {
           0% { box-shadow: 0 0 5px rgba(164, 208, 7, 0.1); }
           100% { box-shadow: 0 0 15px rgba(164, 208, 7, 0.4); }
