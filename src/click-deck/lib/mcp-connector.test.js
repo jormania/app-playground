@@ -97,12 +97,6 @@ describe('McpConnector (local-storage fallback, no Notion token)', () => {
     expect(games.find(g => g.id === fullPrice.id).isDiscounted).toBe(false)
   })
 
-  it('clearData wipes local db and Notion credentials, resetting isInitialized', async () => {
-    await McpConnector.initializeMockData()
-    expect(McpConnector.isInitialized()).toBe(true)
-    McpConnector.clearData()
-    expect(McpConnector.isInitialized()).toBe(false)
-  })
 })
 
 describe('McpConnector (Notion-backed, token + db configured)', () => {

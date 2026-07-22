@@ -71,7 +71,7 @@ async function fetchNotion(path, method = 'POST', body = null) {
 }
 
 export const StudiosConnector = {
-  isInitialized: () => (getToken() && getStudiosDbId()) || getLocalStudios() !== null,
+  isInitialized: () => Boolean((getToken() && getStudiosDbId()) || getLocalStudios() !== null),
 
   hasRemoteDb: () => Boolean(getToken() && getStudiosDbId()),
 

@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest'
-import { render, screen, fireEvent , cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { SettingsModal } from './SettingsModal'
 
 beforeAll(() => {
@@ -81,18 +81,41 @@ describe('SettingsModal', () => {
     expect(screen.getByText(/Banner will show again now/)).toBeTruthy()
   })
 
-  it('requires typing RESET to confirm factory reset', () => {
-    const onResetDb = vi.fn()
-    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('nope')
-    render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} onResetDb={onResetDb} />)
+  it('does not render any of the old developer-facing database action buttons', () => {
+    render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} />)
+    expect(screen.queryByText(/Initialize New Database Schema/)).toBeNull()
+    expect(screen.queryByText(/Populate Seed Data/)).toBeNull()
+    expect(screen.queryByText(/Patch Database for Pricing Schema/)).toBeNull()
+    expect(screen.queryByText(/Patch Database for Watchlist Schema/)).toBeNull()
+    expect(screen.queryByText(/Factory Reset/)).toBeNull()
+    expect(screen.queryByText(/Initialize Followed Studios Database/)).toBeNull()
+  })
 
-    fireEvent.click(screen.getByText(/Factory Reset DB State/))
-    expect(onResetDb).not.toHaveBeenCalled()
+  describe('Followed Studios database connection', () => {
+    it('pasting an ID and clicking CONNECT persists it and loads the studio list', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ results: [], has_more: false, next_cursor: null })
+      }))
+      // This suite's shared localStorage mock always returns null from getItem,
+      // so StudiosConnector reads back an empty id after "persisting" — the
+      // real behavior (localStorage actually holding the value) is covered by
+      // studios-connector.test.js. Here we're only confirming the button wires
+      // setDbId + a reload, via the localStorage.setItem call it makes.
+      render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} />)
+      fireEvent.change(screen.getByPlaceholderText('UUID of Followed Studios DB'), { target: { value: 'studios-db-123' } })
+      fireEvent.click(screen.getByText('CONNECT'))
 
-    promptSpy.mockReturnValue('RESET')
-    fireEvent.click(screen.getByText(/Factory Reset DB State/))
-    expect(onResetDb).toHaveBeenCalled()
+      await waitFor(() => {
+        expect(window.localStorage.setItem).toHaveBeenCalledWith('cd_studios_db_id', 'studios-db-123')
+      })
+      vi.unstubAllGlobals()
+    })
 
-    promptSpy.mockRestore()
+    it('prompts for an ID when CONNECT is clicked with the field empty', () => {
+      render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} />)
+      fireEvent.click(screen.getByText('CONNECT'))
+      expect(screen.getByText(/Paste a Followed Studios database ID first/)).toBeTruthy()
+    })
   })
 })

@@ -284,12 +284,6 @@ export function App() {
     }
   }
   
-  const resetDb = () => {
-    McpConnector.clearData()
-    setIsInitialized(false)
-    setGames([])
-  }
-
   // Merges a batch of already-written game updates (from [W]'s "Refresh
   // Release Dates") into local state by id — the writes themselves already
   // happened in watchlistActions.js via the normal McpConnector.updateGame
@@ -591,7 +585,6 @@ export function App() {
           }}
           onShowBannerNow={() => setIsBannerSnoozed(false)}
           onShowReleaseBannerNow={() => setIsReleaseSnoozed(false)}
-          onResetDb={() => { setIsSettingsOpen(false); resetDb(); }}
         />
       )}
 

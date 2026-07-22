@@ -144,7 +144,7 @@ async function fetchNotion(path, method = 'POST', body = null) {
 
 export const McpConnector = {
   isInitialized: () => {
-    return (getToken() && getDbId()) || getLocalDb() !== null
+    return Boolean((getToken() && getDbId()) || getLocalDb() !== null)
   },
   
   initializeMockData: async () => {
@@ -179,54 +179,6 @@ export const McpConnector = {
       }
       return [...existingDb, ...newGames]
     }
-  },
-
-  updateDatabaseSchema: async () => {
-    const token = getToken()
-    const dbId = getDbId()
-    if (token && dbId) {
-      const payload = {
-        properties: {
-          'Current Price': { number: { format: 'dollar' } },
-          'Discount Percent': { number: { format: 'percent' } },
-          'Initial Price': { number: { format: 'dollar' } },
-          'Steam App ID': { number: { format: 'number' } },
-          'Price Updated At': { date: {} }
-        }
-      }
-      return await fetchNotion(`databases/${dbId}`, 'PATCH', payload)
-    }
-  },
-
-  // Separate from updateDatabaseSchema (pricing) so a user who only wants
-  // Watchlist tracking isn't forced through the pricing patch first, and
-  // vice versa — mirrors the existing two-button pattern in Settings.
-  updateWatchlistSchema: async () => {
-    const token = getToken()
-    const dbId = getDbId()
-    if (token && dbId) {
-      const payload = {
-        properties: {
-          'Release Status': {
-            select: {
-              options: [
-                { name: 'Coming Soon', color: 'blue' },
-                { name: 'Released', color: 'gray' }
-              ]
-            }
-          },
-          'Released At': { date: {} },
-          'Release Date': { rich_text: {} }
-        }
-      }
-      return await fetchNotion(`databases/${dbId}`, 'PATCH', payload)
-    }
-  },
-
-  clearData: () => {
-    localStorage.removeItem(LOCAL_STORAGE_KEY)
-    localStorage.removeItem('cd_notion_token')
-    localStorage.removeItem('cd_notion_db')
   },
 
   getGames: async () => {

@@ -65,16 +65,18 @@
   <p>Click Deck is a specialized catalog for tracking your adventure-game backlog, what you're currently playing, and what you've finished — from 90s SCUMM classics to today's narrative indies. It leans hard into an industrial, terminal-flavored aesthetic (bracket-notation buttons, scan-line animations, a genuine "NO SIGNAL" static pattern for missing covers) inspired by <em>Beneath a Steel Sky</em>, and it synchronizes live with your own Notion database via this repo's serverless MCP proxy.</p>
   <p class="muted">Everything is stored in <b>your</b> Notion, under <b>your</b> Notion integration token — Click Deck holds no data of its own beyond a few device-local preferences (theme, weighting mode, banner settings). The app installs as a Progressive Web App (PWA) on desktop or mobile, and once installed its shell — the timeline, analytics and stats views — keeps working offline. Loading fresh data still needs a connection to Notion, of course.</p>
 
-  <h2>1. Quick Setup (Onboarding Wizard)</h2>
-  <p>The very first time you open Click Deck with no Notion token saved, it shows a two-step Onboarding Wizard that walks you through connecting a real Notion database. Nothing is written anywhere until you complete it — until then, or if you skip it, the app runs entirely in a local-storage demo mode (more on that in <a href="#byo">§7</a>).</p>
+  <h2>1. Quick Setup</h2>
+  <p>The very first time you open Click Deck with no Notion connection saved, an Onboarding Wizard offers to seed a small local-storage demo collection so you can explore the Timeline/Analytics/Stats views immediately — nothing is written to Notion at this stage, and no Notion token is involved yet (more on that mode in <a href="#byo">§11</a>).</p>
+  <p>To connect your own real, persistent collection, set it up directly in Notion, then point the app at it from Settings — there's no in-app "create a database" step:</p>
   <ol class="steps">
     <li><b>Create an Integration:</b> Go to <a href="https://www.notion.so/my-integrations" target="_blank">Notion Integrations</a> and create a new integration. Call it "Click Deck".</li>
     <li><b>Copy the Token:</b> Copy the Internal Integration Secret — it starts with <code>secret_</code>.</li>
-    <li><b>Share a Page:</b> Create a new blank page in your Notion workspace (e.g. "Gaming Setup"). In the top-right corner of that page, click <code>...</code>, go to <b>Connections</b>, and add your "Click Deck" integration.</li>
-    <li><b>Get the Page ID:</b> Copy the link to this page. The long hexadecimal string at the end of the URL is your Page ID — Click Deck uses it as the parent under which it builds the database.</li>
-    <li><b>Run the Wizard:</b> Open Click Deck, paste your Integration Token and Page ID into the wizard, and click <b>Initialize Database</b>. Click Deck builds the full property schema for you — see the table in <a href="#schema">§2</a> for exactly what gets created.</li>
+    <li><b>Duplicate the Starter Template:</b> Find the <b>Click Deck — Starter Template</b> page in Notion (ask whoever set up your workspace for the link) and duplicate it into your own workspace — top-right <code>•••</code> → <i>Duplicate</i>. It comes with the complete schema already in place — see <a href="#schema">§2</a> — so there's nothing left to build or patch.</li>
+    <li><b>Share the database with your integration:</b> Open the duplicated database, click <code>•••</code> → <b>Connections</b>, and add your "Click Deck" integration.</li>
+    <li><b>Get the Database ID:</b> Copy the database's link. The long hexadecimal string in the URL is its ID.</li>
+    <li><b>Connect it:</b> Open Click Deck's Settings (⚙), paste the Integration Token and the Database ID, and save. That's the entire connection step — same on every device, just paste the same two values again.</li>
   </ol>
-  <p class="note">You can also do this later or redo it from scratch: the same "Initialize New Database Schema" action lives permanently in <b>Settings (⚙) → Database Actions</b>. If a Database ID is already saved there, Click Deck asks you to confirm before building a second one, so you can't accidentally orphan your existing collection.</p>
+  <p class="note">Using the Watchlist (<a href="#watchlist">§5</a>)? There's a second, equally small database and template for that — <b>Click Deck — Followed Studios — Starter Template</b> — duplicated and connected the same way, from its own ID field in Settings.</p>
 
   <h2 id="schema">2. The Notion Database Schema</h2>
   <p>Whether it's built by the wizard or by hand, Click Deck expects a database with these exact property names. Getting a name slightly wrong (extra space, different casing) means that property silently won't sync.</p>
@@ -98,11 +100,10 @@
       <tr><td>Release Date</td><td>Rich text</td><td>Steam's own human-readable release date string (e.g. "15 Jul, 2026", or just "Q3 2026" when that's all Steam has). Display only.</td></tr>
     </tbody>
   </table>
-  <p class="note warn">The five pricing properties (<code>Current Price</code> through <code>Price Updated At</code>) aren't part of the wizard's initial schema — they're added by a separate <b>"Patch Database for Pricing Schema"</b> button in Settings. The three Watchlist properties above are likewise added by their own <b>"Patch Database for Watchlist Schema"</b> button. Run either once, after initializing, for that feature to work. Skipping either is harmless — the app just won't have anywhere to write yet.</p>
+  <p class="note">All fourteen properties above — base, pricing, and Watchlist — ship together in the Starter Template from <a href="#schema">§1</a>, so a fresh setup needs no further schema changes. If you're connecting to an older database that predates some of these properties, Click Deck degrades gracefully rather than breaking: it simply omits whatever properties aren't present, and those features activate themselves automatically the moment you add the missing properties directly in Notion (matching the names and types above exactly).</p>
 
-  <h2>3. Populating Seed Data</h2>
-  <p>Once your database is initialized (and optionally patched for pricing), you can start adding games one at a time through the Editor, or fast-forward with a curated starter set. In <b>Settings (⚙) → Database Actions</b>, click <b>Populate Seed Data</b>. This injects ten genre-spanning classics — <i>Loom</i>, <i>The Curse of Monkey Island</i>, <i>Sanitarium</i>, <i>Blade Runner</i>, <i>Machinarium</i>, <i>Broken Age</i>, <i>Firewatch</i>, <i>Oxenfree</i>, <i>The Wolf Among Us</i>, and <i>Pentiment</i> — straight into your Notion database, each with real Steam App IDs so their cover art and pricing work immediately, five tags apiece, and a written-in-voice journal entry to show what a good one looks like.</p>
-  <p class="muted">This button checks for existing data first: if your database already has entries, it asks you to confirm before seeding again, since running it twice creates duplicate rows (matched only by exact title).</p>
+  <h2>3. Adding Your First Games</h2>
+  <p>Once connected, add games one at a time through the Editor (<a href="#editor">§6</a> — click <code>+</code> or press <span class="kbd">n</span>), or add rows directly in Notion using the schema in <a href="#schema">§2</a>. There's no bulk-seed action in the app — a curated ten-title starter set (<i>Loom</i>, <i>The Curse of Monkey Island</i>, <i>Sanitarium</i>, <i>Blade Runner</i>, <i>Machinarium</i>, <i>Broken Age</i>, <i>Firewatch</i>, <i>Oxenfree</i>, <i>The Wolf Among Us</i>, <i>Pentiment</i>) exists only inside the local-storage demo mode from <a href="#byo">§11</a>, to show what a good entry looks like before you've connected anything real — it's never written to Notion.</p>
 
   <h2>4. Core Views</h2>
   <p>Three tabs in the header — <code>[T]</code>, <code>[A]</code>, <code>[S]</code> — switch between three different lenses on the same collection.</p>
@@ -132,7 +133,7 @@
   <p>A separate 🎉 release banner (same shape/animation as the sale banner described below, its own color/icon and its own 24h snooze) appears above the Timeline whenever something's landed recently, and clicking <code>[VIEW]</code> jumps straight to <code>[W]</code>.</p>
 
   <h3>Followed Studios</h3>
-  <p>The list <b>Find New Games</b> searches — configured in <b>Settings → Followed Studios</b>, its own small Notion database (so it syncs across devices, same as your collection) with a friendly studio name and an optional exact Steam developer-tag override for studios whose Steam listing doesn't match their common name (e.g. "Wadjet Eye" vs. "Wadjet Eye Games"). Fully editable — add or remove studios any time — and seeded with 11 starter studios on first setup.</p>
+  <p>The list <b>Find New Games</b> searches — configured in <b>Settings → Followed Studios</b>, its own small Notion database (so it syncs across devices, same as your collection) with a friendly studio name and an optional exact Steam developer-tag override for studios whose Steam listing doesn't match their common name (e.g. "Wadjet Eye" vs. "Wadjet Eye Games"). Set up the same way as your main database (<a href="#byo">§1</a>): duplicate its Starter Template, share it with your integration, paste the ID into Settings. The first time it connects to an empty database, 11 starter studios seed themselves automatically — no button to click. Fully editable afterward — add or remove studios any time.</p>
 
   <h2 id="editor">6. The Game Editor</h2>
   <p>Click <code>+</code> in the header (or press <span class="kbd">n</span> anywhere outside a text field) to add a new game; click <code>[E]DIT</code> on any card to edit an existing one. The Editor covers every property in the schema: Title, Cover URL, Release Year, Developer/Studio, Status, Rating (only shown once Status isn't Backlog), Tags, and Journal/Notes.</p>
@@ -187,8 +188,8 @@
     <li><b><code>validate-watchlist.py</code></b> — read-only sanity check for the Watchlist feature: flags a Coming Soon game missing its Steam App ID, a status/Released-At contradiction, a missed flip Steam already reports as released, a pull-back (a Released game Steam now shows as unreleased again), and stale entries. Worth running periodically, same spirit as <code>verify-steam-names.py</code>.</li>
   </ul>
 
-  <h2>14. Factory Reset</h2>
-  <p>Settings → Database Actions → <b>"⚠️ Factory Reset DB State"</b> wipes your saved Notion token, database ID, and any local-demo data, dropping you back to the Onboarding Wizard. It's guarded behind a prompt requiring you to type <code>RESET</code> exactly, so it's never triggered by a stray click — and since your actual game data lives in Notion, not in the browser, this only clears the <em>connection</em>, not your collection.</p>
+  <h2>14. Disconnecting</h2>
+  <p>There's no dedicated "factory reset" action. Since your actual game data lives in Notion, not in the browser, disconnecting is just clearing the Token and Database ID fields in Settings and saving — that drops you back to the Onboarding Wizard's local-demo mode without touching your collection. To clear the local-demo data itself (if you'd explored that mode first), clear this site's storage from your browser's own settings.</p>
 
   <h2>15. PWA & Offline Support</h2>
   <p>Click Deck ships a web manifest and a scoped service worker, so it's installable as a standalone app on both desktop and mobile, and its shell keeps working without a network connection once installed: the app boots, the timeline/analytics/stats views render, and your last-synced data is still there. What doesn't work offline is fetching <em>fresh</em> data from Notion, or anything that hits the Steam API (cover fetching, pricing). JetBrains Mono is loaded from Google Fonts rather than self-hosted, so the very first load still needs a connection to render with the right typeface; after that it's cached too.</p>
