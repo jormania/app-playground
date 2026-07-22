@@ -240,7 +240,8 @@ export function App() {
     try {
       if (!isNew) {
         await McpConnector.updateGame(gameData.id, gameData)
-        if (gameData.coverUrl !== undefined) {
+        const oldGame = previousGames.find(g => g.id === gameData.id)
+        if (gameData.coverUrl !== undefined && gameData.coverUrl !== oldGame?.coverUrl) {
           await McpConnector.updateGameCover(gameData.id, gameData.coverUrl)
         }
       } else {

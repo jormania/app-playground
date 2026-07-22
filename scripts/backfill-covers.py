@@ -44,11 +44,26 @@ def get_games():
             break
     return games
 
+def get_steam_header(app_id):
+    req = urllib.request.Request(f"https://store.steampowered.com/api/appdetails?appids={app_id}&cc=US&filters=basic")
+    try:
+        with urllib.request.urlopen(req, context=ctx) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            if data and str(app_id) in data and data[str(app_id)].get("success"):
+                return data[str(app_id)]["data"].get("header_image")
+    except Exception:
+        pass
+    return f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg"
+
 def set_cover(page_id, app_id):
+    cover_url = get_steam_header(app_id)
+    if not cover_url:
+        return False
+        
     payload = {
         "cover": {
             "type": "external",
-            "external": { "url": f"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg" }
+            "external": { "url": cover_url }
         }
     }
     req = urllib.request.Request(

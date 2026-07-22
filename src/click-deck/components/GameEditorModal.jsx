@@ -92,7 +92,7 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
       if (match) {
         setFormData(prev => ({
           ...prev,
-          coverUrl: `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${match.id}/header.jpg`,
+          coverUrl: match.coverUrl || `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${match.id}/header.jpg`,
           // Previously only the cover URL was saved here, never the App ID —
           // meaning a game whose cover came from this button would silently
           // never get pricing (the nightly cron only picks up games with a
