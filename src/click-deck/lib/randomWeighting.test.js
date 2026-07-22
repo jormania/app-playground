@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeWeights, pickWeightedGame } from './randomWeighting'
+import { computeWeights, pickWeightedGame, computeTagAffinity, computeStudioAffinity } from './randomWeighting'
 
 const games = [
   { id: 'a', createdTime: '2024-01-03T00:00:00.000Z', price: 20 }, // newest, mid price
@@ -26,6 +26,63 @@ describe('computeWeights', () => {
     const withUnpriced = [...games, { id: 'd', createdTime: '2024-01-04T00:00:00.000Z', price: null }]
     const weights = computeWeights(withUnpriced, 'cheapest')
     expect(weights[3]).toBe(1) // 'd' ranks last
+  })
+})
+
+describe('computeTagAffinity', () => {
+  it('averages rating per tag, ignoring unrated games', () => {
+    const rated = [
+      { rating: 5, tags: ['Noir', 'Mystery'] },
+      { rating: 3, tags: ['Noir'] },
+      { rating: null, tags: ['Noir'] } // unrated — excluded
+    ]
+    const affinity = computeTagAffinity(rated)
+    expect(affinity['Noir']).toBe(4) // (5+3)/2
+    expect(affinity['Mystery']).toBe(5)
+  })
+})
+
+describe('computeStudioAffinity', () => {
+  it('averages rating per developer, ignoring unrated/developer-less games', () => {
+    const rated = [
+      { rating: 4, developer: 'LucasArts' },
+      { rating: 2, developer: 'LucasArts' },
+      { rating: 5, developer: '' } // no developer — excluded
+    ]
+    const affinity = computeStudioAffinity(rated)
+    expect(affinity['LucasArts']).toBe(3) // (4+2)/2
+    expect(affinity['']).toBeUndefined()
+  })
+})
+
+describe('computeWeights (taste mode)', () => {
+  const tasteCandidates = [
+    { id: 'noir-game', tags: ['Noir'], developer: 'Unrated Studio' },
+    { id: 'comedy-game', tags: ['Comedy'], developer: 'Unrated Studio' }
+  ]
+
+  it('falls back to uniform weights when fewer than 3 rated games exist (cold start)', () => {
+    const ratedGames = [
+      { rating: 5, tags: ['Noir'], developer: 'X' },
+      { rating: 4, tags: ['Noir'], developer: 'X' }
+    ]
+    expect(computeWeights(tasteCandidates, 'taste', { ratedGames })).toEqual([1, 1])
+  })
+
+  it('favors a candidate whose tags match a highly-rated tag history', () => {
+    const ratedGames = [
+      { rating: 5, tags: ['Noir'], developer: 'A' },
+      { rating: 5, tags: ['Noir'], developer: 'B' },
+      { rating: 1, tags: ['Comedy'], developer: 'C' }
+    ]
+    const weights = computeWeights(tasteCandidates, 'taste', { ratedGames })
+    const noirWeight = weights[tasteCandidates.findIndex(g => g.id === 'noir-game')]
+    const comedyWeight = weights[tasteCandidates.findIndex(g => g.id === 'comedy-game')]
+    expect(noirWeight).toBeGreaterThan(comedyWeight)
+  })
+
+  it('treats a missing ratedGames context the same as cold-start (uniform)', () => {
+    expect(computeWeights(tasteCandidates, 'taste')).toEqual([1, 1])
   })
 })
 

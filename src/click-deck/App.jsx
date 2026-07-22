@@ -626,6 +626,7 @@ export function App() {
       {isRandomOpen && (
         <RandomGameModal
           backlogGames={games.filter(g => g.status === 'Backlog' && isActiveCollectionGame(g))}
+          allGames={games}
           onClose={() => setIsRandomOpen(false)}
           onUpdateStatus={handleUpdateStatus}
         />

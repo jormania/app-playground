@@ -8,7 +8,8 @@ export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onShowRel
   const [dbId, setDbId] = useState(localStorage.getItem('cd_notion_db') || '')
   const [theme, setTheme] = useState(localStorage.getItem('cd_theme') || 'union')
   const [crtEffect, setCrtEffect] = useState(localStorage.getItem('cd_crt_effect') === 'true')
-  const [randomWeight, setRandomWeight] = useState(localStorage.getItem('cd_random_weight') || 'uniform')
+  // 'taste' (tag/studio affinity from your rated history) is the R2 default.
+  const [randomWeight, setRandomWeight] = useState(localStorage.getItem('cd_random_weight') || 'taste')
   const [bannerPersistent, setBannerPersistent] = useState(() => isDiscountBannerPersistent())
   const [bannerStatus, setBannerStatus] = useState('')
   const [releaseBannerPersistentState, setReleaseBannerPersistentState] = useState(() => isReleaseBannerPersistent())
@@ -229,12 +230,15 @@ export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onShowRel
             onChange={e => setRandomWeight(e.target.value)}
             style={{ width: '100%', padding: '0.8rem', background: 'var(--cd-bg-dark)', color: 'var(--cd-accent-cyan)', border: '1px solid var(--cd-border-color)', fontFamily: 'var(--cd-font-terminal)', fontSize: '1rem', outline: 'none' }}
           >
+            <option value="taste">Favor your taste (tags + studio affinity)</option>
             <option value="uniform">Uniform (equal odds)</option>
             <option value="oldest">Favor oldest backlog entries</option>
             <option value="cheapest">Favor cheapest entries</option>
           </select>
           <p style={{ fontSize: '0.85rem', color: 'var(--cd-text-muted)', margin: '0.3rem 0 0' }}>
-            Controls how [R] picks your next playthrough from the backlog.
+            Controls how [R] picks your next playthrough from the backlog. "Favor your taste" blends
+            the average rating of games sharing a candidate's tags (~2/3 weight) with its studio's
+            average rating (~1/3 weight) — falls back to uniform odds until you've rated at least 3 games.
           </p>
         </div>
 

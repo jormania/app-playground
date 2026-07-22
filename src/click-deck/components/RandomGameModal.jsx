@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react'
-import { pickWeightedGame } from '../lib/randomWeighting'
+import { pickWeightedGame, COLD_START_MIN_RATED } from '../lib/randomWeighting'
 
-export function RandomGameModal({ backlogGames, onClose, onUpdateStatus }) {
+export function RandomGameModal({ backlogGames, allGames = [], onClose, onUpdateStatus }) {
   const [selectedGame, setSelectedGame] = useState(null)
   const [isRolling, setIsRolling] = useState(true)
-  // Settings → "Random pick weighting"; defaults to a plain uniform roll.
-  const weightMode = typeof localStorage !== 'undefined' ? (localStorage.getItem('cd_random_weight') || 'uniform') : 'uniform'
+  // Settings → "Random pick weighting"; 'taste' (tag/studio affinity from
+  // your rated history) is the R2 default — see randomWeighting.js's
+  // COLD_START_MIN_RATED for the uniform fallback on a fresh collection.
+  const weightMode = typeof localStorage !== 'undefined' ? (localStorage.getItem('cd_random_weight') || 'taste') : 'taste'
+  // Only 'taste' mode reads this — the rated history to build tag/studio
+  // affinity from, necessarily a different (mostly-Completed) pool than the
+  // Backlog candidates being ranked.
+  const ratedGames = allGames.filter(g => g.rating)
 
   const roll = () => {
     if (backlogGames.length === 0) return
@@ -13,7 +19,7 @@ export function RandomGameModal({ backlogGames, onClose, onUpdateStatus }) {
     let rolls = 0
     const maxRolls = 15
     const interval = setInterval(() => {
-      setSelectedGame(pickWeightedGame(backlogGames, weightMode))
+      setSelectedGame(pickWeightedGame(backlogGames, weightMode, Math.random, { ratedGames }))
       rolls++
       if (rolls >= maxRolls) {
         clearInterval(interval)
@@ -54,7 +60,10 @@ export function RandomGameModal({ backlogGames, onClose, onUpdateStatus }) {
             NEXT PLAYTHROUGH
             {weightMode !== 'uniform' && (
               <span className="cd-random-weight-badge">
-                {weightMode === 'oldest' ? 'FAVORING OLDEST BACKLOG' : 'FAVORING CHEAPEST'}
+                {weightMode === 'oldest' ? 'FAVORING OLDEST BACKLOG'
+                  : weightMode === 'cheapest' ? 'FAVORING CHEAPEST'
+                  : ratedGames.length < COLD_START_MIN_RATED ? 'FAVORING YOUR TASTE (COLD START — UNIFORM)'
+                  : 'FAVORING YOUR TASTE'}
               </span>
             )}
           </h2>

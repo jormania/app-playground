@@ -47,12 +47,13 @@ describe('SettingsModal', () => {
     expect(window.localStorage.setItem).toHaveBeenCalledWith('cd_notion_token', 'secret_abc123')
     expect(window.localStorage.setItem).toHaveBeenCalledWith('cd_notion_db', 'db-xyz')
     expect(window.localStorage.setItem).toHaveBeenCalledWith('cd_theme', 'union')
-    expect(window.localStorage.setItem).toHaveBeenCalledWith('cd_random_weight', 'uniform')
+    // 'taste' is the R2 default when nothing has been saved to Settings yet.
+    expect(window.localStorage.setItem).toHaveBeenCalledWith('cd_random_weight', 'taste')
   })
 
   it('persists a changed random-pick weighting mode', () => {
     render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} />)
-    fireEvent.change(screen.getByDisplayValue('Uniform (equal odds)'), { target: { value: 'cheapest' } })
+    fireEvent.change(screen.getByDisplayValue('Favor your taste (tags + studio affinity)'), { target: { value: 'cheapest' } })
     fireEvent.click(screen.getByText('SAVE_SETTINGS'))
     expect(window.localStorage.setItem).toHaveBeenCalledWith('cd_random_weight', 'cheapest')
   })

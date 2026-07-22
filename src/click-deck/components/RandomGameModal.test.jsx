@@ -50,7 +50,8 @@ describe('RandomGameModal', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('does not show a weighting badge in the default uniform mode', () => {
+  it('does not show a weighting badge when explicitly set to uniform', () => {
+    localStorage.setItem('cd_random_weight', 'uniform')
     render(<RandomGameModal backlogGames={backlogGames} onClose={() => {}} onUpdateStatus={() => {}} />)
     expect(screen.queryByText(/FAVORING/)).toBeNull()
   })
@@ -59,6 +60,23 @@ describe('RandomGameModal', () => {
     localStorage.setItem('cd_random_weight', 'oldest')
     render(<RandomGameModal backlogGames={backlogGames} onClose={() => {}} onUpdateStatus={() => {}} />)
     expect(screen.getByText('FAVORING OLDEST BACKLOG')).toBeTruthy()
+  })
+
+  describe('taste mode (the R2 default)', () => {
+    it('defaults to taste mode with no Settings value saved yet, cold-starting to uniform under 3 ratings', () => {
+      render(<RandomGameModal backlogGames={backlogGames} onClose={() => {}} onUpdateStatus={() => {}} />)
+      expect(screen.getByText('FAVORING YOUR TASTE (COLD START — UNIFORM)')).toBeTruthy()
+    })
+
+    it('shows the plain taste badge once at least 3 games are rated', () => {
+      const allGames = [
+        { id: 'a', rating: 5, tags: ['Noir'], developer: 'X' },
+        { id: 'b', rating: 4, tags: ['Noir'], developer: 'X' },
+        { id: 'c', rating: 3, tags: ['Comedy'], developer: 'Y' }
+      ]
+      render(<RandomGameModal backlogGames={backlogGames} allGames={allGames} onClose={() => {}} onUpdateStatus={() => {}} />)
+      expect(screen.getByText('FAVORING YOUR TASTE')).toBeTruthy()
+    })
   })
 
   it('renders the settled cover as a real link to Steam when the game has an appId', async () => {
