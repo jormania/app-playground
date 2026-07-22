@@ -125,6 +125,67 @@ describe('AnalyticsView', () => {
       global.URL.createObjectURL = originalCreate
       global.URL.revokeObjectURL = originalRevoke
     })
+
+    it('includes Completed At and Length (hrs) in the exported JSON', () => {
+      const originalBlob = global.Blob
+      let capturedParts = null
+      global.Blob = class {
+        constructor(parts) { capturedParts = parts }
+      }
+      const createObjectURL = vi.fn(() => 'blob:mock')
+      const originalCreate = global.URL.createObjectURL
+      const originalRevoke = global.URL.revokeObjectURL
+      global.URL.createObjectURL = createObjectURL
+      global.URL.revokeObjectURL = vi.fn()
+      const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+      const gamesWithR2Fields = [
+        { id: '1', title: 'Pentiment', year: 2022, status: 'Completed', tags: ['RPG'], completedAt: '2026-01-15', lengthHours: 19.2 }
+      ]
+      render(<AnalyticsView filteredGames={gamesWithR2Fields} activeTags={[]} setActiveTags={() => {}} />)
+      fireEvent.click(screen.getByText('[EXPORT JSON]'))
+
+      const exported = JSON.parse(capturedParts[0])
+      expect(exported[0].completedAt).toBe('2026-01-15')
+      expect(exported[0].lengthHours).toBe(19.2)
+
+      clickSpy.mockRestore()
+      global.Blob = originalBlob
+      global.URL.createObjectURL = originalCreate
+      global.URL.revokeObjectURL = originalRevoke
+    })
+  })
+
+  describe('HTML export', () => {
+    it('includes Length and Completed columns for the exported entries', () => {
+      const originalBlob = global.Blob
+      let capturedParts = null
+      global.Blob = class {
+        constructor(parts) { capturedParts = parts }
+      }
+      const originalCreate = global.URL.createObjectURL
+      const originalRevoke = global.URL.revokeObjectURL
+      global.URL.createObjectURL = vi.fn(() => 'blob:mock')
+      global.URL.revokeObjectURL = vi.fn()
+      const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+      const gamesWithR2Fields = [
+        { id: '1', title: 'Pentiment', year: 2022, status: 'Completed', tags: ['RPG'], completedAt: '2026-01-15', lengthHours: 19.2 }
+      ]
+      render(<AnalyticsView filteredGames={gamesWithR2Fields} activeTags={[]} setActiveTags={() => {}} />)
+      fireEvent.click(screen.getByText('[EXPORT HTML]'))
+
+      const html = capturedParts[0]
+      expect(html).toContain('<th>Length</th>')
+      expect(html).toContain('<th>Completed</th>')
+      expect(html).toContain('19.2h')
+      expect(html).toContain('2026-01-15')
+
+      clickSpy.mockRestore()
+      global.Blob = originalBlob
+      global.URL.createObjectURL = originalCreate
+      global.URL.revokeObjectURL = originalRevoke
+    })
   })
 
   describe('gallery cover links', () => {

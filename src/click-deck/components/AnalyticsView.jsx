@@ -163,7 +163,9 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
       initialPrice: g.initialPrice,
       discountPercent: g.discountPercent,
       appId: g.appId,
-      createdTime: g.createdTime
+      createdTime: g.createdTime,
+      completedAt: g.completedAt,
+      lengthHours: g.lengthHours
     }));
     downloadBlob(JSON.stringify(data, null, 2), 'application/json', 'click_deck_export.json');
   }
@@ -192,6 +194,8 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
               <th>Status</th>
               <th>Rating</th>
               <th>Price</th>
+              <th>Length</th>
+              <th>Completed</th>
             </tr>
           </thead>
           <tbody>
@@ -203,6 +207,8 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
                 <td>${g.status}</td>
                 <td>${g.rating ? g.rating + '★' : 'N/A'}</td>
                 <td>${g.price !== null && g.price !== undefined ? (g.price === 0 ? 'FREE' : '$'+g.price.toFixed(2)) : 'N/A'}</td>
+                <td>${g.lengthHours !== null && g.lengthHours !== undefined ? g.lengthHours + 'h' : 'N/A'}</td>
+                <td>${g.completedAt || 'N/A'}</td>
               </tr>
             `).join('')}
           </tbody>
