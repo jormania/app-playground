@@ -70,7 +70,8 @@ describe('WatchlistView', () => {
     sessionStorage.setItem('cd_watchlist_candidates', JSON.stringify(cached))
     render(<WatchlistView games={[]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
     const row = screen.getByText('Tiered Candidate').closest('.cd-candidate-row')
-    expect(within(row).getByText(/★★★☆☆/)).toBeTruthy()
+    expect(within(row).getByText(/★★★/)).toBeTruthy()
+    expect(within(row).queryByText(/☆/)).toBeNull()
     expect(within(row).getByText(/Wadjet Eye Games/)).toBeTruthy()
   })
 

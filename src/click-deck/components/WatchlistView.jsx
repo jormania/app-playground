@@ -50,14 +50,17 @@ function formatAge(days) {
   return `${days} days ago`
 }
 
-// Renders a Personal Value Tier as filled/empty stars, clamped to a 5-star
-// display regardless of the underlying scale (currently 1-3, but the tier
-// itself is just a number — see studios-connector.js's normalizeTier). Null
-// tier (studio never rated) renders nothing rather than a fabricated rating.
+// Renders a Personal Value Tier as N filled stars — no empty stars padding
+// it out to some fixed "out of" scale, since that would make a top tier on
+// today's 1-3 system read as a middling score (e.g. 3/5) instead of the max
+// it actually is. The tier itself is just a number — see
+// studios-connector.js's normalizeTier — so this scales with it directly;
+// the upper clamp is only a sanity guard against a garbage value, not an
+// assumption about how many levels exist. Null tier (studio never rated)
+// renders nothing rather than a fabricated rating.
 function tierStars(tier) {
   if (typeof tier !== 'number') return null
-  const filled = Math.max(1, Math.min(5, Math.round(tier)))
-  return '★'.repeat(filled) + '☆'.repeat(5 - filled)
+  return '★'.repeat(Math.max(1, Math.min(10, Math.round(tier))))
 }
 
 // Subtle, text-only distinction for how firm a Coming Soon date is — no
