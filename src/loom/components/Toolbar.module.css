@@ -6,7 +6,12 @@
    visible text. Comes in the same three shapes as the bottom bar (row/pill/tabs)
    so the two always read as a coordinated pair. */
 
-.wrap { position: relative; margin-bottom: var(--space-md); }
+/* Capped and centered to match Skeins'/Tapestry's own content column, so the
+   search/filter/ritual controls don't stretch edge to edge and split into a
+   left cluster and a far-right cluster on a wide desktop viewport — the week
+   board below is deliberately full-width (see App.module.css), but a control
+   bar isn't content that wants width. */
+.wrap { position: relative; width: 100%; max-width: 640px; margin: 0 auto var(--space-md); }
 
 .bar {
   display: flex;

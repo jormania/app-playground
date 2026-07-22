@@ -88,10 +88,12 @@ export default function VerbBar({ view, onView, mode, onOpenSettings }) {
   // ── Slim row (default) ──
   return (
     <nav className={`${styles.bar} ${styles.rowBar}`} aria-label="Loom navigation">
-      {seg}
-      <div className={styles.rowRight}>
-        {modeDot}
-        {gear}
+      <div className={styles.rowInner}>
+        {seg}
+        <div className={styles.rowRight}>
+          {modeDot}
+          {gear}
+        </div>
       </div>
     </nav>
   )
