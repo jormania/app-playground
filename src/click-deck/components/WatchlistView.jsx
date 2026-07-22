@@ -6,6 +6,8 @@ import { refreshComingSoonGames, searchFollowedStudios, candidateToNewGame } fro
 
 const STALE_DAYS = 180
 
+let cachedCandidates = null
+
 function daysSince(dateStr) {
   if (!dateStr) return null
   const ms = Date.now() - new Date(dateStr).getTime()
@@ -38,7 +40,7 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
   const [studios, setStudios] = useState([])
   const [isSearching, setIsSearching] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [candidates, setCandidates] = useState(null) // null = not searched yet this session
+  const [candidates, setCandidates] = useState(cachedCandidates) // null = not searched yet this session
   const [addingAppId, setAddingAppId] = useState(null)
 
   useEffect(() => {
@@ -61,6 +63,7 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
     setIsSearching(true)
     try {
       const result = await searchFollowedStudios(studios, games)
+      cachedCandidates = result
       setCandidates(result)
       const total = result.notYetReleased.length + result.alreadyReleased.length
       onToast(total > 0 ? `Found ${total} candidate${total === 1 ? '' : 's'}.` : 'No new candidates found this time.')
@@ -94,9 +97,13 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
       await onAddGame(candidateToNewGame(candidate))
       // Remove it from the local candidate list so it can't be added twice
       // in the same session without a fresh search.
-      setCandidates(prev => prev && {
-        notYetReleased: prev.notYetReleased.filter(c => c.appId !== candidate.appId),
-        alreadyReleased: prev.alreadyReleased.filter(c => c.appId !== candidate.appId)
+      setCandidates(prev => {
+        const next = prev && {
+          notYetReleased: prev.notYetReleased.filter(c => c.appId !== candidate.appId),
+          alreadyReleased: prev.alreadyReleased.filter(c => c.appId !== candidate.appId)
+        }
+        cachedCandidates = next
+        return next
       })
     } catch (err) {
       onToast(`Add failed: ${err.message}`)
