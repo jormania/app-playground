@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { McpConnector } from './lib/mcp-connector'
-import { readReleaseStatus } from './lib/releaseStatus'
+import { readReleaseStatus, isIgnored as isIgnoredStatus, isActiveCollectionGame } from './lib/releaseStatus'
 import { TimelineView } from './components/TimelineView'
 import { AnalyticsView } from './components/AnalyticsView'
 import { StatsView } from './components/StatsView'
@@ -297,8 +297,12 @@ export function App() {
 
 
 
+  // Ignored games (declined from [W]'s New Candidates) are hard-excluded here,
+  // upstream of both Timeline and Analytics, so neither view can surface them
+  // under any filter combination — unlike Coming Soon, which Analytics is
+  // still allowed to optionally include via its own RELEASE: filter.
   const baseFilteredGames = useMemo(() => {
-    let result = [...games]
+    let result = games.filter(g => !isIgnoredStatus(g))
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       result = result.filter(g =>
@@ -549,9 +553,10 @@ export function App() {
             )}
             {view === 'stats' && (
               <div className="cd-timeline-container">
-                {/* Coming Soon games have no real price and can't be played —
-                    excluded from every stat here, same as Random Game below. */}
-                <StatsView games={games.filter(g => readReleaseStatus(g) !== 'Coming Soon')} />
+                {/* Coming Soon games have no real price and can't be played, and
+                    Ignored games were explicitly declined — both excluded from
+                    every stat here, same as Random Game below. */}
+                <StatsView games={games.filter(isActiveCollectionGame)} watchlistGames={games} />
               </div>
             )}
           </div>
@@ -597,7 +602,7 @@ export function App() {
 
       {isRandomOpen && (
         <RandomGameModal
-          backlogGames={games.filter(g => g.status === 'Backlog' && readReleaseStatus(g) !== 'Coming Soon')}
+          backlogGames={games.filter(g => g.status === 'Backlog' && isActiveCollectionGame(g))}
           onClose={() => setIsRandomOpen(false)}
           onUpdateStatus={handleUpdateStatus}
         />

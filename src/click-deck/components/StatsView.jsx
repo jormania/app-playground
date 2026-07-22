@@ -1,6 +1,28 @@
 import React, { useMemo } from 'react'
+import { readReleaseStatus, isIgnored } from '../lib/releaseStatus'
+import { getRecentlyReleasedGames, sortComingSoonSoonestFirst } from '../lib/releaseTracking'
+import { DrumRollIcon } from './WatchlistView'
 
-export function StatsView({ games }) {
+// `games` here is already Coming-Soon/Ignored-filtered by App.jsx (every
+// stat below should only ever reflect your active, played-or-playable
+// collection) — `watchlistGames` is deliberately the separate, unfiltered
+// array so this component can compute its own Watchlist-specific numbers
+// from it without those numbers leaking into any of the collection stats.
+export function StatsView({ games, watchlistGames = [] }) {
+  const watchlistStats = useMemo(() => {
+    const comingSoon = sortComingSoonSoonestFirst(watchlistGames.filter(g => readReleaseStatus(g) === 'Coming Soon'))
+    const recentlyReleased = getRecentlyReleasedGames(watchlistGames)
+    const ignoredCount = watchlistGames.filter(isIgnored).length
+    const expectedThisYear = comingSoon.filter(g => g.year === new Date().getFullYear()).length
+    return {
+      comingSoonCount: comingSoon.length,
+      expectedThisYear,
+      recentlyReleasedCount: recentlyReleased.length,
+      nextUp: comingSoon[0] || null,
+      ignoredCount
+    }
+  }, [watchlistGames])
+
   const stats = useMemo(() => {
     if (!games || games.length === 0) return null;
 
@@ -148,7 +170,34 @@ export function StatsView({ games }) {
             <li><span className="label">PLAYING</span> <span className="val">{stats.playing}</span></li>
             <li><span className="label">BACKLOG</span> <span className="val">{stats.backlog}</span></li>
             <li><span className="label">ABANDONED</span> <span className="val">{stats.abandoned}</span></li>
+            {/* Not part of the count above (this panel is scoped to your
+                active collection) — a single at-a-glance pointer to the
+                dedicated WATCHLIST panel for the rest of the detail. */}
+            <li><span className="label">COMING SOON</span> <span className="val">{watchlistStats.comingSoonCount}</span></li>
           </ul>
+        </div>
+
+        {/* Watchlist — deliberately its own panel with its own numbers, not
+            folded into the collection stats above (see the StatsView props
+            comment for why the two arrays are kept separate). */}
+        <div className="cd-panel">
+          <h3>WATCHLIST</h3>
+          <ul className="cd-stat-list">
+            <li><span className="label">TRACKED</span> <span className="val">{watchlistStats.comingSoonCount}</span></li>
+            <li><span className="label">EXPECTED THIS YEAR</span> <span className="val">{watchlistStats.expectedThisYear}</span></li>
+            <li><span className="label">RECENTLY RELEASED (365D)</span> <span className="val">{watchlistStats.recentlyReleasedCount}</span></li>
+            <li><span className="label">IGNORED</span> <span className="val">{watchlistStats.ignoredCount}</span></li>
+          </ul>
+          {watchlistStats.nextUp && (
+            <div className="cd-watchlist-next-up">
+              <DrumRollIcon className="cd-drum-roll-icon" />
+              <div>
+                <h4>NEXT UP</h4>
+                <p className="cd-next-up-title">{watchlistStats.nextUp.title}</p>
+                <p className="cd-next-up-date">{watchlistStats.nextUp.releaseDate || (watchlistStats.nextUp.year ? String(watchlistStats.nextUp.year) : 'TBA')}</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Financials Breakdown */}
@@ -324,6 +373,40 @@ export function StatsView({ games }) {
           font-size: 0.75rem;
           color: var(--cd-text-muted);
           letter-spacing: 0.5px;
+        }
+        .cd-watchlist-next-up {
+          margin-top: 1rem;
+          padding-top: 1rem;
+          border-top: 1px dashed var(--cd-border-color);
+          display: flex;
+          align-items: center;
+          gap: 0.8rem;
+        }
+        .cd-watchlist-next-up h4 {
+          margin: 0 0 0.2rem 0;
+          font-size: 0.75rem;
+          color: var(--cd-accent-cyan);
+          opacity: 0.8;
+        }
+        .cd-next-up-title {
+          margin: 0;
+          color: var(--cd-text-primary);
+          font-weight: bold;
+        }
+        .cd-next-up-date {
+          margin: 0.1rem 0 0;
+          font-family: var(--cd-font-terminal);
+          font-size: 0.85rem;
+          color: var(--cd-accent-cyan);
+        }
+        .cd-drum-roll-icon {
+          flex-shrink: 0;
+          color: var(--cd-accent-amber);
+          animation: drumRoll 0.6s ease-in-out infinite alternate;
+        }
+        @keyframes drumRoll {
+          0% { transform: translateY(0); }
+          100% { transform: translateY(-3px); }
         }
         .cd-stat-list {
           list-style: none;

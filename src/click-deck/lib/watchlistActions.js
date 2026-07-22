@@ -2,8 +2,8 @@
 // WatchlistView.jsx stays focused on rendering. Both talk to McpConnector for
 // anything Notion-related (same token/write path as the rest of the app).
 import { McpConnector } from './mcp-connector'
-import { readReleaseStatus } from './releaseStatus'
-import { resolveReleaseFlip, buildWatchlistUpdateFields } from './watchlistResolver'
+import { readReleaseStatus, isIgnored } from './releaseStatus'
+import { resolveReleaseFlip, buildWatchlistUpdateFields, parseYearFromReleaseDateString } from './watchlistResolver'
 import { findDuplicateInCollection } from './steamMatch'
 
 // "Refresh Release Dates" — re-checks every Coming Soon game against Steam,
@@ -96,4 +96,69 @@ export function candidateToNewGame(candidate) {
     initialPrice: candidate.price,
     discountPercent: 0
   }
+}
+
+// "− IGNORE" on a New Candidates row. Deliberately still a real DB row (not
+// just a client-side dismissal) — that's what makes an ignored game persist
+// across sessions/devices, stay out of future "Find New Games" results via
+// the existing appId-exclude + fuzzy-title dedupe (it's just another row in
+// the collection as far as both checks are concerned), and be exportable so
+// "what did I ignore" has an actual answer. No tags/journal/price enrichment
+// bother — none of it is ever shown while a game sits Ignored.
+export function candidateToIgnoredGame(candidate) {
+  return {
+    title: candidate.title,
+    year: candidate.year || null,
+    developer: candidate.developer || candidate.matchedStudio || '',
+    tags: [],
+    status: 'Backlog',
+    rating: null,
+    journal: '',
+    appId: candidate.appId,
+    releaseStatus: 'Ignored',
+    releasedAt: null,
+    releaseDate: candidate.releaseDateString || '',
+    coverUrl: candidate.headerImage || '',
+    price: null,
+    initialPrice: null,
+    discountPercent: 0
+  }
+}
+
+// Un-ignore: re-checks Steam (an ignored row may be old — the game could
+// have released, delayed further, or changed price since) and restores it to
+// Coming Soon or Released accordingly, refreshing its display fields in the
+// same pass. Mirrors candidateToNewGame's rule: assigning Released directly
+// here is a status correction, not an observed Coming-Soon transition, so
+// Released At is never stamped — only the resolver's own flip path does that.
+export async function unignoreGame(game) {
+  if (!game.appId) throw new Error('This game has no Steam App ID to re-check.')
+  const res = await fetch(`/api/clickdeck-appdetails?appids=${game.appId}`)
+  if (!res.ok) throw new Error('Could not reach Steam to re-check this game.')
+  const steamData = await res.json()
+  const entry = steamData[String(game.appId)]
+  if (!entry || !entry.success || !entry.data) {
+    throw new Error('Steam has no current data for this App ID — try again later.')
+  }
+  const data = entry.data
+  const comingSoon = data.release_date?.coming_soon === true
+  const releaseDateStr = data.release_date?.date || ''
+  const fields = {
+    releaseStatus: comingSoon ? 'Coming Soon' : 'Released',
+    releasedAt: null,
+    releaseDate: releaseDateStr,
+    year: parseYearFromReleaseDateString(releaseDateStr) || game.year,
+    coverUrl: data.header_image || game.coverUrl,
+    price: data.price_overview ? data.price_overview.final / 100 : null,
+    initialPrice: data.price_overview ? data.price_overview.initial / 100 : null,
+    discountPercent: data.price_overview ? (data.price_overview.discount_percent || 0) / 100 : 0
+  }
+  const nextGame = { ...game, ...fields }
+  await McpConnector.updateGame(game.id, nextGame)
+  return nextGame
+}
+
+// The exportable "what did I ignore" list — see [W]'s IGNORED section.
+export function getIgnoredGames(games) {
+  return games.filter(isIgnored)
 }

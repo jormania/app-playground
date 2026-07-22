@@ -54,6 +54,22 @@ export function getRecentlyReleasedGames(games, now = Date.now()) {
     .sort((a, b) => new Date(b.releasedAt) - new Date(a.releasedAt))
 }
 
+// Soonest-expected first: parsed year (nulls last), then the raw Steam date
+// string as a tiebreak, then when it was added to the watchlist. Shared by
+// [W]'s Coming Soon grid and the Stats screen's "next up" metric, so the two
+// can't disagree about which game is "next."
+export function sortComingSoonSoonestFirst(games) {
+  return [...games].sort((a, b) => {
+    const yearA = a.year || Infinity
+    const yearB = b.year || Infinity
+    if (yearA !== yearB) return yearA - yearB
+    const dateA = a.releaseDate || ''
+    const dateB = b.releaseDate || ''
+    if (dateA !== dateB) return dateA.localeCompare(dateB)
+    return new Date(a.createdTime) - new Date(b.createdTime)
+  })
+}
+
 // The Timeline "NEW" ribbon — a tighter 30-day window than the 365-day
 // banner/[W] one, so a card only reads as "just landed" for about a month
 // rather than for the entire time it'd still show in Recently Released.

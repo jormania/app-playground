@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { readReleaseStatus } from '../lib/releaseStatus'
 import { StudiosConnector } from '../lib/studios-connector'
-import { getRecentlyReleasedGames } from '../lib/releaseTracking'
-import { refreshComingSoonGames, searchFollowedStudios, candidateToNewGame } from '../lib/watchlistActions'
+import { getRecentlyReleasedGames, sortComingSoonSoonestFirst } from '../lib/releaseTracking'
+import {
+  refreshComingSoonGames, searchFollowedStudios, candidateToNewGame,
+  candidateToIgnoredGame, unignoreGame, getIgnoredGames
+} from '../lib/watchlistActions'
 
 const STALE_DAYS = 180
 
@@ -47,18 +50,66 @@ function formatAge(days) {
   return `${days} days ago`
 }
 
-// Soonest-expected first: parsed year (nulls last), then the raw Steam date
-// string as a tiebreak, then when it was added to the watchlist.
-function sortComingSoon(games) {
-  return [...games].sort((a, b) => {
-    const yearA = a.year || Infinity
-    const yearB = b.year || Infinity
-    if (yearA !== yearB) return yearA - yearB
-    const dateA = a.releaseDate || ''
-    const dateB = b.releaseDate || ''
-    if (dateA !== dateB) return dateA.localeCompare(dateB)
-    return new Date(a.createdTime) - new Date(b.createdTime)
-  })
+function downloadBlob(content, mimeType, filename) {
+  const blob = new Blob([content], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+// Shared by the Coming Soon and Recently Released grids — a clickable cover
+// (straight to the Steam store page, same as everywhere else in the app)
+// with a hover overlay surfacing the Watchlist-specific data point that
+// section cares about (expected vs. actual release date) rather than the
+// price/rating overlay Analytics' gallery uses.
+function WatchlistCover({ game, overlayLabel }) {
+  const CoverTag = game.appId ? 'a' : 'div'
+  const linkProps = game.appId
+    ? { href: `https://store.steampowered.com/app/${game.appId}`, target: '_blank', rel: 'noopener noreferrer' }
+    : {}
+  return (
+    <CoverTag className="cd-watchlist-cover-container" {...linkProps}>
+      {game.coverUrl ? (
+        <img
+          className="cd-watchlist-card-cover"
+          src={game.coverUrl}
+          alt=""
+          loading="lazy"
+          onError={(e) => {
+            e.target.style.display = 'none'
+            e.target.parentElement.classList.add('fallback-cover')
+          }}
+        />
+      ) : (
+        <div className="cd-watchlist-card-cover fallback-cover"></div>
+      )}
+      {game.appId && (
+        <div className="cd-watchlist-cover-overlay">
+          <span className="cd-watchlist-overlay-dev">{game.developer}</span>
+          <span className="cd-watchlist-overlay-date">{overlayLabel}</span>
+          <span className="cd-watchlist-overlay-cta">VIEW ON STEAM ↗</span>
+        </div>
+      )}
+    </CoverTag>
+  )
+}
+
+// A small flourish for the Stats screen's "next up" watchlist metric —
+// three dice-like pips that give the number a bit of anticipation without
+// pulling in an icon library for one glyph.
+export function DrumRollIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 48 20" width="48" height="20" aria-hidden="true">
+      <circle cx="8" cy="10" r="6" fill="currentColor" opacity="0.4" />
+      <circle cx="24" cy="10" r="7" fill="currentColor" opacity="0.7" />
+      <circle cx="40" cy="10" r="6" fill="currentColor" />
+    </svg>
+  )
 }
 
 export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, onToast }) {
@@ -67,16 +118,20 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [candidates, setCandidates] = useState(getCachedCandidates) // null = not searched yet this session
   const [addingAppId, setAddingAppId] = useState(null)
+  const [ignoringAppId, setIgnoringAppId] = useState(null)
+  const [unignoringId, setUnignoringId] = useState(null)
+  const [showIgnored, setShowIgnored] = useState(false)
 
   useEffect(() => {
     StudiosConnector.getStudios().then(setStudios).catch(() => setStudios([]))
   }, [])
 
   const comingSoon = useMemo(
-    () => sortComingSoon(games.filter(g => readReleaseStatus(g) === 'Coming Soon')),
+    () => sortComingSoonSoonestFirst(games.filter(g => readReleaseStatus(g) === 'Coming Soon')),
     [games]
   )
   const recentlyReleased = useMemo(() => getRecentlyReleasedGames(games), [games])
+  const ignoredGames = useMemo(() => getIgnoredGames(games), [games])
 
   const expectedThisYear = comingSoon.filter(g => g.year === new Date().getFullYear()).length
 
@@ -116,6 +171,19 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
     setIsRefreshing(false)
   }
 
+  // Removes a candidate from both the local list and its sessionStorage cache
+  // once it's been turned into a real DB row (added or ignored) — shared by
+  // both handlers below so they can't drift on how that bookkeeping works.
+  const dropCandidate = (appId) => {
+    setCandidates(prev => {
+      const next = prev && {
+        notYetReleased: prev.notYetReleased.filter(c => c.appId !== appId),
+        alreadyReleased: prev.alreadyReleased.filter(c => c.appId !== appId)
+      }
+      setCachedCandidates(next)
+      return next
+    })
+  }
 
   const handleAddCandidate = async (candidate) => {
     setAddingAppId(candidate.appId)
@@ -129,26 +197,53 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
       // maintenance scripts; that never actually ran on Vercel, where a
       // function is frozen the moment it responds, and one of the scripts it
       // referenced isn't even deployed.)
-
-      // Remove it from the local candidate list so it can't be added twice
-      // in the same session without a fresh search.
-      setCandidates(prev => {
-        const next = prev && {
-          notYetReleased: prev.notYetReleased.filter(c => c.appId !== candidate.appId),
-          alreadyReleased: prev.alreadyReleased.filter(c => c.appId !== candidate.appId)
-        }
-        setCachedCandidates(next)
-        return next
-      })
+      dropCandidate(candidate.appId)
     } catch (err) {
       onToast(`Add failed: ${err.message}`)
     }
     setAddingAppId(null)
   }
 
+  const handleIgnoreCandidate = async (candidate) => {
+    setIgnoringAppId(candidate.appId)
+    try {
+      await onAddGame(candidateToIgnoredGame(candidate))
+      dropCandidate(candidate.appId)
+      onToast(`Ignored "${candidate.title}" — it won't be suggested again, but you can still add it later from the IGNORED list below.`)
+    } catch (err) {
+      onToast(`Ignore failed: ${err.message}`)
+    }
+    setIgnoringAppId(null)
+  }
+
+  const handleUnignore = async (game) => {
+    setUnignoringId(game.id)
+    try {
+      const updated = await unignoreGame(game)
+      onApplyGameUpdates([updated])
+      onToast(`"${game.title}" is back — now ${updated.releaseStatus === 'Coming Soon' ? 'tracked as Coming Soon' : 'in your collection'}.`)
+    } catch (err) {
+      onToast(`Couldn't restore "${game.title}": ${err.message}`)
+    }
+    setUnignoringId(null)
+  }
+
+  const handleExportIgnored = () => {
+    const data = ignoredGames.map(g => ({
+      title: g.title,
+      developer: g.developer,
+      appId: g.appId,
+      releaseDate: g.releaseDate,
+      year: g.year,
+      ignoredAround: g.createdTime
+    }))
+    downloadBlob(JSON.stringify(data, null, 2), 'application/json', 'click_deck_ignored.json')
+  }
+
   const renderCandidateRow = (candidate) => {
     const isDup = candidate.duplicate
     const isExactDup = isDup?.kind === 'exact'
+    const isBusy = addingAppId === candidate.appId || ignoringAppId === candidate.appId
     return (
       <div key={candidate.appId} className={`cd-candidate-row ${isExactDup ? 'is-dup' : ''}`}>
         <div className="cd-candidate-cover-container">
@@ -189,19 +284,31 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
             </span>
           )}
         </div>
-        <button
-          type="button"
-          className="cd-btn-icon"
-          disabled={isExactDup || addingAppId === candidate.appId}
-          onClick={() => {
-            if (isDup && !isExactDup) {
-              if (!window.confirm(`This looks similar to "${isDup.match.title}" already in your collection. Add anyway?`)) return
-            }
-            handleAddCandidate(candidate)
-          }}
-        >
-          {addingAppId === candidate.appId ? 'ADDING...' : isExactDup ? 'IN DB' : '+ ADD'}
-        </button>
+        <div className="cd-candidate-actions">
+          <button
+            type="button"
+            className="cd-btn-icon"
+            disabled={isExactDup || isBusy}
+            onClick={() => {
+              if (isDup && !isExactDup) {
+                if (!window.confirm(`This looks similar to "${isDup.match.title}" already in your collection. Add anyway?`)) return
+              }
+              handleAddCandidate(candidate)
+            }}
+          >
+            {addingAppId === candidate.appId ? 'ADDING...' : isExactDup ? 'IN DB' : '+ ADD'}
+          </button>
+          {!isExactDup && (
+            <button
+              type="button"
+              className="cd-btn-icon cd-btn-ignore"
+              disabled={isBusy}
+              onClick={() => handleIgnoreCandidate(candidate)}
+            >
+              {ignoringAppId === candidate.appId ? 'IGNORING...' : '− IGNORE'}
+            </button>
+          )}
+        </div>
       </div>
     )
   }
@@ -234,16 +341,16 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
         <div className="cd-panel cd-watchlist-section">
           <h3>NEW CANDIDATES</h3>
           {candidates.notYetReleased.length > 0 && (
-            <>
+            <div className="cd-candidate-group">
               <h4 className="cd-watchlist-subheading">NOT YET RELEASED</h4>
               <div className="cd-candidate-list">{candidates.notYetReleased.map(renderCandidateRow)}</div>
-            </>
+            </div>
           )}
           {candidates.alreadyReleased.length > 0 && (
-            <>
+            <div className="cd-candidate-group cd-candidate-group-divided">
               <h4 className="cd-watchlist-subheading">ALREADY RELEASED, NOT IN YOUR COLLECTION</h4>
               <div className="cd-candidate-list">{candidates.alreadyReleased.map(renderCandidateRow)}</div>
-            </>
+            </div>
           )}
         </div>
       )}
@@ -262,27 +369,13 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
             {comingSoon.map(game => {
               const age = daysSince(game.priceUpdatedAt)
               const isStale = age !== null && age > STALE_DAYS
+              const expected = game.releaseDate || (game.year ? String(game.year) : 'TBA')
               return (
                 <div key={game.id} className="cd-watchlist-card cd-panel">
-                  <div className="cd-watchlist-cover-container">
-                    {game.coverUrl ? (
-                      <img
-                        className="cd-watchlist-card-cover"
-                        src={game.coverUrl}
-                        alt=""
-                        loading="lazy"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          e.target.parentElement.classList.add('fallback-cover');
-                        }}
-                      />
-                    ) : (
-                      <div className="cd-watchlist-card-cover fallback-cover"></div>
-                    )}
-                  </div>
+                  <WatchlistCover game={game} overlayLabel={`🔭 ${expected}`} />
                   <div className="cd-watchlist-card-body">
                     <h4>{game.title}</h4>
-                    <p className="cd-watchlist-expected">🔭 EXPECTED: {game.releaseDate || (game.year ? String(game.year) : 'TBA')}</p>
+                    <p className="cd-watchlist-expected">🔭 EXPECTED: {expected}</p>
                     <p className={`cd-watchlist-checked ${isStale ? 'stale' : ''}`}>
                       last checked: {formatAge(age)}{isStale ? ' — still unreleased' : ''}
                     </p>
@@ -301,32 +394,82 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
           <p className="cd-text-muted">Nothing has flipped from Coming Soon to Released in the last 365 days yet.</p>
         ) : (
           <div className="cd-watchlist-grid">
-            {recentlyReleased.map(game => (
-              <div key={game.id} className="cd-watchlist-card cd-panel">
-                <div className="cd-watchlist-cover-container">
-                  {game.coverUrl ? (
-                    <img
-                      className="cd-watchlist-card-cover"
-                      src={game.coverUrl}
-                      alt=""
-                      loading="lazy"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.parentElement.classList.add('fallback-cover');
-                      }}
-                    />
-                  ) : (
-                    <div className="cd-watchlist-card-cover fallback-cover"></div>
-                  )}
+            {recentlyReleased.map(game => {
+              const released = game.releaseDate || new Date(game.releasedAt).toLocaleDateString()
+              return (
+                <div key={game.id} className="cd-watchlist-card cd-panel">
+                  <WatchlistCover game={game} overlayLabel={`✓ ${released}`} />
+                  <div className="cd-watchlist-card-body">
+                    <h4>{game.title}</h4>
+                    <p className="cd-watchlist-released">✓ RELEASED: {released}</p>
+                    <button type="button" className="cd-btn-icon" onClick={() => onEdit(game)}>[E]DIT</button>
+                  </div>
                 </div>
-                <div className="cd-watchlist-card-body">
-                  <h4>{game.title}</h4>
-                  <p className="cd-watchlist-released">✓ RELEASED: {game.releaseDate || new Date(game.releasedAt).toLocaleDateString()}</p>
-                  <button type="button" className="cd-btn-icon" onClick={() => onEdit(game)}>[E]DIT</button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
+        )}
+      </div>
+
+      <div className="cd-panel cd-watchlist-section">
+        <button
+          type="button"
+          className="cd-watchlist-ignored-toggle"
+          onClick={() => setShowIgnored(v => !v)}
+          aria-expanded={showIgnored}
+        >
+          <h3>{showIgnored ? '[−]' : '[+]'} IGNORED ({ignoredGames.length})</h3>
+        </button>
+        {showIgnored && (
+          <>
+            <p className="cd-text-muted">
+              Games you declined from New Candidates. They stay out of future "Find New Games" results and out of the rest of the app, but never disappear — restore one any time.
+            </p>
+            {ignoredGames.length === 0 ? (
+              <p className="cd-text-muted">Nothing ignored yet.</p>
+            ) : (
+              <>
+                <div className="cd-candidate-list">
+                  {ignoredGames.map(game => (
+                    <div key={game.id} className="cd-candidate-row">
+                      <div className="cd-candidate-cover-container">
+                        {game.coverUrl ? (
+                          <img className="cd-candidate-cover" src={game.coverUrl} alt="" loading="lazy"
+                            onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.classList.add('fallback-cover') }} />
+                        ) : (
+                          <div className="cd-candidate-cover fallback-cover"></div>
+                        )}
+                      </div>
+                      <div className="cd-candidate-info">
+                        <a
+                          className="cd-candidate-title"
+                          href={`https://store.steampowered.com/app/${game.appId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {game.title}
+                        </a>
+                        <span className="cd-candidate-meta">
+                          {game.developer}{game.releaseDate ? ` · ${game.releaseDate}` : ''}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="cd-btn-icon"
+                        disabled={unignoringId === game.id}
+                        onClick={() => handleUnignore(game)}
+                      >
+                        {unignoringId === game.id ? 'CHECKING...' : 'UN-IGNORE'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" className="cd-btn-icon" style={{ marginTop: '1rem' }} onClick={handleExportIgnored}>
+                  [EXPORT IGNORED JSON]
+                </button>
+              </>
+            )}
+          </>
         )}
       </div>
 
@@ -369,7 +512,12 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
         .cd-watchlist-subheading {
           color: var(--cd-accent-cyan);
           font-size: 0.85rem;
-          margin: 1rem 0 0.5rem;
+          margin: 0 0 0.5rem;
+        }
+        .cd-candidate-group + .cd-candidate-group-divided {
+          margin-top: 1.75rem;
+          padding-top: 1.5rem;
+          border-top: 1px dashed var(--cd-border-color);
         }
         .cd-candidate-list {
           display: flex;
@@ -386,10 +534,6 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
         }
         .cd-candidate-row.is-dup {
           opacity: 0.7;
-        }
-        .cd-watchlist-card {
-          padding: 0;
-          overflow: hidden;
         }
         .cd-candidate-cover-container {
           width: 80px;
@@ -435,6 +579,24 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
         .cd-dup-flag.possible {
           color: var(--cd-status-abandoned);
         }
+        .cd-candidate-actions {
+          display: flex;
+          gap: 0.5rem;
+          flex-shrink: 0;
+        }
+        /* Deliberately NOT amber/cyan (those already mean "primary action" /
+           "caution" elsewhere) and not --cd-status-abandoned (that's the
+           possible-duplicate warning above) — a muted neutral by default,
+           since declining a candidate isn't a success or a danger, then a
+           themed red on hover/focus to signal "this removes it from view". */
+        .cd-btn-ignore {
+          color: var(--cd-text-muted);
+          border-color: var(--cd-border-color);
+        }
+        .cd-btn-ignore:hover:not(:disabled), .cd-btn-ignore:focus-visible {
+          color: var(--cd-status-abandoned);
+          border-color: var(--cd-status-abandoned);
+        }
         .cd-watchlist-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -445,9 +607,15 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
           overflow: hidden;
         }
         .cd-watchlist-cover-container {
+          display: block;
+          position: relative;
           width: 100%;
           height: 90px;
           background: var(--cd-bg-steel);
+          cursor: default;
+        }
+        a.cd-watchlist-cover-container {
+          cursor: pointer;
         }
         .cd-watchlist-cover-container.fallback-cover::before {
           font-size: 1rem;
@@ -458,6 +626,40 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
           height: 100%;
           object-fit: cover;
           display: block;
+        }
+        .cd-watchlist-cover-overlay {
+          position: absolute;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.85);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          gap: 0.2rem;
+          padding: 0.5rem;
+          opacity: 0;
+          transition: opacity 0.2s ease;
+        }
+        a.cd-watchlist-cover-container:hover .cd-watchlist-cover-overlay,
+        a.cd-watchlist-cover-container:focus-visible .cd-watchlist-cover-overlay {
+          opacity: 1;
+        }
+        .cd-watchlist-overlay-dev {
+          font-size: 0.75rem;
+          color: var(--cd-text-muted);
+        }
+        .cd-watchlist-overlay-date {
+          font-family: var(--cd-font-terminal);
+          font-size: 0.85rem;
+          color: var(--cd-text-primary);
+        }
+        .cd-watchlist-overlay-cta {
+          font-family: var(--cd-font-terminal);
+          font-size: 0.7rem;
+          color: var(--cd-accent-cyan);
+          border-bottom: 1px dashed var(--cd-accent-cyan);
+          margin-top: 0.2rem;
         }
         .cd-watchlist-card-body {
           padding: 0.8rem;
@@ -487,6 +689,18 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
         }
         .cd-watchlist-checked.stale {
           color: var(--cd-accent-amber);
+        }
+        .cd-watchlist-ignored-toggle {
+          background: none;
+          border: none;
+          box-shadow: none;
+          padding: 0;
+          width: 100%;
+          text-align: left;
+          cursor: pointer;
+        }
+        .cd-watchlist-ignored-toggle h3 {
+          margin: 0;
         }
       `}</style>
     </div>

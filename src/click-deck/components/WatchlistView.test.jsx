@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
 import { WatchlistView } from './WatchlistView'
 
 describe('WatchlistView', () => {
@@ -119,5 +119,133 @@ describe('WatchlistView', () => {
     // The old flow fired fetch('/api/run-python-scripts') here; nothing should hit it now.
     const calledUrls = fetchMock.mock.calls.map(c => String(c[0]))
     expect(calledUrls.some(u => u.includes('run-python-scripts'))).toBe(false)
+  })
+
+  describe('"last checked" (regression: previously stuck on "never")', () => {
+    it('shows "never" when priceUpdatedAt has never been stamped', () => {
+      render(<WatchlistView games={[comingSoonGame]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+      expect(screen.getByText(/last checked: never/)).toBeTruthy()
+    })
+
+    it('reflects a real "today" once the game carries a fresh priceUpdatedAt — this is what the nightly cron / manual refresh are supposed to produce', () => {
+      const justChecked = { ...comingSoonGame, priceUpdatedAt: new Date().toISOString() }
+      render(<WatchlistView games={[justChecked]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+      expect(screen.getByText(/last checked: today/)).toBeTruthy()
+      expect(screen.queryByText(/last checked: never/)).toBeNull()
+    })
+  })
+
+  describe('IGNORE on a candidate', () => {
+    const cachedWithDup = {
+      notYetReleased: [{ appId: 999, title: 'Maybe Later', matchedStudio: 'Some Studio', comingSoon: true, releaseDateString: '2027', headerImage: 'x', duplicate: null }],
+      alreadyReleased: []
+    }
+
+    it('writes the candidate as Ignored (not Coming Soon), removes it from the candidate list, and never stamps Released At', async () => {
+      sessionStorage.setItem('cd_watchlist_candidates', JSON.stringify(cachedWithDup))
+      const onAddGame = vi.fn().mockResolvedValue(undefined)
+      const onToast = vi.fn()
+      render(<WatchlistView games={[]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={onAddGame} onToast={onToast} />)
+
+      fireEvent.click(screen.getByText('− IGNORE'))
+
+      await waitFor(() => expect(onAddGame).toHaveBeenCalled())
+      const [saved] = onAddGame.mock.calls[0]
+      expect(saved.releaseStatus).toBe('Ignored')
+      expect(saved.releasedAt).toBeNull()
+      await waitFor(() => expect(screen.queryByText('Maybe Later')).toBeNull())
+      expect(onToast).toHaveBeenCalledWith(expect.stringContaining('Ignored "Maybe Later"'))
+    })
+
+    it('does not offer an IGNORE button for a candidate already an exact duplicate', () => {
+      const cached = {
+        notYetReleased: [{ appId: 999, title: 'Already Mine', comingSoon: true, headerImage: 'x', duplicate: { kind: 'exact', match: { title: 'Already Mine' } } }],
+        alreadyReleased: []
+      }
+      sessionStorage.setItem('cd_watchlist_candidates', JSON.stringify(cached))
+      render(<WatchlistView games={[]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+      const row = screen.getByText('Already Mine').closest('.cd-candidate-row')
+      expect(within(row).queryByText('− IGNORE')).toBeNull()
+    })
+  })
+
+  describe('IGNORED section', () => {
+    const ignoredGame = {
+      id: 'ig1', title: 'Not For Me', developer: 'Some Studio', appId: 555,
+      releaseStatus: 'Ignored', releasedAt: null, createdTime: '2026-06-01T00:00:00.000Z', tags: [], status: 'Backlog'
+    }
+
+    it('shows a collapsed toggle with the count, and expands to list ignored games on click', () => {
+      render(<WatchlistView games={[ignoredGame]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+      expect(screen.getByText('[+] IGNORED (1)')).toBeTruthy()
+      expect(screen.queryByText('Not For Me')).toBeNull() // collapsed by default
+
+      fireEvent.click(screen.getByText('[+] IGNORED (1)'))
+      expect(screen.getByText('[−] IGNORED (1)')).toBeTruthy()
+      expect(screen.getByText('Not For Me')).toBeTruthy()
+    })
+
+    it('does not show an ignored game anywhere in Coming Soon / Recently Released', () => {
+      render(<WatchlistView games={[ignoredGame]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+      // It only ever appears once expanded, never in the always-visible sections.
+      expect(screen.getByText(/Nothing tracked yet/)).toBeTruthy()
+      expect(screen.getByText(/Nothing has flipped/)).toBeTruthy()
+    })
+
+    it('UN-IGNORE re-checks Steam and restores the game via onApplyGameUpdates, without stamping Released At even if it has launched', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ '555': { success: true, data: { release_date: { coming_soon: false, date: '1 Jan, 2026' }, price_overview: { final: 999, initial: 999, discount_percent: 0 } } } })
+      }))
+      const onApplyGameUpdates = vi.fn()
+      render(<WatchlistView games={[ignoredGame]} onEdit={() => {}} onApplyGameUpdates={onApplyGameUpdates} onAddGame={() => {}} onToast={() => {}} />)
+      fireEvent.click(screen.getByText('[+] IGNORED (1)'))
+      fireEvent.click(screen.getByText('UN-IGNORE'))
+
+      await waitFor(() => expect(onApplyGameUpdates).toHaveBeenCalled())
+      const [updatedArray] = onApplyGameUpdates.mock.calls[0]
+      const [restored] = updatedArray
+      expect(restored.releaseStatus).toBe('Released')
+      expect(restored.releasedAt).toBeNull()
+    })
+
+    it('exports the ignored list as a downloadable JSON blob', () => {
+      const createObjectURL = vi.fn(() => 'blob:mock')
+      const revokeObjectURL = vi.fn()
+      const originalCreate = global.URL.createObjectURL
+      const originalRevoke = global.URL.revokeObjectURL
+      global.URL.createObjectURL = createObjectURL
+      global.URL.revokeObjectURL = revokeObjectURL
+      const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+      render(<WatchlistView games={[ignoredGame]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+      fireEvent.click(screen.getByText('[+] IGNORED (1)'))
+      fireEvent.click(screen.getByText('[EXPORT IGNORED JSON]'))
+
+      expect(createObjectURL).toHaveBeenCalledTimes(1)
+      const [blobArg] = createObjectURL.mock.calls[0]
+      expect(blobArg.type).toBe('application/json')
+      expect(clickSpy).toHaveBeenCalled()
+
+      clickSpy.mockRestore()
+      global.URL.createObjectURL = originalCreate
+      global.URL.revokeObjectURL = originalRevoke
+    })
+  })
+
+  describe('clickable covers', () => {
+    it('a Coming Soon card cover links straight to the Steam store page', () => {
+      render(<WatchlistView games={[comingSoonGame]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+      const link = document.querySelector('a.cd-watchlist-cover-container')
+      expect(link).toBeTruthy()
+      expect(link.getAttribute('href')).toBe('https://store.steampowered.com/app/2966330')
+      expect(link.getAttribute('target')).toBe('_blank')
+    })
+
+    it('a Recently Released card cover also links to Steam', () => {
+      render(<WatchlistView games={[releasedGame]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+      const link = document.querySelector('a.cd-watchlist-cover-container')
+      expect(link.getAttribute('href')).toBe('https://store.steampowered.com/app/111')
+    })
   })
 })

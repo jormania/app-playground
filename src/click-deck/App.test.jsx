@@ -276,4 +276,51 @@ describe('App', () => {
       })
     })
   })
+
+  describe('Ignored games are excluded from every normal view', () => {
+    const ignoredGame = {
+      id: '3', title: 'Skipped Title', year: 2027, developer: 'Some Studio',
+      status: 'Backlog', tags: [], journal: '', releaseStatus: 'Ignored'
+    }
+
+    it('never appears on the Timeline, even under [ALL]', async () => {
+      const { McpConnector } = await import('./lib/mcp-connector')
+      McpConnector.getGames.mockResolvedValueOnce([...games, ignoredGame])
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Monkey Island')).toBeTruthy())
+      expect(screen.queryByText('Skipped Title')).toBeNull()
+    })
+
+    it('never appears in Analytics, regardless of its RELEASE filter', async () => {
+      const { McpConnector } = await import('./lib/mcp-connector')
+      McpConnector.getGames.mockResolvedValueOnce([...games, ignoredGame])
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Monkey Island')).toBeTruthy())
+      fireEvent.click(screen.getByLabelText('Analytics view'))
+      await waitFor(() => expect(screen.getByText('TAG_MATRIX')).toBeTruthy())
+      expect(screen.queryByText('Skipped Title')).toBeNull()
+    })
+
+    it('is not counted in Stats\' TOTAL ENTRIES', async () => {
+      const { McpConnector } = await import('./lib/mcp-connector')
+      McpConnector.getGames.mockResolvedValueOnce([...games, ignoredGame])
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Monkey Island')).toBeTruthy())
+      fireEvent.click(screen.getByLabelText('Stats view'))
+      await waitFor(() => expect(screen.getByText('TOTAL ENTRIES')).toBeTruthy())
+      // Only the 2 active-collection games count, not the 3rd (Ignored) one.
+      expect(screen.getByText('TOTAL ENTRIES').closest('.cd-stat-box').textContent).toContain('2')
+    })
+
+    it('still shows up on [W], in its own IGNORED section', async () => {
+      const { McpConnector } = await import('./lib/mcp-connector')
+      McpConnector.getGames.mockResolvedValueOnce([...games, ignoredGame])
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Monkey Island')).toBeTruthy())
+      fireEvent.click(screen.getByLabelText('Watchlist view'))
+      await waitFor(() => expect(screen.getByText('[+] IGNORED (1)')).toBeTruthy())
+      fireEvent.click(screen.getByText('[+] IGNORED (1)'))
+      expect(screen.getByText('Skipped Title')).toBeTruthy()
+    })
+  })
 })
