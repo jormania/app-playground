@@ -6,7 +6,24 @@ import { refreshComingSoonGames, searchFollowedStudios, candidateToNewGame } fro
 
 const STALE_DAYS = 180
 
-let cachedCandidates = null
+function getCachedCandidates() {
+  try {
+    const data = sessionStorage.getItem('cd_watchlist_candidates')
+    return data ? JSON.parse(data) : null
+  } catch (e) {
+    return null
+  }
+}
+
+function setCachedCandidates(data) {
+  try {
+    if (data) {
+      sessionStorage.setItem('cd_watchlist_candidates', JSON.stringify(data))
+    } else {
+      sessionStorage.removeItem('cd_watchlist_candidates')
+    }
+  } catch (e) {}
+}
 
 function daysSince(dateStr) {
   if (!dateStr) return null
@@ -40,7 +57,7 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
   const [studios, setStudios] = useState([])
   const [isSearching, setIsSearching] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [candidates, setCandidates] = useState(cachedCandidates) // null = not searched yet this session
+  const [candidates, setCandidates] = useState(getCachedCandidates) // null = not searched yet this session
   const [addingAppId, setAddingAppId] = useState(null)
 
   useEffect(() => {
@@ -63,7 +80,7 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
     setIsSearching(true)
     try {
       const result = await searchFollowedStudios(studios, games)
-      cachedCandidates = result
+      setCachedCandidates(result)
       setCandidates(result)
       const total = result.notYetReleased.length + result.alreadyReleased.length
       onToast(total > 0 ? `Found ${total} candidate${total === 1 ? '' : 's'}.` : 'No new candidates found this time.')
@@ -102,7 +119,7 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
           notYetReleased: prev.notYetReleased.filter(c => c.appId !== candidate.appId),
           alreadyReleased: prev.alreadyReleased.filter(c => c.appId !== candidate.appId)
         }
-        cachedCandidates = next
+        setCachedCandidates(next)
         return next
       })
     } catch (err) {
