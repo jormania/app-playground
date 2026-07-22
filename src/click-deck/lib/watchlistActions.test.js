@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { candidateToNewGame, candidateToIgnoredGame, unignoreGame, getIgnoredGames } from './watchlistActions'
+import { candidateToNewGame, candidateToIgnoredGame, unignoreGame, getIgnoredGames, searchFollowedStudios } from './watchlistActions'
 
 describe('candidateToNewGame', () => {
   const releasedCandidate = {
@@ -75,6 +75,53 @@ describe('getIgnoredGames', () => {
       { id: '4' } // legacy, defaults to Released
     ]
     expect(getIgnoredGames(games).map(g => g.id)).toEqual(['1'])
+  })
+})
+
+describe('searchFollowedStudios — curated (tier-first) ordering', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  function mockCandidates(candidates) {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ candidates })
+    }))
+  }
+
+  it('ranks a higher-tier studio above a lower-tier one regardless of release timing', async () => {
+    mockCandidates([
+      { appId: 1, title: 'Soon (Tier 1)', matchedStudio: 'Opportunistic Co', studioTier: 1, comingSoon: true, year: 2026, releaseDateString: '2026' },
+      { appId: 2, title: 'Later (Tier 3)', matchedStudio: 'Automatic Follow Inc', studioTier: 3, comingSoon: true, year: 2027, releaseDateString: '2027' }
+    ])
+    const result = await searchFollowedStudios([{ name: 'Opportunistic Co' }, { name: 'Automatic Follow Inc' }], [])
+    expect(result.notYetReleased.map(c => c.title)).toEqual(['Later (Tier 3)', 'Soon (Tier 1)'])
+  })
+
+  it('within the same tier, sorts not-yet-released soonest-first', async () => {
+    mockCandidates([
+      { appId: 1, title: 'Far Off', matchedStudio: 'Studio', studioTier: 2, comingSoon: true, year: 2028, releaseDateString: '2028' },
+      { appId: 2, title: 'Coming Sooner', matchedStudio: 'Studio', studioTier: 2, comingSoon: true, year: 2026, releaseDateString: '2026' }
+    ])
+    const result = await searchFollowedStudios([{ name: 'Studio' }], [])
+    expect(result.notYetReleased.map(c => c.title)).toEqual(['Coming Sooner', 'Far Off'])
+  })
+
+  it('within the same tier, sorts already-released most-recent-first', async () => {
+    mockCandidates([
+      { appId: 1, title: 'Old Release', matchedStudio: 'Studio', studioTier: 2, comingSoon: false, year: 2019, releaseDateString: '2019' },
+      { appId: 2, title: 'Recent Release', matchedStudio: 'Studio', studioTier: 2, comingSoon: false, year: 2025, releaseDateString: '2025' }
+    ])
+    const result = await searchFollowedStudios([{ name: 'Studio' }], [])
+    expect(result.alreadyReleased.map(c => c.title)).toEqual(['Recent Release', 'Old Release'])
+  })
+
+  it('an untiered studio (no valueTier set) ranks below any explicitly tiered studio', async () => {
+    mockCandidates([
+      { appId: 1, title: 'Untiered', matchedStudio: 'Legacy Studio', studioTier: null, comingSoon: true, year: 2026, releaseDateString: '2026' },
+      { appId: 2, title: 'Tier 1', matchedStudio: 'New Studio', studioTier: 1, comingSoon: true, year: 2026, releaseDateString: '2026' }
+    ])
+    const result = await searchFollowedStudios([{ name: 'Legacy Studio' }, { name: 'New Studio' }], [])
+    expect(result.notYetReleased.map(c => c.title)).toEqual(['Tier 1', 'Untiered'])
   })
 })
 

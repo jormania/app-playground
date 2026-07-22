@@ -196,6 +196,10 @@ export default async function handler(req, res) {
         title: data.name || '',
         developer: (data.developers && data.developers[0]) || studio.name,
         matchedStudio: studio.name,
+        // A plain number passed straight through from the studio the client
+        // sent — see src/click-deck/lib/studios-connector.js's normalizeTier
+        // for the "weighting, not enum" rationale. Null when unset.
+        studioTier: typeof studio.valueTier === 'number' ? studio.valueTier : null,
         comingSoon: isComingSoon,
         releaseDateString: releaseDateStr,
         year: parseYearFromReleaseDateString(releaseDateStr),

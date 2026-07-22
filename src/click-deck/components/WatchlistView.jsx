@@ -50,6 +50,35 @@ function formatAge(days) {
   return `${days} days ago`
 }
 
+// Renders a Personal Value Tier as filled/empty stars, clamped to a 5-star
+// display regardless of the underlying scale (currently 1-3, but the tier
+// itself is just a number — see studios-connector.js's normalizeTier). Null
+// tier (studio never rated) renders nothing rather than a fabricated rating.
+function tierStars(tier) {
+  if (typeof tier !== 'number') return null
+  const filled = Math.max(1, Math.min(5, Math.round(tier)))
+  return '★'.repeat(filled) + '☆'.repeat(5 - filled)
+}
+
+// Subtle, text-only distinction for how firm a Coming Soon date is — no
+// badges or icons, just a colour shift on the same line that's already
+// there. "Overdue" means the expected window has already passed while the
+// game still sits in Coming Soon (a delay Steam hasn't reflected, or a stale
+// row) — worth a glance, not an alarm.
+function classifyExpectedDate(game) {
+  const raw = (game.releaseDate || '').trim().toLowerCase()
+  if (!raw && !game.year) return 'tba'
+  if (raw === 'tba' || raw.includes('to be announced')) return 'tba'
+  if (game.releaseDate) {
+    const parsed = new Date(game.releaseDate)
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.getTime() < Date.now() ? 'overdue' : 'dated'
+    }
+  }
+  if (game.year && game.year < new Date().getFullYear()) return 'overdue'
+  return 'dated'
+}
+
 function downloadBlob(content, mimeType, filename) {
   const blob = new Blob([content], { type: mimeType })
   const url = URL.createObjectURL(blob)
@@ -272,6 +301,11 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
             {candidate.title}
           </a>
           <span className="cd-candidate-meta">
+            {tierStars(candidate.studioTier) && (
+              <span className="cd-tier-stars" title={`Personal Value Tier ${candidate.studioTier}`}>
+                {tierStars(candidate.studioTier)}{' '}
+              </span>
+            )}
             {candidate.matchedStudio}
             {candidate.releaseDateString ? ` · ${candidate.releaseDateString}` : ''}
             {/* `!= null` (not `!== null`) so a candidate with no price field at
@@ -323,16 +357,16 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
         </p>
         <div className="cd-watchlist-actions">
           <div className="cd-watchlist-action">
-            <button type="button" onClick={handleFindNewGames} disabled={isSearching}>
+            <button type="button" className="primary" onClick={handleFindNewGames} disabled={isSearching}>
               {isSearching ? 'SEARCHING...' : '🔭 FIND NEW GAMES'}
             </button>
             <span className="cd-watchlist-action-hint">Search followed studios for titles not yet in your collection.</span>
           </div>
-          <div className="cd-watchlist-action">
+          <div className="cd-watchlist-action cd-watchlist-action-secondary">
             <button type="button" onClick={handleRefresh} disabled={isRefreshing}>
               {isRefreshing ? 'CHECKING...' : '🔄 REFRESH RELEASE DATES'}
             </button>
-            <span className="cd-watchlist-action-hint">Re-check Steam for anything that has launched.</span>
+            <span className="cd-watchlist-action-hint">Maintenance — re-check Steam for anything that has launched.</span>
           </div>
         </div>
       </div>
@@ -370,12 +404,13 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
               const age = daysSince(game.priceUpdatedAt)
               const isStale = age !== null && age > STALE_DAYS
               const expected = game.releaseDate || (game.year ? String(game.year) : 'TBA')
+              const dateKind = classifyExpectedDate(game)
               return (
                 <div key={game.id} className="cd-watchlist-card cd-panel">
                   <WatchlistCover game={game} overlayLabel={`🔭 ${expected}`} />
                   <div className="cd-watchlist-card-body">
                     <h4>{game.title}</h4>
-                    <p className="cd-watchlist-expected">🔭 EXPECTED: {expected}</p>
+                    <p className={`cd-watchlist-expected cd-expected-${dateKind}`}>🔭 EXPECTED: {expected}</p>
                     <p className={`cd-watchlist-checked ${isStale ? 'stale' : ''}`}>
                       last checked: {formatAge(age)}{isStale ? ' — still unreleased' : ''}
                     </p>
@@ -503,6 +538,14 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
         .cd-watchlist-action-hint {
           font-size: 0.8rem;
           color: var(--cd-text-muted);
+        }
+        .cd-watchlist-action-secondary button {
+          font-size: 1rem;
+          opacity: 0.8;
+        }
+        .cd-tier-stars {
+          color: var(--cd-accent-amber);
+          letter-spacing: 1px;
         }
         .cd-watchlist-section h3 {
           margin-top: 0;
@@ -675,6 +718,12 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
           font-family: var(--cd-font-terminal);
           font-size: 0.85rem;
           margin: 0 0 0.3rem;
+        }
+        .cd-expected-tba {
+          color: var(--cd-text-muted);
+        }
+        .cd-expected-overdue {
+          color: var(--cd-status-abandoned);
         }
         .cd-watchlist-released {
           color: var(--cd-accent-amber);

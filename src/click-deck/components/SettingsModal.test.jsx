@@ -118,4 +118,70 @@ describe('SettingsModal', () => {
       expect(screen.getByText(/Paste a Followed Studios database ID first/)).toBeTruthy()
     })
   })
+
+  describe('Followed Studios — Personal Value Tier & Notes', () => {
+    afterEach(() => {
+      window.localStorage.getItem.mockReset()
+      vi.unstubAllGlobals()
+    })
+
+    it('shows a studio\'s tier as stars and its notes once the studios DB is connected', async () => {
+      window.localStorage.getItem.mockImplementation(key => {
+        if (key === 'cd_studios_db_id') return 'studios-db-123'
+        if (key === 'cd_notion_token') return 'secret_test_token'
+        return null
+      })
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          results: [{
+            id: 'p1',
+            properties: {
+              'Title': { title: [{ plain_text: 'Wadjet Eye Games' }] },
+              'Personal Value Tier': { number: 3 },
+              'Notes': { rich_text: [{ plain_text: 'Gold standard for point-and-click.' }] },
+              'Steam Developer': { rich_text: [] }
+            }
+          }],
+          has_more: false,
+          next_cursor: null
+        })
+      }))
+      render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} />)
+      await waitFor(() => expect(screen.getByText('Wadjet Eye Games')).toBeTruthy())
+      expect(screen.getByText('★★★')).toBeTruthy()
+      expect(screen.getByText('Gold standard for point-and-click.')).toBeTruthy()
+    })
+
+    it('sends the tier and notes when adding a new studio', async () => {
+      window.localStorage.getItem.mockImplementation(key => {
+        if (key === 'cd_studios_db_id') return 'studios-db-123'
+        if (key === 'cd_notion_token') return 'secret_test_token'
+        return null
+      })
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          id: 'new-page',
+          properties: { Title: { title: [{ plain_text: 'New Studio' }] } }
+        })
+      })
+      vi.stubGlobal('fetch', fetchMock)
+      render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} />)
+      await waitFor(() => expect(screen.getByPlaceholderText('Studio name...')).toBeTruthy())
+
+      fireEvent.change(screen.getByPlaceholderText('Studio name...'), { target: { value: 'New Studio' } })
+      fireEvent.change(screen.getByPlaceholderText('Tier'), { target: { value: '2' } })
+      fireEvent.change(screen.getByPlaceholderText(/Notes — why you follow/), { target: { value: 'Solid writing.' } })
+      fireEvent.click(screen.getByText('+ ADD'))
+
+      await waitFor(() => {
+        const call = fetchMock.mock.calls.find(([, opts]) => JSON.parse(opts.body).path === 'pages')
+        expect(call).toBeTruthy()
+        const body = JSON.parse(call[1].body).body
+        expect(body.properties['Personal Value Tier']).toEqual({ number: 2 })
+        expect(body.properties['Notes'].rich_text[0].text.content).toBe('Solid writing.')
+      })
+    })
+  })
 })

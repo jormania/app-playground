@@ -41,14 +41,32 @@ const mapPageToStudio = (page) => ({
   // used by the discovery search to verify a candidate's actual Steam
   // developer/publisher field, not just a loose name search.
   steamDeveloper: page.properties['Steam Developer']?.rich_text?.map(rt => rt.plain_text).join('') || '',
-  notes: page.properties['Notes']?.rich_text?.map(rt => rt.plain_text).join('') || ''
+  notes: page.properties['Notes']?.rich_text?.map(rt => rt.plain_text).join('') || '',
+  // A plain number, not an enum — see normalizeTier's comment for why
+  // nothing in this file assumes a fixed 1-3 scale.
+  valueTier: typeof page.properties['Personal Value Tier']?.number === 'number'
+    ? page.properties['Personal Value Tier'].number
+    : null
 })
 
 const mapStudioToProperties = (studio) => ({
   'Title': { title: [{ text: { content: studio.name || 'Untitled' } }] },
   'Steam Developer': { rich_text: studio.steamDeveloper ? [{ text: { content: studio.steamDeveloper } }] : [] },
-  'Notes': { rich_text: studio.notes ? [{ text: { content: studio.notes } }] : [] }
+  'Notes': { rich_text: studio.notes ? [{ text: { content: studio.notes } }] : [] },
+  'Personal Value Tier': { number: typeof studio.valueTier === 'number' ? studio.valueTier : null }
 })
+
+// A studio's Personal Value Tier is a weighting, not a fixed enum — Gabriel's
+// current scale is 1 (opportunistic) to 3 (automatic follow), but nothing
+// here should assume that ceiling. Missing/unset tiers (legacy seeded
+// studios, or ones added before this field existed) rank below any studio
+// that has been deliberately tiered, but above nothing — they still show up,
+// just last.
+export const DEFAULT_TIER_WEIGHT = 0
+export const normalizeTier = (studio) =>
+  typeof studio?.valueTier === 'number' && !Number.isNaN(studio.valueTier)
+    ? studio.valueTier
+    : DEFAULT_TIER_WEIGHT
 
 async function fetchNotion(path, method = 'POST', body = null) {
   const token = getToken()
@@ -118,10 +136,31 @@ export const StudiosConnector = {
       return mapPageToStudio(data)
     }
     const list = getLocalStudios() || []
-    const newStudio = { id: uuidv4(), steamDeveloper: '', notes: '', ...studio }
+    const newStudio = { id: uuidv4(), steamDeveloper: '', notes: '', valueTier: null, ...studio }
     list.push(newStudio)
     saveLocalStudios(list)
     return newStudio
+  },
+
+  // Edits an existing studio's name/Steam-developer-tag/notes/tier in place —
+  // the "opinions about a studio change over time" path (a tier bumped up
+  // after a great release, a typo fixed in the Steam developer tag) without
+  // round-tripping through Notion's own UI.
+  updateStudio: async (id, updates) => {
+    const token = getToken()
+    const dbId = getStudiosDbId()
+    if (token && dbId) {
+      const data = await fetchNotion(`pages/${id}`, 'PATCH', {
+        properties: mapStudioToProperties(updates)
+      })
+      return mapPageToStudio(data)
+    }
+    const list = getLocalStudios() || []
+    const idx = list.findIndex(s => s.id === id)
+    if (idx === -1) throw new Error('Studio not found')
+    list[idx] = { ...list[idx], ...updates }
+    saveLocalStudios(list)
+    return list[idx]
   },
 
   removeStudio: async (id) => {

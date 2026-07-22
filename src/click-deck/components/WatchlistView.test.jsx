@@ -56,6 +56,45 @@ describe('WatchlistView', () => {
     expect(onEdit).toHaveBeenCalledWith(comingSoonGame)
   })
 
+  it('"Find New Games" is styled as the primary action; "Refresh Release Dates" is secondary', () => {
+    render(<WatchlistView games={[]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+    expect(screen.getByText('🔭 FIND NEW GAMES').className).toContain('primary')
+    expect(screen.getByText('🔄 REFRESH RELEASE DATES').className).not.toContain('primary')
+  })
+
+  it('renders a candidate\'s Personal Value Tier as stars next to its matched studio', () => {
+    const cached = {
+      notYetReleased: [{ appId: 999, title: 'Tiered Candidate', matchedStudio: 'Wadjet Eye Games', studioTier: 3, comingSoon: true, releaseDateString: '2027', headerImage: 'x', duplicate: null }],
+      alreadyReleased: []
+    }
+    sessionStorage.setItem('cd_watchlist_candidates', JSON.stringify(cached))
+    render(<WatchlistView games={[]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+    const row = screen.getByText('Tiered Candidate').closest('.cd-candidate-row')
+    expect(within(row).getByText(/★★★☆☆/)).toBeTruthy()
+    expect(within(row).getByText(/Wadjet Eye Games/)).toBeTruthy()
+  })
+
+  it('renders no stars for a candidate whose studio has no tier set', () => {
+    const cached = {
+      notYetReleased: [{ appId: 998, title: 'Untiered Candidate', matchedStudio: 'Legacy Studio', studioTier: null, comingSoon: true, releaseDateString: '2027', headerImage: 'x', duplicate: null }],
+      alreadyReleased: []
+    }
+    sessionStorage.setItem('cd_watchlist_candidates', JSON.stringify(cached))
+    render(<WatchlistView games={[]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+    const row = screen.getByText('Untiered Candidate').closest('.cd-candidate-row')
+    expect(within(row).queryByText(/★/)).toBeNull()
+  })
+
+  it('colours an overdue Coming Soon date distinctly from a TBA one', () => {
+    const overdueGame = { ...comingSoonGame, id: 'overdue1', title: 'Overdue Game', releaseDate: '1 Jan, 2020' }
+    const tbaGame = { ...comingSoonGame, id: 'tba1', title: 'TBA Game', releaseDate: '', year: null }
+    render(<WatchlistView games={[overdueGame, tbaGame]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+    const overdueLine = screen.getByText(/EXPECTED: 1 Jan, 2020/)
+    const tbaLine = screen.getByText(/EXPECTED: TBA/)
+    expect(overdueLine.className).toContain('cd-expected-overdue')
+    expect(tbaLine.className).toContain('cd-expected-tba')
+  })
+
   it('"Find New Games" toasts a message when there are no followed studios yet', async () => {
     const onToast = vi.fn()
     render(<WatchlistView games={[]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={onToast} />)

@@ -5,6 +5,25 @@ import { McpConnector } from './mcp-connector'
 import { readReleaseStatus, isIgnored } from './releaseStatus'
 import { resolveReleaseFlip, buildWatchlistUpdateFields, parseYearFromReleaseDateString } from './watchlistResolver'
 import { findDuplicateInCollection } from './steamMatch'
+import { DEFAULT_TIER_WEIGHT } from './studios-connector'
+
+// Curated-not-chronological ordering for New Candidates: a Tier 3 ("automatic
+// follow") studio's game should always sit above a Tier 1 one, full stop —
+// only within the same tier does release timing decide order. `dir` flips
+// the date comparison so "not yet released" reads soonest-first while
+// "already released" reads most-recent-first, without duplicating the
+// tier-comparison half of the logic.
+function compareCandidates(a, b, dir = 1) {
+  const tierA = typeof a.studioTier === 'number' ? a.studioTier : DEFAULT_TIER_WEIGHT
+  const tierB = typeof b.studioTier === 'number' ? b.studioTier : DEFAULT_TIER_WEIGHT
+  if (tierA !== tierB) return tierB - tierA
+  const yearA = a.year || (dir === 1 ? Infinity : -Infinity)
+  const yearB = b.year || (dir === 1 ? Infinity : -Infinity)
+  if (yearA !== yearB) return dir * (yearA - yearB)
+  const dateA = a.releaseDateString || ''
+  const dateB = b.releaseDateString || ''
+  return dir * dateA.localeCompare(dateB)
+}
 
 // "Refresh Release Dates" — re-checks every Coming Soon game against Steam,
 // applies any flips through the normal McpConnector.updateGame path (so it
@@ -57,8 +76,8 @@ export async function searchFollowedStudios(studios, games) {
   }))
 
   return {
-    notYetReleased: candidates.filter(c => c.comingSoon),
-    alreadyReleased: candidates.filter(c => !c.comingSoon)
+    notYetReleased: candidates.filter(c => c.comingSoon).sort((a, b) => compareCandidates(a, b, 1)),
+    alreadyReleased: candidates.filter(c => !c.comingSoon).sort((a, b) => compareCandidates(a, b, -1))
   }
 }
 
