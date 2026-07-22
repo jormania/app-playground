@@ -96,9 +96,14 @@
 .pill .seg { background: none; padding: 0; }
 .pillDivider { width: 1px; align-self: stretch; margin: 4px 1px; background: var(--color-border); }
 
-/* ── Slim row — full-width backing strip, hairline top; its CONTENT is capped
-   and centered (matching Skeins'/Tapestry's own content column) so the view
-   switch and gear don't scatter to opposite edges of a wide desktop window ── */
+/* ── Slim row — full-width backing strip, hairline top. On a phone the CONTENT
+   fills that strip edge to edge (view switch left, gear right) — the layout
+   already proven at 320-412px. Past 700px, the same space-between spread would
+   pin the two clusters to the edges of an invisible, much-wider centered box,
+   which reads as off-balance rather than centered (the switch is visually
+   heavier than the lone gear+dot) — so instead .rowInner drops its forced
+   full width and hugs its own content, and the outer .rowBar's
+   justify-content:center centers that tight, cohesive cluster. ── */
 .rowBar {
   display: flex;
   justify-content: center;
@@ -117,6 +122,10 @@
   max-width: 640px;
 }
 .rowRight { display: flex; align-items: center; gap: var(--space-sm); }
+
+@media (min-width: 700px) {
+  .rowInner { width: auto; gap: var(--space-lg); }
+}
 
 /* ── Icon tabs — full-width, glyph + label ─────────────────────────────────── */
 .tabsBar {

@@ -1,21 +1,23 @@
-/* One row, always: search shrinks/grows between a floor and a cap, the filter
-   cluster sits right after it, and the ritual actions pin to the far right via
-   margin-left:auto — the same layout Journal of Delights uses to keep its own
-   menu bar to one line. Icon-only controls (see components/icons.jsx) are what
-   make the row fit: a tooltip carries the localized label instead of a chip's
-   visible text. Comes in the same three shapes as the bottom bar (row/pill/tabs)
-   so the two always read as a coordinated pair. */
+/* One row, always: search shrinks/grows between a floor and a cap, then the
+   filter cluster and the ritual actions sit right after it — one tight,
+   optically centered unit, not two clusters pinned to opposite edges (that
+   read as "off-balance" even once the row itself is centered, since the
+   search+filters side is visually heavier than the actions side). Icon-only
+   controls (see components/icons.jsx) are what make the row fit: a tooltip
+   carries the localized label instead of a chip's visible text. Comes in the
+   same three shapes as the bottom bar (row/pill/tabs) so the two always read
+   as a coordinated pair. */
 
 /* Capped and centered to match Skeins'/Tapestry's own content column, so the
-   search/filter/ritual controls don't stretch edge to edge and split into a
-   left cluster and a far-right cluster on a wide desktop viewport — the week
-   board below is deliberately full-width (see App.module.css), but a control
-   bar isn't content that wants width. */
+   search/filter/ritual controls don't stretch edge to edge on a wide desktop
+   viewport — the week board below is deliberately full-width (see
+   App.module.css), but a control bar isn't content that wants width. */
 .wrap { position: relative; width: 100%; max-width: 640px; margin: 0 auto var(--space-md); }
 
 .bar {
   display: flex;
   align-items: center;
+  justify-content: center; /* only engages once content is narrower than the 640px cap — a no-op on mobile */
   gap: 6px;
   flex-wrap: wrap; /* safety net only — the widths below are sized not to need it */
 }
@@ -89,7 +91,6 @@
 
 /* ── Icon-only controls ───────────────────────────────────────────────────── */
 .group, .actions { flex: 0 0 auto; display: flex; align-items: center; gap: 1px; }
-.actions { margin-left: auto; }
 
 .iconBtn {
   position: relative;
