@@ -135,12 +135,17 @@ h1, h2, h3, h4, h5, h6 {
 /* Retro CRT Mode (Settings toggle, opt-in): viewfinder-style corner brackets on
    every panel, echoing the same bracket motif as the header logo and the
    [T]/[E]DIT UI language. Off by default — with ~70 timeline cards on screen
-   at once this reads as clutter unless the user specifically wants the look. */
-[data-crt="true"] .cd-panel {
+   at once this reads as clutter unless the user specifically wants the look.
+   Excludes .cd-sort-menu: it's a transient, absolutely-positioned dropdown
+   that also carries .cd-panel for its background/border, and this rule's
+   `position: relative` was outranking its own `position: absolute` by CSS
+   specificity — dropping it into normal flow and sending it flying far below
+   its trigger button instead of docking directly underneath it. */
+[data-crt="true"] .cd-panel:not(.cd-sort-menu) {
   position: relative;
 }
-[data-crt="true"] .cd-panel::before,
-[data-crt="true"] .cd-panel::after {
+[data-crt="true"] .cd-panel:not(.cd-sort-menu)::before,
+[data-crt="true"] .cd-panel:not(.cd-sort-menu)::after {
   content: '';
   position: absolute;
   width: 10px;
@@ -149,13 +154,13 @@ h1, h2, h3, h4, h5, h6 {
   opacity: 0.5;
   pointer-events: none;
 }
-[data-crt="true"] .cd-panel::before {
+[data-crt="true"] .cd-panel:not(.cd-sort-menu)::before {
   top: -1px;
   left: -1px;
   border-right: none;
   border-bottom: none;
 }
-[data-crt="true"] .cd-panel::after {
+[data-crt="true"] .cd-panel:not(.cd-sort-menu)::after {
   bottom: -1px;
   right: -1px;
   border-left: none;
