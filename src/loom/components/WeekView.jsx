@@ -35,6 +35,9 @@ export default function WeekView({
   const lpSkein = useRef(null)
   const warpRef = useRef(null)
   const todayRef = useRef(null)
+  const topScrollRef = useRef(null)
+  const isSyncingRef = useRef(false) // breaks the scroll<->scroll feedback loop between the two bars
+  const [warpScrollWidth, setWarpScrollWidth] = useState(0)
 
   // Snap the horizontally-scrolling Warp to today's column on open — both on
   // first mount and whenever the current week comes back into view (prev/next
@@ -52,6 +55,51 @@ export default function WeekView({
       warpRef.current.scrollLeft += todayRect.left - warpRect.left
     }
   }, [weekStartKey, isThisWeek])
+
+  // A duplicate horizontal scrollbar, mirrored above the day columns: the
+  // Warp's own native one sits at the bottom of whatever its tallest column
+  // renders to, which on a laptop with a full day can be well below the fold —
+  // so switching days means scrolling all the way down first just to reach it.
+  // Tracks the Warp's scrollWidth (driven by the day-column count and the
+  // viewport breakpoint, not by task content, so a resize is the only thing
+  // that actually moves it), keeps both bars' scrollLeft in lockstep with
+  // native listeners (React's synthetic onScroll silently never fired here —
+  // scroll doesn't bubble and apparently didn't get picked up on this node
+  // either; addEventListener is also the right tool regardless, since a
+  // scroll-sync handler runs every frame and doesn't need React's overhead),
+  // and starts the mirror at whatever position the snap-to-today effect above
+  // already put the Warp at, so the two don't open out of sync.
+  useEffect(() => {
+    const warp = warpRef.current
+    const topScroll = topScrollRef.current
+    if (!warp || !topScroll) return undefined
+
+    const measure = () => setWarpScrollWidth(warp.scrollWidth)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(warp)
+
+    topScroll.scrollLeft = warp.scrollLeft
+
+    const onWarpScroll = () => {
+      if (isSyncingRef.current) { isSyncingRef.current = false; return }
+      isSyncingRef.current = true
+      topScroll.scrollLeft = warp.scrollLeft
+    }
+    const onTopScroll = () => {
+      if (isSyncingRef.current) { isSyncingRef.current = false; return }
+      isSyncingRef.current = true
+      warp.scrollLeft = topScroll.scrollLeft
+    }
+    warp.addEventListener('scroll', onWarpScroll, { passive: true })
+    topScroll.addEventListener('scroll', onTopScroll, { passive: true })
+
+    return () => {
+      observer.disconnect()
+      warp.removeEventListener('scroll', onWarpScroll)
+      topScroll.removeEventListener('scroll', onTopScroll)
+    }
+  }, [days])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const repeats = useMemo(() => pendingRepeats(weekStartKey), [weekStartKey, castTick])
@@ -219,6 +267,14 @@ export default function WeekView({
             ))}
           </div>
         )}
+
+        {/* Mirrors the Warp's own bottom scrollbar — same width, same scroll
+            position — so switching days doesn't require scrolling past a tall
+            column first. Desktop-only (see .topScroll's media query); mobile's
+            scroll-snap swipe already handles day-to-day navigation. */}
+        <div className={styles.topScroll} ref={topScrollRef} aria-hidden="true">
+          <div style={{ width: warpScrollWidth, height: 1 }} />
+        </div>
 
         <div className={styles.warp} ref={warpRef}>
           {columns.map(col => {

@@ -180,7 +180,30 @@
 }
 .warp::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--color-accent) 60%, transparent); }
 
+/* Duplicate scrollbar, mirrored above the columns — same themed thumb as the
+   Warp's own. Hidden on narrow screens: the day columns there are one-at-a-
+   time with scroll-snap, swiped rather than dragged, so a second scrollbar
+   would just eat vertical space for no benefit. Desktop-only, matching the
+   breakpoint where the Warp becomes a wide 7-track row worth jumping around
+   in from the top. */
+.topScroll {
+  display: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-accent) 45%, transparent) transparent;
+}
+.topScroll::-webkit-scrollbar { height: 8px; }
+.topScroll::-webkit-scrollbar-track { background: transparent; }
+.topScroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-accent) 38%, transparent);
+  border-radius: var(--radius-pill);
+}
+.topScroll::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--color-accent) 60%, transparent); }
+
 @media (min-width: 900px) {
+  .topScroll { display: block; }
   .warp {
     grid-auto-flow: row;
     /* A bare `1fr` floors each track at its content's min-width, which let seven

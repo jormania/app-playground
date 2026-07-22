@@ -36,7 +36,15 @@ just different groupings/readings of it — toggling never moves data between si
   on touch).
 - **The Week** (Weekly view) — the same threads warped across the seven days of the
   current week (Mon→Sun, with prev/next/"this week"), plus **the distaff** — a
-  backlog rail of unspun (day-less) threads to pull onto a day.
+  backlog rail of unspun (day-less) threads to pull onto a day. Past 900px the
+  seven columns become a 7-track row wider than most viewports, so the Warp
+  scrolls itself horizontally — and its native scrollbar sits at the bottom of
+  whatever the tallest column renders to, easily below the fold on a busy day.
+  A second, mirrored scrollbar (`.topScroll` in WeekView) sits right above the
+  columns, kept in lockstep with the real one via native `scroll` listeners
+  (not React's `onScroll` — it silently never fired for this element) plus a
+  `ResizeObserver` tracking the Warp's `scrollWidth`. Desktop-only; mobile's
+  scroll-snap swipe already covers day-to-day navigation there.
 - **The Tapestry** (History view) — a descriptive read *across all weeks* (see
   below). It ignores the live search/focus filters by design.
 
