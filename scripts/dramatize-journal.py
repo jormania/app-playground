@@ -97,16 +97,25 @@ def get_pages():
                 break
     return pages
 
-def is_plain_text(rich_text_array):
+def why_not_plain_text(rich_text_array):
+    # Same checks as is_plain_text, but returns a human-readable reason
+    # instead of a bool, so a 0-dramatized run can actually be diagnosed
+    # instead of guessed at.
     if len(rich_text_array) != 1:
-        return False
+        return f"has {len(rich_text_array)} rich_text runs (expected exactly 1 for untouched plain text)"
     rt = rich_text_array[0]
     if rt.get("type") != "text":
-        return False
+        return f"run type is {rt.get('type')!r}, not 'text' (e.g. a mention or equation)"
     annots = rt.get("annotations", {})
-    if annots.get("bold") or annots.get("italic") or annots.get("strikethrough") or annots.get("underline") or annots.get("code") or (annots.get("color") and annots.get("color") != "default"):
-        return False
-    return True
+    active = [k for k in ("bold", "italic", "strikethrough", "underline", "code") if annots.get(k)]
+    if annots.get("color") and annots.get("color") != "default":
+        active.append(f"color={annots.get('color')}")
+    if active:
+        return f"already has formatting: {', '.join(active)}"
+    return None
+
+def is_plain_text(rich_text_array):
+    return why_not_plain_text(rich_text_array) is None
 
 # A caption-length entry can plausibly contain half a dozen theme keywords
 # (praise words like "beautiful"/"brilliant"/"incredible"/"masterclass" and
@@ -180,30 +189,38 @@ def main():
     print("Fetching pages...")
     pages = get_pages()
     print(f"Found {len(pages)} pages with Journal/Notes.")
-    
+
     updated_count = 0
+    already_styled_count = 0
+    no_match_count = 0
     for page in pages:
         title = "Unknown"
         if "Title" in page["properties"] and page["properties"]["Title"]["title"]:
             title = page["properties"]["Title"]["title"][0]["plain_text"]
-            
+
         rich_text_array = page["properties"]["Journal/Notes"]["rich_text"]
-        
-        if is_plain_text(rich_text_array):
-            plain_text = rich_text_array[0]["text"]["content"]
-            new_rich_text = dramatize_text(plain_text)
-            
-            if len(new_rich_text) > 1:
-                print(f"Dramatizing: {title}")
-                try:
-                    update_page(page["id"], new_rich_text)
-                    updated_count += 1
-                except Exception as e:
-                    print(f"Failed to update {title}: {e}")
-            else:
-                pass
-    
-    print(f"Finished! Dramatized {updated_count} entries.")
+
+        skip_reason = why_not_plain_text(rich_text_array)
+        if skip_reason:
+            already_styled_count += 1
+            print(f"⏩ Skipping '{title}': {skip_reason}")
+            continue
+
+        plain_text = rich_text_array[0]["text"]["content"]
+        new_rich_text = dramatize_text(plain_text)
+
+        if len(new_rich_text) > 1:
+            print(f"Dramatizing: {title}")
+            try:
+                update_page(page["id"], new_rich_text)
+                updated_count += 1
+            except Exception as e:
+                print(f"Failed to update {title}: {e}")
+        else:
+            no_match_count += 1
+            print(f"⏩ Skipping '{title}': no theme keyword found in the text")
+
+    print(f"\nFinished! Dramatized {updated_count} entries. ({already_styled_count} already styled, {no_match_count} had no matching keyword, {len(pages)} total)")
 
 if __name__ == "__main__":
     main()
