@@ -149,13 +149,28 @@ export default async function handler(req, res) {
       const studio = hitsByAppId.get(appId)
       if (!studioMatchesCandidate(studio, data.developers, data.publishers)) continue
 
+      if (data.type && data.type !== 'game') continue
+
+      const isComingSoon = data.release_date?.coming_soon === true
       const releaseDateStr = data.release_date?.date || ''
+      
+      if (!isComingSoon && releaseDateStr) {
+        const parsedDate = new Date(releaseDateStr)
+        if (!isNaN(parsedDate)) {
+          const daysOld = (Date.now() - parsedDate.getTime()) / (1000 * 60 * 60 * 24)
+          if (daysOld > 365) continue
+        } else {
+          const y = parseYearFromReleaseDateString(releaseDateStr)
+          if (y && (new Date().getFullYear() - y) > 1) continue
+        }
+      }
+
       candidates.push({
         appId,
         title: data.name || '',
         developer: (data.developers && data.developers[0]) || studio.name,
         matchedStudio: studio.name,
-        comingSoon: data.release_date?.coming_soon === true,
+        comingSoon: isComingSoon,
         releaseDateString: releaseDateStr,
         year: parseYearFromReleaseDateString(releaseDateStr),
         price: data.price_overview ? data.price_overview.final / 100 : null,
