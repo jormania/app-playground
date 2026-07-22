@@ -11,7 +11,7 @@ import wanderlistRemindHandler from './api/wanderlist-remind.js'
 import steamSearchHandler from './api/steam-search.js'
 import clickDeckStudioSearchHandler from './api/clickdeck-studio-search.js'
 import clickDeckAppdetailsHandler from './api/clickdeck-appdetails.js'
-import runPythonScriptsHandler from './api/run-python-scripts.js'
+import runPythonScriptsHandler from './api/_run-python-scripts.js'
 
 // Stamps the real build/deploy time into every HTML entry as a <meta> tag.
 // On Vercel a fresh build runs on each deploy, so this equals the deploy date.
