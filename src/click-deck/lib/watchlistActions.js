@@ -46,6 +46,13 @@ export async function refreshComingSoonGames(games) {
     const fields = buildWatchlistUpdateFields(resolved)
     const nextGame = { ...game, ...fields }
     await McpConnector.updateGame(game.id, nextGame)
+    // Notion page covers PATCH through a dedicated endpoint (they're not a
+    // regular property), so updateGame above never touches them — without
+    // this, a refreshed coverUrl would only ever live in the optimistic
+    // nextGame object and silently revert on the next full reload.
+    if (fields.coverUrl && fields.coverUrl !== game.coverUrl) {
+      await McpConnector.updateGameCover(game.id, fields.coverUrl)
+    }
     updated.push(nextGame)
     if (resolved.flipped) flipped.push(nextGame)
   }
@@ -172,8 +179,29 @@ export async function unignoreGame(game) {
     initialPrice: data.price_overview ? data.price_overview.initial / 100 : null,
     discountPercent: data.price_overview ? (data.price_overview.discount_percent || 0) / 100 : 0
   }
+  // Same "fill blanks from Steam, never overwrite" enrichment as an
+  // observed Coming Soon -> Released flip (resolveReleaseFlip) — an
+  // Ignored game was always saved with empty tags/journal (see
+  // candidateToIgnoredGame), so restoring it straight to Released deserves
+  // the same starting point a flip gives, not a permanently bare entry.
+  if (!comingSoon) {
+    if ((!game.tags || game.tags.length === 0) && Array.isArray(data.genres)) {
+      fields.tags = data.genres.map(g => g.description).filter(Boolean).slice(0, 7)
+    }
+    if (!game.journal && data.short_description) {
+      fields.journal = data.short_description
+    }
+    if (!game.developer && Array.isArray(data.developers) && data.developers[0]) {
+      fields.developer = data.developers[0]
+    }
+  }
   const nextGame = { ...game, ...fields }
   await McpConnector.updateGame(game.id, nextGame)
+  // Same page-cover caveat as refreshComingSoonGames above — updateGame's
+  // properties write never touches Notion's page-level cover.
+  if (fields.coverUrl && fields.coverUrl !== game.coverUrl) {
+    await McpConnector.updateGameCover(game.id, fields.coverUrl)
+  }
   return nextGame
 }
 

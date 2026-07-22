@@ -18,9 +18,11 @@ export function parseYearFromReleaseDateString(dateStr) {
   return match ? parseInt(match[0], 10) : null
 }
 
-// Given one Notion-side game row (needs `releaseStatus`) and the raw Steam
-// appdetails response entry for its App ID (fetched with
-// `filters=price_overview,release_date` or no filters at all), decides what
+// Given one Notion-side game row (needs `releaseStatus`, plus `tags`/
+// `journal`/`developer` for the derivation decisions below) and the raw
+// Steam appdetails response entry for its App ID (fetched with
+// `filters=basic,price_overview,release_date,genres,developers` — `basic`
+// is what makes `header_image`/`short_description` present), decides what
 // (if anything) about its release status should change.
 //
 // Deliberately conservative rules — see project memory
@@ -39,6 +41,33 @@ export function parseYearFromReleaseDateString(dateStr) {
 //     watchlist.py to flag for manual review, so a flip is never silently
 //     undone by a flaky/inconsistent Steam response.
 //   - Released At is set ONLY on an observed transition, exactly once.
+//   - Cover art is refreshed on EVERY check while still Coming Soon (not
+//     just at the flip) — a still-in-development game's Steam header image
+//     can go from a generic placeholder to real key art at any point, and
+//     this call already has `header_image` in hand for free.
+//   - Tags, journal and developer are derived from Steam (genres,
+//     short_description, developers[0]) at the moment of the flip itself,
+//     and ONLY when the game doesn't already have one — a Coming Soon add
+//     always lands with tags/journal blank (see watchlistActions.js's
+//     candidateToNewGame; developer is normally set at add-time too, but a
+//     manually-created row could still be missing it), so this is what
+//     turns that intentional blank into a real starting point the instant
+//     there's something to fill it with, mirroring the enrichment an
+//     already-released discovery add gets immediately. If the field is
+//     already populated (e.g. the user hand-tagged/wrote notes on it
+//     pre-release), derivation is skipped — this never overwrites a human's
+//     own work. Length (hrs) is deliberately NEVER auto-derived here, at
+//     flip or otherwise — HowLongToBeat almost never has real submission
+//     data for a game on its actual release day, and its scrape is already
+//     the most fragile integration in the app (see clickdeck-hltb.js); it
+//     stays a manual/scripted backfill (Editor's FETCH HLTB, backfill-
+//     hltb.py) once real data has had time to accumulate. Price is likewise
+//     NOT derived here even though the appdetails call already has
+//     price_overview in hand — the nightly cron already recomputes it
+//     separately (resolvePriceUpdate) in the very same run for the very
+//     same page, so re-deriving it here would just be redundant, and the
+//     manual "Refresh Release Dates" path (no pricing pass of its own) is
+//     fine leaving a fresh price to that night's cron.
 export function resolveReleaseFlip(game, appData, now = new Date()) {
   if (!game || game.releaseStatus !== 'Coming Soon') return null
   if (!appData || typeof appData !== 'object' || Array.isArray(appData)) return null
@@ -49,28 +78,45 @@ export function resolveReleaseFlip(game, appData, now = new Date()) {
 
   const releaseDateStr = data.release_date?.date || ''
   const comingSoon = data.release_date?.coming_soon
+  const coverUrl = data.header_image || ''
 
   if (comingSoon !== false) {
     // Still unreleased (or Steam gave no opinion) — refresh the display
-    // string/parsed year only, no status transition.
+    // string/parsed year/cover only, no status transition.
     return {
       flipped: false,
       releaseDateString: releaseDateStr,
-      year: parseYearFromReleaseDateString(releaseDateStr)
+      year: parseYearFromReleaseDateString(releaseDateStr),
+      coverUrl
     }
   }
+
+  const derivedTags = (!game.tags || game.tags.length === 0) && Array.isArray(data.genres)
+    ? data.genres.map(g => g.description).filter(Boolean).slice(0, 7)
+    : null
+  const derivedJournal = !game.journal && data.short_description ? data.short_description : null
+  const derivedDeveloper = !game.developer && Array.isArray(data.developers) && data.developers[0]
+    ? data.developers[0]
+    : null
 
   return {
     flipped: true,
     releaseDateString: releaseDateStr,
     year: parseYearFromReleaseDateString(releaseDateStr),
-    releasedAt: now.toISOString()
+    releasedAt: now.toISOString(),
+    coverUrl,
+    derivedTags,
+    derivedJournal,
+    derivedDeveloper
   }
 }
 
 // Builds the Notion PATCH properties for a resolved watchlist check, to be
 // merged alongside (not instead of) the pricing patch for the same page —
-// the nightly cron writes both in a single PATCH per page.
+// the nightly cron writes both in a single PATCH per page. Cover art is
+// NOT a property (Notion page covers live outside `properties`) — the
+// caller (api/clickdeck-pricing.js) reads `resolved.coverUrl` itself and
+// sets the PATCH's top-level `cover` field alongside these.
 export function buildWatchlistPatchProperties(resolved) {
   const properties = {
     'Release Date': { rich_text: resolved.releaseDateString ? [{ text: { content: resolved.releaseDateString } }] : [] }
@@ -81,6 +127,15 @@ export function buildWatchlistPatchProperties(resolved) {
   if (resolved.flipped) {
     properties['Release Status'] = { select: { name: 'Released' } }
     properties['Released At'] = { date: { start: resolved.releasedAt } }
+  }
+  if (resolved.derivedTags) {
+    properties['Tags'] = { multi_select: resolved.derivedTags.map(t => ({ name: t })) }
+  }
+  if (resolved.derivedJournal) {
+    properties['Journal/Notes'] = { rich_text: [{ text: { content: resolved.derivedJournal } }] }
+  }
+  if (resolved.derivedDeveloper) {
+    properties['Developer/Studio'] = { select: { name: resolved.derivedDeveloper } }
   }
   return properties
 }

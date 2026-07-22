@@ -158,6 +158,49 @@ describe('unignoreGame', () => {
     expect(result.releaseDate).toBe('1 Jun, 2026')
   })
 
+  it('restores to Released and derives tags/journal/developer from Steam, same as an observed flip, when the game has none', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        '123': {
+          success: true,
+          data: {
+            release_date: { coming_soon: false, date: '1 Jun, 2026' },
+            genres: [{ description: 'Adventure' }, { description: 'Indie' }],
+            short_description: 'A time-travel adventure.',
+            developers: ['Wadjet Eye Games']
+          }
+        }
+      })
+    }))
+    const result = await unignoreGame(ignoredGame)
+    expect(result.tags).toEqual(['Adventure', 'Indie'])
+    expect(result.journal).toBe('A time-travel adventure.')
+    expect(result.developer).toBe('Wadjet Eye Games')
+  })
+
+  it('never overwrites tags/journal/developer the game already has when un-ignoring', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        '123': {
+          success: true,
+          data: {
+            release_date: { coming_soon: false, date: '1 Jun, 2026' },
+            genres: [{ description: 'Adventure' }],
+            short_description: 'Marketing copy.',
+            developers: ['Steam Studio']
+          }
+        }
+      })
+    }))
+    const alreadyFilled = { ...ignoredGame, tags: ['Point & Click'], journal: 'My own notes.', developer: 'Existing Studio' }
+    const result = await unignoreGame(alreadyFilled)
+    expect(result.tags).toEqual(['Point & Click'])
+    expect(result.journal).toBe('My own notes.')
+    expect(result.developer).toBe('Existing Studio')
+  })
+
   it('restores to Coming Soon when Steam still shows it unreleased', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,

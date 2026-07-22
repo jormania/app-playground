@@ -39,7 +39,10 @@ export default async function handler(req, res) {
       }
       const combined = {}
       for (const id of ids) {
-        const steamRes = await fetch(`https://store.steampowered.com/api/appdetails?appids=${id}&cc=US&filters=price_overview,release_date`)
+        // basic -> header_image/short_description (cover + journal refresh),
+        // genres/developers -> flip-time tag/developer derivation. See
+        // api/_lib/clickdeckWatchlist.js's resolveReleaseFlip.
+        const steamRes = await fetch(`https://store.steampowered.com/api/appdetails?appids=${id}&cc=US&filters=basic,price_overview,release_date,genres,developers`)
         if (!steamRes.ok) continue
         const data = await steamRes.json()
         if (data && typeof data === 'object' && !Array.isArray(data)) {

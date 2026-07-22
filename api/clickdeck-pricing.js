@@ -62,7 +62,13 @@ export default async function handler(req, res) {
       // Only present once a user has clicked "Patch Database for Watchlist
       // Schema" — undefined key means resolveReleaseFlip's releaseStatus
       // check below always safely no-ops for anyone who hasn't patched yet.
-      releaseStatus: page.properties['Release Status']?.select?.name
+      releaseStatus: page.properties['Release Status']?.select?.name,
+      // Only read so resolveReleaseFlip can tell "already has one" from
+      // "still blank" when deciding whether to derive tags/journal/developer
+      // from Steam on a flip — never written back except via that derivation.
+      tags: page.properties['Tags']?.multi_select?.map(t => t.name) || [],
+      journal: page.properties['Journal/Notes']?.rich_text?.map(rt => rt.plain_text).join('') || '',
+      developer: page.properties['Developer/Studio']?.select?.name || ''
     })).filter(g => g.appId > 0)
 
     if (gamesToUpdate.length === 0) {
@@ -86,7 +92,12 @@ export default async function handler(req, res) {
       // whether a Coming Soon game has launched — previously "no price" and
       // "unreleased" were indistinguishable, which is exactly the ambiguity
       // the Watchlist feature's release_date.coming_soon check replaces.
-      const steamRes = await fetch(`https://store.steampowered.com/api/appdetails?appids=${game.appId}&cc=US&filters=price_overview,release_date`)
+      // `basic` is what makes header_image/short_description available
+      // (cover + journal derivation), `genres`/`developers` are what make
+      // flip-time tag/developer derivation possible — all only ever acted
+      // on for Coming Soon rows (see resolveReleaseFlip), so this doesn't
+      // add per-request cost for the rest of the collection.
+      const steamRes = await fetch(`https://store.steampowered.com/api/appdetails?appids=${game.appId}&cc=US&filters=basic,price_overview,release_date,genres,developers`)
 
       if (!steamRes.ok) {
         console.error(`Steam API failed for app ${game.appId}`)
@@ -123,6 +134,14 @@ export default async function handler(req, res) {
         ...(result.update ? buildPatchProperties(result.update) : {}),
         ...(result.releaseFlip ? buildWatchlistPatchProperties(result.releaseFlip) : {})
       }
+      // Cover art is a Notion page-level field, not a property — PATCHed as
+      // a sibling of `properties` in the same request. Only present on rows
+      // resolveReleaseFlip actually touched (Coming Soon rows), and only
+      // when Steam gave us a header image.
+      const body = { properties }
+      if (result.releaseFlip?.coverUrl) {
+        body.cover = { type: 'external', external: { url: result.releaseFlip.coverUrl } }
+      }
       const patchRes = await fetch(`https://api.notion.com/v1/pages/${result.pageId}`, {
         method: 'PATCH',
         headers: {
@@ -130,7 +149,7 @@ export default async function handler(req, res) {
           'Notion-Version': '2022-06-28',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ properties })
+        body: JSON.stringify(body)
       })
 
       if (patchRes.ok) {
