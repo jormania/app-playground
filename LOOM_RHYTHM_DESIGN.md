@@ -193,6 +193,12 @@ The canonical threads themselves (the ones in the rhythm skein with no `day` ass
 - **No per-thread recurrence rules.** No "every Tuesday" or "every other day." That's calendar software. Loom is a weekly planner. The rhythm is all-days; the draft is per-weekday. Between the two, you cover the real use cases without RRULE complexity.
 - **No streaks or streak-breaking anxiety.** A missed rhythm thread is just an open thread, same as anything else. The Tapestry shows your cloth descriptively. No red Xs, no guilt counters.
 - **No "habit tracking" UI.** No dedicated view, no charts-per-habit, no completion-over-30-days graph. If you want to see how often "Meditate" gets done, the Tapestry's general completion rate covers it. A dedicated habit-tracking view is bloat that belongs in HabitNow.
+  > **Revisited:** a narrow exception shipped later — a read-only "past seven
+  > days" strip per rhythm thread (`RhythmHistoryModal.jsx`), explicitly
+  > requested to mirror HabitNow's own last-7-days view. It's still
+  > descriptive-only (dyed/open/none/off dots, no percentages, no streaks, no
+  > calendar) and strictly the last 7 days, never the current week — see
+  > LOOM.md's "The past seven days".
 - **No fields to configure per-rhythm-thread.** No "time of day", no "duration", no "reminder", no "category within the routine." A rhythm thread is a title and a position. That's it. Flow state, not admin state.
 
 ---

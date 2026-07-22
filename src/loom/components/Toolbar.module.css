@@ -11,7 +11,7 @@
 .bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap; /* safety net only — the widths below are sized not to need it */
 }
 
@@ -55,8 +55,8 @@
   position: relative;
   display: flex;
   align-items: center;
-  flex: 1 1 130px;
-  min-width: 90px;
+  flex: 1 1 90px;
+  min-width: 60px;
   max-width: 320px;
 }
 .glass { position: absolute; left: 13px; color: var(--color-faint); font-size: var(--text-base); pointer-events: none; }
@@ -83,14 +83,14 @@
 .clear:hover { color: var(--color-ink); }
 
 /* ── Icon-only controls ───────────────────────────────────────────────────── */
-.group, .actions { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
+.group, .actions { flex: 0 0 auto; display: flex; align-items: center; gap: 1px; }
 .actions { margin-left: auto; }
 
 .iconBtn {
   position: relative;
   flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -127,7 +127,7 @@
 /* ── ROW — filter and action clusters gather into sunken segmented pills,
    echoing the bottom bar's own segmented view switch ── */
 .row .group, .row .actions {
-  padding: 3px;
+  padding: 2px;
   background: color-mix(in srgb, var(--color-bg-sunken) 60%, transparent);
   border-radius: var(--radius-pill);
 }
@@ -144,7 +144,7 @@
   backdrop-filter: blur(14px) saturate(1.3);
 }
 .pill .group, .pill .actions {
-  padding: 4px;
+  padding: 3px;
   background: color-mix(in srgb, var(--color-surface) 78%, transparent);
   border: 1px solid var(--color-border-2);
   border-radius: var(--radius-pill);
@@ -159,7 +159,7 @@
 /* ── TABS — flat translucent clusters, matching the bottom icon-tab strip ──── */
 .tabs .search { border-radius: var(--radius-sm); border-color: var(--color-border); }
 .tabs .group, .tabs .actions {
-  padding: 3px;
+  padding: 2px;
   background: color-mix(in srgb, var(--color-surface) 70%, transparent);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -171,10 +171,18 @@
 .tabs .on, .tabs .on:hover { color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
 
 /* ── QoL ───────────────────────────────────────────────────────────────────── */
+/* A touch-target bump used to force a 34px minimum unconditionally, which on a
+   real phone silently overrode the narrow-screen shrink below and was the
+   actual reason six icon buttons (three filters + three ritual actions) could
+   overflow onto a second line — min-width always wins over a smaller width.
+   Kept modest, and it backs off first at the same breakpoint the icons do. */
 @media (hover: none) {
-  .iconBtn { min-width: 34px; min-height: 34px; }
+  .iconBtn { min-width: 32px; min-height: 32px; }
 }
-@media (max-width: 360px) {
-  .searchWrap { min-width: 72px; }
-  .iconBtn { width: 30px; height: 30px; }
+@media (max-width: 400px) {
+  .searchWrap { min-width: 48px; }
+  .iconBtn { width: 28px; height: 28px; }
+}
+@media (max-width: 400px) and (hover: none) {
+  .iconBtn { min-width: 28px; min-height: 28px; }
 }

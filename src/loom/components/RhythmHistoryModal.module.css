@@ -1,0 +1,101 @@
+.body { display: flex; flex-direction: column; gap: var(--space-md); }
+
+.lede {
+  margin: 0;
+  font-family: var(--loom-thread);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.empty {
+  margin: 0;
+  padding: var(--space-md) 0;
+  font-family: var(--loom-thread);
+  font-style: italic;
+  font-size: var(--text-sm);
+  color: var(--color-faint);
+  text-align: center;
+}
+
+.skeinSection { display: flex; flex-direction: column; gap: var(--space-xs); }
+.skeinSection + .skeinSection {
+  margin-top: var(--space-xs);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.skeinTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  letter-spacing: 0.03em;
+  color: var(--color-accent);
+}
+.skeinTitle svg { font-size: 0.85em; }
+
+.templateList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-sm); }
+
+.templateRow {
+  padding: 8px 10px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.templateTitle {
+  margin: 0 0 6px;
+  font-family: var(--loom-thread);
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+}
+
+.strip { display: flex; gap: 4px; justify-content: space-between; }
+
+.cell {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  aspect-ratio: 1;
+  min-width: 0;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-border-2);
+  background: transparent;
+}
+
+.cellLabel { font-family: var(--font-sans); font-size: 0.56rem; line-height: 1; opacity: 0.75; }
+.cellNum { font-family: var(--font-sans); font-size: var(--text-xs); line-height: 1; font-weight: 600; }
+
+/* woven — the dyed, filled state */
+.isdone {
+  border-color: var(--color-success);
+  background: var(--color-success);
+  color: var(--color-on-accent);
+}
+
+/* still open — an instance exists, not yet woven (same meaning as the Tapestry's own "open") */
+.isopen {
+  border-color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 16%, transparent);
+  color: var(--color-warning);
+}
+
+/* not cast — a rhythm day with nothing placed on it yet */
+.isnone {
+  border-style: dashed;
+  border-color: var(--color-border);
+  color: var(--color-faint);
+}
+
+/* not a rhythm day (outside the day mask) — quiet, no day number needed */
+.isoff {
+  border-style: none;
+  background: color-mix(in srgb, var(--color-border) 30%, transparent);
+  color: transparent;
+}
+.isoff .cellLabel { opacity: 0.4; color: var(--color-faint); }
