@@ -34,7 +34,7 @@ export async function refreshComingSoonGames(games) {
   if (comingSoon.length === 0) return { checked: 0, flipped: [], updated: [] }
 
   const appIds = comingSoon.map(g => g.appId)
-  const res = await fetch(`/api/clickdeck-appdetails?appids=${appIds.join(',')}`)
+  const res = await fetch(`/api/steam-search?appids=${appIds.join(',')}`)
   if (!res.ok) throw new Error('Could not reach Steam to refresh release dates.')
   const steamData = await res.json()
 
@@ -152,7 +152,7 @@ export function candidateToIgnoredGame(candidate) {
 // Released At is never stamped — only the resolver's own flip path does that.
 export async function unignoreGame(game) {
   if (!game.appId) throw new Error('This game has no Steam App ID to re-check.')
-  const res = await fetch(`/api/clickdeck-appdetails?appids=${game.appId}`)
+  const res = await fetch(`/api/steam-search?appids=${game.appId}`)
   if (!res.ok) throw new Error('Could not reach Steam to re-check this game.')
   const steamData = await res.json()
   const entry = steamData[String(game.appId)]

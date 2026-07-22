@@ -15,10 +15,6 @@ export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onShowRel
   const [releaseBannerPersistentState, setReleaseBannerPersistentState] = useState(() => isReleaseBannerPersistent())
   const [releaseBannerStatus, setReleaseBannerStatus] = useState('')
 
-  const [healthResult, setHealthResult] = useState(null)
-  const [healthLoading, setHealthLoading] = useState(false)
-  const [healthError, setHealthError] = useState('')
-
   const [studiosDbId, setStudiosDbId] = useState(() => StudiosConnector.getDbId() || '')
   const [studios, setStudios] = useState([])
   const [studiosLoading, setStudiosLoading] = useState(false)
@@ -159,25 +155,6 @@ export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onShowRel
     setReleaseBannerStatus('Banner will show again now (if anything released recently).')
   }
 
-  // On-demand only — no cron, no notifications. Hits the same two Steam
-  // endpoints the app actually depends on (pricing sync, [W] discovery)
-  // against known-good reference values, so a failure here means the real
-  // feature is broken, not a synthetic check that could pass on its own.
-  const handleRunHealthCheck = async () => {
-    setHealthLoading(true)
-    setHealthError('')
-    try {
-      const res = await fetch('/api/clickdeck-health')
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Health check failed.')
-      setHealthResult(data)
-    } catch (err) {
-      setHealthError(err.message || 'Health check failed.')
-      setHealthResult(null)
-    }
-    setHealthLoading(false)
-  }
-
   return (
     <div className="cd-modal-overlay">
       <div className="cd-modal cd-panel" style={{ maxWidth: '500px' }}>
@@ -263,31 +240,6 @@ export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onShowRel
             the average rating of games sharing a candidate's tags (~2/3 weight) with its studio's
             average rating (~1/3 weight) — falls back to uniform odds until you've rated at least 3 games.
           </p>
-        </div>
-
-        <div className="cd-form-group">
-          <label>SYSTEM DIAGNOSTIC</label>
-          <p style={{ fontSize: '0.85rem', color: 'var(--cd-text-muted)', margin: '0.3rem 0 0.6rem' }}>
-            On-demand only — checks whether Steam still answers the two ways the app depends on it
-            (pricing lookups, [W]'s discovery search) against known-good reference values. No cron,
-            no notifications; nothing changes unless you click it.
-          </p>
-          <button type="button" onClick={handleRunHealthCheck} disabled={healthLoading}>
-            {healthLoading ? 'CHECKING...' : 'RUN CHECK'}
-          </button>
-          {healthError && (
-            <div style={{ color: 'var(--cd-status-abandoned)', fontSize: '0.9rem', marginTop: '0.6rem' }}>⚠ {healthError}</div>
-          )}
-          {healthResult && (
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0.6rem 0 0', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <li style={{ fontSize: '0.9rem', color: healthResult.pricing.ok ? 'var(--cd-accent-cyan)' : 'var(--cd-status-abandoned)' }}>
-                {healthResult.pricing.ok ? '✓' : '✗'} PRICING: {healthResult.pricing.message}
-              </li>
-              <li style={{ fontSize: '0.9rem', color: healthResult.discovery.ok ? 'var(--cd-accent-cyan)' : 'var(--cd-status-abandoned)' }}>
-                {healthResult.discovery.ok ? '✓' : '✗'} DISCOVERY: {healthResult.discovery.message}
-              </li>
-            </ul>
-          )}
         </div>
 
         <div className="cd-form-group">

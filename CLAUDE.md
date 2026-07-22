@@ -87,3 +87,13 @@ me before any push to `main`.**
 Once pushed, **don't poll GitHub Actions to check the CI run** — the owner
 gets emailed on failure and will follow up if something's wrong. Only check
 a run's status when explicitly asked to.
+
+**Vercel Hobby caps a deployment at 12 serverless functions, counted across
+the *entire* repo** — every top-level file in `api/*.js` is one function,
+regardless of which app it belongs to (files under `api/_*` don't count).
+Before adding a new `api/*.js` file for any app, run
+`ls api/*.js | grep -v '^api/_'` and check the count first. At 12 already,
+adding one more without removing/merging another **will fail the deploy**
+(this has happened before — see git history around 2026-07-23). Prefer
+folding a new small proxy into an existing same-app endpoint (extra query
+param/mode) over adding a new file when the count is tight.

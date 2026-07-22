@@ -58,41 +58,6 @@ describe('SettingsModal', () => {
     expect(window.localStorage.setItem).toHaveBeenCalledWith('cd_random_weight', 'cheapest')
   })
 
-  describe('SYSTEM DIAGNOSTIC (health check)', () => {
-    afterEach(() => vi.unstubAllGlobals())
-
-    it('runs the check and shows pass/fail per category', async () => {
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          pricing: { ok: true, message: 'Steam appdetails reachable.' },
-          discovery: { ok: false, message: 'Steam search returned zero results.' }
-        })
-      })
-      vi.stubGlobal('fetch', fetchMock)
-
-      render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} />)
-      fireEvent.click(screen.getByText('RUN CHECK'))
-
-      expect(fetchMock).toHaveBeenCalledWith('/api/clickdeck-health')
-      await waitFor(() => {
-        expect(screen.getByText(/PRICING: Steam appdetails reachable/)).toBeTruthy()
-        expect(screen.getByText(/DISCOVERY: Steam search returned zero results/)).toBeTruthy()
-      })
-    })
-
-    it('shows a clear error, not a silent failure, when the endpoint itself is unreachable', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
-
-      render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} />)
-      fireEvent.click(screen.getByText('RUN CHECK'))
-
-      await waitFor(() => {
-        expect(screen.getByText(/network down/)).toBeTruthy()
-      })
-    })
-  })
-
   it('persists the CRT effect and banner-persistent toggles on save', () => {
     render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} />)
     fireEvent.click(screen.getByLabelText('RETRO CRT MODE'))
