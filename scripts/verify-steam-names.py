@@ -70,6 +70,14 @@ def normalize_dev(name):
     name = re.sub(r'[^a-z0-9]', '', name)
     return name
 
+# Below this overlap ratio, a bare "one contains the other" hit is more
+# likely a coincidental substring than a real match — e.g. a short Notion
+# title like "Norco" is technically contained in an unrelated "Norcopolis
+# Chronicles", which the old bare-containment check would have silently
+# accepted as fine. Kept in sync with the same threshold in
+# src/click-deck/lib/steamMatch.js and backfill-steam-ids.py.
+CONFIDENCE_THRESHOLD = 0.5
+
 def is_similar(notion_name, steam_name, is_dev=False):
     if is_dev:
         norm_notion = normalize_dev(notion_name)
@@ -77,13 +85,15 @@ def is_similar(notion_name, steam_name, is_dev=False):
     else:
         norm_notion = normalize_title(notion_name)
         norm_steam = normalize_title(steam_name)
-        
+
     if not norm_notion or not norm_steam:
         return False
-    # If one contains the other entirely, it's probably fine
-    if norm_notion in norm_steam or norm_steam in norm_notion:
+    if norm_notion == norm_steam:
         return True
-    return False
+    longer, shorter = (norm_notion, norm_steam) if len(norm_notion) >= len(norm_steam) else (norm_steam, norm_notion)
+    if shorter not in longer:
+        return False
+    return len(shorter) / len(longer) >= CONFIDENCE_THRESHOLD
 
 def main():
     if NOTION_TOKEN == "YOUR_NOTION_TOKEN_HERE" or DB_ID == "YOUR_DB_ID_HERE":

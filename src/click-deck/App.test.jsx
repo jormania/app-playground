@@ -176,4 +176,104 @@ describe('App', () => {
       expect(screen.queryByLabelText('Dismiss for 24 hours')).toBeNull()
     })
   })
+
+  describe('sort/status filter persistence', () => {
+    it('restores a previously-saved sort mode and status filter on load instead of resetting to defaults', async () => {
+      localStorage.setItem('cd_sort_by', 'alpha')
+      localStorage.setItem('cd_status_filter', 'Backlog')
+      render(<App />)
+
+      await waitFor(() => expect(screen.getByText('Alphabetical')).toBeTruthy())
+      expect(screen.getByText('[BACKLOG]').closest('button').className).toContain('active')
+    })
+
+    it('falls back to defaults when localStorage holds a value outside the known option set', async () => {
+      localStorage.setItem('cd_sort_by', 'not-a-real-mode')
+      localStorage.setItem('cd_status_filter', 'not-a-real-status')
+      render(<App />)
+
+      await waitFor(() => expect(screen.getByText('Timeline')).toBeTruthy())
+      expect(screen.getByText('[ALL]').closest('button').className).toContain('active')
+    })
+
+    it('persists a sort change so it survives a reload', async () => {
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Monkey Island')).toBeTruthy())
+
+      fireEvent.click(screen.getByText('Timeline'))
+      fireEvent.click(screen.getByText('Highest Rated'))
+
+      expect(localStorage.getItem('cd_sort_by')).toBe('rating')
+    })
+
+    it('persists a status filter change so it survives a reload', async () => {
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Monkey Island')).toBeTruthy())
+
+      fireEvent.click(screen.getByText('[BACKLOG]'))
+
+      expect(localStorage.getItem('cd_status_filter')).toBe('Backlog')
+    })
+  })
+
+  describe('sort menu keyboard navigation', () => {
+    it('opens the menu and moves focus through the options with arrow keys', async () => {
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Monkey Island')).toBeTruthy())
+
+      const trigger = screen.getByText('Timeline').closest('button')
+      trigger.focus()
+      fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+
+      await waitFor(() => {
+        expect(document.activeElement.textContent).toBe('Timeline')
+        expect(document.activeElement.className).toContain('cd-sort-option')
+      })
+
+      fireEvent.keyDown(document.activeElement, { key: 'ArrowDown' })
+      expect(document.activeElement.textContent).toBe('Recently Added')
+
+      // Wraps from the last option back to the first.
+      fireEvent.keyDown(document.activeElement, { key: 'End' })
+      expect(document.activeElement.textContent).toBe('Alphabetical')
+      fireEvent.keyDown(document.activeElement, { key: 'ArrowDown' })
+      expect(document.activeElement.textContent).toBe('Timeline')
+    })
+
+    it('selects the focused option on Enter and returns focus to the trigger', async () => {
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Monkey Island')).toBeTruthy())
+
+      const trigger = screen.getByText('Timeline').closest('button')
+      trigger.focus()
+      fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+      await waitFor(() => expect(document.activeElement.className).toContain('cd-sort-option'))
+
+      fireEvent.keyDown(document.activeElement, { key: 'ArrowDown' })
+      expect(document.activeElement.textContent).toBe('Recently Added')
+      fireEvent.click(document.activeElement)
+
+      await waitFor(() => {
+        expect(screen.getByText('Recently Added')).toBeTruthy()
+        expect(document.activeElement).toBe(trigger)
+      })
+    })
+
+    it('closes the menu and returns focus to the trigger on Escape', async () => {
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Monkey Island')).toBeTruthy())
+
+      const trigger = screen.getByText('Timeline').closest('button')
+      trigger.focus()
+      fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+      await waitFor(() => expect(document.activeElement.className).toContain('cd-sort-option'))
+
+      fireEvent.keyDown(document.activeElement, { key: 'Escape' })
+
+      await waitFor(() => {
+        expect(document.querySelector('.cd-sort-menu')).toBeNull()
+        expect(document.activeElement).toBe(trigger)
+      })
+    })
+  })
 })

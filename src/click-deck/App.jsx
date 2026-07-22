@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { McpConnector } from './lib/mcp-connector'
 import { TimelineView } from './components/TimelineView'
 import { AnalyticsView } from './components/AnalyticsView'
@@ -12,6 +12,14 @@ import {
   isDiscountBannerSnoozed, snoozeDiscountBanner, detectPriceDrops,
   isDiscountBannerPersistent
 } from './lib/priceTracking'
+
+const SORT_OPTIONS = [
+  { value: 'timeline', label: 'Timeline', group: 'TIME' },
+  { value: 'recent', label: 'Recently Added', group: 'TIME' },
+  { value: 'rating', label: 'Highest Rated', group: 'METRICS' },
+  { value: 'alpha', label: 'Alphabetical', group: 'METRICS' }
+]
+const STATUS_FILTERS = ['All', 'Backlog', 'Playing', 'Completed', 'Abandoned']
 
 export function App() {
   const [isInitialized, setIsInitialized] = useState(McpConnector.isInitialized())
@@ -27,9 +35,20 @@ export function App() {
   // Analytics filters
   const [activeTags, setActiveTags] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortBy, setSortBy] = useState('timeline')
-  const [statusFilter, setStatusFilter] = useState('All')
+  // Sort/status filter survive a reload (theme and CRT mode already did) —
+  // guarded against a corrupted/stale localStorage value falling outside the
+  // known option set.
+  const [sortBy, setSortBy] = useState(() => {
+    const saved = localStorage.getItem('cd_sort_by')
+    return SORT_OPTIONS.some(o => o.value === saved) ? saved : 'timeline'
+  })
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const saved = localStorage.getItem('cd_status_filter')
+    return STATUS_FILTERS.includes(saved) ? saved : 'All'
+  })
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false)
+  const sortMenuRef = useRef(null)
+  const sortTriggerRef = useRef(null)
 
   const [toastMessage, setToastMessage] = useState(null)
   const showToast = (msg) => {
@@ -84,6 +103,59 @@ export function App() {
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
   }, [isSortMenuOpen])
+
+  useEffect(() => { localStorage.setItem('cd_sort_by', sortBy) }, [sortBy])
+  useEffect(() => { localStorage.setItem('cd_status_filter', statusFilter) }, [statusFilter])
+
+  const selectSort = (value) => {
+    setSortBy(value)
+    setIsSortMenuOpen(false)
+    // The button that was focused inside the menu is about to unmount —
+    // move focus back to the trigger rather than letting it fall to <body>.
+    sortTriggerRef.current?.focus()
+  }
+
+  const openSortMenu = () => {
+    setIsSortMenuOpen(true)
+    // Menu options render on the next tick; focus the currently-active one
+    // (or the first) so arrow keys immediately have something to move from.
+    requestAnimationFrame(() => {
+      const buttons = sortMenuRef.current?.querySelectorAll('.cd-sort-option')
+      if (!buttons || buttons.length === 0) return
+      const activeIndex = SORT_OPTIONS.findIndex(o => o.value === sortBy)
+      buttons[activeIndex >= 0 ? activeIndex : 0]?.focus()
+    })
+  }
+
+  const handleSortTriggerKeyDown = (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      openSortMenu()
+    }
+  }
+
+  const handleSortMenuKeyDown = (e) => {
+    const buttons = Array.from(sortMenuRef.current?.querySelectorAll('.cd-sort-option') || [])
+    if (buttons.length === 0) return
+    const currentIndex = buttons.indexOf(document.activeElement)
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      buttons[(currentIndex + 1) % buttons.length]?.focus()
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      buttons[(currentIndex - 1 + buttons.length) % buttons.length]?.focus()
+    } else if (e.key === 'Home') {
+      e.preventDefault()
+      buttons[0]?.focus()
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      buttons[buttons.length - 1]?.focus()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setIsSortMenuOpen(false)
+      sortTriggerRef.current?.focus()
+    }
+  }
 
   const loadGames = async () => {
     setIsLoading(true)
@@ -263,24 +335,35 @@ export function App() {
             />
             {view === 'timeline' && (
               <div className="cd-custom-select-container">
-                <button 
-                  className="cd-sort-select-btn" 
-                  onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
+                <button
+                  ref={sortTriggerRef}
+                  className="cd-sort-select-btn"
+                  aria-haspopup="menu"
+                  aria-expanded={isSortMenuOpen}
+                  onClick={() => (isSortMenuOpen ? setIsSortMenuOpen(false) : openSortMenu())}
+                  onKeyDown={handleSortTriggerKeyDown}
                 >
-                  {sortBy === 'timeline' ? 'Timeline' : 
-                   sortBy === 'recent' ? 'Recently Added' : 
-                   sortBy === 'rating' ? 'Highest Rated' : 'Alphabetical'}
+                  {SORT_OPTIONS.find(o => o.value === sortBy)?.label || 'Timeline'}
                   <span className="cd-chevron">▼</span>
                 </button>
                 {isSortMenuOpen && (
-                  <div className="cd-sort-menu cd-panel">
-                    <div className="cd-sort-group">--- TIME ---</div>
-                    <button className={`cd-sort-option ${sortBy === 'timeline' ? 'active' : ''}`} onClick={() => { setSortBy('timeline'); setIsSortMenuOpen(false) }}>Timeline</button>
-                    <button className={`cd-sort-option ${sortBy === 'recent' ? 'active' : ''}`} onClick={() => { setSortBy('recent'); setIsSortMenuOpen(false) }}>Recently Added</button>
-                    
-                    <div className="cd-sort-group">--- METRICS ---</div>
-                    <button className={`cd-sort-option ${sortBy === 'rating' ? 'active' : ''}`} onClick={() => { setSortBy('rating'); setIsSortMenuOpen(false) }}>Highest Rated</button>
-                    <button className={`cd-sort-option ${sortBy === 'alpha' ? 'active' : ''}`} onClick={() => { setSortBy('alpha'); setIsSortMenuOpen(false) }}>Alphabetical</button>
+                  <div className="cd-sort-menu cd-panel" role="menu" ref={sortMenuRef} onKeyDown={handleSortMenuKeyDown}>
+                    {['TIME', 'METRICS'].map(group => (
+                      <React.Fragment key={group}>
+                        <div className="cd-sort-group">--- {group} ---</div>
+                        {SORT_OPTIONS.filter(o => o.group === group).map(opt => (
+                          <button
+                            key={opt.value}
+                            role="menuitemradio"
+                            aria-checked={sortBy === opt.value}
+                            className={`cd-sort-option ${sortBy === opt.value ? 'active' : ''}`}
+                            onClick={() => selectSort(opt.value)}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </React.Fragment>
+                    ))}
                   </div>
                 )}
               </div>
@@ -290,7 +373,7 @@ export function App() {
 
         {isInitialized && view === 'timeline' && (
           <div className="cd-status-filters-row">
-            {['All', 'Backlog', 'Playing', 'Completed', 'Abandoned'].map(s => (
+            {STATUS_FILTERS.map(s => (
               <button 
                 key={s} 
                 className={`cd-status-chip ${statusFilter === s ? 'active' : ''}`}

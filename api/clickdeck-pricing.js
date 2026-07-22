@@ -1,12 +1,4 @@
-// Treat sub-cent / sub-percent differences as unchanged so floating-point noise
-// (and null vs. absent) doesn't trigger a needless rewrite of the price fields
-// every night. Price Updated At still gets patched on every successful Steam
-// check regardless — it's the "did we actually check" signal, not a "did the
-// price move" signal, and StatsView's sync indicator depends on that distinction.
-function changed(next, prev) {
-  if (prev === null || prev === undefined) return next !== null && next !== undefined
-  return Math.abs(Number(next) - Number(prev)) > 0.001
-}
+import { resolvePriceUpdate, buildPatchProperties } from './_lib/clickdeckPricing.js'
 
 export default async function handler(req, res) {
   const token = process.env.CLICKDECK_NOTION_TOKEN
@@ -34,10 +26,10 @@ export default async function handler(req, res) {
     // We fetch ALL games because the user wants prices for everything (Backlog, Playing, Completed, Abandoned)
     const notionRes = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
       method: 'POST',
-      headers: { 
-        Authorization: `Bearer ${token}`, 
-        'Notion-Version': '2022-06-28', 
-        'Content-Type': 'application/json' 
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         page_size: 100,
@@ -77,40 +69,25 @@ export default async function handler(req, res) {
     for (let i = 0; i < gamesToUpdate.length; i += CHUNK_SIZE) {
       const chunk = gamesToUpdate.slice(i, i + CHUNK_SIZE)
       const appIdsStr = chunk.map(g => g.appId).join(',')
-      
+
       const steamRes = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appIdsStr}&cc=US&filters=price_overview`)
-      
+
       if (!steamRes.ok) {
         console.error(`Steam API failed for chunk ${appIdsStr}`)
         continue
       }
-      
+
       const steamData = await steamRes.json()
 
       for (const game of chunk) {
-        const appData = steamData[game.appId.toString()]
-        // Steam sometimes returns an empty array [] for invalid/delisted appids instead of an object
-        if (appData && typeof appData === 'object' && !Array.isArray(appData)) {
-          if (appData.success && appData.data && !Array.isArray(appData.data) && appData.data.price_overview) {
-            const po = appData.data.price_overview
-            // Steam reports money in cents (999 → $9.99) and discount as a whole
-            // percent (55). We store the fraction (0.55) to match the Notion
-            // "Discount Percent" percent-format column.
-            const newPrice = po.final / 100
-            const newInitial = po.initial / 100
-            const newDiscount = (po.discount_percent || 0) / 100
-            const priceChanged = changed(newPrice, game.currentPrice) ||
-                changed(newInitial, game.initialPrice) ||
-                changed(newDiscount, game.discountPercent)
-            results.push({ pageId: game.pageId, newPrice, newInitial, newDiscount, priceChanged })
-          } else if (appData.success && (!appData.data || Array.isArray(appData.data) || !appData.data.price_overview)) {
-            // Likely free or no longer available for purchase — clear any stale sale.
-            const priceChanged = changed(0, game.currentPrice) || (game.discountPercent || 0) !== 0
-            results.push({ pageId: game.pageId, newPrice: 0, newInitial: null, newDiscount: 0, priceChanged })
-          }
+        // Steam sometimes returns an empty array [] for invalid/delisted
+        // appids instead of an object — resolvePriceUpdate handles that.
+        const update = resolvePriceUpdate(game, steamData[game.appId.toString()])
+        if (update) {
+          results.push({ pageId: game.pageId, ...update })
         }
       }
-      
+
       // polite delay
       await new Promise(r => setTimeout(r, 1000))
     }
@@ -122,15 +99,6 @@ export default async function handler(req, res) {
     // on stable-priced games.
     let patched = 0
     for (const update of results) {
-      const properties = {
-        'Price Updated At': { date: { start: new Date().toISOString() } }
-      }
-      if (update.priceChanged) {
-        properties['Current Price'] = { number: update.newPrice }
-        properties['Initial Price'] = { number: update.newInitial }
-        properties['Discount Percent'] = { number: update.newDiscount }
-      }
-
       const patchRes = await fetch(`https://api.notion.com/v1/pages/${update.pageId}`, {
         method: 'PATCH',
         headers: {
@@ -138,7 +106,7 @@ export default async function handler(req, res) {
           'Notion-Version': '2022-06-28',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ properties })
+        body: JSON.stringify({ properties: buildPatchProperties(update) })
       })
 
       if (patchRes.ok) {

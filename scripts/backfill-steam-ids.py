@@ -60,11 +60,25 @@ def normalize_title(name):
     name = re.sub(r'[^a-z0-9]', '', name)
     return name
 
-def is_similar(a, b):
-    norm_a, norm_b = normalize_title(a), normalize_title(b)
-    if not norm_a or not norm_b:
-        return False
-    return norm_a in norm_b or norm_b in norm_a
+def containment_score(a, b):
+    # How much of the longer string the shorter one actually covers. A bare
+    # "one contains the other" check treats a short title like "Norco" as
+    # just as confident a match against "Norcopolis Chronicles" (coincidental
+    # substring) as against "Norco" itself (the real game) — this ratio is
+    # what tells those two apart. 1.0 = identical after normalization.
+    if not a or not b:
+        return 0
+    if a == b:
+        return 1
+    longer, shorter = (a, b) if len(a) >= len(b) else (b, a)
+    if shorter not in longer:
+        return 0
+    return len(shorter) / len(longer)
+
+# Below this overlap ratio, a "contains" hit is more likely a coincidental
+# substring than the actual game — kept in sync with the same threshold in
+# src/click-deck/lib/steamMatch.js.
+CONFIDENCE_THRESHOLD = 0.5
 
 def search_steam(title):
     try:
@@ -75,14 +89,21 @@ def search_steam(title):
             items = data.get("items", [])
             if not items:
                 return None
-            # Steam's search is fuzzy-ranked, not exact — score candidates by
-            # normalized title instead of trusting the first result blindly,
-            # which was silently writing wrong App IDs for generic-sounding
-            # queries and missing legitimate matches that only differ by a
-            # "Remastered"/edition suffix.
+            # Steam's search is fuzzy-ranked, not exact — score every
+            # candidate by normalized-title overlap and take the best one,
+            # instead of trusting either the first result or the first one
+            # that loosely "contains" the query. The latter was still capable
+            # of locking onto a coincidental substring match (e.g. a short
+            # title matching an unrelated, much longer listing) purely
+            # because of result order.
+            target = normalize_title(title)
+            best_item, best_score = None, 0
             for item in items:
-                if is_similar(title, item.get("name", "")):
-                    return item["id"]
+                score = containment_score(target, normalize_title(item.get("name", "")))
+                if score > best_score:
+                    best_score, best_item = score, item
+            if best_item and best_score >= CONFIDENCE_THRESHOLD:
+                return best_item["id"]
             print(f"   (no confident title match among {len(items)} results — skipping rather than guessing)")
             return None
     except Exception as e:

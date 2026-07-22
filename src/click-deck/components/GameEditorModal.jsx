@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { ALL_TAGS } from '../lib/seed-data'
-import { pickBestSteamMatch } from '../lib/steamMatch'
+import { findBestSteamMatch } from '../lib/steamMatch'
 
 export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
   const [formData, setFormData] = useState({
@@ -79,7 +79,7 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
       // re-listed with a "Remastered"/"Special Edition" suffix, so the
       // literal first result isn't always the right game. Score candidates
       // by normalized title instead of trusting items[0] blindly.
-      const match = pickBestSteamMatch(json.items, formData.title);
+      const { match, confident } = findBestSteamMatch(json.items, formData.title);
       if (match) {
         setFormData(prev => ({
           ...prev,
@@ -90,6 +90,13 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast }) {
           // Steam App ID) and its cover would never link to the store page.
           appId: match.id
         }));
+        // A short or generic title (e.g. "Loom", "Norco") can coincidentally
+        // match an unrelated Steam listing rather than the real game — this
+        // is still applied as a best-effort guess, but flagged so it gets a
+        // manual look instead of silently writing a possibly-wrong App ID.
+        if (!confident && onToast) {
+          onToast(`⚠ Uncertain Steam match for "${match.name}" — please verify the cover and App ID.`)
+        }
       } else {
         if (onToast) onToast('No cover found on Steam for that title.');
       }

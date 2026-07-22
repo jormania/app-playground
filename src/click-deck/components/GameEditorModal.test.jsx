@@ -174,5 +174,39 @@ describe('GameEditorModal', () => {
       expect(saved.appId).toBe(355570)
       expect(saved.coverUrl).toContain('355570')
     })
+
+    it('does not warn when the Steam match is confident', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        json: async () => ({ items: [{ id: 355570, name: 'Grim Fandango Remastered' }] })
+      })
+      vi.stubGlobal('fetch', fetchMock)
+      const onToast = vi.fn()
+
+      const game = { title: 'Grim Fandango', year: 1998, developer: '', status: 'Backlog', tags: [], journal: '' }
+      render(<GameEditorModal game={game} onSave={() => {}} onClose={() => {}} onToast={onToast} />)
+      fireEvent.click(screen.getByText('FETCH STEAM'))
+      await screen.findByDisplayValue(/355570\/header\.jpg/)
+
+      expect(onToast).not.toHaveBeenCalled()
+    })
+
+    it('warns when the best Steam match is only a coincidental substring, not a confident one', async () => {
+      // "Norco" is a short, generic-enough title that it can turn up as a
+      // literal substring inside an unrelated, much longer Steam listing —
+      // the fetch should still apply it as a best-effort guess, but the user
+      // needs to know it wasn't verified.
+      const fetchMock = vi.fn().mockResolvedValue({
+        json: async () => ({ items: [{ id: 1, name: 'Norcopolis Chronicles: Deluxe Edition' }] })
+      })
+      vi.stubGlobal('fetch', fetchMock)
+      const onToast = vi.fn()
+
+      const game = { title: 'Norco', year: 2022, developer: '', status: 'Backlog', tags: [], journal: '' }
+      render(<GameEditorModal game={game} onSave={() => {}} onClose={() => {}} onToast={onToast} />)
+      fireEvent.click(screen.getByText('FETCH STEAM'))
+      await screen.findByDisplayValue(/\/1\/header\.jpg/)
+
+      expect(onToast).toHaveBeenCalledWith(expect.stringContaining('Uncertain Steam match'))
+    })
   })
 })
