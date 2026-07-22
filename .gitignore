@@ -42,3 +42,6 @@ Thumbs.db
 .cache/
 .vercel
 .env*
+
+# Sensitive scripts
+scripts/dramatize-journal.py
