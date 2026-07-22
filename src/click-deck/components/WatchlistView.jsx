@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { readReleaseStatus } from '../lib/releaseStatus'
-import { StudiosConnector, tierAccentColor } from '../lib/studios-connector'
+import { StudiosConnector, tierBorderStyle } from '../lib/studios-connector'
 import { getRecentlyReleasedGames, sortComingSoonSoonestFirst } from '../lib/releaseTracking'
 import {
   refreshComingSoonGames, searchFollowedStudios, candidateToNewGame,
@@ -301,7 +301,7 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
       <div
         key={candidate.appId}
         className={`cd-candidate-row ${isExactDup ? 'is-dup' : ''}`}
-        style={{ borderLeft: `3px solid ${tierAccentColor(candidate.studioTier)}` }}
+        style={tierBorderStyle(candidate.studioTier)}
         title={typeof candidate.studioTier === 'number' ? `${candidate.matchedStudio} — Personal Value Tier ${candidate.studioTier}` : undefined}
       >
         <div className="cd-candidate-cover-container">
@@ -441,7 +441,9 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
                   <WatchlistCover game={game} overlayLabel={`🔭 ${expected}`} />
                   <div className="cd-watchlist-card-body">
                     <h4>{game.title}</h4>
-                    <p className={`cd-watchlist-expected cd-expected-${dateKind}`}>🔭 EXPECTED: {expected}</p>
+                    <p className={`cd-watchlist-expected cd-expected-${dateKind}`}>
+                      🔭 EXPECTED: {expected}{dateKind === 'overdue' && ' ⚠ (OVERDUE)'}
+                    </p>
                     <p className={`cd-watchlist-checked ${isStale ? 'stale' : ''}`}>
                       last checked: {formatAge(age)}{isStale ? ' — still unreleased' : ''}
                     </p>

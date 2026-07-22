@@ -85,6 +85,36 @@ describe('tierAccentColor', () => {
   })
 })
 
+describe('tierBorderStyle', () => {
+  it('gives each tier bucket a distinct width/style, not just a colour — T3 solid-thick, T2 solid-thin, T1 dashed', async () => {
+    vi.resetModules()
+    Object.defineProperty(window, 'localStorage', { value: makeLocalStorage(), configurable: true })
+    const { tierBorderStyle } = await import('./studios-connector.js')
+    expect(tierBorderStyle(3)).toMatchObject({ borderLeftWidth: '4px', borderLeftStyle: 'solid' })
+    expect(tierBorderStyle(5)).toMatchObject({ borderLeftWidth: '4px', borderLeftStyle: 'solid' }) // future finer scale still reads "strong"
+    expect(tierBorderStyle(2)).toMatchObject({ borderLeftWidth: '2px', borderLeftStyle: 'solid' })
+    expect(tierBorderStyle(1)).toMatchObject({ borderLeftWidth: '2px', borderLeftStyle: 'dashed' })
+  })
+
+  it('gives unset/zero tiers a plain hairline, distinct from Tier 1\'s dashed style (the two used to be visually identical)', async () => {
+    vi.resetModules()
+    Object.defineProperty(window, 'localStorage', { value: makeLocalStorage(), configurable: true })
+    const { tierBorderStyle } = await import('./studios-connector.js')
+    expect(tierBorderStyle(0)).toMatchObject({ borderLeftWidth: '1px', borderLeftStyle: 'solid' })
+    expect(tierBorderStyle(null)).toMatchObject({ borderLeftWidth: '1px', borderLeftStyle: 'solid' })
+    expect(tierBorderStyle(undefined)).toMatchObject({ borderLeftWidth: '1px', borderLeftStyle: 'solid' })
+  })
+
+  it('carries the same colour as tierAccentColor for each bucket', async () => {
+    vi.resetModules()
+    Object.defineProperty(window, 'localStorage', { value: makeLocalStorage(), configurable: true })
+    const { tierBorderStyle, tierAccentColor } = await import('./studios-connector.js')
+    expect(tierBorderStyle(3).borderLeftColor).toBe(tierAccentColor(3))
+    expect(tierBorderStyle(1).borderLeftColor).toBe(tierAccentColor(1))
+    expect(tierBorderStyle(undefined).borderLeftColor).toBe(tierAccentColor(undefined))
+  })
+})
+
 describe('StudiosConnector (Notion-backed, token + studios db configured)', () => {
   let StudiosConnector
 

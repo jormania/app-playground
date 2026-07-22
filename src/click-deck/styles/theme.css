@@ -615,3 +615,18 @@ a.cd-random-cover-wrapper {
     margin-bottom: 1rem;
   }
 }
+
+/* Click Deck leans heavily on animation for its terminal/CRT identity
+   (banner pulses, icon spin, drum roll, CRT flicker/static, the [R] roll) —
+   none of it was gated on prefers-reduced-motion before. This single global
+   rule collapses every animation/transition in the app (inline <style>
+   blocks included, since they inject into the same document) to effectively
+   instant, rather than hunting down and gating each keyframe individually. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

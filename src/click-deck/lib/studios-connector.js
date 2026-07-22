@@ -82,6 +82,25 @@ export const tierAccentColor = (tier) => {
   return 'var(--cd-text-muted)'
 }
 
+// Colour-only tier signals collapse in the grayscale Noir theme, and even
+// outside Noir, tierAccentColor alone can't be told apart by anything but
+// hue — Tier 1 and "no tier at all" render as literally the same muted
+// colour today. This gives every bucket its own border WIDTH/STYLE too, so
+// the signal survives both grayscale rendering and colour vision deficiency:
+// T3 solid-thick, T2 solid-thin, T1 dashed, unset/0 a plain hairline (no
+// special treatment — nothing to signal). Returned as explicit
+// width/style/color rather than a shorthand string so callers can spread it
+// straight into a style object (`{...tierBorderStyle(tier)}`).
+export const tierBorderStyle = (tier) => {
+  const color = tierAccentColor(tier)
+  if (typeof tier !== 'number' || Number.isNaN(tier) || tier < 1) {
+    return { borderLeftWidth: '1px', borderLeftStyle: 'solid', borderLeftColor: color }
+  }
+  if (tier >= 3) return { borderLeftWidth: '4px', borderLeftStyle: 'solid', borderLeftColor: color }
+  if (tier >= 2) return { borderLeftWidth: '2px', borderLeftStyle: 'solid', borderLeftColor: color }
+  return { borderLeftWidth: '2px', borderLeftStyle: 'dashed', borderLeftColor: color }
+}
+
 async function fetchNotion(path, method = 'POST', body = null) {
   const token = getToken()
   if (!token) throw new Error('No Notion token')
