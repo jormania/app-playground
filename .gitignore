@@ -45,3 +45,4 @@ Thumbs.db
 
 # Sensitive scripts
 scripts/dramatize-journal.py
+scripts/backfill-hltb.py
