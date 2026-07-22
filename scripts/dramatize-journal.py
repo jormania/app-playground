@@ -108,19 +108,31 @@ def is_plain_text(rich_text_array):
         return False
     return True
 
+# A caption-length entry can plausibly contain half a dozen theme keywords
+# (praise words like "beautiful"/"brilliant"/"incredible"/"masterclass" and
+# generic descriptors like "art"/"puzzle"/"characters" are common in review
+# writing) — highlighting all of them turns a third of the sentence into
+# colored text, which reads as noise rather than a punchy accent. Capping
+# keeps it to a small number of accents per entry.
+MAX_HIGHLIGHTS_PER_ENTRY = 3
+
 def dramatize_text(text):
     segments = []
     last_end = 0
+    highlighted = 0
     for match in keyword_regex.finditer(text):
         start, end = match.span()
         matched_word = match.group(1)
-        
+
+        if highlighted >= MAX_HIGHLIGHTS_PER_ENTRY:
+            break
+
         if start > last_end:
             segments.append({
                 "type": "text",
                 "text": { "content": text[last_end:start] }
             })
-            
+
         fmt = keyword_to_theme[matched_word.lower()]
         annot = {
             "bold": fmt.get("bold", False),
@@ -135,15 +147,16 @@ def dramatize_text(text):
             "text": { "content": matched_word },
             "annotations": annot
         })
-        
+
         last_end = end
-        
+        highlighted += 1
+
     if last_end < len(text):
         segments.append({
             "type": "text",
             "text": { "content": text[last_end:] }
         })
-        
+
     return segments
 
 def update_page(page_id, new_rich_text):

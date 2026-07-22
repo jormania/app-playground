@@ -163,7 +163,7 @@
     <li><b><code>verify-steam-names.py</code></b> — the read-only counterpart: checks every game that <em>already has</em> a Steam App ID against what Steam actually reports for that ID, flagging title or developer/publisher mismatches (including known studio aliases, e.g. LucasArts/Lucasfilm) without changing anything.</li>
     <li><b><code>backfill-covers.py</code></b> — finds every game that has a Steam App ID but no Notion page cover set yet (the "NO SIGNAL" placeholder), and patches the cover to that App ID's Steam header image. Since the App ID is already trusted, this is purely mechanical — no title search involved.</li>
     <li><b><code>force-sync-prices.py</code></b> — an on-demand version of the nightly pricing cron, for when you don't want to wait until 2am UTC to see a price update reflected.</li>
-    <li><b><code>dramatize-journal.py</code></b> — pulls any plain-text Journal/Notes and injects the expressive rich-text formatting described in <a href="#richtext">§5</a> using a dictionary of thematic keyword-to-color mappings, safely skipping entries that are already manually styled.</li>
+    <li><b><code>dramatize-journal.py</code></b> — pulls any plain-text Journal/Notes and injects the expressive rich-text formatting described in <a href="#richtext">§5</a> using a dictionary of thematic keyword-to-color mappings, safely skipping entries that are already manually styled. Highlights at most 3 keywords per entry, so a caption-length note with several theme words doesn't end up a third colored text.</li>
   </ul>
 
   <h2>13. Factory Reset</h2>
