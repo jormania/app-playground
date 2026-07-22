@@ -151,7 +151,8 @@ export default async function handler(req, res) {
       if (data.type && data.type !== 'game') continue
 
       const isComingSoon = data.release_date?.coming_soon === true
-      const releaseDateStr = data.release_date?.date || ''
+      let releaseDateStr = data.release_date?.date || ''
+      if (releaseDateStr.toLowerCase() === 'to be announced') releaseDateStr = 'TBA'
       
       if (!isComingSoon && releaseDateStr) {
         const parsedDate = new Date(releaseDateStr)

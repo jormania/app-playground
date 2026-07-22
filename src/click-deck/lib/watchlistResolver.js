@@ -23,7 +23,8 @@ export function resolveReleaseFlip(game, appData, now = new Date()) {
   const data = appData.data
   if (!data || Array.isArray(data)) return null
 
-  const releaseDateStr = data.release_date?.date || ''
+  let releaseDateStr = data.release_date?.date || ''
+  if (releaseDateStr.toLowerCase() === 'to be announced') releaseDateStr = 'TBA'
   const comingSoon = data.release_date?.coming_soon
 
   if (comingSoon !== false) {
