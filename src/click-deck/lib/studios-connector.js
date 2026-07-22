@@ -68,6 +68,20 @@ export const normalizeTier = (studio) =>
     ? studio.valueTier
     : DEFAULT_TIER_WEIGHT
 
+// Personal Value Tier is a confidence weighting, not a rating — deliberately
+// rendered as a colour accent (a border stripe/dot) rather than stars
+// anywhere it shows up, since stars already mean "rating" throughout the
+// rest of the app (the Editor's 1-5★ field) and this measures something
+// else: how much attention a studio's *next* release deserves. Bucketed
+// rather than a continuous scale so it stays legible at a glance; a future
+// tier above 3 still reads as "strong" rather than needing a new bucket.
+export const tierAccentColor = (tier) => {
+  if (typeof tier !== 'number') return 'var(--cd-border-color)'
+  if (tier >= 3) return 'var(--cd-accent-amber)'
+  if (tier >= 2) return 'var(--cd-accent-cyan)'
+  return 'var(--cd-text-muted)'
+}
+
 async function fetchNotion(path, method = 'POST', body = null) {
   const token = getToken()
   if (!token) throw new Error('No Notion token')

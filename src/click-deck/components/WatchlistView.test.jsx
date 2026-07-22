@@ -62,7 +62,7 @@ describe('WatchlistView', () => {
     expect(screen.getByText('🔄 REFRESH RELEASE DATES').className).not.toContain('primary')
   })
 
-  it('renders a candidate\'s Personal Value Tier as stars next to its matched studio', () => {
+  it('gives a tiered candidate a coloured left-border accent and a tier tooltip — not stars', () => {
     const cached = {
       notYetReleased: [{ appId: 999, title: 'Tiered Candidate', matchedStudio: 'Wadjet Eye Games', studioTier: 3, comingSoon: true, releaseDateString: '2027', headerImage: 'x', duplicate: null }],
       alreadyReleased: []
@@ -70,12 +70,13 @@ describe('WatchlistView', () => {
     sessionStorage.setItem('cd_watchlist_candidates', JSON.stringify(cached))
     render(<WatchlistView games={[]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
     const row = screen.getByText('Tiered Candidate').closest('.cd-candidate-row')
-    expect(within(row).getByText(/★★★/)).toBeTruthy()
-    expect(within(row).queryByText(/☆/)).toBeNull()
+    expect(row.style.borderLeft).toContain('var(--cd-accent-amber)') // tier 3 -> the "strong" bucket
+    expect(row.title).toContain('Personal Value Tier 3')
+    expect(within(row).queryByText(/★/)).toBeNull()
     expect(within(row).getByText(/Wadjet Eye Games/)).toBeTruthy()
   })
 
-  it('renders no stars for a candidate whose studio has no tier set', () => {
+  it('gives an untiered candidate the neutral border colour and no tier tooltip', () => {
     const cached = {
       notYetReleased: [{ appId: 998, title: 'Untiered Candidate', matchedStudio: 'Legacy Studio', studioTier: null, comingSoon: true, releaseDateString: '2027', headerImage: 'x', duplicate: null }],
       alreadyReleased: []
@@ -83,6 +84,8 @@ describe('WatchlistView', () => {
     sessionStorage.setItem('cd_watchlist_candidates', JSON.stringify(cached))
     render(<WatchlistView games={[]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
     const row = screen.getByText('Untiered Candidate').closest('.cd-candidate-row')
+    expect(row.style.borderLeft).toContain('var(--cd-border-color)')
+    expect(row.title).toBe('')
     expect(within(row).queryByText(/★/)).toBeNull()
   })
 

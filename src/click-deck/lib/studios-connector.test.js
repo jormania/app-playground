@@ -71,6 +71,20 @@ describe('normalizeTier', () => {
   })
 })
 
+describe('tierAccentColor', () => {
+  it('buckets a numeric tier into muted/cyan/amber, and falls back to the neutral border colour when unset', async () => {
+    vi.resetModules()
+    Object.defineProperty(window, 'localStorage', { value: makeLocalStorage(), configurable: true })
+    const { tierAccentColor } = await import('./studios-connector.js')
+    expect(tierAccentColor(1)).toBe('var(--cd-text-muted)')
+    expect(tierAccentColor(2)).toBe('var(--cd-accent-cyan)')
+    expect(tierAccentColor(3)).toBe('var(--cd-accent-amber)')
+    expect(tierAccentColor(5)).toBe('var(--cd-accent-amber)') // future finer scale still lands in "strong"
+    expect(tierAccentColor(null)).toBe('var(--cd-border-color)')
+    expect(tierAccentColor(undefined)).toBe('var(--cd-border-color)')
+  })
+})
+
 describe('StudiosConnector (Notion-backed, token + studios db configured)', () => {
   let StudiosConnector
 

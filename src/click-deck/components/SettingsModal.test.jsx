@@ -149,7 +149,8 @@ describe('SettingsModal', () => {
       }))
       render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} />)
       await waitFor(() => expect(screen.getByText('Wadjet Eye Games')).toBeTruthy())
-      expect(screen.getByText('★★★')).toBeTruthy()
+      expect(screen.getByText('TIER 3')).toBeTruthy()
+      expect(screen.queryByText(/★/)).toBeNull()
       expect(screen.getByText('Gold standard for point-and-click.')).toBeTruthy()
     })
 

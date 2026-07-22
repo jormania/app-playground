@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { isDiscountBannerPersistent, setDiscountBannerPersistent, clearDiscountBannerSnooze } from '../lib/priceTracking'
 import { isReleaseBannerPersistent, setReleaseBannerPersistent, clearReleaseBannerSnooze } from '../lib/releaseTracking'
-import { StudiosConnector } from '../lib/studios-connector'
+import { StudiosConnector, tierAccentColor } from '../lib/studios-connector'
 
 export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onShowReleaseBannerNow }) {
   const [token, setToken] = useState(localStorage.getItem('cd_notion_token') || '')
@@ -380,10 +380,15 @@ export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onShowRel
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
                           <div>
                             <div>
+                              <span
+                                title={typeof s.valueTier === 'number' ? `Personal Value Tier ${s.valueTier}` : 'No tier set'}
+                                style={{
+                                  display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%',
+                                  background: tierAccentColor(s.valueTier), marginRight: '0.5rem'
+                                }}
+                              ></span>
                               {typeof s.valueTier === 'number' && (
-                                <span style={{ color: 'var(--cd-accent-amber)', letterSpacing: '1px', marginRight: '0.4rem' }}>
-                                  {'★'.repeat(Math.max(1, Math.min(5, Math.round(s.valueTier))))}
-                                </span>
+                                <span className="cd-text-muted" style={{ marginRight: '0.4rem' }}>TIER {s.valueTier}</span>
                               )}
                               <span>{s.name}</span>
                               {s.steamDeveloper ? <span className="cd-text-muted"> ({s.steamDeveloper})</span> : ''}

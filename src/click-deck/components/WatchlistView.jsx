@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { readReleaseStatus } from '../lib/releaseStatus'
-import { StudiosConnector } from '../lib/studios-connector'
+import { StudiosConnector, tierAccentColor } from '../lib/studios-connector'
 import { getRecentlyReleasedGames, sortComingSoonSoonestFirst } from '../lib/releaseTracking'
 import {
   refreshComingSoonGames, searchFollowedStudios, candidateToNewGame,
@@ -48,19 +48,6 @@ function formatAge(days) {
   if (days === 0) return 'today'
   if (days === 1) return '1 day ago'
   return `${days} days ago`
-}
-
-// Renders a Personal Value Tier as N filled stars — no empty stars padding
-// it out to some fixed "out of" scale, since that would make a top tier on
-// today's 1-3 system read as a middling score (e.g. 3/5) instead of the max
-// it actually is. The tier itself is just a number — see
-// studios-connector.js's normalizeTier — so this scales with it directly;
-// the upper clamp is only a sanity guard against a garbage value, not an
-// assumption about how many levels exist. Null tier (studio never rated)
-// renders nothing rather than a fabricated rating.
-function tierStars(tier) {
-  if (typeof tier !== 'number') return null
-  return '★'.repeat(Math.max(1, Math.min(10, Math.round(tier))))
 }
 
 // Subtle, text-only distinction for how firm a Coming Soon date is — no
@@ -277,7 +264,12 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
     const isExactDup = isDup?.kind === 'exact'
     const isBusy = addingAppId === candidate.appId || ignoringAppId === candidate.appId
     return (
-      <div key={candidate.appId} className={`cd-candidate-row ${isExactDup ? 'is-dup' : ''}`}>
+      <div
+        key={candidate.appId}
+        className={`cd-candidate-row ${isExactDup ? 'is-dup' : ''}`}
+        style={{ borderLeft: `3px solid ${tierAccentColor(candidate.studioTier)}` }}
+        title={typeof candidate.studioTier === 'number' ? `${candidate.matchedStudio} — Personal Value Tier ${candidate.studioTier}` : undefined}
+      >
         <div className="cd-candidate-cover-container">
           {candidate.headerImage ? (
             <img
@@ -304,11 +296,6 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
             {candidate.title}
           </a>
           <span className="cd-candidate-meta">
-            {tierStars(candidate.studioTier) && (
-              <span className="cd-tier-stars" title={`Personal Value Tier ${candidate.studioTier}`}>
-                {tierStars(candidate.studioTier)}{' '}
-              </span>
-            )}
             {candidate.matchedStudio}
             {candidate.releaseDateString ? ` · ${candidate.releaseDateString}` : ''}
             {/* `!= null` (not `!== null`) so a candidate with no price field at
@@ -545,10 +532,6 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
         .cd-watchlist-action-secondary button {
           font-size: 1rem;
           opacity: 0.8;
-        }
-        .cd-tier-stars {
-          color: var(--cd-accent-amber);
-          letter-spacing: 1px;
         }
         .cd-watchlist-section h3 {
           margin-top: 0;
