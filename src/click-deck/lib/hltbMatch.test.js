@@ -12,6 +12,17 @@ describe('normalizeHltbTitle', () => {
     expect(normalizeHltbTitle('The Secret of Monkey Island')).toBe(normalizeHltbTitle('Secret of Monkey Island'))
     expect(normalizeHltbTitle('Sam & Max Hit the Road')).toBe(normalizeHltbTitle('Sam and Max Hit the Road'))
   })
+
+  it('converts Roman numerals to Arabic so a sequel matches regardless of which convention a listing uses', () => {
+    expect(normalizeHltbTitle('Gabriel Knight 2: The Beast Within')).toBe(normalizeHltbTitle('Gabriel Knight II: The Beast Within'))
+    expect(normalizeHltbTitle('Space Quest 6: Roger Wilco in the Spinal Frontier')).toBe(normalizeHltbTitle('Space Quest VI: Roger Wilco in The Spinal Frontier'))
+  })
+
+  it('does not misfire on ordinary words made of non-Roman-numeral letters', () => {
+    // "iron" and "vice" would corrupt if the boundary check were loose.
+    expect(normalizeHltbTitle('Iron Man')).toBe('ironman')
+    expect(normalizeHltbTitle('Vice City')).toBe('vicecity')
+  })
 })
 
 describe('findBestHltbMatch', () => {
@@ -59,5 +70,12 @@ describe('findBestHltbMatch', () => {
   it('returns null match and confident: false for an empty result set', () => {
     expect(findBestHltbMatch([], 'Anything')).toEqual({ match: null, confident: false })
     expect(findBestHltbMatch(null, 'Anything')).toEqual({ match: null, confident: false })
+  })
+
+  it('confidently matches a Roman-numeral HLTB listing against an Arabic-numeral title — the real Gabriel Knight 2 failure this was built to fix', () => {
+    const items = [{ id: 3782, name: 'Gabriel Knight II: The Beast Within', hours: 16.1 }]
+    const { match, confident } = findBestHltbMatch(items, 'Gabriel Knight 2: The Beast Within')
+    expect(match.id).toBe(3782)
+    expect(confident).toBe(true)
   })
 })

@@ -6,10 +6,25 @@
 // strips that class of noise before comparing. Mirrors the normalization
 // already used (read-only) by scripts/verify-steam-names.py, so the two stay
 // in agreement about what counts as "the same game."
+// Space/punctuation-bounded Roman numerals I-XX converted to Arabic digits —
+// a Steam listing and this collection can disagree on which convention a
+// sequel uses (e.g. "Space Quest 6" here vs. a listing titled "Space Quest
+// VI"), and without this the two never overlap enough to clear the
+// confidence threshold. Bounded by \b so it can't misfire inside an
+// unrelated word — there's no real English word made purely of i/v/x.
+const ROMAN_NUMERALS = { i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7, viii: 8, ix: 9, x: 10, xi: 11, xii: 12, xiii: 13, xiv: 14, xv: 15, xvi: 16, xvii: 17, xviii: 18, xix: 19, xx: 20 }
+function convertRomanNumerals(str) {
+  return str.replace(/\b[ivx]+\b/g, (match) => {
+    const arabic = ROMAN_NUMERALS[match]
+    return arabic !== undefined ? String(arabic) : match
+  })
+}
+
 export function normalizeSteamTitle(name) {
   if (!name) return ''
   let n = name.toLowerCase()
   n = n.replace(/&/g, 'and')
+  n = convertRomanNumerals(n)
   n = n.replace(/\b(remastered|remaster|edition|director'?s\s*cut|special|reforged|anniversary|gold|final\s*cut)\b/g, '')
   // "20th Anniversary Edition", "25th Anniversary" etc. — drop the ordinal too.
   n = n.replace(/\b\d+(st|nd|rd|th)\b/g, '')

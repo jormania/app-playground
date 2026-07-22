@@ -14,6 +14,15 @@ describe('normalizeSteamTitle', () => {
     expect(normalizeSteamTitle('The Secret of Monkey Island')).toBe(normalizeSteamTitle('Secret of Monkey Island'))
     expect(normalizeSteamTitle('Sam & Max Hit the Road')).toBe(normalizeSteamTitle('Sam and Max Hit the Road'))
   })
+
+  it('converts Roman numerals to Arabic so a sequel matches regardless of which convention a listing uses', () => {
+    expect(normalizeSteamTitle('Space Quest 6: Roger Wilco in the Spinal Frontier')).toBe(normalizeSteamTitle('Space Quest VI: Roger Wilco in The Spinal Frontier'))
+  })
+
+  it('does not misfire on ordinary words made of non-Roman-numeral letters', () => {
+    expect(normalizeSteamTitle('Iron Man')).toBe('ironman')
+    expect(normalizeSteamTitle('Vice City')).toBe('vicecity')
+  })
 })
 
 describe('pickBestSteamMatch', () => {

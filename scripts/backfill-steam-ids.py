@@ -46,6 +46,13 @@ def get_games():
             break
     return games
 
+ROMAN_NUMERALS = {"i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5, "vi": 6, "vii": 7, "viii": 8, "ix": 9, "x": 10,
+                   "xi": 11, "xii": 12, "xiii": 13, "xiv": 14, "xv": 15, "xvi": 16, "xvii": 17, "xviii": 18, "xix": 19, "xx": 20}
+
+def convert_roman_numerals(name):
+    # Kept in sync with src/click-deck/lib/steamMatch.js's convertRomanNumerals.
+    return re.sub(r'\b[ivx]+\b', lambda m: str(ROMAN_NUMERALS[m.group(0)]) if m.group(0) in ROMAN_NUMERALS else m.group(0), name)
+
 def normalize_title(name):
     # Kept in sync with verify-steam-names.py's normalize_title — classic
     # titles are frequently re-listed on Steam with a "Remastered" / "Special
@@ -54,6 +61,7 @@ def normalize_title(name):
     if not name: return ""
     name = name.lower()
     name = name.replace('&', 'and')
+    name = convert_roman_numerals(name)
     name = re.sub(r'\b(remastered|remaster|edition|director\'?s\s*cut|special|reforged|anniversary|gold|final\s*cut)\b', '', name)
     name = re.sub(r'\b\d+(st|nd|rd|th)\b', '', name)
     name = re.sub(r'\bthe\b', '', name)
