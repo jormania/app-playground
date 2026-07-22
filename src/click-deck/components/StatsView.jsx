@@ -2,6 +2,7 @@ import React, { useMemo } from 'react'
 import { readReleaseStatus, isIgnored } from '../lib/releaseStatus'
 import { getRecentlyReleasedGames, sortComingSoonSoonestFirst } from '../lib/releaseTracking'
 import { isCompletedWithinDays, countUndatedCompleted, COMPLETION_WINDOWS } from '../lib/completionTracking'
+import { lengthBucketOf, LENGTH_BUCKETS } from '../lib/lengthBuckets'
 import { DrumRollIcon } from './WatchlistView'
 
 // `games` here is already Coming-Soon/Ignored-filtered by App.jsx (every
@@ -132,13 +133,32 @@ export function StatsView({ games, watchlistGames = [] }) {
       undatedCount: countUndatedCompleted(games)
     };
 
+    // 7. Playtime Analysis — HLTB "Main + Sides" length, backlog/completed
+    // hours as an honest "hours ahead of you" / "hours behind you" pair,
+    // rather than folding them into one meaningless total.
+    const gamesWithLength = games.filter(g => g.lengthHours !== null && g.lengthHours !== undefined);
+    const backlogHours = Math.round(games.filter(g => g.status === 'Backlog').reduce((sum, g) => sum + (g.lengthHours || 0), 0));
+    const completedHours = Math.round(games.filter(g => g.status === 'Completed').reduce((sum, g) => sum + (g.lengthHours || 0), 0));
+    const avgLength = gamesWithLength.length > 0
+      ? (gamesWithLength.reduce((sum, g) => sum + g.lengthHours, 0) / gamesWithLength.length).toFixed(1)
+      : 'N/A';
+    const longestGame = gamesWithLength.length > 0 ? gamesWithLength.reduce((a, b) => b.lengthHours > a.lengthHours ? b : a) : null;
+    const shortestGame = gamesWithLength.length > 0 ? gamesWithLength.reduce((a, b) => b.lengthHours < a.lengthHours ? b : a) : null;
+    const lengthBucketCounts = Object.keys(LENGTH_BUCKETS).map(bucket => [
+      bucket, gamesWithLength.filter(g => lengthBucketOf(g.lengthHours) === bucket).length
+    ]);
+    const playtime = {
+      backlogHours, completedHours, avgLength, longestGame, shortestGame,
+      lengthBucketCounts, trackedCount: gamesWithLength.length
+    };
+
     return {
       totalGames, completed, backlog, playing, abandoned, avgRating,
       oldest, newest, sortedDecades,
       topDevs, highestRatedDevs,
       topTags, highestRatedTags,
       totalSpent, backlogValue, completedValue, avgPrice, gamesWithPriceCount: gamesWithPrice.length,
-      lastPriceSync, velocity
+      lastPriceSync, velocity, playtime
     };
   }, [games]);
 
@@ -246,6 +266,41 @@ export function StatsView({ games, watchlistGames = [] }) {
               ? `PRICES LAST SYNCED: ${stats.lastPriceSync.toLocaleDateString()}`
               : 'PRICES LAST SYNCED: NEVER'}
           </p>
+        </div>
+
+        {/* Playtime Analysis — HLTB "Main + Sides" length */}
+        <div className="cd-panel">
+          <h3>PLAYTIME_ANALYSIS</h3>
+          <ul className="cd-stat-list">
+            <li><span className="label">BACKLOG HOURS</span> <span className="val">{stats.playtime.backlogHours}h</span></li>
+            <li><span className="label">COMPLETED HOURS</span> <span className="val">{stats.playtime.completedHours}h</span></li>
+            <li><span className="label">AVG LENGTH</span> <span className="val">{stats.playtime.avgLength}{stats.playtime.avgLength !== 'N/A' ? 'h' : ''}</span></li>
+            {stats.playtime.longestGame && (
+              <li><span className="label">LONGEST</span> <span className="val">{stats.playtime.longestGame.title} ({stats.playtime.longestGame.lengthHours}h)</span></li>
+            )}
+            {stats.playtime.shortestGame && (
+              <li><span className="label">SHORTEST</span> <span className="val">{stats.playtime.shortestGame.title} ({stats.playtime.shortestGame.lengthHours}h)</span></li>
+            )}
+          </ul>
+          {stats.playtime.trackedCount > 0 ? (
+            <div className="cd-bar-chart">
+              {stats.playtime.lengthBucketCounts.map(([bucket, count]) => {
+                const maxCount = Math.max(...stats.playtime.lengthBucketCounts.map(b => b[1]), 1);
+                const width = (count / maxCount) * 100;
+                return (
+                  <div key={bucket} className="cd-bar-row">
+                    <span className="cd-bar-label" style={{ width: '60px' }}>{bucket.toUpperCase()}</span>
+                    <div className="cd-bar-track">
+                      <div className="cd-bar-fill" style={{ width: `${width}%` }}></div>
+                    </div>
+                    <span className="cd-bar-val">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="cd-price-sync-note">NO LENGTH DATA YET — FETCH HLTB FROM THE EDITOR.</p>
+          )}
         </div>
 
         {/* Timeline Breakdown */}

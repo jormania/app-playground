@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { readReleaseStatus } from '../lib/releaseStatus'
 import { isCompletedWithinDays, COMPLETION_WINDOWS } from '../lib/completionTracking'
+import { isInLengthBucket } from '../lib/lengthBuckets'
 
 export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
 
@@ -18,6 +19,9 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
   // How recently a game was marked Completed — 'Any' applies no filter at
   // all (so it doesn't hide non-Completed games or undated Completed ones).
   const [completedFilter, setCompletedFilter] = useState('Any')
+  // HLTB "Main + Sides" length buckets — 'All' applies no filter (so it
+  // doesn't hide games with no recorded length).
+  const [lengthFilter, setLengthFilter] = useState('All')
 
   const matrixFilteredGames = useMemo(() => {
     let result = [...filteredGames]
@@ -70,8 +74,12 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
       result = result.filter(g => isCompletedWithinDays(g, COMPLETION_WINDOWS[completedFilter]))
     }
 
+    if (lengthFilter !== 'All') {
+      result = result.filter(g => isInLengthBucket(g, lengthFilter))
+    }
+
     return result
-  }, [filteredGames, eraFilter, ratingFilter, priceFilter, tagCountFilter, releaseFilter, completedFilter])
+  }, [filteredGames, eraFilter, ratingFilter, priceFilter, tagCountFilter, releaseFilter, completedFilter, lengthFilter])
 
   // Calculate tag frequencies based on currently filtered games
   const tagCounts = useMemo(() => {
@@ -244,6 +252,12 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
           <span className="cd-filter-label">COMPLETED:</span>
           {['Any', '1mo', '3mo', '6mo', '12mo'].map(c => (
             <button key={c} className={`cd-filter-btn ${completedFilter === c ? 'active' : ''}`} onClick={() => setCompletedFilter(c)}>{c === 'Any' ? 'Any' : c.toUpperCase()}</button>
+          ))}
+        </div>
+        <div className="cd-filter-row">
+          <span className="cd-filter-label">LENGTH:</span>
+          {['All', 'Short', 'Medium', 'Long', 'Epic'].map(l => (
+            <button key={l} className={`cd-filter-btn ${lengthFilter === l ? 'active' : ''}`} onClick={() => setLengthFilter(l)}>{l}</button>
           ))}
         </div>
       </div>

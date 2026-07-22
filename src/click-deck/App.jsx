@@ -383,6 +383,9 @@ export function App() {
   // whether the Editor offers the Completed At control at all.
   const completedAtSchemaReady = useMemo(() => games.some(g => g.completedAt !== undefined), [games])
 
+  // Same check for the R2 Length (hrs) field.
+  const lengthHoursSchemaReady = useMemo(() => games.some(g => g.lengthHours !== undefined), [games])
+
   return (
     <div className="cd-app-container">
       <header className="cd-header">
@@ -590,6 +593,7 @@ export function App() {
           onToast={showToast}
           watchlistSchemaReady={watchlistSchemaReady}
           completedAtSchemaReady={completedAtSchemaReady}
+          lengthHoursSchemaReady={lengthHoursSchemaReady}
         />
       )}
 

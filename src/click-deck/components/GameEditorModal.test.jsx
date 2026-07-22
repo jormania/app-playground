@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent , cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { GameEditorModal } from './GameEditorModal'
 
 import { afterEach } from 'vitest';
@@ -182,6 +182,95 @@ describe('GameEditorModal', () => {
       fireEvent.change(input, { target: { value: '' } })
       fireEvent.click(screen.getByText('SAVE_DATA'))
       expect(onSave.mock.calls[0][0].completedAt).toBeNull()
+    })
+  })
+
+  describe('Length (hrs) field', () => {
+    it('is hidden when neither the collection nor this game supports the R2 schema', () => {
+      const game = { title: 'Pre-R2', year: 2000, developer: '', status: 'Backlog', tags: [], journal: '' }
+      render(<GameEditorModal game={game} onSave={() => {}} onClose={() => {}} />)
+      expect(screen.queryByText(/LENGTH \(HRS\)/)).toBeNull()
+    })
+
+    it('shows and is editable once the collection has the schema', () => {
+      const onSave = vi.fn()
+      const game = { title: 'Patched', year: 2000, developer: '', status: 'Backlog', tags: [], journal: '', lengthHours: 10 }
+      render(<GameEditorModal game={game} onSave={onSave} onClose={() => {}} lengthHoursSchemaReady={true} />)
+      const input = document.querySelector('input[name="lengthHours"]')
+      expect(input.value).toBe('10')
+
+      fireEvent.change(input, { target: { value: '12.5' } })
+      fireEvent.click(screen.getByText('SAVE_DATA'))
+      expect(onSave.mock.calls[0][0].lengthHours).toBe(12.5)
+    })
+
+    it('clearing the number input saves null, not an empty string', () => {
+      const onSave = vi.fn()
+      const game = { title: 'Clearable', year: 2000, developer: '', status: 'Backlog', tags: [], journal: '', lengthHours: 10 }
+      render(<GameEditorModal game={game} onSave={onSave} onClose={() => {}} lengthHoursSchemaReady={true} />)
+      const input = document.querySelector('input[name="lengthHours"]')
+      fireEvent.change(input, { target: { value: '' } })
+      fireEvent.click(screen.getByText('SAVE_DATA'))
+      expect(onSave.mock.calls[0][0].lengthHours).toBeNull()
+    })
+
+    describe('FETCH HLTB', () => {
+      afterEach(() => vi.unstubAllGlobals())
+
+      it('fetches and applies the best HLTB match', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({ items: [{ id: 4123, name: 'Grim Fandango', hours: 11.5 }] })
+        })
+        vi.stubGlobal('fetch', fetchMock)
+        const onSave = vi.fn()
+
+        const game = { title: 'Grim Fandango', year: 1998, developer: '', status: 'Backlog', tags: [], journal: '', lengthHours: null }
+        render(<GameEditorModal game={game} onSave={onSave} onClose={() => {}} lengthHoursSchemaReady={true} />)
+        fireEvent.click(screen.getByText('FETCH HLTB'))
+        await screen.findByDisplayValue('11.5')
+
+        expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/clickdeck-hltb?term='))
+
+        fireEvent.click(screen.getByText('SAVE_DATA'))
+        expect(onSave.mock.calls[0][0].lengthHours).toBe(11.5)
+      })
+
+      it('toasts a clear error and leaves the field alone when the proxy fails', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+          ok: false,
+          json: async () => ({ message: 'Could not reach HowLongToBeat: HLTB init returned 403' })
+        })
+        vi.stubGlobal('fetch', fetchMock)
+        const onToast = vi.fn()
+
+        const game = { title: 'Grim Fandango', year: 1998, developer: '', status: 'Backlog', tags: [], journal: '', lengthHours: null }
+        render(<GameEditorModal game={game} onSave={() => {}} onClose={() => {}} onToast={onToast} lengthHoursSchemaReady={true} />)
+        fireEvent.click(screen.getByText('FETCH HLTB'))
+
+        await waitFor(() => {
+          expect(onToast).toHaveBeenCalledWith(expect.stringContaining('Could not reach HowLongToBeat'))
+        })
+        const input = document.querySelector('input[name="lengthHours"]')
+        expect(input.value).toBe('')
+      })
+
+      it('warns when the best HLTB match is only an unconfident guess', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({ items: [{ id: 1, name: 'Norcopolis Chronicles: Deluxe Edition', hours: 8 }] })
+        })
+        vi.stubGlobal('fetch', fetchMock)
+        const onToast = vi.fn()
+
+        const game = { title: 'Norco', year: 2022, developer: '', status: 'Backlog', tags: [], journal: '', lengthHours: null }
+        render(<GameEditorModal game={game} onSave={() => {}} onClose={() => {}} onToast={onToast} lengthHoursSchemaReady={true} />)
+        fireEvent.click(screen.getByText('FETCH HLTB'))
+
+        await waitFor(() => {
+          expect(onToast).toHaveBeenCalledWith(expect.stringContaining('Uncertain HLTB match'))
+        })
+      })
     })
   })
 

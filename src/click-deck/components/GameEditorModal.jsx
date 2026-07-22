@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { ALL_TAGS } from '../lib/seed-data'
 import { findBestSteamMatch } from '../lib/steamMatch'
+import { findBestHltbMatch } from '../lib/hltbMatch'
 import { readReleaseStatus } from '../lib/releaseStatus'
 
-export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watchlistSchemaReady = false, completedAtSchemaReady = false }) {
+export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watchlistSchemaReady = false, completedAtSchemaReady = false, lengthHoursSchemaReady = false }) {
   // Only offer the Release Status control once we know Notion actually has
   // the property — either the collection already has at least one game
   // carrying it (watchlistSchemaReady, computed in App.jsx), or this
@@ -15,6 +16,8 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
   // Same presence-gated pattern for the R2 Completed At field — see the
   // comment above and App.jsx's completedAtSchemaReady.
   const schemaSupportsCompletedAt = completedAtSchemaReady || (game && game.completedAt !== undefined)
+  // Same presence-gated pattern for the R2 Length (hrs) field.
+  const schemaSupportsLengthHours = lengthHoursSchemaReady || (game && game.lengthHours !== undefined)
   const [formData, setFormData] = useState({
     title: '',
     year: new Date().getFullYear(),
@@ -26,6 +29,7 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
     coverUrl: ''
   })
   const [isFetchingCover, setIsFetchingCover] = useState(false)
+  const [isFetchingLength, setIsFetchingLength] = useState(false)
   const [validationError, setValidationError] = useState('')
 
   useEffect(() => {
@@ -132,6 +136,36 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
     setIsFetchingCover(false);
   };
 
+  // HowLongToBeat has no official API (see api/clickdeck-hltb.js's header
+  // comment for the reverse-engineered scrape and why it's the single most
+  // fragile piece of R2) — every failure here degrades to "enter Length
+  // (hrs) manually," never blocks the rest of the Editor.
+  const fetchLength = async () => {
+    if (!formData.title) return
+    setIsFetchingLength(true)
+    try {
+      const res = await fetch(`/api/clickdeck-hltb?term=${encodeURIComponent(formData.title)}`)
+      const json = await res.json()
+      if (!res.ok) {
+        if (onToast) onToast(`⚠ ${json.message || 'Could not reach HowLongToBeat.'}`)
+        return
+      }
+      const { match, confident } = findBestHltbMatch(json.items, formData.title)
+      if (match) {
+        setFormData(prev => ({ ...prev, lengthHours: match.hours }))
+        if (!confident && onToast) {
+          onToast(`⚠ Uncertain HLTB match for "${match.name}" — please verify the length.`)
+        }
+      } else if (onToast) {
+        onToast('No HowLongToBeat entry found for that title.')
+      }
+    } catch (err) {
+      console.error(err)
+      if (onToast) onToast('Error fetching length from HowLongToBeat.')
+    }
+    setIsFetchingLength(false)
+  }
+
   const showRating = ['Completed', 'Playing', 'Abandoned'].includes(formData.status)
 
   return (
@@ -220,6 +254,25 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
             <p className="cd-tag-warning" style={{ color: 'var(--cd-text-muted)' }}>
               Auto-stamped the moment you mark a game Completed from the Timeline — edit here to backdate or correct it.
             </p>
+          </div>
+        )}
+
+        {schemaSupportsLengthHours && (
+          <div className="cd-form-group">
+            <label>LENGTH (HRS) — MAIN + SIDES</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                name="lengthHours"
+                type="number"
+                min="0"
+                step="0.5"
+                value={formData.lengthHours ?? ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, lengthHours: e.target.value === '' ? null : parseFloat(e.target.value) }))}
+              />
+              <button type="button" onClick={fetchLength} disabled={isFetchingLength} style={{ whiteSpace: 'nowrap', fontSize: '0.9rem', padding: '0 1rem' }}>
+                {isFetchingLength ? 'FETCHING...' : 'FETCH HLTB'}
+              </button>
+            </div>
           </div>
         )}
 
