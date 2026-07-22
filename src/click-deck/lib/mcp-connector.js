@@ -245,7 +245,11 @@ export const McpConnector = {
     }
   },
 
-  updateGameStatus: async (id, newStatus, newRating = null) => {
+  // completedAt: `undefined` (default) means "don't touch it" — the caller
+  // (App.jsx's handleUpdateStatus) only passes a real value or `null` on an
+  // observed Completed transition/exit, matching the presence-gated write
+  // pattern used everywhere else in this file.
+  updateGameStatus: async (id, newStatus, newRating = null, completedAt = undefined) => {
     const token = getToken()
     const dbId = getDbId()
     if (token && dbId) {
@@ -255,6 +259,7 @@ export const McpConnector = {
       } else {
         props['Rating'] = { number: null }
       }
+      if (completedAt !== undefined) props['Completed At'] = completedAt ? { date: { start: completedAt } } : { date: null }
       const data = await fetchNotion(`pages/${id}`, 'PATCH', { properties: props })
       return mapPageToGame(data)
     } else {
@@ -264,6 +269,7 @@ export const McpConnector = {
       if (index !== -1) {
         db[index].status = newStatus
         if (newRating !== null) db[index].rating = newRating
+        if (completedAt !== undefined) db[index].completedAt = completedAt
         saveLocalDb(db)
       }
       return db[index]

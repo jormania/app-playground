@@ -262,9 +262,23 @@ export function App() {
 
   const handleUpdateStatus = async (id, status, rating) => {
     const previousGames = games
-    setGames(prev => prev.map(g => g.id === id ? { ...g, status, rating } : g))
+    const prevGame = previousGames.find(g => g.id === id)
+    // Completed At is only ever stamped on an *observed* transition through
+    // this exact code path — never on a direct add or Editor save of an
+    // already-Completed game (same rule as Released At in
+    // watchlistResolver.js). `undefined` means "leave it alone": only a
+    // genuine Backlog/Playing/Abandoned <-> Completed flip writes anything,
+    // and only once the schema patch is present (prevGame.completedAt !== undefined).
+    let completedAt
+    if (prevGame && prevGame.completedAt !== undefined) {
+      const wasCompleted = prevGame.status === 'Completed'
+      const isCompleted = status === 'Completed'
+      if (!wasCompleted && isCompleted) completedAt = new Date().toISOString().slice(0, 10)
+      else if (wasCompleted && !isCompleted) completedAt = null
+    }
+    setGames(prev => prev.map(g => g.id === id ? { ...g, status, rating, ...(completedAt !== undefined ? { completedAt } : {}) } : g))
     try {
-      await McpConnector.updateGameStatus(id, status, rating)
+      await McpConnector.updateGameStatus(id, status, rating, completedAt)
     } catch (err) {
       setGames(previousGames)
       showToast(`UPDATE FAILED: ${err.message || 'unknown error'}`)
@@ -364,6 +378,10 @@ export function App() {
   // whether the Editor offers the Release Status control at all (see its
   // own comment for why this matters for unpatched-schema safety).
   const watchlistSchemaReady = useMemo(() => games.some(g => g.releaseStatus !== undefined), [games])
+
+  // Same database-level-property check as watchlistSchemaReady above, gating
+  // whether the Editor offers the Completed At control at all.
+  const completedAtSchemaReady = useMemo(() => games.some(g => g.completedAt !== undefined), [games])
 
   return (
     <div className="cd-app-container">
@@ -571,6 +589,7 @@ export function App() {
           onClose={() => { setIsEditorOpen(false); setEditingGame(null) }}
           onToast={showToast}
           watchlistSchemaReady={watchlistSchemaReady}
+          completedAtSchemaReady={completedAtSchemaReady}
         />
       )}
 

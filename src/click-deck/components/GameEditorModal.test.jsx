@@ -148,6 +148,43 @@ describe('GameEditorModal', () => {
     })
   })
 
+  describe('Completed At field', () => {
+    it('is hidden when neither the collection nor this game supports the R2 schema', () => {
+      const game = { title: 'Pre-R2', year: 2000, developer: '', status: 'Completed', tags: [], journal: '' }
+      render(<GameEditorModal game={game} onSave={() => {}} onClose={() => {}} />)
+      expect(screen.queryByText('COMPLETED AT')).toBeNull()
+    })
+
+    it('shows and is editable once the collection has the schema (completedAtSchemaReady)', () => {
+      const onSave = vi.fn()
+      const game = { title: 'Patched', year: 2000, developer: '', status: 'Completed', tags: [], journal: '', completedAt: '2026-07-01' }
+      render(<GameEditorModal game={game} onSave={onSave} onClose={() => {}} completedAtSchemaReady={true} />)
+      expect(screen.getByText('COMPLETED AT')).toBeTruthy()
+      const input = document.querySelector('input[name="completedAt"]')
+      expect(input.value).toBe('2026-07-01')
+
+      fireEvent.change(input, { target: { value: '2026-07-15' } })
+      fireEvent.click(screen.getByText('SAVE_DATA'))
+      expect(onSave.mock.calls[0][0].completedAt).toBe('2026-07-15')
+    })
+
+    it('shows when this specific game already carries completedAt, even if the collection flag is false', () => {
+      const game = { title: 'Individually patched', year: 2000, developer: '', status: 'Completed', tags: [], journal: '', completedAt: null }
+      render(<GameEditorModal game={game} onSave={() => {}} onClose={() => {}} completedAtSchemaReady={false} />)
+      expect(screen.getByText('COMPLETED AT')).toBeTruthy()
+    })
+
+    it('clearing the date input saves null, not an empty string', () => {
+      const onSave = vi.fn()
+      const game = { title: 'Clearable', year: 2000, developer: '', status: 'Completed', tags: [], journal: '', completedAt: '2026-07-01' }
+      render(<GameEditorModal game={game} onSave={onSave} onClose={() => {}} completedAtSchemaReady={true} />)
+      const input = document.querySelector('input[name="completedAt"]')
+      fireEvent.change(input, { target: { value: '' } })
+      fireEvent.click(screen.getByText('SAVE_DATA'))
+      expect(onSave.mock.calls[0][0].completedAt).toBeNull()
+    })
+  })
+
   describe('fetchCover', () => {
     afterEach(() => vi.unstubAllGlobals())
 

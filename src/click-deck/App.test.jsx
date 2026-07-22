@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
 import { App } from './App'
 
 // vi.mock factories are hoisted above imports/top-level consts, so the fixture
@@ -147,10 +147,59 @@ describe('App', () => {
     fireEvent.click(screen.getByLabelText('Rate 3 stars'))
 
     await waitFor(() => {
-      expect(McpConnector.updateGameStatus).toHaveBeenCalledWith('1', 'Completed', 3)
+      // 4th arg (completedAt) is undefined — this fixture predates the R2
+      // schema patch (no `completedAt` key at all), so handleUpdateStatus
+      // must leave it untouched rather than writing anything.
+      expect(McpConnector.updateGameStatus).toHaveBeenCalledWith('1', 'Completed', 3, undefined)
     })
     // No additional getGames() call — the UI updates from local state, not a re-fetch.
     expect(McpConnector.getGames.mock.calls.length).toBe(callsBefore)
+  })
+
+  describe('Completed At auto-stamping (R2)', () => {
+    const schemaGames = [
+      {
+        id: '1', title: 'Monkey Island', year: 1990, developer: 'LucasArts',
+        status: 'Backlog', tags: ['Comedy'], journal: '', isDiscounted: false, rating: null, completedAt: null
+      },
+      {
+        id: '2', title: 'The Last Express', year: 1997, developer: 'Smoking Car',
+        status: 'Completed', tags: ['Mystery'], journal: '', isDiscounted: false, rating: null, completedAt: '2026-01-01'
+      }
+    ]
+
+    it('stamps completedAt = today on an observed non-Completed -> Completed transition', async () => {
+      const { McpConnector } = await import('./lib/mcp-connector')
+      McpConnector.getGames.mockResolvedValueOnce(schemaGames)
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Monkey Island')).toBeTruthy())
+
+      // Monkey Island starts Backlog — cycle it to Completed via its own
+      // quick-update row (scoped so it doesn't hit Last Express's).
+      const card = screen.getByText('Monkey Island').closest('.cd-game-card')
+      fireEvent.click(within(card).getByText('Completed'))
+
+      const today = new Date().toISOString().slice(0, 10)
+      await waitFor(() => {
+        expect(McpConnector.updateGameStatus).toHaveBeenCalledWith('1', 'Completed', null, today)
+      })
+    })
+
+    it('clears completedAt on an observed Completed -> non-Completed transition', async () => {
+      const { McpConnector } = await import('./lib/mcp-connector')
+      McpConnector.getGames.mockResolvedValueOnce(schemaGames)
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('The Last Express')).toBeTruthy())
+
+      // Cycle the already-Completed card's status back to Backlog via its
+      // own quick-update row (scoped so it doesn't hit Monkey Island's).
+      const card = screen.getByText('The Last Express').closest('.cd-game-card')
+      fireEvent.click(within(card).getByText('Backlog'))
+
+      await waitFor(() => {
+        expect(McpConnector.updateGameStatus).toHaveBeenCalledWith('2', 'Backlog', null, null)
+      })
+    })
   })
 
   it('rolls back an optimistic status update and toasts on failure', async () => {

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { readReleaseStatus } from '../lib/releaseStatus'
+import { isCompletedWithinDays, COMPLETION_WINDOWS } from '../lib/completionTracking'
 
 export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
 
@@ -14,6 +15,9 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
   // exclusion, just not hard-coded here since Analytics is explicitly the
   // one view allowed to include them on request.
   const [releaseFilter, setReleaseFilter] = useState('Released')
+  // How recently a game was marked Completed — 'Any' applies no filter at
+  // all (so it doesn't hide non-Completed games or undated Completed ones).
+  const [completedFilter, setCompletedFilter] = useState('Any')
 
   const matrixFilteredGames = useMemo(() => {
     let result = [...filteredGames]
@@ -62,8 +66,12 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
         return true
       })
     }
+    if (completedFilter !== 'Any') {
+      result = result.filter(g => isCompletedWithinDays(g, COMPLETION_WINDOWS[completedFilter]))
+    }
+
     return result
-  }, [filteredGames, eraFilter, ratingFilter, priceFilter, tagCountFilter, releaseFilter])
+  }, [filteredGames, eraFilter, ratingFilter, priceFilter, tagCountFilter, releaseFilter, completedFilter])
 
   // Calculate tag frequencies based on currently filtered games
   const tagCounts = useMemo(() => {
@@ -230,6 +238,12 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
           <span className="cd-filter-label">RELEASE:</span>
           {['All', 'Released', 'Coming Soon'].map(r => (
             <button key={r} className={`cd-filter-btn ${releaseFilter === r ? 'active' : ''}`} onClick={() => setReleaseFilter(r)}>{r}</button>
+          ))}
+        </div>
+        <div className="cd-filter-row">
+          <span className="cd-filter-label">COMPLETED:</span>
+          {['Any', '1mo', '3mo', '6mo', '12mo'].map(c => (
+            <button key={c} className={`cd-filter-btn ${completedFilter === c ? 'active' : ''}`} onClick={() => setCompletedFilter(c)}>{c === 'Any' ? 'Any' : c.toUpperCase()}</button>
           ))}
         </div>
       </div>

@@ -3,7 +3,7 @@ import { ALL_TAGS } from '../lib/seed-data'
 import { findBestSteamMatch } from '../lib/steamMatch'
 import { readReleaseStatus } from '../lib/releaseStatus'
 
-export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watchlistSchemaReady = false }) {
+export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watchlistSchemaReady = false, completedAtSchemaReady = false }) {
   // Only offer the Release Status control once we know Notion actually has
   // the property — either the collection already has at least one game
   // carrying it (watchlistSchemaReady, computed in App.jsx), or this
@@ -12,6 +12,9 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
   // it from the save and an ordinary edit never references a Notion
   // property that doesn't exist yet for anyone who hasn't patched.
   const schemaSupportsReleaseStatus = watchlistSchemaReady || (game && game.releaseStatus !== undefined)
+  // Same presence-gated pattern for the R2 Completed At field — see the
+  // comment above and App.jsx's completedAtSchemaReady.
+  const schemaSupportsCompletedAt = completedAtSchemaReady || (game && game.completedAt !== undefined)
   const [formData, setFormData] = useState({
     title: '',
     year: new Date().getFullYear(),
@@ -201,6 +204,21 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
             </select>
             <p className="cd-tag-warning" style={{ color: 'var(--cd-text-muted)' }}>
               Coming Soon games are hidden from the Timeline, Stats and Random Game — see them on the [W] Watchlist view instead.
+            </p>
+          </div>
+        )}
+
+        {schemaSupportsCompletedAt && (
+          <div className="cd-form-group">
+            <label>COMPLETED AT</label>
+            <input
+              name="completedAt"
+              type="date"
+              value={formData.completedAt || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, completedAt: e.target.value || null }))}
+            />
+            <p className="cd-tag-warning" style={{ color: 'var(--cd-text-muted)' }}>
+              Auto-stamped the moment you mark a game Completed from the Timeline — edit here to backdate or correct it.
             </p>
           </div>
         )}

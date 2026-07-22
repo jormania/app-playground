@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import { readReleaseStatus, isIgnored } from '../lib/releaseStatus'
 import { getRecentlyReleasedGames, sortComingSoonSoonestFirst } from '../lib/releaseTracking'
+import { isCompletedWithinDays, countUndatedCompleted, COMPLETION_WINDOWS } from '../lib/completionTracking'
 import { DrumRollIcon } from './WatchlistView'
 
 // `games` here is already Coming-Soon/Ignored-filtered by App.jsx (every
@@ -117,13 +118,27 @@ export function StatsView({ games, watchlistGames = [] }) {
     const syncTimestamps = games.map(g => g.priceUpdatedAt).filter(Boolean).map(d => new Date(d).getTime());
     const lastPriceSync = syncTimestamps.length > 0 ? new Date(Math.max(...syncTimestamps)) : null;
 
+    // 6. Completion Velocity — how many Completed games fall inside each
+    // trailing window. Undated Completed entries (pre-R2, or a game marked
+    // Completed before the schema patch) still count toward ALL-TIME but can
+    // never match a window — surfaced separately rather than silently
+    // under-counting the windows.
+    const velocity = {
+      m1: games.filter(g => isCompletedWithinDays(g, COMPLETION_WINDOWS['1mo'])).length,
+      m3: games.filter(g => isCompletedWithinDays(g, COMPLETION_WINDOWS['3mo'])).length,
+      m6: games.filter(g => isCompletedWithinDays(g, COMPLETION_WINDOWS['6mo'])).length,
+      m12: games.filter(g => isCompletedWithinDays(g, COMPLETION_WINDOWS['12mo'])).length,
+      allTime: completed,
+      undatedCount: countUndatedCompleted(games)
+    };
+
     return {
       totalGames, completed, backlog, playing, abandoned, avgRating,
       oldest, newest, sortedDecades,
       topDevs, highestRatedDevs,
       topTags, highestRatedTags,
       totalSpent, backlogValue, completedValue, avgPrice, gamesWithPriceCount: gamesWithPrice.length,
-      lastPriceSync
+      lastPriceSync, velocity
     };
   }, [games]);
 
@@ -175,6 +190,23 @@ export function StatsView({ games, watchlistGames = [] }) {
                 dedicated WATCHLIST panel for the rest of the detail. */}
             <li><span className="label">COMING SOON</span> <span className="val">{watchlistStats.comingSoonCount}</span></li>
           </ul>
+        </div>
+
+        {/* Completion Velocity */}
+        <div className="cd-panel">
+          <h3>COMPLETION_VELOCITY</h3>
+          <ul className="cd-stat-list">
+            <li><span className="label">LAST 30D</span> <span className="val">{stats.velocity.m1}</span></li>
+            <li><span className="label">LAST 3MO</span> <span className="val">{stats.velocity.m3}</span></li>
+            <li><span className="label">LAST 6MO</span> <span className="val">{stats.velocity.m6}</span></li>
+            <li><span className="label">LAST 12MO</span> <span className="val">{stats.velocity.m12}</span></li>
+            <li><span className="label">ALL-TIME</span> <span className="val">{stats.velocity.allTime}</span></li>
+          </ul>
+          {stats.velocity.undatedCount > 0 && (
+            <p className="cd-price-sync-note">
+              * {stats.velocity.undatedCount} completed {stats.velocity.undatedCount === 1 ? 'entry has' : 'entries have'} no Completed At date — counted in ALL-TIME only.
+            </p>
+          )}
         </div>
 
         {/* Watchlist — deliberately its own panel with its own numbers, not
