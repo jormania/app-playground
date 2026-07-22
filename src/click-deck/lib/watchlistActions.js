@@ -71,7 +71,7 @@ export function candidateToNewGame(candidate) {
     title: candidate.title,
     year: candidate.year || null,
     developer: candidate.developer || candidate.matchedStudio || '',
-    tags: candidate.tags || [],
+    tags: candidate.comingSoon ? [] : (candidate.tags || []).slice(0, 7),
     status: 'Backlog',
     rating: null,
     journal: candidate.shortDescription || '',
