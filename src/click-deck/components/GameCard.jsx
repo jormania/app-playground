@@ -136,6 +136,12 @@ export function GameCard({ game, onEdit, onUpdateStatus, isNew = false }) {
             </span>
           </>
         )}
+        {game.lengthHours !== null && game.lengthHours !== undefined && (
+          <>
+            <span className="cd-separator">|</span>
+            <span className="cd-length">⏱ {game.lengthHours}h</span>
+          </>
+        )}
       </div>
       
       <div className="cd-tags">

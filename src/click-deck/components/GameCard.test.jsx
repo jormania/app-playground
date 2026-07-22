@@ -58,6 +58,26 @@ describe('GameCard', () => {
     expect(onUpdateStatus).toHaveBeenCalledWith('123', 'Completed', 4)
   })
 
+  it('shows the HLTB length in the meta row after the price, only when set', () => {
+    render(<GameCard game={mockGame} onEdit={() => {}} onUpdateStatus={() => {}} />)
+    expect(screen.queryByText(/⏱/)).toBeNull()
+
+    cleanup()
+    render(<GameCard game={{ ...mockGame, price: 5.99, lengthHours: 11.5 }} onEdit={() => {}} onUpdateStatus={() => {}} />)
+    const priceEl = screen.getByText('$5.99')
+    const lengthEl = screen.getByText('⏱ 11.5h')
+    expect(lengthEl).toBeTruthy()
+    // Comparing DOM position confirms it renders after price, not before.
+    expect(priceEl.compareDocumentPosition(lengthEl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('still shows the length segment when lengthHours is exactly 0', () => {
+    // 0 is a real (if unusual) value, not "unset" — must still render, not be
+    // treated as falsy and hidden.
+    render(<GameCard game={{ ...mockGame, lengthHours: 0 }} onEdit={() => {}} onUpdateStatus={() => {}} />)
+    expect(screen.getByText('⏱ 0h')).toBeTruthy()
+  })
+
   it('shows a % SALE badge only when the game is discounted', () => {
     const { rerender } = render(<GameCard game={mockGame} onEdit={() => {}} onUpdateStatus={() => {}} />)
     expect(screen.queryByText('% SALE')).toBeNull()
