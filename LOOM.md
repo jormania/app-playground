@@ -139,6 +139,18 @@ All of these sit on the same one thread array; none needs a Notion schema change
     single done-state to show); renaming or deleting it (`actions.patchRhythmTemplate` /
     `removeRhythmTemplate` in App.jsx) acts on every instance sharing that title at
     once. Per-instance done-state stays exactly where it belongs — The Warp.
+  - **The past seven days** —
+    [`components/RhythmHistoryModal.jsx`](src/loom/components/RhythmHistoryModal.jsx) +
+    `rhythmLast7Days` (model.js). A dedicated, read-only overlay (opened from a
+    toolbar icon, shown only once a rhythm exists) listing every rhythm thread,
+    grouped by rhythm skein, each as a HabitNow-style strip of the last 7 days
+    (today inclusive, oldest first) — **not** the current calendar week and
+    **not** a full calendar. Each day cell is woven (dyed solid), still open (a
+    warning-tinted ring — the Tapestry's own "open"), not cast (a faint dashed
+    ring — a rhythm day nothing was ever placed on), or off-pattern (quiet, no
+    number — outside the rhythm's day mask). No percentages, no streak counts,
+    no calendar view — descriptive dots only, consistent with the Tapestry's
+    ethos.
   - **The ×N count is scoped to this week onward, not an all-time total.**
     `currentOrFutureThreads` filters out instances dated before the current
     week's Monday before the templates are grouped, so an abandoned cast from

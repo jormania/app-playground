@@ -8,6 +8,7 @@ import {
   matchesQuery, topOfGroup, sortSkeinGroups, tapestryStats, weekReview,
   rhythmThreadsForWeek, splitRhythmThreads, rhythmTemplateGroups,
   currentOrFutureThreads, rhythmTemplateHeatRanks, rhythmHeatRankFor,
+  rhythmLast7Days,
 } from './model.js'
 
 describe('heatmap dye', () => {
@@ -439,6 +440,71 @@ describe('rhythmTemplateGroups', () => {
 
   it('is empty for an empty list', () => {
     expect(rhythmTemplateGroups([])).toEqual([])
+  })
+})
+
+describe('rhythmLast7Days', () => {
+  const now = new Date(2026, 6, 15) // Wednesday 2026-07-15; window = 07-09..07-15
+
+  it('returns [] when there are no rhythms', () => {
+    expect(rhythmLast7Days([], [], { now })).toEqual([])
+  })
+
+  it('marks done / open / none per day for a daily (no mask) rhythm', () => {
+    const threads = [
+      { id: 'a', title: 'Meditate', skein: 'Morning', day: '2026-07-09', order: 0, done: true },  // done
+      { id: 'b', title: 'Meditate', skein: 'Morning', day: '2026-07-10', order: 0, done: false }, // open
+      // 07-11 .. 07-15: no instance at all -> 'none'
+    ]
+    const [tpl] = rhythmLast7Days(threads, [{ skeinName: 'Morning', days: null }], { now })
+    expect(tpl.skeinName).toBe('Morning')
+    expect(tpl.title).toBe('Meditate')
+    expect(tpl.cells.map(c => c.key)).toEqual([
+      '2026-07-09', '2026-07-10', '2026-07-11', '2026-07-12',
+      '2026-07-13', '2026-07-14', '2026-07-15',
+    ])
+    expect(tpl.cells.map(c => c.status)).toEqual(['done', 'open', 'none', 'none', 'none', 'none', 'none'])
+    expect(tpl.cells[0].label).toBe('Thu')
+    expect(tpl.cells[6].dayNum).toBe(15)
+  })
+
+  it('marks days outside the day mask as "off"', () => {
+    const threads = [
+      { id: 'a', title: 'Deep work', skein: 'Focus', day: '2026-07-13', order: 0, done: true }, // Monday
+    ]
+    const [tpl] = rhythmLast7Days(threads, [{ skeinName: 'Focus', days: [0, 1, 2, 3, 4] }], { now })
+    const byKey = Object.fromEntries(tpl.cells.map(c => [c.key, c.status]))
+    expect(byKey['2026-07-11']).toBe('off') // Saturday
+    expect(byKey['2026-07-12']).toBe('off') // Sunday
+    expect(byKey['2026-07-13']).toBe('done') // Monday
+  })
+
+  it('includes a canonical (day-less) template with every cell "none" when nothing has been cast yet', () => {
+    const threads = [
+      { id: 'a', title: 'Journal', skein: 'Morning', day: null, order: 0, done: false },
+    ]
+    const [tpl] = rhythmLast7Days(threads, [{ skeinName: 'Morning', days: null }], { now })
+    expect(tpl.title).toBe('Journal')
+    expect(tpl.cells.every(c => c.status === 'none')).toBe(true)
+  })
+
+  it('never surfaces a title whose only instances are stale, outside the window', () => {
+    const threads = [
+      { id: 'old', title: 'Stretch', skein: 'Body', day: '2026-06-01', order: 0, done: true },
+    ]
+    expect(rhythmLast7Days(threads, [{ skeinName: 'Body', days: null }], { now })).toEqual([])
+  })
+
+  it('keeps separate rhythm skeins independent', () => {
+    const threads = [
+      { id: 'a', title: 'Meditate', skein: 'Morning', day: '2026-07-15', order: 0, done: true },
+      { id: 'b', title: 'Review', skein: 'Work', day: '2026-07-15', order: 0, done: false },
+    ]
+    const rows = rhythmLast7Days(threads, [
+      { skeinName: 'Morning', days: null },
+      { skeinName: 'Work', days: null },
+    ], { now })
+    expect(rows.map(r => `${r.skeinName}:${r.title}`)).toEqual(['Morning:Meditate', 'Work:Review'])
   })
 })
 

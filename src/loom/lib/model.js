@@ -389,6 +389,47 @@ export function rhythmHeatRankFor(ranks, thread) {
   return ranks.get(heatRankKey(thread.skein, thread.title)) ?? 0
 }
 
+// ── Rhythm history (last 7 days, today inclusive) ───────────────────────────
+// A per-thread streak strip, read the same descriptive way as the Tapestry (no
+// scoring, no streak counts) — for each rhythm template (consolidated exactly
+// like the Skeins view's rhythmTemplateGroups), the last 7 calendar days as day
+// cells, each marked:
+//   'done' — an instance exists for that day and is woven
+//   'open' — an instance exists and isn't woven yet (the Tapestry's own "open")
+//   'none' — the day is inside the rhythm's pattern but nothing was ever cast
+//   'off'  — the day sits outside the rhythm's day mask (not a rhythm day)
+// A template only appears once something with its title exists within the
+// window (or is day-less) — a stale, long-abandoned title never resurfaces.
+export function rhythmLast7Days(threads, rhythms, { now = new Date() } = {}) {
+  if (!rhythms || rhythms.length === 0) return []
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const start = addDays(today, -6)
+  const windowStartKey = dateKey(start)
+  const cellDates = Array.from({ length: 7 }, (_, i) => addDays(start, i))
+
+  const out = []
+  for (const { skeinName, days: daysMask } of rhythms) {
+    const skeinThreads = threads.filter(t => t.skein === skeinName)
+    const scoped = skeinThreads.filter(t => !t.day || t.day >= windowStartKey)
+    const templates = rhythmTemplateGroups(scoped)
+    for (const tpl of templates) {
+      const cells = cellDates.map(d => {
+        const key = dateKey(d)
+        const dayIndex = weekdayIndex(key)
+        const label = WEEKDAY_LABELS[dayIndex]
+        const dayNum = d.getDate()
+        if (daysMask && !daysMask.includes(dayIndex)) {
+          return { key, label, dayNum, status: 'off' }
+        }
+        const inst = skeinThreads.find(t => t.title === tpl.title && t.day === key)
+        return { key, label, dayNum, status: !inst ? 'none' : (inst.done ? 'done' : 'open') }
+      })
+      out.push({ skeinName, title: tpl.title, cells })
+    }
+  }
+  return out
+}
+
 // ── Search & focus ───────────────────────────────────────────────────────────
 export function matchesQuery(thread, query) {
   const q = (query || '').trim().toLowerCase()

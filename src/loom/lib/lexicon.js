@@ -141,6 +141,19 @@ const TERMS = {
     plain: 'Brings back the routine and template offers for this week if you dismissed them by accident.',
   },
 
+  // ── Rhythm history (last 7 days) ──
+  rhythmHistory: { loom: 'The past seven days', plain: 'Last 7 days' },
+  rhythmHistoryLede: {
+    loom: 'Each rhythm thread, day by day — today and the six before it.',
+    plain: 'Each routine task, day by day — today and the six before it.',
+  },
+  rhythmHistoryEmpty: {
+    loom: 'Nothing woven into a rhythm yet — set a skein as your rhythm and cast it onto a warp to begin.',
+    plain: 'No routine tasks yet — flag a project as your routine and add it to a week to begin.',
+  },
+  rhythmDayNone: { loom: 'not cast', plain: 'not added' },
+  rhythmDayOff: { loom: 'not a rhythm day', plain: 'not scheduled' },
+
   // ── Search / trace ──
   // Short so it never truncates in the compact toolbar.
   searchPlaceholder: { loom: 'Trace…', plain: 'Search' },

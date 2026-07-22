@@ -15,6 +15,7 @@ import VerbBar from './components/VerbBar.jsx'
 import SettingsModal from './components/SettingsModal.jsx'
 import RewarpRitual from './components/RewarpRitual.jsx'
 import DraftsModal from './components/DraftsModal.jsx'
+import RhythmHistoryModal from './components/RhythmHistoryModal.jsx'
 import styles from './App.module.css'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -36,6 +37,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [rewarpOpen, setRewarpOpen] = useState(false)
   const [draftsOpen, setDraftsOpen] = useState(false)
+  const [rhythmHistoryOpen, setRhythmHistoryOpen] = useState(false)
   // rhythms: Array<{ skeinName, days }> — any number of rhythm skeins
   const [rhythms, setRhythms] = useState(loadRhythms)
   const [focusedSkein, setFocusedSkein] = useState(null) // "Edit in rhythm" target
@@ -180,6 +182,8 @@ export default function App() {
             carryCount={carried.length}
             onRewarp={() => setRewarpOpen(true)}
             onDrafts={() => setDraftsOpen(true)}
+            hasRhythms={rhythms.length > 0}
+            onRhythmHistory={() => setRhythmHistoryOpen(true)}
           />
         )}
 
@@ -259,6 +263,13 @@ export default function App() {
         weekLabel={weekLabel(anchor)}
         actions={actions}
         rhythmSkeinNames={rhythmSkeinNames}
+      />
+
+      <RhythmHistoryModal
+        open={rhythmHistoryOpen}
+        onClose={() => setRhythmHistoryOpen(false)}
+        threads={loom.threads}
+        rhythms={rhythms}
       />
     </div>
   )

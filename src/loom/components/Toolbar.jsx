@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLexicon } from '../lib/lexiconContext.jsx'
 import { useUiStyle } from '../lib/uiStyleContext.jsx'
-import { UnwovenIcon, RhythmIcon, FoldIcon, RewarpIcon, DraftsIcon } from './icons.jsx'
+import { UnwovenIcon, RhythmIcon, RhythmHistoryIcon, FoldIcon, RewarpIcon, DraftsIcon } from './icons.jsx'
 import styles from './Toolbar.module.css'
 
 const FLASH_MS = 1800
@@ -17,7 +17,7 @@ const FLASH_MS = 1800
 // then by each thread's own rank within its skein, so the block reads
 // top-to-bottom by real cross-skein priority. Off keeps plain cast order.
 // Non-rhythm threads are unaffected. See WeekView for the sort implementation.
-export default function Toolbar({ filters, setFilter, carryCount, onRewarp, onDrafts }) {
+export default function Toolbar({ filters, setFilter, carryCount, onRewarp, onDrafts, hasRhythms, onRhythmHistory }) {
   const { t } = useLexicon()
   const { style } = useUiStyle()
 
@@ -83,6 +83,11 @@ export default function Toolbar({ filters, setFilter, carryCount, onRewarp, onDr
           <button type="button" className={styles.iconBtn} aria-label={t('Drafts')} title={t('Drafts')} onClick={onDrafts}>
             <DraftsIcon />
           </button>
+          {hasRhythms && (
+            <button type="button" className={styles.iconBtn} aria-label={t('rhythmHistory')} title={t('rhythmHistory')} onClick={onRhythmHistory}>
+              <RhythmHistoryIcon />
+            </button>
+          )}
         </div>
       </div>
 

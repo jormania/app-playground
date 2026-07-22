@@ -32,3 +32,7 @@ export const DraftsIcon = (p) => (
 export const RhythmIcon = (p) => (
   <svg {...base} {...p}><path d="M3 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0" /></svg>
 )
+// Rhythm history — a woven day marked done: the last-seven-days streak strip.
+export const RhythmHistoryIcon = (p) => (
+  <svg {...base} {...p}><circle cx="12" cy="12" r="7.5" /><path d="M9 12.2l2 2 4-4.4" /></svg>
+)
