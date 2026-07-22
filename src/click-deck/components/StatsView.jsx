@@ -81,12 +81,13 @@ export function StatsView({ games }) {
       .sort((a, b) => b.avgRating - a.avgRating)
       .slice(0, 5);
 
-    // 5. Financials
+    // 5. Financials — whole dollars only, no cents, so the stat boxes don't
+    // overflow their fixed width at higher totals.
     const gamesWithPrice = games.filter(g => g.price !== null && g.price !== undefined);
-    const totalSpent = gamesWithPrice.reduce((sum, g) => sum + g.price, 0).toFixed(2);
-    const backlogValue = gamesWithPrice.filter(g => g.status === 'Backlog').reduce((sum, g) => sum + g.price, 0).toFixed(2);
-    const completedValue = gamesWithPrice.filter(g => g.status === 'Completed').reduce((sum, g) => sum + g.price, 0).toFixed(2);
-    const avgPrice = gamesWithPrice.length > 0 ? (gamesWithPrice.reduce((sum, g) => sum + g.price, 0) / gamesWithPrice.length).toFixed(2) : 'N/A';
+    const totalSpent = Math.round(gamesWithPrice.reduce((sum, g) => sum + g.price, 0));
+    const backlogValue = Math.round(gamesWithPrice.filter(g => g.status === 'Backlog').reduce((sum, g) => sum + g.price, 0));
+    const completedValue = Math.round(gamesWithPrice.filter(g => g.status === 'Completed').reduce((sum, g) => sum + g.price, 0));
+    const avgPrice = gamesWithPrice.length > 0 ? Math.round(gamesWithPrice.reduce((sum, g) => sum + g.price, 0) / gamesWithPrice.length) : 'N/A';
 
     // The most recent nightly-cron sync across the whole collection — with no
     // indicator of this anywhere, there's no way to tell whether prices are
@@ -202,7 +203,7 @@ export function StatsView({ games }) {
             </ul>
           </div>
           <div className="cd-sub-panel">
-            <h4>HIGHEST RATED (MIN 2)</h4>
+            <h4>HIGHEST RATED</h4>
             <ul className="cd-stat-list slim">
               {stats.highestRatedDevs.map((d, i) => (
                 <li key={i}><span className="label">{d.name}</span> <span className="val">{d.avgRating.toFixed(1)} ★</span></li>
@@ -223,7 +224,7 @@ export function StatsView({ games }) {
             </ul>
           </div>
           <div className="cd-sub-panel">
-            <h4>HIGHEST RATED (MIN 3)</h4>
+            <h4>HIGHEST RATED</h4>
             <ul className="cd-stat-list slim">
               {stats.highestRatedTags.map((t, i) => (
                 <li key={i}><span className="label">{t.name}</span> <span className="val">{t.avgRating.toFixed(1)} ★</span></li>

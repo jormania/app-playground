@@ -321,7 +321,7 @@ export function App() {
           <span className="cd-banner-text" onClick={() => setIsDiscountOpen(true)}>
             {discountedGames.length} {discountedGames.length === 1 ? 'GAME' : 'GAMES'} ON SALE!
           </span>
-          <span className="cd-banner-cta" onClick={() => setIsDiscountOpen(true)}>[VIEW DISCOUNTS]</span>
+          <span className="cd-banner-cta" onClick={() => setIsDiscountOpen(true)}>[VIEW]</span>
           {/* Nothing to dismiss in persistent mode — hiding this avoids a button
               that would appear to do nothing (the banner just reappears). */}
           {!isBannerPersistent && (

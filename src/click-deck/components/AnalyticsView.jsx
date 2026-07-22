@@ -348,14 +348,20 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
         .cd-filter-row {
           display: flex;
           align-items: center;
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
           gap: 0.5rem;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+        .cd-filter-row::-webkit-scrollbar {
+          display: none;
         }
         .cd-filter-label {
           font-family: var(--cd-font-terminal);
           color: var(--cd-accent-cyan);
           font-size: 0.8rem;
           min-width: 60px;
+          flex-shrink: 0;
         }
         .cd-filter-btn {
           font-family: var(--cd-font-terminal);
@@ -365,6 +371,8 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
           color: var(--cd-text-muted);
           padding: 0.2rem 0.5rem;
           cursor: pointer;
+          flex-shrink: 0;
+          white-space: nowrap;
         }
         .cd-filter-btn:hover {
           color: var(--cd-accent-cyan);
