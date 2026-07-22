@@ -92,7 +92,7 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
       if (match) {
         let finalCoverUrl = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${match.id}/header.jpg`;
         try {
-          const coverRes = await fetch(`/api/steam-cover?appId=${match.id}`);
+          const coverRes = await fetch(`/api/steam-search?appId=${match.id}`);
           if (coverRes.ok) {
             const coverData = await coverRes.json();
             if (coverData.coverUrl) {

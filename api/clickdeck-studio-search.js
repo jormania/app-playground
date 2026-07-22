@@ -175,7 +175,7 @@ export default async function handler(req, res) {
         releaseDateString: releaseDateStr,
         year: parseYearFromReleaseDateString(releaseDateStr),
         price: data.price_overview ? data.price_overview.final / 100 : null,
-        headerImage: `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`,
+        headerImage: data.header_image || `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`,
         shortDescription: data.short_description || ''
       })
     }
