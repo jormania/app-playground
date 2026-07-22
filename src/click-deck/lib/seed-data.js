@@ -78,24 +78,29 @@ export const ALL_TAGS = [
   // Formats & interaction
   'Point & Click', 'SCUMM', 'SCUMM-like', 'Text Parser', 'Interactive Drama',
   'Walking Simulator', 'Puzzle', 'Puzzle-Heavy', 'Moon Logic Puzzles',
-  'Quick Time Events', 'RPG', 'Party Based', 'FMV', 'Episodic',
+  'Quick Time Events', 'RPG', 'Party Based', 'FMV', 'Episodic', 'Visual Novel',
+  'Interactive Fiction', 'Escape Room',
   // Perspective & art
   '2D', '3D', 'Isometric', 'First-Person', 'Pixel Art', 'Pixel Graphics',
   'Hand-Drawn', 'Comic Book Style', 'Minimalist', 'Cinematic', 'Tank Controls',
+  'Voxel', 'Low Poly', 'Cel-Shaded',
   // Genres & settings
   'Sci-Fi', 'Cyberpunk', 'Dystopian', 'Post-Apocalyptic', 'Steampunk', 'Fantasy',
   'Urban Fantasy', 'Magical Realism', 'Mythology', 'Horror', 'Psychological Horror',
   'Lovecraftian', 'Mystery', 'Detective', 'Thriller', 'Noir', 'Southern Gothic',
   'Americana', 'Historical', 'Archaeology', 'Politics', 'Pirates', 'Voodoo',
   'Supernatural', 'Afterlife', 'Alien', 'Automata', 'Submarine', 'Time Travel',
-  'Biker', 'Action-Adventure', 'Adventure', 'Exploration',
+  'Biker', 'Action-Adventure', 'Adventure', 'Exploration', 'Whodunit', 'Heist',
+  'Espionage', 'Folklore', 'Cults', 'Amnesia', 'Artificial Intelligence',
   // Tone & themes
   'Comedy', 'Satire', 'Meta', 'Serious', 'Dark', 'Mature', 'Tragedy',
   'Existential', 'Psychological', 'Surreal', 'Atmospheric', 'Cozy', 'Cute',
-  'Coming of Age', 'Nostalgia', 'LGBTQ+', 'Music',
+  'Coming of Age', 'Nostalgia', 'LGBTQ+', 'Music', 'Romance', 'Philosophy',
+  'Melancholy', 'Wholesome', 'Gothic',
   // Narrative shape
   'Narrative', 'Story Rich', 'Text-Heavy', 'Dialogue Heavy', 'Choices Matter',
-  'Multiple Endings', 'Linear', 'Short', 'Epic',
+  'Multiple Endings', 'Linear', 'Short', 'Epic', 'Time Loop', 'Non-Linear',
+  'Branching',
   // Meta / catalogue
   'Classic', 'Retro', 'Indie', 'Casual', 'Movie Tie-in', 'Magic',
   'Female Protagonist'
