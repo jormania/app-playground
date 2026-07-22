@@ -50,23 +50,31 @@ function formatAge(days) {
   return `${days} days ago`
 }
 
-// Subtle, text-only distinction for how firm a Coming Soon date is — no
-// badges or icons, just a colour shift on the same line that's already
-// there. "Overdue" means the expected window has already passed while the
-// game still sits in Coming Soon (a delay Steam hasn't reflected, or a stale
-// row) — worth a glance, not an alarm.
-function classifyExpectedDate(game) {
+// Resolves what an unreleased game's expected-date line should say and how
+// firm that date is — returns { label, kind } so the display string and its
+// colour class stay decided in one place. `kind` drives only a colour shift
+// on the line that's already there (no badges/icons): 'tba' muted, 'overdue'
+// a warning red (the expected window already passed while it still sits
+// Coming Soon — a delay Steam hasn't reflected, or a stale row), 'dated'
+// the normal accent.
+//
+// A Steam "Coming soon" string is folded into the vague bucket alongside TBA
+// and shown as just "Soon" — the section header already reads COMING SOON, so
+// repeating it verbatim on every card is noise, and "soon" is no more
+// concrete than TBA from a planning standpoint.
+function formatExpected(game) {
   const raw = (game.releaseDate || '').trim().toLowerCase()
-  if (!raw && !game.year) return 'tba'
-  if (raw === 'tba' || raw.includes('to be announced')) return 'tba'
+  if (!raw && !game.year) return { label: 'TBA', kind: 'tba' }
+  if (raw === 'tba' || raw.includes('to be announced')) return { label: 'TBA', kind: 'tba' }
+  if (raw === 'coming soon') return { label: 'Soon', kind: 'tba' }
   if (game.releaseDate) {
     const parsed = new Date(game.releaseDate)
     if (!Number.isNaN(parsed.getTime())) {
-      return parsed.getTime() < Date.now() ? 'overdue' : 'dated'
+      return { label: game.releaseDate, kind: parsed.getTime() < Date.now() ? 'overdue' : 'dated' }
     }
+    return { label: game.releaseDate, kind: 'dated' }
   }
-  if (game.year && game.year < new Date().getFullYear()) return 'overdue'
-  return 'dated'
+  return { label: String(game.year), kind: game.year < new Date().getFullYear() ? 'overdue' : 'dated' }
 }
 
 function downloadBlob(content, mimeType, filename) {
@@ -115,6 +123,32 @@ function WatchlistCover({ game, overlayLabel }) {
         </div>
       )}
     </CoverTag>
+  )
+}
+
+// The two [W] header actions are now small, quiet icon buttons — the daily
+// cron does the real work, so discovery and a manual re-check are both
+// optional nudges that shouldn't compete with the stat line. A magnifier
+// (find new games) and a circular-arrows refresh (re-check Steam) read
+// intuitively enough that they carry no label; the accessible name lives in
+// aria-label/title instead.
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" />
+      <line x1="21" y1="21" x2="16.5" y2="16.5" />
+    </svg>
+  )
+}
+
+function RefreshIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+      <polyline points="21 3 21 9 15 9" />
+    </svg>
   )
 }
 
@@ -346,18 +380,26 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
           <strong>{recentlyReleased.length}</strong> just released
         </p>
         <div className="cd-watchlist-actions">
-          <div className="cd-watchlist-action">
-            <button type="button" className="primary" onClick={handleFindNewGames} disabled={isSearching}>
-              {isSearching ? 'SEARCHING...' : '🔭 FIND NEW GAMES'}
-            </button>
-            <span className="cd-watchlist-action-hint">Search followed studios for titles not yet in your collection.</span>
-          </div>
-          <div className="cd-watchlist-action cd-watchlist-action-secondary">
-            <button type="button" onClick={handleRefresh} disabled={isRefreshing}>
-              {isRefreshing ? 'CHECKING...' : '🔄 REFRESH RELEASE DATES'}
-            </button>
-            <span className="cd-watchlist-action-hint">Maintenance — re-check Steam for anything that has launched.</span>
-          </div>
+          <button
+            type="button"
+            className={`cd-watchlist-icon-btn ${isSearching ? 'is-busy' : ''}`}
+            onClick={handleFindNewGames}
+            disabled={isSearching}
+            aria-label="Find new games from followed studios"
+            title="Find new games"
+          >
+            <SearchIcon />
+          </button>
+          <button
+            type="button"
+            className={`cd-watchlist-icon-btn ${isRefreshing ? 'is-busy' : ''}`}
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            aria-label="Refresh release dates"
+            title="Refresh release dates"
+          >
+            <RefreshIcon />
+          </button>
         </div>
       </div>
 
@@ -393,8 +435,7 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
             {comingSoon.map(game => {
               const age = daysSince(game.priceUpdatedAt)
               const isStale = age !== null && age > STALE_DAYS
-              const expected = game.releaseDate || (game.year ? String(game.year) : 'TBA')
-              const dateKind = classifyExpectedDate(game)
+              const { label: expected, kind: dateKind } = formatExpected(game)
               return (
                 <div key={game.id} className="cd-watchlist-card cd-panel">
                   <WatchlistCover game={game} overlayLabel={`🔭 ${expected}`} />
@@ -504,34 +545,62 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
           flex-direction: column;
           gap: 1.5rem;
         }
+        /* Stat line and the two optional action icons share one row — the
+           numbers lead, the actions sit quietly at the far end. */
         .cd-watchlist-header {
           background: rgba(0, 0, 0, 0.2);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 1rem;
+          flex-wrap: wrap;
         }
         .cd-watchlist-stat-line {
           font-family: var(--cd-font-terminal);
           color: var(--cd-text-primary);
-          margin: 0 0 1rem;
+          margin: 0;
         }
         .cd-watchlist-stat-line strong {
           color: var(--cd-accent-cyan);
         }
         .cd-watchlist-actions {
           display: flex;
-          gap: 1.5rem;
-          flex-wrap: wrap;
+          gap: 0.5rem;
+          flex-shrink: 0;
         }
-        .cd-watchlist-action {
-          display: flex;
-          flex-direction: column;
-          gap: 0.3rem;
-        }
-        .cd-watchlist-action-hint {
-          font-size: 0.8rem;
+        /* Deliberately understated: muted, borderless, no uppercase label —
+           they should read as small utilities, not primary buttons. The
+           global button styles are overridden here to strip the chrome. */
+        .cd-watchlist-icon-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.4rem;
+          min-width: 0;
+          border: 1px solid transparent;
+          background: transparent;
           color: var(--cd-text-muted);
+          box-shadow: none;
+          cursor: pointer;
         }
-        .cd-watchlist-action-secondary button {
-          font-size: 1rem;
-          opacity: 0.8;
+        .cd-watchlist-icon-btn:hover:not(:disabled),
+        .cd-watchlist-icon-btn:focus-visible {
+          color: var(--cd-accent-cyan);
+          border-color: var(--cd-border-color);
+          box-shadow: none;
+        }
+        .cd-watchlist-icon-btn:disabled {
+          cursor: default;
+          opacity: 0.6;
+        }
+        .cd-watchlist-icon-btn.is-busy {
+          color: var(--cd-accent-cyan);
+        }
+        .cd-watchlist-icon-btn.is-busy svg {
+          animation: cdIconSpin 0.9s linear infinite;
+        }
+        @keyframes cdIconSpin {
+          to { transform: rotate(360deg); }
         }
         .cd-watchlist-section h3 {
           margin-top: 0;

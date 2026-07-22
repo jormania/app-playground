@@ -56,10 +56,15 @@ describe('WatchlistView', () => {
     expect(onEdit).toHaveBeenCalledWith(comingSoonGame)
   })
 
-  it('"Find New Games" is styled as the primary action; "Refresh Release Dates" is secondary', () => {
+  it('exposes Find New Games and Refresh as quiet, label-less icon buttons', () => {
     render(<WatchlistView games={[]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
-    expect(screen.getByText('🔭 FIND NEW GAMES').className).toContain('primary')
-    expect(screen.getByText('🔄 REFRESH RELEASE DATES').className).not.toContain('primary')
+    const find = screen.getByRole('button', { name: /find new games/i })
+    const refresh = screen.getByRole('button', { name: /refresh release dates/i })
+    expect(find.className).toContain('cd-watchlist-icon-btn')
+    expect(refresh.className).toContain('cd-watchlist-icon-btn')
+    // No visible text label — the accessible name comes from aria-label only.
+    expect(find.textContent).toBe('')
+    expect(refresh.textContent).toBe('')
   })
 
   it('gives a tiered candidate a coloured left-border accent and a tier tooltip — not stars', () => {
@@ -99,17 +104,25 @@ describe('WatchlistView', () => {
     expect(tbaLine.className).toContain('cd-expected-tba')
   })
 
+  it('folds a Steam "Coming soon" date into "Soon", coloured like TBA (not repeated verbatim under the COMING SOON header)', () => {
+    const comingSoonDate = { ...comingSoonGame, id: 'cs-soon', title: 'Soon Game', releaseDate: 'Coming soon', year: null }
+    render(<WatchlistView games={[comingSoonDate]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+    const line = screen.getByText(/EXPECTED: Soon/)
+    expect(line.textContent).not.toMatch(/Coming soon/i)
+    expect(line.className).toContain('cd-expected-tba')
+  })
+
   it('"Find New Games" toasts a message when there are no followed studios yet', async () => {
     const onToast = vi.fn()
     render(<WatchlistView games={[]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={onToast} />)
-    fireEvent.click(screen.getByText('🔭 FIND NEW GAMES'))
+    fireEvent.click(screen.getByRole('button', { name: /find new games/i }))
     await waitFor(() => expect(onToast).toHaveBeenCalledWith(expect.stringContaining('No followed studios yet')))
   })
 
   it('"Refresh Release Dates" toasts when there is nothing Coming Soon to check', async () => {
     const onToast = vi.fn()
     render(<WatchlistView games={[releasedGame]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={onToast} />)
-    fireEvent.click(screen.getByText('🔄 REFRESH RELEASE DATES'))
+    fireEvent.click(screen.getByRole('button', { name: /refresh release dates/i }))
     await waitFor(() => expect(onToast).toHaveBeenCalledWith('Nothing in Coming Soon to check.'))
   })
 
@@ -125,7 +138,7 @@ describe('WatchlistView', () => {
     const onToast = vi.fn()
 
     render(<WatchlistView games={[comingSoonGame]} onEdit={() => {}} onApplyGameUpdates={onApplyGameUpdates} onAddGame={() => {}} onToast={onToast} />)
-    fireEvent.click(screen.getByText('🔄 REFRESH RELEASE DATES'))
+    fireEvent.click(screen.getByRole('button', { name: /refresh release dates/i }))
 
     await waitFor(() => expect(onApplyGameUpdates).toHaveBeenCalled())
     const [updated] = onApplyGameUpdates.mock.calls[0]
