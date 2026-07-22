@@ -23,34 +23,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const steamRes = await fetch(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(term)}&l=english&cc=US`)
-    const data = await steamRes.json()
-    const items = data.items || []
-
-    if (items.length === 0) {
-      res.status(200).json({ items: [] })
-      return
-    }
-
-    // Fetch appdetails to get the correct hashed header_image URLs
-    const appIds = items.map(i => i.id).join(',')
-    const detailsRes = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appIds}&cc=US&filters=basic`)
-    const detailsData = await detailsRes.json()
-
-    res.status(200).json({
-      items: items.map(item => {
-        const detail = detailsData[item.id]
-        let coverUrl = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${item.id}/header.jpg`
-        if (detail && detail.success && detail.data && detail.data.header_image) {
-          coverUrl = detail.data.header_image
-        }
-        return {
-          id: item.id,
-          name: item.name,
-          coverUrl
-        }
-      })
-    })
+    const targetUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(term)}&l=english&cc=US`
+    const steamRes = await fetch(targetUrl)
+    const text = await steamRes.text()
+    
+    res.status(steamRes.status)
+    res.setHeader('Content-Type', 'application/json')
+    res.send(text || '{}')
   } catch (err) {
     res.status(502).json({ message: `Proxy could not reach Steam API: ${err.message}` })
   }

@@ -90,9 +90,22 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
       // by normalized title instead of trusting items[0] blindly.
       const { match, confident } = findBestSteamMatch(json.items, formData.title);
       if (match) {
+        let finalCoverUrl = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${match.id}/header.jpg`;
+        try {
+          const coverRes = await fetch(`/api/steam-cover?appId=${match.id}`);
+          if (coverRes.ok) {
+            const coverData = await coverRes.json();
+            if (coverData.coverUrl) {
+              finalCoverUrl = coverData.coverUrl;
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to fetch hashed cover url', e);
+        }
+
         setFormData(prev => ({
           ...prev,
-          coverUrl: match.coverUrl || `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${match.id}/header.jpg`,
+          coverUrl: finalCoverUrl,
           // Previously only the cover URL was saved here, never the App ID —
           // meaning a game whose cover came from this button would silently
           // never get pricing (the nightly cron only picks up games with a
