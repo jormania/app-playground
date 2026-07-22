@@ -11,7 +11,6 @@ import wanderlistRemindHandler from './api/wanderlist-remind.js'
 import steamSearchHandler from './api/steam-search.js'
 import clickDeckStudioSearchHandler from './api/clickdeck-studio-search.js'
 import clickDeckAppdetailsHandler from './api/clickdeck-appdetails.js'
-import runPythonScriptsHandler from './api/_run-python-scripts.js'
 
 // Stamps the real build/deploy time into every HTML entry as a <meta> tag.
 // On Vercel a fresh build runs on each deploy, so this equals the deploy date.
@@ -234,7 +233,6 @@ export default defineConfig({
     devApiRelay('/api/steam-search', steamSearchHandler, 'dev-steam-search-relay'),
     devBodyRelay('/api/clickdeck-studio-search', clickDeckStudioSearchHandler, 'dev-clickdeck-studio-search-relay'),
     devApiRelay('/api/clickdeck-appdetails', clickDeckAppdetailsHandler, 'dev-clickdeck-appdetails-relay'),
-    devBodyRelay('/api/run-python-scripts', runPythonScriptsHandler, 'dev-run-python-scripts-relay'),
   ],
   build: {
     rollupOptions: {

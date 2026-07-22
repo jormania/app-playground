@@ -1,6 +1,11 @@
 import { resolvePriceUpdate, buildPatchProperties } from './_lib/clickdeckPricing.js'
 import { resolveReleaseFlip, buildWatchlistPatchProperties } from './_lib/clickdeckWatchlist.js'
 
+// One Steam request per App ID (the multi-appid form is dead — see the loop
+// below) means a few-hundred-game collection needs well over the default
+// serverless budget. Vercel caps this at the plan's ceiling (300s on Pro).
+export const maxDuration = 300
+
 export default async function handler(req, res) {
   const token = process.env.CLICKDECK_NOTION_TOKEN
   const dbId = process.env.CLICKDECK_DB_ID
@@ -65,42 +70,42 @@ export default async function handler(req, res) {
       return
     }
 
-    // 2. Batch query Steam API
-    // The Steam API accepts a comma-separated list of appids.
-    // However, it can occasionally fail if we ask for too many at once, so we'll chunk into 15.
-    const CHUNK_SIZE = 15
+    // 2. Query Steam appdetails, ONE App ID per request.
+    // Steam's appdetails endpoint no longer accepts a comma-separated list of
+    // appids — the multi-appid form now returns HTTP 400 (verified July 2026,
+    // both with and without a filters param). It used to be batched 15 at a
+    // time here; that silently broke both the nightly pricing sync AND the
+    // Coming Soon -> Released auto-flip, since every chunk 400'd. A modest
+    // per-request delay keeps us well under Steam's ~200-req/5-min IP limit
+    // for a collection of a few hundred games; individual failures are
+    // tolerated (skipped) rather than aborting the whole run.
     const results = []
 
-    for (let i = 0; i < gamesToUpdate.length; i += CHUNK_SIZE) {
-      const chunk = gamesToUpdate.slice(i, i + CHUNK_SIZE)
-      const appIdsStr = chunk.map(g => g.appId).join(',')
-
+    for (const game of gamesToUpdate) {
       // Widened from price_overview-only so the same call also tells us
       // whether a Coming Soon game has launched — previously "no price" and
       // "unreleased" were indistinguishable, which is exactly the ambiguity
       // the Watchlist feature's release_date.coming_soon check replaces.
-      const steamRes = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appIdsStr}&cc=US&filters=price_overview,release_date`)
+      const steamRes = await fetch(`https://store.steampowered.com/api/appdetails?appids=${game.appId}&cc=US&filters=price_overview,release_date`)
 
       if (!steamRes.ok) {
-        console.error(`Steam API failed for chunk ${appIdsStr}`)
+        console.error(`Steam API failed for app ${game.appId}`)
+        await new Promise(r => setTimeout(r, 250))
         continue
       }
 
       const steamData = await steamRes.json()
-
-      for (const game of chunk) {
-        // Steam sometimes returns an empty array [] for invalid/delisted
-        // appids instead of an object — resolvePriceUpdate handles that.
-        const appData = steamData[game.appId.toString()]
-        const update = resolvePriceUpdate(game, appData)
-        const releaseFlip = resolveReleaseFlip(game, appData)
-        if (update || releaseFlip) {
-          results.push({ pageId: game.pageId, update, releaseFlip, flipped: Boolean(releaseFlip?.flipped) })
-        }
+      // Steam sometimes returns an empty array [] for invalid/delisted
+      // appids instead of an object — the resolvers handle that.
+      const appData = steamData[game.appId.toString()]
+      const update = resolvePriceUpdate(game, appData)
+      const releaseFlip = resolveReleaseFlip(game, appData)
+      if (update || releaseFlip) {
+        results.push({ pageId: game.pageId, update, releaseFlip, flipped: Boolean(releaseFlip?.flipped) })
       }
 
-      // polite delay
-      await new Promise(r => setTimeout(r, 1000))
+      // polite delay between per-app requests
+      await new Promise(r => setTimeout(r, 250))
     }
 
     // 3. Patch Notion for every game we successfully checked against Steam.

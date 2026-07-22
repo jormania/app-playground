@@ -6,11 +6,16 @@ import { refreshComingSoonGames, searchFollowedStudios, candidateToNewGame } fro
 
 const STALE_DAYS = 180
 
+// Cache the current search's candidates in sessionStorage so they survive a
+// switch to another view (or a reload) within the same tab session — a
+// "Find New Games" run is a real network round-trip you don't want to lose
+// just by clicking [T] and back. Cleared on add (per candidate) and naturally
+// gone when the tab closes.
 function getCachedCandidates() {
   try {
     const data = sessionStorage.getItem('cd_watchlist_candidates')
     return data ? JSON.parse(data) : null
-  } catch (e) {
+  } catch {
     return null
   }
 }
@@ -22,7 +27,10 @@ function setCachedCandidates(data) {
     } else {
       sessionStorage.removeItem('cd_watchlist_candidates')
     }
-  } catch (e) {}
+  } catch {
+    // sessionStorage can throw (private mode / quota) — a lost cache is
+    // harmless, the candidates still live in React state for this view.
+  }
 }
 
 function daysSince(dateStr) {
@@ -113,15 +121,14 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
     setAddingAppId(candidate.appId)
     try {
       await onAddGame(candidateToNewGame(candidate))
-      
-      // Fire and forget the background scripts
-      fetch('/api/run-python-scripts', { 
-        method: 'POST',
-        headers: {
-          'x-notion-token': localStorage.getItem('cd_notion_token') || '',
-          'x-notion-db': localStorage.getItem('cd_notion_db') || ''
-        }
-      }).catch(() => {})
+      // The candidate already carries its cover, price, tags and (for
+      // already-released titles) a description straight from the discovery
+      // search, and the nightly pricing cron keeps price/cover current from
+      // there — so no post-add enrichment step is needed. (An earlier
+      // approach fired a serverless endpoint that shelled out to the Python
+      // maintenance scripts; that never actually ran on Vercel, where a
+      // function is frozen the moment it responds, and one of the scripts it
+      // referenced isn't even deployed.)
 
       // Remove it from the local candidate list so it can't be added twice
       // in the same session without a fresh search.
@@ -172,7 +179,9 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
           <span className="cd-candidate-meta">
             {candidate.matchedStudio}
             {candidate.releaseDateString ? ` · ${candidate.releaseDateString}` : ''}
-            {candidate.price !== null ? ` · $${candidate.price.toFixed(2)}` : ''}
+            {/* `!= null` (not `!== null`) so a candidate with no price field at
+                all — undefined, not just null — doesn't crash on .toFixed. */}
+            {candidate.price != null ? ` · $${candidate.price.toFixed(2)}` : ''}
           </span>
           {isDup && (
             <span className={`cd-dup-flag ${isExactDup ? 'exact' : 'possible'}`}>

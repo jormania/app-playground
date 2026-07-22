@@ -108,52 +108,49 @@ def main():
         print("No games found with Steam App IDs.")
         return
 
-    print(f"Found {len(games_to_update)} games. Querying Steam in chunks...")
-    
-    CHUNK_SIZE = 15
+    print(f"Found {len(games_to_update)} games. Querying Steam one App ID at a time...")
+
+    # Steam's appdetails endpoint no longer accepts a comma-separated list of
+    # appids — the multi-appid form now returns HTTP 400 (verified July 2026).
+    # This used to chunk 15 at a time, which silently returned nothing. One
+    # request per App ID with a polite delay is the only form that works.
     results = []
 
-    for i in range(0, len(games_to_update), CHUNK_SIZE):
-        chunk = games_to_update[i:i + CHUNK_SIZE]
-        app_ids_str = ",".join([str(g["app_id"]) for g in chunk])
-        
-        url = f"https://store.steampowered.com/api/appdetails?appids={app_ids_str}&cc=US&filters=price_overview"
+    for game in games_to_update:
+        app_id_str = str(game["app_id"])
+        url = f"https://store.steampowered.com/api/appdetails?appids={app_id_str}&cc=US&filters=price_overview"
         req = urllib.request.Request(url)
         try:
             with urllib.request.urlopen(req, context=ctx) as response:
                 steam_data = json.loads(response.read().decode('utf-8'))
-                
-                if isinstance(steam_data, dict):
-                    for game in chunk:
-                        app_id_str = str(game["app_id"])
-                        app_data = steam_data.get(app_id_str)
-                        
-                        if isinstance(app_data, dict):
-                            data_obj = app_data.get("data")
-                            if app_data.get("success") and isinstance(data_obj, dict) and data_obj.get("price_overview"):
-                                new_price = data_obj["price_overview"]["final"] / 100.0
-                                discount = data_obj["price_overview"].get("discount_percent", 0)
-                                initial = data_obj["price_overview"].get("initial", data_obj["price_overview"]["final"]) / 100.0
-                                price_changed = (new_price != game["current_price"] or discount != game["current_discount"] or initial != game["current_initial"])
-                                results.append({
-                                    "page_id": game["page_id"],
-                                    "new_price": new_price,
-                                    "discount": discount,
-                                    "initial": initial,
-                                    "price_changed": price_changed
-                                })
-                            elif app_data.get("success"):
-                                # Free or unavailable
-                                price_changed = (game["current_price"] != 0.0 or game["current_discount"] != 0)
-                                results.append({"page_id": game["page_id"], "new_price": 0.0, "discount": 0, "initial": 0.0, "price_changed": price_changed})
-                            else:
-                                print(f"Skipping app_id {app_id_str}: success is False (delisted or region locked)")
-                        else:
-                            print(f"Skipping app_id {app_id_str}: app_data is not a dict (got {type(app_data)})")
+
+            app_data = steam_data.get(app_id_str) if isinstance(steam_data, dict) else None
+            if isinstance(app_data, dict):
+                data_obj = app_data.get("data")
+                if app_data.get("success") and isinstance(data_obj, dict) and data_obj.get("price_overview"):
+                    new_price = data_obj["price_overview"]["final"] / 100.0
+                    discount = data_obj["price_overview"].get("discount_percent", 0)
+                    initial = data_obj["price_overview"].get("initial", data_obj["price_overview"]["final"]) / 100.0
+                    price_changed = (new_price != game["current_price"] or discount != game["current_discount"] or initial != game["current_initial"])
+                    results.append({
+                        "page_id": game["page_id"],
+                        "new_price": new_price,
+                        "discount": discount,
+                        "initial": initial,
+                        "price_changed": price_changed
+                    })
+                elif app_data.get("success"):
+                    # Free or unavailable
+                    price_changed = (game["current_price"] != 0.0 or game["current_discount"] != 0)
+                    results.append({"page_id": game["page_id"], "new_price": 0.0, "discount": 0, "initial": 0.0, "price_changed": price_changed})
+                else:
+                    print(f"Skipping app_id {app_id_str}: success is False (delisted or region locked)")
+            else:
+                print(f"Skipping app_id {app_id_str}: app_data is not a dict (got {type(app_data)})")
         except Exception as e:
-            print(f"Failed to fetch chunk from Steam: {e}")
-            
-        time.sleep(1) # Polite delay
+            print(f"Failed to fetch app_id {app_id_str} from Steam: {e}")
+
+        time.sleep(0.25)  # Polite delay between per-app requests
 
     if not results:
         print("No games could be checked against Steam (all requests failed).")

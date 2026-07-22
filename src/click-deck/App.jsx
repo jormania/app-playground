@@ -240,17 +240,19 @@ export function App() {
     try {
       if (!isNew) {
         await McpConnector.updateGame(gameData.id, gameData)
+        // Only rewrite the page cover when it actually changed — otherwise a
+        // routine edit (status, rating, tags) would needlessly re-PATCH the
+        // cover on every save.
         const oldGame = previousGames.find(g => g.id === gameData.id)
         if (gameData.coverUrl !== undefined && gameData.coverUrl !== oldGame?.coverUrl) {
           await McpConnector.updateGameCover(gameData.id, gameData.coverUrl)
         }
       } else {
+        // addGame now sets the page cover in the creation payload itself, so
+        // no separate updateGameCover round-trip is needed here. Guarantee the
+        // cover is present in local state regardless of what Notion echoes back.
         const added = await McpConnector.addGame(gameData)
-        if (gameData.coverUrl) {
-          await McpConnector.updateGameCover(added.id, gameData.coverUrl)
-          added.coverUrl = gameData.coverUrl
-        }
-        setGames(prev => [...prev, { ...gameData, ...added }])
+        setGames(prev => [...prev, { ...gameData, ...added, coverUrl: gameData.coverUrl || added.coverUrl || '' }])
       }
     } catch (err) {
       setGames(previousGames)

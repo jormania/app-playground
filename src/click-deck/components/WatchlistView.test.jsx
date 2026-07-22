@@ -6,7 +6,9 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import { WatchlistView } from './WatchlistView'
 
 describe('WatchlistView', () => {
-  beforeEach(() => localStorage.clear())
+  // sessionStorage too: the candidate list is now cached there across view
+  // switches, so it must be cleared or a prior test's results leak in.
+  beforeEach(() => { localStorage.clear(); sessionStorage.clear() })
   afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
   const comingSoonGame = {
@@ -87,5 +89,35 @@ describe('WatchlistView', () => {
     expect(updated[0].releaseStatus).toBe('Released')
     expect(updated[0].releasedAt).toBeTruthy()
     await waitFor(() => expect(onToast).toHaveBeenCalledWith(expect.stringContaining('just released')))
+  })
+
+  it('restores cached candidates from sessionStorage on mount (survives a view switch)', () => {
+    const cached = {
+      notYetReleased: [{ appId: 999, title: 'Cached Upcoming', matchedStudio: 'Some Studio', comingSoon: true, releaseDateString: '2027', headerImage: 'x', duplicate: null }],
+      alreadyReleased: []
+    }
+    sessionStorage.setItem('cd_watchlist_candidates', JSON.stringify(cached))
+    render(<WatchlistView games={[]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+    expect(screen.getByText('Cached Upcoming')).toBeTruthy()
+    expect(screen.getByText('NOT YET RELEASED')).toBeTruthy()
+  })
+
+  it('adding a candidate does NOT fire the removed Python-runner endpoint (Wave 2 regression guard)', async () => {
+    const cached = {
+      notYetReleased: [{ appId: 999, title: 'Addable', matchedStudio: 'Some Studio', comingSoon: true, releaseDateString: '2027', headerImage: 'x', duplicate: null }],
+      alreadyReleased: []
+    }
+    sessionStorage.setItem('cd_watchlist_candidates', JSON.stringify(cached))
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) })
+    vi.stubGlobal('fetch', fetchMock)
+    const onAddGame = vi.fn().mockResolvedValue(undefined)
+
+    render(<WatchlistView games={[]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={onAddGame} onToast={() => {}} />)
+    fireEvent.click(screen.getByText('+ ADD'))
+
+    await waitFor(() => expect(onAddGame).toHaveBeenCalled())
+    // The old flow fired fetch('/api/run-python-scripts') here; nothing should hit it now.
+    const calledUrls = fetchMock.mock.calls.map(c => String(c[0]))
+    expect(calledUrls.some(u => u.includes('run-python-scripts'))).toBe(false)
   })
 })

@@ -66,20 +66,32 @@ export async function searchFollowedStudios(studios, games) {
 // Already-released candidates skip Coming Soon entirely and never get a
 // Released At stamp (see api/_lib/clickdeckWatchlist.js's header comment for
 // why a direct add must never pass through the flip resolver).
+//
+// Enrichment from the discovery search (tags from Steam genres, a description,
+// price/cover) is applied ONLY to already-released titles. A Coming Soon add
+// deliberately lands with empty tags and journal — you can't meaningfully tag
+// or review a game you haven't played, that's what the collection's 5-7 tag
+// policy is for, and it's what keeps the one-time "just released — add tags &
+// notes?" nudge (fired when it later flips) an honest prompt rather than a
+// no-op on top of pre-filled Steam marketing copy.
 export function candidateToNewGame(candidate) {
+  const enrich = !candidate.comingSoon
   return {
     title: candidate.title,
     year: candidate.year || null,
     developer: candidate.developer || candidate.matchedStudio || '',
-    tags: candidate.comingSoon ? [] : (candidate.tags || []).slice(0, 7),
+    tags: enrich ? (candidate.tags || []).slice(0, 7) : [],
     status: 'Backlog',
     rating: null,
-    journal: candidate.shortDescription || '',
+    journal: enrich ? (candidate.shortDescription || '') : '',
     appId: candidate.appId,
     releaseStatus: candidate.comingSoon ? 'Coming Soon' : 'Released',
     releasedAt: null,
     releaseDate: candidate.releaseDateString || '',
-    coverUrl: candidate.headerImage,
+    coverUrl: candidate.headerImage || '',
+    // Pre-order prices exist for some Coming Soon titles; recording them is
+    // harmless (Coming Soon games are excluded from Stats/value anyway) and
+    // the nightly cron corrects initial-vs-sale price the same night.
     price: candidate.price,
     initialPrice: candidate.price,
     discountPercent: 0

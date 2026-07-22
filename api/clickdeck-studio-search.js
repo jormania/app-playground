@@ -13,6 +13,10 @@
 // only ever talks to Steam.
 import { originAllowed, rateLimited, clientIp } from './_shared.js'
 
+// One search + up to PER_STUDIO_CAP one-at-a-time appdetails calls per studio,
+// across the whole followed list, can run past the default serverless budget.
+export const maxDuration = 300
+
 const CONFIDENCE_THRESHOLD = 0.5
 
 // Deliberately duplicated (not imported) from src/click-deck/lib/steamMatch.js
@@ -62,21 +66,38 @@ function parseYearFromReleaseDateString(dateStr) {
   return match ? parseInt(match[0], 10) : null
 }
 
+// How many search hits to keep per studio before the (one-at-a-time,
+// developer-verifying) appdetails pass. Steam returns results in relevance
+// order, so a studio's own games rank at/near the top for a search of its
+// name — this caps the appdetails fan-out (and thus total runtime) without
+// realistically dropping the studio's actual titles.
+const PER_STUDIO_CAP = 15
+
 async function searchSteamForStudio(name) {
-  const searchTerm = normalizeStudioName(name) || name;
-  const url = `https://store.steampowered.com/search/?term=${encodeURIComponent(searchTerm)}&l=english&cc=US`
+  // Search with the RAW studio name, not a normalized token. Steam's
+  // storesearch JSON API returns nothing at all for studio names (it's tuned
+  // for game titles), which is why this scrapes the /search/ results page —
+  // but normalizing the term first is actively harmful: "Wadjet Eye Games"
+  // collapses to "wadjeteye", which Steam matches to zero results, whereas
+  // the raw name returns ~40. Verified July 2026. The studioMatchesCandidate
+  // developer check downstream is what turns this loose term search into a
+  // precise "games actually BY this studio" result.
+  const url = `https://store.steampowered.com/search/?term=${encodeURIComponent(name)}&l=english&cc=US`
   const res = await fetch(url)
   if (!res.ok) return []
   const html = await res.text()
-  
-  const appIds = new Set()
+
+  const appIds = []
+  const seen = new Set()
   const regex = /data-ds-appid="(\d+)"/g
   let match
-  while ((match = regex.exec(html)) !== null) {
-    appIds.add(match[1])
+  while ((match = regex.exec(html)) !== null && appIds.length < PER_STUDIO_CAP) {
+    if (seen.has(match[1])) continue
+    seen.add(match[1])
+    appIds.push(match[1])
   }
-  
-  return Array.from(appIds).map(id => ({ id }))
+
+  return appIds.map(id => ({ id }))
 }
 
 async function fetchAppDetailsBatch(appIds) {
