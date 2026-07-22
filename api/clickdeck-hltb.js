@@ -88,17 +88,19 @@ export default async function handler(req, res) {
   try {
     const init = await getSearchInit()
     const results = await searchHltb(term, init)
-    // comp_plus is HLTB's "Main + Extra" stat — the plan calls it "Main +
-    // Sides" in the UI, same underlying number, just a friendlier label.
-    // Omit any candidate with no recorded time at all (comp_plus === 0)
-    // rather than offering a misleading "0h" match.
+    // comp_plus is HLTB's "Main + Extra" stat — the app calls it "Main +
+    // Sides", same underlying number, friendlier label. A less-played or
+    // newer title can have zero submissions for that specific stat while
+    // still having a real "Main Story" (comp_main) number on file — falling
+    // back to that rather than excluding the game outright (confirmed live:
+    // "Midnight Scenes: Among Graves" only has comp_main, comp_plus reads 0).
+    // Only omitted when NEITHER stat has any data at all.
     const items = results
-      .filter(g => g.comp_plus > 0)
-      .map(g => ({
-        id: g.game_id,
-        name: g.game_name,
-        hours: Math.round((g.comp_plus / 3600) * 10) / 10
-      }))
+      .map(g => {
+        const seconds = g.comp_plus > 0 ? g.comp_plus : g.comp_main
+        return seconds > 0 ? { id: g.game_id, name: g.game_name, hours: Math.round((seconds / 3600) * 10) / 10 } : null
+      })
+      .filter(Boolean)
     res.status(200).json({ items })
   } catch (err) {
     res.status(502).json({ message: `Could not reach HowLongToBeat: ${err.message}` })

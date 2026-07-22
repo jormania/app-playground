@@ -127,19 +127,27 @@ def search_hltb(title):
         )
         with urllib.request.urlopen(req, context=ctx) as response:
             data = json.loads(response.read().decode('utf-8'))
-            items = [g for g in data.get("data", []) if g.get("comp_plus", 0) > 0]
+            # comp_plus is HLTB's "Main + Extra" stat — the app labels it
+            # "Main + Sides", same number, friendlier label. A less-played or
+            # newer title can have zero submissions for that specific stat
+            # while still having a real "Main Story" (comp_main) number on
+            # file — fall back to that rather than excluding the game
+            # outright. Only skipped when NEITHER stat has any data.
+            items = []
+            for g in data.get("data", []):
+                seconds = g.get("comp_plus", 0) or g.get("comp_main", 0)
+                if seconds > 0:
+                    items.append((g, seconds))
             if not items:
                 return None
             target = normalize_title(title)
-            best_item, best_score = None, 0
-            for item in items:
+            best_item, best_seconds, best_score = None, 0, 0
+            for item, seconds in items:
                 score = containment_score(target, normalize_title(item.get("game_name", "")))
                 if score > best_score:
-                    best_score, best_item = score, item
+                    best_score, best_item, best_seconds = score, item, seconds
             if best_item and best_score >= CONFIDENCE_THRESHOLD:
-                # comp_plus is HLTB's "Main + Extra" stat in seconds — the app
-                # labels it "Main + Sides" in the UI, same underlying number.
-                return round(best_item["comp_plus"] / 3600, 1)
+                return round(best_seconds / 3600, 1)
             print(f"   (no confident title match among {len(items)} results — skipping rather than guessing)")
             return None
     except Exception as e:
