@@ -370,6 +370,18 @@ export function App() {
     return result
   }, [games, searchQuery, activeTags])
 
+  // Reused across renders to keep an already-visible game's position stable
+  // through a live in-place edit (rating a game while sorted by Highest
+  // Rated used to snap it to a new spot in the list immediately, moving the
+  // card out from under the cursor mid-click — confirmed live: it only
+  // showed up with more than one game in the filtered set, since with just
+  // one there's nowhere to jump to). Click Deck never re-fetches the whole
+  // collection after the initial load (see the "Optimistic UI" note above)
+  // — every later `games` change is a local edit to fields already on
+  // screen, so re-sorting live is never actually necessary except right
+  // after sort/filter itself changes or the matching set changes shape.
+  const sortOrderRef = useRef({ key: null, order: [] })
+
   const filteredGames = useMemo(() => {
     let result = [...baseFilteredGames]
 
@@ -377,26 +389,47 @@ export function App() {
       result = result.filter(g => g.status === statusFilter)
     }
 
+    const sortedFresh = [...result]
     if (sortBy === 'timeline') {
-      result.sort((a, b) => a.year - b.year)
+      sortedFresh.sort((a, b) => a.year - b.year)
     } else if (sortBy === 'recent') {
-      result.sort((a, b) => new Date(b.createdTime) - new Date(a.createdTime))
+      sortedFresh.sort((a, b) => new Date(b.createdTime) - new Date(a.createdTime))
     } else if (sortBy === 'rating') {
-      result.sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      sortedFresh.sort((a, b) => (b.rating || 0) - (a.rating || 0))
     } else if (sortBy === 'alpha') {
-      result.sort((a, b) => a.title.localeCompare(b.title))
+      sortedFresh.sort((a, b) => a.title.localeCompare(b.title))
     } else if (sortBy === 'longest') {
       // A game with no recorded length sorts last, not first — treating
       // "unknown" as if it were the longest would be misleading.
-      result.sort((a, b) => (b.lengthHours ?? -1) - (a.lengthHours ?? -1))
+      sortedFresh.sort((a, b) => (b.lengthHours ?? -1) - (a.lengthHours ?? -1))
     } else if (sortBy === 'shortest') {
       // Same "unknown sorts last" rule, mirrored for ascending order —
       // matches randomWeighting.js's convention of treating a missing value
       // as least-favored rather than excluding it outright.
-      result.sort((a, b) => (a.lengthHours ?? Infinity) - (b.lengthHours ?? Infinity))
+      sortedFresh.sort((a, b) => (a.lengthHours ?? Infinity) - (b.lengthHours ?? Infinity))
     }
-    return result
-  }, [baseFilteredGames, sortBy, statusFilter])
+
+    // Same sort/filter as last render: keep every still-matching game's
+    // existing position (only its displayed fields update in place), and
+    // append anything newly matching (an add, or a status/tag change that
+    // brought it into the current filter) in its freshly sorted relative
+    // order rather than an arbitrary one. A genuine sort/filter change —
+    // different key — always gets a full fresh sort.
+    const key = `${sortBy}|${statusFilter}|${searchQuery}|${activeTags.join(',')}`
+    const gameMap = new Map(result.map(g => [g.id, g]))
+    const prev = sortOrderRef.current
+    let orderedIds
+    if (prev.key === key) {
+      const stillPresent = prev.order.filter(id => gameMap.has(id))
+      const knownIds = new Set(stillPresent)
+      const freshlyMatched = sortedFresh.filter(g => !knownIds.has(g.id)).map(g => g.id)
+      orderedIds = [...stillPresent, ...freshlyMatched]
+    } else {
+      orderedIds = sortedFresh.map(g => g.id)
+    }
+    sortOrderRef.current = { key, order: orderedIds }
+    return orderedIds.map(id => gameMap.get(id))
+  }, [baseFilteredGames, sortBy, statusFilter, searchQuery, activeTags])
 
   // Timeline permanently excludes Coming Soon games — no toggle, a hard
   // rule (see project memory "click-deck-watchlist-plan"). [W] is the
