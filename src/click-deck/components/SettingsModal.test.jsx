@@ -92,6 +92,50 @@ describe('SettingsModal', () => {
     expect(screen.queryByText(/Initialize Followed Studios Database/)).toBeNull()
   })
 
+  describe('Last Sync panel', () => {
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('loads and displays the last cron run summary on open', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          kvConfigured: true,
+          lastRun: {
+            ranAt: '2026-07-24T02:00:00.000Z', processed: 121, checked: 121,
+            priceChanges: 3, releaseFlips: 1, flippedGames: [{ pageId: 'p1', title: 'Signet City', releaseDate: '15 Jul, 2026' }],
+            reviewsChecked: 40, successfullyPatched: 121, journalsDramatized: 2
+          }
+        })
+      }))
+      render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} />)
+
+      await waitFor(() => expect(screen.getByText(/Games checked:/)).toBeTruthy())
+      expect(screen.getByText(/Signet City \(15 Jul, 2026\)/)).toBeTruthy()
+    })
+
+    it('shows "No sync recorded yet" when nothing has run before', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ kvConfigured: true, lastRun: null }) }))
+      render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} />)
+      await waitFor(() => expect(screen.getByText('No sync recorded yet.')).toBeTruthy())
+    })
+
+    it('shows an error when the status check fails, without crashing', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => ({ message: 'Origin not allowed.' }) }))
+      render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} />)
+      await waitFor(() => expect(screen.getByText(/Origin not allowed/)).toBeTruthy())
+    })
+
+    it('REFRESH re-checks on demand', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ kvConfigured: true, lastRun: null }) })
+      vi.stubGlobal('fetch', fetchMock)
+      render(<SettingsModal onClose={() => {}} onSaveToken={() => {}} />)
+      await waitFor(() => expect(screen.getByText('No sync recorded yet.')).toBeTruthy())
+
+      fireEvent.click(screen.getByText('REFRESH'))
+      await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => url === '/api/clickdeck-pricing?status=1').length).toBeGreaterThanOrEqual(2))
+    })
+  })
+
   describe('Followed Studios database connection', () => {
     it('pasting an ID and clicking CONNECT persists it and loads the studio list', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
@@ -178,7 +222,10 @@ describe('SettingsModal', () => {
       fireEvent.click(screen.getByText('+ ADD'))
 
       await waitFor(() => {
-        const call = fetchMock.mock.calls.find(([, opts]) => JSON.parse(opts.body).path === 'pages')
+        // Guard against other fetch calls the component also fires (e.g. the
+        // Last Sync panel's GET with no `opts` at all) showing up in the same
+        // shared mock's call list.
+        const call = fetchMock.mock.calls.find(([, opts]) => opts?.body && JSON.parse(opts.body).path === 'pages')
         expect(call).toBeTruthy()
         const body = JSON.parse(call[1].body).body
         expect(body.properties['Personal Value Tier']).toEqual({ number: 2 })

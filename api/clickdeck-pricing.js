@@ -2,13 +2,37 @@ import { resolvePriceUpdate, buildPatchProperties } from './_lib/clickdeckPricin
 import { resolveReleaseFlip, buildWatchlistPatchProperties } from './_lib/clickdeckWatchlist.js'
 import { alreadyHasThemeHighlight, dramatizeRichText } from './_lib/clickdeckDramatize.js'
 import { fetchReviewSummary, buildReviewPatchProperties, isReviewCheckStale } from './_lib/clickdeckReviews.js'
+import { originAllowed, rateLimited, clientIp } from './_shared.js'
+import { kvGet, kvSet, kvConfigured } from './_lib/kv.js'
 
 // One Steam request per App ID (the multi-appid form is dead — see the loop
 // below) means a few-hundred-game collection needs well over the default
 // serverless budget. Vercel caps this at the plan's ceiling (300s on Pro).
 export const maxDuration = 300
 
+// The most recent run's summary — the same object this handler returns at
+// the end of a real sync — persisted so Settings' "Last Sync" panel can
+// show it without needing to trigger a fresh run just to check. Read via
+// ?status=1 (browser-facing, so gated by originAllowed/rateLimited like any
+// other endpoint this app exposes to the client — the main sync path below
+// is unchanged and still meant for Vercel Cron's server-to-server call).
+const LAST_RUN_KEY = 'clickdeck:pricing:last-run'
+
 export default async function handler(req, res) {
+  if (req.query && req.query.status) {
+    if (!originAllowed(req.headers.origin)) {
+      res.status(403).json({ message: 'Origin not allowed.' })
+      return
+    }
+    if (rateLimited(clientIp(req))) {
+      res.status(429).json({ message: 'Too many requests — try again shortly.' })
+      return
+    }
+    const lastRun = await kvGet(LAST_RUN_KEY)
+    res.status(200).json({ kvConfigured: kvConfigured(), lastRun })
+    return
+  }
+
   const token = process.env.CLICKDECK_NOTION_TOKEN
   const dbId = process.env.CLICKDECK_DB_ID
   const secret = process.env.CRON_SECRET
@@ -67,6 +91,9 @@ export default async function handler(req, res) {
 
     const gamesToUpdate = rows.map(page => ({
       pageId: page.id,
+      // Only read for the "Last Sync" summary's human-readable flip list
+      // below — never written back.
+      title: page.properties['Title']?.title?.[0]?.plain_text || 'Unknown',
       appId: parseInt(page.properties['Steam App ID']?.number || 0, 10),
       currentPrice: page.properties['Current Price']?.number,
       initialPrice: page.properties['Initial Price']?.number,
@@ -152,7 +179,7 @@ export default async function handler(req, res) {
       }
 
       if (update || releaseFlip || reviewSummary) {
-        results.push({ pageId: game.pageId, update, releaseFlip, reviewSummary, flipped: Boolean(releaseFlip?.flipped) })
+        results.push({ pageId: game.pageId, title: game.title, update, releaseFlip, reviewSummary, flipped: Boolean(releaseFlip?.flipped) })
       }
 
       // polite delay between per-app requests
@@ -199,7 +226,7 @@ export default async function handler(req, res) {
         // after) is auditable without needing to query Notion separately.
         if (result.flipped) {
           console.log(`[watchlist] Coming Soon -> Released: page ${result.pageId} (${result.releaseFlip.releaseDateString || 'no date given'})`)
-          flippedThisRun.push({ pageId: result.pageId, releaseDate: result.releaseFlip.releaseDateString })
+          flippedThisRun.push({ pageId: result.pageId, title: result.title, releaseDate: result.releaseFlip.releaseDateString })
         }
       } else {
         console.error(`Failed to patch Notion for page ${result.pageId}`, await patchRes.text())
@@ -269,7 +296,8 @@ export default async function handler(req, res) {
       console.error('Journal dramatization pass failed:', err.message)
     }
 
-    res.status(200).json({
+    const summary = {
+      ranAt: new Date().toISOString(),
       processed: gamesToUpdate.length,
       checked: results.length,
       priceChanges: results.filter(r => r.update?.priceChanged).length,
@@ -278,7 +306,12 @@ export default async function handler(req, res) {
       reviewsChecked: results.filter(r => r.reviewSummary).length,
       successfullyPatched: patched,
       journalsDramatized
-    })
+    }
+    // Best-effort — a KV write failure shouldn't fail a run that otherwise
+    // succeeded; Settings' "Last Sync" panel just shows the previous value
+    // (or "never") until the next successful run.
+    await kvSet(LAST_RUN_KEY, summary)
+    res.status(200).json(summary)
 
   } catch (err) {
     res.status(502).json({ message: err.message })

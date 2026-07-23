@@ -15,6 +15,30 @@ export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onShowRel
   const [releaseBannerPersistentState, setReleaseBannerPersistentState] = useState(() => isReleaseBannerPersistent())
   const [releaseBannerStatus, setReleaseBannerStatus] = useState('')
 
+  const [lastRun, setLastRun] = useState(null)
+  const [lastRunLoading, setLastRunLoading] = useState(false)
+  const [lastRunError, setLastRunError] = useState('')
+
+  // The nightly pricing cron's own last-run summary (price/release/review/
+  // journal-dramatization counts) — persisted server-side in KV by
+  // api/clickdeck-pricing.js so this can be checked without triggering a
+  // fresh run just to see it. Loaded on open; a REFRESH button re-checks
+  // without closing/reopening Settings.
+  const loadLastRun = async () => {
+    setLastRunLoading(true)
+    setLastRunError('')
+    try {
+      const res = await fetch('/api/clickdeck-pricing?status=1')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Could not check sync status.')
+      setLastRun(data.lastRun)
+    } catch (err) {
+      setLastRunError(err.message)
+    }
+    setLastRunLoading(false)
+  }
+  useEffect(() => { loadLastRun() }, [])
+
   const [studiosDbId, setStudiosDbId] = useState(() => StudiosConnector.getDbId() || '')
   const [studios, setStudios] = useState([])
   const [studiosLoading, setStudiosLoading] = useState(false)
@@ -287,6 +311,37 @@ export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onShowRel
             </p>
             {releaseBannerStatus && <div style={{ color: 'var(--cd-accent-cyan)', fontSize: '0.9rem', marginTop: '0.4rem' }}>{releaseBannerStatus}</div>}
           </div>
+        </div>
+
+        <div className="cd-form-group" style={{ marginTop: '1.5rem', padding: '1.5rem', border: '1px solid var(--cd-border-color)', background: 'rgba(0, 0, 0, 0.2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+            <label style={{ margin: 0 }}>LAST SYNC (NIGHTLY CRON)</label>
+            <button type="button" onClick={loadLastRun} disabled={lastRunLoading} style={{ whiteSpace: 'nowrap', fontSize: '0.85rem', padding: '0.2rem 0.6rem' }}>
+              {lastRunLoading ? 'CHECKING...' : 'REFRESH'}
+            </button>
+          </div>
+          <p style={{ fontSize: '0.9rem', color: 'var(--cd-text-muted)', marginBottom: '0.8rem', lineHeight: '1.4' }}>
+            What the nightly pricing cron actually did last time it ran — prices, Coming Soon → Released flips, Steam review checks, and journal auto-dramatization all in one run.
+          </p>
+          {lastRunError ? (
+            <p style={{ color: 'var(--cd-accent-amber)', fontSize: '0.9rem' }}>⚠ {lastRunError}</p>
+          ) : !lastRun ? (
+            <p className="cd-text-muted">{lastRunLoading ? 'Checking...' : 'No sync recorded yet.'}</p>
+          ) : (
+            <>
+              <p style={{ fontSize: '0.85rem', color: 'var(--cd-accent-cyan)', margin: '0 0 0.6rem' }}>
+                Ran {new Date(lastRun.ranAt).toLocaleString()}
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.9rem' }}>
+                <li>Games checked: <b>{lastRun.checked}</b> of {lastRun.processed} with a Steam App ID</li>
+                <li>Price changes: <b>{lastRun.priceChanges}</b></li>
+                <li>Release flips (Coming Soon → Released): <b>{lastRun.releaseFlips}</b>{lastRun.flippedGames?.length > 0 ? ` — ${lastRun.flippedGames.map(g => g.releaseDate ? `${g.title} (${g.releaseDate})` : g.title).join(', ')}` : ''}</li>
+                <li>Steam ratings checked: <b>{lastRun.reviewsChecked}</b></li>
+                <li>Journal entries auto-dramatized: <b>{lastRun.journalsDramatized}</b></li>
+                <li>Successfully patched: <b>{lastRun.successfullyPatched}</b></li>
+              </ul>
+            </>
+          )}
         </div>
 
         <div className="cd-form-group" style={{ marginTop: '1.5rem', padding: '1.5rem', border: '1px solid var(--cd-border-color)', background: 'rgba(0, 0, 0, 0.2)' }}>
