@@ -214,10 +214,10 @@ export default async function handler(req, res) {
         const parsedDate = new Date(releaseDateStr)
         if (!isNaN(parsedDate)) {
           const daysOld = (Date.now() - parsedDate.getTime()) / (1000 * 60 * 60 * 24)
-          if (daysOld > 365) continue
+          if (daysOld > 365 * 20) continue
         } else {
           const y = parseYearFromReleaseDateString(releaseDateStr)
-          if (y && (new Date().getFullYear() - y) > 1) continue
+          if (y && (new Date().getFullYear() - y) > 20) continue
         }
       }
 
