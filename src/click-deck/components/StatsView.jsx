@@ -308,8 +308,8 @@ export function StatsView({ games, watchlistGames = [] }) {
           {stats.steamConsensus.agreementGap ? (
             <p className="cd-price-sync-note">
               {Math.abs(stats.steamConsensus.agreementGap.diff) < 1
-                ? `YOU RATE RIGHT IN LINE WITH STEAM ON AVERAGE (${stats.steamConsensus.agreementGap.count} compared)`
-                : `YOU RATE THESE ${Math.abs(stats.steamConsensus.agreementGap.diff).toFixed(0)} PTS ${stats.steamConsensus.agreementGap.diff > 0 ? 'HIGHER' : 'LOWER'} THAN STEAM ON AVERAGE (${stats.steamConsensus.agreementGap.count} compared)`}
+                ? `OVER ${stats.steamConsensus.agreementGap.count} GAMES YOU'VE RATED, YOUR SCORE (★ ×20) TRACKS STEAM'S % CLOSELY`
+                : `OVER ${stats.steamConsensus.agreementGap.count} GAMES YOU'VE RATED, YOUR SCORE (★ ×20) AVERAGES ${Math.abs(stats.steamConsensus.agreementGap.diff).toFixed(0)} PTS ${stats.steamConsensus.agreementGap.diff > 0 ? 'HIGHER' : 'LOWER'} THAN STEAM'S %`}
             </p>
           ) : (
             <p className="cd-price-sync-note">NO OVERLAP YET BETWEEN YOUR RATINGS AND CHECKED STEAM REVIEWS.</p>

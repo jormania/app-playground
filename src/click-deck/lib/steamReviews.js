@@ -67,11 +67,20 @@ export const REVIEW_BUCKETS = {
   Negative: { label: 'Negative (<50%)', max: 50 }
 }
 
+// Buckets the ROUNDED percentage, not the raw float — every caller of this
+// (the badge's colour, the [A] filter) sits right next to the rounded
+// number the badge also displays (Math.round(...) + '%'), and those two
+// must never disagree. Confirmed live: a game stored at 89.75% displayed
+// "90%" (rounds up) but bucketed on the raw value as merely "Positive",
+// while a game at 90.6% ("91%") correctly showed "Acclaimed" — same
+// rounded-up boundary, two different colours, for what looked like the
+// same number on screen.
 export function reviewBucketOf(percent) {
   if (percent === null || percent === undefined || Number.isNaN(percent)) return null
-  if (percent >= 90) return 'Acclaimed'
-  if (percent >= 75) return 'Positive'
-  if (percent >= 50) return 'Mixed'
+  const rounded = Math.round(percent)
+  if (rounded >= 90) return 'Acclaimed'
+  if (rounded >= 75) return 'Positive'
+  if (rounded >= 50) return 'Mixed'
   return 'Negative'
 }
 

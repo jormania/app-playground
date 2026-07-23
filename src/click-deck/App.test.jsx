@@ -106,6 +106,24 @@ describe('App', () => {
     expect(screen.queryByText(/GAME ON SALE/)).toBeNull()
   })
 
+  it('orders the discount modal by discount percent, biggest deal first — not price, not collection order', async () => {
+    const { McpConnector } = await import('./lib/mcp-connector')
+    const discountGames = [
+      { id: 'd1', title: 'Small Discount Big Price', year: 2020, developer: 'X', status: 'Backlog', tags: [], journal: '', isDiscounted: true, discountPercent: 0.25, price: 14.99 },
+      { id: 'd2', title: 'Huge Discount Small Price', year: 2021, developer: 'Y', status: 'Backlog', tags: [], journal: '', isDiscounted: true, discountPercent: 0.8, price: 1.99 },
+      { id: 'd3', title: 'Middling Discount', year: 2022, developer: 'Z', status: 'Backlog', tags: [], journal: '', isDiscounted: true, discountPercent: 0.5, price: 5.99 }
+    ]
+    McpConnector.getGames.mockResolvedValueOnce(discountGames)
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText(/GAMES ON SALE/)).toBeTruthy())
+    fireEvent.click(screen.getByText(/GAMES ON SALE/))
+
+    await waitFor(() => expect(screen.getByText('ACTIVE_DISCOUNT')).toBeTruthy())
+    const titles = Array.from(document.querySelectorAll('.cd-discount-info h4')).map(h => h.textContent)
+    expect(titles).toEqual(['Huge Discount Small Price', 'Middling Discount', 'Small Discount Big Price'])
+  })
+
   it('toasts a price drop detected against the previously seen price', async () => {
     localStorage.setItem('cd_last_prices', JSON.stringify({ '2': 99.99 }))
     render(<App />)
@@ -354,6 +372,45 @@ describe('App', () => {
     })
   })
 
+  describe('Price (Asc)/(Desc) sort', () => {
+    const priceGames = [
+      { id: 'a', title: 'Cheap Game', year: 2000, developer: '', status: 'Backlog', tags: [], journal: '', price: 2.99 },
+      { id: 'b', title: 'Pricey Game', year: 2001, developer: '', status: 'Backlog', tags: [], journal: '', price: 49.99 },
+      { id: 'c', title: 'Unknown Price Game', year: 2002, developer: '', status: 'Backlog', tags: [], journal: '' },
+      { id: 'd', title: 'Mid Game', year: 2003, developer: '', status: 'Backlog', tags: [], journal: '', price: 14.99 }
+    ]
+
+    const titlesInOrder = () => [...document.querySelectorAll('.cd-game-title')].map(el => el.textContent)
+
+    it('sorts cheapest first in Price (Asc), with an unknown price pushed last rather than treated as free', async () => {
+      const { McpConnector } = await import('./lib/mcp-connector')
+      McpConnector.getGames.mockResolvedValueOnce(priceGames)
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Cheap Game')).toBeTruthy())
+
+      fireEvent.click(screen.getByText('Timeline'))
+      fireEvent.click(screen.getByText('Price (Asc)'))
+
+      await waitFor(() => {
+        expect(titlesInOrder()).toEqual(['Cheap Game', 'Mid Game', 'Pricey Game', 'Unknown Price Game'])
+      })
+    })
+
+    it('sorts priciest first in Price (Desc), with an unknown price still pushed last, not treated as most expensive', async () => {
+      const { McpConnector } = await import('./lib/mcp-connector')
+      McpConnector.getGames.mockResolvedValueOnce(priceGames)
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Cheap Game')).toBeTruthy())
+
+      fireEvent.click(screen.getByText('Timeline'))
+      fireEvent.click(screen.getByText('Price (Desc)'))
+
+      await waitFor(() => {
+        expect(titlesInOrder()).toEqual(['Pricey Game', 'Mid Game', 'Cheap Game', 'Unknown Price Game'])
+      })
+    })
+  })
+
   describe('sort menu keyboard navigation', () => {
     it('opens the menu and moves focus through the options with arrow keys', async () => {
       render(<App />)
@@ -373,7 +430,7 @@ describe('App', () => {
 
       // Wraps from the last option back to the first.
       fireEvent.keyDown(document.activeElement, { key: 'End' })
-      expect(document.activeElement.textContent).toBe('Shortest')
+      expect(document.activeElement.textContent).toBe('Price (Desc)')
       fireEvent.keyDown(document.activeElement, { key: 'ArrowDown' })
       expect(document.activeElement.textContent).toBe('Timeline')
     })

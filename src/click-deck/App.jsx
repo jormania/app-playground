@@ -30,7 +30,9 @@ const SORT_OPTIONS = [
   { value: 'steamRating', label: 'Steam Rating', group: 'METRICS' },
   { value: 'alpha', label: 'Alphabetical', group: 'METRICS' },
   { value: 'longest', label: 'Longest', group: 'METRICS' },
-  { value: 'shortest', label: 'Shortest', group: 'METRICS' }
+  { value: 'shortest', label: 'Shortest', group: 'METRICS' },
+  { value: 'priceAsc', label: 'Price (Asc)', group: 'METRICS' },
+  { value: 'priceDesc', label: 'Price (Desc)', group: 'METRICS' }
 ]
 const STATUS_FILTERS = ['All', 'Backlog', 'Playing', 'Completed', 'Abandoned']
 
@@ -418,6 +420,12 @@ export function App() {
       // matches randomWeighting.js's convention of treating a missing value
       // as least-favored rather than excluding it outright.
       sortedFresh.sort((a, b) => (a.lengthHours ?? Infinity) - (b.lengthHours ?? Infinity))
+    } else if (sortBy === 'priceAsc') {
+      // Cheapest first; no known price sorts last, not first — same
+      // "unknown ranks worst" rule as Longest/Shortest/Steam Rating above.
+      sortedFresh.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity))
+    } else if (sortBy === 'priceDesc') {
+      sortedFresh.sort((a, b) => (b.price ?? -1) - (a.price ?? -1))
     }
 
     // Same sort/filter as last render: keep every still-matching game's
@@ -457,7 +465,10 @@ export function App() {
   )
 
   const discountedGames = useMemo(() => {
+    // Biggest discount first — the deal you'd most regret missing, not
+    // whatever order the collection happens to come back in.
     return games.filter(g => g.status === 'Backlog' && g.discountPercent > 0)
+      .sort((a, b) => b.discountPercent - a.discountPercent)
   }, [games])
 
   const recentlyReleasedGames = useMemo(() => getRecentlyReleasedGames(games), [games])

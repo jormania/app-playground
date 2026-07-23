@@ -165,7 +165,7 @@ describe('StatsView', () => {
       render(<StatsView games={games} />)
       // Only "You Loved It" has both a rating and review data: yours = 5/5 =
       // 100%, Steam = 60% -> you rate 40 points higher on average.
-      expect(screen.getByText(/YOU RATE THESE 40 PTS HIGHER THAN STEAM ON AVERAGE \(1 compared\)/)).toBeTruthy()
+      expect(screen.getByText(/OVER 1 GAMES YOU'VE RATED, YOUR SCORE \(★ ×20\) AVERAGES 40 PTS HIGHER THAN STEAM'S %/)).toBeTruthy()
     })
   })
 })

@@ -63,15 +63,22 @@ describe('wasReviewChecked / hasReviewData', () => {
 })
 
 describe('reviewBucketOf', () => {
-  it('buckets by raw percentage at the documented boundaries', () => {
+  it('buckets by the ROUNDED percentage at the documented boundaries', () => {
     expect(reviewBucketOf(100)).toBe('Acclaimed')
     expect(reviewBucketOf(90)).toBe('Acclaimed')
-    expect(reviewBucketOf(89.9)).toBe('Positive')
+    expect(reviewBucketOf(89.4)).toBe('Positive') // rounds to 89, stays under
     expect(reviewBucketOf(75)).toBe('Positive')
-    expect(reviewBucketOf(74.9)).toBe('Mixed')
+    expect(reviewBucketOf(74.4)).toBe('Mixed') // rounds to 74, stays under
     expect(reviewBucketOf(50)).toBe('Mixed')
-    expect(reviewBucketOf(49.9)).toBe('Negative')
+    expect(reviewBucketOf(49.4)).toBe('Negative') // rounds to 49, stays under
     expect(reviewBucketOf(0)).toBe('Negative')
+  })
+
+  it('rounds a value UP across a bucket boundary rather than comparing the raw float — the confirmed live bug (89.7495% displayed "90%" but bucketed as Positive)', () => {
+    expect(reviewBucketOf(89.7495361781076)).toBe('Acclaimed') // displays "90%" — must match
+    expect(reviewBucketOf(89.9)).toBe('Acclaimed')
+    expect(reviewBucketOf(74.9)).toBe('Positive')
+    expect(reviewBucketOf(49.9)).toBe('Mixed')
   })
 
   it('returns null for missing/invalid input', () => {
