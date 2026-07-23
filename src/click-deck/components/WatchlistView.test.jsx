@@ -114,6 +114,24 @@ describe('WatchlistView', () => {
     expect(tbaLine.textContent).not.toContain('OVERDUE')
   })
 
+  it('a bare-year release date matching the current year is never overdue mid-year (regression: new Date("2026") silently parses as Jan 1st)', () => {
+    const thisYear = new Date().getFullYear()
+    const bareYearGame = { ...comingSoonGame, id: 'bare-year', title: 'Bare Year Game', releaseDate: String(thisYear), year: thisYear }
+    render(<WatchlistView games={[bareYearGame]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+    const line = screen.getByText(new RegExp(`EXPECTED: ${thisYear}`))
+    expect(line.className).not.toContain('cd-expected-overdue')
+    expect(line.textContent).not.toContain('OVERDUE')
+  })
+
+  it('a bare-year release date from a prior year is overdue', () => {
+    const lastYear = new Date().getFullYear() - 1
+    const staleYearGame = { ...comingSoonGame, id: 'stale-year', title: 'Stale Year Game', releaseDate: String(lastYear), year: lastYear }
+    render(<WatchlistView games={[staleYearGame]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+    const line = screen.getByText(new RegExp(`EXPECTED: ${lastYear}`))
+    expect(line.className).toContain('cd-expected-overdue')
+    expect(line.textContent).toContain('OVERDUE')
+  })
+
   it('folds a Steam "Coming soon" date into "Soon", coloured like TBA (not repeated verbatim under the COMING SOON header)', () => {
     const comingSoonDate = { ...comingSoonGame, id: 'cs-soon', title: 'Soon Game', releaseDate: 'Coming soon', year: null }
     render(<WatchlistView games={[comingSoonDate]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)

@@ -94,12 +94,13 @@ describe('resolveReleaseFlip', () => {
     expect(resolved.derivedTags).toBeNull()
   })
 
-  test('on flip, caps derived tags at 7', () => {
+  test('on flip, caps derived tags at 7 even when Steam text matches many more keywords', () => {
     const appData = {
       success: true,
       data: {
         release_date: { coming_soon: false, date: '15 Jul, 2026' },
-        genres: Array.from({ length: 10 }, (_, i) => ({ description: `Genre${i}` }))
+        genres: [{ description: 'Adventure' }, { description: 'Indie' }],
+        short_description: 'A noir detective mystery thriller full of supernatural cyberpunk dystopian gothic horror.'
       }
     }
     const resolved = resolveReleaseFlip(comingSoonGame, appData, now)

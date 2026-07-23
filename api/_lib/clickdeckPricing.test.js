@@ -36,16 +36,34 @@ describe('resolvePriceUpdate', () => {
     expect(update).toEqual({ newPrice: 4.99, newInitial: 9.99, newDiscount: 0.5, priceChanged: true })
   })
 
-  test('treats success:true with no price_overview as free/unavailable and clears a stale sale', () => {
+  test('is_free: true with no price_overview writes $0.00 and clears a stale sale', () => {
     const discountedGame = { currentPrice: 4.99, initialPrice: 9.99, discountPercent: 0.5 }
-    const update = resolvePriceUpdate(discountedGame, { success: true, data: {} })
+    const update = resolvePriceUpdate(discountedGame, { success: true, data: { is_free: true } })
     expect(update).toEqual({ newPrice: 0, newInitial: null, newDiscount: 0, priceChanged: true })
   })
 
   test('no-op when already free and no discount is stored', () => {
     const freeGame = { currentPrice: 0, initialPrice: null, discountPercent: 0 }
-    const update = resolvePriceUpdate(freeGame, { success: true, data: {} })
+    const update = resolvePriceUpdate(freeGame, { success: true, data: { is_free: true } })
     expect(update.priceChanged).toBe(false)
+  })
+
+  test('not free, no price_overview (e.g. a Coming Soon title with no pre-order price yet) never writes $0.00 — leaves price fields untouched', () => {
+    const blankGame = { currentPrice: null, initialPrice: null, discountPercent: null }
+    const update = resolvePriceUpdate(blankGame, { success: true, data: { is_free: false } })
+    expect(update).toEqual({ newPrice: null, newInitial: null, newDiscount: null, priceChanged: false })
+  })
+
+  test('not free, no price_overview never clobbers an existing real price with $0.00', () => {
+    const pricedGame = { currentPrice: 19.99, initialPrice: 19.99, discountPercent: 0 }
+    const update = resolvePriceUpdate(pricedGame, { success: true, data: {} })
+    expect(update.priceChanged).toBe(false)
+    expect(update.newPrice).toBeNull()
+  })
+
+  test('still returns a non-null result (so Price Updated At stamps) even with nothing to report', () => {
+    const update = resolvePriceUpdate({ currentPrice: null }, { success: true, data: {} })
+    expect(update).not.toBeNull()
   })
 })
 

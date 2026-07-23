@@ -68,6 +68,18 @@ function formatExpected(game) {
   if (raw === 'tba' || raw.includes('to be announced')) return { label: 'TBA', kind: 'tba' }
   if (raw === 'coming soon') return { label: 'Soon', kind: 'tba' }
   if (game.releaseDate) {
+    // A bare 4-digit year ("2026") is one of the display strings Steam
+    // returns when it only knows the year, not a specific date —
+    // `new Date("2026")` silently parses that as January 1st, which then
+    // reads as "overdue" the moment the calendar turns past New Year's Day
+    // even though the actual expected window (the rest of that year)
+    // hasn't passed. Treat a bare year the same as the year-only fallback
+    // below: overdue only once the current year has moved past it, never
+    // mid-year.
+    if (/^\d{4}$/.test(game.releaseDate.trim())) {
+      const year = parseInt(game.releaseDate.trim(), 10)
+      return { label: game.releaseDate, kind: year < new Date().getFullYear() ? 'overdue' : 'dated' }
+    }
     const parsed = new Date(game.releaseDate)
     if (!Number.isNaN(parsed.getTime())) {
       return { label: game.releaseDate, kind: parsed.getTime() < Date.now() ? 'overdue' : 'dated' }

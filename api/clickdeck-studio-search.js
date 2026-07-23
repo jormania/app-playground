@@ -12,6 +12,7 @@
 // (reusing steamMatch.js) after receiving these candidates. This endpoint
 // only ever talks to Steam.
 import { originAllowed, rateLimited, clientIp } from './_shared.js'
+import { inferTagsFromSteamData, inferMatureTag } from './_lib/clickdeckTagInference.js'
 
 // One search + up to PER_STUDIO_CAP one-at-a-time appdetails calls per studio,
 // across the whole followed list, can run past the default serverless budget.
@@ -186,10 +187,20 @@ export default async function handler(req, res) {
         }
       }
 
-      let tags = []
-      if (data.genres && Array.isArray(data.genres)) {
-        tags = data.genres.map(g => g.description).filter(Boolean)
+      // Matched against Click Deck's own curated Tags vocabulary (genre
+      // passthrough + description-text keyword matching), not a raw
+      // Steam-genre-list passthrough — Steam's genres alone are broad and
+      // generic (Adventure, Indie, RPG), nowhere near this collection's 5-7
+      // tag policy. See api/_lib/clickdeckTagInference.js for the full
+      // rationale. Mature is prioritized first (a required_age-based
+      // signal, not a keyword guess) so it never gets pushed out by the cap.
+      const tags = []
+      const mature = inferMatureTag(data)
+      if (mature) tags.push(mature)
+      for (const t of inferTagsFromSteamData(data.genres, [data.short_description, data.about_the_game, data.detailed_description])) {
+        if (!tags.includes(t)) tags.push(t)
       }
+      const cappedTags = tags.slice(0, 7)
 
       candidates.push({
         appId,
@@ -206,7 +217,7 @@ export default async function handler(req, res) {
         price: data.price_overview ? data.price_overview.final / 100 : null,
         headerImage: data.header_image || `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`,
         shortDescription: data.short_description || '',
-        tags
+        tags: cappedTags
       })
     }
 

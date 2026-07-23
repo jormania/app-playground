@@ -1,3 +1,5 @@
+import { inferTagsFromSteamData, inferMatureTag } from './clickdeckTagInference.js'
+
 // Shared "did this Coming Soon game just release" resolver — used by the
 // nightly pricing cron (api/clickdeck-pricing.js, widened to also fetch
 // release_date) and mirrored client-side by
@@ -16,6 +18,19 @@ export function parseYearFromReleaseDateString(dateStr) {
   if (!dateStr || typeof dateStr !== 'string') return null
   const match = dateStr.match(/\b(19|20)\d{2}\b/)
   return match ? parseInt(match[0], 10) : null
+}
+
+// Mature is prioritized first (a reliable required_age-based signal, not a
+// keyword guess) so it never gets pushed out by the 7-tag cap; the rest
+// come from inferTagsFromSteamData's genre-passthrough + keyword matching.
+function buildInferredTags(data) {
+  const tags = []
+  const mature = inferMatureTag(data)
+  if (mature) tags.push(mature)
+  for (const t of inferTagsFromSteamData(data.genres, [data.short_description, data.about_the_game, data.detailed_description])) {
+    if (!tags.includes(t)) tags.push(t)
+  }
+  return tags.slice(0, 7)
 }
 
 // Given one Notion-side game row (needs `releaseStatus`, plus `tags`/
@@ -45,18 +60,23 @@ export function parseYearFromReleaseDateString(dateStr) {
 //     just at the flip) — a still-in-development game's Steam header image
 //     can go from a generic placeholder to real key art at any point, and
 //     this call already has `header_image` in hand for free.
-//   - Tags, journal and developer are derived from Steam (genres,
-//     short_description, developers[0]) at the moment of the flip itself,
-//     and ONLY when the game doesn't already have one — a Coming Soon add
-//     always lands with tags/journal blank (see watchlistActions.js's
-//     candidateToNewGame; developer is normally set at add-time too, but a
-//     manually-created row could still be missing it), so this is what
-//     turns that intentional blank into a real starting point the instant
-//     there's something to fill it with, mirroring the enrichment an
-//     already-released discovery add gets immediately. If the field is
-//     already populated (e.g. the user hand-tagged/wrote notes on it
-//     pre-release), derivation is skipped — this never overwrites a human's
-//     own work. Length (hrs) is deliberately NEVER auto-derived here, at
+//   - Tags, journal and developer are derived from Steam at the moment of
+//     the flip itself, and ONLY when the game doesn't already have one — a
+//     Coming Soon add always lands with tags/journal blank (see
+//     watchlistActions.js's candidateToNewGame; developer is normally set
+//     at add-time too, but a manually-created row could still be missing
+//     it), so this is what turns that intentional blank into a real
+//     starting point the instant there's something to fill it with,
+//     mirroring the enrichment an already-released discovery add gets
+//     immediately. Tags come from `inferTagsFromSteamData`/`inferMatureTag`
+//     (clickdeckTagInference.js) — Click Deck's own curated ~118-tag
+//     vocabulary matched against Steam's genres + description text, NOT a
+//     raw genre-list passthrough (Steam's genres alone are broad/generic —
+//     Adventure, Indie, RPG — nowhere near this collection's 5-7 tag
+//     policy). If the field is already populated (e.g. the user
+//     hand-tagged/wrote notes on it pre-release), derivation is skipped —
+//     this never overwrites a human's own work. Length (hrs) is
+//     deliberately NEVER auto-derived here, at
 //     flip or otherwise — HowLongToBeat almost never has real submission
 //     data for a game on its actual release day, and its scrape is already
 //     the most fragile integration in the app (see clickdeck-hltb.js); it
@@ -91,9 +111,8 @@ export function resolveReleaseFlip(game, appData, now = new Date()) {
     }
   }
 
-  const derivedTags = (!game.tags || game.tags.length === 0) && Array.isArray(data.genres)
-    ? data.genres.map(g => g.description).filter(Boolean).slice(0, 7)
-    : null
+  const inferredTags = (!game.tags || game.tags.length === 0) ? buildInferredTags(data) : []
+  const derivedTags = inferredTags.length > 0 ? inferredTags : null
   const derivedJournal = !game.journal && data.short_description ? data.short_description : null
   const derivedDeveloper = !game.developer && Array.isArray(data.developers) && data.developers[0]
     ? data.developers[0]

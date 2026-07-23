@@ -42,7 +42,7 @@ describe('watchlistResolver (client-side twin)', () => {
     expect(resolveReleaseFlip({ releaseStatus: 'Coming Soon' }, appData, now).releaseDateString).toBe('TBA')
   })
 
-  it('on flip, derives tags and journal from Steam when both are blank', () => {
+  it('on flip, derives tags (genre passthrough + description keyword matches) and journal from Steam when both are blank', () => {
     const appData = {
       success: true,
       data: {
@@ -52,7 +52,7 @@ describe('watchlistResolver (client-side twin)', () => {
       }
     }
     const resolved = resolveReleaseFlip({ releaseStatus: 'Coming Soon', tags: [], journal: '' }, appData, now)
-    expect(resolved.derivedTags).toEqual(['Adventure', 'Indie'])
+    expect(resolved.derivedTags).toEqual(['Adventure', 'Indie', 'Time Travel'])
     expect(resolved.derivedJournal).toBe('A time-travel adventure.')
   })
 

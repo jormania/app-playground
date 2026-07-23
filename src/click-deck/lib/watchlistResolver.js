@@ -7,10 +7,25 @@
 // a game object before calling McpConnector.updateGame), since the server
 // copy returns raw Notion PATCH properties instead.
 
+import { inferTagsFromSteamData, inferMatureTag } from './tagInference'
+
 export function parseYearFromReleaseDateString(dateStr) {
   if (!dateStr || typeof dateStr !== 'string') return null
   const match = dateStr.match(/\b(19|20)\d{2}\b/)
   return match ? parseInt(match[0], 10) : null
+}
+
+// Mature is prioritized first (a reliable required_age-based signal, not a
+// keyword guess) so it never gets pushed out by the 7-tag cap; the rest
+// come from inferTagsFromSteamData's genre-passthrough + keyword matching.
+function buildInferredTags(data) {
+  const tags = []
+  const mature = inferMatureTag(data)
+  if (mature) tags.push(mature)
+  for (const t of inferTagsFromSteamData(data.genres, [data.short_description, data.about_the_game, data.detailed_description])) {
+    if (!tags.includes(t)) tags.push(t)
+  }
+  return tags.slice(0, 7)
 }
 
 // See api/_lib/clickdeckWatchlist.js's resolveReleaseFlip for the full
@@ -39,9 +54,8 @@ export function resolveReleaseFlip(game, appData, now = new Date()) {
     }
   }
 
-  const derivedTags = (!game.tags || game.tags.length === 0) && Array.isArray(data.genres)
-    ? data.genres.map(g => g.description).filter(Boolean).slice(0, 7)
-    : null
+  const inferredTags = (!game.tags || game.tags.length === 0) ? buildInferredTags(data) : []
+  const derivedTags = inferredTags.length > 0 ? inferredTags : null
   const derivedJournal = !game.journal && data.short_description ? data.short_description : null
   const derivedDeveloper = !game.developer && Array.isArray(data.developers) && data.developers[0]
     ? data.developers[0]
