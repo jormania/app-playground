@@ -29,6 +29,24 @@ const SORT_OPTIONS = [
 ]
 const STATUS_FILTERS = ['All', 'Backlog', 'Playing', 'Completed', 'Abandoned']
 
+// Rating is a final verdict on a game you're actually done with — either
+// played it through (Completed) or given up on it for good (Abandoned;
+// "not my cup of tea" is itself a rating-worthy verdict). Moving OUT of
+// both of those into Backlog/Playing clears a stale rating the same way
+// leaving Completed clears Completed At, rather than silently carrying
+// last time's rating onto a game that isn't actually judged anymore.
+// Moving BETWEEN Completed and Abandoned keeps the rating — both are
+// final-verdict states. Shared by handleUpdateStatus (GameCard's status
+// pills, which always pass the game's own current rating unchanged) and
+// handleSaveGame (the Editor, whose rating field just gets hidden — not
+// cleared — once the picked status moves out of a final-verdict state).
+const FINAL_VERDICT_STATUSES = new Set(['Completed', 'Abandoned'])
+function resolveRatingOnStatusChange(prevStatus, nextStatus, requestedRating) {
+  const wasFinalVerdict = FINAL_VERDICT_STATUSES.has(prevStatus)
+  const isFinalVerdict = FINAL_VERDICT_STATUSES.has(nextStatus)
+  return (wasFinalVerdict && !isFinalVerdict) ? null : requestedRating
+}
+
 export function App() {
   const [isInitialized, setIsInitialized] = useState(McpConnector.isInitialized())
   const [games, setGames] = useState([])
@@ -234,6 +252,14 @@ export function App() {
   const handleSaveGame = async (gameData) => {
     const isNew = !gameData.id
     const previousGames = games
+    const oldGame = !isNew ? previousGames.find(g => g.id === gameData.id) : null
+    // The Editor's rating field is only hidden (not cleared) once the
+    // picked status moves out of a final-verdict state — see
+    // resolveRatingOnStatusChange's header comment. Without this, a save
+    // that changes status away from Completed/Abandoned while the form
+    // still holds the old rating value would silently carry it forward.
+    // No-ops for a brand-new add (no oldGame to have "left" a status from).
+    gameData = { ...gameData, rating: resolveRatingOnStatusChange(oldGame?.status, gameData.status, gameData.rating) }
     if (!isNew) {
       setGames(prev => prev.map(g => g.id === gameData.id ? { ...g, ...gameData } : g))
     }
@@ -245,7 +271,6 @@ export function App() {
         // Only rewrite the page cover when it actually changed — otherwise a
         // routine edit (status, rating, tags) would needlessly re-PATCH the
         // cover on every save.
-        const oldGame = previousGames.find(g => g.id === gameData.id)
         if (gameData.coverUrl !== undefined && gameData.coverUrl !== oldGame?.coverUrl) {
           await McpConnector.updateGameCover(gameData.id, gameData.coverUrl)
         }
@@ -265,6 +290,9 @@ export function App() {
   const handleUpdateStatus = async (id, status, rating) => {
     const previousGames = games
     const prevGame = previousGames.find(g => g.id === id)
+    const wasCompleted = prevGame?.status === 'Completed'
+    const isCompleted = status === 'Completed'
+
     // Completed At is only ever stamped on an *observed* transition through
     // this exact code path — never on a direct add or Editor save of an
     // already-Completed game (same rule as Released At in
@@ -273,14 +301,20 @@ export function App() {
     // and only once the schema patch is present (prevGame.completedAt !== undefined).
     let completedAt
     if (prevGame && prevGame.completedAt !== undefined) {
-      const wasCompleted = prevGame.status === 'Completed'
-      const isCompleted = status === 'Completed'
       if (!wasCompleted && isCompleted) completedAt = new Date().toISOString().slice(0, 10)
       else if (wasCompleted && !isCompleted) completedAt = null
     }
-    setGames(prev => prev.map(g => g.id === id ? { ...g, status, rating, ...(completedAt !== undefined ? { completedAt } : {}) } : g))
+
+    // See resolveRatingOnStatusChange's header comment. GameCard's
+    // status-pill buttons always pass the game's own current rating
+    // unchanged, so without this a rating set once would linger forever;
+    // the star-rating buttons never trigger the clearing branch — they
+    // always pass the game's own current status.
+    const nextRating = resolveRatingOnStatusChange(prevGame?.status, status, rating)
+
+    setGames(prev => prev.map(g => g.id === id ? { ...g, status, rating: nextRating, ...(completedAt !== undefined ? { completedAt } : {}) } : g))
     try {
-      await McpConnector.updateGameStatus(id, status, rating, completedAt)
+      await McpConnector.updateGameStatus(id, status, nextRating, completedAt)
     } catch (err) {
       setGames(previousGames)
       showToast(`UPDATE FAILED: ${err.message || 'unknown error'}`)

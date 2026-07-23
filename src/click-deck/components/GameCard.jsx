@@ -108,7 +108,7 @@ export function GameCard({ game, onEdit, onUpdateStatus, isNew = false }) {
         <span className="cd-status" style={{ color: getStatusColor(game.status) }}>
           [{game.status}]
         </span>
-        {game.status === 'Completed' && (
+        {(game.status === 'Completed' || game.status === 'Abandoned') && (
           <>
             <span className="cd-separator">|</span>
             <span className="cd-rating" role="group" aria-label={`Rating: ${game.rating || 0} of 5 stars`}>

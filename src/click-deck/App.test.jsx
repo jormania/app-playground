@@ -200,6 +200,44 @@ describe('App', () => {
         expect(McpConnector.updateGameStatus).toHaveBeenCalledWith('2', 'Backlog', null, null)
       })
     })
+
+    it('clears a stale rating on an observed Completed -> non-Completed transition, not just completedAt', async () => {
+      const { McpConnector } = await import('./lib/mcp-connector')
+      const ratedGames = [
+        {
+          id: '3', title: 'Pentiment', year: 2022, developer: 'Obsidian Entertainment',
+          status: 'Completed', tags: ['Narrative'], journal: '', isDiscounted: false, rating: 5, completedAt: '2026-01-01'
+        }
+      ]
+      McpConnector.getGames.mockResolvedValueOnce(ratedGames)
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Pentiment')).toBeTruthy())
+
+      const card = screen.getByText('Pentiment').closest('.cd-game-card')
+      fireEvent.click(within(card).getByText('Backlog'))
+
+      await waitFor(() => {
+        // 3rd arg (rating) must be null even though the game was rated 5 —
+        // leaving Completed clears a rating the same way it clears
+        // completedAt, so it never lingers and skews Highest Rated sort on
+        // a game that isn't marked finished anymore.
+        expect(McpConnector.updateGameStatus).toHaveBeenCalledWith('3', 'Backlog', null, null)
+      })
+    })
+
+    it('does not clear rating when the star buttons change rating without changing status', async () => {
+      const { McpConnector } = await import('./lib/mcp-connector')
+      McpConnector.getGames.mockResolvedValueOnce(schemaGames)
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('The Last Express')).toBeTruthy())
+
+      const card = screen.getByText('The Last Express').closest('.cd-game-card')
+      fireEvent.click(within(card).getByLabelText('Rate 4 stars'))
+
+      await waitFor(() => {
+        expect(McpConnector.updateGameStatus).toHaveBeenCalledWith('2', 'Completed', 4, undefined)
+      })
+    })
   })
 
   it('rolls back an optimistic status update and toasts on failure', async () => {
