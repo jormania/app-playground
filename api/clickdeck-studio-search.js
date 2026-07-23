@@ -74,6 +74,24 @@ function parseYearFromReleaseDateString(dateStr) {
 // realistically dropping the studio's actual titles.
 const PER_STUDIO_CAP = 15
 
+async function fetchSearchPage(term) {
+  const url = `https://store.steampowered.com/search/?term=${encodeURIComponent(term)}&l=english&cc=US`
+  const res = await fetch(url)
+  if (!res.ok) return []
+  const html = await res.text()
+
+  const appIds = []
+  const seen = new Set()
+  const regex = /data-ds-appid="(\d+)"/g
+  let match
+  while ((match = regex.exec(html)) !== null) {
+    if (seen.has(match[1])) continue
+    seen.add(match[1])
+    appIds.push(match[1])
+  }
+  return appIds
+}
+
 async function searchSteamForStudio(name) {
   // Search with the RAW studio name, not a normalized token. Steam's
   // storesearch JSON API returns nothing at all for studio names (it's tuned
@@ -83,19 +101,35 @@ async function searchSteamForStudio(name) {
   // the raw name returns ~40. Verified July 2026. The studioMatchesCandidate
   // developer check downstream is what turns this loose term search into a
   // precise "games actually BY this studio" result.
-  const url = `https://store.steampowered.com/search/?term=${encodeURIComponent(name)}&l=english&cc=US`
-  const res = await fetch(url)
-  if (!res.ok) return []
-  const html = await res.text()
+  //
+  // ALSO run the term as a quoted exact phrase, in parallel, and merge.
+  // An unquoted multi-word studio name gets diluted by Steam treating each
+  // word independently — common words scatter matches across dozens of
+  // unrelated games, and the studio's own game can miss the top-CAP results
+  // entirely. Confirmed live (July 2026): Signet City by "Jump Over the Age"
+  // never appeared in 5/5 unquoted searches (the studio's own developer-field
+  // match on the resulting appdetails is exact — the game just never reached
+  // that check because the search step upstream never surfaced it), but
+  // appeared in 3/3 quoted ones. The quoted search is also tighter across the
+  // board — several other followed studios (Color Gray Games, Cloak and
+  // Dagger Games) drop from a noisy Steam-side 50-result ceiling down to a
+  // focused ~10-15 when quoted — so quoted hits are merged in first (higher
+  // signal), topped up with the broader unquoted set, deduped by appid, up to
+  // the existing per-studio cap. No seed studio's quoted search came back
+  // empty, so this is additive: worst case it contributes nothing and the
+  // unquoted results carry the studio the same as before.
+  const [quoted, raw] = await Promise.all([
+    fetchSearchPage(`"${name}"`),
+    fetchSearchPage(name)
+  ])
 
   const appIds = []
   const seen = new Set()
-  const regex = /data-ds-appid="(\d+)"/g
-  let match
-  while ((match = regex.exec(html)) !== null && appIds.length < PER_STUDIO_CAP) {
-    if (seen.has(match[1])) continue
-    seen.add(match[1])
-    appIds.push(match[1])
+  for (const id of [...quoted, ...raw]) {
+    if (seen.has(id)) continue
+    seen.add(id)
+    appIds.push(id)
+    if (appIds.length >= PER_STUDIO_CAP) break
   }
 
   return appIds.map(id => ({ id }))
