@@ -243,13 +243,36 @@ describe('WatchlistView', () => {
 
     it('does not offer an IGNORE button for a candidate already an exact duplicate', () => {
       const cached = {
-        notYetReleased: [{ appId: 999, title: 'Already Mine', comingSoon: true, headerImage: 'x', duplicate: { kind: 'exact', match: { title: 'Already Mine' } } }],
+        notYetReleased: [{ appId: 999, title: 'Already Mine', comingSoon: true, headerImage: 'x' }],
         alreadyReleased: []
       }
       sessionStorage.setItem('cd_watchlist_candidates', JSON.stringify(cached))
-      render(<WatchlistView games={[]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+      // Duplicate status is recomputed live against `games` (not baked into
+      // the cached candidate — see the regression test below), so the
+      // matching collection row has to be passed in here directly.
+      const existing = { id: 'existing1', appId: 999, title: 'Already Mine', status: 'Backlog' }
+      render(<WatchlistView games={[existing]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
       const row = screen.getByText('Already Mine').closest('.cd-candidate-row')
       expect(within(row).queryByText('− IGNORE')).toBeNull()
+    })
+
+    it('catches a duplicate even when the cached candidate predates the game entering the collection (regression: stale sessionStorage dedupe flag)', () => {
+      // A candidate cached from an earlier search, before the matching game
+      // existed in the collection — same shape "Find New Games" would have
+      // produced back when there was nothing to match yet.
+      const cached = {
+        notYetReleased: [],
+        alreadyReleased: [{ appId: 2088810, title: 'Perfect Tides: Station to Station', comingSoon: false, headerImage: 'x' }]
+      }
+      sessionStorage.setItem('cd_watchlist_candidates', JSON.stringify(cached))
+      // The game was since added some other way (e.g. directly in Notion) —
+      // `games` now carries it, even though the cached candidate list has no
+      // idea that happened.
+      const addedElsewhere = { id: 'g1', appId: 2088810, title: 'Perfect Tides: Station to Station', status: 'Backlog' }
+      render(<WatchlistView games={[addedElsewhere]} onEdit={() => {}} onApplyGameUpdates={() => {}} onAddGame={() => {}} onToast={() => {}} />)
+      const row = screen.getByText('Perfect Tides: Station to Station').closest('.cd-candidate-row')
+      expect(within(row).getByText(/ALREADY IN YOUR DB/)).toBeTruthy()
+      expect(within(row).getByRole('button', { name: /in db/i }).disabled).toBe(true)
     })
   })
 

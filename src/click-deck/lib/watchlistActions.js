@@ -4,7 +4,6 @@
 import { McpConnector } from './mcp-connector'
 import { readReleaseStatus, isIgnored } from './releaseStatus'
 import { resolveReleaseFlip, buildWatchlistUpdateFields, parseYearFromReleaseDateString } from './watchlistResolver'
-import { findDuplicateInCollection } from './steamMatch'
 import { DEFAULT_TIER_WEIGHT } from './studios-connector'
 
 // Curated-not-chronological ordering for New Candidates: a Tier 3 ("automatic
@@ -60,10 +59,13 @@ export async function refreshComingSoonGames(games) {
   return { checked: comingSoon.length, flipped, updated }
 }
 
-// "Find New Games" — searches followed studios via the discovery proxy, then
-// runs the two-tier dedupe locally against the full collection (the server
-// only did the cheap exact-appid pre-filter). Splits results into
-// not-yet-released vs already-released-but-uncollected, per the design.
+// "Find New Games" — searches followed studios via the discovery proxy. The
+// server only did the cheap exact-appid pre-filter (`excludeAppIds` below);
+// the real two-tier dedupe (steamMatch.js's findDuplicateInCollection) is run
+// by WatchlistView at render/add time against the live `games` prop, not
+// baked into the candidate here — a candidate can sit cached in
+// sessionStorage for a while (see WatchlistView's cache comment), and the
+// collection can change underneath it in the meantime.
 export async function searchFollowedStudios(studios, games) {
   const excludeAppIds = games.filter(g => g.appId).map(g => g.appId)
 
@@ -77,10 +79,7 @@ export async function searchFollowedStudios(studios, games) {
     throw new Error(data.message || 'Studio search failed.')
   }
   const data = await res.json()
-  const candidates = (data.candidates || []).map(c => ({
-    ...c,
-    duplicate: findDuplicateInCollection(c, games)
-  }))
+  const candidates = data.candidates || []
 
   return {
     notYetReleased: candidates.filter(c => c.comingSoon).sort((a, b) => compareCandidates(a, b, 1)),

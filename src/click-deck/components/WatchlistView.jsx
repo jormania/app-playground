@@ -6,6 +6,7 @@ import {
   refreshComingSoonGames, searchFollowedStudios, candidateToNewGame,
   candidateToIgnoredGame, unignoreGame, getIgnoredGames
 } from '../lib/watchlistActions'
+import { findDuplicateInCollection } from '../lib/steamMatch'
 
 const STALE_DAYS = 180
 
@@ -306,7 +307,16 @@ export function WatchlistView({ games, onEdit, onApplyGameUpdates, onAddGame, on
   }
 
   const renderCandidateRow = (candidate) => {
-    const isDup = candidate.duplicate
+    // Recomputed live against the current `games` prop rather than trusting
+    // `candidate.duplicate` (a flag baked in once, at search time, then
+    // cached in sessionStorage alongside the candidate list — see
+    // getCachedCandidates above). The collection can change after a search
+    // (a manual Notion add, or another candidate added earlier this same
+    // session) without the cached candidate list knowing about it; a stale
+    // "not a duplicate" flag on an old cached row previously let a real
+    // duplicate through silently. `games` is always current, so recomputing
+    // here closes that gap regardless of why the collection changed.
+    const isDup = findDuplicateInCollection(candidate, games)
     const isExactDup = isDup?.kind === 'exact'
     const isBusy = addingAppId === candidate.appId || ignoringAppId === candidate.appId
     return (
