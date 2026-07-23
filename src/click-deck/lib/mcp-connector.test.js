@@ -264,6 +264,85 @@ describe('McpConnector (Notion-backed, token + db configured)', () => {
     expect(body.body.properties['Length (hrs)']).toEqual({ number: null })
   })
 
+  it('leaves the four Steam Review fields undefined when that schema patch has not been applied', async () => {
+    const page = {
+      id: 'page-1', created_time: '2024-01-01T00:00:00.000Z',
+      properties: {
+        'Title': { title: [{ plain_text: 'Unpatched Game' }] },
+        'Status': { select: { name: 'Backlog' } }
+      }
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ results: [page], has_more: false, next_cursor: null })
+    }))
+    const games = await McpConnector.getGames()
+    expect(games[0].steamReviewPercent).toBeUndefined()
+    expect(games[0].steamReviewDesc).toBeUndefined()
+    expect(games[0].steamReviewCount).toBeUndefined()
+    expect(games[0].reviewCheckedAt).toBeUndefined()
+  })
+
+  it('maps Steam Review fields once that schema patch is present, including a genuinely zero-review result', async () => {
+    const page = {
+      id: 'page-1', created_time: '2024-01-01T00:00:00.000Z',
+      properties: {
+        'Title': { title: [{ plain_text: 'Patched Game' }] },
+        'Status': { select: { name: 'Backlog' } },
+        'Steam Review %': { number: 0 },
+        'Steam Review Desc': { rich_text: [{ plain_text: 'No user reviews' }] },
+        'Steam Review Count': { number: 0 },
+        'Review Checked At': { date: { start: '2026-07-24' } }
+      }
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ results: [page], has_more: false, next_cursor: null })
+    }))
+    const games = await McpConnector.getGames()
+    // 0/0, not undefined — "checked, Steam had nothing" is a real result,
+    // distinct from "schema not patched" above.
+    expect(games[0].steamReviewPercent).toBe(0)
+    expect(games[0].steamReviewCount).toBe(0)
+    expect(games[0].steamReviewDesc).toBe('No user reviews')
+    expect(games[0].reviewCheckedAt).toBe('2026-07-24')
+  })
+
+  it('omits Steam Review fields from a write when the caller never set them', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'page-1', properties: { Title: { title: [{ plain_text: 'X' }] } } })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await McpConnector.updateGame('page-1', { title: 'X', tags: [], status: 'Backlog' })
+
+    const [, opts] = fetchMock.mock.calls[0]
+    const body = JSON.parse(opts.body)
+    expect(body.body.properties).not.toHaveProperty('Steam Review %')
+    expect(body.body.properties).not.toHaveProperty('Steam Review Desc')
+    expect(body.body.properties).not.toHaveProperty('Steam Review Count')
+    expect(body.body.properties).not.toHaveProperty('Review Checked At')
+  })
+
+  it('writes Steam Review fields when the caller sets them', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'page-1', properties: { Title: { title: [{ plain_text: 'X' }] } } })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await McpConnector.updateGame('page-1', {
+      title: 'X', tags: [], status: 'Backlog',
+      steamReviewPercent: 95.1, steamReviewDesc: 'Overwhelmingly Positive', steamReviewCount: 9586, reviewCheckedAt: '2026-07-24'
+    })
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.body.properties['Steam Review %']).toEqual({ number: 95.1 })
+    expect(body.body.properties['Steam Review Desc']).toEqual({ rich_text: [{ text: { content: 'Overwhelmingly Positive' } }] })
+    expect(body.body.properties['Steam Review Count']).toEqual({ number: 9586 })
+    expect(body.body.properties['Review Checked At']).toEqual({ date: { start: '2026-07-24' } })
+  })
+
   it('maps Price Updated At into priceUpdatedAt', async () => {
     const page = {
       id: 'page-1', created_time: '2024-01-01T00:00:00.000Z',

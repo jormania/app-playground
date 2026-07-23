@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
+import { hasReviewData, wasReviewChecked, reviewAccentColor } from '../lib/steamReviews'
 
 export function GameCard({ game, onEdit, onUpdateStatus, isNew = false }) {
   const CoverTag = game.appId ? 'a' : 'div'
@@ -142,6 +143,23 @@ export function GameCard({ game, onEdit, onUpdateStatus, isNew = false }) {
             <span className="cd-length">⏱ {game.lengthHours}h</span>
           </>
         )}
+        {hasReviewData(game) ? (
+          <>
+            <span className="cd-separator">|</span>
+            <span
+              className="cd-steam-rating"
+              style={{ color: reviewAccentColor(game.steamReviewPercent) }}
+              title={`${game.steamReviewCount.toLocaleString()} Steam review${game.steamReviewCount === 1 ? '' : 's'}`}
+            >
+              {game.steamReviewDesc} ({Math.round(game.steamReviewPercent)}%)
+            </span>
+          </>
+        ) : wasReviewChecked(game) ? (
+          <>
+            <span className="cd-separator">|</span>
+            <span className="cd-steam-rating cd-steam-rating-empty">No reviews yet</span>
+          </>
+        ) : null}
       </div>
       
       <div className="cd-tags">
@@ -229,6 +247,13 @@ export function GameCard({ game, onEdit, onUpdateStatus, isNew = false }) {
         .cd-separator {
           margin: 0 0.5rem;
           color: var(--cd-border-color);
+        }
+        .cd-steam-rating {
+          font-weight: bold;
+        }
+        .cd-steam-rating-empty {
+          font-weight: normal;
+          color: var(--cd-text-muted);
         }
         .cd-rating-star {
           background: none;

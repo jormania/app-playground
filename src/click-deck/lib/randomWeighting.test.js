@@ -29,6 +29,40 @@ describe('computeWeights', () => {
   })
 })
 
+describe('computeWeights (acclaimed mode)', () => {
+  const reviewGames = [
+    { id: 'a', reviewCheckedAt: '2026-07-24', steamReviewPercent: 60, steamReviewCount: 100 }, // mixed
+    { id: 'b', reviewCheckedAt: '2026-07-24', steamReviewPercent: 94, steamReviewCount: 50000 }, // acclaimed, huge sample
+    { id: 'c' } // never checked
+  ]
+
+  it('weights the highest confidence-adjusted score highest, and a never-checked game least', () => {
+    const weights = computeWeights(reviewGames, 'acclaimed')
+    // b (best score) ranks first (weight 3), a ranks middle (weight 2), c (no data) ranks last (weight 1).
+    expect(weights).toEqual([2, 3, 1])
+  })
+
+  it('a tiny-sample 100% game does not outrank a huge-sample slightly-lower-% one (the motivating case)', () => {
+    const games = [
+      { id: 'tiny', reviewCheckedAt: '2026-07-24', steamReviewPercent: 100, steamReviewCount: 4 },
+      { id: 'huge', reviewCheckedAt: '2026-07-24', steamReviewPercent: 94, steamReviewCount: 50000 }
+    ]
+    const weights = computeWeights(games, 'acclaimed')
+    expect(weights[1]).toBeGreaterThan(weights[0]) // 'huge' outranks 'tiny'
+  })
+
+  it('falls back to array-order weighting (not a meaningful ranking) when nothing has review data yet', () => {
+    // Every candidate ties at the same "no data" fallback score, so the
+    // stable sort just preserves original array order — an arbitrary
+    // positional bias, not real signal. RandomGameModal's badge is what
+    // actually communicates this state to the user; this test just locks
+    // in that computeWeights itself doesn't crash or throw when nothing
+    // has review data.
+    const noData = [{ id: 'a' }, { id: 'b' }, { id: 'c' }]
+    expect(computeWeights(noData, 'acclaimed')).toEqual([3, 2, 1])
+  })
+})
+
 describe('computeTagAffinity', () => {
   it('averages rating per tag, ignoring unrated games', () => {
     const rated = [

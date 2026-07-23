@@ -9,7 +9,8 @@ describe('candidateToNewGame', () => {
     appId: 123, title: 'Old Skies', developer: 'Wadjet Eye Games', matchedStudio: 'Wadjet Eye Games',
     comingSoon: false, releaseDateString: '23 May, 2025', year: 2025, price: 19.99,
     headerImage: 'https://example.com/123.jpg', shortDescription: 'A time-travel adventure.',
-    tags: ['Adventure', 'Point & Click', 'Story Rich', 'Sci-Fi', 'Time Travel', 'Mystery', 'Detective', 'Pixel Graphics']
+    tags: ['Adventure', 'Point & Click', 'Story Rich', 'Sci-Fi', 'Time Travel', 'Mystery', 'Detective', 'Pixel Graphics'],
+    steamReviewPercent: 92, steamReviewDesc: 'Very Positive', steamReviewCount: 1500, reviewCheckedAt: '2026-07-24T00:00:00.000Z'
   }
   const comingSoonCandidate = {
     appId: 456, title: 'Gilt', developer: 'Wadjet Eye Games', matchedStudio: 'Wadjet Eye Games',
@@ -27,6 +28,10 @@ describe('candidateToNewGame', () => {
     expect(g.coverUrl).toBe('https://example.com/123.jpg')
     expect(g.price).toBe(19.99)
     expect(g.status).toBe('Backlog')
+    expect(g.steamReviewPercent).toBe(92)
+    expect(g.steamReviewDesc).toBe('Very Positive')
+    expect(g.steamReviewCount).toBe(1500)
+    expect(g.reviewCheckedAt).toBe('2026-07-24T00:00:00.000Z')
   })
 
   it('a Coming Soon candidate lands intentionally bare: no tags, no journal — so the 5-7 policy and the post-release nudge stay honest', () => {
@@ -39,6 +44,13 @@ describe('candidateToNewGame', () => {
     expect(g.releaseDate).toBe('2026')
     expect(g.year).toBe(2026)
     expect(g.coverUrl).toBe('https://example.com/456.jpg')
+    // No review data on an unreleased pick either — nothing to check yet,
+    // and writing even a "0 reviews" result now would be a fake result for
+    // a title that was never actually queried against /appreviews/.
+    expect(g.steamReviewPercent).toBeUndefined()
+    expect(g.steamReviewDesc).toBeUndefined()
+    expect(g.steamReviewCount).toBeUndefined()
+    expect(g.reviewCheckedAt).toBeUndefined()
   })
 
   it('falls back gracefully when a candidate is missing optional fields', () => {
@@ -199,6 +211,34 @@ describe('unignoreGame', () => {
     expect(result.tags).toEqual(['Point & Click'])
     expect(result.journal).toBe('My own notes.')
     expect(result.developer).toBe('Existing Studio')
+  })
+
+  it('picks up a Steam review summary the server attached to the entry when restoring to Released', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        '123': {
+          success: true,
+          data: { release_date: { coming_soon: false, date: '1 Jun, 2026' } },
+          reviewSummary: { percent: 92, count: 1500, desc: 'Very Positive' }
+        }
+      })
+    }))
+    const result = await unignoreGame(ignoredGame)
+    expect(result.steamReviewPercent).toBe(92)
+    expect(result.steamReviewDesc).toBe('Very Positive')
+    expect(result.steamReviewCount).toBe(1500)
+    expect(result.reviewCheckedAt).toBeTruthy()
+  })
+
+  it('restoring to Coming Soon never writes review fields (no reviewSummary attached for an unreleased entry)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ '123': { success: true, data: { release_date: { coming_soon: true, date: 'Q4 2026' } } } })
+    }))
+    const result = await unignoreGame(ignoredGame)
+    expect(result.steamReviewPercent).toBeUndefined()
+    expect(result.reviewCheckedAt).toBeUndefined()
   })
 
   it('restores to Coming Soon when Steam still shows it unreleased', async () => {

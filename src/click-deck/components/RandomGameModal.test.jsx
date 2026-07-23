@@ -79,6 +79,24 @@ describe('RandomGameModal', () => {
     })
   })
 
+  describe('acclaimed mode (Steam ratings)', () => {
+    it('flags when nothing in the backlog has been checked yet, rather than implying a real ranking', () => {
+      localStorage.setItem('cd_random_weight', 'acclaimed')
+      render(<RandomGameModal backlogGames={backlogGames} onClose={() => {}} onUpdateStatus={() => {}} />)
+      expect(screen.getByText('FAVORING CRITICALLY ACCLAIMED (NO STEAM RATINGS CHECKED YET)')).toBeTruthy()
+    })
+
+    it('shows the plain acclaimed badge once at least one backlog game has review data', () => {
+      localStorage.setItem('cd_random_weight', 'acclaimed')
+      const reviewedBacklog = [
+        ...backlogGames,
+        { id: '3', title: 'Game Three', developer: 'Dev C', year: 2020, tags: [], coverUrl: '', rating: null, reviewCheckedAt: '2026-07-24', steamReviewPercent: 90, steamReviewCount: 500 }
+      ]
+      render(<RandomGameModal backlogGames={reviewedBacklog} onClose={() => {}} onUpdateStatus={() => {}} />)
+      expect(screen.getByText('FAVORING CRITICALLY ACCLAIMED')).toBeTruthy()
+    })
+  })
+
   it('renders the settled cover as a real link to Steam when the game has an appId', async () => {
     vi.useFakeTimers()
     // A single-game pool makes the settled selection deterministic.

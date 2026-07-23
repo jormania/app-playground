@@ -1,6 +1,7 @@
 import { resolvePriceUpdate, buildPatchProperties } from './_lib/clickdeckPricing.js'
 import { resolveReleaseFlip, buildWatchlistPatchProperties } from './_lib/clickdeckWatchlist.js'
 import { alreadyHasThemeHighlight, dramatizeRichText } from './_lib/clickdeckDramatize.js'
+import { fetchReviewSummary, buildReviewPatchProperties, isReviewCheckStale } from './_lib/clickdeckReviews.js'
 
 // One Steam request per App ID (the multi-appid form is dead — see the loop
 // below) means a few-hundred-game collection needs well over the default
@@ -79,7 +80,11 @@ export default async function handler(req, res) {
       // from Steam on a flip — never written back except via that derivation.
       tags: page.properties['Tags']?.multi_select?.map(t => t.name) || [],
       journal: page.properties['Journal/Notes']?.rich_text?.map(rt => rt.plain_text).join('') || '',
-      developer: page.properties['Developer/Studio']?.select?.name || ''
+      developer: page.properties['Developer/Studio']?.select?.name || '',
+      // Only read to decide whether reviews should be (re)checked this run —
+      // see the shouldCheckReviews gate below. Never written except via
+      // buildReviewPatchProperties.
+      reviewCheckedAt: page.properties['Review Checked At']?.date?.start || null
     })).filter(g => g.appId > 0)
 
     if (gamesToUpdate.length === 0) {
@@ -122,8 +127,32 @@ export default async function handler(req, res) {
       const appData = steamData[game.appId.toString()]
       const update = resolvePriceUpdate(game, appData)
       const releaseFlip = resolveReleaseFlip(game, appData)
-      if (update || releaseFlip) {
-        results.push({ pageId: game.pageId, update, releaseFlip, flipped: Boolean(releaseFlip?.flipped) })
+
+      // Reviews are only ever checked for games that are actually Released
+      // right now — including one that just flipped Coming Soon -> Released
+      // in THIS very check (releaseFlip.flipped), not just games that were
+      // already Released before this run started. Missing that second case
+      // would mean a freshly-launched title has to wait a further 7 days
+      // (isReviewCheckStale below) for its first review data purely because
+      // this check happened to also be the moment it launched — exactly the
+      // "populate when a game flips to Released" case this feature is
+      // supposed to cover. Still excludes Coming Soon (guaranteed-empty
+      // review summary — verified live) and Ignored (hard-excluded from
+      // every view that would ever show this data), and gated on a 7-day
+      // staleness window for everything already-Released — unlike price, a
+      // review consensus barely moves day to day, so hitting every
+      // Released game every night would roughly double this loop's Steam
+      // calls for no real freshness benefit.
+      const effectiveReleaseStatus = game.releaseStatus || 'Released'
+      const isNowReleased = effectiveReleaseStatus === 'Released' || releaseFlip?.flipped === true
+      let reviewSummary = null
+      if (isNowReleased && isReviewCheckStale(game.reviewCheckedAt)) {
+        reviewSummary = await fetchReviewSummary(game.appId)
+        await new Promise(r => setTimeout(r, 250))
+      }
+
+      if (update || releaseFlip || reviewSummary) {
+        results.push({ pageId: game.pageId, update, releaseFlip, reviewSummary, flipped: Boolean(releaseFlip?.flipped) })
       }
 
       // polite delay between per-app requests
@@ -143,7 +172,8 @@ export default async function handler(req, res) {
       // properties object when a game happens to need both.
       const properties = {
         ...(result.update ? buildPatchProperties(result.update) : {}),
-        ...(result.releaseFlip ? buildWatchlistPatchProperties(result.releaseFlip) : {})
+        ...(result.releaseFlip ? buildWatchlistPatchProperties(result.releaseFlip) : {}),
+        ...(result.reviewSummary ? buildReviewPatchProperties(result.reviewSummary) : {})
       }
       // Cover art is a Notion page-level field, not a property — PATCHed as
       // a sibling of `properties` in the same request. Only present on rows
@@ -245,6 +275,7 @@ export default async function handler(req, res) {
       priceChanges: results.filter(r => r.update?.priceChanged).length,
       releaseFlips: flippedThisRun.length,
       flippedGames: flippedThisRun,
+      reviewsChecked: results.filter(r => r.reviewSummary).length,
       successfullyPatched: patched,
       journalsDramatized
     })

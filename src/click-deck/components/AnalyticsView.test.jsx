@@ -102,6 +102,33 @@ describe('AnalyticsView', () => {
     })
   })
 
+  describe('STEAM filter row', () => {
+    const withReviews = [
+      { id: '1', title: 'Acclaimed Game', year: 2020, status: 'Backlog', tags: [], reviewCheckedAt: '2026-07-24', steamReviewPercent: 95, steamReviewCount: 500 },
+      { id: '2', title: 'Mixed Game', year: 2021, status: 'Backlog', tags: [], reviewCheckedAt: '2026-07-24', steamReviewPercent: 60, steamReviewCount: 200 },
+      { id: '3', title: 'Never Checked Game', year: 2022, status: 'Backlog', tags: [] }
+    ]
+
+    it('shows only Acclaimed (90%+) entries, excluding never-checked games', () => {
+      render(<AnalyticsView filteredGames={withReviews} activeTags={[]} setActiveTags={() => {}} />)
+      fireEvent.click(screen.getByText('Acclaimed'))
+      expect(screen.getByText('MATCHING ENTRIES: 1')).toBeTruthy()
+      expect(screen.getByText('Acclaimed Game')).toBeTruthy()
+    })
+
+    it('shows only Mixed (50-75%) entries', () => {
+      render(<AnalyticsView filteredGames={withReviews} activeTags={[]} setActiveTags={() => {}} />)
+      fireEvent.click(screen.getByText('Mixed'))
+      expect(screen.getByText('MATCHING ENTRIES: 1')).toBeTruthy()
+      expect(screen.getByText('Mixed Game')).toBeTruthy()
+    })
+
+    it('"All" applies no filter, including games never checked', () => {
+      render(<AnalyticsView filteredGames={withReviews} activeTags={[]} setActiveTags={() => {}} />)
+      expect(screen.getByText('MATCHING ENTRIES: 3')).toBeTruthy()
+    })
+  })
+
   describe('JSON export', () => {
     it('downloads a JSON blob of the currently filtered entries', () => {
       const createObjectURL = vi.fn(() => 'blob:mock')

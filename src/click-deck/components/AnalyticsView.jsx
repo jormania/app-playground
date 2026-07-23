@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { readReleaseStatus } from '../lib/releaseStatus'
 import { isCompletedWithinDays, COMPLETION_WINDOWS } from '../lib/completionTracking'
 import { isInLengthBucket } from '../lib/lengthBuckets'
+import { isInReviewBucket, REVIEW_BUCKETS } from '../lib/steamReviews'
 
 export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
 
@@ -22,6 +23,10 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
   // HLTB "Main + Sides" length buckets — 'All' applies no filter (so it
   // doesn't hide games with no recorded length).
   const [lengthFilter, setLengthFilter] = useState('All')
+  // Steam review buckets (raw percentage, not the Wilson-adjusted rank
+  // score — this matches what the [T] badge actually displays, so filtering
+  // lines up with what's on screen) — 'All' applies no filter.
+  const [steamFilter, setSteamFilter] = useState('All')
 
   const matrixFilteredGames = useMemo(() => {
     let result = [...filteredGames]
@@ -78,8 +83,12 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
       result = result.filter(g => isInLengthBucket(g, lengthFilter))
     }
 
+    if (steamFilter !== 'All') {
+      result = result.filter(g => isInReviewBucket(g, steamFilter))
+    }
+
     return result
-  }, [filteredGames, eraFilter, ratingFilter, priceFilter, tagCountFilter, releaseFilter, completedFilter, lengthFilter])
+  }, [filteredGames, eraFilter, ratingFilter, priceFilter, tagCountFilter, releaseFilter, completedFilter, lengthFilter, steamFilter])
 
   // Calculate tag frequencies based on currently filtered games
   const tagCounts = useMemo(() => {
@@ -264,6 +273,12 @@ export function AnalyticsView({ filteredGames, activeTags, setActiveTags }) {
           <span className="cd-filter-label">LENGTH:</span>
           {['All', 'Short', 'Medium', 'Long', 'Epic'].map(l => (
             <button key={l} className={`cd-filter-btn ${lengthFilter === l ? 'active' : ''}`} onClick={() => setLengthFilter(l)}>{l}</button>
+          ))}
+        </div>
+        <div className="cd-filter-row">
+          <span className="cd-filter-label">STEAM:</span>
+          {['All', ...Object.keys(REVIEW_BUCKETS)].map(s => (
+            <button key={s} className={`cd-filter-btn ${steamFilter === s ? 'active' : ''}`} onClick={() => setSteamFilter(s)}>{s}</button>
           ))}
         </div>
       </div>

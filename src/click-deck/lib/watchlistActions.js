@@ -119,7 +119,15 @@ export function candidateToNewGame(candidate) {
     // the nightly cron corrects initial-vs-sale price the same night.
     price: candidate.price,
     initialPrice: candidate.price,
-    discountPercent: 0
+    discountPercent: 0,
+    // Only ever present on the candidate for an already-released pick (see
+    // api/clickdeck-studio-search.js) — `undefined` for Coming Soon, which
+    // mapGameToProperties correctly omits, so a not-yet-launched title never
+    // gets a fake "0 reviews" written in before it's actually checked.
+    steamReviewPercent: enrich ? candidate.steamReviewPercent : undefined,
+    steamReviewDesc: enrich ? candidate.steamReviewDesc : undefined,
+    steamReviewCount: enrich ? candidate.steamReviewCount : undefined,
+    reviewCheckedAt: enrich ? candidate.reviewCheckedAt : undefined
   }
 }
 
@@ -192,6 +200,15 @@ export async function unignoreGame(game) {
     }
     if (!game.developer && Array.isArray(data.developers) && data.developers[0]) {
       fields.developer = data.developers[0]
+    }
+    // Same enrichment as an observed Coming Soon -> Released flip — the
+    // server (api/steam-search.js's ?appids= mode) already attached this
+    // onto the entry for any non-Coming-Soon result, restore included.
+    if (entry.reviewSummary) {
+      fields.steamReviewPercent = entry.reviewSummary.percent
+      fields.steamReviewDesc = entry.reviewSummary.desc
+      fields.steamReviewCount = entry.reviewSummary.count
+      fields.reviewCheckedAt = new Date().toISOString()
     }
   }
   const nextGame = { ...game, ...fields }

@@ -274,8 +274,115 @@ describe('GameEditorModal', () => {
     })
   })
 
+  describe('Steam Rating field', () => {
+    it('is hidden when neither the collection nor this game supports the schema', () => {
+      const game = { title: 'Pre-feature', year: 2000, developer: '', status: 'Backlog', tags: [], journal: '' }
+      render(<GameEditorModal game={game} onSave={() => {}} onClose={() => {}} />)
+      expect(screen.queryByText(/STEAM RATING/)).toBeNull()
+    })
+
+    it('shows and is editable once the collection has the schema', () => {
+      const onSave = vi.fn()
+      const game = { title: 'Patched', year: 2000, developer: '', status: 'Backlog', tags: [], journal: '', appId: 123, steamReviewPercent: 92 }
+      render(<GameEditorModal game={game} onSave={onSave} onClose={() => {}} reviewSchemaReady={true} />)
+      const input = document.querySelector('input[name="steamReviewPercent"]')
+      expect(input.value).toBe('92')
+
+      fireEvent.change(input, { target: { value: '88' } })
+      fireEvent.click(screen.getByText('SAVE_DATA'))
+      expect(onSave.mock.calls[0][0].steamReviewPercent).toBe(88)
+    })
+
+    it('shows the desc/count line when present', () => {
+      const game = {
+        title: 'Reviewed', year: 2000, developer: '', status: 'Backlog', tags: [], journal: '',
+        appId: 123, steamReviewPercent: 95, steamReviewDesc: 'Overwhelmingly Positive', steamReviewCount: 9586
+      }
+      render(<GameEditorModal game={game} onSave={() => {}} onClose={() => {}} reviewSchemaReady={true} />)
+      expect(screen.getByText(/Overwhelmingly Positive/)).toBeTruthy()
+      expect(screen.getByText(/9,586 reviews/)).toBeTruthy()
+    })
+
+    describe('FETCH RATING', () => {
+      afterEach(() => vi.unstubAllGlobals())
+
+      it('is disabled until the game has a Steam App ID', () => {
+        const game = { title: 'No App ID Yet', year: 2000, developer: '', status: 'Backlog', tags: [], journal: '' }
+        render(<GameEditorModal game={game} onSave={() => {}} onClose={() => {}} reviewSchemaReady={true} />)
+        expect(screen.getByText('FETCH RATING').closest('button').disabled).toBe(true)
+      })
+
+      it('fetches and applies a review summary for a game that already has an App ID', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({ coverUrl: 'x', reviewSummary: { percent: 92, count: 1500, desc: 'Very Positive' } })
+        })
+        vi.stubGlobal('fetch', fetchMock)
+        const onSave = vi.fn()
+
+        const game = { title: 'Old Skies', year: 2025, developer: '', status: 'Backlog', tags: [], journal: '', appId: 123 }
+        render(<GameEditorModal game={game} onSave={onSave} onClose={() => {}} reviewSchemaReady={true} />)
+        fireEvent.click(screen.getByText('FETCH RATING'))
+        await screen.findByDisplayValue('92')
+
+        expect(fetchMock).toHaveBeenCalledWith('/api/steam-search?appId=123')
+        expect(screen.getByText(/Very Positive/)).toBeTruthy()
+
+        fireEvent.click(screen.getByText('SAVE_DATA'))
+        expect(onSave.mock.calls[0][0].steamReviewPercent).toBe(92)
+        expect(onSave.mock.calls[0][0].steamReviewCount).toBe(1500)
+      })
+
+      it('toasts when Steam has no reviews to report (still Coming Soon, or genuinely none)', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ coverUrl: 'x', reviewSummary: null }) }))
+        const onToast = vi.fn()
+
+        const game = { title: 'Signet City', year: 2026, developer: '', status: 'Backlog', tags: [], journal: '', appId: 456 }
+        render(<GameEditorModal game={game} onSave={() => {}} onClose={() => {}} onToast={onToast} reviewSchemaReady={true} />)
+        fireEvent.click(screen.getByText('FETCH RATING'))
+
+        await waitFor(() => expect(onToast).toHaveBeenCalledWith(expect.stringContaining('no reviews')))
+      })
+
+      it('toasts a clear error when the proxy fails', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => ({ message: 'Origin not allowed.' }) }))
+        const onToast = vi.fn()
+
+        const game = { title: 'X', year: 2000, developer: '', status: 'Backlog', tags: [], journal: '', appId: 123 }
+        render(<GameEditorModal game={game} onSave={() => {}} onClose={() => {}} onToast={onToast} reviewSchemaReady={true} />)
+        fireEvent.click(screen.getByText('FETCH RATING'))
+
+        await waitFor(() => expect(onToast).toHaveBeenCalledWith(expect.stringContaining('Origin not allowed')))
+      })
+    })
+  })
+
   describe('fetchCover', () => {
     afterEach(() => vi.unstubAllGlobals())
+
+    it('also populates the Steam Rating fields when FETCH STEAM resolves an App ID (populate-on-add)', async () => {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({ json: async () => ({ items: [{ id: 355570, name: 'Grim Fandango Remastered' }] }) })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ coverUrl: 'https://example.com/355570/header.jpg', reviewSummary: { percent: 96, count: 8000, desc: 'Overwhelmingly Positive' } })
+        })
+      vi.stubGlobal('fetch', fetchMock)
+      const onSave = vi.fn()
+
+      // A brand-new add (no `game` prop) — this is exactly the "add a new
+      // game via FETCH STEAM" flow the populate-on-add behavior targets.
+      render(<GameEditorModal game={null} onSave={onSave} onClose={() => {}} reviewSchemaReady={true} />)
+      fireEvent.change(document.querySelector('input[name="title"]'), { target: { value: 'Grim Fandango' } })
+      fireEvent.click(screen.getByText('FETCH STEAM'))
+      await screen.findByDisplayValue('96')
+
+      fireEvent.click(screen.getByText('SAVE_DATA'))
+      const saved = onSave.mock.calls[0][0]
+      expect(saved.steamReviewPercent).toBe(96)
+      expect(saved.steamReviewDesc).toBe('Overwhelmingly Positive')
+      expect(saved.steamReviewCount).toBe(8000)
+    })
 
     it('saves both coverUrl and appId from the best-matching Steam search result', async () => {
       const fetchMock = vi.fn().mockResolvedValue({

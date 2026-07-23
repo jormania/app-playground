@@ -1,4 +1,5 @@
 import { originAllowed, rateLimited, clientIp } from './_shared.js'
+import { fetchReviewSummary } from './_lib/clickdeckReviews.js'
 
 // Three modes on one endpoint, kept together deliberately — Vercel's Hobby
 // plan caps a deployment at 12 serverless functions, and this repo sits
@@ -6,7 +7,9 @@ import { originAllowed, rateLimited, clientIp } from './_shared.js'
 // (api/clickdeck-appdetails.js, merged in here) wasn't worth its own
 // function slot. Distinguished by which query param is present:
 //   ?term=      Steam storesearch by title (Editor's FETCH STEAM)
-//   ?appId=     single App ID -> cover URL (Editor's FETCH STEAM, cover leg)
+//   ?appId=     single App ID -> cover URL + review summary (Editor's
+//               FETCH STEAM cover leg, and the standalone FETCH RATING
+//               button/populate-on-add — see GameEditorModal.jsx)
 //   ?appids=    comma-separated App IDs -> raw appdetails map, one Steam
 //               request per id with a polite delay (Watchlist's manual
 //               "Refresh Release Dates" and the un-ignore recheck)
@@ -47,6 +50,20 @@ export default async function handler(req, res) {
         const data = await steamRes.json()
         if (data && typeof data === 'object' && !Array.isArray(data)) {
           Object.assign(combined, data)
+          // Only fetched for an entry that's actually released (a flip
+          // observed just now, or already Released — the un-ignore recheck
+          // hits this same branch for either outcome) — see
+          // api/_lib/clickdeckReviews.js's header comment for why a Coming
+          // Soon game's review summary is guaranteed empty. Attached onto
+          // the entry itself so watchlistResolver.js's resolveReleaseFlip
+          // (manual "Refresh Release Dates") and unignoreGame can both read
+          // it straight off the same response they already have in hand.
+          const entry = data[String(id)]
+          const isComingSoon = entry?.data?.release_date?.coming_soon === true
+          if (entry?.success && entry?.data && !isComingSoon) {
+            entry.reviewSummary = await fetchReviewSummary(id)
+            await new Promise(r => setTimeout(r, 200))
+          }
         }
         // Polite delay between individual requests
         await new Promise(r => setTimeout(r, 200))
@@ -56,7 +73,10 @@ export default async function handler(req, res) {
     }
 
     if (appId && typeof appId === 'string') {
-      const detailsRes = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appId}&cc=US&filters=basic`)
+      // Widened from filters=basic-only so this same call can also decide
+      // whether the game is still Coming Soon, without a second appdetails
+      // round-trip.
+      const detailsRes = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appId}&cc=US&filters=basic,release_date`)
       const detailsData = await detailsRes.json()
       const detail = detailsData[appId]
 
@@ -65,7 +85,17 @@ export default async function handler(req, res) {
         coverUrl = detail.data.header_image
       }
 
-      res.status(200).json({ coverUrl })
+      // Reviews are never fetched for a game still Coming Soon — see
+      // api/_lib/clickdeckReviews.js's header comment for why that call is
+      // guaranteed to return nothing useful for one. Only skipped when
+      // Steam explicitly confirms coming_soon: true; an unclear/absent
+      // answer still attempts the fetch (a real "0 reviews" result is a
+      // valid, harmless outcome — the guaranteed-empty case is the one
+      // worth actually avoiding).
+      const isComingSoon = detail?.data?.release_date?.coming_soon === true
+      const reviewSummary = isComingSoon ? null : await fetchReviewSummary(appId)
+
+      res.status(200).json({ coverUrl, reviewSummary })
       return
     }
 

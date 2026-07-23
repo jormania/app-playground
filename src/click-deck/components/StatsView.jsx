@@ -3,6 +3,7 @@ import { readReleaseStatus, isIgnored } from '../lib/releaseStatus'
 import { getRecentlyReleasedGames, sortComingSoonSoonestFirst } from '../lib/releaseTracking'
 import { isCompletedWithinDays, countUndatedCompleted, COMPLETION_WINDOWS } from '../lib/completionTracking'
 import { lengthBucketOf, LENGTH_BUCKETS } from '../lib/lengthBuckets'
+import { hasReviewData, steamReviewScore } from '../lib/steamReviews'
 import { DrumRollIcon } from './WatchlistView'
 
 // `games` here is already Coming-Soon/Ignored-filtered by App.jsx (every
@@ -152,13 +153,36 @@ export function StatsView({ games, watchlistGames = [] }) {
       lengthBucketCounts, trackedCount: gamesWithLength.length
     };
 
+    // 8. Steam Review Consensus — a separate signal from your own 1-5★
+    // rating above, never conflated with it. "Most acclaimed" ranks by the
+    // same Wilson-adjusted score [R]'s weighting and [T]'s sort use (not
+    // raw %), so a 3-review fluke can't take the top spot. The agreement
+    // line compares your rating against Steam's on the same games (both
+    // normalized to a 0-100 scale) rather than claiming a real statistical
+    // correlation — an honest average gap, not an overclaimed metric.
+    const gamesWithReviewData = games.filter(hasReviewData);
+    const avgSteamPercent = gamesWithReviewData.length > 0
+      ? (gamesWithReviewData.reduce((sum, g) => sum + g.steamReviewPercent, 0) / gamesWithReviewData.length).toFixed(1)
+      : 'N/A';
+    const mostAcclaimed = gamesWithReviewData.length > 0
+      ? gamesWithReviewData.reduce((best, g) => steamReviewScore(g) > steamReviewScore(best) ? g : best)
+      : null;
+    const comparableGames = gamesWithReviewData.filter(g => g.rating !== null && g.rating !== undefined);
+    let agreementGap = null;
+    if (comparableGames.length > 0) {
+      const avgYours = comparableGames.reduce((sum, g) => sum + (g.rating / 5) * 100, 0) / comparableGames.length;
+      const avgSteam = comparableGames.reduce((sum, g) => sum + g.steamReviewPercent, 0) / comparableGames.length;
+      agreementGap = { diff: avgYours - avgSteam, count: comparableGames.length };
+    }
+    const steamConsensus = { checkedCount: gamesWithReviewData.length, avgPercent: avgSteamPercent, mostAcclaimed, agreementGap };
+
     return {
       totalGames, completed, backlog, playing, abandoned, avgRating,
       oldest, newest, sortedDecades,
       topDevs, highestRatedDevs,
       topTags, highestRatedTags,
       totalSpent, backlogValue, completedValue, avgPrice, gamesWithPriceCount: gamesWithPrice.length,
-      lastPriceSync, velocity, playtime
+      lastPriceSync, velocity, playtime, steamConsensus
     };
   }, [games]);
 
@@ -266,6 +290,30 @@ export function StatsView({ games, watchlistGames = [] }) {
               ? `PRICES LAST SYNCED: ${stats.lastPriceSync.toLocaleDateString()}`
               : 'PRICES LAST SYNCED: NEVER'}
           </p>
+        </div>
+
+        {/* Steam Review Consensus — a separate signal from your own 1-5★
+            rating panel above; never merged into it. */}
+        <div className="cd-panel">
+          <h3>STEAM_CONSENSUS</h3>
+          <ul className="cd-stat-list">
+            <li><span className="label">CHECKED</span> <span className="val">{stats.steamConsensus.checkedCount}</span></li>
+            <li><span className="label">AVG STEAM RATING</span> <span className="val">{stats.steamConsensus.avgPercent}{stats.steamConsensus.avgPercent !== 'N/A' ? '%' : ''}</span></li>
+          </ul>
+          {stats.steamConsensus.mostAcclaimed && (
+            <p className="cd-price-sync-note">
+              MOST ACCLAIMED: {stats.steamConsensus.mostAcclaimed.title} ({stats.steamConsensus.mostAcclaimed.steamReviewDesc}, {Math.round(stats.steamConsensus.mostAcclaimed.steamReviewPercent)}%)
+            </p>
+          )}
+          {stats.steamConsensus.agreementGap ? (
+            <p className="cd-price-sync-note">
+              {Math.abs(stats.steamConsensus.agreementGap.diff) < 1
+                ? `YOU RATE RIGHT IN LINE WITH STEAM ON AVERAGE (${stats.steamConsensus.agreementGap.count} compared)`
+                : `YOU RATE THESE ${Math.abs(stats.steamConsensus.agreementGap.diff).toFixed(0)} PTS ${stats.steamConsensus.agreementGap.diff > 0 ? 'HIGHER' : 'LOWER'} THAN STEAM ON AVERAGE (${stats.steamConsensus.agreementGap.count} compared)`}
+            </p>
+          ) : (
+            <p className="cd-price-sync-note">NO OVERLAP YET BETWEEN YOUR RATINGS AND CHECKED STEAM REVIEWS.</p>
+          )}
         </div>
 
         {/* Playtime Analysis — HLTB "Main + Sides" length */}

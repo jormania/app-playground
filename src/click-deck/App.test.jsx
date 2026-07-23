@@ -288,9 +288,21 @@ describe('App', () => {
       await waitFor(() => expect(screen.getByText('Monkey Island')).toBeTruthy())
 
       fireEvent.click(screen.getByText('Timeline'))
-      fireEvent.click(screen.getByText('Highest Rated'))
+      fireEvent.click(screen.getByText('My Rating'))
 
       expect(localStorage.getItem('cd_sort_by')).toBe('rating')
+    })
+
+    it('offers a separate "Steam Rating" sort alongside the renamed "My Rating", so the two can never be confused', async () => {
+      render(<App />)
+      await waitFor(() => expect(screen.getByText('Monkey Island')).toBeTruthy())
+
+      fireEvent.click(screen.getByText('Timeline'))
+      expect(screen.getByText('My Rating')).toBeTruthy()
+      fireEvent.click(screen.getByText('Steam Rating'))
+
+      expect(localStorage.getItem('cd_sort_by')).toBe('steamRating')
+      await waitFor(() => expect(screen.getByText('Steam Rating')).toBeTruthy())
     })
 
     it('persists a status filter change so it survives a reload', async () => {

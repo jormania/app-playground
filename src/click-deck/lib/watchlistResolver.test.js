@@ -27,8 +27,19 @@ describe('watchlistResolver (client-side twin)', () => {
     expect(resolved).toEqual({
       flipped: true, releaseDateString: '15 Jul, 2026', year: 2026,
       releasedAt: now.toISOString(), checkedAt: now.toISOString(),
-      coverUrl: 'https://example.com/final.jpg', derivedTags: null, derivedJournal: null, derivedDeveloper: null
+      coverUrl: 'https://example.com/final.jpg', derivedTags: null, derivedJournal: null, derivedDeveloper: null,
+      reviewSummary: null
     })
+  })
+
+  it('carries a review summary through on flip when the server attached one to appData', () => {
+    const appData = {
+      success: true,
+      data: { release_date: { coming_soon: false, date: '15 Jul, 2026' } },
+      reviewSummary: { percent: 92, count: 1500, desc: 'Very Positive' }
+    }
+    const resolved = resolveReleaseFlip({ releaseStatus: 'Coming Soon', tags: [], journal: '' }, appData, now)
+    expect(resolved.reviewSummary).toEqual({ percent: 92, count: 1500, desc: 'Very Positive' })
   })
 
   it('a non-flip check still records checkedAt so the "last checked" age advances even when nothing launched', () => {
@@ -98,5 +109,24 @@ describe('watchlistResolver (client-side twin)', () => {
     expect(fields).toEqual({ releaseDate: 'Q3 2026', priceUpdatedAt: now.toISOString(), year: 2026, coverUrl: 'https://example.com/dev.jpg' })
     expect(fields.releaseStatus).toBeUndefined()
     expect(fields.releasedAt).toBeUndefined()
+  })
+
+  it('includes Steam review fields (using checkedAt as reviewCheckedAt) when a review summary is present on flip', () => {
+    const fields = buildWatchlistUpdateFields({
+      flipped: true, releaseDateString: '15 Jul, 2026', year: 2026, releasedAt: now.toISOString(), checkedAt: now.toISOString(),
+      reviewSummary: { percent: 92, count: 1500, desc: 'Very Positive' }
+    })
+    expect(fields.steamReviewPercent).toBe(92)
+    expect(fields.steamReviewDesc).toBe('Very Positive')
+    expect(fields.steamReviewCount).toBe(1500)
+    expect(fields.reviewCheckedAt).toBe(now.toISOString())
+  })
+
+  it('omits Steam review fields entirely when no review summary is present (a still-Coming-Soon check, or a flip the server never got review data for)', () => {
+    const fields = buildWatchlistUpdateFields({ flipped: true, releaseDateString: '15 Jul, 2026', year: 2026, releasedAt: now.toISOString(), checkedAt: now.toISOString(), reviewSummary: null })
+    expect(fields.steamReviewPercent).toBeUndefined()
+    expect(fields.steamReviewDesc).toBeUndefined()
+    expect(fields.steamReviewCount).toBeUndefined()
+    expect(fields.reviewCheckedAt).toBeUndefined()
   })
 })

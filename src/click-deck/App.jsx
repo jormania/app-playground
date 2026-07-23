@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { McpConnector } from './lib/mcp-connector'
+import { steamReviewScore } from './lib/steamReviews'
 import { readReleaseStatus, isIgnored as isIgnoredStatus, isActiveCollectionGame } from './lib/releaseStatus'
 import { TimelineView } from './components/TimelineView'
 import { AnalyticsView } from './components/AnalyticsView'
@@ -22,7 +23,11 @@ import {
 const SORT_OPTIONS = [
   { value: 'timeline', label: 'Timeline', group: 'TIME' },
   { value: 'recent', label: 'Recently Added', group: 'TIME' },
-  { value: 'rating', label: 'Highest Rated', group: 'METRICS' },
+  // 'rating' kept as the stored value (so an existing saved cd_sort_by
+  // preference isn't silently reset) — only the label changes, to
+  // disambiguate from the new Steam-sourced sort right below it.
+  { value: 'rating', label: 'My Rating', group: 'METRICS' },
+  { value: 'steamRating', label: 'Steam Rating', group: 'METRICS' },
   { value: 'alpha', label: 'Alphabetical', group: 'METRICS' },
   { value: 'longest', label: 'Longest', group: 'METRICS' },
   { value: 'shortest', label: 'Shortest', group: 'METRICS' }
@@ -396,6 +401,12 @@ export function App() {
       sortedFresh.sort((a, b) => new Date(b.createdTime) - new Date(a.createdTime))
     } else if (sortBy === 'rating') {
       sortedFresh.sort((a, b) => (b.rating || 0) - (a.rating || 0))
+    } else if (sortBy === 'steamRating') {
+      // Confidence-adjusted (Wilson lower bound), not the raw percentage —
+      // see steamReviews.js's steamReviewScore comment for why. A game with
+      // no Steam review data sorts last, same "unknown ranks worst" rule
+      // Longest/Shortest already use below.
+      sortedFresh.sort((a, b) => (steamReviewScore(b) ?? -1) - (steamReviewScore(a) ?? -1))
     } else if (sortBy === 'alpha') {
       sortedFresh.sort((a, b) => a.title.localeCompare(b.title))
     } else if (sortBy === 'longest') {
@@ -463,6 +474,9 @@ export function App() {
 
   // Same check for the R2 Length (hrs) field.
   const lengthHoursSchemaReady = useMemo(() => games.some(g => g.lengthHours !== undefined), [games])
+
+  // Same check for the Steam Reviews schema patch.
+  const reviewSchemaReady = useMemo(() => games.some(g => g.steamReviewPercent !== undefined), [games])
 
   return (
     <div className="cd-app-container">
@@ -672,6 +686,7 @@ export function App() {
           watchlistSchemaReady={watchlistSchemaReady}
           completedAtSchemaReady={completedAtSchemaReady}
           lengthHoursSchemaReady={lengthHoursSchemaReady}
+          reviewSchemaReady={reviewSchemaReady}
         />
       )}
 

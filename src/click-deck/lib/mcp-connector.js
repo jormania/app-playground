@@ -64,7 +64,17 @@ const mapPageToGame = (page) => {
     // applied, so we key off key-presence and leave these `undefined` (never
     // defaulted) until then, keeping ordinary saves safe for unpatched schemas.
     completedAt: page.properties['Completed At'] !== undefined ? (page.properties['Completed At']?.date?.start || null) : undefined,
-    lengthHours: page.properties['Length (hrs)'] !== undefined ? (page.properties['Length (hrs)']?.number ?? null) : undefined
+    lengthHours: page.properties['Length (hrs)'] !== undefined ? (page.properties['Length (hrs)']?.number ?? null) : undefined,
+    // Same presence-gated pattern once more — these four only exist once the
+    // Steam Reviews schema patch has been applied. `reviewCheckedAt` is the
+    // "did we check" signal (stamped on every successful fetch, even a
+    // zero-review result); `steamReviewCount`/`steamReviewPercent` being
+    // present but 0 means "checked, Steam had nothing" — genuinely different
+    // from `undefined` (never checked at all). See lib/steamReviews.js.
+    steamReviewPercent: page.properties['Steam Review %'] !== undefined ? (page.properties['Steam Review %']?.number ?? null) : undefined,
+    steamReviewDesc: page.properties['Steam Review Desc'] !== undefined ? (page.properties['Steam Review Desc']?.rich_text?.map(rt => rt.plain_text).join('') || '') : undefined,
+    steamReviewCount: page.properties['Steam Review Count'] !== undefined ? (page.properties['Steam Review Count']?.number ?? null) : undefined,
+    reviewCheckedAt: page.properties['Review Checked At'] !== undefined ? (page.properties['Review Checked At']?.date?.start || null) : undefined
   }
 }
 
@@ -131,6 +141,12 @@ const mapGameToProperties = (game) => {
   // never gets a PATCH referencing a property it doesn't recognize yet.
   if (game.completedAt !== undefined) props['Completed At'] = game.completedAt ? { date: { start: game.completedAt } } : { date: null }
   if (game.lengthHours !== undefined) props['Length (hrs)'] = { number: game.lengthHours !== null ? parseFloat(game.lengthHours) : null }
+
+  // Same conditional-write pattern once more — see mapPageToGame's comment.
+  if (game.steamReviewPercent !== undefined) props['Steam Review %'] = { number: game.steamReviewPercent }
+  if (game.steamReviewDesc !== undefined) props['Steam Review Desc'] = { rich_text: game.steamReviewDesc ? [{ text: { content: game.steamReviewDesc } }] : [] }
+  if (game.steamReviewCount !== undefined) props['Steam Review Count'] = { number: game.steamReviewCount }
+  if (game.reviewCheckedAt !== undefined) props['Review Checked At'] = game.reviewCheckedAt ? { date: { start: game.reviewCheckedAt } } : { date: null }
 
   return props
 }

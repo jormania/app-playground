@@ -132,4 +132,40 @@ describe('StatsView', () => {
       expect(screen.queryByText('NEXT UP')).toBeNull()
     })
   })
+
+  describe('STEAM_CONSENSUS panel', () => {
+    it('shows "N/A" and no MOST ACCLAIMED/comparison lines when nothing has been checked yet', () => {
+      render(<StatsView games={mockGames} />)
+      const panel = screen.getByText('STEAM_CONSENSUS').closest('.cd-panel')
+      expect(within(panel).getByText('CHECKED').closest('li').textContent).toContain('0')
+      expect(within(panel).getByText('AVG STEAM RATING').closest('li').textContent).toContain('N/A')
+      expect(screen.queryByText(/MOST ACCLAIMED/)).toBeNull()
+      expect(screen.getByText('NO OVERLAP YET BETWEEN YOUR RATINGS AND CHECKED STEAM REVIEWS.')).toBeTruthy()
+    })
+
+    it('computes the collection average and names the most acclaimed game by Wilson-adjusted score, not raw percentage', () => {
+      const withReviews = [
+        // Higher raw % but far fewer reviews — should NOT win MOST ACCLAIMED
+        // over the large, slightly-lower-% sample (the whole point of using
+        // the confidence-adjusted score instead of raw percent).
+        { id: 'r1', title: 'Tiny Sample Darling', year: 2020, status: 'Backlog', tags: [], reviewCheckedAt: '2026-07-24', steamReviewPercent: 100, steamReviewCount: 4, steamReviewDesc: 'Positive' },
+        { id: 'r2', title: 'True Classic', year: 2021, status: 'Backlog', tags: [], reviewCheckedAt: '2026-07-24', steamReviewPercent: 94, steamReviewCount: 50000, steamReviewDesc: 'Overwhelmingly Positive' }
+      ]
+      render(<StatsView games={withReviews} />)
+      const panel = screen.getByText('STEAM_CONSENSUS').closest('.cd-panel')
+      expect(within(panel).getByText('CHECKED').closest('li').textContent).toContain('2')
+      expect(screen.getByText(/MOST ACCLAIMED: True Classic/)).toBeTruthy()
+    })
+
+    it('reports an honest average gap between your ratings and Steam\'s, only over games with both', () => {
+      const games = [
+        { id: 'r1', title: 'You Loved It', year: 2020, status: 'Completed', rating: 5, tags: [], reviewCheckedAt: '2026-07-24', steamReviewPercent: 60, steamReviewCount: 100 },
+        { id: 'r2', title: 'No Rating Yet', year: 2021, status: 'Backlog', rating: null, tags: [], reviewCheckedAt: '2026-07-24', steamReviewPercent: 90, steamReviewCount: 100 }
+      ]
+      render(<StatsView games={games} />)
+      // Only "You Loved It" has both a rating and review data: yours = 5/5 =
+      // 100%, Steam = 60% -> you rate 40 points higher on average.
+      expect(screen.getByText(/YOU RATE THESE 40 PTS HIGHER THAN STEAM ON AVERAGE \(1 compared\)/)).toBeTruthy()
+    })
+  })
 })

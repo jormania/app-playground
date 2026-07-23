@@ -13,6 +13,7 @@
 // only ever talks to Steam.
 import { originAllowed, rateLimited, clientIp } from './_shared.js'
 import { inferTagsFromSteamData, inferMatureTag } from './_lib/clickdeckTagInference.js'
+import { fetchReviewSummary } from './_lib/clickdeckReviews.js'
 
 // One search + up to PER_STUDIO_CAP one-at-a-time appdetails calls per studio,
 // across the whole followed list, can run past the default serverless budget.
@@ -141,7 +142,19 @@ async function fetchAppDetailsBatch(appIds) {
     const res = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appId}&cc=US&filters=basic,release_date,price_overview,developers,publishers,genres`)
     if (res.ok) {
       const data = await res.json()
-      if (data && typeof data === 'object' && !Array.isArray(data)) Object.assign(combined, data)
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        Object.assign(combined, data)
+        // Only an already-released candidate gets a review fetch here — see
+        // api/_lib/clickdeckReviews.js's header comment for why a Coming
+        // Soon game's review summary is guaranteed empty (this same
+        // response already tells us release_date.coming_soon for free).
+        const entry = data[String(appId)]
+        const isComingSoon = entry?.data?.release_date?.coming_soon === true
+        if (entry?.success && entry?.data && !isComingSoon) {
+          entry.reviewSummary = await fetchReviewSummary(appId)
+          await new Promise(r => setTimeout(r, 200))
+        }
+      }
     }
     await new Promise(r => setTimeout(r, 200))
   }
@@ -251,7 +264,16 @@ export default async function handler(req, res) {
         price: data.price_overview ? data.price_overview.final / 100 : null,
         headerImage: data.header_image || `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appId}/header.jpg`,
         shortDescription: data.short_description || '',
-        tags: cappedTags
+        tags: cappedTags,
+        // Only present for already-released candidates (see
+        // fetchAppDetailsBatch) — left undefined, not a fake zero, for a
+        // Coming Soon pick, so candidateToNewGame correctly omits these
+        // fields for a title that hasn't launched yet rather than writing
+        // "0 reviews" onto something never actually checked.
+        steamReviewPercent: entry.reviewSummary ? entry.reviewSummary.percent : undefined,
+        steamReviewDesc: entry.reviewSummary ? entry.reviewSummary.desc : undefined,
+        steamReviewCount: entry.reviewSummary ? entry.reviewSummary.count : undefined,
+        reviewCheckedAt: entry.reviewSummary ? new Date().toISOString() : undefined
       })
     }
 

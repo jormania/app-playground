@@ -133,4 +133,26 @@ describe('GameCard', () => {
     const bolded = screen.getByText('classic')
     expect(bolded.tagName).toBe('STRONG')
   })
+
+  describe('Steam Rating badge', () => {
+    it('shows the desc + rounded percent + a review-count tooltip when the game has real data', () => {
+      const game = { ...mockGame, reviewCheckedAt: '2026-07-24', steamReviewPercent: 95.1, steamReviewDesc: 'Overwhelmingly Positive', steamReviewCount: 9586 }
+      render(<GameCard game={game} onEdit={() => {}} onUpdateStatus={() => {}} />)
+      const badge = screen.getByText('Overwhelmingly Positive (95%)')
+      expect(badge).toBeTruthy()
+      expect(badge.title).toBe('9,586 Steam reviews')
+    })
+
+    it('shows a muted "No reviews yet" when checked but Steam had nothing (not the same as never checked)', () => {
+      const game = { ...mockGame, reviewCheckedAt: '2026-07-24', steamReviewPercent: 0, steamReviewCount: 0 }
+      render(<GameCard game={game} onEdit={() => {}} onUpdateStatus={() => {}} />)
+      expect(screen.getByText('No reviews yet')).toBeTruthy()
+    })
+
+    it('shows nothing at all when the game has never been checked', () => {
+      render(<GameCard game={mockGame} onEdit={() => {}} onUpdateStatus={() => {}} />)
+      expect(screen.queryByText('No reviews yet')).toBeNull()
+      expect(screen.queryByText(/%\)/)).toBeNull()
+    })
+  })
 })

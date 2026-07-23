@@ -4,7 +4,7 @@ import { findBestSteamMatch } from '../lib/steamMatch'
 import { findBestHltbMatch } from '../lib/hltbMatch'
 import { readReleaseStatus } from '../lib/releaseStatus'
 
-export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watchlistSchemaReady = false, completedAtSchemaReady = false, lengthHoursSchemaReady = false }) {
+export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watchlistSchemaReady = false, completedAtSchemaReady = false, lengthHoursSchemaReady = false, reviewSchemaReady = false }) {
   // Only offer the Release Status control once we know Notion actually has
   // the property — either the collection already has at least one game
   // carrying it (watchlistSchemaReady, computed in App.jsx), or this
@@ -18,6 +18,8 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
   const schemaSupportsCompletedAt = completedAtSchemaReady || (game && game.completedAt !== undefined)
   // Same presence-gated pattern for the R2 Length (hrs) field.
   const schemaSupportsLengthHours = lengthHoursSchemaReady || (game && game.lengthHours !== undefined)
+  // Same presence-gated pattern for the Steam Reviews schema patch.
+  const schemaSupportsSteamReview = reviewSchemaReady || (game && game.steamReviewPercent !== undefined)
   const [formData, setFormData] = useState({
     title: '',
     year: new Date().getFullYear(),
@@ -30,6 +32,7 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
   })
   const [isFetchingCover, setIsFetchingCover] = useState(false)
   const [isFetchingLength, setIsFetchingLength] = useState(false)
+  const [isFetchingRating, setIsFetchingRating] = useState(false)
   const [validationError, setValidationError] = useState('')
 
   useEffect(() => {
@@ -98,6 +101,11 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
       const { match, confident } = findBestSteamMatch(json.items, formData.title);
       if (match) {
         let finalCoverUrl = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${match.id}/header.jpg`;
+        // Populated alongside the cover, straight from the same ?appId= call
+        // (widened server-side to also return a review summary) — so a new
+        // game added via FETCH STEAM already has its Steam rating the
+        // moment it's saved, rather than waiting on the nightly cron.
+        let reviewSummary = null;
         try {
           const coverRes = await fetch(`/api/steam-search?appId=${match.id}`);
           if (coverRes.ok) {
@@ -105,6 +113,7 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
             if (coverData.coverUrl) {
               finalCoverUrl = coverData.coverUrl;
             }
+            reviewSummary = coverData.reviewSummary || null;
           }
         } catch (e) {
           console.warn('Failed to fetch hashed cover url', e);
@@ -117,7 +126,13 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
           // meaning a game whose cover came from this button would silently
           // never get pricing (the nightly cron only picks up games with a
           // Steam App ID) and its cover would never link to the store page.
-          appId: match.id
+          appId: match.id,
+          ...(reviewSummary ? {
+            steamReviewPercent: reviewSummary.percent,
+            steamReviewDesc: reviewSummary.desc,
+            steamReviewCount: reviewSummary.count,
+            reviewCheckedAt: new Date().toISOString()
+          } : {})
         }));
         // A short or generic title (e.g. "Loom", "Norco") can coincidentally
         // match an unrelated Steam listing rather than the real game — this
@@ -164,6 +179,38 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
       if (onToast) onToast('Error fetching length from HowLongToBeat.')
     }
     setIsFetchingLength(false)
+  }
+
+  // Manual re-fetch for a game that already has a Steam App ID — same shape
+  // as FETCH HLTB, but simpler: this keys off the game's own already-known
+  // App ID (set via FETCH STEAM), not a fuzzy title search, so there's no
+  // confidence/matching ambiguity to warn about, just success or failure.
+  const fetchRating = async () => {
+    if (!formData.appId) return
+    setIsFetchingRating(true)
+    try {
+      const res = await fetch(`/api/steam-search?appId=${formData.appId}`)
+      const json = await res.json()
+      if (!res.ok) {
+        if (onToast) onToast(`⚠ ${json.message || 'Could not reach Steam for review data.'}`)
+        return
+      }
+      if (json.reviewSummary) {
+        setFormData(prev => ({
+          ...prev,
+          steamReviewPercent: json.reviewSummary.percent,
+          steamReviewDesc: json.reviewSummary.desc,
+          steamReviewCount: json.reviewSummary.count,
+          reviewCheckedAt: new Date().toISOString()
+        }))
+      } else if (onToast) {
+        onToast('Steam shows no reviews for this title yet (still Coming Soon, or genuinely none).')
+      }
+    } catch (err) {
+      console.error(err)
+      if (onToast) onToast('Error fetching Steam rating.')
+    }
+    setIsFetchingRating(false)
   }
 
   const showRating = ['Completed', 'Playing', 'Abandoned'].includes(formData.status)
@@ -273,6 +320,40 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
                 {isFetchingLength ? 'FETCHING...' : 'FETCH HLTB'}
               </button>
             </div>
+          </div>
+        )}
+
+        {schemaSupportsSteamReview && (
+          <div className="cd-form-group">
+            <label>STEAM RATING (%)</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                name="steamReviewPercent"
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={formData.steamReviewPercent ?? ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, steamReviewPercent: e.target.value === '' ? null : parseFloat(e.target.value) }))}
+              />
+              <button
+                type="button"
+                onClick={fetchRating}
+                disabled={isFetchingRating || !formData.appId}
+                title={!formData.appId ? 'Fetch a Steam App ID first (FETCH STEAM above)' : undefined}
+                style={{ whiteSpace: 'nowrap', fontSize: '0.9rem', padding: '0 1rem' }}
+              >
+                {isFetchingRating ? 'FETCHING...' : 'FETCH RATING'}
+              </button>
+            </div>
+            {formData.steamReviewDesc && (
+              <p className="cd-tag-warning" style={{ color: 'var(--cd-text-muted)' }}>
+                {formData.steamReviewDesc}{typeof formData.steamReviewCount === 'number' ? ` — ${formData.steamReviewCount.toLocaleString()} reviews` : ''}
+              </p>
+            )}
+            {!formData.appId && (
+              <p className="cd-tag-warning" style={{ color: 'var(--cd-text-muted)' }}>Fetch a Steam App ID first (FETCH STEAM above) to enable this.</p>
+            )}
           </div>
         )}
 

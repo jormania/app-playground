@@ -1,3 +1,5 @@
+import { steamReviewScore } from './steamReviews'
+
 // Midpoint of the 1-5 rating scale — the neutral score given to a candidate
 // whose tags/studio have no rated history to draw an affinity from, so an
 // unknown quantity lands squarely in the middle of the pack rather than being
@@ -81,6 +83,22 @@ export function computeWeights(games, mode, context = {}) {
       .map(g => g.id)
     return games.map(g => n - rankedIds.indexOf(g.id))
   }
+  if (mode === 'acclaimed') {
+    // Confidence-adjusted (Wilson lower bound), not raw percentage — see
+    // steamReviews.js's steamReviewScore comment for why. A candidate with
+    // no Steam review data ranks least-favored, same "missing is worst, not
+    // excluded" rule as 'cheapest' above. When NO candidate has review data
+    // at all (e.g. right after shipping, before the first nightly cron
+    // pass), every score ties at the same fallback value, and the stable
+    // sort just preserves array order — an arbitrary positional bias, not
+    // a meaningful ranking (same latent characteristic 'cheapest'/'oldest'
+    // already have for exact ties, not something new here). RandomGameModal's
+    // badge flags this state explicitly rather than implying real signal.
+    const rankedIds = [...games]
+      .sort((a, b) => (steamReviewScore(b) ?? -1) - (steamReviewScore(a) ?? -1))
+      .map(g => g.id)
+    return games.map(g => n - rankedIds.indexOf(g.id))
+  }
   if (mode === 'taste') {
     const ratedGames = (context.ratedGames || []).filter(g => g.rating)
     if (ratedGames.length < COLD_START_MIN_RATED) return games.map(() => 1)
@@ -110,4 +128,4 @@ export function pickWeightedGame(games, mode = 'uniform', randomFn = Math.random
   return games[games.length - 1]
 }
 
-export const RANDOM_WEIGHT_MODES = ['uniform', 'oldest', 'cheapest', 'taste']
+export const RANDOM_WEIGHT_MODES = ['uniform', 'oldest', 'cheapest', 'taste', 'acclaimed']

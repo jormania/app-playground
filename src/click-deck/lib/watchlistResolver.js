@@ -70,7 +70,13 @@ export function resolveReleaseFlip(game, appData, now = new Date()) {
     coverUrl,
     derivedTags,
     derivedJournal,
-    derivedDeveloper
+    derivedDeveloper,
+    // Attached server-side (api/steam-search.js's ?appids= mode) onto this
+    // same appData entry whenever it resolves to actually-released — null
+    // here just means the fetch itself came back empty/failed, not that the
+    // game was skipped (a Coming Soon entry never reaches this branch at
+    // all, see the comingSoon !== false check above).
+    reviewSummary: appData.reviewSummary || null
   }
 }
 
@@ -94,5 +100,11 @@ export function buildWatchlistUpdateFields(resolved) {
   if (resolved.derivedTags) fields.tags = resolved.derivedTags
   if (resolved.derivedJournal) fields.journal = resolved.derivedJournal
   if (resolved.derivedDeveloper) fields.developer = resolved.derivedDeveloper
+  if (resolved.reviewSummary) {
+    fields.steamReviewPercent = resolved.reviewSummary.percent
+    fields.steamReviewDesc = resolved.reviewSummary.desc
+    fields.steamReviewCount = resolved.reviewSummary.count
+    fields.reviewCheckedAt = resolved.checkedAt
+  }
   return fields
 }

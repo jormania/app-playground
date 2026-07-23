@@ -234,11 +234,14 @@ export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onShowRel
             <option value="uniform">Uniform (equal odds)</option>
             <option value="oldest">Favor oldest backlog entries</option>
             <option value="cheapest">Favor cheapest entries</option>
+            <option value="acclaimed">Favor critically acclaimed (Steam ratings)</option>
           </select>
           <p style={{ fontSize: '0.85rem', color: 'var(--cd-text-muted)', margin: '0.3rem 0 0' }}>
             Controls how [R] picks your next playthrough from the backlog. "Favor your taste" blends
             the average rating of games sharing a candidate's tags (~2/3 weight) with its studio's
             average rating (~1/3 weight) — falls back to uniform odds until you've rated at least 3 games.
+            "Favor critically acclaimed" ranks by Steam's review data with a confidence adjustment for
+            low review counts, so a handful of glowing reviews can't outrank an established classic.
           </p>
         </div>
 

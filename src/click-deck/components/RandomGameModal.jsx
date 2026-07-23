@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { pickWeightedGame, COLD_START_MIN_RATED } from '../lib/randomWeighting'
+import { hasReviewData } from '../lib/steamReviews'
 
 export function RandomGameModal({ backlogGames, allGames = [], onClose, onUpdateStatus }) {
   const [selectedGame, setSelectedGame] = useState(null)
@@ -62,6 +63,8 @@ export function RandomGameModal({ backlogGames, allGames = [], onClose, onUpdate
               <span className="cd-random-weight-badge">
                 {weightMode === 'oldest' ? 'FAVORING OLDEST BACKLOG'
                   : weightMode === 'cheapest' ? 'FAVORING CHEAPEST'
+                  : weightMode === 'acclaimed'
+                    ? (backlogGames.some(hasReviewData) ? 'FAVORING CRITICALLY ACCLAIMED' : 'FAVORING CRITICALLY ACCLAIMED (NO STEAM RATINGS CHECKED YET)')
                   : ratedGames.length < COLD_START_MIN_RATED ? 'FAVORING YOUR TASTE (COLD START — UNIFORM)'
                   : 'FAVORING YOUR TASTE'}
               </span>
