@@ -25,6 +25,15 @@ export default function InsightsView({ data, period, filterProps }) {
   return (
     <div className="insights-view" style={{ maxWidth: '1200px', margin: '0 auto', padding: 'var(--space-md)' }}>
       
+      {/* Monthly Summary */}
+      {insights.summaryParagraph && (
+        <div style={{ marginBottom: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+          <p style={{ margin: 0, fontSize: 'var(--text-md)', lineHeight: 1.6, color: 'var(--color-ink)' }}>
+            <strong>Month in Review:</strong> {insights.summaryParagraph}
+          </p>
+        </div>
+      )}
+
       {/* Attention Needed (Alerts) */}
       {alerts && alerts.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
@@ -42,6 +51,22 @@ export default function InsightsView({ data, period, filterProps }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Financial Wins */}
+      {insights.wins && insights.wins.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
+          <h2 style={{ margin: 0, fontSize: 'var(--text-xl)', color: 'var(--color-ink)' }}>Financial Wins</h2>
+          <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-success)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+              {insights.wins.map((win, idx) => (
+                <li key={idx} style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', color: 'var(--color-ink)', fontWeight: 'var(--weight-medium)' }}>
+                  <span style={{ color: 'var(--color-success)' }}>✓</span> {win}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
 
@@ -293,7 +318,7 @@ export default function InsightsView({ data, period, filterProps }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xl)' }}>
           <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
             <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
-              Hidden Costs
+              Structural Costs
             </h2>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: '1px solid var(--color-border)' }}>
               <div>
