@@ -234,6 +234,9 @@ export default defineConfig({
     devBodyRelay('/api/clickdeck-studio-search', clickDeckStudioSearchHandler, 'dev-clickdeck-studio-search-relay'),
     devApiRelay('/api/clickdeck-hltb', clickDeckHltbHandler, 'dev-clickdeck-hltb-relay'),
   ],
+  test: {
+    environment: 'happy-dom'
+  },
   build: {
     rollupOptions: {
       input: {
@@ -249,6 +252,7 @@ export default defineConfig({
         dailyStoic: resolve(__dirname, 'daily-stoic-react.html'),
         loom: resolve(__dirname, 'loom-react.html'),
         clickDeck: resolve(__dirname, 'click-deck-react.html'),
+        whereItWent: resolve(__dirname, 'where-it-went-react.html'),
         dsShowcase: resolve(__dirname, 'ds-showcase.html'),
         cabinet: resolve(__dirname, 'cabinet.html'),
       }

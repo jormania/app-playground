@@ -32,25 +32,25 @@ body {
 
 :root {
   /* ── Colour: surfaces (back-to-front) ─────────────────────────────────── */
-  --color-bg:        #ffffff; /* app background */
-  --color-bg-sunken: #f4f5f7; /* recessed areas, page gutters */
-  --color-surface:   #ffffff; /* cards, panels, raised content */
-  --color-surface-2: #f8f9fb; /* nested surface on a surface */
-  --color-border:    #e3e6ea; /* hairlines, dividers, card edges */
-  --color-border-2:  #cdd2d9; /* stronger borders, focused inputs */
+  --color-bg:        #eee8d5; /* Solarized base2 */
+  --color-bg-sunken: #e6dfcb; 
+  --color-surface:   #fdf6e3; /* Solarized base3 */
+  --color-surface-2: #eee8d5; 
+  --color-border:    #d5ccb7; 
+  --color-border-2:  #93a1a1; /* Solarized base1 */
 
   /* ── Colour: text (most → least prominent) ────────────────────────────── */
-  --color-ink:    #1b1f24; /* primary body + headings */
-  --color-muted:  #5a636e; /* secondary text, captions */
-  --color-faint:  #8b939e; /* hints, disabled, placeholder */
+  --color-ink:    #586e75; /* Solarized base01 */
+  --color-muted:  #657b83; /* Solarized base00 */
+  --color-faint:  #93a1a1; /* Solarized base1 */
 
   /* ── Colour: accents ──────────────────────────────────────────────────── */
-  --color-accent:        #3b6ef5; /* primary action / brand */
-  --color-accent-hover:  #2f59c9;
-  --color-on-accent:     #ffffff; /* text/icons on an accent fill */
-  --color-success:       #1f9d57;
-  --color-warning:       #c98a14;
-  --color-danger:        #d23f3f;
+  --color-accent:        #268bd2; /* Solarized blue */
+  --color-accent-hover:  #2aa198; /* Solarized cyan */
+  --color-on-accent:     #fdf6e3; /* Solarized base3 */
+  --color-success:       #859900; /* Solarized green */
+  --color-warning:       #cb4b16; /* Solarized orange */
+  --color-danger:        #dc322f; /* Solarized red */
 
   /* Derived translucent fills adapt automatically if accents change. */
   --color-ring:  color-mix(in srgb, var(--color-accent) 35%, transparent);
@@ -109,18 +109,24 @@ body {
    accents and the type/space/radius scales are shared, so components don't
    special-case the theme. Fill in / tune these as the system matures. */
 :root[data-theme="dark"] {
-  --color-bg:        #14171c;
-  --color-bg-sunken: #0e1115;
-  --color-surface:   #1b1f25;
-  --color-surface-2: #232831;
-  --color-border:    #2b313a;
-  --color-border-2:  #3b424d;
+  --color-bg:        #1a1b26;
+  --color-bg-sunken: #16161e;
+  --color-surface:   #24283b;
+  --color-surface-2: #292e42;
+  --color-border:    #414868;
+  --color-border-2:  #565f89;
 
-  --color-ink:    #e7eaee;
-  --color-muted:  #aab2bd;
-  --color-faint:  #7b838f;
+  --color-ink:    #c0caf5;
+  --color-muted:  #9aa5ce;
+  --color-faint:  #565f89;
 
-  --color-scrim:  rgba(0, 0, 0, 0.60);
+  --color-accent:       #7aa2f7;
+  --color-accent-hover: #89b4fa;
+  --color-success:      #9ece6a;
+  --color-warning:      #e0af68;
+  --color-danger:       #f7768e;
+
+  --color-scrim:  rgba(26, 27, 38, 0.70);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);

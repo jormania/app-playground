@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Where It Went — Guide</title>
+<meta name="description" content="How to set up Where It Went: connect Notion, manage transactions, and track your cash flow." />
+<meta name="theme-color" content="#161b22" />
+<link rel="icon" href="/where-it-went-favicon-32.png" type="image/png" />
+<style>
+  /* Standard Cone of Cold Guide Theme - adapted for Where It Went */
+  :root{
+    --bg:#161b22;--bg2:#21262d;--surface:#21262d;--border:#30363d;--border2:#238636;
+    --ink:#c9d1d9;--muted:#8b949e;--faint:#484f58;--brass:#58a6ff;--cat:#f0883e;--place:#8a2be2;--green:#2ea043;
+    --serif:'Inter',system-ui,sans-serif;--sans:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.65;-webkit-font-smoothing:antialiased;padding:0 20px 90px}
+  .wrap{max-width:720px;margin:0 auto}
+  header{text-align:center;padding:52px 0 22px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--cat);margin-bottom:12px}
+  h1{font-family:var(--serif);font-weight:600;font-size:clamp(2rem,6vw,2.8rem);line-height:1.03;color:var(--brass);}
+  h1 em{font-style:italic;color:var(--cat)}
+  .lede{color:var(--muted);max-width:52ch;margin:12px auto 0}
+  h2{font-family:var(--serif);font-weight:600;font-size:1.5rem;margin:36px 0 8px;padding-top:20px;border-top:1px solid var(--border);color:var(--brass);}
+  h3{font-size:1.02rem;margin:20px 0 6px;color:var(--ink);}
+  p{margin:10px 0;color:var(--ink)}
+  p.muted{color:var(--muted);font-size:.95rem}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:6px 0}
+  code{font-family:var(--mono);font-size:.82em;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:var(--brass)}
+  a{color:var(--brass);text-decoration:underline}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:0;padding:18px 20px;margin:14px 0}
+  .steps{counter-reset:step;list-style:none;margin:14px 0 10px;padding:0;display:grid;gap:13px}
+  .steps li{counter-increment:step;position:relative;padding-left:34px;margin:0}
+  .steps li::before{content:counter(step);position:absolute;left:0;top:1px;color:#12151c;background:var(--brass);font-family:var(--mono);font-size:11px;font-weight:600;width:22px;height:22px;border-radius:0;display:inline-flex;align-items:center;justify-content:center}
+  table.schema{width:100%;border-collapse:collapse;margin:12px 0;font-size:.85rem}
+  table.schema th,table.schema td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  table.schema th{font-family:var(--mono);font-size:.65rem;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-weight:500}
+  table.schema td:first-child{font-family:var(--mono);font-size:.78rem;color:var(--place);white-space:nowrap}
+  table.schema td:nth-child(2){color:var(--cat);white-space:nowrap}
+  .note{border-left:2px solid var(--border2);padding-left:14px;color:var(--faint);font-size:.92rem;margin:14px 0}
+  .kbd{display:inline-block;font-family:var(--mono);font-size:.78rem;background:var(--bg2);border:1px solid var(--border);border-bottom-width:2px;padding:1px 7px;color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">track your spending</div>
+    <h1>Where It <em>Went</em> — guide</h1>
+    <p class="lede">A clean, minimal personal finance web application that uses Notion as its backend database.</p>
+  </header>
+
+  <h2>What it is</h2>
+  <p>Where It Went is a specialized tracker for answering a simple question: "Where did my money go?" It leans into a clean, Github-inspired dark aesthetic, separating analytics and visualization from the actual data storage.</p>
+  <p class="muted">Everything is stored in <b>your</b> Notion, under <b>your</b> Notion integration token — the app holds no data of its own. It installs as a Progressive Web App (PWA) on desktop or mobile.</p>
+
+  <h2>1. Quick Setup</h2>
+  <p>To connect your own real, persistent collection, set it up directly in Notion, then point the app at it from Settings:</p>
+  <ol class="steps">
+    <li><b>Create an Integration:</b> Go to <a href="https://www.notion.so/my-integrations" target="_blank">Notion Integrations</a> and create a new integration.</li>
+    <li><b>Copy the Token:</b> Copy the Internal Integration Secret.</li>
+    <li><b>Prepare the Databases:</b> Ensure you have a Transactions database, an Accounts database, and a Categories database in Notion. See <a href="#schema">§2</a>.</li>
+    <li><b>Share the databases:</b> Open your Notion databases, click <code>•••</code> → <b>Connections</b>, and add your integration.</li>
+    <li><b>Get the Links:</b> Copy the Notion link to each database.</li>
+    <li><b>Connect it:</b> Open Settings (⚙), paste the Integration Token and the database links (or IDs), and save.</li>
+  </ol>
+
+  <h2 id="schema">2. The Notion Database Schema</h2>
+  <p>Where It Went expects three interconnected databases. They must be named properly and their properties must match these definitions exactly.</p>
+  
+  <h3>Transactions Database</h3>
+  <table class="schema">
+    <thead><tr><th>Property</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Name</td><td>Title</td><td>Description of the transaction.</td></tr>
+      <tr><td>Amount</td><td>Number</td><td>Positive for Income, negative for Expenses.</td></tr>
+      <tr><td>Date</td><td>Date</td><td>When the transaction occurred.</td></tr>
+      <tr><td>Account</td><td>Relation</td><td>Relation to the Accounts DB (Limit: 1).</td></tr>
+      <tr><td>Category</td><td>Relation</td><td>Relation to the Categories DB (Limit: 1).</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Categories Database</h3>
+  <table class="schema">
+    <thead><tr><th>Property</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Name</td><td>Title</td><td>Category name (e.g. Housing, Food, Salary).</td></tr>
+      <tr><td>Type</td><td>Select</td><td>Must be exactly <code>Income</code> or <code>Expense</code>.</td></tr>
+      <tr><td>Description</td><td>Rich Text</td><td>(Optional) Shows up as a description when selecting the category.</td></tr>
+      <tr><td>Icon</td><td>Notion Icon</td><td>The app reads native Notion Emoji icons for categories. E.g. 🏠 Housing, 🍽️ Dining, 💡 Utilities, etc.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Accounts Database</h3>
+  <table class="schema">
+    <thead><tr><th>Property</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Name</td><td>Title</td><td>Account name (e.g. Checking, Credit Card).</td></tr>
+      <tr><td>Type</td><td>Select</td><td><code>Asset</code> or <code>Liability</code>.</td></tr>
+      <tr><td>Balance</td><td>Number</td><td>Current balance (currently informational).</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3. Core Views</h2>
+  <p>Where It Went features two primary views within a single page application.</p>
+
+  <h3>Dashboard</h3>
+  <p>The top section contains Key Performance Indicators (KPIs) summarizing your financial health for the current month: <b>Income</b>, <b>Expenses</b>, and <b>Net Cash Flow</b>.</p>
+  <p>Below the KPIs, the <b>Monthly Review</b> intelligently analyzes your spending and presents actionable insights: month-over-month comparisons, missing recurring incomes, increased spending alerts in discretionary categories, and reflective questions to help you align your spending with your values.</p>
+  <p>It includes a sleek Chart.js bar graph that visualizes Monthly Spending vs Income over time, alongside a Recent Transactions list.</p>
+
+  <h3>Transactions Ledger</h3>
+  <p>The lower section is your complete ledger. You can sort by clicking the headers (Date, Description, Category, Account, Amount). The Add Transaction component dynamically filters available categories depending on whether you input a positive amount (Income) or a negative amount (Expense), and renders their emojis and descriptions inline.</p>
+
+  <h2>4. Data Ownership & Sync</h2>
+  <p>Where It Went deliberately doesn't ship with any shared or hardcoded data. It uses a <b>Bring Your Own (BYO)</b> token model: your Notion Integration Token and Database links live in Settings, are stored only in your browser's local storage, and are sent to Notion's API via a thin serverless proxy (<code>/api/notion</code>) that exists purely to avoid CORS restrictions.</p>
+  <p class="note">To see new categories or accounts added directly in Notion, simply refresh the page. Adding a new transaction via the app will automatically fetch the latest data.</p>
+</div>
+</body>
+</html>
