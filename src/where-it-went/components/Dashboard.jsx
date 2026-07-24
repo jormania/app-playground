@@ -246,7 +246,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-md)' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 'var(--space-md)' }}>
         <SegmentedControl
           size="sm"
           value={period}
