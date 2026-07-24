@@ -1,101 +1,69 @@
-import { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { generateDeepInsights } from '../lib/analytics';
-import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { formatCurrency } from '../lib/currency';
 
 export default function InsightsView({ data, period, filterProps }) {
-  const insights = useMemo(() => generateDeepInsights(data, period, filterProps), [data, period, filterProps]);
+  const insights = useMemo(() => {
+    return generateDeepInsights(data, period, filterProps);
+  }, [data, period, filterProps]);
 
-  if (!insights || !insights.financialHealth) {
+  if (!insights) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-2xl)', textAlign: 'center', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
-        <div style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>🍃</div>
-        <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-ink)' }}>No Data for Insights</h3>
-        <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>Add some transactions to see your financial insights.</p>
+      <div style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
+        <p style={{ color: 'var(--color-muted)' }}>Not enough data to generate insights for this period.</p>
       </div>
     );
   }
 
-  const { financialHealth, behavioral, trajectory } = insights;
-  const { needs, wants, savings } = financialHealth.needsWantsSavings;
-  const totalExpense = financialHealth.totalExpense;
+  const { financialHealth, behavioral, trajectory, incomeStreams, alerts } = insights;
 
-  const needsPct = totalExpense > 0 ? (needs / totalExpense) * 100 : 0;
-  const wantsPct = totalExpense > 0 ? (wants / totalExpense) * 100 : 0;
-  const savingsPct = totalExpense > 0 ? (savings / totalExpense) * 100 : 0;
+  // 50/30/20 Targets
+  const targetNeeds = financialHealth.totalExpense * 0.5;
+  const targetWants = financialHealth.totalExpense * 0.3;
+  const targetSavings = financialHealth.totalExpense * 0.2;
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xl)', marginBottom: 'var(--space-xl)' }}>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-xl)' }}>
-        
-        {/* Financial Health / 50-30-20 Card */}
-        <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
-          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
-            The 50/30/20 Rule
-          </h2>
-          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
-            A breakdown of your <strong>Total Expenses</strong> across the Needs, Wants, and Savings buckets. (Note: The classical 50/30/20 rule is based on Income).
-          </p>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Needs (Target 50%)</span>
-                <span style={{ color: needsPct > 50 ? 'var(--color-danger)' : 'var(--color-muted)' }}>
-                  {formatCurrency(needs)} ({needsPct.toFixed(1)}%)
-                </span>
-              </div>
-              <div className="budget-bar-wrapper">
-                <div style={{ width: `${Math.min(needsPct, 100)}%`, height: '100%', backgroundColor: needsPct > 50 ? 'var(--color-danger)' : 'var(--color-accent)' }}></div>
+    <div className="insights-view" style={{ maxWidth: '1200px', margin: '0 auto', padding: 'var(--space-md)' }}>
+      
+      {/* Attention Needed (Alerts) */}
+      {alerts && alerts.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
+          <h2 style={{ margin: 0, fontSize: 'var(--text-xl)', color: 'var(--color-ink)' }}>Attention Needed</h2>
+          {alerts.map((alert, idx) => (
+            <div key={idx} style={{ 
+              display: 'flex', gap: 'var(--space-md)', alignItems: 'center', padding: 'var(--space-md)', 
+              backgroundColor: alert.type === 'warning' ? 'var(--color-warning)' : 'var(--color-success)',
+              color: '#fff', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)'
+            }}>
+              <div style={{ fontSize: '24px' }}>{alert.type === 'warning' ? '⚠️' : '🌟'}</div>
+              <div>
+                <div style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-md)' }}>{alert.title}</div>
+                <div style={{ fontSize: 'var(--text-sm)', opacity: 0.9 }}>{alert.message}</div>
               </div>
             </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Wants (Target 30%)</span>
-                <span style={{ color: wantsPct > 30 ? 'var(--color-warning)' : 'var(--color-muted)' }}>
-                  {formatCurrency(wants)} ({wantsPct.toFixed(1)}%)
-                </span>
-              </div>
-              <div className="budget-bar-wrapper">
-                <div style={{ width: `${Math.min(wantsPct, 100)}%`, height: '100%', backgroundColor: wantsPct > 30 ? 'var(--color-warning)' : 'hsl(45, 100%, 50%)' }}></div>
-              </div>
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Savings (Target 20%)</span>
-                <span style={{ color: savingsPct >= 20 ? 'var(--color-success)' : 'var(--color-muted)' }}>
-                  {formatCurrency(savings)} ({savingsPct.toFixed(1)}%)
-                </span>
-              </div>
-              <div className="budget-bar-wrapper">
-                <div style={{ width: `${Math.min(savingsPct, 100)}%`, height: '100%', backgroundColor: savingsPct >= 20 ? 'var(--color-success)' : 'var(--color-border)' }}></div>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
+      )}
 
-        {/* Trajectory & Savings Rate Card */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 'var(--space-xl)', marginBottom: 'var(--space-xl)' }}>
+        
+        {/* Financial Health */}
         <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
           <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
-            Velocity & Health
+            Financial Health
           </h2>
-          
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', marginTop: 'var(--space-md)' }}>
+            
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: 'var(--space-md)', backgroundColor: 'var(--color-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
               <div style={{ fontSize: '24px', backgroundColor: 'var(--color-surface-2)', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', flexShrink: 0 }}>
                 {financialHealth.savingsRate >= 0.2 ? '🏆' : '📈'}
               </div>
               <div>
-                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', fontWeight: 'var(--weight-medium)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Unspent Cash Flow</div>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', fontWeight: 'var(--weight-medium)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Savings Rate</div>
                 <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: financialHealth.savingsRate >= 0.2 ? 'var(--color-success)' : 'var(--color-ink)' }}>
                   {(financialHealth.savingsRate * 100).toFixed(1)}%
                 </div>
-                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', marginTop: '2px' }}>
-                  Of your income is retained.
-                </div>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', marginTop: '2px' }}>Unspent cash flow retained.</div>
               </div>
             </div>
 
@@ -104,7 +72,7 @@ export default function InsightsView({ data, period, filterProps }) {
                 {financialHealth.fixedCostsRatio <= 0.5 ? '🛡️' : '⚠️'}
               </div>
               <div>
-                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', fontWeight: 'var(--weight-medium)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fixed Costs Load</div>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', fontWeight: 'var(--weight-medium)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fixed Cost Ratio</div>
                 <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: financialHealth.fixedCostsRatio <= 0.5 ? 'var(--color-success)' : 'var(--color-warning)' }}>
                   {(financialHealth.fixedCostsRatio * 100).toFixed(1)}%
                 </div>
@@ -112,45 +80,141 @@ export default function InsightsView({ data, period, filterProps }) {
               </div>
             </div>
 
-            {trajectory && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: 'var(--space-md)', backgroundColor: 'var(--color-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                <div style={{ fontSize: '24px', backgroundColor: 'var(--color-surface-2)', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', flexShrink: 0 }}>
-                  🔥
-                </div>
-                <div>
-                  <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', fontWeight: 'var(--weight-medium)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Daily Burn Rate</div>
-                  <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>
-                    {formatCurrency(trajectory.dailyBurnRate)} / day
-                  </div>
-                  <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', marginTop: '2px' }}>
-                    Projected end of month: <strong>{formatCurrency(trajectory.projectedEnd)}</strong>
-                  </div>
-                </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderTop: '1px solid var(--color-border)' }}>
+              <div>
+                <div style={{ fontWeight: 'var(--weight-medium)' }}>Investment Rate</div>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>Percent of income invested.</div>
               </div>
-            )}
+              <div style={{ fontWeight: 'var(--weight-bold)' }}>{(financialHealth.investmentRate * 100).toFixed(1)}%</div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderTop: '1px solid var(--color-border)' }}>
+              <div>
+                <div style={{ fontWeight: 'var(--weight-medium)' }}>Net Cash Flow</div>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>Income minus total expenses.</div>
+              </div>
+              <div style={{ fontWeight: 'var(--weight-bold)', color: financialHealth.netCashFlow >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                {formatCurrency(financialHealth.netCashFlow)}
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* 50/30/20 Rule */}
+        <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
+            The 50/30/20 Rule
+          </h2>
+          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
+            Target vs Actual spending breakdown based on total expenses.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+            
+            {/* Needs */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
+                <span style={{ fontWeight: 'var(--weight-medium)' }}>Needs</span>
+                <span style={{ fontWeight: 'var(--weight-bold)', color: financialHealth.needsWantsSavings.needs > targetNeeds ? 'var(--color-danger)' : 'var(--color-ink)' }}>
+                  {formatCurrency(financialHealth.needsWantsSavings.needs)} ({((financialHealth.needsWantsSavings.needs / financialHealth.totalExpense) * 100).toFixed(1)}%)
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>
+                <span>Target 50%: {formatCurrency(targetNeeds)}</span>
+                <span>Diff: {formatCurrency(financialHealth.needsWantsSavings.needs - targetNeeds)}</span>
+              </div>
+              <div className="budget-bar-wrapper">
+                <div style={{ width: `${Math.min((financialHealth.needsWantsSavings.needs / financialHealth.totalExpense) * 100, 100)}%`, height: '100%', backgroundColor: financialHealth.needsWantsSavings.needs > targetNeeds ? 'var(--color-danger)' : 'var(--color-border)' }}></div>
+              </div>
+            </div>
+
+            {/* Wants */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
+                <span style={{ fontWeight: 'var(--weight-medium)' }}>Wants</span>
+                <span style={{ fontWeight: 'var(--weight-bold)', color: financialHealth.needsWantsSavings.wants > targetWants ? 'var(--color-warning)' : 'var(--color-ink)' }}>
+                  {formatCurrency(financialHealth.needsWantsSavings.wants)} ({((financialHealth.needsWantsSavings.wants / financialHealth.totalExpense) * 100).toFixed(1)}%)
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>
+                <span>Target 30%: {formatCurrency(targetWants)}</span>
+                <span>Diff: {formatCurrency(financialHealth.needsWantsSavings.wants - targetWants)}</span>
+              </div>
+              <div className="budget-bar-wrapper">
+                <div style={{ width: `${Math.min((financialHealth.needsWantsSavings.wants / financialHealth.totalExpense) * 100, 100)}%`, height: '100%', backgroundColor: financialHealth.needsWantsSavings.wants > targetWants ? 'var(--color-warning)' : 'var(--color-border)' }}></div>
+              </div>
+            </div>
+
+            {/* Savings */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
+                <span style={{ fontWeight: 'var(--weight-medium)' }}>Investments</span>
+                <span style={{ fontWeight: 'var(--weight-bold)' }}>
+                  {formatCurrency(financialHealth.needsWantsSavings.savings)} ({((financialHealth.needsWantsSavings.savings / financialHealth.totalExpense) * 100).toFixed(1)}%)
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>
+                <span>Target 20%: {formatCurrency(targetSavings)}</span>
+                <span>Diff: {formatCurrency(financialHealth.needsWantsSavings.savings - targetSavings)}</span>
+              </div>
+              <div className="budget-bar-wrapper">
+                <div style={{ width: `${Math.min((financialHealth.needsWantsSavings.savings / financialHealth.totalExpense) * 100, 100)}%`, height: '100%', backgroundColor: (financialHealth.needsWantsSavings.savings / financialHealth.totalExpense) >= 0.2 ? 'var(--color-success)' : 'var(--color-border)' }}></div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-xl)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 'var(--space-xl)', marginBottom: 'var(--space-xl)' }}>
         
-        {/* The Latte Factor Card */}
+        {/* Spending by Category Change */}
         <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
           <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
-            The "Latte Factor"
+            Category Trends (MoM)
           </h2>
           <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
-            Your most frequently visited vendors. High frequency small purchases can add up.
+            How spending changed compared to the previous period.
           </p>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {behavioral.spendingByCategoryChange.slice(0, 7).map((cat, idx) => (
+              <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--space-sm) 0', borderBottom: idx === 6 ? 'none' : '1px solid var(--color-border)' }}>
+                <div>
+                  <div style={{ fontWeight: 'var(--weight-medium)' }}>{cat.name}</div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>{formatCurrency(cat.currTotal)}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                  {/* Sparkline Visual (CSS based) */}
+                  <div style={{ display: 'flex', alignItems: 'flex-end', height: '24px', gap: '2px' }}>
+                     <div style={{ width: '12px', height: `${Math.min((cat.prevTotal / Math.max(cat.prevTotal, cat.currTotal)) * 24, 24)}px`, backgroundColor: 'var(--color-border)', borderRadius: '2px 2px 0 0' }}></div>
+                     <div style={{ width: '12px', height: `${Math.min((cat.currTotal / Math.max(cat.prevTotal, cat.currTotal)) * 24, 24)}px`, backgroundColor: cat.diff > 0 ? 'var(--color-danger)' : 'var(--color-success)', borderRadius: '2px 2px 0 0' }}></div>
+                  </div>
+                  <div style={{ fontWeight: 'var(--weight-bold)', color: cat.pctChange > 0 ? 'var(--color-danger)' : (cat.pctChange < 0 ? 'var(--color-success)' : 'var(--color-muted)'), minWidth: '50px', textAlign: 'right' }}>
+                    {cat.pctChange > 0 ? '↑' : (cat.pctChange < 0 ? '↓' : '-')} {Math.abs(cat.pctChange).toFixed(0)}%
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
 
-          {behavioral.latteFactor.length > 0 ? (
+        {/* Frequent Spending */}
+        <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
+            Frequent Spending
+          </h2>
+          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
+            High frequency vendors that silently drain cash flow.
+          </p>
+          {behavioral.frequentSpending.length > 0 ? (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {behavioral.latteFactor.map((vendor, idx) => (
-                <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: idx === behavioral.latteFactor.length - 1 ? 'none' : '1px solid var(--color-border)' }}>
+              {behavioral.frequentSpending.map((vendor, idx) => (
+                <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: idx === behavioral.frequentSpending.length - 1 ? 'none' : '1px solid var(--color-border)' }}>
                   <div>
                     <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>{vendor.name}</div>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '2px' }}>
-                      {vendor.count} transactions in {period.replace('_', ' ')}
+                      {vendor.count} txns @ {formatCurrency(vendor.average)} avg
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
@@ -165,93 +229,93 @@ export default function InsightsView({ data, period, filterProps }) {
             <div style={{ textAlign: 'center', padding: 'var(--space-xl) 0' }}>
               <div style={{ fontSize: '36px', marginBottom: 'var(--space-sm)' }}>✨</div>
               <p style={{ margin: 0, color: 'var(--color-ink)', fontWeight: 'var(--weight-medium)' }}>No Habits Detected</p>
-              <p style={{ margin: '4px 0 0 0', color: 'var(--color-muted)', fontSize: 'var(--text-sm)' }}>You don't seem to frequent any specific vendor heavily.</p>
+            </div>
+          )}
+        </div>
+        
+        {/* Largest Transactions */}
+        <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
+            Largest Transactions
+          </h2>
+          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
+            Top 5 single expenses impacting cash flow this period.
+          </p>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {behavioral.largestTransactions.map((tx, idx) => (
+              <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: idx === 4 ? 'none' : '1px solid var(--color-border)' }}>
+                <div>
+                  <div style={{ fontWeight: 'var(--weight-medium)' }}>{tx.description}</div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
+                    {new Date(tx.date).toLocaleDateString()}
+                  </div>
+                </div>
+                <div style={{ fontWeight: 'var(--weight-bold)' }}>{formatCurrency(tx.amount)}</div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 'var(--space-xl)', marginBottom: 'var(--space-xl)' }}>
+        {/* Fixed Costs */}
+        <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
+            Fixed Costs Breakdown
+          </h2>
+          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
+            Housing, Utilities, Property, and Subscriptions.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: '1px solid var(--color-border)' }}>
+            <div style={{ fontWeight: 'var(--weight-medium)' }}>Total Fixed Costs</div>
+            <div style={{ fontWeight: 'var(--weight-bold)' }}>{formatCurrency(financialHealth.totalIncome * financialHealth.fixedCostsRatio)}</div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: '1px solid var(--color-border)' }}>
+            <div style={{ fontWeight: 'var(--weight-medium)' }}>As % of Income</div>
+            <div style={{ fontWeight: 'var(--weight-bold)' }}>{(financialHealth.fixedCostsRatio * 100).toFixed(1)}%</div>
+          </div>
+          {behavioral.subscriptions && behavioral.subscriptions.length > 0 && (
+            <div style={{ marginTop: 'var(--space-md)' }}>
+              <h3 style={{ fontSize: 'var(--text-sm)', textTransform: 'uppercase', color: 'var(--color-muted)', marginBottom: 'var(--space-sm)' }}>Active Subscriptions</h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {behavioral.subscriptions.map((sub, idx) => (
+                  <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 'var(--text-sm)' }}>
+                    <span>{sub.name}</span>
+                    <span style={{ fontWeight: 'var(--weight-medium)' }}>{formatCurrency(sub.total)}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>
 
-        {/* Subscriptions Card */}
-        <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
-          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
-            Active Subscriptions
-          </h2>
-          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
-            Your regular subscription services for this period.
-          </p>
-
-          {behavioral.subscriptions && behavioral.subscriptions.length > 0 ? (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {behavioral.subscriptions.map((sub, idx) => (
-                <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: idx === behavioral.subscriptions.length - 1 ? 'none' : '1px solid var(--color-border)' }}>
-                  <div>
-                    <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>{sub.name}</div>
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '2px' }}>
-                      {sub.count} payment{sub.count !== 1 ? 's' : ''}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
-                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)' }}>
-                      {formatCurrency(sub.total)}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div style={{ textAlign: 'center', padding: 'var(--space-xl) 0' }}>
-              <div style={{ fontSize: '36px', marginBottom: 'var(--space-sm)' }}>📺</div>
-              <p style={{ margin: 0, color: 'var(--color-ink)', fontWeight: 'var(--weight-medium)' }}>No Subscriptions</p>
+        {/* Overviews (Tax & Property) & Income Dependency */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xl)' }}>
+          <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+            <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
+              Hidden Costs
+            </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: '1px solid var(--color-border)' }}>
+              <div>
+                <div style={{ fontWeight: 'var(--weight-medium)' }}>Taxes & Fees</div>
+              </div>
+              <div style={{ fontWeight: 'var(--weight-bold)' }}>{formatCurrency(financialHealth.overviews.taxes)}</div>
             </div>
-          )}
-        </div>
-
-        {/* Recurring Bills Card */}
-        <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
-          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
-            Recurring Bills
-          </h2>
-          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
-            Your fixed costs like rent, insurance, and utilities.
-          </p>
-
-          {behavioral.recurring && behavioral.recurring.length > 0 ? (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {behavioral.recurring.map((bill, idx) => (
-                <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: idx === behavioral.recurring.length - 1 ? 'none' : '1px solid var(--color-border)' }}>
-                  <div>
-                    <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>{bill.name}</div>
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '2px' }}>
-                      {bill.count} payment{bill.count !== 1 ? 's' : ''}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
-                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)' }}>
-                      {formatCurrency(bill.total)}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div style={{ textAlign: 'center', padding: 'var(--space-xl) 0' }}>
-              <div style={{ fontSize: '36px', marginBottom: 'var(--space-sm)' }}>🏠</div>
-              <p style={{ margin: 0, color: 'var(--color-ink)', fontWeight: 'var(--weight-medium)' }}>No Recurring Bills</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0' }}>
+              <div>
+                <div style={{ fontWeight: 'var(--weight-medium)' }}>Property Expenses</div>
+              </div>
+              <div style={{ fontWeight: 'var(--weight-bold)' }}>{formatCurrency(financialHealth.overviews.property)}</div>
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* Income Dependency Card */}
-        <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
-          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
-            Income Dependency
-          </h2>
-          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
-            How diversified are your income streams?
-          </p>
-          
-          {financialHealth.totalIncome > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: 'var(--space-md)', backgroundColor: 'var(--color-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+          <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+            <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
+              Income Dependency
+            </h2>
+            {financialHealth.totalIncome > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', marginTop: 'var(--space-md)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: 'var(--space-md)', backgroundColor: 'var(--color-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                   <div style={{ fontSize: '24px', backgroundColor: 'var(--color-surface-2)', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', flexShrink: 0 }}>
                     💼
                   </div>
@@ -259,9 +323,6 @@ export default function InsightsView({ data, period, filterProps }) {
                     <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', fontWeight: 'var(--weight-medium)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Income</div>
                     <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>
                       {formatCurrency(financialHealth.totalIncome)}
-                    </div>
-                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', marginTop: '2px' }}>
-                      During this period.
                     </div>
                   </div>
                 </div>
@@ -283,13 +344,13 @@ export default function InsightsView({ data, period, filterProps }) {
                   ))}
                 </ul>
               </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: 'var(--space-xl) 0' }}>
-              <div style={{ fontSize: '36px', marginBottom: 'var(--space-sm)' }}>💤</div>
-              <p style={{ margin: 0, color: 'var(--color-ink)', fontWeight: 'var(--weight-medium)' }}>No Income Detected</p>
-              <p style={{ margin: '4px 0 0 0', color: 'var(--color-muted)', fontSize: 'var(--text-sm)' }}>Add income to see dependency insights.</p>
-            </div>
-          )}
+            ) : (
+              <div style={{ textAlign: 'center', padding: 'var(--space-xl) 0' }}>
+                <div style={{ fontSize: '36px', marginBottom: 'var(--space-sm)' }}>💤</div>
+                <p style={{ margin: 0, color: 'var(--color-ink)', fontWeight: 'var(--weight-medium)' }}>No Income Detected</p>
+              </div>
+            )}
+          </div>
         </div>
 
       </div>
