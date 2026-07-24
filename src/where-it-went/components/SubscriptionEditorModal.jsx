@@ -105,7 +105,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
           <label htmlFor="sub-active" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink)' }}>Active (Generates transactions automatically)</label>
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', justifyContent: 'space-between', marginTop: 'var(--space-xl)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', justifyContent: 'space-between', marginTop: 'var(--space-lg)' }}>
           <div>
             {sub && (
               <Button type="button" variant="danger" disabled={saving} onClick={async () => {
@@ -121,7 +121,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
             <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
             <Button type="submit" variant="primary" disabled={saving || !name || !amount || !categoryId || !accountId}>
-              {saving ? 'Saving...' : 'Save Subscription'}
+              {saving ? 'Saving...' : 'Save'}
             </Button>
           </div>
         </div>

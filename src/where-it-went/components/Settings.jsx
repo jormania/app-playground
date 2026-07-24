@@ -168,8 +168,22 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                   >
                     <div>
                       <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{sub.name}</div>
-                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '4px' }}>
-                        Every {sub.dayOfMonth}th of month • {sub.active ? 'Active' : 'Inactive'}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginTop: '4px' }}>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
+                          Every {sub.dayOfMonth}{sub.dayOfMonth === 1 ? 'st' : sub.dayOfMonth === 2 ? 'nd' : sub.dayOfMonth === 3 ? 'rd' : 'th'} of month
+                        </span>
+                        <span style={{
+                          fontSize: '0.65rem',
+                          fontWeight: 'var(--weight-bold)',
+                          padding: '2px 6px',
+                          borderRadius: 'var(--radius-sm)',
+                          backgroundColor: sub.active !== false ? 'color-mix(in srgb, var(--color-success) 15%, transparent)' : 'color-mix(in srgb, var(--color-muted) 15%, transparent)',
+                          color: sub.active !== false ? 'var(--color-success)' : 'var(--color-muted)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
+                        }}>
+                          {sub.active !== false ? 'Active' : 'Inactive'}
+                        </span>
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>

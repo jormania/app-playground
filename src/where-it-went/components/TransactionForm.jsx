@@ -143,7 +143,7 @@ export default function TransactionForm({ categories, accounts, onSave, onCancel
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', justifyContent: 'space-between', marginTop: 'var(--space-xl)' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', justifyContent: 'space-between', marginTop: 'var(--space-lg)' }}>
         <div>
           {initialTx && (
             <Button variant="danger" type="button" onClick={handleDelete} disabled={isSaving}>Delete</Button>
@@ -151,7 +151,7 @@ export default function TransactionForm({ categories, accounts, onSave, onCancel
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
           <Button variant="ghost" type="button" onClick={onCancel} disabled={isSaving}>Cancel</Button>
-          <Button variant="primary" type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Transaction'}</Button>
+          <Button variant="primary" type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save'}</Button>
         </div>
       </div>
     </form>
