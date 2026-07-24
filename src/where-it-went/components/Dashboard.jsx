@@ -149,13 +149,15 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
     );
   };
 
+  const chartType = filter === 'Income' ? 'Income' : 'Expense';
+  const chartData = filteredTransactions.filter(t => t.type === chartType);
+
   useEffect(() => {
     if (!chartRef.current) return;
     
-    // Group expenses by category
-    const expenseData = filteredTransactions.filter(t => t.type === 'Expense');
+    // Group data by category based on current filter
     const grouped = {};
-    expenseData.forEach(tx => {
+    chartData.forEach(tx => {
       const cat = data.categories.find(c => c.id === tx.categoryId)?.name || 'Uncategorized';
       grouped[cat] = (grouped[cat] || 0) + tx.amount;
     });
@@ -164,9 +166,12 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
       chartInstance.current.destroy();
     }
 
+    // Don't render chart if no data
+    if (chartData.length === 0) return;
+
     const inkColor = getComputedStyle(document.documentElement).getPropertyValue('--color-ink').trim() || '#1b1f24';
     const mutedColor = getComputedStyle(document.documentElement).getPropertyValue('--color-muted').trim() || '#5a636e';
-    const totalExpenses = Object.values(grouped).reduce((a, b) => a + b, 0);
+    const totalAmount = Object.values(grouped).reduce((a, b) => a + b, 0);
 
     chartInstance.current = new Chart(chartRef.current, {
       type: 'doughnut',
@@ -184,12 +189,12 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         maintainAspectRatio: false,
         plugins: {
           legend: { position: 'right', labels: { color: mutedColor, font: { size: 14 }, padding: 15 } },
-          title: { display: true, text: 'Expenses by Category', color: inkColor, font: { size: 16 } },
+          title: { display: true, text: chartType === 'Income' ? 'Income by Category' : 'Expenses by Category', color: inkColor, font: { size: 16 } },
           tooltip: {
             callbacks: {
               label: function(context) {
                 const value = context.parsed;
-                const percentage = totalExpenses > 0 ? ((value / totalExpenses) * 100).toFixed(1) : 0;
+                const percentage = totalAmount > 0 ? ((value / totalAmount) * 100).toFixed(1) : 0;
                 return ` ${context.label}: ${formatCurrency(value)} (${percentage}%)`;
               }
             }
@@ -198,9 +203,24 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
       }
     });
 
+    // We MUST return a cleanup function since chartData is a dependency
+    return () => {
+      if (chartInstance.current) {
+        chartInstance.current.destroy();
+        chartInstance.current = null;
+      }
+    };
+  }, [chartData, data.categories]);
+
+  useEffect(() => {
+    if (!trendChartRef.current) return;
+    
     if (trendChartInstance.current) {
       trendChartInstance.current.destroy();
     }
+
+    // Only render trend chart if there is data
+    if (filteredTransactions.length === 0) return;
     
     // Group cash flow by day or month depending on period
     const isYearly = period === 'this_year' || period === 'all_time';
@@ -218,61 +238,65 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
 
     const sortedTrendKeys = Object.keys(trendData).sort();
     
-    if (trendChartRef.current) {
-      trendChartInstance.current = new Chart(trendChartRef.current, {
-        type: 'bar',
-        data: {
-          labels: sortedTrendKeys,
-          datasets: [
-            {
-              label: 'Income',
-              data: sortedTrendKeys.map(k => trendData[k].income),
-              backgroundColor: 'hsl(142, 71%, 45%)',
-              borderRadius: 4
-            },
-            {
-              label: 'Expense',
-              data: sortedTrendKeys.map(k => trendData[k].expense),
-              backgroundColor: 'hsl(348, 83%, 60%)',
-              borderRadius: 4
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: { 
-              grid: { color: 'transparent' }, 
-              ticks: { 
-                color: mutedColor,
-                autoSkip: true,
-                maxTicksLimit: 8,
-                maxRotation: 45,
-                minRotation: 0
-              } 
-            },
-            y: { 
-              grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
-              ticks: { 
-                color: mutedColor,
-                maxTicksLimit: 6
-              } 
-            }
+    const inkColor = getComputedStyle(document.documentElement).getPropertyValue('--color-ink').trim() || '#1b1f24';
+    const mutedColor = getComputedStyle(document.documentElement).getPropertyValue('--color-muted').trim() || '#5a636e';
+
+    trendChartInstance.current = new Chart(trendChartRef.current, {
+      type: 'bar',
+      data: {
+        labels: sortedTrendKeys,
+        datasets: [
+          {
+            label: 'Income',
+            data: sortedTrendKeys.map(k => trendData[k].income),
+            backgroundColor: 'hsl(142, 71%, 45%)',
+            borderRadius: 4
           },
-          plugins: {
-            legend: { position: 'top', labels: { color: mutedColor } },
-            title: { display: true, text: 'Cash Flow Trend', color: inkColor, font: { size: 16 } }
+          {
+            label: 'Expense',
+            data: sortedTrendKeys.map(k => trendData[k].expense),
+            backgroundColor: 'hsl(348, 83%, 60%)',
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { 
+            grid: { color: 'transparent' }, 
+            ticks: { 
+              color: mutedColor,
+              autoSkip: true,
+              maxTicksLimit: 8,
+              maxRotation: 0,
+              minRotation: 0,
+              font: { size: window.innerWidth < 600 ? 10 : 12 }
+            } 
+          },
+          y: { grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--color-border').trim() || '#e1e4e8' }, ticks: { color: mutedColor } }
+        },
+        plugins: {
+          legend: { position: 'top', labels: { color: inkColor } },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return ` ${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
+              }
+            }
           }
         }
-      });
-    }
+      }
+    });
 
     return () => {
-      if (chartInstance.current) chartInstance.current.destroy();
-      if (trendChartInstance.current) trendChartInstance.current.destroy();
+      if (trendChartInstance.current) {
+        trendChartInstance.current.destroy();
+        trendChartInstance.current = null;
+      }
     };
-  }, [data, period]);
+  }, [filteredTransactions, period]);
 
   // Calculate budgets
   const budgetCategories = data.categories.filter(c => c.budgetLimit > 0);
@@ -284,7 +308,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
   });
 
   return (
-    <div>
+    <div className="fade-in">
 
       <div style={{ 
         display: 'flex', 
@@ -332,47 +356,55 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-xl)' }}>
         <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
           <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>Latest Transactions</h2>
-          <ul style={{ listStyle: 'none', padding: 0 }}>
-            {filteredTransactions.slice(0, 5).map(tx => {
-              const catName = data.categories.find(c => c.id === tx.categoryId)?.name || 'Unknown';
-              const catColor = getCategoryColor(catName);
-              return (
-              <li 
-                key={tx.id} 
-                className="transaction-row"
-                style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) var(--space-xs)', paddingLeft: 'var(--space-md)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${catColor}`, cursor: 'pointer', borderRadius: 'var(--radius-sm)' }}
-                onClick={() => setEditingTx(tx)}
-              >
-                <div>
-                  <div style={{ fontWeight: 'var(--weight-medium)' }}>{tx.description}</div>
-                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                    {tx.date} 
-                    <span style={{ 
-                      padding: '1px 6px', 
-                      background: `color-mix(in srgb, ${catColor} 10%, transparent)`, 
-                      color: catColor, 
-                      border: `1px solid color-mix(in srgb, ${catColor} 30%, transparent)`,
-                      borderRadius: 'var(--radius-full)'
-                    }}>
-                      {catName}
-                    </span>
+          {filteredTransactions.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-xl) var(--space-md)', textAlign: 'center' }}>
+              <div style={{ fontSize: '36px', marginBottom: 'var(--space-sm)' }}>🍃</div>
+              <p style={{ margin: 0, color: 'var(--color-ink)', fontWeight: 'var(--weight-medium)' }}>No Transactions</p>
+              <p style={{ margin: '4px 0 0 0', color: 'var(--color-muted)', fontSize: 'var(--text-sm)' }}>Try adjusting your filters or date range.</p>
+            </div>
+          ) : (
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              {filteredTransactions.slice(0, 5).map(tx => {
+                const catName = data.categories.find(c => c.id === tx.categoryId)?.name || 'Unknown';
+                const catColor = getCategoryColor(catName);
+                return (
+                <li 
+                  key={tx.id} 
+                  className="transaction-row"
+                  style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) var(--space-xs)', paddingLeft: 'var(--space-md)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${catColor}`, cursor: 'pointer', borderRadius: 'var(--radius-sm)' }}
+                  onClick={() => setEditingTx(tx)}
+                >
+                  <div>
+                    <div style={{ fontWeight: 'var(--weight-medium)' }}>{tx.description}</div>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                      {tx.date} 
+                      <span style={{ 
+                        padding: '1px 6px', 
+                        background: `color-mix(in srgb, ${catColor} 10%, transparent)`, 
+                        color: catColor, 
+                        border: `1px solid color-mix(in srgb, ${catColor} 30%, transparent)`,
+                        borderRadius: 'var(--radius-full)'
+                      }}>
+                        {catName}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <div style={{ 
-                  color: tx.type === 'Income' ? 'var(--color-success)' : 'var(--color-ink)',
-                  background: tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-ink) 5%, transparent)',
-                  border: tx.type === 'Income' ? '1px solid color-mix(in srgb, var(--color-success) 20%, transparent)' : '1px solid color-mix(in srgb, var(--color-border) 50%, transparent)',
-                  padding: '4px 10px',
-                  borderRadius: 'var(--radius-full)',
-                  fontWeight: 'var(--weight-medium)',
-                  fontSize: 'var(--text-sm)'
-                }}>
-                  {tx.type === 'Income' ? '+' : '-'}{formatCurrency(tx.amount)}
-                </div>
-              </li>
-              );
-            })}
-          </ul>
+                  <div style={{ 
+                    color: tx.type === 'Income' ? 'var(--color-success)' : 'var(--color-ink)',
+                    background: tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-ink) 5%, transparent)',
+                    border: tx.type === 'Income' ? '1px solid color-mix(in srgb, var(--color-success) 20%, transparent)' : '1px solid color-mix(in srgb, var(--color-border) 50%, transparent)',
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-full)',
+                    fontWeight: 'var(--weight-medium)',
+                    fontSize: 'var(--text-sm)'
+                  }}>
+                    {tx.type === 'Income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                  </div>
+                </li>
+                );
+              })}
+            </ul>
+          )}
           <div style={{ marginTop: 'var(--space-md)', textAlign: 'center' }}>
             <Button variant="ghost" size="sm" onClick={() => onNavigate && onNavigate('transactions')}>
               View All Transactions &rarr;
@@ -380,7 +412,15 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
           </div>
         </div>
         <div style={{ height: '450px', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
-          <canvas ref={chartRef}></canvas>
+          {chartData.length === 0 ? (
+            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+              <div style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>📊</div>
+              <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-ink)' }}>Not Enough Data</h3>
+              <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: 0 }}>There are no {chartType.toLowerCase()} transactions in this period to chart.</p>
+            </div>
+          ) : (
+            <canvas ref={chartRef}></canvas>
+          )}
         </div>
       </div>
 

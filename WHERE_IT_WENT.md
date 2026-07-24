@@ -101,3 +101,4 @@ Click **Save Configuration**. The app will now read and write directly to your N
 - **Custom Design System (DS)**: Built entirely on a custom, state-of-the-art CSS custom property architecture (`--color-surface`, `--color-ink`, `--space-md`, etc.) for seamless light/dark themes and a premium aesthetic without heavy CSS frameworks.
 - **PWA Ready**: Offline-capable app shell that can be installed on iOS, Android, or Desktop.
 - **Vitest Coverage**: Robust component testing with 100% pass rates across the suite.
+- **Scrub & Demo Mode**: Instantly archive live data to start fresh, and seamlessly switch between live Notion data and comprehensive local demo data for testing or showcasing the app safely without affecting your real finances.
