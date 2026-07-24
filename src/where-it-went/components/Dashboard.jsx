@@ -47,6 +47,13 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
     if (period === 'this_year') {
       return txDate.getFullYear() === now.getFullYear();
     }
+    if (period.match(/^\d{4}-\d{2}$/)) {
+      const [y, m] = period.split('-');
+      return txDate.getFullYear() === parseInt(y) && txDate.getMonth() === parseInt(m) - 1;
+    }
+    if (period.match(/^\d{4}$/)) {
+      return txDate.getFullYear() === parseInt(period);
+    }
     return true;
   });
 
@@ -75,6 +82,14 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
     }
     if (period === 'this_year') {
       return txDate.getFullYear() === now.getFullYear() - 1;
+    }
+    if (period.match(/^\d{4}-\d{2}$/)) {
+      const [y, m] = period.split('-');
+      const prev = new Date(parseInt(y), parseInt(m) - 2, 1);
+      return txDate.getFullYear() === prev.getFullYear() && txDate.getMonth() === prev.getMonth();
+    }
+    if (period.match(/^\d{4}$/)) {
+      return txDate.getFullYear() === parseInt(period) - 1;
     }
     return false;
   });

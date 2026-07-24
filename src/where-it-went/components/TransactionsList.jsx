@@ -6,7 +6,7 @@ import { Modal } from '../../ds/components/Modal';
 import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 
-export default function TransactionsList({ data, client, onDataChange, filterProps }) {
+export default function TransactionsList({ data, client, onDataChange, filterProps, period }) {
   const { filterType: filter, categoryFilter, searchQuery } = filterProps || { filterType: 'All', categoryFilter: 'All', searchQuery: '' };
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
   const [editingTx, setEditingTx] = useState(null);
@@ -29,6 +29,29 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
   const filtered = data.transactions
     .filter(t => filter === 'All' || t.type === filter)
     .filter(t => categoryFilter === 'All' || t.categoryId === categoryFilter)
+    .filter(t => {
+      const txDate = new Date(t.date);
+      const now = new Date();
+      if (!period || period === 'all_time') return true;
+      if (period === 'this_month') {
+        return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear();
+      }
+      if (period === 'last_month') {
+        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        return txDate.getMonth() === lastMonth.getMonth() && txDate.getFullYear() === lastMonth.getFullYear();
+      }
+      if (period === 'this_year') {
+        return txDate.getFullYear() === now.getFullYear();
+      }
+      if (period.match(/^\d{4}-\d{2}$/)) {
+        const [y, m] = period.split('-');
+        return txDate.getFullYear() === parseInt(y) && txDate.getMonth() === parseInt(m) - 1;
+      }
+      if (period.match(/^\d{4}$/)) {
+        return txDate.getFullYear() === parseInt(period);
+      }
+      return true;
+    })
     .filter(t => {
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
