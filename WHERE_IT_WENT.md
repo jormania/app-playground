@@ -55,8 +55,8 @@ Click **Save Configuration**. The app will now read and write directly to your N
 ## 4. Features Overview
 
 ### Dashboard & Analytics
-- **Time-Period Filtering**: Select from `This Month`, `Last Month`, `Last 3 Months`, `Last 6 Months`, `This Year`, or `All Time` to dynamically adjust the KPIs and charts.
-- **KPIs**: View total Income, Expenses, and Net Cash Flow for the selected period.
+- **Time-Period Filtering**: Select from `This Month`, `Last Month`, `This Year`, or `All` to dynamically adjust the KPIs and charts. Optimized for mobile with compact sizing.
+- **KPIs**: View total Income, Expenses, and Net Cash Flow for the selected period. Displayed on a touch-friendly, horizontally scrollable row for mobile devices to prevent wrapping.
 - **Budget Limits**: Track your spending against monthly targets. View visual progress bars for individual categories and your **Total Global Budget**. You can edit your budget limits directly from the app using the "Edit Budgets" button, which automatically syncs your changes back to your Notion Categories database.
 - **Expense Breakdown Chart**: A highly responsive, animated `Chart.js` Doughnut visualization of spending by category, themed to match the app's aesthetic. Features deterministic category coloring that creates a cohesive color language across the entire app.
 - **Cash Flow Trend Visualization**: A `Chart.js` Bar chart showing daily (or monthly) spending and income patterns over the selected time period.
@@ -87,8 +87,13 @@ Click **Save Configuration**. The app will now read and write directly to your N
 
 ### Subscriptions Engine
 - **Automated Recurring Billing**: Added a Subscriptions Management panel in Settings that allows you to define recurring monthly payments (e.g., YouTube Premium, Netflix, Rent).
+- **Subscription Management**: View active and inactive subscriptions with beautifully styled status badges. Click on any subscription to seamlessly edit its details directly in a modal.
 - **Auto-Ledger Injection**: The App automatically evaluates missed payments on launch and injects them into the ledger on their correct day of the month.
 - **Seamless Notion Sync**: Powered by a 4th Notion database ("Subscriptions") to persist subscription data.
+
+### Settings & Customization
+- **Feature Toggles**: Customize your Dashboard by enabling or disabling specific features such as the Budgeting Engine and the Cash Flow Trend chart.
+- **Theme Support**: Seamlessly toggle between Light and Dark mode using a clean, icon-based toggle switch.
 
 ### Under the Hood
 - **React + Vite**: Fast, modern frontend toolchain for instantaneous HMR and optimized production bundles.
