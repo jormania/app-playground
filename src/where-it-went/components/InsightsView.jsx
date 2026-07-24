@@ -3,10 +3,8 @@ import { generateDeepInsights } from '../lib/analytics';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { formatCurrency } from '../lib/currency';
 
-export default function InsightsView({ data }) {
-  const [horizon, setHorizon] = useState('this_month');
-  
-  const insights = useMemo(() => generateDeepInsights(data, horizon), [data, horizon]);
+export default function InsightsView({ data, period }) {
+  const insights = useMemo(() => generateDeepInsights(data, period), [data, period]);
 
   if (!insights || !insights.financialHealth) {
     return (
@@ -28,21 +26,6 @@ export default function InsightsView({ data }) {
 
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xl)', marginBottom: 'var(--space-xl)' }}>
-      
-      {/* Time Horizon Selector */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <div style={{ width: '300px' }}>
-          <SegmentedControl
-            value={horizon}
-            onChange={setHorizon}
-            options={[
-              { value: 'this_month', label: 'This Month' },
-              { value: 'this_quarter', label: 'This Quarter' },
-              { value: 'this_year', label: 'This Year' }
-            ]}
-          />
-        </div>
-      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-xl)' }}>
         
@@ -165,7 +148,7 @@ export default function InsightsView({ data }) {
                   <div>
                     <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>{vendor.name}</div>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '2px' }}>
-                      {vendor.count} transactions in {horizon.replace('_', ' ')}
+                      {vendor.count} transactions in {period.replace('_', ' ')}
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>

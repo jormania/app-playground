@@ -1,6 +1,6 @@
 import { formatCurrency } from './currency';
 
-export function generateDeepInsights(data, horizon = 'this_month') {
+export function generateDeepInsights(data, period = 'this_month') {
   const { categories, transactions } = data;
   if (!transactions || transactions.length === 0) {
     return {
@@ -13,20 +13,28 @@ export function generateDeepInsights(data, horizon = 'this_month') {
   const now = new Date();
   
   // 1. Timeframe filtering
-  let startDate = new Date();
-  if (horizon === 'this_month') {
-    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-  } else if (horizon === 'this_quarter') {
-    const currentQuarter = Math.floor(now.getMonth() / 3);
-    startDate = new Date(now.getFullYear(), currentQuarter * 3, 1);
-  } else if (horizon === 'this_year') {
-    startDate = new Date(now.getFullYear(), 0, 1);
-  } else {
-    // all time
-    startDate = new Date(0); 
-  }
-
-  const txInHorizon = transactions.filter(t => new Date(t.date) >= startDate && new Date(t.date) <= now);
+  const txInHorizon = transactions.filter(t => {
+    const txDate = new Date(t.date);
+    if (!period || period === 'all_time') return true;
+    if (period === 'this_month') {
+      return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear();
+    }
+    if (period === 'last_month') {
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      return txDate.getMonth() === lastMonth.getMonth() && txDate.getFullYear() === lastMonth.getFullYear();
+    }
+    if (period === 'this_year') {
+      return txDate.getFullYear() === now.getFullYear();
+    }
+    if (period.match(/^\d{4}-\d{2}$/)) {
+      const [y, m] = period.split('-');
+      return txDate.getFullYear() === parseInt(y) && txDate.getMonth() === parseInt(m) - 1;
+    }
+    if (period.match(/^\d{4}$/)) {
+      return txDate.getFullYear() === parseInt(period);
+    }
+    return true;
+  });
   
   const getCatName = (id) => categories.find(c => c.id === id)?.name || 'Uncategorized';
 
@@ -112,7 +120,7 @@ export function generateDeepInsights(data, horizon = 'this_month') {
 
   // --- Trajectory & Forecasting (Only makes sense for 'this_month') ---
   let trajectory = null;
-  if (horizon === 'this_month') {
+  if (period === 'this_month') {
     const todayDate = now.getDate();
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     
