@@ -333,7 +333,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
           <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>Latest Transactions</h2>
           <ul style={{ listStyle: 'none', padding: 0 }}>
-            {data.transactions.slice(0, 5).map(tx => {
+            {filteredTransactions.slice(0, 5).map(tx => {
               const catName = data.categories.find(c => c.id === tx.categoryId)?.name || 'Unknown';
               const catColor = getCategoryColor(catName);
               return (
