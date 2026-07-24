@@ -192,7 +192,7 @@ export default function App() {
           <>
             {activeTab === 'dashboard' && <Dashboard data={data} client={client} onDataChange={loadData} onNavigate={handleTabChange} config={config} period={period} filterProps={{ filterType, categoryFilter, searchQuery }} />}
             {activeTab === 'transactions' && <TransactionsList data={data} client={client} onDataChange={loadData} filterProps={{ filterType, categoryFilter, searchQuery }} period={period} />}
-            {activeTab === 'insights' && <InsightsView data={data} period={period} />}
+            {activeTab === 'insights' && <InsightsView data={data} period={period} filterProps={{ filterType, categoryFilter, searchQuery }} />}
             {activeTab === 'settings' && (
               <Settings 
                 config={config} 

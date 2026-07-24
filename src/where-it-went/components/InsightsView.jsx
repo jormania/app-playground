@@ -3,8 +3,8 @@ import { generateDeepInsights } from '../lib/analytics';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { formatCurrency } from '../lib/currency';
 
-export default function InsightsView({ data, period }) {
-  const insights = useMemo(() => generateDeepInsights(data, period), [data, period]);
+export default function InsightsView({ data, period, filterProps }) {
+  const insights = useMemo(() => generateDeepInsights(data, period, filterProps), [data, period, filterProps]);
 
   if (!insights || !insights.financialHealth) {
     return (

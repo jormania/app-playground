@@ -1,6 +1,6 @@
 import { formatCurrency } from './currency';
 
-export function generateDeepInsights(data, period = 'this_month') {
+export function generateDeepInsights(data, period = 'this_month', filterProps = null) {
   const { categories, transactions } = data;
   if (!transactions || transactions.length === 0) {
     return {
@@ -12,8 +12,21 @@ export function generateDeepInsights(data, period = 'this_month') {
 
   const now = new Date();
   
+  const { filterType = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
+
   // 1. Timeframe filtering
   const txInHorizon = transactions.filter(t => {
+    // 1. Apply global funnels
+    if (filterType !== 'All' && t.type !== filterType) return false;
+    if (categoryFilter !== 'All' && t.categoryId !== categoryFilter) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const descMatch = (t.description || '').toLowerCase().includes(q);
+      const catMatch = (categories.find(c => c.id === t.categoryId)?.name || '').toLowerCase().includes(q);
+      if (!descMatch && !catMatch) return false;
+    }
+
+    // 2. Apply timeframe
     const txDate = new Date(t.date);
     if (!period || period === 'all_time') return true;
     if (period === 'this_month') {
