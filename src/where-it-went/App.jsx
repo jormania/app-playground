@@ -9,6 +9,9 @@ import { SegmentedControl } from '../ds/components/SegmentedControl';
 import { Button } from '../ds/components/Button';
 import { Modal } from '../ds/components/Modal';
 import { useSubscriptionsEngine } from './lib/useSubscriptionsEngine';
+import Navigation from './components/Navigation';
+import PeriodSheet from './components/PeriodSheet';
+import FilterSheet from './components/FilterSheet';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -16,6 +19,16 @@ export default function App() {
   const [data, setData] = useState({ categories: [], accounts: [], transactions: [], subscriptions: [] });
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Lifted global states for Navigation
+  const [period, setPeriod] = useState('this_month');
+  const [filterType, setFilterType] = useState('All');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Sheet visibility states
+  const [showPeriodSheet, setShowPeriodSheet] = useState(false);
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
 
   const handleTabChange = (newTab) => {
     if (newTab === 'settings' && activeTab !== 'settings') {
@@ -84,37 +97,38 @@ export default function App() {
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: 'var(--space-md)' }}>
-      <header style={{ 
-        display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', 
-        justifyContent: 'space-between', alignItems: 'center', 
-        marginBottom: 'var(--space-md)',
-        position: 'sticky', top: 0, zIndex: 10,
-        backgroundColor: 'color-mix(in srgb, var(--color-bg) 75%, transparent)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        padding: 'var(--space-md)',
-        margin: '0 calc(-1 * var(--space-md)) var(--space-md) calc(-1 * var(--space-md))',
-        borderBottom: '1px solid color-mix(in srgb, var(--color-border) 40%, transparent)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
-          <h1 style={{ color: 'var(--color-accent)', margin: 0 }}>WhereItWent</h1>
-          <Button variant="primary" size="sm" onClick={() => setShowAddForm(true)}>+ Add</Button>
-        </div>
-        <SegmentedControl
-          size="sm"
-          value={activeTab}
-          onChange={handleTabChange}
-          options={[
-            { value: 'dashboard', label: 'Dashboard' },
-            { value: 'transactions', label: 'Transactions' },
-            { value: 'insights', label: 'Insights' },
-            { value: 'settings', label: 'Settings' }
-          ]}
-        />
-      </header>
+      <Navigation
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onAddClick={() => setShowAddForm(true)}
+        period={period}
+        onPeriodClick={() => setShowPeriodSheet(true)}
+        onFilterClick={() => setShowFilterSheet(true)}
+      />
+
+      <PeriodSheet
+        isOpen={showPeriodSheet}
+        onClose={() => setShowPeriodSheet(false)}
+        period={period}
+        onPeriodChange={setPeriod}
+      />
+
+      <FilterSheet
+        isOpen={showFilterSheet}
+        onClose={() => setShowFilterSheet(false)}
+        categories={data.categories}
+        filterType={filterType}
+        categoryFilter={categoryFilter}
+        searchQuery={searchQuery}
+        onApply={({ filterType: ft, categoryFilter: cf, searchQuery: sq }) => {
+          setFilterType(ft);
+          setCategoryFilter(cf);
+          setSearchQuery(sq);
+        }}
+      />
 
       <Modal
-        isOpen={showAddForm}
+        open={showAddForm}
         onClose={() => setShowAddForm(false)}
         title="New Transaction"
       >
@@ -141,8 +155,8 @@ export default function App() {
           </div>
         ) : (
           <>
-            {activeTab === 'dashboard' && <Dashboard data={data} client={client} onDataChange={loadData} onNavigate={handleTabChange} config={config} />}
-            {activeTab === 'transactions' && <TransactionsList data={data} client={client} onDataChange={loadData} />}
+            {activeTab === 'dashboard' && <Dashboard data={data} client={client} onDataChange={loadData} onNavigate={handleTabChange} config={config} period={period} />}
+            {activeTab === 'transactions' && <TransactionsList data={data} client={client} onDataChange={loadData} filterProps={{ filterType, categoryFilter, searchQuery }} />}
             {activeTab === 'insights' && <InsightsView data={data} />}
             {activeTab === 'settings' && (
               <Settings 

@@ -66,3 +66,80 @@ a:hover {
     box-shadow: var(--shadow-sm) !important;
   }
 }
+
+/* Navigation System Styles */
+.nav-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  transition: all 0.2s ease;
+}
+
+.nav-tab-btn:hover {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.nav-tab-btn.active {
+  background: var(--color-surface-2);
+  color: var(--color-accent);
+  border-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
+.nav-period-btn {
+  display: flex;
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-ink);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.nav-filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-ink);
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+@media (max-width: 650px) {
+  .mobile-nav-header {
+    padding-left: var(--space-xs) !important;
+    padding-right: var(--space-xs) !important;
+    gap: 4px !important;
+  }
+  .nav-logo-text {
+    display: none;
+  }
+  .nav-add-text {
+    display: none;
+  }
+  .nav-tab-text {
+    display: none;
+  }
+  .nav-tab-btn {
+    padding: 8px;
+  }
+  .nav-controls {
+    margin-left: auto;
+  }
+}
+

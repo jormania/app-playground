@@ -6,10 +6,8 @@ import { Modal } from '../../ds/components/Modal';
 import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 
-export default function TransactionsList({ data, client, onDataChange }) {
-  const [filter, setFilter] = useState('All'); // All, Income, Expense
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('All');
+export default function TransactionsList({ data, client, onDataChange, filterProps }) {
+  const { filterType: filter, categoryFilter, searchQuery } = filterProps || { filterType: 'All', categoryFilter: 'All', searchQuery: '' };
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
   const [editingTx, setEditingTx] = useState(null);
   
@@ -80,66 +78,11 @@ export default function TransactionsList({ data, client, onDataChange }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 'var(--space-sm)', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
-        <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center' }}>
-          <SegmentedControl
-            size="sm"
-            value={filter}
-            onChange={(val) => {
-              setFilter(val);
-              setCategoryFilter('All'); // Reset category when switching type
-            }}
-            options={[
-              { value: 'All', label: 'All' },
-              { value: 'Expense', label: 'Expenses' },
-              { value: 'Income', label: 'Income' }
-            ]}
-          />
-          
-          <select 
-            value={categoryFilter} 
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            style={{
-              padding: 'var(--space-xs) var(--space-sm)',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--color-border)',
-              backgroundColor: 'var(--color-surface)',
-              color: 'var(--color-ink)',
-              fontSize: 'var(--text-sm)',
-              cursor: 'pointer',
-              maxWidth: '140px'
-            }}
-          >
-            <option value="All">All Categories</option>
-            {relevantCategories.map(c => (
-              <option key={c.id} value={c.id}>{c.icon ? `${c.icon} ${c.name}` : c.name}</option>
-            ))}
-          </select>
-          
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              padding: 'var(--space-xs) var(--space-sm)',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--color-border)',
-              backgroundColor: 'var(--color-surface)',
-              color: 'var(--color-ink)',
-              fontSize: 'var(--text-sm)',
-              width: '120px'
-            }}
-          />
-        </div>
-      </div>
-
       {filtered.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-2xl)', textAlign: 'center', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', marginTop: 'var(--space-md)' }}>
           <div style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>🍃</div>
           <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-ink)' }}>No Transactions Found</h3>
-          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>Try adjusting your search or filters to find what you're looking for.</p>
-          <Button variant="secondary" onClick={() => { setFilter('All'); setCategoryFilter('All'); setSearchQuery(''); }}>Clear Filters</Button>
+          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>Try adjusting your filters in the top menu to find what you're looking for.</p>
         </div>
       ) : (
         <div style={{ marginTop: 'var(--space-md)' }}>

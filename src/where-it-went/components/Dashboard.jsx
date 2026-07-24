@@ -10,7 +10,7 @@ import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 import { useCountUp } from '../lib/useCountUp';
 
-export default function Dashboard({ data, client, onDataChange, onNavigate, config }) {
+export default function Dashboard({ data, client, onDataChange, onNavigate, config, period }) {
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
   const [loaded, setLoaded] = useState(false);
@@ -246,19 +246,6 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 'var(--space-md)' }}>
-        <SegmentedControl
-          size="sm"
-          value={period}
-          onChange={(val) => setPeriod(val)}
-          options={[
-            { value: 'this_month', label: 'This Month' },
-            { value: 'last_month', label: 'Last Month' },
-            { value: 'this_year', label: 'This Year' },
-            { value: 'all_time', label: 'All' }
-          ]}
-        />
-      </div>
 
       <div style={{ 
         display: 'flex', 
