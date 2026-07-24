@@ -10,7 +10,8 @@ import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 import { useCountUp } from '../lib/useCountUp';
 
-export default function Dashboard({ data, client, onDataChange, onNavigate, config, period }) {
+export default function Dashboard({ data, client, onDataChange, onNavigate, config, period, filterProps }) {
+  const { filterType: filter = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
   const [loaded, setLoaded] = useState(false);
@@ -24,9 +25,20 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
     const timer = setTimeout(() => setLoaded(true), 100);
     return () => clearTimeout(timer);
   }, []);
-  const filteredTransactions = data.transactions.filter(t => {
-    const txDate = new Date(t.date);
-    const now = new Date();
+  const filteredTransactions = data.transactions
+    .filter(t => filter === 'All' || t.type === filter)
+    .filter(t => categoryFilter === 'All' || t.categoryId === categoryFilter)
+    .filter(t => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      const descMatch = t.description.toLowerCase().includes(q);
+      const catMatch = (data.categories.find(c => c.id === t.categoryId)?.name || '').toLowerCase().includes(q);
+      const accMatch = (data.accounts.find(a => a.id === t.accountId)?.name || '').toLowerCase().includes(q);
+      return descMatch || catMatch || accMatch;
+    })
+    .filter(t => {
+      const txDate = new Date(t.date);
+      const now = new Date();
     
     if (period === 'all_time') return true;
     if (period === 'this_month') {

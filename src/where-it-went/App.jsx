@@ -155,7 +155,7 @@ export default function App() {
           </div>
         ) : (
           <>
-            {activeTab === 'dashboard' && <Dashboard data={data} client={client} onDataChange={loadData} onNavigate={handleTabChange} config={config} period={period} />}
+            {activeTab === 'dashboard' && <Dashboard data={data} client={client} onDataChange={loadData} onNavigate={handleTabChange} config={config} period={period} filterProps={{ filterType, categoryFilter, searchQuery }} />}
             {activeTab === 'transactions' && <TransactionsList data={data} client={client} onDataChange={loadData} filterProps={{ filterType, categoryFilter, searchQuery }} period={period} />}
             {activeTab === 'insights' && <InsightsView data={data} />}
             {activeTab === 'settings' && (

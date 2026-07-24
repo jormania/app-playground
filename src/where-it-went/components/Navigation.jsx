@@ -85,7 +85,7 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
       </div>
 
       <div className="nav-controls" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginLeft: 'var(--space-xs)' }}>
-        {activeTab === 'transactions' && (
+        {['transactions', 'dashboard'].includes(activeTab) && (
           <button 
             className="nav-filter-btn"
             onClick={onFilterClick}
