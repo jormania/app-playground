@@ -11,6 +11,11 @@ a few are self-contained static HTML pages. Either way they run entirely in your
 
 | App | Tags | Entry file |
 | --- | --- | --- |
+| [WhereItWent](https://coneofcold.vercel.app/where-it-went-react.html) | finance · analytics · notion · react · vite | `where-it-went-react.html` |
+| [Click Deck](https://coneofcold.vercel.app/click-deck-react.html) | gaming · backlog · tracker · react · vite | `click-deck-react.html` |
+| [Loom](https://coneofcold.vercel.app/loom-react.html) | habits · planner · notion · react · vite | `loom-react.html` |
+| [Wanderlist](https://coneofcold.vercel.app/wanderlist-react.html) | travel · map · notion · react · vite | `wanderlist-react.html` |
+| [Yoru](https://coneofcold.vercel.app/yoru-react.html) | sleep · ambient · react · vite | `yoru-react.html` |
 | [Daily Stoic](https://coneofcold.vercel.app/daily-stoic-react.html) | mindfulness · writing · react · vite | `daily-stoic-react.html` |
 | [Law of the Day](https://coneofcold.vercel.app/law-of-the-day-react.html) | quiz · strategy · reading · react · vite | `law-of-the-day-react.html` |
 | [Tempo](https://coneofcold.vercel.app/tempo-react.html) | mindfulness · fitness · breathing · react · vite | `tempo-react.html` |

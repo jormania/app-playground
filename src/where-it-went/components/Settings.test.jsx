@@ -1,10 +1,20 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Settings from './Settings';
 
+vi.mock('../lib/notionClient', () => {
+  return {
+    NotionClient: vi.fn().mockImplementation(() => {
+      return {
+        fetchCategories: vi.fn().mockResolvedValue([])
+      };
+    })
+  };
+});
+
 describe('Settings Component', () => {
-  it('loads config and saves changes', () => {
+  it('loads config and saves changes', async () => {
     const mockConfig = {
       token: 'secret_token',
       categoriesDb: 'cat_id',
@@ -28,9 +38,11 @@ describe('Settings Component', () => {
     // Click save
     fireEvent.click(screen.getByText('Save Configuration'));
     
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-      token: 'new_token',
-      categoriesDb: 'cat_id'
-    }));
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+        token: 'new_token',
+        categoriesDb: 'cat_id'
+      }));
+    });
   });
 });

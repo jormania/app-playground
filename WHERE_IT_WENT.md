@@ -1,4 +1,4 @@
-# WhereItWent Setup Guide
+# WhereItWent
 
 WhereItWent uses Notion as its database backend. To fully use the app (beyond Demo mode), you need to create three databases in your Notion workspace and connect them to the app.
 
@@ -50,3 +50,27 @@ Enter the following:
 *(To find a database ID, look at its Notion URL: `https://www.notion.so/{workspace}/<DATABASE_ID>?v=...`. The ID is the 32-character string before the `?v=`)*
 
 Click **Save Configuration**. The app will now read and write directly to your Notion workspace!
+
+
+## 4. Features Overview
+
+### Dashboard & Analytics
+- **KPIs**: View total Income, Expenses, and Net Cash Flow for the current month.
+- **Monthly Chart**: A Chart.js visualization of spending trends over the month.
+
+### Insights & Reflection
+- **Monthly Review**: Compare current month spending to the previous month.
+- **Actionable Insights**: Automatic detection of spending increases, missing income (e.g. rent not received yet), and recurring transactions.
+- **Reflection Card**: A generated summary of the month's financial activity asking a prompt to encourage mindfulness about spending habits.
+
+### Transactions Management
+- **CRUD Operations**: Add, edit, and delete transactions.
+- **Filtering & Sorting**: Filter transactions by category or type, and sort by date or amount.
+- **Category Emojis**: Native Notion emojis are automatically pulled and displayed inline for each category.
+- **Category Descriptions**: Add descriptions to your Notion Categories database to have them show up as tooltips in the app, helping you remember what each category is for.
+
+### Under the Hood
+- **React + Vite**: Fast, modern frontend.
+- **BYO Token**: "Bring Your Own Token" architecture ensures your Notion data remains private and is only accessed by your local browser.
+- **PWA Ready**: Offline-capable app shell.
+- **Vitest**: Fully covered by component tests.

@@ -9,6 +9,8 @@ export default function Settings({ config, onSave, onThemeChange, onDone }) {
   const [categoriesDb, setCategoriesDb] = useState(config.categoriesDb || '');
   const [accountsDb, setAccountsDb] = useState(config.accountsDb || '');
   const [theme, setTheme] = useState(config.theme || 'dark');
+  const [status, setStatus] = useState({ type: '', msg: '' });
+  const [testing, setTesting] = useState(false);
 
   const extractNotionId = (input) => {
     if (!input) return '';
@@ -17,15 +19,49 @@ export default function Settings({ config, onSave, onThemeChange, onDone }) {
     return match ? match[1] : str;
   };
 
-  const handleSave = () => {
-    onSave({ 
-      token: token.trim(), 
-      transactionsDb: extractNotionId(transactionsDb), 
-      categoriesDb: extractNotionId(categoriesDb), 
-      accountsDb: extractNotionId(accountsDb), 
-      theme 
-    });
-    if (onDone) onDone();
+  const handleSave = async () => {
+    setStatus({ type: '', msg: '' });
+
+    if (!token.trim() && !transactionsDb && !categoriesDb && !accountsDb) {
+      handleClear();
+      return;
+    }
+
+    if (!token.trim() || !transactionsDb || !categoriesDb || !accountsDb) {
+      setStatus({ type: 'error', msg: 'Please fill in all fields to connect to Notion.' });
+      return;
+    }
+
+    setTesting(true);
+    try {
+      const { NotionClient } = await import('../lib/notionClient');
+      const testClient = new NotionClient(token.trim(), {
+        categories: extractNotionId(categoriesDb),
+        accounts: extractNotionId(accountsDb),
+        transactions: extractNotionId(transactionsDb)
+      });
+      
+      // Test the connection by fetching one of the databases
+      await testClient.fetchCategories();
+      
+      setStatus({ type: 'success', msg: 'Connection successful!' });
+      
+      onSave({ 
+        token: token.trim(), 
+        transactionsDb: extractNotionId(transactionsDb), 
+        categoriesDb: extractNotionId(categoriesDb), 
+        accountsDb: extractNotionId(accountsDb), 
+        theme 
+      });
+      
+      setTimeout(() => {
+        if (onDone) onDone();
+      }, 1000);
+    } catch (e) {
+      setStatus({ type: 'error', msg: 'Connection failed: Please check your Token and Database IDs.' });
+    } finally {
+      setTesting(false);
+    }
   };
 
   const handleClear = () => {
@@ -66,9 +102,23 @@ export default function Settings({ config, onSave, onThemeChange, onDone }) {
         <Field label="Transactions Database ID or Link" type="text" value={transactionsDb} onChange={e => setTransactionsDb(e.target.value)} />
       </div>
 
+      {status.msg && (
+        <div style={{ 
+          padding: 'var(--space-sm)', 
+          borderRadius: 'var(--radius-md)', 
+          backgroundColor: status.type === 'error' ? 'rgba(255, 59, 48, 0.1)' : 'rgba(52, 199, 89, 0.1)',
+          color: status.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)',
+          border: `1px solid ${status.type === 'error' ? 'rgba(255, 59, 48, 0.2)' : 'rgba(52, 199, 89, 0.2)'}`
+        }}>
+          {status.msg}
+        </div>
+      )}
+
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginTop: 'var(--space-sm)' }}>
-        <Button variant="primary" onClick={handleSave}>Save Configuration</Button>
-        <Button variant="secondary" onClick={handleClear}>Clear / Demo Mode</Button>
+        <Button variant="primary" onClick={handleSave} disabled={testing}>
+          {testing ? 'Testing...' : 'Save Configuration'}
+        </Button>
+        <Button variant="secondary" onClick={handleClear} disabled={testing}>Clear / Demo Mode</Button>
       </div>
     </div>
   );
