@@ -103,6 +103,7 @@ for (let month = 0; month < 12; month++) {
   if (month % 3 === 0) transactions.push({ id: 'demo_tx_' + txId++, description: 'Property Maintenance', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(100, 400), type: 'Expense', categoryId: 'cat_property', accountId: 'acc_checking', tags: [] });
   if (month === 4 || month === 10) transactions.push({ id: 'demo_tx_' + txId++, description: 'Property Tax', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(800, 1200), type: 'Expense', categoryId: 'cat_taxes', accountId: 'acc_checking', tags: [] });
   if (month === 12) transactions.push({ id: 'demo_tx_' + txId++, description: 'Accountant Fees', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(300, 500), type: 'Expense', categoryId: 'cat_taxes', accountId: 'acc_checking', tags: [] });
+  transactions.push({ id: 'demo_tx_' + txId++, description: 'Monthly Bank Fee', date: `2026-${m}-01`, amount: 15, type: 'Expense', categoryId: 'cat_taxes', accountId: 'acc_checking', tags: [] });
 
   if (month % 2 === 0) transactions.push({ id: 'demo_tx_' + txId++, description: 'Tenant Rent', date: `2026-${m}-05`, amount: 1500, type: 'Income', categoryId: 'cat_rental_income', accountId: 'acc_checking', tags: [] });
 }
