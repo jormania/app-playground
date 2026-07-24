@@ -126,69 +126,48 @@ export default function InsightsView({ data, period, filterProps }) {
           </div>
         </div>
 
-        {/* 50/30/20 Rule */}
+        {/* Income Dependency */}
         <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
           <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
-            The 50/30/20 Rule
+            Income Dependency
           </h2>
-          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
-            Target vs Actual spending breakdown based on total expenses.
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
-            
-            {/* Needs */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
-                <span style={{ fontWeight: 'var(--weight-medium)' }}>Needs</span>
-                <span style={{ fontWeight: 'var(--weight-bold)', color: financialHealth.needsWantsSavings.needs > targetNeeds ? 'var(--color-danger)' : 'var(--color-ink)' }}>
-                  {formatCurrency(financialHealth.needsWantsSavings.needs)} ({((financialHealth.needsWantsSavings.needs / financialHealth.totalExpense) * 100).toFixed(1)}%)
-                </span>
+          {financialHealth.totalIncome > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', marginTop: 'var(--space-md)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: 'var(--space-md)', backgroundColor: 'var(--color-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                <div style={{ fontSize: '24px', backgroundColor: 'var(--color-surface-2)', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', flexShrink: 0 }}>
+                  💼
+                </div>
+                <div>
+                  <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', fontWeight: 'var(--weight-medium)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Income</div>
+                  <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>
+                    {formatCurrency(financialHealth.totalIncome)}
+                  </div>
+                </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>
-                <span>Target 50%: {formatCurrency(targetNeeds)}</span>
-                <span>Diff: {formatCurrency(financialHealth.needsWantsSavings.needs - targetNeeds)}</span>
-              </div>
-              <div className="budget-bar-wrapper">
-                <div style={{ width: `${Math.min((financialHealth.needsWantsSavings.needs / financialHealth.totalExpense) * 100, 100)}%`, height: '100%', backgroundColor: financialHealth.needsWantsSavings.needs > targetNeeds ? 'var(--color-danger)' : 'var(--color-border)' }}></div>
-              </div>
+              
+              <h3 style={{ fontSize: 'var(--text-md)', margin: 'var(--space-sm) 0 0 0' }}>Sources</h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {insights.incomeStreams.map((stream, idx) => (
+                  <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: idx === insights.incomeStreams.length - 1 ? 'none' : '1px solid var(--color-border)' }}>
+                    <div>
+                      <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>{stream.name}</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '2px' }}>
+                        {((stream.total / financialHealth.totalIncome) * 100).toFixed(1)}% of total
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-success)' }}>
+                      {formatCurrency(stream.total)}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
-
-            {/* Wants */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
-                <span style={{ fontWeight: 'var(--weight-medium)' }}>Wants</span>
-                <span style={{ fontWeight: 'var(--weight-bold)', color: financialHealth.needsWantsSavings.wants > targetWants ? 'var(--color-warning)' : 'var(--color-ink)' }}>
-                  {formatCurrency(financialHealth.needsWantsSavings.wants)} ({((financialHealth.needsWantsSavings.wants / financialHealth.totalExpense) * 100).toFixed(1)}%)
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>
-                <span>Target 30%: {formatCurrency(targetWants)}</span>
-                <span>Diff: {formatCurrency(financialHealth.needsWantsSavings.wants - targetWants)}</span>
-              </div>
-              <div className="budget-bar-wrapper">
-                <div style={{ width: `${Math.min((financialHealth.needsWantsSavings.wants / financialHealth.totalExpense) * 100, 100)}%`, height: '100%', backgroundColor: financialHealth.needsWantsSavings.wants > targetWants ? 'var(--color-warning)' : 'var(--color-border)' }}></div>
-              </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: 'var(--space-xl) 0' }}>
+              <div style={{ fontSize: '36px', marginBottom: 'var(--space-sm)' }}>💤</div>
+              <p style={{ margin: 0, color: 'var(--color-ink)', fontWeight: 'var(--weight-medium)' }}>No Income Detected</p>
             </div>
-
-            {/* Savings */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
-                <span style={{ fontWeight: 'var(--weight-medium)' }}>Investments</span>
-                <span style={{ fontWeight: 'var(--weight-bold)' }}>
-                  {formatCurrency(financialHealth.needsWantsSavings.savings)} ({((financialHealth.needsWantsSavings.savings / financialHealth.totalExpense) * 100).toFixed(1)}%)
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>
-                <span>Target 20%: {formatCurrency(targetSavings)}</span>
-                <span>Diff: {formatCurrency(financialHealth.needsWantsSavings.savings - targetSavings)}</span>
-              </div>
-              <div className="budget-bar-wrapper">
-                <div style={{ width: `${Math.min((financialHealth.needsWantsSavings.savings / financialHealth.totalExpense) * 100, 100)}%`, height: '100%', backgroundColor: (financialHealth.needsWantsSavings.savings / financialHealth.totalExpense) >= 0.2 ? 'var(--color-success)' : 'var(--color-border)' }}></div>
-              </div>
-            </div>
-
-          </div>
+          )}
         </div>
       </div>
 
@@ -337,47 +316,69 @@ export default function InsightsView({ data, period, filterProps }) {
             </div>
           </div>
 
+          {/* 50/30/20 Rule */}
           <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
             <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
-              Income Dependency
+              The 50/30/20 Rule
             </h2>
-            {financialHealth.totalIncome > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', marginTop: 'var(--space-md)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: 'var(--space-md)', backgroundColor: 'var(--color-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                  <div style={{ fontSize: '24px', backgroundColor: 'var(--color-surface-2)', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', flexShrink: 0 }}>
-                    💼
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', fontWeight: 'var(--weight-medium)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Income</div>
-                    <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>
-                      {formatCurrency(financialHealth.totalIncome)}
-                    </div>
-                  </div>
+            <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
+              Target vs Actual spending breakdown based on total expenses.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+              
+              {/* Needs */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
+                  <span style={{ fontWeight: 'var(--weight-medium)' }}>Needs</span>
+                  <span style={{ fontWeight: 'var(--weight-bold)', color: financialHealth.needsWantsSavings.needs > targetNeeds ? 'var(--color-danger)' : 'var(--color-ink)' }}>
+                    {formatCurrency(financialHealth.needsWantsSavings.needs)} ({((financialHealth.needsWantsSavings.needs / financialHealth.totalExpense) * 100).toFixed(1)}%)
+                  </span>
                 </div>
-                
-                <h3 style={{ fontSize: 'var(--text-md)', margin: 'var(--space-sm) 0 0 0' }}>Sources</h3>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {insights.incomeStreams.map((stream, idx) => (
-                    <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: idx === insights.incomeStreams.length - 1 ? 'none' : '1px solid var(--color-border)' }}>
-                      <div>
-                        <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>{stream.name}</div>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '2px' }}>
-                          {((stream.total / financialHealth.totalIncome) * 100).toFixed(1)}% of total
-                        </div>
-                      </div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-success)' }}>
-                        {formatCurrency(stream.total)}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>
+                  <span>Target 50%: {formatCurrency(targetNeeds)}</span>
+                  <span>Diff: {formatCurrency(financialHealth.needsWantsSavings.needs - targetNeeds)}</span>
+                </div>
+                <div className="budget-bar-wrapper">
+                  <div style={{ width: `${Math.min((financialHealth.needsWantsSavings.needs / financialHealth.totalExpense) * 100, 100)}%`, height: '100%', backgroundColor: financialHealth.needsWantsSavings.needs > targetNeeds ? 'var(--color-danger)' : 'var(--color-border)' }}></div>
+                </div>
               </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: 'var(--space-xl) 0' }}>
-                <div style={{ fontSize: '36px', marginBottom: 'var(--space-sm)' }}>💤</div>
-                <p style={{ margin: 0, color: 'var(--color-ink)', fontWeight: 'var(--weight-medium)' }}>No Income Detected</p>
+
+              {/* Wants */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
+                  <span style={{ fontWeight: 'var(--weight-medium)' }}>Wants</span>
+                  <span style={{ fontWeight: 'var(--weight-bold)', color: financialHealth.needsWantsSavings.wants > targetWants ? 'var(--color-warning)' : 'var(--color-ink)' }}>
+                    {formatCurrency(financialHealth.needsWantsSavings.wants)} ({((financialHealth.needsWantsSavings.wants / financialHealth.totalExpense) * 100).toFixed(1)}%)
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>
+                  <span>Target 30%: {formatCurrency(targetWants)}</span>
+                  <span>Diff: {formatCurrency(financialHealth.needsWantsSavings.wants - targetWants)}</span>
+                </div>
+                <div className="budget-bar-wrapper">
+                  <div style={{ width: `${Math.min((financialHealth.needsWantsSavings.wants / financialHealth.totalExpense) * 100, 100)}%`, height: '100%', backgroundColor: financialHealth.needsWantsSavings.wants > targetWants ? 'var(--color-warning)' : 'var(--color-border)' }}></div>
+                </div>
               </div>
-            )}
+
+              {/* Savings */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
+                  <span style={{ fontWeight: 'var(--weight-medium)' }}>Investments</span>
+                  <span style={{ fontWeight: 'var(--weight-bold)' }}>
+                    {formatCurrency(financialHealth.needsWantsSavings.savings)} ({((financialHealth.needsWantsSavings.savings / financialHealth.totalExpense) * 100).toFixed(1)}%)
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>
+                  <span>Target 20%: {formatCurrency(targetSavings)}</span>
+                  <span>Diff: {formatCurrency(financialHealth.needsWantsSavings.savings - targetSavings)}</span>
+                </div>
+                <div className="budget-bar-wrapper">
+                  <div style={{ width: `${Math.min((financialHealth.needsWantsSavings.savings / financialHealth.totalExpense) * 100, 100)}%`, height: '100%', backgroundColor: (financialHealth.needsWantsSavings.savings / financialHealth.totalExpense) >= 0.2 ? 'var(--color-success)' : 'var(--color-border)' }}></div>
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
 
