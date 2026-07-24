@@ -60,14 +60,14 @@
   <ol class="steps">
     <li><b>Create an Integration:</b> Go to <a href="https://www.notion.so/my-integrations" target="_blank">Notion Integrations</a> and create a new integration.</li>
     <li><b>Copy the Token:</b> Copy the Internal Integration Secret.</li>
-    <li><b>Prepare the Databases:</b> Ensure you have a Transactions database, an Accounts database, and a Categories database in Notion. See <a href="#schema">§2</a>.</li>
+    <li><b>Prepare the Databases:</b> Ensure you have a Transactions database, an Accounts database, a Categories database, and a Subscriptions database in Notion. See <a href="#schema">§2</a>.</li>
     <li><b>Share the databases:</b> Open your Notion databases, click <code>•••</code> → <b>Connections</b>, and add your integration.</li>
     <li><b>Get the Links:</b> Copy the Notion link to each database.</li>
     <li><b>Connect it:</b> Open Settings (⚙), paste the Integration Token and the database links (or IDs), and save.</li>
   </ol>
 
   <h2 id="schema">2. The Notion Database Schema</h2>
-  <p>Where It Went expects three interconnected databases. They must be named properly and their properties must match these definitions exactly.</p>
+  <p>Where It Went expects four interconnected databases. They must be named properly and their properties must match these definitions exactly.</p>
   
   <h3>Transactions Database</h3>
   <table class="schema">
@@ -102,6 +102,21 @@
     </tbody>
   </table>
 
+  <h3>Subscriptions Database</h3>
+  <table class="schema">
+    <thead><tr><th>Property</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Name</td><td>Title</td><td>Description of the recurring payment.</td></tr>
+      <tr><td>Amount</td><td>Number</td><td>Positive for Income, negative for Expenses.</td></tr>
+      <tr><td>Type</td><td>Select</td><td>Must be exactly <code>Income</code> or <code>Expense</code>.</td></tr>
+      <tr><td>DayOfMonth</td><td>Number</td><td>Day of the month it should trigger (1-31).</td></tr>
+      <tr><td>Category</td><td>Relation</td><td>Relation to the Categories DB (Limit: 1).</td></tr>
+      <tr><td>Account</td><td>Relation</td><td>Relation to the Accounts DB (Limit: 1).</td></tr>
+      <tr><td>Active</td><td>Checkbox</td><td>Whether the subscription is currently active.</td></tr>
+      <tr><td>LastProcessed</td><td>Date</td><td>Maintained automatically by the app.</td></tr>
+    </tbody>
+  </table>
+
   <h2>3. Core Views</h2>
   <p>Where It Went features two primary views within a single page application.</p>
 
@@ -112,6 +127,10 @@
 
   <h3>Transactions Ledger</h3>
   <p>The lower section is your complete ledger. You can sort by clicking the headers (Date, Description, Category, Account, Amount). The Add Transaction component dynamically filters available categories depending on whether you input a positive amount (Income) or a negative amount (Expense), and renders their emojis and descriptions inline.</p>
+
+  <h3>Settings & Subscriptions</h3>
+  <p>The <b>Settings</b> tab is where you configure your Notion integration. You can also define your <b>Recurring Subscriptions</b> here. The app will automatically generate transactions for these on the specified day of each month upon launch.</p>
+  <p>You can also toggle specific UI features on and off, such as the Budget Limits engine and the Cash Flow Trend chart, and swap between Light and Dark themes.</p>
 
   <h2>4. Data Ownership & Sync</h2>
   <p>Where It Went deliberately doesn't ship with any shared or hardcoded data. It uses a <b>Bring Your Own (BYO)</b> token model: your Notion Integration Token and Database links live in Settings, are stored only in your browser's local storage, and are sent to Notion's API via a thin serverless proxy (<code>/api/notion</code>) that exists purely to avoid CORS restrictions.</p>
