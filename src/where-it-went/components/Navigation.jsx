@@ -101,7 +101,6 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
           title={formatPeriodLabel(period)}
         >
           {Icons.calendar}
-          <span className="nav-period-text">{formatPeriodLabel(period)}</span>
         </button>
       </div>
     </header>

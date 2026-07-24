@@ -97,15 +97,13 @@ a:hover {
 .nav-period-btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   color: var(--color-ink);
-  padding: 6px 12px;
+  padding: 6px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-family: inherit;
-  font-size: var(--text-sm);
-  white-space: nowrap;
 }
 
 .nav-filter-btn {
@@ -137,12 +135,6 @@ a:hover {
   }
   .nav-tab-btn {
     padding: 8px;
-  }
-  .nav-period-text {
-    display: none;
-  }
-  .nav-period-btn {
-    padding: 6px;
   }
   .nav-controls {
     margin-left: auto;
