@@ -1,4 +1,4 @@
-import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS } from '../models/demoData';
+import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS } from '../models/demoData';
 
 const PROXY_URL = '/api/notion';
 
@@ -111,6 +111,52 @@ export class NotionClient {
     return response.json();
   }
 
+  async updateTransaction(txId, updates) {
+    if (!this.token || !this.dbIds?.transactions) {
+      const tx = DEMO_TRANSACTIONS.find(t => t.id === txId);
+      if (tx) Object.assign(tx, updates);
+      return tx;
+    }
+    
+    const properties = {};
+    if (updates.description !== undefined) properties['Description'] = { title: [{ text: { content: updates.description } }] };
+    if (updates.date !== undefined) properties['Date'] = { date: { start: updates.date } };
+    if (updates.amount !== undefined) properties['Amount (RON)'] = { number: updates.amount };
+    if (updates.type !== undefined) properties['Type'] = { select: { name: updates.type } };
+    if (updates.categoryId !== undefined) properties['Category'] = { relation: [{ id: updates.categoryId }] };
+    if (updates.accountId !== undefined) properties['Account'] = { relation: [{ id: updates.accountId }] };
+    if (updates.tags !== undefined) properties['Tags'] = { multi_select: updates.tags.map(t => ({ name: t })) };
+
+    const response = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
+      body: JSON.stringify({
+        path: `pages/${txId}`,
+        method: 'PATCH',
+        body: { properties }
+      })
+    });
+    return response.json();
+  }
+
+  async deleteTransaction(txId) {
+    if (!this.token || !this.dbIds?.transactions) {
+      const idx = DEMO_TRANSACTIONS.findIndex(t => t.id === txId);
+      if (idx !== -1) DEMO_TRANSACTIONS.splice(idx, 1);
+      return;
+    }
+    
+    await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
+      body: JSON.stringify({
+        path: `pages/${txId}`,
+        method: 'PATCH',
+        body: { archived: true }
+      })
+    });
+  }
+
   async updateCategoryLimit(categoryId, limit) {
     if (!this.token || !this.dbIds?.categories) {
       const cat = DEMO_CATEGORIES.find(c => c.id === categoryId);
@@ -132,5 +178,111 @@ export class NotionClient {
       })
     });
     return response.json();
+  }
+
+  async fetchSubscriptions() {
+    if (!this.token || !this.dbIds?.subscriptions) {
+      return [...DEMO_SUBSCRIPTIONS];
+    }
+    
+    const response = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
+      body: JSON.stringify({
+        path: `databases/${this.dbIds.subscriptions}/query`,
+        method: 'POST'
+      })
+    });
+    const data = await response.json();
+    return data.results.map(row => ({
+      id: row.id,
+      name: row.properties.Name?.title?.[0]?.plain_text || '',
+      amount: row.properties.Amount?.number || 0,
+      type: row.properties.Type?.select?.name || 'Expense',
+      dayOfMonth: row.properties.DayOfMonth?.number || 1,
+      categoryId: row.properties.Category?.relation?.[0]?.id || '',
+      accountId: row.properties.Account?.relation?.[0]?.id || '',
+      active: row.properties.Active?.checkbox !== false,
+      lastProcessed: row.properties.LastProcessed?.date?.start || null
+    }));
+  }
+
+  async addSubscription(sub) {
+    if (!this.token || !this.dbIds?.subscriptions) {
+      const newSub = { ...sub, id: 'demo_sub_' + Date.now() };
+      DEMO_SUBSCRIPTIONS.push(newSub);
+      return newSub;
+    }
+    
+    const response = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
+      body: JSON.stringify({
+        path: `pages`,
+        method: 'POST',
+        body: {
+          parent: { database_id: this.dbIds.subscriptions },
+          properties: {
+            'Name': { title: [{ text: { content: sub.name } }] },
+            'Amount': { number: sub.amount },
+            'Type': { select: { name: sub.type } },
+            'DayOfMonth': { number: sub.dayOfMonth },
+            'Category': { relation: sub.categoryId ? [{ id: sub.categoryId }] : [] },
+            'Account': { relation: sub.accountId ? [{ id: sub.accountId }] : [] },
+            'Active': { checkbox: sub.active },
+            'LastProcessed': sub.lastProcessed ? { date: { start: sub.lastProcessed } } : null
+          }
+        }
+      })
+    });
+    return response.json();
+  }
+
+  async updateSubscription(subId, updates) {
+    if (!this.token || !this.dbIds?.subscriptions) {
+      const sub = DEMO_SUBSCRIPTIONS.find(s => s.id === subId);
+      if (sub) Object.assign(sub, updates);
+      return sub;
+    }
+    
+    const properties = {};
+    if (updates.name !== undefined) properties['Name'] = { title: [{ text: { content: updates.name } }] };
+    if (updates.amount !== undefined) properties['Amount'] = { number: updates.amount };
+    if (updates.type !== undefined) properties['Type'] = { select: { name: updates.type } };
+    if (updates.dayOfMonth !== undefined) properties['DayOfMonth'] = { number: updates.dayOfMonth };
+    if (updates.categoryId !== undefined) properties['Category'] = { relation: updates.categoryId ? [{ id: updates.categoryId }] : [] };
+    if (updates.accountId !== undefined) properties['Account'] = { relation: updates.accountId ? [{ id: updates.accountId }] : [] };
+    if (updates.active !== undefined) properties['Active'] = { checkbox: updates.active };
+    if (updates.lastProcessed !== undefined) properties['LastProcessed'] = updates.lastProcessed ? { date: { start: updates.lastProcessed } } : null;
+
+    const response = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
+      body: JSON.stringify({
+        path: `pages/${subId}`,
+        method: 'PATCH',
+        body: { properties }
+      })
+    });
+    return response.json();
+  }
+
+  async deleteSubscription(subId) {
+    if (!this.token || !this.dbIds?.subscriptions) {
+      const idx = DEMO_SUBSCRIPTIONS.findIndex(s => s.id === subId);
+      if (idx !== -1) DEMO_SUBSCRIPTIONS.splice(idx, 1);
+      return;
+    }
+    
+    // Notion API deletes pages by setting archived to true
+    await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
+      body: JSON.stringify({
+        path: `pages/${subId}`,
+        method: 'PATCH',
+        body: { archived: true }
+      })
+    });
   }
 }

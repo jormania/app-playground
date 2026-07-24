@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import BudgetEditorModal from './BudgetEditorModal';
 import { Button } from '../../ds/components/Button';
+import { Modal } from '../../ds/components/Modal';
+import TransactionForm from './TransactionForm';
 import { getCategoryColor } from '../lib/colors';
 
 import { formatCurrency } from '../lib/currency';
@@ -9,6 +11,7 @@ import { useCountUp } from '../lib/useCountUp';
 
 export default function Dashboard({ data, client, onDataChange, onNavigate }) {
   const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [editingTx, setEditingTx] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -264,7 +267,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
         </select>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(105px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
         <div 
           style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
           onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
@@ -310,7 +313,8 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
               return (
               <li 
                 key={tx.id} 
-                style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) var(--space-xs)', paddingLeft: 'var(--space-md)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${catColor}`, transition: 'background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default', borderRadius: 'var(--radius-sm)' }}
+                style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) var(--space-xs)', paddingLeft: 'var(--space-md)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${catColor}`, transition: 'background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease', cursor: 'pointer', borderRadius: 'var(--radius-sm)' }}
+                onClick={() => setEditingTx(tx)}
                 onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-surface-2)'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
               >
@@ -435,6 +439,37 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
         client={client}
         onDataChange={onDataChange}
       />
+
+      {editingTx && (
+        <Modal title="Edit Transaction" onClose={() => setEditingTx(null)}>
+          <TransactionForm 
+            categories={data.categories} 
+            accounts={data.accounts} 
+            initialTx={editingTx}
+            onSave={async (id, txData) => {
+              try {
+                await client.updateTransaction(id, txData);
+                onDataChange();
+                setEditingTx(null);
+              } catch (e) {
+                console.error("Failed to update transaction", e);
+                alert("Failed to update transaction.");
+              }
+            }} 
+            onDelete={async (id) => {
+              try {
+                await client.deleteTransaction(id);
+                onDataChange();
+                setEditingTx(null);
+              } catch (e) {
+                console.error("Failed to delete transaction", e);
+                alert("Failed to delete transaction.");
+              }
+            }}
+            onCancel={() => setEditingTx(null)} 
+          />
+        </Modal>
+      )}
     </div>
   );
 }

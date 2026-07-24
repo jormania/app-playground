@@ -76,6 +76,7 @@ Click **Save Configuration**. The app will now read and write directly to your N
 - **Top Increases**: Compares current month spending to the previous month on a category-by-category basis, flagging significant surges in spending.
 
 ### Transactions Management
+- **Full Ledger Control**: Click on any transaction from the Dashboard or Transactions list to open a modal where you can completely edit its details (amount, category, description, date) or delete it from the Notion database entirely.
 - **Global Search & Filter**: Powerful, instant search across transaction descriptions, categories, and amounts. Includes a quick category dropdown filter.
 - **Multi-Column Sorting**: Sort your ledger by Date, Description, Amount, Category, or Account, in both ascending and descending order.
 - **Auto-Account Preselection**: When adding a new transaction, selecting a Category (e.g., `Salary`) automatically preselects your preferred default Account (e.g., `Checking`), dramatically speeding up data entry.
@@ -83,6 +84,11 @@ Click **Save Configuration**. The app will now read and write directly to your N
 - **Category Tooltips**: Add descriptions to your Notion Categories database to have them show up as helpful tooltips in the app.
 - **Deterministic Color Tags**: Categories maintain the same elegant, modern color capsules across tables, charts, and lists, establishing a recognizable visual identity.
 - **Slim Interface**: A highly optimized, compact design using `size="sm"` components, ensuring dense information display without horizontal wrapping.
+
+### Subscriptions Engine
+- **Automated Recurring Billing**: Added a Subscriptions Management panel in Settings that allows you to define recurring monthly payments (e.g., YouTube Premium, Netflix, Rent).
+- **Auto-Ledger Injection**: The App automatically evaluates missed payments on launch and injects them into the ledger on their correct day of the month.
+- **Seamless Notion Sync**: Powered by a 4th Notion database ("Subscriptions") to persist subscription data.
 
 ### Under the Hood
 - **React + Vite**: Fast, modern frontend toolchain for instantaneous HMR and optimized production bundles.

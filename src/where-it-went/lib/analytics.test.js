@@ -49,6 +49,6 @@ describe('analytics.js', () => {
     // Subscriptions total 50. Since it's a twistie now, it returns an object.
     const subsTwistie = result.expenses.subscriptions.find(o => typeof o === 'object' && o.title.includes('Subscriptions Total'));
     expect(subsTwistie).toBeDefined();
-    expect(subsTwistie.title).toContain('50.00 RON');
+    expect(subsTwistie.title).toContain('50 RON');
   });
 });

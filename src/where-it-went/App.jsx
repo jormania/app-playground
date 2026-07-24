@@ -8,11 +8,12 @@ import TransactionForm from './components/TransactionForm';
 import { SegmentedControl } from '../ds/components/SegmentedControl';
 import { Button } from '../ds/components/Button';
 import { Modal } from '../ds/components/Modal';
+import { useSubscriptionsEngine } from './lib/useSubscriptionsEngine';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [previousTab, setPreviousTab] = useState('dashboard');
-  const [data, setData] = useState({ categories: [], accounts: [], transactions: [] });
+  const [data, setData] = useState({ categories: [], accounts: [], transactions: [], subscriptions: [] });
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -34,18 +35,20 @@ export default function App() {
   const client = new NotionClient(config.token, {
     categories: config.categoriesDb,
     accounts: config.accountsDb,
-    transactions: config.transactionsDb
+    transactions: config.transactionsDb,
+    subscriptions: config.subscriptionsDb
   });
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [categories, accounts, transactions] = await Promise.all([
+      const [categories, accounts, transactions, subscriptions] = await Promise.all([
         client.fetchCategories(),
         client.fetchAccounts(),
-        client.fetchTransactions()
+        client.fetchTransactions(),
+        client.fetchSubscriptions()
       ]);
-      setData({ categories, accounts, transactions });
+      setData({ categories, accounts, transactions, subscriptions });
     } catch (e) {
       console.error("Failed to fetch data:", e);
     }
@@ -54,11 +57,14 @@ export default function App() {
 
   useEffect(() => {
     loadData();
-  }, [config.token, config.categoriesDb, config.accountsDb, config.transactionsDb]);
+  }, [config.token, config.categoriesDb, config.accountsDb, config.transactionsDb, config.subscriptionsDb]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', config.theme || 'dark');
   }, [config.theme]);
+
+  // Run the subscription engine
+  useSubscriptionsEngine({ data, client, onDataChange: loadData });
 
   const handleConfigSave = (newConfig) => {
     localStorage.setItem('whereItWent_config', JSON.stringify(newConfig));
@@ -138,7 +144,17 @@ export default function App() {
             {activeTab === 'dashboard' && <Dashboard data={data} client={client} onDataChange={loadData} onNavigate={handleTabChange} />}
             {activeTab === 'transactions' && <TransactionsList data={data} client={client} onDataChange={loadData} />}
             {activeTab === 'insights' && <InsightsView data={data} />}
-            {activeTab === 'settings' && <Settings config={config} onSave={handleConfigSave} onThemeChange={handleThemeChange} onDone={() => setActiveTab(previousTab)} />}
+            {activeTab === 'settings' && (
+              <Settings 
+                config={config} 
+                onSave={handleConfigSave} 
+                onThemeChange={handleThemeChange} 
+                onDone={() => handleTabChange(previousTab)} 
+                data={data}
+                client={client}
+                onDataChange={loadData}
+              />
+            )}
           </>
         )}
       </main>

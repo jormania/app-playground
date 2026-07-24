@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export function useCountUp(end, duration = 800) {
+export function useCountUp(end, duration = 1500) {
   if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
     return end;
   }

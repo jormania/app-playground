@@ -31,11 +31,11 @@ describe('Dashboard Component', () => {
 
     render(<Dashboard data={data} />);
 
-    // Income should be 5,000.00 RON
-    expect(screen.getByText('5,000.00 RON')).toBeDefined();
-    // Expenses should be 1,000.00 RON
-    expect(screen.getByText('1,000.00 RON')).toBeDefined();
-    // Net should be 4,000.00 RON
-    expect(screen.getByText('4,000.00 RON')).toBeDefined();
+    // Income should be 5,000 RON
+    expect(screen.getByText('5,000 RON')).toBeDefined();
+    // Expenses should be 1,000 RON
+    expect(screen.getByText('1,000 RON')).toBeDefined();
+    // Net should be 4,000 RON
+    expect(screen.getByText('4,000 RON')).toBeDefined();
   });
 });

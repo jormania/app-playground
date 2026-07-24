@@ -128,6 +128,31 @@ export const DEMO_ACCOUNTS = [
   }
 ];
 
+export const DEMO_SUBSCRIPTIONS = [
+  {
+    id: 'sub_1',
+    name: 'YouTube Premium',
+    amount: 55,
+    type: 'Expense',
+    dayOfMonth: 15,
+    categoryId: 'cat_subscriptions',
+    accountId: 'acc_checking',
+    active: true,
+    lastProcessed: null
+  },
+  {
+    id: 'sub_2',
+    name: 'Netflix',
+    amount: 60,
+    type: 'Expense',
+    dayOfMonth: 5,
+    categoryId: 'cat_subscriptions',
+    accountId: 'acc_revolut',
+    active: true,
+    lastProcessed: new Date(new Date().getFullYear(), new Date().getMonth(), 5).toISOString()
+  }
+];
+
 export const DEMO_TRANSACTIONS = [
   {
     "id": "demo_tx_1",

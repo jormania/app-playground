@@ -3,15 +3,21 @@ import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { NotionClient } from '../lib/notionClient';
+import SubscriptionEditorModal from './SubscriptionEditorModal';
+import { getCategoryColor } from '../lib/colors';
+import { formatCurrency } from '../lib/currency';
 
-export default function Settings({ config, onSave, onThemeChange, onDone }) {
+export default function Settings({ config, onSave, onThemeChange, onDone, data, client, onDataChange }) {
   const [token, setToken] = useState(config.token || '');
   const [transactionsDb, setTransactionsDb] = useState(config.transactionsDb || '');
   const [categoriesDb, setCategoriesDb] = useState(config.categoriesDb || '');
   const [accountsDb, setAccountsDb] = useState(config.accountsDb || '');
+  const [subscriptionsDb, setSubscriptionsDb] = useState(config.subscriptionsDb || '');
   const [theme, setTheme] = useState(config.theme || 'dark');
   const [status, setStatus] = useState({ type: '', msg: '' });
   const [testing, setTesting] = useState(false);
+  const [editingSub, setEditingSub] = useState(null);
+  const [isAddingSub, setIsAddingSub] = useState(false);
 
   const extractNotionId = (input) => {
     if (!input) return '';
@@ -38,7 +44,8 @@ export default function Settings({ config, onSave, onThemeChange, onDone }) {
       const testClient = new NotionClient(token.trim(), {
         categories: extractNotionId(categoriesDb),
         accounts: extractNotionId(accountsDb),
-        transactions: extractNotionId(transactionsDb)
+        transactions: extractNotionId(transactionsDb),
+        subscriptions: extractNotionId(subscriptionsDb)
       });
       
       // Test the connection by fetching one of the databases
@@ -51,6 +58,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone }) {
         transactionsDb: extractNotionId(transactionsDb), 
         categoriesDb: extractNotionId(categoriesDb), 
         accountsDb: extractNotionId(accountsDb), 
+        subscriptionsDb: extractNotionId(subscriptionsDb),
         theme 
       });
       
@@ -71,6 +79,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone }) {
     setTransactionsDb('');
     setCategoriesDb('');
     setAccountsDb('');
+    setSubscriptionsDb('');
     if (onDone) onDone();
   };
 
@@ -101,6 +110,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone }) {
         <Field label="Categories Database ID or Link" type="text" value={categoriesDb} onChange={e => setCategoriesDb(e.target.value)} />
         <Field label="Accounts Database ID or Link" type="text" value={accountsDb} onChange={e => setAccountsDb(e.target.value)} />
         <Field label="Transactions Database ID or Link" type="text" value={transactionsDb} onChange={e => setTransactionsDb(e.target.value)} />
+        <Field label="Subscriptions Database ID or Link" type="text" value={subscriptionsDb} onChange={e => setSubscriptionsDb(e.target.value)} />
       </div>
 
       {status.msg && (
@@ -121,6 +131,80 @@ export default function Settings({ config, onSave, onThemeChange, onDone }) {
         </Button>
         <Button variant="secondary" onClick={handleClear} disabled={testing}>Clear / Demo Mode</Button>
       </div>
+
+      {/* Subscriptions Management Section */}
+      {data?.subscriptions && (
+        <div style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
+            <h2 style={{ margin: 0, fontSize: 'var(--text-lg)', color: 'var(--color-ink)' }}>Recurring Subscriptions</h2>
+            <Button variant="secondary" onClick={() => setIsAddingSub(true)}>+ Add Subscription</Button>
+          </div>
+          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
+            Manage recurring payments here. The app will automatically generate transactions for these on the specified day of each month.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+            {data.subscriptions.length === 0 ? (
+              <div style={{ color: 'var(--color-muted)', fontStyle: 'italic', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                No subscriptions set up.
+              </div>
+            ) : (
+              data.subscriptions.map(sub => {
+                const catName = data.categories?.find(c => c.id === sub.categoryId)?.name || 'Unknown';
+                const catColor = getCategoryColor(catName);
+                return (
+                  <div 
+                    key={sub.id}
+                    onClick={() => setEditingSub(sub)}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)',
+                      borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                      borderLeft: `4px solid ${catColor}`, cursor: 'pointer',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-2)'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-surface)'}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{sub.name}</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '4px' }}>
+                        Every {sub.dayOfMonth}th of month • {sub.active ? 'Active' : 'Inactive'}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: sub.type === 'Income' ? 'var(--color-success)' : 'var(--color-ink)' }}>
+                        {sub.type === 'Income' ? '+' : '-'}{formatCurrency(sub.amount)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {(isAddingSub || editingSub) && (
+        <SubscriptionEditorModal
+          isOpen={isAddingSub || !!editingSub}
+          onClose={() => { setIsAddingSub(false); setEditingSub(null); }}
+          sub={editingSub}
+          data={data}
+          onSave={async (id, subData) => {
+            if (id) {
+              await client.updateSubscription(id, subData);
+            } else {
+              await client.addSubscription(subData);
+            }
+            if (onDataChange) onDataChange();
+          }}
+          onDelete={async (id) => {
+            await client.deleteSubscription(id);
+            if (onDataChange) onDataChange();
+          }}
+        />
+      )}
     </div>
   );
 }

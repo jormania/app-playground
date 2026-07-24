@@ -3,13 +3,14 @@ import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 
-export default function TransactionForm({ categories, accounts, onSave, onCancel }) {
-  const [type, setType] = useState('Expense');
-  const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [categoryId, setCategoryId] = useState('');
-  const [accountId, setAccountId] = useState(accounts[0]?.id || '');
+export default function TransactionForm({ categories, accounts, onSave, onCancel, initialTx, onDelete }) {
+  const [type, setType] = useState(initialTx?.type || 'Expense');
+  const [description, setDescription] = useState(initialTx?.description || '');
+  const [amount, setAmount] = useState(initialTx?.amount || '');
+  const [date, setDate] = useState(initialTx?.date ? initialTx.date.split('T')[0] : new Date().toISOString().split('T')[0]);
+  const [categoryId, setCategoryId] = useState(initialTx?.categoryId || '');
+  const [accountId, setAccountId] = useState(initialTx?.accountId || accounts[0]?.id || '');
+  const [isSaving, setIsSaving] = useState(false);
 
   const sortedAccounts = [...accounts].sort((a, b) => a.name.localeCompare(b.name));
   const availableCategories = categories
@@ -45,19 +46,36 @@ export default function TransactionForm({ categories, accounts, onSave, onCancel
     }
   }, [categoryId, selectedCat, accounts]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!description || !amount || !categoryId || !accountId) return;
     
-    onSave({
-      description,
-      amount: parseFloat(amount),
-      date,
-      type,
-      categoryId,
-      accountId,
-      tags: []
-    });
+    setIsSaving(true);
+    try {
+      await onSave(initialTx ? initialTx.id : null, {
+        description,
+        amount: parseFloat(amount),
+        date,
+        type,
+        categoryId,
+        accountId,
+        tags: initialTx?.tags || []
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!initialTx || !onDelete) return;
+    if (confirm('Are you sure you want to delete this transaction?')) {
+      setIsSaving(true);
+      try {
+        await onDelete(initialTx.id);
+      } finally {
+        setIsSaving(false);
+      }
+    }
   };
 
   return (
@@ -125,9 +143,16 @@ export default function TransactionForm({ categories, accounts, onSave, onCancel
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
-        <Button variant="ghost" onClick={onCancel}>Cancel</Button>
-        <Button variant="primary" type="submit">Save Transaction</Button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-md)' }}>
+        <div>
+          {initialTx && (
+            <Button variant="danger" type="button" onClick={handleDelete} disabled={isSaving}>Delete</Button>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+          <Button variant="ghost" type="button" onClick={onCancel} disabled={isSaving}>Cancel</Button>
+          <Button variant="primary" type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Transaction'}</Button>
+        </div>
       </div>
     </form>
   );

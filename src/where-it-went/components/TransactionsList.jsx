@@ -2,6 +2,7 @@ import { useState } from 'react';
 import TransactionForm from './TransactionForm';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { Button } from '../../ds/components/Button';
+import { Modal } from '../../ds/components/Modal';
 import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 
@@ -10,6 +11,7 @@ export default function TransactionsList({ data, client, onDataChange }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+  const [editingTx, setEditingTx] = useState(null);
   
   const handleSort = (key) => {
     let direction = 'asc';
@@ -176,7 +178,8 @@ export default function TransactionsList({ data, client, onDataChange }) {
                       const catColor = getCategoryColor(catName);
                       return (
                         <div 
-                          style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', paddingLeft: 'var(--space-lg)', alignItems: 'center', backgroundColor: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${catColor}`, transition: 'background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
+                          style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', paddingLeft: 'var(--space-lg)', alignItems: 'center', backgroundColor: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${catColor}`, transition: 'background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease', cursor: 'pointer' }}
+                          onClick={() => setEditingTx(tx)}
                           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-surface-2)'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
                           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-surface)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
                         >
@@ -220,6 +223,37 @@ export default function TransactionsList({ data, client, onDataChange }) {
             })()}
           </div>
         </div>
+      )}
+
+      {editingTx && (
+        <Modal title="Edit Transaction" onClose={() => setEditingTx(null)}>
+          <TransactionForm 
+            categories={data.categories} 
+            accounts={data.accounts} 
+            initialTx={editingTx}
+            onSave={async (id, txData) => {
+              try {
+                await client.updateTransaction(id, txData);
+                onDataChange();
+                setEditingTx(null);
+              } catch (e) {
+                console.error("Failed to update transaction", e);
+                alert("Failed to update transaction.");
+              }
+            }} 
+            onDelete={async (id) => {
+              try {
+                await client.deleteTransaction(id);
+                onDataChange();
+                setEditingTx(null);
+              } catch (e) {
+                console.error("Failed to delete transaction", e);
+                alert("Failed to delete transaction.");
+              }
+            }}
+            onCancel={() => setEditingTx(null)} 
+          />
+        </Modal>
       )}
     </div>
   );
