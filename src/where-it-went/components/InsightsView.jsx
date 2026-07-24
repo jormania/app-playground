@@ -168,6 +168,76 @@ export default function InsightsView({ data, period, filterProps }) {
           )}
         </div>
 
+        {/* Subscriptions Card */}
+        <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
+            Active Subscriptions
+          </h2>
+          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
+            Your regular subscription services for this period.
+          </p>
+
+          {behavioral.subscriptions && behavioral.subscriptions.length > 0 ? (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {behavioral.subscriptions.map((sub, idx) => (
+                <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: idx === behavioral.subscriptions.length - 1 ? 'none' : '1px solid var(--color-border)' }}>
+                  <div>
+                    <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>{sub.name}</div>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '2px' }}>
+                      {sub.count} payment{sub.count !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)' }}>
+                      {formatCurrency(sub.total)}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div style={{ textAlign: 'center', padding: 'var(--space-xl) 0' }}>
+              <div style={{ fontSize: '36px', marginBottom: 'var(--space-sm)' }}>📺</div>
+              <p style={{ margin: 0, color: 'var(--color-ink)', fontWeight: 'var(--weight-medium)' }}>No Subscriptions</p>
+            </div>
+          )}
+        </div>
+
+        {/* Recurring Bills Card */}
+        <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
+            Recurring Bills
+          </h2>
+          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
+            Your fixed costs like rent, insurance, and utilities.
+          </p>
+
+          {behavioral.recurring && behavioral.recurring.length > 0 ? (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {behavioral.recurring.map((bill, idx) => (
+                <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: idx === behavioral.recurring.length - 1 ? 'none' : '1px solid var(--color-border)' }}>
+                  <div>
+                    <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>{bill.name}</div>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '2px' }}>
+                      {bill.count} payment{bill.count !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)' }}>
+                      {formatCurrency(bill.total)}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div style={{ textAlign: 'center', padding: 'var(--space-xl) 0' }}>
+              <div style={{ fontSize: '36px', marginBottom: 'var(--space-sm)' }}>🏠</div>
+              <p style={{ margin: 0, color: 'var(--color-ink)', fontWeight: 'var(--weight-medium)' }}>No Recurring Bills</p>
+            </div>
+          )}
+        </div>
+
         {/* Income Dependency Card */}
         <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
           <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
