@@ -69,7 +69,7 @@ for (let month = 0; month < 12; month++) {
   if (month === 5 || month === 11) transactions.push({ id: 'demo_tx_' + txId++, description: 'Flight Tickets', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(800, 2500), type: 'Expense', categoryId: 'cat_travel', accountId: 'acc_credit', tags: [] });
   if (month === 11) transactions.push({ id: 'demo_tx_' + txId++, description: 'Christmas Gifts', date: `2026-${m}-15`, amount: rand(400, 1000), type: 'Expense', categoryId: 'cat_gift', accountId: 'acc_credit', tags: [] });
   
-  if (rand(0, 1)) transactions.push({ id: 'demo_tx_' + txId++, description: 'ETF Vanguard', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(500, 1000), type: 'Expense', categoryId: 'cat_investing', accountId: 'acc_checking', tags: [] });
+  transactions.push({ id: 'demo_tx_' + txId++, description: 'ETF Vanguard', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(500, 1000), type: 'Expense', categoryId: 'cat_investing', accountId: 'acc_checking', tags: [] });
   
   if (month % 2 === 0) transactions.push({ id: 'demo_tx_' + txId++, description: 'Tenant Rent', date: `2026-${m}-05`, amount: 1500, type: 'Income', categoryId: 'cat_rental_income', accountId: 'acc_checking', tags: [] });
 }
