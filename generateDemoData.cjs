@@ -74,7 +74,18 @@ for (let month = 0; month < 12; month++) {
     transactions.push({ id: 'demo_tx_' + txId++, description: 'Restaurant', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(80, 250), type: 'Expense', categoryId: 'cat_dining', accountId: 'acc_credit', tags: [] });
   }
 
-  transactions.push({ id: 'demo_tx_' + txId++, description: 'Uber/Bolt', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(20, 60), type: 'Expense', categoryId: 'cat_transport', accountId: 'acc_revolut', tags: [] });
+  for(let i = 0; i < rand(3, 7); i++) {
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'Starbucks', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(15, 35), type: 'Expense', categoryId: 'cat_dining', accountId: 'acc_revolut', tags: [] });
+  }
+
+  for(let i = 0; i < rand(2, 5); i++) {
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'Uber/Bolt', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(20, 60), type: 'Expense', categoryId: 'cat_transport', accountId: 'acc_revolut', tags: [] });
+  }
+
+  for(let i = 0; i < rand(1, 4); i++) {
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'Amazon', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(30, 200), type: 'Expense', categoryId: 'cat_shopping', accountId: 'acc_credit', tags: [] });
+  }
+
   transactions.push({ id: 'demo_tx_' + txId++, description: 'Gas Station', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(150, 300), type: 'Expense', categoryId: 'cat_transport', accountId: 'acc_credit', tags: [] });
 
   if (rand(0, 1)) transactions.push({ id: 'demo_tx_' + txId++, description: 'Clothing Store', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(100, 500), type: 'Expense', categoryId: 'cat_shopping', accountId: 'acc_credit', tags: [] });
