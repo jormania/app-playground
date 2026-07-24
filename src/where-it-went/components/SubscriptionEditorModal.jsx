@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modal } from '../../ds/components/Modal';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
+import { SegmentedControl } from '../../ds/components/SegmentedControl';
 
 export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, onSave, onDelete }) {
   const [name, setName] = useState('');
@@ -67,23 +68,36 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-md)' }}>
           <Field label="Amount" type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} required />
-          <Field label="Type" type="select" value={type} onChange={e => setType(e.target.value)}>
-            <option value="Expense">Expense</option>
-            <option value="Income">Income</option>
-          </Field>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Type</label>
+            <SegmentedControl
+              value={type}
+              onChange={val => setType(val)}
+              options={[
+                { value: 'Expense', label: 'Expense' },
+                { value: 'Income', label: 'Income' }
+              ]}
+            />
+          </div>
         </div>
 
         <Field label="Day of Month (1-31)" type="number" min="1" max="31" value={dayOfMonth} onChange={e => setDayOfMonth(e.target.value)} required />
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-md)' }}>
-          <Field label="Category" type="select" value={categoryId} onChange={e => setCategoryId(e.target.value)} required>
-            <option value="">Select...</option>
-            {data.categories.map(c => <option key={c.id} value={c.id}>{c.icon ? c.icon + ' ' : ''}{c.name}</option>)}
-          </Field>
-          <Field label="Account" type="select" value={accountId} onChange={e => setAccountId(e.target.value)} required>
-            <option value="">Select...</option>
-            {data.accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </Field>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Category <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <select value={categoryId} onChange={e => setCategoryId(e.target.value)} required style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit' }}>
+              <option value="">Select...</option>
+              {(data?.categories || []).map(c => <option key={c.id} value={c.id}>{c.icon ? c.icon + ' ' : ''}{c.name}</option>)}
+            </select>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Account <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <select value={accountId} onChange={e => setAccountId(e.target.value)} required style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit' }}>
+              <option value="">Select...</option>
+              {(data?.accounts || []).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
