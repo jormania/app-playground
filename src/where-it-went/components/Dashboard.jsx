@@ -10,7 +10,7 @@ import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 import { useCountUp } from '../lib/useCountUp';
 
-export default function Dashboard({ data, client, onDataChange, onNavigate }) {
+export default function Dashboard({ data, client, onDataChange, onNavigate, config }) {
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
   const [loaded, setLoaded] = useState(false);
@@ -359,7 +359,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
         </div>
       </div>
 
-      {(budgets.length > 0 || true) && (
+      {config?.features?.budgeting !== false && (
         <div style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
             <h2 style={{ fontSize: 'var(--text-lg)', margin: 0 }}>Budget Limits</h2>
@@ -428,9 +428,11 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
         </div>
       )}
 
-      <div style={{ marginTop: 'var(--space-xl)', height: '400px', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
-        <canvas ref={trendChartRef}></canvas>
-      </div>
+      {config?.features?.cashFlow !== false && (
+        <div style={{ marginTop: 'var(--space-xl)', height: '400px', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <canvas ref={trendChartRef}></canvas>
+        </div>
+      )}
 
       <BudgetEditorModal 
         isOpen={showBudgetModal} 

@@ -14,6 +14,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const [accountsDb, setAccountsDb] = useState(config.accountsDb || '');
   const [subscriptionsDb, setSubscriptionsDb] = useState(config.subscriptionsDb || '');
   const [theme, setTheme] = useState(config.theme || 'dark');
+  const [features, setFeatures] = useState(config.features || { budgeting: true, cashFlow: true });
   const [status, setStatus] = useState({ type: '', msg: '' });
   const [testing, setTesting] = useState(false);
   const [editingSub, setEditingSub] = useState(null);
@@ -59,7 +60,8 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         categoriesDb: extractNotionId(categoriesDb), 
         accountsDb: extractNotionId(accountsDb), 
         subscriptionsDb: extractNotionId(subscriptionsDb),
-        theme 
+        theme,
+        features
       });
       
       setTimeout(() => {
@@ -74,7 +76,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   };
 
   const handleClear = () => {
-    onSave({ theme });
+    onSave({ theme, features });
     setToken('');
     setTransactionsDb('');
     setCategoriesDb('');
@@ -139,6 +141,31 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           {testing ? 'Testing...' : 'Save Configuration'}
         </Button>
         <Button variant="secondary" onClick={handleClear} disabled={testing}>Clear / Demo Mode</Button>
+      </div>
+
+      {/* Feature Toggles Section */}
+      <div style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}>
+        <h2 style={{ margin: 0, fontSize: 'var(--text-lg)', color: 'var(--color-ink)', marginBottom: 'var(--space-md)' }}>Feature Toggles</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink)' }}>Budgeting Features</label>
+            <input 
+              type="checkbox" 
+              checked={features.budgeting} 
+              onChange={e => setFeatures(f => ({ ...f, budgeting: e.target.checked }))} 
+              style={{ width: '20px', height: '20px', accentColor: 'var(--color-accent)' }} 
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink)' }}>Cash Flow Trend</label>
+            <input 
+              type="checkbox" 
+              checked={features.cashFlow} 
+              onChange={e => setFeatures(f => ({ ...f, cashFlow: e.target.checked }))} 
+              style={{ width: '20px', height: '20px', accentColor: 'var(--color-accent)' }} 
+            />
+          </div>
+        </div>
       </div>
 
       {/* Subscriptions Management Section */}
