@@ -224,61 +224,64 @@ export default function InsightsView({ data, period, filterProps }) {
           </ul>
         </div>
 
-        {/* Frequent Spending */}
-        <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
-          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
-            Frequent Spending
-          </h2>
-          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
-            High frequency vendors that silently drain cash flow.
-          </p>
-          {behavioral.frequentSpending.length > 0 ? (
+        {/* Group Frequent Spending and Largest Transactions to avoid grid gaps */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xl)' }}>
+          {/* Frequent Spending */}
+          <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+            <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
+              Frequent Spending
+            </h2>
+            <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
+              High frequency vendors that silently drain cash flow.
+            </p>
+            {behavioral.frequentSpending.length > 0 ? (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {behavioral.frequentSpending.map((vendor, idx) => (
+                  <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: idx === behavioral.frequentSpending.length - 1 ? 'none' : '1px solid var(--color-border)' }}>
+                    <div>
+                      <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>{vendor.name}</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '2px' }}>
+                        {vendor.count} txns @ {formatCurrency(vendor.average)} avg
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)' }}>
+                        {formatCurrency(vendor.total)}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div style={{ textAlign: 'center', padding: 'var(--space-xl) 0' }}>
+                <div style={{ fontSize: '36px', marginBottom: 'var(--space-sm)' }}>✨</div>
+                <p style={{ margin: 0, color: 'var(--color-ink)', fontWeight: 'var(--weight-medium)' }}>No Habits Detected</p>
+              </div>
+            )}
+          </div>
+          
+          {/* Largest Transactions */}
+          <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+            <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
+              Largest Transactions
+            </h2>
+            <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
+              Top 5 single expenses impacting cash flow this period.
+            </p>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {behavioral.frequentSpending.map((vendor, idx) => (
-                <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: idx === behavioral.frequentSpending.length - 1 ? 'none' : '1px solid var(--color-border)' }}>
+              {behavioral.largestTransactions.map((tx, idx) => (
+                <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: idx === 4 ? 'none' : '1px solid var(--color-border)' }}>
                   <div>
-                    <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>{vendor.name}</div>
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '2px' }}>
-                      {vendor.count} txns @ {formatCurrency(vendor.average)} avg
+                    <div style={{ fontWeight: 'var(--weight-medium)' }}>{tx.description}</div>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
+                      {new Date(tx.date).toLocaleDateString()}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
-                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)' }}>
-                      {formatCurrency(vendor.total)}
-                    </div>
-                  </div>
+                  <div style={{ fontWeight: 'var(--weight-bold)' }}>{formatCurrency(tx.amount)}</div>
                 </li>
               ))}
             </ul>
-          ) : (
-            <div style={{ textAlign: 'center', padding: 'var(--space-xl) 0' }}>
-              <div style={{ fontSize: '36px', marginBottom: 'var(--space-sm)' }}>✨</div>
-              <p style={{ margin: 0, color: 'var(--color-ink)', fontWeight: 'var(--weight-medium)' }}>No Habits Detected</p>
-            </div>
-          )}
-        </div>
-        
-        {/* Largest Transactions */}
-        <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
-          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
-            Largest Transactions
-          </h2>
-          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
-            Top 5 single expenses impacting cash flow this period.
-          </p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {behavioral.largestTransactions.map((tx, idx) => (
-              <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: idx === 4 ? 'none' : '1px solid var(--color-border)' }}>
-                <div>
-                  <div style={{ fontWeight: 'var(--weight-medium)' }}>{tx.description}</div>
-                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
-                    {new Date(tx.date).toLocaleDateString()}
-                  </div>
-                </div>
-                <div style={{ fontWeight: 'var(--weight-bold)' }}>{formatCurrency(tx.amount)}</div>
-              </li>
-            ))}
-          </ul>
+          </div>
         </div>
       </div>
 
