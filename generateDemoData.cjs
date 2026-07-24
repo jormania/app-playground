@@ -17,7 +17,9 @@ const categories = [
   { id: 'cat_income', name: 'Salary', type: 'Income', icon: '💰', description: 'Regular paycheck' },
   { id: 'cat_rental_income', name: 'Rental Income', type: 'Income', icon: '🏢', description: 'Rent from tenants' },
   { id: 'cat_freelance', name: 'Freelance', type: 'Income', icon: '💻', description: 'Side gigs' },
-  { id: 'cat_investing', name: 'Investing', type: 'Expense', icon: '📈', description: 'Stocks, crypto' }
+  { id: 'cat_investing', name: 'Investing', type: 'Expense', icon: '📈', description: 'Stocks, crypto' },
+  { id: 'cat_property', name: 'Property', type: 'Expense', icon: '🏢', description: 'Property tax, maintenance' },
+  { id: 'cat_taxes', name: 'Taxes & Fees', type: 'Expense', icon: '🏛️', description: 'Taxes, accounting fees' }
 ];
 
 const accounts = [
@@ -86,6 +88,11 @@ for (let month = 0; month < 12; month++) {
   
   transactions.push({ id: 'demo_tx_' + txId++, description: 'ETF Vanguard', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(500, 1000), type: 'Expense', categoryId: 'cat_investing', accountId: 'acc_checking', tags: [] });
   
+  // Property and Taxes
+  if (month % 3 === 0) transactions.push({ id: 'demo_tx_' + txId++, description: 'Property Maintenance', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(100, 400), type: 'Expense', categoryId: 'cat_property', accountId: 'acc_checking', tags: [] });
+  if (month === 4 || month === 10) transactions.push({ id: 'demo_tx_' + txId++, description: 'Property Tax', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(800, 1200), type: 'Expense', categoryId: 'cat_taxes', accountId: 'acc_checking', tags: [] });
+  if (month === 12) transactions.push({ id: 'demo_tx_' + txId++, description: 'Accountant Fees', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(300, 500), type: 'Expense', categoryId: 'cat_taxes', accountId: 'acc_checking', tags: [] });
+
   if (month % 2 === 0) transactions.push({ id: 'demo_tx_' + txId++, description: 'Tenant Rent', date: `2026-${m}-05`, amount: 1500, type: 'Income', categoryId: 'cat_rental_income', accountId: 'acc_checking', tags: [] });
 }
 
