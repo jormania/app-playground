@@ -74,7 +74,7 @@ export class NotionClient {
       description: row.properties.Description?.title?.[0]?.plain_text || '',
       date: row.properties.Date?.date?.start || '',
       amount: row.properties['Amount (RON)']?.number || 0,
-      type: row.properties.Type?.select?.name || 'Expense',
+      type: row.properties.Type?.select?.name || ((row.properties['Amount (RON)']?.number || 0) > 0 ? 'Income' : 'Expense'),
       categoryId: row.properties.Category?.relation?.[0]?.id || '',
       accountId: row.properties.Account?.relation?.[0]?.id || '',
       tags: row.properties.Tags?.multi_select?.map(t => t.name) || []
@@ -288,5 +288,23 @@ export class NotionClient {
         body: { archived: true }
       })
     });
+  }
+
+  async scrubTransactionsAndSubscriptions() {
+    if (!this.token) return;
+    
+    if (this.dbIds?.transactions) {
+      const txs = await this.fetchTransactions();
+      for (const tx of txs) {
+        await this.deleteTransaction(tx.id);
+      }
+    }
+    
+    if (this.dbIds?.subscriptions) {
+      const subs = await this.fetchSubscriptions();
+      for (const sub of subs) {
+        await this.deleteSubscription(sub.id);
+      }
+    }
   }
 }

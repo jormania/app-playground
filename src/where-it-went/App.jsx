@@ -12,6 +12,7 @@ import { useSubscriptionsEngine } from './lib/useSubscriptionsEngine';
 import Navigation from './components/Navigation';
 import PeriodSheet from './components/PeriodSheet';
 import FilterSheet from './components/FilterSheet';
+import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS } from './models/demoData';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -54,6 +55,18 @@ export default function App() {
 
   const loadData = async () => {
     setLoading(true);
+    
+    if (config.demoMode) {
+      setData({
+        categories: [...DEMO_CATEGORIES],
+        accounts: [...DEMO_ACCOUNTS],
+        transactions: [...DEMO_TRANSACTIONS],
+        subscriptions: [...DEMO_SUBSCRIPTIONS]
+      });
+      setLoading(false);
+      return;
+    }
+    
     try {
       const [categories, accounts, transactions, subscriptions] = await Promise.all([
         client.fetchCategories(),
@@ -70,7 +83,7 @@ export default function App() {
 
   useEffect(() => {
     loadData();
-  }, [config.token, config.categoriesDb, config.accountsDb, config.transactionsDb, config.subscriptionsDb]);
+  }, [config.token, config.categoriesDb, config.accountsDb, config.transactionsDb, config.subscriptionsDb, config.demoMode]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', config.theme || 'dark');
@@ -96,7 +109,19 @@ export default function App() {
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: 'var(--space-md)' }}>
+    <>
+      {config.demoMode && (
+        <div style={{ backgroundColor: 'var(--color-danger)', color: 'white', padding: 'var(--space-sm) var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100 }}>
+          <span style={{ fontWeight: 'bold' }}>DEMO MODE ACTIVE</span>
+          <button 
+            style={{ padding: '4px 8px', fontSize: '12px', background: 'white', color: 'var(--color-danger)', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }} 
+            onClick={() => handleConfigSave({ ...config, demoMode: false })}
+          >
+            Stop Demo
+          </button>
+        </div>
+      )}
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: 'var(--space-md)' }}>
       <Navigation
         activeTab={activeTab}
         onTabChange={handleTabChange}
@@ -173,5 +198,6 @@ export default function App() {
         )}
       </main>
     </div>
+    </>
   );
 }

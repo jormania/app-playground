@@ -1,0 +1,72 @@
+const fs = require('fs');
+
+const categories = [
+  { id: 'cat_housing', name: 'Housing', type: 'Expense', icon: '🏠', description: 'Home rent, HOA, etc' },
+  { id: 'cat_utilities', name: 'Utilities', type: 'Expense', icon: '💡', description: 'Electricity, gas, internet' },
+  { id: 'cat_food', name: 'Food', type: 'Expense', icon: '🛒', description: 'Groceries, supermarkets', budgetLimit: 1500 },
+  { id: 'cat_dining', name: 'Dining', type: 'Expense', icon: '🍽️', description: 'Restaurants, cafés', budgetLimit: 800 },
+  { id: 'cat_transport', name: 'Transport', type: 'Expense', icon: '🚌', description: 'Public transport, fuel', budgetLimit: 300 },
+  { id: 'cat_health', name: 'Health', type: 'Expense', icon: '🏥', description: 'Doctors, pharmacy' },
+  { id: 'cat_subscriptions', name: 'Subscriptions', type: 'Expense', icon: '🔁', description: 'Netflix, Spotify' },
+  { id: 'cat_shopping', name: 'Shopping', type: 'Expense', icon: '🛍️', description: 'Clothes, electronics', budgetLimit: 500 },
+  { id: 'cat_entertainment', name: 'Entertainment', type: 'Expense', icon: '🍿', description: 'Movies, concerts', budgetLimit: 400 },
+  { id: 'cat_personal_care', name: 'Personal Care', type: 'Expense', icon: '💆', description: 'Haircut, cosmetics' },
+  { id: 'cat_education', name: 'Education', type: 'Expense', icon: '📚', description: 'Courses, books' },
+  { id: 'cat_travel', name: 'Travel', type: 'Expense', icon: '✈️', description: 'Flights, hotels' },
+  { id: 'cat_gift', name: 'Gifts', type: 'Expense', icon: '🎁', description: 'Gifts, donations' },
+  { id: 'cat_income', name: 'Salary', type: 'Income', icon: '💰', description: 'Regular paycheck' },
+  { id: 'cat_rental_income', name: 'Rental Income', type: 'Income', icon: '🏢', description: 'Rent from tenants' },
+  { id: 'cat_freelance', name: 'Freelance', type: 'Income', icon: '💻', description: 'Side gigs' },
+  { id: 'cat_investing', name: 'Investing', type: 'Expense', icon: '📈', description: 'Stocks, crypto' }
+];
+
+const accounts = [
+  { id: 'acc_checking', name: 'Checking Account', type: 'Asset' },
+  { id: 'acc_savings', name: 'Savings Account', type: 'Asset' },
+  { id: 'acc_credit', name: 'Credit Card', type: 'Liability' },
+  { id: 'acc_revolut', name: 'Revolut', type: 'Asset' },
+  { id: 'acc_cash', name: 'Cash', type: 'Asset' }
+];
+
+const subscriptions = [
+  { id: 'sub_1', name: 'YouTube Premium', amount: 55, type: 'Expense', dayOfMonth: 15, categoryId: 'cat_subscriptions', accountId: 'acc_checking', active: true, lastProcessed: null },
+  { id: 'sub_2', name: 'Netflix', amount: 60, type: 'Expense', dayOfMonth: 5, categoryId: 'cat_subscriptions', accountId: 'acc_revolut', active: true, lastProcessed: null },
+  { id: 'sub_3', name: 'Spotify', amount: 25, type: 'Expense', dayOfMonth: 22, categoryId: 'cat_subscriptions', accountId: 'acc_revolut', active: true, lastProcessed: null },
+  { id: 'sub_4', name: 'Gym Membership', amount: 150, type: 'Expense', dayOfMonth: 1, categoryId: 'cat_health', accountId: 'acc_credit', active: true, lastProcessed: null }
+];
+
+const transactions = [];
+let txId = 1;
+
+const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+for (let month = 0; month < 12; month++) {
+  const m = String(month + 1).padStart(2, '0');
+  transactions.push({ id: 'demo_tx_' + txId++, description: 'Salary', date: `2026-${m}-01`, amount: 9500, type: 'Income', categoryId: 'cat_income', accountId: 'acc_checking', tags: [] });
+  if (month % 3 === 0) transactions.push({ id: 'demo_tx_' + txId++, description: 'Freelance Gig', date: `2026-${m}-15`, amount: rand(1000, 3000), type: 'Income', categoryId: 'cat_freelance', accountId: 'acc_revolut', tags: [] });
+
+  transactions.push({ id: 'demo_tx_' + txId++, description: 'Apartment Rent', date: `2026-${m}-02`, amount: 2500, type: 'Expense', categoryId: 'cat_housing', accountId: 'acc_checking', tags: [] });
+  transactions.push({ id: 'demo_tx_' + txId++, description: 'Enel Electricity', date: `2026-${m}-10`, amount: rand(120, 250), type: 'Expense', categoryId: 'cat_utilities', accountId: 'acc_checking', tags: [] });
+  transactions.push({ id: 'demo_tx_' + txId++, description: 'Digi Internet', date: `2026-${m}-12`, amount: 40, type: 'Expense', categoryId: 'cat_utilities', accountId: 'acc_checking', tags: [] });
+
+  for(let i = 0; i < rand(3, 5); i++) {
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'Mega Image', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(50, 300), type: 'Expense', categoryId: 'cat_food', accountId: 'acc_revolut', tags: [] });
+  }
+
+  for(let i = 0; i < rand(2, 6); i++) {
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'Restaurant', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(80, 250), type: 'Expense', categoryId: 'cat_dining', accountId: 'acc_credit', tags: [] });
+  }
+
+  transactions.push({ id: 'demo_tx_' + txId++, description: 'Uber/Bolt', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(20, 60), type: 'Expense', categoryId: 'cat_transport', accountId: 'acc_revolut', tags: [] });
+  transactions.push({ id: 'demo_tx_' + txId++, description: 'Gas Station', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(150, 300), type: 'Expense', categoryId: 'cat_transport', accountId: 'acc_credit', tags: [] });
+
+  if (rand(0, 1)) transactions.push({ id: 'demo_tx_' + txId++, description: 'Clothing Store', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(100, 500), type: 'Expense', categoryId: 'cat_shopping', accountId: 'acc_credit', tags: [] });
+  if (rand(0, 1)) transactions.push({ id: 'demo_tx_' + txId++, description: 'Cinema', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(40, 80), type: 'Expense', categoryId: 'cat_entertainment', accountId: 'acc_revolut', tags: [] });
+}
+
+// Sort by date descending
+transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+const content = `export const DEMO_CATEGORIES = ${JSON.stringify(categories, null, 2)};\n\nexport const DEMO_ACCOUNTS = ${JSON.stringify(accounts, null, 2)};\n\nexport const DEMO_SUBSCRIPTIONS = ${JSON.stringify(subscriptions, null, 2)};\n\nexport const DEMO_TRANSACTIONS = ${JSON.stringify(transactions, null, 2)};\n`;
+
+fs.writeFileSync('src/where-it-went/models/demoData.js', content);

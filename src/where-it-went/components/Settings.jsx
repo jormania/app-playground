@@ -76,14 +76,59 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     }
   };
 
-  const handleClear = () => {
-    onSave({ theme, features });
-    setToken('');
-    setTransactionsDb('');
-    setCategoriesDb('');
-    setAccountsDb('');
-    setSubscriptionsDb('');
-    if (onDone) onDone();
+  const handleScrub = async () => {
+    if (!token.trim() || !transactionsDb || !subscriptionsDb) {
+      onSave({ 
+        token: token.trim(), 
+        transactionsDb: extractNotionId(transactionsDb), 
+        categoriesDb: extractNotionId(categoriesDb),
+        accountsDb: extractNotionId(accountsDb),
+        subscriptionsDb: extractNotionId(subscriptionsDb),
+        theme,
+        features,
+        demoMode: true
+      });
+      if (onDone) onDone();
+      return;
+    }
+
+    const confirmation = window.prompt("WARNING: This is a DESTRUCTIVE action that will delete all Transactions and Subscriptions from your live Notion databases to start fresh.\n\nTo proceed, type 'delete' below:");
+    if (confirmation !== 'delete') {
+      setStatus({ type: 'error', msg: 'Scrub cancelled.' });
+      return;
+    }
+
+    setTesting(true);
+    setStatus({ type: '', msg: 'Scrubbing databases... this may take a moment.' });
+    try {
+      const liveClient = new NotionClient(token.trim(), {
+        categories: extractNotionId(categoriesDb),
+        accounts: extractNotionId(accountsDb),
+        transactions: extractNotionId(transactionsDb),
+        subscriptions: extractNotionId(subscriptionsDb)
+      });
+      await liveClient.scrubTransactionsAndSubscriptions();
+      
+      onSave({ 
+        token: token.trim(), 
+        transactionsDb: extractNotionId(transactionsDb), 
+        categoriesDb: extractNotionId(categoriesDb),
+        accountsDb: extractNotionId(accountsDb),
+        subscriptionsDb: extractNotionId(subscriptionsDb),
+        theme,
+        features,
+        demoMode: true
+      });
+      setStatus({ type: 'success', msg: 'Scrub complete! Entered Demo Mode.' });
+      setTimeout(() => {
+        if (onDone) onDone();
+      }, 1500);
+    } catch (e) {
+      console.error(e);
+      setStatus({ type: 'error', msg: 'Failed to scrub databases. Check console.' });
+    } finally {
+      setTesting(false);
+    }
   };
 
   const handleThemeToggle = (newTheme) => {
@@ -158,7 +203,14 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         <Button variant="primary" onClick={handleSave} disabled={testing}>
           {testing ? 'Testing...' : 'Save Configuration'}
         </Button>
-        <Button variant="secondary" onClick={handleClear} disabled={testing}>Clear / Demo Mode</Button>
+        <Button 
+          variant="secondary" 
+          onClick={handleScrub} 
+          disabled={testing}
+          style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}
+        >
+          Scrub Live Data & Demo Mode
+        </Button>
       </div>
 
 
