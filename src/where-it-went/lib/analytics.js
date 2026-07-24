@@ -154,6 +154,20 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     recurring: Object.values(recurringList).sort((a, b) => Math.abs(b.total) - Math.abs(a.total))
   };
 
+  // --- Income Streams ---
+  const incomeSources = {};
+  incomes.forEach(tx => {
+    let desc = (tx.description || getCatName(tx.categoryId)).trim();
+    if (!desc) desc = 'Other Income';
+    
+    if (!incomeSources[desc]) {
+      incomeSources[desc] = { name: desc, total: 0 };
+    }
+    incomeSources[desc].total += tx.amount;
+  });
+
+  const incomeStreams = Object.values(incomeSources).sort((a, b) => b.total - a.total);
+
   // --- Trajectory & Forecasting (Only makes sense for 'this_month') ---
   let trajectory = null;
   if (period === 'this_month') {
@@ -187,6 +201,7 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
   return {
     financialHealth,
     behavioral,
-    trajectory
+    trajectory,
+    incomeStreams
   };
 }
