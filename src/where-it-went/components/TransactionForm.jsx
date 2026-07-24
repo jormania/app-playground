@@ -89,14 +89,14 @@ export default function TransactionForm({ categories, accounts, onSave, onCancel
         ]}
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-md)' }}>
         <Field label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} required />
         <Field label="Amount (RON)" type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} required placeholder="0.00" />
       </div>
 
       <Field label="Description" type="text" value={description} onChange={e => setDescription(e.target.value)} required placeholder="e.g. Groceries" />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-md)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
             Category <span style={{ color: 'var(--color-danger)' }}>*</span>
@@ -143,13 +143,13 @@ export default function TransactionForm({ categories, accounts, onSave, onCancel
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-md)' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', justifyContent: 'space-between', marginTop: 'var(--space-xl)' }}>
         <div>
           {initialTx && (
             <Button variant="danger" type="button" onClick={handleDelete} disabled={isSaving}>Delete</Button>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
           <Button variant="ghost" type="button" onClick={onCancel} disabled={isSaving}>Cancel</Button>
           <Button variant="primary" type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Transaction'}</Button>
         </div>

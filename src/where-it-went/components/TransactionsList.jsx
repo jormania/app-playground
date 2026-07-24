@@ -226,7 +226,7 @@ export default function TransactionsList({ data, client, onDataChange }) {
       )}
 
       {editingTx && (
-        <Modal title="Edit Transaction" onClose={() => setEditingTx(null)}>
+        <Modal open={true} title="Edit Transaction" onClose={() => setEditingTx(null)}>
           <TransactionForm 
             categories={data.categories} 
             accounts={data.accounts} 

@@ -61,11 +61,11 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
   if (!isOpen) return null;
 
   return (
-    <Modal title={sub ? 'Edit Subscription' : 'Add Subscription'} onClose={onClose}>
+    <Modal open={isOpen} title={sub ? 'Edit Subscription' : 'Add Subscription'} onClose={onClose}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
         <Field label="Name" value={name} onChange={e => setName(e.target.value)} required />
         
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-md)' }}>
           <Field label="Amount" type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} required />
           <Field label="Type" type="select" value={type} onChange={e => setType(e.target.value)}>
             <option value="Expense">Expense</option>
@@ -75,7 +75,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
 
         <Field label="Day of Month (1-31)" type="number" min="1" max="31" value={dayOfMonth} onChange={e => setDayOfMonth(e.target.value)} required />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-md)' }}>
           <Field label="Category" type="select" value={categoryId} onChange={e => setCategoryId(e.target.value)} required>
             <option value="">Select...</option>
             {data.categories.map(c => <option key={c.id} value={c.id}>{c.icon ? c.icon + ' ' : ''}{c.name}</option>)}
@@ -91,7 +91,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
           <label htmlFor="sub-active" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink)' }}>Active (Generates transactions automatically)</label>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-md)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', justifyContent: 'space-between', marginTop: 'var(--space-xl)' }}>
           <div>
             {sub && (
               <Button type="button" variant="danger" disabled={saving} onClick={async () => {
@@ -104,7 +104,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
               }}>Delete</Button>
             )}
           </div>
-          <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
             <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
             <Button type="submit" variant="primary" disabled={saving || !name || !amount || !categoryId || !accountId}>
               {saving ? 'Saving...' : 'Save Subscription'}

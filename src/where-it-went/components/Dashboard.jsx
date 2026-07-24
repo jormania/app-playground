@@ -116,7 +116,8 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
         fontWeight: 'var(--weight-bold)',
         color: color,
         background: bg,
-        verticalAlign: 'middle'
+        verticalAlign: 'middle',
+        whiteSpace: 'nowrap'
       }}>
         {icon} {pct}%
       </span>
@@ -273,33 +274,33 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
           onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-xs)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-xs)', gap: 'var(--space-xs)' }}>
             <h3 style={{ margin: 0, color: 'var(--color-muted)', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)' }}>Income</h3>
             {getTrendBadge(income, prevIncome, false)}
           </div>
-          <div style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--weight-bold)', color: 'var(--color-success)' }}>{formatCurrency(animatedIncome)}</div>
+          <div style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--weight-bold)', color: 'var(--color-success)', whiteSpace: 'nowrap' }}>{formatCurrency(animatedIncome)}</div>
         </div>
         <div 
           style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
           onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-xs)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-xs)', gap: 'var(--space-xs)' }}>
             <h3 style={{ margin: 0, color: 'var(--color-muted)', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)' }}>Expenses</h3>
             {getTrendBadge(expenses, prevExpenses, true)}
           </div>
-          <div style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)' }}>{formatCurrency(animatedExpenses)}</div>
+          <div style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)', whiteSpace: 'nowrap' }}>{formatCurrency(animatedExpenses)}</div>
         </div>
         <div 
           style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
           onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-xs)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-xs)', gap: 'var(--space-xs)' }}>
             <h3 style={{ margin: 0, color: 'var(--color-muted)', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)' }}>Net</h3>
             {getTrendBadge(net, prevNet, false)}
           </div>
-          <div style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--weight-bold)', color: animatedNet >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>{formatCurrency(animatedNet)}</div>
+          <div style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--weight-bold)', color: animatedNet >= 0 ? 'var(--color-success)' : 'var(--color-danger)', whiteSpace: 'nowrap' }}>{formatCurrency(animatedNet)}</div>
         </div>
       </div>
 
@@ -441,7 +442,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
       />
 
       {editingTx && (
-        <Modal title="Edit Transaction" onClose={() => setEditingTx(null)}>
+        <Modal open={true} title="Edit Transaction" onClose={() => setEditingTx(null)}>
           <TransactionForm 
             categories={data.categories} 
             accounts={data.accounts} 
