@@ -299,7 +299,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
             <h3 style={{ margin: 0, color: 'var(--color-muted)', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)' }}>Net</h3>
             {getTrendBadge(net, prevNet, false)}
           </div>
-          <div style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--weight-bold)', color: animatedNet >= 0 ? 'var(--color-success)' : 'var(--color-danger)', whiteSpace: 'nowrap' }}>{formatCurrency(animatedNet)}</div>
+          <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: animatedNet >= 0 ? 'var(--color-success)' : 'var(--color-danger)', whiteSpace: 'nowrap' }}>{formatCurrency(animatedNet)}</div>
         </div>
       </div>
 
