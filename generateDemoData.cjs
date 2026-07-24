@@ -29,10 +29,11 @@ const accounts = [
 ];
 
 const subscriptions = [
-  { id: 'sub_1', name: 'YouTube Premium', amount: 55, type: 'Expense', dayOfMonth: 15, categoryId: 'cat_subscriptions', accountId: 'acc_checking', active: true, lastProcessed: null },
-  { id: 'sub_2', name: 'Netflix', amount: 60, type: 'Expense', dayOfMonth: 5, categoryId: 'cat_subscriptions', accountId: 'acc_revolut', active: true, lastProcessed: null },
-  { id: 'sub_3', name: 'Spotify', amount: 25, type: 'Expense', dayOfMonth: 22, categoryId: 'cat_subscriptions', accountId: 'acc_revolut', active: true, lastProcessed: null },
-  { id: 'sub_4', name: 'Gym Membership', amount: 150, type: 'Expense', dayOfMonth: 1, categoryId: 'cat_health', accountId: 'acc_credit', active: true, lastProcessed: null }
+  { id: 'sub_1', name: 'YouTube Premium', amount: 55, type: 'Expense', dayOfMonth: 15, categoryId: 'cat_subscriptions', accountId: 'acc_checking', active: true, lastProcessed: '2026-12-31T00:00:00.000Z' },
+  { id: 'sub_2', name: 'Netflix', amount: 60, type: 'Expense', dayOfMonth: 5, categoryId: 'cat_subscriptions', accountId: 'acc_revolut', active: true, lastProcessed: '2026-12-31T00:00:00.000Z' },
+  { id: 'sub_3', name: 'Spotify', amount: 25, type: 'Expense', dayOfMonth: 22, categoryId: 'cat_subscriptions', accountId: 'acc_revolut', active: true, lastProcessed: '2026-12-31T00:00:00.000Z' },
+  { id: 'sub_4', name: 'Gym Membership', amount: 150, type: 'Expense', dayOfMonth: 1, categoryId: 'cat_health', accountId: 'acc_credit', active: true, lastProcessed: '2026-12-31T00:00:00.000Z' },
+  { id: 'sub_5', name: 'Adobe Creative Cloud', amount: 250, type: 'Expense', dayOfMonth: 10, categoryId: 'cat_subscriptions', accountId: 'acc_credit', active: false, lastProcessed: '2026-12-31T00:00:00.000Z' }
 ];
 
 const transactions = [];
@@ -48,6 +49,20 @@ for (let month = 0; month < 12; month++) {
   transactions.push({ id: 'demo_tx_' + txId++, description: 'Apartment Rent', date: `2026-${m}-02`, amount: 2500, type: 'Expense', categoryId: 'cat_housing', accountId: 'acc_checking', tags: [] });
   transactions.push({ id: 'demo_tx_' + txId++, description: 'Enel Electricity', date: `2026-${m}-10`, amount: rand(120, 250), type: 'Expense', categoryId: 'cat_utilities', accountId: 'acc_checking', tags: [] });
   transactions.push({ id: 'demo_tx_' + txId++, description: 'Digi Internet', date: `2026-${m}-12`, amount: 40, type: 'Expense', categoryId: 'cat_utilities', accountId: 'acc_checking', tags: [] });
+
+  // Generate historical subscriptions natively
+  subscriptions.filter(s => s.active).forEach(sub => {
+    transactions.push({ 
+      id: 'demo_tx_' + txId++, 
+      description: sub.name, 
+      date: `2026-${m}-${String(sub.dayOfMonth).padStart(2, '0')}`, 
+      amount: sub.amount, 
+      type: sub.type, 
+      categoryId: sub.categoryId, 
+      accountId: sub.accountId, 
+      tags: ['Subscription'] 
+    });
+  });
 
   for(let i = 0; i < rand(3, 5); i++) {
     transactions.push({ id: 'demo_tx_' + txId++, description: 'Mega Image', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(50, 300), type: 'Expense', categoryId: 'cat_food', accountId: 'acc_revolut', tags: [] });
