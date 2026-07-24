@@ -5,11 +5,11 @@ import Settings from './Settings';
 
 vi.mock('../lib/notionClient', () => {
   return {
-    NotionClient: vi.fn().mockImplementation(() => {
-      return {
-        fetchCategories: vi.fn().mockResolvedValue([])
-      };
-    })
+    NotionClient: class {
+      fetchCategories() {
+        return Promise.resolve([]);
+      }
+    }
   };
 });
 

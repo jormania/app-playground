@@ -55,22 +55,38 @@ Click **Save Configuration**. The app will now read and write directly to your N
 ## 4. Features Overview
 
 ### Dashboard & Analytics
-- **KPIs**: View total Income, Expenses, and Net Cash Flow for the current month.
-- **Monthly Chart**: A Chart.js visualization of spending trends over the month.
+- **Time-Period Filtering**: Select from `This Month`, `Last Month`, `Last 3 Months`, `Last 6 Months`, `This Year`, or `All Time` to dynamically adjust the KPIs and charts.
+- **KPIs**: View total Income, Expenses, and Net Cash Flow for the selected period.
+- **Budget Limits**: Track your spending against monthly targets. View visual progress bars for individual categories and your **Total Global Budget**. You can edit your budget limits directly from the app using the "Edit Budgets" button, which automatically syncs your changes back to your Notion Categories database.
+- **Expense Breakdown Chart**: A highly responsive, animated `Chart.js` Doughnut visualization of spending by category, themed to match the app's aesthetic. Features deterministic category coloring that creates a cohesive color language across the entire app.
+- **Cash Flow Trend Visualization**: A `Chart.js` Bar chart showing daily (or monthly) spending and income patterns over the selected time period.
+- **Aesthetic Refinements (Round 3 Polish)**: 
+  - Implementation of a global typography update adopting the highly readable, modern `Outfit` font to impart a slick, premium feel.
+  - A frosted-glass (`backdrop-filter: blur()`) sticky header for deep dimensional scrolling.
+  - Animated, fintech-style "Odometer" number counters for Dashboard KPIs (`useCountUp` hook).
+  - Tactile, hover-responsive row states across all lists with Category Color Edge Bleeds for rapid visual scanning.
 
-### Insights & Reflection
-- **Monthly Review**: Compare current month spending to the previous month.
-- **Actionable Insights**: Automatic detection of spending increases, missing income (e.g. rent not received yet), and recurring transactions.
-- **Reflection Card**: A generated summary of the month's financial activity asking a prompt to encourage mindfulness about spending habits.
+### Advanced Insights Engine
+- **Monthly Reflection Highlights**: Generates beautiful, metric-driven cards summarizing the top takeaways for the month (Spending Trend, Top Discretionary Expense, Rent Coverage, and Unexpected Expenses) utilizing a clean, highly scannable UI.
+- **Income Insights**: Automatically separates and tracks `Salary`, `Rent`, and `Other` income. Flags when expected monthly income has not yet been collected.
+- **Smart Recurring Expense Detection**: 
+  - **Subscriptions & Utilities**: Dedicated alerts for recurring bills, making sure nothing slips through the cracks.
+  - **Variable Precision Guard**: Custom logic prevents false positives on highly variable "daily" categories (like `Food`, `Groceries`, `Transport`) by demanding exact amount + description matches, while allowing flexibility in categories like `Alimony` where amounts may change.
+- **Investment Tracking**: Automatically detects if an investment deposit was made this month and reminds you if you haven't done so.
+- **Top Increases**: Compares current month spending to the previous month on a category-by-category basis, flagging significant surges in spending.
 
 ### Transactions Management
-- **CRUD Operations**: Add, edit, and delete transactions.
-- **Filtering & Sorting**: Filter transactions by category or type, and sort by date or amount.
+- **Global Search & Filter**: Powerful, instant search across transaction descriptions, categories, and amounts. Includes a quick category dropdown filter.
+- **Multi-Column Sorting**: Sort your ledger by Date, Description, Amount, Category, or Account, in both ascending and descending order.
+- **Auto-Account Preselection**: When adding a new transaction, selecting a Category (e.g., `Salary`) automatically preselects your preferred default Account (e.g., `Checking`), dramatically speeding up data entry.
 - **Category Emojis**: Native Notion emojis are automatically pulled and displayed inline for each category.
-- **Category Descriptions**: Add descriptions to your Notion Categories database to have them show up as tooltips in the app, helping you remember what each category is for.
+- **Category Tooltips**: Add descriptions to your Notion Categories database to have them show up as helpful tooltips in the app.
+- **Deterministic Color Tags**: Categories maintain the same elegant, modern color capsules across tables, charts, and lists, establishing a recognizable visual identity.
+- **Slim Interface**: A highly optimized, compact design using `size="sm"` components, ensuring dense information display without horizontal wrapping.
 
 ### Under the Hood
-- **React + Vite**: Fast, modern frontend.
-- **BYO Token**: "Bring Your Own Token" architecture ensures your Notion data remains private and is only accessed by your local browser.
-- **PWA Ready**: Offline-capable app shell.
-- **Vitest**: Fully covered by component tests.
+- **React + Vite**: Fast, modern frontend toolchain for instantaneous HMR and optimized production bundles.
+- **BYO Token Architecture**: "Bring Your Own Token" design ensures your Notion data remains completely private. The app talks directly to Notion from your local browser via a lightweight MCP proxy, with no central database.
+- **Custom Design System (DS)**: Built entirely on a custom, state-of-the-art CSS custom property architecture (`--color-surface`, `--color-ink`, `--space-md`, etc.) for seamless light/dark themes and a premium aesthetic without heavy CSS frameworks.
+- **PWA Ready**: Offline-capable app shell that can be installed on iOS, Android, or Desktop.
+- **Vitest Coverage**: Robust component testing with 100% pass rates across the suite.

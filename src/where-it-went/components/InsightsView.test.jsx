@@ -1,14 +1,14 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import Insights from './Insights';
+import InsightsView from './InsightsView';
 
 // Mock the generateInsights algorithm to avoid dependency logic
 vi.mock('../lib/analytics', () => ({
   generateInsights: vi.fn((data) => {
     if (!data.transactions || data.transactions.length === 0) {
       return { 
-        review: 'Not enough data', 
+        highlights: [], 
         expenses: { increases: [], decreases: [], subscriptions: [], utilities: [], otherRecurring: [], investing: [] }, 
         income: { total: 0, insights: [] } 
       };
@@ -20,7 +20,7 @@ vi.mock('../lib/analytics', () => ({
       expenses: {
         increases: ['Mock increase'],
         decreases: ['Mock decrease'],
-        subscriptions: [{ title: 'Sub Total', items: ['Netflix - 10 RON'] }],
+        subscriptions: [{ type: 'twistie', title: 'Sub Total', items: ['Netflix - 10 RON'] }],
         utilities: [],
         otherRecurring: [],
         investing: ['Mock investing']
@@ -33,15 +33,14 @@ vi.mock('../lib/analytics', () => ({
   })
 }));
 
-describe('Insights Component', () => {
+describe('InsightsView Component', () => {
   it('renders correctly with no data', () => {
-    render(<Insights data={{ transactions: [] }} />);
+    render(<InsightsView data={{ transactions: [] }} />);
     expect(screen.getByText('Not enough data to generate a review this month.')).toBeDefined();
-    expect(screen.getByText('No Insights Yet')).toBeDefined();
   });
 
   it('renders correctly with data', () => {
-    render(<Insights data={{ transactions: [{ id: 1 }] }} />);
+    render(<InsightsView data={{ transactions: [{ id: 1 }] }} />);
     expect(screen.getByText('Test Highlight')).toBeDefined();
     expect(screen.getByText('Mock value')).toBeDefined();
     expect(screen.getByText('Mock description')).toBeDefined();
@@ -50,6 +49,5 @@ describe('Insights Component', () => {
     expect(screen.getByText('Sub Total')).toBeDefined();
     expect(screen.getByText('Netflix - 10 RON')).toBeDefined();
     expect(screen.getByText('Mock investing')).toBeDefined();
-    expect(screen.getByText('Mock income insight')).toBeDefined();
   });
 });

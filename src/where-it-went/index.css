@@ -1,4 +1,5 @@
 body {
+  --font-sans: 'Outfit', system-ui, sans-serif;
   font-family: var(--font-sans);
   background-color: var(--color-bg);
   color: var(--color-ink);
@@ -17,4 +18,39 @@ a {
 }
 a:hover {
   text-decoration: underline;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.shimmer-bg {
+  background: linear-gradient(90deg, var(--color-surface) 25%, var(--color-border) 50%, var(--color-surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+.budget-bar-wrapper {
+  height: 8px;
+  background-color: var(--color-surface-2);
+  border-radius: 4px;
+  overflow: hidden;
+  transition: height 0.2s ease, box-shadow 0.2s ease;
+}
+.budget-bar-wrapper:hover {
+  height: 12px;
+  box-shadow: 0 0 8px var(--color-border);
+}
+
+.budget-bar-wrapper-large {
+  height: 12px;
+  background-color: var(--color-surface-2);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: height 0.2s ease, box-shadow 0.2s ease;
+}
+.budget-bar-wrapper-large:hover {
+  height: 16px;
+  box-shadow: 0 0 10px var(--color-border);
 }

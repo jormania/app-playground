@@ -13,11 +13,6 @@ vi.mock('chart.js/auto', () => {
   };
 });
 
-// Mock Insights
-vi.mock('./Insights', () => ({
-  default: () => <div data-testid="insights-mock">Insights Component</div>
-}));
-
 describe('Dashboard Component', () => {
   it('calculates KPIs for the current month correctly', () => {
     const now = new Date();
@@ -36,14 +31,11 @@ describe('Dashboard Component', () => {
 
     render(<Dashboard data={data} />);
 
-    // Income should be 5000
-    expect(screen.getByText('5000.00 RON')).toBeDefined();
-    // Expenses should be 1000
-    expect(screen.getByText('1000.00 RON')).toBeDefined();
-    // Net should be 4000
-    expect(screen.getByText('4000.00 RON')).toBeDefined();
-    
-    // Check if it renders Insights
-    expect(screen.getByTestId('insights-mock')).toBeDefined();
+    // Income should be 5,000.00 RON
+    expect(screen.getByText('5,000.00 RON')).toBeDefined();
+    // Expenses should be 1,000.00 RON
+    expect(screen.getByText('1,000.00 RON')).toBeDefined();
+    // Net should be 4,000.00 RON
+    expect(screen.getByText('4,000.00 RON')).toBeDefined();
   });
 });

@@ -28,7 +28,8 @@ export class NotionClient {
       name: row.properties.Name?.title?.[0]?.plain_text || '',
       type: row.properties.Type?.select?.name || 'Expense',
       icon: row.icon?.type === 'emoji' ? row.icon.emoji : null,
-      description: row.properties.Description?.rich_text?.[0]?.plain_text || ''
+      description: row.properties.Description?.rich_text?.[0]?.plain_text || '',
+      budgetLimit: row.properties['Monthly Limit (RON)']?.number || null
     }));
   }
 
@@ -103,6 +104,29 @@ export class NotionClient {
             'Category': { relation: [{ id: tx.categoryId }] },
             'Account': { relation: [{ id: tx.accountId }] },
             'Tags': { multi_select: tx.tags.map(t => ({ name: t })) }
+          }
+        }
+      })
+    });
+    return response.json();
+  }
+
+  async updateCategoryLimit(categoryId, limit) {
+    if (!this.token || !this.dbIds?.categories) {
+      const cat = DEMO_CATEGORIES.find(c => c.id === categoryId);
+      if (cat) cat.budgetLimit = limit;
+      return cat;
+    }
+    
+    const response = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
+      body: JSON.stringify({
+        path: `pages/${categoryId}`,
+        method: 'PATCH',
+        body: {
+          properties: {
+            'Monthly Limit (RON)': { number: limit || null }
           }
         }
       })

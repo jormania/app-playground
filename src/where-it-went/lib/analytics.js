@@ -1,9 +1,12 @@
+import { formatCurrency } from './currency';
+
 export function generateInsights(data) {
   const { categories, transactions } = data;
   if (!transactions || transactions.length === 0) {
     return {
-      review: "Not enough data to generate a review this month.",
-      insights: []
+      highlights: [],
+      expenses: { increases: [], decreases: [], subscriptions: [], utilities: [], otherRecurring: [], investing: [] },
+      income: { total: 0, topSource: null, insights: [] }
     };
   }
 
@@ -39,6 +42,7 @@ export function generateInsights(data) {
   const totalExpThis = sum(expThisMonth);
   const totalExpLast = sum(expLastMonth);
   const totalIncThis = sum(incThisMonth);
+  const totalIncLast = sum(incLastMonth);
 
   // Helper to get category name safely
   const getCatName = (id) => categories.find(c => c.id === id)?.name || 'Uncategorized';
@@ -71,22 +75,37 @@ export function generateInsights(data) {
     }
   });
 
-  // Calculate review text
-  let reviewText = "Reviewing this month: ";
+  // Calculate structured highlights
+  const highlights = [];
+  
   if (totalExpLast > 0) {
-    if (totalExpThis < totalExpLast) {
-      const diff = Math.round((1 - totalExpThis / totalExpLast) * 100);
-      reviewText += `You spent ${diff}% less than last month. `;
-    } else {
-      const diff = Math.round((totalExpThis / totalExpLast - 1) * 100);
-      reviewText += `You spent ${diff}% more than last month. `;
-    }
+    const diff = Math.abs(Math.round((totalExpThis / totalExpLast - 1) * 100));
+    const isLess = totalExpThis < totalExpLast;
+    highlights.push({
+      icon: isLess ? '📉' : '📈',
+      title: 'Spending Trend',
+      value: `${diff}% ${isLess ? 'Less' : 'More'}`,
+      description: `Than last month. (${formatCurrency(totalExpThis)} total)`,
+      positive: isLess
+    });
   } else {
-    reviewText += `You spent ${totalExpThis.toFixed(2)} RON this month. `;
+    highlights.push({
+      icon: '📊',
+      title: 'Total Spent',
+      value: formatCurrency(totalExpThis),
+      description: 'Total spending this month.',
+      positive: true
+    });
   }
 
   if (largestDiscretionary.name) {
-    reviewText += `${largestDiscretionary.name} was your largest discretionary category. `;
+    highlights.push({
+      icon: '🛍️',
+      title: 'Top Discretionary',
+      value: largestDiscretionary.name,
+      description: `${formatCurrency(largestDiscretionary.amount)} spent`,
+      positive: false
+    });
   }
 
   const rentIncThis = sum(incThisMonth.filter(t => {
@@ -95,69 +114,194 @@ export function generateInsights(data) {
   }));
   if (rentIncThis > 0 && totalExpThis > 0) {
     const pct = Math.round((rentIncThis / totalExpThis) * 100);
-    reviewText += `Rental income covered ${pct}% of total expenses. `;
+    highlights.push({
+      icon: '🏠',
+      title: 'Rent Coverage',
+      value: `${pct}%`,
+      description: 'Of expenses covered by rental income.',
+      positive: true
+    });
   }
 
   if (largestUnexpected.name) {
-    reviewText += `Your largest new or unexpected expense was ${largestUnexpected.name}. `;
+    highlights.push({
+      icon: '⚠️',
+      title: 'New Expense',
+      value: largestUnexpected.name,
+      description: `${formatCurrency(largestUnexpected.amount)} unexpected`,
+      positive: false
+    });
   }
 
-  // Reflection question
-  const questions = [
-    "Looking back, which expense brought you the most value this month?",
-    "Were there any purchases you regret this month?",
-    "What is one small habit you could change to improve your cash flow next month?",
-    "Did your spending align with your personal goals this month?"
-  ];
-  const question = questions[new Date().getDate() % questions.length];
+  // Insight Categories
+  const expenses = { increases: [], decreases: [], subscriptions: [], utilities: [], otherRecurring: [], investing: [] };
+  const income = { total: totalIncThis, topSource: null, insights: [] };
 
-  // Insights List
-  const insights = [];
+  // Top increases & decreases
+  const catDiffs = [];
+  // Use a Set to get unique categories from both months
+  const allCats = new Set([...Object.keys(expByCatThis), ...Object.keys(expByCatLast)]);
+  
+  allCats.forEach(cat => {
+    const thisV = expByCatThis[cat] || 0;
+    const lastV = expByCatLast[cat] || 0;
+    if (lastV > 0) {
+      const pct = (thisV / lastV - 1) * 100;
+      catDiffs.push({ cat, pct, diff: thisV - lastV });
+    }
+  });
 
-  // Recurring transactions logic (same amount, same category as last month)
+  const sortedIncreases = catDiffs.filter(d => d.pct > 5).sort((a, b) => b.pct - a.pct).slice(0, 3);
+  const sortedDecreases = catDiffs.filter(d => d.pct < -5).sort((a, b) => a.pct - b.pct).slice(0, 3);
+
+  sortedIncreases.forEach(d => {
+    expenses.increases.push(`${d.cat} spending increased by ${Math.round(d.pct)}% compared to last month.`);
+  });
+  sortedDecreases.forEach(d => {
+    expenses.decreases.push(`${d.cat} spending decreased by ${Math.abs(Math.round(d.pct))}% compared to last month.`);
+  });
+
+  // Recurring transactions logic (only expenses)
   const recurring = [];
-  txThisMonth.forEach(t => {
-    const matchLast = txLastMonth.find(lt => lt.categoryId === t.categoryId && lt.amount === t.amount);
-    if (matchLast && !recurring.includes(t.description)) {
-      recurring.push(t.description);
-    }
-  });
-  if (recurring.length > 0) {
-    insights.push(`Recurring detected: ${recurring.slice(0, 3).join(', ')}${recurring.length > 3 ? '...' : ''}.`);
-  }
+  const recurringSubscriptions = [];
+  const recurringUtilities = [];
 
-  // Missing income
-  const expectedIncomes = ['Salary', 'Rent', 'Property', 'Checking']; // based on typical names
-  expectedIncomes.forEach(incName => {
-    const hadLastMonth = incLastMonth.some(t => getCatName(t.categoryId) === incName);
-    const hasThisMonth = incThisMonth.some(t => getCatName(t.categoryId) === incName);
-    if (hadLastMonth && !hasThisMonth) {
-      insights.push(`You haven't received ${incName} yet this month.`);
-    }
-  });
+  const getDescCount = (txs) => {
+    const counts = {};
+    txs.forEach(t => {
+      const desc = (t.description || '').toLowerCase().trim();
+      counts[desc] = (counts[desc] || 0) + 1;
+    });
+    return counts;
+  };
 
-  // Category trends
-  ['Dining', 'Restaurant', 'Food', 'Shopping', 'Travel'].forEach(cat => {
-    const thisV = expByCatThis[cat];
-    const lastV = expByCatLast[cat];
-    if (thisV && lastV && lastV > 0) {
-      if (thisV > lastV) {
-        const pct = Math.round((thisV / lastV - 1) * 100);
-        if (pct > 10) insights.push(`${cat} spending increased ${pct}% compared to last month.`);
+  const descCountThis = getDescCount(expThisMonth);
+  const descCountLast = getDescCount(expLastMonth);
+
+  expThisMonth.forEach(t => {
+    const desc = (t.description || '').toLowerCase().trim();
+    const catName = getCatName(t.categoryId);
+
+    const matchesLast = expLastMonth.filter(lt => 
+      lt.categoryId === t.categoryId && 
+      (lt.description || '').toLowerCase().trim() === desc
+    );
+
+    if (matchesLast.length > 0) {
+      const freqThis = descCountThis[desc];
+      const freqLast = descCountLast[desc];
+      const isExactAmount = matchesLast.some(lt => lt.amount === t.amount);
+      const isDailyCategory = ['Food', 'Dining', 'Shopping', 'Transport'].includes(catName);
+
+      let isRecurring = false;
+
+      if (catName === 'Subscriptions' || catName === 'Utilities' || catName === 'Housing') {
+        isRecurring = true;
+      } else if (!isDailyCategory && catName !== 'Investing') {
+        if ((freqThis === 1 && freqLast === 1) || isExactAmount) {
+          isRecurring = true;
+        }
+      } else {
+        if (freqThis === 1 && freqLast === 1 && isExactAmount) {
+          isRecurring = true;
+        }
+      }
+
+      if (isRecurring && desc) {
+        if (catName === 'Subscriptions') {
+          if (!recurringSubscriptions.find(x => (x.description || '').toLowerCase().trim() === desc)) {
+            recurringSubscriptions.push(t);
+          }
+        } else if (catName === 'Utilities') {
+          if (!recurringUtilities.find(x => (x.description || '').toLowerCase().trim() === desc)) {
+            recurringUtilities.push(t);
+          }
+        } else {
+          if (!recurring.find(x => (x.description || '').toLowerCase().trim() === desc)) {
+            recurring.push(t);
+          }
+        }
       }
     }
   });
 
-  // Fixed Subscriptions
-  ['Subscriptions', 'Utilities'].forEach(cat => {
-    if (expByCatThis[cat] > 0) {
-      insights.push(`${cat} total ${expByCatThis[cat].toFixed(2)} RON/month.`);
+  if (expByCatThis['Subscriptions'] > 0 || recurringSubscriptions.length > 0) {
+    expenses.subscriptions.push({
+      type: 'twistie',
+      title: `Subscriptions Total: ${formatCurrency(expByCatThis['Subscriptions'] || 0)}`,
+      items: recurringSubscriptions.length > 0 
+        ? recurringSubscriptions.map(t => `${t.description} - ${formatCurrency(t.amount)}`)
+        : ['No recurring subscriptions detected.']
+    });
+  }
+
+  if (expByCatThis['Utilities'] > 0 || recurringUtilities.length > 0) {
+    expenses.utilities.push({
+      type: 'twistie',
+      title: `Utilities Total: ${formatCurrency(expByCatThis['Utilities'] || 0)}`,
+      items: recurringUtilities.length > 0
+        ? recurringUtilities.map(t => `${t.description} - ${formatCurrency(t.amount)}`)
+        : ['No recurring utilities detected.']
+    });
+  }
+
+  if (recurring.length > 0) {
+    const totalOther = recurring.reduce((acc, t) => acc + t.amount, 0);
+    expenses.otherRecurring.push({
+      type: 'twistie',
+      title: `Other Recurring: ${formatCurrency(totalOther)}`,
+      items: recurring.map(t => `${t.description} (${getCatName(t.categoryId)}) - ${formatCurrency(t.amount)}`)
+    });
+  }
+
+  // Investing Insights
+  const invThisMonth = expThisMonth.filter(t => getCatName(t.categoryId) === 'Investing');
+  if (invThisMonth.length > 0) {
+    const invTotal = sum(invThisMonth);
+    expenses.investing.push(`You invested ${formatCurrency(invTotal)} this month. Great job!`);
+  } else {
+    expenses.investing.push("You haven't made any investments this month. Consider setting some money aside!");
+  }
+
+  // Income Insights
+  if (totalIncThis > 0) {
+    const incByCat = {};
+    incThisMonth.forEach(t => {
+      const cat = getCatName(t.categoryId);
+      incByCat[cat] = (incByCat[cat] || 0) + t.amount;
+    });
+    const topSource = Object.entries(incByCat).sort((a, b) => b[1] - a[1])[0];
+    if (topSource) {
+      income.topSource = topSource[0];
+      income.insights.push(`Your top income source this month is ${topSource[0]} (${formatCurrency(topSource[1])}).`);
+    }
+
+    if (totalIncLast > 0) {
+      if (totalIncThis > totalIncLast) {
+        const diff = ((totalIncThis / totalIncLast) - 1) * 100;
+        income.insights.push(`Your income increased by ${Math.round(diff)}% compared to last month.`);
+      } else if (totalIncThis < totalIncLast) {
+        const diff = (1 - (totalIncThis / totalIncLast)) * 100;
+        income.insights.push(`Your income decreased by ${Math.round(diff)}% compared to last month.`);
+      }
+    }
+  } else {
+    income.insights.push("No income recorded this month.");
+  }
+
+  // Missing income
+  const expectedIncomes = ['Salary', 'Rent', 'Property', 'Freelance']; 
+  expectedIncomes.forEach(incName => {
+    const hadLastMonth = incLastMonth.some(t => getCatName(t.categoryId) === incName);
+    const hasThisMonth = incThisMonth.some(t => getCatName(t.categoryId) === incName);
+    if (hadLastMonth && !hasThisMonth) {
+      income.insights.push(`You haven't received ${incName} yet this month.`);
     }
   });
 
   return {
-    review: reviewText.trim(),
-    question,
-    insights
+    highlights,
+    expenses,
+    income
   };
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
+import { NotionClient } from '../lib/notionClient';
 
 export default function Settings({ config, onSave, onThemeChange, onDone }) {
   const [token, setToken] = useState(config.token || '');
@@ -34,7 +35,6 @@ export default function Settings({ config, onSave, onThemeChange, onDone }) {
 
     setTesting(true);
     try {
-      const { NotionClient } = await import('../lib/notionClient');
       const testClient = new NotionClient(token.trim(), {
         categories: extractNotionId(categoriesDb),
         accounts: extractNotionId(accountsDb),
@@ -58,6 +58,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone }) {
         if (onDone) onDone();
       }, 1000);
     } catch (e) {
+      console.error("FETCH ERROR IN SETTINGS TEST:", e);
       setStatus({ type: 'error', msg: 'Connection failed: Please check your Token and Database IDs.' });
     } finally {
       setTesting(false);

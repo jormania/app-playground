@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
@@ -17,6 +17,33 @@ export default function TransactionForm({ categories, accounts, onSave, onCancel
     .sort((a, b) => a.name.localeCompare(b.name));
     
   const selectedCat = categories.find(c => c.id === categoryId);
+
+  useEffect(() => {
+    if (!selectedCat || !accounts || accounts.length === 0) return;
+
+    let targetAccountName = '';
+    
+    if (selectedCat.type === 'Expense') {
+      targetAccountName = 'Revolut';
+    } else if (selectedCat.type === 'Income') {
+      if (selectedCat.name === 'Salary') {
+        targetAccountName = 'Checking';
+      } else if (selectedCat.name === 'Rent') {
+        targetAccountName = 'Cash';
+      } else if (selectedCat.name === 'Freelance') {
+        targetAccountName = 'Revolut';
+      } else if (selectedCat.name === 'Gift') {
+        targetAccountName = 'Cash';
+      }
+    }
+
+    if (targetAccountName) {
+      const targetAcc = accounts.find(a => a.name === targetAccountName);
+      if (targetAcc) {
+        setAccountId(targetAcc.id);
+      }
+    }
+  }, [categoryId, selectedCat, accounts]);
 
   const handleSubmit = (e) => {
     e.preventDefault();

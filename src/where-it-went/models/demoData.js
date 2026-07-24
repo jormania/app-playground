@@ -18,21 +18,24 @@ export const DEMO_CATEGORIES = [
     "name": "Food",
     "type": "Expense",
     "icon": "🛒",
-    "description": "Groceries, supermarkets, markets, food and coffee bought for home"
+    "description": "Groceries, supermarkets, markets, food and coffee bought for home",
+    "budgetLimit": 1500
   },
   {
     "id": "cat_dining",
     "name": "Dining",
     "type": "Expense",
     "icon": "🍽️",
-    "description": "Restaurants, cafés, take-away, food delivery"
+    "description": "Restaurants, cafés, take-away, food delivery",
+    "budgetLimit": 800
   },
   {
     "id": "cat_transport",
     "name": "Transport",
     "type": "Expense",
     "icon": "🚌",
-    "description": "Public transport, taxi, Uber/Bolt, car rental, fuel, car maintenance"
+    "description": "Public transport, taxi, Uber/Bolt, car rental, fuel, car maintenance",
+    "budgetLimit": 300
   },
   {
     "id": "cat_health",
@@ -42,8 +45,8 @@ export const DEMO_CATEGORIES = [
     "description": "Doctors, dentists, pharmacy, medical tests, health insurance"
   },
   {
-    "id": "cat_entertainment",
-    "name": "Entertainment",
+    "id": "cat_subscriptions",
+    "name": "Subscriptions",
     "type": "Expense",
     "icon": "🎭",
     "description": "Cinema, theater, concerts, games, subscriptions (Netflix, Spotify etc), books, hobbies"
@@ -53,7 +56,8 @@ export const DEMO_CATEGORIES = [
     "name": "Shopping",
     "type": "Expense",
     "icon": "👕",
-    "description": "Clothing, shoes, electronics, gifts, personal care, cosmetics"
+    "description": "Clothing, shoes, electronics, gifts, personal care, cosmetics",
+    "budgetLimit": 400
   },
   {
     "id": "cat_travel",
@@ -71,7 +75,7 @@ export const DEMO_CATEGORIES = [
   },
   {
     "id": "cat_income",
-    "name": "Income",
+    "name": "Salary",
     "type": "Income",
     "icon": "💼",
     "description": "Salary, bonuses, freelance work, interest, gifts received"
@@ -85,7 +89,7 @@ export const DEMO_CATEGORIES = [
   },
   {
     "id": "cat_rental_income",
-    "name": "Rental Income",
+    "name": "Rent",
     "type": "Income",
     "icon": "🏢",
     "description": "Income from rented properties"
@@ -96,6 +100,13 @@ export const DEMO_CATEGORIES = [
     "type": "Expense",
     "icon": "📈",
     "description": "Investimental, stocks, bonds, crypto"
+  },
+  {
+    "id": "cat_gift",
+    "name": "Gift",
+    "type": "Income",
+    "icon": "🎁",
+    "description": "Money received as a gift"
   }
 ];
 
@@ -174,7 +185,7 @@ export const DEMO_TRANSACTIONS = [
     "date": "2026-06-15",
     "amount": 60,
     "type": "Expense",
-    "categoryId": "cat_entertainment",
+    "categoryId": "cat_subscriptions",
     "accountId": "acc_revolut",
     "tags": []
   },
@@ -184,7 +195,7 @@ export const DEMO_TRANSACTIONS = [
     "date": "2026-06-16",
     "amount": 25,
     "type": "Expense",
-    "categoryId": "cat_entertainment",
+    "categoryId": "cat_subscriptions",
     "accountId": "acc_revolut",
     "tags": []
   },
@@ -324,7 +335,7 @@ export const DEMO_TRANSACTIONS = [
     "date": "2026-07-15",
     "amount": 60,
     "type": "Expense",
-    "categoryId": "cat_entertainment",
+    "categoryId": "cat_subscriptions",
     "accountId": "acc_revolut",
     "tags": []
   },
@@ -334,7 +345,7 @@ export const DEMO_TRANSACTIONS = [
     "date": "2026-07-16",
     "amount": 25,
     "type": "Expense",
-    "categoryId": "cat_entertainment",
+    "categoryId": "cat_subscriptions",
     "accountId": "acc_revolut",
     "tags": []
   },
