@@ -87,13 +87,13 @@ export default function App() {
       <header style={{ 
         display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', 
         justifyContent: 'space-between', alignItems: 'center', 
-        marginBottom: 'var(--space-xl)',
+        marginBottom: 'var(--space-md)',
         position: 'sticky', top: 0, zIndex: 10,
         backgroundColor: 'color-mix(in srgb, var(--color-bg) 75%, transparent)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
         padding: 'var(--space-md)',
-        margin: '0 calc(-1 * var(--space-md)) var(--space-xl) calc(-1 * var(--space-md))',
+        margin: '0 calc(-1 * var(--space-md)) var(--space-md) calc(-1 * var(--space-md))',
         borderBottom: '1px solid color-mix(in srgb, var(--color-border) 40%, transparent)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
