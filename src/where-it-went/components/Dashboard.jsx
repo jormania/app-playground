@@ -242,8 +242,23 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
           responsive: true,
           maintainAspectRatio: false,
           scales: {
-            x: { grid: { color: 'transparent' }, ticks: { color: mutedColor } },
-            y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: mutedColor } }
+            x: { 
+              grid: { color: 'transparent' }, 
+              ticks: { 
+                color: mutedColor,
+                autoSkip: true,
+                maxTicksLimit: 8,
+                maxRotation: 45,
+                minRotation: 0
+              } 
+            },
+            y: { 
+              grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
+              ticks: { 
+                color: mutedColor,
+                maxTicksLimit: 6
+              } 
+            }
           },
           plugins: {
             legend: { position: 'top', labels: { color: mutedColor } },
@@ -439,7 +454,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
       )}
 
       {config?.features?.cashFlow !== false && (
-        <div style={{ marginTop: 'var(--space-xl)', height: '400px', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+        <div className="trend-chart-container" style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
           <canvas ref={trendChartRef}></canvas>
         </div>
       )}

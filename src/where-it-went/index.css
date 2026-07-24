@@ -139,5 +139,11 @@ a:hover {
   .nav-controls {
     margin-left: auto;
   }
+  .trend-chart-container {
+    height: 250px !important;
+  }
 }
 
+.trend-chart-container {
+  height: 400px;
+}
