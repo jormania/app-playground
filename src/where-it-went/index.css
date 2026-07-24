@@ -138,6 +138,12 @@ a:hover {
   .nav-tab-btn {
     padding: 8px;
   }
+  .nav-period-text {
+    display: none;
+  }
+  .nav-period-btn {
+    padding: 6px;
+  }
   .nav-controls {
     margin-left: auto;
   }
