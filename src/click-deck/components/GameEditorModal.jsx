@@ -44,6 +44,37 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
     }
   }, [game])
 
+  const isDirty = () => {
+    if (!game) {
+      return formData.title !== '' || formData.developer !== '' || formData.tags.length > 0 || formData.journal !== '' || formData.coverUrl !== ''
+    }
+    return formData.title !== (game.title||'') ||
+           formData.year !== (game.year||0) ||
+           formData.developer !== (game.developer||'') ||
+           JSON.stringify(formData.tags) !== JSON.stringify(game.tags||[]) ||
+           formData.status !== (game.status||'Backlog') ||
+           formData.rating !== (game.rating||null) ||
+           formData.journal !== (game.journal||'') ||
+           formData.coverUrl !== (game.coverUrl||'')
+  }
+
+  const handleClose = () => {
+    if (isDirty() && !window.confirm('Discard unsaved changes?')) {
+      return
+    }
+    onClose()
+  }
+
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        handleClose()
+      }
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [formData, game, onClose])
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({
@@ -220,7 +251,7 @@ export function GameEditorModal({ game, onSave, onDelete, onClose, onToast, watc
       <div className="cd-modal cd-panel">
         <div className="cd-modal-header">
           <h2>{game ? 'EDIT_ENTRY' : 'NEW_ENTRY'}</h2>
-          <button className="cd-btn-icon" onClick={onClose} aria-label="Close">[X]</button>
+          <button className="cd-btn-icon" onClick={handleClose} aria-label="Close">[X]</button>
         </div>
         
         <div className="cd-form-group">

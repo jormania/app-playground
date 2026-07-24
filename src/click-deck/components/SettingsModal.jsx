@@ -179,6 +179,16 @@ export function SettingsModal({ onClose, onSaveToken, onShowBannerNow, onShowRel
     setReleaseBannerStatus('Banner will show again now (if anything released recently).')
   }
 
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [onClose])
+
   return (
     <div className="cd-modal-overlay">
       <div className="cd-modal cd-panel" style={{ maxWidth: '500px' }}>

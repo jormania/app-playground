@@ -46,7 +46,7 @@ function readLastPrices() {
 export function detectPriceDrops(games) {
   const lastPrices = readLastPrices()
   const drops = []
-  const nextPrices = { ...lastPrices }
+  const nextPrices = {}
 
   for (const game of games) {
     if (game.price === null || game.price === undefined) continue

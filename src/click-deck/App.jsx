@@ -108,10 +108,6 @@ export function App() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
-        if (e.key === 'Escape') {
-          setIsEditorOpen(false)
-          setIsSettingsOpen(false)
-        }
         return
       }
       if (e.key === '/') {
@@ -122,8 +118,6 @@ export function App() {
         setEditingGame(null)
         setIsEditorOpen(true)
       } else if (e.key === 'Escape') {
-        setIsEditorOpen(false)
-        setIsSettingsOpen(false)
         setIsSortMenuOpen(false)
         setIsDiscountOpen(false)
         setIsRandomOpen(false)
@@ -363,7 +357,7 @@ export function App() {
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       result = result.filter(g =>
-        g.title.toLowerCase().includes(q) ||
+        (g.title || '').toLowerCase().includes(q) ||
         (g.developer && g.developer.toLowerCase().includes(q)) ||
         (g.tags && g.tags.some(t => t.toLowerCase().includes(q))) ||
         (g.journal && g.journal.toLowerCase().includes(q))
@@ -707,9 +701,12 @@ export function App() {
           onSaveToken={() => {
             // Credentials may have just been added/changed — re-evaluate whether
             // we're connected and pull fresh data so it takes effect without a reload.
-            if (McpConnector.isInitialized()) {
-              setIsInitialized(true)
+            const initialized = McpConnector.isInitialized()
+            setIsInitialized(initialized)
+            if (initialized) {
               loadGames()
+            } else {
+              setGames([])
             }
             setIsBannerPersistent(isDiscountBannerPersistent())
             setIsReleasePersistent(isReleaseBannerPersistent())
