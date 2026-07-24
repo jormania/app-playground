@@ -268,37 +268,37 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         WebkitOverflowScrolling: 'touch'
       }}>
         <div 
-          style={{ flex: '1 0 140px', minWidth: '140px', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
+          style={{ flex: 1, minWidth: '100px', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
           onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-xs)', gap: 'var(--space-xs)' }}>
+          <div style={{ marginBottom: '4px' }}>
             <h3 style={{ margin: 0, color: 'var(--color-muted)', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)' }}>Income</h3>
-            {getTrendBadge(income, prevIncome, false)}
           </div>
-          <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: 'var(--color-success)', whiteSpace: 'nowrap' }}>{formatCurrency(animatedIncome)}</div>
+          <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: 'var(--color-success)', whiteSpace: 'nowrap', marginBottom: '4px' }}>{formatCurrency(animatedIncome)}</div>
+          <div>{getTrendBadge(income, prevIncome, false)}</div>
         </div>
         <div 
-          style={{ flex: '1 0 140px', minWidth: '140px', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
+          style={{ flex: 1, minWidth: '100px', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
           onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-xs)', gap: 'var(--space-xs)' }}>
+          <div style={{ marginBottom: '4px' }}>
             <h3 style={{ margin: 0, color: 'var(--color-muted)', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)' }}>Expenses</h3>
-            {getTrendBadge(expenses, prevExpenses, true)}
           </div>
-          <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)', whiteSpace: 'nowrap' }}>{formatCurrency(animatedExpenses)}</div>
+          <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)', whiteSpace: 'nowrap', marginBottom: '4px' }}>{formatCurrency(animatedExpenses)}</div>
+          <div>{getTrendBadge(expenses, prevExpenses, true)}</div>
         </div>
         <div 
-          style={{ flex: '1 0 140px', minWidth: '140px', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
+          style={{ flex: 1, minWidth: '90px', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
           onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-xs)', gap: 'var(--space-xs)' }}>
+          <div style={{ marginBottom: '4px' }}>
             <h3 style={{ margin: 0, color: 'var(--color-muted)', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)' }}>Net</h3>
-            {getTrendBadge(net, prevNet, false)}
           </div>
-          <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: animatedNet >= 0 ? 'var(--color-success)' : 'var(--color-danger)', whiteSpace: 'nowrap' }}>{formatCurrency(animatedNet)}</div>
+          <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: animatedNet >= 0 ? 'var(--color-success)' : 'var(--color-danger)', whiteSpace: 'nowrap', marginBottom: '4px' }}>{formatCurrency(animatedNet)}</div>
+          <div>{getTrendBadge(net, prevNet, false)}</div>
         </div>
       </div>
 
