@@ -48,7 +48,7 @@ export default function PeriodSheet({ isOpen, onClose, period, onPeriodChange })
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} title="Select period">
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
         <Button 
           variant={selectedPeriod === 'this_month' ? 'primary' : 'secondary'} 
           size="sm" 
@@ -69,6 +69,13 @@ export default function PeriodSheet({ isOpen, onClose, period, onPeriodChange })
           onClick={() => { setSelectedPeriod('this_year'); setPickerDate(new Date()); }}
         >
           This year
+        </Button>
+        <Button 
+          variant={selectedPeriod === 'all_time' ? 'primary' : 'secondary'} 
+          size="sm" 
+          onClick={() => { setSelectedPeriod('all_time'); setPickerDate(new Date()); }}
+        >
+          All time
         </Button>
       </div>
 
@@ -110,10 +117,7 @@ export default function PeriodSheet({ isOpen, onClose, period, onPeriodChange })
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)' }}>
-        <Button variant="secondary" onClick={() => setSelectedPeriod('all_time')}>All Time</Button>
-        <Button variant="primary" onClick={handleApply}>Done</Button>
-      </div>
+      <Button variant="primary" style={{ width: '100%' }} onClick={handleApply}>Done</Button>
     </BottomSheet>
   );
 }
