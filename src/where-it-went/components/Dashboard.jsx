@@ -248,6 +248,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-md)' }}>
         <SegmentedControl
+          size="sm"
           value={period}
           onChange={(val) => setPeriod(val)}
           options={[
@@ -276,7 +277,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
             <h3 style={{ margin: 0, color: 'var(--color-muted)', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)' }}>Income</h3>
             {getTrendBadge(income, prevIncome, false)}
           </div>
-          <div style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--weight-bold)', color: 'var(--color-success)', whiteSpace: 'nowrap' }}>{formatCurrency(animatedIncome)}</div>
+          <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: 'var(--color-success)', whiteSpace: 'nowrap' }}>{formatCurrency(animatedIncome)}</div>
         </div>
         <div 
           style={{ flex: '1 0 140px', minWidth: '140px', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
@@ -287,7 +288,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
             <h3 style={{ margin: 0, color: 'var(--color-muted)', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)' }}>Expenses</h3>
             {getTrendBadge(expenses, prevExpenses, true)}
           </div>
-          <div style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)', whiteSpace: 'nowrap' }}>{formatCurrency(animatedExpenses)}</div>
+          <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)', whiteSpace: 'nowrap' }}>{formatCurrency(animatedExpenses)}</div>
         </div>
         <div 
           style={{ flex: '1 0 140px', minWidth: '140px', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}

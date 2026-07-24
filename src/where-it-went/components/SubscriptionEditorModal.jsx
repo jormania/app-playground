@@ -105,9 +105,9 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
           <label htmlFor="sub-active" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink)' }}>Active (Generates transactions automatically)</label>
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', justifyContent: 'space-between', marginTop: 'var(--space-lg)' }}>
-          <div>
-            {sub && (
+        <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-lg)' }}>
+          {sub && (
+            <div style={{ marginRight: 'auto' }}>
               <Button type="button" variant="danger" disabled={saving} onClick={async () => {
                 if (confirm('Are you sure you want to delete this subscription?')) {
                   setSaving(true);
@@ -116,9 +116,9 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
                   onClose();
                 }
               }}>Delete</Button>
-            )}
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 'var(--space-sm)', marginLeft: sub ? 0 : 'auto' }}>
             <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
             <Button type="submit" variant="primary" disabled={saving || !name || !amount || !categoryId || !accountId}>
               {saving ? 'Saving...' : 'Save'}
