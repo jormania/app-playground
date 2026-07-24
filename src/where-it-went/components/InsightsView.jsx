@@ -18,11 +18,11 @@ export default function InsightsView({ data, period, filterProps }) {
 
   const { financialHealth, behavioral, trajectory } = insights;
   const { needs, wants, savings } = financialHealth.needsWantsSavings;
-  const totalIncome = financialHealth.totalIncome;
+  const totalExpense = financialHealth.totalExpense;
 
-  const needsPct = totalIncome > 0 ? (needs / totalIncome) * 100 : 0;
-  const wantsPct = totalIncome > 0 ? (wants / totalIncome) * 100 : 0;
-  const savingsPct = totalIncome > 0 ? (savings / totalIncome) * 100 : 0;
+  const needsPct = totalExpense > 0 ? (needs / totalExpense) * 100 : 0;
+  const wantsPct = totalExpense > 0 ? (wants / totalExpense) * 100 : 0;
+  const savingsPct = totalExpense > 0 ? (savings / totalExpense) * 100 : 0;
 
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xl)', marginBottom: 'var(--space-xl)' }}>
@@ -35,7 +35,7 @@ export default function InsightsView({ data, period, filterProps }) {
             The 50/30/20 Rule
           </h2>
           <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
-            A common budgeting rule recommends spending 50% on Needs, 30% on Wants, and 20% on Savings.
+            A breakdown of your <strong>Total Expenses</strong> across the Needs, Wants, and Savings buckets. (Note: The classical 50/30/20 rule is based on Income).
           </p>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
@@ -142,9 +142,9 @@ export default function InsightsView({ data, period, filterProps }) {
           </p>
 
           {behavioral.latteFactor.length > 0 ? (
-            <ul style={{ listStyle: 'none', padding: 0 }}>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {behavioral.latteFactor.map((vendor, idx) => (
-                <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: '1px solid var(--color-border)' }}>
+                <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: idx === behavioral.latteFactor.length - 1 ? 'none' : '1px solid var(--color-border)' }}>
                   <div>
                     <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>{vendor.name}</div>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '2px' }}>
@@ -168,8 +168,6 @@ export default function InsightsView({ data, period, filterProps }) {
           )}
         </div>
 
-        {/* Future Insights Card (Placeholder for more analytics) */}
-        <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
            <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
             Income Dependency
           </h2>

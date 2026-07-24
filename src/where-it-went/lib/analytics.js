@@ -104,14 +104,35 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     fixedCostsRatio
   };
 
-  // --- Behavioral Patterns (Latte Factor) ---
+  // --- Behavioral Patterns ---
   const vendorCounts = {};
+  let subscriptionsList = [];
+  let recurringList = [];
+  
   expenses.forEach(tx => {
+    const catName = getCatName(tx.categoryId).toLowerCase();
+    
+    // Check if it's a subscription or recurring
+    const isSubscription = catName.includes('subscription');
+    const isRecurring = tx.recurring || catName.includes('rent') || catName.includes('hous') || catName.includes('utilit') || catName.includes('insur');
+    
     // Normalize description: remove numbers, special chars, lowercase, trim
     let desc = (tx.description || '').toLowerCase();
     desc = desc.replace(/[0-9#\-_,.*]/g, ' ').replace(/\s+/g, ' ').trim();
     if (desc.length < 3) return; // skip too short
     
+    if (isSubscription) {
+      if (!subscriptionsList[desc]) subscriptionsList[desc] = { name: tx.description, count: 0, total: 0 };
+      subscriptionsList[desc].count++;
+      subscriptionsList[desc].total += tx.amount;
+      return; // Exclude from Latte Factor
+    } else if (isRecurring) {
+      if (!recurringList[desc]) recurringList[desc] = { name: tx.description, count: 0, total: 0 };
+      recurringList[desc].count++;
+      recurringList[desc].total += tx.amount;
+      return; // Exclude from Latte Factor
+    }
+
     // Exclude common broad terms
     if (['transfer', 'atm', 'cash', 'payment'].includes(desc)) return;
 
@@ -128,7 +149,9 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     .slice(0, 5); // Top 5
 
   const behavioral = {
-    latteFactor
+    latteFactor,
+    subscriptions: Object.values(subscriptionsList).sort((a, b) => Math.abs(b.total) - Math.abs(a.total)),
+    recurring: Object.values(recurringList).sort((a, b) => Math.abs(b.total) - Math.abs(a.total))
   };
 
   // --- Trajectory & Forecasting (Only makes sense for 'this_month') ---
