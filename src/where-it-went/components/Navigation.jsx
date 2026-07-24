@@ -85,15 +85,6 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
       </div>
 
       <div className="nav-controls" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginLeft: 'var(--space-xs)' }}>
-        <button 
-          className="nav-period-btn"
-          onClick={onPeriodClick}
-          title={formatPeriodLabel(period)}
-        >
-          {Icons.calendar}
-          <span className="nav-period-text">{formatPeriodLabel(period)}</span>
-        </button>
-        
         {activeTab === 'transactions' && (
           <button 
             className="nav-filter-btn"
@@ -103,6 +94,15 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
             {Icons.filter}
           </button>
         )}
+        
+        <button 
+          className="nav-period-btn"
+          onClick={onPeriodClick}
+          title={formatPeriodLabel(period)}
+        >
+          {Icons.calendar}
+          <span className="nav-period-text">{formatPeriodLabel(period)}</span>
+        </button>
       </div>
     </header>
   );
