@@ -104,19 +104,19 @@ describe('AnalyticsView', () => {
 
   describe('STEAM filter row', () => {
     const withReviews = [
-      { id: '1', title: 'Acclaimed Game', year: 2020, status: 'Backlog', tags: [], reviewCheckedAt: '2026-07-24', steamReviewPercent: 95, steamReviewCount: 500 },
-      { id: '2', title: 'Mixed Game', year: 2021, status: 'Backlog', tags: [], reviewCheckedAt: '2026-07-24', steamReviewPercent: 60, steamReviewCount: 200 },
+      { id: '1', title: 'Acclaimed Game', year: 2020, status: 'Backlog', tags: [], reviewCheckedAt: '2026-07-24', steamReviewPercent: 95, steamReviewDesc: 'Overwhelmingly Positive', steamReviewCount: 500 },
+      { id: '2', title: 'Mixed Game', year: 2021, status: 'Backlog', tags: [], reviewCheckedAt: '2026-07-24', steamReviewPercent: 60, steamReviewDesc: 'Mixed', steamReviewCount: 200 },
       { id: '3', title: 'Never Checked Game', year: 2022, status: 'Backlog', tags: [] }
     ]
 
-    it('shows only Acclaimed (90%+) entries, excluding never-checked games', () => {
+    it('shows only Acclaimed entries (keyed off Steam\'s own descriptor, not percentage), excluding never-checked games', () => {
       render(<AnalyticsView filteredGames={withReviews} activeTags={[]} setActiveTags={() => {}} />)
       fireEvent.click(screen.getByText('Acclaimed'))
       expect(screen.getByText('MATCHING ENTRIES: 1')).toBeTruthy()
       expect(screen.getByText('Acclaimed Game')).toBeTruthy()
     })
 
-    it('shows only Mixed (50-75%) entries', () => {
+    it('shows only Mixed entries', () => {
       render(<AnalyticsView filteredGames={withReviews} activeTags={[]} setActiveTags={() => {}} />)
       fireEvent.click(screen.getByText('Mixed'))
       expect(screen.getByText('MATCHING ENTRIES: 1')).toBeTruthy()

@@ -57,36 +57,34 @@ export function hasReviewData(game) {
   return wasReviewChecked(game) && typeof game.steamReviewCount === 'number' && game.steamReviewCount > 0
 }
 
-// Raw-percentage buckets — deliberately NOT the Wilson-adjusted score (see
-// steamReviewScore's comment for why sort/rank use a different number).
+// Buckets keyed off Steam's OWN descriptor string (steamReviewDesc), never
+// re-derived from the percentage. Percentage-threshold bucketing was tried
+// first and confirmed broken live: Valve's real tier boundaries aren't a
+// clean function of percentage alone (review count factors in too), so two
+// games Steam itself both calls "Very Positive" can sit at, say, 80% and
+// 91% — different percentage-threshold buckets, different colours, for
+// what Steam calls the identical verdict. Keying off the string Steam
+// already computed sidesteps the whole problem: identical label, identical
+// bucket, always, no threshold math to disagree with reality.
 // Mirrors LENGTH_BUCKETS' one-word-label shape.
 export const REVIEW_BUCKETS = {
-  Acclaimed: { label: 'Acclaimed (90%+)', min: 90 },
-  Positive: { label: 'Positive (75-90%)', min: 75, max: 90 },
-  Mixed: { label: 'Mixed (50-75%)', min: 50, max: 75 },
-  Negative: { label: 'Negative (<50%)', max: 50 }
+  Acclaimed: { label: 'Acclaimed', desc: ['Overwhelmingly Positive', 'Very Positive'] },
+  Positive: { label: 'Positive', desc: ['Positive', 'Mostly Positive'] },
+  Mixed: { label: 'Mixed', desc: ['Mixed'] },
+  Negative: { label: 'Negative', desc: ['Mostly Negative', 'Negative', 'Very Negative', 'Overwhelmingly Negative'] }
 }
 
-// Buckets the ROUNDED percentage, not the raw float — every caller of this
-// (the badge's colour, the [A] filter) sits right next to the rounded
-// number the badge also displays (Math.round(...) + '%'), and those two
-// must never disagree. Confirmed live: a game stored at 89.75% displayed
-// "90%" (rounds up) but bucketed on the raw value as merely "Positive",
-// while a game at 90.6% ("91%") correctly showed "Acclaimed" — same
-// rounded-up boundary, two different colours, for what looked like the
-// same number on screen.
-export function reviewBucketOf(percent) {
-  if (percent === null || percent === undefined || Number.isNaN(percent)) return null
-  const rounded = Math.round(percent)
-  if (rounded >= 90) return 'Acclaimed'
-  if (rounded >= 75) return 'Positive'
-  if (rounded >= 50) return 'Mixed'
-  return 'Negative'
+const DESC_TO_BUCKET = Object.fromEntries(
+  Object.entries(REVIEW_BUCKETS).flatMap(([bucket, { desc }]) => desc.map(d => [d, bucket]))
+)
+
+export function reviewBucketOf(desc) {
+  return DESC_TO_BUCKET[desc] || null
 }
 
 export function isInReviewBucket(game, bucket) {
   if (!hasReviewData(game)) return false
-  return reviewBucketOf(game.steamReviewPercent) === bucket
+  return reviewBucketOf(game.steamReviewDesc) === bucket
 }
 
 // Colour accent for the [T] badge — reuses the current theme's own accent
@@ -96,11 +94,14 @@ export function isInReviewBucket(game, bucket) {
 // grayscale Noir, cyan/magenta CGA, or monochrome Amber Terminal). Same
 // convention as studios-connector.js's tierAccentColor: bucket by strength,
 // let the active theme decide what each bucket actually looks like.
-export function reviewAccentColor(percent) {
-  const bucket = reviewBucketOf(percent)
+// Deliberately NOT cyan-for-Acclaimed/amber-for-Positive/muted-for-Mixed —
+// amber is reserved for Mixed (the tier worth a second look) and Positive
+// fades to muted (solid but unremarkable), per explicit design direction.
+export function reviewAccentColor(desc) {
+  const bucket = reviewBucketOf(desc)
   if (bucket === 'Acclaimed') return 'var(--cd-accent-cyan)'
-  if (bucket === 'Positive') return 'var(--cd-accent-amber)'
-  if (bucket === 'Mixed') return 'var(--cd-text-muted)'
+  if (bucket === 'Positive') return 'var(--cd-text-muted)'
+  if (bucket === 'Mixed') return 'var(--cd-accent-amber)'
   if (bucket === 'Negative') return 'var(--cd-status-abandoned)'
   return 'var(--cd-text-muted)'
 }

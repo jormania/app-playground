@@ -63,28 +63,29 @@ describe('wasReviewChecked / hasReviewData', () => {
 })
 
 describe('reviewBucketOf', () => {
-  it('buckets by the ROUNDED percentage at the documented boundaries', () => {
-    expect(reviewBucketOf(100)).toBe('Acclaimed')
-    expect(reviewBucketOf(90)).toBe('Acclaimed')
-    expect(reviewBucketOf(89.4)).toBe('Positive') // rounds to 89, stays under
-    expect(reviewBucketOf(75)).toBe('Positive')
-    expect(reviewBucketOf(74.4)).toBe('Mixed') // rounds to 74, stays under
-    expect(reviewBucketOf(50)).toBe('Mixed')
-    expect(reviewBucketOf(49.4)).toBe('Negative') // rounds to 49, stays under
-    expect(reviewBucketOf(0)).toBe('Negative')
+  it('buckets by Steam\'s own descriptor string, never by percentage', () => {
+    expect(reviewBucketOf('Overwhelmingly Positive')).toBe('Acclaimed')
+    expect(reviewBucketOf('Very Positive')).toBe('Acclaimed')
+    expect(reviewBucketOf('Positive')).toBe('Positive')
+    expect(reviewBucketOf('Mostly Positive')).toBe('Positive')
+    expect(reviewBucketOf('Mixed')).toBe('Mixed')
+    expect(reviewBucketOf('Mostly Negative')).toBe('Negative')
+    expect(reviewBucketOf('Negative')).toBe('Negative')
+    expect(reviewBucketOf('Very Negative')).toBe('Negative')
+    expect(reviewBucketOf('Overwhelmingly Negative')).toBe('Negative')
   })
 
-  it('rounds a value UP across a bucket boundary rather than comparing the raw float — the confirmed live bug (89.7495% displayed "90%" but bucketed as Positive)', () => {
-    expect(reviewBucketOf(89.7495361781076)).toBe('Acclaimed') // displays "90%" — must match
-    expect(reviewBucketOf(89.9)).toBe('Acclaimed')
-    expect(reviewBucketOf(74.9)).toBe('Positive')
-    expect(reviewBucketOf(49.9)).toBe('Mixed')
+  it('two games Steam labels identically always land in the same bucket regardless of their exact percentage — the confirmed live bug (percentage-threshold bucketing put two "Very Positive" games, 80% and 91%, in different buckets)', () => {
+    // Same label, wildly different percentage — percentage is irrelevant here.
+    expect(reviewBucketOf('Very Positive')).toBe(reviewBucketOf('Very Positive'))
+    expect(reviewBucketOf('Very Positive')).toBe('Acclaimed')
   })
 
-  it('returns null for missing/invalid input', () => {
+  it('returns null for missing/invalid/unrecognized input', () => {
     expect(reviewBucketOf(null)).toBeNull()
     expect(reviewBucketOf(undefined)).toBeNull()
-    expect(reviewBucketOf(NaN)).toBeNull()
+    expect(reviewBucketOf('No user reviews')).toBeNull()
+    expect(reviewBucketOf('Some Unexpected String')).toBeNull()
   })
 
   it('every bucket key has a label in REVIEW_BUCKETS', () => {
@@ -100,22 +101,36 @@ describe('isInReviewBucket', () => {
     expect(isInReviewBucket({ reviewCheckedAt: '2026-07-24', steamReviewCount: 0 }, 'Negative')).toBe(false)
   })
 
-  it('matches the bucket for a game with real data', () => {
-    const game = { reviewCheckedAt: '2026-07-24', steamReviewCount: 100, steamReviewPercent: 95 }
+  it('matches the bucket for a game with real data, keyed off the desc string', () => {
+    const game = { reviewCheckedAt: '2026-07-24', steamReviewCount: 100, steamReviewPercent: 95, steamReviewDesc: 'Very Positive' }
     expect(isInReviewBucket(game, 'Acclaimed')).toBe(true)
     expect(isInReviewBucket(game, 'Mixed')).toBe(false)
+  })
+
+  it('two games with the same desc but different percentages both match the same bucket', () => {
+    const low = { reviewCheckedAt: '2026-07-24', steamReviewCount: 100, steamReviewPercent: 80, steamReviewDesc: 'Very Positive' }
+    const high = { reviewCheckedAt: '2026-07-24', steamReviewCount: 100, steamReviewPercent: 91, steamReviewDesc: 'Very Positive' }
+    expect(isInReviewBucket(low, 'Acclaimed')).toBe(true)
+    expect(isInReviewBucket(high, 'Acclaimed')).toBe(true)
   })
 })
 
 describe('reviewAccentColor', () => {
-  it('maps each bucket to a distinct theme accent var, not a hardcoded Steam-style hex', () => {
-    expect(reviewAccentColor(95)).toBe('var(--cd-accent-cyan)')
-    expect(reviewAccentColor(80)).toBe('var(--cd-accent-amber)')
-    expect(reviewAccentColor(60)).toBe('var(--cd-text-muted)')
-    expect(reviewAccentColor(20)).toBe('var(--cd-status-abandoned)')
+  it('maps each bucket to a distinct theme accent var, not a hardcoded Steam-style hex — Mixed gets amber (worth a second look), Positive fades to muted (solid but unremarkable)', () => {
+    expect(reviewAccentColor('Overwhelmingly Positive')).toBe('var(--cd-accent-cyan)')
+    expect(reviewAccentColor('Very Positive')).toBe('var(--cd-accent-cyan)')
+    expect(reviewAccentColor('Positive')).toBe('var(--cd-text-muted)')
+    expect(reviewAccentColor('Mostly Positive')).toBe('var(--cd-text-muted)')
+    expect(reviewAccentColor('Mixed')).toBe('var(--cd-accent-amber)')
+    expect(reviewAccentColor('Negative')).toBe('var(--cd-status-abandoned)')
+  })
+
+  it('two games sharing a label share a colour regardless of their exact percentage', () => {
+    expect(reviewAccentColor('Very Positive')).toBe(reviewAccentColor('Very Positive'))
   })
 
   it('falls back to muted for no data', () => {
     expect(reviewAccentColor(null)).toBe('var(--cd-text-muted)')
+    expect(reviewAccentColor('No user reviews')).toBe('var(--cd-text-muted)')
   })
 })

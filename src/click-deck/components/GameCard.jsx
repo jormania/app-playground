@@ -148,7 +148,7 @@ export function GameCard({ game, onEdit, onUpdateStatus, isNew = false }) {
             <span className="cd-separator">|</span>
             <span
               className="cd-steam-rating"
-              style={{ color: reviewAccentColor(game.steamReviewPercent) }}
+              style={{ color: reviewAccentColor(game.steamReviewDesc) }}
               title={`${game.steamReviewCount.toLocaleString()} Steam review${game.steamReviewCount === 1 ? '' : 's'}`}
             >
               {game.steamReviewDesc} ({Math.round(game.steamReviewPercent)}%)
