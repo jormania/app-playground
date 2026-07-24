@@ -214,6 +214,19 @@ export class NotionClient {
       return newSub;
     }
     
+    const properties = {
+      'Name': { title: [{ text: { content: sub.name } }] },
+      'Amount': { number: sub.amount },
+      'Type': { select: { name: sub.type } },
+      'DayOfMonth': { number: sub.dayOfMonth },
+      'Category': { relation: sub.categoryId ? [{ id: sub.categoryId }] : [] },
+      'Account': { relation: sub.accountId ? [{ id: sub.accountId }] : [] },
+      'Active': { checkbox: sub.active }
+    };
+    if (sub.lastProcessed) {
+      properties['LastProcessed'] = { date: { start: sub.lastProcessed } };
+    }
+
     const response = await fetch(PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
@@ -222,16 +235,7 @@ export class NotionClient {
         method: 'POST',
         body: {
           parent: { database_id: this.dbIds.subscriptions },
-          properties: {
-            'Name': { title: [{ text: { content: sub.name } }] },
-            'Amount': { number: sub.amount },
-            'Type': { select: { name: sub.type } },
-            'DayOfMonth': { number: sub.dayOfMonth },
-            'Category': { relation: sub.categoryId ? [{ id: sub.categoryId }] : [] },
-            'Account': { relation: sub.accountId ? [{ id: sub.accountId }] : [] },
-            'Active': { checkbox: sub.active },
-            'LastProcessed': sub.lastProcessed ? { date: { start: sub.lastProcessed } } : null
-          }
+          properties
         }
       })
     });
