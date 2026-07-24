@@ -15,17 +15,27 @@ import FilterSheet from './components/FilterSheet';
 import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS } from './models/demoData';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [uiState] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('whereItWent_ui_state')) || {};
+    } catch { return {}; }
+  });
+
+  const [activeTab, setActiveTab] = useState(uiState.activeTab || 'dashboard');
   const [previousTab, setPreviousTab] = useState('dashboard');
   const [data, setData] = useState({ categories: [], accounts: [], transactions: [], subscriptions: [] });
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
 
   // Lifted global states for Navigation
-  const [period, setPeriod] = useState('this_month');
-  const [filterType, setFilterType] = useState('All');
-  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [period, setPeriod] = useState(uiState.period || 'this_month');
+  const [filterType, setFilterType] = useState(uiState.filterType || 'All');
+  const [categoryFilter, setCategoryFilter] = useState(uiState.categoryFilter || 'All');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  useEffect(() => {
+    localStorage.setItem('whereItWent_ui_state', JSON.stringify({ activeTab, period, filterType, categoryFilter }));
+  }, [activeTab, period, filterType, categoryFilter]);
   
   // Sheet visibility states
   const [showPeriodSheet, setShowPeriodSheet] = useState(false);

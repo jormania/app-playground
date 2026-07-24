@@ -102,3 +102,4 @@ Click **Save Configuration**. The app will now read and write directly to your N
 - **PWA Ready**: Offline-capable app shell that can be installed on iOS, Android, or Desktop.
 - **Vitest Coverage**: Robust component testing with 100% pass rates across the suite.
 - **Scrub & Demo Mode**: Instantly archive live data to start fresh, and seamlessly switch between live Notion data and comprehensive local demo data for testing or showcasing the app safely without affecting your real finances.
+- **Deep Insights Engine**: Advanced analytics including 50/30/20 rule mapping, daily burn rate forecasting, Savings Rate, and behavioral habit tracking (the "Latte Factor") across selectable time horizons (Month/Quarter/Year).

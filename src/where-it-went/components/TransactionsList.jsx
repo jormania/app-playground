@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import TransactionForm from './TransactionForm';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { Button } from '../../ds/components/Button';
@@ -8,7 +8,17 @@ import { formatCurrency } from '../lib/currency';
 
 export default function TransactionsList({ data, client, onDataChange, filterProps, period }) {
   const { filterType: filter, categoryFilter, searchQuery } = filterProps || { filterType: 'All', categoryFilter: 'All', searchQuery: '' };
-  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+  
+  const [sortConfig, setSortConfig] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('whereItWent_sort')) || { key: 'date', direction: 'desc' };
+    } catch { return { key: 'date', direction: 'desc' }; }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('whereItWent_sort', JSON.stringify(sortConfig));
+  }, [sortConfig]);
+
   const [editingTx, setEditingTx] = useState(null);
   
   const handleSort = (key) => {
