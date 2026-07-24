@@ -63,7 +63,7 @@ export default function BudgetEditorModal({ isOpen, onClose, categories, client,
         <div style={{ padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-lg)', border: '1px solid var(--color-border)', textAlign: 'center' }}>
           <div style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: '4px' }}>Total Global Budget</div>
           <div style={{ color: 'var(--color-accent)', fontSize: 'var(--text-xl)', fontWeight: 'var(--weight-bold)' }}>
-            {totalBudget.toFixed(0)} RON
+            {totalBudget.toFixed(0)}
           </div>
         </div>
 
