@@ -77,6 +77,13 @@ export const DEMO_CATEGORIES = [
     "description": "Salary, bonuses, freelance work, interest, gifts received"
   },
   {
+    "id": "cat_freelance",
+    "name": "Freelance",
+    "type": "Income",
+    "icon": "💻",
+    "description": "Freelance projects and side-gigs"
+  },
+  {
     "id": "cat_rental_income",
     "name": "Rental Income",
     "type": "Income",
