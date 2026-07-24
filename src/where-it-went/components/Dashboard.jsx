@@ -24,9 +24,6 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
     const timer = setTimeout(() => setLoaded(true), 100);
     return () => clearTimeout(timer);
   }, []);
-
-  const [period, setPeriod] = useState('this_month');
-
   const filteredTransactions = data.transactions.filter(t => {
     const txDate = new Date(t.date);
     const now = new Date();
