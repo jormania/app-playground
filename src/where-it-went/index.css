@@ -54,3 +54,15 @@ a:hover {
   height: 16px;
   box-shadow: 0 0 10px var(--color-border);
 }
+
+.transaction-row {
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+@media (hover: hover) {
+  .transaction-row:hover {
+    background-color: var(--color-surface-2) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+}

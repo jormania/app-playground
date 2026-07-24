@@ -178,10 +178,9 @@ export default function TransactionsList({ data, client, onDataChange }) {
                       const catColor = getCategoryColor(catName);
                       return (
                         <div 
-                          style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', paddingLeft: 'var(--space-lg)', alignItems: 'center', backgroundColor: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${catColor}`, transition: 'background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease', cursor: 'pointer' }}
+                          className="transaction-row"
+                          style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', paddingLeft: 'var(--space-lg)', alignItems: 'center', backgroundColor: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${catColor}`, cursor: 'pointer' }}
                           onClick={() => setEditingTx(tx)}
-                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-surface-2)'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-surface)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
                         >
                           {sortConfig.key !== 'date' && (
                         <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>{tx.date}</div>

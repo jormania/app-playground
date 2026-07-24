@@ -313,10 +313,9 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
               return (
               <li 
                 key={tx.id} 
-                style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) var(--space-xs)', paddingLeft: 'var(--space-md)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${catColor}`, transition: 'background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease', cursor: 'pointer', borderRadius: 'var(--radius-sm)' }}
+                className="transaction-row"
+                style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) var(--space-xs)', paddingLeft: 'var(--space-md)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${catColor}`, cursor: 'pointer', borderRadius: 'var(--radius-sm)' }}
                 onClick={() => setEditingTx(tx)}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-surface-2)'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
               >
                 <div>
                   <div style={{ fontWeight: 'var(--weight-medium)' }}>{tx.description}</div>
