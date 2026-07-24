@@ -254,14 +254,21 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
             { value: 'this_month', label: 'This Month' },
             { value: 'last_month', label: 'Last Month' },
             { value: 'this_year', label: 'This Year' },
-            { value: 'all_time', label: 'All Time' }
+            { value: 'all_time', label: 'All' }
           ]}
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
+      <div style={{ 
+        display: 'flex', 
+        gap: 'var(--space-md)', 
+        marginBottom: 'var(--space-xl)',
+        overflowX: 'auto',
+        paddingBottom: 'var(--space-xs)',
+        WebkitOverflowScrolling: 'touch'
+      }}>
         <div 
-          style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
+          style={{ flex: '1 0 140px', minWidth: '140px', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
           onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
         >
@@ -272,7 +279,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
           <div style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--weight-bold)', color: 'var(--color-success)', whiteSpace: 'nowrap' }}>{formatCurrency(animatedIncome)}</div>
         </div>
         <div 
-          style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
+          style={{ flex: '1 0 140px', minWidth: '140px', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
           onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
         >
@@ -283,7 +290,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
           <div style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)', whiteSpace: 'nowrap' }}>{formatCurrency(animatedExpenses)}</div>
         </div>
         <div 
-          style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
+          style={{ flex: '1 0 140px', minWidth: '140px', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
           onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
         >
