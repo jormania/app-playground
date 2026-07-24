@@ -3,6 +3,7 @@ import Chart from 'chart.js/auto';
 import BudgetEditorModal from './BudgetEditorModal';
 import { Button } from '../../ds/components/Button';
 import { Modal } from '../../ds/components/Modal';
+import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import TransactionForm from './TransactionForm';
 import { getCategoryColor } from '../lib/colors';
 
@@ -246,29 +247,19 @@ export default function Dashboard({ data, client, onDataChange, onNavigate }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-md)' }}>
-        <select 
-          value={period} 
-          onChange={(e) => setPeriod(e.target.value)}
-          style={{
-            padding: 'var(--space-xs) var(--space-sm)',
-            borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--color-border)',
-            backgroundColor: 'var(--color-surface)',
-            color: 'var(--color-ink)',
-            fontSize: 'var(--text-sm)',
-            cursor: 'pointer'
-          }}
-        >
-          <option value="this_month">This Month</option>
-          <option value="last_month">Last Month</option>
-          <option value="last_3_months">Last 3 Months</option>
-          <option value="last_6_months">Last 6 Months</option>
-          <option value="this_year">This Year</option>
-          <option value="all_time">All Time</option>
-        </select>
+        <SegmentedControl
+          value={period}
+          onChange={(val) => setPeriod(val)}
+          options={[
+            { value: 'this_month', label: 'This Month' },
+            { value: 'last_month', label: 'Last Month' },
+            { value: 'this_year', label: 'This Year' },
+            { value: 'all_time', label: 'All Time' }
+          ]}
+        />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(105px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
         <div 
           style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'default' }}
           onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
