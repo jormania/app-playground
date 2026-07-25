@@ -24,19 +24,21 @@ export function calculateMetrics(transactions, categories) {
 
   expenses.forEach(tx => {
     const catName = getCatName(tx.categoryId).toLowerCase();
+    const desc = (tx.description || '').toLowerCase();
+    const isAlimonyOrSupport = desc.includes('alimony') || desc.includes('support') || desc.includes('maintenance') || desc.includes('tuition') || desc.includes('child care');
     if (catSums[tx.categoryId]) catSums[tx.categoryId].total += tx.amount;
 
     if (catName.includes('propert')) propertyTotal += tx.amount;
     if (catName.includes('tax')) taxesTotal += tx.amount;
     if (catName.includes('invest')) investingTotal += tx.amount;
     
-    if (catName.includes('hous') || catName.includes('utilit') || catName.includes('propert') || catName.includes('subscript') || catName.includes('rent') || catName.includes('loan') || catName.includes('tax')) {
+    if (catName.includes('hous') || catName.includes('utilit') || catName.includes('propert') || catName.includes('subscript') || catName.includes('rent') || catName.includes('loan') || catName.includes('tax') || isAlimonyOrSupport) {
       fixedCostsTotal += tx.amount;
     }
 
     if (KEYWORDS.SAVINGS.some(k => catName.includes(k))) {
       savingsTotal += tx.amount;
-    } else if (KEYWORDS.NEEDS.some(k => catName.includes(k))) {
+    } else if (KEYWORDS.NEEDS.some(k => catName.includes(k)) || isAlimonyOrSupport) {
       needsTotal += tx.amount;
     } else if (KEYWORDS.WANTS.some(k => catName.includes(k))) {
       wantsTotal += tx.amount;

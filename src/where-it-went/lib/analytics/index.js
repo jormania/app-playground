@@ -114,8 +114,9 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
   
   txInHorizon.filter(t => t.type === 'Expense').forEach(tx => {
     const catName = getCatName(tx.categoryId).toLowerCase();
-    const isSubscription = catName.includes('subscript');
-    let desc = (tx.description || '').toLowerCase().replace(/[0-9#\-_,.*]/g, ' ').replace(/\s+/g, ' ').trim();
+    const rawDesc = (tx.description || '').toLowerCase();
+    const isSubscription = catName.includes('subscript') || rawDesc.includes('alimony') || rawDesc.includes('support') || rawDesc.includes('maintenance') || rawDesc.includes('tuition') || rawDesc.includes('child care');
+    let desc = rawDesc.replace(/[0-9#\-_,.*]/g, ' ').replace(/\s+/g, ' ').trim();
     if (desc.length < 3) return; 
     
     if (isSubscription) {
