@@ -118,12 +118,19 @@
   </table>
 
   <h2>3. Core Views</h2>
-  <p>Where It Went features two primary views within a single page application.</p>
+  <p>Where It Went features three primary views accessible from the top navigation bar, designed for desktop and mobile precision without horizontal drifting.</p>
 
   <h3>Dashboard</h3>
-  <p>The top section contains Key Performance Indicators (KPIs) summarizing your financial health for the current month: <b>Income</b>, <b>Expenses</b>, and <b>Net Cash Flow</b>.</p>
-  <p>Below the KPIs, the <b>Monthly Review</b> intelligently analyzes your spending and presents actionable insights: month-over-month comparisons, missing recurring incomes, increased spending alerts in discretionary categories, and reflective questions to help you align your spending with your values.</p>
-  <p>It includes a sleek Chart.js bar graph that visualizes Monthly Spending vs Income over time, alongside a Recent Transactions list.</p>
+  <p>The top section contains Key Performance Indicators (KPIs) summarizing your financial health for the current period: <b>Income</b>, <b>Expenses</b>, and <b>Net Cash Flow</b>, rendered with animated fintech number counters.</p>
+  <p>Below the KPIs, you can track your spending against monthly targets with visual progress bars in <b>Budget Limits</b>, view a responsive Chart.js Doughnut breakdown of expenses by category, and monitor cash flow patterns over time.</p>
+
+  <h3>Deep Insights Engine (1.0)</h3>
+  <p>The dedicated <b>Insights</b> tab prioritizes financial decision support over raw reporting. It is structured into three actionable tiers designed to be understood in under 30 seconds:</p>
+  <ul>
+    <li><b>Act (Immediate Attention & Action):</b> Features an editorial <b>Month in Review</b> paragraph with a real-time timestamp indicator (<code>⏱️ Insights generated</code>), concise numeric <b>Attention Needed</b> alert banners, and <b>Financial Wins</b> celebrating positive cash flow and savings milestones.</li>
+    <li><b>Understand (Core Financial Architecture):</b> Elevates the <b>Savings Rate</b> into a prominent primary KPI hero banner within Financial Health. Consolidates recurring bills, subscriptions, property expenses, and taxes into a unified <b>Fixed & Structural Costs Breakdown</b> to eliminate vertical scrolling. Maps your budget against <b>The 50/30/20 Rule</b> targets and analyzes <b>Income Dependency</b> across streams.</li>
+    <li><b>Explore (Spending Habits & Trends):</b> Filters <b>Category Trends (MoM)</b> to highlight only the top 5 most significant increases and decreases. Clarifies <b>Frequent Spending</b> ("Latte Factor") with explicit Count, Avg Spend, and Total Spend labels. Renders <b>Largest Transactions</b> with inline category badges for rapid scanning.</li>
+  </ul>
 
   <h3>Transactions Ledger</h3>
   <p>The lower section is your complete ledger. You can sort by clicking the headers (Date, Description, Category, Account, Amount). The Add Transaction component dynamically filters available categories depending on whether you input a positive amount (Income) or a negative amount (Expense), and renders their emojis and descriptions inline.</p>
