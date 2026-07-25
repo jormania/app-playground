@@ -142,6 +142,19 @@ a:hover {
   .trend-chart-container {
     height: 250px !important;
   }
+  .insights-view, .dashboard-container, [class*="-view"], [class*="-container"] {
+    padding-left: var(--space-md) !important;
+    padding-right: var(--space-md) !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    overflow-x: hidden;
+  }
+  div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 .trend-chart-container {

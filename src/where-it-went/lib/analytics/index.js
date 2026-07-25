@@ -104,7 +104,8 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
   const largestTransactions = [...txInHorizon]
     .filter(t => t.type === 'Expense')
     .sort((a, b) => b.amount - a.amount)
-    .slice(0, 5);
+    .slice(0, 5)
+    .map(t => ({ ...t, categoryName: categories.find(c => c.id === t.categoryId)?.name || 'Uncategorized' }));
 
   // Behavioral Patterns
   const getCatName = (id) => categories.find(c => c.id === id)?.name || 'Uncategorized';

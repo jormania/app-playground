@@ -102,4 +102,8 @@ Click **Save Configuration**. The app will now read and write directly to your N
 - **PWA Ready**: Offline-capable app shell that can be installed on iOS, Android, or Desktop.
 - **Vitest Coverage**: Robust component testing with 100% pass rates across the suite.
 - **Scrub & Demo Mode**: Instantly archive live data to start fresh, and seamlessly switch between live Notion data and comprehensive local demo data for testing or showcasing the app safely without affecting your real finances.
-- **Deep Insights Engine**: Advanced analytics including 50/30/20 rule mapping, daily burn rate forecasting, Savings Rate, and behavioral habit tracking (the "Latte Factor") across selectable time horizons (Month/Quarter/Year).
+- **Deep Insights Engine (1.0 Overhaul)**:
+  - **Information Hierarchy**: Reorganized into three actionable sections: **Act** (Attention Needed & Financial Wins), **Understand** (Primary KPI Savings Rate Hero, Fixed & Structural Costs, 50/30/20 Rule, Income Sources), and **Explore** (Category Trends, Frequent Spending, Largest Transactions with Category Badges).
+  - **Modular Architecture**: Decoupled analytics into dedicated modules (`metrics.js`, `comparisons.js`, `rules.js`, `summaries.js`) with historical pace comparisons and deterministic monthly editorial summaries.
+  - **Mobile Layout Precision**: Fully responsive grid constraints ensure equal left and right margins without horizontal drifting on mobile viewports.
+  - **Timestamp Indicator**: Real-time "Insights generated" timestamp indicating when analytics were last calculated.

@@ -10,7 +10,8 @@ import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 import { useCountUp } from '../lib/useCountUp';
 
-export default function Dashboard({ data, client, onDataChange, onNavigate, config, period, filterProps }) {
+export default function Dashboard({ data, client, onDataChange, onNavigate, config, period = 'this_month', filterProps }) {
+  const activePeriod = period || 'this_month';
   const { filterType: filter = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
@@ -40,31 +41,31 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
       const txDate = new Date(t.date);
       const now = new Date();
     
-    if (period === 'all_time') return true;
-    if (period === 'this_month') {
+    if (activePeriod === 'all_time') return true;
+    if (activePeriod === 'this_month') {
       return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear();
     }
-    if (period === 'last_month') {
+    if (activePeriod === 'last_month') {
       const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       return txDate.getMonth() === lastMonth.getMonth() && txDate.getFullYear() === lastMonth.getFullYear();
     }
-    if (period === 'last_3_months') {
+    if (activePeriod === 'last_3_months') {
       const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
       return txDate >= threeMonthsAgo;
     }
-    if (period === 'last_6_months') {
+    if (activePeriod === 'last_6_months') {
       const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
       return txDate >= sixMonthsAgo;
     }
-    if (period === 'this_year') {
+    if (activePeriod === 'this_year') {
       return txDate.getFullYear() === now.getFullYear();
     }
-    if (period.match(/^\d{4}-\d{2}$/)) {
-      const [y, m] = period.split('-');
+    if (activePeriod.match(/^\d{4}-\d{2}$/)) {
+      const [y, m] = activePeriod.split('-');
       return txDate.getFullYear() === parseInt(y) && txDate.getMonth() === parseInt(m) - 1;
     }
-    if (period.match(/^\d{4}$/)) {
-      return txDate.getFullYear() === parseInt(period);
+    if (activePeriod.match(/^\d{4}$/)) {
+      return txDate.getFullYear() === parseInt(activePeriod);
     }
     return true;
   });
@@ -73,35 +74,35 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
     const txDate = new Date(t.date);
     const now = new Date();
     
-    if (period === 'all_time') return false;
-    if (period === 'this_month') {
+    if (activePeriod === 'all_time') return false;
+    if (activePeriod === 'this_month') {
       const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       return txDate.getMonth() === lastMonth.getMonth() && txDate.getFullYear() === lastMonth.getFullYear();
     }
-    if (period === 'last_month') {
+    if (activePeriod === 'last_month') {
       const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
       return txDate.getMonth() === twoMonthsAgo.getMonth() && txDate.getFullYear() === twoMonthsAgo.getFullYear();
     }
-    if (period === 'last_3_months') {
+    if (activePeriod === 'last_3_months') {
       const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
       const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
       return txDate >= sixMonthsAgo && txDate < threeMonthsAgo;
     }
-    if (period === 'last_6_months') {
+    if (activePeriod === 'last_6_months') {
       const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
       const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
       return txDate >= twelveMonthsAgo && txDate < sixMonthsAgo;
     }
-    if (period === 'this_year') {
+    if (activePeriod === 'this_year') {
       return txDate.getFullYear() === now.getFullYear() - 1;
     }
-    if (period.match(/^\d{4}-\d{2}$/)) {
-      const [y, m] = period.split('-');
+    if (activePeriod.match(/^\d{4}-\d{2}$/)) {
+      const [y, m] = activePeriod.split('-');
       const prev = new Date(parseInt(y), parseInt(m) - 2, 1);
       return txDate.getFullYear() === prev.getFullYear() && txDate.getMonth() === prev.getMonth();
     }
-    if (period.match(/^\d{4}$/)) {
-      return txDate.getFullYear() === parseInt(period) - 1;
+    if (activePeriod.match(/^\d{4}$/)) {
+      return txDate.getFullYear() === parseInt(activePeriod) - 1;
     }
     return false;
   });
@@ -223,7 +224,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
     if (filteredTransactions.length === 0) return;
     
     // Group cash flow by day or month depending on period
-    const isYearly = period === 'this_year' || period === 'all_time';
+    const isYearly = activePeriod === 'this_year' || activePeriod === 'all_time';
     const trendData = {};
     filteredTransactions.forEach(tx => {
       if (tx.type !== 'Expense' && tx.type !== 'Income') return;
@@ -296,7 +297,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         trendChartInstance.current = null;
       }
     };
-  }, [filteredTransactions, period]);
+  }, [filteredTransactions, activePeriod]);
 
   // Calculate budgets
   const budgetCategories = data.categories.filter(c => c.budgetLimit > 0);

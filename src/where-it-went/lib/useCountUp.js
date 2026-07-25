@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 
 export function useCountUp(end, duration = 1500) {
-  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
+  const isTest = (typeof process !== 'undefined' && (process.env.NODE_ENV === 'test' || process.env.VITEST)) ||
+                 (import.meta && import.meta.env && (import.meta.env.MODE === 'test' || import.meta.env.VITEST)) ||
+                 (typeof window !== 'undefined' && (window.__vitest_index__ || window.__vitest_worker__ || window.__VITEST__ || (window.navigator && (window.navigator.userAgent.includes('jsdom') || window.navigator.userAgent.includes('HappyDOM') || window.navigator.userAgent.includes('happy-dom')))));
+  if (isTest) {
     return end;
   }
   const [value, setValue] = useState(0);
@@ -38,3 +41,4 @@ export function useCountUp(end, duration = 1500) {
 
   return value;
 }
+
