@@ -563,7 +563,7 @@ export default function InsightsView({ data, period, filterProps }) {
             </div>
           )}
 
-          {/* Property Insights Card */}
+          {/* Property Insights Card (Operations Dashboard) */}
           {behavioral.propertyAnalysis && (
             <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', marginTop: 'var(--space-xl)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
@@ -573,34 +573,54 @@ export default function InsightsView({ data, period, filterProps }) {
                   </h3>
                   <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: '4px 0 0 0' }}>
                     {behavioral.propertyAnalysis.count > 0 
-                      ? 'Analyzing rental income and property operating expenses in this period.' 
-                      : 'Prepared for real estate asset analysis when property records are logged.'}
+                      ? 'Monitoring rental property yields, operating overhead, and cash flow trends.' 
+                      : 'Prepared for real estate operations tracking when property records are logged.'}
                   </p>
                 </div>
                 {behavioral.propertyAnalysis.count > 0 && (
-                  <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center', backgroundColor: 'var(--color-surface-2)', padding: '6px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center', backgroundColor: 'var(--color-surface-2)', padding: '8px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Net Cash Flow</div>
                       <div style={{ fontWeight: 'var(--weight-bold)', color: behavioral.propertyAnalysis.netFlow >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                         {behavioral.propertyAnalysis.netFlow >= 0 ? '+' : ''}{formatCurrency(behavioral.propertyAnalysis.netFlow)}
                       </div>
+                      {behavioral.propertyAnalysis.prevNetFlow !== undefined && (
+                        <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
+                          {behavioral.propertyAnalysis.diffFlowFromPrev === 0 ? 'Stable vs prev' : `${behavioral.propertyAnalysis.diffFlowFromPrev > 0 ? '+' : ''}${formatCurrency(behavioral.propertyAnalysis.diffFlowFromPrev)} vs prev`}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
+                    <div style={{ width: '1px', height: '32px', backgroundColor: 'var(--color-border)' }}></div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Rental Income</div>
                       <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-success)' }}>{formatCurrency(behavioral.propertyAnalysis.totalIncome)}</div>
+                      {behavioral.propertyAnalysis.prevTotalIncome !== undefined && (
+                        <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
+                          {behavioral.propertyAnalysis.diffIncomeFromPrev === 0 ? 'Stable vs prev' : `${behavioral.propertyAnalysis.diffIncomeFromPrev > 0 ? '+' : ''}${formatCurrency(behavioral.propertyAnalysis.diffIncomeFromPrev)} vs prev`}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
+                    <div style={{ width: '1px', height: '32px', backgroundColor: 'var(--color-border)' }}></div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Expenses</div>
                       <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)' }}>{formatCurrency(behavioral.propertyAnalysis.totalExpense)}</div>
+                      {behavioral.propertyAnalysis.prevTotalExpense !== undefined && (
+                        <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
+                          {behavioral.propertyAnalysis.diffExpenseFromPrev === 0 ? 'Stable vs prev' : `${behavioral.propertyAnalysis.diffExpenseFromPrev > 0 ? '+' : ''}${formatCurrency(behavioral.propertyAnalysis.diffExpenseFromPrev)} vs prev`}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
+                    <div style={{ width: '1px', height: '32px', backgroundColor: 'var(--color-border)' }}></div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Expense Ratio</div>
                       <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>
                         {behavioral.propertyAnalysis.expenseRatio !== null ? `${(behavioral.propertyAnalysis.expenseRatio * 100).toFixed(0)}%` : '0%'}
                       </div>
+                      {behavioral.propertyAnalysis.diffRatioFromPrev !== null && behavioral.propertyAnalysis.diffRatioFromPrev !== undefined && (
+                        <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
+                          {Math.round(behavioral.propertyAnalysis.diffRatioFromPrev * 100) === 0 ? 'Stable ratio' : `${behavioral.propertyAnalysis.diffRatioFromPrev > 0 ? '+' : ''}${Math.round(behavioral.propertyAnalysis.diffRatioFromPrev * 100)}% pts vs prev`}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -608,23 +628,29 @@ export default function InsightsView({ data, period, filterProps }) {
 
               {behavioral.propertyAnalysis.count > 0 ? (
                 <div>
-                  {/* Period Comparison & Deviation Alerts */}
-                  {(behavioral.propertyAnalysis.prevNetFlow !== 0 || behavioral.propertyAnalysis.unusualSpending) && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
-                      {behavioral.propertyAnalysis.prevNetFlow !== 0 && (
-                        <div style={{ fontSize: 'var(--text-xs)', padding: '6px 12px', backgroundColor: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          <span>vs. Previous Net Flow:</span>
-                          <b style={{ color: behavioral.propertyAnalysis.diffFlowFromPrev >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                            {behavioral.propertyAnalysis.diffFlowFromPrev >= 0 ? '+' : ''}{formatCurrency(behavioral.propertyAnalysis.diffFlowFromPrev)}
-                          </b>
-                          <span style={{ color: 'var(--color-muted)' }}>({formatCurrency(behavioral.propertyAnalysis.prevNetFlow)} prev)</span>
-                        </div>
-                      )}
-                      {behavioral.propertyAnalysis.unusualSpending && (
-                        <div style={{ fontSize: 'var(--text-xs)', padding: '6px 12px', backgroundColor: 'color-mix(in srgb, var(--color-danger) 10%, transparent)', color: 'var(--color-danger)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-danger)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          <span>⚠️ <b>Pattern Deviation:</b> {behavioral.propertyAnalysis.unusualSpending.message}</span>
-                        </div>
-                      )}
+                  {/* Pattern Deviation Alert */}
+                  {behavioral.propertyAnalysis.unusualSpending && (
+                    <div style={{ marginBottom: 'var(--space-md)' }}>
+                      <div style={{ fontSize: 'var(--text-xs)', padding: '8px 12px', backgroundColor: 'color-mix(in srgb, var(--color-danger) 10%, transparent)', color: 'var(--color-danger)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-danger)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>⚠️ <b>Pattern Deviation:</b> {behavioral.propertyAnalysis.unusualSpending.message}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Compact Net Cash Flow Trend (Sparkline/Row) */}
+                  {behavioral.propertyAnalysis.cashFlowTrend && behavioral.propertyAnalysis.cashFlowTrend.length > 1 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 12px', backgroundColor: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', marginBottom: 'var(--space-lg)', fontSize: 'var(--text-xs)', overflowX: 'auto' }}>
+                      <span style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-muted)', whiteSpace: 'nowrap' }}>📈 Net Cash Flow Trend:</span>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {behavioral.propertyAnalysis.cashFlowTrend.map((item, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'var(--color-surface)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
+                            <span style={{ color: 'var(--color-muted)', fontSize: '11px' }}>{item.month}:</span>
+                            <span style={{ fontWeight: 'var(--weight-bold)', color: item.net >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                              {item.net >= 0 ? '+' : ''}{formatCurrency(item.net)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -635,8 +661,8 @@ export default function InsightsView({ data, period, filterProps }) {
                         Property Expense Breakdown
                       </h4>
                       {behavioral.propertyAnalysis.dominantSubcategory && (
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink)', backgroundColor: 'var(--color-surface-2)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', marginBottom: '10px', borderLeft: '3px solid var(--color-brass)' }}>
-                          👑 <b>Dominant Cost:</b> {behavioral.propertyAnalysis.dominantSubcategory.label} accounted for <b>{(behavioral.propertyAnalysis.dominantSubcategory.percentage * 100).toFixed(0)}%</b> of property operating expenses ({formatCurrency(behavioral.propertyAnalysis.dominantSubcategory.amount)}).
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink)', backgroundColor: 'var(--color-surface-2)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', marginBottom: '12px', borderLeft: '3px solid var(--color-brass)' }}>
+                          👑 <b>Primary Operating Cost:</b> {behavioral.propertyAnalysis.dominantSubcategory.label} dominated operating overhead this period, representing <b>{(behavioral.propertyAnalysis.dominantSubcategory.percentage * 100).toFixed(0)}%</b> ({formatCurrency(behavioral.propertyAnalysis.dominantSubcategory.amount)}) of total property expenditures.
                         </div>
                       )}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -681,25 +707,31 @@ export default function InsightsView({ data, period, filterProps }) {
                       )}
                     </div>
 
-                    {/* Right Column: Top Expenses & Explanatory Insight */}
+                    {/* Right Column: Top Expenses & Explanatory Summary */}
                     <div>
                       <h4 style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)', marginTop: 0 }}>
                         Largest Property Expenses
                       </h4>
                       <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--space-lg) 0' }}>
                         {behavioral.propertyAnalysis.topExpenses.map((tx, idx) => (
-                          <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: idx === behavioral.propertyAnalysis.topExpenses.length - 1 ? 'none' : '1px solid var(--color-border)', fontSize: 'var(--text-sm)' }}>
+                          <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: idx === behavioral.propertyAnalysis.topExpenses.length - 1 ? 'none' : '1px solid var(--color-border)', fontSize: 'var(--text-sm)' }}>
                             <div>
                               <span style={{ fontWeight: 'var(--weight-medium)' }}>{tx.description}</span>
                               <div style={{ fontSize: '11px', color: 'var(--color-muted)' }}>{new Date(tx.date).toLocaleDateString()}</div>
                             </div>
-                            <span style={{ fontWeight: 'var(--weight-bold)' }}>{formatCurrency(tx.amount)}</span>
+                            <span style={{ fontWeight: 'var(--weight-bold)', textAlign: 'right' }}>
+                              <div>{formatCurrency(tx.amount)}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--color-muted)', fontWeight: 'normal' }}>
+                                {tx.percentageOfExpense ? `${tx.percentageOfExpense.toFixed(0)}% of total` : ''}
+                              </div>
+                            </span>
                           </li>
                         ))}
                       </ul>
 
-                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', backgroundColor: 'color-mix(in srgb, var(--color-success) 8%, transparent)', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)', borderLeft: '3px solid var(--color-success)' }}>
-                        💡 <b>Real Estate Asset Insight:</b> Separating rental income and property operating costs from your personal cash flow gives you a true picture of your real estate investment performance. Monitoring Net Cash Flow and categorizing maintenance versus recurring structural costs (mortgage, taxes, HOA) prevents lumpy property repairs from distorting your personal lifestyle spending metrics.
+                      {/* Deterministic Executive Summary */}
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink)', backgroundColor: 'color-mix(in srgb, var(--color-success) 8%, transparent)', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)', borderLeft: '3px solid var(--color-success)', lineHeight: '1.5' }}>
+                        📋 <b>Operations Executive Summary:</b> {behavioral.propertyAnalysis.operationsSummary}
                       </div>
                     </div>
                   </div>

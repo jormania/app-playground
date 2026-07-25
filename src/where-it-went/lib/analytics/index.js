@@ -260,7 +260,7 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     avgHistoricalSpend
   };
 
-  // --- PROPERTY INSIGHTS ENGINE ---
+  // --- PROPERTY INSIGHTS ENGINE (OPERATIONS DASHBOARD) ---
   const isPropertyTx = t => {
     const cat = getCatName(t.categoryId).toLowerCase();
     const text = [t.description, t.notes, ...(Array.isArray(t.tags) ? t.tags : [])].filter(Boolean).join(' ').toLowerCase();
@@ -295,22 +295,39 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     else propBreakdown.other += t.amount;
   });
 
-  const topPropExpenses = [...propExpTx].sort((a, b) => b.amount - a.amount).slice(0, 3);
+  const topPropExpenses = [...propExpTx].sort((a, b) => b.amount - a.amount).slice(0, 3).map(tx => ({
+    ...tx,
+    percentageOfExpense: totalPropExpense > 0 ? (tx.amount / totalPropExpense) * 100 : 0
+  }));
 
-  // Previous period Property comparison
+  // Previous period Property comparison & Driver Analysis
   const prevPropTx = prevTxInHorizon.filter(isPropertyTx);
   const prevPropIncome = prevPropTx.filter(t => t.type === 'Income').reduce((sum, t) => sum + t.amount, 0);
   const prevPropExpense = prevPropTx.filter(t => t.type === 'Expense').reduce((sum, t) => sum + t.amount, 0);
   const prevNetPropertyFlow = prevPropIncome - prevPropExpense;
   const diffPropFlowFromPrev = netPropertyFlow - prevNetPropertyFlow;
+  const diffIncomeFromPrev = totalPropIncome - prevPropIncome;
+  const diffExpenseFromPrev = totalPropExpense - prevPropExpense;
+  const prevExpenseRatio = prevPropIncome > 0 ? (prevPropExpense / prevPropIncome) : null;
+  const diffRatioFromPrev = (propExpenseRatio !== null && prevExpenseRatio !== null) ? (propExpenseRatio - prevExpenseRatio) : null;
 
-  // Dominant Property Subcategory
+  const prevPropBreakdown = { mortgage: 0, maintenance: 0, taxes: 0, utilities: 0, other: 0 };
+  prevPropTx.filter(t => t.type === 'Expense').forEach(t => {
+    const text = [t.description, t.notes, ...(Array.isArray(t.tags) ? t.tags : [])].filter(Boolean).join(' ').toLowerCase();
+    if (propMortgageKws.some(k => text.includes(k))) prevPropBreakdown.mortgage += t.amount;
+    else if (propMaintKws.some(k => text.includes(k))) prevPropBreakdown.maintenance += t.amount;
+    else if (propTaxKws.some(k => text.includes(k))) prevPropBreakdown.taxes += t.amount;
+    else if (propUtilKws.some(k => text.includes(k))) prevPropBreakdown.utilities += t.amount;
+    else prevPropBreakdown.other += t.amount;
+  });
+
+  // Dominant Property Subcategory & Growth Driver
   const propSubcatLabels = {
-    mortgage: '🏦 Mortgage & Structural Loans',
+    mortgage: '🏦 Mortgage & Loans',
     maintenance: '🛠️ Maintenance & Repairs',
-    taxes: '🏛️ Property Taxes & Insurance',
+    taxes: '🏛️ Taxes & Insurance',
     utilities: '💡 Utilities & HOA Fees',
-    other: '📦 Other Property Overhead'
+    other: '📦 Property Overhead'
   };
   const dominantPropEntry = Object.entries(propBreakdown).sort((a, b) => b[1] - a[1])[0];
   const dominantPropSubcat = dominantPropEntry && dominantPropEntry[1] > 0 ? {
@@ -320,7 +337,14 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     percentage: totalPropExpense > 0 ? (dominantPropEntry[1] / totalPropExpense) : 0
   } : null;
 
-  // Property Historical Deviation Alert
+  const growthDrivers = Object.keys(propBreakdown).map(k => ({
+    key: k,
+    label: propSubcatLabels[k],
+    diff: propBreakdown[k] - (prevPropBreakdown[k] || 0)
+  })).sort((a, b) => b.diff - a.diff);
+  const primaryDriver = growthDrivers[0] && growthDrivers[0].diff > 30 ? growthDrivers[0] : null;
+
+  // Property Historical Deviation Alert with Driver
   const allPropExp = transactions.filter(t => t.type === 'Expense' && isPropertyTx(t));
   const monthlyPropTotals = {};
   allPropExp.forEach(t => {
@@ -332,13 +356,46 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
   const avgHistPropExpense = histPropVals.length > 0 ? histPropVals.reduce((a, b) => a + b, 0) / histPropVals.length : 0;
   
   let propUnusualSpending = null;
-  if (avgHistPropExpense > 0 && totalPropExpense > avgHistPropExpense * 1.4 && (totalPropExpense - avgHistPropExpense) > 300) {
+  if (avgHistPropExpense > 0 && totalPropExpense > avgHistPropExpense * 1.25 && (totalPropExpense - avgHistPropExpense) > 150) {
     const pctAbove = ((totalPropExpense - avgHistPropExpense) / avgHistPropExpense) * 100;
+    const driverText = primaryDriver ? `, driven primarily by a $${Math.round(primaryDriver.diff)} increase in ${primaryDriver.label}` : '';
     propUnusualSpending = {
       type: 'high',
       pctAbove: Math.round(pctAbove),
-      message: `Property operating expenses this period are ${Math.round(pctAbove)}% above your historical monthly average due to maintenance or repairs.`
+      message: `Property operating overhead is ${Math.round(pctAbove)}% above your monthly baseline ($${Math.round(totalPropExpense - avgHistPropExpense)} above average)${driverText}.`
     };
+  }
+
+  // Compact Net Cash Flow Trend (Last 4 Active Months)
+  const allPropTx = transactions.filter(isPropertyTx);
+  const monthlyCashFlowMap = {};
+  allPropTx.forEach(t => {
+    if (!t.date) return;
+    const ym = t.date.substring(0, 7);
+    if (!monthlyCashFlowMap[ym]) monthlyCashFlowMap[ym] = { income: 0, expense: 0, net: 0, month: ym };
+    if (t.type === 'Income') monthlyCashFlowMap[ym].income += t.amount;
+    if (t.type === 'Expense') monthlyCashFlowMap[ym].expense += t.amount;
+    monthlyCashFlowMap[ym].net = monthlyCashFlowMap[ym].income - monthlyCashFlowMap[ym].expense;
+  });
+  const cashFlowTrend = Object.values(monthlyCashFlowMap).sort((a, b) => a.month.localeCompare(b.month)).slice(-4);
+
+  // Deterministic Operations Summary
+  let operationsSummary = '';
+  if (netPropertyFlow > 0) {
+    operationsSummary = `Properties generated a healthy positive cash flow of $${Math.round(netPropertyFlow)} on $${Math.round(totalPropIncome)} in gross rental revenue (operating ratio: ${propExpenseRatio !== null ? `${(propExpenseRatio * 100).toFixed(0)}%` : '0%'}). `;
+  } else if (totalPropIncome > 0) {
+    operationsSummary = `Operating overhead ($${Math.round(totalPropExpense)}) exceeded gross revenue ($${Math.round(totalPropIncome)}), resulting in a net deficit of $${Math.round(Math.abs(netPropertyFlow))}. `;
+  } else {
+    operationsSummary = `Logged $${Math.round(totalPropExpense)} in property operating overhead with no rental revenue recorded during this period. `;
+  }
+
+  if (propUnusualSpending && primaryDriver) {
+    operationsSummary += `Noticeable expenditure spike driven by ${primaryDriver.label} ($${Math.round(propBreakdown[primaryDriver.key])}).`;
+  } else if (diffExpenseFromPrev !== 0 && prevPropExpense > 0) {
+    const dir = diffExpenseFromPrev > 0 ? 'increased' : 'decreased';
+    operationsSummary += `Operating overhead ${dir} by $${Math.round(Math.abs(diffExpenseFromPrev))} vs. previous period, with routine structural costs under control.`;
+  } else {
+    operationsSummary += `Operating overhead and net cash flow remained stable with no unexpected maintenance deviations.`;
   }
 
   const propertyAnalysis = (totalPropIncome > 0 || totalPropExpense > 0) ? {
@@ -351,8 +408,16 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     topExpenses: topPropExpenses,
     prevNetFlow: prevNetPropertyFlow,
     diffFlowFromPrev: diffPropFlowFromPrev,
+    prevTotalIncome: prevPropIncome,
+    diffIncomeFromPrev,
+    prevTotalExpense: prevPropExpense,
+    diffExpenseFromPrev,
+    prevExpenseRatio,
+    diffRatioFromPrev,
     dominantSubcategory: dominantPropSubcat,
     unusualSpending: propUnusualSpending,
+    cashFlowTrend,
+    operationsSummary,
     shareOfTotalExpense: currentMetrics.totalExpense > 0 ? totalPropExpense / currentMetrics.totalExpense : 0
   } : null;
 
