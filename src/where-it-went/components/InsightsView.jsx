@@ -152,7 +152,7 @@ export default function InsightsView({ data, period, filterProps }) {
               Fixed & Structural Costs
             </h3>
             <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
-              Housing, Utilities, Property, Taxes, and Subscriptions.
+              Housing, Utilities, Property, Taxes, Loans, and Subscriptions.
             </p>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: '1px solid var(--color-border)' }}>
               <div style={{ fontWeight: 'var(--weight-medium)' }}>Total Fixed Costs</div>

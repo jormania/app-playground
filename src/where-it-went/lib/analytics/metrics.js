@@ -30,7 +30,7 @@ export function calculateMetrics(transactions, categories) {
     if (catName.includes('tax')) taxesTotal += tx.amount;
     if (catName.includes('invest')) investingTotal += tx.amount;
     
-    if (catName.includes('hous') || catName.includes('utilit') || catName.includes('propert') || catName.includes('subscript') || catName.includes('rent')) {
+    if (catName.includes('hous') || catName.includes('utilit') || catName.includes('propert') || catName.includes('subscript') || catName.includes('rent') || catName.includes('loan') || catName.includes('tax')) {
       fixedCostsTotal += tx.amount;
     }
 

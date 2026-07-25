@@ -22,27 +22,33 @@ export default function TransactionForm({ categories, accounts, onSave, onCancel
   useEffect(() => {
     if (!selectedCat || !accounts || accounts.length === 0) return;
 
-    let targetAccountName = '';
-    
+    let keywords = [];
     if (selectedCat.type === 'Expense') {
-      targetAccountName = 'Revolut';
+      keywords = ['revolut', 'card', 'checking', 'bank', 'cash'];
     } else if (selectedCat.type === 'Income') {
-      if (selectedCat.name === 'Salary') {
-        targetAccountName = 'Checking';
-      } else if (selectedCat.name === 'Rent') {
-        targetAccountName = 'Cash';
-      } else if (selectedCat.name === 'Freelance') {
-        targetAccountName = 'Revolut';
-      } else if (selectedCat.name === 'Gift') {
-        targetAccountName = 'Cash';
+      const catName = selectedCat.name.toLowerCase();
+      if (catName.includes('salary')) {
+        keywords = ['checking', 'bank', 'revolut', 'main'];
+      } else if (catName.includes('rent') || catName.includes('gift')) {
+        keywords = ['cash', 'revolut', 'checking'];
+      } else if (catName.includes('freelance') || catName.includes('loan')) {
+        keywords = ['revolut', 'checking', 'bank'];
+      } else {
+        keywords = ['checking', 'revolut', 'cash'];
       }
     }
 
-    if (targetAccountName) {
-      const targetAcc = accounts.find(a => a.name === targetAccountName);
-      if (targetAcc) {
-        setAccountId(targetAcc.id);
-      }
+    let targetAcc = null;
+    for (const kw of keywords) {
+      targetAcc = accounts.find(a => a.name.toLowerCase().includes(kw));
+      if (targetAcc) break;
+    }
+    if (!targetAcc && accounts.length > 0) {
+      targetAcc = accounts[0];
+    }
+
+    if (targetAcc) {
+      setAccountId(targetAcc.id);
     }
   }, [categoryId, selectedCat, accounts]);
 

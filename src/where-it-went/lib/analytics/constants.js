@@ -3,13 +3,13 @@ export const RULES = {
   CATEGORY_SPIKE_MIN_AMT: 100,
   LARGE_TX_MULTIPLIER: 3, // e.g. 3x larger than average
   SAVINGS_TARGET: 0.20,
-  SPORADIC_CATEGORIES: ['travel', 'property', 'gift', 'health', 'taxes & fees']
+  SPORADIC_CATEGORIES: ['travel', 'property', 'gift', 'health', 'taxes & fees', 'tax', 'loan']
 };
 
 export const KEYWORDS = {
-  NEEDS: ['hous', 'utilit', 'food', 'health', 'transport', 'propert', 'tax', 'loan'],
-  WANTS: ['din', 'leisure', 'shop', 'travel', 'nora', 'gift', 'other'],
-  SAVINGS: ['invest']
+  NEEDS: ['hous', 'utilit', 'food', 'health', 'transport', 'propert', 'tax', 'loan', 'educat', 'personal'],
+  WANTS: ['din', 'leisure', 'shop', 'travel', 'nora', 'gift', 'other', 'entertain', 'subscript'],
+  SAVINGS: ['invest', 'savin']
 };
 
 export const TIME = {
