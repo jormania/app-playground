@@ -458,21 +458,46 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
 
   const topNoraExpenses = [...noraTx].sort((a, b) => b.amount - a.amount).slice(0, 3);
 
-  // Previous period Nora comparison
+  // Previous period Nora comparison & Driver Analysis
   const prevNoraTx = prevTxInHorizon.filter(isNoraTx);
   const prevTotalNoraSpend = prevNoraTx.reduce((sum, t) => sum + t.amount, 0);
   const diffNoraFromPrev = totalNoraSpend - prevTotalNoraSpend;
   const pctChangeNoraFromPrev = prevTotalNoraSpend > 0 ? (diffNoraFromPrev / prevTotalNoraSpend) : null;
 
-  // Dominant Nora Subcategory
+  const prevNoraBreakdown = {
+    education: 0,
+    activities: 0,
+    health: 0,
+    clothes: 0,
+    gifts: 0,
+    other: 0
+  };
+  prevNoraTx.forEach(t => {
+    const text = [t.description, t.notes, ...(Array.isArray(t.tags) ? t.tags : [])].filter(Boolean).join(' ').toLowerCase();
+    if (noraEduKws.some(k => text.includes(k))) prevNoraBreakdown.education += t.amount;
+    else if (noraActKws.some(k => text.includes(k))) prevNoraBreakdown.activities += t.amount;
+    else if (noraHealthKws.some(k => text.includes(k))) prevNoraBreakdown.health += t.amount;
+    else if (noraClothKws.some(k => text.includes(k))) prevNoraBreakdown.clothes += t.amount;
+    else if (noraGiftKws.some(k => text.includes(k))) prevNoraBreakdown.gifts += t.amount;
+    else prevNoraBreakdown.other += t.amount;
+  });
+
   const noraSubcatLabels = {
-    education: '📚 Education & Child Support',
+    education: '📚 Education & Tuition',
     activities: '🎟️ Sports & Extracurriculars',
     health: '🏥 Healthcare & Pediatrician',
     clothes: '👗 Clothing & Shoes',
     gifts: '🎁 Toys & Gifts',
-    other: '📦 Other Child Overhead'
+    other: '📦 Child Overhead'
   };
+
+  const noraGrowthDrivers = Object.keys(noraBreakdown).map(k => ({
+    key: k,
+    label: noraSubcatLabels[k],
+    diff: noraBreakdown[k] - (prevNoraBreakdown[k] || 0)
+  })).sort((a, b) => b.diff - a.diff);
+  const noraPrimaryDriver = noraGrowthDrivers[0] && noraGrowthDrivers[0].diff > 20 ? noraGrowthDrivers[0] : null;
+
   const dominantNoraEntry = Object.entries(noraBreakdown).sort((a, b) => b[1] - a[1])[0];
   const dominantNoraSubcat = dominantNoraEntry && dominantNoraEntry[1] > 0 ? {
     key: dominantNoraEntry[0],
@@ -481,7 +506,7 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     percentage: totalNoraSpend > 0 ? (dominantNoraEntry[1] / totalNoraSpend) : 0
   } : null;
 
-  // Nora Historical Deviation Alert
+  // Nora Historical Deviation Alert & Seasonal Recognition
   const allNoraExp = transactions.filter(isNoraTx);
   const monthlyNoraTotals = {};
   allNoraExp.forEach(t => {
@@ -493,28 +518,84 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
   const avgHistNoraSpend = histNoraVals.length > 0 ? histNoraVals.reduce((a, b) => a + b, 0) / histNoraVals.length : 0;
   
   let noraUnusualSpending = null;
-  if (avgHistNoraSpend > 0 && totalNoraSpend > avgHistNoraSpend * 1.35 && (totalNoraSpend - avgHistNoraSpend) > 250) {
+  let noraSeasonalNote = null;
+  if (avgHistNoraSpend > 0 && totalNoraSpend > avgHistNoraSpend * 1.25 && (totalNoraSpend - avgHistNoraSpend) > 150) {
     const pctAbove = ((totalNoraSpend - avgHistNoraSpend) / avgHistNoraSpend) * 100;
-    noraUnusualSpending = {
-      type: 'high',
-      pctAbove: Math.round(pctAbove),
-      message: `Child-related spending is ${Math.round(pctAbove)}% above your historical monthly average due to seasonal tuition or gifts.`
-    };
+    const driverText = noraPrimaryDriver ? `, driven primarily by ${noraPrimaryDriver.label.replace(/^[^\s]+ /, '')} ($${Math.round(noraBreakdown[noraPrimaryDriver.key])})` : '';
+    
+    // Seasonal recognition
+    const activeMonthStr = noraTx[0] && noraTx[0].date ? noraTx[0].date.substring(5, 7) : '';
+    const isHolidaySeason = (activeMonthStr === '11' || activeMonthStr === '12') && (noraPrimaryDriver && (noraPrimaryDriver.key === 'gifts' || noraPrimaryDriver.key === 'clothes'));
+    const isTuitionSeason = (activeMonthStr === '08' || activeMonthStr === '09' || activeMonthStr === '01') && (noraPrimaryDriver && noraPrimaryDriver.key === 'education');
+
+    if (isHolidaySeason || isTuitionSeason) {
+      noraSeasonalNote = {
+        type: 'seasonal',
+        message: `Family support is ${Math.round(pctAbove)}% above average this period, reflecting expected seasonal ${isHolidaySeason ? 'holiday gift and winter clothing' : 'school tuition and support'} commitments.`
+      };
+    } else {
+      noraUnusualSpending = {
+        type: 'high',
+        pctAbove: Math.round(pctAbove),
+        message: `Family support is ${Math.round(pctAbove)}% above your monthly average ($${Math.round(totalNoraSpend - avgHistNoraSpend)} above baseline)${driverText}.`
+      };
+    }
   }
+
+  const shareOfTotalExpense = currentMetrics.totalExpense > 0 ? totalNoraSpend / currentMetrics.totalExpense : 0;
+  const prevShareOfTotal = prevMetrics.totalExpense > 0 ? prevTotalNoraSpend / prevMetrics.totalExpense : null;
+  const diffShareFromPrev = (shareOfTotalExpense !== null && prevShareOfTotal !== null) ? (shareOfTotalExpense - prevShareOfTotal) : null;
+
+  const educationShare = totalNoraSpend > 0 ? (noraBreakdown.education / totalNoraSpend) * 100 : 0;
+  const primaryFocusText = noraBreakdown.education > 0 
+    ? `Education (${educationShare.toFixed(0)}%)` 
+    : (dominantNoraSubcat ? dominantNoraSubcat.label.replace(/^[^\s]+ /, '') : 'General Support');
+
+  // Deterministic Executive Summary
+  let supportSummary = `Family support for Nora accounted for ${(shareOfTotalExpense * 100).toFixed(1)}% ($${Math.round(totalNoraSpend)}) of total household spending this period. `;
+  if (noraBreakdown.education > 0) {
+    supportSummary += `The primary commitment was Education & Tuition ($${Math.round(noraBreakdown.education)}, ${(noraBreakdown.education / totalNoraSpend * 100).toFixed(0)}% of support), `;
+    if (totalNoraSpend - noraBreakdown.education > 0) {
+      supportSummary += `supported by routine enrichment in sports, activities, and seasonal needs. `;
+    } else {
+      supportSummary += `representing all recorded support this period. `;
+    }
+  } else if (dominantNoraSubcat) {
+    supportSummary += `${dominantNoraSubcat.label.replace(/^[^\s]+ /, '')} represented the largest support focus ($${Math.round(dominantNoraSubcat.amount)}). `;
+  }
+
+  if (noraSeasonalNote) {
+    supportSummary += `Note: Spending reflects expected seasonal commitments rather than unexpected growth.`;
+  } else if (diffNoraFromPrev !== 0 && prevTotalNoraSpend > 0) {
+    const dir = diffNoraFromPrev > 0 ? 'increased' : 'decreased';
+    supportSummary += `Support commitments ${dir} by $${Math.round(Math.abs(diffNoraFromPrev))} vs. previous period, while recurring core commitments remained stable.`;
+  } else {
+    supportSummary += `Overall family support and priority allocation remained consistent with previous reporting periods.`;
+  }
+
+  const topNoraExpensesWithPct = [...noraTx].sort((a, b) => b.amount - a.amount).slice(0, 3).map(tx => ({
+    ...tx,
+    percentageOfSpend: totalNoraSpend > 0 ? (tx.amount / totalNoraSpend) * 100 : 0
+  }));
 
   const noraAnalysis = totalNoraSpend > 0 ? {
     totalSpend: totalNoraSpend,
     count: noraTx.length,
     averageTxAmount: averageNoraTx,
     breakdown: noraBreakdown,
-    topExpenses: topNoraExpenses,
-    shareOfTotalExpense: currentMetrics.totalExpense > 0 ? totalNoraSpend / currentMetrics.totalExpense : 0,
+    topExpenses: topNoraExpensesWithPct,
+    shareOfTotalExpense,
     prevTotalSpend: prevTotalNoraSpend,
     diffFromPrev: diffNoraFromPrev,
     pctChangeFromPrev: pctChangeNoraFromPrev,
+    prevShareOfTotal,
+    diffShareFromPrev,
     dominantSubcategory: dominantNoraSubcat,
     unusualSpending: noraUnusualSpending,
-    avgHistoricalSpend: avgHistNoraSpend
+    seasonalNote: noraSeasonalNote,
+    avgHistoricalSpend: avgHistNoraSpend,
+    primaryFocusText,
+    supportSummary
   } : null;
 
   const behavioral = {

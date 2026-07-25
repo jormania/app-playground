@@ -748,7 +748,7 @@ export default function InsightsView({ data, period, filterProps }) {
             </div>
           )}
 
-          {/* Nora Insights Card */}
+          {/* Nora Insights Card (Family Support Dashboard) */}
           {behavioral.noraAnalysis && (
             <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', marginTop: 'var(--space-xl)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
@@ -758,27 +758,37 @@ export default function InsightsView({ data, period, filterProps }) {
                   </h3>
                   <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: '4px 0 0 0' }}>
                     {behavioral.noraAnalysis.count > 0 
-                      ? 'Tracking education, activities, and child-related family support.' 
-                      : 'Prepared for child & family support analysis when Nora records are logged.'}
+                      ? 'Tracking education, activities, and child-related family support priorities.' 
+                      : 'Prepared for family support analysis when Nora records are logged.'}
                   </p>
                 </div>
                 {behavioral.noraAnalysis.count > 0 && (
-                  <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center', backgroundColor: 'var(--color-surface-2)', padding: '6px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Total Child Spend</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-purple)' }}>{formatCurrency(behavioral.noraAnalysis.totalSpend)}</div>
-                    </div>
-                    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
+                  <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center', backgroundColor: 'var(--color-surface-2)', padding: '8px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Share of Budget</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{(behavioral.noraAnalysis.shareOfTotalExpense * 100).toFixed(1)}%</div>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-purple)' }}>{(behavioral.noraAnalysis.shareOfTotalExpense * 100).toFixed(1)}%</div>
+                      {behavioral.noraAnalysis.diffShareFromPrev !== null && behavioral.noraAnalysis.diffShareFromPrev !== undefined && (
+                        <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
+                          {Math.round(behavioral.noraAnalysis.diffShareFromPrev * 100) === 0 ? 'Stable vs prev' : `${behavioral.noraAnalysis.diffShareFromPrev > 0 ? '+' : ''}${(behavioral.noraAnalysis.diffShareFromPrev * 100).toFixed(1)}% pts vs prev`}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
+                    <div style={{ width: '1px', height: '32px', backgroundColor: 'var(--color-border)' }}></div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Avg Transaction</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{formatCurrency(behavioral.noraAnalysis.averageTxAmount)}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Support This Period</div>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{formatCurrency(behavioral.noraAnalysis.totalSpend)}</div>
+                      {behavioral.noraAnalysis.prevTotalSpend > 0 && (
+                        <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
+                          {behavioral.noraAnalysis.diffFromPrev === 0 ? 'Stable vs prev' : `${behavioral.noraAnalysis.diffFromPrev > 0 ? '+' : ''}${formatCurrency(behavioral.noraAnalysis.diffFromPrev)} vs prev`}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
+                    <div style={{ width: '1px', height: '32px', backgroundColor: 'var(--color-border)' }}></div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Primary Focus</div>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{behavioral.noraAnalysis.primaryFocusText}</div>
+                    </div>
+                    <div style={{ width: '1px', height: '32px', backgroundColor: 'var(--color-border)' }}></div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Transactions</div>
                       <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{behavioral.noraAnalysis.count}</div>
@@ -789,22 +799,17 @@ export default function InsightsView({ data, period, filterProps }) {
 
               {behavioral.noraAnalysis.count > 0 ? (
                 <div>
-                  {/* Period Comparison & Deviation Alerts */}
-                  {(behavioral.noraAnalysis.prevTotalSpend > 0 || behavioral.noraAnalysis.unusualSpending) && (
+                  {/* Pattern Deviation & Seasonal Recognition Alerts */}
+                  {(behavioral.noraAnalysis.unusualSpending || behavioral.noraAnalysis.seasonalNote) && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
-                      {behavioral.noraAnalysis.prevTotalSpend > 0 && (
-                        <div style={{ fontSize: 'var(--text-xs)', padding: '6px 12px', backgroundColor: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          <span>vs. Previous Period:</span>
-                          <b style={{ color: behavioral.noraAnalysis.diffFromPrev > 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                            {behavioral.noraAnalysis.diffFromPrev > 0 ? '+' : ''}{formatCurrency(behavioral.noraAnalysis.diffFromPrev)}
-                            {behavioral.noraAnalysis.pctChangeFromPrev !== null ? ` (${(behavioral.noraAnalysis.pctChangeFromPrev * 100).toFixed(0)}%)` : ''}
-                          </b>
-                          <span style={{ color: 'var(--color-muted)' }}>({formatCurrency(behavioral.noraAnalysis.prevTotalSpend)} prev)</span>
+                      {behavioral.noraAnalysis.unusualSpending && (
+                        <div style={{ fontSize: 'var(--text-xs)', padding: '8px 12px', backgroundColor: 'color-mix(in srgb, var(--color-danger) 10%, transparent)', color: 'var(--color-danger)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-danger)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <span>⚠️ <b>Pattern Deviation:</b> {behavioral.noraAnalysis.unusualSpending.message}</span>
                         </div>
                       )}
-                      {behavioral.noraAnalysis.unusualSpending && (
-                        <div style={{ fontSize: 'var(--text-xs)', padding: '6px 12px', backgroundColor: 'color-mix(in srgb, var(--color-danger) 10%, transparent)', color: 'var(--color-danger)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-danger)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          <span>⚠️ <b>Pattern Deviation:</b> {behavioral.noraAnalysis.unusualSpending.message}</span>
+                      {behavioral.noraAnalysis.seasonalNote && (
+                        <div style={{ fontSize: 'var(--text-xs)', padding: '8px 12px', backgroundColor: 'color-mix(in srgb, var(--color-brass) 15%, transparent)', color: 'var(--color-brass)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-brass)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <span>📅 <b>Seasonal Pattern:</b> {behavioral.noraAnalysis.seasonalNote.message}</span>
                         </div>
                       )}
                     </div>
@@ -814,21 +819,22 @@ export default function InsightsView({ data, period, filterProps }) {
                     {/* Left Column: Sub-type breakdown */}
                     <div>
                       <h4 style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)', marginTop: 0 }}>
-                        Child Expense Breakdown
+                        Support Breakdown
                       </h4>
                       {behavioral.noraAnalysis.dominantSubcategory && (
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink)', backgroundColor: 'var(--color-surface-2)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', marginBottom: '10px', borderLeft: '3px solid var(--color-purple)' }}>
-                          👑 <b>Dominant Commitment:</b> {behavioral.noraAnalysis.dominantSubcategory.label} accounted for <b>{(behavioral.noraAnalysis.dominantSubcategory.percentage * 100).toFixed(0)}%</b> of child expenditures ({formatCurrency(behavioral.noraAnalysis.dominantSubcategory.amount)}).
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink)', backgroundColor: 'var(--color-surface-2)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', marginBottom: '14px', borderLeft: '3px solid var(--color-purple)' }}>
+                          👑 <b>Primary Focus:</b> {behavioral.noraAnalysis.dominantSubcategory.label} accounted for <b>{(behavioral.noraAnalysis.dominantSubcategory.percentage * 100).toFixed(0)}%</b> of family support this period ({formatCurrency(behavioral.noraAnalysis.dominantSubcategory.amount)}).
                         </div>
                       )}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      
+                      {/* Recurring Commitments */}
+                      <div style={{ fontSize: '11px', fontWeight: 'var(--weight-bold)', color: 'var(--color-muted)', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.03em' }}>
+                        Recurring Commitments
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
                         {[
-                          { label: '📚 Education & Child Support', amount: behavioral.noraAnalysis.breakdown.education, color: 'var(--color-purple)' },
-                          { label: '🎟️ Sports & Extracurriculars', amount: behavioral.noraAnalysis.breakdown.activities, color: 'var(--color-success)' },
-                          { label: '🏥 Healthcare & Pediatrician', amount: behavioral.noraAnalysis.breakdown.health, color: 'var(--color-danger)' },
-                          { label: '👗 Clothing & Shoes', amount: behavioral.noraAnalysis.breakdown.clothes, color: 'var(--color-warning)' },
-                          { label: '🎁 Toys & Gifts', amount: behavioral.noraAnalysis.breakdown.gifts, color: 'var(--color-brass)' },
-                          { label: '📦 Other Child Overhead', amount: behavioral.noraAnalysis.breakdown.other, color: 'var(--color-muted)' }
+                          { label: '📚 Education & Tuition', amount: behavioral.noraAnalysis.breakdown.education, color: 'var(--color-purple)' },
+                          { label: '🏥 Healthcare & Pediatrician', amount: behavioral.noraAnalysis.breakdown.health, color: 'var(--color-danger)' }
                         ].filter(item => item.amount > 0).map((item, idx) => {
                           const pct = (item.amount / behavioral.noraAnalysis.totalSpend) * 100;
                           return (
@@ -845,42 +851,80 @@ export default function InsightsView({ data, period, filterProps }) {
                         })}
                       </div>
 
-                      {/* Education/Support vs Discretionary Bar */}
-                      <div style={{ marginTop: 'var(--space-lg)', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', marginBottom: '4px' }}>
-                          <span style={{ color: 'var(--color-purple)', fontWeight: 'var(--weight-medium)' }}>
-                            Education & Support: {formatCurrency(behavioral.noraAnalysis.breakdown.education)} ({((behavioral.noraAnalysis.breakdown.education / behavioral.noraAnalysis.totalSpend) * 100).toFixed(0)}%)
-                          </span>
-                          <span style={{ color: 'var(--color-success)', fontWeight: 'var(--weight-medium)' }}>
-                            Activities & Other: {formatCurrency(behavioral.noraAnalysis.totalSpend - behavioral.noraAnalysis.breakdown.education)} ({(((behavioral.noraAnalysis.totalSpend - behavioral.noraAnalysis.breakdown.education) / behavioral.noraAnalysis.totalSpend) * 100).toFixed(0)}%)
-                          </span>
-                        </div>
-                        <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--color-border)', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
-                          <div style={{ width: `${(behavioral.noraAnalysis.breakdown.education / behavioral.noraAnalysis.totalSpend) * 100}%`, height: '100%', backgroundColor: 'var(--color-purple)' }}></div>
-                          <div style={{ width: `${(((behavioral.noraAnalysis.totalSpend - behavioral.noraAnalysis.breakdown.education) / behavioral.noraAnalysis.totalSpend) * 100)}%`, height: '100%', backgroundColor: 'var(--color-success)' }}></div>
-                        </div>
+                      {/* Activities & Enrichment */}
+                      <div style={{ fontSize: '11px', fontWeight: 'var(--weight-bold)', color: 'var(--color-muted)', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.03em' }}>
+                        Activities & Enrichment
                       </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {[
+                          { label: '🎟️ Sports & Extracurriculars', amount: behavioral.noraAnalysis.breakdown.activities, color: 'var(--color-success)' },
+                          { label: '👗 Clothing & Shoes', amount: behavioral.noraAnalysis.breakdown.clothes, color: 'var(--color-warning)' },
+                          { label: '🎁 Toys & Gifts', amount: behavioral.noraAnalysis.breakdown.gifts, color: 'var(--color-brass)' },
+                          { label: '📦 Child Overhead', amount: behavioral.noraAnalysis.breakdown.other, color: 'var(--color-muted)' }
+                        ].filter(item => item.amount > 0).map((item, idx) => {
+                          const pct = (item.amount / behavioral.noraAnalysis.totalSpend) * 100;
+                          return (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-ink)' }}>
+                                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: item.color }}></span>
+                                {item.label}
+                              </span>
+                              <span style={{ fontWeight: 'var(--weight-medium)' }}>
+                                {formatCurrency(item.amount)} ({pct.toFixed(0)}%)
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Recurring vs Enrichment Bar */}
+                      {(() => {
+                        const recurringTotal = behavioral.noraAnalysis.breakdown.education + behavioral.noraAnalysis.breakdown.health;
+                        const enrichmentTotal = behavioral.noraAnalysis.totalSpend - recurringTotal;
+                        return (
+                          <div style={{ marginTop: 'var(--space-lg)', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', marginBottom: '6px' }}>
+                              <span style={{ color: 'var(--color-purple)', fontWeight: 'var(--weight-medium)' }}>
+                                Recurring Commitments: {formatCurrency(recurringTotal)} ({((recurringTotal / behavioral.noraAnalysis.totalSpend) * 100).toFixed(0)}%)
+                              </span>
+                              <span style={{ color: 'var(--color-success)', fontWeight: 'var(--weight-medium)' }}>
+                                Activities & Enrichment: {formatCurrency(enrichmentTotal)} ({((enrichmentTotal / behavioral.noraAnalysis.totalSpend) * 100).toFixed(0)}%)
+                              </span>
+                            </div>
+                            <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--color-border)', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
+                              <div style={{ width: `${(recurringTotal / behavioral.noraAnalysis.totalSpend) * 100}%`, height: '100%', backgroundColor: 'var(--color-purple)' }}></div>
+                              <div style={{ width: `${(enrichmentTotal / behavioral.noraAnalysis.totalSpend) * 100}%`, height: '100%', backgroundColor: 'var(--color-success)' }}></div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
-                    {/* Right Column: Top Expenses & Explanatory Insight */}
+                    {/* Right Column: Top Expenses & Explanatory Summary */}
                     <div>
                       <h4 style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)', marginTop: 0 }}>
-                        Largest Child Expenses
+                        Largest Support Expenses
                       </h4>
                       <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--space-lg) 0' }}>
                         {behavioral.noraAnalysis.topExpenses.map((tx, idx) => (
-                          <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: idx === behavioral.noraAnalysis.topExpenses.length - 1 ? 'none' : '1px solid var(--color-border)', fontSize: 'var(--text-sm)' }}>
+                          <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: idx === behavioral.noraAnalysis.topExpenses.length - 1 ? 'none' : '1px solid var(--color-border)', fontSize: 'var(--text-sm)' }}>
                             <div>
                               <span style={{ fontWeight: 'var(--weight-medium)' }}>{tx.description}</span>
                               <div style={{ fontSize: '11px', color: 'var(--color-muted)' }}>{new Date(tx.date).toLocaleDateString()}</div>
                             </div>
-                            <span style={{ fontWeight: 'var(--weight-bold)' }}>{formatCurrency(tx.amount)}</span>
+                            <span style={{ fontWeight: 'var(--weight-bold)', textAlign: 'right' }}>
+                              <div>{formatCurrency(tx.amount)}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--color-muted)', fontWeight: 'normal' }}>
+                                {tx.percentageOfSpend ? `${tx.percentageOfSpend.toFixed(0)}% of total` : ''}
+                              </div>
+                            </span>
                           </li>
                         ))}
                       </ul>
 
-                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', backgroundColor: 'color-mix(in srgb, var(--color-purple) 8%, transparent)', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)', borderLeft: '3px solid var(--color-purple)' }}>
-                        💡 <b>Family Budget Insight:</b> Tracking education, sports, healthcare, and clothing for Nora in a dedicated view isolates child rearing and support commitments from general household lifestyle wants. Notice how school tuition and child support automatically elevate into mandatory <b>Needs (50%)</b> in your primary 50/30/20 budget hero.
+                      {/* Deterministic Executive Summary */}
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink)', backgroundColor: 'color-mix(in srgb, var(--color-purple) 8%, transparent)', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)', borderLeft: '3px solid var(--color-purple)', lineHeight: '1.5' }}>
+                        📋 <b>Support Executive Summary:</b> {behavioral.noraAnalysis.supportSummary}
                       </div>
                     </div>
                   </div>
