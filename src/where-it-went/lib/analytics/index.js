@@ -153,22 +153,37 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     other: 0
   };
 
+  const diningKws = ['din', 'restaur', 'café', 'cafe', 'lunch', 'dinner', 'breakfast', 'brunch', 'food', 'meal', 'snack', 'bar', 'pub', 'drink', 'bistro', 'pizzeria', 'gelato', 'ice cream', 'bakery', 'patisserie', 'supermarket', 'grocery', 'market', 'mega image', 'carrefour', 'lidl', 'kaufland', 'spar', 'billa', 'rewe', 'tesco', 'coffee', 'starbucks', 'costa', 'mcdonald', 'burger', 'pizza', 'sushi'];
+  const accomKws = ['hotel', 'resort', 'airbnb', 'lodg', 'stay', 'accom', 'motel', 'booking', 'booking.com', 'expedia', 'marriott', 'hilton', 'radisson', 'sheraton', 'hyatt', 'ibero', 'hostel', 'villa', 'chalet', 'apartment', 'vrbo', 'agoda', 'hotels.com', 'room'];
+  const transitKws = ['flight', 'train', 'uber', 'bolt', 'taxi', 'rental', 'gas', 'fuel', 'transit', 'airport', 'bus', 'metro', 'subway', 'coach', 'ferry', 'boat', 'toll', 'vignette', 'parking', 'park', 'ryanair', 'wizz', 'tarom', 'lufthansa', 'klm', 'air france', 'british airways', 'emirates', 'qatar', 'hertz', 'sixt', 'avis', 'europcar', 'budget', 'rail', 'obb', 'cfr', 'tren', 'cab', 'airline', 'airways', 'car share'];
+  const actKws = ['ticket', 'museum', 'zoo', 'tour', 'palace', 'park', 'pass', 'ski', 'show', 'nora', 'excursion', 'guide', 'attraction', 'gallery', 'castle', 'cathedral', 'church', 'monument', 'aquarium', 'concert', 'theatre', 'theater', 'cinema', 'kid', 'child', 'boat trip', 'cruise', 'rental bike', 'cable car', 'gondola', 'lift', 'entertainment', 'adventure'];
+  const shopKws = ['shop', 'souvenir', 'gift', 'duty free', 'chocolat', 'cloth', 'mall', 'store', 'boutique', 'craft', 'handicraft', 'art', 'merchandise', 'merch', 'fashion', 'zara', 'h&m'];
+
   const uniqueDates = new Set();
   travelTx.forEach(t => {
     uniqueDates.add(t.date);
-    const desc = (t.description || '').toLowerCase();
-    if (desc.includes('hotel') || desc.includes('resort') || desc.includes('airbnb') || desc.includes('lodg') || desc.includes('stay') || desc.includes('accom')) {
+    // Multi-field discovery: concatenate description, notes, and tags into a single searchable text blob
+    const text = [t.description, t.notes, ...(Array.isArray(t.tags) ? t.tags : [])].filter(Boolean).join(' ').toLowerCase();
+    
+    if (accomKws.some(k => text.includes(k))) {
       travelBreakdown.accommodation += t.amount;
-    } else if (desc.includes('flight') || desc.includes('train') || desc.includes('uber') || desc.includes('bolt') || desc.includes('taxi') || desc.includes('rental') || desc.includes('gas') || desc.includes('fuel') || desc.includes('transit') || desc.includes('airport')) {
+    } else if (transitKws.some(k => text.includes(k))) {
       travelBreakdown.transit += t.amount;
-    } else if (desc.includes('din') || desc.includes('restaur') || desc.includes('café') || desc.includes('cafe') || desc.includes('lunch') || desc.includes('dinner') || desc.includes('food') || desc.includes('meal') || desc.includes('snack') || desc.includes('bar')) {
+    } else if (diningKws.some(k => text.includes(k))) {
       travelBreakdown.dining += t.amount;
-    } else if (desc.includes('ticket') || desc.includes('museum') || desc.includes('zoo') || desc.includes('tour') || desc.includes('palace') || desc.includes('park') || desc.includes('pass') || desc.includes('ski') || desc.includes('show') || desc.includes('nora')) {
+    } else if (actKws.some(k => text.includes(k))) {
       travelBreakdown.activities += t.amount;
-    } else if (desc.includes('shop') || desc.includes('souvenir') || desc.includes('gift') || desc.includes('market') || desc.includes('duty free') || desc.includes('chocolat') || desc.includes('cloth')) {
+    } else if (shopKws.some(k => text.includes(k))) {
       travelBreakdown.shopping += t.amount;
     } else {
-      travelBreakdown.other += t.amount;
+      // Intelligent fallback heuristic for unrecognized travel expenses:
+      // Large lump sums (>= 500) on vacation are statistically upfront structural bookings (accommodation/flights)
+      // Smaller daily transactions (< 500) are statistically on-the-ground expenses (dining/activities/other)
+      if (t.amount >= 500) {
+        travelBreakdown.accommodation += t.amount;
+      } else {
+        travelBreakdown.other += t.amount;
+      }
     }
   });
 

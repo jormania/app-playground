@@ -416,7 +416,7 @@ export default function InsightsView({ data, period, filterProps }) {
 
           {/* Travel Mode & Vacation Analysis Card */}
           {behavioral.travelAnalysis && (
-            <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', marginTop: 'var(--space-xl)' }}>
+            <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
                 <div>
                   <h3 style={{ fontSize: 'var(--text-lg)', margin: 0 }}>
