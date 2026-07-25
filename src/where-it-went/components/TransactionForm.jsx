@@ -2,14 +2,16 @@ import { useState, useEffect } from 'react';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
+import { sortTrips } from '../services/trips';
 
-export default function TransactionForm({ categories, accounts, onSave, onCancel, initialTx, onDelete }) {
+export default function TransactionForm({ categories, accounts, trips = [], onSave, onCancel, initialTx, onDelete }) {
   const [type, setType] = useState(initialTx?.type || 'Expense');
   const [description, setDescription] = useState(initialTx?.description || '');
   const [amount, setAmount] = useState(initialTx?.amount || '');
   const [date, setDate] = useState(initialTx?.date ? initialTx.date.split('T')[0] : new Date().toISOString().split('T')[0]);
   const [categoryId, setCategoryId] = useState(initialTx?.categoryId || '');
   const [accountId, setAccountId] = useState(initialTx?.accountId || accounts[0]?.id || '');
+  const [tripId, setTripId] = useState(initialTx?.tripId || '');
   const [isSaving, setIsSaving] = useState(false);
 
   const sortedAccounts = [...accounts].sort((a, b) => a.name.localeCompare(b.name));
@@ -18,6 +20,7 @@ export default function TransactionForm({ categories, accounts, onSave, onCancel
     .sort((a, b) => a.name.localeCompare(b.name));
     
   const selectedCat = categories.find(c => c.id === categoryId);
+  const isTravelCategory = selectedCat && selectedCat.name?.toLowerCase().includes('travel');
 
   useEffect(() => {
     if (!selectedCat || !accounts || accounts.length === 0) return;
@@ -65,6 +68,7 @@ export default function TransactionForm({ categories, accounts, onSave, onCancel
         type,
         categoryId,
         accountId,
+        tripId: isTravelCategory && tripId ? tripId : '',
         tags: initialTx?.tags || []
       });
     } finally {
@@ -148,6 +152,29 @@ export default function TransactionForm({ categories, accounts, onSave, onCancel
           </select>
         </div>
       </div>
+
+      {isTravelCategory && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: 'var(--space-sm)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--color-border)' }}>
+          <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span>✈️</span> Assign to Trip (Optional)
+          </label>
+          <select value={tripId} onChange={e => setTripId(e.target.value)} style={{ 
+            width: '100%', 
+            padding: '10px 12px', 
+            borderRadius: 'var(--radius-md)', 
+            border: '1px solid var(--color-border)', 
+            backgroundColor: 'var(--color-bg)',
+            color: 'var(--color-ink)',
+            fontSize: 'var(--text-base)',
+            fontFamily: 'inherit'
+          }}>
+            <option value="">No specific trip (General / Unassigned Travel)</option>
+            {sortTrips(trips || []).map(t => (
+              <option key={t.id} value={t.id}>{t.name}{t.destination ? ` (${t.destination})` : ''}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-lg)' }}>
         {initialTx && (

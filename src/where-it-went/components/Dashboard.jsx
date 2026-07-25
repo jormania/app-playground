@@ -513,6 +513,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
           <TransactionForm 
             categories={data.categories} 
             accounts={data.accounts} 
+            trips={data.trips}
             initialTx={editingTx}
             onSave={async (id, txData) => {
               try {

@@ -1,11 +1,12 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { generateDeepInsights } from '../lib/analytics';
 import { formatCurrency } from '../lib/currency';
 
 export default function InsightsView({ data, period, filterProps }) {
+  const [tripFilter, setTripFilter] = useState('ALL');
   const insights = useMemo(() => {
-    return generateDeepInsights(data, period, filterProps);
-  }, [data, period, filterProps]);
+    return generateDeepInsights(data, period, { ...filterProps, tripFilter });
+  }, [data, period, filterProps, tripFilter]);
 
   if (!insights) {
     return (
@@ -428,11 +429,35 @@ export default function InsightsView({ data, period, filterProps }) {
                       : 'Prepared for travel analysis when expenses are logged under the Travel category.'}
                   </p>
                 </div>
-                {behavioral.travelAnalysis.count > 0 && (
-                  <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center', backgroundColor: 'var(--color-surface-2)', padding: '6px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Total Travel Spend</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-brass)' }}>{formatCurrency(behavioral.travelAnalysis.totalSpend)}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <label htmlFor="trip-filter-select" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', fontWeight: 'var(--weight-medium)' }}>Filter Trip:</label>
+                    <select
+                      id="trip-filter-select"
+                      value={tripFilter}
+                      onChange={e => setTripFilter(e.target.value)}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--color-border)',
+                        backgroundColor: 'var(--color-bg)',
+                        color: 'var(--color-ink)',
+                        fontSize: 'var(--text-xs)',
+                        fontFamily: 'inherit'
+                      }}
+                    >
+                      <option value="ALL">All Trips</option>
+                      <option value="UNASSIGNED">Unassigned Travel</option>
+                      {data && data.trips && data.trips.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}{t.destination ? ` (${t.destination})` : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {behavioral.travelAnalysis.count > 0 && (
+                    <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center', backgroundColor: 'var(--color-surface-2)', padding: '6px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Total Travel Spend</div>
+                        <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-brass)' }}>{formatCurrency(behavioral.travelAnalysis.totalSpend)}</div>
                     </div>
                     <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
                     <div style={{ textAlign: 'right' }}>
@@ -451,6 +476,7 @@ export default function InsightsView({ data, period, filterProps }) {
                     </div>
                   </div>
                 )}
+                </div>
               </div>
 
               {behavioral.travelAnalysis.count > 0 ? (

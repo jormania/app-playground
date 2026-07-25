@@ -2,6 +2,7 @@ import { calculateMetrics } from './metrics';
 import { getHistoricalAverages, getCumulativePaceByDay, getHistoricalTransactionAverages } from './comparisons';
 import { ruleOverspendingPace, ruleCategorySpike, ruleLargeTransaction, generateWins } from './rules';
 import { generateSummaryParagraph } from './summaries';
+import { formatCurrency } from '../currency';
 
 function getPreviousPeriod(period, now = new Date()) {
   if (period === 'this_month') {
@@ -141,7 +142,13 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     .map(v => ({ ...v, average: v.total / v.count }))
     .slice(0, 5);
 
-  const travelTx = txInHorizon.filter(t => t.type === 'Expense' && getCatName(t.categoryId).toLowerCase().includes('travel'));
+  const matchTrip = t => {
+    if (!filterProps || !filterProps.tripFilter || filterProps.tripFilter === 'ALL') return true;
+    if (filterProps.tripFilter === 'UNASSIGNED') return !t.tripId;
+    return t.tripId === filterProps.tripFilter;
+  };
+
+  const travelTx = txInHorizon.filter(t => t.type === 'Expense' && getCatName(t.categoryId).toLowerCase().includes('travel') && matchTrip(t));
   const totalTravelSpend = travelTx.reduce((sum, t) => sum + t.amount, 0);
   
   const travelBreakdown = {
@@ -193,7 +200,7 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
   const averageTxAmount = travelTx.length > 0 ? totalTravelSpend / travelTx.length : 0;
 
   // Previous period comparison
-  const prevTravelTx = prevTxInHorizon.filter(t => t.type === 'Expense' && getCatName(t.categoryId).toLowerCase().includes('travel'));
+  const prevTravelTx = prevTxInHorizon.filter(t => t.type === 'Expense' && getCatName(t.categoryId).toLowerCase().includes('travel') && matchTrip(t));
   const prevTotalSpend = prevTravelTx.reduce((sum, t) => sum + t.amount, 0);
   const diffFromPrev = totalTravelSpend - prevTotalSpend;
   const pctChangeFromPrev = prevTotalSpend > 0 ? (diffFromPrev / prevTotalSpend) : null;
@@ -216,7 +223,7 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
   } : null;
 
   // Historical pattern deviation check
-  const allTravelExpenses = transactions.filter(t => t.type === 'Expense' && getCatName(t.categoryId).toLowerCase().includes('travel'));
+  const allTravelExpenses = transactions.filter(t => t.type === 'Expense' && getCatName(t.categoryId).toLowerCase().includes('travel') && matchTrip(t));
   const monthlyTravelTotals = {};
   allTravelExpenses.forEach(t => {
     if (!t.date) return;
@@ -358,11 +365,11 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
   let propUnusualSpending = null;
   if (avgHistPropExpense > 0 && totalPropExpense > avgHistPropExpense * 1.25 && (totalPropExpense - avgHistPropExpense) > 150) {
     const pctAbove = ((totalPropExpense - avgHistPropExpense) / avgHistPropExpense) * 100;
-    const driverText = primaryDriver ? `, driven primarily by a $${Math.round(primaryDriver.diff)} increase in ${primaryDriver.label}` : '';
+    const driverText = primaryDriver ? `, driven primarily by a ${formatCurrency(Math.round(primaryDriver.diff))} increase in ${primaryDriver.label}` : '';
     propUnusualSpending = {
       type: 'high',
       pctAbove: Math.round(pctAbove),
-      message: `Property operating overhead is ${Math.round(pctAbove)}% above your monthly baseline ($${Math.round(totalPropExpense - avgHistPropExpense)} above average)${driverText}.`
+      message: `Property operating overhead is ${Math.round(pctAbove)}% above your monthly baseline (${formatCurrency(Math.round(totalPropExpense - avgHistPropExpense))} above average)${driverText}.`
     };
   }
 
@@ -382,23 +389,23 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
   // Deterministic Operations Summary
   let operationsSummary = '';
   if (netPropertyFlow > 0) {
-    operationsSummary = `Properties generated a healthy positive cash flow of $${Math.round(netPropertyFlow)} on $${Math.round(totalPropIncome)} in gross rental revenue (operating ratio: ${propExpenseRatio !== null ? `${(propExpenseRatio * 100).toFixed(0)}%` : '0%'}). `;
+    operationsSummary = `Properties generated a healthy positive cash flow of ${formatCurrency(Math.round(netPropertyFlow))} on ${formatCurrency(Math.round(totalPropIncome))} in gross rental revenue (operating ratio: ${propExpenseRatio !== null ? `${(propExpenseRatio * 100).toFixed(0)}%` : '0%'}). `;
   } else if (totalPropIncome > 0) {
-    operationsSummary = `Operating overhead ($${Math.round(totalPropExpense)}) exceeded gross revenue ($${Math.round(totalPropIncome)}), resulting in a net deficit of $${Math.round(Math.abs(netPropertyFlow))}. `;
+    operationsSummary = `Operating overhead (${formatCurrency(Math.round(totalPropExpense))}) exceeded gross revenue (${formatCurrency(Math.round(totalPropIncome))}), resulting in a net deficit of ${formatCurrency(Math.round(Math.abs(netPropertyFlow)))}. `;
   } else {
-    operationsSummary = `Logged $${Math.round(totalPropExpense)} in property operating overhead with no rental revenue recorded during this period. `;
+    operationsSummary = `Logged ${formatCurrency(Math.round(totalPropExpense))} in property operating overhead with no rental revenue recorded during this period. `;
   }
 
   if (propUnusualSpending && primaryDriver) {
-    operationsSummary += `Noticeable expenditure spike driven by ${primaryDriver.label} ($${Math.round(propBreakdown[primaryDriver.key])}).`;
+    operationsSummary += `Noticeable expenditure spike driven by ${primaryDriver.label} (${formatCurrency(Math.round(propBreakdown[primaryDriver.key]))}).`;
   } else if (diffExpenseFromPrev !== 0 && prevPropExpense > 0) {
     const dir = diffExpenseFromPrev > 0 ? 'increased' : 'decreased';
-    operationsSummary += `Operating overhead ${dir} by $${Math.round(Math.abs(diffExpenseFromPrev))} vs. previous period, with routine structural costs under control.`;
+    operationsSummary += `Operating overhead ${dir} by ${formatCurrency(Math.round(Math.abs(diffExpenseFromPrev)))} vs. previous period, with routine structural costs under control.`;
   } else {
     operationsSummary += `Operating overhead and net cash flow remained stable with no unexpected maintenance deviations.`;
   }
 
-  const propertyAnalysis = (totalPropIncome > 0 || totalPropExpense > 0) ? {
+  const propertyAnalysis = {
     totalIncome: totalPropIncome,
     totalExpense: totalPropExpense,
     netFlow: netPropertyFlow,
@@ -419,7 +426,7 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     cashFlowTrend,
     operationsSummary,
     shareOfTotalExpense: currentMetrics.totalExpense > 0 ? totalPropExpense / currentMetrics.totalExpense : 0
-  } : null;
+  };
 
   // --- NORA INSIGHTS ENGINE ---
   const isNoraTx = t => {
@@ -521,7 +528,7 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
   let noraSeasonalNote = null;
   if (avgHistNoraSpend > 0 && totalNoraSpend > avgHistNoraSpend * 1.25 && (totalNoraSpend - avgHistNoraSpend) > 150) {
     const pctAbove = ((totalNoraSpend - avgHistNoraSpend) / avgHistNoraSpend) * 100;
-    const driverText = noraPrimaryDriver ? `, driven primarily by ${noraPrimaryDriver.label.replace(/^[^\s]+ /, '')} ($${Math.round(noraBreakdown[noraPrimaryDriver.key])})` : '';
+    const driverText = noraPrimaryDriver ? `, driven primarily by ${noraPrimaryDriver.label.replace(/^[^\s]+ /, '')} (${formatCurrency(Math.round(noraBreakdown[noraPrimaryDriver.key]))})` : '';
     
     // Seasonal recognition
     const activeMonthStr = noraTx[0] && noraTx[0].date ? noraTx[0].date.substring(5, 7) : '';
@@ -537,7 +544,7 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
       noraUnusualSpending = {
         type: 'high',
         pctAbove: Math.round(pctAbove),
-        message: `Family support is ${Math.round(pctAbove)}% above your monthly average ($${Math.round(totalNoraSpend - avgHistNoraSpend)} above baseline)${driverText}.`
+        message: `Family support is ${Math.round(pctAbove)}% above your monthly average (${formatCurrency(Math.round(totalNoraSpend - avgHistNoraSpend))} above baseline)${driverText}.`
       };
     }
   }
@@ -552,23 +559,23 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     : (dominantNoraSubcat ? dominantNoraSubcat.label.replace(/^[^\s]+ /, '') : 'General Support');
 
   // Deterministic Executive Summary
-  let supportSummary = `Family support for Nora accounted for ${(shareOfTotalExpense * 100).toFixed(1)}% ($${Math.round(totalNoraSpend)}) of total household spending this period. `;
+  let supportSummary = `Family support for Nora accounted for ${(shareOfTotalExpense * 100).toFixed(1)}% (${formatCurrency(Math.round(totalNoraSpend))}) of total household spending this period. `;
   if (noraBreakdown.education > 0) {
-    supportSummary += `The primary commitment was Education & Tuition ($${Math.round(noraBreakdown.education)}, ${(noraBreakdown.education / totalNoraSpend * 100).toFixed(0)}% of support), `;
+    supportSummary += `The primary commitment was Education & Tuition (${formatCurrency(Math.round(noraBreakdown.education))}, ${(noraBreakdown.education / totalNoraSpend * 100).toFixed(0)}% of support), `;
     if (totalNoraSpend - noraBreakdown.education > 0) {
       supportSummary += `supported by routine enrichment in sports, activities, and seasonal needs. `;
     } else {
       supportSummary += `representing all recorded support this period. `;
     }
   } else if (dominantNoraSubcat) {
-    supportSummary += `${dominantNoraSubcat.label.replace(/^[^\s]+ /, '')} represented the largest support focus ($${Math.round(dominantNoraSubcat.amount)}). `;
+    supportSummary += `${dominantNoraSubcat.label.replace(/^[^\s]+ /, '')} represented the largest support focus (${formatCurrency(Math.round(dominantNoraSubcat.amount))}). `;
   }
 
   if (noraSeasonalNote) {
     supportSummary += `Note: Spending reflects expected seasonal commitments rather than unexpected growth.`;
   } else if (diffNoraFromPrev !== 0 && prevTotalNoraSpend > 0) {
     const dir = diffNoraFromPrev > 0 ? 'increased' : 'decreased';
-    supportSummary += `Support commitments ${dir} by $${Math.round(Math.abs(diffNoraFromPrev))} vs. previous period, while recurring core commitments remained stable.`;
+    supportSummary += `Support commitments ${dir} by ${formatCurrency(Math.round(Math.abs(diffNoraFromPrev)))} vs. previous period, while recurring core commitments remained stable.`;
   } else {
     supportSummary += `Overall family support and priority allocation remained consistent with previous reporting periods.`;
   }
@@ -578,7 +585,7 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     percentageOfSpend: totalNoraSpend > 0 ? (tx.amount / totalNoraSpend) * 100 : 0
   }));
 
-  const noraAnalysis = totalNoraSpend > 0 ? {
+  const noraAnalysis = {
     totalSpend: totalNoraSpend,
     count: noraTx.length,
     averageTxAmount: averageNoraTx,
@@ -596,7 +603,7 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     avgHistoricalSpend: avgHistNoraSpend,
     primaryFocusText,
     supportSummary
-  } : null;
+  };
 
   const behavioral = {
     frequentSpending,

@@ -1,4 +1,4 @@
-import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS } from '../models/demoData';
+import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS, DEMO_TRIPS } from '../models/demoData';
 
 const PROXY_URL = '/api/notion';
 
@@ -77,6 +77,7 @@ export class NotionClient {
       type: row.properties.Type?.select?.name || ((row.properties['Amount (RON)']?.number || 0) > 0 ? 'Income' : 'Expense'),
       categoryId: row.properties.Category?.relation?.[0]?.id || '',
       accountId: row.properties.Account?.relation?.[0]?.id || '',
+      tripId: row.properties.Trip?.relation?.[0]?.id || '',
       tags: row.properties.Tags?.multi_select?.map(t => t.name) || []
     }));
   }
@@ -103,6 +104,7 @@ export class NotionClient {
             'Type': { select: { name: tx.type } },
             'Category': { relation: [{ id: tx.categoryId }] },
             'Account': { relation: [{ id: tx.accountId }] },
+            'Trip': { relation: tx.tripId ? [{ id: tx.tripId }] : [] },
             'Tags': { multi_select: tx.tags.map(t => ({ name: t })) }
           }
         }
@@ -125,6 +127,7 @@ export class NotionClient {
     if (updates.type !== undefined) properties['Type'] = { select: { name: updates.type } };
     if (updates.categoryId !== undefined) properties['Category'] = { relation: [{ id: updates.categoryId }] };
     if (updates.accountId !== undefined) properties['Account'] = { relation: [{ id: updates.accountId }] };
+    if (updates.tripId !== undefined) properties['Trip'] = { relation: updates.tripId ? [{ id: updates.tripId }] : [] };
     if (updates.tags !== undefined) properties['Tags'] = { multi_select: updates.tags.map(t => ({ name: t })) };
 
     const response = await fetch(PROXY_URL, {
@@ -306,5 +309,119 @@ export class NotionClient {
         await this.deleteSubscription(sub.id);
       }
     }
+
+    if (this.dbIds?.trips) {
+      const trips = await this.fetchTrips();
+      for (const trip of trips) {
+        await this.deleteTrip(trip.id);
+      }
+    }
+  }
+
+  async fetchTrips() {
+    if (!this.token || !this.dbIds?.trips) {
+      return [...(DEMO_TRIPS || [])];
+    }
+    
+    const response = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
+      body: JSON.stringify({
+        path: `databases/${this.dbIds.trips}/query`,
+        method: 'POST'
+      })
+    });
+    const data = await response.json();
+    return (data.results || []).map(row => ({
+      id: row.id,
+      name: row.properties.Name?.title?.[0]?.plain_text || '',
+      destination: row.properties.Destination?.rich_text?.[0]?.plain_text || '',
+      startDate: row.properties['Start Date']?.date?.start || null,
+      endDate: row.properties['End Date']?.date?.start || null,
+      status: row.properties.Status?.select?.name || 'Planned',
+      notes: row.properties.Notes?.rich_text?.[0]?.plain_text || ''
+    }));
+  }
+
+  async addTrip(trip) {
+    if (!this.token || !this.dbIds?.trips) {
+      const newTrip = { ...trip, id: 'demo_trip_' + Date.now() };
+      if (DEMO_TRIPS) DEMO_TRIPS.push(newTrip);
+      return newTrip;
+    }
+    
+    const properties = {
+      'Name': { title: [{ text: { content: trip.name || '' } }] },
+      'Destination': { rich_text: [{ text: { content: trip.destination || '' } }] },
+      'Status': { select: { name: trip.status || 'Planned' } },
+      'Notes': { rich_text: [{ text: { content: trip.notes || '' } }] }
+    };
+    if (trip.startDate) {
+      properties['Start Date'] = { date: { start: trip.startDate } };
+    }
+    if (trip.endDate) {
+      properties['End Date'] = { date: { start: trip.endDate } };
+    }
+
+    const response = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
+      body: JSON.stringify({
+        path: `pages`,
+        method: 'POST',
+        body: {
+          parent: { database_id: this.dbIds.trips },
+          properties
+        }
+      })
+    });
+    return response.json();
+  }
+
+  async updateTrip(tripId, updates) {
+    if (!this.token || !this.dbIds?.trips) {
+      const trip = DEMO_TRIPS ? DEMO_TRIPS.find(t => t.id === tripId) : null;
+      if (trip) Object.assign(trip, updates);
+      return trip;
+    }
+    
+    const properties = {};
+    if (updates.name !== undefined) properties['Name'] = { title: [{ text: { content: updates.name || '' } }] };
+    if (updates.destination !== undefined) properties['Destination'] = { rich_text: [{ text: { content: updates.destination || '' } }] };
+    if (updates.status !== undefined) properties['Status'] = { select: { name: updates.status || 'Planned' } };
+    if (updates.notes !== undefined) properties['Notes'] = { rich_text: [{ text: { content: updates.notes || '' } }] };
+    if (updates.startDate !== undefined) properties['Start Date'] = updates.startDate ? { date: { start: updates.startDate } } : null;
+    if (updates.endDate !== undefined) properties['End Date'] = updates.endDate ? { date: { start: updates.endDate } } : null;
+
+    const response = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
+      body: JSON.stringify({
+        path: `pages/${tripId}`,
+        method: 'PATCH',
+        body: { properties }
+      })
+    });
+    return response.json();
+  }
+
+  async deleteTrip(tripId) {
+    if (!this.token || !this.dbIds?.trips) {
+      if (DEMO_TRIPS) {
+        const idx = DEMO_TRIPS.findIndex(t => t.id === tripId);
+        if (idx !== -1) DEMO_TRIPS.splice(idx, 1);
+      }
+      return;
+    }
+    
+    await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
+      body: JSON.stringify({
+        path: `pages/${tripId}`,
+        method: 'PATCH',
+        body: { archived: true }
+      })
+    });
   }
 }

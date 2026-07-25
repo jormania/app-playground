@@ -136,14 +136,6 @@ export const DEMO_CATEGORIES = [
     "type": "Expense",
     "icon": "🏛️",
     "description": "Taxes, accounting fees"
-  },
-  {
-    "id": "cat_nora",
-    "name": "Nora",
-    "type": "Expense",
-    "icon": "👧",
-    "description": "Child activities, school, clothes, support",
-    "budgetLimit": 1200
   }
 ];
 
@@ -233,309 +225,78 @@ export const DEMO_SUBSCRIPTIONS = [
   }
 ];
 
+export const DEMO_TRIPS = [
+  {
+    "id": "trip_billund",
+    "name": "Billund 2025",
+    "destination": "Billund, Denmark",
+    "startDate": "2025-05-10",
+    "endDate": "2025-05-15",
+    "status": "Completed",
+    "notes": "Legoland family trip"
+  },
+  {
+    "id": "trip_poland",
+    "name": "Poland Autumn 2026",
+    "destination": "Kraków & Warsaw, Poland",
+    "startDate": "2026-10-05",
+    "endDate": "2026-10-15",
+    "status": "Planned",
+    "notes": "Autumn cultural trip. Flights bought in spring, hotel booked in summer."
+  },
+  {
+    "id": "trip_constance",
+    "name": "Lake Constance 2026",
+    "destination": "Lake Constance, Germany",
+    "startDate": "2026-07-12",
+    "endDate": "2026-07-20",
+    "status": "Active",
+    "notes": "Summer lakeside vacation"
+  },
+  {
+    "id": "trip_greece",
+    "name": "Greece Autumn 2024",
+    "destination": "Crete, Greece",
+    "startDate": "2024-09-18",
+    "endDate": "2024-09-25",
+    "status": "Completed",
+    "notes": "Beach island retreat"
+  }
+];
+
 export const DEMO_TRANSACTIONS = [
   {
-    "id": "demo_tx_prop_inc_1",
-    "description": "Tenant Rent Apartment 1",
-    "date": "2026-12-05",
-    "amount": 1500,
-    "type": "Income",
-    "categoryId": "cat_rental_income",
-    "accountId": "acc_checking",
-    "tags": ["Property"]
-  },
-  {
-    "id": "demo_tx_prop_inc_2",
-    "description": "Tenant Rent Studio",
-    "date": "2026-12-05",
-    "amount": 650,
-    "type": "Income",
-    "categoryId": "cat_rental_income",
-    "accountId": "acc_checking",
-    "tags": ["Property"]
-  },
-  {
-    "id": "demo_tx_prop_exp_1",
-    "description": "Mortgage Payment Apartment 1",
-    "date": "2026-12-10",
-    "amount": 620,
-    "type": "Expense",
-    "categoryId": "cat_property",
-    "accountId": "acc_checking",
-    "tags": ["Property", "Mortgage"]
-  },
-  {
-    "id": "demo_tx_prop_exp_2",
-    "description": "Apartment 1 HOA & Maintenance Fee",
-    "date": "2026-12-12",
-    "amount": 95,
-    "type": "Expense",
-    "categoryId": "cat_property",
-    "accountId": "acc_checking",
-    "tags": ["Property", "HOA"]
-  },
-  {
-    "id": "demo_tx_prop_exp_3",
-    "description": "Property Tax Annual Installment",
-    "date": "2026-12-15",
-    "amount": 180,
-    "type": "Expense",
-    "categoryId": "cat_property",
-    "accountId": "acc_checking",
-    "tags": ["Property", "Tax"]
-  },
-  {
-    "id": "demo_tx_prop_exp_4",
-    "description": "Plumber Emergency Repair Boiler",
-    "date": "2026-12-18",
-    "amount": 450,
-    "type": "Expense",
-    "categoryId": "cat_property",
-    "accountId": "acc_checking",
-    "tags": ["Property", "Repair"]
-  },
-  {
-    "id": "demo_tx_nora_1",
-    "description": "Nora Private School Tuition & Child Support",
-    "date": "2026-12-02",
-    "amount": 850,
-    "type": "Expense",
-    "categoryId": "cat_nora",
-    "accountId": "acc_checking",
-    "tags": ["Nora", "Education", "Support"]
-  },
-  {
-    "id": "demo_tx_nora_2",
-    "description": "Nora Swimming Lessons & Sports Club",
-    "date": "2026-12-08",
-    "amount": 120,
-    "type": "Expense",
-    "categoryId": "cat_nora",
-    "accountId": "acc_revolut",
-    "tags": ["Nora", "Activities"]
-  },
-  {
-    "id": "demo_tx_nora_3",
-    "description": "Pediatrician Routine Checkup for Nora",
-    "date": "2026-12-11",
-    "amount": 90,
-    "type": "Expense",
-    "categoryId": "cat_nora",
-    "accountId": "acc_credit",
-    "tags": ["Nora", "Health"]
-  },
-  {
-    "id": "demo_tx_nora_4",
-    "description": "Winter Jacket & Shoes for Nora",
-    "date": "2026-12-14",
-    "amount": 145,
-    "type": "Expense",
-    "categoryId": "cat_nora",
-    "accountId": "acc_credit",
-    "tags": ["Nora", "Clothes"]
-  },
-  {
-    "id": "demo_tx_nora_5",
-    "description": "Christmas Toys & Books for Nora",
-    "date": "2026-12-19",
-    "amount": 110,
-    "type": "Expense",
-    "categoryId": "cat_nora",
-    "accountId": "acc_revolut",
-    "tags": ["Nora", "Gifts"]
-  },
-  {
-    "id": "demo_tx_prop_nov_inc_1",
-    "description": "Tenant Rent Apartment 1",
-    "date": "2026-11-05",
-    "amount": 1500,
-    "type": "Income",
-    "categoryId": "cat_rental_income",
-    "accountId": "acc_checking",
-    "tags": ["Property"]
-  },
-  {
-    "id": "demo_tx_prop_nov_inc_2",
-    "description": "Tenant Rent Studio",
-    "date": "2026-11-05",
-    "amount": 650,
-    "type": "Income",
-    "categoryId": "cat_rental_income",
-    "accountId": "acc_checking",
-    "tags": ["Property"]
-  },
-  {
-    "id": "demo_tx_prop_nov_exp_1",
-    "description": "Mortgage Payment Apartment 1",
-    "date": "2026-11-10",
-    "amount": 620,
-    "type": "Expense",
-    "categoryId": "cat_property",
-    "accountId": "acc_checking",
-    "tags": ["Property", "Mortgage"]
-  },
-  {
-    "id": "demo_tx_prop_nov_exp_2",
-    "description": "Apartment 1 HOA & Maintenance Fee",
-    "date": "2026-11-12",
-    "amount": 85,
-    "type": "Expense",
-    "categoryId": "cat_property",
-    "accountId": "acc_checking",
-    "tags": ["Property", "HOA"]
-  },
-  {
-    "id": "demo_tx_nora_nov_1",
-    "description": "Nora Private School Tuition & Child Support",
-    "date": "2026-11-02",
-    "amount": 850,
-    "type": "Expense",
-    "categoryId": "cat_nora",
-    "accountId": "acc_checking",
-    "tags": ["Nora", "Education", "Support"]
-  },
-  {
-    "id": "demo_tx_nora_nov_2",
-    "description": "Nora Tennis Lessons",
-    "date": "2026-11-08",
-    "amount": 110,
-    "type": "Expense",
-    "categoryId": "cat_nora",
-    "accountId": "acc_revolut",
-    "tags": ["Nora", "Activities"]
-  },
-  {
-    "id": "demo_tx_nora_nov_3",
-    "description": "Art Workshop for Nora",
-    "date": "2026-11-15",
-    "amount": 60,
-    "type": "Expense",
-    "categoryId": "cat_nora",
-    "accountId": "acc_cash",
-    "tags": ["Nora", "Activities"]
-  },
-  {
-    "id": "demo_tx_vac_1",
-    "description": "Flight Tickets to Vienna",
-    "date": "2026-12-20",
-    "amount": 850,
-    "type": "Expense",
-    "categoryId": "cat_travel",
-    "accountId": "acc_credit",
-    "tags": ["Vacation"]
-  },
-  {
-    "id": "demo_tx_vac_2",
-    "description": "Vienna Express Train",
-    "date": "2026-12-20",
-    "amount": 48,
-    "type": "Expense",
-    "categoryId": "cat_travel",
-    "accountId": "acc_revolut",
-    "tags": ["Vacation"]
-  },
-  {
-    "id": "demo_tx_vac_3",
-    "description": "Hotel Sacher Accommodation",
-    "date": "2026-12-21",
-    "amount": 920,
-    "type": "Expense",
-    "categoryId": "cat_travel",
-    "accountId": "acc_credit",
-    "tags": ["Vacation"]
-  },
-  {
-    "id": "demo_tx_vac_4",
-    "description": "Traditional Viennese Dinner",
-    "date": "2026-12-21",
-    "amount": 145,
-    "type": "Expense",
-    "categoryId": "cat_travel",
-    "accountId": "acc_revolut",
-    "tags": ["Vacation"]
-  },
-  {
-    "id": "demo_tx_vac_5",
-    "description": "Schönbrunn Palace & Zoo Tickets (Nora)",
-    "date": "2026-12-22",
-    "amount": 95,
-    "type": "Expense",
-    "categoryId": "cat_travel",
-    "accountId": "acc_revolut",
-    "tags": ["Vacation"]
-  },
-  {
-    "id": "demo_tx_vac_6",
-    "description": "Café Central Lunch & Pastries",
-    "date": "2026-12-22",
-    "amount": 68,
-    "type": "Expense",
-    "categoryId": "cat_travel",
-    "accountId": "acc_cash",
-    "tags": ["Vacation"]
-  },
-  {
-    "id": "demo_tx_vac_7",
-    "description": "Christmas Market Souvenirs & Gifts",
-    "date": "2026-12-23",
-    "amount": 110,
-    "type": "Expense",
-    "categoryId": "cat_travel",
-    "accountId": "acc_cash",
-    "tags": ["Vacation"]
-  },
-  {
-    "id": "demo_tx_vac_8",
-    "description": "Uber to Vienna Airport",
-    "date": "2026-12-24",
-    "amount": 35,
-    "type": "Expense",
-    "categoryId": "cat_travel",
-    "accountId": "acc_revolut",
-    "tags": ["Vacation"]
-  },
-  {
-    "id": "demo_tx_vac_9",
-    "description": "Duty Free Chocolates & Shopping",
-    "date": "2026-12-24",
-    "amount": 52,
-    "type": "Expense",
-    "categoryId": "cat_travel",
-    "accountId": "acc_credit",
-    "tags": ["Vacation"]
-  },
-  {
-    "id": "demo_tx_370",
-    "description": "Uber/Bolt",
-    "date": "2026-12-28",
-    "amount": 29,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_374",
-    "description": "Amazon",
-    "date": "2026-12-26",
-    "amount": 63,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_367",
+    "id": "demo_tx_372",
     "description": "Starbucks",
-    "date": "2026-12-24",
-    "amount": 24,
+    "date": "2026-12-28",
+    "amount": 34,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_355",
+    "id": "demo_tx_374",
+    "description": "Starbucks",
+    "date": "2026-12-27",
+    "amount": 27,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_378",
+    "description": "Uber/Bolt",
+    "date": "2026-12-25",
+    "amount": 24,
+    "type": "Expense",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_362",
     "description": "Spotify",
     "date": "2026-12-22",
     "amount": 25,
@@ -547,77 +308,57 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_361",
-    "description": "Restaurant",
-    "date": "2026-12-20",
-    "amount": 128,
+    "id": "demo_tx_379",
+    "description": "Uber/Bolt",
+    "date": "2026-12-19",
+    "amount": 34,
     "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_365",
-    "description": "Starbucks",
-    "date": "2026-12-20",
-    "amount": 23,
-    "type": "Expense",
-    "categoryId": "cat_dining",
+    "categoryId": "cat_transport",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_358",
+    "id": "demo_tx_365",
     "description": "Mega Image",
-    "date": "2026-12-19",
-    "amount": 247,
+    "date": "2026-12-18",
+    "amount": 218,
     "type": "Expense",
     "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_363",
-    "description": "Restaurant",
-    "date": "2026-12-19",
-    "amount": 129,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_375",
-    "description": "Amazon",
-    "date": "2026-12-19",
-    "amount": 90,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
     "id": "demo_tx_364",
-    "description": "Starbucks",
-    "date": "2026-12-17",
-    "amount": 31,
+    "description": "Mega Image",
+    "date": "2026-12-16",
+    "amount": 65,
     "type": "Expense",
-    "categoryId": "cat_dining",
+    "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_380",
-    "description": "ETF Vanguard",
-    "date": "2026-12-17",
-    "amount": 789,
+    "id": "demo_tx_376",
+    "description": "Uber/Bolt",
+    "date": "2026-12-16",
+    "amount": 31,
     "type": "Expense",
-    "categoryId": "cat_investing",
-    "accountId": "acc_checking",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_353",
+    "id": "demo_tx_382",
+    "description": "Cinema",
+    "date": "2026-12-16",
+    "amount": 42,
+    "type": "Expense",
+    "categoryId": "cat_entertainment",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_360",
     "description": "YouTube Premium",
     "date": "2026-12-15",
     "amount": 55,
@@ -629,67 +370,37 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_376",
-    "description": "Gas Station",
-    "date": "2026-12-15",
-    "amount": 199,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_379",
+    "id": "demo_tx_383",
     "description": "Christmas Gifts",
     "date": "2026-12-15",
-    "amount": 985,
+    "amount": 461,
     "type": "Expense",
     "categoryId": "cat_gift",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_369",
-    "description": "Uber/Bolt",
+    "id": "demo_tx_381",
+    "description": "Gas Station",
     "date": "2026-12-14",
-    "amount": 46,
+    "amount": 157,
+    "type": "Expense",
+    "categoryId": "cat_transport",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_377",
+    "description": "Uber/Bolt",
+    "date": "2026-12-13",
+    "amount": 51,
     "type": "Expense",
     "categoryId": "cat_transport",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_378",
-    "description": "Flight Tickets",
-    "date": "2026-12-14",
-    "amount": 919,
-    "type": "Expense",
-    "categoryId": "cat_travel",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_357",
-    "description": "Mega Image",
-    "date": "2026-12-13",
-    "amount": 131,
-    "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_360",
-    "description": "Mega Image",
-    "date": "2026-12-13",
-    "amount": 296,
-    "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_352",
+    "id": "demo_tx_359",
     "description": "Digi Internet",
     "date": "2026-12-12",
     "amount": 40,
@@ -699,47 +410,79 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_377",
-    "description": "Clothing Store",
-    "date": "2026-12-12",
-    "amount": 114,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_351",
-    "description": "Enel Electricity",
-    "date": "2026-12-10",
-    "amount": 243,
-    "type": "Expense",
-    "categoryId": "cat_utilities",
-    "accountId": "acc_checking",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_368",
+    "id": "demo_tx_370",
     "description": "Starbucks",
-    "date": "2026-12-09",
-    "amount": 27,
+    "date": "2026-12-11",
+    "amount": 19,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_372",
-    "description": "Uber/Bolt",
-    "date": "2026-12-09",
-    "amount": 41,
+    "id": "demo_tx_358",
+    "description": "Enel Electricity",
+    "date": "2026-12-10",
+    "amount": 250,
     "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
+    "categoryId": "cat_utilities",
+    "accountId": "acc_checking",
     "tags": []
   },
   {
-    "id": "demo_tx_354",
+    "id": "demo_tx_384",
+    "description": "Hotel Booking for New Years Eve",
+    "date": "2026-12-10",
+    "amount": 1500,
+    "type": "Expense",
+    "categoryId": "cat_travel",
+    "accountId": "acc_credit",
+    "tags": [
+      "Hotel"
+    ]
+  },
+  {
+    "id": "demo_tx_369",
+    "description": "Restaurant",
+    "date": "2026-12-09",
+    "amount": 238,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_385",
+    "description": "ETF Vanguard",
+    "date": "2026-12-07",
+    "amount": 661,
+    "type": "Expense",
+    "categoryId": "cat_investing",
+    "accountId": "acc_checking",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_367",
+    "description": "Restaurant",
+    "date": "2026-12-06",
+    "amount": 121,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_368",
+    "description": "Restaurant",
+    "date": "2026-12-06",
+    "amount": 138,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_361",
     "description": "Netflix",
     "date": "2026-12-05",
     "amount": 60,
@@ -751,37 +494,47 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_359",
-    "description": "Mega Image",
+    "id": "demo_tx_380",
+    "description": "Amazon",
     "date": "2026-12-05",
-    "amount": 147,
+    "amount": 151,
     "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_366",
+    "id": "demo_tx_371",
     "description": "Starbucks",
-    "date": "2026-12-05",
-    "amount": 30,
+    "date": "2026-12-04",
+    "amount": 15,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_371",
-    "description": "Uber/Bolt",
+    "id": "demo_tx_373",
+    "description": "Starbucks",
     "date": "2026-12-04",
-    "amount": 25,
+    "amount": 22,
     "type": "Expense",
-    "categoryId": "cat_transport",
+    "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_350",
+    "id": "demo_tx_375",
+    "description": "Starbucks",
+    "date": "2026-12-04",
+    "amount": 31,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_357",
     "description": "Apartment Rent",
     "date": "2026-12-02",
     "amount": 2500,
@@ -791,17 +544,17 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_362",
-    "description": "Restaurant",
+    "id": "demo_tx_366",
+    "description": "Mega Image",
     "date": "2026-12-02",
-    "amount": 95,
+    "amount": 241,
     "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_349",
+    "id": "demo_tx_356",
     "description": "Salary",
     "date": "2026-12-01",
     "amount": 9500,
@@ -811,7 +564,7 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_356",
+    "id": "demo_tx_363",
     "description": "Gym Membership",
     "date": "2026-12-01",
     "amount": 150,
@@ -823,17 +576,7 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_373",
-    "description": "Amazon",
-    "date": "2026-12-01",
-    "amount": 121,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_381",
+    "id": "demo_tx_386",
     "description": "Monthly Bank Fee",
     "date": "2026-12-01",
     "amount": 15,
@@ -843,37 +586,27 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_329",
+    "id": "demo_tx_340",
     "description": "Starbucks",
-    "date": "2026-11-27",
-    "amount": 28,
+    "date": "2026-11-26",
+    "amount": 17,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_331",
-    "description": "Starbucks",
-    "date": "2026-11-27",
-    "amount": 27,
+    "id": "demo_tx_346",
+    "description": "Uber/Bolt",
+    "date": "2026-11-24",
+    "amount": 51,
     "type": "Expense",
-    "categoryId": "cat_dining",
+    "categoryId": "cat_transport",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_344",
-    "description": "Pharmacy",
-    "date": "2026-11-27",
-    "amount": 95,
-    "type": "Expense",
-    "categoryId": "cat_health",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_320",
+    "id": "demo_tx_332",
     "description": "Spotify",
     "date": "2026-11-22",
     "amount": 25,
@@ -885,77 +618,57 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_326",
-    "description": "Restaurant",
-    "date": "2026-11-22",
-    "amount": 250,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_337",
-    "description": "Amazon",
-    "date": "2026-11-21",
-    "amount": 161,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_338",
-    "description": "Amazon",
-    "date": "2026-11-21",
-    "amount": 85,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_330",
+    "id": "demo_tx_343",
     "description": "Starbucks",
     "date": "2026-11-20",
-    "amount": 28,
+    "amount": 32,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_322",
-    "description": "Mega Image",
-    "date": "2026-11-18",
-    "amount": 192,
-    "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_341",
+    "id": "demo_tx_350",
     "description": "Gas Station",
-    "date": "2026-11-18",
-    "amount": 179,
+    "date": "2026-11-17",
+    "amount": 184,
     "type": "Expense",
     "categoryId": "cat_transport",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_324",
+    "id": "demo_tx_336",
     "description": "Mega Image",
     "date": "2026-11-16",
-    "amount": 190,
+    "amount": 94,
     "type": "Expense",
     "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_318",
+    "id": "demo_tx_337",
+    "description": "Restaurant",
+    "date": "2026-11-16",
+    "amount": 101,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_342",
+    "description": "Starbucks",
+    "date": "2026-11-16",
+    "amount": 35,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_330",
     "description": "YouTube Premium",
     "date": "2026-11-15",
     "amount": 55,
@@ -967,37 +680,37 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_328",
-    "description": "Restaurant",
-    "date": "2026-11-15",
-    "amount": 201,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_333",
+    "id": "demo_tx_341",
     "description": "Starbucks",
     "date": "2026-11-14",
-    "amount": 23,
+    "amount": 22,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_327",
-    "description": "Restaurant",
+    "id": "demo_tx_349",
+    "description": "Amazon",
     "date": "2026-11-13",
-    "amount": 151,
+    "amount": 36,
     "type": "Expense",
-    "categoryId": "cat_dining",
+    "categoryId": "cat_shopping",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_317",
+    "id": "demo_tx_351",
+    "description": "Cinema",
+    "date": "2026-11-13",
+    "amount": 40,
+    "type": "Expense",
+    "categoryId": "cat_entertainment",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_329",
     "description": "Digi Internet",
     "date": "2026-11-12",
     "amount": 40,
@@ -1007,107 +720,77 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_342",
-    "description": "Clothing Store",
+    "id": "demo_tx_345",
+    "description": "Uber/Bolt",
     "date": "2026-11-12",
-    "amount": 254,
+    "amount": 22,
     "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_346",
-    "description": "Property Tax",
-    "date": "2026-11-11",
-    "amount": 1065,
-    "type": "Expense",
-    "categoryId": "cat_taxes",
-    "accountId": "acc_checking",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_316",
+    "id": "demo_tx_328",
     "description": "Enel Electricity",
     "date": "2026-11-10",
-    "amount": 131,
+    "amount": 222,
     "type": "Expense",
     "categoryId": "cat_utilities",
     "accountId": "acc_checking",
     "tags": []
   },
   {
-    "id": "demo_tx_323",
-    "description": "Mega Image",
-    "date": "2026-11-10",
-    "amount": 254,
-    "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_343",
-    "description": "Cinema",
-    "date": "2026-11-10",
-    "amount": 69,
-    "type": "Expense",
-    "categoryId": "cat_entertainment",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_335",
+    "id": "demo_tx_344",
     "description": "Uber/Bolt",
-    "date": "2026-11-08",
-    "amount": 29,
+    "date": "2026-11-10",
+    "amount": 44,
     "type": "Expense",
     "categoryId": "cat_transport",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_345",
+    "id": "demo_tx_347",
+    "description": "Uber/Bolt",
+    "date": "2026-11-10",
+    "amount": 59,
+    "type": "Expense",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_352",
     "description": "ETF Vanguard",
-    "date": "2026-11-08",
-    "amount": 996,
+    "date": "2026-11-10",
+    "amount": 597,
     "type": "Expense",
     "categoryId": "cat_investing",
     "accountId": "acc_checking",
     "tags": []
   },
   {
-    "id": "demo_tx_336",
-    "description": "Uber/Bolt",
+    "id": "demo_tx_335",
+    "description": "Mega Image",
     "date": "2026-11-07",
-    "amount": 57,
+    "amount": 97,
     "type": "Expense",
-    "categoryId": "cat_transport",
+    "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_325",
+    "id": "demo_tx_338",
     "description": "Restaurant",
-    "date": "2026-11-06",
-    "amount": 228,
+    "date": "2026-11-07",
+    "amount": 141,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_339",
-    "description": "Amazon",
-    "date": "2026-11-06",
-    "amount": 191,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_319",
+    "id": "demo_tx_331",
     "description": "Netflix",
     "date": "2026-11-05",
     "amount": 60,
@@ -1119,17 +802,27 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_334",
-    "description": "Uber/Bolt",
+    "id": "demo_tx_339",
+    "description": "Starbucks",
     "date": "2026-11-05",
-    "amount": 51,
+    "amount": 32,
     "type": "Expense",
-    "categoryId": "cat_transport",
+    "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
     "id": "demo_tx_348",
+    "description": "Amazon",
+    "date": "2026-11-05",
+    "amount": 178,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_355",
     "description": "Tenant Rent",
     "date": "2026-11-05",
     "amount": 1500,
@@ -1139,27 +832,17 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_332",
-    "description": "Starbucks",
-    "date": "2026-11-04",
-    "amount": 31,
+    "id": "demo_tx_334",
+    "description": "Mega Image",
+    "date": "2026-11-03",
+    "amount": 232,
     "type": "Expense",
-    "categoryId": "cat_dining",
+    "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_340",
-    "description": "Amazon",
-    "date": "2026-11-04",
-    "amount": 36,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_315",
+    "id": "demo_tx_327",
     "description": "Apartment Rent",
     "date": "2026-11-02",
     "amount": 2500,
@@ -1169,7 +852,7 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_314",
+    "id": "demo_tx_326",
     "description": "Salary",
     "date": "2026-11-01",
     "amount": 9500,
@@ -1179,7 +862,7 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_321",
+    "id": "demo_tx_333",
     "description": "Gym Membership",
     "date": "2026-11-01",
     "amount": 150,
@@ -1191,7 +874,17 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_347",
+    "id": "demo_tx_353",
+    "description": "Property Tax",
+    "date": "2026-11-01",
+    "amount": 836,
+    "type": "Expense",
+    "categoryId": "cat_taxes",
+    "accountId": "acc_checking",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_354",
     "description": "Monthly Bank Fee",
     "date": "2026-11-01",
     "amount": 15,
@@ -1201,37 +894,37 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_307",
-    "description": "Gas Station",
-    "date": "2026-10-28",
-    "amount": 273,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_303",
-    "description": "Uber/Bolt",
-    "date": "2026-10-27",
-    "amount": 51,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_300",
+    "id": "demo_tx_308",
     "description": "Starbucks",
-    "date": "2026-10-23",
-    "amount": 17,
+    "date": "2026-10-28",
+    "amount": 35,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_291",
+    "id": "demo_tx_294",
+    "description": "Mega Image",
+    "date": "2026-10-25",
+    "amount": 300,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_300",
+    "description": "Restaurant",
+    "date": "2026-10-25",
+    "amount": 190,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_292",
     "description": "Spotify",
     "date": "2026-10-22",
     "amount": 25,
@@ -1243,77 +936,77 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_299",
-    "description": "Starbucks",
-    "date": "2026-10-21",
-    "amount": 31,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_311",
-    "description": "ETF Vanguard",
-    "date": "2026-10-20",
-    "amount": 730,
-    "type": "Expense",
-    "categoryId": "cat_investing",
-    "accountId": "acc_checking",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_296",
+    "id": "demo_tx_302",
     "description": "Restaurant",
-    "date": "2026-10-18",
-    "amount": 239,
+    "date": "2026-10-20",
+    "amount": 214,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_298",
+    "id": "demo_tx_305",
     "description": "Starbucks",
-    "date": "2026-10-18",
-    "amount": 24,
+    "date": "2026-10-20",
+    "amount": 32,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_308",
+    "id": "demo_tx_312",
+    "description": "Uber/Bolt",
+    "date": "2026-10-20",
+    "amount": 60,
+    "type": "Expense",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_316",
     "description": "Clothing Store",
-    "date": "2026-10-17",
-    "amount": 156,
+    "date": "2026-10-20",
+    "amount": 489,
     "type": "Expense",
     "categoryId": "cat_shopping",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_310",
-    "description": "Haircut",
-    "date": "2026-10-16",
-    "amount": 75,
+    "id": "demo_tx_323",
+    "description": "ETF Vanguard",
+    "date": "2026-10-19",
+    "amount": 915,
     "type": "Expense",
-    "categoryId": "cat_personal_care",
+    "categoryId": "cat_investing",
     "accountId": "acc_checking",
     "tags": []
   },
   {
-    "id": "demo_tx_285",
+    "id": "demo_tx_324",
+    "description": "Property Maintenance",
+    "date": "2026-10-17",
+    "amount": 286,
+    "type": "Expense",
+    "categoryId": "cat_property",
+    "accountId": "acc_checking",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_286",
     "description": "Freelance Gig",
     "date": "2026-10-15",
-    "amount": 2965,
+    "amount": 2799,
     "type": "Income",
     "categoryId": "cat_freelance",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_289",
+    "id": "demo_tx_290",
     "description": "YouTube Premium",
     "date": "2026-10-15",
     "amount": 55,
@@ -1325,17 +1018,60 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_312",
-    "description": "Property Maintenance",
+    "id": "demo_tx_310",
+    "description": "Uber/Bolt",
     "date": "2026-10-15",
-    "amount": 119,
+    "amount": 51,
     "type": "Expense",
-    "categoryId": "cat_property",
-    "accountId": "acc_checking",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_288",
+    "id": "demo_tx_304",
+    "description": "Restaurant",
+    "date": "2026-10-14",
+    "amount": 185,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_322",
+    "description": "Polish Pottery Souvenirs",
+    "date": "2026-10-14",
+    "amount": 450,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
+    "tags": [
+      "Souvenir"
+    ],
+    "tripId": "trip_poland"
+  },
+  {
+    "id": "demo_tx_306",
+    "description": "Starbucks",
+    "date": "2026-10-13",
+    "amount": 19,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_307",
+    "description": "Starbucks",
+    "date": "2026-10-13",
+    "amount": 21,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_289",
     "description": "Digi Internet",
     "date": "2026-10-12",
     "amount": 40,
@@ -1345,60 +1081,94 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_293",
+    "id": "demo_tx_295",
     "description": "Mega Image",
     "date": "2026-10-12",
-    "amount": 243,
+    "amount": 194,
     "type": "Expense",
     "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_297",
-    "description": "Restaurant",
+    "id": "demo_tx_298",
+    "description": "Mega Image",
     "date": "2026-10-12",
-    "amount": 138,
+    "amount": 278,
     "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_301",
-    "description": "Starbucks",
-    "date": "2026-10-11",
-    "amount": 19,
-    "type": "Expense",
-    "categoryId": "cat_dining",
+    "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_305",
-    "description": "Amazon",
-    "date": "2026-10-11",
-    "amount": 200,
+    "id": "demo_tx_315",
+    "description": "Gas Station",
+    "date": "2026-10-12",
+    "amount": 189,
     "type": "Expense",
-    "categoryId": "cat_shopping",
+    "categoryId": "cat_transport",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_287",
+    "id": "demo_tx_321",
+    "description": "Warsaw Bistro Dinner",
+    "date": "2026-10-12",
+    "amount": 310,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": [],
+    "tripId": "trip_poland"
+  },
+  {
+    "id": "demo_tx_303",
+    "description": "Restaurant",
+    "date": "2026-10-11",
+    "amount": 97,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_288",
     "description": "Enel Electricity",
     "date": "2026-10-10",
-    "amount": 189,
+    "amount": 159,
     "type": "Expense",
     "categoryId": "cat_utilities",
     "accountId": "acc_checking",
     "tags": []
   },
   {
-    "id": "demo_tx_294",
-    "description": "Mega Image",
+    "id": "demo_tx_320",
+    "description": "PKP Intercity Train Kraków to Warsaw",
     "date": "2026-10-10",
-    "amount": 146,
+    "amount": 180,
+    "type": "Expense",
+    "categoryId": "cat_travel",
+    "accountId": "acc_revolut",
+    "tags": [
+      "Train"
+    ],
+    "tripId": "trip_poland"
+  },
+  {
+    "id": "demo_tx_313",
+    "description": "Amazon",
+    "date": "2026-10-09",
+    "amount": 118,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_297",
+    "description": "Mega Image",
+    "date": "2026-10-08",
+    "amount": 139,
     "type": "Expense",
     "categoryId": "cat_food",
     "accountId": "acc_revolut",
@@ -1406,36 +1176,41 @@ export const DEMO_TRANSACTIONS = [
   },
   {
     "id": "demo_tx_309",
-    "description": "Pharmacy",
-    "date": "2026-10-08",
-    "amount": 78,
-    "type": "Expense",
-    "categoryId": "cat_health",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_295",
-    "description": "Mega Image",
-    "date": "2026-10-07",
-    "amount": 241,
-    "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_302",
     "description": "Uber/Bolt",
-    "date": "2026-10-07",
-    "amount": 54,
+    "date": "2026-10-08",
+    "amount": 22,
     "type": "Expense",
     "categoryId": "cat_transport",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_290",
+    "id": "demo_tx_319",
+    "description": "Wawel Castle Museum Tickets",
+    "date": "2026-10-08",
+    "amount": 110,
+    "type": "Expense",
+    "categoryId": "cat_travel",
+    "accountId": "acc_revolut",
+    "tags": [
+      "Museum",
+      "Ticket"
+    ],
+    "tripId": "trip_poland"
+  },
+  {
+    "id": "demo_tx_318",
+    "description": "Kraków Old Town Restaurant",
+    "date": "2026-10-07",
+    "amount": 240,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": [],
+    "tripId": "trip_poland"
+  },
+  {
+    "id": "demo_tx_291",
     "description": "Netflix",
     "date": "2026-10-05",
     "amount": 60,
@@ -1447,27 +1222,27 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_306",
+    "id": "demo_tx_314",
     "description": "Amazon",
     "date": "2026-10-04",
-    "amount": 163,
+    "amount": 191,
     "type": "Expense",
     "categoryId": "cat_shopping",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_304",
-    "description": "Amazon",
-    "date": "2026-10-03",
-    "amount": 151,
+    "id": "demo_tx_317",
+    "description": "Cinema",
+    "date": "2026-10-04",
+    "amount": 76,
     "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
+    "categoryId": "cat_entertainment",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_286",
+    "id": "demo_tx_287",
     "description": "Apartment Rent",
     "date": "2026-10-02",
     "amount": 2500,
@@ -1477,7 +1252,47 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_284",
+    "id": "demo_tx_296",
+    "description": "Mega Image",
+    "date": "2026-10-02",
+    "amount": 65,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_299",
+    "description": "Restaurant",
+    "date": "2026-10-02",
+    "amount": 238,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_301",
+    "description": "Restaurant",
+    "date": "2026-10-02",
+    "amount": 198,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_311",
+    "description": "Uber/Bolt",
+    "date": "2026-10-02",
+    "amount": 47,
+    "type": "Expense",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_285",
     "description": "Salary",
     "date": "2026-10-01",
     "amount": 9500,
@@ -1487,7 +1302,7 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_292",
+    "id": "demo_tx_293",
     "description": "Gym Membership",
     "date": "2026-10-01",
     "amount": 150,
@@ -1499,7 +1314,7 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_313",
+    "id": "demo_tx_325",
     "description": "Monthly Bank Fee",
     "date": "2026-10-01",
     "amount": 15,
@@ -1509,37 +1324,57 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_266",
-    "description": "Restaurant",
-    "date": "2026-09-26",
-    "amount": 167,
+    "id": "demo_tx_271",
+    "description": "Uber/Bolt",
+    "date": "2026-09-27",
+    "amount": 39,
     "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_281",
-    "description": "ETF Vanguard",
+    "id": "demo_tx_270",
+    "description": "Uber/Bolt",
     "date": "2026-09-26",
-    "amount": 733,
+    "amount": 39,
     "type": "Expense",
-    "categoryId": "cat_investing",
-    "accountId": "acc_checking",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_278",
+    "id": "demo_tx_277",
     "description": "Gas Station",
-    "date": "2026-09-24",
-    "amount": 208,
+    "date": "2026-09-26",
+    "amount": 175,
     "type": "Expense",
     "categoryId": "cat_transport",
     "accountId": "acc_credit",
     "tags": []
   },
   {
+    "id": "demo_tx_268",
+    "description": "Starbucks",
+    "date": "2026-09-25",
+    "amount": 28,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
     "id": "demo_tx_261",
+    "description": "Mega Image",
+    "date": "2026-09-23",
+    "amount": 127,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_257",
     "description": "Spotify",
     "date": "2026-09-22",
     "amount": 25,
@@ -1551,67 +1386,37 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_275",
-    "description": "Uber/Bolt",
-    "date": "2026-09-20",
-    "amount": 40,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_269",
-    "description": "Starbucks",
-    "date": "2026-09-19",
-    "amount": 20,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_270",
-    "description": "Starbucks",
-    "date": "2026-09-19",
-    "amount": 29,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_271",
-    "description": "Starbucks",
-    "date": "2026-09-19",
-    "amount": 27,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_277",
-    "description": "Amazon",
-    "date": "2026-09-18",
-    "amount": 111,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_264",
+    "id": "demo_tx_259",
     "description": "Mega Image",
-    "date": "2026-09-16",
-    "amount": 95,
+    "date": "2026-09-20",
+    "amount": 253,
     "type": "Expense",
     "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_259",
+    "id": "demo_tx_275",
+    "description": "Amazon",
+    "date": "2026-09-18",
+    "amount": 50,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_263",
+    "description": "Restaurant",
+    "date": "2026-09-16",
+    "amount": 92,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_255",
     "description": "YouTube Premium",
     "date": "2026-09-15",
     "amount": 55,
@@ -1623,17 +1428,47 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_279",
-    "description": "Cinema",
-    "date": "2026-09-13",
-    "amount": 69,
+    "id": "demo_tx_260",
+    "description": "Mega Image",
+    "date": "2026-09-14",
+    "amount": 104,
     "type": "Expense",
-    "categoryId": "cat_entertainment",
+    "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_258",
+    "id": "demo_tx_276",
+    "description": "Amazon",
+    "date": "2026-09-14",
+    "amount": 110,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_273",
+    "description": "Amazon",
+    "date": "2026-09-13",
+    "amount": 81,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_281",
+    "description": "Online Course",
+    "date": "2026-09-13",
+    "amount": 206,
+    "type": "Expense",
+    "categoryId": "cat_education",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_254",
     "description": "Digi Internet",
     "date": "2026-09-12",
     "amount": 40,
@@ -1643,77 +1478,107 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_257",
-    "description": "Enel Electricity",
-    "date": "2026-09-10",
-    "amount": 193,
-    "type": "Expense",
-    "categoryId": "cat_utilities",
-    "accountId": "acc_checking",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_280",
-    "description": "Online Course",
-    "date": "2026-09-09",
-    "amount": 341,
-    "type": "Expense",
-    "categoryId": "cat_education",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_263",
-    "description": "Mega Image",
-    "date": "2026-09-08",
-    "amount": 223,
-    "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_274",
-    "description": "Uber/Bolt",
-    "date": "2026-09-08",
-    "amount": 38,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_265",
-    "description": "Mega Image",
-    "date": "2026-09-07",
-    "amount": 259,
-    "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_268",
+    "id": "demo_tx_266",
     "description": "Starbucks",
-    "date": "2026-09-07",
-    "amount": 24,
+    "date": "2026-09-12",
+    "amount": 22,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_276",
+    "id": "demo_tx_272",
     "description": "Uber/Bolt",
-    "date": "2026-09-07",
-    "amount": 40,
+    "date": "2026-09-12",
+    "amount": 28,
     "type": "Expense",
     "categoryId": "cat_transport",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_260",
+    "id": "demo_tx_264",
+    "description": "Restaurant",
+    "date": "2026-09-11",
+    "amount": 243,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_280",
+    "description": "Pharmacy",
+    "date": "2026-09-11",
+    "amount": 104,
+    "type": "Expense",
+    "categoryId": "cat_health",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_253",
+    "description": "Enel Electricity",
+    "date": "2026-09-10",
+    "amount": 240,
+    "type": "Expense",
+    "categoryId": "cat_utilities",
+    "accountId": "acc_checking",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_262",
+    "description": "Restaurant",
+    "date": "2026-09-09",
+    "amount": 86,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_279",
+    "description": "Cinema",
+    "date": "2026-09-09",
+    "amount": 72,
+    "type": "Expense",
+    "categoryId": "cat_entertainment",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_265",
+    "description": "Starbucks",
+    "date": "2026-09-07",
+    "amount": 21,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_282",
+    "description": "ETF Vanguard",
+    "date": "2026-09-07",
+    "amount": 743,
+    "type": "Expense",
+    "categoryId": "cat_investing",
+    "accountId": "acc_checking",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_269",
+    "description": "Starbucks",
+    "date": "2026-09-06",
+    "amount": 25,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_256",
     "description": "Netflix",
     "date": "2026-09-05",
     "amount": 60,
@@ -1725,27 +1590,7 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_272",
-    "description": "Starbucks",
-    "date": "2026-09-05",
-    "amount": 17,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_273",
-    "description": "Starbucks",
-    "date": "2026-09-05",
-    "amount": 27,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_283",
+    "id": "demo_tx_284",
     "description": "Tenant Rent",
     "date": "2026-09-05",
     "amount": 1500,
@@ -1756,16 +1601,36 @@ export const DEMO_TRANSACTIONS = [
   },
   {
     "id": "demo_tx_267",
-    "description": "Restaurant",
+    "description": "Starbucks",
     "date": "2026-09-04",
-    "amount": 213,
+    "amount": 27,
     "type": "Expense",
     "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_274",
+    "description": "Amazon",
+    "date": "2026-09-03",
+    "amount": 114,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_256",
+    "id": "demo_tx_278",
+    "description": "Clothing Store",
+    "date": "2026-09-03",
+    "amount": 368,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_252",
     "description": "Apartment Rent",
     "date": "2026-09-02",
     "amount": 2500,
@@ -1775,7 +1640,7 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_255",
+    "id": "demo_tx_251",
     "description": "Salary",
     "date": "2026-09-01",
     "amount": 9500,
@@ -1785,7 +1650,7 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_262",
+    "id": "demo_tx_258",
     "description": "Gym Membership",
     "date": "2026-09-01",
     "amount": 150,
@@ -1797,7 +1662,7 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_282",
+    "id": "demo_tx_283",
     "description": "Monthly Bank Fee",
     "date": "2026-09-01",
     "amount": 15,
@@ -1807,77 +1672,87 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_239",
-    "description": "Restaurant",
-    "date": "2026-08-28",
-    "amount": 220,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_238",
-    "description": "Restaurant",
-    "date": "2026-08-27",
-    "amount": 127,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_236",
+    "id": "demo_tx_234",
     "description": "Mega Image",
-    "date": "2026-08-26",
-    "amount": 79,
+    "date": "2026-08-28",
+    "amount": 144,
     "type": "Expense",
     "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_246",
-    "description": "Uber/Bolt",
-    "date": "2026-08-25",
-    "amount": 54,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_252",
-    "description": "Cinema",
-    "date": "2026-08-25",
-    "amount": 45,
-    "type": "Expense",
-    "categoryId": "cat_entertainment",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_253",
+    "id": "demo_tx_249",
     "description": "ETF Vanguard",
-    "date": "2026-08-25",
-    "amount": 808,
+    "date": "2026-08-28",
+    "amount": 931,
     "type": "Expense",
     "categoryId": "cat_investing",
     "accountId": "acc_checking",
     "tags": []
   },
   {
-    "id": "demo_tx_249",
+    "id": "demo_tx_237",
+    "description": "Restaurant",
+    "date": "2026-08-27",
+    "amount": 162,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_240",
+    "description": "Starbucks",
+    "date": "2026-08-25",
+    "amount": 35,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_245",
     "description": "Amazon",
-    "date": "2026-08-23",
-    "amount": 158,
+    "date": "2026-08-25",
+    "amount": 111,
     "type": "Expense",
     "categoryId": "cat_shopping",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_232",
+    "id": "demo_tx_247",
+    "description": "Cinema",
+    "date": "2026-08-25",
+    "amount": 72,
+    "type": "Expense",
+    "categoryId": "cat_entertainment",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_243",
+    "description": "Uber/Bolt",
+    "date": "2026-08-24",
+    "amount": 51,
+    "type": "Expense",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_244",
+    "description": "Uber/Bolt",
+    "date": "2026-08-23",
+    "amount": 32,
+    "type": "Expense",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_231",
     "description": "Spotify",
     "date": "2026-08-22",
     "amount": 25,
@@ -1889,37 +1764,27 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_240",
-    "description": "Restaurant",
+    "id": "demo_tx_233",
+    "description": "Mega Image",
     "date": "2026-08-20",
-    "amount": 213,
+    "amount": 90,
     "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_244",
+    "id": "demo_tx_241",
     "description": "Starbucks",
-    "date": "2026-08-20",
-    "amount": 27,
+    "date": "2026-08-17",
+    "amount": 28,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_245",
-    "description": "Starbucks",
-    "date": "2026-08-19",
-    "amount": 20,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_230",
+    "id": "demo_tx_229",
     "description": "YouTube Premium",
     "date": "2026-08-15",
     "amount": 55,
@@ -1931,27 +1796,7 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_237",
-    "description": "Restaurant",
-    "date": "2026-08-15",
-    "amount": 99,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_251",
-    "description": "Clothing Store",
-    "date": "2026-08-15",
-    "amount": 206,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_229",
+    "id": "demo_tx_228",
     "description": "Digi Internet",
     "date": "2026-08-12",
     "amount": 40,
@@ -1961,67 +1806,47 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_247",
-    "description": "Uber/Bolt",
+    "id": "demo_tx_246",
+    "description": "Gas Station",
     "date": "2026-08-11",
-    "amount": 55,
+    "amount": 227,
     "type": "Expense",
     "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
+    "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_228",
+    "id": "demo_tx_227",
     "description": "Enel Electricity",
     "date": "2026-08-10",
-    "amount": 142,
+    "amount": 196,
     "type": "Expense",
     "categoryId": "cat_utilities",
     "accountId": "acc_checking",
     "tags": []
   },
   {
-    "id": "demo_tx_250",
-    "description": "Gas Station",
+    "id": "demo_tx_242",
+    "description": "Starbucks",
     "date": "2026-08-10",
-    "amount": 230,
+    "amount": 21,
     "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_234",
-    "description": "Mega Image",
-    "date": "2026-08-09",
-    "amount": 251,
-    "type": "Expense",
-    "categoryId": "cat_food",
+    "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
     "id": "demo_tx_248",
-    "description": "Uber/Bolt",
+    "description": "Pharmacy",
     "date": "2026-08-09",
-    "amount": 49,
+    "amount": 139,
     "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_241",
-    "description": "Restaurant",
-    "date": "2026-08-07",
-    "amount": 165,
-    "type": "Expense",
-    "categoryId": "cat_dining",
+    "categoryId": "cat_health",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_231",
+    "id": "demo_tx_230",
     "description": "Netflix",
     "date": "2026-08-05",
     "amount": 60,
@@ -2033,27 +1858,17 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_242",
-    "description": "Starbucks",
+    "id": "demo_tx_236",
+    "description": "Mega Image",
     "date": "2026-08-03",
-    "amount": 30,
+    "amount": 201,
     "type": "Expense",
-    "categoryId": "cat_dining",
+    "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_243",
-    "description": "Starbucks",
-    "date": "2026-08-03",
-    "amount": 21,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_227",
+    "id": "demo_tx_226",
     "description": "Apartment Rent",
     "date": "2026-08-02",
     "amount": 2500,
@@ -2063,17 +1878,7 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_235",
-    "description": "Mega Image",
-    "date": "2026-08-02",
-    "amount": 67,
-    "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_226",
+    "id": "demo_tx_225",
     "description": "Salary",
     "date": "2026-08-01",
     "amount": 9500,
@@ -2083,7 +1888,7 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_233",
+    "id": "demo_tx_232",
     "description": "Gym Membership",
     "date": "2026-08-01",
     "amount": 150,
@@ -2095,7 +1900,37 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_254",
+    "id": "demo_tx_235",
+    "description": "Mega Image",
+    "date": "2026-08-01",
+    "amount": 206,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_238",
+    "description": "Restaurant",
+    "date": "2026-08-01",
+    "amount": 177,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_239",
+    "description": "Restaurant",
+    "date": "2026-08-01",
+    "amount": 213,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_250",
     "description": "Monthly Bank Fee",
     "date": "2026-08-01",
     "amount": 15,
@@ -2105,57 +1940,27 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_217",
-    "description": "Uber/Bolt",
-    "date": "2026-07-28",
-    "amount": 42,
+    "id": "demo_tx_214",
+    "description": "Amazon",
+    "date": "2026-07-24",
+    "amount": 92,
     "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_213",
+    "id": "demo_tx_207",
     "description": "Starbucks",
-    "date": "2026-07-27",
-    "amount": 19,
+    "date": "2026-07-23",
+    "amount": 25,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_205",
-    "description": "Mega Image",
-    "date": "2026-07-26",
-    "amount": 257,
-    "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_206",
-    "description": "Mega Image",
-    "date": "2026-07-26",
-    "amount": 146,
-    "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_220",
-    "description": "Gas Station",
-    "date": "2026-07-26",
-    "amount": 236,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_201",
+    "id": "demo_tx_196",
     "description": "Spotify",
     "date": "2026-07-22",
     "amount": 25,
@@ -2167,47 +1972,120 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_214",
-    "description": "Starbucks",
+    "id": "demo_tx_211",
+    "description": "Uber/Bolt",
     "date": "2026-07-22",
-    "amount": 30,
+    "amount": 26,
     "type": "Expense",
-    "categoryId": "cat_dining",
+    "categoryId": "cat_transport",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_218",
-    "description": "Amazon",
+    "id": "demo_tx_217",
+    "description": "Booking.com - Warsaw Hotel Reservation",
     "date": "2026-07-22",
-    "amount": 116,
+    "amount": 2100,
+    "type": "Expense",
+    "categoryId": "cat_travel",
+    "accountId": "acc_credit",
+    "tags": [
+      "Hotel"
+    ],
+    "tripId": "trip_poland"
+  },
+  {
+    "id": "demo_tx_200",
+    "description": "Mega Image",
+    "date": "2026-07-21",
+    "amount": 152,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_221",
+    "description": "ETF Vanguard",
+    "date": "2026-07-20",
+    "amount": 588,
+    "type": "Expense",
+    "categoryId": "cat_investing",
+    "accountId": "acc_checking",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_203",
+    "description": "Restaurant",
+    "date": "2026-07-18",
+    "amount": 222,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_213",
+    "description": "Amazon",
+    "date": "2026-07-18",
+    "amount": 139,
     "type": "Expense",
     "categoryId": "cat_shopping",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_211",
-    "description": "Starbucks",
-    "date": "2026-07-16",
-    "amount": 28,
+    "id": "demo_tx_222",
+    "description": "Property Maintenance",
+    "date": "2026-07-18",
+    "amount": 238,
     "type": "Expense",
-    "categoryId": "cat_dining",
+    "categoryId": "cat_property",
+    "accountId": "acc_checking",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_199",
+    "description": "Mega Image",
+    "date": "2026-07-17",
+    "amount": 133,
+    "type": "Expense",
+    "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_195",
+    "id": "demo_tx_202",
+    "description": "Restaurant",
+    "date": "2026-07-17",
+    "amount": 137,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_198",
+    "description": "Mega Image",
+    "date": "2026-07-16",
+    "amount": 294,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_190",
     "description": "Freelance Gig",
     "date": "2026-07-15",
-    "amount": 1167,
+    "amount": 2605,
     "type": "Income",
     "categoryId": "cat_freelance",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_199",
+    "id": "demo_tx_194",
     "description": "YouTube Premium",
     "date": "2026-07-15",
     "amount": 55,
@@ -2219,27 +2097,51 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_210",
-    "description": "Starbucks",
-    "date": "2026-07-14",
-    "amount": 33,
+    "id": "demo_tx_216",
+    "description": "Cinema",
+    "date": "2026-07-15",
+    "amount": 62,
+    "type": "Expense",
+    "categoryId": "cat_entertainment",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_220",
+    "description": "Lakeside Seafood Restaurant",
+    "date": "2026-07-15",
+    "amount": 350,
     "type": "Expense",
     "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": [],
+    "tripId": "trip_constance"
+  },
+  {
+    "id": "demo_tx_210",
+    "description": "Uber/Bolt",
+    "date": "2026-07-14",
+    "amount": 51,
+    "type": "Expense",
+    "categoryId": "cat_transport",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
     "id": "demo_tx_219",
-    "description": "Amazon",
+    "description": "Constance Resort Lodge",
     "date": "2026-07-13",
-    "amount": 151,
+    "amount": 3200,
     "type": "Expense",
-    "categoryId": "cat_shopping",
+    "categoryId": "cat_travel",
     "accountId": "acc_credit",
-    "tags": []
+    "tags": [
+      "Hotel"
+    ],
+    "tripId": "trip_constance"
   },
   {
-    "id": "demo_tx_198",
+    "id": "demo_tx_193",
     "description": "Digi Internet",
     "date": "2026-07-12",
     "amount": 40,
@@ -2249,30 +2151,40 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_207",
-    "description": "Restaurant",
+    "id": "demo_tx_208",
+    "description": "Starbucks",
     "date": "2026-07-12",
-    "amount": 226,
+    "amount": 15,
     "type": "Expense",
     "categoryId": "cat_dining",
-    "accountId": "acc_credit",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_221",
-    "description": "Clothing Store",
+    "id": "demo_tx_206",
+    "description": "Starbucks",
     "date": "2026-07-11",
-    "amount": 420,
+    "amount": 18,
     "type": "Expense",
-    "categoryId": "cat_shopping",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_215",
+    "description": "Gas Station",
+    "date": "2026-07-11",
+    "amount": 180,
+    "type": "Expense",
+    "categoryId": "cat_transport",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_197",
+    "id": "demo_tx_192",
     "description": "Enel Electricity",
     "date": "2026-07-10",
-    "amount": 198,
+    "amount": 218,
     "type": "Expense",
     "categoryId": "cat_utilities",
     "accountId": "acc_checking",
@@ -2280,66 +2192,46 @@ export const DEMO_TRANSACTIONS = [
   },
   {
     "id": "demo_tx_204",
-    "description": "Mega Image",
-    "date": "2026-07-09",
-    "amount": 297,
-    "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_208",
     "description": "Restaurant",
-    "date": "2026-07-09",
-    "amount": 91,
+    "date": "2026-07-08",
+    "amount": 216,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_216",
-    "description": "Uber/Bolt",
-    "date": "2026-07-09",
-    "amount": 47,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_223",
-    "description": "Property Maintenance",
-    "date": "2026-07-09",
-    "amount": 303,
-    "type": "Expense",
-    "categoryId": "cat_property",
-    "accountId": "acc_checking",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_215",
-    "description": "Uber/Bolt",
-    "date": "2026-07-08",
-    "amount": 39,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
     "tags": []
   },
   {
     "id": "demo_tx_209",
+    "description": "Uber/Bolt",
+    "date": "2026-07-08",
+    "amount": 22,
+    "type": "Expense",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_212",
+    "description": "Amazon",
+    "date": "2026-07-08",
+    "amount": 66,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_201",
     "description": "Restaurant",
     "date": "2026-07-07",
-    "amount": 201,
+    "amount": 239,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_200",
+    "id": "demo_tx_195",
     "description": "Netflix",
     "date": "2026-07-05",
     "amount": 60,
@@ -2351,7 +2243,7 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_225",
+    "id": "demo_tx_224",
     "description": "Tenant Rent",
     "date": "2026-07-05",
     "amount": 1500,
@@ -2361,17 +2253,7 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_212",
-    "description": "Starbucks",
-    "date": "2026-07-04",
-    "amount": 32,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_196",
+    "id": "demo_tx_191",
     "description": "Apartment Rent",
     "date": "2026-07-02",
     "amount": 2500,
@@ -2381,7 +2263,7 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_194",
+    "id": "demo_tx_189",
     "description": "Salary",
     "date": "2026-07-01",
     "amount": 9500,
@@ -2391,7 +2273,7 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_202",
+    "id": "demo_tx_197",
     "description": "Gym Membership",
     "date": "2026-07-01",
     "amount": 150,
@@ -2403,27 +2285,30 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_203",
-    "description": "Mega Image",
+    "id": "demo_tx_205",
+    "description": "Starbucks",
     "date": "2026-07-01",
-    "amount": 286,
+    "amount": 30,
     "type": "Expense",
-    "categoryId": "cat_food",
+    "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_222",
-    "description": "ETF Vanguard",
+    "id": "demo_tx_218",
+    "description": "Lufthansa - Flights to Munich",
     "date": "2026-07-01",
-    "amount": 614,
+    "amount": 1400,
     "type": "Expense",
-    "categoryId": "cat_investing",
-    "accountId": "acc_checking",
-    "tags": []
+    "categoryId": "cat_travel",
+    "accountId": "acc_credit",
+    "tags": [
+      "Flight"
+    ],
+    "tripId": "trip_constance"
   },
   {
-    "id": "demo_tx_224",
+    "id": "demo_tx_223",
     "description": "Monthly Bank Fee",
     "date": "2026-07-01",
     "amount": 15,
@@ -2433,37 +2318,37 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_187",
+    "id": "demo_tx_180",
     "description": "Amazon",
-    "date": "2026-06-28",
-    "amount": 143,
+    "date": "2026-06-27",
+    "amount": 37,
     "type": "Expense",
     "categoryId": "cat_shopping",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_181",
-    "description": "Starbucks",
+    "id": "demo_tx_186",
+    "description": "Pharmacy",
     "date": "2026-06-27",
-    "amount": 18,
+    "amount": 96,
     "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
+    "categoryId": "cat_health",
+    "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_179",
+    "id": "demo_tx_175",
     "description": "Starbucks",
-    "date": "2026-06-26",
-    "amount": 32,
+    "date": "2026-06-24",
+    "amount": 22,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_168",
+    "id": "demo_tx_165",
     "description": "Spotify",
     "date": "2026-06-22",
     "amount": 25,
@@ -2475,57 +2360,77 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_173",
-    "description": "Restaurant",
-    "date": "2026-06-20",
-    "amount": 214,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_180",
-    "description": "Starbucks",
-    "date": "2026-06-20",
-    "amount": 31,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_183",
-    "description": "Uber/Bolt",
-    "date": "2026-06-20",
-    "amount": 29,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_190",
-    "description": "Cinema",
-    "date": "2026-06-19",
-    "amount": 46,
-    "type": "Expense",
-    "categoryId": "cat_entertainment",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_188",
+    "id": "demo_tx_181",
     "description": "Amazon",
-    "date": "2026-06-17",
-    "amount": 175,
+    "date": "2026-06-22",
+    "amount": 32,
     "type": "Expense",
     "categoryId": "cat_shopping",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_166",
+    "id": "demo_tx_184",
+    "description": "Gas Station",
+    "date": "2026-06-22",
+    "amount": 164,
+    "type": "Expense",
+    "categoryId": "cat_transport",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_185",
+    "description": "Clothing Store",
+    "date": "2026-06-22",
+    "amount": 227,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_167",
+    "description": "Mega Image",
+    "date": "2026-06-21",
+    "amount": 72,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_182",
+    "description": "Amazon",
+    "date": "2026-06-20",
+    "amount": 118,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_168",
+    "description": "Mega Image",
+    "date": "2026-06-19",
+    "amount": 277,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_171",
+    "description": "Restaurant",
+    "date": "2026-06-19",
+    "amount": 226,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_163",
     "description": "YouTube Premium",
     "date": "2026-06-15",
     "amount": 55,
@@ -2537,27 +2442,17 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_192",
+    "id": "demo_tx_187",
     "description": "ETF Vanguard",
-    "date": "2026-06-15",
-    "amount": 739,
+    "date": "2026-06-13",
+    "amount": 807,
     "type": "Expense",
     "categoryId": "cat_investing",
     "accountId": "acc_checking",
     "tags": []
   },
   {
-    "id": "demo_tx_176",
-    "description": "Restaurant",
-    "date": "2026-06-13",
-    "amount": 161,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_165",
+    "id": "demo_tx_162",
     "description": "Digi Internet",
     "date": "2026-06-12",
     "amount": 40,
@@ -2567,40 +2462,30 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_182",
+    "id": "demo_tx_172",
+    "description": "Restaurant",
+    "date": "2026-06-12",
+    "amount": 184,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_176",
     "description": "Starbucks",
     "date": "2026-06-12",
-    "amount": 30,
+    "amount": 20,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_170",
-    "description": "Mega Image",
-    "date": "2026-06-11",
-    "amount": 165,
-    "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_184",
-    "description": "Uber/Bolt",
-    "date": "2026-06-11",
-    "amount": 33,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_164",
+    "id": "demo_tx_161",
     "description": "Enel Electricity",
     "date": "2026-06-10",
-    "amount": 140,
+    "amount": 159,
     "type": "Expense",
     "categoryId": "cat_utilities",
     "accountId": "acc_checking",
@@ -2608,66 +2493,46 @@ export const DEMO_TRANSACTIONS = [
   },
   {
     "id": "demo_tx_177",
-    "description": "Restaurant",
-    "date": "2026-06-10",
-    "amount": 217,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_185",
     "description": "Uber/Bolt",
-    "date": "2026-06-10",
-    "amount": 33,
+    "date": "2026-06-08",
+    "amount": 30,
     "type": "Expense",
     "categoryId": "cat_transport",
     "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_186",
-    "description": "Uber/Bolt",
-    "date": "2026-06-10",
-    "amount": 46,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_175",
-    "description": "Restaurant",
-    "date": "2026-06-09",
-    "amount": 157,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
     "tags": []
   },
   {
     "id": "demo_tx_178",
-    "description": "Starbucks",
+    "description": "Uber/Bolt",
     "date": "2026-06-08",
-    "amount": 30,
+    "amount": 20,
     "type": "Expense",
-    "categoryId": "cat_dining",
+    "categoryId": "cat_transport",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_171",
+    "id": "demo_tx_170",
     "description": "Mega Image",
-    "date": "2026-06-07",
-    "amount": 106,
+    "date": "2026-06-06",
+    "amount": 118,
     "type": "Expense",
     "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_167",
+    "id": "demo_tx_174",
+    "description": "Starbucks",
+    "date": "2026-06-06",
+    "amount": 22,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_164",
     "description": "Netflix",
     "date": "2026-06-05",
     "amount": 60,
@@ -2679,7 +2544,27 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_163",
+    "id": "demo_tx_173",
+    "description": "Starbucks",
+    "date": "2026-06-04",
+    "amount": 31,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_179",
+    "description": "Uber/Bolt",
+    "date": "2026-06-04",
+    "amount": 58,
+    "type": "Expense",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_160",
     "description": "Apartment Rent",
     "date": "2026-06-02",
     "amount": 2500,
@@ -2689,37 +2574,17 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_172",
-    "description": "Mega Image",
+    "id": "demo_tx_183",
+    "description": "Amazon",
     "date": "2026-06-02",
-    "amount": 264,
+    "amount": 178,
     "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_189",
-    "description": "Gas Station",
-    "date": "2026-06-02",
-    "amount": 188,
-    "type": "Expense",
-    "categoryId": "cat_transport",
+    "categoryId": "cat_shopping",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_191",
-    "description": "Flight Tickets",
-    "date": "2026-06-02",
-    "amount": 1306,
-    "type": "Expense",
-    "categoryId": "cat_travel",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_162",
+    "id": "demo_tx_159",
     "description": "Salary",
     "date": "2026-06-01",
     "amount": 9500,
@@ -2729,7 +2594,7 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_169",
+    "id": "demo_tx_166",
     "description": "Gym Membership",
     "date": "2026-06-01",
     "amount": 150,
@@ -2741,17 +2606,17 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_174",
-    "description": "Restaurant",
+    "id": "demo_tx_169",
+    "description": "Mega Image",
     "date": "2026-06-01",
-    "amount": 250,
+    "amount": 99,
     "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_193",
+    "id": "demo_tx_188",
     "description": "Monthly Bank Fee",
     "date": "2026-06-01",
     "amount": 15,
@@ -2761,62 +2626,62 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_134",
-    "description": "Mega Image",
-    "date": "2026-05-28",
-    "amount": 182,
-    "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_159",
-    "description": "Property Tax",
-    "date": "2026-05-27",
-    "amount": 1132,
-    "type": "Expense",
-    "categoryId": "cat_taxes",
-    "accountId": "acc_checking",
-    "tags": []
-  },
-  {
     "id": "demo_tx_144",
     "description": "Starbucks",
-    "date": "2026-05-25",
-    "amount": 33,
+    "date": "2026-05-28",
+    "amount": 31,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_140",
+    "id": "demo_tx_149",
+    "description": "Amazon",
+    "date": "2026-05-28",
+    "amount": 94,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_139",
     "description": "Restaurant",
-    "date": "2026-05-23",
-    "amount": 89,
+    "date": "2026-05-27",
+    "amount": 219,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_143",
-    "description": "Starbucks",
-    "date": "2026-05-23",
-    "amount": 15,
+    "id": "demo_tx_141",
+    "description": "Restaurant",
+    "date": "2026-05-27",
+    "amount": 194,
     "type": "Expense",
     "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_153",
+    "description": "Clothing Store",
+    "date": "2026-05-24",
+    "amount": 447,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
     "tags": []
   },
   {
     "id": "demo_tx_152",
-    "description": "Amazon",
+    "description": "Gas Station",
     "date": "2026-05-23",
-    "amount": 184,
+    "amount": 178,
     "type": "Expense",
-    "categoryId": "cat_shopping",
+    "categoryId": "cat_transport",
     "accountId": "acc_credit",
     "tags": []
   },
@@ -2833,73 +2698,43 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_147",
-    "description": "Starbucks",
-    "date": "2026-05-20",
-    "amount": 27,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_156",
-    "description": "Cinema",
-    "date": "2026-05-20",
-    "amount": 41,
-    "type": "Expense",
-    "categoryId": "cat_entertainment",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_141",
+    "id": "demo_tx_138",
     "description": "Restaurant",
-    "date": "2026-05-19",
-    "amount": 169,
+    "date": "2026-05-20",
+    "amount": 85,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_158",
-    "description": "ETF Vanguard",
-    "date": "2026-05-19",
-    "amount": 929,
+    "id": "demo_tx_136",
+    "description": "Mega Image",
+    "date": "2026-05-18",
+    "amount": 193,
     "type": "Expense",
-    "categoryId": "cat_investing",
-    "accountId": "acc_checking",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_145",
-    "description": "Starbucks",
+    "id": "demo_tx_140",
+    "description": "Restaurant",
+    "date": "2026-05-18",
+    "amount": 132,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_156",
+    "description": "Property Tax",
     "date": "2026-05-17",
-    "amount": 16,
+    "amount": 896,
     "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_146",
-    "description": "Starbucks",
-    "date": "2026-05-16",
-    "amount": 29,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_148",
-    "description": "Starbucks",
-    "date": "2026-05-16",
-    "amount": 17,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
+    "categoryId": "cat_taxes",
+    "accountId": "acc_checking",
     "tags": []
   },
   {
@@ -2915,33 +2750,23 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_136",
-    "description": "Mega Image",
+    "id": "demo_tx_143",
+    "description": "Starbucks",
     "date": "2026-05-15",
-    "amount": 193,
+    "amount": 16,
     "type": "Expense",
-    "categoryId": "cat_food",
+    "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_157",
-    "description": "Pharmacy",
+    "id": "demo_tx_135",
+    "description": "Mega Image",
     "date": "2026-05-14",
-    "amount": 133,
+    "amount": 300,
     "type": "Expense",
-    "categoryId": "cat_health",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_151",
-    "description": "Amazon",
-    "date": "2026-05-13",
-    "amount": 122,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
@@ -2955,10 +2780,10 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_149",
+    "id": "demo_tx_146",
     "description": "Uber/Bolt",
     "date": "2026-05-12",
-    "amount": 48,
+    "amount": 42,
     "type": "Expense",
     "categoryId": "cat_transport",
     "accountId": "acc_revolut",
@@ -2968,57 +2793,57 @@ export const DEMO_TRANSACTIONS = [
     "id": "demo_tx_128",
     "description": "Enel Electricity",
     "date": "2026-05-10",
-    "amount": 203,
+    "amount": 239,
     "type": "Expense",
     "categoryId": "cat_utilities",
     "accountId": "acc_checking",
     "tags": []
   },
   {
-    "id": "demo_tx_150",
-    "description": "Uber/Bolt",
+    "id": "demo_tx_151",
+    "description": "Amazon",
     "date": "2026-05-10",
-    "amount": 51,
+    "amount": 30,
     "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_135",
+    "id": "demo_tx_134",
     "description": "Mega Image",
-    "date": "2026-05-07",
-    "amount": 97,
+    "date": "2026-05-09",
+    "amount": 107,
     "type": "Expense",
     "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_137",
-    "description": "Restaurant",
-    "date": "2026-05-07",
-    "amount": 188,
+    "id": "demo_tx_145",
+    "description": "Starbucks",
+    "date": "2026-05-09",
+    "amount": 17,
     "type": "Expense",
     "categoryId": "cat_dining",
-    "accountId": "acc_credit",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_138",
-    "description": "Restaurant",
-    "date": "2026-05-07",
-    "amount": 203,
+    "id": "demo_tx_147",
+    "description": "Uber/Bolt",
+    "date": "2026-05-06",
+    "amount": 30,
     "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_153",
+    "id": "demo_tx_150",
     "description": "Amazon",
-    "date": "2026-05-07",
-    "amount": 157,
+    "date": "2026-05-06",
+    "amount": 125,
     "type": "Expense",
     "categoryId": "cat_shopping",
     "accountId": "acc_credit",
@@ -3037,33 +2862,33 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_161",
+    "id": "demo_tx_137",
+    "description": "Mega Image",
+    "date": "2026-05-05",
+    "amount": 253,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_155",
+    "description": "ETF Vanguard",
+    "date": "2026-05-05",
+    "amount": 516,
+    "type": "Expense",
+    "categoryId": "cat_investing",
+    "accountId": "acc_checking",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_158",
     "description": "Tenant Rent",
     "date": "2026-05-05",
     "amount": 1500,
     "type": "Income",
     "categoryId": "cat_rental_income",
     "accountId": "acc_checking",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_139",
-    "description": "Restaurant",
-    "date": "2026-05-04",
-    "amount": 124,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_154",
-    "description": "Gas Station",
-    "date": "2026-05-03",
-    "amount": 241,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_credit",
     "tags": []
   },
   {
@@ -3077,14 +2902,26 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_142",
-    "description": "Starbucks",
+    "id": "demo_tx_148",
+    "description": "Uber/Bolt",
     "date": "2026-05-02",
-    "amount": 24,
+    "amount": 45,
     "type": "Expense",
-    "categoryId": "cat_dining",
+    "categoryId": "cat_transport",
     "accountId": "acc_revolut",
     "tags": []
+  },
+  {
+    "id": "demo_tx_154",
+    "description": "Weekend Train Tickets to Brasov",
+    "date": "2026-05-02",
+    "amount": 160,
+    "type": "Expense",
+    "categoryId": "cat_travel",
+    "accountId": "acc_revolut",
+    "tags": [
+      "Train"
+    ]
   },
   {
     "id": "demo_tx_126",
@@ -3109,17 +2946,17 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_155",
-    "description": "Clothing Store",
+    "id": "demo_tx_142",
+    "description": "Starbucks",
     "date": "2026-05-01",
-    "amount": 332,
+    "amount": 27,
     "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_160",
+    "id": "demo_tx_157",
     "description": "Monthly Bank Fee",
     "date": "2026-05-01",
     "amount": 15,
@@ -3129,27 +2966,47 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_110",
-    "description": "Restaurant",
+    "id": "demo_tx_102",
+    "description": "Mega Image",
     "date": "2026-04-28",
-    "amount": 134,
+    "amount": 237,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_124",
+    "description": "Property Maintenance",
+    "date": "2026-04-25",
+    "amount": 254,
+    "type": "Expense",
+    "categoryId": "cat_property",
+    "accountId": "acc_checking",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_106",
+    "description": "Restaurant",
+    "date": "2026-04-23",
+    "amount": 204,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_113",
+    "id": "demo_tx_112",
     "description": "Starbucks",
-    "date": "2026-04-25",
-    "amount": 20,
+    "date": "2026-04-23",
+    "amount": 19,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_104",
+    "id": "demo_tx_99",
     "description": "Spotify",
     "date": "2026-04-22",
     "amount": 25,
@@ -3161,67 +3018,97 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
+    "id": "demo_tx_110",
+    "description": "Starbucks",
+    "date": "2026-04-22",
+    "amount": 20,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_116",
+    "description": "Uber/Bolt",
+    "date": "2026-04-20",
+    "amount": 30,
+    "type": "Expense",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_114",
+    "description": "Uber/Bolt",
+    "date": "2026-04-19",
+    "amount": 44,
+    "type": "Expense",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_117",
+    "description": "Amazon",
+    "date": "2026-04-19",
+    "amount": 196,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_123",
+    "description": "ETF Vanguard",
+    "date": "2026-04-19",
+    "amount": 800,
+    "type": "Expense",
+    "categoryId": "cat_investing",
+    "accountId": "acc_checking",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_109",
+    "description": "Starbucks",
+    "date": "2026-04-18",
+    "amount": 23,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_113",
+    "description": "Starbucks",
+    "date": "2026-04-16",
+    "amount": 28,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
     "id": "demo_tx_115",
     "description": "Uber/Bolt",
-    "date": "2026-04-22",
-    "amount": 31,
+    "date": "2026-04-16",
+    "amount": 50,
     "type": "Expense",
     "categoryId": "cat_transport",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_119",
-    "description": "Amazon",
-    "date": "2026-04-22",
-    "amount": 31,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_120",
-    "description": "Amazon",
-    "date": "2026-04-21",
-    "amount": 75,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_122",
-    "description": "Pharmacy",
-    "date": "2026-04-21",
-    "amount": 111,
-    "type": "Expense",
-    "categoryId": "cat_health",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_118",
-    "description": "Uber/Bolt",
-    "date": "2026-04-17",
-    "amount": 31,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_98",
+    "id": "demo_tx_93",
     "description": "Freelance Gig",
     "date": "2026-04-15",
-    "amount": 2763,
+    "amount": 1249,
     "type": "Income",
     "categoryId": "cat_freelance",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_102",
+    "id": "demo_tx_97",
     "description": "YouTube Premium",
     "date": "2026-04-15",
     "amount": 55,
@@ -3233,17 +3120,47 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_112",
+    "id": "demo_tx_111",
     "description": "Starbucks",
     "date": "2026-04-15",
-    "amount": 23,
+    "amount": 29,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_101",
+    "id": "demo_tx_103",
+    "description": "Mega Image",
+    "date": "2026-04-14",
+    "amount": 213,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_119",
+    "description": "Amazon",
+    "date": "2026-04-14",
+    "amount": 101,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_108",
+    "description": "Restaurant",
+    "date": "2026-04-13",
+    "amount": 102,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_96",
     "description": "Digi Internet",
     "date": "2026-04-12",
     "amount": 40,
@@ -3253,40 +3170,60 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_116",
-    "description": "Uber/Bolt",
-    "date": "2026-04-11",
-    "amount": 20,
+    "id": "demo_tx_107",
+    "description": "Restaurant",
+    "date": "2026-04-12",
+    "amount": 168,
     "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_124",
-    "description": "Property Maintenance",
+    "id": "demo_tx_105",
+    "description": "Restaurant",
     "date": "2026-04-11",
-    "amount": 280,
+    "amount": 156,
     "type": "Expense",
-    "categoryId": "cat_property",
-    "accountId": "acc_checking",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_100",
+    "id": "demo_tx_95",
     "description": "Enel Electricity",
     "date": "2026-04-10",
-    "amount": 141,
+    "amount": 233,
     "type": "Expense",
     "categoryId": "cat_utilities",
     "accountId": "acc_checking",
     "tags": []
   },
   {
-    "id": "demo_tx_106",
+    "id": "demo_tx_122",
+    "description": "Haircut",
+    "date": "2026-04-10",
+    "amount": 76,
+    "type": "Expense",
+    "categoryId": "cat_personal_care",
+    "accountId": "acc_checking",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_104",
     "description": "Mega Image",
-    "date": "2026-04-08",
-    "amount": 152,
+    "date": "2026-04-09",
+    "amount": 127,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_101",
+    "description": "Mega Image",
+    "date": "2026-04-07",
+    "amount": 59,
     "type": "Expense",
     "categoryId": "cat_food",
     "accountId": "acc_revolut",
@@ -3294,46 +3231,16 @@ export const DEMO_TRANSACTIONS = [
   },
   {
     "id": "demo_tx_121",
-    "description": "Gas Station",
-    "date": "2026-04-08",
-    "amount": 165,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_108",
-    "description": "Mega Image",
-    "date": "2026-04-07",
-    "amount": 175,
-    "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_109",
-    "description": "Restaurant",
-    "date": "2026-04-07",
-    "amount": 131,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_111",
-    "description": "Restaurant",
+    "description": "Clothing Store",
     "date": "2026-04-06",
-    "amount": 224,
+    "amount": 240,
     "type": "Expense",
-    "categoryId": "cat_dining",
+    "categoryId": "cat_shopping",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_103",
+    "id": "demo_tx_98",
     "description": "Netflix",
     "date": "2026-04-05",
     "amount": 60,
@@ -3345,37 +3252,27 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_107",
-    "description": "Mega Image",
+    "id": "demo_tx_118",
+    "description": "Amazon",
     "date": "2026-04-05",
-    "amount": 172,
+    "amount": 54,
     "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_117",
-    "description": "Uber/Bolt",
-    "date": "2026-04-04",
-    "amount": 34,
+    "id": "demo_tx_120",
+    "description": "Gas Station",
+    "date": "2026-04-03",
+    "amount": 189,
     "type": "Expense",
     "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
+    "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_123",
-    "description": "ETF Vanguard",
-    "date": "2026-04-04",
-    "amount": 706,
-    "type": "Expense",
-    "categoryId": "cat_investing",
-    "accountId": "acc_checking",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_99",
+    "id": "demo_tx_94",
     "description": "Apartment Rent",
     "date": "2026-04-02",
     "amount": 2500,
@@ -3385,7 +3282,7 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_97",
+    "id": "demo_tx_92",
     "description": "Salary",
     "date": "2026-04-01",
     "amount": 9500,
@@ -3395,7 +3292,7 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_105",
+    "id": "demo_tx_100",
     "description": "Gym Membership",
     "date": "2026-04-01",
     "amount": 150,
@@ -3405,16 +3302,6 @@ export const DEMO_TRANSACTIONS = [
     "tags": [
       "Subscription"
     ]
-  },
-  {
-    "id": "demo_tx_114",
-    "description": "Starbucks",
-    "date": "2026-04-01",
-    "amount": 30,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
   },
   {
     "id": "demo_tx_125",
@@ -3427,37 +3314,37 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_84",
+    "id": "demo_tx_82",
     "description": "Starbucks",
-    "date": "2026-03-24",
-    "amount": 32,
+    "date": "2026-03-27",
+    "amount": 17,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_92",
-    "description": "Haircut",
-    "date": "2026-03-24",
-    "amount": 87,
-    "type": "Expense",
-    "categoryId": "cat_personal_care",
-    "accountId": "acc_checking",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_83",
+    "id": "demo_tx_78",
     "description": "Starbucks",
-    "date": "2026-03-23",
-    "amount": 25,
+    "date": "2026-03-26",
+    "amount": 29,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_70",
+    "id": "demo_tx_81",
+    "description": "Starbucks",
+    "date": "2026-03-26",
+    "amount": 28,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_68",
     "description": "Spotify",
     "date": "2026-03-22",
     "amount": 25,
@@ -3469,47 +3356,37 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_94",
-    "description": "ETF Vanguard",
-    "date": "2026-03-20",
-    "amount": 824,
+    "id": "demo_tx_75",
+    "description": "Restaurant",
+    "date": "2026-03-21",
+    "amount": 129,
     "type": "Expense",
-    "categoryId": "cat_investing",
-    "accountId": "acc_checking",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_91",
-    "description": "Clothing Store",
+    "id": "demo_tx_76",
+    "description": "Restaurant",
+    "date": "2026-03-21",
+    "amount": 241,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_74",
+    "description": "Restaurant",
     "date": "2026-03-19",
-    "amount": 491,
+    "amount": 133,
     "type": "Expense",
-    "categoryId": "cat_shopping",
+    "categoryId": "cat_dining",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_90",
-    "description": "Gas Station",
-    "date": "2026-03-18",
-    "amount": 288,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_73",
-    "description": "Mega Image",
-    "date": "2026-03-17",
-    "amount": 223,
-    "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_68",
+    "id": "demo_tx_66",
     "description": "YouTube Premium",
     "date": "2026-03-15",
     "amount": 55,
@@ -3521,47 +3398,60 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_75",
+    "id": "demo_tx_71",
     "description": "Mega Image",
-    "date": "2026-03-15",
-    "amount": 283,
+    "date": "2026-03-14",
+    "amount": 158,
     "type": "Expense",
     "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_76",
+    "id": "demo_tx_88",
+    "description": "LOT Polish Airlines - Flights to Kraków",
+    "date": "2026-03-14",
+    "amount": 1250,
+    "type": "Expense",
+    "categoryId": "cat_travel",
+    "accountId": "acc_credit",
+    "tags": [
+      "Flight"
+    ],
+    "tripId": "trip_poland"
+  },
+  {
+    "id": "demo_tx_73",
     "description": "Mega Image",
-    "date": "2026-03-15",
-    "amount": 256,
+    "date": "2026-03-13",
+    "amount": 295,
     "type": "Expense",
     "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_87",
+    "id": "demo_tx_83",
     "description": "Uber/Bolt",
-    "date": "2026-03-15",
-    "amount": 36,
+    "date": "2026-03-13",
+    "amount": 40,
     "type": "Expense",
     "categoryId": "cat_transport",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_93",
-    "description": "Online Course",
+    "id": "demo_tx_89",
+    "description": "ETF Vanguard",
     "date": "2026-03-13",
-    "amount": 438,
+    "amount": 630,
     "type": "Expense",
-    "categoryId": "cat_education",
-    "accountId": "acc_credit",
+    "categoryId": "cat_investing",
+    "accountId": "acc_checking",
     "tags": []
   },
   {
-    "id": "demo_tx_67",
+    "id": "demo_tx_65",
     "description": "Digi Internet",
     "date": "2026-03-12",
     "amount": 40,
@@ -3571,77 +3461,57 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_74",
+    "id": "demo_tx_70",
     "description": "Mega Image",
     "date": "2026-03-12",
-    "amount": 141,
+    "amount": 216,
     "type": "Expense",
     "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_79",
-    "description": "Starbucks",
-    "date": "2026-03-12",
-    "amount": 31,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_81",
-    "description": "Starbucks",
-    "date": "2026-03-12",
-    "amount": 18,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_80",
-    "description": "Starbucks",
-    "date": "2026-03-11",
-    "amount": 16,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_66",
+    "id": "demo_tx_64",
     "description": "Enel Electricity",
     "date": "2026-03-10",
-    "amount": 209,
+    "amount": 233,
     "type": "Expense",
     "categoryId": "cat_utilities",
     "accountId": "acc_checking",
     "tags": []
   },
   {
-    "id": "demo_tx_72",
-    "description": "Mega Image",
-    "date": "2026-03-09",
-    "amount": 264,
+    "id": "demo_tx_85",
+    "description": "Amazon",
+    "date": "2026-03-10",
+    "amount": 195,
     "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_77",
-    "description": "Restaurant",
-    "date": "2026-03-06",
-    "amount": 216,
-    "type": "Expense",
-    "categoryId": "cat_dining",
+    "categoryId": "cat_shopping",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_69",
+    "id": "demo_tx_86",
+    "description": "Gas Station",
+    "date": "2026-03-08",
+    "amount": 294,
+    "type": "Expense",
+    "categoryId": "cat_transport",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_79",
+    "description": "Starbucks",
+    "date": "2026-03-06",
+    "amount": 34,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_67",
     "description": "Netflix",
     "date": "2026-03-05",
     "amount": 60,
@@ -3653,37 +3523,17 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_82",
-    "description": "Starbucks",
+    "id": "demo_tx_87",
+    "description": "Online Course",
     "date": "2026-03-05",
-    "amount": 26,
+    "amount": 217,
     "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
+    "categoryId": "cat_education",
+    "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_85",
-    "description": "Uber/Bolt",
-    "date": "2026-03-05",
-    "amount": 41,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_86",
-    "description": "Uber/Bolt",
-    "date": "2026-03-05",
-    "amount": 50,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_96",
+    "id": "demo_tx_91",
     "description": "Tenant Rent",
     "date": "2026-03-05",
     "amount": 1500,
@@ -3693,27 +3543,37 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_78",
+    "id": "demo_tx_77",
     "description": "Restaurant",
     "date": "2026-03-04",
-    "amount": 215,
+    "amount": 204,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_88",
-    "description": "Amazon",
-    "date": "2026-03-04",
-    "amount": 155,
+    "id": "demo_tx_72",
+    "description": "Mega Image",
+    "date": "2026-03-03",
+    "amount": 187,
     "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_65",
+    "id": "demo_tx_84",
+    "description": "Uber/Bolt",
+    "date": "2026-03-03",
+    "amount": 36,
+    "type": "Expense",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_63",
     "description": "Apartment Rent",
     "date": "2026-03-02",
     "amount": 2500,
@@ -3723,17 +3583,17 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_89",
-    "description": "Amazon",
+    "id": "demo_tx_80",
+    "description": "Starbucks",
     "date": "2026-03-02",
-    "amount": 166,
+    "amount": 32,
     "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_64",
+    "id": "demo_tx_62",
     "description": "Salary",
     "date": "2026-03-01",
     "amount": 9500,
@@ -3743,7 +3603,7 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_71",
+    "id": "demo_tx_69",
     "description": "Gym Membership",
     "date": "2026-03-01",
     "amount": 150,
@@ -3755,7 +3615,7 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_95",
+    "id": "demo_tx_90",
     "description": "Monthly Bank Fee",
     "date": "2026-03-01",
     "amount": 15,
@@ -3765,47 +3625,57 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_46",
-    "description": "Restaurant",
-    "date": "2026-02-24",
-    "amount": 196,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_59",
-    "description": "Gas Station",
-    "date": "2026-02-24",
-    "amount": 280,
+    "id": "demo_tx_55",
+    "description": "Uber/Bolt",
+    "date": "2026-02-28",
+    "amount": 33,
     "type": "Expense",
     "categoryId": "cat_transport",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_42",
-    "description": "Mega Image",
-    "date": "2026-02-23",
-    "amount": 147,
-    "type": "Expense",
-    "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_57",
-    "description": "Amazon",
-    "date": "2026-02-23",
-    "amount": 62,
+    "id": "demo_tx_48",
+    "description": "Starbucks",
+    "date": "2026-02-26",
+    "amount": 15,
     "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_40",
+    "id": "demo_tx_59",
+    "description": "Cinema",
+    "date": "2026-02-26",
+    "amount": 70,
+    "type": "Expense",
+    "categoryId": "cat_entertainment",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_60",
+    "description": "ETF Vanguard",
+    "date": "2026-02-26",
+    "amount": 552,
+    "type": "Expense",
+    "categoryId": "cat_investing",
+    "accountId": "acc_checking",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_50",
+    "description": "Starbucks",
+    "date": "2026-02-23",
+    "amount": 27,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_38",
     "description": "Spotify",
     "date": "2026-02-22",
     "amount": 25,
@@ -3817,29 +3687,29 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_45",
-    "description": "Mega Image",
+    "id": "demo_tx_53",
+    "description": "Starbucks",
     "date": "2026-02-22",
-    "amount": 81,
+    "amount": 20,
     "type": "Expense",
-    "categoryId": "cat_food",
+    "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_48",
-    "description": "Restaurant",
-    "date": "2026-02-22",
-    "amount": 198,
+    "id": "demo_tx_57",
+    "description": "Gas Station",
+    "date": "2026-02-21",
+    "amount": 211,
     "type": "Expense",
-    "categoryId": "cat_dining",
+    "categoryId": "cat_transport",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_51",
+    "id": "demo_tx_49",
     "description": "Starbucks",
-    "date": "2026-02-21",
+    "date": "2026-02-18",
     "amount": 30,
     "type": "Expense",
     "categoryId": "cat_dining",
@@ -3847,47 +3717,37 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_62",
-    "description": "ETF Vanguard",
-    "date": "2026-02-21",
-    "amount": 635,
-    "type": "Expense",
-    "categoryId": "cat_investing",
-    "accountId": "acc_checking",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_52",
-    "description": "Uber/Bolt",
+    "id": "demo_tx_56",
+    "description": "Amazon",
     "date": "2026-02-18",
-    "amount": 44,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_60",
-    "description": "Clothing Store",
-    "date": "2026-02-16",
-    "amount": 488,
+    "amount": 39,
     "type": "Expense",
     "categoryId": "cat_shopping",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_61",
-    "description": "Cinema",
-    "date": "2026-02-16",
-    "amount": 71,
+    "id": "demo_tx_45",
+    "description": "Restaurant",
+    "date": "2026-02-17",
+    "amount": 211,
     "type": "Expense",
-    "categoryId": "cat_entertainment",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_54",
+    "description": "Uber/Bolt",
+    "date": "2026-02-17",
+    "amount": 50,
+    "type": "Expense",
+    "categoryId": "cat_transport",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_38",
+    "id": "demo_tx_36",
     "description": "YouTube Premium",
     "date": "2026-02-15",
     "amount": 55,
@@ -3899,7 +3759,37 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_37",
+    "id": "demo_tx_41",
+    "description": "Mega Image",
+    "date": "2026-02-14",
+    "amount": 211,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_43",
+    "description": "Mega Image",
+    "date": "2026-02-14",
+    "amount": 130,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_52",
+    "description": "Starbucks",
+    "date": "2026-02-13",
+    "amount": 24,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_35",
     "description": "Digi Internet",
     "date": "2026-02-12",
     "amount": 40,
@@ -3909,57 +3799,47 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_56",
-    "description": "Amazon",
-    "date": "2026-02-12",
-    "amount": 154,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_49",
+    "id": "demo_tx_51",
     "description": "Starbucks",
-    "date": "2026-02-11",
-    "amount": 22,
+    "date": "2026-02-12",
+    "amount": 21,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_36",
+    "id": "demo_tx_34",
     "description": "Enel Electricity",
     "date": "2026-02-10",
-    "amount": 147,
+    "amount": 227,
     "type": "Expense",
     "categoryId": "cat_utilities",
     "accountId": "acc_checking",
     "tags": []
   },
   {
-    "id": "demo_tx_55",
-    "description": "Uber/Bolt",
-    "date": "2026-02-07",
-    "amount": 27,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_50",
-    "description": "Starbucks",
-    "date": "2026-02-06",
-    "amount": 34,
+    "id": "demo_tx_44",
+    "description": "Restaurant",
+    "date": "2026-02-10",
+    "amount": 207,
     "type": "Expense",
     "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
+    "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_39",
+    "id": "demo_tx_47",
+    "description": "Restaurant",
+    "date": "2026-02-09",
+    "amount": 194,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_37",
     "description": "Netflix",
     "date": "2026-02-05",
     "amount": 60,
@@ -3971,37 +3851,27 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_43",
-    "description": "Mega Image",
+    "id": "demo_tx_46",
+    "description": "Restaurant",
     "date": "2026-02-05",
-    "amount": 132,
+    "amount": 92,
     "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_58",
-    "description": "Amazon",
-    "date": "2026-02-04",
-    "amount": 188,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
+    "categoryId": "cat_dining",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_44",
+    "id": "demo_tx_42",
     "description": "Mega Image",
-    "date": "2026-02-03",
-    "amount": 282,
+    "date": "2026-02-04",
+    "amount": 289,
     "type": "Expense",
     "categoryId": "cat_food",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_35",
+    "id": "demo_tx_33",
     "description": "Apartment Rent",
     "date": "2026-02-02",
     "amount": 2500,
@@ -4011,37 +3881,27 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_47",
-    "description": "Restaurant",
+    "id": "demo_tx_40",
+    "description": "Mega Image",
     "date": "2026-02-02",
-    "amount": 236,
+    "amount": 258,
     "type": "Expense",
-    "categoryId": "cat_dining",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_58",
+    "description": "Clothing Store",
+    "date": "2026-02-02",
+    "amount": 161,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
     "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_53",
-    "description": "Uber/Bolt",
-    "date": "2026-02-02",
-    "amount": 31,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_54",
-    "description": "Uber/Bolt",
-    "date": "2026-02-02",
-    "amount": 57,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_34",
+    "id": "demo_tx_32",
     "description": "Salary",
     "date": "2026-02-01",
     "amount": 9500,
@@ -4051,7 +3911,7 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_41",
+    "id": "demo_tx_39",
     "description": "Gym Membership",
     "date": "2026-02-01",
     "amount": 150,
@@ -4063,7 +3923,7 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_63",
+    "id": "demo_tx_61",
     "description": "Monthly Bank Fee",
     "date": "2026-02-01",
     "amount": 15,
@@ -4073,30 +3933,50 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_26",
-    "description": "Amazon",
-    "date": "2026-01-27",
-    "amount": 199,
+    "id": "demo_tx_18",
+    "description": "Starbucks",
+    "date": "2026-01-28",
+    "amount": 17,
     "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_16",
-    "description": "Restaurant",
-    "date": "2026-01-26",
-    "amount": 90,
+    "id": "demo_tx_22",
+    "description": "Uber/Bolt",
+    "date": "2026-01-28",
+    "amount": 23,
     "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
     "id": "demo_tx_12",
     "description": "Mega Image",
+    "date": "2026-01-27",
+    "amount": 284,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_11",
+    "description": "Mega Image",
     "date": "2026-01-24",
-    "amount": 287,
+    "amount": 75,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_13",
+    "description": "Mega Image",
+    "date": "2026-01-23",
+    "amount": 204,
     "type": "Expense",
     "categoryId": "cat_food",
     "accountId": "acc_revolut",
@@ -4105,21 +3985,11 @@ export const DEMO_TRANSACTIONS = [
   {
     "id": "demo_tx_15",
     "description": "Restaurant",
-    "date": "2026-01-24",
-    "amount": 231,
+    "date": "2026-01-23",
+    "amount": 183,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_21",
-    "description": "Starbucks",
-    "date": "2026-01-24",
-    "amount": 31,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
     "tags": []
   },
   {
@@ -4135,29 +4005,29 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_18",
+    "id": "demo_tx_14",
+    "description": "Restaurant",
+    "date": "2026-01-22",
+    "amount": 215,
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_17",
     "description": "Starbucks",
-    "date": "2026-01-20",
-    "amount": 29,
+    "date": "2026-01-18",
+    "amount": 26,
     "type": "Expense",
     "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_27",
-    "description": "Gas Station",
-    "date": "2026-01-20",
-    "amount": 170,
-    "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_24",
+    "id": "demo_tx_21",
     "description": "Uber/Bolt",
-    "date": "2026-01-19",
+    "date": "2026-01-17",
     "amount": 29,
     "type": "Expense",
     "categoryId": "cat_transport",
@@ -4165,40 +4035,20 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_31",
-    "description": "Property Maintenance",
-    "date": "2026-01-19",
-    "amount": 169,
+    "id": "demo_tx_16",
+    "description": "Restaurant",
+    "date": "2026-01-16",
+    "amount": 170,
     "type": "Expense",
-    "categoryId": "cat_property",
-    "accountId": "acc_checking",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_28",
-    "description": "Clothing Store",
-    "date": "2026-01-18",
-    "amount": 296,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
+    "categoryId": "cat_dining",
     "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_30",
-    "description": "ETF Vanguard",
-    "date": "2026-01-17",
-    "amount": 905,
-    "type": "Expense",
-    "categoryId": "cat_investing",
-    "accountId": "acc_checking",
     "tags": []
   },
   {
     "id": "demo_tx_2",
     "description": "Freelance Gig",
     "date": "2026-01-15",
-    "amount": 1686,
+    "amount": 1213,
     "type": "Income",
     "categoryId": "cat_freelance",
     "accountId": "acc_revolut",
@@ -4217,13 +4067,23 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_29",
-    "description": "Cinema",
+    "id": "demo_tx_10",
+    "description": "Mega Image",
     "date": "2026-01-13",
-    "amount": 63,
+    "amount": 72,
     "type": "Expense",
-    "categoryId": "cat_entertainment",
+    "categoryId": "cat_food",
     "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_26",
+    "description": "Amazon",
+    "date": "2026-01-13",
+    "amount": 131,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
     "tags": []
   },
   {
@@ -4237,53 +4097,53 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_19",
-    "description": "Starbucks",
-    "date": "2026-01-12",
-    "amount": 34,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
     "id": "demo_tx_4",
     "description": "Enel Electricity",
     "date": "2026-01-10",
-    "amount": 232,
+    "amount": 234,
     "type": "Expense",
     "categoryId": "cat_utilities",
     "accountId": "acc_checking",
     "tags": []
   },
   {
+    "id": "demo_tx_24",
+    "description": "Amazon",
+    "date": "2026-01-09",
+    "amount": 69,
+    "type": "Expense",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
     "id": "demo_tx_23",
     "description": "Uber/Bolt",
-    "date": "2026-01-09",
-    "amount": 25,
+    "date": "2026-01-08",
+    "amount": 33,
     "type": "Expense",
     "categoryId": "cat_transport",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_11",
-    "description": "Mega Image",
+    "id": "demo_tx_19",
+    "description": "Starbucks",
     "date": "2026-01-07",
-    "amount": 135,
+    "amount": 35,
     "type": "Expense",
-    "categoryId": "cat_food",
+    "categoryId": "cat_dining",
     "accountId": "acc_revolut",
     "tags": []
   },
   {
-    "id": "demo_tx_14",
-    "description": "Restaurant",
+    "id": "demo_tx_20",
+    "description": "Uber/Bolt",
     "date": "2026-01-06",
-    "amount": 128,
+    "amount": 47,
     "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
+    "categoryId": "cat_transport",
+    "accountId": "acc_revolut",
     "tags": []
   },
   {
@@ -4299,17 +4159,27 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_13",
-    "description": "Mega Image",
+    "id": "demo_tx_25",
+    "description": "Amazon",
     "date": "2026-01-05",
-    "amount": 255,
+    "amount": 63,
     "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
+    "categoryId": "cat_shopping",
+    "accountId": "acc_credit",
     "tags": []
   },
   {
-    "id": "demo_tx_33",
+    "id": "demo_tx_27",
+    "description": "Gas Station",
+    "date": "2026-01-05",
+    "amount": 185,
+    "type": "Expense",
+    "categoryId": "cat_transport",
+    "accountId": "acc_credit",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_31",
     "description": "Tenant Rent",
     "date": "2026-01-05",
     "amount": 1500,
@@ -4319,13 +4189,13 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_22",
-    "description": "Uber/Bolt",
-    "date": "2026-01-04",
-    "amount": 22,
+    "id": "demo_tx_28",
+    "description": "ETF Vanguard",
+    "date": "2026-01-03",
+    "amount": 715,
     "type": "Expense",
-    "categoryId": "cat_transport",
-    "accountId": "acc_revolut",
+    "categoryId": "cat_investing",
+    "accountId": "acc_checking",
     "tags": []
   },
   {
@@ -4339,13 +4209,13 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_20",
-    "description": "Starbucks",
+    "id": "demo_tx_29",
+    "description": "Property Maintenance",
     "date": "2026-01-02",
-    "amount": 22,
+    "amount": 207,
     "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_revolut",
+    "categoryId": "cat_property",
+    "accountId": "acc_checking",
     "tags": []
   },
   {
@@ -4371,37 +4241,7 @@ export const DEMO_TRANSACTIONS = [
     ]
   },
   {
-    "id": "demo_tx_10",
-    "description": "Mega Image",
-    "date": "2026-01-01",
-    "amount": 246,
-    "type": "Expense",
-    "categoryId": "cat_food",
-    "accountId": "acc_revolut",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_17",
-    "description": "Restaurant",
-    "date": "2026-01-01",
-    "amount": 180,
-    "type": "Expense",
-    "categoryId": "cat_dining",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_25",
-    "description": "Amazon",
-    "date": "2026-01-01",
-    "amount": 37,
-    "type": "Expense",
-    "categoryId": "cat_shopping",
-    "accountId": "acc_credit",
-    "tags": []
-  },
-  {
-    "id": "demo_tx_32",
+    "id": "demo_tx_30",
     "description": "Monthly Bank Fee",
     "date": "2026-01-01",
     "amount": 15,

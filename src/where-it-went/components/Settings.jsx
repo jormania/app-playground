@@ -5,6 +5,7 @@ import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { SettingsToggle } from '../../ds/components/SettingsToggle';
 import { NotionClient } from '../lib/notionClient';
 import SubscriptionEditorModal from './SubscriptionEditorModal';
+import TripEditorModal from './TripEditorModal';
 import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 
@@ -14,12 +15,15 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const [categoriesDb, setCategoriesDb] = useState(config.categoriesDb || '');
   const [accountsDb, setAccountsDb] = useState(config.accountsDb || '');
   const [subscriptionsDb, setSubscriptionsDb] = useState(config.subscriptionsDb || '');
+  const [tripsDb, setTripsDb] = useState(config.tripsDb || '');
   const [theme, setTheme] = useState(config.theme || 'dark');
   const [features, setFeatures] = useState(config.features || { budgeting: true, cashFlow: true });
   const [status, setStatus] = useState({ type: '', msg: '' });
   const [testing, setTesting] = useState(false);
   const [editingSub, setEditingSub] = useState(null);
   const [isAddingSub, setIsAddingSub] = useState(false);
+  const [editingTrip, setEditingTrip] = useState(null);
+  const [isAddingTrip, setIsAddingTrip] = useState(false);
 
   const extractNotionId = (input) => {
     if (!input) return '';
@@ -47,7 +51,8 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         categories: extractNotionId(categoriesDb),
         accounts: extractNotionId(accountsDb),
         transactions: extractNotionId(transactionsDb),
-        subscriptions: extractNotionId(subscriptionsDb)
+        subscriptions: extractNotionId(subscriptionsDb),
+        trips: extractNotionId(tripsDb)
       });
       
       // Test the connection by fetching one of the databases
@@ -61,6 +66,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         categoriesDb: extractNotionId(categoriesDb), 
         accountsDb: extractNotionId(accountsDb), 
         subscriptionsDb: extractNotionId(subscriptionsDb),
+        tripsDb: extractNotionId(tripsDb),
         theme,
         features
       });
@@ -84,6 +90,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         categoriesDb: extractNotionId(categoriesDb),
         accountsDb: extractNotionId(accountsDb),
         subscriptionsDb: extractNotionId(subscriptionsDb),
+        tripsDb: extractNotionId(tripsDb),
         theme,
         features,
         demoMode: true
@@ -105,7 +112,8 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         categories: extractNotionId(categoriesDb),
         accounts: extractNotionId(accountsDb),
         transactions: extractNotionId(transactionsDb),
-        subscriptions: extractNotionId(subscriptionsDb)
+        subscriptions: extractNotionId(subscriptionsDb),
+        trips: extractNotionId(tripsDb)
       });
       await liveClient.scrubTransactionsAndSubscriptions();
       
@@ -115,6 +123,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         categoriesDb: extractNotionId(categoriesDb),
         accountsDb: extractNotionId(accountsDb),
         subscriptionsDb: extractNotionId(subscriptionsDb),
+        tripsDb: extractNotionId(tripsDb),
         theme,
         features,
         demoMode: true
@@ -168,6 +177,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         <Field label="Accounts Database ID or Link" type="text" value={accountsDb} onChange={e => setAccountsDb(e.target.value)} />
         <Field label="Transactions Database ID or Link" type="text" value={transactionsDb} onChange={e => setTransactionsDb(e.target.value)} />
         <Field label="Subscriptions Database ID or Link" type="text" value={subscriptionsDb} onChange={e => setSubscriptionsDb(e.target.value)} />
+        <Field label="Trips Database ID or Link (Optional)" type="text" value={tripsDb} onChange={e => setTripsDb(e.target.value)} />
       </div>
 
       {/* Feature Toggles Section */}
@@ -199,7 +209,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         </div>
       )}
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginTop: 'var(--space-sm)' }}>
+      <div className="settings-action-buttons" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginTop: 'var(--space-sm)' }}>
         <Button variant="primary" onClick={handleSave} disabled={testing}>
           {testing ? 'Testing...' : 'Save Configuration'}
         </Button>
@@ -298,6 +308,104 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           }}
           onDelete={async (id) => {
             await client.deleteSubscription(id);
+            if (onDataChange) onDataChange();
+          }}
+        />
+      )}
+
+      {/* Trips Management Section */}
+      {data?.trips && (
+        <div style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
+            <h2 style={{ margin: 0, fontSize: 'var(--text-lg)', color: 'var(--color-ink)' }}>Trips Management</h2>
+            <Button variant="secondary" onClick={() => setIsAddingTrip(true)}>+ Add Trip</Button>
+          </div>
+          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
+            Manage travel projects and trips. Tag travel transactions with a trip to analyze spending across flights, hotels, and on-the-ground expenses.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+            {data.trips.length === 0 ? (
+              <div style={{ color: 'var(--color-muted)', fontStyle: 'italic', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                No trips configured.
+              </div>
+            ) : (
+              data.trips.map(trip => {
+                const statusColor = trip.status === 'Active' 
+                  ? 'var(--color-success)' 
+                  : trip.status === 'Completed' 
+                    ? 'var(--color-muted)' 
+                    : 'var(--color-primary)';
+                const statusBg = trip.status === 'Active'
+                  ? 'color-mix(in srgb, var(--color-success) 15%, transparent)'
+                  : trip.status === 'Completed'
+                    ? 'color-mix(in srgb, var(--color-muted) 15%, transparent)'
+                    : 'color-mix(in srgb, var(--color-primary) 15%, transparent)';
+
+                return (
+                  <div 
+                    key={trip.id}
+                    onClick={() => setEditingTrip(trip)}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)',
+                      borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                      borderLeft: `4px solid ${statusColor}`, cursor: 'pointer',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-2)'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-surface)'}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{trip.name}</div>
+                      {trip.destination && (
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '2px' }}>
+                          📍 {trip.destination}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginTop: '6px' }}>
+                        {trip.startDate && (
+                          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
+                            📅 {trip.startDate}{trip.endDate ? ` → ${trip.endDate}` : ''}
+                          </span>
+                        )}
+                        <span style={{
+                          fontSize: '0.65rem',
+                          fontWeight: 'var(--weight-bold)',
+                          padding: '2px 6px',
+                          borderRadius: 'var(--radius-sm)',
+                          backgroundColor: statusBg,
+                          color: statusColor,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
+                        }}>
+                          {trip.status || 'Planned'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {(isAddingTrip || editingTrip) && (
+        <TripEditorModal
+          isOpen={isAddingTrip || !!editingTrip}
+          onClose={() => { setIsAddingTrip(false); setEditingTrip(null); }}
+          trip={editingTrip}
+          onSave={async (id, tripData) => {
+            if (id) {
+              await client.updateTrip(id, tripData);
+            } else {
+              await client.addTrip(tripData);
+            }
+            if (onDataChange) onDataChange();
+          }}
+          onDelete={async (id) => {
+            await client.deleteTrip(id);
             if (onDataChange) onDataChange();
           }}
         />

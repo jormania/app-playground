@@ -38,6 +38,13 @@ const subscriptions = [
   { id: 'sub_5', name: 'Adobe Creative Cloud', amount: 250, type: 'Expense', dayOfMonth: 10, categoryId: 'cat_subscriptions', accountId: 'acc_credit', active: false, lastProcessed: '2026-12-31T00:00:00.000Z' }
 ];
 
+const trips = [
+  { id: 'trip_billund', name: 'Billund 2025', destination: 'Billund, Denmark', startDate: '2025-05-10', endDate: '2025-05-15', status: 'Completed', notes: 'Legoland family trip' },
+  { id: 'trip_poland', name: 'Poland Autumn 2026', destination: 'Kraków & Warsaw, Poland', startDate: '2026-10-05', endDate: '2026-10-15', status: 'Planned', notes: 'Autumn cultural trip. Flights bought in spring, hotel booked in summer.' },
+  { id: 'trip_constance', name: 'Lake Constance 2026', destination: 'Lake Constance, Germany', startDate: '2026-07-12', endDate: '2026-07-20', status: 'Active', notes: 'Summer lakeside vacation' },
+  { id: 'trip_greece', name: 'Greece Autumn 2024', destination: 'Crete, Greece', startDate: '2024-09-18', endDate: '2024-09-25', status: 'Completed', notes: 'Beach island retreat' }
+];
+
 const transactions = [];
 let txId = 1;
 
@@ -94,8 +101,37 @@ for (let month = 0; month < 12; month++) {
   if (rand(0, 3) === 0) transactions.push({ id: 'demo_tx_' + txId++, description: 'Pharmacy', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(30, 150), type: 'Expense', categoryId: 'cat_health', accountId: 'acc_credit', tags: [] });
   if (rand(0, 2) === 0) transactions.push({ id: 'demo_tx_' + txId++, description: 'Haircut', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(60, 120), type: 'Expense', categoryId: 'cat_personal_care', accountId: 'acc_checking', tags: [] });
   if (month === 2 || month === 8) transactions.push({ id: 'demo_tx_' + txId++, description: 'Online Course', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(200, 500), type: 'Expense', categoryId: 'cat_education', accountId: 'acc_credit', tags: [] });
-  if (month === 5 || month === 11) transactions.push({ id: 'demo_tx_' + txId++, description: 'Flight Tickets', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(800, 2500), type: 'Expense', categoryId: 'cat_travel', accountId: 'acc_credit', tags: [] });
-  if (month === 11) transactions.push({ id: 'demo_tx_' + txId++, description: 'Christmas Gifts', date: `2026-${m}-15`, amount: rand(400, 1000), type: 'Expense', categoryId: 'cat_gift', accountId: 'acc_credit', tags: [] });
+  
+  // Specific trip scenario: Poland Autumn 2026 (trip in October, month === 9)
+  // Plane tickets bought in spring (March, month === 2)
+  if (month === 2) {
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'LOT Polish Airlines - Flights to Kraków', date: `2026-03-14`, amount: 1250, type: 'Expense', categoryId: 'cat_travel', accountId: 'acc_credit', tags: ['Flight'], tripId: 'trip_poland' });
+  }
+  // Hotel booked in summer (July, month === 6)
+  if (month === 6) {
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'Booking.com - Warsaw Hotel Reservation', date: `2026-07-22`, amount: 2100, type: 'Expense', categoryId: 'cat_travel', accountId: 'acc_credit', tags: ['Hotel'], tripId: 'trip_poland' });
+    // Also Lake Constance vacation in July
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'Lufthansa - Flights to Munich', date: `2026-07-01`, amount: 1400, type: 'Expense', categoryId: 'cat_travel', accountId: 'acc_credit', tags: ['Flight'], tripId: 'trip_constance' });
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'Constance Resort Lodge', date: `2026-07-13`, amount: 3200, type: 'Expense', categoryId: 'cat_travel', accountId: 'acc_credit', tags: ['Hotel'], tripId: 'trip_constance' });
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'Lakeside Seafood Restaurant', date: `2026-07-15`, amount: 350, type: 'Expense', categoryId: 'cat_dining', accountId: 'acc_revolut', tags: [], tripId: 'trip_constance' });
+  }
+  // The actual Poland trip took place in autumn (October, month === 9)
+  if (month === 9) {
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'Kraków Old Town Restaurant', date: `2026-10-07`, amount: 240, type: 'Expense', categoryId: 'cat_dining', accountId: 'acc_revolut', tags: [], tripId: 'trip_poland' });
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'Wawel Castle Museum Tickets', date: `2026-10-08`, amount: 110, type: 'Expense', categoryId: 'cat_travel', accountId: 'acc_revolut', tags: ['Museum', 'Ticket'], tripId: 'trip_poland' });
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'PKP Intercity Train Kraków to Warsaw', date: `2026-10-10`, amount: 180, type: 'Expense', categoryId: 'cat_travel', accountId: 'acc_revolut', tags: ['Train'], tripId: 'trip_poland' });
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'Warsaw Bistro Dinner', date: `2026-10-12`, amount: 310, type: 'Expense', categoryId: 'cat_dining', accountId: 'acc_revolut', tags: [], tripId: 'trip_poland' });
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'Polish Pottery Souvenirs', date: `2026-10-14`, amount: 450, type: 'Expense', categoryId: 'cat_shopping', accountId: 'acc_credit', tags: ['Souvenir'], tripId: 'trip_poland' });
+  }
+
+  // Generic travel tickets that remain unassigned (Unassigned Travel test case)
+  if (month === 4) {
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'Weekend Train Tickets to Brasov', date: `2026-05-02`, amount: 160, type: 'Expense', categoryId: 'cat_travel', accountId: 'acc_revolut', tags: ['Train'] });
+  }
+  if (month === 11) {
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'Christmas Gifts', date: `2026-${m}-15`, amount: rand(400, 1000), type: 'Expense', categoryId: 'cat_gift', accountId: 'acc_credit', tags: [] });
+    transactions.push({ id: 'demo_tx_' + txId++, description: 'Hotel Booking for New Years Eve', date: `2026-12-10`, amount: 1500, type: 'Expense', categoryId: 'cat_travel', accountId: 'acc_credit', tags: ['Hotel'] }); // Also unassigned travel
+  }
   
   transactions.push({ id: 'demo_tx_' + txId++, description: 'ETF Vanguard', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(500, 1000), type: 'Expense', categoryId: 'cat_investing', accountId: 'acc_checking', tags: [] });
   
@@ -111,6 +147,6 @@ for (let month = 0; month < 12; month++) {
 // Sort by date descending
 transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-const content = `export const DEMO_CATEGORIES = ${JSON.stringify(categories, null, 2)};\n\nexport const DEMO_ACCOUNTS = ${JSON.stringify(accounts, null, 2)};\n\nexport const DEMO_SUBSCRIPTIONS = ${JSON.stringify(subscriptions, null, 2)};\n\nexport const DEMO_TRANSACTIONS = ${JSON.stringify(transactions, null, 2)};\n`;
+const content = `export const DEMO_CATEGORIES = ${JSON.stringify(categories, null, 2)};\n\nexport const DEMO_ACCOUNTS = ${JSON.stringify(accounts, null, 2)};\n\nexport const DEMO_SUBSCRIPTIONS = ${JSON.stringify(subscriptions, null, 2)};\n\nexport const DEMO_TRIPS = ${JSON.stringify(trips, null, 2)};\n\nexport const DEMO_TRANSACTIONS = ${JSON.stringify(transactions, null, 2)};\n`;
 
 fs.writeFileSync('src/where-it-went/models/demoData.js', content);

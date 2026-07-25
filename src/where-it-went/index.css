@@ -149,11 +149,16 @@ a:hover {
     width: 100% !important;
     max-width: 100% !important;
     margin-left: auto !important;
-    margin-right: auto !important;
     overflow-x: hidden;
   }
-  div[style*="grid-template-columns"] {
+  div[style*="grid-template-columns"]:not(.transaction-row):not(.transaction-list-header) {
     grid-template-columns: 1fr !important;
+  }
+  .settings-action-buttons {
+    flex-direction: column !important;
+  }
+  .settings-action-buttons button {
+    width: 100% !important;
   }
 }
 

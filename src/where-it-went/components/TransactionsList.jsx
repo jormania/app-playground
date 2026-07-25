@@ -118,84 +118,86 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
           <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>Try adjusting your filters in the top menu to find what you're looking for.</p>
         </div>
       ) : (
-        <div style={{ marginTop: 'var(--space-md)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', color: 'var(--color-muted)', fontSize: 'var(--text-sm)', borderBottom: '1px solid var(--color-border)', fontWeight: 'var(--weight-medium)' }}>
-            {sortConfig.key !== 'date' && (
-              <div style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('date')}>Date{getSortIndicator('date')}</div>
-            )}
-            <div style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('description')}>Description{getSortIndicator('description')}</div>
-            <div style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('category')}>Category{getSortIndicator('category')}</div>
-            <div style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('account')}>Account{getSortIndicator('account')}</div>
-            <div style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('amount')}>Amount{getSortIndicator('amount')}</div>
-          </div>
-          
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {(() => {
-              let lastGroup = null;
-              return filtered.map((tx, idx) => {
-                let showHeader = false;
-                if (sortConfig.key === 'date') {
-                  const txDate = tx.date;
-                  if (txDate !== lastGroup) {
-                    showHeader = true;
-                    lastGroup = txDate;
+        <div style={{ marginTop: 'var(--space-md)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <div style={{ minWidth: '600px' }}>
+            <div className="transaction-list-header" style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', color: 'var(--color-muted)', fontSize: 'var(--text-sm)', borderBottom: '1px solid var(--color-border)', fontWeight: 'var(--weight-medium)' }}>
+              {sortConfig.key !== 'date' && (
+                <div style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('date')}>Date{getSortIndicator('date')}</div>
+              )}
+              <div style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('description')}>Description{getSortIndicator('description')}</div>
+              <div style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('category')}>Category{getSortIndicator('category')}</div>
+              <div style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('account')}>Account{getSortIndicator('account')}</div>
+              <div style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('amount')}>Amount{getSortIndicator('amount')}</div>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {(() => {
+                let lastGroup = null;
+                return filtered.map((tx, idx) => {
+                  let showHeader = false;
+                  if (sortConfig.key === 'date') {
+                    const txDate = tx.date;
+                    if (txDate !== lastGroup) {
+                      showHeader = true;
+                      lastGroup = txDate;
+                    }
                   }
-                }
-                
-                return (
-                  <div key={tx.id}>
-                    {showHeader && (
-                      <div style={{ position: 'sticky', top: '0', backgroundColor: 'color-mix(in srgb, var(--color-bg) 95%, transparent)', backdropFilter: 'blur(4px)', padding: '4px var(--space-md)', margin: 'var(--space-sm) 0 2px 0', fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-bold)', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', zIndex: 1, borderRadius: 'var(--radius-sm)' }}>
-                        {new Date(tx.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                      </div>
-                    )}
-                    {(() => {
-                      const catName = data.categories.find(c => c.id === tx.categoryId)?.name || 'Unknown';
-                      const catColor = getCategoryColor(catName);
-                      return (
-                        <div 
-                          className="transaction-row"
-                          style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', paddingLeft: 'var(--space-lg)', alignItems: 'center', backgroundColor: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${catColor}`, cursor: 'pointer' }}
-                          onClick={() => setEditingTx(tx)}
-                        >
-                          {sortConfig.key !== 'date' && (
-                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>{tx.date}</div>
+                  
+                  return (
+                    <div key={tx.id}>
+                      {showHeader && (
+                        <div style={{ position: 'sticky', top: '0', backgroundColor: 'color-mix(in srgb, var(--color-bg) 95%, transparent)', backdropFilter: 'blur(4px)', padding: '4px var(--space-md)', margin: 'var(--space-sm) 0 2px 0', fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-bold)', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', zIndex: 1, borderRadius: 'var(--radius-sm)' }}>
+                          {new Date(tx.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                        </div>
                       )}
-                      <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>{tx.description}</div>
-                      <div>
-                        <span style={{ 
-                          fontSize: 'var(--text-xs)', 
-                          padding: '2px 8px', 
-                          background: `color-mix(in srgb, ${catColor} 10%, transparent)`, 
-                          color: catColor, 
-                          border: `1px solid color-mix(in srgb, ${catColor} 30%, transparent)`,
-                          borderRadius: 'var(--radius-full)',
-                          display: 'inline-block'
-                        }}>
-                          {catName}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>{data.accounts.find(a => a.id === tx.accountId)?.name || 'Unknown'}</div>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <div style={{ 
-                          color: tx.type === 'Income' ? 'var(--color-success)' : 'var(--color-ink)',
-                          background: tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-ink) 5%, transparent)',
-                          border: tx.type === 'Income' ? '1px solid color-mix(in srgb, var(--color-success) 20%, transparent)' : '1px solid color-mix(in srgb, var(--color-border) 50%, transparent)',
-                          padding: '4px 10px',
-                          borderRadius: 'var(--radius-full)',
-                          fontWeight: 'var(--weight-medium)',
-                          fontSize: 'var(--text-sm)'
-                        }}>
-                          {tx.type === 'Income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                      {(() => {
+                        const catName = data.categories.find(c => c.id === tx.categoryId)?.name || 'Unknown';
+                        const catColor = getCategoryColor(catName);
+                        return (
+                          <div 
+                            className="transaction-row"
+                            style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', paddingLeft: 'var(--space-lg)', alignItems: 'center', backgroundColor: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${catColor}`, cursor: 'pointer' }}
+                            onClick={() => setEditingTx(tx)}
+                          >
+                            {sortConfig.key !== 'date' && (
+                          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>{tx.date}</div>
+                        )}
+                        <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>{tx.description}</div>
+                        <div>
+                          <span style={{ 
+                            fontSize: 'var(--text-xs)', 
+                            padding: '2px 8px', 
+                            background: `color-mix(in srgb, ${catColor} 10%, transparent)`, 
+                            color: catColor, 
+                            border: `1px solid color-mix(in srgb, ${catColor} 30%, transparent)`,
+                            borderRadius: 'var(--radius-full)',
+                            display: 'inline-block'
+                          }}>
+                            {catName}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>{data.accounts.find(a => a.id === tx.accountId)?.name || 'Unknown'}</div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <div style={{ 
+                            color: tx.type === 'Income' ? 'var(--color-success)' : 'var(--color-ink)',
+                            background: tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-ink) 5%, transparent)',
+                            border: tx.type === 'Income' ? '1px solid color-mix(in srgb, var(--color-success) 20%, transparent)' : '1px solid color-mix(in srgb, var(--color-border) 50%, transparent)',
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-full)',
+                            fontWeight: 'var(--weight-medium)',
+                            fontSize: 'var(--text-sm)'
+                          }}>
+                            {tx.type === 'Income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                          </div>
                         </div>
                       </div>
+                    );
+                  })()}
                     </div>
                   );
-                })()}
-                  </div>
-                );
-              });
-            })()}
+                });
+              })()}
+            </div>
           </div>
         </div>
       )}
@@ -205,6 +207,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
           <TransactionForm 
             categories={data.categories} 
             accounts={data.accounts} 
+            trips={data.trips}
             initialTx={editingTx}
             onSave={async (id, txData) => {
               try {

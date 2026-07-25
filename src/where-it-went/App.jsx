@@ -12,7 +12,7 @@ import { useSubscriptionsEngine } from './lib/useSubscriptionsEngine';
 import Navigation from './components/Navigation';
 import PeriodSheet from './components/PeriodSheet';
 import FilterSheet from './components/FilterSheet';
-import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS } from './models/demoData';
+import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS, DEMO_TRIPS } from './models/demoData';
 
 export default function App() {
   const [uiState] = useState(() => {
@@ -23,7 +23,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState(uiState.activeTab || 'dashboard');
   const [previousTab, setPreviousTab] = useState('dashboard');
-  const [data, setData] = useState({ categories: [], accounts: [], transactions: [], subscriptions: [] });
+  const [data, setData] = useState({ categories: [], accounts: [], transactions: [], subscriptions: [], trips: [] });
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -60,7 +60,8 @@ export default function App() {
     categories: config.categoriesDb,
     accounts: config.accountsDb,
     transactions: config.transactionsDb,
-    subscriptions: config.subscriptionsDb
+    subscriptions: config.subscriptionsDb,
+    trips: config.tripsDb
   });
 
   const loadData = async () => {
@@ -71,20 +72,22 @@ export default function App() {
         categories: [...DEMO_CATEGORIES],
         accounts: [...DEMO_ACCOUNTS],
         transactions: [...DEMO_TRANSACTIONS],
-        subscriptions: [...DEMO_SUBSCRIPTIONS]
+        subscriptions: [...DEMO_SUBSCRIPTIONS],
+        trips: [...DEMO_TRIPS]
       });
       setLoading(false);
       return;
     }
     
     try {
-      const [categories, accounts, transactions, subscriptions] = await Promise.all([
+      const [categories, accounts, transactions, subscriptions, trips] = await Promise.all([
         client.fetchCategories(),
         client.fetchAccounts(),
         client.fetchTransactions(),
-        client.fetchSubscriptions()
+        client.fetchSubscriptions(),
+        client.fetchTrips()
       ]);
-      setData({ categories, accounts, transactions, subscriptions });
+      setData({ categories, accounts, transactions, subscriptions, trips });
     } catch (e) {
       console.error("Failed to fetch data:", e);
     }
@@ -93,7 +96,7 @@ export default function App() {
 
   useEffect(() => {
     loadData();
-  }, [config.token, config.categoriesDb, config.accountsDb, config.transactionsDb, config.subscriptionsDb, config.demoMode]);
+  }, [config.token, config.categoriesDb, config.accountsDb, config.transactionsDb, config.subscriptionsDb, config.tripsDb, config.demoMode]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', config.theme || 'dark');
@@ -121,7 +124,7 @@ export default function App() {
   return (
     <>
       {config.demoMode && (
-        <div style={{ backgroundColor: 'var(--color-danger)', color: 'white', padding: 'var(--space-sm) var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100 }}>
+        <div style={{ backgroundColor: 'var(--color-danger)', color: 'white', padding: 'var(--space-sm) var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 100 }}>
           <span style={{ fontWeight: 'bold' }}>DEMO MODE ACTIVE</span>
           <button 
             style={{ padding: '4px 8px', fontSize: '12px', background: 'white', color: 'var(--color-danger)', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }} 
@@ -170,6 +173,7 @@ export default function App() {
         <TransactionForm 
           categories={data.categories} 
           accounts={data.accounts} 
+          trips={data.trips}
           onSave={handleAddTransaction} 
           onCancel={() => setShowAddForm(false)} 
         />
