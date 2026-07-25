@@ -414,6 +414,117 @@ export default function InsightsView({ data, period, filterProps }) {
             </ul>
           </div>
 
+          {/* Travel Mode & Vacation Analysis Card */}
+          {behavioral.travelAnalysis && (
+            <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', marginTop: 'var(--space-xl)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+                <div>
+                  <h3 style={{ fontSize: 'var(--text-lg)', margin: 0 }}>
+                    ✈️ Travel Mode & Vacation Analysis
+                  </h3>
+                  <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: '4px 0 0 0' }}>
+                    {behavioral.travelAnalysis.count > 0 
+                      ? `Tracking ${behavioral.travelAnalysis.count} vacation transactions across ${behavioral.travelAnalysis.travelDays} active travel days.` 
+                      : 'Prepared for vacation mode when you log trips under the Travel category.'}
+                  </p>
+                </div>
+                {behavioral.travelAnalysis.count > 0 && (
+                  <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center', backgroundColor: 'var(--color-surface-2)', padding: '6px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Daily Burn Rate</div>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{formatCurrency(behavioral.travelAnalysis.dailyBurnRate)}/day</div>
+                    </div>
+                    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Total Trip Spend</div>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-brass)' }}>{formatCurrency(behavioral.travelAnalysis.totalSpend)}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {behavioral.travelAnalysis.count > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 'var(--space-xl)' }}>
+                  {/* Left Column: Sub-type breakdown */}
+                  <div>
+                    <h4 style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)', marginTop: 0 }}>
+                      Vacation Spend by Category Sub-Type
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {[
+                        { label: '🏨 Accommodation & Resort', amount: behavioral.travelAnalysis.breakdown.accommodation, color: 'var(--color-purple)' },
+                        { label: '✈️ Transit & Flights', amount: behavioral.travelAnalysis.breakdown.transit, color: 'var(--color-brass)' },
+                        { label: '🍽️ Vacation Dining & Bar', amount: behavioral.travelAnalysis.breakdown.dining, color: 'var(--color-warning)' },
+                        { label: '🎟️ Tours, Activities & Nora', amount: behavioral.travelAnalysis.breakdown.activities, color: 'var(--color-success)' },
+                        { label: '🛍️ Souvenirs & Shopping', amount: behavioral.travelAnalysis.breakdown.shopping, color: 'var(--color-danger)' },
+                        { label: '📦 Other Travel Overhead', amount: behavioral.travelAnalysis.breakdown.other, color: 'var(--color-muted)' }
+                      ].filter(item => item.amount > 0).map((item, idx) => {
+                        const pct = (item.amount / behavioral.travelAnalysis.totalSpend) * 100;
+                        return (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-ink)' }}>
+                              <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: item.color }}></span>
+                              {item.label}
+                            </span>
+                            <span style={{ fontWeight: 'var(--weight-medium)' }}>
+                              {formatCurrency(item.amount)} ({pct.toFixed(0)}%)
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Upfront vs On the ground bar */}
+                    <div style={{ marginTop: 'var(--space-lg)', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', marginBottom: '4px' }}>
+                        <span style={{ color: 'var(--color-brass)', fontWeight: 'var(--weight-medium)' }}>
+                          Upfront Structural: {formatCurrency(behavioral.travelAnalysis.upfrontStructural)} ({((behavioral.travelAnalysis.upfrontStructural / behavioral.travelAnalysis.totalSpend) * 100).toFixed(0)}%)
+                        </span>
+                        <span style={{ color: 'var(--color-warning)', fontWeight: 'var(--weight-medium)' }}>
+                          On-the-Ground: {formatCurrency(behavioral.travelAnalysis.onTheGround)} ({((behavioral.travelAnalysis.onTheGround / behavioral.travelAnalysis.totalSpend) * 100).toFixed(0)}%)
+                        </span>
+                      </div>
+                      <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--color-border)', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
+                        <div style={{ width: `${(behavioral.travelAnalysis.upfrontStructural / behavioral.travelAnalysis.totalSpend) * 100}%`, height: '100%', backgroundColor: 'var(--color-brass)' }}></div>
+                        <div style={{ width: `${(behavioral.travelAnalysis.onTheGround / behavioral.travelAnalysis.totalSpend) * 100}%`, height: '100%', backgroundColor: 'var(--color-warning)' }}></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Top Expenses & Travel Decision Support */}
+                  <div>
+                    <h4 style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)', marginTop: 0 }}>
+                      Top Vacation Expenses
+                    </h4>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--space-lg) 0' }}>
+                      {behavioral.travelAnalysis.topExpenses.map((tx, idx) => (
+                        <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: idx === behavioral.travelAnalysis.topExpenses.length - 1 ? 'none' : '1px solid var(--color-border)', fontSize: 'var(--text-sm)' }}>
+                          <div>
+                            <span style={{ fontWeight: 'var(--weight-medium)' }}>{tx.description}</span>
+                            <div style={{ fontSize: '11px', color: 'var(--color-muted)' }}>{new Date(tx.date).toLocaleDateString()}</div>
+                          </div>
+                          <span style={{ fontWeight: 'var(--weight-bold)' }}>{formatCurrency(tx.amount)}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', backgroundColor: 'color-mix(in srgb, var(--color-brass) 8%, transparent)', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)', borderLeft: '3px solid var(--color-brass)' }}>
+                      💡 <b>Travel Mode Insight:</b> Vacation spending accounts for <b>{(behavioral.travelAnalysis.shareOfTotalExpense * 100).toFixed(1)}%</b> of your total expenditures this period. Grouping all trip costs under <b>Travel</b> prevents temporary vacation spikes from distorting your normal monthly food, shopping, or transit baselines.
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: 'var(--space-xl) var(--space-md)', color: 'var(--color-muted)' }}>
+                  <div style={{ fontSize: '32px', marginBottom: 'var(--space-sm)' }}>🏖️</div>
+                  <p style={{ margin: '0 0 var(--space-xs) 0', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>No Travel Logged in This Period</p>
+                  <p style={{ margin: 0, fontSize: 'var(--text-sm)', maxWidth: '500px', marginInline: 'auto' }}>
+                    When you go on vacation, log all trip expenses (flights, hotels, dining, souvenirs) under the <b>Travel</b> category. The engine will automatically activate Travel Mode to calculate daily burn rates, split upfront structural costs vs. on-the-ground spending, and isolate trip inflation from your normal monthly budget.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
 

@@ -141,11 +141,61 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     .map(v => ({ ...v, average: v.total / v.count }))
     .slice(0, 5);
 
+  const travelTx = txInHorizon.filter(t => t.type === 'Expense' && getCatName(t.categoryId).toLowerCase().includes('travel'));
+  const totalTravelSpend = travelTx.reduce((sum, t) => sum + t.amount, 0);
+  
+  const travelBreakdown = {
+    accommodation: 0,
+    transit: 0,
+    dining: 0,
+    activities: 0,
+    shopping: 0,
+    other: 0
+  };
+
+  const uniqueDates = new Set();
+  travelTx.forEach(t => {
+    uniqueDates.add(t.date);
+    const desc = (t.description || '').toLowerCase();
+    if (desc.includes('hotel') || desc.includes('resort') || desc.includes('airbnb') || desc.includes('lodg') || desc.includes('stay') || desc.includes('accom')) {
+      travelBreakdown.accommodation += t.amount;
+    } else if (desc.includes('flight') || desc.includes('train') || desc.includes('uber') || desc.includes('bolt') || desc.includes('taxi') || desc.includes('rental') || desc.includes('gas') || desc.includes('fuel') || desc.includes('transit') || desc.includes('airport')) {
+      travelBreakdown.transit += t.amount;
+    } else if (desc.includes('din') || desc.includes('restaur') || desc.includes('café') || desc.includes('cafe') || desc.includes('lunch') || desc.includes('dinner') || desc.includes('food') || desc.includes('meal') || desc.includes('snack') || desc.includes('bar')) {
+      travelBreakdown.dining += t.amount;
+    } else if (desc.includes('ticket') || desc.includes('museum') || desc.includes('zoo') || desc.includes('tour') || desc.includes('palace') || desc.includes('park') || desc.includes('pass') || desc.includes('ski') || desc.includes('show') || desc.includes('nora')) {
+      travelBreakdown.activities += t.amount;
+    } else if (desc.includes('shop') || desc.includes('souvenir') || desc.includes('gift') || desc.includes('market') || desc.includes('duty free') || desc.includes('chocolat') || desc.includes('cloth')) {
+      travelBreakdown.shopping += t.amount;
+    } else {
+      travelBreakdown.other += t.amount;
+    }
+  });
+
+  const travelDays = Math.max(uniqueDates.size, 1);
+  const dailyBurnRate = totalTravelSpend > 0 ? totalTravelSpend / travelDays : 0;
+  const upfrontStructural = travelBreakdown.accommodation + travelBreakdown.transit;
+  const onTheGround = travelBreakdown.dining + travelBreakdown.activities + travelBreakdown.shopping + travelBreakdown.other;
+  const topTravelTx = [...travelTx].sort((a, b) => b.amount - a.amount).slice(0, 3);
+
+  const travelAnalysis = {
+    totalSpend: totalTravelSpend,
+    count: travelTx.length,
+    travelDays,
+    dailyBurnRate,
+    breakdown: travelBreakdown,
+    upfrontStructural,
+    onTheGround,
+    topExpenses: topTravelTx,
+    shareOfTotalExpense: currentMetrics.totalExpense > 0 ? totalTravelSpend / currentMetrics.totalExpense : 0
+  };
+
   const behavioral = {
     frequentSpending,
     subscriptions: Object.values(subscriptionsList).sort((a, b) => Math.abs(b.total) - Math.abs(a.total)),
     spendingByCategoryChange,
-    largestTransactions
+    largestTransactions,
+    travelAnalysis
   };
 
   const incomeSources = {};

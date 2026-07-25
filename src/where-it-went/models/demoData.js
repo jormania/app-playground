@@ -227,6 +227,96 @@ export const DEMO_SUBSCRIPTIONS = [
 
 export const DEMO_TRANSACTIONS = [
   {
+    "id": "demo_tx_vac_1",
+    "description": "Flight Tickets to Vienna",
+    "date": "2026-12-20",
+    "amount": 850,
+    "type": "Expense",
+    "categoryId": "cat_travel",
+    "accountId": "acc_credit",
+    "tags": ["Vacation"]
+  },
+  {
+    "id": "demo_tx_vac_2",
+    "description": "Vienna Express Train",
+    "date": "2026-12-20",
+    "amount": 48,
+    "type": "Expense",
+    "categoryId": "cat_travel",
+    "accountId": "acc_revolut",
+    "tags": ["Vacation"]
+  },
+  {
+    "id": "demo_tx_vac_3",
+    "description": "Hotel Sacher Accommodation",
+    "date": "2026-12-21",
+    "amount": 920,
+    "type": "Expense",
+    "categoryId": "cat_travel",
+    "accountId": "acc_credit",
+    "tags": ["Vacation"]
+  },
+  {
+    "id": "demo_tx_vac_4",
+    "description": "Traditional Viennese Dinner",
+    "date": "2026-12-21",
+    "amount": 145,
+    "type": "Expense",
+    "categoryId": "cat_travel",
+    "accountId": "acc_revolut",
+    "tags": ["Vacation"]
+  },
+  {
+    "id": "demo_tx_vac_5",
+    "description": "Schönbrunn Palace & Zoo Tickets (Nora)",
+    "date": "2026-12-22",
+    "amount": 95,
+    "type": "Expense",
+    "categoryId": "cat_travel",
+    "accountId": "acc_revolut",
+    "tags": ["Vacation"]
+  },
+  {
+    "id": "demo_tx_vac_6",
+    "description": "Café Central Lunch & Pastries",
+    "date": "2026-12-22",
+    "amount": 68,
+    "type": "Expense",
+    "categoryId": "cat_travel",
+    "accountId": "acc_cash",
+    "tags": ["Vacation"]
+  },
+  {
+    "id": "demo_tx_vac_7",
+    "description": "Christmas Market Souvenirs & Gifts",
+    "date": "2026-12-23",
+    "amount": 110,
+    "type": "Expense",
+    "categoryId": "cat_travel",
+    "accountId": "acc_cash",
+    "tags": ["Vacation"]
+  },
+  {
+    "id": "demo_tx_vac_8",
+    "description": "Uber to Vienna Airport",
+    "date": "2026-12-24",
+    "amount": 35,
+    "type": "Expense",
+    "categoryId": "cat_travel",
+    "accountId": "acc_revolut",
+    "tags": ["Vacation"]
+  },
+  {
+    "id": "demo_tx_vac_9",
+    "description": "Duty Free Chocolates & Shopping",
+    "date": "2026-12-24",
+    "amount": 52,
+    "type": "Expense",
+    "categoryId": "cat_travel",
+    "accountId": "acc_credit",
+    "tags": ["Vacation"]
+  },
+  {
     "id": "demo_tx_370",
     "description": "Uber/Bolt",
     "date": "2026-12-28",
