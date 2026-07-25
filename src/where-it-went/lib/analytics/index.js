@@ -187,22 +187,77 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     }
   });
 
-  const travelDays = Math.max(uniqueDates.size, 1);
-  const dailyBurnRate = totalTravelSpend > 0 ? totalTravelSpend / travelDays : 0;
-  const upfrontStructural = travelBreakdown.accommodation + travelBreakdown.transit;
-  const onTheGround = travelBreakdown.dining + travelBreakdown.activities + travelBreakdown.shopping + travelBreakdown.other;
+  const prepaidSpending = travelBreakdown.accommodation + travelBreakdown.transit;
+  const inDestinationSpending = travelBreakdown.dining + travelBreakdown.activities + travelBreakdown.shopping + travelBreakdown.other;
   const topTravelTx = [...travelTx].sort((a, b) => b.amount - a.amount).slice(0, 3);
+  const averageTxAmount = travelTx.length > 0 ? totalTravelSpend / travelTx.length : 0;
+
+  // Previous period comparison
+  const prevTravelTx = prevTxInHorizon.filter(t => t.type === 'Expense' && getCatName(t.categoryId).toLowerCase().includes('travel'));
+  const prevTotalSpend = prevTravelTx.reduce((sum, t) => sum + t.amount, 0);
+  const diffFromPrev = totalTravelSpend - prevTotalSpend;
+  const pctChangeFromPrev = prevTotalSpend > 0 ? (diffFromPrev / prevTotalSpend) : null;
+
+  // Dominant subcategory
+  const subcatLabels = {
+    accommodation: '🏨 Accommodation & Resort',
+    transit: '✈️ Transit & Flights',
+    dining: '🍽️ Dining & Bar',
+    activities: '🎟️ Tours & Activities',
+    shopping: '🛍️ Souvenirs & Shopping',
+    other: '📦 Other Overhead'
+  };
+  const dominantEntry = Object.entries(travelBreakdown).sort((a, b) => b[1] - a[1])[0];
+  const dominantSubcategory = dominantEntry && dominantEntry[1] > 0 ? {
+    key: dominantEntry[0],
+    label: subcatLabels[dominantEntry[0]],
+    amount: dominantEntry[1],
+    percentage: (dominantEntry[1] / totalTravelSpend)
+  } : null;
+
+  // Historical pattern deviation check
+  const allTravelExpenses = transactions.filter(t => t.type === 'Expense' && getCatName(t.categoryId).toLowerCase().includes('travel'));
+  const monthlyTravelTotals = {};
+  allTravelExpenses.forEach(t => {
+    if (!t.date) return;
+    const ym = t.date.substring(0, 7);
+    monthlyTravelTotals[ym] = (monthlyTravelTotals[ym] || 0) + t.amount;
+  });
+  const historicalMonthlyValues = Object.values(monthlyTravelTotals);
+  const avgHistoricalSpend = historicalMonthlyValues.length > 0 ? historicalMonthlyValues.reduce((a, b) => a + b, 0) / historicalMonthlyValues.length : 0;
+  
+  let unusualSpending = null;
+  if (avgHistoricalSpend > 0 && totalTravelSpend > avgHistoricalSpend * 1.5 && (totalTravelSpend - avgHistoricalSpend) > 500) {
+    const pctAbove = ((totalTravelSpend - avgHistoricalSpend) / avgHistoricalSpend) * 100;
+    unusualSpending = {
+      type: 'high',
+      pctAbove: Math.round(pctAbove),
+      avgHistorical: avgHistoricalSpend,
+      message: `Travel spending in this period is ${Math.round(pctAbove)}% above your historical monthly travel average.`
+    };
+  } else if (avgHistoricalSpend > 0 && totalTravelSpend < avgHistoricalSpend * 0.4 && totalTravelSpend > 0 && avgHistoricalSpend > 1000) {
+    unusualSpending = {
+      type: 'low',
+      avgHistorical: avgHistoricalSpend,
+      message: `Travel spending in this period is noticeably below your usual travel baseline.`
+    };
+  }
 
   const travelAnalysis = {
     totalSpend: totalTravelSpend,
     count: travelTx.length,
-    travelDays,
-    dailyBurnRate,
+    averageTxAmount,
     breakdown: travelBreakdown,
-    upfrontStructural,
-    onTheGround,
+    prepaidSpending,
+    inDestinationSpending,
     topExpenses: topTravelTx,
-    shareOfTotalExpense: currentMetrics.totalExpense > 0 ? totalTravelSpend / currentMetrics.totalExpense : 0
+    shareOfTotalExpense: currentMetrics.totalExpense > 0 ? totalTravelSpend / currentMetrics.totalExpense : 0,
+    prevTotalSpend,
+    diffFromPrev,
+    pctChangeFromPrev,
+    dominantSubcategory,
+    unusualSpending,
+    avgHistoricalSpend
   };
 
   const behavioral = {
