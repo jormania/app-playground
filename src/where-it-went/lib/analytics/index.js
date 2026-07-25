@@ -260,12 +260,206 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     avgHistoricalSpend
   };
 
+  // --- PROPERTY INSIGHTS ENGINE ---
+  const isPropertyTx = t => {
+    const cat = getCatName(t.categoryId).toLowerCase();
+    const text = [t.description, t.notes, ...(Array.isArray(t.tags) ? t.tags : [])].filter(Boolean).join(' ').toLowerCase();
+    return cat.includes('propert') || cat.includes('rental') || cat.includes('real estate') || text.includes('propert') || text.includes('tenant') || text.includes('mortgage') || text.includes('rental');
+  };
+  const propTx = txInHorizon.filter(isPropertyTx);
+  const propIncTx = propTx.filter(t => t.type === 'Income');
+  const propExpTx = propTx.filter(t => t.type === 'Expense');
+  const totalPropIncome = propIncTx.reduce((sum, t) => sum + t.amount, 0);
+  const totalPropExpense = propExpTx.reduce((sum, t) => sum + t.amount, 0);
+  const netPropertyFlow = totalPropIncome - totalPropExpense;
+  const propExpenseRatio = totalPropIncome > 0 ? (totalPropExpense / totalPropIncome) : null;
+
+  const propBreakdown = {
+    mortgage: 0,
+    maintenance: 0,
+    taxes: 0,
+    utilities: 0,
+    other: 0
+  };
+  const propMortgageKws = ['mortgage', 'loan', 'rate', 'credit', 'interest', 'banca', 'bank'];
+  const propMaintKws = ['repair', 'fix', 'plumb', 'electric', 'mainten', 'boiler', 'ac', 'paint', 'leak', 'handyman', 'contractor', 'repairs'];
+  const propTaxKws = ['tax', 'impozit', 'asigurare', 'insurance', 'pad', 'fee', 'duty'];
+  const propUtilKws = ['utilit', 'hoa', 'water', 'gas', 'electric', 'internet', 'maintenance fee', 'administratie', 'gunoi', 'curatenie'];
+
+  propExpTx.forEach(t => {
+    const text = [t.description, t.notes, ...(Array.isArray(t.tags) ? t.tags : [])].filter(Boolean).join(' ').toLowerCase();
+    if (propMortgageKws.some(k => text.includes(k))) propBreakdown.mortgage += t.amount;
+    else if (propMaintKws.some(k => text.includes(k))) propBreakdown.maintenance += t.amount;
+    else if (propTaxKws.some(k => text.includes(k))) propBreakdown.taxes += t.amount;
+    else if (propUtilKws.some(k => text.includes(k))) propBreakdown.utilities += t.amount;
+    else propBreakdown.other += t.amount;
+  });
+
+  const topPropExpenses = [...propExpTx].sort((a, b) => b.amount - a.amount).slice(0, 3);
+
+  // Previous period Property comparison
+  const prevPropTx = prevTxInHorizon.filter(isPropertyTx);
+  const prevPropIncome = prevPropTx.filter(t => t.type === 'Income').reduce((sum, t) => sum + t.amount, 0);
+  const prevPropExpense = prevPropTx.filter(t => t.type === 'Expense').reduce((sum, t) => sum + t.amount, 0);
+  const prevNetPropertyFlow = prevPropIncome - prevPropExpense;
+  const diffPropFlowFromPrev = netPropertyFlow - prevNetPropertyFlow;
+
+  // Dominant Property Subcategory
+  const propSubcatLabels = {
+    mortgage: '🏦 Mortgage & Structural Loans',
+    maintenance: '🛠️ Maintenance & Repairs',
+    taxes: '🏛️ Property Taxes & Insurance',
+    utilities: '💡 Utilities & HOA Fees',
+    other: '📦 Other Property Overhead'
+  };
+  const dominantPropEntry = Object.entries(propBreakdown).sort((a, b) => b[1] - a[1])[0];
+  const dominantPropSubcat = dominantPropEntry && dominantPropEntry[1] > 0 ? {
+    key: dominantPropEntry[0],
+    label: propSubcatLabels[dominantPropEntry[0]],
+    amount: dominantPropEntry[1],
+    percentage: totalPropExpense > 0 ? (dominantPropEntry[1] / totalPropExpense) : 0
+  } : null;
+
+  // Property Historical Deviation Alert
+  const allPropExp = transactions.filter(t => t.type === 'Expense' && isPropertyTx(t));
+  const monthlyPropTotals = {};
+  allPropExp.forEach(t => {
+    if (!t.date) return;
+    const ym = t.date.substring(0, 7);
+    monthlyPropTotals[ym] = (monthlyPropTotals[ym] || 0) + t.amount;
+  });
+  const histPropVals = Object.values(monthlyPropTotals);
+  const avgHistPropExpense = histPropVals.length > 0 ? histPropVals.reduce((a, b) => a + b, 0) / histPropVals.length : 0;
+  
+  let propUnusualSpending = null;
+  if (avgHistPropExpense > 0 && totalPropExpense > avgHistPropExpense * 1.4 && (totalPropExpense - avgHistPropExpense) > 300) {
+    const pctAbove = ((totalPropExpense - avgHistPropExpense) / avgHistPropExpense) * 100;
+    propUnusualSpending = {
+      type: 'high',
+      pctAbove: Math.round(pctAbove),
+      message: `Property operating expenses this period are ${Math.round(pctAbove)}% above your historical monthly average due to maintenance or repairs.`
+    };
+  }
+
+  const propertyAnalysis = (totalPropIncome > 0 || totalPropExpense > 0) ? {
+    totalIncome: totalPropIncome,
+    totalExpense: totalPropExpense,
+    netFlow: netPropertyFlow,
+    expenseRatio: propExpenseRatio,
+    count: propTx.length,
+    breakdown: propBreakdown,
+    topExpenses: topPropExpenses,
+    prevNetFlow: prevNetPropertyFlow,
+    diffFlowFromPrev: diffPropFlowFromPrev,
+    dominantSubcategory: dominantPropSubcat,
+    unusualSpending: propUnusualSpending,
+    shareOfTotalExpense: currentMetrics.totalExpense > 0 ? totalPropExpense / currentMetrics.totalExpense : 0
+  } : null;
+
+  // --- NORA INSIGHTS ENGINE ---
+  const isNoraTx = t => {
+    if (t.type !== 'Expense') return false;
+    const cat = getCatName(t.categoryId).toLowerCase();
+    const text = [t.description, t.notes, ...(Array.isArray(t.tags) ? t.tags : [])].filter(Boolean).join(' ').toLowerCase();
+    return cat.includes('nora') || cat.includes('child') || text.includes('nora') || text.includes('daughter') || text.includes('child support') || text.includes('alimony');
+  };
+  const noraTx = txInHorizon.filter(isNoraTx);
+  const totalNoraSpend = noraTx.reduce((sum, t) => sum + t.amount, 0);
+  const averageNoraTx = noraTx.length > 0 ? totalNoraSpend / noraTx.length : 0;
+
+  const noraBreakdown = {
+    education: 0,
+    activities: 0,
+    health: 0,
+    clothes: 0,
+    gifts: 0,
+    other: 0
+  };
+  const noraEduKws = ['school', 'tuition', 'support', 'alimony', 'kindergarten', 'afterschool', 'education', 'book', 'course', 'class'];
+  const noraActKws = ['swim', 'tennis', 'sport', 'club', 'workshop', 'activity', 'camp', 'piano', 'dance', 'gym', 'zoo', 'park', 'attraction'];
+  const noraHealthKws = ['doctor', 'pediatrician', 'health', 'med', 'pharmacy', 'dentist', 'clinic', 'checkup'];
+  const noraClothKws = ['cloth', 'shoe', 'jacket', 'coat', 'wear', 'dress', 'fashion', 'zara', 'h&m'];
+  const noraGiftKws = ['toy', 'gift', 'game', 'lego', 'doll', 'birthday', 'christmas', 'party'];
+
+  noraTx.forEach(t => {
+    const text = [t.description, t.notes, ...(Array.isArray(t.tags) ? t.tags : [])].filter(Boolean).join(' ').toLowerCase();
+    if (noraEduKws.some(k => text.includes(k))) noraBreakdown.education += t.amount;
+    else if (noraActKws.some(k => text.includes(k))) noraBreakdown.activities += t.amount;
+    else if (noraHealthKws.some(k => text.includes(k))) noraBreakdown.health += t.amount;
+    else if (noraClothKws.some(k => text.includes(k))) noraBreakdown.clothes += t.amount;
+    else if (noraGiftKws.some(k => text.includes(k))) noraBreakdown.gifts += t.amount;
+    else noraBreakdown.other += t.amount;
+  });
+
+  const topNoraExpenses = [...noraTx].sort((a, b) => b.amount - a.amount).slice(0, 3);
+
+  // Previous period Nora comparison
+  const prevNoraTx = prevTxInHorizon.filter(isNoraTx);
+  const prevTotalNoraSpend = prevNoraTx.reduce((sum, t) => sum + t.amount, 0);
+  const diffNoraFromPrev = totalNoraSpend - prevTotalNoraSpend;
+  const pctChangeNoraFromPrev = prevTotalNoraSpend > 0 ? (diffNoraFromPrev / prevTotalNoraSpend) : null;
+
+  // Dominant Nora Subcategory
+  const noraSubcatLabels = {
+    education: '📚 Education & Child Support',
+    activities: '🎟️ Sports & Extracurriculars',
+    health: '🏥 Healthcare & Pediatrician',
+    clothes: '👗 Clothing & Shoes',
+    gifts: '🎁 Toys & Gifts',
+    other: '📦 Other Child Overhead'
+  };
+  const dominantNoraEntry = Object.entries(noraBreakdown).sort((a, b) => b[1] - a[1])[0];
+  const dominantNoraSubcat = dominantNoraEntry && dominantNoraEntry[1] > 0 ? {
+    key: dominantNoraEntry[0],
+    label: noraSubcatLabels[dominantNoraEntry[0]],
+    amount: dominantNoraEntry[1],
+    percentage: totalNoraSpend > 0 ? (dominantNoraEntry[1] / totalNoraSpend) : 0
+  } : null;
+
+  // Nora Historical Deviation Alert
+  const allNoraExp = transactions.filter(isNoraTx);
+  const monthlyNoraTotals = {};
+  allNoraExp.forEach(t => {
+    if (!t.date) return;
+    const ym = t.date.substring(0, 7);
+    monthlyNoraTotals[ym] = (monthlyNoraTotals[ym] || 0) + t.amount;
+  });
+  const histNoraVals = Object.values(monthlyNoraTotals);
+  const avgHistNoraSpend = histNoraVals.length > 0 ? histNoraVals.reduce((a, b) => a + b, 0) / histNoraVals.length : 0;
+  
+  let noraUnusualSpending = null;
+  if (avgHistNoraSpend > 0 && totalNoraSpend > avgHistNoraSpend * 1.35 && (totalNoraSpend - avgHistNoraSpend) > 250) {
+    const pctAbove = ((totalNoraSpend - avgHistNoraSpend) / avgHistNoraSpend) * 100;
+    noraUnusualSpending = {
+      type: 'high',
+      pctAbove: Math.round(pctAbove),
+      message: `Child-related spending is ${Math.round(pctAbove)}% above your historical monthly average due to seasonal tuition or gifts.`
+    };
+  }
+
+  const noraAnalysis = totalNoraSpend > 0 ? {
+    totalSpend: totalNoraSpend,
+    count: noraTx.length,
+    averageTxAmount: averageNoraTx,
+    breakdown: noraBreakdown,
+    topExpenses: topNoraExpenses,
+    shareOfTotalExpense: currentMetrics.totalExpense > 0 ? totalNoraSpend / currentMetrics.totalExpense : 0,
+    prevTotalSpend: prevTotalNoraSpend,
+    diffFromPrev: diffNoraFromPrev,
+    pctChangeFromPrev: pctChangeNoraFromPrev,
+    dominantSubcategory: dominantNoraSubcat,
+    unusualSpending: noraUnusualSpending,
+    avgHistoricalSpend: avgHistNoraSpend
+  } : null;
+
   const behavioral = {
     frequentSpending,
     subscriptions: Object.values(subscriptionsList).sort((a, b) => Math.abs(b.total) - Math.abs(a.total)),
     spendingByCategoryChange,
     largestTransactions,
-    travelAnalysis
+    travelAnalysis,
+    propertyAnalysis,
+    noraAnalysis
   };
 
   const incomeSources = {};

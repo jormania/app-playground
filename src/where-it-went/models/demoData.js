@@ -136,6 +136,14 @@ export const DEMO_CATEGORIES = [
     "type": "Expense",
     "icon": "🏛️",
     "description": "Taxes, accounting fees"
+  },
+  {
+    "id": "cat_nora",
+    "name": "Nora",
+    "type": "Expense",
+    "icon": "👧",
+    "description": "Child activities, school, clothes, support",
+    "budgetLimit": 1200
   }
 ];
 
@@ -226,6 +234,186 @@ export const DEMO_SUBSCRIPTIONS = [
 ];
 
 export const DEMO_TRANSACTIONS = [
+  {
+    "id": "demo_tx_prop_inc_1",
+    "description": "Tenant Rent Apartment 1",
+    "date": "2026-12-05",
+    "amount": 1500,
+    "type": "Income",
+    "categoryId": "cat_rental_income",
+    "accountId": "acc_checking",
+    "tags": ["Property"]
+  },
+  {
+    "id": "demo_tx_prop_inc_2",
+    "description": "Tenant Rent Studio",
+    "date": "2026-12-05",
+    "amount": 650,
+    "type": "Income",
+    "categoryId": "cat_rental_income",
+    "accountId": "acc_checking",
+    "tags": ["Property"]
+  },
+  {
+    "id": "demo_tx_prop_exp_1",
+    "description": "Mortgage Payment Apartment 1",
+    "date": "2026-12-10",
+    "amount": 620,
+    "type": "Expense",
+    "categoryId": "cat_property",
+    "accountId": "acc_checking",
+    "tags": ["Property", "Mortgage"]
+  },
+  {
+    "id": "demo_tx_prop_exp_2",
+    "description": "Apartment 1 HOA & Maintenance Fee",
+    "date": "2026-12-12",
+    "amount": 95,
+    "type": "Expense",
+    "categoryId": "cat_property",
+    "accountId": "acc_checking",
+    "tags": ["Property", "HOA"]
+  },
+  {
+    "id": "demo_tx_prop_exp_3",
+    "description": "Property Tax Annual Installment",
+    "date": "2026-12-15",
+    "amount": 180,
+    "type": "Expense",
+    "categoryId": "cat_property",
+    "accountId": "acc_checking",
+    "tags": ["Property", "Tax"]
+  },
+  {
+    "id": "demo_tx_prop_exp_4",
+    "description": "Plumber Emergency Repair Boiler",
+    "date": "2026-12-18",
+    "amount": 450,
+    "type": "Expense",
+    "categoryId": "cat_property",
+    "accountId": "acc_checking",
+    "tags": ["Property", "Repair"]
+  },
+  {
+    "id": "demo_tx_nora_1",
+    "description": "Nora Private School Tuition & Child Support",
+    "date": "2026-12-02",
+    "amount": 850,
+    "type": "Expense",
+    "categoryId": "cat_nora",
+    "accountId": "acc_checking",
+    "tags": ["Nora", "Education", "Support"]
+  },
+  {
+    "id": "demo_tx_nora_2",
+    "description": "Nora Swimming Lessons & Sports Club",
+    "date": "2026-12-08",
+    "amount": 120,
+    "type": "Expense",
+    "categoryId": "cat_nora",
+    "accountId": "acc_revolut",
+    "tags": ["Nora", "Activities"]
+  },
+  {
+    "id": "demo_tx_nora_3",
+    "description": "Pediatrician Routine Checkup for Nora",
+    "date": "2026-12-11",
+    "amount": 90,
+    "type": "Expense",
+    "categoryId": "cat_nora",
+    "accountId": "acc_credit",
+    "tags": ["Nora", "Health"]
+  },
+  {
+    "id": "demo_tx_nora_4",
+    "description": "Winter Jacket & Shoes for Nora",
+    "date": "2026-12-14",
+    "amount": 145,
+    "type": "Expense",
+    "categoryId": "cat_nora",
+    "accountId": "acc_credit",
+    "tags": ["Nora", "Clothes"]
+  },
+  {
+    "id": "demo_tx_nora_5",
+    "description": "Christmas Toys & Books for Nora",
+    "date": "2026-12-19",
+    "amount": 110,
+    "type": "Expense",
+    "categoryId": "cat_nora",
+    "accountId": "acc_revolut",
+    "tags": ["Nora", "Gifts"]
+  },
+  {
+    "id": "demo_tx_prop_nov_inc_1",
+    "description": "Tenant Rent Apartment 1",
+    "date": "2026-11-05",
+    "amount": 1500,
+    "type": "Income",
+    "categoryId": "cat_rental_income",
+    "accountId": "acc_checking",
+    "tags": ["Property"]
+  },
+  {
+    "id": "demo_tx_prop_nov_inc_2",
+    "description": "Tenant Rent Studio",
+    "date": "2026-11-05",
+    "amount": 650,
+    "type": "Income",
+    "categoryId": "cat_rental_income",
+    "accountId": "acc_checking",
+    "tags": ["Property"]
+  },
+  {
+    "id": "demo_tx_prop_nov_exp_1",
+    "description": "Mortgage Payment Apartment 1",
+    "date": "2026-11-10",
+    "amount": 620,
+    "type": "Expense",
+    "categoryId": "cat_property",
+    "accountId": "acc_checking",
+    "tags": ["Property", "Mortgage"]
+  },
+  {
+    "id": "demo_tx_prop_nov_exp_2",
+    "description": "Apartment 1 HOA & Maintenance Fee",
+    "date": "2026-11-12",
+    "amount": 85,
+    "type": "Expense",
+    "categoryId": "cat_property",
+    "accountId": "acc_checking",
+    "tags": ["Property", "HOA"]
+  },
+  {
+    "id": "demo_tx_nora_nov_1",
+    "description": "Nora Private School Tuition & Child Support",
+    "date": "2026-11-02",
+    "amount": 850,
+    "type": "Expense",
+    "categoryId": "cat_nora",
+    "accountId": "acc_checking",
+    "tags": ["Nora", "Education", "Support"]
+  },
+  {
+    "id": "demo_tx_nora_nov_2",
+    "description": "Nora Tennis Lessons",
+    "date": "2026-11-08",
+    "amount": 110,
+    "type": "Expense",
+    "categoryId": "cat_nora",
+    "accountId": "acc_revolut",
+    "tags": ["Nora", "Activities"]
+  },
+  {
+    "id": "demo_tx_nora_nov_3",
+    "description": "Art Workshop for Nora",
+    "date": "2026-11-15",
+    "amount": 60,
+    "type": "Expense",
+    "categoryId": "cat_nora",
+    "accountId": "acc_cash",
+    "tags": ["Nora", "Activities"]
+  },
   {
     "id": "demo_tx_vac_1",
     "description": "Flight Tickets to Vienna",

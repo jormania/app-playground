@@ -563,6 +563,308 @@ export default function InsightsView({ data, period, filterProps }) {
             </div>
           )}
 
+          {/* Property Insights Card */}
+          {behavioral.propertyAnalysis && (
+            <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', marginTop: 'var(--space-xl)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+                <div>
+                  <h3 style={{ fontSize: 'var(--text-lg)', margin: 0 }}>
+                    🏠 Property Insights
+                  </h3>
+                  <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: '4px 0 0 0' }}>
+                    {behavioral.propertyAnalysis.count > 0 
+                      ? 'Analyzing rental income and property operating expenses in this period.' 
+                      : 'Prepared for real estate asset analysis when property records are logged.'}
+                  </p>
+                </div>
+                {behavioral.propertyAnalysis.count > 0 && (
+                  <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center', backgroundColor: 'var(--color-surface-2)', padding: '6px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Net Cash Flow</div>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: behavioral.propertyAnalysis.netFlow >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                        {behavioral.propertyAnalysis.netFlow >= 0 ? '+' : ''}{formatCurrency(behavioral.propertyAnalysis.netFlow)}
+                      </div>
+                    </div>
+                    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Rental Income</div>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-success)' }}>{formatCurrency(behavioral.propertyAnalysis.totalIncome)}</div>
+                    </div>
+                    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Expenses</div>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)' }}>{formatCurrency(behavioral.propertyAnalysis.totalExpense)}</div>
+                    </div>
+                    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Expense Ratio</div>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>
+                        {behavioral.propertyAnalysis.expenseRatio !== null ? `${(behavioral.propertyAnalysis.expenseRatio * 100).toFixed(0)}%` : '0%'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {behavioral.propertyAnalysis.count > 0 ? (
+                <div>
+                  {/* Period Comparison & Deviation Alerts */}
+                  {(behavioral.propertyAnalysis.prevNetFlow !== 0 || behavioral.propertyAnalysis.unusualSpending) && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+                      {behavioral.propertyAnalysis.prevNetFlow !== 0 && (
+                        <div style={{ fontSize: 'var(--text-xs)', padding: '6px 12px', backgroundColor: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <span>vs. Previous Net Flow:</span>
+                          <b style={{ color: behavioral.propertyAnalysis.diffFlowFromPrev >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                            {behavioral.propertyAnalysis.diffFlowFromPrev >= 0 ? '+' : ''}{formatCurrency(behavioral.propertyAnalysis.diffFlowFromPrev)}
+                          </b>
+                          <span style={{ color: 'var(--color-muted)' }}>({formatCurrency(behavioral.propertyAnalysis.prevNetFlow)} prev)</span>
+                        </div>
+                      )}
+                      {behavioral.propertyAnalysis.unusualSpending && (
+                        <div style={{ fontSize: 'var(--text-xs)', padding: '6px 12px', backgroundColor: 'color-mix(in srgb, var(--color-danger) 10%, transparent)', color: 'var(--color-danger)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-danger)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <span>⚠️ <b>Pattern Deviation:</b> {behavioral.propertyAnalysis.unusualSpending.message}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 'var(--space-xl)' }}>
+                    {/* Left Column: Sub-type breakdown */}
+                    <div>
+                      <h4 style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)', marginTop: 0 }}>
+                        Property Expense Breakdown
+                      </h4>
+                      {behavioral.propertyAnalysis.dominantSubcategory && (
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink)', backgroundColor: 'var(--color-surface-2)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', marginBottom: '10px', borderLeft: '3px solid var(--color-brass)' }}>
+                          👑 <b>Dominant Cost:</b> {behavioral.propertyAnalysis.dominantSubcategory.label} accounted for <b>{(behavioral.propertyAnalysis.dominantSubcategory.percentage * 100).toFixed(0)}%</b> of property operating expenses ({formatCurrency(behavioral.propertyAnalysis.dominantSubcategory.amount)}).
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {[
+                          { label: '🏦 Mortgage & Structural Loans', amount: behavioral.propertyAnalysis.breakdown.mortgage, color: 'var(--color-purple)' },
+                          { label: '🛠️ Maintenance & Repairs', amount: behavioral.propertyAnalysis.breakdown.maintenance, color: 'var(--color-danger)' },
+                          { label: '🏛️ Property Taxes & Insurance', amount: behavioral.propertyAnalysis.breakdown.taxes, color: 'var(--color-brass)' },
+                          { label: '💡 Utilities & HOA Fees', amount: behavioral.propertyAnalysis.breakdown.utilities, color: 'var(--color-warning)' },
+                          { label: '📦 Other Property Overhead', amount: behavioral.propertyAnalysis.breakdown.other, color: 'var(--color-muted)' }
+                        ].filter(item => item.amount > 0).map((item, idx) => {
+                          const pct = behavioral.propertyAnalysis.totalExpense > 0 ? (item.amount / behavioral.propertyAnalysis.totalExpense) * 100 : 0;
+                          return (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-ink)' }}>
+                                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: item.color }}></span>
+                                {item.label}
+                              </span>
+                              <span style={{ fontWeight: 'var(--weight-medium)' }}>
+                                {formatCurrency(item.amount)} ({pct.toFixed(0)}%)
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Income vs Expense Bar */}
+                      {behavioral.propertyAnalysis.totalIncome > 0 && (
+                        <div style={{ marginTop: 'var(--space-lg)', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', marginBottom: '4px' }}>
+                            <span style={{ color: 'var(--color-success)', fontWeight: 'var(--weight-medium)' }}>
+                              Income: {formatCurrency(behavioral.propertyAnalysis.totalIncome)}
+                            </span>
+                            <span style={{ color: 'var(--color-danger)', fontWeight: 'var(--weight-medium)' }}>
+                              Expenses: {formatCurrency(behavioral.propertyAnalysis.totalExpense)}
+                            </span>
+                          </div>
+                          <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--color-border)', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
+                            <div style={{ width: `${Math.min(100, (behavioral.propertyAnalysis.totalIncome / (behavioral.propertyAnalysis.totalIncome + behavioral.propertyAnalysis.totalExpense)) * 100)}%`, height: '100%', backgroundColor: 'var(--color-success)' }}></div>
+                            <div style={{ width: `${Math.min(100, (behavioral.propertyAnalysis.totalExpense / (behavioral.propertyAnalysis.totalIncome + behavioral.propertyAnalysis.totalExpense)) * 100)}%`, height: '100%', backgroundColor: 'var(--color-danger)' }}></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right Column: Top Expenses & Explanatory Insight */}
+                    <div>
+                      <h4 style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)', marginTop: 0 }}>
+                        Largest Property Expenses
+                      </h4>
+                      <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--space-lg) 0' }}>
+                        {behavioral.propertyAnalysis.topExpenses.map((tx, idx) => (
+                          <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: idx === behavioral.propertyAnalysis.topExpenses.length - 1 ? 'none' : '1px solid var(--color-border)', fontSize: 'var(--text-sm)' }}>
+                            <div>
+                              <span style={{ fontWeight: 'var(--weight-medium)' }}>{tx.description}</span>
+                              <div style={{ fontSize: '11px', color: 'var(--color-muted)' }}>{new Date(tx.date).toLocaleDateString()}</div>
+                            </div>
+                            <span style={{ fontWeight: 'var(--weight-bold)' }}>{formatCurrency(tx.amount)}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', backgroundColor: 'color-mix(in srgb, var(--color-success) 8%, transparent)', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)', borderLeft: '3px solid var(--color-success)' }}>
+                        💡 <b>Real Estate Asset Insight:</b> Separating rental income and property operating costs from your personal cash flow gives you a true picture of your real estate investment performance. Monitoring Net Cash Flow and categorizing maintenance versus recurring structural costs (mortgage, taxes, HOA) prevents lumpy property repairs from distorting your personal lifestyle spending metrics.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: 'var(--space-xl) var(--space-md)', color: 'var(--color-muted)' }}>
+                  <div style={{ fontSize: '32px', marginBottom: 'var(--space-sm)' }}>🏠</div>
+                  <p style={{ margin: '0 0 var(--space-xs) 0', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>No Property Activity Logged in This Period</p>
+                  <p style={{ margin: 0, fontSize: 'var(--text-sm)', maxWidth: '500px', marginInline: 'auto' }}>
+                    When you log rental income or real estate operating costs under the <b>Property</b> or <b>Rental Income</b> categories, this panel automatically tracks Net Cash Flow, calculates expense-to-income ratios, and isolates property investment performance from your household budget.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Nora Insights Card */}
+          {behavioral.noraAnalysis && (
+            <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', marginTop: 'var(--space-xl)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+                <div>
+                  <h3 style={{ fontSize: 'var(--text-lg)', margin: 0 }}>
+                    👧 Nora Insights
+                  </h3>
+                  <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: '4px 0 0 0' }}>
+                    {behavioral.noraAnalysis.count > 0 
+                      ? 'Tracking education, activities, and child-related family support.' 
+                      : 'Prepared for child & family support analysis when Nora records are logged.'}
+                  </p>
+                </div>
+                {behavioral.noraAnalysis.count > 0 && (
+                  <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center', backgroundColor: 'var(--color-surface-2)', padding: '6px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Total Child Spend</div>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-purple)' }}>{formatCurrency(behavioral.noraAnalysis.totalSpend)}</div>
+                    </div>
+                    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Share of Budget</div>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{(behavioral.noraAnalysis.shareOfTotalExpense * 100).toFixed(1)}%</div>
+                    </div>
+                    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Avg Transaction</div>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{formatCurrency(behavioral.noraAnalysis.averageTxAmount)}</div>
+                    </div>
+                    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Transactions</div>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{behavioral.noraAnalysis.count}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {behavioral.noraAnalysis.count > 0 ? (
+                <div>
+                  {/* Period Comparison & Deviation Alerts */}
+                  {(behavioral.noraAnalysis.prevTotalSpend > 0 || behavioral.noraAnalysis.unusualSpending) && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+                      {behavioral.noraAnalysis.prevTotalSpend > 0 && (
+                        <div style={{ fontSize: 'var(--text-xs)', padding: '6px 12px', backgroundColor: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <span>vs. Previous Period:</span>
+                          <b style={{ color: behavioral.noraAnalysis.diffFromPrev > 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                            {behavioral.noraAnalysis.diffFromPrev > 0 ? '+' : ''}{formatCurrency(behavioral.noraAnalysis.diffFromPrev)}
+                            {behavioral.noraAnalysis.pctChangeFromPrev !== null ? ` (${(behavioral.noraAnalysis.pctChangeFromPrev * 100).toFixed(0)}%)` : ''}
+                          </b>
+                          <span style={{ color: 'var(--color-muted)' }}>({formatCurrency(behavioral.noraAnalysis.prevTotalSpend)} prev)</span>
+                        </div>
+                      )}
+                      {behavioral.noraAnalysis.unusualSpending && (
+                        <div style={{ fontSize: 'var(--text-xs)', padding: '6px 12px', backgroundColor: 'color-mix(in srgb, var(--color-danger) 10%, transparent)', color: 'var(--color-danger)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-danger)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <span>⚠️ <b>Pattern Deviation:</b> {behavioral.noraAnalysis.unusualSpending.message}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 'var(--space-xl)' }}>
+                    {/* Left Column: Sub-type breakdown */}
+                    <div>
+                      <h4 style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)', marginTop: 0 }}>
+                        Child Expense Breakdown
+                      </h4>
+                      {behavioral.noraAnalysis.dominantSubcategory && (
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink)', backgroundColor: 'var(--color-surface-2)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', marginBottom: '10px', borderLeft: '3px solid var(--color-purple)' }}>
+                          👑 <b>Dominant Commitment:</b> {behavioral.noraAnalysis.dominantSubcategory.label} accounted for <b>{(behavioral.noraAnalysis.dominantSubcategory.percentage * 100).toFixed(0)}%</b> of child expenditures ({formatCurrency(behavioral.noraAnalysis.dominantSubcategory.amount)}).
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {[
+                          { label: '📚 Education & Child Support', amount: behavioral.noraAnalysis.breakdown.education, color: 'var(--color-purple)' },
+                          { label: '🎟️ Sports & Extracurriculars', amount: behavioral.noraAnalysis.breakdown.activities, color: 'var(--color-success)' },
+                          { label: '🏥 Healthcare & Pediatrician', amount: behavioral.noraAnalysis.breakdown.health, color: 'var(--color-danger)' },
+                          { label: '👗 Clothing & Shoes', amount: behavioral.noraAnalysis.breakdown.clothes, color: 'var(--color-warning)' },
+                          { label: '🎁 Toys & Gifts', amount: behavioral.noraAnalysis.breakdown.gifts, color: 'var(--color-brass)' },
+                          { label: '📦 Other Child Overhead', amount: behavioral.noraAnalysis.breakdown.other, color: 'var(--color-muted)' }
+                        ].filter(item => item.amount > 0).map((item, idx) => {
+                          const pct = (item.amount / behavioral.noraAnalysis.totalSpend) * 100;
+                          return (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-ink)' }}>
+                                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: item.color }}></span>
+                                {item.label}
+                              </span>
+                              <span style={{ fontWeight: 'var(--weight-medium)' }}>
+                                {formatCurrency(item.amount)} ({pct.toFixed(0)}%)
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Education/Support vs Discretionary Bar */}
+                      <div style={{ marginTop: 'var(--space-lg)', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', marginBottom: '4px' }}>
+                          <span style={{ color: 'var(--color-purple)', fontWeight: 'var(--weight-medium)' }}>
+                            Education & Support: {formatCurrency(behavioral.noraAnalysis.breakdown.education)} ({((behavioral.noraAnalysis.breakdown.education / behavioral.noraAnalysis.totalSpend) * 100).toFixed(0)}%)
+                          </span>
+                          <span style={{ color: 'var(--color-success)', fontWeight: 'var(--weight-medium)' }}>
+                            Activities & Other: {formatCurrency(behavioral.noraAnalysis.totalSpend - behavioral.noraAnalysis.breakdown.education)} ({(((behavioral.noraAnalysis.totalSpend - behavioral.noraAnalysis.breakdown.education) / behavioral.noraAnalysis.totalSpend) * 100).toFixed(0)}%)
+                          </span>
+                        </div>
+                        <div style={{ height: '6px', width: '100%', backgroundColor: 'var(--color-border)', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
+                          <div style={{ width: `${(behavioral.noraAnalysis.breakdown.education / behavioral.noraAnalysis.totalSpend) * 100}%`, height: '100%', backgroundColor: 'var(--color-purple)' }}></div>
+                          <div style={{ width: `${(((behavioral.noraAnalysis.totalSpend - behavioral.noraAnalysis.breakdown.education) / behavioral.noraAnalysis.totalSpend) * 100)}%`, height: '100%', backgroundColor: 'var(--color-success)' }}></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Top Expenses & Explanatory Insight */}
+                    <div>
+                      <h4 style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)', marginTop: 0 }}>
+                        Largest Child Expenses
+                      </h4>
+                      <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 var(--space-lg) 0' }}>
+                        {behavioral.noraAnalysis.topExpenses.map((tx, idx) => (
+                          <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: idx === behavioral.noraAnalysis.topExpenses.length - 1 ? 'none' : '1px solid var(--color-border)', fontSize: 'var(--text-sm)' }}>
+                            <div>
+                              <span style={{ fontWeight: 'var(--weight-medium)' }}>{tx.description}</span>
+                              <div style={{ fontSize: '11px', color: 'var(--color-muted)' }}>{new Date(tx.date).toLocaleDateString()}</div>
+                            </div>
+                            <span style={{ fontWeight: 'var(--weight-bold)' }}>{formatCurrency(tx.amount)}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', backgroundColor: 'color-mix(in srgb, var(--color-purple) 8%, transparent)', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)', borderLeft: '3px solid var(--color-purple)' }}>
+                        💡 <b>Family Budget Insight:</b> Tracking education, sports, healthcare, and clothing for Nora in a dedicated view isolates child rearing and support commitments from general household lifestyle wants. Notice how school tuition and child support automatically elevate into mandatory <b>Needs (50%)</b> in your primary 50/30/20 budget hero.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: 'var(--space-xl) var(--space-md)', color: 'var(--color-muted)' }}>
+                  <div style={{ fontSize: '32px', marginBottom: 'var(--space-sm)' }}>👧</div>
+                  <p style={{ margin: '0 0 var(--space-xs) 0', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>No Child Activity Logged in This Period</p>
+                  <p style={{ margin: 0, fontSize: 'var(--text-sm)', maxWidth: '500px', marginInline: 'auto' }}>
+                    When you log school tuition, sports, clothing, or child support under the <b>Nora</b> category, this panel automatically analyzes family spending trends, categorizes commitments versus activities, and integrates with the 50/30/20 rules engine.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
 
