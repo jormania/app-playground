@@ -127,9 +127,14 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
             ))}
           </select>
           {selectedCat?.description && (
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '2px', fontStyle: 'italic', lineHeight: '1.4' }}>
-              {selectedCat.description}
-            </div>
+            <details style={{ marginTop: '2px' }}>
+              <summary style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', cursor: 'pointer', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: '10px' }}>▶</span> Category description
+              </summary>
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '4px', fontStyle: 'italic', lineHeight: '1.4', paddingLeft: '14px' }}>
+                {selectedCat.description}
+              </div>
+            </details>
           )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
