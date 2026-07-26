@@ -8,68 +8,72 @@ export class NotionClient {
     this.dbIds = dbIds;
   }
 
+  /** Fetches ALL pages from a Notion database query, handling pagination automatically. */
+  async _fetchAllPages(dbId, body = {}) {
+    const allResults = [];
+    let cursor = undefined;
+    do {
+      const queryBody = { ...body, page_size: 100 };
+      if (cursor) queryBody.start_cursor = cursor;
+      const response = await fetch(PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
+        body: JSON.stringify({
+          path: `databases/${dbId}/query`,
+          method: 'POST',
+          body: queryBody
+        })
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || `Notion API error ${response.status}`);
+      }
+      const data = await response.json();
+      allResults.push(...(data.results || []));
+      cursor = data.has_more ? data.next_cursor : undefined;
+    } while (cursor);
+    return allResults;
+  }
+
   async fetchCategories() {
     if (!this.token || !this.dbIds?.categories) {
       return [...DEMO_CATEGORIES];
     }
-    
-    // In a real scenario, this would query the Notion DB for Categories
-    const response = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({
-        path: `databases/${this.dbIds.categories}/query`,
-        method: 'POST'
-      })
-    });
-    const data = await response.json();
-    return data.results.map(row => ({
-      id: row.id,
-      name: row.properties.Name?.title?.[0]?.plain_text || '',
-      type: row.properties.Type?.select?.name || 'Expense',
-      icon: row.icon?.type === 'emoji' ? row.icon.emoji : null,
-      description: row.properties.Description?.rich_text?.[0]?.plain_text || '',
-      budgetLimit: row.properties['Monthly Limit (RON)']?.number || null
-    }));
+    const rows = await this._fetchAllPages(this.dbIds.categories);
+    return rows
+      .map(row => ({
+        id: row.id,
+        name: row.properties.Name?.title?.[0]?.plain_text || '',
+        type: row.properties.Type?.select?.name || 'Expense',
+        icon: row.icon?.type === 'emoji' ? row.icon.emoji : null,
+        description: row.properties.Description?.rich_text?.[0]?.plain_text || '',
+        budgetLimit: row.properties['Monthly Limit (RON)']?.number || null
+      }))
+      .filter(c => c.name.trim() !== ''); // #16: drop rows with blank title
   }
 
   async fetchAccounts() {
     if (!this.token || !this.dbIds?.accounts) {
       return [...DEMO_ACCOUNTS];
     }
-    
-    const response = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({
-        path: `databases/${this.dbIds.accounts}/query`,
-        method: 'POST'
-      })
-    });
-    const data = await response.json();
-    return data.results.map(row => ({
+    const rows = await this._fetchAllPages(this.dbIds.accounts);
+    return rows.map(row => ({
       id: row.id,
       name: row.properties.Name?.title?.[0]?.plain_text || '',
       type: row.properties.Type?.select?.name || '',
       currency: row.properties.Currency?.select?.name || 'RON'
-    }));
+    })).filter(a => a.name.trim() !== '');
   }
 
   async fetchTransactions() {
     if (!this.token || !this.dbIds?.transactions) {
       return [...DEMO_TRANSACTIONS];
     }
-    
-    const response = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({
-        path: `databases/${this.dbIds.transactions}/query`,
-        method: 'POST'
-      })
+    // #20: sort by Date descending for deterministic ordering across pages
+    const rows = await this._fetchAllPages(this.dbIds.transactions, {
+      sorts: [{ property: 'Date', direction: 'descending' }]
     });
-    const data = await response.json();
-    return data.results.map(row => ({
+    return rows.map(row => ({
       id: row.id,
       description: row.properties.Description?.title?.[0]?.plain_text || '',
       date: row.properties.Date?.date?.start || '',
@@ -81,6 +85,8 @@ export class NotionClient {
       tags: row.properties.Tags?.multi_select?.map(t => t.name) || []
     }));
   }
+
+
 
   async addTransaction(tx) {
     if (!this.token || !this.dbIds?.transactions) {
@@ -188,16 +194,8 @@ export class NotionClient {
       return [...DEMO_SUBSCRIPTIONS];
     }
     
-    const response = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({
-        path: `databases/${this.dbIds.subscriptions}/query`,
-        method: 'POST'
-      })
-    });
-    const data = await response.json();
-    return data.results.map(row => ({
+    const rows = await this._fetchAllPages(this.dbIds.subscriptions);
+    return rows.map(row => ({
       id: row.id,
       name: row.properties.Name?.title?.[0]?.plain_text || '',
       amount: row.properties.Amount?.number || 0,
@@ -323,16 +321,8 @@ export class NotionClient {
       return [...(DEMO_TRIPS || [])];
     }
     
-    const response = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({
-        path: `databases/${this.dbIds.trips}/query`,
-        method: 'POST'
-      })
-    });
-    const data = await response.json();
-    return (data.results || []).map(row => ({
+    const rows = await this._fetchAllPages(this.dbIds.trips);
+    return rows.map(row => ({
       id: row.id,
       name: row.properties.Name?.title?.[0]?.plain_text || '',
       destination: row.properties.Destination?.rich_text?.[0]?.plain_text || '',

@@ -211,7 +211,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         chartInstance.current = null;
       }
     };
-  }, [chartData, data.categories]);
+  }, [chartData, data.categories, config?.theme]);
 
   useEffect(() => {
     if (!trendChartRef.current) return;
@@ -297,7 +297,23 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         trendChartInstance.current = null;
       }
     };
-  }, [filteredTransactions, activePeriod]);
+  }, [filteredTransactions, activePeriod, config?.theme]);
+
+  // #15 — update chart legend position on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (chartInstance.current) {
+        chartInstance.current.options.plugins.legend.position = window.innerWidth < 768 ? 'bottom' : 'right';
+        chartInstance.current.update();
+      }
+      if (trendChartInstance.current) {
+        trendChartInstance.current.options.scales.x.ticks.font.size = window.innerWidth < 600 ? 10 : 12;
+        trendChartInstance.current.update();
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Calculate budgets
   const budgetCategories = data.categories.filter(c => c.budgetLimit > 0);
@@ -311,6 +327,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
   return (
     <div className="fade-in">
 
+      {/* KPI Cards */}
       <div style={{ 
         display: 'flex', 
         gap: 'var(--space-md)', 
@@ -356,7 +373,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-xl)' }}>
         <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
-          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>Latest Transactions</h2>
+          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>🧾 Latest Transactions</h2>
           {filteredTransactions.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-xl) var(--space-md)', textAlign: 'center' }}>
               <div style={{ fontSize: '36px', marginBottom: 'var(--space-sm)' }}>🍃</div>
@@ -368,36 +385,49 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
               {filteredTransactions.slice(0, 5).map(tx => {
                 const catName = data.categories.find(c => c.id === tx.categoryId)?.name || 'Unknown';
                 const catColor = getCategoryColor(catName);
+                const isUnknownCat = !data.categories.find(c => c.id === tx.categoryId);
                 return (
                 <li 
                   key={tx.id} 
                   className="transaction-row"
-                  style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) var(--space-xs)', paddingLeft: 'var(--space-md)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${catColor}`, cursor: 'pointer', borderRadius: 'var(--radius-sm)' }}
+                  style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    padding: 'var(--space-sm) var(--space-xs)', 
+                    paddingLeft: 'var(--space-md)', 
+                    borderBottom: '1px solid var(--color-border)', 
+                    borderLeft: `4px solid ${catColor}`, 
+                    cursor: 'pointer', 
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 4%, transparent)' : 'transparent'
+                  }}
                   onClick={() => setEditingTx(tx)}
                 >
-                  <div>
-                    <div style={{ fontWeight: 'var(--weight-medium)' }}>{tx.description}</div>
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                      {tx.date} 
+                  <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                    <div style={{ fontWeight: 'var(--weight-medium)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</div>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px', flexWrap: 'wrap' }}>
+                      {new Date(tx.date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
                       <span style={{ 
                         padding: '1px 6px', 
-                        background: `color-mix(in srgb, ${catColor} 10%, transparent)`, 
-                        color: catColor, 
-                        border: `1px solid color-mix(in srgb, ${catColor} 30%, transparent)`,
+                        background: isUnknownCat ? 'color-mix(in srgb, var(--color-muted) 10%, transparent)' : `color-mix(in srgb, ${catColor} 10%, transparent)`, 
+                        color: isUnknownCat ? 'var(--color-muted)' : catColor, 
+                        border: `1px solid ${isUnknownCat ? 'var(--color-border)' : `color-mix(in srgb, ${catColor} 30%, transparent)`}`,
                         borderRadius: 'var(--radius-full)'
                       }}>
-                        {catName}
+                        {isUnknownCat ? '⚠️ Unknown' : catName}
                       </span>
                     </div>
                   </div>
                   <div style={{ 
+                    flexShrink: 0,
                     color: tx.type === 'Income' ? 'var(--color-success)' : 'var(--color-ink)',
                     background: tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-ink) 5%, transparent)',
                     border: tx.type === 'Income' ? '1px solid color-mix(in srgb, var(--color-success) 20%, transparent)' : '1px solid color-mix(in srgb, var(--color-border) 50%, transparent)',
                     padding: '4px 10px',
                     borderRadius: 'var(--radius-full)',
                     fontWeight: 'var(--weight-medium)',
-                    fontSize: 'var(--text-sm)'
+                    fontSize: 'var(--text-sm)',
+                    alignSelf: 'center'
                   }}>
                     {tx.type === 'Income' ? '+' : '-'}{formatCurrency(tx.amount)}
                   </div>
@@ -416,7 +446,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         </div>
         <div style={{ height: '450px', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
           <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0, marginBottom: 'var(--space-md)' }}>
-            {chartType === 'Income' ? 'Income by Category' : 'Expenses by Category'}
+            {chartType === 'Income' ? '📈 Income by Category' : '📊 Expenses by Category'}
           </h2>
           {chartData.length === 0 ? (
             <div style={{ height: 'calc(100% - 45px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
@@ -435,7 +465,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
       {config?.features?.budgeting !== false && (
         <div style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
-            <h2 style={{ fontSize: 'var(--text-lg)', margin: 0 }}>Budget Limits</h2>
+            <h2 style={{ fontSize: 'var(--text-lg)', margin: 0 }}>💰 Budget Limits</h2>
             <Button size="sm" variant="secondary" onClick={() => setShowBudgetModal(true)}>
               Edit Budgets
             </Button>
@@ -479,8 +509,10 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
                 <div key={b.id}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span style={{ fontWeight: 'var(--weight-medium)' }}>{b.icon ? `${b.icon} ` : ''}{b.name}</span>
-                    <span style={{ color: isOver ? 'var(--color-danger)' : 'var(--color-muted)' }}>
-                      {formatCurrency(b.spent)} / {formatCurrency(b.budgetLimit)}
+                    <span style={{ color: isOver ? 'var(--color-danger)' : b.spent === 0 ? 'var(--color-muted)' : 'var(--color-ink)' }}>
+                      {b.spent === 0
+                        ? <em style={{ fontSize: 'var(--text-xs)' }}>No spending this period</em>
+                        : <>{formatCurrency(b.spent)} / {formatCurrency(b.budgetLimit)}</>}
                     </span>
                   </div>
                   <div className="budget-bar-wrapper">
@@ -495,7 +527,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
               );
             })}
             </div>
-          ) : (
+            ) : (
             <p style={{ color: 'var(--color-muted)', margin: 0, fontStyle: 'italic' }}>No budgets set yet. Click "Edit Budgets" to get started!</p>
           )}
         </div>
@@ -503,6 +535,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
 
       {config?.features?.cashFlow !== false && (
         <div className="trend-chart-container" style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0, marginBottom: 'var(--space-md)' }}>📊 Cash Flow Trend</h2>
           <canvas ref={trendChartRef}></canvas>
         </div>
       )}

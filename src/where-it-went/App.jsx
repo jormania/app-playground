@@ -25,6 +25,7 @@ export default function App() {
   const [previousTab, setPreviousTab] = useState('dashboard');
   const [data, setData] = useState({ categories: [], accounts: [], transactions: [], subscriptions: [], trips: [] });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
 
   // Lifted global states for Navigation
@@ -66,6 +67,7 @@ export default function App() {
 
   const loadData = async () => {
     setLoading(true);
+    setLoadError(null);
     
     if (config.demoMode) {
       setData({
@@ -90,6 +92,7 @@ export default function App() {
       setData({ categories, accounts, transactions, subscriptions, trips });
     } catch (e) {
       console.error("Failed to fetch data:", e);
+      setLoadError(e.message || 'Failed to load data from Notion.');
     }
     setLoading(false);
   };
@@ -182,14 +185,26 @@ export default function App() {
       <main>
         {loading ? (
           <div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }} className="skeleton-kpi-grid">
               {[1, 2, 3].map(i => (
-                <div key={i} className="shimmer-bg" style={{ height: '100px', borderRadius: 'var(--radius-lg)' }} />
+                <div key={i} className="shimmer-bg" style={{ height: '90px', borderRadius: 'var(--radius-lg)' }} />
               ))}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-xl)' }}>
               <div className="shimmer-bg" style={{ height: '400px', borderRadius: 'var(--radius-lg)' }} />
               <div className="shimmer-bg" style={{ height: '400px', borderRadius: 'var(--radius-lg)' }} />
+            </div>
+          </div>
+        ) : loadError ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-2xl)', textAlign: 'center', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid color-mix(in srgb, var(--color-danger) 30%, transparent)', marginTop: 'var(--space-xl)' }}>
+            <div style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>⚠️</div>
+            <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-danger)' }}>Could Not Load Data</h3>
+            <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)', maxWidth: '400px' }}>
+              {loadError} — Check your Notion token and database IDs in Settings.
+            </p>
+            <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+              <Button variant="primary" onClick={loadData}>↻ Retry</Button>
+              <Button variant="ghost" onClick={() => handleTabChange('settings')}>Open Settings</Button>
             </div>
           </div>
         ) : (

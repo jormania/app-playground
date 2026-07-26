@@ -160,7 +160,12 @@ a:hover {
   .settings-action-buttons button {
     width: 100% !important;
   }
+  /* Responsive skeleton: collapse KPI skeleton to single column on mobile */
+  .skeleton-kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
+
 
 .trend-chart-container {
   height: 400px;

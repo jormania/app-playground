@@ -50,6 +50,14 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
         const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         return txDate.getMonth() === lastMonth.getMonth() && txDate.getFullYear() === lastMonth.getFullYear();
       }
+      if (period === 'last_3_months') {
+        const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+        return txDate >= threeMonthsAgo;
+      }
+      if (period === 'last_6_months') {
+        const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+        return txDate >= sixMonthsAgo;
+      }
       if (period === 'this_year') {
         return txDate.getFullYear() === now.getFullYear();
       }
@@ -135,48 +143,62 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                 let lastGroup = null;
                 return filtered.map((tx, idx) => {
                   let showHeader = false;
+                  let groupLabel = null;
+
                   if (sortConfig.key === 'date') {
-                    const txDate = tx.date;
-                    if (txDate !== lastGroup) {
+                    if (tx.date !== lastGroup) {
                       showHeader = true;
-                      lastGroup = txDate;
+                      lastGroup = tx.date;
+                      groupLabel = new Date(tx.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
                     }
+                  } else if (sortConfig.key === 'category') {
+                    const cat = data.categories.find(c => c.id === tx.categoryId)?.name || '⚠️ Unknown';
+                    if (cat !== lastGroup) { showHeader = true; lastGroup = cat; groupLabel = cat; }
+                  } else if (sortConfig.key === 'account') {
+                    const acc = data.accounts.find(a => a.id === tx.accountId)?.name || '? Unknown';
+                    if (acc !== lastGroup) { showHeader = true; lastGroup = acc; groupLabel = acc; }
+                  } else if (sortConfig.key === 'description') {
+                    const letter = (tx.description[0] || '#').toUpperCase();
+                    if (letter !== lastGroup) { showHeader = true; lastGroup = letter; groupLabel = letter; }
                   }
-                  
+
+                  const catName = data.categories.find(c => c.id === tx.categoryId)?.name;
+                  const isUnknownCat = !catName;
+                  const displayCatName = catName || 'Unknown';
+                  const catColor = getCategoryColor(displayCatName);
+
                   return (
                     <div key={tx.id}>
                       {showHeader && (
                         <div style={{ position: 'sticky', top: '0', backgroundColor: 'color-mix(in srgb, var(--color-bg) 95%, transparent)', backdropFilter: 'blur(4px)', padding: '4px var(--space-md)', margin: 'var(--space-sm) 0 2px 0', fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-bold)', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', zIndex: 1, borderRadius: 'var(--radius-sm)' }}>
-                          {new Date(tx.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                          {groupLabel}
                         </div>
                       )}
-                      {(() => {
-                        const catName = data.categories.find(c => c.id === tx.categoryId)?.name || 'Unknown';
-                        const catColor = getCategoryColor(catName);
-                        return (
-                          <div 
-                            className="transaction-row"
-                            style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', paddingLeft: 'var(--space-lg)', alignItems: 'center', backgroundColor: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${catColor}`, cursor: 'pointer' }}
-                            onClick={() => setEditingTx(tx)}
-                          >
-                            {sortConfig.key !== 'date' && (
-                          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>{tx.date}</div>
+                      <div
+                        className="transaction-row"
+                        style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', paddingLeft: 'var(--space-lg)', alignItems: 'center', backgroundColor: tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 3%, var(--color-surface))' : 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${catColor}`, cursor: 'pointer' }}
+                        onClick={() => setEditingTx(tx)}
+                      >
+                        {sortConfig.key !== 'date' && (
+                          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>
+                            {new Date(tx.date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                          </div>
                         )}
-                        <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>{tx.description}</div>
+                        <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</div>
                         <div>
                           <span style={{ 
                             fontSize: 'var(--text-xs)', 
                             padding: '2px 8px', 
-                            background: `color-mix(in srgb, ${catColor} 10%, transparent)`, 
-                            color: catColor, 
-                            border: `1px solid color-mix(in srgb, ${catColor} 30%, transparent)`,
+                            background: isUnknownCat ? 'color-mix(in srgb, var(--color-muted) 10%, transparent)' : `color-mix(in srgb, ${catColor} 10%, transparent)`, 
+                            color: isUnknownCat ? 'var(--color-muted)' : catColor, 
+                            border: `1px solid ${isUnknownCat ? 'var(--color-border)' : `color-mix(in srgb, ${catColor} 30%, transparent)`}`,
                             borderRadius: 'var(--radius-full)',
                             display: 'inline-block'
                           }}>
-                            {catName}
+                            {isUnknownCat ? '⚠️ Unknown' : displayCatName}
                           </span>
                         </div>
-                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>{data.accounts.find(a => a.id === tx.accountId)?.name || 'Unknown'}</div>
+                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>{data.accounts.find(a => a.id === tx.accountId)?.name || '—'}</div>
                         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                           <div style={{ 
                             color: tx.type === 'Income' ? 'var(--color-success)' : 'var(--color-ink)',
@@ -191,8 +213,6 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                           </div>
                         </div>
                       </div>
-                    );
-                  })()}
                     </div>
                   );
                 });

@@ -142,3 +142,34 @@ Click **Save Configuration**. The app will now read and write directly to your N
   - **Dashboard Chart Title**: Moved "Expenses / Income by Category" title from inside the Chart.js canvas (where it overlapped the legend) into a standalone HTML `<h2>` heading above the chart. Legend is now positioned to the right on desktop and moves to the bottom on screens below 768 px.
   - **Add Trip Modal — No Scroll on Laptop**: Reduced form gap from `--space-md` to `--space-sm` so the Add Trip form content fits within the modal's 720 px max-height constraint without a scrollbar on standard 1080 p laptop screens.
   - **Add Trip Modal — Dates Side-by-Side on Mobile**: Changed Start Date / End Date grid from `repeat(auto-fit, minmax(140px, 1fr))` (which collapsed to two separate rows on narrow screens) to a fixed `1fr 1fr` two-column layout so both date fields always render side by side regardless of screen width.
+  - **Colored Dot Removal**: Removed 8px circular legend-style dot indicators from all four breakdown lists in the Insights page (Travel, Property, Nora ×2). These were chart-legend markers with no accompanying chart, causing confusion (e.g., a red dot on "Maintenance & Repairs" that looked like a warning signal). Category emojis provide sufficient visual identity.
+
+## Pre-Production Hardening (2026-07-26)
+
+A complete audit and hardening pass before switching to live Notion data. 19 issues addressed across 7 files.
+
+### 🔴 Blockers Fixed
+- **Notion Pagination** (`notionClient.js`): Added `_fetchAllPages()` helper that loops on `has_more` + `next_cursor` with `page_size: 100`. All five fetch methods (Categories, Accounts, Transactions, Subscriptions, Trips) now retrieve unlimited records. Previously silently capped at 100 results.
+- **Error UI on Failed Load** (`App.jsx`): Added `loadError` state. When the live Notion `Promise.all` fetch fails, a full-screen error card is shown with the error message, a Retry button, and an Open Settings button. Previously the app silently rendered an empty dashboard with only a `console.error`.
+
+### 🟡 High-Priority Polish
+- **ISO Date Format on Dashboard** (`Dashboard.jsx`): Transaction rows in the "Latest Transactions" preview now show formatted dates (e.g., "26 Jul 2026") instead of raw ISO strings ("2026-07-26").
+- **Responsive Loading Skeleton** (`App.jsx`, `index.css`): The 3-column KPI shimmer skeleton now collapses to 1 column on mobile via the `.skeleton-kpi-grid` class, matching the real KPI card layout on narrow viewports.
+- **Missing Period Filters in TransactionsList** (`TransactionsList.jsx`): Added `last_3_months` and `last_6_months` period cases that were present in Dashboard but missing in TransactionsList — previously selecting those periods showed all transactions unfiltered.
+- **Budget Zero-Data Note** (`Dashboard.jsx`): When a budget category has zero spending in the current period (all bars at 0%), the amount display now shows *"No spending this period"* in italic instead of "0 L / 150 L".
+- **Chart Theme Refresh on Switch** (`Dashboard.jsx`): Both chart `useEffect` dependency arrays now include `config?.theme`. Switching between dark and light mode rebuilds the charts with correct colour values immediately.
+- **Income Row Visual Distinction** (`Dashboard.jsx`, `TransactionsList.jsx`): Income transaction rows now have a subtle 3–4% green surface tint across the full row in both the Dashboard preview and the full Transactions list.
+
+### 🟢 QoL / UX Enhancements
+- **InsightsView Empty State** (`InsightsView.jsx`): Removed the early `return` guard that rendered a bare text line when `insights` was null. Now renders a proper styled empty-state card with ✨ icon while still showing the header.
+- **Section Header Icons** (multiple): Added emoji icons to all major section headers: 🧾 Latest Transactions, 📊/📈 Expenses/Income by Category, 💰 Budget Limits, 📊 Cash Flow Trend, 📅 Period in Review (InsightsView + Insights.jsx), ✨ Actionable Insights.
+- **Period-Aware "in Review" Title** (`InsightsView.jsx`, `Insights.jsx`): "Month in Review" heading now derives from the selected period. Shows e.g. "July 2026 in Review", "Last 3 Months in Review", "2025 in Review" instead of always displaying the current calendar month.
+- **Sort Grouping Separators** (`TransactionsList.jsx`): Non-date sort modes (Category, Account, Description) now show sticky group header separators — category name groups, account name groups, or alphabetical letter groups — matching the date-sort UX.
+- **Chart Legend Resize Listener** (`Dashboard.jsx`): Added a `resize` event listener that updates chart legend position (`bottom` < 768 px, `right` ≥ 768 px) and axis font size when the browser window is resized or device rotated.
+
+### 🔵 Corner Cases / Data Integrity
+- **Empty Category Names Filtered** (`notionClient.js`): Categories and Accounts with blank Notion page titles are now filtered out on fetch, preventing blank `<option>` elements in the Transaction form.
+- **Unknown Category Visual Callout** (`Dashboard.jsx`, `TransactionsList.jsx`): Transactions with a deleted or missing category now display a ⚠️ Unknown badge (muted styling) instead of silently falling back to the word "Unknown" in the category color. Account lookup falls back to "—" dash instead of "Unknown".
+- **Negative Amount Prevention** (`TransactionForm.jsx`): Amount input now has `min="0"`. Negative values could corrupt Insights totals and savings rate calculations.
+- **Future Date Prevention** (`TransactionForm.jsx`): Date input now has `max={today}`. Prevents accidentally logging transactions with future dates.
+- **Notion Query Sort Order** (`notionClient.js`): `fetchTransactions` now sends `sorts: [{ property: 'Date', direction: 'descending' }]` so results are deterministically ordered across pagination pages.

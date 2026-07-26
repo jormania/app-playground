@@ -8,20 +8,35 @@ export default function InsightsView({ data, period, filterProps }) {
     return generateDeepInsights(data, period, { ...filterProps, tripFilter });
   }, [data, period, filterProps, tripFilter]);
 
-  if (!insights) {
-    return (
-      <div style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
-        <p style={{ color: 'var(--color-muted)' }}>Not enough data to generate insights for this period.</p>
-      </div>
-    );
-  }
+  // Destructure with optional chaining — safe when insights is null
+  const financialHealth = insights?.financialHealth;
+  const behavioral = insights?.behavioral;
+  const trajectory = insights?.trajectory;
+  const incomeStreams = insights?.incomeStreams;
+  const alerts = insights?.alerts;
 
-  const { financialHealth, behavioral, trajectory, incomeStreams, alerts } = insights;
+  // 50/30/20 Targets (only meaningful when insights exists)
+  const targetNeeds = financialHealth ? financialHealth.totalExpense * 0.5 : 0;
+  const targetWants = financialHealth ? financialHealth.totalExpense * 0.3 : 0;
+  const targetSavings = financialHealth ? financialHealth.totalExpense * 0.2 : 0;
 
-  // 50/30/20 Targets
-  const targetNeeds = financialHealth.totalExpense * 0.5;
-  const targetWants = financialHealth.totalExpense * 0.3;
-  const targetSavings = financialHealth.totalExpense * 0.2;
+  const periodLabel = (() => {
+    if (!period || period === 'this_month') return new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+    if (period === 'last_month') {
+      const d = new Date(); d.setMonth(d.getMonth() - 1);
+      return d.toLocaleString('default', { month: 'long', year: 'numeric' });
+    }
+    if (period === 'last_3_months') return 'Last 3 Months';
+    if (period === 'last_6_months') return 'Last 6 Months';
+    if (period === 'this_year') return new Date().getFullYear().toString();
+    if (period === 'all_time') return 'All Time';
+    if (period.match(/^\d{4}-\d{2}$/)) {
+      const [y, m] = period.split('-');
+      return new Date(parseInt(y), parseInt(m) - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+    }
+    if (period.match(/^\d{4}$/)) return period;
+    return 'This Period';
+  })();
 
   return (
     <div className="insights-view" style={{ maxWidth: '1200px', margin: '0 auto', padding: 'var(--space-md)', width: '100%', boxSizing: 'border-box' }}>
@@ -31,6 +46,14 @@ export default function InsightsView({ data, period, filterProps }) {
         <h1 style={{ fontSize: 'var(--text-2xl)', margin: 0, color: 'var(--color-ink)' }}>Financial Insights</h1>
       </div>
 
+      {!insights ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-2xl)', textAlign: 'center', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+          <div style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>✨</div>
+          <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-ink)' }}>Not Enough Data Yet</h3>
+          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', maxWidth: '360px', marginBottom: 0 }}>Add more transactions and we'll generate insights for you here.</p>
+        </div>
+      ) : (<>
+
       {/* SECTION: ACT */}
       <div style={{ marginBottom: 'var(--space-2xl)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)' }}>
@@ -38,11 +61,11 @@ export default function InsightsView({ data, period, filterProps }) {
           <h2 style={{ fontSize: 'var(--text-xl)', margin: 0, color: 'var(--color-ink)' }}>Immediate Attention & Action</h2>
         </div>
 
-        {/* Month in Review */}
+        {/* Period in Review */}
         {insights.summaryParagraph && (
           <div style={{ marginBottom: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', borderLeft: '4px solid var(--color-accent)' }}>
             <p style={{ margin: 0, fontSize: 'var(--text-md)', lineHeight: 1.6, color: 'var(--color-ink)' }}>
-              <strong>Month in Review:</strong> {insights.summaryParagraph}
+              <strong>📅 {periodLabel} in Review:</strong> {insights.summaryParagraph}
             </p>
           </div>
         )}
@@ -958,6 +981,8 @@ export default function InsightsView({ data, period, filterProps }) {
 
       </div>
 
+    </>
+      )}
     </div>
   );
 }

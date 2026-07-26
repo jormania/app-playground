@@ -1,8 +1,19 @@
 import { useMemo } from 'react';
 import { generateInsights } from '../lib/analytics';
 
-export default function Insights({ data }) {
+export default function Insights({ data, period }) {
   const { highlights, expenses, income } = useMemo(() => generateInsights(data), [data]);
+
+  const periodLabel = (() => {
+    if (!period || period === 'this_month') return new Date().toLocaleString('default', { month: 'long' });
+    if (period === 'last_month') { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toLocaleString('default', { month: 'long' }); }
+    if (period === 'last_3_months') return 'Last 3 Months';
+    if (period === 'last_6_months') return 'Last 6 Months';
+    if (period === 'this_year') return new Date().getFullYear().toString();
+    if (period === 'all_time') return 'All Time';
+    if (period?.match(/^\d{4}-\d{2}$/)) { const [y, m] = period.split('-'); return new Date(parseInt(y), parseInt(m) - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' }); }
+    return 'This Period';
+  })();
 
   const hasInsights = expenses?.increases.length > 0 || expenses?.decreases.length > 0 || income?.insights.length > 0 || expenses?.subscriptions.length > 0 || expenses?.utilities.length > 0 || expenses?.otherRecurring.length > 0 || expenses?.investing.length > 0;
 
@@ -11,7 +22,7 @@ export default function Insights({ data }) {
       {/* Monthly Reflection Card */}
       <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
         <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0, color: 'var(--color-accent)' }}>
-          {new Date().toLocaleString('default', { month: 'long' })} in Review
+          📅 {periodLabel} in Review
         </h2>
         {highlights && highlights.length > 0 ? (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-md)', marginTop: 'var(--space-md)' }}>
@@ -38,7 +49,7 @@ export default function Insights({ data }) {
       {/* Insights & Recurring */}
       <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
         <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
-          Actionable Insights
+          ✨ Actionable Insights
         </h2>
         {hasInsights ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', color: 'var(--color-ink)', lineHeight: '1.6' }}>
