@@ -106,80 +106,83 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
 
       <Field label="Description" type="text" value={description} onChange={e => setDescription(e.target.value)} required placeholder="e.g. Groceries" />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
-            Category <span style={{ color: 'var(--color-danger)' }}>*</span>
-          </label>
-          <select value={categoryId} onChange={e => setCategoryId(e.target.value)} required style={{ 
-            width: '100%', 
-            padding: '10px 12px', 
-            borderRadius: 'var(--radius-md)', 
-            border: '1px solid var(--color-border)', 
-            backgroundColor: 'var(--color-bg)',
-            color: 'var(--color-ink)',
-            fontSize: 'var(--text-base)',
-            fontFamily: 'inherit'
-          }}>
-            <option value="" disabled>Select category...</option>
-            {availableCategories.map(c => (
-              <option key={c.id} value={c.id}>{c.icon ? `${c.icon} ${c.name}` : c.name}</option>
-            ))}
-          </select>
-          {selectedCat?.description && (
-            <details style={{ marginTop: '2px' }}>
-              <summary style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', cursor: 'pointer', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ fontSize: '10px' }}>▶</span> Category description
-              </summary>
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '4px', fontStyle: 'italic', lineHeight: '1.4', paddingLeft: '14px' }}>
-                {selectedCat.description}
-              </div>
-            </details>
-          )}
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
-            Account <span style={{ color: 'var(--color-danger)' }}>*</span>
-          </label>
-          <select value={accountId} onChange={e => setAccountId(e.target.value)} required style={{ 
-            width: '100%', 
-            padding: '10px 12px', 
-            borderRadius: 'var(--radius-md)', 
-            border: '1px solid var(--color-border)', 
-            backgroundColor: 'var(--color-bg)',
-            color: 'var(--color-ink)',
-            fontSize: 'var(--text-base)',
-            fontFamily: 'inherit'
-          }}>
-            {sortedAccounts.map(a => (
-              <option key={a.id} value={a.id}>{a.name}</option>
-            ))}
-          </select>
-        </div>
+      {/* Category */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
+          Category <span style={{ color: 'var(--color-danger)' }}>*</span>
+        </label>
+        <select value={categoryId} onChange={e => setCategoryId(e.target.value)} required style={{ 
+          width: '100%', 
+          padding: '10px 12px', 
+          borderRadius: 'var(--radius-md)', 
+          border: '1px solid var(--color-border)', 
+          backgroundColor: 'var(--color-bg)',
+          color: 'var(--color-ink)',
+          fontSize: 'var(--text-base)',
+          fontFamily: 'inherit'
+        }}>
+          <option value="" disabled>Select category...</option>
+          {availableCategories.map(c => (
+            <option key={c.id} value={c.id}>{c.icon ? `${c.icon} ${c.name}` : c.name}</option>
+          ))}
+        </select>
+        {selectedCat?.description && (
+          <details style={{ marginTop: '2px' }}>
+            <summary style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', cursor: 'pointer', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '10px' }}>▶</span> Category description
+            </summary>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '4px', fontStyle: 'italic', lineHeight: '1.4', paddingLeft: '14px' }}>
+              {selectedCat.description}
+            </div>
+          </details>
+        )}
       </div>
 
+      {/* Assign to Trip — only for Travel category */}
       {isTravelCategory && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: 'var(--space-sm)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--color-border)' }}>
-          <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px 10px', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--color-border)' }}>
+          <label style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: 'var(--color-muted)', display: 'flex', alignItems: 'center', gap: '5px' }}>
             <span>✈️</span> Assign to Trip (Optional)
           </label>
           <select value={tripId} onChange={e => setTripId(e.target.value)} style={{ 
             width: '100%', 
-            padding: '10px 12px', 
+            padding: '8px 10px', 
             borderRadius: 'var(--radius-md)', 
             border: '1px solid var(--color-border)', 
             backgroundColor: 'var(--color-bg)',
             color: 'var(--color-ink)',
-            fontSize: 'var(--text-base)',
+            fontSize: 'var(--text-sm)',
             fontFamily: 'inherit'
           }}>
-            <option value="">No specific trip (General / Unassigned Travel)</option>
+            <option value="">No specific trip (unassigned)</option>
             {sortTrips(trips || []).map(t => (
               <option key={t.id} value={t.id}>{t.name}{t.destination ? ` (${t.destination})` : ''}</option>
             ))}
           </select>
         </div>
       )}
+
+      {/* Account */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
+          Account <span style={{ color: 'var(--color-danger)' }}>*</span>
+        </label>
+        <select value={accountId} onChange={e => setAccountId(e.target.value)} required style={{ 
+          width: '100%', 
+          padding: '10px 12px', 
+          borderRadius: 'var(--radius-md)', 
+          border: '1px solid var(--color-border)', 
+          backgroundColor: 'var(--color-bg)',
+          color: 'var(--color-ink)',
+          fontSize: 'var(--text-base)',
+          fontFamily: 'inherit'
+        }}>
+          {sortedAccounts.map(a => (
+            <option key={a.id} value={a.id}>{a.name}</option>
+          ))}
+        </select>
+      </div>
+
 
       <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-sm)' }}>
         {initialTx && (
