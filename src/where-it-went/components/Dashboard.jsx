@@ -407,9 +407,11 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
             </ul>
           )}
           <div style={{ marginTop: 'var(--space-md)', textAlign: 'center' }}>
-            <Button variant="ghost" size="sm" onClick={() => onNavigate && onNavigate('transactions')}>
-              View All Transactions &rarr;
-            </Button>
+            {filteredTransactions.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => onNavigate && onNavigate('transactions')}>
+                View All Transactions &rarr;
+              </Button>
+            )}
           </div>
         </div>
         <div style={{ height: '450px', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
