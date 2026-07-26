@@ -1,5 +1,6 @@
 .track {
-  display: inline-flex;
+  display: flex;
+  width: 100%;
   padding: var(--space-2xs, 4px);
   gap: var(--space-2xs, 4px);
   background: var(--color-surface-2, #f8f9fb);
@@ -7,6 +8,7 @@
 }
 
 .option {
+  flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
