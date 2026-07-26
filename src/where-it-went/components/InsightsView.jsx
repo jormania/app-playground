@@ -516,9 +516,8 @@ export default function InsightsView({ data, period, filterProps }) {
                         const pct = (item.amount / behavioral.travelAnalysis.totalSpend) * 100;
                         return (
                           <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 'var(--text-sm)', gap: '8px' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-ink)', minWidth: 0, overflow: 'hidden' }}>
-                              <span style={{ display: 'inline-block', flexShrink: 0, width: '8px', height: '8px', borderRadius: '50%', backgroundColor: item.color }}></span>
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
+                            <span style={{ color: 'var(--color-ink)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {item.label}
                             </span>
                             <span style={{ fontWeight: 'var(--weight-medium)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                               {formatCurrency(item.amount)} ({pct.toFixed(0)}%)
@@ -697,11 +696,10 @@ export default function InsightsView({ data, period, filterProps }) {
                           const pct = behavioral.propertyAnalysis.totalExpense > 0 ? (item.amount / behavioral.propertyAnalysis.totalExpense) * 100 : 0;
                           return (
                             <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-ink)' }}>
-                                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: item.color }}></span>
+                              <span style={{ color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {item.label}
                               </span>
-                              <span style={{ fontWeight: 'var(--weight-medium)' }}>
+                              <span style={{ fontWeight: 'var(--weight-medium)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                 {formatCurrency(item.amount)} ({pct.toFixed(0)}%)
                               </span>
                             </div>
@@ -858,11 +856,10 @@ export default function InsightsView({ data, period, filterProps }) {
                           const pct = (item.amount / behavioral.noraAnalysis.totalSpend) * 100;
                           return (
                             <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-ink)' }}>
-                                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: item.color }}></span>
+                              <span style={{ color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {item.label}
                               </span>
-                              <span style={{ fontWeight: 'var(--weight-medium)' }}>
+                              <span style={{ fontWeight: 'var(--weight-medium)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                 {formatCurrency(item.amount)} ({pct.toFixed(0)}%)
                               </span>
                             </div>
@@ -884,11 +881,10 @@ export default function InsightsView({ data, period, filterProps }) {
                           const pct = (item.amount / behavioral.noraAnalysis.totalSpend) * 100;
                           return (
                             <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-ink)' }}>
-                                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: item.color }}></span>
+                              <span style={{ color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {item.label}
                               </span>
-                              <span style={{ fontWeight: 'var(--weight-medium)' }}>
+                              <span style={{ fontWeight: 'var(--weight-medium)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                 {formatCurrency(item.amount)} ({pct.toFixed(0)}%)
                               </span>
                             </div>
