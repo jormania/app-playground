@@ -94,7 +94,7 @@ export default function InsightsView({ data, period, filterProps }) {
           <h2 style={{ fontSize: 'var(--text-xl)', margin: 0, color: 'var(--color-ink)' }}>Core Financial Architecture</h2>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 'var(--space-xl)', marginBottom: 'var(--space-xl)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 'var(--space-xl)', marginBottom: 'var(--space-xl)', width: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
           
           {/* Financial Health with Savings Rate emphasized as Primary KPI */}
           <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
@@ -313,7 +313,7 @@ export default function InsightsView({ data, period, filterProps }) {
           <h2 style={{ fontSize: 'var(--text-xl)', margin: 0, color: 'var(--color-ink)' }}>Spending Habits & Trends</h2>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 'var(--space-xl)', marginBottom: 'var(--space-xl)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 'var(--space-xl)', marginBottom: 'var(--space-xl)', width: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
           
           {/* Spending by Category Change - Limited to top 5 most significant shifts */}
           <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
@@ -415,9 +415,11 @@ export default function InsightsView({ data, period, filterProps }) {
             </ul>
           </div>
 
-          {/* Travel Insights Card */}
-          {behavioral.travelAnalysis && (
-            <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+        </div>
+
+        {/* Travel Insights Card */}
+        {behavioral.travelAnalysis && (
+          <div style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
                 <div>
                   <h3 style={{ fontSize: 'var(--text-lg)', margin: 0 }}>
@@ -429,55 +431,51 @@ export default function InsightsView({ data, period, filterProps }) {
                       : 'Prepared for travel analysis when expenses are logged under the Travel category.'}
                   </p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <label htmlFor="trip-filter-select" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', fontWeight: 'var(--weight-medium)' }}>Filter Trip:</label>
-                    <select
-                      id="trip-filter-select"
-                      value={tripFilter}
-                      onChange={e => setTripFilter(e.target.value)}
-                      style={{
-                        padding: '6px 10px',
-                        borderRadius: 'var(--radius-sm)',
-                        border: '1px solid var(--color-border)',
-                        backgroundColor: 'var(--color-bg)',
-                        color: 'var(--color-ink)',
-                        fontSize: 'var(--text-xs)',
-                        fontFamily: 'inherit'
-                      }}
-                    >
-                      <option value="ALL">All Trips</option>
-                      <option value="UNASSIGNED">Unassigned Travel</option>
-                      {data && data.trips && data.trips.map(t => (
-                        <option key={t.id} value={t.id}>{t.name}{t.destination ? ` (${t.destination})` : ''}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {behavioral.travelAnalysis.count > 0 && (
-                    <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center', backgroundColor: 'var(--color-surface-2)', padding: '6px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Total Travel Spend</div>
-                        <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-brass)' }}>{formatCurrency(behavioral.travelAnalysis.totalSpend)}</div>
-                    </div>
-                    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Share of Budget</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{(behavioral.travelAnalysis.shareOfTotalExpense * 100).toFixed(1)}%</div>
-                    </div>
-                    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Avg Transaction</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{formatCurrency(behavioral.travelAnalysis.averageTxAmount)}</div>
-                    </div>
-                    <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Transactions</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{behavioral.travelAnalysis.count}</div>
-                    </div>
-                  </div>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <label htmlFor="trip-filter-select" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', fontWeight: 'var(--weight-medium)' }}>Filter Trip:</label>
+                  <select
+                    id="trip-filter-select"
+                    value={tripFilter}
+                    onChange={e => setTripFilter(e.target.value)}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--color-border)',
+                      backgroundColor: 'var(--color-bg)',
+                      color: 'var(--color-ink)',
+                      fontSize: 'var(--text-xs)',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    <option value="ALL">All Trips</option>
+                    <option value="UNASSIGNED">Unassigned Travel</option>
+                    {data && data.trips && data.trips.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}{t.destination ? ` (${t.destination})` : ''}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
+
+              {behavioral.travelAnalysis.count > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 'var(--space-md)', backgroundColor: 'var(--color-surface-2)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginBottom: 'var(--space-lg)', width: '100%', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Total Travel Spend</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-brass)', fontSize: 'var(--text-lg)' }}>{formatCurrency(behavioral.travelAnalysis.totalSpend)}</div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Share of Budget</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-lg)' }}>{(behavioral.travelAnalysis.shareOfTotalExpense * 100).toFixed(1)}%</div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Avg Transaction</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-lg)' }}>{formatCurrency(behavioral.travelAnalysis.averageTxAmount)}</div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Transactions</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-lg)' }}>{behavioral.travelAnalysis.count}</div>
+                  </div>
+                </div>
+              )}
 
               {behavioral.travelAnalysis.count > 0 ? (
                 <div>
@@ -589,9 +587,9 @@ export default function InsightsView({ data, period, filterProps }) {
             </div>
           )}
 
-          {/* Property Insights Card (Operations Dashboard) */}
-          {behavioral.propertyAnalysis && (
-            <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', marginTop: 'var(--space-xl)' }}>
+        {/* Property Insights Card (Operations Dashboard) */}
+        {behavioral.propertyAnalysis && (
+          <div style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
                 <div>
                   <h3 style={{ fontSize: 'var(--text-lg)', margin: 0 }}>
@@ -603,54 +601,52 @@ export default function InsightsView({ data, period, filterProps }) {
                       : 'Prepared for real estate operations tracking when property records are logged.'}
                   </p>
                 </div>
-                {behavioral.propertyAnalysis.count > 0 && (
-                  <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center', backgroundColor: 'var(--color-surface-2)', padding: '8px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Net Cash Flow</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: behavioral.propertyAnalysis.netFlow >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                        {behavioral.propertyAnalysis.netFlow >= 0 ? '+' : ''}{formatCurrency(behavioral.propertyAnalysis.netFlow)}
-                      </div>
-                      {behavioral.propertyAnalysis.prevNetFlow !== undefined && (
-                        <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
-                          {behavioral.propertyAnalysis.diffFlowFromPrev === 0 ? 'Stable vs prev' : `${behavioral.propertyAnalysis.diffFlowFromPrev > 0 ? '+' : ''}${formatCurrency(behavioral.propertyAnalysis.diffFlowFromPrev)} vs prev`}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ width: '1px', height: '32px', backgroundColor: 'var(--color-border)' }}></div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Rental Income</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-success)' }}>{formatCurrency(behavioral.propertyAnalysis.totalIncome)}</div>
-                      {behavioral.propertyAnalysis.prevTotalIncome !== undefined && (
-                        <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
-                          {behavioral.propertyAnalysis.diffIncomeFromPrev === 0 ? 'Stable vs prev' : `${behavioral.propertyAnalysis.diffIncomeFromPrev > 0 ? '+' : ''}${formatCurrency(behavioral.propertyAnalysis.diffIncomeFromPrev)} vs prev`}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ width: '1px', height: '32px', backgroundColor: 'var(--color-border)' }}></div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Expenses</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)' }}>{formatCurrency(behavioral.propertyAnalysis.totalExpense)}</div>
-                      {behavioral.propertyAnalysis.prevTotalExpense !== undefined && (
-                        <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
-                          {behavioral.propertyAnalysis.diffExpenseFromPrev === 0 ? 'Stable vs prev' : `${behavioral.propertyAnalysis.diffExpenseFromPrev > 0 ? '+' : ''}${formatCurrency(behavioral.propertyAnalysis.diffExpenseFromPrev)} vs prev`}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ width: '1px', height: '32px', backgroundColor: 'var(--color-border)' }}></div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Expense Ratio</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>
-                        {behavioral.propertyAnalysis.expenseRatio !== null ? `${(behavioral.propertyAnalysis.expenseRatio * 100).toFixed(0)}%` : '0%'}
-                      </div>
-                      {behavioral.propertyAnalysis.diffRatioFromPrev !== null && behavioral.propertyAnalysis.diffRatioFromPrev !== undefined && (
-                        <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
-                          {Math.round(behavioral.propertyAnalysis.diffRatioFromPrev * 100) === 0 ? 'Stable ratio' : `${behavioral.propertyAnalysis.diffRatioFromPrev > 0 ? '+' : ''}${Math.round(behavioral.propertyAnalysis.diffRatioFromPrev * 100)}% pts vs prev`}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
+
+              {behavioral.propertyAnalysis.count > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 'var(--space-md)', backgroundColor: 'var(--color-surface-2)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginBottom: 'var(--space-lg)', width: '100%', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Net Cash Flow</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: behavioral.propertyAnalysis.netFlow >= 0 ? 'var(--color-success)' : 'var(--color-danger)', fontSize: 'var(--text-lg)' }}>
+                      {behavioral.propertyAnalysis.netFlow >= 0 ? '+' : ''}{formatCurrency(behavioral.propertyAnalysis.netFlow)}
+                    </div>
+                    {behavioral.propertyAnalysis.prevNetFlow !== undefined && (
+                      <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
+                        {behavioral.propertyAnalysis.diffFlowFromPrev === 0 ? 'Stable vs prev' : `${behavioral.propertyAnalysis.diffFlowFromPrev > 0 ? '+' : ''}${formatCurrency(behavioral.propertyAnalysis.diffFlowFromPrev)} vs prev`}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Rental Income</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-success)', fontSize: 'var(--text-lg)' }}>{formatCurrency(behavioral.propertyAnalysis.totalIncome)}</div>
+                    {behavioral.propertyAnalysis.prevTotalIncome !== undefined && (
+                      <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
+                        {behavioral.propertyAnalysis.diffIncomeFromPrev === 0 ? 'Stable vs prev' : `${behavioral.propertyAnalysis.diffIncomeFromPrev > 0 ? '+' : ''}${formatCurrency(behavioral.propertyAnalysis.diffIncomeFromPrev)} vs prev`}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Expenses</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)', fontSize: 'var(--text-lg)' }}>{formatCurrency(behavioral.propertyAnalysis.totalExpense)}</div>
+                    {behavioral.propertyAnalysis.prevTotalExpense !== undefined && (
+                      <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
+                        {behavioral.propertyAnalysis.diffExpenseFromPrev === 0 ? 'Stable vs prev' : `${behavioral.propertyAnalysis.diffExpenseFromPrev > 0 ? '+' : ''}${formatCurrency(behavioral.propertyAnalysis.diffExpenseFromPrev)} vs prev`}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Expense Ratio</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-lg)' }}>
+                      {behavioral.propertyAnalysis.expenseRatio !== null ? `${(behavioral.propertyAnalysis.expenseRatio * 100).toFixed(0)}%` : '0%'}
+                    </div>
+                    {behavioral.propertyAnalysis.diffRatioFromPrev !== null && behavioral.propertyAnalysis.diffRatioFromPrev !== undefined && (
+                      <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
+                        {Math.round(behavioral.propertyAnalysis.diffRatioFromPrev * 100) === 0 ? 'Stable ratio' : `${behavioral.propertyAnalysis.diffRatioFromPrev > 0 ? '+' : ''}${Math.round(behavioral.propertyAnalysis.diffRatioFromPrev * 100)}% pts vs prev`}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {behavioral.propertyAnalysis.count > 0 ? (
                 <div>
@@ -774,9 +770,9 @@ export default function InsightsView({ data, period, filterProps }) {
             </div>
           )}
 
-          {/* Nora Insights Card (Family Support Dashboard) */}
-          {behavioral.noraAnalysis && (
-            <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', marginTop: 'var(--space-xl)' }}>
+        {/* Nora Insights Card (Family Support Dashboard) */}
+        {behavioral.noraAnalysis && (
+          <div style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
                 <div>
                   <h3 style={{ fontSize: 'var(--text-lg)', margin: 0 }}>
@@ -788,40 +784,38 @@ export default function InsightsView({ data, period, filterProps }) {
                       : 'Prepared for family support analysis when Nora records are logged.'}
                   </p>
                 </div>
-                {behavioral.noraAnalysis.count > 0 && (
-                  <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center', backgroundColor: 'var(--color-surface-2)', padding: '8px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Share of Budget</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-purple)' }}>{(behavioral.noraAnalysis.shareOfTotalExpense * 100).toFixed(1)}%</div>
-                      {behavioral.noraAnalysis.diffShareFromPrev !== null && behavioral.noraAnalysis.diffShareFromPrev !== undefined && (
-                        <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
-                          {Math.round(behavioral.noraAnalysis.diffShareFromPrev * 100) === 0 ? 'Stable vs prev' : `${behavioral.noraAnalysis.diffShareFromPrev > 0 ? '+' : ''}${(behavioral.noraAnalysis.diffShareFromPrev * 100).toFixed(1)}% pts vs prev`}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ width: '1px', height: '32px', backgroundColor: 'var(--color-border)' }}></div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Support This Period</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{formatCurrency(behavioral.noraAnalysis.totalSpend)}</div>
-                      {behavioral.noraAnalysis.prevTotalSpend > 0 && (
-                        <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
-                          {behavioral.noraAnalysis.diffFromPrev === 0 ? 'Stable vs prev' : `${behavioral.noraAnalysis.diffFromPrev > 0 ? '+' : ''}${formatCurrency(behavioral.noraAnalysis.diffFromPrev)} vs prev`}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ width: '1px', height: '32px', backgroundColor: 'var(--color-border)' }}></div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Primary Focus</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{behavioral.noraAnalysis.primaryFocusText}</div>
-                    </div>
-                    <div style={{ width: '1px', height: '32px', backgroundColor: 'var(--color-border)' }}></div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Transactions</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{behavioral.noraAnalysis.count}</div>
-                    </div>
-                  </div>
-                )}
               </div>
+
+              {behavioral.noraAnalysis.count > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 'var(--space-md)', backgroundColor: 'var(--color-surface-2)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginBottom: 'var(--space-lg)', width: '100%', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Share of Budget</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-purple)', fontSize: 'var(--text-lg)' }}>{(behavioral.noraAnalysis.shareOfTotalExpense * 100).toFixed(1)}%</div>
+                    {behavioral.noraAnalysis.diffShareFromPrev !== null && behavioral.noraAnalysis.diffShareFromPrev !== undefined && (
+                      <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
+                        {Math.round(behavioral.noraAnalysis.diffShareFromPrev * 100) === 0 ? 'Stable vs prev' : `${behavioral.noraAnalysis.diffShareFromPrev > 0 ? '+' : ''}${(behavioral.noraAnalysis.diffShareFromPrev * 100).toFixed(1)}% pts vs prev`}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Support This Period</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-lg)' }}>{formatCurrency(behavioral.noraAnalysis.totalSpend)}</div>
+                    {behavioral.noraAnalysis.prevTotalSpend > 0 && (
+                      <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '2px' }}>
+                        {behavioral.noraAnalysis.diffFromPrev === 0 ? 'Stable vs prev' : `${behavioral.noraAnalysis.diffFromPrev > 0 ? '+' : ''}${formatCurrency(behavioral.noraAnalysis.diffFromPrev)} vs prev`}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Primary Focus</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-lg)' }}>{behavioral.noraAnalysis.primaryFocusText}</div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Transactions</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-lg)' }}>{behavioral.noraAnalysis.count}</div>
+                  </div>
+                </div>
+              )}
 
               {behavioral.noraAnalysis.count > 0 ? (
                 <div>
@@ -967,7 +961,6 @@ export default function InsightsView({ data, period, filterProps }) {
             </div>
           )}
 
-        </div>
       </div>
 
     </div>

@@ -189,8 +189,8 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: 'right', labels: { color: mutedColor, font: { size: 14 }, padding: 15 } },
-          title: { display: true, text: chartType === 'Income' ? 'Income by Category' : 'Expenses by Category', color: inkColor, font: { size: 16 } },
+          legend: { position: window.innerWidth < 768 ? 'bottom' : 'right', labels: { color: mutedColor, font: { size: window.innerWidth < 768 ? 12 : 13 }, padding: 10, boxWidth: 12 } },
+          title: { display: false },
           tooltip: {
             callbacks: {
               label: function(context) {
@@ -413,14 +413,19 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
           </div>
         </div>
         <div style={{ height: '450px', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0, marginBottom: 'var(--space-md)' }}>
+            {chartType === 'Income' ? 'Income by Category' : 'Expenses by Category'}
+          </h2>
           {chartData.length === 0 ? (
-            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+            <div style={{ height: 'calc(100% - 45px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
               <div style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>📊</div>
               <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-ink)' }}>Not Enough Data</h3>
               <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: 0 }}>There are no {chartType.toLowerCase()} transactions in this period to chart.</p>
             </div>
           ) : (
-            <canvas ref={chartRef}></canvas>
+            <div style={{ height: 'calc(100% - 45px)', position: 'relative' }}>
+              <canvas ref={chartRef}></canvas>
+            </div>
           )}
         </div>
       </div>

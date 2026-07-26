@@ -59,11 +59,11 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
 
   return (
     <Modal open={isOpen} title={trip ? 'Edit Trip' : 'Add Trip'} onClose={onClose}>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
         <Field label="Trip Name" placeholder="e.g. Billund 2025" value={name} onChange={e => setName(e.target.value)} required />
         <Field label="Destination" placeholder="e.g. Billund, Denmark" value={destination} onChange={e => setDestination(e.target.value)} />
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-md)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)' }}>
           <Field label="Start Date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
           <Field label="End Date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
         </div>
