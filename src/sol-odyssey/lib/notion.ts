@@ -15,6 +15,7 @@ import type { Settings } from './settings'
 import {
   buildCreateOdysseyProperties,
   buildDraftOdysseyProperties,
+  buildEditActiveOdysseyProperties,
   nextOdysseyNumber,
   type CharterDraft,
 } from './charter'
@@ -547,6 +548,21 @@ export async function writeCommitment(
     }
     throw err
   }
+}
+
+/** PATCH the full charter + dates onto an Odyssey that's Active but hasn't reached Day 1 yet — lets
+ *  the runner correct a charter before the cycle actually starts, without touching Status or
+ *  Odyssey Number (the caller must already know it hasn't started; this doesn't re-check). */
+export async function updateActiveOdyssey(
+  settings: Settings,
+  odysseyId: string,
+  draft: CharterDraft,
+  number: number,
+  fetchImpl: typeof fetch = fetch,
+): Promise<OdysseyDetail> {
+  const properties = buildEditActiveOdysseyProperties(draft, settings, number)
+  const saved = await callRelay(settings.token, updatePageRequest(odysseyId, properties), fetchImpl)
+  return parseOdysseyList({ results: [saved] })[0]
 }
 
 /** Update the active Odyssey's Tiny Version — so a weekly "one adjustment" can actually change what

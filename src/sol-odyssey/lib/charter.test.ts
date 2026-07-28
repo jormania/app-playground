@@ -3,10 +3,13 @@ import { EMPTY_SETTINGS, type Settings } from './settings'
 import {
   buildCreateOdysseyProperties,
   buildDraftOdysseyProperties,
+  buildEditActiveOdysseyProperties,
   canActivate,
   charterErrors,
   computeDayIndex,
   computeEndDate,
+  CYCLE_DAYS,
+  dayReached,
   defaultStartDate,
   emptyDraft,
   firstIncompleteStep,
@@ -113,6 +116,13 @@ describe('dates', () => {
     expect(computeDayIndex('2026-07-06', new Date('2026-07-12T12:00:00'))).toBe(7)
     expect(computeDayIndex('2026-07-06', new Date('2026-07-05T12:00:00'))).toBe(0)
   })
+
+  it('dayReached clamps to 1..42 and reports what actually ran', () => {
+    expect(dayReached('2026-07-06', new Date('2026-07-12T12:00:00'))).toBe(7) // mid-cycle
+    expect(dayReached('2026-07-06', new Date('2026-07-05T12:00:00'))).toBe(1) // before Day 1 → floors at 1
+    expect(dayReached('2026-07-06', new Date('2026-09-01T12:00:00'))).toBe(CYCLE_DAYS) // long past → caps at 42
+    expect(dayReached('', new Date('2026-07-12T12:00:00'))).toBe(CYCLE_DAYS) // no start date → assume full
+  })
 })
 
 describe('numbering & naming', () => {
@@ -177,6 +187,20 @@ describe('buildDraftOdysseyProperties (Planning)', () => {
     const props = buildDraftOdysseyProperties(validDraft({ startDate: '' }), settings) as Record<string, any>
     expect(props['Start Date']).toBeUndefined()
     expect(props['End Date']).toBeUndefined()
+  })
+})
+
+describe('buildEditActiveOdysseyProperties', () => {
+  const settings: Settings = { ...EMPTY_SETTINGS, buddyName: 'Sam', buddyEmail: 'sam@example.com' }
+
+  it('carries the charter fields + dates but never Status or Odyssey Number', () => {
+    const props = buildEditActiveOdysseyProperties(validDraft(), settings, 3) as Record<string, any>
+    expect(props['Name'].title[0].text.content).toBe('Odyssey 3 — Move my body before the day takes me')
+    expect(props['Start Date'].date.start).toBe('2026-07-06')
+    expect(props['End Date'].date.start).toBe('2026-08-16')
+    expect(props['Tiny Version'].rich_text[0].text.content).toBe('Put on shoes and walk to the corner')
+    expect(props['Status']).toBeUndefined()
+    expect(props['Odyssey Number']).toBeUndefined()
   })
 })
 

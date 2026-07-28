@@ -119,6 +119,7 @@ function Route({
 }) {
   if (route === '/settings') return <SettingsPage navigate={navigate} />
   if (route === '/charter') return <CharterPage navigate={navigate} />
+  if (route === '/charter/edit') return <CharterPage navigate={navigate} editActive />
   if (route === '/tracker') return <TrackerPage navigate={navigate} />
   if (route === '/weekly') return <WeeklyPage navigate={navigate} />
   if (route === '/harvest') return <HarvestPage navigate={navigate} />

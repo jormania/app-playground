@@ -114,11 +114,24 @@ describe('harvestBuddyMail', () => {
     expect(rowText(mail)).toContain('Where it goes next: Keep')
   })
   it('omits the pass-it-on row unless one is written', () => {
-    expect(rowText(harvestBuddyMail('Sam', 'Alex', odyssey()))).not.toContain('Something to pass on')
-    expect(rowText(harvestBuddyMail('Sam', 'Alex', odyssey(), '   '))).not.toContain('Something to pass on')
-    expect(rowText(harvestBuddyMail('Sam', 'Alex', odyssey(), 'start smaller than you think'))).toContain(
+    const full = new Date('2026-08-16T12:00:00') // odyssey() ends 2026-08-16 → the full 42 days
+    expect(rowText(harvestBuddyMail('Sam', 'Alex', odyssey(), undefined, full))).not.toContain('Something to pass on')
+    expect(rowText(harvestBuddyMail('Sam', 'Alex', odyssey(), '   ', full))).not.toContain('Something to pass on')
+    expect(rowText(harvestBuddyMail('Sam', 'Alex', odyssey(), 'start smaller than you think', full))).toContain(
       'Something to pass on: start smaller than you think',
     )
+  })
+  it('claims the full 42 days only once the cycle actually ran that long', () => {
+    const mail = harvestBuddyMail('Sam', 'Alex', odyssey(), undefined, new Date('2026-08-16T12:00:00'))
+    expect(mail.heading).toBe('🌅 Harvest — 42 days done')
+    expect(mail.intro).toContain("finished my 42-day run")
+  })
+  it('reads honestly as an early close when harvested before Day 42', () => {
+    // odyssey() starts 2026-07-06 → 2026-07-20 is day 15
+    const mail = harvestBuddyMail('Sam', 'Alex', odyssey(), undefined, new Date('2026-07-20T12:00:00'))
+    expect(mail.heading).toBe('🌅 Harvest — day 15 of 42')
+    expect(mail.intro).toContain('closing this Odyssey early, at day 15 of 42')
+    expect(mail.intro).not.toContain('42-day run')
   })
 })
 

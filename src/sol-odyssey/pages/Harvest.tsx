@@ -14,12 +14,15 @@ import { isConfigured, companionActive } from '../lib/settings'
 import { useActiveOdysseys, useHarvestOdyssey } from '../lib/useActiveOdysseys'
 import { OUTCOME_OPTIONS, statusForOutcome, type Outcome } from '../lib/harvest'
 import { buildHarvestCompanionPrompt } from '../lib/companion'
+import { CYCLE_DAYS, dayReached } from '../lib/charter'
 
 export function HarvestPage({ navigate }: { navigate: (to: string) => void }) {
   const { settings } = useSettings()
   const active = useActiveOdysseys()
   const odyssey = active.data?.[0]
   const harvest = useHarvestOdyssey()
+  const reached = odyssey?.startDate ? dayReached(odyssey.startDate) : CYCLE_DAYS
+  const early = reached < CYCLE_DAYS
 
   const [verdict, setVerdict] = useState('')
   const [outcome, setOutcome] = useState<Outcome | null>(null)
@@ -37,23 +40,28 @@ export function HarvestPage({ navigate }: { navigate: (to: string) => void }) {
   // ── After harvest: the handover ──
   if (harvest.isSuccess) {
     const chosen = harvest.data
+    const chosenReached = chosen.startDate ? dayReached(chosen.startDate) : CYCLE_DAYS
+    const chosenEarly = chosenReached < CYCLE_DAYS
     // Each outcome gets its own note — all three are valued, and each is different.
     const outcomeNote =
       chosen.status === 'Completed' ? 'harvestGrow' : chosen.status === 'Retired' ? 'harvestRetire' : 'harvestKeep'
     return (
       <div className="flex flex-col gap-6">
         <header className="flex flex-col gap-1">
-          <span className="font-mono text-xs uppercase tracking-wide text-accent">Harvested · {chosen.status}</span>
+          <span className="font-mono text-xs uppercase tracking-wide text-accent">
+            Harvested · {chosen.status} · {chosenEarly ? `day ${chosenReached} of ${CYCLE_DAYS}, early` : `full ${CYCLE_DAYS} days`}
+          </span>
           <h2 className="font-display text-2xl">{chosen.title}</h2>
         </header>
         <Notice
-          title="You descend with a method, not just a habit"
+          title={chosenEarly ? 'You descend early, with a method, not just a habit' : 'You descend with a method, not just a habit'}
           body={
-            chosen.status === 'Maintenance'
+            (chosen.status === 'Maintenance'
               ? 'Kept at its tiny floor as maintenance — installed, low-effort, alive. It no longer counts as your active Odyssey, so you’re free to begin the next.'
               : chosen.status === 'Retired'
                 ? 'Retired — it served its purpose, taught you what it had to, and you let it go cleanly. The way is clear for the next Odyssey.'
-                : 'Completed — these six weeks did their work. Carry the behaviour forward, larger, in the next Odyssey.'
+                : 'Completed — these six weeks did their work. Carry the behaviour forward, larger, in the next Odyssey.') +
+            (chosenEarly ? ` You closed it at day ${chosenReached} of ${CYCLE_DAYS}, before the full cycle — that’s still a real, deliberate choice.` : '')
           }
         />
         <SupportingNote note={outcomeNote} />
@@ -172,6 +180,12 @@ export function HarvestPage({ navigate }: { navigate: (to: string) => void }) {
           <strong>{outcome ? statusForOutcome(outcome) : ''}</strong> and ends the active cycle. It
           can’t be undone in the app.
         </p>
+        {early && (
+          <p className="mt-2 font-sans text-sm text-text-secondary">
+            You’re at day {reached} of {CYCLE_DAYS} — this closes it before the full cycle, not at Day{' '}
+            {CYCLE_DAYS}.
+          </p>
+        )}
         <div className="mt-4 flex items-center gap-3">
           <Button
             onClick={() => {

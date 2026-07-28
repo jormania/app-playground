@@ -8,7 +8,8 @@ import { Switch } from '../components/Switch'
 import { SupportingNote } from '../components/SupportingNote'
 import { useSettings } from '../lib/settingsContext'
 import { isValidEmail } from '../lib/settings'
-import { useActiveOdysseys, ACTIVE_ODYSSEYS_KEY } from '../lib/useActiveOdysseys'
+import { Notice } from '../components/Notice'
+import { useActiveOdysseys, useUpdateActiveOdyssey, ACTIVE_ODYSSEYS_KEY } from '../lib/useActiveOdysseys'
 import {
   usePlanningOdyssey,
   useSavePlanningDraft,
@@ -18,6 +19,7 @@ import { createActiveOdyssey, type OdysseyRef } from '../lib/notion'
 import {
   canActivate,
   charterErrors,
+  computeDayIndex,
   computeEndDate,
   defaultStartDate,
   emptyDraft,
@@ -53,7 +55,15 @@ const FIELD_STEPS: FieldStep[] = [
 
 const TOTAL_STEPS = FIELD_STEPS.length + 1 // + review
 
-export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
+export function CharterPage({
+  navigate,
+  editActive = false,
+}: {
+  navigate: (to: string) => void
+  /** Edit an already-Active Odyssey that hasn't reached Day 1 yet, in place — PATCHes the same row
+   *  instead of creating/activating one. Only ever reached via `/charter/edit`. */
+  editActive?: boolean
+}) {
   const { settings } = useSettings()
   const queryClient = useQueryClient()
   const active = useActiveOdysseys()
@@ -66,13 +76,30 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
   // The Notion id of the Planning draft being edited (null until one is saved/loaded). Drives
   // whether saving PATCHes the existing row and whether "Begin" activates it vs creates fresh.
   const [draftId, setDraftId] = useState<string | null>(null)
+  // The Active Odyssey being edited in place (editActive mode only) — its id + number, so the
+  // PATCH never has to guess either.
+  const [activeEditId, setActiveEditId] = useState<string | null>(null)
+  const [activeEditNumber, setActiveEditNumber] = useState<number | null>(null)
 
   const hasActive = Boolean(active.data && active.data.length > 0)
+  const editTarget = active.data?.[0]
+  const editTargetDay = editTarget?.startDate ? computeDayIndex(editTarget.startDate) : null
+  // Guard: editActive only ever makes sense for the sole Active Odyssey, and only before Day 1.
+  const editableNow = Boolean(editTarget) && editTargetDay != null && editTargetDay < 1
 
   // Resume an existing draft once, when it loads — seed the fields and remember its id.
   const seeded = useRef(false)
   useEffect(() => {
     if (seeded.current) return
+    if (editActive) {
+      if (!active.isPending && editTarget && editableNow) {
+        setDraft(parseDraftToCharter(editTarget))
+        setActiveEditId(editTarget.id)
+        setActiveEditNumber(editTarget.number)
+        seeded.current = true
+      }
+      return
+    }
     if (planning.data) {
       const resumed = parseDraftToCharter(planning.data)
       setDraft(resumed)
@@ -82,13 +109,14 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
       setStep(firstIncompleteStep(resumed, FIELD_STEPS.map((s) => s.key)))
       seeded.current = true
     }
-  }, [planning.data])
+  }, [editActive, active.isPending, editTarget, editableNow, planning.data])
 
   const errors = charterErrors(draft)
   const buddyReady = Boolean(settings.buddyName.trim()) && isValidEmail(settings.buddyEmail)
 
   const save = useSavePlanningDraft()
   const activate = useActivatePlanningOdyssey()
+  const updateActive = useUpdateActiveOdyssey()
   const create = useMutation<OdysseyRef, Error>({
     mutationFn: () => createActiveOdyssey(settings, draft),
     onSuccess: () => {
@@ -99,8 +127,8 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
     },
   })
 
-  const busy = save.isPending || activate.isPending || create.isPending
-  const actionError = save.error ?? activate.error ?? create.error
+  const busy = save.isPending || activate.isPending || create.isPending || updateActive.isPending
+  const actionError = save.error ?? activate.error ?? create.error ?? updateActive.error
 
   const setField = (key: keyof CharterDraft, value: string) =>
     setDraft((d) => ({ ...d, [key]: value }))
@@ -131,16 +159,39 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
     }
   }
 
+  /** PATCH the edited charter onto the Active Odyssey in place, then back to Overview. */
+  function saveActiveEdits() {
+    if (!activeEditId || activeEditNumber == null) return
+    updateActive.mutate(
+      { odysseyId: activeEditId, draft, number: activeEditNumber },
+      { onSuccess: () => navigate('/overview') },
+    )
+  }
+
   const onReview = step === FIELD_STEPS.length
   const current = onReview ? undefined : FIELD_STEPS[step]
   const stepInvalid = current ? Boolean(errors[current.key]) && !current.optional : false
+
+  // editActive only makes sense for the sole Active Odyssey, before Day 1 — once it's loaded, bail
+  // out to a calm Notice if that's no longer true (e.g. Day 1 arrived in another tab, or it was
+  // harvested elsewhere).
+  if (editActive && !active.isPending && !editableNow) {
+    return (
+      <Notice
+        title="Nothing to edit here"
+        body="Editing before Day 1 only applies to your current Active Odyssey, before its cycle has started."
+        actionLabel="Back to Overview"
+        onAction={() => navigate('/overview')}
+      />
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
         <span className="font-mono text-xs text-text-secondary">
           Charter · step {step + 1} of {TOTAL_STEPS}
-          {draftId ? ' · resuming a draft' : ''}
+          {editActive ? ' · editing before Day 1' : draftId ? ' · resuming a draft' : ''}
         </span>
         <div className="h-1.5 overflow-hidden rounded-pill bg-background-tertiary">
           <div
@@ -206,7 +257,7 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
           </div>
 
           {/* When an Odyssey is already running you can prepare this one, but not begin it yet. */}
-          {hasActive && (
+          {!editActive && hasActive && (
             <div className="rounded-md border border-tertiary bg-background-secondary p-4">
               <p className="font-sans text-sm text-text-primary">
                 You already have an Odyssey under way, so save this as a planned Odyssey. You’ll be
@@ -215,7 +266,16 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
             </div>
           )}
 
-          {!hasActive && !buddyReady && (
+          {editActive && (
+            <div className="rounded-md border border-tertiary bg-background-secondary p-4">
+              <p className="font-sans text-sm text-text-primary">
+                This edits your Odyssey in place — it hasn’t reached Day 1 yet, so nothing here has
+                started counting.
+              </p>
+            </div>
+          )}
+
+          {!editActive && !hasActive && !buddyReady && (
             <div className="rounded-md border border-caution/40 bg-background-secondary p-4">
               <p className="font-sans text-sm text-text-primary">
                 <strong>Strongly recommended:</strong> one human buddy. Being witnessed beats willpower —
@@ -253,32 +313,45 @@ export function CharterPage({ navigate }: { navigate: (to: string) => void }) {
         </Button>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          {/* Save progress and leave — available throughout, partial drafts allowed. */}
-          {!(onReview && !hasActive) && (
-            <Button variant="secondary" className="w-full sm:w-auto" onClick={saveDraft} disabled={busy}>
-              {save.isPending ? (
+          {editActive ? (
+            <Button className="w-full sm:w-auto" onClick={saveActiveEdits} disabled={busy}>
+              {updateActive.isPending ? (
                 <Loader2 size={18} className="animate-spin" aria-hidden />
               ) : (
                 <Save size={18} aria-hidden />
               )}
-              {onReview ? 'Save as planned Odyssey' : 'Save draft'}
+              Save changes
             </Button>
-          )}
-
-          {onReview && !hasActive && (
+          ) : (
             <>
-              <Button variant="secondary" className="w-full sm:w-auto" onClick={saveDraft} disabled={busy}>
-                {save.isPending ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Save size={18} aria-hidden />}
-                Save as planned
-              </Button>
-              <Button className="w-full sm:w-auto" onClick={begin} disabled={!canActivate(draft) || busy}>
-                {activate.isPending || create.isPending ? (
-                  <Loader2 size={18} className="animate-spin" aria-hidden />
-                ) : (
-                  <Sparkles size={18} aria-hidden />
-                )}
-                Begin the Odyssey
-              </Button>
+              {/* Save progress and leave — available throughout, partial drafts allowed. */}
+              {!(onReview && !hasActive) && (
+                <Button variant="secondary" className="w-full sm:w-auto" onClick={saveDraft} disabled={busy}>
+                  {save.isPending ? (
+                    <Loader2 size={18} className="animate-spin" aria-hidden />
+                  ) : (
+                    <Save size={18} aria-hidden />
+                  )}
+                  {onReview ? 'Save as planned Odyssey' : 'Save draft'}
+                </Button>
+              )}
+
+              {onReview && !hasActive && (
+                <>
+                  <Button variant="secondary" className="w-full sm:w-auto" onClick={saveDraft} disabled={busy}>
+                    {save.isPending ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Save size={18} aria-hidden />}
+                    Save as planned
+                  </Button>
+                  <Button className="w-full sm:w-auto" onClick={begin} disabled={!canActivate(draft) || busy}>
+                    {activate.isPending || create.isPending ? (
+                      <Loader2 size={18} className="animate-spin" aria-hidden />
+                    ) : (
+                      <Sparkles size={18} aria-hidden />
+                    )}
+                    Begin the Odyssey
+                  </Button>
+                </>
+              )}
             </>
           )}
 

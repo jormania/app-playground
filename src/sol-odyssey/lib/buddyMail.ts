@@ -10,7 +10,7 @@
 import type { OdysseyDetail } from './notion'
 import type { CheckinDraft } from './checkins'
 import type { ReflectionDraft } from './reflections'
-import { identitySentence } from './charter'
+import { CYCLE_DAYS, dayReached, identitySentence } from './charter'
 
 /** One labelled line in an email: an emoji accent, a label, and its value. */
 export interface EmailRow {
@@ -166,7 +166,9 @@ export function kickoffBuddyMail(buddyName: string, userName: string, odyssey: O
   }
 }
 
-/** The harvest: tell your buddy what installed + the outcome. */
+/** The harvest: tell your buddy what installed + the outcome. Reads honestly whether the full
+ *  42-day cycle ran or the runner closed it early — never claims a "42 days done" that didn't
+ *  happen (`today` is injectable for testing; defaults to the real clock). */
 export function harvestBuddyMail(
   buddyName: string,
   userName: string,
@@ -174,12 +176,17 @@ export function harvestBuddyMail(
   /** A one-line note for whoever runs their own Odyssey next — written fresh at harvest time,
    *  local-only, and carried only in this one email (never saved to Notion). */
   passItOn?: string,
+  today = new Date(),
 ): BuddyEmail {
+  const reached = dayReached(odyssey.startDate, today)
+  const early = reached < CYCLE_DAYS
   return {
     subject: withUser(`Sol Odyssey · ${odysseyLabel(odyssey.number)} · harvested`, userName),
-    heading: '🌅 Harvest — 42 days done',
+    heading: early ? `🌅 Harvest — day ${reached} of ${CYCLE_DAYS}` : `🌅 Harvest — ${CYCLE_DAYS} days done`,
     greeting: greeting(buddyName),
-    intro: "I just finished my 42-day run — here's how it landed. Thank you for witnessing it.",
+    intro: early
+      ? `I'm closing this Odyssey early, at day ${reached} of ${CYCLE_DAYS} — here's how it landed. Thank you for witnessing it.`
+      : `I just finished my ${CYCLE_DAYS}-day run — here's how it landed. Thank you for witnessing it.`,
     sections: [
       {
         rows: rows(

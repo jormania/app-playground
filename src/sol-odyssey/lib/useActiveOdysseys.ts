@@ -1,7 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isConfigured } from './settings'
 import { useSettings } from './settingsContext'
-import { harvestOdyssey, listActiveOdysseys, updateTinyVersion, type HarvestArgs, type OdysseyDetail } from './notion'
+import {
+  harvestOdyssey,
+  listActiveOdysseys,
+  updateActiveOdyssey,
+  updateTinyVersion,
+  type HarvestArgs,
+  type OdysseyDetail,
+} from './notion'
+import type { CharterDraft } from './charter'
 
 export const ACTIVE_ODYSSEYS_KEY = ['activeOdysseys'] as const
 
@@ -23,6 +31,17 @@ export function useUpdateTinyVersion() {
   const queryClient = useQueryClient()
   return useMutation<void, Error, { odysseyId: string; value: string }>({
     mutationFn: ({ odysseyId, value }) => updateTinyVersion(settings, odysseyId, value),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ACTIVE_ODYSSEYS_KEY }),
+  })
+}
+
+/** Edit the charter of an Active Odyssey that hasn't reached Day 1 yet (PATCH in place; Status and
+ *  Odyssey Number never change). Refreshes the active read so Overview reflects it at once. */
+export function useUpdateActiveOdyssey() {
+  const { settings } = useSettings()
+  const queryClient = useQueryClient()
+  return useMutation<OdysseyDetail, Error, { odysseyId: string; draft: CharterDraft; number: number }>({
+    mutationFn: ({ odysseyId, draft, number }) => updateActiveOdyssey(settings, odysseyId, draft, number),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ACTIVE_ODYSSEYS_KEY }),
   })
 }

@@ -137,6 +137,15 @@ export function computeDayIndex(startISO: string, today = new Date()): number {
   return Math.floor((now - start) / 86400000) + 1
 }
 
+/** The day count actually reached — clamped to the 1..42 cycle window, so a harvest right at Day 1
+ *  reads as day 1 (never 0 or negative) and a harvest after Day 42 still reads as the full cycle.
+ *  Missing `startISO` (shouldn't happen for a real Odyssey) reads as a full cycle rather than
+ *  falsely implying an early close. Drives the harvest copy + buddy note wording. */
+export function dayReached(startISO: string, today = new Date()): number {
+  if (!startISO) return CYCLE_DAYS
+  return Math.min(Math.max(computeDayIndex(startISO, today), 1), CYCLE_DAYS)
+}
+
 /** Local calendar date as ISO `yyyy-mm-dd` (no timezone drift). */
 export function todayISO(today = new Date()): string {
   return fmt(new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())))
@@ -223,6 +232,22 @@ export function buildDraftOdysseyProperties(
     props['End Date'] = { date: { start: computeEndDate(draft.startDate) } }
   }
   return props
+}
+
+/** Build the Notion properties to PATCH onto an Odyssey that's already Active but hasn't reached
+ *  Day 1 yet — every charter field plus the dates, but never `Status` or `Odyssey Number` (neither
+ *  changes here; this only lets the runner fix a charter before the cycle actually starts). */
+export function buildEditActiveOdysseyProperties(
+  draft: CharterDraft,
+  settings: Settings,
+  number: number,
+): Record<string, unknown> {
+  return {
+    Name: { title: [{ text: { content: odysseyName(number, draft.behaviour) } }] },
+    'Start Date': { date: { start: draft.startDate } },
+    'End Date': { date: { start: computeEndDate(draft.startDate) } },
+    ...charterFieldProperties(draft, settings),
+  }
 }
 
 /** Map a Planning row (read back from Notion) into a CharterDraft so the wizard can resume.

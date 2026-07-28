@@ -8,7 +8,7 @@ import { Notice } from '../components/Notice'
 import { Button } from '../components/Button'
 import { PlannedOdysseyCard, PlannedOdysseyStrip } from '../components/PlannedOdyssey'
 import { CommitmentCard } from '../components/CommitmentCard'
-import { Sprout } from 'lucide-react'
+import { Pencil, Sprout } from 'lucide-react'
 import type { OdysseyDetail } from '../lib/notion'
 
 /** Home when an Odyssey is Active: a calm, read-only charter readout — the seed of the spec's
@@ -72,11 +72,24 @@ function OdysseyReadout({
   const day = odyssey.startDate ? computeDayIndex(odyssey.startDate) : null
   const dayLabel =
     day == null ? '' : day < 1 ? `Starts in ${1 - day} day(s)` : `Day ${Math.min(day, CYCLE_DAYS)} of ${CYCLE_DAYS}`
+  const notStarted = day != null && day < 1
 
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <span className="font-mono text-xs uppercase tracking-wide text-accent">{dayLabel}</span>
+        <div className="flex items-center justify-between gap-3">
+          <span className="font-mono text-xs uppercase tracking-wide text-accent">{dayLabel}</span>
+          {notStarted && (
+            <button
+              type="button"
+              onClick={() => navigate('/charter/edit')}
+              className="flex items-center gap-1.5 rounded-md px-2 py-1 font-sans text-xs text-text-secondary transition-colors duration-fast hover:bg-background-secondary hover:text-text-primary"
+            >
+              <Pencil size={14} aria-hidden />
+              Edit before Day 1
+            </button>
+          )}
+        </div>
         <h2 className="font-display text-2xl">{odyssey.title}</h2>
         {odyssey.identity && (
           <p className="font-display text-lg text-text-secondary">{identitySentence(odyssey.identity)}</p>

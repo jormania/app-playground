@@ -9,7 +9,7 @@
 import type { OdysseyDetail } from './notion'
 import type { CheckinRecord } from './checkins'
 import type { ReflectionDraft } from './reflections'
-import { identitySentence } from './charter'
+import { CYCLE_DAYS, dayReached, identitySentence } from './charter'
 
 export interface CompanionPrompt {
   system: string
@@ -103,13 +103,24 @@ export function buildLapseCompanionPrompt(odyssey: OdysseyDetail, contract: stri
   return { system: SYSTEM_PROMPT, user: lines.join('\n') }
 }
 
-/** Build the prompt for the harvest — reflecting on what the 42 days installed. Mirrors the verdict
- *  they wrote; must not steer the Keep/Grow/Retire choice (that's theirs). */
-export function buildHarvestCompanionPrompt(odyssey: OdysseyDetail, verdict: string): CompanionPrompt {
+/** Build the prompt for the harvest — reflecting on what the practice installed. Mirrors the
+ *  verdict they wrote; must not steer the Keep/Grow/Retire choice (that's theirs). Distinguishes an
+ *  early harvest from a full 42-day run so the reflection never implies a completion that didn't
+ *  happen (`today` is injectable for testing; defaults to the real clock). */
+export function buildHarvestCompanionPrompt(
+  odyssey: OdysseyDetail,
+  verdict: string,
+  today = new Date(),
+): CompanionPrompt {
+  const reached = dayReached(odyssey.startDate, today)
+  const early = reached < CYCLE_DAYS
   const lines = [
     `The behaviour they practised: ${clean(odyssey.behaviour) || '(unspecified)'}.`,
-    'They have reached the end of the 42 days and are naming what the practice installed — how it ' +
-      'feels now.',
+    early
+      ? `They are closing this Odyssey early, at day ${reached} of ${CYCLE_DAYS}, and are naming ` +
+        'what the practice installed so far — how it feels now.'
+      : 'They have reached the end of the 42 days and are naming what the practice installed — how it ' +
+        'feels now.',
     `In their words: "${clean(verdict)}".`,
     'Reflect briefly on what they wrote about what it became. Do not tell them whether to keep, ' +
       'grow, or retire it — that choice is theirs.',

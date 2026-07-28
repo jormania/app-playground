@@ -26,6 +26,7 @@ import {
   planningOdysseyQuery,
   reflectionsForOdysseyQuery,
   savePlanningDraft,
+  updateActiveOdyssey,
   updatePageRequest,
   upsertCheckin,
   upsertReflection,
@@ -594,5 +595,36 @@ describe('harvestOdyssey', () => {
     expect(body.body.properties['Outcome'].select.name).toBe('Keep')
     expect(body.body.properties['Status'].select.name).toBe('Maintenance')
     expect(out).toMatchObject({ id: 'odyssey-1', status: 'Maintenance' })
+  })
+})
+
+describe('updateActiveOdyssey', () => {
+  it('PATCHes the charter + dates but never Status or Odyssey Number', async () => {
+    const settings: Settings = { ...EMPTY_SETTINGS, token: 't', buddyName: 'Sam', buddyEmail: 'sam@example.com' }
+    const draft: CharterDraft = {
+      ...emptyDraft(new Date('2026-07-06')),
+      behaviour: 'morning movement, corrected',
+      outcomePicture: 'steadier mind',
+      identity: 'I am someone who moves',
+      tinyVersion: 'walk to the corner',
+      anchor: 'after my first coffee',
+      ifThen: 'if it rains, hallway',
+      dailySuccess: 'shoes on, outside',
+      whyValue: 'a body in motion',
+      confirmedShrink: true,
+    }
+    const fetchMock = vi.fn(async (..._a: unknown[]) =>
+      jsonResponse({ id: 'odyssey-1', properties: { Name: { title: [{ plain_text: 'Odyssey III — morning movement, corrected' }] } } }),
+    )
+    const out = await updateActiveOdyssey(settings, 'odyssey-1', draft, 3, fetchMock as unknown as typeof fetch)
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)
+    expect(body.path).toBe('pages/odyssey-1')
+    expect(body.method).toBe('PATCH')
+    expect(body.body.properties['Name'].title[0].text.content).toBe('Odyssey 3 — morning movement, corrected')
+    expect(body.body.properties['Start Date'].date.start).toBe(draft.startDate)
+    expect(body.body.properties['Tiny Version'].rich_text[0].text.content).toBe('walk to the corner')
+    expect(body.body.properties['Status']).toBeUndefined()
+    expect(body.body.properties['Odyssey Number']).toBeUndefined()
+    expect(out).toMatchObject({ id: 'odyssey-1' })
   })
 })
