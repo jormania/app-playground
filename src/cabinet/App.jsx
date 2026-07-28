@@ -191,7 +191,9 @@ export default function App() {
         </div>
 
         <div className={styles.controlsRow}>
-          <SegmentedControl size="sm" options={SORT_OPTIONS} value={sort} onChange={changeSort} />
+          <div className={styles.sortControl}>
+            <SegmentedControl size="sm" options={SORT_OPTIONS} value={sort} onChange={changeSort} />
+          </div>
           <IconButton
             size="sm"
             selected={editing}
