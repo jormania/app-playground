@@ -10,6 +10,18 @@
   --cd-accent-amber: #ffb300;
   --cd-accent-amber-glow: rgba(255, 179, 0, 0.3);
 
+  /* Reserved for the single tier above everything else the app rates
+     something (today: only Steam's "Overwhelmingly Positive", the one
+     step above "Very Positive"/cyan) — deliberately its own hue in themes
+     with room for one (Union City, Voodoo, Sierra Nights), but a variant
+     *within* the existing constrained palette for the three themes that
+     are near-monochrome by design (Noir's grayscale+gold, Amber
+     Terminal's monochrome phosphor, CGA's authentic 4-colour set) rather
+     than a foreign hue that would break what makes those themes read
+     right. See each [data-theme] block below for the per-theme value. */
+  --cd-accent-elite: #00ff88;
+  --cd-accent-elite-glow: rgba(0, 255, 136, 0.3);
+
   --cd-text-primary: #e0e6ed;
   --cd-text-muted: #8b96a8;
 
@@ -37,6 +49,8 @@
   --cd-accent-cyan-dim: rgba(57, 255, 20, 0.1);
   --cd-accent-amber: #9d00ff; /* Voodoo Purple */
   --cd-accent-amber-glow: rgba(157, 0, 255, 0.3);
+  --cd-accent-elite: #ffcc00; /* Skull-Fire Gold */
+  --cd-accent-elite-glow: rgba(255, 204, 0, 0.3);
   --cd-text-primary: #e0f2e0;
   --cd-border-color: #2b4f32;
 }
@@ -50,6 +64,10 @@
   --cd-accent-cyan-dim: rgba(212, 175, 55, 0.1);
   --cd-accent-amber: #ffffff; /* White */
   --cd-accent-amber-glow: rgba(255, 255, 255, 0.3);
+  /* Stays within the grayscale+gold identity — a paler champagne gold, not
+     a foreign hue, since Noir is deliberately near-monochrome. */
+  --cd-accent-elite: #fff8dc; /* Champagne */
+  --cd-accent-elite-glow: rgba(255, 248, 220, 0.3);
   --cd-text-primary: #e6e6e6;
   --cd-border-color: #404040;
 }
@@ -65,6 +83,8 @@
   --cd-accent-cyan-dim: rgba(224, 176, 79, 0.1);
   --cd-accent-amber: #c76b8a; /* Dusk Rose */
   --cd-accent-amber-glow: rgba(199, 107, 138, 0.3);
+  --cd-accent-elite: #8ec9ff; /* Dusky Indigo Sky */
+  --cd-accent-elite-glow: rgba(142, 201, 255, 0.3);
   --cd-text-primary: #ece6f5;
   --cd-border-color: #3a3363;
 }
@@ -80,6 +100,10 @@
   --cd-accent-cyan-dim: rgba(255, 176, 0, 0.1);
   --cd-accent-amber: #ff6b00; /* Burnt Orange */
   --cd-accent-amber-glow: rgba(255, 107, 0, 0.3);
+  /* Stays within the monochrome amber-phosphor family — a brighter,
+     more saturated amber, not a foreign hue. */
+  --cd-accent-elite: #ffd700; /* Bright Phosphor */
+  --cd-accent-elite-glow: rgba(255, 215, 0, 0.3);
   --cd-text-primary: #ffe0b3;
   --cd-border-color: #3d2a10;
 }
@@ -95,6 +119,11 @@
   --cd-accent-cyan-dim: rgba(85, 255, 255, 0.1);
   --cd-accent-amber: #ff55ff; /* CGA Magenta */
   --cd-accent-amber-glow: rgba(255, 85, 255, 0.3);
+  /* White — the real 4th colour of authentic CGA mode 4 (black/cyan/
+     magenta/white), not a foreign hue. Currently only used as text-primary
+     elsewhere in this theme; this is its first use as an accent. */
+  --cd-accent-elite: #ffffff;
+  --cd-accent-elite-glow: rgba(255, 255, 255, 0.3);
   --cd-text-primary: #ffffff;
   --cd-border-color: #2a2a4a;
 }

@@ -68,7 +68,8 @@ export function hasReviewData(game) {
 // bucket, always, no threshold math to disagree with reality.
 // Mirrors LENGTH_BUCKETS' one-word-label shape.
 export const REVIEW_BUCKETS = {
-  Acclaimed: { label: 'Acclaimed', desc: ['Overwhelmingly Positive', 'Very Positive'] },
+  Overwhelming: { label: 'Overwhelming', desc: ['Overwhelmingly Positive'] },
+  Acclaimed: { label: 'Acclaimed', desc: ['Very Positive'] },
   Positive: { label: 'Positive', desc: ['Positive', 'Mostly Positive'] },
   Mixed: { label: 'Mixed', desc: ['Mixed'] },
   Negative: { label: 'Negative', desc: ['Mostly Negative', 'Negative', 'Very Negative', 'Overwhelmingly Negative'] }
@@ -88,17 +89,21 @@ export function isInReviewBucket(game, bucket) {
 }
 
 // Colour accent for the [T] badge — reuses the current theme's own accent
-// vocabulary (cyan/amber/muted/danger-red) rather than a literal Steam-style
-// green-to-red gradient, which would clash badly across this app's 6
-// palettes (a hardcoded green is the one thing that doesn't belong in
-// grayscale Noir, cyan/magenta CGA, or monochrome Amber Terminal). Same
+// vocabulary (cyan/amber/muted/danger-red/elite) rather than a literal
+// Steam-style green-to-red gradient, which would clash badly across this
+// app's 6 palettes (a hardcoded green is the one thing that doesn't belong
+// in grayscale Noir, cyan/magenta CGA, or monochrome Amber Terminal). Same
 // convention as studios-connector.js's tierAccentColor: bucket by strength,
 // let the active theme decide what each bucket actually looks like.
 // Deliberately NOT cyan-for-Acclaimed/amber-for-Positive/muted-for-Mixed —
 // amber is reserved for Mixed (the tier worth a second look) and Positive
 // fades to muted (solid but unremarkable), per explicit design direction.
+// Overwhelming gets its own --cd-accent-elite token (theme.css), distinct
+// from Very Positive's cyan — the two used to share one bucket/colour until
+// that was confirmed live as still-indistinguishable and split out.
 export function reviewAccentColor(desc) {
   const bucket = reviewBucketOf(desc)
+  if (bucket === 'Overwhelming') return 'var(--cd-accent-elite)'
   if (bucket === 'Acclaimed') return 'var(--cd-accent-cyan)'
   if (bucket === 'Positive') return 'var(--cd-text-muted)'
   if (bucket === 'Mixed') return 'var(--cd-accent-amber)'

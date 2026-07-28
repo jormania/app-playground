@@ -104,7 +104,8 @@ describe('AnalyticsView', () => {
 
   describe('STEAM filter row', () => {
     const withReviews = [
-      { id: '1', title: 'Acclaimed Game', year: 2020, status: 'Backlog', tags: [], reviewCheckedAt: '2026-07-24', steamReviewPercent: 95, steamReviewDesc: 'Overwhelmingly Positive', steamReviewCount: 500 },
+      { id: '1', title: 'Acclaimed Game', year: 2020, status: 'Backlog', tags: [], reviewCheckedAt: '2026-07-24', steamReviewPercent: 95, steamReviewDesc: 'Very Positive', steamReviewCount: 500 },
+      { id: '4', title: 'Overwhelming Game', year: 2023, status: 'Backlog', tags: [], reviewCheckedAt: '2026-07-24', steamReviewPercent: 98, steamReviewDesc: 'Overwhelmingly Positive', steamReviewCount: 900 },
       { id: '2', title: 'Mixed Game', year: 2021, status: 'Backlog', tags: [], reviewCheckedAt: '2026-07-24', steamReviewPercent: 60, steamReviewDesc: 'Mixed', steamReviewCount: 200 },
       { id: '3', title: 'Never Checked Game', year: 2022, status: 'Backlog', tags: [] }
     ]
@@ -123,9 +124,17 @@ describe('AnalyticsView', () => {
       expect(screen.getByText('Mixed Game')).toBeTruthy()
     })
 
+    it('shows only Overwhelming entries, distinct from Acclaimed (Very Positive)', () => {
+      render(<AnalyticsView filteredGames={withReviews} activeTags={[]} setActiveTags={() => {}} />)
+      fireEvent.click(screen.getByText('Overwhelming'))
+      expect(screen.getByText('MATCHING ENTRIES: 1')).toBeTruthy()
+      expect(screen.getByText('Overwhelming Game')).toBeTruthy()
+      expect(screen.queryByText('Acclaimed Game')).toBeNull()
+    })
+
     it('"All" applies no filter, including games never checked', () => {
       render(<AnalyticsView filteredGames={withReviews} activeTags={[]} setActiveTags={() => {}} />)
-      expect(screen.getByText('MATCHING ENTRIES: 3')).toBeTruthy()
+      expect(screen.getByText('MATCHING ENTRIES: 4')).toBeTruthy()
     })
   })
 

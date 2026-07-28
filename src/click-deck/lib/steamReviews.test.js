@@ -64,7 +64,7 @@ describe('wasReviewChecked / hasReviewData', () => {
 
 describe('reviewBucketOf', () => {
   it('buckets by Steam\'s own descriptor string, never by percentage', () => {
-    expect(reviewBucketOf('Overwhelmingly Positive')).toBe('Acclaimed')
+    expect(reviewBucketOf('Overwhelmingly Positive')).toBe('Overwhelming')
     expect(reviewBucketOf('Very Positive')).toBe('Acclaimed')
     expect(reviewBucketOf('Positive')).toBe('Positive')
     expect(reviewBucketOf('Mostly Positive')).toBe('Positive')
@@ -89,9 +89,13 @@ describe('reviewBucketOf', () => {
   })
 
   it('every bucket key has a label in REVIEW_BUCKETS', () => {
-    for (const key of ['Acclaimed', 'Positive', 'Mixed', 'Negative']) {
+    for (const key of ['Overwhelming', 'Acclaimed', 'Positive', 'Mixed', 'Negative']) {
       expect(REVIEW_BUCKETS[key].label).toBeTruthy()
     }
+  })
+
+  it('Overwhelmingly Positive and Very Positive are distinct buckets — confirmed live still indistinguishable when they shared one', () => {
+    expect(reviewBucketOf('Overwhelmingly Positive')).not.toBe(reviewBucketOf('Very Positive'))
   })
 })
 
@@ -116,13 +120,17 @@ describe('isInReviewBucket', () => {
 })
 
 describe('reviewAccentColor', () => {
-  it('maps each bucket to a distinct theme accent var, not a hardcoded Steam-style hex — Mixed gets amber (worth a second look), Positive fades to muted (solid but unremarkable)', () => {
-    expect(reviewAccentColor('Overwhelmingly Positive')).toBe('var(--cd-accent-cyan)')
+  it('maps each bucket to a distinct theme accent var, not a hardcoded Steam-style hex — Overwhelming gets its own elite token, Mixed gets amber (worth a second look), Positive fades to muted (solid but unremarkable)', () => {
+    expect(reviewAccentColor('Overwhelmingly Positive')).toBe('var(--cd-accent-elite)')
     expect(reviewAccentColor('Very Positive')).toBe('var(--cd-accent-cyan)')
     expect(reviewAccentColor('Positive')).toBe('var(--cd-text-muted)')
     expect(reviewAccentColor('Mostly Positive')).toBe('var(--cd-text-muted)')
     expect(reviewAccentColor('Mixed')).toBe('var(--cd-accent-amber)')
     expect(reviewAccentColor('Negative')).toBe('var(--cd-status-abandoned)')
+  })
+
+  it('Overwhelmingly Positive and Very Positive get different colours — confirmed live still identical when they shared one bucket', () => {
+    expect(reviewAccentColor('Overwhelmingly Positive')).not.toBe(reviewAccentColor('Very Positive'))
   })
 
   it('two games sharing a label share a colour regardless of their exact percentage', () => {
