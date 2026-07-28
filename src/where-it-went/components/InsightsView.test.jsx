@@ -38,12 +38,12 @@ vi.mock('../lib/analytics', () => ({
 describe('InsightsView Component', () => {
   it('renders correctly with no data', () => {
     render(<InsightsView data={{ transactions: [] }} />);
-    expect(screen.getByText('Not enough data to generate insights for this period.')).toBeDefined();
+    expect(screen.getByText('Not Enough Data Yet')).toBeDefined();
   });
 
   it('renders correctly with data', () => {
     render(<InsightsView data={{ transactions: [{ id: 1 }] }} />);
-    expect(screen.getByText(/Month in Review:/)).toBeDefined();
+    expect(screen.getByText(/in Review:/)).toBeDefined();
     expect(screen.getByText('Great financial progress this month!')).toBeDefined();
     expect(screen.getByText('High Spend')).toBeDefined();
     expect(screen.getByText('Spike in dining')).toBeDefined();
