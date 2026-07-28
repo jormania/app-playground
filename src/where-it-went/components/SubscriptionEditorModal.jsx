@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modal } from '../../ds/components/Modal';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
+import { ConfirmModal } from '../../ds';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 
 export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, onSave, onDelete }) {
@@ -13,6 +14,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
   const [accountId, setAccountId] = useState('');
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (sub) {
@@ -63,27 +65,25 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
 
   return (
     <Modal open={isOpen} title={sub ? 'Edit Subscription' : 'Add Subscription'} onClose={onClose}>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '6px', overflowX: 'hidden', boxSizing: 'border-box', minWidth: 0 }}>
         <Field label="Name" value={name} onChange={e => setName(e.target.value)} required />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-          <Field label="Amount" type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} required />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Type</label>
-            <SegmentedControl
-              value={type}
-              onChange={val => { setType(val); setCategoryId(''); }}
-              options={[
-                { value: 'Expense', label: 'Expense' },
-                { value: 'Income', label: 'Income' }
-              ]}
-            />
-          </div>
+        <Field label="Amount" type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} required />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Type</label>
+          <SegmentedControl
+            value={type}
+            onChange={val => { setType(val); setCategoryId(''); }}
+            options={[
+              { value: 'Expense', label: 'Expense' },
+              { value: 'Income', label: 'Income' }
+            ]}
+          />
         </div>
 
         <Field label="Day of Month (1-31)" type="number" min="1" max="31" value={dayOfMonth} onChange={e => setDayOfMonth(e.target.value)} required />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '6px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Category <span style={{ color: 'var(--color-danger)' }}>*</span></label>
             <select value={categoryId} onChange={e => setCategoryId(e.target.value)} required style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit' }}>
@@ -108,14 +108,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
         <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: '4px' }}>
           {sub && (
             <div style={{ marginRight: 'auto' }}>
-              <Button type="button" variant="danger" disabled={saving} onClick={async () => {
-                if (confirm('Are you sure you want to delete this subscription?')) {
-                  setSaving(true);
-                  await onDelete(sub.id);
-                  setSaving(false);
-                  onClose();
-                }
-              }}>Delete</Button>
+              <Button type="button" variant="danger" disabled={saving} onClick={() => setShowConfirmDelete(true)}>Delete</Button>
             </div>
           )}
           <div style={{ display: 'flex', gap: 'var(--space-sm)', marginLeft: sub ? 0 : 'auto' }}>
@@ -126,6 +119,21 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
           </div>
         </div>
       </form>
+      <ConfirmModal
+        isOpen={showConfirmDelete}
+        title="Delete Subscription"
+        message="Are you sure you want to delete this subscription?"
+        confirmText="Delete"
+        variant="danger"
+        onConfirm={async () => {
+          setShowConfirmDelete(false);
+          setSaving(true);
+          await onDelete(sub.id);
+          setSaving(false);
+          onClose();
+        }}
+        onCancel={() => setShowConfirmDelete(false)}
+      />
     </Modal>
   );
 }

@@ -3,6 +3,7 @@ import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { SettingsToggle } from '../../ds/components/SettingsToggle';
+import { PromptModal } from '../../ds';
 import { NotionClient } from '../lib/notionClient';
 import SubscriptionEditorModal from './SubscriptionEditorModal';
 import TripEditorModal from './TripEditorModal';
@@ -19,6 +20,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const [theme, setTheme] = useState(config.theme || 'dark');
   const [features, setFeatures] = useState(config.features || { budgeting: true, cashFlow: true });
   const [status, setStatus] = useState({ type: '', msg: '' });
+  const [showScrubPrompt, setShowScrubPrompt] = useState(false);
   const [testing, setTesting] = useState(false);
   const [editingSub, setEditingSub] = useState(null);
   const [isAddingSub, setIsAddingSub] = useState(false);
@@ -98,13 +100,11 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
       if (onDone) onDone();
       return;
     }
+    setShowScrubPrompt(true);
+  };
 
-    const confirmation = window.prompt("WARNING: This is a DESTRUCTIVE action that will delete all Transactions and Subscriptions from your live Notion databases to start fresh.\n\nTo proceed, type 'delete' below:");
-    if (confirmation !== 'delete') {
-      setStatus({ type: 'error', msg: 'Scrub cancelled.' });
-      return;
-    }
-
+  const executeScrub = async () => {
+    setShowScrubPrompt(false);
     setTesting(true);
     setStatus({ type: '', msg: 'Scrubbing databases... this may take a moment.' });
     try {
@@ -410,6 +410,18 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           }}
         />
       )}
+      <PromptModal
+        isOpen={showScrubPrompt}
+        title="Scrub Databases?"
+        message="WARNING: This is a DESTRUCTIVE action that will delete all Transactions and Subscriptions from your live Notion databases to start fresh."
+        expectedValue="delete"
+        confirmText="Scrub & Save"
+        onConfirm={executeScrub}
+        onCancel={() => {
+          setShowScrubPrompt(false);
+          setStatus({ type: 'error', msg: 'Scrub cancelled.' });
+        }}
+      />
     </div>
   );
 }

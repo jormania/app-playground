@@ -126,16 +126,16 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
           <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>Try adjusting your filters in the top menu to find what you're looking for.</p>
         </div>
       ) : (
-        <div style={{ marginTop: 'var(--space-md)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <div style={{ minWidth: '600px' }}>
+        <div style={{ marginTop: 'var(--space-md)' }}>
+          <div>
             <div className="transaction-list-header" style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', color: 'var(--color-muted)', fontSize: 'var(--text-sm)', borderBottom: '1px solid var(--color-border)', fontWeight: 'var(--weight-medium)' }}>
               {sortConfig.key !== 'date' && (
                 <div style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('date')}>Date{getSortIndicator('date')}</div>
               )}
               <div style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('description')}>Description{getSortIndicator('description')}</div>
-              <div style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('category')}>Category{getSortIndicator('category')}</div>
-              <div style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('account')}>Account{getSortIndicator('account')}</div>
-              <div style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('amount')}>Amount{getSortIndicator('amount')}</div>
+              <div className="tx-col-category" style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('category')}>Category{getSortIndicator('category')}</div>
+              <div className="tx-col-account" style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('account')}>Account{getSortIndicator('account')}</div>
+              <div className="tx-col-amount" style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'right' }} onClick={() => handleSort('amount')}>Amount{getSortIndicator('amount')}</div>
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -198,8 +198,8 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                             {isUnknownCat ? '⚠️ Unknown' : displayCatName}
                           </span>
                         </div>
-                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>{data.accounts.find(a => a.id === tx.accountId)?.name || '—'}</div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <div className="tx-col-account" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>{data.accounts.find(a => a.id === tx.accountId)?.name || '—'}</div>
+                        <div className="tx-col-amount" style={{ display: 'flex', justifyContent: 'flex-end' }}>
                           <div style={{ 
                             color: tx.type === 'Income' ? 'var(--color-success)' : 'var(--color-ink)',
                             background: tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-ink) 5%, transparent)',

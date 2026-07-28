@@ -166,6 +166,7 @@ A complete audit and hardening pass before switching to live Notion data. 19 iss
 - **Period-Aware "in Review" Title** (`InsightsView.jsx`, `Insights.jsx`): "Month in Review" heading now derives from the selected period. Shows e.g. "July 2026 in Review", "Last 3 Months in Review", "2025 in Review" instead of always displaying the current calendar month.
 - **Sort Grouping Separators** (`TransactionsList.jsx`): Non-date sort modes (Category, Account, Description) now show sticky group header separators — category name groups, account name groups, or alphabetical letter groups — matching the date-sort UX.
 - **Chart Legend Resize Listener** (`Dashboard.jsx`): Added a `resize` event listener that updates chart legend position (`bottom` < 768 px, `right` ≥ 768 px) and axis font size when the browser window is resized or device rotated.
+- **Mobile Overflow & Modal Polish** (`TransactionForm.jsx`, `SubscriptionEditorModal.jsx`, `TripEditorModal.jsx`): Added grid constraints (`minmax(0, 1fr)`) and hidden overflow handling to prevent form elements from stretching Modals beyond the screen on mobile devices. Un-nested the Type selector in Subscriptions and shortened placeholder text in Add Trip to prevent text overflow.
 
 ### 🔵 Corner Cases / Data Integrity
 - **Empty Category Names Filtered** (`notionClient.js`): Categories and Accounts with blank Notion page titles are now filtered out on fetch, preventing blank `<option>` elements in the Transaction form.

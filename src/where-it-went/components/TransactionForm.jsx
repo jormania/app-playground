@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
+import { ConfirmModal } from '../../ds';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { sortTrips } from '../services/trips';
 
@@ -13,6 +14,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
   const [accountId, setAccountId] = useState(initialTx?.accountId || accounts[0]?.id || '');
   const [tripId, setTripId] = useState(initialTx?.tripId || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   const sortedAccounts = [...accounts].sort((a, b) => a.name.localeCompare(b.name));
   const availableCategories = categories
@@ -76,20 +78,13 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!initialTx || !onDelete) return;
-    if (confirm('Are you sure you want to delete this transaction?')) {
-      setIsSaving(true);
-      try {
-        await onDelete(initialTx.id);
-      } finally {
-        setIsSaving(false);
-      }
-    }
+    setShowConfirmDelete(true);
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', overflowX: 'hidden', boxSizing: 'border-box', minWidth: 0 }}>
       <SegmentedControl
         value={type}
         onChange={(val) => { setType(val); setCategoryId(''); }}
@@ -99,7 +94,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
         ]}
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-sm)' }}>
         <Field label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} required max={new Date().toISOString().split('T')[0]} />
         <Field label="Amount" type="number" step="0.01" min="0" value={amount} onChange={e => setAmount(e.target.value)} required placeholder="0.00" />
       </div>
@@ -184,17 +179,36 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
       </div>
 
 
-      <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-sm)' }}>
-        {initialTx && (
+      <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-lg)' }}>
+        {initialTx && onDelete && (
           <div style={{ marginRight: 'auto' }}>
-            <Button variant="danger" type="button" onClick={handleDelete} disabled={isSaving}>Delete</Button>
+            <Button type="button" variant="danger" disabled={isSaving} onClick={handleDelete}>Delete</Button>
           </div>
         )}
-        <div style={{ display: 'flex', gap: 'var(--space-sm)', marginLeft: initialTx ? 0 : 'auto' }}>
-          <Button variant="ghost" type="button" onClick={onCancel} disabled={isSaving}>Cancel</Button>
-          <Button variant="primary" type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Save'}</Button>
+        <div style={{ display: 'flex', gap: 'var(--space-sm)', marginLeft: (initialTx && onDelete) ? 0 : 'auto' }}>
+          <Button type="button" variant="secondary" onClick={onCancel} disabled={isSaving}>Cancel</Button>
+          <Button type="submit" variant="primary" disabled={isSaving || !description || !amount || !categoryId || !accountId}>
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={showConfirmDelete}
+        title="Delete Transaction"
+        message="Are you sure you want to delete this transaction?"
+        confirmText="Delete"
+        variant="danger"
+        onConfirm={async () => {
+          setShowConfirmDelete(false);
+          setIsSaving(true);
+          try {
+            await onDelete(initialTx.id);
+          } finally {
+            setIsSaving(false);
+          }
+        }}
+        onCancel={() => setShowConfirmDelete(false)}
+      />
     </form>
   );
 }

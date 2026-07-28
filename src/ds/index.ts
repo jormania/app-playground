@@ -21,3 +21,5 @@ export type { SettingsToggleProps } from './components/SettingsToggle'
 
 export { GuideNote } from './components/GuideNote'
 export type { GuideNoteProps } from './components/GuideNote'
+export { ConfirmModal, PromptModal, AlertModal } from './components/Dialogs'
+export type { ConfirmModalProps, PromptModalProps, AlertModalProps } from './components/Dialogs'

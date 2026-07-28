@@ -151,9 +151,6 @@ a:hover {
     margin-left: auto !important;
     overflow-x: hidden;
   }
-  div[style*="grid-template-columns"]:not(.transaction-row):not(.transaction-list-header) {
-    grid-template-columns: 1fr !important;
-  }
   .settings-action-buttons {
     flex-direction: column !important;
   }
@@ -163,6 +160,19 @@ a:hover {
   /* Responsive skeleton: collapse KPI skeleton to single column on mobile */
   .skeleton-kpi-grid {
     grid-template-columns: 1fr !important;
+  }
+  /* Transaction list: hide Account + Amount columns on mobile, keep Description + Category */
+  .tx-col-account {
+    display: none !important;
+  }
+  .tx-col-amount {
+    display: none !important;
+  }
+  .transaction-row {
+    grid-template-columns: 1fr auto !important;
+  }
+  .transaction-list-header {
+    grid-template-columns: 1fr auto !important;
   }
 }
 

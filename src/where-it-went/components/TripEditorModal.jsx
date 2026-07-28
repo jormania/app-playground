@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modal } from '../../ds/components/Modal';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
+import { ConfirmModal } from '../../ds';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 
 export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelete }) {
@@ -12,6 +13,7 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
   const [status, setStatus] = useState('Planned');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (trip) {
@@ -81,19 +83,12 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
           />
         </div>
 
-        <Field label="Notes" placeholder="Optional trip notes or itinerary summary..." value={notes} onChange={e => setNotes(e.target.value)} />
+        <Field label="Notes" placeholder="Optional trip notes..." value={notes} onChange={e => setNotes(e.target.value)} />
 
         <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-lg)' }}>
           {trip && (
             <div style={{ marginRight: 'auto' }}>
-              <Button type="button" variant="danger" disabled={saving} onClick={async () => {
-                if (confirm('Are you sure you want to delete this trip?')) {
-                  setSaving(true);
-                  await onDelete(trip.id);
-                  setSaving(false);
-                  onClose();
-                }
-              }}>Delete</Button>
+              <Button type="button" variant="danger" disabled={saving} onClick={() => setShowConfirmDelete(true)}>Delete</Button>
             </div>
           )}
           <div style={{ display: 'flex', gap: 'var(--space-sm)', marginLeft: trip ? 0 : 'auto' }}>
@@ -104,6 +99,21 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
           </div>
         </div>
       </form>
+      <ConfirmModal
+        isOpen={showConfirmDelete}
+        title="Delete Trip"
+        message="Are you sure you want to delete this trip?"
+        confirmText="Delete"
+        variant="danger"
+        onConfirm={async () => {
+          setShowConfirmDelete(false);
+          setSaving(true);
+          await onDelete(trip.id);
+          setSaving(false);
+          onClose();
+        }}
+        onCancel={() => setShowConfirmDelete(false)}
+      />
     </Modal>
   );
 }

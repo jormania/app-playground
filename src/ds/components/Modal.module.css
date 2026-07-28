@@ -28,6 +28,7 @@
   box-shadow: var(--shadow-lg, 0 12px 32px rgba(16, 20, 26, 0.14));
   padding: var(--space-lg, 24px);
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .dialog:focus-visible {
@@ -86,5 +87,7 @@
   line-height: var(--leading-body, 1.6);
   color: var(--color-ink, #1b1f24);
   overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
+  box-sizing: border-box;
 }
