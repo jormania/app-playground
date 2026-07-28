@@ -72,7 +72,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
             <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Type</label>
             <SegmentedControl
               value={type}
-              onChange={val => setType(val)}
+              onChange={val => { setType(val); setCategoryId(''); }}
               options={[
                 { value: 'Expense', label: 'Expense' },
                 { value: 'Income', label: 'Income' }
@@ -88,7 +88,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
             <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Category <span style={{ color: 'var(--color-danger)' }}>*</span></label>
             <select value={categoryId} onChange={e => setCategoryId(e.target.value)} required style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit' }}>
               <option value="">Select...</option>
-              {(data?.categories || []).map(c => <option key={c.id} value={c.id}>{c.icon ? c.icon + ' ' : ''}{c.name}</option>)}
+              {(data?.categories || []).filter(c => c.type === type).map(c => <option key={c.id} value={c.id}>{c.icon ? c.icon + ' ' : ''}{c.name}</option>)}
             </select>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
