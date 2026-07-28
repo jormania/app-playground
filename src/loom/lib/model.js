@@ -220,9 +220,15 @@ export function weekdayIndex(dayKey) {
 // dated strictly earlier than this week's Monday and not yet woven. Day keys are
 // 'YYYY-MM-DD', so a lexical compare is a date compare. Sorted oldest-first, then
 // by manual order, so the ritual walks them in a natural sequence.
-export function carryThreads(threads, weekStartKey) {
+// If `excludeSkeins` is set, threads from those skeins are left out — rhythm
+// skeins are freshly cast onto every week by castRhythm, so a stale unwoven
+// instance from a past week must not also be re-warped into the current one
+// (that's how "Long walk" ended up tripled: once from the rhythm cast, again
+// from the ritual carrying an old instance forward).
+export function carryThreads(threads, weekStartKey, { excludeSkeins } = {}) {
+  const skipSet = excludeSkeins instanceof Set ? excludeSkeins : new Set(excludeSkeins || [])
   return threads
-    .filter(t => t.day && !t.done && t.day < weekStartKey)
+    .filter(t => t.day && !t.done && t.day < weekStartKey && !(skipSet.size > 0 && skipSet.has(t.skein)))
     .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : (a.order ?? 0) - (b.order ?? 0)))
 }
 

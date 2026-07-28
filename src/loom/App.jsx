@@ -60,7 +60,10 @@ export default function App() {
 
   const thisWeekDays = useMemo(() => weekDays(new Date()), [])
   const thisMondayKey = dateKey(startOfWeek(new Date()))
-  const carried = useMemo(() => carryThreads(loom.threads, thisMondayKey), [loom.threads, thisMondayKey])
+  const carried = useMemo(
+    () => carryThreads(loom.threads, thisMondayKey, { excludeSkeins: rhythmSkeinNames }),
+    [loom.threads, thisMondayKey, rhythmSkeinNames],
+  )
 
   const filters = useMemo(
     () => ({ query, showWoven: prefs.showWoven, rhythmSort: prefs.rhythmSort, collapseWoven: prefs.collapseWoven, skeinOrder: prefs.skeinOrder }),

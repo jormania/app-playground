@@ -183,6 +183,15 @@ describe('carry-over (the re-warp ritual)', () => {
     const carried = carryThreads(threads, '2026-07-13')
     expect(carried.map(t => t.id)).toEqual(['e', 'a']) // oldest first
   })
+
+  it('excludes rhythm-skein threads so a stale instance is not re-warped on top of a fresh cast', () => {
+    const threads = [
+      { id: 'a', skein: 'Long walk', day: '2026-07-06', done: false, order: 0 },
+      { id: 'b', skein: 'Other', day: '2026-07-06', done: false, order: 0 },
+    ]
+    const carried = carryThreads(threads, '2026-07-13', { excludeSkeins: new Set(['Long walk']) })
+    expect(carried.map(t => t.id)).toEqual(['b'])
+  })
 })
 
 describe('drafts', () => {
