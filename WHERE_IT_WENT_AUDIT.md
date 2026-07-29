@@ -1,5 +1,16 @@
 # WhereItWent — Full Audit (2026-07-29)
 
+> **Status as of 2026-07-30: every finding in §1–§6 is fixed, and 8 of the 17 gaps in
+> §7 have since been built.** This document is kept as the *record of what was wrong
+> and why*, not as a live to-do list — several later design decisions only make sense
+> against it (why the forecast projects flow rather than a balance, why alerts need two
+> months of baseline, why every date is built from local parts). Read
+> [`WHERE_IT_WENT.md`](WHERE_IT_WENT.md) for the current state of the app and
+> [`WHERE_IT_WENT_ROADMAP.md`](WHERE_IT_WENT_ROADMAP.md) for the feature designs.
+>
+> The verdict below describes the app **as found on 2026-07-29**. It is deliberately
+> left unedited.
+
 Scope: every file under `src/where-it-went/` (~10.2k lines incl. demo data), plus
 `api/notion.js`, `public/where-it-went-sw.js`, and the DS components it consumes.
 
@@ -397,7 +408,9 @@ possible) this becomes a visibly slow tab.
 Benchmarks: YNAB, Monarch Money, Copilot, Lunch Money (commercial); Actual Budget, Firefly III,
 ezBookkeeping (self-hosted, closest in spirit to a BYO-Notion app).
 
-**Table stakes that are absent:**
+**Table stakes that were absent.** Struck-through rows have since been built (see
+WHERE_IT_WENT.md); the rest are still open, and "account balances / net worth" remains
+the one that constrains other features rather than merely sitting beside them:
 
 | Feature | Who has it | Why it matters here |
 |---|---|---|
@@ -406,18 +419,18 @@ ezBookkeeping (self-hosted, closest in spirit to a BYO-Notion app).
 | **CSV / OFX / QIF import** | Lunch Money, Actual, Skwad, Monarch | The realistic substitute for bank sync in a BYO app; today every row is hand-typed. |
 | **Export (CSV/PDF)** | Spendee, Lunch Money, CountAbout | Notion is the store, but there's no in-app export or report. |
 | **Rules / auto-categorisation** | Lunch Money, Copilot, Firefly III | Would replace the hardcoded keyword lists in §3 with something the user owns. |
-| **Recurring/bill reminders + upcoming calendar** | Spendee, Monarch, YNAB | The subscriptions engine *posts* charges but never *warns* — and `src/shared/notify/` already exists in this repo. |
-| **Rollover / envelope budgeting** | YNAB, Actual | Current budgets are flat monthly caps with no carry-over and no "assign every leu a job". |
-| **Non-monthly budget periods & per-category periods** | YNAB, Actual | Annual costs (insurance, taxes) can't be budgeted sanely today. |
+| ~~**Recurring/bill reminders + upcoming calendar**~~ ✅ **shipped** | Spendee, Monarch, YNAB | The subscriptions engine *posts* charges but never *warns* — and `src/shared/notify/` already exists in this repo. |
+| ~~**Rollover / envelope budgeting**~~ ✅ **shipped** | YNAB, Actual | Current budgets are flat monthly caps with no carry-over and no "assign every leu a job". |
+| ~~**Non-monthly budget periods & per-category periods**~~ ✅ **shipped** | YNAB, Actual | Annual costs (insurance, taxes) can't be budgeted sanely today. |
 | **Goals / savings targets** | Monarch, YNAB, Copilot | Insights measure a savings rate but there's nothing to save *toward*. |
-| **Multi-currency with live FX** | Spendee, Lunch Money (160+), Firefly III | Schema fields exist (`Original Amount/Currency`), code doesn't. |
+| ~~**Multi-currency with live FX**~~ ✅ **shipped** | Spendee, Lunch Money (160+), Firefly III | Schema fields exist (`Original Amount/Currency`), code doesn't. |
 | **Receipt / document attachments** | Toshl, CountAbout | Notion supports file properties and the repo already has `api/notion-upload.js`. |
 | **Tags UI** | Lunch Money | Tags are fetched and written but there is no way to edit them in the form. |
-| **Cash-flow forecast / projection** | Monarch, Copilot | The subscription data makes a 30/60/90-day forecast almost free. |
-| **Duplicate detection & merge** | Monarch, Lunch Money | Directly relevant given P0-5. |
-| **Offline support / optimistic writes** | Actual (local-first), all mobile apps | The SW caches only GETs; offline the app shows the shell then the error card. |
+| ~~**Cash-flow forecast / projection**~~ ✅ **shipped** | Monarch, Copilot | The subscription data makes a 30/60/90-day forecast almost free. |
+| ~~**Duplicate detection & merge**~~ ✅ **shipped** | Monarch, Lunch Money | Directly relevant given P0-5. |
+| ~~**Offline support / optimistic writes**~~ ✅ **shipped** | Actual (local-first), all mobile apps | The SW caches only GETs; offline the app shows the shell then the error card. |
 | **Undo** | Lunch Money, most mobile apps | Deletes are archived in Notion but there's no in-app undo. |
-| **Household / shared access** | Monarch, YNAB | Out of scope for a personal BYO app, but worth an explicit "no" in the docs. |
+| ~~**Household / shared access**~~ ❌ **declined, documented** | Monarch, YNAB | Out of scope for a personal BYO app, but worth an explicit "no" in the docs. |
 
 **Where WhereItWent already beats the field:** the Notion-as-database BYO model (no vendor lock-in,
 no subscription, data lives somewhere you already work), the narrative/editorial insight summaries,
@@ -428,6 +441,11 @@ issues in §3 matter more than they would in a generic app.
 ---
 
 ## 8. Suggested order of work
+
+> **Historical.** Steps 1–8 were all completed on 2026-07-29; step 9's ordering was
+> superseded by the roadmap, which shipped reminders, budget periods, rollover, FX,
+> the forecast, duplicates and offline support instead of starting with balances.
+
 
 1. **Ship-blockers:** P0-1 (add transaction), P0-2 (`handleClear`), P0-6 (write-status checking).
    Add a regression test for each.

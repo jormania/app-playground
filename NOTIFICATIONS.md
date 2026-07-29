@@ -1,9 +1,9 @@
 # Local notifications — shared foundation, app-specific decisions
 
-Three apps (Touch Grass, Sol Odyssey, Journal of Delights) each show local, best-effort
-notifications on a schedule the app decides for itself — no server, no push service. This
-file documents the shared foundation they're built on, so the next app doesn't grow a fourth
-from-scratch copy.
+Four apps (Touch Grass, Sol Odyssey, Journal of Delights, WhereItWent) each show local,
+best-effort notifications on a schedule the app decides for itself — no server, no push
+service. This file documents the shared foundation they're built on, so the next app doesn't
+grow a fifth from-scratch copy.
 
 ## What's actually shared
 
@@ -62,7 +62,22 @@ The shared layer is deliberately thin. Each app owns:
    + IndexedDB mechanism — it's the only way to see *why* a background notification went
    quiet without a laptop and devtools attached to the device.
 
-## Known limitations (true of all three apps, not a bug to "fix")
+## Where an app legitimately diverges
+
+`schedule.ts`'s `shouldFireOncePerId` tracks a **single** last-sent id, which suits a
+one-stream nudge ("today's entry isn't written"). WhereItWent needs several bills inside the
+lead window at once, each with its own once-ever guard, so `where-it-went/lib/reminders.js`
+keeps a bounded *set* instead. Reach for the shared shape first; when the domain genuinely
+needs a different one, write it in the app and say why — don't bend the shared layer to fit
+one caller.
+
+Its worker also carries asset caching *alongside* the notification half (the other three are
+notification-only), so `public/where-it-went-sw.js` is the example to copy when an app needs
+both. `where-it-went/lib/reminders.sw.test.js` lifts the worker's duplicated predicate out of
+the file with `new Function` and runs it against the page's copy — worth stealing for any app
+that reimplements a predicate inside its worker.
+
+## Known limitations (true of all four apps, not a bug to "fix")
 
 - Background delivery only works in an **installed PWA on Chromium** (desktop or Android).
   iOS Safari and non-installed tabs degrade to in-app-only surfaces.
