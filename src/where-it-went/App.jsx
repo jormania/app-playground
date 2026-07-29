@@ -116,6 +116,13 @@ export default function App() {
   const handleConfigSave = (newConfig) => {
     writeJson('whereItWent_config', newConfig);
     setConfig(newConfig);
+    // Turning Transfers off shouldn't leave the ledger stuck on a filter that's
+    // no longer offered anywhere in the UI — the Filter Sheet only shows the
+    // Transfers option while it's either enabled or already the active filter,
+    // so clearing it here is what actually makes "off" mean "off" right away.
+    if (newConfig?.features?.transfers !== true && filterType === 'Transfer') {
+      setFilterType('All');
+    }
   };
 
   const handleThemeChange = (newTheme) => {
