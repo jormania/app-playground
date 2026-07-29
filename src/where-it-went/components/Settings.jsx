@@ -9,6 +9,7 @@ import TripEditorModal from './TripEditorModal';
 import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 import { ordinal } from '../lib/period';
+import { DEFAULT_LEAD_DAYS } from '../lib/upcoming';
 
 const EMPTY_CONFIG_FIELDS = {
   token: '', transactionsDb: '', categoriesDb: '', accountsDb: '', subscriptionsDb: '', tripsDb: ''
@@ -31,7 +32,8 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const [theme, setTheme] = useState(config.theme || 'dark');
   // Transfers default OFF — most people don't need to track internal
   // account-to-account moves, so the feature stays invisible until asked for.
-  const [features, setFeatures] = useState(config.features || { budgeting: true, cashFlow: true, transfers: false });
+  const [features, setFeatures] = useState(config.features || { budgeting: true, cashFlow: true, transfers: false, upcoming: true });
+  const [upcomingLeadDays, setUpcomingLeadDays] = useState(config.upcomingLeadDays ?? DEFAULT_LEAD_DAYS);
   const [status, setStatus] = useState({ type: '', msg: '' });
   const [showScrubPrompt, setShowScrubPrompt] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -50,6 +52,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     tripsDb: extractNotionId(tripsDb),
     theme,
     features,
+    upcomingLeadDays: Number(upcomingLeadDays) > 0 ? Number(upcomingLeadDays) : DEFAULT_LEAD_DAYS,
     ...extra
   });
 
@@ -65,7 +68,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     setAccountsDb('');
     setSubscriptionsDb('');
     setTripsDb('');
-    onSave({ ...EMPTY_CONFIG_FIELDS, theme, features });
+    onSave({ ...EMPTY_CONFIG_FIELDS, theme, features, upcomingLeadDays: Number(upcomingLeadDays) || DEFAULT_LEAD_DAYS });
     setStatus({ type: 'success', msg: 'Configuration cleared. You are now in demo mode.' });
   };
 
@@ -205,6 +208,13 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             checked={features.transfers === true}
             onChange={e => setFeatures(f => ({ ...f, transfers: e.target.checked }))}
           />
+          {/* On by default — `!== false` so a config saved before this key
+              existed opts in without needing a migration. */}
+          <SettingsToggle
+            label="Upcoming Bills"
+            checked={features.upcoming !== false}
+            onChange={e => setFeatures(f => ({ ...f, upcoming: e.target.checked }))}
+          />
         </div>
       </div>
 
@@ -239,6 +249,17 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
             Manage recurring payments here. The app will automatically generate transactions for these on the specified day of each month.
           </p>
+
+          {features.upcoming !== false && (
+            <div style={{ maxWidth: '220px', marginBottom: 'var(--space-md)' }}>
+              <Field
+                label="Warn me this many days ahead"
+                type="number" min="1" max="31"
+                value={upcomingLeadDays}
+                onChange={e => setUpcomingLeadDays(e.target.value)}
+              />
+            </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
             {data.subscriptions.length === 0 ? (

@@ -114,9 +114,12 @@ Click **Save Configuration**. The app will now read and write directly to your N
 - **Subscription Management**: View active and inactive subscriptions with beautifully styled status badges. Click on any subscription to seamlessly edit its details directly in a modal.
 - **Auto-Ledger Injection**: The App automatically evaluates missed payments on launch and injects them into the ledger on their correct day of the month.
 - **Seamless Notion Sync**: Powered by a 4th Notion database ("Subscriptions") to persist subscription data.
+- **Upcoming Bills** (on by default, see Settings → Feature Toggles): the engine *posts* charges on their due date, and this *warns* you before it does. Two surfaces, neither of which adds anything to the navigation bar:
+  - A **"Next 30 Days" agenda** on the Dashboard listing every scheduled charge with its date, how far away it is, and a net total. Like budgets, it ignores the selected period and any active filters — a bill due next week is due next week whether you're looking at July or at 2026. An occurrence you've already entered by hand is greyed out and marked "already recorded".
+  - A **slim reminder strip** above the content, shown only when something falls inside your lead time (default 5 days, configurable in Settings → Recurring Subscriptions). Tap it to jump to the agenda, or dismiss it to snooze for 24 hours. Dismissing only silences the strip — the agenda card stays put.
 
 ### Settings & Customization
-- **Feature Toggles**: Customize your Dashboard by enabling or disabling specific features — the Budgeting Engine, the Cash Flow Trend chart, and Transfers (see above; off by default).
+- **Feature Toggles**: Customize your Dashboard by enabling or disabling specific features — the Budgeting Engine, the Cash Flow Trend chart, Transfers (see above; off by default), and Upcoming Bills (see above; on by default).
 - **Theme Support**: Seamlessly toggle between Light and Dark mode using a clean, icon-based toggle switch.
 
 ### Under the Hood
@@ -296,3 +299,34 @@ typecheck / eslint all green).
   full suite (1,651 tests), typecheck, and eslint all green; verified live
   against a running dev server including a real dark-theme contrast
   measurement.
+
+## Roadmap Feature A: Upcoming Bills (2026-07-29)
+
+First feature from [`WHERE_IT_WENT_ROADMAP.md`](WHERE_IT_WENT_ROADMAP.md). **No Notion
+schema change** — the Subscriptions database already carried everything needed.
+
+- **New pure module `lib/upcoming.js`.** `getUpcomingBills()` reuses `dueDateFor()`
+  and `isAlreadyPosted()` from the subscriptions engine, so month-end clamping
+  (day 31 in a 30-day month) and duplicate detection behave identically in both.
+  The split against the engine is on `dueDate > today` and is total: the engine
+  owns everything up to and including today, this owns everything after, and no
+  date is ever claimed by both.
+- **One entry per occurrence, not per subscription** — a 90-day horizon yields
+  three rows for a monthly bill, which is what the cash-flow forecast (feature E)
+  will sum.
+- **`alreadyPosted` is reported, not filtered.** The agenda greys those rows out,
+  the banner skips them entirely (no nagging about a bill you already entered),
+  and the forecast will still count them, because the money is committed either
+  way.
+- **The banner is the app's one interrupt surface** and is deliberately
+  dismissible — a warning you can't silence becomes furniture within a week.
+  It reuses the tinted-background contrast pattern rather than a solid fill.
+  Features D and G are specified to reuse this same slot so banners never stack.
+- **Defaults to on**, and reads `features.upcoming !== false` so configs saved
+  before this key existed opt in without a migration.
+- 37 new tests (24 unit on the module with a frozen clock, 9 component, 4 on the
+  new Settings controls); WhereItWent's own suite went from 106 to 132.
+  Verified live against the demo fixtures at desktop and 375px: the banner
+  correctly surfaced "Gym Membership · 150.00 L due in 3 days", the agenda listed
+  all four upcoming charges with a −290.00 L net, dismissing stored a 24-hour
+  snooze and hid only the strip, and neither surface overflowed at 375px.

@@ -32,7 +32,12 @@ properties across two databases**. Features A, E, F and G need **zero**.
 
 ---
 
-## A. Recurring/bill reminders + upcoming calendar
+## A. Recurring/bill reminders + upcoming calendar — ✅ SHIPPED 2026-07-29
+
+Built as designed, with surfaces 1 and 2 only; **surface 3 (local
+notifications via `src/shared/notify/`) remains deferred** as planned, since
+it's the only part that touches the service worker. See the "Roadmap Feature A"
+section of [`WHERE_IT_WENT.md`](WHERE_IT_WENT.md) for what shipped.
 
 **No new Notion properties.** The Subscriptions DB already has `dayOfMonth`,
 `amount`, `active`, `lastProcessed` — everything needed.
@@ -336,7 +341,7 @@ G must be last.
 
 | # | Feature | Schema cost | Risk |
 |---|---------|-------------|------|
-| 1 | A — Upcoming bills (banner + agenda) | none | low |
+| 1 | ~~A — Upcoming bills (banner + agenda)~~ ✅ shipped | none | low |
 | 2 | E — Cash-flow forecast | none | low |
 | 3 | F — Duplicate detection & merge | none | low-med |
 | 4 | B — Non-monthly budget periods | 2 Categories props | medium |

@@ -89,4 +89,66 @@ describe('Settings Component', () => {
       }));
     });
   });
+
+  it('Upcoming Bills toggle defaults ON, including for a config saved before the key existed', () => {
+    // The stored features object predates `upcoming`, so the checkbox has to
+    // read `!== false` rather than a truthy check — otherwise every existing
+    // user would silently have the feature off with no way to know why.
+    const mockConfig = {
+      token: 'secret_token', categoriesDb: 'cat_id', accountsDb: 'acc_id', transactionsDb: 'tx_id',
+      theme: 'dark', features: { budgeting: true, cashFlow: true, transfers: false }
+    };
+
+    render(<Settings config={mockConfig} onSave={vi.fn()} onThemeChange={vi.fn()} onDone={vi.fn()} />);
+    expect(screen.getByLabelText('Upcoming Bills').checked).toBe(true);
+  });
+
+  it('turning Upcoming Bills off hides the lead-time input and saves the flag', async () => {
+    const mockConfig = {
+      token: 'secret_token', categoriesDb: 'cat_id', accountsDb: 'acc_id', transactionsDb: 'tx_id',
+      theme: 'dark', subscriptionsDb: 'sub_id'
+    };
+    const onSave = vi.fn();
+
+    render(
+      <Settings
+        config={mockConfig} onSave={onSave} onThemeChange={vi.fn()} onDone={vi.fn()}
+        data={{ subscriptions: [], categories: [], accounts: [] }}
+      />
+    );
+
+    expect(screen.getByLabelText(/warn me this many days ahead/i)).toBeDefined();
+
+    fireEvent.click(screen.getByLabelText('Upcoming Bills'));
+    expect(screen.queryByLabelText(/warn me this many days ahead/i)).toBeNull();
+
+    fireEvent.click(screen.getByText('Save Configuration'));
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+        features: expect.objectContaining({ upcoming: false })
+      }));
+    });
+  });
+
+  it('persists a custom lead time', async () => {
+    const mockConfig = {
+      token: 'secret_token', categoriesDb: 'cat_id', accountsDb: 'acc_id', transactionsDb: 'tx_id',
+      theme: 'dark', subscriptionsDb: 'sub_id'
+    };
+    const onSave = vi.fn();
+
+    render(
+      <Settings
+        config={mockConfig} onSave={onSave} onThemeChange={vi.fn()} onDone={vi.fn()}
+        data={{ subscriptions: [], categories: [], accounts: [] }}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText(/warn me this many days ahead/i), { target: { value: '10' } });
+    fireEvent.click(screen.getByText('Save Configuration'));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ upcomingLeadDays: 10 }));
+    });
+  });
 });

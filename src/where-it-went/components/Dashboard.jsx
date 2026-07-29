@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import BudgetEditorModal from './BudgetEditorModal';
+import UpcomingBills from './UpcomingBills';
 import { Button } from '../../ds/components/Button';
 import { Modal } from '../../ds/components/Modal';
 import { AlertModal } from '../../ds';
@@ -15,6 +16,7 @@ import {
   parseTxDate,
   formatPeriodLabel
 } from '../lib/period';
+import { getUpcomingBills, DEFAULT_HORIZON_DAYS } from '../lib/upcoming';
 
 const CARD = {
   padding: 'var(--space-lg)',
@@ -327,6 +329,18 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
       }));
   }, [data.transactions, data.categories]);
 
+  // Like budgets, deliberately independent of the selected period and of the
+  // active filters: "what's due next" is a fact about the calendar, not about
+  // whichever slice of history is currently on screen.
+  const upcomingHorizonDays = Number(config?.upcomingHorizonDays) > 0
+    ? Number(config.upcomingHorizonDays)
+    : DEFAULT_HORIZON_DAYS;
+
+  const upcomingBills = useMemo(
+    () => getUpcomingBills(data.subscriptions, data.transactions, { horizonDays: upcomingHorizonDays }),
+    [data.subscriptions, data.transactions, upcomingHorizonDays],
+  );
+
   const rowKeyHandler = (tx) => (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -535,6 +549,15 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
           ) : (
             <p style={{ color: 'var(--color-muted)', margin: 0, fontStyle: 'italic' }}>No budgets set yet. Click "Edit Budgets" to get started!</p>
           )}
+        </div>
+      )}
+
+      {/* What's coming, rather than what happened — the only forward-looking
+          section on the Dashboard. Independent of the selected period: a bill
+          due next week is due next week whether you're looking at July or 2026. */}
+      {config?.features?.upcoming !== false && (
+        <div style={{ ...CARD, marginTop: 'var(--space-xl)' }}>
+          <UpcomingBills bills={upcomingBills} categories={data.categories} horizonDays={upcomingHorizonDays} />
         </div>
       )}
 

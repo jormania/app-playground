@@ -11,6 +11,8 @@ import { AlertModal } from '../ds';
 import { useSubscriptionsEngine } from './lib/useSubscriptionsEngine';
 import { readJson, writeJson } from './lib/storage';
 import Navigation from './components/Navigation';
+import UpcomingBanner from './components/UpcomingBanner';
+import { getUpcomingBills, billsWithinLeadTime, isSnoozed, DEFAULT_LEAD_DAYS } from './lib/upcoming';
 import PeriodSheet from './components/PeriodSheet';
 import FilterSheet from './components/FilterSheet';
 import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS, DEMO_TRIPS } from './models/demoData';
@@ -71,6 +73,31 @@ export default function App() {
   // Off by default — most people don't need to track internal account-to-account
   // moves. Toggled in Settings → Feature Toggles.
   const allowTransfer = config?.features?.transfers === true;
+
+  // On by default (unlike Transfers): the subscriptions engine has always been
+  // able to post a charge without ever having warned it was coming, and this is
+  // the fix for that. `!== false` so existing configs, saved before this key
+  // existed, opt in without a migration.
+  const showUpcoming = config?.features?.upcoming !== false;
+  const leadDays = Number(config?.upcomingLeadDays) > 0
+    ? Number(config.upcomingLeadDays)
+    : DEFAULT_LEAD_DAYS;
+
+  const [snoozedUntil, setSnoozedUntil] = useState(() => readJson('whereItWent_upcoming_snooze', 0));
+
+  const dueSoon = useMemo(() => {
+    if (!showUpcoming) return [];
+    // Look only as far as the lead time — the 30-day agenda lives on the
+    // Dashboard; the banner is strictly about what needs attention now.
+    const bills = getUpcomingBills(data.subscriptions, data.transactions, { horizonDays: leadDays });
+    return billsWithinLeadTime(bills, leadDays);
+  }, [showUpcoming, data.subscriptions, data.transactions, leadDays]);
+
+  const handleSnooze = () => {
+    const until = Date.now() + 24 * 60 * 60 * 1000;
+    writeJson('whereItWent_upcoming_snooze', until);
+    setSnoozedUntil(until);
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -169,6 +196,15 @@ export default function App() {
         onFilterClick={() => setShowFilterSheet(true)}
         filtersActive={filterType !== 'All' || categoryFilter !== 'All' || searchQuery.trim() !== ''}
       />
+
+      {activeTab !== 'settings' && !isSnoozed(snoozedUntil) && (
+        <UpcomingBanner
+          bills={dueSoon}
+          leadDays={leadDays}
+          onView={() => handleTabChange('dashboard')}
+          onDismiss={handleSnooze}
+        />
+      )}
 
       <PeriodSheet
         isOpen={showPeriodSheet}
