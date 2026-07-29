@@ -89,8 +89,24 @@ export default function BottomSheet({ isOpen, onClose, title, children }) {
           <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--color-border)', borderRadius: '2px' }} />
         </div>
         {title && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)' }}>
             <h2 id={titleId} style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-medium)' }}>{title}</h2>
+            {/* An explicit way out. Tapping the backdrop or pressing Escape both
+                worked, but neither is discoverable — without a visible control
+                the only obvious exit was the button that *applies* changes. */}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={`Close ${title}`}
+              style={{
+                flex: 'none', width: '32px', height: '32px', display: 'inline-flex',
+                alignItems: 'center', justifyContent: 'center', fontSize: 'var(--text-xl)',
+                lineHeight: 1, color: 'var(--color-muted)', background: 'transparent',
+                border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer'
+              }}
+            >
+              ×
+            </button>
           </div>
         )}
         <div>{children}</div>

@@ -48,6 +48,8 @@ Create five full-page databases anywhere in your Notion workspace with the follo
 - **Date**: `Date` (Date property)
 - **Amount (RON)**: `Amount (RON)` (Number property)
 - **Original Amount**: `Original Amount` (Number property)
+- **To Account**: `To Account` (Relation property -> Connect to Accounts Database) — a
+  Transfer's destination; `Account` is its source. Empty for Income and Expense.
 - **Original Currency**: `Original Currency` (Select property). **Every currency the app offers
   must be registered here as an option.** Notion selects are a closed vocabulary and a page update
   is atomic, so writing an unregistered option makes Notion reject the *entire* patch — silently
@@ -671,3 +673,102 @@ Measured at 375x812 with the worst case on screen at once (Travel category, a
 EUR account, so both the trip picker *and* the FX rate line): 568px of content
 in a 568px body, nothing clipped, Save visible. Editing an existing transaction
 (which adds the Delete button) sits at 489/489, and Add Trip at 448/448.
+
+## Transfers get two ends, plus an external-audit pass (2026-07-30)
+
+### Transfers now record From and To
+
+A transfer had a single `Account`, so "Revolut top-up from rent cash" lived
+entirely in the description with nothing the app could reconcile. The
+Transactions database gains a **`To Account`** relation (source stays in
+`Account`), the form shows **From** and **To** — which must differ — and the
+ledger renders the pair as `Cash → Revolut`. The old "transfers aren't
+categorized" paragraph is gone; the two labelled fields say it better, and
+reclaiming the row keeps the modal scroll-free.
+
+### Account defaults are currency-aware
+
+The picker matched on account *name* alone, so with two accounts called
+"Revolut" — one RON, one EUR, a real and common setup — whichever Notion
+returned first won, silently turning a domestic expense into a foreign-currency
+one. Preferences are now (name, currency) pairs in `lib/accountPicker.js`:
+exact name+currency first, then name alone, then whatever exists. Routing:
+expenses to the RON Revolut, Salary and Loan to Checking, Rent and Gift to Cash,
+Freelance to the RON Revolut.
+
+> **Note:** the live Accounts database has no **Cash** account, so Rent and Gift
+> currently fall through to Checking. Add one and they will route as intended.
+
+The demo fixture now mirrors the real setup — two same-named Revolut accounts in
+different currencies — so that disambiguation is actually exercised, plus Loan
+and Gift income categories. Live Notion category pages gained emoji icons:
+💰 Salary, 🔑 Rent, 🏦 Loan, 🎁 Gift.
+
+### Findings from an external review
+
+An outside audit (Gemini) was checked claim by claim rather than applied. Five
+were valid and are fixed; two were declined with reasons.
+
+**Valid, and worse than reported — optimistic writes were not optimistic.**
+`applyLocally` existed but was *never called*, and nothing read the `pending`
+flag. So an offline save enqueued the change, then `loadData` failed and fell
+back to a snapshot predating it: the transaction the user had just typed
+vanished until the next sync. Queued writes are now laid over whatever is
+displayed, and pending rows carry a `⏳ Syncing` badge.
+
+**Valid — the account auto-picker overwrote edits.** It skipped only the first
+render, so correcting a category on an existing transaction rewrote the account
+it was filed against. It no longer runs at all for an existing transaction.
+
+**Valid — a hand-picked currency shadowed the account permanently.** Changing
+the account now adopts that account's currency.
+
+**Valid — amount sorting ignored direction.** Amounts are stored unsigned, so an
+Income of 100 and an Expense of 100 compared equal. The sort is now signed, to
+match the `+`/`−` the row actually shows.
+
+**Valid, cheap — duplicate detection ignored foreign amounts.** Two foreign
+charges converting to the same RON figure could pair. When both carry an
+original amount, it must now match too.
+
+**Declined — allowing zero-amount transactions.** The guard also catches an
+empty form, and a 0.00 row adds noise to every total and average for a
+record-keeping case Notion handles better directly.
+
+**Declined for now — replacing bottom sheets with modals on desktop.** The split
+is deliberate: sheets are for *view controls* (period, filters), modals for
+*editing records*. Worth revisiting as a considered redesign, not a quick swap.
+
+**UX findings:** the hardcoded `rgba()` status banners in Settings now derive
+from `--color-danger`/`--color-success`, so a repalette reaches them;
+`BottomSheet` gained a labelled close button (backdrop-tap and Escape both
+worked but neither is discoverable, leaving "Apply Filters" as the only obvious
+exit). The inconsistent-empty-states and raw-input findings were judged cosmetic
+against native selects the app already uses elsewhere, and left.
+
+### Layout
+
+Focus rings are box-shadows, and `overflow-x: hidden` was clipping them off the
+right-hand field of every paired row — which read as the field being cut off.
+Both forms now carry 3px of horizontal padding and no clipping.
+
+### Fixture guard
+
+`models/demoData.test.js` now asserts that no id repeats within or across the
+demo collections, and that transactions, transfers and subscriptions all point
+at records that exist. Duplicate ids had already caused two silent bugs — the
+reused `demo_tx_31`/`demo_tx_32`, and a new income "Gift" category given
+`cat_gift`, which the expense category "Gifts" already held, so selecting Gift
+as income resolved to the expense record and routed to the wrong account.
+
+### Guide rewritten
+
+`public/where-it-went-guide.html` was a 147-line description of a much older
+app. It is now a 15-section reference (~3,700 words) covering sample mode, the
+full five-database schema with every property and the closed-vocabulary
+warning, transfers, foreign currency and trips, budget periods and rollover,
+recurring bills and notification limits, Insights and the forecast basis,
+duplicate rules, offline behaviour, a settings reference, PWA install, an
+explicit list of what the app does *not* do, and a troubleshooting FAQ. Schema
+tables scroll in their own containers so the page never scrolls sideways on a
+phone.

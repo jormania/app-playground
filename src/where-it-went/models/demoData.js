@@ -117,6 +117,20 @@ export const DEMO_CATEGORIES = [
     "description": "Rent from tenants"
   },
   {
+    "id": "cat_loan",
+    "name": "Loan",
+    "type": "Income",
+    "icon": "🏦",
+    "description": "Money lent to you, or a loan being repaid to you."
+  },
+  {
+    "id": "cat_gift_income",
+    "name": "Gift",
+    "type": "Income",
+    "icon": "🎁",
+    "description": "Cash gifts received."
+  },
+  {
     "id": "cat_freelance",
     "name": "Freelance",
     "type": "Income",
@@ -163,6 +177,12 @@ export const DEMO_ACCOUNTS = [
     "id": "acc_credit",
     "name": "Credit Card",
     "type": "Liability",
+    "currency": "RON"
+  },
+  {
+    "id": "acc_revolut_ron",
+    "name": "Revolut",
+    "type": "Asset",
     "currency": "RON"
   },
   {
@@ -4285,7 +4305,8 @@ const RAW_TRANSACTIONS = [
     "amount": 500,
     "type": "Transfer",
     "categoryId": "",
-    "accountId": "acc_revolut",
+    "accountId": "acc_cash",
+    "toAccountId": "acc_revolut",
     "tags": []
   },
   // A planted near-duplicate pair so the duplicate review has something real to

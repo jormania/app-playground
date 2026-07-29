@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Where It Went — Guide</title>
-<meta name="description" content="How to set up Where It Went: connect Notion, manage transactions, and track your cash flow." />
+<title>WhereItWent — Guide</title>
+<meta name="description" content="The complete guide to WhereItWent: connect your own Notion databases, record transactions in any currency, budget by month/quarter/year with rollover, forecast the next 90 days, catch duplicates, and keep working offline." />
 <meta name="theme-color" content="#161b22" />
 <link rel="icon" href="/where-it-went-favicon-32.png" type="image/png" />
 <style>
@@ -34,114 +34,332 @@
   .steps{counter-reset:step;list-style:none;margin:14px 0 10px;padding:0;display:grid;gap:13px}
   .steps li{counter-increment:step;position:relative;padding-left:34px;margin:0}
   .steps li::before{content:counter(step);position:absolute;left:0;top:1px;color:#12151c;background:var(--brass);font-family:var(--mono);font-size:11px;font-weight:600;width:22px;height:22px;border-radius:0;display:inline-flex;align-items:center;justify-content:center}
-  table.schema{width:100%;border-collapse:collapse;margin:12px 0;font-size:.85rem}
+  .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0;border:1px solid var(--border)}
+  table.schema{width:100%;min-width:34rem;border-collapse:collapse;margin:0;font-size:.85rem}
   table.schema th,table.schema td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
   table.schema th{font-family:var(--mono);font-size:.65rem;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-weight:500}
   table.schema td:first-child{font-family:var(--mono);font-size:.78rem;color:var(--place);white-space:nowrap}
   table.schema td:nth-child(2){color:var(--cat);white-space:nowrap}
   .note{border-left:2px solid var(--border2);padding-left:14px;color:var(--faint);font-size:.92rem;margin:14px 0}
+  code{overflow-wrap:anywhere}
+  @media (max-width:560px){
+    .toc ol{columns:1}
+    body{padding:0 14px 70px}
+  }
   .kbd{display:inline-block;font-family:var(--mono);font-size:.78rem;background:var(--bg2);border:1px solid var(--border);border-bottom-width:2px;padding:1px 7px;color:var(--ink)}
+
+  .toc{background:var(--surface);border:1px solid var(--border);padding:16px 20px;margin:20px 0}
+  .toc ol{margin:6px 0 0 20px;columns:2;column-gap:26px}
+  .toc li{margin:4px 0}
+  .toc a{text-decoration:none}
+  .toc a:hover{text-decoration:underline}
+  .pill{display:inline-block;font-family:var(--mono);font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border:1px solid var(--border);color:var(--muted);vertical-align:middle;margin-left:6px}
+  .pill.on{border-color:var(--green);color:var(--green)}
+  .pill.off{border-color:var(--cat);color:var(--cat)}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px;margin:14px 0}
+  .warn{border-left:2px solid var(--cat);padding-left:14px;color:var(--muted);font-size:.94rem;margin:14px 0}
+  dl{margin:10px 0}
+  dt{font-weight:600;color:var(--ink);margin-top:12px}
+  dd{margin:3px 0 0 0;color:var(--muted);font-size:.95rem}
+  .faq dt{color:var(--brass)}
+  footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--border);color:var(--faint);font-size:.85rem}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow">track your spending</div>
+    <div class="eyebrow">where did my money go?</div>
     <h1>Where It <em>Went</em> — guide</h1>
-    <p class="lede">A clean, minimal personal finance web application that uses Notion as its backend database.</p>
+    <p class="lede">A personal finance tracker that keeps every figure in your own Notion workspace. No account, no subscription, no data held anywhere but yours.</p>
   </header>
 
-  <h2>What it is</h2>
-  <p>Where It Went is a specialized tracker for answering a simple question: "Where did my money go?" It leans into a clean, Github-inspired dark aesthetic, separating analytics and visualization from the actual data storage.</p>
-  <p class="muted">Everything is stored in <b>your</b> Notion, under <b>your</b> Notion integration token — the app holds no data of its own. It installs as a Progressive Web App (PWA) on desktop or mobile.</p>
+  <div class="toc">
+    <b>On this page</b>
+    <ol>
+      <li><a href="#what">What it is</a></li>
+      <li><a href="#try">Try it without setting anything up</a></li>
+      <li><a href="#setup">Connecting your Notion</a></li>
+      <li><a href="#schema">The database schema</a></li>
+      <li><a href="#recording">Recording money</a></li>
+      <li><a href="#currency">Foreign currency &amp; travel</a></li>
+      <li><a href="#budgets">Budgets, periods &amp; rollover</a></li>
+      <li><a href="#recurring">Recurring bills &amp; reminders</a></li>
+      <li><a href="#insights">Insights &amp; the 90-day forecast</a></li>
+      <li><a href="#duplicates">Duplicate detection</a></li>
+      <li><a href="#offline">Working offline</a></li>
+      <li><a href="#settings">Settings reference</a></li>
+      <li><a href="#install">Installing as an app</a></li>
+      <li><a href="#limits">Honest limits</a></li>
+      <li><a href="#faq">Troubleshooting &amp; FAQ</a></li>
+    </ol>
+  </div>
 
-  <h2>1. Quick Setup</h2>
-  <p>To connect your own real, persistent collection, set it up directly in Notion, then point the app at it from Settings:</p>
+  <h2 id="what">1. What it is</h2>
+  <p>WhereItWent answers one question well: <b>where did the money actually go?</b> You record what you spend and earn, and it turns that into budgets, trends, and a readable narrative about the month.</p>
+  <p>The unusual part is the storage. There is no WhereItWent server and no account to create. Every transaction lives in <b>Notion databases you own</b>, reached with <b>your own</b> integration token, which never leaves your device. Cancel any time by deleting the token — the data stays where it always was, in Notion, queryable and exportable by you.</p>
+  <div class="grid2">
+    <div class="card">
+      <h3 style="margin-top:0">What it does well</h3>
+      <ul>
+        <li>Budgets that match real life — monthly, quarterly or yearly, with unspent room carried forward</li>
+        <li>Foreign spending recorded at the real rate, with travel grouped by trip</li>
+        <li>A narrative read on the month, not just charts</li>
+        <li>Recurring bills posted automatically <em>and</em> warned about beforehand</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">What it deliberately isn't</h3>
+      <ul>
+        <li>No bank connection — nothing is scraped or synced from a bank</li>
+        <li>No account balances or net worth (see <a href="#limits">§14</a>)</li>
+        <li>No shared or household access; it is single-person by design</li>
+        <li>Not a receipt store — Notion is better at that than a form field</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 id="try">2. Try it without setting anything up</h2>
+  <p>Open the app with no configuration and it runs on a full year of realistic sample data — hundreds of transactions, budgets, subscriptions and trips. A bar across the top says <b>Sample data</b> so it can never be mistaken for your own.</p>
+  <p>Everything works in this mode: add, edit, delete, merge duplicates, change budgets. Nothing is written to Notion, and a reload restores the sample set. It is the right place to decide whether the app suits you before creating a single database.</p>
+  <p class="muted">To leave sample mode, connect Notion (<a href="#setup">§3</a>). To go back to it, empty the token field in Settings and save, or use <b>Erase Notion data &amp; use samples</b> — which is destructive, so read <a href="#settings">§12</a> first.</p>
+
+  <h2 id="setup">3. Connecting your Notion</h2>
   <ol class="steps">
-    <li><b>Create an Integration:</b> Go to <a href="https://www.notion.so/my-integrations" target="_blank">Notion Integrations</a> and create a new integration.</li>
-    <li><b>Copy the Token:</b> Copy the Internal Integration Secret.</li>
-    <li><b>Prepare the Databases:</b> Ensure you have a Transactions database, an Accounts database, a Categories database, and a Subscriptions database in Notion. See <a href="#schema">§2</a>.</li>
-    <li><b>Share the databases:</b> Open your Notion databases, click <code>•••</code> → <b>Connections</b>, and add your integration.</li>
-    <li><b>Get the Links:</b> Copy the Notion link to each database.</li>
-    <li><b>Connect it:</b> Open Settings (⚙), paste the Integration Token and the database links (or IDs), and save.</li>
+    <li><b>Create the five databases</b> in Notion, with the exact property names in <a href="#schema">§4</a>. Full-page databases anywhere in your workspace.</li>
+    <li><b>Create an integration</b> at <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener">notion.so/my-integrations</a> and copy the <b>Internal Integration Secret</b> (it starts <code>ntn_</code>).</li>
+    <li><b>Share each database with it.</b> Open the database, <code>•••</code> → <b>Connections</b> → add your integration. Miss one and that section of the app stays empty.</li>
+    <li><b>Paste it all into Settings.</b> The token, then a link or ID for each database. Pasting the whole Notion URL is fine — the ID is extracted for you.</li>
+    <li><b>Save.</b> Every database you filled in is queried before the settings are accepted, so a typo is caught immediately rather than surfacing later as an empty dashboard.</li>
   </ol>
+  <p class="note">Only Categories, Accounts and Transactions are required. Subscriptions and Trips are optional — leave them blank and those features simply stay quiet.</p>
+  <p class="muted">Your token is kept in this browser's local storage and sent only to Notion, through a thin proxy that adds no storage of its own. Use the app on another device and you enter the token again there; nothing syncs between devices except through Notion itself.</p>
 
-  <h2 id="schema">2. The Notion Database Schema</h2>
-  <p>Where It Went expects four interconnected databases. They must be named properly and their properties must match these definitions exactly.</p>
-  
-  <h3>Transactions Database</h3>
-  <table class="schema">
-    <thead><tr><th>Property</th><th>Type</th><th>Notes</th></tr></thead>
-    <tbody>
-      <tr><td>Name</td><td>Title</td><td>Description of the transaction.</td></tr>
-      <tr><td>Amount</td><td>Number</td><td>Positive for Income, negative for Expenses.</td></tr>
-      <tr><td>Date</td><td>Date</td><td>When the transaction occurred.</td></tr>
-      <tr><td>Account</td><td>Relation</td><td>Relation to the Accounts DB (Limit: 1).</td></tr>
-      <tr><td>Category</td><td>Relation</td><td>Relation to the Categories DB (Limit: 1).</td></tr>
-    </tbody>
-  </table>
+  <h2 id="schema">4. The database schema</h2>
+  <p>Property names must match exactly, including capitalisation and the bracketed unit. Types matter too — a Select where a Relation is expected reads as empty.</p>
 
-  <h3>Categories Database</h3>
-  <table class="schema">
-    <thead><tr><th>Property</th><th>Type</th><th>Notes</th></tr></thead>
-    <tbody>
-      <tr><td>Name</td><td>Title</td><td>Category name (e.g. Housing, Food, Salary).</td></tr>
-      <tr><td>Type</td><td>Select</td><td>Must be exactly <code>Income</code> or <code>Expense</code>.</td></tr>
-      <tr><td>Description</td><td>Rich Text</td><td>(Optional) Shows up as a description when selecting the category.</td></tr>
-      <tr><td>Icon</td><td>Notion Icon</td><td>The app reads native Notion Emoji icons for categories. E.g. 🏠 Housing, 🍽️ Dining, 💡 Utilities, etc.</td></tr>
-    </tbody>
-  </table>
+  <h3>4.1 Categories</h3>
+  <div class="tablewrap"><table class="schema">
+    <tr><th>Property</th><th>Type</th><th>Notes</th></tr>
+    <tr><td>Name</td><td>Title</td><td>Shown throughout the app. The page <b>icon</b> (an emoji) is picked up and shown beside it.</td></tr>
+    <tr><td>Type</td><td>Select</td><td>Exactly <code>Income</code> or <code>Expense</code>. Drives which categories appear for which transaction type.</td></tr>
+    <tr><td>Active</td><td>Checkbox</td><td>Reserved; not currently used to filter.</td></tr>
+    <tr><td>Description</td><td>Text</td><td>Optional. Appears as an expandable hint under the category picker.</td></tr>
+    <tr><td>Monthly Limit (RON)</td><td>Number</td><td>The spending limit for <b>one budget period</b> — a month only when <code>Budget Period</code> says so. The name is historical and kept so existing databases keep working.</td></tr>
+    <tr><td>Budget Period</td><td>Select</td><td><code>Monthly</code>, <code>Quarterly</code> or <code>Yearly</code>. Blank reads as Monthly.</td></tr>
+    <tr><td>Budget Anchor</td><td>Date</td><td>Optional. The renewal date a quarterly/yearly window counts from — e.g. insurance that renews each March. Ignored for Monthly.</td></tr>
+    <tr><td>Budget Rollover</td><td>Checkbox</td><td>Carry unspent room — and overspend — into the next period.</td></tr>
+  </table></div>
 
-  <h3>Accounts Database</h3>
-  <table class="schema">
-    <thead><tr><th>Property</th><th>Type</th><th>Notes</th></tr></thead>
-    <tbody>
-      <tr><td>Name</td><td>Title</td><td>Account name (e.g. Checking, Credit Card).</td></tr>
-      <tr><td>Type</td><td>Select</td><td><code>Asset</code> or <code>Liability</code>.</td></tr>
-      <tr><td>Balance</td><td>Number</td><td>Current balance (currently informational).</td></tr>
-    </tbody>
-  </table>
+  <h3>4.2 Accounts</h3>
+  <div class="tablewrap"><table class="schema">
+    <tr><th>Property</th><th>Type</th><th>Notes</th></tr>
+    <tr><td>Name</td><td>Title</td><td>Two accounts may share a name if their currencies differ (a RON and a EUR "Revolut" is a common real setup, and is handled).</td></tr>
+    <tr><td>Type</td><td>Select</td><td>Free-form grouping: Bank, Fintech, Cash, Broker…</td></tr>
+    <tr><td>Currency</td><td>Select</td><td>The account's own currency. Anything other than <code>RON</code> makes the transaction form offer a conversion.</td></tr>
+    <tr><td>Active</td><td>Checkbox</td><td>Reserved.</td></tr>
+  </table></div>
 
-  <h3>Subscriptions Database</h3>
-  <table class="schema">
-    <thead><tr><th>Property</th><th>Type</th><th>Notes</th></tr></thead>
-    <tbody>
-      <tr><td>Name</td><td>Title</td><td>Description of the recurring payment.</td></tr>
-      <tr><td>Amount</td><td>Number</td><td>Positive for Income, negative for Expenses.</td></tr>
-      <tr><td>Type</td><td>Select</td><td>Must be exactly <code>Income</code> or <code>Expense</code>.</td></tr>
-      <tr><td>DayOfMonth</td><td>Number</td><td>Day of the month it should trigger (1-31).</td></tr>
-      <tr><td>Category</td><td>Relation</td><td>Relation to the Categories DB (Limit: 1).</td></tr>
-      <tr><td>Account</td><td>Relation</td><td>Relation to the Accounts DB (Limit: 1).</td></tr>
-      <tr><td>Active</td><td>Checkbox</td><td>Whether the subscription is currently active.</td></tr>
-      <tr><td>LastProcessed</td><td>Date</td><td>Maintained automatically by the app.</td></tr>
-    </tbody>
-  </table>
+  <h3>4.3 Transactions</h3>
+  <div class="tablewrap"><table class="schema">
+    <tr><th>Property</th><th>Type</th><th>Notes</th></tr>
+    <tr><td>Description</td><td>Title</td><td>What it was.</td></tr>
+    <tr><td>Date</td><td>Date</td><td>Date only — no time.</td></tr>
+    <tr><td>Amount (RON)</td><td>Number</td><td><b>The source of truth for every total.</b> Always positive; direction comes from Type.</td></tr>
+    <tr><td>Type</td><td>Select</td><td><code>Income</code>, <code>Expense</code>, <code>Transfer</code>.</td></tr>
+    <tr><td>Category</td><td>Relation → Categories</td><td>Empty for Transfers.</td></tr>
+    <tr><td>Account</td><td>Relation → Accounts</td><td>For a Transfer this is the <b>source</b>.</td></tr>
+    <tr><td>To Account</td><td>Relation → Accounts</td><td>A Transfer's <b>destination</b>. Empty otherwise.</td></tr>
+    <tr><td>Original Amount</td><td>Number</td><td>What was charged in the foreign currency, when there was one.</td></tr>
+    <tr><td>Original Currency</td><td>Select</td><td><b>Every currency the app offers must exist as an option here.</b> Notion selects are a closed list and a page update is atomic, so an unregistered option makes Notion reject the whole write — silently losing the amount and notes with it. Register: <code>RON, EUR, USD, GBP, CHF, PLN, HUF, CZK, BGN, TRY, SEK, NOK, DKK, JPY, CAD, AUD</code>.</td></tr>
+    <tr><td>Trip</td><td>Relation → Trips</td><td>Set from the form when the category is Travel.</td></tr>
+    <tr><td>Notes</td><td>Text</td><td>Free text. Also read by the Travel/Property/family classifiers.</td></tr>
+    <tr><td>Tags</td><td>Multi-select</td><td>Register <code>Subscription</code> and <code>Auto-generated</code> — the recurring engine stamps both.</td></tr>
+    <tr><td>Recurring</td><td>Checkbox</td><td>Reserved.</td></tr>
+    <tr><td>Created At</td><td>Created time</td><td>Automatic.</td></tr>
+    <tr><td>Updated At</td><td>Last edited time</td><td>Automatic.</td></tr>
+  </table></div>
 
-  <h2>3. Core Views</h2>
-  <p>Where It Went features three primary views accessible from the top navigation bar, designed for desktop and mobile precision without horizontal drifting.</p>
+  <h3>4.4 Subscriptions <span class="pill">optional</span></h3>
+  <div class="tablewrap"><table class="schema">
+    <tr><th>Property</th><th>Type</th><th>Notes</th></tr>
+    <tr><td>Name</td><td>Title</td><td>Used as the transaction description when a charge is posted.</td></tr>
+    <tr><td>Amount</td><td>Number</td><td>In RON.</td></tr>
+    <tr><td>Type</td><td>Select</td><td><code>Income</code> or <code>Expense</code> — a salary can be recurring too.</td></tr>
+    <tr><td>DayOfMonth</td><td>Number</td><td>1–31. A 31 in a short month is clamped to the last day, never rolled into the next.</td></tr>
+    <tr><td>Category</td><td>Relation → Categories</td><td></td></tr>
+    <tr><td>Account</td><td>Relation → Accounts</td><td></td></tr>
+    <tr><td>Active</td><td>Checkbox</td><td>Unchecked stops both posting and reminders.</td></tr>
+    <tr><td>LastProcessed</td><td>Date</td><td>Managed by the app. Do not edit by hand.</td></tr>
+  </table></div>
 
-  <h3>Dashboard</h3>
-  <p>The top section contains Key Performance Indicators (KPIs) summarizing your financial health for the current period: <b>Income</b>, <b>Expenses</b>, and <b>Net Cash Flow</b>, rendered with animated fintech number counters.</p>
-  <p>Below the KPIs, you can track your spending against monthly targets with visual progress bars in <b>Budget Limits</b>, view a responsive Chart.js Doughnut breakdown of expenses by category, and monitor cash flow patterns over time.</p>
+  <h3>4.5 Trips <span class="pill">optional</span></h3>
+  <div class="tablewrap"><table class="schema">
+    <tr><th>Property</th><th>Type</th><th>Notes</th></tr>
+    <tr><td>Name</td><td>Title</td><td></td></tr>
+    <tr><td>Destination</td><td>Text</td><td></td></tr>
+    <tr><td>Start Date</td><td>Date</td><td></td></tr>
+    <tr><td>End Date</td><td>Date</td><td>Must not precede the start date.</td></tr>
+    <tr><td>Status</td><td>Select</td><td><code>Planned</code>, <code>Active</code>, <code>Completed</code>.</td></tr>
+    <tr><td>Currency</td><td>Select</td><td>What you spend at the destination. Becomes the default currency for anything tagged to this trip. Same option list as <code>Original Currency</code>.</td></tr>
+    <tr><td>Notes</td><td>Text</td><td></td></tr>
+  </table></div>
 
-  <h3>Deep Insights Engine (1.0)</h3>
-  <p>The dedicated <b>Insights</b> tab prioritizes financial decision support over raw reporting. It is structured into three actionable tiers designed to be understood in under 30 seconds:</p>
+  <h2 id="recording">5. Recording money</h2>
+  <p>Everything starts at <b>+ Add</b> in the header. The form adapts to the type you pick.</p>
+
+  <h3>Expense and Income</h3>
+  <p>Date, amount, description, category, account. Choosing a category <b>suggests an account</b> based on how that kind of money usually moves — salary to the current account, rent and gifts to cash, everyday spending to the card you actually use. It is only ever a suggestion, and it never fires when you are editing an existing transaction: an account already recorded is a fact about where money went, and correcting a category must not quietly move it.</p>
+
+  <h3>Transfers <span class="pill off">off by default</span></h3>
+  <p>Turn on <b>Transfers</b> in Settings to record money moving between your own accounts — cash into Revolut, current account into savings. A transfer names both ends, <b>From</b> and <b>To</b>, and they must differ.</p>
+  <p>Transfers have no category and are <b>excluded from every income and expense total</b>, every budget and every Insights figure. They exist so the ledger reflects reality without inflating what you appear to earn or spend. In the ledger they show as <code>Cash → Revolut</code> with a <code>±</code> amount.</p>
+  <p class="note">Editing an existing transfer keeps working even if you later switch the feature off, so disabling it can never silently reclassify old data.</p>
+
+  <h3>Editing and deleting</h3>
+  <p>Tap any row in the ledger or on the Dashboard to open it. Deleting <b>archives</b> the Notion page rather than destroying it — recoverable from Notion's trash for 30 days. The app itself has no undo.</p>
+
+  <h2 id="currency">6. Foreign currency &amp; travel</h2>
+  <p>Give an account or a trip a currency other than RON and the amount field lets you type <b>what you actually paid</b>. The RON figure is filled in underneath from the European Central Bank's rate for that date, with the rate spelled out: <code>Rate: 1 EUR = 5.2353 RON (29 Jul)</code>.</p>
   <ul>
-    <li><b>Act (Immediate Attention & Action):</b> Features an editorial <b>Month in Review</b> paragraph with a real-time timestamp indicator (<code>⏱️ Insights generated</code>), concise numeric <b>Attention Needed</b> alert banners, and <b>Financial Wins</b> celebrating positive cash flow and savings milestones.</li>
-    <li><b>Understand (Core Financial Architecture):</b> Elevates the <b>Savings Rate</b> into a prominent primary KPI hero banner within Financial Health. Consolidates recurring bills, subscriptions, property expenses, and taxes into a unified <b>Fixed & Structural Costs Breakdown</b> to eliminate vertical scrolling. Maps your budget against <b>The 50/30/20 Rule</b> targets and analyzes <b>Income Dependency</b> across streams.</li>
-    <li><b>Explore (Spending Habits & Trends):</b> Filters <b>Category Trends (MoM)</b> to highlight only the top 5 most significant increases and decreases. Clarifies <b>Frequent Spending</b> ("Latte Factor") with explicit Count, Avg Spend, and Total Spend labels. Renders <b>Largest Transactions</b> with inline category badges for rapid scanning.</li>
+    <li><b>RON stays the source of truth.</b> Every total, budget and chart is built from it. The foreign amount is recorded alongside as context.</li>
+    <li><b>You can override the RON figure.</b> Type over it and it stops following the rate — a card's own fee beats any published number. The displayed rate then reflects what you actually got.</li>
+    <li><b>Historical rates are used</b> for back-dated transactions. Ask for a weekend and you get the preceding business day, with that date shown.</li>
+    <li><b>A trip's currency beats the account's.</b> On a trip you spend the destination's money whatever card settles it.</li>
+    <li><b>Rates are cached per day</b>, so a currency is fetched once. Offline, the last known rate is used and labelled as such.</li>
+    <li><b>BGN can be recorded but not converted</b> — Bulgaria adopted the euro and the ECB no longer quotes it. Enter the RON amount yourself.</li>
+  </ul>
+  <p>Assign travel spending to a <b>Trip</b> and Insights totals it separately — flights, hotels and on-the-ground costs — including a per-currency breakdown so the trip reads in the money you actually handled.</p>
+
+  <h2 id="budgets">7. Budgets, periods &amp; rollover <span class="pill on">on by default</span></h2>
+  <p>Give a category a limit and choose how long that limit lasts: <b>per month</b>, <b>per quarter</b> or <b>per year</b>. Annual costs like insurance or taxes no longer have to be faked as a twelfth each month.</p>
+  <p>Each bar is measured against <b>its own window</b> and is deliberately unaffected by the period picker and the filters — otherwise a monthly cap viewed as "This year" would read as permanently blown. The window is always labelled (<code>Jul 2026</code>, <code>Q3 2026</code>, <code>2026</code>), because a yearly budget at 40% must not be mistaken for 40% of this month.</p>
+  <p>Set <b>Budget Anchor</b> to move a quarterly or yearly window off the calendar — a March anchor makes the year run March to February.</p>
+  <h3>Rollover</h3>
+  <p>Tick <b>Roll unspent room over</b> and whatever you did not spend is added to the next window. Overspend carries too, as a negative — money already spent cannot be un-spent, and forgiving it each period would quietly hide the hole.</p>
+  <p class="muted">Carry is recalculated from your transaction history every time, never stored. So correcting a transaction from three months ago fixes every window after it automatically, and there is no second copy of the number to fall out of step.</p>
+
+  <h2 id="recurring">8. Recurring bills &amp; reminders <span class="pill on">on by default</span></h2>
+  <p>Add anything charged on the same day each month under <b>Settings → Recurring Subscriptions</b>. Two things then happen.</p>
+  <h3>It posts the charge</h3>
+  <p>On launch, any charge whose day has arrived is written into the ledger, tagged <code>Subscription</code> and <code>Auto-generated</code>. Before writing, the ledger is checked for a matching charge that month, so a failed run or a second device cannot double-post. Backfill is capped at 12 months.</p>
+  <h3>It warns you first</h3>
+  <p>A <b>Next 30 Days</b> agenda on the Dashboard lists what is coming, with a net total; a charge you already entered by hand is greyed out as "already recorded". A slim bar at the top names anything inside your lead time (default 5 days, configurable). That bar cannot be dismissed on purpose — silencing an unpaid bill hides the one thing worth being told about. It clears itself when the charge lands.</p>
+  <h3>Notifications while the app is closed <span class="pill off">opt-in</span></h3>
+  <p><b>Settings → Bill Reminders</b> turns on a device notification a few days before a charge. It is entirely on-device — no server, no push service, nothing sent anywhere.</p>
+  <p class="warn">Background delivery needs the app <b>installed</b> (see <a href="#install">§13</a>) on <b>Chromium</b> — desktop or Android. iOS Safari and ordinary browser tabs fall back to the in-app bar, and the settings panel says so rather than offering a switch that cannot work. Even where supported, the browser decides when to wake the app: the lead time is a floor, not a promise. Seven taps on the <b>Bill Reminders</b> heading reveals a diagnostics panel for when a reminder goes quiet.</p>
+
+  <h2 id="insights">9. Insights &amp; the 90-day forecast</h2>
+  <p>The Insights tab is organised by what you can do about it.</p>
+  <dl>
+    <dt>Act — attention &amp; wins</dt>
+    <dd>A written summary of the period, then ranked alerts: a category well above its own multi-month average, spending pace that outruns income, an unusually large single purchase. Alerts need at least two months of real history before they fire, and are capped so the panel stays readable. Wins are called out too.</dd>
+    <dt>Ahead — the next 90 days <span class="pill">follows the Cash flow toggle</span></dt>
+    <dd>Per month: <b>committed</b> (scheduled subscriptions, near-certain) and <b>estimated</b> (the trailing three-month median of everything else) drawn as separate segments, so a guess never borrows the authority of a known charge. A median, not an average, so one holiday does not poison three months. Under three complete months of history it says so and estimates nothing.</dd>
+    <dd class="muted">It projects cash <b>flow</b>, not a balance — the app tracks what you spend, not what you hold, and inventing an opening balance would be worse than the gap.</dd>
+    <dt>Understand — the architecture</dt>
+    <dd>Savings rate as the headline, fixed versus discretionary costs, a 50/30/20 read, and where income comes from. Money moved into savings or investments is excluded from spending, so investing never lowers your reported savings rate. Anything the classifier could not place is counted but flagged rather than silently filed as a "want".</dd>
+    <dt>Explore — patterns</dt>
+    <dd>Category trends against equivalent past periods, frequent vendors, largest transactions, and the Travel / Property / family dashboards.</dd>
+  </dl>
+  <p class="muted">Every comparison is like-for-like: a month in progress is compared against the <b>same number of days</b> of the previous month, not against a complete one.</p>
+
+  <h2 id="duplicates">10. Duplicate detection</h2>
+  <p>When the same charge is recorded twice — a failed sync, two devices, a manual entry that the recurring engine also posted — a review card appears at the top of the ledger.</p>
+  <p>It is deliberately cautious, because a false positive invites you to delete something real. A pair must match to the cent, sit within a day of each other, share a category, and have near-identical descriptions. Beyond that:</p>
+  <ul>
+    <li><b>Habitual charges are left alone.</b> If the same vendor and amount appears on three or more separate days it is a fixed price — the same coffee, the same fare — where a matching amount means nothing. A vendor whose charges vary landing on the identical figure twice is far more telling. This is measured from your own history, not from a list of guessed vendor names.</li>
+    <li><b>Same day, same vendor, same card</b> is the only combination rated <code>high</code>. Anything crossing midnight stays a suggestion.</li>
+    <li><b>Two foreign charges</b> must also agree on the original amount and currency, not just the converted RON figure.</li>
+  </ul>
+  <p>Tap either row to open it in full before deciding. Choosing <b>Keep this</b> copies over any notes, trip or tags the other row has and that this one lacks, then archives the rest — behind a confirmation. <b>Not duplicates</b> is remembered on this device.</p>
+
+  <h2 id="offline">11. Working offline</h2>
+  <p>Every successful load is mirrored locally, so the app opens instantly and keeps working without a connection.</p>
+  <ul>
+    <li><b>Reading:</b> if a refresh fails, the ledger you already have is shown behind a bar reading <em>Showing data from 14:32 — offline</em>. It never pretends to be current.</li>
+    <li><b>Writing:</b> changes are saved on the device and queued. They appear in the ledger immediately, marked <code>⏳ Syncing</code>, and are sent in order when the connection returns.</li>
+    <li><b>Order is preserved.</b> If one change cannot be sent, everything after it waits rather than jumping the queue — reordering writes could resurrect a row you deleted.</li>
+    <li><b>Nothing is dropped silently.</b> Anything Notion actively rejects is listed under <b>Settings → Changes Notion rejected</b> with the real error, and Retry / Discard.</li>
+  </ul>
+  <p class="note">While offline, or while changes are queued, automatic subscription posting pauses. It decides what to post by checking the ledger, and a ledger that predates your queued changes would make it post them all a second time.</p>
+
+  <h2 id="settings">12. Settings reference</h2>
+  <h3>Feature toggles</h3>
+  <dl>
+    <dt>Budget limits <span class="pill on">on</span></dt>
+    <dd>The limits panel and progress bars on the Dashboard.</dd>
+    <dt>Cash flow <span class="pill on">on</span></dt>
+    <dd>The income-vs-expenses chart, and the 90-day projection in Insights.</dd>
+    <dt>Transfers <span class="pill off">off</span></dt>
+    <dd>The third transaction type. Most people never need to track internal moves, so it stays invisible until asked for.</dd>
+    <dt>Upcoming bills <span class="pill on">on</span></dt>
+    <dd>The Dashboard agenda and the reminder bar. Turning this off also turns off background notifications.</dd>
+  </dl>
+  <h3>Managing data</h3>
+  <p><b>Recurring Subscriptions</b> and <b>Trips Management</b> let you add, edit and remove those records without leaving the app. Deleting archives in Notion.</p>
+  <p class="warn"><b>Erase Notion data &amp; use samples</b> archives <em>every</em> Transaction, Subscription and Trip in your real workspace and switches the app to sample data. You must type a confirmation word. Notion keeps archived pages in its trash for 30 days, so they can be restored from there — but WhereItWent cannot undo it. This is for starting genuinely clean, not for tidying up.</p>
+  <p>To disconnect without deleting anything, empty the token and database fields and save. The app returns to sample data and your Notion is untouched.</p>
+  <h3>Appearance</h3>
+  <p>A sun/moon button switches light and dark. The choice is remembered on the device and the guide follows it.</p>
+
+  <h2 id="install">13. Installing as an app</h2>
+  <p>WhereItWent is a Progressive Web App. Installing it gives a home-screen icon, a window without browser chrome, and — on Chromium — the ability to deliver reminders in the background.</p>
+  <ul>
+    <li><b>Desktop Chrome / Edge:</b> the install icon in the address bar, or ⋮ → Install.</li>
+    <li><b>Android Chrome:</b> ⋮ → Add to Home screen / Install app.</li>
+    <li><b>iOS Safari:</b> Share → Add to Home Screen. Works fully except background notifications, which iOS does not offer to web apps.</li>
+  </ul>
+  <p class="muted">Launch it from the installed icon rather than a tab — Chromium only grants background wake-ups to installed apps, and it weighs how often you actually use it.</p>
+
+  <h2 id="limits">14. Honest limits</h2>
+  <p>Things it does not do, stated plainly so you are not left hunting for them:</p>
+  <ul>
+    <li><b>No account balances or net worth.</b> The app records movement, not holdings — which is why the forecast projects cash flow rather than a balance.</li>
+    <li><b>No bank import.</b> Every row is entered by hand, or posted by the recurring engine.</li>
+    <li><b>No CSV import or export from the app.</b> Notion does both, and your data is already there.</li>
+    <li><b>No split transactions.</b> A shop that was half groceries, half household needs two rows.</li>
+    <li><b>No savings goals</b>, no receipt attachments, no tag editing in the form, no in-app undo.</li>
+    <li><b>No household or shared access.</b> Deliberately single-person; share the Notion databases if someone else needs to see them.</li>
+    <li><b>One base currency, RON.</b> Foreign amounts are recorded and converted, but every total is in RON.</li>
+    <li><b>No cross-device sync of preferences.</b> Token, theme, lead time and dismissals are per-device. The financial data syncs through Notion.</li>
   </ul>
 
-  <h3>Transactions Ledger</h3>
-  <p>The lower section is your complete ledger. You can sort by clicking the headers (Date, Description, Category, Account, Amount). The Add Transaction component dynamically filters available categories depending on whether you input a positive amount (Income) or a negative amount (Expense), and renders their emojis and descriptions inline.</p>
+  <h2 id="faq">15. Troubleshooting &amp; FAQ</h2>
+  <dl class="faq">
+    <dt>I connected Notion but a section is empty.</dt>
+    <dd>Almost always a database that was not shared with the integration. Open it in Notion, <code>•••</code> → Connections, add the integration. Saving in Settings queries every database you filled in, so re-saving will tell you which one fails.</dd>
 
-  <h3>Settings & Subscriptions</h3>
-  <p>The <b>Settings</b> tab is where you configure your Notion integration. You can also define your <b>Recurring Subscriptions</b> here. The app will automatically generate transactions for these on the specified day of each month upon launch.</p>
-  <p>You can also toggle specific UI features on and off, such as the Budget Limits engine and the Cash Flow Trend chart, and swap between Light and Dark themes.</p>
+    <dt>Budgets show nothing even though I set limits in Notion.</dt>
+    <dd>Check the Categories database really has a <b>Number</b> property named exactly <code>Monthly Limit (RON)</code>, brackets and all. A differently-named or wrongly-typed property reads as empty.</dd>
 
-  <h2>4. Data Ownership & Sync</h2>
-  <p>Where It Went deliberately doesn't ship with any shared or hardcoded data. It uses a <b>Bring Your Own (BYO)</b> token model: your Notion Integration Token and Database links live in Settings, are stored only in your browser's local storage, and are sent to Notion's API via a thin serverless proxy (<code>/api/notion</code>) that exists purely to avoid CORS restrictions.</p>
-  <p class="note">To see new categories or accounts added directly in Notion, simply refresh the page. Adding a new transaction via the app will automatically fetch the latest data.</p>
+    <dt>A save failed with a message about a property that does not exist.</dt>
+    <dd>A property name in Notion does not match <a href="#schema">§4</a>, or a Select is missing the option being written. Selects are closed lists: writing an unregistered option makes Notion reject the entire write, so the whole transaction fails rather than just that field. Currencies are the usual culprit — register all sixteen.</dd>
+
+    <dt>Why is my expense defaulting to the wrong Revolut?</dt>
+    <dd>If you have two accounts with the same name in different currencies, the app prefers the RON one for everyday spending. Pick the other explicitly when you mean it, and the currency follows the account.</dd>
+
+    <dt>Reminders are enabled but nothing arrives.</dt>
+    <dd>Check, in order: the app is <b>installed</b> and launched from its icon; the browser is Chromium; notification permission is granted; and a bill genuinely falls inside your lead time. Then use the diagnostics panel — seven taps on the Bill Reminders heading. Background delivery is best-effort by design and the browser may simply decline.</dd>
+
+    <dt>The app says it is showing old data.</dt>
+    <dd>It could not reach Notion and is showing the last copy it downloaded. Anything you change is queued and marked <code>⏳ Syncing</code>, and goes out when the connection returns.</dd>
+
+    <dt>Something is flagged as a duplicate but isn't.</dt>
+    <dd>Press <b>Not duplicates</b>; it is remembered on that device. If it happens often for a fixed-price purchase, that vendor and amount probably has not appeared on enough separate days yet for the app to recognise it as a habit.</dd>
+
+    <dt>Can I edit records directly in Notion?</dt>
+    <dd>Yes — that is the point. The app reads whatever is there next time it loads. The one exception is a subscription's <code>LastProcessed</code>, which the posting engine manages; editing it by hand can cause a charge to be posted twice or skipped.</dd>
+
+    <dt>Is my token safe?</dt>
+    <dd>It is stored in this browser only and sent solely to Notion. Nothing is retained by any intermediary. Grant the integration access only to the five databases it needs — Notion integrations see nothing you have not shared. Revoke it any time at notion.so/my-integrations.</dd>
+
+    <dt>How do I start completely fresh?</dt>
+    <dd>Either delete the rows in Notion yourself, or use <b>Erase Notion data &amp; use samples</b> in Settings — read the warning in <a href="#settings">§12</a> first.</dd>
+  </dl>
+
+  <footer>
+    Your money, your Notion, your device. WhereItWent stores nothing of its own.
+  </footer>
 </div>
 </body>
 </html>

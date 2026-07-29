@@ -72,6 +72,37 @@ describe('TransactionForm', () => {
     expect(accountSelect.value).toBe('a1');
   });
 
+  it('never re-picks the account when the category is corrected on an existing transaction', () => {
+    // Fixing a miscategorised row must not quietly move the money somewhere
+    // else. The picker used to skip only the first render, so any later
+    // category change rewrote the recorded account.
+    const initialTx = {
+      id: 'tx1', description: 'Bakery', amount: 30, date: '2026-01-01',
+      type: 'Expense', categoryId: 'c1', accountId: 'a1', tags: []
+    };
+    const cats = [
+      { id: 'c1', name: 'Groceries', type: 'Expense' },
+      { id: 'c2', name: 'Dining', type: 'Expense' },
+    ];
+    render(<TransactionForm categories={cats} accounts={multiCurrencyAccounts} initialTx={initialTx} onSave={vi.fn()} onCancel={vi.fn()} onDelete={vi.fn()} />);
+
+    expect(screen.getByLabelText(/account/i).value).toBe('a1');
+    fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'c2' } });
+    expect(screen.getByLabelText(/account/i).value).toBe('a1');
+  });
+
+  it('adopts the new account currency when the account is changed by hand', async () => {
+    // A manually-picked currency used to shadow the account's own for good, so
+    // realising you had the wrong account left the wrong currency behind.
+    render(<TransactionForm categories={categories} accounts={multiCurrencyAccounts} onSave={vi.fn()} onCancel={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'USD' } });
+    expect(screen.getByLabelText('Currency').value).toBe('USD');
+
+    fireEvent.change(screen.getByLabelText(/account/i), { target: { value: 'a2' } }); // Revolut, EUR
+    await waitFor(() => expect(screen.getByLabelText('Currency').value).toBe('EUR'));
+  });
+
   it('surfaces a thrown save error and keeps the form open with values intact', async () => {
     const onSave = vi.fn().mockRejectedValue(new Error('Notion rejected the write'));
     render(<TransactionForm categories={categories} accounts={accounts} onSave={onSave} onCancel={vi.fn()} />);
@@ -101,11 +132,57 @@ describe('TransactionForm', () => {
 
       fireEvent.change(screen.getByPlaceholderText('e.g. Revolut top-up'), { target: { value: 'Top-up' } });
       fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '200' } });
+      // A transfer now needs both ends.
+      fireEvent.change(screen.getByLabelText(/^From/), { target: { value: 'a1' } });
+      fireEvent.change(screen.getByLabelText(/^To/), { target: { value: 'a2' } });
       fireEvent.submit(document.querySelector('form'));
 
       await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
       const [, data] = onSave.mock.calls[0];
-      expect(data).toMatchObject({ type: 'Transfer', categoryId: '' });
+      expect(data).toMatchObject({ type: 'Transfer', categoryId: '', accountId: 'a1', toAccountId: 'a2' });
+    });
+
+    it('will not save a transfer without a destination account', async () => {
+      const onSave = vi.fn();
+      render(<TransactionForm categories={categories} accounts={accounts} allowTransfer onSave={onSave} onCancel={vi.fn()} />);
+
+      fireEvent.click(screen.getByRole('radio', { name: 'Transfer' }));
+      fireEvent.change(screen.getByPlaceholderText('e.g. Revolut top-up'), { target: { value: 'Top-up' } });
+      fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '200' } });
+      fireEvent.submit(document.querySelector('form'));
+
+      expect(onSave).not.toHaveBeenCalled();
+      expect(await screen.findByText(/account the money went to/i)).toBeDefined();
+    });
+
+    it('will not let a transfer send money to the account it came from', async () => {
+      // "Cash to Cash" records nothing and would reconcile against itself.
+      const onSave = vi.fn();
+      render(<TransactionForm categories={categories} accounts={accounts} allowTransfer onSave={onSave} onCancel={vi.fn()} />);
+
+      fireEvent.click(screen.getByRole('radio', { name: 'Transfer' }));
+      fireEvent.change(screen.getByPlaceholderText('e.g. Revolut top-up'), { target: { value: 'Top-up' } });
+      fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '200' } });
+      // The To list excludes the From account, so force the collision directly.
+      const to = screen.getByLabelText(/^To/);
+      Object.defineProperty(to, 'value', { value: 'a1', configurable: true });
+      fireEvent.change(to);
+      fireEvent.submit(document.querySelector('form'));
+
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it('omits the destination account entirely for a non-transfer', async () => {
+      const onSave = vi.fn().mockResolvedValue();
+      render(<TransactionForm categories={categories} accounts={accounts} allowTransfer onSave={onSave} onCancel={vi.fn()} />);
+
+      fireEvent.change(screen.getByPlaceholderText('e.g. Groceries'), { target: { value: 'Milk' } });
+      fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '10' } });
+      fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'c1' } });
+      fireEvent.submit(document.querySelector('form'));
+
+      await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+      expect(onSave.mock.calls[0][1].toAccountId).toBe('');
     });
 
     it('still offers Transfer when editing an existing Transfer even if the toggle is now off', () => {

@@ -17,7 +17,7 @@ import { getUpcomingBills, billsWithinLeadTime, DEFAULT_LEAD_DAYS } from './lib/
 import { writeReminderState } from './lib/reminders';
 import {
   createOfflineClient, saveSnapshot, readSnapshot, readOutbox, readFailed,
-  flushOutbox, isOnline,
+  flushOutbox, isOnline, applyLocally,
 } from './lib/outbox';
 import PeriodSheet from './components/PeriodSheet';
 import FilterSheet from './components/FilterSheet';
@@ -142,6 +142,22 @@ export default function App() {
     writeReminderState(data, { enabled: remindersOn, leadDays });
   }, [data, leadDays, config.demoMode, showUpcoming]);
 
+  /**
+   * Lay any still-queued writes over a dataset.
+   *
+   * Without this the "optimistic" writes were not optimistic at all: an offline
+   * save enqueued the change and then called `loadData`, which failed and fell
+   * back to a snapshot that predated it — so the transaction the user had just
+   * typed disappeared from the screen entirely until the next successful sync.
+   */
+  const withPendingWrites = useCallback((dataset) => {
+    const queue = readOutbox();
+    if (queue.length === 0) return dataset;
+    let transactions = dataset.transactions || [];
+    for (const item of queue) transactions = applyLocally(transactions, item);
+    return { ...dataset, transactions };
+  }, []);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -162,7 +178,7 @@ export default function App() {
     // revalidate behind it.
     const snapshot = readSnapshot();
     if (snapshot) {
-      setData(snapshot.data);
+      setData(withPendingWrites(snapshot.data));
       setLoading(false);
     }
 
@@ -183,21 +199,24 @@ export default function App() {
         client.fetchTrips()
       ]);
       const fresh = { categories, accounts, transactions, subscriptions, trips };
-      setData(fresh);
+      // Snapshot the server truth, but *show* it with anything still queued on
+      // top — a partially-failed flush leaves items behind that must stay visible.
       saveSnapshot(fresh);
+      setData(withPendingWrites(fresh));
       setStaleAt(null);
     } catch (e) {
       console.error('Failed to fetch data:', e);
       if (snapshot) {
         // Showing the ledger you downloaded an hour ago beats an error card
         // that pretends the data never existed — as long as it says so.
+        setData(withPendingWrites(snapshot.data));
         setStaleAt(snapshot.savedAt);
       } else {
         setLoadError(e.message || 'Failed to load data from Notion.');
       }
     }
     setLoading(false);
-  }, [client, baseClient, config.demoMode]);
+  }, [client, baseClient, config.demoMode, withPendingWrites]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

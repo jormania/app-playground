@@ -80,7 +80,9 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
       {/* 8px row gap and no extra margin above the buttons — with Currency
           added this form gained a row, and the modal has to stay scroll-free on
           a laptop as well as a phone. */}
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {/* 3px horizontal padding so a focused field's ring is not clipped by the
+          modal body's own overflow guard. */}
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '0 3px', minWidth: 0, boxSizing: 'border-box' }}>
         <Field label="Trip Name" placeholder="e.g. Billund 2025" value={name} onChange={e => setName(e.target.value)} required />
         {/* Currency sits beside Destination, not beside Status: the Status
             control has three fixed-width segments and will not shrink, so

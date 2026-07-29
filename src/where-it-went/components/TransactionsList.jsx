@@ -11,6 +11,14 @@ import { readJson, writeJson } from '../lib/storage';
 
 const PAGE_SIZE = 200;
 
+/** Amount as money moving: income positive, expense negative, transfer neutral. */
+function signedAmount(tx) {
+  const value = Number(tx?.amount) || 0;
+  if (tx?.type === 'Income') return value;
+  if (tx?.type === 'Expense') return -value;
+  return 0; // a transfer changes no total, so it sorts between the two
+}
+
 export default function TransactionsList({ data, client, onDataChange, filterProps, period, allowTransfer = false }) {
   const { filterType: filter = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
 
@@ -59,7 +67,11 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
         case 'description': return (t.description || '').toLowerCase();
         case 'category': return (categoriesById.get(t.categoryId)?.name || '').toLowerCase();
         case 'account': return (accountsById.get(t.accountId)?.name || '').toLowerCase();
-        case 'amount': return t.amount ?? 0;
+        // Signed, so the sort matches what the row actually shows. Amounts are
+        // stored unsigned, so an Income of 100 and an Expense of 100 used to
+        // compare equal and an expense of 500 outranked an income of 200 —
+        // "highest amount" meant magnitude, not money in or out.
+        case 'amount': return signedAmount(t);
         case 'date':
         default: {
           const d = parseTxDate(t.date);
@@ -115,6 +127,21 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
   }, [filtered, visibleCount, sortConfig.key, categoriesById, accountsById]);
 
   const gridTemplate = sortConfig.key === 'date' ? '2fr 1fr 1fr 1fr' : '1fr 2fr 1fr 1fr 1fr';
+
+  /** A row still sitting in the offline outbox, drawn as clearly unsent. */
+  const pendingBadge = (tx) => (tx.pending ? (
+    <span
+      title="Saved on this device — not yet synced to Notion"
+      style={{
+        fontSize: '0.6rem', fontWeight: 'var(--weight-bold)', padding: '1px 5px',
+        borderRadius: 'var(--radius-sm)', textTransform: 'uppercase', letterSpacing: '0.5px',
+        backgroundColor: 'color-mix(in srgb, var(--color-warning) 18%, transparent)',
+        color: 'var(--color-warning)', whiteSpace: 'nowrap', flex: 'none'
+      }}
+    >
+      ⏳ Syncing
+    </span>
+  ) : null);
 
   const rowKeyHandler = (tx) => (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -214,7 +241,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                         </div>
                       )}
                     </div>
-                    <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', minWidth: 0 }}>
                       <span style={{
                         fontSize: 'var(--text-xs)', padding: '2px 8px',
                         background: isUnknownCat ? 'color-mix(in srgb, var(--color-muted) 10%, transparent)' : `color-mix(in srgb, ${catColor} 10%, transparent)`,
@@ -224,8 +251,15 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                       }}>
                         {isUnknownCat ? '⚠️ Unknown' : isTransfer ? `🔁 ${displayCatName}` : displayCatName}
                       </span>
+                      {pendingBadge(tx)}
                     </div>
-                    <div className="tx-col-account" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>{accountsById.get(tx.accountId)?.name || '—'}</div>
+                    {/* A transfer's account cell reads as a route, so both ends
+                        are visible without opening the row. */}
+                    <div className="tx-col-account" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {isTransfer && tx.toAccountId
+                        ? `${accountsById.get(tx.accountId)?.name || '—'} → ${accountsById.get(tx.toAccountId)?.name || '—'}`
+                        : (accountsById.get(tx.accountId)?.name || '—')}
+                    </div>
                     <div className="tx-col-amount" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
                       <div style={{
                         color: tx.type === 'Income' ? 'var(--color-success)' : 'var(--color-ink)',

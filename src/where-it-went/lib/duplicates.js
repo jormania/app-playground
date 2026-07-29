@@ -112,6 +112,17 @@ export function scorePair(a, b, options = {}) {
   if (Number(a.amount) !== Number(b.amount)) return null;
   if ((a.type || 'Expense') !== (b.type || 'Expense')) return null;
 
+  // Two *foreign* charges can convert to the same RON figure while being
+  // genuinely different purchases, so when both carry an original amount it has
+  // to match too. Only compared when both sides have one — a foreign charge and
+  // a domestic one at the same RON total can still be a real double-entry.
+  const aForeign = a.originalAmount != null && !!a.originalCurrency;
+  const bForeign = b.originalAmount != null && !!b.originalCurrency;
+  if (aForeign && bForeign) {
+    if (a.originalCurrency !== b.originalCurrency) return null;
+    if (Number(a.originalAmount) !== Number(b.originalAmount)) return null;
+  }
+
   const gap = dayGap(a.date, b.date);
   if (gap === null || gap > dayWindow) return null;
 

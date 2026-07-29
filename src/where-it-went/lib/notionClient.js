@@ -166,6 +166,9 @@ export class NotionClient {
       type: row.properties.Type?.select?.name || 'Expense',
       categoryId: row.properties.Category?.relation?.[0]?.id || '',
       accountId: row.properties.Account?.relation?.[0]?.id || '',
+      // Transfers move money *between* two accounts. `Account` is the source and
+      // `To Account` the destination; it stays empty for Income and Expense.
+      toAccountId: row.properties['To Account']?.relation?.[0]?.id || '',
       tripId: row.properties.Trip?.relation?.[0]?.id || '',
       // Read by the Travel/Property/Nora classifiers — previously never fetched.
       notes: plainText(row.properties.Notes?.rich_text),
@@ -200,6 +203,7 @@ export class NotionClient {
           // Empty relations must be `[]`, not `[{ id: '' }]` — Notion 400s on the latter.
           'Category': relation(tx.categoryId),
           'Account': relation(tx.accountId),
+          'To Account': relation(tx.toAccountId),
           'Trip': relation(tx.tripId),
           'Notes': richText(tx.notes),
           'Original Amount': { number: tx.originalAmount ?? null },
@@ -224,6 +228,7 @@ export class NotionClient {
     if (updates.type !== undefined) properties['Type'] = { select: { name: updates.type } };
     if (updates.categoryId !== undefined) properties['Category'] = relation(updates.categoryId);
     if (updates.accountId !== undefined) properties['Account'] = relation(updates.accountId);
+    if (updates.toAccountId !== undefined) properties['To Account'] = relation(updates.toAccountId);
     if (updates.tripId !== undefined) properties['Trip'] = relation(updates.tripId);
     if (updates.notes !== undefined) properties['Notes'] = richText(updates.notes);
     if (updates.originalAmount !== undefined) properties['Original Amount'] = { number: updates.originalAmount ?? null };

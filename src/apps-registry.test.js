@@ -16,7 +16,9 @@ const REACT_VITE_TITLES = [
   'WhereItWent',
 ]
 
-const STATIC_TITLES = ['Touch Grass · Original', 'Touch Grass · Thrive', 'Touch Grass · Nora', 'Codex Alchymicus — KCD2']
+// Codex Alchymicus dropped its "— KCD2" suffix when it grew to cover KCD1 too
+// (c0ec30c); the registry is the source of truth for shipped titles.
+const STATIC_TITLES = ['Touch Grass · Original', 'Touch Grass · Thrive', 'Touch Grass · Nora', 'Codex Alchymicus']
 
 describe('APPS registry', () => {
   it('marks exactly the Vite+React apps as kind: "react-vite"', () => {

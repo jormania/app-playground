@@ -240,9 +240,11 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
       {status.msg && (
         <div role="status" style={{
           padding: 'var(--space-sm)', borderRadius: 'var(--radius-md)',
-          backgroundColor: status.type === 'error' ? 'rgba(255, 59, 48, 0.1)' : 'rgba(52, 199, 89, 0.1)',
+          // Token-derived, not hardcoded rgba: the old literal red/green ignored
+          // the theme entirely and would have stayed iOS-red on any repalette.
+          backgroundColor: `color-mix(in srgb, ${status.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)'} 12%, transparent)`,
           color: status.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)',
-          border: `1px solid ${status.type === 'error' ? 'rgba(255, 59, 48, 0.2)' : 'rgba(52, 199, 89, 0.2)'}`
+          border: `1px solid color-mix(in srgb, ${status.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)'} 30%, transparent)`
         }}>
           {status.msg}
           {scrubProgress && scrubProgress.total ? ` (${scrubProgress.done}/${scrubProgress.total})` : ''}

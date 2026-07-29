@@ -4,6 +4,7 @@ import { Button } from '../../ds/components/Button';
 import { ConfirmModal } from '../../ds';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { sortTrips } from '../services/trips';
+import { pickDefaultAccount } from '../lib/accountPicker';
 import { toDateString } from '../lib/period';
 import { BASE_CURRENCY, CURRENCIES, fetchRate, convert, impliedRate, formatRateNote, canConvert } from '../lib/fx';
 
@@ -30,6 +31,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
   const [categoryId, setCategoryId] = useState(initialTx?.categoryId || '');
   const [accountId, setAccountId] = useState(initialTx?.accountId || accounts[0]?.id || '');
   const [tripId, setTripId] = useState(initialTx?.tripId || '');
+  const [toAccountId, setToAccountId] = useState(initialTx?.toAccountId || '');
   const [notes, setNotes] = useState(initialTx?.notes || '');
   // One amount field, whose currency is selectable. When it isn't RON the typed
   // figure is the *original* amount and the RON total is derived from it — which
@@ -50,6 +52,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
   const amountId = useId();
   const currencySelectId = useId();
   const baseAmountId = useId();
+  const toAccountSelectId = useId();
 
   // Once the RON total is edited by hand it must stop being overwritten by the
   // rate — a card's own fee is exactly the kind of thing worth recording.
@@ -64,10 +67,9 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
       : String(initialTx?.amount ?? ''),
   );
 
-  // The account auto-picker must never fire for a transaction that already has one:
-  // opening an existing row and saving it used to silently rewrite its Account to
-  // whatever the keyword heuristic preferred.
-  const skipAutoAccount = useRef(!!initialTx);
+  // Tracks whether the user has chosen a currency by hand, so changing the
+  // Account can stop overriding it — and can reset it when they do.
+  const currencyTouched = useRef(!!initialTx?.originalCurrency);
 
   const sortedAccounts = [...accounts].sort((a, b) => a.name.localeCompare(b.name));
   const isTransfer = type === 'Transfer';
@@ -99,34 +101,24 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
   const isForeign = activeCurrency !== BASE_CURRENCY;
   const today = toDateString(new Date());
 
+  // Suggest an account from the category — for *new* transactions only.
+  //
+  // It used to skip only the first render, so correcting the category on an
+  // existing transaction ("Travel" -> "Groceries") silently rewrote the account
+  // it had been filed against. An account already recorded is a fact about
+  // where the money moved; a category correction must never overwrite it.
   useEffect(() => {
-    if (skipAutoAccount.current) {
-      // Consume the skip once, so a *deliberate* category change still helps.
-      skipAutoAccount.current = false;
-      return;
-    }
-    if (isTransfer) return; // no category-based signal to auto-pick an account from
+    if (initialTx) return;
+    if (isTransfer) return; // no category signal to pick an account from
     if (!selectedCat || !accounts || accounts.length === 0) return;
-
-    let keywords = [];
-    if (selectedCat.type === 'Expense') {
-      keywords = ['revolut', 'card', 'checking', 'bank', 'cash'];
-    } else if (selectedCat.type === 'Income') {
-      const catName = selectedCat.name.toLowerCase();
-      if (catName.includes('salary')) keywords = ['checking', 'bank', 'revolut', 'main'];
-      else if (catName.includes('rent') || catName.includes('gift')) keywords = ['cash', 'revolut', 'checking'];
-      else if (catName.includes('freelance') || catName.includes('loan')) keywords = ['revolut', 'checking', 'bank'];
-      else keywords = ['checking', 'revolut', 'cash'];
+    const target = pickDefaultAccount(selectedCat, accounts);
+    if (target) {
+      setAccountId(target.id);
+      // A suggested account brings its own currency with it.
+      currencyTouched.current = false;
+      setCurrency('');
     }
-
-    let targetAcc = null;
-    for (const kw of keywords) {
-      targetAcc = accounts.find(a => a.name.toLowerCase().includes(kw));
-      if (targetAcc) break;
-    }
-    if (!targetAcc) targetAcc = accounts[0];
-    if (targetAcc) setAccountId(targetAcc.id);
-  }, [categoryId, selectedCat, accounts, isTransfer]);
+  }, [initialTx, categoryId, selectedCat, accounts, isTransfer]);
 
   // Look up the rate whenever the currency or the date changes. Failures are
   // silent by design: no rate simply means no suggested conversion, and must
@@ -166,8 +158,11 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
   const baseValid = Number.isFinite(parsedBase) && parsedBase > 0;
   // In RON the single amount is the total. In any other currency the RON figure
   // is what every total is built from, so it has to be present and positive.
+  // A transfer needs both ends, and they must differ — "Cash to Cash" records
+  // nothing and would silently reconcile against itself.
+  const transferValid = !isTransfer || (!!toAccountId && toAccountId !== accountId);
   const canSubmit = !!description.trim() && amountValid && (!isForeign || baseValid)
-    && (isTransfer || !!categoryId) && !!accountId && !!date;
+    && (isTransfer || !!categoryId) && !!accountId && !!date && transferValid;
 
   const effectiveRate = isForeign && amountValid && baseValid
     ? impliedRate(parsedBase, parsedAmount)
@@ -182,6 +177,8 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
 
     if (!canSubmit) {
       if (!amountValid) setFormError('Enter an amount greater than zero.');
+      else if (isTransfer && !toAccountId) setFormError('Choose the account the money went to.');
+      else if (isTransfer && toAccountId === accountId) setFormError('A transfer needs two different accounts.');
       else if (isForeign && !baseValid) setFormError(`Enter the ${BASE_CURRENCY} amount — no exchange rate was available to work it out automatically.`);
       else setFormError('Fill in every required field.');
       return;
@@ -198,6 +195,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
         type,
         categoryId: isTransfer ? '' : categoryId,
         accountId,
+        toAccountId: isTransfer ? toAccountId : '',
         tripId: isTravelCategory && tripId ? tripId : '',
         notes: notes.trim(),
         originalAmount: isForeign ? parsedAmount : null,
@@ -218,7 +216,19 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
   // phone. Fields keep their own internal spacing; only the gap between rows
   // is tightened.
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowX: 'hidden', boxSizing: 'border-box', minWidth: 0 }}>
+    <form
+      onSubmit={handleSubmit}
+      style={{
+        display: 'flex', flexDirection: 'column', gap: '8px',
+        boxSizing: 'border-box', minWidth: 0,
+        // 3px of horizontal breathing room, and no overflow clipping. A focus
+        // ring is a box-shadow, so `overflow-x: hidden` sliced it off the
+        // right-hand field of every paired row — which read as the field itself
+        // being cut off. The layout now fits without clipping, so the guard is
+        // no longer needed; the padding gives the ring somewhere to land.
+        padding: '0 3px',
+      }}
+    >
       <SegmentedControl
         value={type}
         onChange={(val) => { setType(val); setCategoryId(''); }}
@@ -261,6 +271,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
               value={activeCurrency}
               onChange={e => {
                 setCurrency(e.target.value);
+                currencyTouched.current = true;
                 // A new currency invalidates both the manual override and the
                 // "unchanged since open" guard — the RON figure must re-derive.
                 baseTouched.current = false;
@@ -327,9 +338,10 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
           genuinely narrow screen rather than being crushed. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))', gap: 'var(--space-sm)', alignItems: 'start' }}>
       {isTransfer ? (
-        <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--color-muted)', fontStyle: 'italic' }}>
-          Transfers aren't categorized or counted in your income/expense totals — they're just money moving between your own accounts.
-        </p>
+        // Nothing here for a Transfer: the From/To pair below states plainly what
+        // this is, which the old "transfers aren't categorized" paragraph only
+        // described. Reclaiming the row also keeps the modal scroll-free.
+        null
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
           <label htmlFor={categorySelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
@@ -357,14 +369,45 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
       {/* Account */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
         <label htmlFor={accountSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
-          Account <span style={{ color: 'var(--color-danger)' }}>*</span>
+          {isTransfer ? 'From' : 'Account'} <span style={{ color: 'var(--color-danger)' }}>*</span>
         </label>
-        <select id={accountSelectId} value={accountId} onChange={e => setAccountId(e.target.value)} required style={selectStyle}>
+        <select
+          id={accountSelectId}
+          value={accountId}
+          onChange={e => {
+            setAccountId(e.target.value);
+            // Choosing a different account should adopt that account's currency.
+            // Previously a hand-picked currency shadowed it permanently, so
+            // realising you had the wrong account left you with the wrong
+            // currency and no way back to the default.
+            currencyTouched.current = false;
+            setCurrency('');
+          }}
+          required
+          style={selectStyle}
+        >
           {sortedAccounts.map(a => (
             <option key={a.id} value={a.id}>{a.name}{a.currency && a.currency !== BASE_CURRENCY ? ` (${a.currency})` : ''}</option>
           ))}
         </select>
       </div>
+
+      {/* A transfer has two ends. Recording only one meant "Revolut top-up from
+          rent cash" lived entirely in the description, with nothing the app
+          could total or reconcile against either account. */}
+      {isTransfer && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+          <label htmlFor={toAccountSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
+            To <span style={{ color: 'var(--color-danger)' }}>*</span>
+          </label>
+          <select id={toAccountSelectId} value={toAccountId} onChange={e => setToAccountId(e.target.value)} required style={selectStyle}>
+            <option value="">Select account…</option>
+            {sortedAccounts.filter(a => a.id !== accountId).map(a => (
+              <option key={a.id} value={a.id}>{a.name}{a.currency && a.currency !== BASE_CURRENCY ? ` (${a.currency})` : ''}</option>
+            ))}
+          </select>
+        </div>
+      )}
       </div>
 
       {/* Assign to Trip — only for the Travel category.
