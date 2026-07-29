@@ -17,6 +17,12 @@ export class NotionError extends Error {
 }
 
 const relation = (id) => ({ relation: id ? [{ id }] : [] });
+/**
+ * Notion splits any styled text into several runs, so a note typed in Notion with
+ * one bold word or a link arrives as `[{...}, {...}, ...]`. Reading `[0].plain_text`
+ * truncated it at the first run — join them instead.
+ */
+const plainText = (runs) => (Array.isArray(runs) ? runs.map(r => r?.plain_text || '').join('') : '');
 const richText = (value) => ({ rich_text: value ? [{ text: { content: String(value) } }] : [] });
 const title = (value) => ({ title: [{ text: { content: String(value ?? '') } }] });
 
@@ -113,10 +119,10 @@ export class NotionClient {
     return rows
       .map(row => ({
         id: row.id,
-        name: row.properties.Name?.title?.[0]?.plain_text || '',
+        name: plainText(row.properties.Name?.title),
         type: row.properties.Type?.select?.name || 'Expense',
         icon: row.icon?.type === 'emoji' ? row.icon.emoji : null,
-        description: row.properties.Description?.rich_text?.[0]?.plain_text || '',
+        description: plainText(row.properties.Description?.rich_text),
         budgetLimit: row.properties['Monthly Limit (RON)']?.number || null,
         // The property keeps its original name for schema stability — renaming it
         // would break every existing database — but it now means "limit for one
@@ -135,7 +141,7 @@ export class NotionClient {
     const rows = await this._fetchAllPages(this.dbIds.accounts);
     return rows.map(row => ({
       id: row.id,
-      name: row.properties.Name?.title?.[0]?.plain_text || '',
+      name: plainText(row.properties.Name?.title),
       type: row.properties.Type?.select?.name || '',
       currency: row.properties.Currency?.select?.name || 'RON'
     })).filter(a => a.name.trim() !== '');
@@ -151,7 +157,7 @@ export class NotionClient {
     });
     return rows.map(row => ({
       id: row.id,
-      description: row.properties.Description?.title?.[0]?.plain_text || '',
+      description: plainText(row.properties.Description?.title),
       // Keep only the date part: rows written by older builds carry a full timestamp.
       date: (row.properties.Date?.date?.start || '').slice(0, 10),
       amount: row.properties['Amount (RON)']?.number || 0,
@@ -162,7 +168,7 @@ export class NotionClient {
       accountId: row.properties.Account?.relation?.[0]?.id || '',
       tripId: row.properties.Trip?.relation?.[0]?.id || '',
       // Read by the Travel/Property/Nora classifiers — previously never fetched.
-      notes: row.properties.Notes?.rich_text?.[0]?.plain_text || '',
+      notes: plainText(row.properties.Notes?.rich_text),
       // The RON amount stays the source of truth for every total; these two are
       // purely informational — "what did I actually pay in the card's currency" —
       // and were fetched by nobody before this.
@@ -286,7 +292,7 @@ export class NotionClient {
     const rows = await this._fetchAllPages(this.dbIds.subscriptions);
     return rows.map(row => ({
       id: row.id,
-      name: row.properties.Name?.title?.[0]?.plain_text || '',
+      name: plainText(row.properties.Name?.title),
       amount: row.properties.Amount?.number || 0,
       type: row.properties.Type?.select?.name || 'Expense',
       dayOfMonth: row.properties.DayOfMonth?.number || 1,
@@ -393,15 +399,15 @@ export class NotionClient {
     const rows = await this._fetchAllPages(this.dbIds.trips);
     return rows.map(row => ({
       id: row.id,
-      name: row.properties.Name?.title?.[0]?.plain_text || '',
-      destination: row.properties.Destination?.rich_text?.[0]?.plain_text || '',
+      name: plainText(row.properties.Name?.title),
+      destination: plainText(row.properties.Destination?.rich_text),
       startDate: (row.properties['Start Date']?.date?.start || '').slice(0, 10) || null,
       endDate: (row.properties['End Date']?.date?.start || '').slice(0, 10) || null,
       status: row.properties.Status?.select?.name || 'Planned',
       // Drives the transaction form's default currency: on a trip you're
       // spending the destination's money, not your account's.
       currency: row.properties.Currency?.select?.name || '',
-      notes: row.properties.Notes?.rich_text?.[0]?.plain_text || ''
+      notes: plainText(row.properties.Notes?.rich_text)
     }));
   }
 

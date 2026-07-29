@@ -47,8 +47,9 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
       const desc = (t.description || '').toLowerCase();
       const cat = (categoriesById.get(t.categoryId)?.name || '').toLowerCase();
       const acc = (accountsById.get(t.accountId)?.name || '').toLowerCase();
+      const notes = (t.notes || '').toLowerCase();
       const amountMatch = String(t.amount ?? '').includes(q);
-      return desc.includes(q) || cat.includes(q) || acc.includes(q) || amountMatch;
+      return desc.includes(q) || cat.includes(q) || acc.includes(q) || notes.includes(q) || amountMatch;
     });
 
     const inPeriod = filterByPeriod(scoped, period);
@@ -200,7 +201,19 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                         {txDate ? txDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '—'}
                       </div>
                     )}
-                    <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</div>
+                      {/* A note used to be write-only: typed into the form, read by the
+                          classifiers, never shown again. One line, truncated. */}
+                      {tx.notes && (
+                        <div
+                          title={tx.notes}
+                          style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}
+                        >
+                          📝 {tx.notes}
+                        </div>
+                      )}
+                    </div>
                     <div>
                       <span style={{
                         fontSize: 'var(--text-xs)', padding: '2px 8px',

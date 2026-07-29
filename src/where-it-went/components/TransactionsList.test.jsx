@@ -40,6 +40,28 @@ describe('TransactionsList Component', () => {
     expect(screen.getByText('Amount ↓')).toBeDefined();
   });
 
+  it('shows a transaction note in the row and matches it when searching', () => {
+    const dataWithNote = {
+      categories: [{ id: 'c1', name: 'Food' }],
+      accounts: [{ id: 'a1', name: 'Bank' }],
+      transactions: [
+        { id: '1', date: '2026-07-20', description: 'Invoice 4471', amount: 320, type: 'Expense', categoryId: 'c1', accountId: 'a1', notes: 'Plumber, kitchen leak' },
+        { id: '2', date: '2026-07-22', description: 'Salary', amount: 1000, type: 'Income', categoryId: 'c1', accountId: 'a1' }
+      ]
+    };
+
+    const { rerender } = render(<TransactionsList data={dataWithNote} client={mockClient} onDataChange={vi.fn()} />);
+    expect(screen.getByText(/Plumber, kitchen leak/)).toBeDefined();
+
+    // "plumber" appears nowhere but the note — the row is only findable if the
+    // search reads notes.
+    rerender(
+      <TransactionsList data={dataWithNote} client={mockClient} onDataChange={vi.fn()} filterProps={{ searchQuery: 'plumber' }} />
+    );
+    expect(screen.getByText('Invoice 4471')).toBeDefined();
+    expect(screen.queryByText('Salary')).toBeNull();
+  });
+
   it('badges a categoryless Transfer as 🔁 Transfer, not ⚠️ Unknown', () => {
     // A dataset where every non-Transfer transaction has a real category, so any
     // "⚠️ Unknown" badge can only have come from the Transfer row misfiring.

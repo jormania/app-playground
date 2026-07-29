@@ -64,7 +64,8 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
       const desc = (t.description || '').toLowerCase();
       const cat = (categoriesById.get(t.categoryId)?.name || '').toLowerCase();
       const acc = (accountsById.get(t.accountId)?.name || '').toLowerCase();
-      return desc.includes(q) || cat.includes(q) || acc.includes(q);
+      const notes = (t.notes || '').toLowerCase();
+      return desc.includes(q) || cat.includes(q) || acc.includes(q) || notes.includes(q);
     });
   }, [data.transactions, filter, categoryFilter, searchQuery, categoriesById, accountsById]);
 

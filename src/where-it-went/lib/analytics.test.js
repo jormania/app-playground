@@ -59,6 +59,19 @@ describe('generateDeepInsights', () => {
     expect(result.behavioral.travelAnalysis.breakdown.accommodation).toBe(600);
   });
 
+  it('search matches a transaction note, so insights scope the same rows as the ledger', () => {
+    const data = {
+      categories: [{ id: 'home', name: 'Property', type: 'Expense' }],
+      accounts: [{ id: 'a1', name: 'Bank' }],
+      transactions: [
+        { id: 't1', date: NOW.toISOString(), type: 'Expense', amount: 320, categoryId: 'home', description: 'Invoice 4471', notes: 'Plumber, kitchen leak' },
+        { id: 't2', date: NOW.toISOString(), type: 'Expense', amount: 90, categoryId: 'home', description: 'Water bill' }
+      ]
+    };
+    const result = generateDeepInsights(data, 'this_month', { searchQuery: 'plumber' }, NOW);
+    expect(result.financialHealth.totalExpense).toBe(320);
+  });
+
   it('does not let a short exact-word keyword misfire as a substring ("bar" inside "Barcelona")', () => {
     const data = {
       categories: [{ id: 'travel', name: 'Travel', type: 'Expense' }],

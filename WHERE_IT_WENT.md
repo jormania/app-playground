@@ -624,3 +624,25 @@ The aim was for every screen to say what it is and what to do next.
   than a fifth of what came in").
 - **Nora has her own avatar** instead of 👧, which renders dark-haired and
   toddler-proportioned in every emoji font.
+
+## Notes, closed loop (2026-07-29)
+
+`Notes` was write-only from the user's side: you typed it into the form, the
+Travel/Property/Nora classifiers read it, and it was never shown or searched
+again.
+
+- **Notes are searchable** in all three places that filter transactions — the
+  ledger ([`TransactionsList.jsx`](src/where-it-went/components/TransactionsList.jsx)),
+  the Dashboard ([`Dashboard.jsx`](src/where-it-went/components/Dashboard.jsx)),
+  and the insights engine
+  ([`lib/analytics/index.js`](src/where-it-went/lib/analytics/index.js)) — which
+  had to stay in step or the three views would scope a search differently. So
+  "plumber" now finds the row described `Invoice 4471`.
+- **The note shows in the ledger row**, one truncated line under the
+  description with a 📝 marker (full text on hover).
+- **Every rich-text run is joined on read.** Notion splits styled text into
+  runs, so a note typed in Notion with one bold word or a link arrived as
+  several runs and `rich_text[0].plain_text` cut it at the first one. The same
+  one-line `plainText()` helper now covers every rich-text *and* title read in
+  [`notionClient.js`](src/where-it-went/lib/notionClient.js) — a category name or
+  transaction description with a styled word had exactly the same truncation.

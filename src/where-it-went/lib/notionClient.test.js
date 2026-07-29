@@ -127,6 +127,30 @@ describe('NotionClient — reads', () => {
     expect(tx.notes).toBe('Booked via app');
   });
 
+  it('joins every rich-text run so a note styled in Notion is not cut at the first run', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      results: [{
+        id: 'row1',
+        properties: {
+          Description: { title: [{ plain_text: 'Invoice ' }, { plain_text: '4471' }] },
+          Date: { date: { start: '2026-06-30' } },
+          'Amount (RON)': { number: 320 },
+          Type: { select: { name: 'Expense' } },
+          // Notion splits styled text into runs — bolding one word used to lose the rest.
+          Notes: { rich_text: [{ plain_text: 'Plumber for the ' }, { plain_text: 'kitchen' }, { plain_text: ' leak' }] },
+          Tags: { multi_select: [] }
+        }
+      }],
+      has_more: false
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new NotionClient('secret', { transactions: 'db1' });
+    const [tx] = await client.fetchTransactions();
+    expect(tx.notes).toBe('Plumber for the kitchen leak');
+    expect(tx.description).toBe('Invoice 4471');
+  });
+
   it('an untyped row is treated as an Expense, never guessed from the amount sign', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
       results: [{
