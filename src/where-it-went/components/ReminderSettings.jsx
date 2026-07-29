@@ -4,7 +4,7 @@ import { Button } from '../../ds/components/Button';
 import { readJson, writeJson } from '../lib/storage';
 import {
   enableReminders, unregisterPeriodicSync, capabilities, notificationPermission,
-  REMINDERS_DB, REMINDERS_STORE, STATE_KEY, SENT_KEY,
+  writeReminderState, REMINDERS_DB, REMINDERS_STORE, STATE_KEY, SENT_KEY,
 } from '../lib/reminders';
 import { gatherDiagnostics } from '../../shared/notify/diagnostics';
 import { useDiagnosticsReveal } from '../../shared/notify/useDiagnosticsReveal';
@@ -19,7 +19,7 @@ const ENABLED_KEY = 'whereItWent_reminders_enabled';
  * on Chromium, and Periodic Background Sync timing is a lower bound rather than
  * a promise. Saying so up front beats a toggle that looks broken on iOS.
  */
-export default function ReminderSettings() {
+export default function ReminderSettings({ data, leadDays }) {
   const [enabled, setEnabled] = useState(() => readJson(ENABLED_KEY, false));
   const [permission, setPermission] = useState(() => notificationPermission());
   const [busy, setBusy] = useState(false);
@@ -35,19 +35,23 @@ export default function ReminderSettings() {
   const handleToggle = async (next) => {
     setBusy(true);
     try {
+      let on = false;
       if (next) {
         const result = await enableReminders();
         setPermission(result);
         // Only claim it's on if permission actually came back granted —
         // otherwise the toggle would sit "on" while nothing could ever fire.
-        const on = result === 'granted';
-        setEnabled(on);
-        writeJson(ENABLED_KEY, on);
+        on = result === 'granted';
       } else {
         await unregisterPeriodicSync();
-        setEnabled(false);
-        writeJson(ENABLED_KEY, false);
       }
+      setEnabled(on);
+      writeJson(ENABLED_KEY, on);
+
+      // Re-mirror immediately. App's snapshot effect keys off the *data*, which
+      // this toggle doesn't touch — so without this the worker would keep
+      // reading `enabled: false` until the next reload, and nothing would fire.
+      await writeReminderState(data, { enabled: on, leadDays });
     } finally {
       setBusy(false);
     }

@@ -242,7 +242,9 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         </Button>
       </div>
 
-      {features.upcoming !== false && <ReminderSettings />}
+      {features.upcoming !== false && (
+        <ReminderSettings data={data} leadDays={Number(upcomingLeadDays) || DEFAULT_LEAD_DAYS} />
+      )}
 
       {/* Rejected offline writes — surfaced with the real error rather than
           dropped, which is the whole point of the outbox having a dead-letter
