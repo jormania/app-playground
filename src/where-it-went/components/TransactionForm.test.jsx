@@ -1,16 +1,27 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import TransactionForm from './TransactionForm';
+import { fetchRate } from '../lib/fx';
+
+// Never hit the network from a unit test; each case sets the rate it needs.
+vi.mock('../lib/fx', async (importOriginal) => ({
+  ...(await importOriginal()),
+  fetchRate: vi.fn(),
+}));
 
 const categories = [{ id: 'c1', name: 'Groceries', type: 'Expense' }];
 const accounts = [{ id: 'a1', name: 'Cash' }, { id: 'a2', name: 'Revolut' }];
-// Currency lives on the account; only a non-RON one should surface the
-// foreign-amount fields.
+// Currency lives on the account (a trip can override it).
 const multiCurrencyAccounts = [
   { id: 'a1', name: 'Cash', currency: 'RON' },
   { id: 'a2', name: 'Revolut', currency: 'EUR' }
 ];
+
+beforeEach(() => {
+  fetchRate.mockReset();
+  fetchRate.mockResolvedValue(null);
+});
 
 afterEach(() => {
   cleanup();
@@ -110,50 +121,142 @@ describe('TransactionForm', () => {
     });
   });
 
-  describe('Foreign-currency amount', () => {
-    it('is hidden for a RON account and shown once a non-RON account is selected', () => {
+  describe('Currency + live FX', () => {
+    it('defaults the currency to the account currency', () => {
       render(<TransactionForm categories={categories} accounts={multiCurrencyAccounts} onSave={vi.fn()} onCancel={vi.fn()} />);
-      // Default account (Cash, RON) — no foreign-amount section.
-      expect(screen.queryByLabelText(/original amount/i)).toBeNull();
-
+      expect(screen.getByLabelText('Currency').value).toBe('RON'); // Cash
       fireEvent.change(screen.getByLabelText(/account/i), { target: { value: 'a2' } });
-      expect(screen.getByLabelText(/original amount/i)).toBeDefined();
+      expect(screen.getByLabelText('Currency').value).toBe('EUR'); // Revolut
     });
 
-    it('defaults the currency field to the account currency and includes both values on save', async () => {
+    it('lets a trip currency win over the account currency', async () => {
+      // On a trip you spend the destination's money, whatever card settles it.
+      const travelCats = [{ id: 'c_travel', name: 'Travel', type: 'Expense' }];
+      const trips = [{ id: 'trip1', name: 'Krakow', destination: 'Poland', currency: 'PLN', status: 'Active' }];
+      render(<TransactionForm categories={travelCats} accounts={multiCurrencyAccounts} trips={trips} onSave={vi.fn()} onCancel={vi.fn()} />);
+
+      fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'c_travel' } });
+      fireEvent.change(screen.getByLabelText(/assign to trip/i), { target: { value: 'trip1' } });
+      await waitFor(() => expect(screen.getByLabelText('Currency').value).toBe('PLN'));
+    });
+
+    it('shows no RON helper line at all while the currency is RON', () => {
+      render(<TransactionForm categories={categories} accounts={multiCurrencyAccounts} onSave={vi.fn()} onCancel={vi.fn()} />);
+      expect(screen.queryByLabelText('Amount in RON')).toBeNull();
+    });
+
+    it('converts the typed foreign amount into RON using the fetched rate', async () => {
+      fetchRate.mockResolvedValue({ rate: 5, date: '2026-07-28' });
+      render(<TransactionForm categories={categories} accounts={multiCurrencyAccounts} onSave={vi.fn()} onCancel={vi.fn()} />);
+
+      fireEvent.change(screen.getByLabelText(/account/i), { target: { value: 'a2' } });
+      fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '8.5' } });
+
+      await waitFor(() => expect(screen.getByLabelText('Amount in RON').value).toBe('42.5'));
+    });
+
+    it('saves RON as the amount and the typed figure as the original', async () => {
+      fetchRate.mockResolvedValue({ rate: 5, date: '2026-07-28' });
       const onSave = vi.fn().mockResolvedValue();
       render(<TransactionForm categories={categories} accounts={multiCurrencyAccounts} onSave={onSave} onCancel={vi.fn()} />);
 
-      fireEvent.change(screen.getByLabelText(/account/i), { target: { value: 'a2' } }); // Revolut, EUR
-      fireEvent.change(screen.getByPlaceholderText('e.g. Groceries'), { target: { value: 'Café' } });
-      // Both the RON amount and the new Original amount field share the "0.00"
-      // placeholder once the foreign-currency section appears — disambiguate by
-      // exact accessible label instead.
-      fireEvent.change(screen.getByLabelText(/^Amount\b/), { target: { value: '42' } });
+      fireEvent.change(screen.getByLabelText(/account/i), { target: { value: 'a2' } });
+      fireEvent.change(screen.getByPlaceholderText('e.g. Groceries'), { target: { value: 'Cafe' } });
+      fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '8.5' } });
       fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'c1' } });
-      fireEvent.change(screen.getByLabelText(/original amount/i), { target: { value: '8.5' } });
+      await waitFor(() => expect(screen.getByLabelText('Amount in RON').value).toBe('42.5'));
       fireEvent.submit(document.querySelector('form'));
 
       await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
       const [, data] = onSave.mock.calls[0];
+      expect(data.amount).toBe(42.5); // RON stays the source of truth
       expect(data.originalAmount).toBe(8.5);
       expect(data.originalCurrency).toBe('EUR');
     });
 
-    it('omits the foreign amount entirely when left blank', async () => {
+    it('stops overwriting the RON amount once it has been edited by hand', async () => {
+      // A card's own fee beats any published rate, so a manual figure must stick.
+      fetchRate.mockResolvedValue({ rate: 5, date: '2026-07-28' });
+      render(<TransactionForm categories={categories} accounts={multiCurrencyAccounts} onSave={vi.fn()} onCancel={vi.fn()} />);
+
+      fireEvent.change(screen.getByLabelText(/account/i), { target: { value: 'a2' } });
+      fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '8.5' } });
+      await waitFor(() => expect(screen.getByLabelText('Amount in RON').value).toBe('42.5'));
+
+      fireEvent.change(screen.getByLabelText('Amount in RON'), { target: { value: '44.10' } });
+      fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '9' } });
+
+      await new Promise(r => setTimeout(r, 20));
+      expect(screen.getByLabelText('Amount in RON').value).toBe('44.10');
+    });
+
+    it('keeps originalAmount null for a plain RON transaction', async () => {
       const onSave = vi.fn().mockResolvedValue();
       render(<TransactionForm categories={categories} accounts={multiCurrencyAccounts} onSave={onSave} onCancel={vi.fn()} />);
 
-      fireEvent.change(screen.getByLabelText(/account/i), { target: { value: 'a2' } });
-      fireEvent.change(screen.getByPlaceholderText('e.g. Groceries'), { target: { value: 'Café' } });
-      fireEvent.change(screen.getByLabelText(/^Amount\b/), { target: { value: '42' } });
+      fireEvent.change(screen.getByPlaceholderText('e.g. Groceries'), { target: { value: 'Bread' } });
+      fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '12' } });
+      // Category first: choosing one runs the account auto-picker, which prefers
+      // "Revolut" (EUR here) and would drag the currency along with it. Picking
+      // the RON account afterwards is what a user doing this deliberately does.
       fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'c1' } });
+      fireEvent.change(screen.getByLabelText(/account/i), { target: { value: 'a1' } });
+      expect(screen.getByLabelText('Currency').value).toBe('RON');
       fireEvent.submit(document.querySelector('form'));
 
       await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
       const [, data] = onSave.mock.calls[0];
+      expect(data.amount).toBe(12);
       expect(data.originalAmount).toBeNull();
       expect(data.originalCurrency).toBe('');
+    });
+
+    it('asks for the RON amount when no rate is available', async () => {
+      // BGN is still recordable but the ECB no longer quotes it.
+      fetchRate.mockResolvedValue(null);
+      const onSave = vi.fn().mockResolvedValue();
+      render(<TransactionForm categories={categories} accounts={multiCurrencyAccounts} onSave={onSave} onCancel={vi.fn()} />);
+
+      fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'BGN' } });
+      fireEvent.change(screen.getByPlaceholderText('e.g. Groceries'), { target: { value: 'Sofia lunch' } });
+      fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '40' } });
+      fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'c1' } });
+      fireEvent.submit(document.querySelector('form'));
+
+      expect(onSave).not.toHaveBeenCalled();
+      expect(await screen.findByText(/no exchange rate was available/i)).toBeDefined();
+    });
+
+    it('reopens an existing foreign transaction showing the original amount, not the RON one', () => {
+      const initialTx = {
+        id: 'tx1', description: 'Cafe in Vienna', amount: 42, originalAmount: 8.5,
+        originalCurrency: 'EUR', date: '2026-01-01', type: 'Expense',
+        categoryId: 'c1', accountId: 'a2', tags: []
+      };
+      render(<TransactionForm categories={categories} accounts={multiCurrencyAccounts} initialTx={initialTx} onSave={vi.fn()} onCancel={vi.fn()} onDelete={vi.fn()} />);
+      expect(screen.getByLabelText('Amount *').value).toBe('8.5');
+      expect(screen.getByLabelText('Currency').value).toBe('EUR');
+      expect(screen.getByLabelText('Amount in RON').value).toBe('42');
+    });
+
+    it('keeps the saved RON figure on open but re-derives it once the foreign amount changes', async () => {
+      // Restating a saved transaction at today's rate would rewrite history; but
+      // leaving RON alone after the foreign amount changes implied a nonsense
+      // rate (20 EUR still showing 42 L).
+      fetchRate.mockResolvedValue({ rate: 5, date: '2026-07-28' });
+      const initialTx = {
+        id: 'tx1', description: 'Cafe in Vienna', amount: 42, originalAmount: 8.5,
+        originalCurrency: 'EUR', date: '2026-01-01', type: 'Expense',
+        categoryId: 'c1', accountId: 'a2', tags: []
+      };
+      render(<TransactionForm categories={categories} accounts={multiCurrencyAccounts} initialTx={initialTx} onSave={vi.fn()} onCancel={vi.fn()} onDelete={vi.fn()} />);
+
+      // Untouched: the stored figure survives even after the rate arrives.
+      await new Promise(r => setTimeout(r, 20));
+      expect(screen.getByLabelText('Amount in RON').value).toBe('42');
+
+      fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '20' } });
+      await waitFor(() => expect(screen.getByLabelText('Amount in RON').value).toBe('100'));
     });
   });
 });

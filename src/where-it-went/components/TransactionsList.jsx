@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import TransactionForm from './TransactionForm';
+import DuplicateReview from './DuplicateReview';
 import { Button } from '../../ds/components/Button';
 import { Modal } from '../../ds/components/Modal';
 import { AlertModal } from '../../ds';
@@ -123,6 +124,16 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
 
   return (
     <div>
+      {/* Scans the whole ledger, not the filtered view: a duplicate you can't
+          currently see is still a duplicate, and hiding it behind a filter is
+          how it survived this long. */}
+      <DuplicateReview
+        transactions={data.transactions}
+        categoriesById={categoriesById}
+        client={client}
+        onDataChange={onDataChange}
+      />
+
       {filtered.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-2xl)', textAlign: 'center', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', marginTop: 'var(--space-md)' }}>
           <div style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>🍃</div>

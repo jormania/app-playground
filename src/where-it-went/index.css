@@ -151,6 +151,15 @@ a:hover {
     margin-left: auto !important;
     overflow-x: hidden;
   }
+  /* Transaction form actions: Delete + Cancel + Save don't fit one line at
+     375px with default padding, and letting them wrap costs a whole 44px row
+     -- enough to push the modal into a scrollbar. Tightening the horizontal
+     padding keeps all three on one line instead. The flex-wrap in the JSX
+     stays as a safety net for anything narrower still. */
+  .tx-form-actions button {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
   .settings-action-buttons {
     flex-direction: column !important;
   }

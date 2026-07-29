@@ -16,7 +16,13 @@ Create five full-page databases anywhere in your Notion workspace with the follo
 - **Name**: `Name` (Title property)
 - **Type**: `Type` (Select property with options exactly as: `Income`, `Expense`)
 - **Active**: `Active` (Checkbox property)
-- **Monthly Limit (RON)**: `Monthly Limit (RON)` (Number property)
+- **Monthly Limit (RON)**: `Monthly Limit (RON)` (Number property) — despite the name this is
+  the limit for **one budget period**, which is a month only when `Budget Period` says so. The
+  property keeps its original name deliberately: renaming it would break every existing database.
+- **Budget Period**: `Budget Period` (Select: `Monthly`, `Quarterly`, `Yearly`) — blank reads as Monthly
+- **Budget Anchor**: `Budget Anchor` (Date, optional) — the renewal date a quarterly/yearly window
+  counts from, e.g. insurance that renews each March. Ignored for Monthly.
+- **Budget Rollover**: `Budget Rollover` (Checkbox) — carry unspent room (and overspend) forward
 
 ### 1.3 Subscriptions Database
 - **Name**: `Name` (Title property)
@@ -34,6 +40,7 @@ Create five full-page databases anywhere in your Notion workspace with the follo
 - **Start Date**: `Start Date` (Date property)
 - **End Date**: `End Date` (Date property)
 - **Status**: `Status` (Select property with options: `Planned`, `Active`, `Completed`)
+- **Currency**: `Currency` (Select property — same option list as `Original Currency` below)
 - **Notes**: `Notes` (Text / Rich text property)
 
 ### 1.5 Transactions Database
@@ -41,7 +48,12 @@ Create five full-page databases anywhere in your Notion workspace with the follo
 - **Date**: `Date` (Date property)
 - **Amount (RON)**: `Amount (RON)` (Number property)
 - **Original Amount**: `Original Amount` (Number property)
-- **Original Currency**: `Original Currency` (Select property)
+- **Original Currency**: `Original Currency` (Select property). **Every currency the app offers
+  must be registered here as an option.** Notion selects are a closed vocabulary and a page update
+  is atomic, so writing an unregistered option makes Notion reject the *entire* patch — silently
+  dropping the amount, notes and everything else in the same write. The registered set is
+  `RON, EUR, USD, GBP, CHF, PLN, HUF, CZK, BGN, TRY, SEK, NOK, DKK, JPY, CAD, AUD`, mirrored in
+  `CURRENCIES` in [`lib/fx.js`](src/where-it-went/lib/fx.js). Keep the two in step.
 - **Type**: `Type` (Select property with options: `Income`, `Expense`, `Transfer`)
 - **Category**: `Category` (Relation property -> Connect to Categories Database)
 - **Account**: `Account` (Relation property -> Connect to Accounts Database)
@@ -330,3 +342,113 @@ schema change** — the Subscriptions database already carried everything needed
   correctly surfaced "Gym Membership · 150.00 L due in 3 days", the agenda listed
   all four upcoming charges with a −290.00 L net, dismissing stored a 24-hour
   snooze and hid only the strip, and neither surface overflowed at 375px.
+
+## Roadmap Features B–G (2026-07-29)
+
+The remaining six features from [`WHERE_IT_WENT_ROADMAP.md`](WHERE_IT_WENT_ROADMAP.md),
+shipped in one pass after feature A. Repo suite went 1,688 → 1,820 tests.
+
+### Schema sync (found while applying the roadmap's changes)
+
+Auditing the five live databases against the code turned up two drifts that had
+nothing to do with the new features:
+
+- **`Monthly Limit (RON)` did not exist on the Categories database at all.** The app
+  has always read it, so every budget silently came back `null` and the whole
+  Budget Limits panel was dead against live Notion — it only ever worked in demo
+  mode. Added.
+- **Trips had no `Currency`**, needed by the new FX defaulting. Added.
+- The `Currency` option lists on **Accounts** and `Original Currency` on
+  **Transactions** were extended from `RON/EUR/USD` to the full 16-currency set,
+  because an unregistered select option rejects the entire atomic patch.
+
+### B — Non-monthly budget periods & per-category periods
+
+Each category now owns its window: `Monthly`, `Quarterly` or `Yearly`, optionally
+anchored to a renewal month. Annual costs (insurance, taxes) were previously
+impossible to express — a 6,000 L yearly premium had to be entered as 500 L/month
+and then blew the bar apart in whichever month it actually landed. Every budget
+bar carries its window label (`Jul 2026`, `Q3 2026`, `2026`); without it a yearly
+budget sitting at 40% reads as "40% of this month".
+
+### C — Rollover / envelope budgeting
+
+Per-category opt-in. **Carry is derived, never stored**: it's recomputed by
+walking back over prior windows (bounded at 12, and never past the category's
+first transaction). Nothing is written to Notion, so there's no second source of
+truth to desync, and correcting a three-month-old transaction re-derives every
+window after it automatically. Overspend carries forward as a negative — money
+already spent can't be un-spent, and a clean slate each window would quietly
+forgive it.
+
+### D — Multi-currency with live FX
+
+Rates come from **Frankfurter** (`api.frankfurter.dev`, ECB daily reference
+rates, no API key), called straight from the browser. That was a structural
+requirement, not a preference: `api/*.js` sits at 12/12 against the Vercel Hobby
+cap, so a server-side proxy was never available. CORS was verified against a real
+browser before the code was written (the older `api.frankfurter.app` host does
+*not* send the headers; `api.frankfurter.dev` does).
+
+- **The form got shorter, not taller.** The old dashed "Original amount" box
+  below Account is gone; currency is now a suffix inside the Amount control, with
+  a single ellipsised helper line showing the RON total and the implied rate.
+  Measured on a 375×812 viewport, the edit modal went from needing a scrollbar
+  (689px of content in a 622px body) to fitting exactly (592px in 592px).
+- **RON stays the source of truth** for every total. Typing a foreign amount
+  fills the RON figure from the rate; editing the RON figure by hand stops it
+  being overwritten, because a card's own fee beats any published rate. Reopening
+  a saved transaction keeps the RON figure that was saved rather than restating
+  it at today's rate — but changing the foreign amount re-derives it.
+- **Trip currency beats account currency**: on a trip you spend the destination's
+  money whatever card settles it.
+- **BGN is recordable but never converted** — Bulgaria adopted the euro and the
+  ECB stopped quoting it. A missing rate can never block recording a transaction.
+
+### E — Cash-flow forecast (Insights → "Next 90 Days")
+
+Deliberately **not** a balance forecast: the app has an Accounts database but no
+balances, so projecting a balance would mean inventing an opening figure. It
+projects net flow, and says so on screen. Committed (scheduled subscriptions) and
+estimated (trailing 3-month **median**, so one holiday doesn't poison three
+months) are drawn as separate bar segments rather than one total, because merging
+them would give a guess the same authority as a fact. Below three complete months
+of history it reports low confidence and estimates nothing.
+
+### F — Duplicate detection & merge
+
+A review card at the top of the ledger, scanning the **whole** ledger rather than
+the filtered view. Matching needs an exact amount, dates within ±3 days and a
+similar normalized description; two same-amount purchases on the same day in
+different categories are explicitly *not* flagged (two coffees, not a
+double-entry). Merging keeps the row you pick, copies over any notes/trip/tags it
+lacks, and archives the rest behind a confirmation. "Not duplicates" is remembered
+device-locally rather than in Notion Tags — an unregistered multi-select option
+would reject the whole patch.
+
+### G — Offline support / optimistic writes
+
+- **Reads**: every successful load is mirrored, so the app paints instantly and a
+  failed refresh shows the cached ledger behind a "Showing data from 14:32 —
+  offline" strip instead of an error card implying the data is gone.
+- **Writes**: an ordered outbox. `createOfflineClient` wraps the Notion client
+  with `Object.create` (not a spread — the methods live on the class prototype),
+  so every existing call site gained offline support without changing. Flushing
+  **stops at the first retryable failure** rather than skipping ahead; reordering
+  writes can resurrect a deleted row or edit something that doesn't exist yet.
+  Anything Notion rejects outright is parked in Settings → "Changes Notion
+  rejected" with the real error and Retry/Discard, never dropped silently.
+- **The sharpest edge**: the subscriptions engine is now blocked while offline,
+  while showing a stale snapshot, or with writes still queued. It decides what to
+  post by checking the ledger for an existing charge — run it against data that
+  predates the queue and that check reads a ledger missing those rows, so it
+  posts every one of them a second time.
+- **The service worker was not touched.** It stays cache-first for assets with
+  its production-only registration guard.
+
+### Also fixed
+
+`demo_tx_31` and `demo_tx_32` were **duplicated ids** in the demo fixture (the
+multi-currency rows added earlier reused ids already held by "Tenant Rent" and
+"Salary"), which would collide on any id-based lookup. Renumbered, and the whole
+fixture is now checked for duplicate ids.

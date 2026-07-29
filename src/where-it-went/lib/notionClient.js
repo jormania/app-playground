@@ -117,7 +117,13 @@ export class NotionClient {
         type: row.properties.Type?.select?.name || 'Expense',
         icon: row.icon?.type === 'emoji' ? row.icon.emoji : null,
         description: row.properties.Description?.rich_text?.[0]?.plain_text || '',
-        budgetLimit: row.properties['Monthly Limit (RON)']?.number || null
+        budgetLimit: row.properties['Monthly Limit (RON)']?.number || null,
+        // The property keeps its original name for schema stability — renaming it
+        // would break every existing database — but it now means "limit for one
+        // budget period", which is monthly only when Budget Period says so.
+        budgetPeriod: row.properties['Budget Period']?.select?.name || 'Monthly',
+        budgetAnchor: (row.properties['Budget Anchor']?.date?.start || '').slice(0, 10) || null,
+        budgetRollover: row.properties['Budget Rollover']?.checkbox === true
       }))
       .filter(c => c.name.trim() !== ''); // drop rows with a blank title
   }
@@ -234,17 +240,43 @@ export class NotionClient {
   }
 
   async updateCategoryLimit(categoryId, limit) {
+    return this.updateCategoryBudget(categoryId, { budgetLimit: limit });
+  }
+
+  /**
+   * Update any subset of a category's budget settings.
+   *
+   * Only the keys actually present are sent, so saving a limit can never blank
+   * out a period or rollover flag the user set in Notion directly.
+   */
+  async updateCategoryBudget(categoryId, updates) {
     if (!this.token || !this.dbIds?.categories) {
       const cat = DEMO_CATEGORIES.find(c => c.id === categoryId);
-      if (cat) cat.budgetLimit = limit;
+      if (cat) Object.assign(cat, updates);
       return cat;
     }
 
-    return this._request({
-      path: `pages/${categoryId}`,
-      method: 'PATCH',
-      body: { properties: { 'Monthly Limit (RON)': { number: limit || null } } }
-    });
+    const properties = {};
+    if (updates.budgetLimit !== undefined) {
+      properties['Monthly Limit (RON)'] = { number: updates.budgetLimit || null };
+    }
+    if (updates.budgetPeriod !== undefined) {
+      // Closed vocabulary: an unregistered option 400s the whole atomic patch,
+      // taking the other properties in this same call down with it.
+      properties['Budget Period'] = updates.budgetPeriod
+        ? { select: { name: updates.budgetPeriod } }
+        : { select: null };
+    }
+    if (updates.budgetAnchor !== undefined) {
+      properties['Budget Anchor'] = updates.budgetAnchor
+        ? { date: { start: String(updates.budgetAnchor).slice(0, 10) } }
+        : { date: null };
+    }
+    if (updates.budgetRollover !== undefined) {
+      properties['Budget Rollover'] = { checkbox: !!updates.budgetRollover };
+    }
+
+    return this._request({ path: `pages/${categoryId}`, method: 'PATCH', body: { properties } });
   }
 
   async fetchSubscriptions() {
@@ -366,6 +398,9 @@ export class NotionClient {
       startDate: (row.properties['Start Date']?.date?.start || '').slice(0, 10) || null,
       endDate: (row.properties['End Date']?.date?.start || '').slice(0, 10) || null,
       status: row.properties.Status?.select?.name || 'Planned',
+      // Drives the transaction form's default currency: on a trip you're
+      // spending the destination's money, not your account's.
+      currency: row.properties.Currency?.select?.name || '',
       notes: row.properties.Notes?.rich_text?.[0]?.plain_text || ''
     }));
   }
@@ -381,6 +416,7 @@ export class NotionClient {
       'Name': title(trip.name),
       'Destination': richText(trip.destination),
       'Status': { select: { name: trip.status || 'Planned' } },
+      'Currency': trip.currency ? { select: { name: trip.currency } } : { select: null },
       'Notes': richText(trip.notes)
     };
     if (trip.startDate) properties['Start Date'] = { date: { start: String(trip.startDate).slice(0, 10) } };
@@ -404,6 +440,9 @@ export class NotionClient {
     if (updates.name !== undefined) properties['Name'] = title(updates.name);
     if (updates.destination !== undefined) properties['Destination'] = richText(updates.destination);
     if (updates.status !== undefined) properties['Status'] = { select: { name: updates.status || 'Planned' } };
+    if (updates.currency !== undefined) {
+      properties['Currency'] = updates.currency ? { select: { name: updates.currency } } : { select: null };
+    }
     if (updates.notes !== undefined) properties['Notes'] = richText(updates.notes);
     if (updates.startDate !== undefined) {
       properties['Start Date'] = updates.startDate ? { date: { start: String(updates.startDate).slice(0, 10) } } : { date: null };

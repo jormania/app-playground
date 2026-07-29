@@ -10,6 +10,7 @@ import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 import { ordinal } from '../lib/period';
 import { DEFAULT_LEAD_DAYS } from '../lib/upcoming';
+import { readFailed, discardFailed, retryFailed } from '../lib/outbox';
 
 const EMPTY_CONFIG_FIELDS = {
   token: '', transactionsDb: '', categoriesDb: '', accountsDb: '', subscriptionsDb: '', tripsDb: ''
@@ -41,6 +42,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const [editingSub, setEditingSub] = useState(null);
   const [isAddingSub, setIsAddingSub] = useState(false);
   const [editingTrip, setEditingTrip] = useState(null);
+  const [failedJobs, setFailedJobs] = useState(() => readFailed());
   const [isAddingTrip, setIsAddingTrip] = useState(false);
 
   const buildConfig = (extra = {}) => ({
@@ -238,6 +240,44 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           Scrub Live Data & Demo Mode
         </Button>
       </div>
+
+      {/* Rejected offline writes — surfaced with the real error rather than
+          dropped, which is the whole point of the outbox having a dead-letter
+          list instead of retrying a malformed write forever. */}
+      {failedJobs.length > 0 && (
+        <div style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}>
+          <h2 style={{ margin: '0 0 var(--space-xs) 0', fontSize: 'var(--text-lg)', color: 'var(--color-danger)' }}>
+            Changes Notion rejected
+          </h2>
+          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
+            These were saved on your device while offline, but Notion refused them. Retry once
+            you have fixed the cause, or discard them.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+            {failedJobs.map(job => (
+              <div key={job.id} style={{
+                display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', flexWrap: 'wrap',
+                padding: 'var(--space-sm)', backgroundColor: 'var(--color-surface)',
+                border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', minWidth: 0
+              }}>
+                <div style={{ flex: 1, minWidth: '140px' }}>
+                  <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink)' }}>
+                    {job.op === 'add' ? 'Add' : job.op === 'update' ? 'Edit' : 'Delete'}
+                    {job.payload?.description ? ` — ${job.payload.description}` : ''}
+                  </div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-danger)' }}>{job.lastError}</div>
+                </div>
+                <Button size="sm" variant="secondary" onClick={() => { retryFailed(job.id); setFailedJobs(readFailed()); }}>
+                  Retry
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { discardFailed(job.id); setFailedJobs(readFailed()); }}>
+                  Discard
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Subscriptions Management Section */}
       {data?.subscriptions && (

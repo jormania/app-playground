@@ -12,7 +12,12 @@ import { useSubscriptionsEngine } from './lib/useSubscriptionsEngine';
 import { readJson, writeJson } from './lib/storage';
 import Navigation from './components/Navigation';
 import UpcomingBanner from './components/UpcomingBanner';
+import OfflineBanner from './components/OfflineBanner';
 import { getUpcomingBills, billsWithinLeadTime, isSnoozed, DEFAULT_LEAD_DAYS } from './lib/upcoming';
+import {
+  createOfflineClient, saveSnapshot, readSnapshot, readOutbox, readFailed,
+  flushOutbox, isOnline,
+} from './lib/outbox';
 import PeriodSheet from './components/PeriodSheet';
 import FilterSheet from './components/FilterSheet';
 import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS, DEMO_TRIPS } from './models/demoData';
@@ -55,13 +60,22 @@ export default function App() {
 
   // Stable identity: a fresh client on every render re-triggered every effect that
   // depends on it (notably the subscriptions engine).
-  const client = useMemo(() => new NotionClient(config.token, {
+  const [staleAt, setStaleAt] = useState(null);
+  const [pendingCount, setPendingCount] = useState(() => readOutbox().length);
+  const [failedCount, setFailedCount] = useState(() => readFailed().length);
+
+  const baseClient = useMemo(() => new NotionClient(config.token, {
     categories: config.categoriesDb,
     accounts: config.accountsDb,
     transactions: config.transactionsDb,
     subscriptions: config.subscriptionsDb,
     trips: config.tripsDb
   }), [config.token, config.categoriesDb, config.accountsDb, config.transactionsDb, config.subscriptionsDb, config.tripsDb]);
+
+  // Every existing call site keeps using `client` unchanged; the wrapper only
+  // intercepts transaction writes and diverts them to the outbox when the
+  // network can't take them.
+  const client = useMemo(() => createOfflineClient(baseClient), [baseClient]);
 
   // Likewise: an inline object literal here busted InsightsView's useMemo on every
   // render, re-running the whole analytics engine each time.
@@ -115,7 +129,23 @@ export default function App() {
       return;
     }
 
+    // Paint the mirrored copy straight away rather than a skeleton, then
+    // revalidate behind it.
+    const snapshot = readSnapshot();
+    if (snapshot) {
+      setData(snapshot.data);
+      setLoading(false);
+    }
+
     try {
+      // Anything written while offline goes first, so the refresh below sees a
+      // ledger that already includes it.
+      if (isOnline() && readOutbox().length > 0) {
+        await flushOutbox(baseClient);
+        setPendingCount(readOutbox().length);
+        setFailedCount(readFailed().length);
+      }
+
       const [categories, accounts, transactions, subscriptions, trips] = await Promise.all([
         client.fetchCategories(),
         client.fetchAccounts(),
@@ -123,13 +153,22 @@ export default function App() {
         client.fetchSubscriptions(),
         client.fetchTrips()
       ]);
-      setData({ categories, accounts, transactions, subscriptions, trips });
+      const fresh = { categories, accounts, transactions, subscriptions, trips };
+      setData(fresh);
+      saveSnapshot(fresh);
+      setStaleAt(null);
     } catch (e) {
       console.error('Failed to fetch data:', e);
-      setLoadError(e.message || 'Failed to load data from Notion.');
+      if (snapshot) {
+        // Showing the ledger you downloaded an hour ago beats an error card
+        // that pretends the data never existed — as long as it says so.
+        setStaleAt(snapshot.savedAt);
+      } else {
+        setLoadError(e.message || 'Failed to load data from Notion.');
+      }
     }
     setLoading(false);
-  }, [client, config.demoMode]);
+  }, [client, baseClient, config.demoMode]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -137,8 +176,34 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', config.theme || 'dark');
   }, [config.theme]);
 
+  // Keep the pending counter honest after any write the wrapper diverted.
+  useEffect(() => {
+    setPendingCount(readOutbox().length);
+    setFailedCount(readFailed().length);
+  }, [data]);
+
+  // Flush as soon as the network comes back, without waiting for a reload.
+  useEffect(() => {
+    const onOnline = async () => {
+      if (readOutbox().length === 0) return;
+      await flushOutbox(baseClient);
+      setPendingCount(readOutbox().length);
+      setFailedCount(readFailed().length);
+      loadData();
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [baseClient, loadData]);
+
   // Auto-post missed subscription charges — never against the demo fixture.
-  useSubscriptionsEngine({ data, client, onDataChange: loadData, enabled: !config.demoMode });
+  //
+  // Also never while offline, while showing a stale snapshot, or with writes
+  // still queued. The engine decides what to post by checking the ledger for an
+  // existing charge; run it against data that predates the queue and that check
+  // reads a ledger missing those rows, so it posts every one of them a second
+  // time. This is the sharpest edge in the whole offline feature.
+  const engineSafe = !config.demoMode && isOnline() && staleAt === null && pendingCount === 0;
+  useSubscriptionsEngine({ data, client, onDataChange: loadData, enabled: engineSafe });
 
   const handleConfigSave = (newConfig) => {
     writeJson('whereItWent_config', newConfig);
@@ -197,7 +262,17 @@ export default function App() {
         filtersActive={filterType !== 'All' || categoryFilter !== 'All' || searchQuery.trim() !== ''}
       />
 
-      {activeTab !== 'settings' && !isSnoozed(snoozedUntil) && (
+      {/* One banner slot, shared. Offline/pending state outranks the bill
+          reminder — a queued write is more urgent than a bill due in 3 days,
+          and stacking two strips would eat the top of every screen. */}
+      {(staleAt !== null || pendingCount > 0 || failedCount > 0) ? (
+        <OfflineBanner
+          staleAt={staleAt}
+          pendingCount={pendingCount}
+          failedCount={failedCount}
+          onOpenSettings={() => handleTabChange('settings')}
+        />
+      ) : activeTab !== 'settings' && !isSnoozed(snoozedUntil) && (
         <UpcomingBanner
           bills={dueSoon}
           leadDays={leadDays}
@@ -279,7 +354,7 @@ export default function App() {
           <>
             {activeTab === 'dashboard' && <Dashboard data={data} client={client} onDataChange={loadData} onNavigate={handleTabChange} config={config} period={period} filterProps={filterProps} />}
             {activeTab === 'transactions' && <TransactionsList data={data} client={client} onDataChange={loadData} filterProps={filterProps} period={period} allowTransfer={allowTransfer} />}
-            {activeTab === 'insights' && <InsightsView data={data} period={period} filterProps={filterProps} />}
+            {activeTab === 'insights' && <InsightsView data={data} period={period} filterProps={filterProps} config={config} />}
             {activeTab === 'settings' && (
               <Settings
                 config={config}

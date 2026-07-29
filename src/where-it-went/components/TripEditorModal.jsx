@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { CURRENCIES } from '../lib/fx';
 import { Modal } from '../../ds/components/Modal';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
@@ -12,6 +13,7 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [status, setStatus] = useState('Planned');
+  const [currency, setCurrency] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
@@ -27,6 +29,7 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
       setStartDate(trip.startDate ? String(trip.startDate).slice(0, 10) : '');
       setEndDate(trip.endDate ? String(trip.endDate).slice(0, 10) : '');
       setStatus(trip.status || 'Planned');
+      setCurrency(trip.currency || '');
       setNotes(trip.notes || '');
     } else {
       setName('');
@@ -34,6 +37,7 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
       setStartDate('');
       setEndDate('');
       setStatus('Planned');
+      setCurrency('');
       setNotes('');
     }
     setFormError(null);
@@ -49,6 +53,7 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
       startDate: startDate || null,
       endDate: endDate || null,
       status,
+      currency,
       notes: notes.trim()
     };
 
@@ -92,6 +97,27 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
               { value: 'Completed', label: 'Completed' }
             ]}
           />
+        </div>
+
+        {/* Sets the default currency for anything tagged to this trip — on a
+            trip you spend the destination's money, whatever card settles it. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+          <label htmlFor="trip-currency" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
+            Currency spent there (optional)
+          </label>
+          <select
+            id="trip-currency"
+            value={currency}
+            onChange={e => setCurrency(e.target.value)}
+            style={{
+              width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)',
+              color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit'
+            }}
+          >
+            <option value="">Use the account currency</option>
+            {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
 
         <Field label="Notes" placeholder="Optional trip notes..." value={notes} onChange={e => setNotes(e.target.value)} />

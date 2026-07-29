@@ -1,0 +1,162 @@
+// @vitest-environment happy-dom
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  fetchRate,
+  convert,
+  impliedRate,
+  formatRateNote,
+  canConvert,
+  cacheKey,
+  clearRateCache,
+  CURRENCIES,
+  RATED_CURRENCIES,
+  BASE_CURRENCY,
+} from './fx';
+
+const okResponse = (body) => ({ ok: true, json: async () => body });
+
+beforeEach(() => {
+  localStorage.clear();
+  clearRateCache();
+});
+
+describe('currency vocabulary', () => {
+  it('offers RON as the base', () => {
+    expect(BASE_CURRENCY).toBe('RON');
+    expect(CURRENCIES).toContain('RON');
+  });
+
+  it('keeps BGN offered but unrated — the ECB stopped quoting it', () => {
+    // It must still be recordable (it's a registered Notion select option),
+    // just never converted.
+    expect(CURRENCIES).toContain('BGN');
+    expect(RATED_CURRENCIES.has('BGN')).toBe(false);
+    expect(canConvert('BGN')).toBe(false);
+  });
+
+  it('every rated currency is also offered in the picker', () => {
+    for (const c of RATED_CURRENCIES) expect(CURRENCIES).toContain(c);
+  });
+});
+
+describe('convert', () => {
+  it('multiplies and rounds to cents', () => {
+    expect(convert(8.5, 5.2318)).toBe(44.47);
+  });
+
+  it('is null for unusable input', () => {
+    expect(convert('abc', 5)).toBeNull();
+    expect(convert(10, null)).toBeNull();
+  });
+});
+
+describe('impliedRate', () => {
+  it('derives the rate two amounts imply', () => {
+    expect(impliedRate(42, 8.5)).toBeCloseTo(4.941, 3);
+  });
+
+  it('refuses to divide by zero', () => {
+    expect(impliedRate(42, 0)).toBeNull();
+  });
+});
+
+describe('formatRateNote', () => {
+  it('reads as one compact line', () => {
+    // Date order is locale-dependent (28 Jul / Jul 28), so assert the parts
+    // rather than baking one locale's ordering into the test.
+    const note = formatRateNote('eur', 5.2318, '2026-07-28');
+    expect(note).toMatch(/^1 EUR = 5\.2318 L · ECB /);
+    expect(note).toMatch(/28/);
+    expect(note).toMatch(/Jul/);
+    expect(note.split(String.fromCharCode(10))).toHaveLength(1); // strictly one line
+  });
+
+  it('is empty for a zero rate rather than claiming a 0.00 conversion', () => {
+    expect(formatRateNote('EUR', 0, '2026-07-28')).toBe('');
+  });
+
+  it('says so when the rate is a stale fallback', () => {
+    expect(formatRateNote('EUR', 5.2, '2026-07-28', { stale: true })).toMatch(/last known/);
+  });
+
+  it('is empty without a usable rate', () => {
+    expect(formatRateNote('EUR', null)).toBe('');
+  });
+});
+
+describe('fetchRate', () => {
+  it('returns 1 for a currency against itself without calling the network', async () => {
+    const fetchImpl = vi.fn();
+    const result = await fetchRate('EUR', 'EUR', new Date(2026, 6, 28), { fetchImpl });
+    expect(result.rate).toBe(1);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('fetches and returns the rate with the date the ECB actually quoted', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(okResponse({ date: '2026-07-28', rates: { RON: 5.2318 } }));
+    const result = await fetchRate('EUR', 'RON', new Date(2026, 6, 29), { fetchImpl });
+    expect(result).toMatchObject({ rate: 5.2318, date: '2026-07-28', cached: false });
+  });
+
+  it('reports the quoted date, not the requested one', async () => {
+    // Asking for a Sunday gets the preceding business day back. Showing the
+    // requested date would misattribute the number.
+    const fetchImpl = vi.fn().mockResolvedValue(okResponse({ date: '2026-07-17', rates: { RON: 5.19 } }));
+    const result = await fetchRate('EUR', 'RON', '2026-07-19', { fetchImpl });
+    expect(result.date).toBe('2026-07-17');
+  });
+
+  it('serves a repeat request from cache without hitting the network again', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(okResponse({ date: '2026-07-28', rates: { RON: 5.2318 } }));
+    await fetchRate('EUR', 'RON', '2026-07-28', { fetchImpl });
+    const second = await fetchRate('EUR', 'RON', '2026-07-28', { fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(second).toMatchObject({ rate: 5.2318, cached: true });
+  });
+
+  it('uses the dated endpoint for history and `latest` for today', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(okResponse({ date: '2026-01-05', rates: { RON: 4.9 } }));
+    await fetchRate('EUR', 'RON', '2026-01-05', { fetchImpl });
+    expect(fetchImpl.mock.calls[0][0]).toContain('/2026-01-05?');
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    fetchImpl.mockClear();
+    await fetchRate('USD', 'RON', todayStr, { fetchImpl });
+    expect(fetchImpl.mock.calls[0][0]).toContain('/latest?');
+  });
+
+  it('returns null rather than throwing when the network fails', async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new Error('offline'));
+    await expect(fetchRate('EUR', 'RON', '2026-07-28', { fetchImpl })).resolves.toBeNull();
+  });
+
+  it('returns null on a non-OK response', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
+    expect(await fetchRate('EUR', 'RON', '2026-07-28', { fetchImpl })).toBeNull();
+  });
+
+  it('returns null when the payload has no usable rate', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(okResponse({ date: '2026-07-28', rates: {} }));
+    expect(await fetchRate('EUR', 'RON', '2026-07-28', { fetchImpl })).toBeNull();
+  });
+
+  it('never calls the network for an unrated currency', async () => {
+    const fetchImpl = vi.fn();
+    expect(await fetchRate('BGN', 'RON', '2026-07-28', { fetchImpl })).toBeNull();
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('survives a corrupted cache entry instead of throwing', async () => {
+    localStorage.setItem('whereItWent_fx_rates', '{not json');
+    const fetchImpl = vi.fn().mockResolvedValue(okResponse({ date: '2026-07-28', rates: { RON: 5.2318 } }));
+    const result = await fetchRate('EUR', 'RON', '2026-07-28', { fetchImpl });
+    expect(result.rate).toBe(5.2318);
+  });
+});
+
+describe('cacheKey', () => {
+  it('is case-insensitive and pair-specific', () => {
+    expect(cacheKey('eur', 'ron', '2026-07-28')).toBe('2026-07-28|EUR|RON');
+    expect(cacheKey('EUR', 'RON', '2026-07-28')).not.toBe(cacheKey('USD', 'RON', '2026-07-28'));
+  });
+});

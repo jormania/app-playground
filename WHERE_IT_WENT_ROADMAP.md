@@ -1,4 +1,15 @@
-# WhereItWent — Feature Roadmap (design, not yet implemented)
+# WhereItWent — Feature Roadmap
+
+> **Status: all seven features (A–G) shipped 2026-07-29.** What follows is the
+> design they were built from, kept as the record of *why* each one works the
+> way it does. Two things landed differently from the plan and are noted inline:
+> the Frankfurter host (`api.frankfurter.dev`, not `.app`) and BGN having no ECB
+> rate. See the "Roadmap Features B–G" section of
+> [`WHERE_IT_WENT.md`](WHERE_IT_WENT.md) for what actually shipped.
+>
+> The only deliberately deferred piece is **feature A's surface 3**: local
+> notifications via `src/shared/notify/`, the one part that touches the service
+> worker.
 
 Design for seven features drawn from [`WHERE_IT_WENT_AUDIT.md`](WHERE_IT_WENT_AUDIT.md)
 §7 ("Market comparison — what WhereItWent is missing"). Written 2026-07-29.
@@ -342,12 +353,12 @@ G must be last.
 | # | Feature | Schema cost | Risk |
 |---|---------|-------------|------|
 | 1 | ~~A — Upcoming bills (banner + agenda)~~ ✅ shipped | none | low |
-| 2 | E — Cash-flow forecast | none | low |
-| 3 | F — Duplicate detection & merge | none | low-med |
-| 4 | B — Non-monthly budget periods | 2 Categories props | medium |
-| 5 | C — Rollover | 1 Categories prop | medium |
-| 6 | D — Live FX + travel | 1 Trips prop | med-high (network + layout) |
-| 7 | G — Offline / outbox | none | high |
+| 2 | ~~E — Cash-flow forecast~~ ✅ shipped | none | low |
+| 3 | ~~F — Duplicate detection & merge~~ ✅ shipped | none | low-med |
+| 4 | ~~B — Non-monthly budget periods~~ ✅ shipped | 2 Categories props | medium |
+| 5 | ~~C — Rollover~~ ✅ shipped | 1 Categories prop | medium |
+| 6 | ~~D — Live FX + travel~~ ✅ shipped | 1 Trips prop | med-high (network + layout) |
+| 7 | ~~G — Offline / outbox~~ ✅ shipped | none | high |
 
 ### Total manual Notion work: 4 properties
 

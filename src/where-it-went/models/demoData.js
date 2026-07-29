@@ -29,7 +29,8 @@ export const DEMO_CATEGORIES = [
     "type": "Expense",
     "icon": "🍽️",
     "description": "Restaurants, cafés",
-    "budgetLimit": 800
+    "budgetLimit": 800,
+    "budgetRollover": true
   },
   {
     "id": "cat_transport",
@@ -44,7 +45,10 @@ export const DEMO_CATEGORIES = [
     "name": "Health",
     "type": "Expense",
     "icon": "🏥",
-    "description": "Doctors, pharmacy"
+    "description": "Doctors, pharmacy",
+    "budgetLimit": 4800,
+    "budgetPeriod": "Yearly",
+    "budgetRollover": true
   },
   {
     "id": "cat_subscriptions",
@@ -59,7 +63,8 @@ export const DEMO_CATEGORIES = [
     "type": "Expense",
     "icon": "🛍️",
     "description": "Clothes, electronics",
-    "budgetLimit": 500
+    "budgetLimit": 1500,
+    "budgetPeriod": "Quarterly"
   },
   {
     "id": "cat_entertainment",
@@ -237,6 +242,7 @@ const RAW_TRIPS = [
     "id": "trip_billund",
     "name": "Billund 2025",
     "destination": "Billund, Denmark",
+    "currency": "DKK",
     "startDate": "2025-05-10",
     "endDate": "2025-05-15",
     "status": "Completed",
@@ -246,6 +252,7 @@ const RAW_TRIPS = [
     "id": "trip_poland",
     "name": "Poland Autumn 2026",
     "destination": "Kraków & Warsaw, Poland",
+    "currency": "PLN",
     "startDate": "2026-10-05",
     "endDate": "2026-10-15",
     "status": "Planned",
@@ -255,6 +262,7 @@ const RAW_TRIPS = [
     "id": "trip_constance",
     "name": "Lake Constance 2026",
     "destination": "Lake Constance, Germany",
+    "currency": "EUR",
     "startDate": "2026-07-12",
     "endDate": "2026-07-20",
     "status": "Active",
@@ -264,6 +272,7 @@ const RAW_TRIPS = [
     "id": "trip_greece",
     "name": "Greece Autumn 2024",
     "destination": "Crete, Greece",
+    "currency": "EUR",
     "startDate": "2024-09-18",
     "endDate": "2024-09-25",
     "status": "Completed",
@@ -4258,7 +4267,7 @@ const RAW_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_31",
+    "id": "demo_tx_901",
     "description": "Café in Vienna",
     "date": "2026-12-20",
     "amount": 42,
@@ -4270,13 +4279,36 @@ const RAW_TRANSACTIONS = [
     "tags": []
   },
   {
-    "id": "demo_tx_32",
+    "id": "demo_tx_902",
     "description": "Revolut top-up",
     "date": "2026-12-21",
     "amount": 500,
     "type": "Transfer",
     "categoryId": "",
     "accountId": "acc_revolut",
+    "tags": []
+  },
+  // A planted near-duplicate pair so the duplicate review has something real to
+  // find in demo mode: same amount, one day apart, same account and category,
+  // description differing only in case and punctuation.
+  {
+    "id": "demo_tx_903",
+    "description": "Mega Image groceries",
+    "date": "2026-12-17",
+    "amount": 137.4,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_checking",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_904",
+    "description": "Mega Image Groceries.",
+    "date": "2026-12-18",
+    "amount": 137.4,
+    "type": "Expense",
+    "categoryId": "cat_food",
+    "accountId": "acc_checking",
     "tags": []
   }
 ];

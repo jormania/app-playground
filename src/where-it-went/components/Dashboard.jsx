@@ -13,10 +13,10 @@ import {
   filterByPeriod,
   filterByPreviousPeriod,
   getPreviousPeriodRange,
-  parseTxDate,
-  formatPeriodLabel
+  parseTxDate
 } from '../lib/period';
 import { getUpcomingBills, DEFAULT_HORIZON_DAYS } from '../lib/upcoming';
+import { computeAllBudgets } from '../lib/budgets';
 
 const CARD = {
   padding: 'var(--space-lg)',
@@ -317,17 +317,13 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
    * monthly cap against "This year" (or against a single filtered category) made
    * every bar either permanently red or permanently empty.
    */
-  const budgets = useMemo(() => {
-    const thisMonth = filterByPeriod(data.transactions || [], 'this_month');
-    return (data.categories || [])
-      .filter(c => c.budgetLimit > 0 && c.type !== 'Income')
-      .map(cat => ({
-        ...cat,
-        spent: thisMonth
-          .filter(t => t.type === 'Expense' && t.categoryId === cat.id)
-          .reduce((sum, t) => sum + t.amount, 0)
-      }));
-  }, [data.transactions, data.categories]);
+  // Each category is now measured against *its own* window (monthly, quarterly
+  // or yearly, optionally anchored to a renewal month) rather than against the
+  // calendar month, and picks up any rollover carried in from earlier windows.
+  const budgets = useMemo(
+    () => computeAllBudgets(data.categories, data.transactions),
+    [data.transactions, data.categories],
+  );
 
   // Like budgets, deliberately independent of the selected period and of the
   // active filters: "what's due next" is a fact about the calendar, not about
@@ -488,7 +484,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
             <div>
               <h2 style={{ fontSize: 'var(--text-lg)', margin: 0 }}>💰 Budget Limits</h2>
               <p style={{ margin: '2px 0 0 0', fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
-                Monthly limits, always measured against {formatPeriodLabel('this_month')} — not the selected period or filters.
+                Each category is measured against its own budget window — never the selected period or filters.
               </p>
             </div>
             <Button size="sm" variant="secondary" onClick={() => setShowBudgetModal(true)}>Edit Budgets</Button>
@@ -498,7 +494,9 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)' }}>
               <div style={{ gridColumn: '1 / -1', padding: 'var(--space-md)', backgroundColor: 'var(--color-bg)', borderRadius: 'var(--radius-md)' }}>
                 {(() => {
-                  const totalLimit = budgets.reduce((acc, b) => acc + b.budgetLimit, 0);
+                  // Effective limits, so a category carrying rollover contributes
+                  // the room it actually has rather than its headline number.
+                  const totalLimit = budgets.reduce((acc, b) => acc + b.effectiveLimit, 0);
                   const totalSpent = budgets.reduce((acc, b) => acc + b.spent, 0);
                   const percent = totalLimit > 0 ? Math.min((totalSpent / totalLimit) * 100, 100) : 0;
                   const isOver = totalSpent > totalLimit;
@@ -523,17 +521,33 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
               </div>
 
               {budgets.map(b => {
-                const percent = Math.min((b.spent / b.budgetLimit) * 100, 100);
-                const isOver = b.spent > b.budgetLimit;
+                const percent = b.percent;
+                const isOver = b.isOver;
                 return (
                   <div key={b.id}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: 'var(--weight-medium)' }}>{b.icon ? `${b.icon} ` : ''}{b.name}</span>
                       <span style={{ color: isOver ? 'var(--color-danger)' : b.spent === 0 ? 'var(--color-muted)' : 'var(--color-ink)' }}>
                         {b.spent === 0
-                          ? <em style={{ fontSize: 'var(--text-xs)' }}>Nothing spent this month</em>
-                          : <>{formatCurrency(b.spent)} / {formatCurrency(b.budgetLimit)}</>}
+                          ? <em style={{ fontSize: 'var(--text-xs)' }}>Nothing spent yet</em>
+                          : <>{formatCurrency(b.spent)} / {formatCurrency(b.effectiveLimit)}</>}
                       </span>
+                    </div>
+                    {/* The window label is not decoration: without it a yearly
+                        budget sitting at 40% reads as "40% of this month". */}
+                    <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
+                      <span>{b.window.label}</span>
+                      {b.hasRollover && b.carry !== 0 && (
+                        <span style={{
+                          padding: '1px 5px', borderRadius: 'var(--radius-sm)',
+                          backgroundColor: b.carry > 0
+                            ? 'color-mix(in srgb, var(--color-success) 15%, transparent)'
+                            : 'color-mix(in srgb, var(--color-danger) 15%, transparent)',
+                          color: b.carry > 0 ? 'var(--color-success)' : 'var(--color-danger)'
+                        }}>
+                          {b.carry > 0 ? '+' : '−'}{formatCurrency(Math.abs(b.carry))} rolled over
+                        </span>
+                      )}
                     </div>
                     <div className="budget-bar-wrapper" role="progressbar" aria-valuenow={Math.round(percent)} aria-valuemin={0} aria-valuemax={100} aria-label={`${b.name} budget used`}>
                       <div style={{

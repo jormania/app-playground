@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { generateDeepInsights } from '../lib/analytics';
 import { formatCurrency } from '../lib/currency';
 import { formatPeriodLabel } from '../lib/period';
+import { projectCashFlow } from '../lib/analytics/forecast';
+import ForecastSection from './ForecastSection';
 
 /** Percentage of `part` over `whole`, or null when `whole` is 0 — callers render
  * "—" instead of the NaN% the raw division used to produce for an income-only
@@ -16,8 +18,17 @@ function pctLabel(part, whole, digits = 1) {
   return p === null ? '—' : `${p.toFixed(digits)}%`;
 }
 
-export default function InsightsView({ data, period, filterProps }) {
+export default function InsightsView({ data, period, filterProps, config }) {
   const [tripFilter, setTripFilter] = useState('ALL');
+
+  // Deliberately ignores `period` and `filterProps`: a projection is about what
+  // is still to come, so narrowing it to "last month" or to one category would
+  // be meaningless. It reads the full ledger every time.
+  const showForecast = config?.features?.cashFlow !== false;
+  const forecast = useMemo(
+    () => (showForecast ? projectCashFlow(data) : null),
+    [showForecast, data],
+  );
   const insights = useMemo(() => {
     return generateDeepInsights(data, period, { ...filterProps, tripFilter });
   }, [data, period, filterProps, tripFilter]);
@@ -111,6 +122,11 @@ export default function InsightsView({ data, period, filterProps }) {
           </div>
         )}
       </div>
+
+      {/* SECTION: AHEAD — the forecast. Placed straight after "Act" because it's
+          the other thing you can still do something about; everything below is
+          retrospective. Gated on the same toggle as the Cash Flow Trend chart. */}
+      {showForecast && <ForecastSection forecast={forecast} />}
 
       {/* SECTION: UNDERSTAND */}
       <div style={{ marginBottom: 'var(--space-2xl)' }}>

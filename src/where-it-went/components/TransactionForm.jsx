@@ -5,6 +5,7 @@ import { ConfirmModal } from '../../ds';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { sortTrips } from '../services/trips';
 import { toDateString } from '../lib/period';
+import { BASE_CURRENCY, CURRENCIES, fetchRate, convert, impliedRate, formatRateNote, canConvert } from '../lib/fx';
 
 const selectStyle = {
   width: '100%',
@@ -17,19 +18,28 @@ const selectStyle = {
   fontFamily: 'inherit'
 };
 
-const BASE_CURRENCY = 'RON';
-
 export default function TransactionForm({ categories, accounts, trips = [], onSave, onCancel, initialTx, onDelete, allowTransfer = false }) {
   const [type, setType] = useState(initialTx?.type || 'Expense');
   const [description, setDescription] = useState(initialTx?.description || '');
-  const [amount, setAmount] = useState(initialTx?.amount ?? '');
+  const [amount, setAmount] = useState(
+    initialTx?.originalCurrency && initialTx?.originalAmount != null
+      ? initialTx.originalAmount
+      : (initialTx?.amount ?? ''),
+  );
   const [date, setDate] = useState(initialTx?.date ? String(initialTx.date).slice(0, 10) : toDateString(new Date()));
   const [categoryId, setCategoryId] = useState(initialTx?.categoryId || '');
   const [accountId, setAccountId] = useState(initialTx?.accountId || accounts[0]?.id || '');
   const [tripId, setTripId] = useState(initialTx?.tripId || '');
   const [notes, setNotes] = useState(initialTx?.notes || '');
-  const [originalAmount, setOriginalAmount] = useState(initialTx?.originalAmount ?? '');
-  const [originalCurrency, setOriginalCurrency] = useState(initialTx?.originalCurrency || '');
+  // One amount field, whose currency is selectable. When it isn't RON the typed
+  // figure is the *original* amount and the RON total is derived from it — which
+  // is the way a foreign charge is actually experienced ("I paid 8.50 EUR"),
+  // rather than asking for the converted figure you don't know yet.
+  const [currency, setCurrency] = useState(initialTx?.originalCurrency || '');
+  const [baseAmount, setBaseAmount] = useState(initialTx?.originalCurrency ? (initialTx?.amount ?? '') : '');
+  const [rate, setRate] = useState(null);
+  const [rateDate, setRateDate] = useState(null);
+  const [rateLoading, setRateLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
@@ -37,8 +47,22 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
   const categorySelectId = useId();
   const accountSelectId = useId();
   const tripSelectId = useId();
-  const originalAmountId = useId();
-  const originalCurrencyId = useId();
+  const amountId = useId();
+  const currencySelectId = useId();
+  const baseAmountId = useId();
+
+  // Once the RON total is edited by hand it must stop being overwritten by the
+  // rate — a card's own fee is exactly the kind of thing worth recording.
+  const baseTouched = useRef(false);
+  // Reopening an existing foreign transaction must keep the RON figure that was
+  // actually saved, rather than silently restating it at today's rate. But as
+  // soon as the foreign amount is *changed*, the stored RON is stale and has to
+  // follow — leaving it put implied a nonsense rate (20 EUR shown as 42 L).
+  const initialAmount = useRef(
+    initialTx?.originalCurrency && initialTx?.originalAmount != null
+      ? String(initialTx.originalAmount)
+      : String(initialTx?.amount ?? ''),
+  );
 
   // The account auto-picker must never fire for a transaction that already has one:
   // opening an existing row and saving it used to silently rewrite its Account to
@@ -62,9 +86,12 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
   const isTravelCategory = !!selectedCat && (selectedCat.name || '').toLowerCase().includes('travel');
   const selectedAccount = accounts.find(a => a.id === accountId);
   const accountCurrency = selectedAccount?.currency || BASE_CURRENCY;
-  // Only worth asking about a foreign amount when the account itself isn't RON —
-  // otherwise this section would clutter the form for the common case.
-  const showForeignCurrency = accountCurrency !== BASE_CURRENCY;
+  const selectedTrip = (trips || []).find(t => t.id === tripId);
+  // Trip beats account: on a trip you spend the destination's money, whatever
+  // card it settles against. Falling back to the account currency, then RON.
+  const suggestedCurrency = selectedTrip?.currency || accountCurrency || BASE_CURRENCY;
+  const activeCurrency = currency || suggestedCurrency;
+  const isForeign = activeCurrency !== BASE_CURRENCY;
   const today = toDateString(new Date());
 
   useEffect(() => {
@@ -96,18 +123,53 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
     if (targetAcc) setAccountId(targetAcc.id);
   }, [categoryId, selectedCat, accounts, isTransfer]);
 
-  // Default the foreign-currency field to the account's own currency the moment
-  // it becomes relevant, but only while the user hasn't typed one in already —
-  // never clobber a value they set (e.g. paying a EUR account in USD abroad).
+  // Look up the rate whenever the currency or the date changes. Failures are
+  // silent by design: no rate simply means no suggested conversion, and must
+  // never stand between the user and recording what they spent.
   useEffect(() => {
-    if (showForeignCurrency && !originalCurrency) setOriginalCurrency(accountCurrency);
-  }, [showForeignCurrency, accountCurrency, originalCurrency]);
+    let cancelled = false;
+    if (!isForeign || !canConvert(activeCurrency)) {
+      setRate(null);
+      setRateDate(null);
+      return undefined;
+    }
+    setRateLoading(true);
+    fetchRate(activeCurrency, BASE_CURRENCY, date)
+      .then(result => {
+        if (cancelled) return;
+        setRate(result?.rate ?? null);
+        setRateDate(result?.date ?? null);
+      })
+      .finally(() => { if (!cancelled) setRateLoading(false); });
+    return () => { cancelled = true; };
+  }, [isForeign, activeCurrency, date]);
+
+  // Keep the RON total in step with the typed amount — until it's edited by hand.
+  useEffect(() => {
+    if (!isForeign || baseTouched.current || rate == null) return;
+    // Comparing against the amount the form opened with (rather than using a
+    // "first run" flag) keeps this correct however the async rate lookup races
+    // with typing.
+    if (String(amount) === String(initialAmount.current)) return;
+    const converted = convert(amount, rate);
+    if (converted != null) setBaseAmount(String(converted));
+  }, [amount, rate, isForeign]);
 
   const parsedAmount = parseFloat(amount);
   const amountValid = Number.isFinite(parsedAmount) && parsedAmount > 0;
-  const parsedOriginalAmount = originalAmount === '' ? null : parseFloat(originalAmount);
-  const originalAmountValid = parsedOriginalAmount === null || (Number.isFinite(parsedOriginalAmount) && parsedOriginalAmount > 0);
-  const canSubmit = !!description.trim() && amountValid && (isTransfer || !!categoryId) && !!accountId && !!date && originalAmountValid;
+  const parsedBase = parseFloat(baseAmount);
+  const baseValid = Number.isFinite(parsedBase) && parsedBase > 0;
+  // In RON the single amount is the total. In any other currency the RON figure
+  // is what every total is built from, so it has to be present and positive.
+  const canSubmit = !!description.trim() && amountValid && (!isForeign || baseValid)
+    && (isTransfer || !!categoryId) && !!accountId && !!date;
+
+  const effectiveRate = isForeign && amountValid && baseValid
+    ? impliedRate(parsedBase, parsedAmount)
+    : null;
+  const rateNote = isForeign
+    ? formatRateNote(activeCurrency, effectiveRate ?? rate, rateDate, { stale: effectiveRate != null && rate == null })
+    : '';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -115,7 +177,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
 
     if (!canSubmit) {
       if (!amountValid) setFormError('Enter an amount greater than zero.');
-      else if (!originalAmountValid) setFormError('Enter a foreign-currency amount greater than zero, or leave it blank.');
+      else if (isForeign && !baseValid) setFormError(`Enter the ${BASE_CURRENCY} amount — no exchange rate was available to work it out automatically.`);
       else setFormError('Fill in every required field.');
       return;
     }
@@ -124,15 +186,17 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
     try {
       await onSave(initialTx ? initialTx.id : null, {
         description: description.trim(),
-        amount: parsedAmount,
+        // RON stays the source of truth for every total, whichever currency
+        // was typed in.
+        amount: isForeign ? parsedBase : parsedAmount,
         date,
         type,
         categoryId: isTransfer ? '' : categoryId,
         accountId,
         tripId: isTravelCategory && tripId ? tripId : '',
         notes: notes.trim(),
-        originalAmount: showForeignCurrency ? parsedOriginalAmount : null,
-        originalCurrency: showForeignCurrency && parsedOriginalAmount !== null ? (originalCurrency || accountCurrency) : '',
+        originalAmount: isForeign ? parsedAmount : null,
+        originalCurrency: isForeign ? activeCurrency : '',
         tags: initialTx?.tags || []
       });
     } catch (err) {
@@ -157,8 +221,84 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-sm)' }}>
         <Field label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} required max={today} />
-        <Field label="Amount" type="number" step="0.01" min="0" value={amount} onChange={e => setAmount(e.target.value)} required placeholder="0.00" />
+
+        {/* Amount + currency share one control rather than sitting in separate
+            rows. This replaced a dashed "original amount" box below Account, so
+            the form is shorter with this feature than it was without it — the
+            modal must never need a scrollbar just to reach Save. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+          <label htmlFor={amountId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
+            Amount <span style={{ color: 'var(--color-danger)' }}>*</span>
+          </label>
+          <div style={{
+            display: 'flex', alignItems: 'stretch', minWidth: 0,
+            border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+            backgroundColor: 'var(--color-bg)', overflow: 'hidden'
+          }}>
+            <input
+              id={amountId} type="number" step="0.01" min="0" required placeholder="0.00"
+              value={amount} onChange={e => setAmount(e.target.value)}
+              style={{
+                flex: 1, minWidth: 0, width: '100%', padding: '10px 0 10px 12px',
+                border: 'none', outline: 'none', background: 'transparent',
+                color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit'
+              }}
+            />
+            <select
+              id={currencySelectId}
+              aria-label="Currency"
+              value={activeCurrency}
+              onChange={e => {
+                setCurrency(e.target.value);
+                // A new currency invalidates both the manual override and the
+                // "unchanged since open" guard — the RON figure must re-derive.
+                baseTouched.current = false;
+                initialAmount.current = null;
+              }}
+              style={{
+                flex: 'none', border: 'none', outline: 'none', background: 'transparent',
+                color: 'var(--color-muted)', fontSize: 'var(--text-sm)', fontFamily: 'inherit',
+                padding: '0 6px 0 2px', cursor: 'pointer'
+              }}
+            >
+              {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
       </div>
+
+      {/* Strictly one line: the RON total (editable, because a card's own fee
+          beats any published rate) plus the rate it implies, ellipsised rather
+          than allowed to wrap. */}
+      {isForeign && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
+          <span style={{ flex: 'none' }}>≈</span>
+          <input
+            id={baseAmountId}
+            aria-label={`Amount in ${BASE_CURRENCY}`}
+            type="number" step="0.01" min="0" placeholder="0.00"
+            value={baseAmount}
+            onChange={e => { baseTouched.current = true; setBaseAmount(e.target.value); }}
+            style={{
+              flex: 'none', width: '84px', padding: '3px 6px',
+              border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
+              backgroundColor: 'var(--color-bg)', color: 'var(--color-ink)',
+              fontSize: 'var(--text-xs)', fontFamily: 'inherit'
+            }}
+          />
+          <span style={{ flex: 'none' }}>L</span>
+          <span
+            title={rateNote || undefined}
+            style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+          >
+            {rateLoading
+              ? '· fetching rate…'
+              : rateNote
+                ? `· ${rateNote}`
+                : `· no rate for ${activeCurrency} — enter the ${BASE_CURRENCY} amount yourself`}
+          </span>
+        </div>
+      )}
 
       <Field label="Description" type="text" value={description} onChange={e => setDescription(e.target.value)} required placeholder={isTransfer ? 'e.g. Revolut top-up' : 'e.g. Groceries'} />
 
@@ -219,44 +359,6 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
         </select>
       </div>
 
-      {/* Foreign-currency amount — only offered when the chosen account isn't RON.
-          The RON amount above stays the source of truth for every total; this is
-          purely informational, "what did this actually cost in the card's own
-          currency", since nothing here does live FX conversion. */}
-      {showForeignCurrency && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px 10px', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--color-border)' }}>
-          <div style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: 'var(--color-muted)' }}>
-            Optional — what {selectedAccount.name} actually charged
-          </div>
-          {/* Same track sizing as the Date/Amount row above: a bare `2fr 1fr`
-              can't shrink below the inputs' intrinsic ~180px min-content width,
-              so both columns overflowed the modal and clipped the Currency
-              field off the right edge on a phone. */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
-            <Field
-              id={originalAmountId}
-              label="Original amount"
-              type="number" step="0.01" min="0"
-              value={originalAmount}
-              onChange={e => setOriginalAmount(e.target.value)}
-              placeholder="0.00"
-            />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label htmlFor={originalCurrencyId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Currency</label>
-              <input
-                id={originalCurrencyId}
-                type="text"
-                value={originalCurrency}
-                onChange={e => setOriginalCurrency(e.target.value.toUpperCase().slice(0, 3))}
-                placeholder={accountCurrency}
-                maxLength={3}
-                style={{ ...selectStyle, padding: '10px 12px', textTransform: 'uppercase' }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Notes — read by the Travel / Property / Family classifiers */}
       <Field label="Notes (optional)" type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Context for later" />
 
@@ -269,7 +371,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
       {/* Wraps because Delete + Cancel + Save don't fit on one line at 375px —
           the Save button was being clipped off the right edge of the edit form
           (the add form has no Delete, which is why it looked fine there). */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', marginTop: 'var(--space-lg)' }}>
+      <div className="tx-form-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
         {initialTx && onDelete && (
           <div style={{ marginRight: 'auto' }}>
             <Button type="button" variant="danger" disabled={isSaving} onClick={() => setShowConfirmDelete(true)}>Delete</Button>
