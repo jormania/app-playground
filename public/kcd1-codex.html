@@ -1078,20 +1078,61 @@ const BASE_RECIPES = [
     "finish": "distill",
     "diff": 3,
     "ings": [
-      "1x Spirits",
-      "1x Wild Boar's Tusk",
-      "1x Wormwood",
-      "1x Belladonna",
-      "1x Comfrey"
+      {
+        "name": "Spirits",
+        "amt": "1x",
+        "icon": "default"
+      },
+      {
+        "name": "Wild Boar's Tusk",
+        "amt": "1x",
+        "icon": "boars_tusk"
+      },
+      {
+        "name": "Wormwood",
+        "amt": "1x",
+        "icon": "wormwood"
+      },
+      {
+        "name": "Belladonna",
+        "amt": "1x",
+        "icon": "belladonna"
+      },
+      {
+        "name": "Comfrey",
+        "amt": "1x",
+        "icon": "comfrey"
+      }
     ],
     "steps": [
-      "Fill cauldron with Spirits.",
-      "Add Boar's Tusk and Wormwood.",
-      "Boil for two turns.",
-      "Grind Comfrey.",
-      "Let cauldron cool.",
-      "Add ground Comfrey and Belladonna.",
-      "Distill."
+      {
+        "act": "fill",
+        "txt": "Fill cauldron with Spirits."
+      },
+      {
+        "act": "add",
+        "txt": "Add Boar's Tusk and Wormwood."
+      },
+      {
+        "act": "heat",
+        "txt": "Boil for two turns."
+      },
+      {
+        "act": "grind",
+        "txt": "Grind Comfrey."
+      },
+      {
+        "act": "cool",
+        "txt": "Let cauldron cool."
+      },
+      {
+        "act": "add",
+        "txt": "Add ground Comfrey and Belladonna."
+      },
+      {
+        "act": "distill",
+        "txt": "Distill."
+      }
     ],
     "outcome": "Improves riding and dog-handling skills. At strong quality, animals ignore you and dogs will not bark at your approach.",
     "effect": "Improves Riding & Dog-Handling",
@@ -1107,19 +1148,56 @@ const BASE_RECIPES = [
     "finish": "pour",
     "diff": 2,
     "ings": [
-      "1x Oil",
-      "1x St. John's Wort",
-      "1x Comfrey",
-      "1x Dandelion"
+      {
+        "name": "Oil",
+        "amt": "1x",
+        "icon": "default"
+      },
+      {
+        "name": "St. John's Wort",
+        "amt": "1x",
+        "icon": "stjohnswort"
+      },
+      {
+        "name": "Comfrey",
+        "amt": "1x",
+        "icon": "comfrey"
+      },
+      {
+        "name": "Dandelion",
+        "amt": "1x",
+        "icon": "dandelion"
+      }
     ],
     "steps": [
-      "Fill cauldron with Oil.",
-      "Grind St. John's Wort.",
-      "Add St. John's Wort and Comfrey.",
-      "Boil for one turn.",
-      "Let cauldron cool.",
-      "Add Dandelion.",
-      "Pour."
+      {
+        "act": "fill",
+        "txt": "Fill cauldron with Oil."
+      },
+      {
+        "act": "grind",
+        "txt": "Grind St. John's Wort."
+      },
+      {
+        "act": "add",
+        "txt": "Add St. John's Wort and Comfrey."
+      },
+      {
+        "act": "heat",
+        "txt": "Boil for one turn."
+      },
+      {
+        "act": "cool",
+        "txt": "Let cauldron cool."
+      },
+      {
+        "act": "add",
+        "txt": "Add Dandelion."
+      },
+      {
+        "act": "pour",
+        "txt": "Pour."
+      }
     ],
     "outcome": "Increases stamina. At strong quality, stamina regeneration also improves.",
     "effect": "Increases Stamina",
@@ -1135,17 +1213,47 @@ const BASE_RECIPES = [
     "finish": "distill",
     "diff": 2,
     "ings": [
-      "1x Spirits",
-      "2x Valerian",
-      "1x Mint"
+      {
+        "name": "Spirits",
+        "amt": "1x",
+        "icon": "default"
+      },
+      {
+        "name": "Valerian",
+        "amt": "2x",
+        "icon": "valerian"
+      },
+      {
+        "name": "Mint",
+        "amt": "1x",
+        "icon": "mint"
+      }
     ],
     "steps": [
-      "Fill cauldron with Spirits.",
-      "Add 1x Mint.",
-      "Boil for one turn.",
-      "Grind 2x Valerian and add to cauldron.",
-      "Boil for one more turn.",
-      "Distill."
+      {
+        "act": "fill",
+        "txt": "Fill cauldron with Spirits."
+      },
+      {
+        "act": "add",
+        "txt": "Add 1x Mint."
+      },
+      {
+        "act": "heat",
+        "txt": "Boil for one turn."
+      },
+      {
+        "act": "add",
+        "txt": "Grind 2x Valerian and add to cauldron."
+      },
+      {
+        "act": "heat",
+        "txt": "Boil for one more turn."
+      },
+      {
+        "act": "distill",
+        "txt": "Distill."
+      }
     ],
     "outcome": "Increases energy and slows fatigue. The night watchman's steadfast friend.",
     "effect": "Increases Energy & Slows Fatigue",
@@ -1161,16 +1269,43 @@ const BASE_RECIPES = [
     "finish": "pour",
     "diff": 2,
     "ings": [
-      "1x Spirits",
-      "2x Chamomile",
-      "1x Mint"
+      {
+        "name": "Spirits",
+        "amt": "1x",
+        "icon": "default"
+      },
+      {
+        "name": "Chamomile",
+        "amt": "2x",
+        "icon": "chamomile"
+      },
+      {
+        "name": "Mint",
+        "amt": "1x",
+        "icon": "mint"
+      }
     ],
     "steps": [
-      "Fill cauldron with Spirits.",
-      "Grind 2x Chamomile.",
-      "Add Chamomile and Mint.",
-      "Boil for one turn.",
-      "Pour."
+      {
+        "act": "fill",
+        "txt": "Fill cauldron with Spirits."
+      },
+      {
+        "act": "grind",
+        "txt": "Grind 2x Chamomile."
+      },
+      {
+        "act": "add",
+        "txt": "Add Chamomile and Mint."
+      },
+      {
+        "act": "heat",
+        "txt": "Boil for one turn."
+      },
+      {
+        "act": "pour",
+        "txt": "Pour."
+      }
     ],
     "outcome": "Reduces fullness and cures food poisoning. At strong quality, cures all poisoning and boosts Vitality.",
     "effect": "Cures Food Poisoning",
@@ -1186,20 +1321,61 @@ const BASE_RECIPES = [
     "finish": "pour",
     "diff": 3,
     "ings": [
-      "1x Oil",
-      "1x Poppy",
-      "1x Valerian",
-      "1x Eyebright",
-      "1x Wild Boar's Tusk"
+      {
+        "name": "Oil",
+        "amt": "1x",
+        "icon": "default"
+      },
+      {
+        "name": "Poppy",
+        "amt": "1x",
+        "icon": "poppy"
+      },
+      {
+        "name": "Valerian",
+        "amt": "1x",
+        "icon": "valerian"
+      },
+      {
+        "name": "Eyebright",
+        "amt": "1x",
+        "icon": "eyebright"
+      },
+      {
+        "name": "Wild Boar's Tusk",
+        "amt": "1x",
+        "icon": "boars_tusk"
+      }
     ],
     "steps": [
-      "Fill cauldron with Oil.",
-      "Add Poppy and Valerian.",
-      "Boil for two turns.",
-      "Grind Eyebright.",
-      "Add Eyebright and Boar's Tusk.",
-      "Let cauldron cool.",
-      "Pour."
+      {
+        "act": "fill",
+        "txt": "Fill cauldron with Oil."
+      },
+      {
+        "act": "add",
+        "txt": "Add Poppy and Valerian."
+      },
+      {
+        "act": "heat",
+        "txt": "Boil for two turns."
+      },
+      {
+        "act": "grind",
+        "txt": "Grind Eyebright."
+      },
+      {
+        "act": "add",
+        "txt": "Add Eyebright and Boar's Tusk."
+      },
+      {
+        "act": "cool",
+        "txt": "Let cauldron cool."
+      },
+      {
+        "act": "pour",
+        "txt": "Pour."
+      }
     ],
     "outcome": "Increases Agility and the Defence skill.",
     "effect": "Increases Agility & Defence",
@@ -1262,17 +1438,47 @@ const BASE_RECIPES = [
     "finish": "distill",
     "diff": 2,
     "ings": [
-      "1x Water",
-      "2x Dandelion",
-      "1x Marigold"
+      {
+        "name": "Water",
+        "amt": "1x",
+        "icon": "default"
+      },
+      {
+        "name": "Dandelion",
+        "amt": "2x",
+        "icon": "dandelion"
+      },
+      {
+        "name": "Marigold",
+        "amt": "1x",
+        "icon": "marigold"
+      }
     ],
     "steps": [
-      "Fill cauldron with Water.",
-      "Add 2x Dandelion.",
-      "Boil for one turn.",
-      "Grind Marigold and add to cauldron.",
-      "Boil for one more turn.",
-      "Distill."
+      {
+        "act": "fill",
+        "txt": "Fill cauldron with Water."
+      },
+      {
+        "act": "add",
+        "txt": "Add 2x Dandelion."
+      },
+      {
+        "act": "heat",
+        "txt": "Boil for one turn."
+      },
+      {
+        "act": "add",
+        "txt": "Grind Marigold and add to cauldron."
+      },
+      {
+        "act": "heat",
+        "txt": "Boil for one more turn."
+      },
+      {
+        "act": "distill",
+        "txt": "Distill."
+      }
     ],
     "outcome": "Reduces health loss and slows bleeding.",
     "effect": "Reduces Health Loss & Slows Bleeding",
@@ -1348,18 +1554,52 @@ const BASE_RECIPES = [
     "finish": "pour",
     "diff": 2,
     "ings": [
-      "1x Water",
-      "2x Mint",
-      "1x St. John's Wort",
-      "1x Sage"
+      {
+        "name": "Water",
+        "amt": "1x",
+        "icon": "default"
+      },
+      {
+        "name": "Mint",
+        "amt": "2x",
+        "icon": "mint"
+      },
+      {
+        "name": "St. John's Wort",
+        "amt": "1x",
+        "icon": "stjohnswort"
+      },
+      {
+        "name": "Sage",
+        "amt": "1x",
+        "icon": "sage"
+      }
     ],
     "steps": [
-      "Fill cauldron with Water.",
-      "Add St. John's Wort and Sage.",
-      "Boil for three turns.",
-      "Let cauldron cool.",
-      "Grind 2x Mint and add.",
-      "Pour."
+      {
+        "act": "fill",
+        "txt": "Fill cauldron with Water."
+      },
+      {
+        "act": "add",
+        "txt": "Add St. John's Wort and Sage."
+      },
+      {
+        "act": "heat",
+        "txt": "Boil for three turns."
+      },
+      {
+        "act": "cool",
+        "txt": "Let cauldron cool."
+      },
+      {
+        "act": "add",
+        "txt": "Grind 2x Mint and add."
+      },
+      {
+        "act": "pour",
+        "txt": "Pour."
+      }
     ],
     "outcome": "Prevents hangovers and cures drunkenness, but reduces Charisma.",
     "effect": "Cures Drunkenness",
@@ -1551,20 +1791,61 @@ const BASE_RECIPES = [
     "finish": "distill",
     "diff": 4,
     "ings": [
-      "1x Spirits",
-      "2x Wormwood",
-      "1x Belladonna",
-      "1x Cave Mushroom",
-      "1x Herb Paris"
+      {
+        "name": "Spirits",
+        "amt": "1x",
+        "icon": "default"
+      },
+      {
+        "name": "Wormwood",
+        "amt": "2x",
+        "icon": "wormwood"
+      },
+      {
+        "name": "Belladonna",
+        "amt": "1x",
+        "icon": "belladonna"
+      },
+      {
+        "name": "Cave Mushroom",
+        "amt": "1x",
+        "icon": "cave_mushroom"
+      },
+      {
+        "name": "Herb Paris",
+        "amt": "1x",
+        "icon": "herb_paris"
+      }
     ],
     "steps": [
-      "Fill cauldron with Spirits.",
-      "Add 2x Wormwood and 1x Herb Paris.",
-      "Boil for two turns.",
-      "Let cauldron cool.",
-      "Grind Cave Mushroom and Belladonna.",
-      "Add to cauldron.",
-      "Distill."
+      {
+        "act": "fill",
+        "txt": "Fill cauldron with Spirits."
+      },
+      {
+        "act": "add",
+        "txt": "Add 2x Wormwood and 1x Herb Paris."
+      },
+      {
+        "act": "heat",
+        "txt": "Boil for two turns."
+      },
+      {
+        "act": "cool",
+        "txt": "Let cauldron cool."
+      },
+      {
+        "act": "grind",
+        "txt": "Grind Cave Mushroom and Belladonna."
+      },
+      {
+        "act": "add",
+        "txt": "Add to cauldron."
+      },
+      {
+        "act": "distill",
+        "txt": "Distill."
+      }
     ],
     "outcome": "Resets all perk points so they may be reassigned \u2014 irreversible in cost, not in consequence. Your coin purse will mourn what your mind forgets.",
     "effect": "Resets All Perk Points",
