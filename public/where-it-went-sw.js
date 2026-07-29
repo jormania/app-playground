@@ -1,4 +1,19 @@
-const CACHE = 'whereitwent-cache-v1';
+// WhereItWent's service worker: asset caching *and* upcoming-bill reminders.
+//
+// The caching half predates the notification half and is unchanged — do not
+// convert it to cache-first for navigations, and keep the PROD-only
+// registration guard in main.jsx (see CLAUDE.md "Service workers & dev").
+//
+// The notification half follows NOTIFICATIONS.md: it reads the snapshot the
+// page mirrors into IndexedDB and re-implements the fire predicate inline,
+// because a classic worker script can't import the ES module the page uses.
+// Keep this predicate in step with `billsToNotify` in lib/reminders.js.
+importScripts('/shared-notify-idb.js');
+
+var CACHE = 'whereitwent-cache-v1';
+var DB = 'wiw-reminders', STORE = 'kv', APP = '/where-it-went-react.html';
+var SYNC_TAG = 'wiw-bill-reminders';
+var MAX_SENT_IDS = 200;
 
 self.addEventListener('install', function () {
   self.skipWaiting();
@@ -40,6 +55,89 @@ self.addEventListener('fetch', function (e) {
         }).catch(function () { return cached; });
         return cached || network;
       });
+    })
+  );
+});
+
+// --- Upcoming-bill reminders ------------------------------------------------
+
+function kvGet(key) { return self.sharedNotifyIdb.get(DB, STORE, key); }
+function kvSet(key, val) { return self.sharedNotifyIdb.set(DB, STORE, key, val); }
+
+// Whole local days from today to a YYYY-MM-DD. Built from parts, never
+// Date.parse of the raw string, which would read it as UTC and land a day out
+// west of Greenwich.
+function daysUntilDue(dueDate, now) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dueDate || ''));
+  if (!m) return null;
+  var due = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((due.getTime() - today.getTime()) / 86400000);
+}
+
+function formatBill(bill, now) {
+  var days = daysUntilDue(bill.dueDate, now);
+  var when = days === 0 ? 'today' : days === 1 ? 'tomorrow' : 'in ' + days + ' days';
+  var amount = Number(bill.amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return bill.name + ' · ' + amount + ' L due ' + when;
+}
+
+// Mirror of billsToNotify() in lib/reminders.js.
+function billsToNotify(state, sentIds, now) {
+  if (!state || !state.enabled) return [];
+  var sent = sentIds || [];
+  var lead = Number(state.leadDays) > 0 ? Number(state.leadDays) : 5;
+  return (state.bills || []).filter(function (bill) {
+    if (sent.indexOf(bill.id) !== -1) return false;
+    var days = daysUntilDue(bill.dueDate, now);
+    return days !== null && days >= 0 && days <= lead;
+  });
+}
+
+function maybeNotify() {
+  var now = new Date();
+  return Promise.all([kvGet('state'), kvGet('sent')]).then(function (values) {
+    var state = values[0];
+    var sent = Array.isArray(values[1]) ? values[1] : [];
+    var due = billsToNotify(state, sent, now);
+    if (due.length === 0) return undefined;
+
+    // One notification for one bill; a single summary for several, so a quiet
+    // week and a busy one don't feel equally noisy.
+    var body = due.length === 1
+      ? formatBill(due[0], now)
+      : due.length + ' bills due soon · ' + due.map(function (b) { return b.name; }).join(', ');
+
+    return self.registration.showNotification('WhereItWent', {
+      body: body,
+      tag: 'wiw-upcoming-bills',
+      icon: '/where-it-went-icon.svg',
+      badge: '/where-it-went-icon.svg',
+    }).then(function () {
+      var next = sent.concat(due.map(function (b) { return b.id; }));
+      if (next.length > MAX_SENT_IDS) next = next.slice(next.length - MAX_SENT_IDS);
+      return kvSet('sent', next);
+    });
+  }).catch(function () {
+    // A reminder that fails is a non-event; never let it break the worker.
+  });
+}
+
+self.addEventListener('periodicsync', function (e) {
+  if (e.tag !== SYNC_TAG) return;
+  e.waitUntil(maybeNotify());
+});
+
+// Tapping a reminder focuses the app, or opens it if it isn't running.
+self.addEventListener('notificationclick', function (e) {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      for (var i = 0; i < list.length; i++) {
+        var c = list[i];
+        if (c.url && c.url.indexOf('where-it-went-react') !== -1) return c.focus();
+      }
+      return self.clients.openWindow(APP);
     })
   );
 });

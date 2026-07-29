@@ -14,6 +14,7 @@ import Navigation from './components/Navigation';
 import UpcomingBanner from './components/UpcomingBanner';
 import OfflineBanner from './components/OfflineBanner';
 import { getUpcomingBills, billsWithinLeadTime, isSnoozed, DEFAULT_LEAD_DAYS } from './lib/upcoming';
+import { writeReminderState } from './lib/reminders';
 import {
   createOfflineClient, saveSnapshot, readSnapshot, readOutbox, readFailed,
   flushOutbox, isOnline,
@@ -106,6 +107,18 @@ export default function App() {
     const bills = getUpcomingBills(data.subscriptions, data.transactions, { horizonDays: leadDays });
     return billsWithinLeadTime(bills, leadDays);
   }, [showUpcoming, data.subscriptions, data.transactions, leadDays]);
+
+  // Mirror what the service worker needs into IndexedDB whenever the data or
+  // the settings behind it change. The worker can't read localStorage, and it
+  // can't import the ES module that does the date maths, so this snapshot is
+  // the only channel between them.
+  useEffect(() => {
+    if (config.demoMode) return; // never let the fixture drive real reminders
+    writeReminderState(data, {
+      enabled: readJson('whereItWent_reminders_enabled', false),
+      leadDays,
+    });
+  }, [data, leadDays, config.demoMode]);
 
   const handleSnooze = () => {
     const until = Date.now() + 24 * 60 * 60 * 1000;

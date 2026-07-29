@@ -129,6 +129,7 @@ Click **Save Configuration**. The app will now read and write directly to your N
 - **Upcoming Bills** (on by default, see Settings → Feature Toggles): the engine *posts* charges on their due date, and this *warns* you before it does. Two surfaces, neither of which adds anything to the navigation bar:
   - A **"Next 30 Days" agenda** on the Dashboard listing every scheduled charge with its date, how far away it is, and a net total. Like budgets, it ignores the selected period and any active filters — a bill due next week is due next week whether you're looking at July or at 2026. An occurrence you've already entered by hand is greyed out and marked "already recorded".
   - A **slim reminder strip** above the content, shown only when something falls inside your lead time (default 5 days, configurable in Settings → Recurring Subscriptions). Tap it to jump to the agenda, or dismiss it to snooze for 24 hours. Dismissing only silences the strip — the agenda card stays put.
+  - **Background notifications** (opt-in, Settings → Bill Reminders): a notification when a bill falls inside the lead time, even with the app closed. On-device only — nothing is sent anywhere. Background delivery needs an **installed PWA on Chromium**; iOS Safari and ordinary browser tabs fall back to the in-app strip, and the settings panel says so rather than offering a toggle that can't work. Seven taps on the "Bill Reminders" heading reveals a diagnostics panel for when a reminder goes quiet.
 
 ### Settings & Customization
 - **Feature Toggles**: Customize your Dashboard by enabling or disabling specific features — the Budgeting Engine, the Cash Flow Trend chart, Transfers (see above; off by default), and Upcoming Bills (see above; on by default).
@@ -452,3 +453,43 @@ would reject the whole patch.
 multi-currency rows added earlier reused ids already held by "Tenant Rent" and
 "Salary"), which would collide on any id-based lookup. Renumbered, and the whole
 fixture is now checked for duplicate ids.
+
+## Roadmap Feature A, surface 3: background bill reminders (2026-07-29)
+
+The last deferred piece of the roadmap. Built on `src/shared/notify/` following
+[`NOTIFICATIONS.md`](NOTIFICATIONS.md)'s checklist — WhereItWent is now the
+fourth app on that foundation, after Touch Grass, Sol Odyssey and Journal of
+Delights. **No Notion schema change.**
+
+- **The page owns the date maths, the worker owns almost nothing.**
+  `lib/reminders.js` reuses the already-tested `getUpcomingBills` to build a
+  flat snapshot (45 days of bills — deliberately wider than the lead time, since
+  the worker may not be woken for days) and mirrors it into IndexedDB, which is
+  the only channel a worker has, being unable to read `localStorage`.
+- **One notification per bill per due date, ever.** The shared
+  `shouldFireOncePerId` helper tracks a *single* last-sent id, which fits a
+  one-stream nudge but not this: several bills can sit inside the lead window at
+  once and each needs its own guard. `billsToNotify` uses a bounded set instead.
+- **The duplicated predicate is tested against itself.** A service worker is a
+  classic script and can't import the page's ES module, so `billsToNotify` is
+  written twice. `lib/reminders.sw.test.js` lifts the worker's copy out of
+  `public/where-it-went-sw.js` with `new Function` and runs both against the same
+  cases — editing one without the other fails the suite. (Verified by breaking
+  the worker copy on purpose and watching it go red.)
+- **The caching half of the worker is untouched**, and registration stays gated
+  on `import.meta.env.PROD`. The entry point re-arms Periodic Background Sync on
+  load for anyone already opted in, because registrations don't survive every
+  browser restart.
+- **Honest degradation**: the toggle only reports "on" if permission actually
+  came back `granted`, and explains itself when notifications are blocked or
+  when background wake-ups aren't available.
+
+### Known sharp edge (in the shared layer, not this app)
+
+`gatherDiagnostics` awaits `navigator.serviceWorker.ready`, which never settles
+when no worker has been registered — which is *always* the case in local dev,
+where registration is deliberately skipped. `ReminderSettings` races it against a
+3-second timeout so the button reports something useful instead of hanging
+silently. The same hang affects Touch Grass, Sol Odyssey and Journal of Delights
+in dev; fixing it in `src/shared/notify/periodicSync.ts` would let this local
+workaround be removed.

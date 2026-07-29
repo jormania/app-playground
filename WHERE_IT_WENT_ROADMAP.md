@@ -7,9 +7,9 @@
 > rate. See the "Roadmap Features B–G" section of
 > [`WHERE_IT_WENT.md`](WHERE_IT_WENT.md) for what actually shipped.
 >
-> The only deliberately deferred piece is **feature A's surface 3**: local
-> notifications via `src/shared/notify/`, the one part that touches the service
-> worker.
+> **Feature A's surface 3** (background notifications via `src/shared/notify/`)
+> was deferred at first and has since shipped too — nothing from this roadmap
+> remains outstanding.
 
 Design for seven features drawn from [`WHERE_IT_WENT_AUDIT.md`](WHERE_IT_WENT_AUDIT.md)
 §7 ("Market comparison — what WhereItWent is missing"). Written 2026-07-29.
@@ -45,10 +45,9 @@ properties across two databases**. Features A, E, F and G need **zero**.
 
 ## A. Recurring/bill reminders + upcoming calendar — ✅ SHIPPED 2026-07-29
 
-Built as designed, with surfaces 1 and 2 only; **surface 3 (local
-notifications via `src/shared/notify/`) remains deferred** as planned, since
-it's the only part that touches the service worker. See the "Roadmap Feature A"
-section of [`WHERE_IT_WENT.md`](WHERE_IT_WENT.md) for what shipped.
+All three surfaces built as designed. Surfaces 1 and 2 shipped first; surface 3
+(background notifications) followed in the same day's work. See the "Roadmap
+Feature A" sections of [`WHERE_IT_WENT.md`](WHERE_IT_WENT.md).
 
 **No new Notion properties.** The Subscriptions DB already has `dayOfMonth`,
 `amount`, `active`, `lastProcessed` — everything needed.

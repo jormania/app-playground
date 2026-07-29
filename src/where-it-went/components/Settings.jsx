@@ -11,6 +11,7 @@ import { formatCurrency } from '../lib/currency';
 import { ordinal } from '../lib/period';
 import { DEFAULT_LEAD_DAYS } from '../lib/upcoming';
 import { readFailed, discardFailed, retryFailed } from '../lib/outbox';
+import ReminderSettings from './ReminderSettings';
 
 const EMPTY_CONFIG_FIELDS = {
   token: '', transactionsDb: '', categoriesDb: '', accountsDb: '', subscriptionsDb: '', tripsDb: ''
@@ -240,6 +241,8 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           Scrub Live Data & Demo Mode
         </Button>
       </div>
+
+      {features.upcoming !== false && <ReminderSettings />}
 
       {/* Rejected offline writes — surfaced with the real error rather than
           dropped, which is the whole point of the outbox having a dead-letter
