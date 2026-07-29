@@ -62,9 +62,13 @@ describe('Settings Component', () => {
     fireEvent.click(screen.getByText('Save Configuration'));
 
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ token: '', transactionsDb: '' }));
+      // demoMode must be set too: the message claims demo mode, and without the
+      // flag the app served fixtures while the engine/outbox treated them as real.
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ token: '', transactionsDb: '', demoMode: true }),
+      );
     });
-    expect(screen.getByText(/configuration cleared/i)).toBeDefined();
+    expect(screen.getByText(/now in demo mode/i)).toBeDefined();
   });
 
   it('Transfers feature toggle defaults off and can be turned on and saved', async () => {
@@ -100,7 +104,7 @@ describe('Settings Component', () => {
     };
 
     render(<Settings config={mockConfig} onSave={vi.fn()} onThemeChange={vi.fn()} onDone={vi.fn()} />);
-    expect(screen.getByLabelText('Upcoming Bills').checked).toBe(true);
+    expect(screen.getByLabelText('Upcoming bills').checked).toBe(true);
   });
 
   it('turning Upcoming Bills off hides the lead-time input and saves the flag', async () => {
@@ -119,7 +123,7 @@ describe('Settings Component', () => {
 
     expect(screen.getByLabelText(/warn me this many days ahead/i)).toBeDefined();
 
-    fireEvent.click(screen.getByLabelText('Upcoming Bills'));
+    fireEvent.click(screen.getByLabelText('Upcoming bills'));
     expect(screen.queryByLabelText(/warn me this many days ahead/i)).toBeNull();
 
     fireEvent.click(screen.getByText('Save Configuration'));

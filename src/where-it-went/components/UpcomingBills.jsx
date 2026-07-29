@@ -40,7 +40,8 @@ export default function UpcomingBills({ bills, categories, horizonDays }) {
 
       {!bills || bills.length === 0 ? (
         <p style={{ color: 'var(--color-muted)', margin: 0, fontStyle: 'italic' }}>
-          Nothing scheduled in the next {horizonDays} days.
+          Nothing due in the next {horizonDays} days. Recurring payments you add in
+          Settings will appear here before they are charged.
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>

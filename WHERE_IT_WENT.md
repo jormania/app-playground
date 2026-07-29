@@ -566,3 +566,61 @@ before. Both the strip and the agenda now show the category's own emoji.
   a translucent box the OS paints over the control and leaves for a beat after
   the touch. Every control already has its own `:active`/`:hover` feedback, so
   the highlight is now suppressed.
+
+## Bugfix & clarity pass (2026-07-29)
+
+An end-to-end pass over the whole app after a week of feature work, rather than
+component-by-component. Six real bugs, all found by walking flows.
+
+### Bugs
+
+- **First run showed sample data with nothing saying so.** The DEMO MODE banner
+  keyed off an explicit `demoMode` flag, but a fresh install has no config at
+  all — no token means the client falls back to the fixture, so a brand-new user
+  saw a full ledger of invented transactions presented as their own. The banner
+  now appears whenever the figures are samples, and offers **Connect Notion**
+  when there is no connection to switch back to (the old "Stop Demo" button
+  would have done nothing).
+- **`handleClear` claimed demo mode without entering it.** Emptying the config
+  announced "you are now in demo mode" but never set the flag, so the app served
+  fixtures while the subscriptions engine, the reminder snapshot and the offline
+  outbox all treated sample data as real.
+- **Turning off Upcoming Bills left notifications running.** The toggle also
+  hides the reminder controls, so background notifications kept arriving with no
+  visible way to stop them. The mirrored snapshot now respects both the feature
+  toggle and demo mode — and it writes a disabled snapshot rather than bailing
+  out, so disconnecting from Notion can't leave a stale one firing.
+- **KPI headline figures could sit at `0 L` forever.** `useCountUp` animates via
+  `requestAnimationFrame`, which never fires in a context that isn't compositing
+  — a hidden tab, a backgrounded PWA. The card showed "0 L" next to a trend badge
+  reading a real percentage. A timeout now guarantees the final value.
+- **Both Dashboard charts overflowed their cards.** Chart.js sizes to its parent,
+  but the canvas sat directly inside a fixed-height card, so it was measured
+  against the whole card rather than the space left under the heading — 423px of
+  content in a 398px box on the trend chart. The doughnut had the same shape of
+  bug papered over with a hardcoded `calc(100% - 45px)` (the heading is really
+  ~49px). Both now use a flex column with the canvas taking the remainder.
+- **Trip currency leaked from a trip that wouldn't be saved.** Switching a
+  transaction from Travel to another category hides the trip picker and drops the
+  trip on save, but the currency still defaulted from it.
+
+### Clearer language
+
+The aim was for every screen to say what it is and what to do next.
+
+- **Feature toggles now explain themselves.** Four unlabelled switches were four
+  things you had to flip to find out. Each has a one-line hint (the DS toggle
+  already supported one; none were using it).
+- **Empty states say what to do**, not just that something is missing: the
+  budgets card explains periods and rollover, the ledger points at the period and
+  filter controls, Insights explains that it compares against previous periods
+  and needs history.
+- **"Scrub Live Data & Demo Mode"** — which read like jargon for something
+  destructive — is now **"Erase Notion data & use samples"**, and its
+  confirmation says plainly that Notion keeps archived pages for 30 days.
+- **Insights percentages stop being absurd.** "1452% higher than your 3-month
+  average" is not readable; past 3x it now reads "15.5x your usual average".
+- **"Strong cash retention"** and similar became plain English ("You kept more
+  than a fifth of what came in").
+- **Nora has her own avatar** instead of 👧, which renders dark-haired and
+  toddler-proportioned in every emoji font.

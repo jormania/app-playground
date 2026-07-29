@@ -38,7 +38,7 @@ vi.mock('../lib/analytics', () => ({
 describe('InsightsView Component', () => {
   it('renders correctly with no data', () => {
     render(<InsightsView data={{ transactions: [] }} />);
-    expect(screen.getByText('Not Enough Data Yet')).toBeDefined();
+    expect(screen.getByText('Nothing to analyse yet')).toBeDefined();
   });
 
   it('renders correctly with data', () => {

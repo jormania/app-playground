@@ -61,7 +61,7 @@ describe('UpcomingBills', () => {
 
   it('shows an empty state rather than a bare heading', () => {
     render(<UpcomingBills bills={[]} categories={categories} horizonDays={30} />);
-    expect(screen.getByText(/Nothing scheduled in the next 30 days/)).toBeDefined();
+    expect(screen.getByText(/Nothing due in the next 30 days/)).toBeDefined();
   });
 });
 

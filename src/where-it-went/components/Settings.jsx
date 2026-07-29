@@ -71,8 +71,16 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     setAccountsDb('');
     setSubscriptionsDb('');
     setTripsDb('');
-    onSave({ ...EMPTY_CONFIG_FIELDS, theme, features, upcomingLeadDays: Number(upcomingLeadDays) || DEFAULT_LEAD_DAYS });
-    setStatus({ type: 'success', msg: 'Configuration cleared. You are now in demo mode.' });
+    // `demoMode: true` is not decoration — it is what the success message below
+    // has always claimed. Without it the app served fixture data while the flag
+    // read false, so the DEMO MODE banner stayed hidden *and* the subscriptions
+    // engine, the reminder snapshot and the offline outbox all treated sample
+    // data as real.
+    onSave({
+      ...EMPTY_CONFIG_FIELDS, theme, features, demoMode: true,
+      upcomingLeadDays: Number(upcomingLeadDays) || DEFAULT_LEAD_DAYS,
+    });
+    setStatus({ type: 'success', msg: 'Disconnected from Notion. You are now in demo mode, exploring sample data — nothing you change here touches your Notion workspace.' });
   };
 
   const handleSave = async () => {
@@ -164,7 +172,9 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 'var(--text-lg)', color: 'var(--color-ink)', marginBottom: '4px' }}>Notion Integration</h2>
-          <p style={{ color: 'var(--color-muted)', margin: 0, fontSize: 'var(--text-sm)' }}>Configure your Notion integration here.</p>
+          <p style={{ color: 'var(--color-muted)', margin: 0, fontSize: 'var(--text-sm)' }}>
+            Connect your own Notion databases. Leave these empty to explore with sample data instead.
+          </p>
         </div>
         <button
           onClick={() => handleThemeToggle(theme === 'dark' ? 'light' : 'dark')}
@@ -184,7 +194,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-        <Field label="Notion Integration Token" type="password" value={token} onChange={e => setToken(e.target.value)} placeholder="ntn_..." />
+        <Field label="Notion Integration Token" type="password" value={token} onChange={e => setToken(e.target.value)} placeholder="ntn_..." hint="Stored only on this device and sent straight to Notion — never to us." />
         <Field label="Categories Database ID or Link" type="text" value={categoriesDb} onChange={e => setCategoriesDb(e.target.value)} />
         <Field label="Accounts Database ID or Link" type="text" value={accountsDb} onChange={e => setAccountsDb(e.target.value)} />
         <Field label="Transactions Database ID or Link" type="text" value={transactionsDb} onChange={e => setTransactionsDb(e.target.value)} />
@@ -196,25 +206,31 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
       <div style={{ marginTop: 'var(--space-xl)', marginBottom: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}>
         <h2 style={{ margin: 0, fontSize: 'var(--text-lg)', color: 'var(--color-ink)', marginBottom: 'var(--space-md)' }}>Feature Toggles</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+          {/* Every switch says what it actually changes. Four unlabelled toggles
+              are four things you have to turn on and off to find out. */}
           <SettingsToggle
-            label="Budgeting Features"
+            label="Budget limits"
+            hint="Show spending limits per category on the Dashboard, with progress bars."
             checked={features.budgeting}
             onChange={e => setFeatures(f => ({ ...f, budgeting: e.target.checked }))}
           />
           <SettingsToggle
-            label="Cash Flow Trend"
+            label="Cash flow"
+            hint="Show the income-vs-expenses chart, and the 90-day projection in Insights."
             checked={features.cashFlow}
             onChange={e => setFeatures(f => ({ ...f, cashFlow: e.target.checked }))}
           />
           <SettingsToggle
             label="Transfers"
+            hint="Adds a third transaction type for moving money between your own accounts. Transfers are never counted as income or spending."
             checked={features.transfers === true}
             onChange={e => setFeatures(f => ({ ...f, transfers: e.target.checked }))}
           />
           {/* On by default — `!== false` so a config saved before this key
               existed opts in without needing a migration. */}
           <SettingsToggle
-            label="Upcoming Bills"
+            label="Upcoming bills"
+            hint="Warn you before a subscription is charged, on the Dashboard and in a bar at the top."
             checked={features.upcoming !== false}
             onChange={e => setFeatures(f => ({ ...f, upcoming: e.target.checked }))}
           />
@@ -238,7 +254,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           {testing ? 'Testing...' : 'Save Configuration'}
         </Button>
         <Button variant="danger" onClick={handleScrub} disabled={testing}>
-          Scrub Live Data & Demo Mode
+          Erase Notion data & use samples
         </Button>
       </div>
 
@@ -292,7 +308,9 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             <Button variant="secondary" onClick={() => setIsAddingSub(true)}>+ Add Subscription</Button>
           </div>
           <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
-            Manage recurring payments here. The app will automatically generate transactions for these on the specified day of each month.
+            Anything charged on the same day each month — rent, streaming, the gym. WhereItWent
+            adds each one to your ledger automatically on its day, and warns you a few days
+            beforehand so nothing lands unexpectedly.
           </p>
 
           {features.upcoming !== false && (
@@ -309,7 +327,8 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
             {data.subscriptions.length === 0 ? (
               <div style={{ color: 'var(--color-muted)', fontStyle: 'italic', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
-                No subscriptions set up.
+                Nothing recurring yet. Add your rent or a streaming plan and it will be
+                logged for you each month.
               </div>
             ) : (
               data.subscriptions.map(sub => {
@@ -388,13 +407,16 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             <Button variant="secondary" onClick={() => setIsAddingTrip(true)}>+ Add Trip</Button>
           </div>
           <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
-            Manage travel projects and trips. Tag travel transactions with a trip to analyze spending across flights, hotels, and on-the-ground expenses.
+            Group travel spending under a named trip. Anything you tag to it is totalled
+            separately in Insights — flights, hotels and day-to-day costs — and the trip's
+            currency becomes the default for those transactions.
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
             {data.trips.length === 0 ? (
               <div style={{ color: 'var(--color-muted)', fontStyle: 'italic', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
-                No trips configured.
+                No trips yet. Add one before you travel and you can tag spending to it as
+                you go.
               </div>
             ) : (
               data.trips.map(trip => {
@@ -476,7 +498,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
       <PromptModal
         isOpen={showScrubPrompt}
         title="Scrub Databases?"
-        message="WARNING: This is a DESTRUCTIVE action that archives every Transaction, Subscription and Trip in your live Notion databases to start fresh. Archived pages are recoverable from Notion's trash, but the app itself has no undo."
+        message="This empties your real Notion workspace: every Transaction, Subscription and Trip is archived, and the app then switches to sample data. Notion keeps archived pages in its trash for 30 days, so they can be restored from there — but WhereItWent itself cannot undo this. Type the word below to confirm."
         expectedValue="delete"
         confirmText="Scrub & Save"
         onConfirm={executeScrub}

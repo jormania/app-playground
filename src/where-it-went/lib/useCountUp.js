@@ -62,8 +62,18 @@ export function useCountUp(end, duration = 1500) {
     };
 
     animationFrame = window.requestAnimationFrame(step);
+
+    // Safety net: requestAnimationFrame never fires in a context that isn't
+    // compositing — a hidden tab, a backgrounded PWA, an embedded pane. Without
+    // this the headline KPI sits at "0 L" indefinitely while its own trend badge
+    // shows a real percentage, which reads as "you earned nothing this month".
+    // The timer is cleared on the normal path, so it only ever fires if the
+    // animation genuinely never ran.
+    const fallback = window.setTimeout(() => setValue(end), duration + 250);
+
     return () => {
       if (animationFrame) window.cancelAnimationFrame(animationFrame);
+      window.clearTimeout(fallback);
     };
   }, [end, duration]);
 

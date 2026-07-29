@@ -456,14 +456,19 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
           </div>
         </div>
 
-        <div style={{ ...CARD, height: '450px' }}>
+        {/* Flex column with a flex:1 chart area, rather than the old
+            `calc(100% - 45px)`: that 45px was a guess at the heading's height
+            (really ~49px once its margin counts), so the canvas overflowed the
+            card and the card scrolled a little. Chart.js runs with
+            maintainAspectRatio:false and fills whatever box it is given. */}
+        <div style={{ ...CARD, height: '450px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0, marginBottom: 'var(--space-md)' }}>
             {chartType === 'Income' ? '📈 Income by Category' : '📊 Expenses by Category'}
           </h2>
           {chartData.length === 0 ? (
-            <div style={{ height: 'calc(100% - 45px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
               <div style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>📊</div>
-              <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-ink)' }}>Not Enough Data</h3>
+              <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-ink)' }}>Nothing to chart</h3>
               <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: 0 }}>
                 {filter === 'Transfer'
                   ? 'Transfers move money between your own accounts, so they have no category to chart.'
@@ -471,7 +476,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
               </p>
             </div>
           ) : (
-            <div style={{ height: 'calc(100% - 45px)', position: 'relative' }}>
+            <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
               <canvas ref={chartRef} role="img" aria-label={`${chartType} by category`}></canvas>
             </div>
           )}
@@ -561,7 +566,11 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
               })}
             </div>
           ) : (
-            <p style={{ color: 'var(--color-muted)', margin: 0, fontStyle: 'italic' }}>No budgets set yet. Click "Edit Budgets" to get started!</p>
+            <p style={{ color: 'var(--color-muted)', margin: 0, fontSize: 'var(--text-sm)' }}>
+              No limits set yet. Give a category a limit — monthly, quarterly or yearly — and
+              you will see how much of it you have used, with the option to carry unspent
+              room into the next period.
+            </p>
           )}
         </div>
       )}
@@ -576,12 +585,17 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
       )}
 
       {config?.features?.cashFlow !== false && (
-        <div className="trend-chart-container" style={{ ...CARD, marginTop: 'var(--space-xl)' }}>
+        <div className="trend-chart-container" style={{ ...CARD, marginTop: 'var(--space-xl)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0, marginBottom: 'var(--space-md)' }}>📊 Cash Flow Trend</h2>
           {trendSeries.labels.length === 0 ? (
-            <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: 0 }}>Nothing to plot for this period yet.</p>
+            <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: 0 }}>No income or spending recorded in this period yet.</p>
           ) : (
-            <canvas ref={trendChartRef} role="img" aria-label="Income and expenses over time"></canvas>
+            /* The canvas sat directly in the fixed-height card, so Chart.js sized
+               it against the *card* rather than the space left under the heading
+               and overflowed by ~25px. */
+            <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+              <canvas ref={trendChartRef} role="img" aria-label="Income and expenses over time"></canvas>
+            </div>
           )}
         </div>
       )}

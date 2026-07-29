@@ -95,6 +95,12 @@ export default function App() {
   // moves. Toggled in Settings → Feature Toggles.
   const allowTransfer = config?.features?.transfers === true;
 
+  // Two ways to end up looking at the fixture: the explicit demo flag, or simply
+  // never having connected Notion (the client falls back to samples with no
+  // token). Both need saying out loud.
+  const hasNotionConfig = !!config.token && !!config.transactionsDb;
+  const showingSampleData = !!config.demoMode || !hasNotionConfig;
+
   // On by default (unlike Transfers): the subscriptions engine has always been
   // able to post a charge without ever having warned it was coming, and this is
   // the fix for that. `!== false` so existing configs, saved before this key
@@ -122,12 +128,19 @@ export default function App() {
   // can't import the ES module that does the date maths, so this snapshot is
   // the only channel between them.
   useEffect(() => {
-    if (config.demoMode) return; // never let the fixture drive real reminders
-    writeReminderState(data, {
-      enabled: readJson('whereItWent_reminders_enabled', false),
-      leadDays,
-    });
-  }, [data, leadDays, config.demoMode]);
+    // Deliberately still writes in demo mode, with `enabled: false`, rather than
+    // returning early: bailing out would leave the *previous* snapshot in place,
+    // so disconnecting from Notion would keep firing notifications about bills
+    // in a workspace you just disconnected from.
+    //
+    // The feature toggle counts too. Turning Upcoming Bills off also hides the
+    // reminder controls, so without this the notifications kept arriving with
+    // no visible way to stop them.
+    const remindersOn = !config.demoMode
+      && showUpcoming
+      && readJson('whereItWent_reminders_enabled', false);
+    writeReminderState(data, { enabled: remindersOn, leadDays });
+  }, [data, leadDays, config.demoMode, showUpcoming]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -256,14 +269,24 @@ export default function App() {
 
   return (
     <>
-      {config.demoMode && (
-        <div style={{ backgroundColor: 'var(--color-danger)', color: 'white', padding: 'var(--space-sm) var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 100 }}>
-          <span style={{ fontWeight: 'bold' }}>DEMO MODE ACTIVE</span>
+      {/* Shown whenever the figures on screen are samples — which includes a
+          brand-new install that has never been configured, not just the explicit
+          demo flag. Previously a first-run user saw a full ledger of invented
+          transactions with nothing saying they weren't real. */}
+      {showingSampleData && (
+        <div style={{ backgroundColor: 'var(--color-warning)', color: 'var(--color-bg)', padding: 'var(--space-sm) var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-sm)', position: 'relative', zIndex: 100, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-sm)' }}>
+            Sample data — nothing here is yours, and nothing you change is saved to Notion.
+          </span>
           <button
-            style={{ padding: '4px 8px', fontSize: '12px', background: 'white', color: 'var(--color-danger)', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-            onClick={() => handleConfigSave({ ...config, demoMode: false })}
+            style={{ padding: '4px 10px', fontSize: 'var(--text-xs)', background: 'var(--color-bg)', color: 'var(--color-ink)', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 'var(--weight-bold)', flex: 'none' }}
+            onClick={() => (hasNotionConfig
+              ? handleConfigSave({ ...config, demoMode: false })
+              : handleTabChange('settings'))}
           >
-            Stop Demo
+            {/* With no Notion connection there is nothing to switch back *to*,
+                so offering "Stop Demo" would be a button that does nothing. */}
+            {hasNotionConfig ? 'Use my Notion data' : 'Connect Notion'}
           </button>
         </div>
       )}

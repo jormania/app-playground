@@ -35,13 +35,13 @@ export function generateSummaryParagraph(currentMetrics, prevMetrics, spendingBy
 
   // Sentence 3: savings context — only meaningful when there was income to save from.
   if (currentMetrics.totalIncome <= 0) {
-    summary += 'No income was recorded this period, so the savings rate is not meaningful.';
+    summary += 'No income was recorded this period, so there is no savings rate to report.';
   } else if (currentMetrics.savingsRate > 0.20) {
-    summary += 'Strong cash retention kept your savings rate above the 20% target.';
+    summary += 'You kept more than a fifth of what came in, which clears the 20% mark.';
   } else if (currentMetrics.savingsRate > 0) {
-    summary += 'Your savings rate stayed positive but fell below the 20% target.';
+    summary += 'You kept some of what came in, though less than the 20% worth aiming for.';
   } else {
-    summary += 'You spent more than you took in this period.';
+    summary += 'You spent more than came in this period.';
   }
 
   return summary.trim();

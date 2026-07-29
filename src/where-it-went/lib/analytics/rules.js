@@ -18,6 +18,14 @@ export function ruleOverspendingPace(currentMetrics, historicalPacePct, currentP
   return null;
 }
 
+/** "38% above" for modest rises, "15x" once a percentage stops being legible. */
+export function describeIncrease(total, average) {
+  if (!average) return 'well above';
+  const multiple = total / average;
+  if (multiple >= 3) return `${multiple.toFixed(1)}x`;
+  return `${(((total - average) / average) * 100).toFixed(0)}% above`;
+}
+
 export function ruleCategorySpike(currentCatSums, historicalAverages) {
   const alerts = [];
 
@@ -39,7 +47,9 @@ export function ruleCategorySpike(currentCatSums, historicalAverages) {
         type: 'warning',
         title: 'Category Spike',
         weight: diff,
-        message: `Your ${c.name} spending (${formatCurrency(c.total)}) is ${pctChange.toFixed(0)}% higher than your ${hist.monthsAssessed}-month average (${formatCurrency(hist.average)}).`
+        // Past a couple of hundred percent a percentage stops being readable —
+        // "1452% higher" takes a moment to decode, "15x" does not.
+        message: `${c.name}: ${formatCurrency(c.total)} so far, ${describeIncrease(c.total, hist.average)} your usual ${hist.monthsAssessed}-month average of ${formatCurrency(hist.average)}.`
       });
     }
   });

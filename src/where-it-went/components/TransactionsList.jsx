@@ -139,8 +139,11 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
       {filtered.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-2xl)', textAlign: 'center', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', marginTop: 'var(--space-md)' }}>
           <div style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>🍃</div>
-          <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-ink)' }}>No Transactions Found</h3>
-          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>Try adjusting your filters in the top menu to find what you're looking for.</p>
+          <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-ink)' }}>Nothing here</h3>
+          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
+            No transactions match the current period and filters. Try the calendar or filter
+            buttons at the top, or add one with “+ Add”.
+          </p>
         </div>
       ) : (
         <div style={{ marginTop: 'var(--space-md)' }}>

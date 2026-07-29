@@ -86,7 +86,12 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
   const isTravelCategory = !!selectedCat && (selectedCat.name || '').toLowerCase().includes('travel');
   const selectedAccount = accounts.find(a => a.id === accountId);
   const accountCurrency = selectedAccount?.currency || BASE_CURRENCY;
-  const selectedTrip = (trips || []).find(t => t.id === tripId);
+  // Only a trip that will actually be *saved* may influence the currency. The
+  // trip picker is hidden once the category stops being Travel, and the trip id
+  // is dropped on submit — so without this check, switching Travel → Dining left
+  // the form defaulting to (say) PLN because of a trip the transaction was no
+  // longer going to be attached to.
+  const selectedTrip = isTravelCategory ? (trips || []).find(t => t.id === tripId) : null;
   // Trip beats account: on a trip you spend the destination's money, whatever
   // card it settles against. Falling back to the account currency, then RON.
   const suggestedCurrency = selectedTrip?.currency || accountCurrency || BASE_CURRENCY;

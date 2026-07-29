@@ -4,6 +4,7 @@ import { formatCurrency } from '../lib/currency';
 import { formatPeriodLabel } from '../lib/period';
 import { projectCashFlow } from '../lib/analytics/forecast';
 import ForecastSection from './ForecastSection';
+import NoraAvatar from './NoraAvatar';
 
 /** Percentage of `part` over `whole`, or null when `whole` is 0 — callers render
  * "—" instead of the NaN% the raw division used to produce for an income-only
@@ -56,8 +57,12 @@ export default function InsightsView({ data, period, filterProps, config }) {
       {!insights ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-2xl)', textAlign: 'center', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
           <div style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>✨</div>
-          <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-ink)' }}>Not Enough Data Yet</h3>
-          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', maxWidth: '360px', marginBottom: 0 }}>Add more transactions and we'll generate insights for you here.</p>
+          <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-ink)' }}>Nothing to analyse yet</h3>
+          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', maxWidth: '380px', marginBottom: 0 }}>
+            Insights compare this period against the ones before it, so they need a few
+            transactions to work from. Add some spending — or widen the period using the
+            calendar button above — and this fills in.
+          </p>
         </div>
       ) : (<>
 
@@ -820,8 +825,8 @@ export default function InsightsView({ data, period, filterProps, config }) {
           <div style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
                 <div>
-                  <h3 style={{ fontSize: 'var(--text-lg)', margin: 0 }}>
-                    👧 Nora Insights
+                  <h3 style={{ fontSize: 'var(--text-lg)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <NoraAvatar /> Nora Insights
                   </h3>
                   <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: '4px 0 0 0' }}>
                     {behavioral.noraAnalysis.count > 0 
@@ -994,8 +999,8 @@ export default function InsightsView({ data, period, filterProps, config }) {
                 </div>
               ) : (
                 <div style={{ textAlign: 'center', padding: 'var(--space-xl) var(--space-md)', color: 'var(--color-muted)' }}>
-                  <div style={{ fontSize: '32px', marginBottom: 'var(--space-sm)' }}>👧</div>
-                  <p style={{ margin: '0 0 var(--space-xs) 0', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>No Child Activity Logged in This Period</p>
+                  <div style={{ marginBottom: 'var(--space-sm)' }}><NoraAvatar size="44px" /></div>
+                  <p style={{ margin: '0 0 var(--space-xs) 0', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Nothing logged for Nora in this period</p>
                   <p style={{ margin: 0, fontSize: 'var(--text-sm)', maxWidth: '500px', marginInline: 'auto' }}>
                     When you log school tuition, sports, clothing, or child support under the <b>Nora</b> category, this panel automatically analyzes family spending trends, categorizes commitments versus activities, and integrates with the 50/30/20 rules engine.
                   </p>

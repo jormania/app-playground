@@ -94,7 +94,10 @@ export default function BudgetEditorModal({ isOpen, onClose, categories, client,
         </div>
 
         {expenseCategories.length === 0 ? (
-          <p style={{ color: 'var(--color-muted)', fontStyle: 'italic', margin: 0 }}>No expense categories yet.</p>
+          <p style={{ color: 'var(--color-muted)', margin: 0, fontSize: 'var(--text-sm)' }}>
+            No spending categories found. Add some to your Notion Categories database first —
+            income categories cannot have a limit.
+          </p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 'var(--space-md)' }}>
             {expenseCategories.map(c => (
