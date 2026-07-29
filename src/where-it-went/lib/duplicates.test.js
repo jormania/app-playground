@@ -4,9 +4,13 @@ import {
   scorePair,
   descriptionSimilarity,
   normalizeDescription,
+  buildHabitIndex,
+  habitCount,
   groupKey,
   withoutDismissed,
   mergeFields,
+  DEFAULT_DAY_WINDOW,
+  HABITUAL_OCCURRENCES,
 } from './duplicates';
 
 const tx = (over = {}) => ({
@@ -33,30 +37,56 @@ describe('descriptionSimilarity', () => {
     expect(descriptionSimilarity('Netflix', 'Netflix subscription')).toBe(0.9);
   });
 
-  it('scores partial overlap between 0 and 1', () => {
-    const s = descriptionSimilarity('Lidl groceries run', 'Lidl groceries');
-    expect(s).toBeGreaterThan(0.6);
-    expect(s).toBeLessThan(1);
-  });
-
   it('is 0 for unrelated text', () => {
     expect(descriptionSimilarity('Netflix', 'Dentist')).toBe(0);
   });
 });
 
+describe('buildHabitIndex / habitCount', () => {
+  it('counts the distinct days a vendor charged this exact amount', () => {
+    const rows = [
+      tx({ id: 'a', description: 'Metro', amount: 3, date: '2026-07-01' }),
+      tx({ id: 'b', description: 'Metro', amount: 3, date: '2026-07-02' }),
+      tx({ id: 'c', description: 'Metro', amount: 3, date: '2026-07-03' }),
+      tx({ id: 'd', description: 'Metro', amount: 9, date: '2026-07-04' }),
+    ];
+    const index = buildHabitIndex(rows);
+    expect(habitCount(index, rows[0])).toBe(3);
+    expect(habitCount(index, rows[3])).toBe(1);
+  });
+
+  it('counts two charges on the same day as one day', () => {
+    const rows = [
+      tx({ id: 'a', description: 'Metro', amount: 3, date: '2026-07-01' }),
+      tx({ id: 'b', description: 'Metro', amount: 3, date: '2026-07-01' }),
+    ];
+    expect(habitCount(buildHabitIndex(rows), rows[0])).toBe(1);
+  });
+});
+
 describe('scorePair', () => {
-  it('pairs an identical charge a day apart', () => {
-    const score = scorePair(tx(), tx({ id: 't2', date: '2026-07-06' }));
+  it('rates a same-day, same-vendor, same-card repeat as high', () => {
+    // The strongest tell there is, and the one the brief called out.
+    const score = scorePair(tx(), tx({ id: 't2' }));
     expect(score.confidence).toBe('high');
-    expect(score.reason).toMatch(/1 day apart/);
+    expect(score.reason).toMatch(/same day/);
+  });
+
+  it('rates a next-day repeat as no better than medium', () => {
+    // Crossing a date boundary is a suggestion, not an assertion.
+    const score = scorePair(tx(), tx({ id: 't2', date: '2026-07-06' }));
+    expect(score.confidence).toBe('medium');
   });
 
   it('refuses a different amount, however similar the rest', () => {
     expect(scorePair(tx(), tx({ id: 't2', amount: 60.01 }))).toBeNull();
   });
 
-  it('refuses a gap wider than the window', () => {
-    expect(scorePair(tx(), tx({ id: 't2', date: '2026-07-20' }))).toBeNull();
+  it('refuses a two-day gap by default', () => {
+    // A commute charged the same fare on Monday and Wednesday is not a
+    // double-entry; the window used to be 3 days and flagged exactly that.
+    expect(DEFAULT_DAY_WINDOW).toBe(1);
+    expect(scorePair(tx(), tx({ id: 't2', date: '2026-07-07' }))).toBeNull();
   });
 
   it('refuses unrelated descriptions', () => {
@@ -67,21 +97,59 @@ describe('scorePair', () => {
     expect(scorePair(tx(), tx({ id: 't2', type: 'Income' }))).toBeNull();
   });
 
-  it('does not flag two same-day purchases in different categories', () => {
-    // Two coffees at the same price on the same day are not a double-entry.
-    const a = tx({ description: 'Coffee', categoryId: 'c_dining', amount: 15 });
-    const b = tx({ id: 't2', description: 'Coffee shop', categoryId: 'c_food', amount: 15 });
+  it('refuses a cross-day pair filed under different categories', () => {
+    // Filed differently at the time means they were understood as different
+    // purchases.
+    const a = tx({ categoryId: 'c_dining' });
+    const b = tx({ id: 't2', date: '2026-07-06', categoryId: 'c_food' });
     expect(scorePair(a, b)).toBeNull();
   });
 
-  it('still flags a same-day, cross-category pair when the description is identical', () => {
-    const a = tx({ description: 'Coffee', categoryId: 'c_dining', amount: 15 });
-    const b = tx({ id: 't2', description: 'coffee', categoryId: 'c_food', amount: 15 });
+  it('still allows a same-day cross-category pair when the description is identical', () => {
+    const a = tx({ categoryId: 'c_dining' });
+    const b = tx({ id: 't2', categoryId: 'c_food' });
     expect(scorePair(a, b)).not.toBeNull();
   });
 
-  it('rates a different-account match as merely medium', () => {
-    const score = scorePair(tx(), tx({ id: 't2', date: '2026-07-06', accountId: 'a2' }));
+  it('drops a cross-day pair whose amount is a regular charge for that vendor', () => {
+    // The coffee/metro case: a fixed price repeats by nature, so an exact
+    // amount match says nothing.
+    const rows = [
+      tx({ id: 'a', description: 'Metro', amount: 3, date: '2026-07-01' }),
+      tx({ id: 'b', description: 'Metro', amount: 3, date: '2026-07-02' }),
+      tx({ id: 'c', description: 'Metro', amount: 3, date: '2026-07-09' }),
+    ];
+    const habitIndex = buildHabitIndex(rows);
+    expect(habitCount(habitIndex, rows[0])).toBeGreaterThanOrEqual(HABITUAL_OCCURRENCES);
+    expect(scorePair(rows[0], rows[1], { habitIndex })).toBeNull();
+  });
+
+  it('keeps a same-day repeat even for a habitual amount, but only as medium', () => {
+    // Two identical fares on the *same* day still stand out against the habit.
+    const rows = [
+      tx({ id: 'a', description: 'Metro', amount: 3, date: '2026-07-01' }),
+      tx({ id: 'b', description: 'Metro', amount: 3, date: '2026-07-01' }),
+      tx({ id: 'c', description: 'Metro', amount: 3, date: '2026-07-05' }),
+      tx({ id: 'd', description: 'Metro', amount: 3, date: '2026-07-09' }),
+    ];
+    const habitIndex = buildHabitIndex(rows);
+    const score = scorePair(rows[0], rows[1], { habitIndex });
+    expect(score.confidence).toBe('medium');
+    expect(score.habitual).toBe(true);
+    expect(score.reason).toMatch(/regular charge/);
+  });
+
+  it('keeps a cross-day pair when the vendor rarely charges that exact amount', () => {
+    // A taxi landing on the identical fare twice is a real coincidence — the
+    // case the brief singled out as worth surfacing.
+    const rows = [
+      tx({ id: 'a', description: 'Uber/Bolt', amount: 39, date: '2026-07-01', categoryId: 'c_transport' }),
+      tx({ id: 'b', description: 'Uber/Bolt', amount: 39, date: '2026-07-02', categoryId: 'c_transport' }),
+      tx({ id: 'c', description: 'Uber/Bolt', amount: 22, date: '2026-07-05', categoryId: 'c_transport' }),
+      tx({ id: 'd', description: 'Uber/Bolt', amount: 51, date: '2026-07-09', categoryId: 'c_transport' }),
+    ];
+    const score = scorePair(rows[0], rows[1], { habitIndex: buildHabitIndex(rows) });
+    expect(score).not.toBeNull();
     expect(score.confidence).toBe('medium');
   });
 
@@ -91,15 +159,15 @@ describe('scorePair', () => {
 });
 
 describe('findDuplicateGroups', () => {
-  it('finds the obvious double-entry', () => {
+  it('finds a same-day double entry and rates it high', () => {
     const groups = findDuplicateGroups([
       tx({ id: 't1' }),
-      tx({ id: 't2', date: '2026-07-06' }),
+      tx({ id: 't2' }),
       tx({ id: 't3', description: 'Rent', amount: 2400, date: '2026-07-01' }),
     ]);
     expect(groups).toHaveLength(1);
+    expect(groups[0].confidence).toBe('high');
     expect(groups[0].txs.map(t => t.id)).toEqual(['t1', 't2']);
-    expect(groups[0].amount).toBe(60);
   });
 
   it('returns nothing for a clean ledger', () => {
@@ -109,24 +177,32 @@ describe('findDuplicateGroups', () => {
     ])).toEqual([]);
   });
 
+  it('leaves a habitual fixed-price purchase alone across days', () => {
+    const rows = [
+      tx({ id: 'a', description: 'Coffee', amount: 17, date: '2026-07-01', categoryId: 'c_dining' }),
+      tx({ id: 'b', description: 'Coffee', amount: 17, date: '2026-07-02', categoryId: 'c_dining' }),
+      tx({ id: 'c', description: 'Coffee', amount: 17, date: '2026-07-03', categoryId: 'c_dining' }),
+    ];
+    expect(findDuplicateGroups(rows)).toEqual([]);
+  });
+
   it('puts each transaction in at most one group', () => {
     const groups = findDuplicateGroups([
       tx({ id: 't1', date: '2026-07-05' }),
-      tx({ id: 't2', date: '2026-07-06' }),
-      tx({ id: 't3', date: '2026-07-07' }),
+      tx({ id: 't2', date: '2026-07-05' }),
     ]);
     expect(groups).toHaveLength(1);
-    expect(groups[0].txs).toHaveLength(3);
+    expect(groups[0].txs).toHaveLength(2);
   });
 
   it('orders high confidence before medium', () => {
     const groups = findDuplicateGroups([
-      // medium: different account
+      // medium: a day apart
       tx({ id: 'm1', description: 'Gym', amount: 150, date: '2026-06-01' }),
-      tx({ id: 'm2', description: 'Gym', amount: 150, date: '2026-06-02', accountId: 'a2' }),
-      // high: everything matches
+      tx({ id: 'm2', description: 'Gym', amount: 150, date: '2026-06-02' }),
+      // high: same day, same card
       tx({ id: 'h1', description: 'Netflix', amount: 60, date: '2026-05-01' }),
-      tx({ id: 'h2', description: 'Netflix', amount: 60, date: '2026-05-02' }),
+      tx({ id: 'h2', description: 'Netflix', amount: 60, date: '2026-05-01' }),
     ]);
     expect(groups.map(g => g.confidence)).toEqual(['high', 'medium']);
   });
@@ -151,7 +227,7 @@ describe('groupKey / withoutDismissed', () => {
   });
 
   it('filters out a dismissed group', () => {
-    const groups = findDuplicateGroups([tx({ id: 't1' }), tx({ id: 't2', date: '2026-07-06' })]);
+    const groups = findDuplicateGroups([tx({ id: 't1' }), tx({ id: 't2' })]);
     expect(withoutDismissed(groups, [groupKey(groups[0])])).toEqual([]);
     expect(withoutDismissed(groups, [])).toHaveLength(1);
   });

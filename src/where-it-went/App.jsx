@@ -13,7 +13,7 @@ import { readJson, writeJson } from './lib/storage';
 import Navigation from './components/Navigation';
 import UpcomingBanner from './components/UpcomingBanner';
 import OfflineBanner from './components/OfflineBanner';
-import { getUpcomingBills, billsWithinLeadTime, isSnoozed, DEFAULT_LEAD_DAYS } from './lib/upcoming';
+import { getUpcomingBills, billsWithinLeadTime, DEFAULT_LEAD_DAYS } from './lib/upcoming';
 import { writeReminderState } from './lib/reminders';
 import {
   createOfflineClient, saveSnapshot, readSnapshot, readOutbox, readFailed,
@@ -65,13 +65,19 @@ export default function App() {
   const [pendingCount, setPendingCount] = useState(() => readOutbox().length);
   const [failedCount, setFailedCount] = useState(() => readFailed().length);
 
-  const baseClient = useMemo(() => new NotionClient(config.token, {
+  // Demo mode deliberately hands the client no token. `loadData` already serves
+  // the fixtures, but the client was still built with the real token, so every
+  // *write* went to live Notion carrying a fixture id — which is why merging a
+  // demo duplicate failed with "page_id should be a valid uuid, instead was
+  // demo_tx_271". Without a token every write method takes its in-memory demo
+  // path instead, and live data can't be touched from demo mode at all.
+  const baseClient = useMemo(() => new NotionClient(config.demoMode ? '' : config.token, {
     categories: config.categoriesDb,
     accounts: config.accountsDb,
     transactions: config.transactionsDb,
     subscriptions: config.subscriptionsDb,
     trips: config.tripsDb
-  }), [config.token, config.categoriesDb, config.accountsDb, config.transactionsDb, config.subscriptionsDb, config.tripsDb]);
+  }), [config.demoMode, config.token, config.categoriesDb, config.accountsDb, config.transactionsDb, config.subscriptionsDb, config.tripsDb]);
 
   // Every existing call site keeps using `client` unchanged; the wrapper only
   // intercepts transaction writes and diverts them to the outbox when the
@@ -98,7 +104,10 @@ export default function App() {
     ? Number(config.upcomingLeadDays)
     : DEFAULT_LEAD_DAYS;
 
-  const [snoozedUntil, setSnoozedUntil] = useState(() => readJson('whereItWent_upcoming_snooze', 0));
+  const categoriesById = useMemo(
+    () => new Map((data.categories || []).map(c => [c.id, c])),
+    [data.categories],
+  );
 
   const dueSoon = useMemo(() => {
     if (!showUpcoming) return [];
@@ -119,12 +128,6 @@ export default function App() {
       leadDays,
     });
   }, [data, leadDays, config.demoMode]);
-
-  const handleSnooze = () => {
-    const until = Date.now() + 24 * 60 * 60 * 1000;
-    writeJson('whereItWent_upcoming_snooze', until);
-    setSnoozedUntil(until);
-  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -264,7 +267,10 @@ export default function App() {
           </button>
         </div>
       )}
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: 'var(--space-md)' }}>
+      {/* Outside the reading column on purpose: the nav's own contents are wider
+          than 800px once the tab labels show, so keeping it inside made it
+          overflow its box at every width and scroll the page sideways around
+          900px. Out here it simply spans the window. */}
       <Navigation
         activeTab={activeTab}
         onTabChange={handleTabChange}
@@ -274,6 +280,8 @@ export default function App() {
         onFilterClick={() => setShowFilterSheet(true)}
         filtersActive={filterType !== 'All' || categoryFilter !== 'All' || searchQuery.trim() !== ''}
       />
+
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 var(--space-md) var(--space-md)' }}>
 
       {/* One banner slot, shared. Offline/pending state outranks the bill
           reminder — a queued write is more urgent than a bill due in 3 days,
@@ -285,12 +293,12 @@ export default function App() {
           failedCount={failedCount}
           onOpenSettings={() => handleTabChange('settings')}
         />
-      ) : activeTab !== 'settings' && !isSnoozed(snoozedUntil) && (
+      ) : activeTab !== 'settings' && (
         <UpcomingBanner
           bills={dueSoon}
           leadDays={leadDays}
+          categoriesById={categoriesById}
           onView={() => handleTabChange('dashboard')}
-          onDismiss={handleSnooze}
         />
       )}
 

@@ -23,6 +23,13 @@ const today = new Date(2026, 6, 15); // 15 Jul 2026
 const bills = getUpcomingBills(subs, [], { today, horizonDays: 30 });
 
 describe('UpcomingBills', () => {
+  it('shows each bill with its category icon', () => {
+    const withIcons = categories.map(c => ({ ...c, icon: c.id === 'c1' ? '🔁' : '💰' }));
+    render(<UpcomingBills bills={bills} categories={withIcons} horizonDays={30} />);
+    expect(screen.getByText('🔁')).toBeDefined();
+    expect(screen.getByText('💰')).toBeDefined();
+  });
+
   it('lists each upcoming charge with its relative timing', () => {
     render(<UpcomingBills bills={bills} categories={categories} horizonDays={30} />);
     expect(screen.getByText('Netflix')).toBeDefined();
@@ -74,8 +81,18 @@ describe('UpcomingBanner', () => {
     expect(screen.getByText(/2 bills due in the next 7 days/)).toBeDefined();
   });
 
-  it('offers a dismiss control that is labelled for screen readers', () => {
+  it('cannot be dismissed — an unpaid bill should not be silenceable', () => {
+    // It used to snooze for 24h, which hid the one thing worth being told
+    // about and kept it hidden. The strip now clears itself only when the
+    // charge actually lands in the ledger.
     render(<UpcomingBanner bills={bills} leadDays={5} />);
-    expect(screen.getByLabelText('Dismiss for 24 hours')).toBeDefined();
+    expect(screen.queryByLabelText(/dismiss/i)).toBeNull();
+    expect(screen.queryByRole('button', { name: /^×$/ })).toBeNull();
+  });
+
+  it('shows the category icon alongside a single bill', () => {
+    const categoriesById = new Map(categories.map(c => [c.id, { ...c, icon: '🔁' }]));
+    render(<UpcomingBanner bills={[bills[0]]} leadDays={5} categoriesById={categoriesById} />);
+    expect(screen.getByText(/🔁 Netflix/)).toBeDefined();
   });
 });

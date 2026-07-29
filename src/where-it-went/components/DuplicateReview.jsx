@@ -17,7 +17,7 @@ const DISMISS_KEY = 'whereItWent_dupe_dismissed';
  * option 400s the *entire* atomic patch, taking unrelated fields down with it.
  * Re-dismissing once per device is the cheaper trade.
  */
-export default function DuplicateReview({ transactions, categoriesById, client, onDataChange }) {
+export default function DuplicateReview({ transactions, categoriesById, accountsById, client, onDataChange, onInspect }) {
   const [dismissed, setDismissed] = useState(() => readJson(DISMISS_KEY, []));
   const [expanded, setExpanded] = useState(false);
   const [pendingMerge, setPendingMerge] = useState(null);
@@ -107,28 +107,50 @@ export default function DuplicateReview({ transactions, categoriesById, client, 
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {group.txs.map(t => (
-                  <div key={t.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
-                    padding: '6px 8px', backgroundColor: 'var(--color-surface-2)',
-                    borderRadius: 'var(--radius-sm)', minWidth: 0, flexWrap: 'wrap'
-                  }}>
-                    <div style={{ flex: 1, minWidth: '120px' }}>
-                      <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {t.description}
-                      </div>
-                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
-                        {t.date} · {categoriesById?.get(t.categoryId)?.name || 'Uncategorized'}
-                      </div>
+                {group.txs.map(t => {
+                  const cat = categoriesById?.get(t.categoryId);
+                  const acc = accountsById?.get(t.accountId);
+                  return (
+                    <div key={t.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
+                      padding: '6px 8px', backgroundColor: 'var(--color-surface-2)',
+                      borderRadius: 'var(--radius-sm)', minWidth: 0, flexWrap: 'wrap'
+                    }}>
+                      {/* Deciding which copy to keep means seeing what each one
+                          actually is. Opening the full editor beats guessing
+                          from a truncated description. */}
+                      <button
+                        type="button"
+                        onClick={() => onInspect && onInspect(t)}
+                        title="Open this transaction"
+                        style={{
+                          flex: 1, minWidth: '120px', textAlign: 'left', background: 'none',
+                          border: 'none', padding: 0, font: 'inherit', cursor: onInspect ? 'pointer' : 'default'
+                        }}
+                      >
+                        <div style={{
+                          fontSize: 'var(--text-sm)', color: 'var(--color-ink)',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          textDecoration: onInspect ? 'underline dotted' : 'none',
+                          textUnderlineOffset: '3px'
+                        }}>
+                          {cat?.icon ? `${cat.icon} ` : ''}{t.description}
+                        </div>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {t.date} · {cat?.name || 'Uncategorized'}
+                          {acc?.name ? ` · ${acc.name}` : ''}
+                          {t.notes ? ` · ${t.notes}` : ''}
+                        </div>
+                      </button>
+                      <Button
+                        size="sm" variant="secondary" disabled={busy}
+                        onClick={() => setPendingMerge({ group, survivor: t })}
+                      >
+                        Keep this
+                      </Button>
                     </div>
-                    <Button
-                      size="sm" variant="secondary" disabled={busy}
-                      onClick={() => setPendingMerge({ group, survivor: t })}
-                    >
-                      Keep this
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div style={{ marginTop: 'var(--space-sm)', display: 'flex', justifyContent: 'flex-end' }}>

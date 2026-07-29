@@ -77,7 +77,10 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
 
   return (
     <Modal open={isOpen} title={trip ? 'Edit Trip' : 'Add Trip'} onClose={onClose}>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+      {/* 8px row gap and no extra margin above the buttons — with Currency
+          added this form gained a row, and the modal has to stay scroll-free on
+          a laptop as well as a phone. */}
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <Field label="Trip Name" placeholder="e.g. Billund 2025" value={name} onChange={e => setName(e.target.value)} required />
         <Field label="Destination" placeholder="e.g. Billund, Denmark" value={destination} onChange={e => setDestination(e.target.value)} />
 
@@ -86,38 +89,44 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
           <Field label="End Date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min={startDate || undefined} />
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Status</label>
-          <SegmentedControl
-            value={status}
-            onChange={val => setStatus(val)}
-            options={[
-              { value: 'Planned', label: 'Planned' },
-              { value: 'Active', label: 'Active' },
-              { value: 'Completed', label: 'Completed' }
-            ]}
-          />
-        </div>
+        {/* Status and Currency share a row. Both are short controls, and
+            stacking them cost a whole row of height the modal couldn't spare.
+            `minmax(0, …)` so neither can refuse to shrink — a bare `fr` floors
+            at the content's min-content width and overflows. */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 'var(--space-sm)', alignItems: 'end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+            <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Status</label>
+            <SegmentedControl
+              value={status}
+              onChange={val => setStatus(val)}
+              options={[
+                { value: 'Planned', label: 'Planned' },
+                { value: 'Active', label: 'Active' },
+                { value: 'Completed', label: 'Completed' }
+              ]}
+            />
+          </div>
 
-        {/* Sets the default currency for anything tagged to this trip — on a
-            trip you spend the destination's money, whatever card settles it. */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-          <label htmlFor="trip-currency" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
-            Currency spent there (optional)
-          </label>
-          <select
-            id="trip-currency"
-            value={currency}
-            onChange={e => setCurrency(e.target.value)}
-            style={{
-              width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)',
-              color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit'
-            }}
-          >
-            <option value="">Use the account currency</option>
-            {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+          {/* Sets the default currency for anything tagged to this trip — on a
+              trip you spend the destination's money, whatever card settles it. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+            <label htmlFor="trip-currency" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
+              Currency
+            </label>
+            <select
+              id="trip-currency"
+              value={currency}
+              onChange={e => setCurrency(e.target.value)}
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)',
+                color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit'
+              }}
+            >
+              <option value="">Account&apos;s</option>
+              {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
         </div>
 
         <Field label="Notes" placeholder="Optional trip notes..." value={notes} onChange={e => setNotes(e.target.value)} />
@@ -128,7 +137,7 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-lg)' }}>
+        <div className="tx-form-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', marginTop: 'var(--space-xs)' }}>
           {trip && (
             <div style={{ marginRight: 'auto' }}>
               <Button type="button" variant="danger" disabled={saving} onClick={() => setShowConfirmDelete(true)}>Delete</Button>

@@ -144,20 +144,26 @@ export function impliedRate(amountBase, amountForeign) {
   return base / foreign;
 }
 
-/** "1 EUR = 5.2318 L · ECB 28 Jul" — the single-line helper under the amount. */
+/**
+ * "1 EUR = 5.24 RON (29 Jul)" — the plain-language rate line under the amount.
+ *
+ * Spells out RON rather than reusing the "L" suffix the amount field already
+ * wears: two different quantities both ending in "L" on the same line read as
+ * one confused number. Words instead of "·" separators and an unexplained
+ * "ECB" abbreviation, so it parses at a glance rather than needing decoding.
+ */
 export function formatRateNote(currency, rate, rateDate, { stale = false } = {}) {
   // `Number(null)` is 0, which is finite — without the explicit null/zero guard
-  // a missing rate renders as a confident-looking "1 EUR = 0.00 L".
+  // a missing rate renders as a confident-looking "1 EUR = 0.00 RON".
   if (rate == null || !Number.isFinite(Number(rate)) || Number(rate) <= 0) return '';
   const pretty = Number(rate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-  let when = '';
-  if (rateDate) {
-    const d = new Date(`${String(rateDate).slice(0, 10)}T00:00:00`);
-    when = Number.isNaN(d.getTime())
-      ? ''
-      : ` · ${stale ? 'last known ' : 'ECB '}${d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
-  }
-  return `1 ${String(currency).toUpperCase()} = ${pretty} L${when}`;
+  const cur = String(currency).toUpperCase();
+
+  const d = rateDate ? new Date(`${String(rateDate).slice(0, 10)}T00:00:00`) : null;
+  if (!d || Number.isNaN(d.getTime())) return `1 ${cur} = ${pretty} RON`;
+
+  const when = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return stale ? `1 ${cur} = ${pretty} RON (rate from ${when})` : `1 ${cur} = ${pretty} RON (${when})`;
 }
 
 /** Wipe the cached rates (exposed for tests and for a manual refresh). */

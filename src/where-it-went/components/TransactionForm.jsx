@@ -207,8 +207,13 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
     }
   };
 
+  // Row gap is 8px rather than the usual --space-sm (12px): with the FX rate
+  // line added, eight stacked rows need every spare pixel to fit a short
+  // browser window without a scrollbar — the actual failure case, not just a
+  // phone. Fields keep their own internal spacing; only the gap between rows
+  // is tightened.
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', overflowX: 'hidden', boxSizing: 'border-box', minWidth: 0 }}>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowX: 'hidden', boxSizing: 'border-box', minWidth: 0 }}>
       <SegmentedControl
         value={type}
         onChange={(val) => { setType(val); setCategoryId(''); }}
@@ -236,7 +241,8 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
             backgroundColor: 'var(--color-bg)', overflow: 'hidden'
           }}>
             <input
-              id={amountId} type="number" step="0.01" min="0" required placeholder="0.00"
+              id={amountId} type="number" inputMode="decimal" step="0.01" min="0" required placeholder="0.00"
+              className="wiw-no-spinner"
               value={amount} onChange={e => setAmount(e.target.value)}
               style={{
                 flex: 1, minWidth: 0, width: '100%', padding: '10px 0 10px 12px',
@@ -267,49 +273,60 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
         </div>
       </div>
 
-      {/* Strictly one line: the RON total (editable, because a card's own fee
-          beats any published rate) plus the rate it implies, ellipsised rather
-          than allowed to wrap. */}
+      {/* The editable RON total (a card's own fee beats any published rate)
+          and the rate that produced it, on their own line each — cramming
+          both into one line was unreadable at the font size this has to fit
+          at. Both still individually clamp to one line and ellipsise rather
+          than wrap, so this never grows past two short lines. */}
       {isForeign && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
-          <span style={{ flex: 'none' }}>≈</span>
-          <input
-            id={baseAmountId}
-            aria-label={`Amount in ${BASE_CURRENCY}`}
-            type="number" step="0.01" min="0" placeholder="0.00"
-            value={baseAmount}
-            onChange={e => { baseTouched.current = true; setBaseAmount(e.target.value); }}
-            style={{
-              flex: 'none', width: '84px', padding: '3px 6px',
-              border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
-              backgroundColor: 'var(--color-bg)', color: 'var(--color-ink)',
-              fontSize: 'var(--text-xs)', fontFamily: 'inherit'
-            }}
-          />
-          <span style={{ flex: 'none' }}>L</span>
-          <span
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
+            <span style={{ flex: 'none' }}>≈</span>
+            <input
+              id={baseAmountId}
+              aria-label={`Amount in ${BASE_CURRENCY}`}
+              type="number" inputMode="decimal" step="0.01" min="0" placeholder="0.00"
+              className="wiw-no-spinner"
+              value={baseAmount}
+              onChange={e => { baseTouched.current = true; setBaseAmount(e.target.value); }}
+              style={{
+                flex: 'none', width: '84px', padding: '3px 6px',
+                border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'var(--color-bg)', color: 'var(--color-ink)',
+                fontSize: 'var(--text-xs)', fontFamily: 'inherit'
+              }}
+            />
+            <span style={{ flex: 'none' }}>L</span>
+          </div>
+          <div
             title={rateNote || undefined}
-            style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+            style={{
+              fontSize: '11px', color: 'var(--color-muted)', minWidth: 0,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+            }}
           >
             {rateLoading
-              ? '· fetching rate…'
+              ? 'Fetching exchange rate…'
               : rateNote
-                ? `· ${rateNote}`
-                : `· no rate for ${activeCurrency} — enter the ${BASE_CURRENCY} amount yourself`}
-          </span>
+                ? `Rate: ${rateNote}`
+                : `No rate available for ${activeCurrency} — enter the ${BASE_CURRENCY} amount yourself`}
+          </div>
         </div>
       )}
 
       <Field label="Description" type="text" value={description} onChange={e => setDescription(e.target.value)} required placeholder={isTransfer ? 'e.g. Revolut top-up' : 'e.g. Groceries'} />
 
-      {/* Category — Transfers skip this: moving money between your own accounts
-          isn't income or an expense, so there's nothing to categorize. */}
+      {/* Category and Account share a row: two dropdowns that classify the same
+          transaction, and stacking them cost a whole row the modal couldn't
+          spare. `auto-fit` with a minimum lets them drop to one column on a
+          genuinely narrow screen rather than being crushed. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--space-sm)', alignItems: 'start' }}>
       {isTransfer ? (
         <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--color-muted)', fontStyle: 'italic' }}>
           Transfers aren't categorized or counted in your income/expense totals — they're just money moving between your own accounts.
         </p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
           <label htmlFor={categorySelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
             Category <span style={{ color: 'var(--color-danger)' }}>*</span>
           </label>
@@ -332,6 +349,19 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
         </div>
       )}
 
+      {/* Account */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+        <label htmlFor={accountSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
+          Account <span style={{ color: 'var(--color-danger)' }}>*</span>
+        </label>
+        <select id={accountSelectId} value={accountId} onChange={e => setAccountId(e.target.value)} required style={selectStyle}>
+          {sortedAccounts.map(a => (
+            <option key={a.id} value={a.id}>{a.name}{a.currency && a.currency !== BASE_CURRENCY ? ` (${a.currency})` : ''}</option>
+          ))}
+        </select>
+      </div>
+      </div>
+
       {/* Assign to Trip — only for Travel category */}
       {isTravelCategory && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px 10px', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--color-border)' }}>
@@ -347,17 +377,6 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
         </div>
       )}
 
-      {/* Account */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <label htmlFor={accountSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
-          Account <span style={{ color: 'var(--color-danger)' }}>*</span>
-        </label>
-        <select id={accountSelectId} value={accountId} onChange={e => setAccountId(e.target.value)} required style={selectStyle}>
-          {sortedAccounts.map(a => (
-            <option key={a.id} value={a.id}>{a.name}{a.currency && a.currency !== BASE_CURRENCY ? ` (${a.currency})` : ''}</option>
-          ))}
-        </select>
-      </div>
 
       {/* Notes — read by the Travel / Property / Family classifiers */}
       <Field label="Notes (optional)" type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Context for later" />
@@ -371,7 +390,10 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
       {/* Wraps because Delete + Cancel + Save don't fit on one line at 375px —
           the Save button was being clipped off the right edge of the edit form
           (the add form has no Delete, which is why it looked fine there). */}
-      <div className="tx-form-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
+      {/* No extra marginTop here — the form's own row gap already separates
+          this from Notes above it, and the FX line above needed the room more
+          than this did once it grew to two lines. */}
+      <div className="tx-form-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
         {initialTx && onDelete && (
           <div style={{ marginRight: 'auto' }}>
             <Button type="button" variant="danger" disabled={isSaving} onClick={() => setShowConfirmDelete(true)}>Delete</Button>

@@ -130,8 +130,10 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
       <DuplicateReview
         transactions={data.transactions}
         categoriesById={categoriesById}
+        accountsById={accountsById}
         client={client}
         onDataChange={onDataChange}
+        onInspect={setEditingTx}
       />
 
       {filtered.length === 0 ? (

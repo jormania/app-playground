@@ -61,11 +61,16 @@ describe('impliedRate', () => {
 });
 
 describe('formatRateNote', () => {
-  it('reads as one compact line', () => {
+  it('reads as one plain-language line, spelling out RON rather than reusing "L"', () => {
     // Date order is locale-dependent (28 Jul / Jul 28), so assert the parts
-    // rather than baking one locale's ordering into the test.
+    // rather than baking one locale's ordering into the test. Spelling out RON
+    // matters: the amount field beside this already ends in "L", so a second
+    // "L" here would read as one confused number.
     const note = formatRateNote('eur', 5.2318, '2026-07-28');
-    expect(note).toMatch(/^1 EUR = 5\.2318 L · ECB /);
+    expect(note).toMatch(/^1 EUR = 5\.2318 RON /);
+    expect(note).not.toMatch(/ L\b/);
+    expect(note).not.toContain('·');
+    expect(note).not.toContain('ECB');
     expect(note).toMatch(/28/);
     expect(note).toMatch(/Jul/);
     expect(note.split(String.fromCharCode(10))).toHaveLength(1); // strictly one line
@@ -75,8 +80,8 @@ describe('formatRateNote', () => {
     expect(formatRateNote('EUR', 0, '2026-07-28')).toBe('');
   });
 
-  it('says so when the rate is a stale fallback', () => {
-    expect(formatRateNote('EUR', 5.2, '2026-07-28', { stale: true })).toMatch(/last known/);
+  it('says so in plain words when the rate is a stale fallback', () => {
+    expect(formatRateNote('EUR', 5.2, '2026-07-28', { stale: true })).toMatch(/rate from/);
   });
 
   it('is empty without a usable rate', () => {

@@ -118,6 +118,35 @@ a:hover {
   cursor: pointer;
 }
 
+/* Android/iOS paint a translucent grey box over whatever you tap and leave it
+   there for a beat after the touch ends. On a form full of buttons that reads
+   as lag — a ghost panel hanging under the control you just pressed. The app
+   already gives every control its own :active/:hover feedback, so the platform
+   highlight adds nothing but the delay. */
+button,
+[role="button"],
+a,
+label,
+select,
+summary,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The nav bar used to live inside the 800px reading column while its own
+   contents need roughly 885px once the tab labels show — so it overflowed its
+   box at *every* width above the old 650px breakpoint, spilling into the
+   centring margin and causing real horizontal page scroll around 900px. It now
+   renders outside that column (see App.jsx) so it can use the full width
+   naturally; `100vw` was rejected because it counts the scrollbar and
+   reintroduces the overflow it was meant to remove. The labels additionally
+   stay hidden until there is genuinely room for them. */
+@media (max-width: 940px) {
+  .nav-tab-text {
+    display: none;
+  }
+}
+
 @media (max-width: 650px) {
   .mobile-nav-header {
     padding-left: var(--space-xs) !important;
@@ -133,8 +162,12 @@ a:hover {
   .nav-tab-text {
     display: none;
   }
+  /* 6px, not 8px: with both the filter and period buttons showing, the row
+     needed ~370px of a 359px content box at 375px wide and pushed the period
+     button off the right edge. Four tabs x 4px recovers more than the deficit
+     while keeping the touch target comfortably over 40px. */
   .nav-tab-btn {
-    padding: 8px;
+    padding: 6px;
   }
   .nav-controls {
     margin-left: auto;
@@ -242,4 +275,19 @@ a:hover {
 
 .trend-chart-container {
   height: 400px;
+}
+
+/* Number inputs: no spinner arrows.
+   The up/down steppers are useless for money — nobody nudges a grocery bill
+   up by one leu at a time — and they eat horizontal room in an already tight
+   amount field. `inputMode` on the element keeps the numeric keypad on mobile,
+   so nothing is lost by hiding them. */
+.wiw-no-spinner::-webkit-outer-spin-button,
+.wiw-no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.wiw-no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }

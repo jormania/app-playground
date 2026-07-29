@@ -13,8 +13,23 @@
  */
 import { parseTxDate } from './period';
 
-/** Days either side of a transaction that a duplicate may land on. */
-export const DEFAULT_DAY_WINDOW = 3;
+/**
+ * Days either side of a transaction that a duplicate may land on.
+ *
+ * Was 3, which was far too generous: a commute charged the same fare on Monday
+ * and Wednesday is not a double-entry. A real double-entry is almost always the
+ * same day, or a midnight-boundary neighbour.
+ */
+export const DEFAULT_DAY_WINDOW = 1;
+
+/**
+ * How many separate days a given (vendor, amount) pair has to appear on before
+ * it reads as a habitual charge rather than a mistake. A fixed-price purchase —
+ * the same coffee, the same metro fare — repeats by nature, so an exact amount
+ * match tells you nothing about it. A vendor whose charges vary (a taxi, a
+ * supermarket shop) landing on the identical figure twice is far more telling.
+ */
+export const HABITUAL_OCCURRENCES = 3;
 
 /** Token overlap above which two descriptions are considered the same thing. */
 const SIMILARITY_THRESHOLD = 0.6;
@@ -26,7 +41,7 @@ const SIMILARITY_THRESHOLD = 0.6;
 export function normalizeDescription(value) {
   return String(value || '')
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // combining marks, escaped rather than literal
+    .replace(/[̀-ͯ]/g, '') // combining marks, escaped rather than literal
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
@@ -57,11 +72,41 @@ function dayGap(a, b) {
   return Math.abs(Math.round((da.getTime() - db.getTime()) / 86400000));
 }
 
+function habitKey(tx) {
+  return `${normalizeDescription(tx.description)}|${Number(tx.amount).toFixed(2)}`;
+}
+
+/**
+ * How many distinct days each (vendor, amount) pair shows up on.
+ *
+ * This is what separates "I paid for the same taxi twice" from "I buy the same
+ * coffee every week". Derived from the ledger itself rather than a hardcoded
+ * list of vendors or categories, so it adapts to how someone actually spends
+ * instead of to what a developer guessed.
+ */
+export function buildHabitIndex(transactions) {
+  const index = new Map();
+  for (const tx of transactions || []) {
+    if (!tx) continue;
+    const key = habitKey(tx);
+    if (!index.has(key)) index.set(key, new Set());
+    index.get(key).add(String(tx.date).slice(0, 10));
+  }
+  return index;
+}
+
+/** Distinct days this exact vendor+amount pair was charged on. */
+export function habitCount(index, tx) {
+  const entry = index?.get(habitKey(tx));
+  return entry ? entry.size : 0;
+}
+
 /**
  * How confident are we that these two rows are the same charge?
  * Returns `null` when they shouldn't be paired at all.
  */
-export function scorePair(a, b, dayWindow = DEFAULT_DAY_WINDOW) {
+export function scorePair(a, b, options = {}) {
+  const { dayWindow = DEFAULT_DAY_WINDOW, habitIndex = null } = options;
   if (!a || !b || a.id === b.id) return null;
   // Amounts must match to the cent. A "near-miss" amount is a different charge.
   if (Number(a.amount) !== Number(b.amount)) return null;
@@ -76,20 +121,28 @@ export function scorePair(a, b, dayWindow = DEFAULT_DAY_WINDOW) {
   const sameAccount = !!a.accountId && a.accountId === b.accountId;
   const sameCategory = (a.categoryId || '') === (b.categoryId || '');
 
-  // Two identical amounts on the *same day* in *different* categories are much
-  // more likely to be two real purchases than one entered twice — two coffees,
-  // not a double-entry. Only an exact description rescues that case.
-  if (gap === 0 && !sameCategory && similarity < 1) return null;
+  // Different categories means they were understood as different purchases at
+  // the time — two coffees, not one entered twice. Only an exact same-day,
+  // same-description match overrides that.
+  if (!sameCategory && !(gap === 0 && similarity === 1)) return null;
 
-  const exact = similarity === 1 && sameAccount && sameCategory;
-  const confidence = exact || (similarity >= 0.9 && sameAccount) ? 'high' : 'medium';
+  // A vendor+amount pair seen on several separate days is a habit, not a slip.
+  // Those only count when they land on the *same* day, where a genuine
+  // double-entry still stands out against the pattern.
+  const habitual = habitIndex ? habitCount(habitIndex, a) >= HABITUAL_OCCURRENCES : false;
+  if (habitual && gap !== 0) return null;
 
   const reasons = [];
   reasons.push(gap === 0 ? 'same day' : `${gap} day${gap === 1 ? '' : 's'} apart`);
   reasons.push(similarity === 1 ? 'identical description' : 'similar description');
   if (sameAccount) reasons.push('same account');
+  if (habitual) reasons.push('though this amount is a regular charge here');
 
-  return { confidence, similarity, gap, reason: reasons.join(' · ') };
+  // Same day, same vendor, same amount, same card is the strongest tell there
+  // is. Anything spanning a date boundary stays a suggestion, not an assertion.
+  const confidence = (gap === 0 && similarity === 1 && sameAccount && !habitual) ? 'high' : 'medium';
+
+  return { confidence, similarity, gap, habitual, reason: reasons.join(' · ') };
 }
 
 /**
@@ -101,6 +154,9 @@ export function scorePair(a, b, dayWindow = DEFAULT_DAY_WINDOW) {
 export function findDuplicateGroups(transactions, options = {}) {
   const { dayWindow = DEFAULT_DAY_WINDOW } = options;
   const rows = (transactions || []).filter(t => t && t.id && Number.isFinite(Number(t.amount)));
+  // Built from the whole ledger, not just the bucket, so "is this a habit?"
+  // is answered against everything known about that vendor.
+  const habitIndex = buildHabitIndex(rows);
 
   const byAmount = new Map();
   for (const tx of rows) {
@@ -124,7 +180,7 @@ export function findDuplicateGroups(transactions, options = {}) {
 
       for (let j = i + 1; j < sorted.length; j++) {
         if (claimed.has(sorted[j].id)) continue;
-        const score = scorePair(sorted[i], sorted[j], dayWindow);
+        const score = scorePair(sorted[i], sorted[j], { dayWindow, habitIndex });
         if (!score) continue;
         members.push(sorted[j]);
         if (!best || score.confidence === 'high') best = score;

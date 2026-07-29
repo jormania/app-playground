@@ -40,7 +40,9 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
       backdropFilter: 'blur(12px)',
       WebkitBackdropFilter: 'blur(12px)',
       borderBottom: '1px solid color-mix(in srgb, var(--color-border) 40%, transparent)',
-      margin: '0 calc(-1 * var(--space-md)) var(--space-md) calc(-1 * var(--space-md))'
+      // Rendered outside the 800px reading column now, so it spans the window
+      // on its own — no negative margins needed to escape the padding.
+      marginBottom: 'var(--space-md)'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
         <h1 className="nav-logo" style={{ color: 'var(--color-accent)', margin: 0, cursor: 'pointer' }} onClick={() => onTabChange('dashboard')}>

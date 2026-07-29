@@ -63,6 +63,12 @@ export default function UpcomingBills({ bills, categories, horizonDays }) {
                   minWidth: 0
                 }}
               >
+                {/* The category's own emoji, matching how the ledger and the
+                    charts identify it — a bill is far easier to place at a
+                    glance by its icon than by reading the name. */}
+                <span aria-hidden style={{ flex: 'none', fontSize: '16px', width: '20px', textAlign: 'center' }}>
+                  {cat?.icon || '🔁'}
+                </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
                     fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-sm)',

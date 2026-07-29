@@ -493,3 +493,76 @@ where registration is deliberately skipped. `ReminderSettings` races it against 
 silently. The same hang affects Touch Grass, Sol Odyssey and Journal of Delights
 in dev; fixing it in `src/shared/notify/periodicSync.ts` would let this local
 workaround be removed.
+
+## Feedback pass (2026-07-29)
+
+### Merging a duplicate failed in demo mode
+
+`path.page_id should be a valid uuid, instead was "demo_tx_271"` — the error
+named a uuid problem, but the cause was that **demo mode kept the live Notion
+token**. `loadData` served the fixtures while the client still pointed at the
+real workspace, so every *write* went to Notion carrying a fixture id. Editing
+or deleting any demo transaction hit the same wall; merging just found it first.
+The client is now built with no token whenever demo mode is on, which routes
+every write to its in-memory demo path and makes it impossible to touch live
+data from demo mode at all.
+
+### Duplicate detection tightened
+
+The old rules flagged anything with a matching amount within **three days**,
+which is a commute charged the same fare on Monday and Wednesday. Now:
+
+- **The window is one day.** A real double-entry is same-day, or a
+  midnight-boundary neighbour.
+- **A habit index, built from the ledger itself.** For every (vendor, amount)
+  pair the engine counts how many *distinct days* it appears on. A pair seen on
+  three or more separate days is a fixed price — the same coffee, the same metro
+  fare — where matching amounts mean nothing, so it is never flagged across
+  days. A vendor whose charges vary (a taxi, a supermarket shop) landing on the
+  identical figure twice stays flagged, which is exactly the distinction that
+  matters. Derived from the data rather than a hardcoded vendor list, so it
+  adapts to how someone actually spends.
+- **Different categories no longer pair across days.** Filed differently at the
+  time means they were understood as different purchases.
+- **`high` now requires same day + identical description + same account.**
+  Anything crossing a date boundary is a suggestion, capped at `medium`.
+- **Candidate rows are clickable**, opening the full transaction so the choice
+  of which copy to keep is an informed one, and each row shows its category
+  icon, account and notes inline.
+
+### Bill reminders are persistent
+
+The banner used to snooze for 24 hours. Dismissing an *unpaid* bill hides the
+one thing worth being told about and keeps it hidden, so the dismiss control is
+gone: the strip clears itself when the charge lands in the ledger, and not
+before. Both the strip and the agenda now show the category's own emoji.
+
+### Layout and input polish
+
+- **The transaction modal no longer scrolls.** Category and Account share a row
+  (both are dropdowns classifying the same transaction), the row gap is 8px, and
+  the FX helper is two short clamped lines instead of one crowded one. Measured
+  at 920x700: 464px of content in a 464px body. At 375px the paired row falls
+  back to one column and still fits.
+- **The rate line reads in plain language** — `Rate: 1 EUR = 5.2353 RON
+  (29 Jul)`. It previously rendered `· 1 EUR = 5.2353 L · ECB 29 Jul`, where the
+  second "L" collided with the amount field's own "L" and `ECB` was unexplained.
+- **Add Trip no longer scrolls either**: Status and Currency share a row.
+- **Number inputs lost their spinner arrows.** Nobody nudges a grocery bill up
+  by one leu, and the steppers ate room in a tight field. `inputMode="decimal"`
+  keeps the numeric keypad on mobile.
+
+### Two bugs found while verifying, both pre-existing
+
+- **The nav bar overflowed its own box at every width above 650px.** It lived
+  inside the 800px reading column while needing ~885px once tab labels showed —
+  spilling into the centring margin, and causing real horizontal page scroll
+  around 900px. It now renders outside that column so it spans the window
+  naturally. (`100vw` was tried and rejected: it counts the scrollbar and
+  reintroduced the overflow.) Labels stay hidden below 940px, and the mobile tab
+  padding was trimmed to fix a further 11px overflow at 375px that appeared
+  whenever both the filter and period buttons were showing.
+- **The "lag" when tapping buttons on mobile** was the platform tap-highlight —
+  a translucent box the OS paints over the control and leaves for a beat after
+  the touch. Every control already has its own `:active`/`:hover` feedback, so
+  the highlight is now suppressed.
