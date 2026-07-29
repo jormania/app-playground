@@ -325,7 +325,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
           transaction, and stacking them cost a whole row the modal couldn't
           spare. `auto-fit` with a minimum lets them drop to one column on a
           genuinely narrow screen rather than being crushed. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--space-sm)', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))', gap: 'var(--space-sm)', alignItems: 'start' }}>
       {isTransfer ? (
         <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--color-muted)', fontStyle: 'italic' }}>
           Transfers aren't categorized or counted in your income/expense totals — they're just money moving between your own accounts.
@@ -367,14 +367,18 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
       </div>
       </div>
 
-      {/* Assign to Trip — only for Travel category */}
+      {/* Assign to Trip — only for the Travel category.
+          Deliberately a plain labelled select rather than the dashed callout box
+          it used to be: the box's padding, border and extra caption cost about
+          90px, which was the difference between this form fitting a phone and
+          cutting off Notes and the Save button. */}
       {isTravelCategory && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px 10px', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--color-border)' }}>
-          <label htmlFor={tripSelectId} style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: 'var(--color-muted)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <span>✈️</span> Assign to Trip (Optional)
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+          <label htmlFor={tripSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
+            ✈️ Trip
           </label>
-          <select id={tripSelectId} value={tripId} onChange={e => setTripId(e.target.value)} style={{ ...selectStyle, padding: '8px 10px', fontSize: 'var(--text-sm)' }}>
-            <option value="">No specific trip (unassigned)</option>
+          <select id={tripSelectId} value={tripId} onChange={e => setTripId(e.target.value)} style={selectStyle}>
+            <option value="">Not part of a trip</option>
             {sortTrips(trips || []).map(t => (
               <option key={t.id} value={t.id}>{t.name}{t.destination ? ` (${t.destination})` : ''}</option>
             ))}

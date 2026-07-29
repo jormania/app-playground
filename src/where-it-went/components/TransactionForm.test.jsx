@@ -136,7 +136,7 @@ describe('TransactionForm', () => {
       render(<TransactionForm categories={travelCats} accounts={multiCurrencyAccounts} trips={trips} onSave={vi.fn()} onCancel={vi.fn()} />);
 
       fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'c_travel' } });
-      fireEvent.change(screen.getByLabelText(/assign to trip/i), { target: { value: 'trip1' } });
+      fireEvent.change(screen.getByLabelText(/trip/i), { target: { value: 'trip1' } });
       await waitFor(() => expect(screen.getByLabelText('Currency').value).toBe('PLN'));
     });
 

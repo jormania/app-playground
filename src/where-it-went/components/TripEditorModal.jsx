@@ -82,33 +82,11 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
           a laptop as well as a phone. */}
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <Field label="Trip Name" placeholder="e.g. Billund 2025" value={name} onChange={e => setName(e.target.value)} required />
-        <Field label="Destination" placeholder="e.g. Billund, Denmark" value={destination} onChange={e => setDestination(e.target.value)} />
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)' }}>
-          <Field label="Start Date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-          <Field label="End Date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min={startDate || undefined} />
-        </div>
-
-        {/* Status and Currency share a row. Both are short controls, and
-            stacking them cost a whole row of height the modal couldn't spare.
-            `minmax(0, …)` so neither can refuse to shrink — a bare `fr` floors
-            at the content's min-content width and overflows. */}
+        {/* Currency sits beside Destination, not beside Status: the Status
+            control has three fixed-width segments and will not shrink, so
+            pairing it with anything made the two overlap on a phone. */}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 'var(--space-sm)', alignItems: 'end' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-            <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Status</label>
-            <SegmentedControl
-              value={status}
-              onChange={val => setStatus(val)}
-              options={[
-                { value: 'Planned', label: 'Planned' },
-                { value: 'Active', label: 'Active' },
-                { value: 'Completed', label: 'Completed' }
-              ]}
-            />
-          </div>
-
-          {/* Sets the default currency for anything tagged to this trip — on a
-              trip you spend the destination's money, whatever card settles it. */}
+          <Field label="Destination" placeholder="e.g. Billund, Denmark" value={destination} onChange={e => setDestination(e.target.value)} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
             <label htmlFor="trip-currency" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
               Currency
@@ -118,15 +96,36 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
               value={currency}
               onChange={e => setCurrency(e.target.value)}
               style={{
-                width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)',
+                width: '100%', minWidth: 0, padding: '10px 8px', borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)',
                 color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit'
               }}
             >
-              <option value="">Account&apos;s</option>
+              <option value="">Account</option>
               {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
+        </div>
+
+        {/* `minmax(0, 1fr)`, not a bare `1fr`: a date input's intrinsic width is
+            wide, and a plain `fr` track refuses to shrink below it — which is
+            what pushed End Date off the right edge on a phone. */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-sm)' }}>
+          <Field label="Start Date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          <Field label="End Date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min={startDate || undefined} />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+          <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Status</label>
+          <SegmentedControl
+            value={status}
+            onChange={val => setStatus(val)}
+            options={[
+              { value: 'Planned', label: 'Planned' },
+              { value: 'Active', label: 'Active' },
+              { value: 'Completed', label: 'Completed' }
+            ]}
+          />
         </div>
 
         <Field label="Notes" placeholder="Optional trip notes..." value={notes} onChange={e => setNotes(e.target.value)} />

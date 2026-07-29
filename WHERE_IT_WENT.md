@@ -646,3 +646,28 @@ again.
   one-line `plainText()` helper now covers every rich-text *and* title read in
   [`notionClient.js`](src/where-it-went/lib/notionClient.js) — a category name or
   transaction description with a styled word had exactly the same truncation.
+
+### Modal layout, second pass (2026-07-29)
+
+Two failures reported from a real phone, both from grid tracks that refuse to
+shrink:
+
+- **Add Trip overlapped Status with Currency.** The `SegmentedControl` has three
+  fixed-width segments and will not compress, so pairing it with anything made
+  the two collide. Currency now sits beside **Destination** (a plain text field
+  that shrinks happily) and Status has its own full-width row again — same row
+  count, no overlap.
+- **End Date ran off the right edge**, because the date row used a bare
+  `1fr 1fr`. A `fr` track floors at its content's min-content width, and a
+  `<input type="date">` is intrinsically wide. Now `minmax(0, 1fr)`, the same
+  fix applied to the transaction form earlier.
+- **Add Transaction cut off Notes and the buttons when the category was Travel.**
+  The trip picker was a dashed callout box with its own padding, border and
+  caption — about 90px for one dropdown. It is now a plain labelled select like
+  every other field, and Category/Account pair from 135px so they share a row on
+  a phone too.
+
+Measured at 375x812 with the worst case on screen at once (Travel category, a
+EUR account, so both the trip picker *and* the FX rate line): 568px of content
+in a 568px body, nothing clipped, Save visible. Editing an existing transaction
+(which adds the Delete button) sits at 489/489, and Add Trip at 448/448.
