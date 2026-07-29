@@ -228,7 +228,11 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
           <div style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: 'var(--color-muted)' }}>
             Optional — what {selectedAccount.name} actually charged
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
+          {/* Same track sizing as the Date/Amount row above: a bare `2fr 1fr`
+              can't shrink below the inputs' intrinsic ~180px min-content width,
+              so both columns overflowed the modal and clipped the Currency
+              field off the right edge on a phone. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
             <Field
               id={originalAmountId}
               label="Original amount"
@@ -262,7 +266,10 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-lg)' }}>
+      {/* Wraps because Delete + Cancel + Save don't fit on one line at 375px —
+          the Save button was being clipped off the right edge of the edit form
+          (the add form has no Delete, which is why it looked fine there). */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', marginTop: 'var(--space-lg)' }}>
         {initialTx && onDelete && (
           <div style={{ marginRight: 'auto' }}>
             <Button type="button" variant="danger" disabled={isSaving} onClick={() => setShowConfirmDelete(true)}>Delete</Button>
