@@ -1,9 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { Modal } from '../../ds/components/Modal';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
 import { ConfirmModal } from '../../ds';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
+
+const selectStyle = {
+  width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-md)',
+  border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)',
+  color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit'
+};
 
 export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, onSave, onDelete }) {
   const [name, setName] = useState('');
@@ -14,7 +20,12 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
   const [accountId, setAccountId] = useState('');
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+
+  const categorySelectId = useId();
+  const accountSelectId = useId();
+  const activeCheckboxId = useId();
 
   useEffect(() => {
     if (sub) {
@@ -34,18 +45,28 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
       setAccountId(data?.accounts?.[0]?.id || '');
       setActive(true);
     }
+    setFormError(null);
   }, [sub, isOpen, data]);
+
+  const parsedAmount = parseFloat(amount);
+  const parsedDay = parseInt(dayOfMonth, 10);
+  const canSubmit = !!name.trim() && Number.isFinite(parsedAmount) && parsedAmount > 0 &&
+    Number.isInteger(parsedDay) && parsedDay >= 1 && parsedDay <= 31 && !!categoryId && !!accountId;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name || !amount) return;
+    setFormError(null);
+    if (!canSubmit) {
+      setFormError('Fill in every required field with a valid amount and a day between 1 and 31.');
+      return;
+    }
 
     setSaving(true);
     const subData = {
-      name,
-      amount: parseFloat(amount),
+      name: name.trim(),
+      amount: parsedAmount,
       type,
-      dayOfMonth: parseInt(dayOfMonth, 10),
+      dayOfMonth: parsedDay,
       categoryId,
       accountId,
       active
@@ -54,21 +75,20 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
     try {
       await onSave(sub ? sub.id : null, subData);
       onClose();
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error(err);
+      setFormError(err?.message || 'Could not save this subscription.');
     } finally {
       setSaving(false);
     }
   };
-
-  if (!isOpen) return null;
 
   return (
     <Modal open={isOpen} title={sub ? 'Edit Subscription' : 'Add Subscription'} onClose={onClose}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '6px', overflowX: 'hidden', boxSizing: 'border-box', minWidth: 0 }}>
         <Field label="Name" value={name} onChange={e => setName(e.target.value)} required />
 
-        <Field label="Amount" type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} required />
+        <Field label="Amount" type="number" step="0.01" min="0" value={amount} onChange={e => setAmount(e.target.value)} required />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Type</label>
           <SegmentedControl
@@ -85,15 +105,15 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '6px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Category <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-            <select value={categoryId} onChange={e => setCategoryId(e.target.value)} required style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit' }}>
+            <label htmlFor={categorySelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Category <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <select id={categorySelectId} value={categoryId} onChange={e => setCategoryId(e.target.value)} required style={selectStyle}>
               <option value="">Select...</option>
               {(data?.categories || []).filter(c => c.type === type).map(c => <option key={c.id} value={c.id}>{c.icon ? c.icon + ' ' : ''}{c.name}</option>)}
             </select>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Account <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-            <select value={accountId} onChange={e => setAccountId(e.target.value)} required style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit' }}>
+            <label htmlFor={accountSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Account <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <select id={accountSelectId} value={accountId} onChange={e => setAccountId(e.target.value)} required style={selectStyle}>
               <option value="">Select...</option>
               {(data?.accounts || []).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
@@ -101,9 +121,15 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-          <input type="checkbox" id="sub-active" checked={active} onChange={e => setActive(e.target.checked)} />
-          <label htmlFor="sub-active" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink)' }}>Active (auto-generates transactions)</label>
+          <input type="checkbox" id={activeCheckboxId} checked={active} onChange={e => setActive(e.target.checked)} />
+          <label htmlFor={activeCheckboxId} style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink)' }}>Active (auto-generates transactions)</label>
         </div>
+
+        {formError && (
+          <div role="alert" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger)', backgroundColor: 'color-mix(in srgb, var(--color-danger) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-danger) 30%, transparent)', padding: 'var(--space-sm)', borderRadius: 'var(--radius-sm)' }}>
+            {formError}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: '4px' }}>
           {sub && (
@@ -113,7 +139,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
           )}
           <div style={{ display: 'flex', gap: 'var(--space-sm)', marginLeft: sub ? 0 : 'auto' }}>
             <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
-            <Button type="submit" variant="primary" disabled={saving || !name || !amount || !categoryId || !accountId}>
+            <Button type="submit" variant="primary" disabled={saving || !canSubmit}>
               {saving ? 'Saving...' : 'Save'}
             </Button>
           </div>
@@ -122,15 +148,20 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
       <ConfirmModal
         isOpen={showConfirmDelete}
         title="Delete Subscription"
-        message="Are you sure you want to delete this subscription?"
+        message="Are you sure you want to delete this subscription? It will be archived in Notion and can be restored from the trash there."
         confirmText="Delete"
         variant="danger"
         onConfirm={async () => {
           setShowConfirmDelete(false);
           setSaving(true);
-          await onDelete(sub.id);
-          setSaving(false);
-          onClose();
+          try {
+            await onDelete(sub.id);
+            onClose();
+          } catch (err) {
+            setFormError(err?.message || 'Could not delete this subscription.');
+          } finally {
+            setSaving(false);
+          }
         }}
         onCancel={() => setShowConfirmDelete(false)}
       />

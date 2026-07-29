@@ -161,18 +161,72 @@ a:hover {
   .skeleton-kpi-grid {
     grid-template-columns: 1fr !important;
   }
-  /* Transaction list: hide Account + Amount columns on mobile, keep Description + Category */
+  /* Transaction list on mobile: hide Account only. Amount used to be hidden too —
+     a spending app whose ledger shows no amounts on the device most people check
+     it from was the wrong trade; Description + Category + Amount is the minimum
+     that still answers "what did I spend and how much". */
   .tx-col-account {
     display: none !important;
   }
-  .tx-col-amount {
-    display: none !important;
-  }
   .transaction-row {
-    grid-template-columns: 1fr auto !important;
+    grid-template-columns: minmax(0, 1fr) auto auto !important;
   }
   .transaction-list-header {
-    grid-template-columns: 1fr auto !important;
+    grid-template-columns: minmax(0, 1fr) auto auto !important;
+  }
+}
+
+/* Sticky/tabular headers built from real <button> elements (for keyboard access)
+   but styled to read as plain column labels, matching the old clickable <div>s. */
+.tx-sort-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  user-select: none;
+}
+.tx-sort-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Dashboard KPI cards — hover lift, moved out of inline onMouseEnter/onMouseLeave
+   handlers so it composes with prefers-reduced-motion below. */
+.kpi-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: default;
+}
+@media (hover: hover) {
+  .kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+/* Respect the OS-level motion preference across every animated affordance in
+   the app: KPI count-up (handled in JS — see lib/useCountUp.js), budget bar
+   fills, the shimmer skeleton, row hover lift, and the bottom-sheet slide-in. */
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-bg {
+    animation: none;
+    background: var(--color-surface-2);
+  }
+  .transaction-row,
+  .kpi-card,
+  .budget-bar-wrapper,
+  .budget-bar-wrapper-large,
+  .budget-bar-wrapper > div,
+  .budget-bar-wrapper-large > div {
+    transition: none !important;
+  }
+  .transaction-row:hover,
+  .kpi-card:hover {
+    transform: none !important;
   }
 }
 

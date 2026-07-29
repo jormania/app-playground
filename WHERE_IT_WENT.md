@@ -174,3 +174,95 @@ A complete audit and hardening pass before switching to live Notion data. 19 iss
 - **Negative Amount Prevention** (`TransactionForm.jsx`): Amount input now has `min="0"`. Negative values could corrupt Insights totals and savings rate calculations.
 - **Future Date Prevention** (`TransactionForm.jsx`): Date input now has `max={today}`. Prevents accidentally logging transactions with future dates.
 - **Notion Query Sort Order** (`notionClient.js`): `fetchTransactions` now sends `sorts: [{ property: 'Date', direction: 'descending' }]` so results are deterministically ordered across pagination pages.
+
+## Full Audit & Hardening Pass (2026-07-29)
+
+A complete audit (`WHERE_IT_WENT_AUDIT.md`) found the app had never been exercised
+against live Notion end-to-end — adding a transaction, the single most-used
+action, threw before it reached Notion. Every finding was fixed and covered by
+tests (82 WhereItWent-specific tests, up from 30; full repo suite 1638 tests /
+typecheck / eslint all green).
+
+### 🔴 Blockers Fixed
+- **Adding a transaction was completely broken**: `TransactionForm` always calls
+  `onSave(id, data)`; `App.handleAddTransaction` took a single `tx` argument, so
+  it received `id` (`null`) and threw on every "+ Add". Demo mode masked this by
+  pushing an all-`undefined` row instead of throwing. Fixed in `App.jsx`.
+- **`Settings.handleClear` did not exist**: emptying the config and saving called
+  a function that was never defined anywhere in the file — a `ReferenceError`
+  that left the "disconnect" flow permanently broken. Implemented.
+- **Subscriptions posted to the wrong month and rendered "Invalid Date"**: the
+  engine wrote `date.toISOString()` for a locally-built date, shifting a 1st-
+  of-month charge into the previous month east of UTC; list views then parsed
+  the resulting full timestamp as `+ 'T00:00:00'`. Rewrote the engine
+  (`lib/useSubscriptionsEngine.js`) around plain local `YYYY-MM-DD` strings.
+- **Day-of-month 29–31 overflowed and compounded**: `new Date(y, m, 31)` rolled
+  a February charge into March, then seeded the *next* candidate from the
+  drifted date. Now clamped to the real length of each target month.
+- **No idempotency guard**: a failed `lastProcessed` write (only
+  `console.error`'d) re-posted the same charges on the next launch. The engine
+  now checks the ledger for an existing (description, amount, month) match
+  before writing.
+- **Every Notion write ignored the HTTP status**: only pagination checked
+  `response.ok`; all ten write methods returned a 400/429 body as if it had
+  succeeded. `notionClient.js` now routes every call through one `_request()`
+  helper that throws a typed `NotionError` on failure and retries 429/5xx with
+  backoff.
+
+### 🟡 Correctness
+- **One shared period module** (`lib/period.js`): Dashboard, the ledger and the
+  Insights engine each had their own copy of the period-filter switch, and the
+  Insights copy silently had no `last_3_months` / `last_6_months` case
+  (fell through to "everything ever"). All three now share `getPeriodRange` /
+  `filterByPeriod`; the picker now offers both periods.
+- **Budgets are pinned to the current calendar month** regardless of the
+  selected period or active filters — previously a monthly cap measured against
+  "This year" turned every bar red, and filtering to one category emptied all
+  the others.
+- **Trend badges compare like-for-like**: a month in progress now compares
+  against the *same number of days* of the previous period instead of a partial
+  month vs. a complete one (which always read as a huge improvement early in
+  the month).
+- **Currency shows two decimals** (`lib/currency.js`): the old formatter rounded
+  to whole lei (`12.50 → "13 L"`, `0.40 → "0 L"`), so a ledger's rows never
+  summed to its own total. A `formatCurrencyCompact` helper covers chart axes
+  and KPI headlines where rounding is fine.
+- **`Notes` is now fetched and editable** — the Travel/Property/Nora classifiers
+  always read it, but it was never pulled from Notion or exposed in the form.
+- **Editing a transaction no longer silently rewrites its Account**: the
+  keyword-based auto-picker used to fire on mount for existing transactions too.
+- **Trip dates/validation**: `validateTrip` (end-before-start) is now actually
+  called; a stray full timestamp in a date field no longer blanks the input.
+
+### 🟢 Analytics Soundness
+- **Savings rate no longer punishes saving**: money moved into
+  Investing/Savings categories was counted as consumption *and* as savings, so
+  investing lowered the reported rate. `metrics.js` excludes it from spend.
+- **Keyword matching uses word boundaries**, not raw substrings: `ac` no longer
+  matches inside "contract", `bar` no longer matches inside "Barcelona", `art`
+  no longer matches inside "apartment" (`lib/analytics/constants.js`).
+- **Historical baselines exclude the period being judged** and require ≥2
+  months of real data before firing a "spike" alert — previously a single
+  month of history was divided by a hardcoded 3, tripling the apparent average.
+- **Alerts are ranked and capped** at 6 instead of firing one per top-5
+  transaction unprompted.
+- **"Biggest win" category is computed, not hardcoded to Dining.**
+
+### 🔵 Polish & Accessibility
+- Added a `danger` `Button` variant to the design system — every Delete button
+  in the app was silently falling back to unstyled default CSS because
+  `variant="danger"` didn't exist on `ButtonVariant` (this was also failing
+  `npm run typecheck`).
+- `BottomSheet` now traps focus, locks body scroll, and restores focus on close
+  (matching `ds/Modal`); `BudgetEditorModal` now uses `ds/Modal` instead of a
+  hand-rolled overlay and excludes Income categories.
+- Every native `alert()` replaced with the DS `AlertModal`; sort headers,
+  transaction rows and Settings list rows are real keyboard-operable buttons.
+- `useCountUp` no longer calls hooks conditionally (was violating
+  rules-of-hooks) and now respects `prefers-reduced-motion`.
+- Demo data dates are now rebased onto "today" on every load instead of being
+  hardcoded to a fixed calendar year — transactions never land in the future,
+  and demo trips keep their intended Planned/Active/Completed spread by
+  anchoring on the fixture's own "Active" trip rather than reusing the
+  transaction offset.
+- Mobile no longer hides the Amount column from the ledger.

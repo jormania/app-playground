@@ -2,43 +2,113 @@ import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS, 
 
 const PROXY_URL = '/api/notion';
 
+/** Notion allows ~3 requests/second. Sequential bulk work paces itself with this. */
+const WRITE_SPACING_MS = 350;
+const MAX_RETRIES = 3;
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+export class NotionError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.name = 'NotionError';
+    this.status = status;
+  }
+}
+
+const relation = (id) => ({ relation: id ? [{ id }] : [] });
+const richText = (value) => ({ rich_text: value ? [{ text: { content: String(value) } }] : [] });
+const title = (value) => ({ title: [{ text: { content: String(value ?? '') } }] });
+
 export class NotionClient {
   constructor(token, dbIds) {
     this.token = token;
     this.dbIds = dbIds;
   }
 
+  /**
+   * Every call to Notion goes through here.
+   *
+   * The old code only checked `response.ok` when *reading*: all ten write methods
+   * returned `response.json()` regardless of a 400/401/429, so a rejected write was
+   * indistinguishable from a successful one and the UI happily closed the modal.
+   * Now a non-2xx throws, and 429/5xx are retried with backoff.
+   */
+  async _request({ path, method = 'POST', body, retries = MAX_RETRIES }) {
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      let response;
+      try {
+        response = await fetch(PROXY_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
+          body: JSON.stringify({ path, method, body }),
+        });
+      } catch (e) {
+        lastError = new NotionError(`Network error talking to Notion: ${e.message}`, 0);
+        if (attempt < retries) { await sleep(500 * (attempt + 1)); continue; }
+        throw lastError;
+      }
+
+      if (response.ok) {
+        return response.json().catch(() => ({}));
+      }
+
+      const payload = await response.json().catch(() => ({}));
+      lastError = new NotionError(
+        payload.message || `Notion API error ${response.status}`,
+        response.status,
+      );
+
+      // Rate limits and transient server errors are worth another try; 4xx is not.
+      const retryable = response.status === 429 || response.status >= 500;
+      if (retryable && attempt < retries) {
+        await sleep(1000 * Math.pow(2, attempt));
+        continue;
+      }
+      throw lastError;
+    }
+
+    throw lastError;
+  }
+
   /** Fetches ALL pages from a Notion database query, handling pagination automatically. */
   async _fetchAllPages(dbId, body = {}) {
     const allResults = [];
-    let cursor = undefined;
+    let cursor;
+    const seenCursors = new Set();
+
     do {
       const queryBody = { ...body, page_size: 100 };
       if (cursor) queryBody.start_cursor = cursor;
-      const response = await fetch(PROXY_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
-        body: JSON.stringify({
-          path: `databases/${dbId}/query`,
-          method: 'POST',
-          body: queryBody
-        })
-      });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.message || `Notion API error ${response.status}`);
-      }
-      const data = await response.json();
+      const data = await this._request({ path: `databases/${dbId}/query`, method: 'POST', body: queryBody });
       allResults.push(...(data.results || []));
-      cursor = data.has_more ? data.next_cursor : undefined;
+      const next = data.has_more ? data.next_cursor : undefined;
+      // Defensive: a repeated cursor would otherwise spin forever.
+      if (next && seenCursors.has(next)) break;
+      if (next) seenCursors.add(next);
+      cursor = next;
     } while (cursor);
+
     return allResults;
   }
 
+  /**
+   * With no token at all we are in first-run/demo territory and serve sample data.
+   * With a token but a missing database id we return nothing — quietly mixing demo
+   * rows into a live workspace would be worse than an empty section.
+   */
+  _demoOr(dbId, demoRows) {
+    if (!this.token) return { use: true, rows: [...demoRows] };
+    if (!dbId) return { use: true, rows: [] };
+    return { use: false, rows: null };
+  }
+
   async fetchCategories() {
-    if (!this.token || !this.dbIds?.categories) {
-      return [...DEMO_CATEGORIES];
-    }
+    const demo = this._demoOr(this.dbIds?.categories, DEMO_CATEGORIES);
+    if (demo.use) return demo.rows;
+
     const rows = await this._fetchAllPages(this.dbIds.categories);
     return rows
       .map(row => ({
@@ -49,13 +119,13 @@ export class NotionClient {
         description: row.properties.Description?.rich_text?.[0]?.plain_text || '',
         budgetLimit: row.properties['Monthly Limit (RON)']?.number || null
       }))
-      .filter(c => c.name.trim() !== ''); // #16: drop rows with blank title
+      .filter(c => c.name.trim() !== ''); // drop rows with a blank title
   }
 
   async fetchAccounts() {
-    if (!this.token || !this.dbIds?.accounts) {
-      return [...DEMO_ACCOUNTS];
-    }
+    const demo = this._demoOr(this.dbIds?.accounts, DEMO_ACCOUNTS);
+    if (demo.use) return demo.rows;
+
     const rows = await this._fetchAllPages(this.dbIds.accounts);
     return rows.map(row => ({
       id: row.id,
@@ -66,57 +136,59 @@ export class NotionClient {
   }
 
   async fetchTransactions() {
-    if (!this.token || !this.dbIds?.transactions) {
-      return [...DEMO_TRANSACTIONS];
-    }
-    // #20: sort by Date descending for deterministic ordering across pages
+    const demo = this._demoOr(this.dbIds?.transactions, DEMO_TRANSACTIONS);
+    if (demo.use) return demo.rows;
+
+    // Sort by Date descending for deterministic ordering across pages.
     const rows = await this._fetchAllPages(this.dbIds.transactions, {
       sorts: [{ property: 'Date', direction: 'descending' }]
     });
     return rows.map(row => ({
       id: row.id,
       description: row.properties.Description?.title?.[0]?.plain_text || '',
-      date: row.properties.Date?.date?.start || '',
+      // Keep only the date part: rows written by older builds carry a full timestamp.
+      date: (row.properties.Date?.date?.start || '').slice(0, 10),
       amount: row.properties['Amount (RON)']?.number || 0,
-      type: row.properties.Type?.select?.name || ((row.properties['Amount (RON)']?.number || 0) > 0 ? 'Income' : 'Expense'),
+      // No sign-based guessing: an untyped row is an Expense. Deriving Income from a
+      // positive amount silently reclassified transfers and inflated income.
+      type: row.properties.Type?.select?.name || 'Expense',
       categoryId: row.properties.Category?.relation?.[0]?.id || '',
       accountId: row.properties.Account?.relation?.[0]?.id || '',
       tripId: row.properties.Trip?.relation?.[0]?.id || '',
+      // Read by the Travel/Property/Nora classifiers — previously never fetched.
+      notes: row.properties.Notes?.rich_text?.[0]?.plain_text || '',
       tags: row.properties.Tags?.multi_select?.map(t => t.name) || []
     }));
   }
 
-
-
   async addTransaction(tx) {
+    if (!tx) throw new NotionError('No transaction data supplied.', 0);
+
     if (!this.token || !this.dbIds?.transactions) {
-      const newTx = { ...tx, id: 'demo_tx_' + Date.now() };
-      DEMO_TRANSACTIONS.push(newTx);
+      const newTx = { tags: [], notes: '', ...tx, id: 'demo_tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) };
+      DEMO_TRANSACTIONS.unshift(newTx);
       return newTx;
     }
-    
-    const response = await fetch(PROXY_URL, {
+
+    return this._request({
+      path: 'pages',
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({
-        path: `pages`,
-        method: 'POST',
-        body: {
-          parent: { database_id: this.dbIds.transactions },
-          properties: {
-            'Description': { title: [{ text: { content: tx.description } }] },
-            'Date': { date: { start: tx.date } },
-            'Amount (RON)': { number: tx.amount },
-            'Type': { select: { name: tx.type } },
-            'Category': { relation: [{ id: tx.categoryId }] },
-            'Account': { relation: [{ id: tx.accountId }] },
-            'Trip': { relation: tx.tripId ? [{ id: tx.tripId }] : [] },
-            'Tags': { multi_select: tx.tags.map(t => ({ name: t })) }
-          }
+      body: {
+        parent: { database_id: this.dbIds.transactions },
+        properties: {
+          'Description': title(tx.description),
+          'Date': { date: { start: String(tx.date).slice(0, 10) } },
+          'Amount (RON)': { number: Number(tx.amount) || 0 },
+          'Type': { select: { name: tx.type || 'Expense' } },
+          // Empty relations must be `[]`, not `[{ id: '' }]` — Notion 400s on the latter.
+          'Category': relation(tx.categoryId),
+          'Account': relation(tx.accountId),
+          'Trip': relation(tx.tripId),
+          'Notes': richText(tx.notes),
+          'Tags': { multi_select: (tx.tags || []).map(t => ({ name: t })) }
         }
-      })
+      }
     });
-    return response.json();
   }
 
   async updateTransaction(txId, updates) {
@@ -125,27 +197,19 @@ export class NotionClient {
       if (tx) Object.assign(tx, updates);
       return tx;
     }
-    
+
     const properties = {};
-    if (updates.description !== undefined) properties['Description'] = { title: [{ text: { content: updates.description } }] };
-    if (updates.date !== undefined) properties['Date'] = { date: { start: updates.date } };
-    if (updates.amount !== undefined) properties['Amount (RON)'] = { number: updates.amount };
+    if (updates.description !== undefined) properties['Description'] = title(updates.description);
+    if (updates.date !== undefined) properties['Date'] = { date: { start: String(updates.date).slice(0, 10) } };
+    if (updates.amount !== undefined) properties['Amount (RON)'] = { number: Number(updates.amount) || 0 };
     if (updates.type !== undefined) properties['Type'] = { select: { name: updates.type } };
-    if (updates.categoryId !== undefined) properties['Category'] = { relation: [{ id: updates.categoryId }] };
-    if (updates.accountId !== undefined) properties['Account'] = { relation: [{ id: updates.accountId }] };
-    if (updates.tripId !== undefined) properties['Trip'] = { relation: updates.tripId ? [{ id: updates.tripId }] : [] };
+    if (updates.categoryId !== undefined) properties['Category'] = relation(updates.categoryId);
+    if (updates.accountId !== undefined) properties['Account'] = relation(updates.accountId);
+    if (updates.tripId !== undefined) properties['Trip'] = relation(updates.tripId);
+    if (updates.notes !== undefined) properties['Notes'] = richText(updates.notes);
     if (updates.tags !== undefined) properties['Tags'] = { multi_select: updates.tags.map(t => ({ name: t })) };
 
-    const response = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({
-        path: `pages/${txId}`,
-        method: 'PATCH',
-        body: { properties }
-      })
-    });
-    return response.json();
+    return this._request({ path: `pages/${txId}`, method: 'PATCH', body: { properties } });
   }
 
   async deleteTransaction(txId) {
@@ -154,16 +218,8 @@ export class NotionClient {
       if (idx !== -1) DEMO_TRANSACTIONS.splice(idx, 1);
       return;
     }
-    
-    await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({
-        path: `pages/${txId}`,
-        method: 'PATCH',
-        body: { archived: true }
-      })
-    });
+    // Notion "delete" is an archive — the page stays recoverable from the trash.
+    await this._request({ path: `pages/${txId}`, method: 'PATCH', body: { archived: true } });
   }
 
   async updateCategoryLimit(categoryId, limit) {
@@ -172,28 +228,18 @@ export class NotionClient {
       if (cat) cat.budgetLimit = limit;
       return cat;
     }
-    
-    const response = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({
-        path: `pages/${categoryId}`,
-        method: 'PATCH',
-        body: {
-          properties: {
-            'Monthly Limit (RON)': { number: limit || null }
-          }
-        }
-      })
+
+    return this._request({
+      path: `pages/${categoryId}`,
+      method: 'PATCH',
+      body: { properties: { 'Monthly Limit (RON)': { number: limit || null } } }
     });
-    return response.json();
   }
 
   async fetchSubscriptions() {
-    if (!this.token || !this.dbIds?.subscriptions) {
-      return [...DEMO_SUBSCRIPTIONS];
-    }
-    
+    const demo = this._demoOr(this.dbIds?.subscriptions, DEMO_SUBSCRIPTIONS);
+    if (demo.use) return demo.rows;
+
     const rows = await this._fetchAllPages(this.dbIds.subscriptions);
     return rows.map(row => ({
       id: row.id,
@@ -204,7 +250,7 @@ export class NotionClient {
       categoryId: row.properties.Category?.relation?.[0]?.id || '',
       accountId: row.properties.Account?.relation?.[0]?.id || '',
       active: row.properties.Active?.checkbox !== false,
-      lastProcessed: row.properties.LastProcessed?.date?.start || null
+      lastProcessed: (row.properties.LastProcessed?.date?.start || '').slice(0, 10) || null
     }));
   }
 
@@ -214,33 +260,25 @@ export class NotionClient {
       DEMO_SUBSCRIPTIONS.push(newSub);
       return newSub;
     }
-    
+
     const properties = {
-      'Name': { title: [{ text: { content: sub.name } }] },
-      'Amount': { number: sub.amount },
-      'Type': { select: { name: sub.type } },
-      'DayOfMonth': { number: sub.dayOfMonth },
-      'Category': { relation: sub.categoryId ? [{ id: sub.categoryId }] : [] },
-      'Account': { relation: sub.accountId ? [{ id: sub.accountId }] : [] },
-      'Active': { checkbox: sub.active }
+      'Name': title(sub.name),
+      'Amount': { number: Number(sub.amount) || 0 },
+      'Type': { select: { name: sub.type || 'Expense' } },
+      'DayOfMonth': { number: Number(sub.dayOfMonth) || 1 },
+      'Category': relation(sub.categoryId),
+      'Account': relation(sub.accountId),
+      'Active': { checkbox: sub.active !== false }
     };
     if (sub.lastProcessed) {
-      properties['LastProcessed'] = { date: { start: sub.lastProcessed } };
+      properties['LastProcessed'] = { date: { start: String(sub.lastProcessed).slice(0, 10) } };
     }
 
-    const response = await fetch(PROXY_URL, {
+    return this._request({
+      path: 'pages',
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({
-        path: `pages`,
-        method: 'POST',
-        body: {
-          parent: { database_id: this.dbIds.subscriptions },
-          properties
-        }
-      })
+      body: { parent: { database_id: this.dbIds.subscriptions }, properties }
     });
-    return response.json();
   }
 
   async updateSubscription(subId, updates) {
@@ -249,27 +287,22 @@ export class NotionClient {
       if (sub) Object.assign(sub, updates);
       return sub;
     }
-    
-    const properties = {};
-    if (updates.name !== undefined) properties['Name'] = { title: [{ text: { content: updates.name } }] };
-    if (updates.amount !== undefined) properties['Amount'] = { number: updates.amount };
-    if (updates.type !== undefined) properties['Type'] = { select: { name: updates.type } };
-    if (updates.dayOfMonth !== undefined) properties['DayOfMonth'] = { number: updates.dayOfMonth };
-    if (updates.categoryId !== undefined) properties['Category'] = { relation: updates.categoryId ? [{ id: updates.categoryId }] : [] };
-    if (updates.accountId !== undefined) properties['Account'] = { relation: updates.accountId ? [{ id: updates.accountId }] : [] };
-    if (updates.active !== undefined) properties['Active'] = { checkbox: updates.active };
-    if (updates.lastProcessed !== undefined) properties['LastProcessed'] = updates.lastProcessed ? { date: { start: updates.lastProcessed } } : null;
 
-    const response = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({
-        path: `pages/${subId}`,
-        method: 'PATCH',
-        body: { properties }
-      })
-    });
-    return response.json();
+    const properties = {};
+    if (updates.name !== undefined) properties['Name'] = title(updates.name);
+    if (updates.amount !== undefined) properties['Amount'] = { number: Number(updates.amount) || 0 };
+    if (updates.type !== undefined) properties['Type'] = { select: { name: updates.type } };
+    if (updates.dayOfMonth !== undefined) properties['DayOfMonth'] = { number: Number(updates.dayOfMonth) || 1 };
+    if (updates.categoryId !== undefined) properties['Category'] = relation(updates.categoryId);
+    if (updates.accountId !== undefined) properties['Account'] = relation(updates.accountId);
+    if (updates.active !== undefined) properties['Active'] = { checkbox: updates.active };
+    if (updates.lastProcessed !== undefined) {
+      properties['LastProcessed'] = updates.lastProcessed
+        ? { date: { start: String(updates.lastProcessed).slice(0, 10) } }
+        : { date: null };
+    }
+
+    return this._request({ path: `pages/${subId}`, method: 'PATCH', body: { properties } });
   }
 
   async deleteSubscription(subId) {
@@ -278,56 +311,49 @@ export class NotionClient {
       if (idx !== -1) DEMO_SUBSCRIPTIONS.splice(idx, 1);
       return;
     }
-    
-    // Notion API deletes pages by setting archived to true
-    await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({
-        path: `pages/${subId}`,
-        method: 'PATCH',
-        body: { archived: true }
-      })
-    });
+    await this._request({ path: `pages/${subId}`, method: 'PATCH', body: { archived: true } });
   }
 
-  async scrubTransactionsAndSubscriptions() {
-    if (!this.token) return;
-    
+  /**
+   * Archives every Transaction, Subscription and Trip in the configured databases.
+   * Paced so a large ledger doesn't trip Notion's rate limit halfway through, and
+   * reports progress so the UI can show something other than a frozen button.
+   */
+  async scrubTransactionsAndSubscriptions({ onProgress } = {}) {
+    if (!this.token) return { archived: 0 };
+
+    const jobs = [];
     if (this.dbIds?.transactions) {
-      const txs = await this.fetchTransactions();
-      for (const tx of txs) {
-        await this.deleteTransaction(tx.id);
-      }
+      (await this.fetchTransactions()).forEach(tx => jobs.push(() => this.deleteTransaction(tx.id)));
     }
-    
     if (this.dbIds?.subscriptions) {
-      const subs = await this.fetchSubscriptions();
-      for (const sub of subs) {
-        await this.deleteSubscription(sub.id);
-      }
+      (await this.fetchSubscriptions()).forEach(sub => jobs.push(() => this.deleteSubscription(sub.id)));
+    }
+    if (this.dbIds?.trips) {
+      (await this.fetchTrips()).forEach(trip => jobs.push(() => this.deleteTrip(trip.id)));
     }
 
-    if (this.dbIds?.trips) {
-      const trips = await this.fetchTrips();
-      for (const trip of trips) {
-        await this.deleteTrip(trip.id);
-      }
+    let done = 0;
+    for (const job of jobs) {
+      await job();
+      done++;
+      if (onProgress) onProgress(done, jobs.length);
+      if (done < jobs.length) await sleep(WRITE_SPACING_MS);
     }
+    return { archived: done };
   }
 
   async fetchTrips() {
-    if (!this.token || !this.dbIds?.trips) {
-      return [...(DEMO_TRIPS || [])];
-    }
-    
+    const demo = this._demoOr(this.dbIds?.trips, DEMO_TRIPS || []);
+    if (demo.use) return demo.rows;
+
     const rows = await this._fetchAllPages(this.dbIds.trips);
     return rows.map(row => ({
       id: row.id,
       name: row.properties.Name?.title?.[0]?.plain_text || '',
       destination: row.properties.Destination?.rich_text?.[0]?.plain_text || '',
-      startDate: row.properties['Start Date']?.date?.start || null,
-      endDate: row.properties['End Date']?.date?.start || null,
+      startDate: (row.properties['Start Date']?.date?.start || '').slice(0, 10) || null,
+      endDate: (row.properties['End Date']?.date?.start || '').slice(0, 10) || null,
       status: row.properties.Status?.select?.name || 'Planned',
       notes: row.properties.Notes?.rich_text?.[0]?.plain_text || ''
     }));
@@ -339,33 +365,21 @@ export class NotionClient {
       if (DEMO_TRIPS) DEMO_TRIPS.push(newTrip);
       return newTrip;
     }
-    
-    const properties = {
-      'Name': { title: [{ text: { content: trip.name || '' } }] },
-      'Destination': { rich_text: [{ text: { content: trip.destination || '' } }] },
-      'Status': { select: { name: trip.status || 'Planned' } },
-      'Notes': { rich_text: [{ text: { content: trip.notes || '' } }] }
-    };
-    if (trip.startDate) {
-      properties['Start Date'] = { date: { start: trip.startDate } };
-    }
-    if (trip.endDate) {
-      properties['End Date'] = { date: { start: trip.endDate } };
-    }
 
-    const response = await fetch(PROXY_URL, {
+    const properties = {
+      'Name': title(trip.name),
+      'Destination': richText(trip.destination),
+      'Status': { select: { name: trip.status || 'Planned' } },
+      'Notes': richText(trip.notes)
+    };
+    if (trip.startDate) properties['Start Date'] = { date: { start: String(trip.startDate).slice(0, 10) } };
+    if (trip.endDate) properties['End Date'] = { date: { start: String(trip.endDate).slice(0, 10) } };
+
+    return this._request({
+      path: 'pages',
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({
-        path: `pages`,
-        method: 'POST',
-        body: {
-          parent: { database_id: this.dbIds.trips },
-          properties
-        }
-      })
+      body: { parent: { database_id: this.dbIds.trips }, properties }
     });
-    return response.json();
   }
 
   async updateTrip(tripId, updates) {
@@ -374,25 +388,20 @@ export class NotionClient {
       if (trip) Object.assign(trip, updates);
       return trip;
     }
-    
-    const properties = {};
-    if (updates.name !== undefined) properties['Name'] = { title: [{ text: { content: updates.name || '' } }] };
-    if (updates.destination !== undefined) properties['Destination'] = { rich_text: [{ text: { content: updates.destination || '' } }] };
-    if (updates.status !== undefined) properties['Status'] = { select: { name: updates.status || 'Planned' } };
-    if (updates.notes !== undefined) properties['Notes'] = { rich_text: [{ text: { content: updates.notes || '' } }] };
-    if (updates.startDate !== undefined) properties['Start Date'] = updates.startDate ? { date: { start: updates.startDate } } : null;
-    if (updates.endDate !== undefined) properties['End Date'] = updates.endDate ? { date: { start: updates.endDate } } : null;
 
-    const response = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({
-        path: `pages/${tripId}`,
-        method: 'PATCH',
-        body: { properties }
-      })
-    });
-    return response.json();
+    const properties = {};
+    if (updates.name !== undefined) properties['Name'] = title(updates.name);
+    if (updates.destination !== undefined) properties['Destination'] = richText(updates.destination);
+    if (updates.status !== undefined) properties['Status'] = { select: { name: updates.status || 'Planned' } };
+    if (updates.notes !== undefined) properties['Notes'] = richText(updates.notes);
+    if (updates.startDate !== undefined) {
+      properties['Start Date'] = updates.startDate ? { date: { start: String(updates.startDate).slice(0, 10) } } : { date: null };
+    }
+    if (updates.endDate !== undefined) {
+      properties['End Date'] = updates.endDate ? { date: { start: String(updates.endDate).slice(0, 10) } } : { date: null };
+    }
+
+    return this._request({ path: `pages/${tripId}`, method: 'PATCH', body: { properties } });
   }
 
   async deleteTrip(tripId) {
@@ -403,15 +412,6 @@ export class NotionClient {
       }
       return;
     }
-    
-    await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({
-        path: `pages/${tripId}`,
-        method: 'PATCH',
-        body: { archived: true }
-      })
-    });
+    await this._request({ path: `pages/${tripId}`, method: 'PATCH', body: { archived: true } });
   }
 }

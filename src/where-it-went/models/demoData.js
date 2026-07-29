@@ -1,3 +1,5 @@
+import { toDateString } from '../lib/period';
+
 export const DEMO_CATEGORIES = [
   {
     "id": "cat_housing",
@@ -167,7 +169,7 @@ export const DEMO_ACCOUNTS = [
   }
 ];
 
-export const DEMO_SUBSCRIPTIONS = [
+const RAW_SUBSCRIPTIONS = [
   {
     "id": "sub_1",
     "name": "YouTube Premium",
@@ -225,7 +227,7 @@ export const DEMO_SUBSCRIPTIONS = [
   }
 ];
 
-export const DEMO_TRIPS = [
+const RAW_TRIPS = [
   {
     "id": "trip_billund",
     "name": "Billund 2025",
@@ -264,7 +266,7 @@ export const DEMO_TRIPS = [
   }
 ];
 
-export const DEMO_TRANSACTIONS = [
+const RAW_TRANSACTIONS = [
   {
     "id": "demo_tx_372",
     "description": "Starbucks",
@@ -4251,3 +4253,79 @@ export const DEMO_TRANSACTIONS = [
     "tags": []
   }
 ];
+
+// ---------------------------------------------------------------------------
+// Rebase every fixture date onto "today", computed fresh on each module load.
+//
+// The raw fixture above was hand-authored against a fixed calendar year — every
+// date is really just "day N of a representative 12-month cycle". Exporting it
+// as-is meant most of the year read as future transactions (breaking "This
+// year" / "This month" totals and historical baselines), and it would have gone
+// stale entirely once the real calendar passed the fixture's year (no dated row
+// would ever fall in "this month" again). Shifting the whole fixture by one
+// fixed day-offset preserves every gap between transactions and each
+// subscription's day-of-month exactly, while guaranteeing the most recent
+// transaction always lands on "today".
+// ---------------------------------------------------------------------------
+
+function parseFixtureDate(str) {
+  const [y, m, d] = String(str).slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function shiftDateString(str, offsetDays) {
+  if (!str) return str;
+  const d = parseFixtureDate(str);
+  d.setDate(d.getDate() + offsetDays);
+  return toDateString(d);
+}
+
+const today = new Date();
+const todayStr = toDateString(today);
+
+const fixtureMaxDate = RAW_TRANSACTIONS.reduce(
+  (max, t) => { const d = parseFixtureDate(t.date); return d > max ? d : max; },
+  parseFixtureDate(RAW_TRANSACTIONS[0].date)
+);
+const OFFSET_DAYS = Math.round((today.getTime() - fixtureMaxDate.getTime()) / 86400000);
+
+export const DEMO_TRANSACTIONS = RAW_TRANSACTIONS.map(t => ({
+  ...t,
+  date: shiftDateString(t.date, OFFSET_DAYS)
+}));
+
+export const DEMO_SUBSCRIPTIONS = RAW_SUBSCRIPTIONS.map(s => ({
+  ...s,
+  lastProcessed: s.lastProcessed ? shiftDateString(s.lastProcessed, OFFSET_DAYS) : s.lastProcessed
+}));
+
+// Trips get their OWN offset, anchored on the fixture's "Active" trip rather than
+// on the last transaction. Transactions are a ledger of things that already
+// happened, so OFFSET_DAYS is deliberately chosen to push every one of them into
+// the past — but a trip is allowed to be upcoming. Reusing the transaction offset
+// here dragged every trip into the past along with the transactions (Poland, the
+// fixture's one "Planned" trip, would always land months behind "today"),
+// collapsing the demo's Planned/Active/Completed variety down to "Completed" for
+// everything. Anchoring instead on the midpoint of whichever trip the fixture
+// marks Active keeps that trip straddling "today" and keeps trips authored after
+// it in the future — preserving the same narrative shape the fixture was written
+// with, regardless of what day it's actually viewed on.
+const activeTripRaw = RAW_TRIPS.find(t => t.status === 'Active' && t.startDate && t.endDate);
+const TRIP_OFFSET_DAYS = activeTripRaw
+  ? Math.round((today.getTime() - (parseFixtureDate(activeTripRaw.startDate).getTime() + parseFixtureDate(activeTripRaw.endDate).getTime()) / 2) / 86400000)
+  : OFFSET_DAYS;
+
+// Trip status is recomputed from the shifted dates rather than trusted from the
+// fixture — a stored "Active" label would otherwise drift out of sync with
+// "today" the moment the fixture ages by even a day.
+export const DEMO_TRIPS = RAW_TRIPS.map(t => {
+  const startDate = t.startDate ? shiftDateString(t.startDate, TRIP_OFFSET_DAYS) : null;
+  const endDate = t.endDate ? shiftDateString(t.endDate, TRIP_OFFSET_DAYS) : null;
+  let status = t.status;
+  if (startDate && endDate) {
+    if (endDate < todayStr) status = 'Completed';
+    else if (startDate > todayStr) status = 'Planned';
+    else status = 'Active';
+  }
+  return { ...t, startDate, endDate, status };
+});

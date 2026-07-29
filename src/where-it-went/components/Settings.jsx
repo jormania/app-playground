@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
-import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { SettingsToggle } from '../../ds/components/SettingsToggle';
 import { PromptModal } from '../../ds';
 import { NotionClient } from '../lib/notionClient';
@@ -9,6 +8,18 @@ import SubscriptionEditorModal from './SubscriptionEditorModal';
 import TripEditorModal from './TripEditorModal';
 import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
+import { ordinal } from '../lib/period';
+
+const EMPTY_CONFIG_FIELDS = {
+  token: '', transactionsDb: '', categoriesDb: '', accountsDb: '', subscriptionsDb: '', tripsDb: ''
+};
+
+function extractNotionId(input) {
+  if (!input) return '';
+  const str = input.trim();
+  const match = str.match(/([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}|[a-fA-F0-9]{32})/);
+  return match ? match[1] : str;
+}
 
 export default function Settings({ config, onSave, onThemeChange, onDone, data, client, onDataChange }) {
   const [token, setToken] = useState(config.token || '');
@@ -22,16 +33,38 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const [status, setStatus] = useState({ type: '', msg: '' });
   const [showScrubPrompt, setShowScrubPrompt] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [scrubProgress, setScrubProgress] = useState(null);
   const [editingSub, setEditingSub] = useState(null);
   const [isAddingSub, setIsAddingSub] = useState(false);
   const [editingTrip, setEditingTrip] = useState(null);
   const [isAddingTrip, setIsAddingTrip] = useState(false);
 
-  const extractNotionId = (input) => {
-    if (!input) return '';
-    const str = input.trim();
-    const match = str.match(/([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}|[a-fA-F0-9]{32})/);
-    return match ? match[1] : str;
+  const buildConfig = (extra = {}) => ({
+    token: token.trim(),
+    transactionsDb: extractNotionId(transactionsDb),
+    categoriesDb: extractNotionId(categoriesDb),
+    accountsDb: extractNotionId(accountsDb),
+    subscriptionsDb: extractNotionId(subscriptionsDb),
+    tripsDb: extractNotionId(tripsDb),
+    theme,
+    features,
+    ...extra
+  });
+
+  /**
+   * Emptying every field and pressing Save is the documented way to disconnect —
+   * it used to call a function (`handleClear`) that didn't exist anywhere in this
+   * file, throwing a ReferenceError and leaving the form stuck.
+   */
+  const handleClear = () => {
+    setToken('');
+    setTransactionsDb('');
+    setCategoriesDb('');
+    setAccountsDb('');
+    setSubscriptionsDb('');
+    setTripsDb('');
+    onSave({ ...EMPTY_CONFIG_FIELDS, theme, features });
+    setStatus({ type: 'success', msg: 'Configuration cleared. You are now in demo mode.' });
   };
 
   const handleSave = async () => {
@@ -43,7 +76,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     }
 
     if (!token.trim() || !transactionsDb || !categoriesDb || !accountsDb) {
-      setStatus({ type: 'error', msg: 'Please fill in all fields to connect to Notion.' });
+      setStatus({ type: 'error', msg: 'Please fill in the Token, Categories, Accounts and Transactions fields to connect to Notion.' });
       return;
     }
 
@@ -56,47 +89,28 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         subscriptions: extractNotionId(subscriptionsDb),
         trips: extractNotionId(tripsDb)
       });
-      
-      // Test the connection by fetching one of the databases
-      await testClient.fetchCategories();
-      
+
+      // Test every configured database, not just Categories — a typo'd Transactions
+      // ID used to save cleanly and only surface as the generic load-error screen.
+      const checks = [testClient.fetchCategories(), testClient.fetchAccounts(), testClient.fetchTransactions()];
+      if (subscriptionsDb) checks.push(testClient.fetchSubscriptions());
+      if (tripsDb) checks.push(testClient.fetchTrips());
+      await Promise.all(checks);
+
       setStatus({ type: 'success', msg: 'Connection successful!' });
-      
-      onSave({ 
-        token: token.trim(), 
-        transactionsDb: extractNotionId(transactionsDb), 
-        categoriesDb: extractNotionId(categoriesDb), 
-        accountsDb: extractNotionId(accountsDb), 
-        subscriptionsDb: extractNotionId(subscriptionsDb),
-        tripsDb: extractNotionId(tripsDb),
-        theme,
-        features
-      });
-      
-      setTimeout(() => {
-        if (onDone) onDone();
-      }, 1000);
+      onSave(buildConfig());
+      setTimeout(() => { if (onDone) onDone(); }, 1000);
     } catch (e) {
-      console.error("FETCH ERROR IN SETTINGS TEST:", e);
-      setStatus({ type: 'error', msg: 'Connection failed: Please check your Token and Database IDs.' });
+      console.error('Notion connection test failed:', e);
+      setStatus({ type: 'error', msg: e.message ? `Connection failed: ${e.message}` : 'Connection failed: please check your Token and Database IDs.' });
     } finally {
       setTesting(false);
     }
   };
 
   const handleScrub = async () => {
-    if (!token.trim() || !transactionsDb || !subscriptionsDb) {
-      onSave({ 
-        token: token.trim(), 
-        transactionsDb: extractNotionId(transactionsDb), 
-        categoriesDb: extractNotionId(categoriesDb),
-        accountsDb: extractNotionId(accountsDb),
-        subscriptionsDb: extractNotionId(subscriptionsDb),
-        tripsDb: extractNotionId(tripsDb),
-        theme,
-        features,
-        demoMode: true
-      });
+    if (!token.trim() || !transactionsDb) {
+      onSave(buildConfig({ demoMode: true }));
       if (onDone) onDone();
       return;
     }
@@ -106,6 +120,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const executeScrub = async () => {
     setShowScrubPrompt(false);
     setTesting(true);
+    setScrubProgress({ done: 0, total: null });
     setStatus({ type: '', msg: 'Scrubbing databases... this may take a moment.' });
     try {
       const liveClient = new NotionClient(token.trim(), {
@@ -115,36 +130,25 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         subscriptions: extractNotionId(subscriptionsDb),
         trips: extractNotionId(tripsDb)
       });
-      await liveClient.scrubTransactionsAndSubscriptions();
-      
-      onSave({ 
-        token: token.trim(), 
-        transactionsDb: extractNotionId(transactionsDb), 
-        categoriesDb: extractNotionId(categoriesDb),
-        accountsDb: extractNotionId(accountsDb),
-        subscriptionsDb: extractNotionId(subscriptionsDb),
-        tripsDb: extractNotionId(tripsDb),
-        theme,
-        features,
-        demoMode: true
+      const result = await liveClient.scrubTransactionsAndSubscriptions({
+        onProgress: (done, total) => setScrubProgress({ done, total })
       });
-      setStatus({ type: 'success', msg: 'Scrub complete! Entered Demo Mode.' });
-      setTimeout(() => {
-        if (onDone) onDone();
-      }, 1500);
+
+      onSave(buildConfig({ demoMode: true }));
+      setStatus({ type: 'success', msg: `Scrub complete — archived ${result.archived} record${result.archived === 1 ? '' : 's'} in Notion (recoverable from its trash). Entered Demo Mode.` });
+      setTimeout(() => { if (onDone) onDone(); }, 1500);
     } catch (e) {
-      console.error(e);
-      setStatus({ type: 'error', msg: 'Failed to scrub databases. Check console.' });
+      console.error('Scrub failed:', e);
+      setStatus({ type: 'error', msg: e.message ? `Scrub failed partway through: ${e.message}. Some records may already be archived.` : 'Failed to scrub databases.' });
     } finally {
       setTesting(false);
+      setScrubProgress(null);
     }
   };
 
   const handleThemeToggle = (newTheme) => {
     setTheme(newTheme);
-    if (onThemeChange) {
-      onThemeChange(newTheme);
-    }
+    if (onThemeChange) onThemeChange(newTheme);
   };
 
   return (
@@ -170,7 +174,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           )}
         </button>
       </div>
-      
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
         <Field label="Notion Integration Token" type="password" value={token} onChange={e => setToken(e.target.value)} placeholder="ntn_..." />
         <Field label="Categories Database ID or Link" type="text" value={categoriesDb} onChange={e => setCategoriesDb(e.target.value)} />
@@ -184,28 +188,28 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
       <div style={{ marginTop: 'var(--space-xl)', marginBottom: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}>
         <h2 style={{ margin: 0, fontSize: 'var(--text-lg)', color: 'var(--color-ink)', marginBottom: 'var(--space-md)' }}>Feature Toggles</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-          <SettingsToggle 
-            label="Budgeting Features" 
-            checked={features.budgeting} 
-            onChange={e => setFeatures(f => ({ ...f, budgeting: e.target.checked }))} 
+          <SettingsToggle
+            label="Budgeting Features"
+            checked={features.budgeting}
+            onChange={e => setFeatures(f => ({ ...f, budgeting: e.target.checked }))}
           />
-          <SettingsToggle 
-            label="Cash Flow Trend" 
-            checked={features.cashFlow} 
-            onChange={e => setFeatures(f => ({ ...f, cashFlow: e.target.checked }))} 
+          <SettingsToggle
+            label="Cash Flow Trend"
+            checked={features.cashFlow}
+            onChange={e => setFeatures(f => ({ ...f, cashFlow: e.target.checked }))}
           />
         </div>
       </div>
 
       {status.msg && (
-        <div style={{ 
-          padding: 'var(--space-sm)', 
-          borderRadius: 'var(--radius-md)', 
+        <div role="status" style={{
+          padding: 'var(--space-sm)', borderRadius: 'var(--radius-md)',
           backgroundColor: status.type === 'error' ? 'rgba(255, 59, 48, 0.1)' : 'rgba(52, 199, 89, 0.1)',
           color: status.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)',
           border: `1px solid ${status.type === 'error' ? 'rgba(255, 59, 48, 0.2)' : 'rgba(52, 199, 89, 0.2)'}`
         }}>
           {status.msg}
+          {scrubProgress && scrubProgress.total ? ` (${scrubProgress.done}/${scrubProgress.total})` : ''}
         </div>
       )}
 
@@ -213,17 +217,10 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         <Button variant="primary" onClick={handleSave} disabled={testing}>
           {testing ? 'Testing...' : 'Save Configuration'}
         </Button>
-        <Button 
-          variant="secondary" 
-          onClick={handleScrub} 
-          disabled={testing}
-          style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}
-        >
+        <Button variant="danger" onClick={handleScrub} disabled={testing}>
           Scrub Live Data & Demo Mode
         </Button>
       </div>
-
-
 
       {/* Subscriptions Management Section */}
       {data?.subscriptions && (
@@ -246,9 +243,12 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                 const catName = data.categories?.find(c => c.id === sub.categoryId)?.name || 'Unknown';
                 const catColor = getCategoryColor(catName);
                 return (
-                  <div 
+                  <div
                     key={sub.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setEditingSub(sub)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditingSub(sub); } }}
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)',
@@ -263,17 +263,14 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                       <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{sub.name}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginTop: '4px' }}>
                         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
-                          Every {sub.dayOfMonth}{sub.dayOfMonth === 1 ? 'st' : sub.dayOfMonth === 2 ? 'nd' : sub.dayOfMonth === 3 ? 'rd' : 'th'} of month
+                          Every {ordinal(sub.dayOfMonth)} of the month
                         </span>
                         <span style={{
-                          fontSize: '0.65rem',
-                          fontWeight: 'var(--weight-bold)',
-                          padding: '2px 6px',
+                          fontSize: '0.65rem', fontWeight: 'var(--weight-bold)', padding: '2px 6px',
                           borderRadius: 'var(--radius-sm)',
                           backgroundColor: sub.active !== false ? 'color-mix(in srgb, var(--color-success) 15%, transparent)' : 'color-mix(in srgb, var(--color-muted) 15%, transparent)',
                           color: sub.active !== false ? 'var(--color-success)' : 'var(--color-muted)',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px'
+                          textTransform: 'uppercase', letterSpacing: '0.5px'
                         }}>
                           {sub.active !== false ? 'Active' : 'Inactive'}
                         </span>
@@ -299,11 +296,8 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           sub={editingSub}
           data={data}
           onSave={async (id, subData) => {
-            if (id) {
-              await client.updateSubscription(id, subData);
-            } else {
-              await client.addSubscription(subData);
-            }
+            if (id) await client.updateSubscription(id, subData);
+            else await client.addSubscription(subData);
             if (onDataChange) onDataChange();
           }}
           onDelete={async (id) => {
@@ -331,10 +325,10 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
               </div>
             ) : (
               data.trips.map(trip => {
-                const statusColor = trip.status === 'Active' 
-                  ? 'var(--color-success)' 
-                  : trip.status === 'Completed' 
-                    ? 'var(--color-muted)' 
+                const statusColor = trip.status === 'Active'
+                  ? 'var(--color-success)'
+                  : trip.status === 'Completed'
+                    ? 'var(--color-muted)'
                     : 'var(--color-primary)';
                 const statusBg = trip.status === 'Active'
                   ? 'color-mix(in srgb, var(--color-success) 15%, transparent)'
@@ -343,9 +337,12 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                     : 'color-mix(in srgb, var(--color-primary) 15%, transparent)';
 
                 return (
-                  <div 
+                  <div
                     key={trip.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setEditingTrip(trip)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditingTrip(trip); } }}
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)',
@@ -370,14 +367,9 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                           </span>
                         )}
                         <span style={{
-                          fontSize: '0.65rem',
-                          fontWeight: 'var(--weight-bold)',
-                          padding: '2px 6px',
-                          borderRadius: 'var(--radius-sm)',
-                          backgroundColor: statusBg,
-                          color: statusColor,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px'
+                          fontSize: '0.65rem', fontWeight: 'var(--weight-bold)', padding: '2px 6px',
+                          borderRadius: 'var(--radius-sm)', backgroundColor: statusBg, color: statusColor,
+                          textTransform: 'uppercase', letterSpacing: '0.5px'
                         }}>
                           {trip.status || 'Planned'}
                         </span>
@@ -397,11 +389,8 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           onClose={() => { setIsAddingTrip(false); setEditingTrip(null); }}
           trip={editingTrip}
           onSave={async (id, tripData) => {
-            if (id) {
-              await client.updateTrip(id, tripData);
-            } else {
-              await client.addTrip(tripData);
-            }
+            if (id) await client.updateTrip(id, tripData);
+            else await client.addTrip(tripData);
             if (onDataChange) onDataChange();
           }}
           onDelete={async (id) => {
@@ -410,10 +399,11 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           }}
         />
       )}
+
       <PromptModal
         isOpen={showScrubPrompt}
         title="Scrub Databases?"
-        message="WARNING: This is a DESTRUCTIVE action that will delete all Transactions and Subscriptions from your live Notion databases to start fresh."
+        message="WARNING: This is a DESTRUCTIVE action that archives every Transaction, Subscription and Trip in your live Notion databases to start fresh. Archived pages are recoverable from Notion's trash, but the app itself has no undo."
         expectedValue="delete"
         confirmText="Scrub & Save"
         onConfirm={executeScrub}

@@ -1,4 +1,5 @@
 import { Button } from '../../ds/components/Button';
+import { formatPeriodLabel } from '../lib/period';
 
 // SVG Icons
 const Icons = {
@@ -22,32 +23,18 @@ const Icons = {
   )
 };
 
-function formatPeriodLabel(period) {
-  const d = new Date();
-  if (period === 'this_month') {
-    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  }
-  if (period === 'last_month') {
-    d.setMonth(d.getMonth() - 1);
-    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  }
-  if (period === 'this_year') {
-    return d.getFullYear().toString();
-  }
-  return 'All Time';
-}
-
-export default function Navigation({ activeTab, onTabChange, onAddClick, period, onPeriodClick, onFilterClick }) {
+export default function Navigation({ activeTab, onTabChange, onAddClick, period, onPeriodClick, onFilterClick, filtersActive }) {
   const tabs = ['dashboard', 'transactions', 'insights', 'settings'];
+  const periodLabel = formatPeriodLabel(period, new Date(), { short: true });
 
   return (
-    <header className="mobile-nav-header" style={{ 
-      display: 'flex', 
-      alignItems: 'center', 
+    <header className="mobile-nav-header" style={{
+      display: 'flex',
+      alignItems: 'center',
       gap: 'var(--space-sm)',
       padding: 'var(--space-sm) var(--space-md)',
-      position: 'sticky', 
-      top: 0, 
+      position: 'sticky',
+      top: 0,
       zIndex: 10,
       backgroundColor: 'color-mix(in srgb, var(--color-bg) 85%, transparent)',
       backdropFilter: 'blur(12px)',
@@ -76,6 +63,7 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
               onClick={() => onTabChange(tab)}
               className={`nav-tab-btn ${isActive ? 'active' : ''}`}
               title={tab}
+              aria-current={isActive ? 'page' : undefined}
             >
               {Icons[tab]}
               <span className="nav-tab-text">{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
@@ -86,19 +74,25 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
 
       <div className="nav-controls" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginLeft: 'var(--space-xs)' }}>
         {['transactions', 'dashboard', 'insights'].includes(activeTab) && (
-          <button 
+          <button
             className="nav-filter-btn"
             onClick={onFilterClick}
-            title="Filter"
+            title={filtersActive ? 'Filters active — tap to change' : 'Filter'}
+            aria-label={filtersActive ? 'Filters active — tap to change' : 'Filter'}
+            style={filtersActive ? { position: 'relative' } : undefined}
           >
             {Icons.filter}
+            {filtersActive && (
+              <span aria-hidden style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--color-accent)', border: '1px solid var(--color-bg)' }} />
+            )}
           </button>
         )}
-        
-        <button 
+
+        <button
           className="nav-period-btn"
           onClick={onPeriodClick}
-          title={formatPeriodLabel(period)}
+          title={periodLabel}
+          aria-label={`Change period, currently ${periodLabel}`}
         >
           {Icons.calendar}
         </button>

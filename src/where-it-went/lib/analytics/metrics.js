@@ -1,51 +1,71 @@
-import { KEYWORDS } from './constants';
+import { KEYWORDS, OBLIGATION_KEYWORDS, matchesAny } from './constants';
+
+/** id → category, so classification isn't a linear scan per transaction. */
+export function categoryIndex(categories) {
+  const map = new Map();
+  (categories || []).forEach(c => map.set(c.id, c));
+  return map;
+}
 
 export function calculateMetrics(transactions, categories) {
+  const byId = categoryIndex(categories);
+  const getCatName = (id) => byId.get(id)?.name || 'Uncategorized';
+
   const expenses = transactions.filter(t => t.type === 'Expense');
   const incomes = transactions.filter(t => t.type === 'Income');
-  
+
   const totalExpense = expenses.reduce((a, b) => a + b.amount, 0);
   const totalIncome = incomes.reduce((a, b) => a + b.amount, 0);
   const netCashFlow = totalIncome - totalExpense;
-  const savingsRate = totalIncome > 0 ? (totalIncome - totalExpense) / totalIncome : 0;
-
-  const getCatName = (id) => categories.find(c => c.id === id)?.name || 'Uncategorized';
 
   let needsTotal = 0;
   let wantsTotal = 0;
-  let savingsTotal = 0;
+  let unclassifiedTotal = 0;
+  let investedOutflow = 0;
   let fixedCostsTotal = 0;
   let propertyTotal = 0;
   let taxesTotal = 0;
   let investingTotal = 0;
 
   const catSums = {};
-  categories.forEach(c => catSums[c.id] = { id: c.id, name: c.name, type: c.type, total: 0 });
+  (categories || []).forEach(c => { catSums[c.id] = { id: c.id, name: c.name, type: c.type, total: 0 }; });
 
   expenses.forEach(tx => {
     const catName = getCatName(tx.categoryId).toLowerCase();
     const desc = (tx.description || '').toLowerCase();
-    const isAlimonyOrSupport = desc.includes('alimony') || desc.includes('support') || desc.includes('maintenance') || desc.includes('tuition') || desc.includes('child care');
+    const isObligation = matchesAny(desc, OBLIGATION_KEYWORDS);
     if (catSums[tx.categoryId]) catSums[tx.categoryId].total += tx.amount;
 
-    if (catName.includes('propert')) propertyTotal += tx.amount;
-    if (catName.includes('tax')) taxesTotal += tx.amount;
-    if (catName.includes('invest')) investingTotal += tx.amount;
-    
-    if (catName.includes('hous') || catName.includes('utilit') || catName.includes('propert') || catName.includes('subscript') || catName.includes('rent') || catName.includes('loan') || catName.includes('tax') || isAlimonyOrSupport) {
+    if (matchesAny(catName, ['propert'])) propertyTotal += tx.amount;
+    if (matchesAny(catName, ['=tax', '=taxes'])) taxesTotal += tx.amount;
+    if (matchesAny(catName, ['invest'])) investingTotal += tx.amount;
+
+    if (matchesAny(catName, ['hous', 'utilit', 'propert', 'subscript', 'rent', '=loan', '=tax', '=taxes']) || isObligation) {
       fixedCostsTotal += tx.amount;
     }
 
-    if (KEYWORDS.SAVINGS.some(k => catName.includes(k))) {
-      savingsTotal += tx.amount;
-    } else if (KEYWORDS.NEEDS.some(k => catName.includes(k)) || isAlimonyOrSupport) {
+    if (matchesAny(catName, KEYWORDS.SAVINGS)) {
+      // Money moved into savings/investments is not consumption — see savingsRate.
+      investedOutflow += tx.amount;
+    } else if (matchesAny(catName, KEYWORDS.NEEDS) || isObligation) {
       needsTotal += tx.amount;
-    } else if (KEYWORDS.WANTS.some(k => catName.includes(k))) {
+    } else if (matchesAny(catName, KEYWORDS.WANTS)) {
       wantsTotal += tx.amount;
     } else {
+      // Nothing matched. Still counted with Wants for the 50/30/20 bars, but tracked
+      // separately so the UI can admit it guessed (it used to be silent).
+      unclassifiedTotal += tx.amount;
       wantsTotal += tx.amount;
     }
   });
+
+  // Consumption only: transfers into savings/investments are excluded, otherwise
+  // putting money aside *lowered* the reported savings rate.
+  const spendingExpense = totalExpense - investedOutflow;
+  const savingsRate = totalIncome > 0 ? (totalIncome - spendingExpense) / totalIncome : 0;
+
+  // Everything income didn't get consumed by: leftover cash plus explicit investing.
+  const savingsBucket = totalIncome > 0 ? totalIncome - spendingExpense : investedOutflow;
 
   const investmentRate = totalIncome > 0 ? investingTotal / totalIncome : 0;
   const fixedCostsRatio = totalIncome > 0 ? fixedCostsTotal / totalIncome : 0;
@@ -57,7 +77,15 @@ export function calculateMetrics(transactions, categories) {
     fixedCostsRatio,
     totalIncome,
     totalExpense,
-    needsWantsSavings: { needs: needsTotal, wants: wantsTotal, savings: savingsTotal },
+    spendingExpense,
+    fixedCostsTotal,
+    needsWantsSavings: {
+      needs: needsTotal,
+      wants: wantsTotal,
+      savings: savingsBucket,
+      unclassified: unclassifiedTotal,
+      investedOutflow
+    },
     overviews: { property: propertyTotal, taxes: taxesTotal },
     catSums
   };

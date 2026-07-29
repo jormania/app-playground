@@ -4,6 +4,7 @@ import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
 import { ConfirmModal } from '../../ds';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
+import { validateTrip } from '../domain/Trip';
 
 export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelete }) {
   const [name, setName] = useState('');
@@ -13,14 +14,18 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
   const [status, setStatus] = useState('Planned');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (trip) {
       setName(trip.name || '');
       setDestination(trip.destination || '');
-      setStartDate(trip.startDate || '');
-      setEndDate(trip.endDate || '');
+      // Guard against a stray full timestamp — a <input type="date"> silently
+      // blanks itself (and would save `null` over real dates) if fed anything but
+      // a plain YYYY-MM-DD.
+      setStartDate(trip.startDate ? String(trip.startDate).slice(0, 10) : '');
+      setEndDate(trip.endDate ? String(trip.endDate).slice(0, 10) : '');
       setStatus(trip.status || 'Planned');
       setNotes(trip.notes || '');
     } else {
@@ -31,15 +36,13 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
       setStatus('Planned');
       setNotes('');
     }
+    setFormError(null);
   }, [trip, isOpen]);
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name || !name.trim()) return;
+    setFormError(null);
 
-    setSaving(true);
     const tripData = {
       name: name.trim(),
       destination: destination.trim(),
@@ -49,11 +52,19 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
       notes: notes.trim()
     };
 
+    const { valid, errors } = validateTrip(tripData);
+    if (!valid) {
+      setFormError(errors.join(' '));
+      return;
+    }
+
+    setSaving(true);
     try {
       await onSave(trip ? trip.id : null, tripData);
       onClose();
     } catch (err) {
       console.error(err);
+      setFormError(err?.message || 'Could not save this trip.');
     } finally {
       setSaving(false);
     }
@@ -67,7 +78,7 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)' }}>
           <Field label="Start Date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-          <Field label="End Date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+          <Field label="End Date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min={startDate || undefined} />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -84,6 +95,12 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
         </div>
 
         <Field label="Notes" placeholder="Optional trip notes..." value={notes} onChange={e => setNotes(e.target.value)} />
+
+        {formError && (
+          <div role="alert" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger)', backgroundColor: 'color-mix(in srgb, var(--color-danger) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-danger) 30%, transparent)', padding: 'var(--space-sm)', borderRadius: 'var(--radius-sm)' }}>
+            {formError}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-lg)' }}>
           {trip && (
@@ -102,15 +119,20 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
       <ConfirmModal
         isOpen={showConfirmDelete}
         title="Delete Trip"
-        message="Are you sure you want to delete this trip?"
+        message="Are you sure you want to delete this trip? It will be archived in Notion and can be restored from the trash there."
         confirmText="Delete"
         variant="danger"
         onConfirm={async () => {
           setShowConfirmDelete(false);
           setSaving(true);
-          await onDelete(trip.id);
-          setSaving(false);
-          onClose();
+          try {
+            await onDelete(trip.id);
+            onClose();
+          } catch (err) {
+            setFormError(err?.message || 'Could not delete this trip.');
+          } finally {
+            setSaving(false);
+          }
         }}
         onCancel={() => setShowConfirmDelete(false)}
       />

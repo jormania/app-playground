@@ -1,31 +1,31 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { NotionClient } from './lib/notionClient';
 import Dashboard from './components/Dashboard';
 import TransactionsList from './components/TransactionsList';
 import Settings from './components/Settings';
 import InsightsView from './components/InsightsView';
 import TransactionForm from './components/TransactionForm';
-import { SegmentedControl } from '../ds/components/SegmentedControl';
 import { Button } from '../ds/components/Button';
 import { Modal } from '../ds/components/Modal';
+import { AlertModal } from '../ds';
 import { useSubscriptionsEngine } from './lib/useSubscriptionsEngine';
+import { readJson, writeJson } from './lib/storage';
 import Navigation from './components/Navigation';
 import PeriodSheet from './components/PeriodSheet';
 import FilterSheet from './components/FilterSheet';
 import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS, DEMO_TRIPS } from './models/demoData';
 
+const EMPTY_DATA = { categories: [], accounts: [], transactions: [], subscriptions: [], trips: [] };
+
 export default function App() {
-  const [uiState] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('whereItWent_ui_state')) || {};
-    } catch { return {}; }
-  });
+  const [uiState] = useState(() => readJson('whereItWent_ui_state', {}));
 
   const [activeTab, setActiveTab] = useState(uiState.activeTab || 'dashboard');
   const [previousTab, setPreviousTab] = useState('dashboard');
-  const [data, setData] = useState({ categories: [], accounts: [], transactions: [], subscriptions: [], trips: [] });
+  const [data, setData] = useState(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [saveError, setSaveError] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
 
   // Lifted global states for Navigation
@@ -33,11 +33,11 @@ export default function App() {
   const [filterType, setFilterType] = useState(uiState.filterType || 'All');
   const [categoryFilter, setCategoryFilter] = useState(uiState.categoryFilter || 'All');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   useEffect(() => {
-    localStorage.setItem('whereItWent_ui_state', JSON.stringify({ activeTab, period, filterType, categoryFilter }));
+    writeJson('whereItWent_ui_state', { activeTab, period, filterType, categoryFilter });
   }, [activeTab, period, filterType, categoryFilter]);
-  
+
   // Sheet visibility states
   const [showPeriodSheet, setShowPeriodSheet] = useState(false);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
@@ -48,27 +48,30 @@ export default function App() {
     }
     setActiveTab(newTab);
   };
-  
-  const [config, setConfig] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('whereItWent_config')) || {};
-    } catch {
-      return {};
-    }
-  });
 
-  const client = new NotionClient(config.token, {
+  const [config, setConfig] = useState(() => readJson('whereItWent_config', {}));
+
+  // Stable identity: a fresh client on every render re-triggered every effect that
+  // depends on it (notably the subscriptions engine).
+  const client = useMemo(() => new NotionClient(config.token, {
     categories: config.categoriesDb,
     accounts: config.accountsDb,
     transactions: config.transactionsDb,
     subscriptions: config.subscriptionsDb,
     trips: config.tripsDb
-  });
+  }), [config.token, config.categoriesDb, config.accountsDb, config.transactionsDb, config.subscriptionsDb, config.tripsDb]);
 
-  const loadData = async () => {
+  // Likewise: an inline object literal here busted InsightsView's useMemo on every
+  // render, re-running the whole analytics engine each time.
+  const filterProps = useMemo(
+    () => ({ filterType, categoryFilter, searchQuery }),
+    [filterType, categoryFilter, searchQuery]
+  );
+
+  const loadData = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
-    
+
     if (config.demoMode) {
       setData({
         categories: [...DEMO_CATEGORIES],
@@ -80,7 +83,7 @@ export default function App() {
       setLoading(false);
       return;
     }
-    
+
     try {
       const [categories, accounts, transactions, subscriptions, trips] = await Promise.all([
         client.fetchCategories(),
@@ -91,37 +94,45 @@ export default function App() {
       ]);
       setData({ categories, accounts, transactions, subscriptions, trips });
     } catch (e) {
-      console.error("Failed to fetch data:", e);
+      console.error('Failed to fetch data:', e);
       setLoadError(e.message || 'Failed to load data from Notion.');
     }
     setLoading(false);
-  };
+  }, [client, config.demoMode]);
 
-  useEffect(() => {
-    loadData();
-  }, [config.token, config.categoriesDb, config.accountsDb, config.transactionsDb, config.subscriptionsDb, config.tripsDb, config.demoMode]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', config.theme || 'dark');
   }, [config.theme]);
 
-  // Run the subscription engine
-  useSubscriptionsEngine({ data, client, onDataChange: loadData });
+  // Auto-post missed subscription charges — never against the demo fixture.
+  useSubscriptionsEngine({ data, client, onDataChange: loadData, enabled: !config.demoMode });
 
   const handleConfigSave = (newConfig) => {
-    localStorage.setItem('whereItWent_config', JSON.stringify(newConfig));
+    writeJson('whereItWent_config', newConfig);
     setConfig(newConfig);
   };
 
   const handleThemeChange = (newTheme) => {
-    const updated = { ...config, theme: newTheme };
-    handleConfigSave(updated);
+    handleConfigSave({ ...config, theme: newTheme });
   };
 
-  const handleAddTransaction = async (tx) => {
-    await client.addTransaction(tx);
-    loadData();
-    setShowAddForm(false);
+  /**
+   * TransactionForm always calls `onSave(id, txData)` — `id` is null when adding.
+   * This handler used to take a single `tx` argument, so it received that null and
+   * every "+ Add" ended in a TypeError with the modal still open and nothing saved.
+   */
+  const handleAddTransaction = async (_id, tx) => {
+    try {
+      await client.addTransaction(tx);
+      await loadData();
+      setShowAddForm(false);
+    } catch (e) {
+      console.error('Failed to add transaction:', e);
+      setSaveError(e.message || 'Could not save the transaction to Notion.');
+      throw e; // let the form clear its saving state and stay open
+    }
   };
 
   return (
@@ -129,8 +140,8 @@ export default function App() {
       {config.demoMode && (
         <div style={{ backgroundColor: 'var(--color-danger)', color: 'white', padding: 'var(--space-sm) var(--space-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 100 }}>
           <span style={{ fontWeight: 'bold' }}>DEMO MODE ACTIVE</span>
-          <button 
-            style={{ padding: '4px 8px', fontSize: '12px', background: 'white', color: 'var(--color-danger)', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }} 
+          <button
+            style={{ padding: '4px 8px', fontSize: '12px', background: 'white', color: 'var(--color-danger)', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
             onClick={() => handleConfigSave({ ...config, demoMode: false })}
           >
             Stop Demo
@@ -145,6 +156,7 @@ export default function App() {
         period={period}
         onPeriodClick={() => setShowPeriodSheet(true)}
         onFilterClick={() => setShowFilterSheet(true)}
+        filtersActive={filterType !== 'All' || categoryFilter !== 'All' || searchQuery.trim() !== ''}
       />
 
       <PeriodSheet
@@ -173,14 +185,21 @@ export default function App() {
         onClose={() => setShowAddForm(false)}
         title="New Transaction"
       >
-        <TransactionForm 
-          categories={data.categories} 
-          accounts={data.accounts} 
+        <TransactionForm
+          categories={data.categories}
+          accounts={data.accounts}
           trips={data.trips}
-          onSave={handleAddTransaction} 
-          onCancel={() => setShowAddForm(false)} 
+          onSave={handleAddTransaction}
+          onCancel={() => setShowAddForm(false)}
         />
       </Modal>
+
+      <AlertModal
+        isOpen={!!saveError}
+        title="Could not save"
+        message={saveError || ''}
+        onClose={() => setSaveError(null)}
+      />
 
       <main>
         {loading ? (
@@ -209,15 +228,15 @@ export default function App() {
           </div>
         ) : (
           <>
-            {activeTab === 'dashboard' && <Dashboard data={data} client={client} onDataChange={loadData} onNavigate={handleTabChange} config={config} period={period} filterProps={{ filterType, categoryFilter, searchQuery }} />}
-            {activeTab === 'transactions' && <TransactionsList data={data} client={client} onDataChange={loadData} filterProps={{ filterType, categoryFilter, searchQuery }} period={period} />}
-            {activeTab === 'insights' && <InsightsView data={data} period={period} filterProps={{ filterType, categoryFilter, searchQuery }} />}
+            {activeTab === 'dashboard' && <Dashboard data={data} client={client} onDataChange={loadData} onNavigate={handleTabChange} config={config} period={period} filterProps={filterProps} />}
+            {activeTab === 'transactions' && <TransactionsList data={data} client={client} onDataChange={loadData} filterProps={filterProps} period={period} />}
+            {activeTab === 'insights' && <InsightsView data={data} period={period} filterProps={filterProps} />}
             {activeTab === 'settings' && (
-              <Settings 
-                config={config} 
-                onSave={handleConfigSave} 
-                onThemeChange={handleThemeChange} 
-                onDone={() => handleTabChange(previousTab)} 
+              <Settings
+                config={config}
+                onSave={handleConfigSave}
+                onThemeChange={handleThemeChange}
+                onDone={() => handleTabChange(previousTab)}
                 data={data}
                 client={client}
                 onDataChange={loadData}

@@ -49,30 +49,47 @@ export default function PeriodSheet({ isOpen, onClose, period, onPeriodChange })
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} title="Select period">
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
-        <Button 
-          variant={selectedPeriod === 'this_month' ? 'primary' : 'secondary'} 
-          size="sm" 
+        <Button
+          variant={selectedPeriod === 'this_month' ? 'primary' : 'secondary'}
+          size="sm"
           onClick={() => { setSelectedPeriod('this_month'); setPickerDate(new Date()); }}
         >
           This month
         </Button>
-        <Button 
-          variant={selectedPeriod === 'last_month' ? 'primary' : 'secondary'} 
-          size="sm" 
+        <Button
+          variant={selectedPeriod === 'last_month' ? 'primary' : 'secondary'}
+          size="sm"
           onClick={() => { setSelectedPeriod('last_month'); setPickerDate(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1)); }}
         >
           Last month
         </Button>
-        <Button 
-          variant={selectedPeriod === 'this_year' ? 'primary' : 'secondary'} 
-          size="sm" 
+        {/* Previously only Dashboard supported these two — Insights and the ledger had
+            no case for them and silently showed "everything ever" if reached some other
+            way. Now that every view shares lib/period, offering them here is safe. */}
+        <Button
+          variant={selectedPeriod === 'last_3_months' ? 'primary' : 'secondary'}
+          size="sm"
+          onClick={() => { setSelectedPeriod('last_3_months'); setPickerDate(new Date()); }}
+        >
+          Last 3 months
+        </Button>
+        <Button
+          variant={selectedPeriod === 'last_6_months' ? 'primary' : 'secondary'}
+          size="sm"
+          onClick={() => { setSelectedPeriod('last_6_months'); setPickerDate(new Date()); }}
+        >
+          Last 6 months
+        </Button>
+        <Button
+          variant={selectedPeriod === 'this_year' ? 'primary' : 'secondary'}
+          size="sm"
           onClick={() => { setSelectedPeriod('this_year'); setPickerDate(new Date()); }}
         >
           This year
         </Button>
-        <Button 
-          variant={selectedPeriod === 'all_time' ? 'primary' : 'secondary'} 
-          size="sm" 
+        <Button
+          variant={selectedPeriod === 'all_time' ? 'primary' : 'secondary'}
+          size="sm"
           onClick={() => { setSelectedPeriod('all_time'); setPickerDate(new Date()); }}
         >
           All time

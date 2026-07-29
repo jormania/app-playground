@@ -1,14 +1,20 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import Settings from './Settings';
+
+afterEach(() => {
+  cleanup();
+});
 
 vi.mock('../lib/notionClient', () => {
   return {
     NotionClient: class {
-      fetchCategories() {
-        return Promise.resolve([]);
-      }
+      fetchCategories() { return Promise.resolve([]); }
+      fetchAccounts() { return Promise.resolve([]); }
+      fetchTransactions() { return Promise.resolve([]); }
+      fetchSubscriptions() { return Promise.resolve([]); }
+      fetchTrips() { return Promise.resolve([]); }
     }
   };
 });
@@ -44,5 +50,20 @@ describe('Settings Component', () => {
         categoriesDb: 'cat_id'
       }));
     });
+  });
+
+  it('clears the configuration instead of crashing when every field is emptied and saved', async () => {
+    // Regression: handleSave used to call a `handleClear` that did not exist
+    // anywhere in the file, throwing a ReferenceError with the form stuck.
+    const mockConfig = { token: '', categoriesDb: '', accountsDb: '', transactionsDb: '', theme: 'dark' };
+    const onSave = vi.fn();
+
+    render(<Settings config={mockConfig} onSave={onSave} onThemeChange={vi.fn()} onDone={vi.fn()} />);
+    fireEvent.click(screen.getByText('Save Configuration'));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ token: '', transactionsDb: '' }));
+    });
+    expect(screen.getByText(/configuration cleared/i)).toBeDefined();
   });
 });

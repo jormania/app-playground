@@ -65,3 +65,13 @@
 .ghost:hover:not(:disabled) {
   background: var(--color-glow, rgba(59, 110, 245, 0.10));
 }
+
+/* Destructive actions — delete, scrub, anything that removes data. */
+.danger {
+  background: var(--color-danger, #d64545);
+  color: #ffffff;
+  border-color: transparent;
+}
+.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger, #d64545) 85%, black);
+}

@@ -1,6 +1,20 @@
 import React, { useMemo, useState } from 'react';
 import { generateDeepInsights } from '../lib/analytics';
 import { formatCurrency } from '../lib/currency';
+import { formatPeriodLabel } from '../lib/period';
+
+/** Percentage of `part` over `whole`, or null when `whole` is 0 — callers render
+ * "—" instead of the NaN% the raw division used to produce for an income-only
+ * or otherwise expense-free period. */
+function pct(part, whole) {
+  if (!whole) return null;
+  return (part / whole) * 100;
+}
+
+function pctLabel(part, whole, digits = 1) {
+  const p = pct(part, whole);
+  return p === null ? '—' : `${p.toFixed(digits)}%`;
+}
 
 export default function InsightsView({ data, period, filterProps }) {
   const [tripFilter, setTripFilter] = useState('ALL');
@@ -11,8 +25,6 @@ export default function InsightsView({ data, period, filterProps }) {
   // Destructure with optional chaining — safe when insights is null
   const financialHealth = insights?.financialHealth;
   const behavioral = insights?.behavioral;
-  const trajectory = insights?.trajectory;
-  const incomeStreams = insights?.incomeStreams;
   const alerts = insights?.alerts;
 
   // 50/30/20 Targets (only meaningful when insights exists)
@@ -20,23 +32,7 @@ export default function InsightsView({ data, period, filterProps }) {
   const targetWants = financialHealth ? financialHealth.totalExpense * 0.3 : 0;
   const targetSavings = financialHealth ? financialHealth.totalExpense * 0.2 : 0;
 
-  const periodLabel = (() => {
-    if (!period || period === 'this_month') return new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
-    if (period === 'last_month') {
-      const d = new Date(); d.setMonth(d.getMonth() - 1);
-      return d.toLocaleString('default', { month: 'long', year: 'numeric' });
-    }
-    if (period === 'last_3_months') return 'Last 3 Months';
-    if (period === 'last_6_months') return 'Last 6 Months';
-    if (period === 'this_year') return new Date().getFullYear().toString();
-    if (period === 'all_time') return 'All Time';
-    if (period.match(/^\d{4}-\d{2}$/)) {
-      const [y, m] = period.split('-');
-      return new Date(parseInt(y), parseInt(m) - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-    }
-    if (period.match(/^\d{4}$/)) return period;
-    return 'This Period';
-  })();
+  const periodLabel = formatPeriodLabel(period);
 
   return (
     <div className="insights-view" style={{ maxWidth: '1200px', margin: '0 auto', padding: 'var(--space-md)', width: '100%', boxSizing: 'border-box' }}>
@@ -224,60 +220,64 @@ export default function InsightsView({ data, period, filterProps }) {
               Target vs Actual spending breakdown based on total expenses.
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
-              
-              {/* Needs */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
-                  <span style={{ fontWeight: 'var(--weight-medium)' }}>Needs</span>
-                  <span style={{ fontWeight: 'var(--weight-bold)', color: financialHealth.needsWantsSavings.needs > targetNeeds ? 'var(--color-danger)' : 'var(--color-ink)' }}>
-                    {formatCurrency(financialHealth.needsWantsSavings.needs)} ({((financialHealth.needsWantsSavings.needs / financialHealth.totalExpense) * 100).toFixed(1)}%)
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>
-                  <span>Target 50%: {formatCurrency(targetNeeds)}</span>
-                  <span>Diff: {formatCurrency(financialHealth.needsWantsSavings.needs - targetNeeds)}</span>
-                </div>
-                <div className="budget-bar-wrapper">
-                  <div style={{ width: `${Math.min((financialHealth.needsWantsSavings.needs / financialHealth.totalExpense) * 100, 100)}%`, height: '100%', backgroundColor: financialHealth.needsWantsSavings.needs > targetNeeds ? 'var(--color-danger)' : 'var(--color-border)' }}></div>
-                </div>
-              </div>
+            {financialHealth.totalExpense > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
 
-              {/* Wants */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
-                  <span style={{ fontWeight: 'var(--weight-medium)' }}>Wants</span>
-                  <span style={{ fontWeight: 'var(--weight-bold)', color: financialHealth.needsWantsSavings.wants > targetWants ? 'var(--color-warning)' : 'var(--color-ink)' }}>
-                    {formatCurrency(financialHealth.needsWantsSavings.wants)} ({((financialHealth.needsWantsSavings.wants / financialHealth.totalExpense) * 100).toFixed(1)}%)
-                  </span>
+                {/* Needs */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
+                    <span style={{ fontWeight: 'var(--weight-medium)' }}>Needs</span>
+                    <span style={{ fontWeight: 'var(--weight-bold)', color: financialHealth.needsWantsSavings.needs > targetNeeds ? 'var(--color-danger)' : 'var(--color-ink)' }}>
+                      {formatCurrency(financialHealth.needsWantsSavings.needs)} ({pctLabel(financialHealth.needsWantsSavings.needs, financialHealth.totalExpense, 1)})
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>
+                    <span>Target 50%: {formatCurrency(targetNeeds)}</span>
+                    <span>Diff: {formatCurrency(financialHealth.needsWantsSavings.needs - targetNeeds)}</span>
+                  </div>
+                  <div className="budget-bar-wrapper">
+                    <div style={{ width: `${Math.min(pct(financialHealth.needsWantsSavings.needs, financialHealth.totalExpense) || 0, 100)}%`, height: '100%', backgroundColor: financialHealth.needsWantsSavings.needs > targetNeeds ? 'var(--color-danger)' : 'var(--color-border)' }}></div>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>
-                  <span>Target 30%: {formatCurrency(targetWants)}</span>
-                  <span>Diff: {formatCurrency(financialHealth.needsWantsSavings.wants - targetWants)}</span>
-                </div>
-                <div className="budget-bar-wrapper">
-                  <div style={{ width: `${Math.min((financialHealth.needsWantsSavings.wants / financialHealth.totalExpense) * 100, 100)}%`, height: '100%', backgroundColor: financialHealth.needsWantsSavings.wants > targetWants ? 'var(--color-warning)' : 'var(--color-border)' }}></div>
-                </div>
-              </div>
 
-              {/* Savings */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
-                  <span style={{ fontWeight: 'var(--weight-medium)' }}>Investments</span>
-                  <span style={{ fontWeight: 'var(--weight-bold)' }}>
-                    {formatCurrency(financialHealth.needsWantsSavings.savings)} ({((financialHealth.needsWantsSavings.savings / financialHealth.totalExpense) * 100).toFixed(1)}%)
-                  </span>
+                {/* Wants */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
+                    <span style={{ fontWeight: 'var(--weight-medium)' }}>Wants</span>
+                    <span style={{ fontWeight: 'var(--weight-bold)', color: financialHealth.needsWantsSavings.wants > targetWants ? 'var(--color-warning)' : 'var(--color-ink)' }}>
+                      {formatCurrency(financialHealth.needsWantsSavings.wants)} ({pctLabel(financialHealth.needsWantsSavings.wants, financialHealth.totalExpense, 1)})
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>
+                    <span>Target 30%: {formatCurrency(targetWants)}</span>
+                    <span>Diff: {formatCurrency(financialHealth.needsWantsSavings.wants - targetWants)}</span>
+                  </div>
+                  <div className="budget-bar-wrapper">
+                    <div style={{ width: `${Math.min(pct(financialHealth.needsWantsSavings.wants, financialHealth.totalExpense) || 0, 100)}%`, height: '100%', backgroundColor: financialHealth.needsWantsSavings.wants > targetWants ? 'var(--color-warning)' : 'var(--color-border)' }}></div>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>
-                  <span>Target 20%: {formatCurrency(targetSavings)}</span>
-                  <span>Diff: {formatCurrency(financialHealth.needsWantsSavings.savings - targetSavings)}</span>
-                </div>
-                <div className="budget-bar-wrapper">
-                  <div style={{ width: `${Math.min((financialHealth.needsWantsSavings.savings / financialHealth.totalExpense) * 100, 100)}%`, height: '100%', backgroundColor: (financialHealth.needsWantsSavings.savings / financialHealth.totalExpense) >= 0.2 ? 'var(--color-success)' : 'var(--color-border)' }}></div>
-                </div>
-              </div>
 
-            </div>
+                {/* Savings */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
+                    <span style={{ fontWeight: 'var(--weight-medium)' }}>Savings &amp; Investments</span>
+                    <span style={{ fontWeight: 'var(--weight-bold)' }}>
+                      {formatCurrency(financialHealth.needsWantsSavings.savings)} ({pctLabel(financialHealth.needsWantsSavings.savings, financialHealth.totalExpense, 1)})
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>
+                    <span>Target 20%: {formatCurrency(targetSavings)}</span>
+                    <span>Diff: {formatCurrency(financialHealth.needsWantsSavings.savings - targetSavings)}</span>
+                  </div>
+                  <div className="budget-bar-wrapper">
+                    <div style={{ width: `${Math.min(pct(financialHealth.needsWantsSavings.savings, financialHealth.totalExpense) || 0, 100)}%`, height: '100%', backgroundColor: (pct(financialHealth.needsWantsSavings.savings, financialHealth.totalExpense) || 0) >= 20 ? 'var(--color-success)' : 'var(--color-border)' }}></div>
+                  </div>
+                </div>
+
+              </div>
+            ) : (
+              <p style={{ color: 'var(--color-muted)', fontStyle: 'italic', margin: 0 }}>No expenses recorded this period — nothing to break down yet.</p>
+            )}
           </div>
 
           {/* Income Dependency */}

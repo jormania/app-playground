@@ -1,45 +1,47 @@
 import { formatCurrency } from '../currency';
 
-export function generateSummaryParagraph(currentMetrics, prevMetrics, spendingByCategoryChange, alerts, wins) {
+export function generateSummaryParagraph(currentMetrics, prevMetrics, spendingByCategoryChange) {
   let summary = '';
 
-  // Sentence 1: Macro comparison
+  // Sentence 1: macro comparison
   if (prevMetrics && currentMetrics.totalExpense > 0 && prevMetrics.totalExpense > 0) {
     const diff = currentMetrics.totalExpense - prevMetrics.totalExpense;
     if (Math.abs(diff) / prevMetrics.totalExpense < 0.05) {
-      summary += 'Overall spending remained close to your historical average. ';
+      summary += 'Overall spending stayed close to the previous period. ';
     } else if (diff > 0) {
       summary += `Overall spending increased by ${formatCurrency(diff)} compared to the previous period. `;
     } else {
       summary += `Overall spending decreased by ${formatCurrency(Math.abs(diff))} compared to the previous period. `;
     }
+  } else if (currentMetrics.totalExpense > 0) {
+    summary += `You spent ${formatCurrency(currentMetrics.totalExpense)} this period. `;
   } else {
-    summary += 'Overall spending data has been calculated. ';
+    summary += 'No spending recorded for this period. ';
   }
 
-  // Sentence 2: Specific category movers
+  // Sentence 2: specific category movers
   if (spendingByCategoryChange.length > 0) {
-    // Top increaser
     const topIncrease = spendingByCategoryChange.find(c => c.diff > 0);
-    // Top decreaser
     const topDecrease = [...spendingByCategoryChange].reverse().find(c => c.diff < 0);
 
     if (topIncrease && topDecrease) {
-      summary += `${topIncrease.name} expenses increased this month, but lower ${topDecrease.name.toLowerCase()} expenses helped balance the budget. `;
+      summary += `${topIncrease.name} expenses rose, while lower ${topDecrease.name.toLowerCase()} expenses helped offset it. `;
     } else if (topIncrease) {
-      summary += `${topIncrease.name} expenses drove the majority of this period's spending increase. `;
+      summary += `${topIncrease.name} expenses drove most of this period's increase. `;
     } else if (topDecrease) {
-      summary += `Significant reductions in ${topDecrease.name.toLowerCase()} contributed to a lighter month. `;
+      summary += `Reductions in ${topDecrease.name.toLowerCase()} made for a lighter period. `;
     }
   }
 
-  // Sentence 3: Savings Target context
-  if (currentMetrics.savingsRate > 0.20) {
-    summary += 'Strong cash retention kept your savings rate above target.';
-  } else if (currentMetrics.savingsRate > 0 && currentMetrics.savingsRate <= 0.20) {
-    summary += 'Your savings rate remained positive but fell below the 20% target.';
-  } else if (currentMetrics.savingsRate <= 0) {
-    summary += 'You spent more than your incoming cash flow this period.';
+  // Sentence 3: savings context — only meaningful when there was income to save from.
+  if (currentMetrics.totalIncome <= 0) {
+    summary += 'No income was recorded this period, so the savings rate is not meaningful.';
+  } else if (currentMetrics.savingsRate > 0.20) {
+    summary += 'Strong cash retention kept your savings rate above the 20% target.';
+  } else if (currentMetrics.savingsRate > 0) {
+    summary += 'Your savings rate stayed positive but fell below the 20% target.';
+  } else {
+    summary += 'You spent more than you took in this period.';
   }
 
   return summary.trim();
