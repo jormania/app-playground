@@ -106,6 +106,8 @@ Click **Save Configuration**. The app will now read and write directly to your N
 - **Category Tooltips**: Add descriptions to your Notion Categories database to have them show up as helpful tooltips in the app.
 - **Deterministic Color Tags**: Categories maintain the same elegant, modern color capsules across tables, charts, and lists, establishing a recognizable visual identity.
 - **Slim Interface**: A highly optimized, compact design using `size="sm"` components, ensuring dense information display without horizontal wrapping.
+- **Transfers** (opt-in — off by default, see Settings → Feature Toggles): a third transaction type alongside Expense/Income for money moving between your own accounts (e.g., topping up Revolut from your checking account). Transfers skip categorization entirely and are excluded from every income/expense total, budget, and Insights calculation — they show up in the ledger with a `🔁 Transfer` badge and a `±` sign instead of `+`/`−`.
+- **Multi-Currency Amounts**: Give an Account a `Currency` other than `RON` (e.g., a EUR Revolut card) and the transaction form offers an optional "Original amount" field — record what the card actually charged (e.g., `8.50 EUR`) alongside the RON amount used for all totals. Purely informational (no live FX conversion); shown as a small secondary line under the amount in both the Dashboard and the ledger.
 
 ### Subscriptions Engine
 - **Automated Recurring Billing**: Added a Subscriptions Management panel in Settings that allows you to define recurring monthly payments (e.g., YouTube Premium, Netflix, Rent).
@@ -114,7 +116,7 @@ Click **Save Configuration**. The app will now read and write directly to your N
 - **Seamless Notion Sync**: Powered by a 4th Notion database ("Subscriptions") to persist subscription data.
 
 ### Settings & Customization
-- **Feature Toggles**: Customize your Dashboard by enabling or disabling specific features such as the Budgeting Engine and the Cash Flow Trend chart.
+- **Feature Toggles**: Customize your Dashboard by enabling or disabling specific features — the Budgeting Engine, the Cash Flow Trend chart, and Transfers (see above; off by default).
 - **Theme Support**: Seamlessly toggle between Light and Dark mode using a clean, icon-based toggle switch.
 
 ### Under the Hood
@@ -266,3 +268,31 @@ typecheck / eslint all green).
   anchoring on the fixture's own "Active" trip rather than reusing the
   transaction offset.
 - Mobile no longer hides the Amount column from the ledger.
+
+## Follow-up: Contrast Fix + Transfers/Multi-Currency (2026-07-29)
+
+- **Alert-card contrast fixed**: the "Attention Needed" cards in Insights (Category
+  Spike, High Spending Pace) used solid `--color-warning`/`--color-success` fills
+  with white text — roughly 2:1 contrast in dark theme, well under the WCAG AA
+  4.5:1 minimum. Switched to the same tinted-background pattern already used by
+  every other alert box in the app (`color-mix` background + token-colour text +
+  token-colour border); measured contrast in dark theme is now 10.5–13:1.
+- **Transfers** shipped as a new transaction type, gated behind a Settings →
+  Feature Toggles switch that defaults **off** (most people don't need to track
+  internal account-to-account moves). Turning it on adds "Transfer" to the
+  type selector, hides the (inapplicable) Category field, and excludes the
+  transaction from every income/expense total automatically. Editing an
+  existing Transfer still works even if the toggle is later switched off, so
+  disabling the feature can never silently reclassify old data.
+- **Multi-currency amounts** shipped: Accounts can carry a `Currency` other than
+  `RON` (the demo's Revolut account is now EUR); selecting such an account in
+  the transaction form reveals an optional "Original amount" + currency pair,
+  written to Notion's existing `Original Amount` / `Original Currency`
+  properties and displayed as a small secondary line under the amount
+  everywhere transactions are listed. Purely informational — no live FX
+  conversion, and the RON amount stays the source of truth for every total.
+- 20 new tests added for this pass (period/notionClient/TransactionForm/
+  Settings/TransactionsList/analytics coverage of Transfers and multi-currency);
+  full suite (1,651 tests), typecheck, and eslint all green; verified live
+  against a running dev server including a real dark-theme contrast
+  measurement.

@@ -145,27 +145,32 @@ export const DEMO_ACCOUNTS = [
   {
     "id": "acc_checking",
     "name": "Checking Account",
-    "type": "Asset"
+    "type": "Asset",
+    "currency": "RON"
   },
   {
     "id": "acc_savings",
     "name": "Savings Account",
-    "type": "Asset"
+    "type": "Asset",
+    "currency": "RON"
   },
   {
     "id": "acc_credit",
     "name": "Credit Card",
-    "type": "Liability"
+    "type": "Liability",
+    "currency": "RON"
   },
   {
     "id": "acc_revolut",
     "name": "Revolut",
-    "type": "Asset"
+    "type": "Asset",
+    "currency": "EUR"
   },
   {
     "id": "acc_cash",
     "name": "Cash",
-    "type": "Asset"
+    "type": "Asset",
+    "currency": "RON"
   }
 ];
 
@@ -4250,6 +4255,28 @@ const RAW_TRANSACTIONS = [
     "type": "Expense",
     "categoryId": "cat_taxes",
     "accountId": "acc_checking",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_31",
+    "description": "Café in Vienna",
+    "date": "2026-12-20",
+    "amount": 42,
+    "originalAmount": 8.5,
+    "originalCurrency": "EUR",
+    "type": "Expense",
+    "categoryId": "cat_dining",
+    "accountId": "acc_revolut",
+    "tags": []
+  },
+  {
+    "id": "demo_tx_32",
+    "description": "Revolut top-up",
+    "date": "2026-12-21",
+    "amount": 500,
+    "type": "Transfer",
+    "categoryId": "",
+    "accountId": "acc_revolut",
     "tags": []
   }
 ];

@@ -157,6 +157,11 @@ export class NotionClient {
       tripId: row.properties.Trip?.relation?.[0]?.id || '',
       // Read by the Travel/Property/Nora classifiers — previously never fetched.
       notes: row.properties.Notes?.rich_text?.[0]?.plain_text || '',
+      // The RON amount stays the source of truth for every total; these two are
+      // purely informational — "what did I actually pay in the card's currency" —
+      // and were fetched by nobody before this.
+      originalAmount: row.properties['Original Amount']?.number ?? null,
+      originalCurrency: row.properties['Original Currency']?.select?.name || '',
       tags: row.properties.Tags?.multi_select?.map(t => t.name) || []
     }));
   }
@@ -185,6 +190,8 @@ export class NotionClient {
           'Account': relation(tx.accountId),
           'Trip': relation(tx.tripId),
           'Notes': richText(tx.notes),
+          'Original Amount': { number: tx.originalAmount ?? null },
+          'Original Currency': tx.originalCurrency ? { select: { name: tx.originalCurrency } } : { select: null },
           'Tags': { multi_select: (tx.tags || []).map(t => ({ name: t })) }
         }
       }
@@ -207,6 +214,10 @@ export class NotionClient {
     if (updates.accountId !== undefined) properties['Account'] = relation(updates.accountId);
     if (updates.tripId !== undefined) properties['Trip'] = relation(updates.tripId);
     if (updates.notes !== undefined) properties['Notes'] = richText(updates.notes);
+    if (updates.originalAmount !== undefined) properties['Original Amount'] = { number: updates.originalAmount ?? null };
+    if (updates.originalCurrency !== undefined) {
+      properties['Original Currency'] = updates.originalCurrency ? { select: { name: updates.originalCurrency } } : { select: null };
+    }
     if (updates.tags !== undefined) properties['Tags'] = { multi_select: updates.tags.map(t => ({ name: t })) };
 
     return this._request({ path: `pages/${txId}`, method: 'PATCH', body: { properties } });

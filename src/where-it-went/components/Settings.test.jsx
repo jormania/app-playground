@@ -66,4 +66,27 @@ describe('Settings Component', () => {
     });
     expect(screen.getByText(/configuration cleared/i)).toBeDefined();
   });
+
+  it('Transfers feature toggle defaults off and can be turned on and saved', async () => {
+    const mockConfig = {
+      token: 'secret_token', categoriesDb: 'cat_id', accountsDb: 'acc_id', transactionsDb: 'tx_id', theme: 'dark'
+    };
+    const onSave = vi.fn();
+
+    render(<Settings config={mockConfig} onSave={onSave} onThemeChange={vi.fn()} onDone={vi.fn()} />);
+
+    const transfersToggle = screen.getByLabelText('Transfers');
+    expect(transfersToggle.checked).toBe(false);
+
+    fireEvent.click(transfersToggle);
+    expect(transfersToggle.checked).toBe(true);
+
+    fireEvent.click(screen.getByText('Save Configuration'));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+        features: expect.objectContaining({ transfers: true })
+      }));
+    });
+  });
 });

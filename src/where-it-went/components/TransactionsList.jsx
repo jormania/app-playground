@@ -10,7 +10,7 @@ import { readJson, writeJson } from '../lib/storage';
 
 const PAGE_SIZE = 200;
 
-export default function TransactionsList({ data, client, onDataChange, filterProps, period }) {
+export default function TransactionsList({ data, client, onDataChange, filterProps, period, allowTransfer = false }) {
   const { filterType: filter = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
 
   const [sortConfig, setSortConfig] = useState(() => readJson('whereItWent_sort', { key: 'date', direction: 'desc' }));
@@ -93,7 +93,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
         const d = parseTxDate(tx.date);
         label = d ? d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'No date';
       } else if (sortConfig.key === 'category') {
-        label = categoriesById.get(tx.categoryId)?.name || '⚠️ Unknown';
+        label = categoriesById.get(tx.categoryId)?.name || (tx.type === 'Transfer' ? '🔁 Transfer' : '⚠️ Unknown');
       } else if (sortConfig.key === 'account') {
         label = accountsById.get(tx.accountId)?.name || '— No account';
       } else if (sortConfig.key === 'description') {
@@ -159,9 +159,12 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
               )}
               {group.items.map(tx => {
                 const category = categoriesById.get(tx.categoryId);
-                const isUnknownCat = !category;
-                const displayCatName = category?.name || 'Unknown';
-                const catColor = getCategoryColor(displayCatName);
+                // A Transfer has no category by design — don't flag that as if it
+                // were a deleted/missing category (⚠️ Unknown).
+                const isTransfer = tx.type === 'Transfer';
+                const isUnknownCat = !category && !isTransfer;
+                const displayCatName = category?.name || (isTransfer ? 'Transfer' : 'Unknown');
+                const catColor = isTransfer ? 'var(--color-muted)' : getCategoryColor(displayCatName);
                 const txDate = parseTxDate(tx.date);
                 const sign = tx.type === 'Income' ? '+' : tx.type === 'Expense' ? '−' : '±';
 
@@ -190,11 +193,11 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                         border: `1px solid ${isUnknownCat ? 'var(--color-border)' : `color-mix(in srgb, ${catColor} 30%, transparent)`}`,
                         borderRadius: 'var(--radius-full)', display: 'inline-block'
                       }}>
-                        {isUnknownCat ? '⚠️ Unknown' : displayCatName}
+                        {isUnknownCat ? '⚠️ Unknown' : isTransfer ? `🔁 ${displayCatName}` : displayCatName}
                       </span>
                     </div>
                     <div className="tx-col-account" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>{accountsById.get(tx.accountId)?.name || '—'}</div>
-                    <div className="tx-col-amount" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <div className="tx-col-amount" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
                       <div style={{
                         color: tx.type === 'Income' ? 'var(--color-success)' : 'var(--color-ink)',
                         background: tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-ink) 5%, transparent)',
@@ -204,6 +207,11 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                       }}>
                         {sign}{formatCurrency(tx.amount)}
                       </div>
+                      {tx.originalAmount != null && tx.originalCurrency && (
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', whiteSpace: 'nowrap' }}>
+                          ({tx.originalAmount.toLocaleString('en-US', { maximumFractionDigits: 2 })} {tx.originalCurrency})
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -230,6 +238,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
             categories={data.categories}
             accounts={data.accounts}
             trips={data.trips}
+            allowTransfer={allowTransfer}
             initialTx={editingTx}
             onSave={async (id, txData) => {
               try {

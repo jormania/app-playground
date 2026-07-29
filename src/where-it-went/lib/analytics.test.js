@@ -108,4 +108,19 @@ describe('generateDeepInsights', () => {
     expect(result.financialHealth.savingsRate).toBeCloseTo(1, 5);
     expect(result.financialHealth.spendingExpense).toBe(0);
   });
+
+  it('excludes Transfer transactions from income, expense, and every derived total', () => {
+    const data = {
+      categories: [{ id: 'sal', name: 'Salary', type: 'Income' }],
+      transactions: [
+        { id: 't1', date: NOW.toISOString(), type: 'Income', amount: 1000, categoryId: 'sal' },
+        // Moving money to another of the user's own accounts — not income or spend.
+        { id: 't2', date: NOW.toISOString(), type: 'Transfer', amount: 500, categoryId: '' }
+      ]
+    };
+    const result = generateDeepInsights(data, 'this_month', null, NOW);
+    expect(result.financialHealth.totalIncome).toBe(1000);
+    expect(result.financialHealth.totalExpense).toBe(0);
+    expect(result.financialHealth.savingsRate).toBeCloseTo(1, 5);
+  });
 });

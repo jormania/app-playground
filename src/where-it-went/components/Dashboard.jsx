@@ -26,6 +26,7 @@ const CARD = {
 
 export default function Dashboard({ data, client, onDataChange, onNavigate, config, period = 'this_month', filterProps }) {
   const activePeriod = period || 'this_month';
+  const allowTransfer = config?.features?.transfers === true;
   const { filterType: filter = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
@@ -129,10 +130,12 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
     );
   };
 
+  // Transfers have no category, so there is nothing to break down by category —
+  // the chart keeps showing expenses and the empty state explains why.
   const chartType = filter === 'Income' ? 'Income' : 'Expense';
   const chartData = useMemo(
-    () => filteredTransactions.filter(t => t.type === chartType),
-    [filteredTransactions, chartType]
+    () => (filter === 'Transfer' ? [] : filteredTransactions.filter(t => t.type === chartType)),
+    [filteredTransactions, chartType, filter]
   );
 
   // Grouping is memoised separately so the chart effects depend on stable values —
@@ -372,9 +375,13 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
             <ul style={{ listStyle: 'none', padding: 0 }}>
               {filteredTransactions.slice(0, 5).map(tx => {
                 const category = categoriesById.get(tx.categoryId);
-                const catName = category?.name || 'Unknown';
-                const catColor = getCategoryColor(catName);
-                const isUnknownCat = !category;
+                // A Transfer legitimately has no category — that's not the same
+                // failure mode as a category that was deleted out from under a
+                // transaction, so it shouldn't wear the same "⚠️ Unknown" warning.
+                const isTransfer = tx.type === 'Transfer';
+                const isUnknownCat = !category && !isTransfer;
+                const catName = category?.name || (isTransfer ? 'Transfer' : 'Unknown');
+                const catColor = isTransfer ? 'var(--color-muted)' : getCategoryColor(catName);
                 const txDate = parseTxDate(tx.date);
                 return (
                   <li
@@ -405,19 +412,25 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
                           border: `1px solid ${isUnknownCat ? 'var(--color-border)' : `color-mix(in srgb, ${catColor} 30%, transparent)`}`,
                           borderRadius: 'var(--radius-full)'
                         }}>
-                          {isUnknownCat ? '⚠️ Unknown' : catName}
+                          {isUnknownCat ? '⚠️ Unknown' : isTransfer ? `🔁 ${catName}` : catName}
                         </span>
                       </div>
                     </div>
-                    <div style={{
-                      flexShrink: 0,
-                      color: tx.type === 'Income' ? 'var(--color-success)' : 'var(--color-ink)',
-                      background: tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-ink) 5%, transparent)',
-                      border: tx.type === 'Income' ? '1px solid color-mix(in srgb, var(--color-success) 20%, transparent)' : '1px solid color-mix(in srgb, var(--color-border) 50%, transparent)',
-                      padding: '4px 10px', borderRadius: 'var(--radius-full)',
-                      fontWeight: 'var(--weight-medium)', fontSize: 'var(--text-sm)', alignSelf: 'center'
-                    }}>
-                      {tx.type === 'Income' ? '+' : tx.type === 'Expense' ? '−' : '±'}{formatCurrency(tx.amount)}
+                    <div style={{ flexShrink: 0, alignSelf: 'center', textAlign: 'right' }}>
+                      <div style={{
+                        color: tx.type === 'Income' ? 'var(--color-success)' : 'var(--color-ink)',
+                        background: tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-ink) 5%, transparent)',
+                        border: tx.type === 'Income' ? '1px solid color-mix(in srgb, var(--color-success) 20%, transparent)' : '1px solid color-mix(in srgb, var(--color-border) 50%, transparent)',
+                        padding: '4px 10px', borderRadius: 'var(--radius-full)',
+                        fontWeight: 'var(--weight-medium)', fontSize: 'var(--text-sm)'
+                      }}>
+                        {tx.type === 'Income' ? '+' : tx.type === 'Expense' ? '−' : '±'}{formatCurrency(tx.amount)}
+                      </div>
+                      {tx.originalAmount != null && tx.originalCurrency && (
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '2px' }}>
+                          ({tx.originalAmount.toLocaleString('en-US', { maximumFractionDigits: 2 })} {tx.originalCurrency})
+                        </div>
+                      )}
                     </div>
                   </li>
                 );
@@ -441,7 +454,11 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
             <div style={{ height: 'calc(100% - 45px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
               <div style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>📊</div>
               <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-ink)' }}>Not Enough Data</h3>
-              <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: 0 }}>There are no {chartType.toLowerCase()} transactions in this period to chart.</p>
+              <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: 0 }}>
+                {filter === 'Transfer'
+                  ? 'Transfers move money between your own accounts, so they have no category to chart.'
+                  : `There are no ${chartType.toLowerCase()} transactions in this period to chart.`}
+              </p>
             </div>
           ) : (
             <div style={{ height: 'calc(100% - 45px)', position: 'relative' }}>
@@ -546,6 +563,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
             categories={data.categories}
             accounts={data.accounts}
             trips={data.trips}
+            allowTransfer={allowTransfer}
             initialTx={editingTx}
             onSave={async (id, txData) => {
               try {

@@ -29,7 +29,9 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const [subscriptionsDb, setSubscriptionsDb] = useState(config.subscriptionsDb || '');
   const [tripsDb, setTripsDb] = useState(config.tripsDb || '');
   const [theme, setTheme] = useState(config.theme || 'dark');
-  const [features, setFeatures] = useState(config.features || { budgeting: true, cashFlow: true });
+  // Transfers default OFF — most people don't need to track internal
+  // account-to-account moves, so the feature stays invisible until asked for.
+  const [features, setFeatures] = useState(config.features || { budgeting: true, cashFlow: true, transfers: false });
   const [status, setStatus] = useState({ type: '', msg: '' });
   const [showScrubPrompt, setShowScrubPrompt] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -197,6 +199,11 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             label="Cash Flow Trend"
             checked={features.cashFlow}
             onChange={e => setFeatures(f => ({ ...f, cashFlow: e.target.checked }))}
+          />
+          <SettingsToggle
+            label="Transfers"
+            checked={features.transfers === true}
+            onChange={e => setFeatures(f => ({ ...f, transfers: e.target.checked }))}
           />
         </div>
       </div>

@@ -70,19 +70,28 @@ export default function InsightsView({ data, period, filterProps }) {
         {alerts && alerts.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
             <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', color: 'var(--color-ink)' }}>Attention Needed</h3>
-            {alerts.map((alert, idx) => (
-              <div key={idx} style={{ 
-                display: 'flex', gap: 'var(--space-md)', alignItems: 'center', padding: 'var(--space-md)', 
-                backgroundColor: alert.type === 'warning' ? 'var(--color-warning)' : 'var(--color-success)',
-                color: '#fff', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)'
-              }}>
-                <div style={{ fontSize: '24px' }}>{alert.type === 'warning' ? '⚠️' : '🌟'}</div>
-                <div>
-                  <div style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-md)' }}>{alert.title}</div>
-                  <div style={{ fontSize: 'var(--text-sm)', opacity: 0.95 }}>{alert.message}</div>
+            {alerts.map((alert, idx) => {
+              // Tinted background + coloured text/border — the same pattern used by
+              // every other alert box in this file (Pattern Deviation, Seasonal
+              // Recognition, etc.). The old solid warning/success fill with white
+              // text computed to roughly 2:1 contrast in dark theme (needs 4.5:1
+              // for WCAG AA); token-colour-on-surface reliably clears that bar.
+              const tone = alert.type === 'warning' ? 'var(--color-warning)' : 'var(--color-success)';
+              return (
+                <div key={idx} style={{
+                  display: 'flex', gap: 'var(--space-md)', alignItems: 'center', padding: 'var(--space-md)',
+                  backgroundColor: `color-mix(in srgb, ${tone} 12%, var(--color-surface))`,
+                  color: tone, border: `1px solid color-mix(in srgb, ${tone} 40%, transparent)`,
+                  borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div style={{ fontSize: '24px' }}>{alert.type === 'warning' ? '⚠️' : '🌟'}</div>
+                  <div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-md)', color: 'var(--color-ink)' }}>{alert.title}</div>
+                    <div style={{ fontSize: 'var(--text-sm)', color: tone }}>{alert.message}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

@@ -68,6 +68,10 @@ export default function App() {
     [filterType, categoryFilter, searchQuery]
   );
 
+  // Off by default — most people don't need to track internal account-to-account
+  // moves. Toggled in Settings → Feature Toggles.
+  const allowTransfer = config?.features?.transfers === true;
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -173,6 +177,7 @@ export default function App() {
         filterType={filterType}
         categoryFilter={categoryFilter}
         searchQuery={searchQuery}
+        allowTransfer={allowTransfer}
         onApply={({ filterType: ft, categoryFilter: cf, searchQuery: sq }) => {
           setFilterType(ft);
           setCategoryFilter(cf);
@@ -189,6 +194,7 @@ export default function App() {
           categories={data.categories}
           accounts={data.accounts}
           trips={data.trips}
+          allowTransfer={allowTransfer}
           onSave={handleAddTransaction}
           onCancel={() => setShowAddForm(false)}
         />
@@ -229,7 +235,7 @@ export default function App() {
         ) : (
           <>
             {activeTab === 'dashboard' && <Dashboard data={data} client={client} onDataChange={loadData} onNavigate={handleTabChange} config={config} period={period} filterProps={filterProps} />}
-            {activeTab === 'transactions' && <TransactionsList data={data} client={client} onDataChange={loadData} filterProps={filterProps} period={period} />}
+            {activeTab === 'transactions' && <TransactionsList data={data} client={client} onDataChange={loadData} filterProps={filterProps} period={period} allowTransfer={allowTransfer} />}
             {activeTab === 'insights' && <InsightsView data={data} period={period} filterProps={filterProps} />}
             {activeTab === 'settings' && (
               <Settings

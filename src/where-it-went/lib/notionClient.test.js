@@ -68,6 +68,37 @@ describe('NotionClient — write status handling', () => {
     await expect(client.addTransaction(null)).rejects.toThrow(NotionError);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('writes Original Amount / Original Currency, clearing the select when no currency is given', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ id: 'page_1' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new NotionClient('secret', { transactions: 'db1' });
+    await client.addTransaction({
+      description: 'Café', amount: 42, date: '2026-01-01', type: 'Expense',
+      categoryId: 'c1', accountId: 'a1', tags: [],
+      originalAmount: 8.5, originalCurrency: 'EUR'
+    });
+
+    const sentBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sentBody.body.properties['Original Amount']).toEqual({ number: 8.5 });
+    expect(sentBody.body.properties['Original Currency']).toEqual({ select: { name: 'EUR' } });
+  });
+
+  it('a Transfer with no category writes an empty relation, not a rejected write', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ id: 'page_1' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new NotionClient('secret', { transactions: 'db1' });
+    await client.addTransaction({
+      description: 'Revolut top-up', amount: 500, date: '2026-01-01', type: 'Transfer',
+      categoryId: '', accountId: 'a1', tags: []
+    });
+
+    const sentBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sentBody.body.properties.Type).toEqual({ select: { name: 'Transfer' } });
+    expect(sentBody.body.properties.Category).toEqual({ relation: [] });
+  });
 });
 
 describe('NotionClient — reads', () => {
@@ -141,5 +172,53 @@ describe('NotionClient — reads', () => {
     const client = new NotionClient('', {});
     const rows = await client.fetchCategories();
     expect(rows.length).toBeGreaterThan(0);
+  });
+
+  it('reads Original Amount / Original Currency', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      results: [{
+        id: 'row1',
+        properties: {
+          Description: { title: [{ plain_text: 'Café' }] },
+          Date: { date: { start: '2026-01-01' } },
+          'Amount (RON)': { number: 42 },
+          Type: { select: { name: 'Expense' } },
+          Category: { relation: [{ id: 'cat1' }] },
+          Account: { relation: [{ id: 'acc1' }] },
+          'Original Amount': { number: 8.5 },
+          'Original Currency': { select: { name: 'EUR' } },
+          Tags: { multi_select: [] }
+        }
+      }],
+      has_more: false
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new NotionClient('secret', { transactions: 'db1' });
+    const [tx] = await client.fetchTransactions();
+    expect(tx.originalAmount).toBe(8.5);
+    expect(tx.originalCurrency).toBe('EUR');
+  });
+
+  it('a Transfer row round-trips its Type without being reclassified', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      results: [{
+        id: 'row1',
+        properties: {
+          Description: { title: [{ plain_text: 'Revolut top-up' }] },
+          Date: { date: { start: '2026-01-01' } },
+          'Amount (RON)': { number: 500 },
+          Type: { select: { name: 'Transfer' } },
+          Category: {}, Account: { relation: [{ id: 'acc1' }] }, Tags: {}
+        }
+      }],
+      has_more: false
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new NotionClient('secret', { transactions: 'db1' });
+    const [tx] = await client.fetchTransactions();
+    expect(tx.type).toBe('Transfer');
+    expect(tx.categoryId).toBe('');
   });
 });
