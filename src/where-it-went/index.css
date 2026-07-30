@@ -492,8 +492,10 @@ input {
     padding: var(--space-md) var(--space-lg) !important;
   }
   .layout-modern .nav-controls {
-    margin-left: 0 !important;
-    margin-top: var(--space-md);
+    display: none !important;
+  }
+  .layout-modern .nav-controls-modern {
+    display: flex !important;
   }
   .layout-modern .nav-add-btn-classic {
     display: none !important;
@@ -549,5 +551,9 @@ input {
 }
 
 .nav-add-btn-modern {
+  display: none !important;
+}
+
+.nav-controls-modern {
   display: none !important;
 }

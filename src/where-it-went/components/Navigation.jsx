@@ -68,7 +68,7 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
           // same dot the filter button uses, in warning tone since it's
           // "something to look at" rather than "a filter is on".
           const showDupeDot = tab === 'transactions' && duplicateCount > 0;
-          return (
+          const btn = (
             <button
               key={tab}
               onClick={() => onTabChange(tab)}
@@ -84,6 +84,42 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
               )}
             </button>
           );
+          
+          if (tab === 'settings') {
+            const filterBtn = ['transactions', 'dashboard', 'insights'].includes(activeTab) ? (
+              <button
+                key="modern-filter"
+                className="nav-tab-btn nav-controls-modern"
+                onClick={onFilterClick}
+                title={filtersActive ? 'Filters active — tap to change' : 'Filter'}
+                aria-label={filtersActive ? 'Filters active — tap to change' : 'Filter'}
+                style={filtersActive ? { position: 'relative' } : undefined}
+              >
+                {Icons.filter}
+                <span className="nav-tab-text">Filter</span>
+                {filtersActive && (
+                  <span aria-hidden style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--color-accent)', border: '1px solid var(--color-bg)' }} />
+                )}
+              </button>
+            ) : null;
+            
+            const periodBtn = (
+              <button
+                key="modern-period"
+                className="nav-tab-btn nav-controls-modern"
+                onClick={onPeriodClick}
+                title={periodLabel}
+                aria-label={`Change period, currently ${periodLabel}`}
+              >
+                {Icons.calendar}
+                <span className="nav-tab-text">Select</span>
+              </button>
+            );
+            
+            return [filterBtn, periodBtn, btn].filter(Boolean);
+          }
+          
+          return btn;
         })}
       </div>
 
