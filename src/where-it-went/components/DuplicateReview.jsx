@@ -3,10 +3,8 @@ import { Button } from '../../ds/components/Button';
 import { ConfirmModal, AlertModal } from '../../ds';
 import { formatCurrency } from '../lib/currency';
 import { readJson, writeJson } from '../lib/storage';
-import { findDuplicateGroups, withoutDismissed, groupKey, mergeFields } from '../lib/duplicates';
+import { findDuplicateGroups, withoutDismissed, groupKey, mergeFields, DUPE_DISMISS_KEY } from '../lib/duplicates';
 import { formatAccountLabel } from '../lib/accounts';
-
-const DISMISS_KEY = 'whereItWent_dupe_dismissed';
 
 /**
  * A review card at the top of the ledger, not a nav destination.
@@ -18,8 +16,16 @@ const DISMISS_KEY = 'whereItWent_dupe_dismissed';
  * option 400s the *entire* atomic patch, taking unrelated fields down with it.
  * Re-dismissing once per device is the cheaper trade.
  */
-export default function DuplicateReview({ transactions, categoriesById, accountsById, client, onDataChange, onInspect }) {
-  const [dismissed, setDismissed] = useState(() => readJson(DISMISS_KEY, []));
+export default function DuplicateReview({
+  transactions, categoriesById, accountsById, client, onDataChange, onInspect,
+  // Controlled from App.jsx so the Transactions nav-tab badge (which counts
+  // undismissed groups) stays in step the moment something is dismissed here
+  // — otherwise the dot could only clear on the next full data reload.
+  // Falls back to owning its own copy so the component still works standalone.
+  dismissed: dismissedProp, onDismissedChange,
+}) {
+  const [localDismissed, setLocalDismissed] = useState(() => readJson(DUPE_DISMISS_KEY, []));
+  const dismissed = dismissedProp ?? localDismissed;
   const [expanded, setExpanded] = useState(false);
   const [pendingMerge, setPendingMerge] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -34,8 +40,9 @@ export default function DuplicateReview({ transactions, categoriesById, accounts
 
   const dismissGroup = (group) => {
     const next = [...dismissed, groupKey(group)];
-    writeJson(DISMISS_KEY, next);
-    setDismissed(next);
+    writeJson(DUPE_DISMISS_KEY, next);
+    if (onDismissedChange) onDismissedChange(next);
+    else setLocalDismissed(next);
   };
 
   const runMerge = async () => {

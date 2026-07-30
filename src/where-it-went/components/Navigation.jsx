@@ -23,7 +23,7 @@ const Icons = {
   )
 };
 
-export default function Navigation({ activeTab, onTabChange, onAddClick, period, onPeriodClick, onFilterClick, filtersActive }) {
+export default function Navigation({ activeTab, onTabChange, onAddClick, period, onPeriodClick, onFilterClick, filtersActive, duplicateCount = 0 }) {
   const tabs = ['dashboard', 'transactions', 'insights', 'settings'];
   const periodLabel = formatPeriodLabel(period, new Date(), { short: true });
 
@@ -59,16 +59,25 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
       <div className="nav-tabs" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
         {tabs.map(tab => {
           const isActive = activeTab === tab;
+          // Surfaces the ledger's duplicate-review count where it can actually
+          // be noticed, rather than only after already opening Transactions —
+          // same dot the filter button uses, in warning tone since it's
+          // "something to look at" rather than "a filter is on".
+          const showDupeDot = tab === 'transactions' && duplicateCount > 0;
           return (
             <button
               key={tab}
               onClick={() => onTabChange(tab)}
               className={`nav-tab-btn ${isActive ? 'active' : ''}`}
-              title={tab}
+              title={showDupeDot ? `${duplicateCount} possible duplicate${duplicateCount === 1 ? '' : 's'} to review` : tab}
               aria-current={isActive ? 'page' : undefined}
+              style={showDupeDot ? { position: 'relative' } : undefined}
             >
               {Icons[tab]}
               <span className="nav-tab-text">{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
+              {showDupeDot && (
+                <span aria-hidden style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--color-warning)', border: '1px solid var(--color-bg)' }} />
+              )}
             </button>
           );
         })}

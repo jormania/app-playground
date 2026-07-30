@@ -20,7 +20,7 @@ function signedAmount(tx) {
   return 0; // a transfer changes no total, so it sorts between the two
 }
 
-export default function TransactionsList({ data, client, onDataChange, filterProps, period, allowTransfer = false }) {
+export default function TransactionsList({ data, client, onDataChange, filterProps, period, allowTransfer = false, onRepeat, dismissedDuplicates, onDismissedDuplicatesChange, onViewTripInInsights }) {
   const { filterType: filter = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
 
   const [sortConfig, setSortConfig] = useState(() => readJson('whereItWent_sort', { key: 'date', direction: 'desc' }));
@@ -163,6 +163,8 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
         client={client}
         onDataChange={onDataChange}
         onInspect={setEditingTx}
+        dismissed={dismissedDuplicates}
+        onDismissedChange={onDismissedDuplicatesChange}
       />
 
       {filtered.length === 0 ? (
@@ -276,6 +278,32 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                           ({tx.originalAmount.toLocaleString('en-US', { maximumFractionDigits: 2 })} {tx.originalCurrency})
                         </div>
                       )}
+                      {/* Sits in the Amount cell rather than a new grid column —
+                          this ledger's column widths are tuned to fit exactly at
+                          375px, and one more track would reopen that fight.
+                          stopPropagation so tapping it doesn't also open the row
+                          for editing. */}
+                      {onRepeat && (
+                        <button
+                          type="button"
+                          title="Repeat this transaction"
+                          aria-label={`Repeat ${tx.description || 'transaction'}`}
+                          onClick={(e) => { e.stopPropagation(); onRepeat(tx); }}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: '22px', height: '22px', padding: 0, marginTop: '2px',
+                            background: 'none', border: '1px solid var(--color-border)', borderRadius: '50%',
+                            color: 'var(--color-muted)', cursor: 'pointer', flex: 'none'
+                          }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="17 1 21 5 17 9"></polyline>
+                            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                            <polyline points="7 23 3 19 7 15"></polyline>
+                            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -327,6 +355,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
               }
             }}
             onCancel={() => setEditingTx(null)}
+            onViewTrip={onViewTripInInsights ? (tripId) => { setEditingTx(null); onViewTripInInsights(tripId); } : undefined}
           />
         </Modal>
       )}

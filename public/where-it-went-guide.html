@@ -205,10 +205,13 @@
   </table></div>
 
   <h2 id="recording">5. Recording money</h2>
-  <p>Everything starts at <b>+ Add</b> in the header. The form adapts to the type you pick.</p>
+  <p>Everything starts at <b>+ Add</b> in the header. The form adapts to the type you pick, and remembers whichever type you added last — so a freelancer logging mostly Income doesn't reselect it every time.</p>
 
   <h3>Expense and Income</h3>
   <p>Date, amount, description, category, account. Choosing a category <b>suggests an account</b> based on how that kind of money usually moves — salary to the current account, rent and gifts to cash, everyday spending to the card you actually use. It is only ever a suggestion, and it never fires when you are editing an existing transaction: an account already recorded is a fact about where money went, and correcting a category must not quietly move it.</p>
+
+  <h3>Repeat</h3>
+  <p>Every row in the ledger has a small ↻ next to its amount. Tap it and Add reopens pre-filled with that transaction's description, amount, category and account — the same coffee, the same parking fare, without retyping it. The date resets to today and notes start blank, since both are specific to the moment, not the purchase.</p>
 
   <h3>Transfers <span class="pill off">off by default</span></h3>
   <p>Turn on <b>Transfers</b> in Settings to record money moving between your own accounts — cash into Revolut, current account into savings. A transfer names both ends, <b>From</b> and <b>To</b>, and they must differ.</p>
@@ -227,13 +230,15 @@
     <li><b>A trip's currency beats the account's.</b> On a trip you spend the destination's money whatever card settles it.</li>
     <li><b>Rates are cached per day</b>, so a currency is fetched once. Offline, the last known rate is used and labelled as such.</li>
     <li><b>BGN can be recorded but not converted</b> — Bulgaria adopted the euro and the ECB no longer quotes it. Enter the RON amount yourself.</li>
+    <li><b>The currency picker floats what you need to the top</b>: RON first, then the account's or trip's own currency, then whatever you've used recently — instead of one flat 16-item list scrolled the same way regardless of which two or three currencies you actually use.</li>
   </ul>
-  <p>Assign travel spending to a <b>Trip</b> and Insights totals it separately — flights, hotels and on-the-ground costs — including a per-currency breakdown so the trip reads in the money you actually handled.</p>
+  <p>Assign travel spending to a <b>Trip</b> and Insights totals it separately — flights, hotels and on-the-ground costs — including a per-currency breakdown so the trip reads in the money you actually handled. Editing a transaction that belongs to a trip shows a <b>"View this trip in Insights"</b> link, jumping straight to that trip's breakdown instead of picking it manually from the filter afterwards.</p>
 
   <h2 id="budgets">7. Budgets, periods &amp; rollover <span class="pill on">on by default</span></h2>
   <p>Give a category a limit and choose how long that limit lasts: <b>per month</b>, <b>per quarter</b> or <b>per year</b>. Annual costs like insurance or taxes no longer have to be faked as a twelfth each month.</p>
   <p>Each bar is measured against <b>its own window</b> and is deliberately unaffected by the period picker and the filters — otherwise a monthly cap viewed as "This year" would read as permanently blown. The window is always labelled (<code>Jul 2026</code>, <code>Q3 2026</code>, <code>2026</code>), because a yearly budget at 40% must not be mistaken for 40% of this month.</p>
   <p>Set <b>Budget Anchor</b> to move a quarterly or yearly window off the calendar — a March anchor makes the year run March to February.</p>
+  <p class="muted">The Dashboard's <b>Total Global Budget</b> bar sums every category's limit and spend — but a monthly and a yearly category added straight together would mix timescales into a meaningless number, so each category's share is first normalized to its monthly equivalent (a yearly limit contributes 1/12th). The bar labels itself <em>"(per month)"</em> whenever a non-monthly budget is in the mix.</p>
   <h3>Rollover</h3>
   <p>Tick <b>Roll unspent room over</b> and whatever you did not spend is added to the next window. Overspend carries too, as a negative — money already spent cannot be un-spent, and forgiving it each period would quietly hide the hole.</p>
   <p class="muted">Carry is recalculated from your transaction history every time, never stored. So correcting a transaction from three months ago fixes every window after it automatically, and there is no second copy of the number to fall out of step.</p>
@@ -252,7 +257,7 @@
   <p>The Insights tab is organised by what you can do about it.</p>
   <dl>
     <dt>Act — attention &amp; wins</dt>
-    <dd>A written summary of the period, then ranked alerts: a category well above its own multi-month average, spending pace that outruns income, an unusually large single purchase. Alerts need at least two months of real history before they fire, and are capped so the panel stays readable. Wins are called out too.</dd>
+    <dd>A written summary of the period, then ranked alerts: a category well above its own multi-month average, spending pace that outruns income, an unusually large single purchase. Alerts need at least two months of real history before they fire, and are capped so the panel stays readable. Wins are called out too. A <b>Copy summary</b> button beneath the write-up copies it, plus income/expenses/net/savings rate, as plain text — for pasting into a chat or a note without a screenshot.</dd>
     <dt>Ahead — the next 90 days <span class="pill">follows the Cash flow toggle</span></dt>
     <dd>Per month: <b>committed</b> (scheduled subscriptions, near-certain) and <b>estimated</b> (the trailing three-month median of everything else) drawn as separate segments, so a guess never borrows the authority of a known charge. A median, not an average, so one holiday does not poison three months. Under three complete months of history it says so and estimates nothing.</dd>
     <dd class="muted">It projects cash <b>flow</b>, not a balance — the app tracks what you spend, not what you hold, and inventing an opening balance would be worse than the gap.</dd>
@@ -264,7 +269,7 @@
   <p class="muted">Every comparison is like-for-like: a month in progress is compared against the <b>same number of days</b> of the previous month, not against a complete one.</p>
 
   <h2 id="duplicates">10. Duplicate detection</h2>
-  <p>When the same charge is recorded twice — a failed sync, two devices, a manual entry that the recurring engine also posted — a review card appears at the top of the ledger.</p>
+  <p>When the same charge is recorded twice — a failed sync, two devices, a manual entry that the recurring engine also posted — a review card appears at the top of the ledger, and the <b>Transactions</b> tab in the header carries a small dot so it's discoverable without already being there.</p>
   <p>It is deliberately cautious, because a false positive invites you to delete something real. A pair must match to the cent, sit within a day of each other, share a category, and have near-identical descriptions. Beyond that:</p>
   <ul>
     <li><b>Habitual charges are left alone.</b> If the same vendor and amount appears on three or more separate days it is a fixed price — the same coffee, the same fare — where a matching amount means nothing. A vendor whose charges vary landing on the identical figure twice is far more telling. This is measured from your own history, not from a list of guessed vendor names.</li>
@@ -284,6 +289,7 @@
   <p class="note">While offline, or while changes are queued, automatic subscription posting pauses. It decides what to post by checking the ledger, and a ledger that predates your queued changes would make it post them all a second time.</p>
 
   <h2 id="settings">12. Settings reference</h2>
+  <p class="muted">Connection Details, Feature Toggles, Recurring Subscriptions and Trips Management are each collapsible — everything starts open, but collapsing one is remembered on this device, so a long list of subscriptions or trips can be put away for good rather than scrolled past every visit.</p>
   <h3>Feature toggles</h3>
   <dl>
     <dt>Budget limits <span class="pill on">on</span></dt>
@@ -300,7 +306,7 @@
   <p class="warn"><b>Erase Notion data &amp; use samples</b> archives <em>every</em> Transaction, Subscription and Trip in your real workspace and switches the app to sample data. You must type a confirmation word. Notion keeps archived pages in its trash for 30 days, so they can be restored from there — but WhereItWent cannot undo it. This is for starting genuinely clean, not for tidying up.</p>
   <p>To disconnect without deleting anything, empty the token and database fields and save. The app returns to sample data and your Notion is untouched.</p>
   <h3>Appearance</h3>
-  <p>A sun/moon button switches light and dark. The choice is remembered on the device and the guide follows it.</p>
+  <p>A sun/moon button switches light and dark. A brand new install defaults to whatever your device's own light/dark setting is, rather than always opening dark; once you choose explicitly, that choice is remembered on the device and the guide follows it.</p>
 
   <h2 id="install">13. Installing as an app</h2>
   <p>WhereItWent is a Progressive Web App. Installing it gives a home-screen icon, a window without browser chrome, and — on Chromium — the ability to deliver reminders in the background.</p>

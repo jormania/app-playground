@@ -47,6 +47,56 @@ export function canConvert(currency) {
   return RATED_CURRENCIES.has(String(currency || '').toUpperCase());
 }
 
+const RECENT_KEY = 'whereItWent_recent_currencies';
+const MAX_RECENT = 5;
+
+function readRecentCurrencies() {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter(c => CURRENCIES.includes(c)) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Call after saving a foreign-currency transaction, so it floats toward the
+ * top of the picker next time. RON is never recorded — it's always first
+ * regardless, being the base. */
+export function recordRecentCurrency(currency) {
+  const code = String(currency || '').toUpperCase();
+  if (code === BASE_CURRENCY || !CURRENCIES.includes(code)) return;
+  try {
+    const next = [code, ...readRecentCurrencies().filter(c => c !== code)].slice(0, MAX_RECENT);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+  } catch {
+    /* private mode / quota — recency is a convenience, never block on this */
+  }
+}
+
+/**
+ * Currency picker options, reordered so the ones you actually need aren't
+ * buried in a flat 16-item alphabet-adjacent list. RON is always first (the
+ * base), then `priority` (the account's or trip's own currency for this
+ * transaction — usually already selected, but worth surfacing for anyone
+ * about to pick something else), then recently-used currencies, then
+ * everything else in the registered order. Never drops or reorders the
+ * underlying vocabulary — every code in CURRENCIES still appears exactly once.
+ */
+export function orderedCurrencies(priority) {
+  const seen = new Set([BASE_CURRENCY]);
+  const ordered = [BASE_CURRENCY];
+  const add = (code) => {
+    if (!code || seen.has(code) || !CURRENCIES.includes(code)) return;
+    seen.add(code);
+    ordered.push(code);
+  };
+  add(String(priority || '').toUpperCase());
+  readRecentCurrencies().forEach(add);
+  CURRENCIES.forEach(add);
+  return ordered;
+}
+
 function readCache() {
   try {
     const raw = localStorage.getItem(CACHE_KEY);

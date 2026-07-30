@@ -454,6 +454,14 @@ function latestDeployed() {
   return best ? `${MONTHS_FULL[best.m]} ${best.y}` : "";
 }
 
+// The "Latest" pill used to be a manually-set `latest: true` flag per app —
+// it drifted to three apps carrying it at once because adding a new one never
+// reminds you to unset it on the last one. APPS[0] is authoritative instead:
+// new apps go at the top of the registry (see its header comment), so there is
+// nothing to remember and nothing that can desync.
+const LATEST_APP = APPS[0];
+function isLatest(app) { return app === LATEST_APP; }
+
 function buildTagChips() {
   tagsRowEl.innerHTML = "";
   ALL_TAGS.forEach(tag => {
@@ -509,7 +517,7 @@ function renderCard(app) {
   }).join("");
 
   const featuresHtml = (app.features || []).length
-    ? `<details class="card-details"${app.latest ? " open" : ""}>
+    ? `<details class="card-details"${isLatest(app) ? " open" : ""}>
          <summary>What's inside</summary>
          <ul class="card-features">${app.features.map(f => `<li>${f}</li>`).join("")}</ul>
        </details>`
@@ -523,7 +531,7 @@ function renderCard(app) {
     ? `<span class="card-version">${app.version}</span>`
     : "";
 
-  const latestHtml = app.latest
+  const latestHtml = isLatest(app)
     ? `<span class="card-latest">✦ Latest</span>`
     : "";
 
@@ -534,7 +542,7 @@ function renderCard(app) {
   ].filter(Boolean).join("");
 
   return `
-    <article class="card${app.latest ? " is-latest" : ""}">
+    <article class="card${isLatest(app) ? " is-latest" : ""}">
       <div class="card-inner">
         <div class="card-top">
           <div class="card-icon" style="background:${app.iconBg || "var(--gold-dim)"}">

@@ -308,3 +308,18 @@ input {
   -moz-appearance: textfield;
   appearance: textfield;
 }
+
+/* Settings collapsible sections: suppress the native disclosure triangle so
+   only the custom chevron in the summary's own markup shows — browsers render
+   their own marker two different ways (a list-item marker in Firefox, a
+   ::-webkit-details-marker in Chromium), and without both rules one of the two
+   ends up with two arrows side by side. */
+.wiw-settings-summary {
+  list-style: none;
+}
+.wiw-settings-summary::-webkit-details-marker {
+  display: none;
+}
+.wiw-settings-summary::marker {
+  content: '';
+}

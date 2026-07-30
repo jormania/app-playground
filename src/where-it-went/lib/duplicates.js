@@ -13,6 +13,11 @@
  */
 import { parseTxDate } from './period';
 
+/** Single source for the dismissed-groups storage key — App.jsx (nav badge
+ * count) and DuplicateReview.jsx (the review card itself) both read/write it
+ * and need to agree on the exact string. */
+export const DUPE_DISMISS_KEY = 'whereItWent_dupe_dismissed';
+
 /**
  * Days either side of a transaction that a duplicate may land on.
  *

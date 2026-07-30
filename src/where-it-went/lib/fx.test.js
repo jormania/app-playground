@@ -11,6 +11,8 @@ import {
   CURRENCIES,
   RATED_CURRENCIES,
   BASE_CURRENCY,
+  orderedCurrencies,
+  recordRecentCurrency,
 } from './fx';
 
 const okResponse = (body) => ({ ok: true, json: async () => body });
@@ -36,6 +38,50 @@ describe('currency vocabulary', () => {
 
   it('every rated currency is also offered in the picker', () => {
     for (const c of RATED_CURRENCIES) expect(CURRENCIES).toContain(c);
+  });
+});
+
+describe('orderedCurrencies', () => {
+  it('puts RON first with no priority or recents', () => {
+    expect(orderedCurrencies()).toEqual(CURRENCIES);
+  });
+
+  it('floats a priority currency (the account/trip) right after RON', () => {
+    expect(orderedCurrencies('JPY')[0]).toBe('RON');
+    expect(orderedCurrencies('JPY')[1]).toBe('JPY');
+  });
+
+  it('never duplicates or drops a currency, whatever the priority', () => {
+    const ordered = orderedCurrencies('EUR');
+    expect(ordered).toHaveLength(CURRENCIES.length);
+    expect(new Set(ordered).size).toBe(CURRENCIES.length);
+    for (const c of CURRENCIES) expect(ordered).toContain(c);
+  });
+
+  it('ignores an unregistered or empty priority rather than inserting garbage', () => {
+    expect(orderedCurrencies('XYZ')).toEqual(CURRENCIES);
+    expect(orderedCurrencies('')).toEqual(CURRENCIES);
+  });
+
+  it('surfaces recently-used currencies after the priority slot', () => {
+    recordRecentCurrency('JPY');
+    recordRecentCurrency('USD');
+    const ordered = orderedCurrencies();
+    // Most-recent-first: USD was recorded last.
+    expect(ordered.slice(0, 3)).toEqual(['RON', 'USD', 'JPY']);
+  });
+
+  it('never records RON as "recent" — it is always first regardless', () => {
+    recordRecentCurrency('RON');
+    expect(orderedCurrencies()).toEqual(CURRENCIES);
+  });
+
+  it('re-recording an already-recent currency moves it to the front, not a duplicate', () => {
+    recordRecentCurrency('EUR');
+    recordRecentCurrency('USD');
+    recordRecentCurrency('EUR');
+    const ordered = orderedCurrencies();
+    expect(ordered.slice(0, 3)).toEqual(['RON', 'EUR', 'USD']);
   });
 });
 

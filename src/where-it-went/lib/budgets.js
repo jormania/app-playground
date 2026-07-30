@@ -22,7 +22,7 @@ import { parseTxDate, daysInMonth } from './period';
 export const BUDGET_PERIODS = ['Monthly', 'Quarterly', 'Yearly'];
 
 /** Months per window, by period name. */
-const MONTHS_PER = { Monthly: 1, Quarterly: 3, Yearly: 12 };
+export const MONTHS_PER = { Monthly: 1, Quarterly: 3, Yearly: 12 };
 
 /** Hard stop on how far back carry accumulates — the spirit of MAX_BACKFILL_MONTHS. */
 export const MAX_CARRY_WINDOWS = 12;
@@ -187,6 +187,20 @@ export function computeAllBudgets(categories, transactions, now = new Date()) {
   return (categories || [])
     .filter(c => Number(c.budgetLimit) > 0 && c.type !== 'Income')
     .map(c => computeBudgetStatus(c, transactions, now));
+}
+
+/**
+ * A category's contribution to a combined *monthly-equivalent* total.
+ *
+ * Summing raw limits/spent straight across categories mixes timescales — a
+ * 500/month grocery budget plus a 6 000/year insurance one added to "6 500"
+ * means nothing on its own. Dividing each by its own window's month-count
+ * before summing gives every category an equal, comparable "per month" share,
+ * so a combined figure across mixed periods is actually readable.
+ */
+export function monthlyEquivalent(status) {
+  const months = MONTHS_PER[status?.window?.period] || 1;
+  return { limit: (status?.effectiveLimit || 0) / months, spent: (status?.spent || 0) / months };
 }
 
 /** "3 000 L / quarter" — the phrasing used wherever a limit is shown on its own. */

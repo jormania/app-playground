@@ -1,10 +1,32 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { generateDeepInsights } from '../lib/analytics';
+import { formatShareableSummary } from '../lib/analytics/summaries';
 import { formatCurrency } from '../lib/currency';
 import { formatPeriodLabel } from '../lib/period';
 import { projectCashFlow } from '../lib/analytics/forecast';
 import ForecastSection from './ForecastSection';
 import NoraAvatar from './NoraAvatar';
+import { Button } from '../../ds/components/Button';
+
+/** Clipboard write with a same-origin fallback for browsers/contexts where
+ * the async Clipboard API isn't available (older Safari, non-HTTPS dev). */
+function copyText(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text);
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+  } finally {
+    document.body.removeChild(ta);
+  }
+  return Promise.resolve();
+}
 
 /** Percentage of `part` over `whole`, or null when `whole` is 0 — callers render
  * "—" instead of the NaN% the raw division used to produce for an income-only
@@ -19,8 +41,23 @@ function pctLabel(part, whole, digits = 1) {
   return p === null ? '—' : `${p.toFixed(digits)}%`;
 }
 
-export default function InsightsView({ data, period, filterProps, config }) {
-  const [tripFilter, setTripFilter] = useState('ALL');
+export default function InsightsView({ data, period, filterProps, config, initialTripFilter, onConsumeInitialTripFilter }) {
+  // Seeded from "View this trip in Insights" on a transaction — App.jsx passes
+  // a one-shot target trip id and this view remounts fresh every time the tab
+  // is switched to (it's conditionally rendered, not display:none'd), so a
+  // plain useState default is enough for the initial value.
+  const [tripFilter, setTripFilter] = useState(initialTripFilter || 'ALL');
+  // "Copy summary" confirmation — briefly swaps the button label, mirroring
+  // the pattern used for other one-shot confirmations in this app.
+  const [copied, setCopied] = useState(false);
+
+  // Consume the one-shot jump target once, on mount only, so returning to
+  // Insights later via the nav tab (not another "View this trip") doesn't
+  // keep reapplying a stale filter.
+  useEffect(() => {
+    if (initialTripFilter && onConsumeInitialTripFilter) onConsumeInitialTripFilter();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Deliberately ignores `period` and `filterProps`: a projection is about what
   // is still to come, so narrowing it to "last month" or to one category would
@@ -45,6 +82,15 @@ export default function InsightsView({ data, period, filterProps, config }) {
   const targetSavings = financialHealth ? financialHealth.totalExpense * 0.2 : 0;
 
   const periodLabel = formatPeriodLabel(period);
+
+  const handleCopySummary = () => {
+    copyText(formatShareableSummary(periodLabel, insights))
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      })
+      .catch(e => console.error('Failed to copy summary:', e));
+  };
 
   return (
     <div className="insights-view" style={{ maxWidth: '1200px', margin: '0 auto', padding: 'var(--space-md)', width: '100%', boxSizing: 'border-box' }}>
@@ -79,6 +125,11 @@ export default function InsightsView({ data, period, filterProps, config }) {
             <p style={{ margin: 0, fontSize: 'var(--text-base)', lineHeight: 1.6, color: 'var(--color-ink)' }}>
               <strong>📅 {periodLabel} in Review:</strong> {insights.summaryParagraph}
             </p>
+            <div style={{ marginTop: 'var(--space-sm)', display: 'flex', justifyContent: 'flex-end' }}>
+              <Button size="sm" variant="ghost" onClick={handleCopySummary}>
+                {copied ? '✓ Copied' : '📋 Copy summary'}
+              </Button>
+            </div>
           </div>
         )}
 

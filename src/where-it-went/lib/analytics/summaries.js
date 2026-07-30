@@ -46,3 +46,21 @@ export function generateSummaryParagraph(currentMetrics, prevMetrics, spendingBy
 
   return summary.trim();
 }
+
+/**
+ * The on-screen editorial summary plus headline figures, as plain text —
+ * for pasting into a chat or a note without screenshotting the card.
+ */
+export function formatShareableSummary(periodLabel, insights) {
+  if (!insights) return '';
+  const { financialHealth, summaryParagraph } = insights;
+  const lines = [`${periodLabel} in Review`, ''];
+  if (summaryParagraph) lines.push(summaryParagraph, '');
+  if (financialHealth) {
+    lines.push(`Income: ${formatCurrency(financialHealth.totalIncome)}`);
+    lines.push(`Expenses: ${formatCurrency(financialHealth.totalExpense)}`);
+    lines.push(`Net: ${formatCurrency(financialHealth.netCashFlow)}`);
+    lines.push(`Savings rate: ${(financialHealth.savingsRate * 100).toFixed(1)}%`);
+  }
+  return lines.join('\n').trim();
+}

@@ -16,7 +16,7 @@ import {
   parseTxDate
 } from '../lib/period';
 import { getUpcomingBills, DEFAULT_HORIZON_DAYS } from '../lib/upcoming';
-import { computeAllBudgets } from '../lib/budgets';
+import { computeAllBudgets, monthlyEquivalent } from '../lib/budgets';
 
 const CARD = {
   padding: 'var(--space-lg)',
@@ -26,7 +26,7 @@ const CARD = {
   boxShadow: 'var(--shadow-sm)'
 };
 
-export default function Dashboard({ data, client, onDataChange, onNavigate, config, period = 'this_month', filterProps }) {
+export default function Dashboard({ data, client, onDataChange, onNavigate, config, period = 'this_month', filterProps, onViewTripInInsights }) {
   const activePeriod = period || 'this_month';
   const allowTransfer = config?.features?.transfers === true;
   const { filterType: filter = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
@@ -500,20 +500,41 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)' }}>
               <div style={{ gridColumn: '1 / -1', padding: 'var(--space-md)', backgroundColor: 'var(--color-bg)', borderRadius: 'var(--radius-md)' }}>
                 {(() => {
-                  // Effective limits, so a category carrying rollover contributes
-                  // the room it actually has rather than its headline number.
-                  const totalLimit = budgets.reduce((acc, b) => acc + b.effectiveLimit, 0);
-                  const totalSpent = budgets.reduce((acc, b) => acc + b.spent, 0);
+                  // Each category's own limit/spent is already correct against
+                  // its own window — but a monthly 500 and a yearly 6 000
+                  // summed straight together mixed timescales into a number
+                  // that meant nothing on its own. Every category's share is
+                  // normalized to its monthly equivalent first, so a quarterly
+                  // or yearly budget contributes 1/3 or 1/12 of its figure —
+                  // the same "how much of a normal month is this" scale a
+                  // monthly category already reports.
+                  const mixedPeriods = budgets.some(b => b.window.period !== 'Monthly');
+                  const totals = budgets.reduce((acc, b) => {
+                    const m = monthlyEquivalent(b);
+                    acc.limit += m.limit;
+                    acc.spent += m.spent;
+                    return acc;
+                  }, { limit: 0, spent: 0 });
+                  const totalLimit = totals.limit;
+                  const totalSpent = totals.spent;
                   const percent = totalLimit > 0 ? Math.min((totalSpent / totalLimit) * 100, 100) : 0;
                   const isOver = totalSpent > totalLimit;
                   return (
                     <>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span style={{ fontWeight: 'var(--weight-bold)' }}>Total Global Budget</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 'var(--weight-bold)' }}>
+                          Total Global Budget{mixedPeriods ? ' (per month)' : ''}
+                        </span>
                         <span style={{ color: isOver ? 'var(--color-danger)' : 'var(--color-ink)', fontWeight: 'var(--weight-bold)' }}>
                           {formatCurrency(totalSpent)} / {formatCurrency(totalLimit)}
                         </span>
                       </div>
+                      {mixedPeriods && (
+                        <p style={{ margin: '0 0 8px 0', fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
+                          Quarterly and yearly budgets are shown here at their monthly-equivalent share, so this
+                          combined figure is on one consistent scale.
+                        </p>
+                      )}
                       <div className="budget-bar-wrapper-large" role="progressbar" aria-valuenow={Math.round(percent)} aria-valuemin={0} aria-valuemax={100} aria-label="Total budget used">
                         <div style={{
                           width: loaded ? `${percent}%` : '0%', height: '100%',
@@ -640,6 +661,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
               }
             }}
             onCancel={() => setEditingTx(null)}
+            onViewTrip={onViewTripInInsights ? (tripId) => { setEditingTx(null); onViewTripInInsights(tripId); } : undefined}
           />
         </Modal>
       )}

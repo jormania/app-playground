@@ -11,7 +11,50 @@ import { formatCurrency } from '../lib/currency';
 import { ordinal } from '../lib/period';
 import { DEFAULT_LEAD_DAYS } from '../lib/upcoming';
 import { readFailed, discardFailed, retryFailed } from '../lib/outbox';
+import { defaultTheme } from '../lib/theme';
+import { readJson, writeJson } from '../lib/storage';
 import ReminderSettings from './ReminderSettings';
+
+/**
+ * A named, persistently-collapsible chunk of Settings.
+ *
+ * Notion config, feature toggles, bill reminders, subscriptions and trips
+ * used to be one uninterrupted scroll — fine with a couple of subscriptions
+ * and trips, unwieldy with a dozen+ of either. Every section defaults open
+ * (nothing changes for anyone who never touches this), but a collapsed choice
+ * is remembered per device, so putting a section away is a one-time action,
+ * not something you redo on every visit to Settings.
+ */
+function CollapsibleSection({ id, title, action, children }) {
+  const storageKey = `whereItWent_settings_section_${id}`;
+  const [open, setOpen] = useState(() => readJson(storageKey, true));
+
+  return (
+    <details
+      open={open}
+      onToggle={e => {
+        const next = e.currentTarget.open;
+        setOpen(next);
+        writeJson(storageKey, next);
+      }}
+      style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}
+    >
+      <summary
+        className="wiw-settings-summary"
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', gap: 'var(--space-sm)' }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+          <span aria-hidden style={{ fontSize: '11px', color: 'var(--color-muted)', display: 'inline-block', transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'none' }}>▶</span>
+          <span style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{title}</span>
+        </span>
+        {/* Buttons ("+ Add Subscription" etc.) live in the summary row itself
+            but must not toggle the section when clicked. */}
+        {action && <span onClick={e => e.stopPropagation()}>{action}</span>}
+      </summary>
+      <div style={{ marginTop: 'var(--space-md)' }}>{children}</div>
+    </details>
+  );
+}
 
 const EMPTY_CONFIG_FIELDS = {
   token: '', transactionsDb: '', categoriesDb: '', accountsDb: '', subscriptionsDb: '', tripsDb: ''
@@ -31,7 +74,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const [accountsDb, setAccountsDb] = useState(config.accountsDb || '');
   const [subscriptionsDb, setSubscriptionsDb] = useState(config.subscriptionsDb || '');
   const [tripsDb, setTripsDb] = useState(config.tripsDb || '');
-  const [theme, setTheme] = useState(config.theme || 'dark');
+  const [theme, setTheme] = useState(config.theme || defaultTheme());
   // Transfers default OFF — most people don't need to track internal
   // account-to-account moves, so the feature stays invisible until asked for.
   const [features, setFeatures] = useState(config.features || { budgeting: true, cashFlow: true, transfers: false, upcoming: true });
@@ -193,18 +236,18 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         </button>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-        <Field label="Notion Integration Token" type="password" value={token} onChange={e => setToken(e.target.value)} placeholder="ntn_..." hint="Stored only on this device and sent straight to Notion — never to us." />
-        <Field label="Categories Database ID or Link" type="text" value={categoriesDb} onChange={e => setCategoriesDb(e.target.value)} />
-        <Field label="Accounts Database ID or Link" type="text" value={accountsDb} onChange={e => setAccountsDb(e.target.value)} />
-        <Field label="Transactions Database ID or Link" type="text" value={transactionsDb} onChange={e => setTransactionsDb(e.target.value)} />
-        <Field label="Subscriptions Database ID or Link" type="text" value={subscriptionsDb} onChange={e => setSubscriptionsDb(e.target.value)} />
-        <Field label="Trips Database ID or Link (Optional)" type="text" value={tripsDb} onChange={e => setTripsDb(e.target.value)} />
-      </div>
+      <CollapsibleSection id="connection" title="Connection Details">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+          <Field label="Notion Integration Token" type="password" value={token} onChange={e => setToken(e.target.value)} placeholder="ntn_..." hint="Stored only on this device and sent straight to Notion — never to us." />
+          <Field label="Categories Database ID or Link" type="text" value={categoriesDb} onChange={e => setCategoriesDb(e.target.value)} />
+          <Field label="Accounts Database ID or Link" type="text" value={accountsDb} onChange={e => setAccountsDb(e.target.value)} />
+          <Field label="Transactions Database ID or Link" type="text" value={transactionsDb} onChange={e => setTransactionsDb(e.target.value)} />
+          <Field label="Subscriptions Database ID or Link" type="text" value={subscriptionsDb} onChange={e => setSubscriptionsDb(e.target.value)} />
+          <Field label="Trips Database ID or Link (Optional)" type="text" value={tripsDb} onChange={e => setTripsDb(e.target.value)} />
+        </div>
+      </CollapsibleSection>
 
-      {/* Feature Toggles Section */}
-      <div style={{ marginTop: 'var(--space-xl)', marginBottom: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}>
-        <h2 style={{ margin: 0, fontSize: 'var(--text-lg)', color: 'var(--color-ink)', marginBottom: 'var(--space-md)' }}>Feature Toggles</h2>
+      <CollapsibleSection id="features" title="Feature Toggles">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
           {/* Every switch says what it actually changes. Four unlabelled toggles
               are four things you have to turn on and off to find out. */}
@@ -235,7 +278,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             onChange={e => setFeatures(f => ({ ...f, upcoming: e.target.checked }))}
           />
         </div>
-      </div>
+      </CollapsibleSection>
 
       {status.msg && (
         <div role="status" style={{
@@ -304,11 +347,11 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
 
       {/* Subscriptions Management Section */}
       {data?.subscriptions && (
-        <div style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
-            <h2 style={{ margin: 0, fontSize: 'var(--text-lg)', color: 'var(--color-ink)' }}>Recurring Subscriptions</h2>
-            <Button variant="secondary" onClick={() => setIsAddingSub(true)}>+ Add Subscription</Button>
-          </div>
+        <CollapsibleSection
+          id="subscriptions"
+          title="Recurring Subscriptions"
+          action={<Button variant="secondary" onClick={() => setIsAddingSub(true)}>+ Add Subscription</Button>}
+        >
           <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
             Anything charged on the same day each month — rent, streaming, the gym. WhereItWent
             adds each one to your ledger automatically on its day, and warns you a few days
@@ -380,7 +423,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
               })
             )}
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
       {(isAddingSub || editingSub) && (
@@ -403,11 +446,11 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
 
       {/* Trips Management Section */}
       {data?.trips && (
-        <div style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
-            <h2 style={{ margin: 0, fontSize: 'var(--text-lg)', color: 'var(--color-ink)' }}>Trips Management</h2>
-            <Button variant="secondary" onClick={() => setIsAddingTrip(true)}>+ Add Trip</Button>
-          </div>
+        <CollapsibleSection
+          id="trips"
+          title="Trips Management"
+          action={<Button variant="secondary" onClick={() => setIsAddingTrip(true)}>+ Add Trip</Button>}
+        >
           <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
             Group travel spending under a named trip. Anything you tag to it is totalled
             separately in Insights — flights, hotels and day-to-day costs — and the trip's
@@ -477,7 +520,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
               })
             )}
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
       {(isAddingTrip || editingTrip) && (

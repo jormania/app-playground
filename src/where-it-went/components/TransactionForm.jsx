@@ -6,8 +6,14 @@ import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { sortTrips } from '../services/trips';
 import { pickDefaultAccount } from '../lib/accountPicker';
 import { toDateString } from '../lib/period';
-import { BASE_CURRENCY, CURRENCIES, fetchRate, convert, impliedRate, formatRateNote, canConvert } from '../lib/fx';
+import { BASE_CURRENCY, fetchRate, convert, impliedRate, formatRateNote, canConvert, orderedCurrencies, recordRecentCurrency } from '../lib/fx';
 import { formatAccountLabel } from '../lib/accounts';
+import { readJson, writeJson } from '../lib/storage';
+
+// Frequent income loggers (freelancers, landlords) used to reselect Income on
+// every single "+ Add" — the form always opened on Expense regardless of what
+// was entered last. Scoped to *adding*, never to editing an existing row.
+const LAST_TYPE_KEY = 'whereItWent_last_add_type';
 
 // Matches ds/Field's own input box (surface fill, --color-border-2) rather
 // than the page background — a plain <select> filled with --color-bg read as
@@ -24,26 +30,48 @@ const selectStyle = {
   fontFamily: 'inherit'
 };
 
-export default function TransactionForm({ categories, accounts, trips = [], onSave, onCancel, initialTx, onDelete, allowTransfer = false }) {
-  const [type, setType] = useState(initialTx?.type || 'Expense');
-  const [description, setDescription] = useState(initialTx?.description || '');
+export default function TransactionForm({ categories, accounts, trips = [], onSave, onCancel, initialTx, onDelete, allowTransfer = false, prefill = null, onViewTrip }) {
+  // `prefill` seeds the same fields as `initialTx` (values, not identity) but
+  // only when adding — "Repeat" hands one over to reopen the Add form loaded
+  // with a past transaction's details rather than blank. `initialTx` always
+  // wins when actually editing a real row.
+  const seed = initialTx || prefill || null;
+
+  const [type, setType] = useState(() => {
+    if (seed?.type) {
+      // A repeated Transfer needs the feature currently enabled to reopen as
+      // one — editing an existing Transfer is allowed to keep it regardless
+      // (see canUseTransferType below), but a fresh Repeat draft isn't
+      // "already a Transfer" in Notion, so that exception doesn't extend to it.
+      if (seed.type === 'Transfer' && !allowTransfer && !initialTx) return 'Expense';
+      return seed.type;
+    }
+    const remembered = readJson(LAST_TYPE_KEY, 'Expense');
+    // The remembered type might no longer be offered (Transfers toggled off
+    // since the last visit) — fall back rather than opening on a type with no
+    // matching segment.
+    return remembered === 'Transfer' && !allowTransfer ? 'Expense' : remembered;
+  });
+  const [description, setDescription] = useState(seed?.description || '');
   const [amount, setAmount] = useState(
-    initialTx?.originalCurrency && initialTx?.originalAmount != null
-      ? initialTx.originalAmount
-      : (initialTx?.amount ?? ''),
+    seed?.originalCurrency && seed?.originalAmount != null
+      ? seed.originalAmount
+      : (seed?.amount ?? ''),
   );
   const [date, setDate] = useState(initialTx?.date ? String(initialTx.date).slice(0, 10) : toDateString(new Date()));
-  const [categoryId, setCategoryId] = useState(initialTx?.categoryId || '');
-  const [accountId, setAccountId] = useState(initialTx?.accountId || accounts[0]?.id || '');
-  const [tripId, setTripId] = useState(initialTx?.tripId || '');
-  const [toAccountId, setToAccountId] = useState(initialTx?.toAccountId || '');
+  const [categoryId, setCategoryId] = useState(seed?.categoryId || '');
+  const [accountId, setAccountId] = useState(seed?.accountId || accounts[0]?.id || '');
+  const [tripId, setTripId] = useState(seed?.tripId || '');
+  const [toAccountId, setToAccountId] = useState(seed?.toAccountId || '');
+  // Notes are instance-specific ("gate C14", "half for Ana") — a repeat starts
+  // with a clean one rather than carrying yesterday's context forward.
   const [notes, setNotes] = useState(initialTx?.notes || '');
   // One amount field, whose currency is selectable. When it isn't RON the typed
   // figure is the *original* amount and the RON total is derived from it — which
   // is the way a foreign charge is actually experienced ("I paid 8.50 EUR"),
   // rather than asking for the converted figure you don't know yet.
-  const [currency, setCurrency] = useState(initialTx?.originalCurrency || '');
-  const [baseAmount, setBaseAmount] = useState(initialTx?.originalCurrency ? (initialTx?.amount ?? '') : '');
+  const [currency, setCurrency] = useState(seed?.originalCurrency || '');
+  const [baseAmount, setBaseAmount] = useState(seed?.originalCurrency ? (seed?.amount ?? '') : '');
   const [rate, setRate] = useState(null);
   const [rateDate, setRateDate] = useState(null);
   const [rateLoading, setRateLoading] = useState(false);
@@ -67,14 +95,14 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
   // soon as the foreign amount is *changed*, the stored RON is stale and has to
   // follow — leaving it put implied a nonsense rate (20 EUR shown as 42 L).
   const initialAmount = useRef(
-    initialTx?.originalCurrency && initialTx?.originalAmount != null
-      ? String(initialTx.originalAmount)
-      : String(initialTx?.amount ?? ''),
+    seed?.originalCurrency && seed?.originalAmount != null
+      ? String(seed.originalAmount)
+      : String(seed?.amount ?? ''),
   );
 
   // Tracks whether the user has chosen a currency by hand, so changing the
   // Account can stop overriding it — and can reset it when they do.
-  const currencyTouched = useRef(!!initialTx?.originalCurrency);
+  const currencyTouched = useRef(!!seed?.originalCurrency);
 
   const sortedAccounts = [...accounts].sort((a, b) => a.name.localeCompare(b.name));
   const isTransfer = type === 'Transfer';
@@ -104,15 +132,23 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
   const suggestedCurrency = selectedTrip?.currency || accountCurrency || BASE_CURRENCY;
   const activeCurrency = currency || suggestedCurrency;
   const isForeign = activeCurrency !== BASE_CURRENCY;
+  // The suggested currency and whatever was recently used float to the top,
+  // rather than a flat 16-item list every traveler scrolls through the same
+  // way regardless of which two or three currencies they actually use.
+  const currencyOptions = orderedCurrencies(suggestedCurrency);
 
-  // Suggest an account from the category — for *new* transactions only.
+  // Suggest an account from the category — for genuinely blank *new*
+  // transactions only.
   //
   // It used to skip only the first render, so correcting the category on an
   // existing transaction ("Travel" -> "Groceries") silently rewrote the account
   // it had been filed against. An account already recorded is a fact about
-  // where the money moved; a category correction must never overwrite it.
+  // where the money moved; a category correction must never overwrite it. A
+  // "Repeat" draft carries the same fact forward, so `prefill` skips this too
+  // — otherwise repeating a transaction silently swapped its account for
+  // whatever the picker guesses from the category.
   useEffect(() => {
-    if (initialTx) return;
+    if (initialTx || prefill) return;
     if (isTransfer) return; // no category signal to pick an account from
     if (!selectedCat || !accounts || accounts.length === 0) return;
     const target = pickDefaultAccount(selectedCat, accounts);
@@ -122,7 +158,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
       currencyTouched.current = false;
       setCurrency('');
     }
-  }, [initialTx, categoryId, selectedCat, accounts, isTransfer]);
+  }, [initialTx, prefill, categoryId, selectedCat, accounts, isTransfer]);
 
   // Look up the rate whenever the currency or the date changes. Failures are
   // silent by design: no rate simply means no suggested conversion, and must
@@ -206,6 +242,8 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
         originalCurrency: isForeign ? activeCurrency : '',
         tags: initialTx?.tags || []
       });
+      if (!initialTx) writeJson(LAST_TYPE_KEY, type);
+      if (isForeign) recordRecentCurrency(activeCurrency);
     } catch (err) {
       // The parent shows its own dialog; keep the form open with the values intact.
       setFormError(err?.message || 'Could not save. Please try again.');
@@ -304,7 +342,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
                 padding: '0 0 0 6px', cursor: 'pointer'
               }}
             >
-              {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+              {currencyOptions.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
         </div>
@@ -464,6 +502,22 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
               <option key={t.id} value={t.id}>{t.name}{t.destination ? ` (${t.destination})` : ''}</option>
             ))}
           </select>
+          {/* Only offered where a real callback exists (the edit flows) and a
+              trip is actually selected — jumping to a trip nobody picked yet
+              has nothing to show. */}
+          {onViewTrip && tripId && (
+            <button
+              type="button"
+              onClick={() => onViewTrip(tripId)}
+              style={{
+                alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0,
+                marginTop: '2px', color: 'var(--color-accent)', fontSize: 'var(--text-xs)',
+                cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit'
+              }}
+            >
+              View this trip in Insights →
+            </button>
+          )}
         </div>
       )}
 

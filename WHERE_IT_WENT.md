@@ -802,3 +802,104 @@ phone.
 - **The description hint follows the type**: `e.g. Salary` for income rather than
   `e.g. Groceries`, which read as though the form hadn't noticed what you were
   doing.
+
+## Go-live audit (2026-07-30)
+
+A full pass before switching to live Notion data — bugs, styling, and a schema
+cross-check against this guide. Full suite (741 → 748 tests at this point),
+typecheck and lint all green; verified live in the browser in both themes.
+
+- **Undefined CSS custom properties**: `--color-brass`, `--color-purple`,
+  `--color-primary`, `--radius-full` and `--text-md` were used across Insights,
+  Dashboard, the ledger, Settings and the forecast card with no definition
+  anywhere in the design system — every `var()` silently resolved to nothing,
+  dropping colour, radius or font-size on ~19 rendered elements. The three with
+  exact DS equivalents were renamed (`--color-accent`, `--radius-pill`,
+  `--text-base`); `--color-brass` and `--color-purple` are genuinely distinct
+  accent hues used consistently for the Travel and Nora cards, so they were
+  added as WhereItWent-scoped tokens in `index.css` rather than collapsed into
+  an existing colour.
+- **Native form chrome had no theme**: `src/ds/tokens.css` never declared
+  `color-scheme`, so every `<select>`'s open dropdown and every date input's
+  calendar popup rendered stark default-light browser chrome regardless of the
+  app's own theme. Fixed at the DS level (`color-scheme: light` / `dark`),
+  which benefits every app on the shared design system, not just this one.
+- **Gray form fields**: the Amount box and several hand-rolled `<select>`s
+  (Category, Account, To, Trip, Currency, the budget editor's period picker)
+  were filled with `--color-bg` (the page background) instead of
+  `--color-surface` (what `ds/Field`'s own inputs use) — next to a real Field,
+  they read as a flat grey slab. Unified across `TransactionForm`,
+  `SubscriptionEditorModal`, `BudgetEditorModal` and `TripEditorModal`.
+- Widened the Date/Amount gap in the transaction form (12px → 16px column gap;
+  doesn't affect the documented no-scroll height budgets).
+- **Add Subscription's default category** was whatever Notion returned first;
+  now prefers a category literally named "Subscriptions" when one exists.
+- Confirmed no schema drift between `notionClient.js` and this guide's §4, and
+  confirmed demo/live data stay fully isolated (demo mode always builds the
+  Notion client with an empty token, so writes silently no-op onto the
+  in-memory fixture and can never reach a live workspace).
+
+## Quality-of-life pass (2026-07-30) — the 1.0 release
+
+Ten ideas from a fresh read of the codebase, independent of
+[`WHERE_IT_WENT_ROADMAP.md`](WHERE_IT_WENT_ROADMAP.md) (which covers the seven
+features shipped 2026-07-29). Nine shipped; bulk ledger actions is deliberately
+deferred — see below. Full suite: 741 → 755 tests.
+
+- **Theme follows the OS on first run** (`lib/theme.js`). The app always
+  opened in dark theme regardless of the device's own setting — every other
+  themed app in this repo (Journal, Wanderlist, Sol Odyssey, Daily Stoic)
+  seeds its initial theme from `prefers-color-scheme`. Only affects a brand
+  new install; once a theme is explicitly chosen, it always wins. An inline
+  script in `where-it-went-react.html` applies it before first paint, so a
+  light-mode device doesn't flash dark before React mounts.
+- **"+ Add" remembers the last-used type.** Frequent income loggers
+  (freelancers, landlords) used to reselect Income on every single Add. Scoped
+  to *adding* — never touches what type an edit shows — and falls back
+  gracefully if Transfers gets toggled off between visits.
+- **"Repeat" on a ledger row** reopens Add pre-filled from that transaction —
+  the same coffee, the same parking fee, without retyping it. Explicit about
+  what carries over: date resets to today, notes and tags start blank (both
+  are instance-specific), and the category-suggests-account effect is skipped
+  entirely so a repeat can never silently swap the account you actually used.
+- **A duplicate-count dot on the Transactions tab** (matching the existing
+  filters-active dot), so a pending review is discoverable without already
+  being on that screen. `DuplicateReview`'s dismissed-list state moved up to
+  `App.jsx` so the dot clears the instant something is dismissed, not just on
+  the next reload.
+- **The currency picker is ordered by relevance** (`orderedCurrencies` in
+  `lib/fx.js`): RON first, then the account's/trip's own currency, then
+  recently-used currencies, then the rest — instead of one flat 16-item list
+  every traveler scrolled through the same way regardless of which two or
+  three currencies they actually use.
+- **"View this trip in Insights"** on a transaction with a trip assigned jumps
+  straight to the Travel Insights card with that trip pre-selected, instead of
+  requiring a manual pick from the trip-filter dropdown after navigating over.
+- **The Total Global Budget bar no longer mixes timescales.** Summing a
+  500/month category and a 6,000/year one straight together produced "6,500" —
+  a number on no coherent scale. `monthlyEquivalent()` in `lib/budgets.js`
+  normalizes every category's contribution to its monthly-equivalent share
+  first; the card says "(per month)" and explains itself whenever a
+  non-monthly budget is in the mix.
+- **Settings sections are collapsible and remember your choice.** Notion
+  config, feature toggles, subscriptions and trips used to be one
+  uninterrupted scroll — fine with a couple of each, unwieldy with a dozen+.
+  Every section still defaults open (nothing changes for anyone who never
+  touches this); a collapsed choice persists per device, so putting a section
+  away is a one-time action.
+- **"Copy summary" in Insights** copies the period's editorial paragraph plus
+  the headline figures (income, expenses, net, savings rate) as plain text —
+  for pasting into a chat or a note without screenshotting the card.
+- **Deferred: bulk actions in the ledger.** Multi-select plus move-to-category
+  / move-to-account / delete, for cleaning up several misfiled transactions at
+  once. Scoped and designed, kept on the backlog at the user's request rather
+  than shipped in this pass.
+
+### Also fixed: the "Latest" pill on the front page
+
+`index.html`'s app-grid card carried a manually-set `latest: true` flag per
+app in `apps-registry.js` — it had drifted to **three** apps simultaneously
+(WhereItWent, Click Deck, Loom), because adding a new "latest" app never
+reminds you to unset it on the previous one. Replaced with a structural rule:
+`APPS[0]` — new apps go at the top of the registry — is authoritative, so
+there's nothing to remember and nothing that can desync again.

@@ -21,6 +21,10 @@ const multiCurrencyAccounts = [
 beforeEach(() => {
   fetchRate.mockReset();
   fetchRate.mockResolvedValue(null);
+  // The form now remembers the last-used Add type in localStorage — without
+  // clearing it, whichever test runs first (and picks Income/Transfer)
+  // leaked its choice into every test after it.
+  localStorage.clear();
 });
 
 afterEach(() => {

@@ -10,6 +10,7 @@ import { Modal } from '../ds/components/Modal';
 import { AlertModal } from '../ds';
 import { useSubscriptionsEngine } from './lib/useSubscriptionsEngine';
 import { readJson, writeJson } from './lib/storage';
+import { defaultTheme } from './lib/theme';
 import Navigation from './components/Navigation';
 import UpcomingBanner from './components/UpcomingBanner';
 import OfflineBanner from './components/OfflineBanner';
@@ -22,6 +23,7 @@ import {
 import PeriodSheet from './components/PeriodSheet';
 import FilterSheet from './components/FilterSheet';
 import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS, DEMO_TRIPS } from './models/demoData';
+import { findDuplicateGroups, withoutDismissed, DUPE_DISMISS_KEY } from './lib/duplicates';
 
 const EMPTY_DATA = { categories: [], accounts: [], transactions: [], subscriptions: [], trips: [] };
 
@@ -35,6 +37,22 @@ export default function App() {
   const [loadError, setLoadError] = useState(null);
   const [saveError, setSaveError] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  // Set only by "Repeat" on a ledger row — carries a past transaction's
+  // details into a fresh Add form (never an edit: no id, no notes, no tags).
+  // Cleared on every close so a plain "+ Add" right after never reuses it.
+  const [repeatDraft, setRepeatDraft] = useState(null);
+
+  // Lifted (not owned by DuplicateReview) so the Transactions nav-tab dot
+  // updates the instant a group is dismissed, not just on the next reload.
+  const [dismissedDuplicates, setDismissedDuplicates] = useState(() => readJson(DUPE_DISMISS_KEY, []));
+
+  // One-shot target for "View this trip in Insights" — set right before
+  // switching tabs, consumed (and cleared) by InsightsView on mount.
+  const [jumpToTripFilter, setJumpToTripFilter] = useState(null);
+  const handleViewTripInInsights = (tripId) => {
+    setJumpToTripFilter(tripId);
+    handleTabChange('insights');
+  };
 
   // Lifted global states for Navigation
   const [period, setPeriod] = useState(uiState.period || 'this_month');
@@ -113,6 +131,13 @@ export default function App() {
   const categoriesById = useMemo(
     () => new Map((data.categories || []).map(c => [c.id, c])),
     [data.categories],
+  );
+
+  // Surfaces the review card's count on the Transactions tab itself, so it's
+  // discoverable without having to already be on that screen.
+  const duplicateCount = useMemo(
+    () => withoutDismissed(findDuplicateGroups(data.transactions), dismissedDuplicates).length,
+    [data.transactions, dismissedDuplicates],
   );
 
   const dueSoon = useMemo(() => {
@@ -221,7 +246,7 @@ export default function App() {
   useEffect(() => { loadData(); }, [loadData]);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', config.theme || 'dark');
+    document.documentElement.setAttribute('data-theme', config.theme || defaultTheme());
   }, [config.theme]);
 
   // Keep the pending counter honest after any write the wrapper diverted.
@@ -279,11 +304,37 @@ export default function App() {
       await client.addTransaction(tx);
       await loadData();
       setShowAddForm(false);
+      setRepeatDraft(null);
     } catch (e) {
       console.error('Failed to add transaction:', e);
       setSaveError(e.message || 'Could not save the transaction to Notion.');
       throw e; // let the form clear its saving state and stay open
     }
+  };
+
+  const closeAddForm = () => {
+    setShowAddForm(false);
+    setRepeatDraft(null);
+  };
+
+  /** "Repeat" on a ledger row — reopens Add loaded with that transaction's
+   * details. Explicit field list rather than a spread: id/notes/tags must
+   * never carry over (a fresh Add, not an edit of the original row), and this
+   * can't silently pick up a future field nobody meant to repeat. */
+  const handleRepeatTransaction = (tx) => {
+    if (!tx) return;
+    setRepeatDraft({
+      type: tx.type,
+      description: tx.description,
+      amount: tx.amount,
+      categoryId: tx.categoryId,
+      accountId: tx.accountId,
+      toAccountId: tx.toAccountId,
+      tripId: tx.tripId,
+      originalAmount: tx.originalAmount,
+      originalCurrency: tx.originalCurrency,
+    });
+    setShowAddForm(true);
   };
 
   return (
@@ -316,11 +367,12 @@ export default function App() {
       <Navigation
         activeTab={activeTab}
         onTabChange={handleTabChange}
-        onAddClick={() => setShowAddForm(true)}
+        onAddClick={() => { setRepeatDraft(null); setShowAddForm(true); }}
         period={period}
         onPeriodClick={() => setShowPeriodSheet(true)}
         onFilterClick={() => setShowFilterSheet(true)}
         filtersActive={filterType !== 'All' || categoryFilter !== 'All' || searchQuery.trim() !== ''}
+        duplicateCount={duplicateCount}
       />
 
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 var(--space-md) var(--space-md)' }}>
@@ -368,16 +420,17 @@ export default function App() {
 
       <Modal
         open={showAddForm}
-        onClose={() => setShowAddForm(false)}
-        title="New Transaction"
+        onClose={closeAddForm}
+        title={repeatDraft ? 'Repeat Transaction' : 'New Transaction'}
       >
         <TransactionForm
           categories={data.categories}
           accounts={data.accounts}
           trips={data.trips}
           allowTransfer={allowTransfer}
+          prefill={repeatDraft}
           onSave={handleAddTransaction}
-          onCancel={() => setShowAddForm(false)}
+          onCancel={closeAddForm}
         />
       </Modal>
 
@@ -415,9 +468,28 @@ export default function App() {
           </div>
         ) : (
           <>
-            {activeTab === 'dashboard' && <Dashboard data={data} client={client} onDataChange={loadData} onNavigate={handleTabChange} config={config} period={period} filterProps={filterProps} />}
-            {activeTab === 'transactions' && <TransactionsList data={data} client={client} onDataChange={loadData} filterProps={filterProps} period={period} allowTransfer={allowTransfer} />}
-            {activeTab === 'insights' && <InsightsView data={data} period={period} filterProps={filterProps} config={config} />}
+            {activeTab === 'dashboard' && (
+              <Dashboard
+                data={data} client={client} onDataChange={loadData} onNavigate={handleTabChange}
+                config={config} period={period} filterProps={filterProps}
+                onViewTripInInsights={handleViewTripInInsights}
+              />
+            )}
+            {activeTab === 'transactions' && (
+              <TransactionsList
+                data={data} client={client} onDataChange={loadData} filterProps={filterProps}
+                period={period} allowTransfer={allowTransfer} onRepeat={handleRepeatTransaction}
+                dismissedDuplicates={dismissedDuplicates} onDismissedDuplicatesChange={setDismissedDuplicates}
+                onViewTripInInsights={handleViewTripInInsights}
+              />
+            )}
+            {activeTab === 'insights' && (
+              <InsightsView
+                data={data} period={period} filterProps={filterProps} config={config}
+                initialTripFilter={jumpToTripFilter}
+                onConsumeInitialTripFilter={() => setJumpToTripFilter(null)}
+              />
+            )}
             {activeTab === 'settings' && (
               <Settings
                 config={config}

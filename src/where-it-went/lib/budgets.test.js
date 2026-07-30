@@ -8,6 +8,7 @@ import {
   computeAllBudgets,
   normalizePeriod,
   formatPeriodSuffix,
+  monthlyEquivalent,
   MAX_CARRY_WINDOWS,
 } from './budgets';
 
@@ -223,6 +224,32 @@ describe('computeAllBudgets', () => {
 
   it('survives empty input', () => {
     expect(computeAllBudgets(null, null, now)).toEqual([]);
+  });
+});
+
+describe('monthlyEquivalent', () => {
+  it('leaves a Monthly budget unchanged', () => {
+    const status = computeBudgetStatus(cat({ budgetPeriod: 'Monthly', budgetLimit: 300 }), [tx('2026-07-05', 100)], now);
+    expect(monthlyEquivalent(status)).toEqual({ limit: 300, spent: 100 });
+  });
+
+  it('divides a Quarterly budget by 3', () => {
+    const status = computeBudgetStatus(cat({ budgetPeriod: 'Quarterly', budgetLimit: 900 }), [tx('2026-07-05', 300)], now);
+    expect(monthlyEquivalent(status)).toEqual({ limit: 300, spent: 100 });
+  });
+
+  it('divides a Yearly budget by 12', () => {
+    const status = computeBudgetStatus(cat({ budgetPeriod: 'Yearly', budgetLimit: 4800 }), [tx('2026-07-05', 1200)], now);
+    expect(monthlyEquivalent(status)).toEqual({ limit: 400, spent: 100 });
+  });
+
+  it('a monthly and a yearly category now contribute comparable shares to a combined total', () => {
+    // Before this, summing raw limits mixed timescales: 500 (one month) plus
+    // 6000 (one year) read as "6500", a number with no coherent meaning.
+    const monthly = computeBudgetStatus(cat({ id: 'm', budgetPeriod: 'Monthly', budgetLimit: 500 }), [], now);
+    const yearly = computeBudgetStatus(cat({ id: 'y', budgetPeriod: 'Yearly', budgetLimit: 6000 }), [], now);
+    const totalLimit = monthlyEquivalent(monthly).limit + monthlyEquivalent(yearly).limit;
+    expect(totalLimit).toBe(1000); // 500/month + (6000/12)/month, not 6500
   });
 });
 

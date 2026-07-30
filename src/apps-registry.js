@@ -9,6 +9,11 @@
 // deployed: "Mon YYYY" (e.g. "Jun 2026") — drives both the date chip and the
 // "updated <Month YYYY>" line, which auto-derives from the newest deployed value.
 //
+// New apps go at the TOP of this array. index.html treats APPS[0] as "Latest"
+// automatically — there is no per-app `latest` flag to set (an earlier manually-
+// maintained one drifted to three simultaneous "Latest" pills because nobody
+// remembered to unset it on the previous app when adding the next).
+//
 // kind: "react-vite" marks an app as a real Vite+React build (has a src/
 // source dir and its own build entry in vite.config.js) — the Cabinet lists
 // these with install/launch handling. kind: "static" marks a hand-authored
@@ -28,7 +33,6 @@ export const APPS = [
     iconBg: "rgba(34,197,94,0.15)",
     title: "WhereItWent",
     subtitle: "budgets · currencies · forecasts · notion",
-    latest: true,
     deployed: "Jul 2026",
     tech: "React + Vite + Notion",
     tags: ["finance", "budgeting", "analytics", "notion", "offline", "react", "vite"],
@@ -57,7 +61,6 @@ export const APPS = [
     iconBg: "rgba(0,229,255,0.15)",
     title: "Click Deck",
     subtitle: "adventure games · timeline · tags",
-    latest: true,
     deployed: "Jul 2026",
     tech: "React + Vite + Notion",
     tags: ["gaming", "notion", "react", "vite"],
@@ -87,7 +90,6 @@ export const APPS = [
     iconBg: "rgba(201,164,76,0.15)",
     title: "Loom",
     subtitle: "weekly threads · sort by hand · notion",
-    latest: true,
     deployed: "Jul 2026",
     tech: "React + Vite + Notion",
     tags: ["productivity", "planning", "notion", "react", "vite"],
