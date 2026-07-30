@@ -177,12 +177,29 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
           </p>
         </div>
       ) : (
-        <div className="card-container stagger-3" style={{ marginTop: 'var(--space-md)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-sm)', padding: '0 var(--space-md) var(--space-sm)', fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>
-            <span>{filtered.length} transaction{filtered.length === 1 ? '' : 's'}</span>
-            <span style={{ color: 'var(--color-success)' }}>Income +{formatCurrency(totals.income)}</span>
-            <span style={{ color: 'var(--color-danger)' }}>Expense −{formatCurrency(totals.expense)}</span>
+        <>
+          <div className="stagger-2" style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--space-md)' }}>
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              alignItems: 'center',
+              columnGap: 'var(--space-lg)',
+              rowGap: 'var(--space-xs)',
+              padding: '8px 24px',
+              backgroundColor: 'var(--color-surface)',
+              borderRadius: '999px',
+              border: '1px solid var(--color-border)',
+              fontSize: 'var(--text-sm)',
+              fontWeight: 'var(--weight-medium)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
+            }}>
+              <span style={{ color: 'var(--color-muted)' }}>{filtered.length} transaction{filtered.length === 1 ? '' : 's'}</span>
+              <span style={{ color: 'var(--color-success)' }}>Income +{formatCurrency(totals.income)}</span>
+              <span style={{ color: 'var(--color-danger)' }}>Expense −{formatCurrency(totals.expense)}</span>
+            </div>
           </div>
+          <div className="card-container stagger-3" style={{ marginTop: 'var(--space-md)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
 
           <div className="transaction-list-header" style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', paddingLeft: 'calc(var(--space-lg) + 4px)', color: 'var(--color-muted)', fontSize: 'var(--text-sm)', borderBottom: '1px solid var(--color-border)', fontWeight: 'var(--weight-medium)' }}>
             {sortConfig.key !== 'date' && (
@@ -320,8 +337,8 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
             </div>
           )}
         </div>
+        </>
       )}
-
       {editingTx && (
         <Modal open={true} title="Edit Transaction" onClose={() => setEditingTx(null)}>
           <TransactionForm
