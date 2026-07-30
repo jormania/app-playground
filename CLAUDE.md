@@ -18,83 +18,77 @@ call a change complete on green-looking code alone.
 - **New apps** build on the shared design system in [`src/ds/`](src/ds/).
 - **Legacy apps** — `src/touch-grass/`, `src/journal/`, `src/kettlebell/` — are
   design-locked and own their own styling. They **never import from `src/ds/`**.
-- The rule flows one way: DS → new apps only. It's enforced by
+- The rule flows one way: DS → new apps only. Enforced by
   [`src/ds/boundary.test.js`](src/ds/boundary.test.js) in `npm test` — a legacy
-  import fails the suite. See [`LEGACY.md`](LEGACY.md) for the full scope.
+  import fails the suite. Full scope: [`LEGACY.md`](LEGACY.md).
 
 ## Per-app map
 
-| App | Location | Type |
-|-----|----------|------|
-| Sol Odyssey | `src/sol-odyssey/` | **strict TypeScript** — has its own [`CLAUDE.md`](src/sol-odyssey/CLAUDE.md) + `DESIGN.md`; **defer to those** inside that dir |
-| Daily Stoic | `src/daily-stoic/` | **strict TypeScript**, builds on `src/ds/`; a daily Stoic-practice companion — curated quote of the day, Evening Interrogation reflection wizard, Dichotomy of Control tool, morning/evening push reminders; Notion-backed with a localStorage-only mode — see [`DAILY_STOIC.md`](DAILY_STOIC.md) |
-| Tempo | `src/tempo/` | plain JSX, builds on `src/ds/` |
-| Law of the Day | `src/law-of-the-day/` | plain JSX, builds on `src/ds/` |
-| Yoru | `src/yoru/` | plain JSX, builds on `src/ds/`; night-only wind-down, one fixed Tokyo Night palette (no theme toggle) — see [`YORU.md`](YORU.md) |
-| The Cabinet | `src/cabinet/` | plain JSX, builds on `src/ds/`; dashboard listing every `react-vite` and legacy `static` app, always, with no toggle to hide either — see [`CABINET.md`](CABINET.md) |
-| Loom | `src/loom/` | plain JSX, builds on `src/ds/`; a tactile weekly task planner (tribute to LucasArts' Loom / SCUMM) — Notion-backed with an offline demo. Three views over one dataset (Skeins / The Week / the Tapestry history), swipe gestures with a re-ravel undo, cross-column drag, an Ivy-Lee heatmap, a carry-over "re-warp" ritual, device-local drafts (recurring weaves), and search/focus toggles. Two SCUMM palettes (dark Twilight / light Parchment) via a `◐` theme toggle, **plus** a Settings → Vocabulary toggle that aliases the whole SCUMM lexicon to plain planner words (loom voice is the default) — see [`LOOM.md`](LOOM.md) |
-| Click Deck | `src/click-deck/` | plain JSX + Notion; a catalogue for graphic-narrative and point-and-click adventure games — a scroll-animated Timeline view, an Analytics dashboard (tag/studio word clouds, advanced filters), a Game Editor with Steam cover-art fetch, and a nightly Vercel cron (`api/clickdeck-pricing.js`) syncing live Steam pricing/discounts. **Self-styled like Journal/Wanderlist — does NOT build on `src/ds/`** (three swappable SCUMM-inspired themes: Union City / Voodoo / Noir); Python maintenance scripts in `scripts/` (Steam-name verification, journal-entry dramatization) — see [`CLICK_DECK.md`](CLICK_DECK.md) |
-| Wanderlist | `src/wanderlist/` | plain JSX + Notion; a triaged backlog of city things-to-do. **Self-styled like Journal of Delights — does NOT build on `src/ds/`** (deliberate, per brief); "atlas" identity reusing JoD's **six-palette** theme system (header cycle + a Settings → Appearance picker). Server-side email reminder (Vercel Cron + Resend + KV), Google Places autocomplete, an Add-to-Calendar link, a keyless Google Maps embed view, and an optional Cost (lei) field — see [`WANDERLIST.md`](WANDERLIST.md) |
-| WhereItWent | `src/where-it-went/` | plain JSX + Notion, builds on `src/ds/`; a personal finance tracker with **five** Notion databases (Categories/Accounts/Transactions/Subscriptions/Trips). Budget periods (monthly/quarterly/yearly) with derived rollover, Transfers with From/To accounts, live ECB FX via a **keyless client-side** call (`lib/fx.js` — no serverless function, the cap is full), a 90-day cash-flow forecast, duplicate detection, an offline snapshot + write outbox, and opt-in bill reminders on `src/shared/notify/`. Every property name is load-bearing and select options are closed vocabularies — read [`WHERE_IT_WENT.md`](WHERE_IT_WENT.md) before touching the schema, and [`WHERE_IT_WENT_ROADMAP.md`](WHERE_IT_WENT_ROADMAP.md) for why each feature works the way it does |
-| Journal of Delights | `src/journal/` | plain JSX, no type checking; six-palette theme system (header cycle + a Settings → Appearance picker) |
-| Kettlebell Training | `src/kettlebell/` | plain JSX, no type checking |
-| Touch Grass | `src/touch-grass/` | plain JSX, no type checking |
-| Static HTML apps | `public/*.html` (served at the site root) | design-locked, hand-authored — edit in place |
+Each app's own doc (linked below) has the full feature/schema detail — read it
+before working in that app. Don't hold app internals here; this table is a router.
 
-Every app's card/tile data (name, icon, blurb, tags) lives in one place —
-[`src/apps-registry.js`](src/apps-registry.js) — read by both `index.html`'s
-card grid and The Cabinet. See [`CABINET.md`](CABINET.md) for the checklist
-when shipping a new app.
+| App | Location | Notes |
+|-----|----------|-------|
+| Sol Odyssey | `src/sol-odyssey/` | strict TS — has its own [`CLAUDE.md`](src/sol-odyssey/CLAUDE.md) + `DESIGN.md`; **defer to those** in that dir |
+| Daily Stoic | `src/daily-stoic/` | strict TS, DS — [`DAILY_STOIC.md`](DAILY_STOIC.md) |
+| Tempo | `src/tempo/` | JSX, DS |
+| Law of the Day | `src/law-of-the-day/` | JSX, DS |
+| Yoru | `src/yoru/` | JSX, DS — [`YORU.md`](YORU.md) |
+| The Cabinet | `src/cabinet/` | JSX, DS — [`CABINET.md`](CABINET.md) |
+| Loom | `src/loom/` | JSX, DS — [`LOOM.md`](LOOM.md) |
+| Click Deck | `src/click-deck/` | JSX, **not DS** (self-styled) — [`CLICK_DECK.md`](CLICK_DECK.md) |
+| Wanderlist | `src/wanderlist/` | JSX, **not DS** (self-styled) — [`WANDERLIST.md`](WANDERLIST.md) |
+| WhereItWent | `src/where-it-went/` | JSX, DS — schema is load-bearing, read [`WHERE_IT_WENT.md`](WHERE_IT_WENT.md) before touching it; also [`WHERE_IT_WENT_ROADMAP.md`](WHERE_IT_WENT_ROADMAP.md) |
+| Journal of Delights | `src/journal/` | JSX, legacy, no typecheck |
+| Kettlebell Training | `src/kettlebell/` | JSX, legacy, no typecheck |
+| Touch Grass | `src/touch-grass/` | JSX, legacy, no typecheck |
+| Static HTML apps | `public/*.html` | design-locked, hand-authored — edit in place |
 
-`tsconfig.json` covers the TypeScript code — **`src/sol-odyssey`, `src/daily-stoic`,
-`src/ds`, and `src/shared`**; `npm run typecheck` type-checks all four. The other
-React apps are plain JS/JSX by design and intentionally left out (they still
-import from `src/shared`, just without typechecking at those call sites).
+Card/tile data (name, icon, blurb, tags) for every app lives in one place —
+[`src/apps-registry.js`](src/apps-registry.js) — read by `index.html`'s card
+grid and The Cabinet. See [`CABINET.md`](CABINET.md) for the new-app checklist.
+
+`tsconfig.json` covers **`src/sol-odyssey`, `src/daily-stoic`, `src/ds`,
+`src/shared`**; `npm run typecheck` checks all four. Other React apps are
+plain JS/JSX by design and left out of typecheck (they can still import from
+`src/shared`).
 
 ## Cross-app shared logic (`src/shared/`) — distinct from `src/ds/`
 
-`src/shared/` holds logic every app (new or legacy) may import — it is **not**
-part of the design-system boundary above, which is about styling only. Any app
-can use it, including the legacy ones. Today it holds `src/shared/notify/`, the
-local-notifications foundation (Periodic Background Sync + IndexedDB state
-mirroring + a diagnostics reveal) used by Touch Grass, Sol Odyssey, and Journal
-of Delights — see [`NOTIFICATIONS.md`](NOTIFICATIONS.md) before building
-notifications into another app. It also holds
-[`src/shared/installFlag.ts`](src/shared/installFlag.ts) — every `react-vite`
-app calls `watchInstalled('<file>.html')` once at startup so The Cabinet can
-tell it's installed reliably; see CABINET.md's "Install detection, take two"
-and add this call for any new PWA app.
+`src/shared/` holds logic any app (new or legacy) may import — not part of the
+styling boundary above. Today: `src/shared/notify/`, the local-notifications
+foundation (Periodic Background Sync + IndexedDB state mirroring + a
+diagnostics reveal) used by Touch Grass, Sol Odyssey, Journal of Delights —
+read [`NOTIFICATIONS.md`](NOTIFICATIONS.md) before adding notifications to
+another app. Also [`src/shared/installFlag.ts`](src/shared/installFlag.ts) —
+every `react-vite` app calls `watchInstalled('<file>.html')` once at startup
+so The Cabinet can detect install reliably; add this call for any new PWA app
+(see CABINET.md's "Install detection, take two").
 
 ## Service workers & dev
 
 Every `react-vite` app registers its own scoped service worker from its
-`main.{jsx,tsx}`. Those workers cache assets **cache-first**, which is correct in
-production (hashed filenames guarantee a cache miss on each new build) but
-**poison the Vite dev server**: dev module URLs are stable and unhashed, so the
-worker serves the *first-cached* copy of your code back on every reload and your
-edits never show up (this is why `localhost:5173/<app>.html` can look like "a
-very old version"). **Registration is therefore gated on `import.meta.env.PROD`**
-in every entry — a service worker must never install under `vite dev`. Keep that
-guard when adding a new app or touching an entry's SW registration. If a stale
-worker is already installed on localhost, unregister it and clear caches
-(DevTools → Application) once; the guard prevents it recurring.
+`main.{jsx,tsx}`, caching assets **cache-first** — correct in production
+(hashed filenames) but **poisons Vite dev** (unhashed dev URLs mean the worker
+serves back the first-cached copy forever). **Registration is gated on
+`import.meta.env.PROD`** in every entry — never let a service worker install
+under `vite dev`. Keep that guard on any new app or SW registration change. If
+a stale worker is already on localhost, unregister it and clear caches
+(DevTools → Application) once — the guard prevents recurrence.
 
 ## Deploy guardrail
 
 Pushing to `main` **auto-deploys via Vercel** — an unreviewed edit can reach
-production. Never push with failing tests or type errors. **Stop and confirm with
-me before any push to `main`.**
+production. Never push with failing tests or type errors. **Stop and confirm
+with me before any push to `main`.**
 
-Once pushed, **don't poll GitHub Actions to check the CI run** — the owner
-gets emailed on failure and will follow up if something's wrong. Only check
-a run's status when explicitly asked to.
+Once pushed, **don't poll GitHub Actions** — the owner gets emailed on failure
+and will follow up. Only check a run's status when explicitly asked.
 
 **Vercel Hobby caps a deployment at 12 serverless functions, counted across
-the *entire* repo** — every top-level file in `api/*.js` is one function,
-regardless of which app it belongs to (files under `api/_*` don't count).
-Before adding a new `api/*.js` file for any app, run
-`ls api/*.js | grep -v '^api/_'` and check the count first. At 12 already,
-adding one more without removing/merging another **will fail the deploy**
-(this has happened before — see git history around 2026-07-23). Prefer
-folding a new small proxy into an existing same-app endpoint (extra query
-param/mode) over adding a new file when the count is tight.
+the entire repo** — every top-level `api/*.js` file is one function, regardless
+of app (files under `api/_*` don't count). Before adding a new `api/*.js`,
+run `ls api/*.js | grep -v '^api/_'` and check the count. At 12 already, one
+more **will fail the deploy** (happened before, see git history ~2026-07-23).
+Prefer folding a new proxy into an existing same-app endpoint (extra
+query param/mode) over a new file when the count is tight.
