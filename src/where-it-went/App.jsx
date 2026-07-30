@@ -382,7 +382,10 @@ export default function App() {
 
       {/* One banner slot, shared. Offline/pending state outranks the upcoming
           reminder — a queued write is more urgent than something due in 3
-          days, and stacking two strips would eat the top of every screen. */}
+          days, and stacking two strips would eat the top of every screen.
+          The upcoming reminder itself is scoped to the Transactions screen
+          only — it clicks through to the Dashboard's Next 30 Days card for
+          the full detail, but the interrupt lives where the ledger is. */}
       {(staleAt !== null || pendingCount > 0 || failedCount > 0) ? (
         <OfflineBanner
           staleAt={staleAt}
@@ -390,7 +393,7 @@ export default function App() {
           failedCount={failedCount}
           onOpenSettings={() => handleTabChange('settings')}
         />
-      ) : activeTab !== 'settings' && (
+      ) : activeTab === 'transactions' && (
         <UpcomingBanner
           bills={dueSoon}
           leadDays={leadDays}

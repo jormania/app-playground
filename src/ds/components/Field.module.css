@@ -16,6 +16,17 @@
 }
 
 .input {
+  /* A grid/flex item's default min-width is its content size, not the
+     shrunk track — usually invisible for a plain text input, but a native
+     <input type="date"> has a wide intrinsic (shadow-DOM) rendering that
+     ignores a shrinking parent track without this, overlapping a sibling
+     even when the grid math looks fine (e.g. two date fields side by side
+     on a phone). width:100% + min-width:0 makes every Field genuinely fill
+     whatever box it's given, which was already the intent everywhere it's
+     used in a grid/flex row. */
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   height: 44px;
   padding: 0 var(--space-sm, 12px);
   font-family: var(--font-sans, "Inter", system-ui, sans-serif);

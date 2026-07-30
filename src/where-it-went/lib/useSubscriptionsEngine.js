@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { daysInMonth, parseTxDate, toDateString, toMonthKey } from './period';
+import { fetchRate, convert, canConvert, BASE_CURRENCY } from './fx';
 
 /** Hard stop so a very stale `lastProcessed` can't generate years of back-charges. */
 export const MAX_BACKFILL_MONTHS = 12;
@@ -55,15 +56,53 @@ export function getDueDates(dayOfMonth, lastProcessedDate, today = new Date()) {
  * Without this, a failed `lastProcessed` update (which was caught and only logged)
  * meant the same charges were posted again on the next launch — and two devices
  * opening the app on the same day double-posted every subscription.
+ *
+ * A foreign-currency subscription's RON figure is *re-derived per occurrence*
+ * (see `resolvePostingAmount`) so it tracks the actual exchange rate each
+ * month rather than freezing whatever rate happened to apply when the
+ * subscription was first configured — which means it can no longer be relied
+ * on to match `sub.amount` when checking for a previous post. The original
+ * amount is what stays fixed (Netflix always charges the same 10 EUR
+ * regardless of what that's worth in RON this month), so that's what a
+ * foreign subscription matches on instead.
  */
 export function isAlreadyPosted(transactions, sub, dateStr) {
   const month = toMonthKey(dateStr);
-  return (transactions || []).some(tx =>
-    tx &&
-    (tx.description || '') === sub.name &&
-    Number(tx.amount) === Number(sub.amount) &&
-    toMonthKey(tx.date) === month
-  );
+  const isForeign = !!sub.originalCurrency && sub.originalAmount != null;
+  return (transactions || []).some(tx => {
+    if (!tx) return false;
+    if ((tx.description || '') !== sub.name) return false;
+    if (toMonthKey(tx.date) !== month) return false;
+    if (isForeign) {
+      return tx.originalCurrency === sub.originalCurrency && Number(tx.originalAmount) === Number(sub.originalAmount);
+    }
+    return Number(tx.amount) === Number(sub.amount);
+  });
+}
+
+/**
+ * The RON amount to post for one occurrence.
+ *
+ * Inflation and exchange-rate movement mean a EUR (or any foreign-currency)
+ * subscription is worth a slightly different number of Lei every month — the
+ * bank converts at that day's rate, not the rate from whenever the
+ * subscription was set up. This fetches a fresh rate for the *occurrence's own
+ * due date* and re-converts every time a charge posts, rather than reusing
+ * `sub.amount` forever. A failed or unavailable rate falls back to the
+ * subscription's last-saved RON figure — a missing rate must never block a
+ * post, the same rule `lib/fx.js` already applies everywhere else.
+ */
+export async function resolvePostingAmount(sub, dateStr) {
+  if (!sub.originalCurrency || sub.originalAmount == null || !canConvert(sub.originalCurrency)) {
+    return sub.amount;
+  }
+  try {
+    const result = await fetchRate(sub.originalCurrency, BASE_CURRENCY, dateStr);
+    const converted = result?.rate != null ? convert(sub.originalAmount, result.rate) : null;
+    return converted != null ? converted : sub.amount;
+  } catch {
+    return sub.amount;
+  }
 }
 
 /** Everything a run would do, without doing it — the unit-testable core. */
@@ -108,9 +147,10 @@ export function useSubscriptionsEngine({ data, client, onDataChange, enabled = t
             continue;
           }
           try {
+            const amount = await resolvePostingAmount(sub, dateStr);
             await client.addTransaction({
               description: sub.name,
-              amount: sub.amount,
+              amount,
               type: sub.type,
               categoryId: sub.categoryId,
               accountId: sub.accountId,
@@ -119,6 +159,8 @@ export function useSubscriptionsEngine({ data, client, onDataChange, enabled = t
               tags: [SUBSCRIPTION_TAG, GENERATED_TAG],
               // Carries the subscription's own foreign-currency context onto
               // the posted row, same as a manually-entered transaction shows.
+              // The original figure is fixed (Netflix always charges the same
+              // 10 EUR); only the RON conversion above re-derives per month.
               originalAmount: sub.originalAmount ?? null,
               originalCurrency: sub.originalCurrency || '',
             });

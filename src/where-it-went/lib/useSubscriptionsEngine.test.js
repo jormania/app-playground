@@ -1,5 +1,16 @@
-import { describe, it, expect } from 'vitest';
-import { dueDateFor, getDueDates, isAlreadyPosted, planSubscriptionRun, MAX_BACKFILL_MONTHS } from './useSubscriptionsEngine';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { dueDateFor, getDueDates, isAlreadyPosted, planSubscriptionRun, resolvePostingAmount, MAX_BACKFILL_MONTHS } from './useSubscriptionsEngine';
+import { fetchRate } from './fx';
+
+vi.mock('./fx', async (importOriginal) => ({
+  ...(await importOriginal()),
+  fetchRate: vi.fn(),
+}));
+
+beforeEach(() => {
+  fetchRate.mockReset();
+  fetchRate.mockResolvedValue(null);
+});
 
 describe('dueDateFor', () => {
   it('clamps day 31 into February instead of overflowing into March', () => {
@@ -53,6 +64,60 @@ describe('isAlreadyPosted', () => {
     expect(isAlreadyPosted(transactions, { name: 'Netflix', amount: 60 }, '2026-07-01')).toBe(true);
     expect(isAlreadyPosted(transactions, { name: 'Netflix', amount: 60 }, '2026-08-01')).toBe(false);
     expect(isAlreadyPosted(transactions, { name: 'Netflix', amount: 61 }, '2026-07-01')).toBe(false);
+  });
+
+  it('matches a foreign subscription on the original amount, not the RON figure', () => {
+    // The RON figure is re-derived per occurrence from that month's exchange
+    // rate (see resolvePostingAmount), so it won't equal sub.amount forever —
+    // matching on it would make the engine blind to its own posted row and
+    // repost the same charge every launch. The original amount is what stays
+    // fixed (Netflix always charges the same 10 EUR).
+    const sub = { name: 'Netflix', amount: 50, originalAmount: 10, originalCurrency: 'EUR' };
+    const transactions = [{
+      description: 'Netflix', amount: 53, originalAmount: 10, originalCurrency: 'EUR', date: '2026-08-05',
+    }];
+    expect(isAlreadyPosted(transactions, sub, '2026-08-01')).toBe(true);
+  });
+
+  it('does not match a foreign subscription against a coincidentally-same-RON but different-original transaction', () => {
+    const sub = { name: 'Netflix', amount: 53, originalAmount: 10, originalCurrency: 'EUR' };
+    const transactions = [{ description: 'Netflix', amount: 53, originalAmount: 11, originalCurrency: 'EUR', date: '2026-08-05' }];
+    expect(isAlreadyPosted(transactions, sub, '2026-08-01')).toBe(false);
+  });
+});
+
+describe('resolvePostingAmount', () => {
+  it('returns the stored RON amount for a non-foreign subscription, untouched', async () => {
+    const amount = await resolvePostingAmount({ amount: 60 }, '2026-08-05');
+    expect(amount).toBe(60);
+    expect(fetchRate).not.toHaveBeenCalled();
+  });
+
+  it('converts using a fresh rate for the occurrence date — the whole point being inflation/FX drift', async () => {
+    fetchRate.mockResolvedValue({ rate: 5.3, date: '2026-08-05' });
+    const sub = { amount: 50, originalAmount: 10, originalCurrency: 'EUR' };
+    const amount = await resolvePostingAmount(sub, '2026-08-05');
+    expect(amount).toBe(53);
+    expect(fetchRate).toHaveBeenCalledWith('EUR', 'RON', '2026-08-05');
+  });
+
+  it('falls back to the stored RON amount when no rate is available — never blocks a post', async () => {
+    fetchRate.mockResolvedValue(null);
+    const sub = { amount: 50, originalAmount: 10, originalCurrency: 'EUR' };
+    expect(await resolvePostingAmount(sub, '2026-08-05')).toBe(50);
+  });
+
+  it('falls back to the stored RON amount if the rate lookup throws', async () => {
+    fetchRate.mockRejectedValue(new Error('network down'));
+    const sub = { amount: 50, originalAmount: 10, originalCurrency: 'EUR' };
+    expect(await resolvePostingAmount(sub, '2026-08-05')).toBe(50);
+  });
+
+  it('never calls out for BGN — recordable but the ECB does not rate it', async () => {
+    const sub = { amount: 100, originalAmount: 20, originalCurrency: 'BGN' };
+    const amount = await resolvePostingAmount(sub, '2026-08-05');
+    expect(amount).toBe(100);
+    expect(fetchRate).not.toHaveBeenCalled();
   });
 });
 

@@ -283,29 +283,6 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         </div>
       </CollapsibleSection>
 
-      {status.msg && (
-        <div role="status" style={{
-          padding: 'var(--space-sm)', borderRadius: 'var(--radius-md)',
-          // Token-derived, not hardcoded rgba: the old literal red/green ignored
-          // the theme entirely and would have stayed iOS-red on any repalette.
-          backgroundColor: `color-mix(in srgb, ${status.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)'} 12%, transparent)`,
-          color: status.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)',
-          border: `1px solid color-mix(in srgb, ${status.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)'} 30%, transparent)`
-        }}>
-          {status.msg}
-          {scrubProgress && scrubProgress.total ? ` (${scrubProgress.done}/${scrubProgress.total})` : ''}
-        </div>
-      )}
-
-      <div className="settings-action-buttons" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginTop: 'var(--space-sm)' }}>
-        <Button variant="primary" onClick={handleSave} disabled={testing}>
-          {testing ? 'Testing...' : 'Save Configuration'}
-        </Button>
-        <Button variant="danger" onClick={handleScrub} disabled={testing}>
-          Erase Notion data & use samples
-        </Button>
-      </div>
-
       {features.upcoming !== false && (
         <ReminderSettings data={data} leadDays={Number(upcomingLeadDays) || DEFAULT_LEAD_DAYS} />
       )}
@@ -526,6 +503,35 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           </div>
         </CollapsibleSection>
       )}
+
+      {/* Save/Erase sit at the very bottom, below every other section, so
+          they read as the page's closing actions rather than getting lost
+          between Feature Toggles and everything that follows them. */}
+      <div style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}>
+        {status.msg && (
+          <div role="status" style={{
+            marginBottom: 'var(--space-md)',
+            padding: 'var(--space-sm)', borderRadius: 'var(--radius-md)',
+            // Token-derived, not hardcoded rgba: the old literal red/green ignored
+            // the theme entirely and would have stayed iOS-red on any repalette.
+            backgroundColor: `color-mix(in srgb, ${status.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)'} 12%, transparent)`,
+            color: status.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)',
+            border: `1px solid color-mix(in srgb, ${status.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)'} 30%, transparent)`
+          }}>
+            {status.msg}
+            {scrubProgress && scrubProgress.total ? ` (${scrubProgress.done}/${scrubProgress.total})` : ''}
+          </div>
+        )}
+
+        <div className="settings-action-buttons" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)' }}>
+          <Button variant="primary" onClick={handleSave} disabled={testing}>
+            {testing ? 'Testing...' : 'Save Configuration'}
+          </Button>
+          <Button variant="danger" onClick={handleScrub} disabled={testing}>
+            Erase Notion data & use samples
+          </Button>
+        </div>
+      </div>
 
       {(isAddingTrip || editingTrip) && (
         <TripEditorModal

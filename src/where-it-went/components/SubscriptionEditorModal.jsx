@@ -174,7 +174,10 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
 
   return (
     <Modal open={isOpen} title={sub ? 'Edit Subscription' : 'Add Subscription'} onClose={onClose}>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '6px', overflowX: 'hidden', boxSizing: 'border-box', minWidth: 0 }}>
+      {/* 4px row gap, not the usual 6-12px: the currency feature added two
+          rows (the currency-aware Amount box, the RON conversion line) that
+          tipped this modal into needing a scrollbar on a real phone. */}
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflowX: 'hidden', boxSizing: 'border-box', minWidth: 0 }}>
         <Field label="Name" value={name} onChange={e => setName(e.target.value)} required />
 
         {/* Amount + currency share one control, same pattern as Add Transaction —
