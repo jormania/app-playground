@@ -536,7 +536,7 @@ input {
   }
   .layout-modern .nav-brand-container {
     position: absolute !important;
-    bottom: calc(100% + var(--space-md)) !important;
+    bottom: calc(100% + var(--space-xl)) !important;
     right: var(--space-md) !important;
     left: auto !important;
     width: auto !important;
@@ -568,10 +568,10 @@ input {
   }
   .layout-modern .nav-tabs {
     flex: 1;
-    justify-content: space-around !important;
+    justify-content: space-evenly !important;
     width: 100%;
     gap: 0 !important;
-    padding: 0 !important;
+    padding: 0 var(--space-md) !important;
   }
   .layout-modern .nav-tab-btn {
     flex-direction: column;
