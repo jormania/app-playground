@@ -285,9 +285,20 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
                 initialAmount.current = null;
               }}
               style={{
-                flex: 'none', border: 'none', outline: 'none', background: 'transparent',
-                color: 'var(--color-muted)', fontSize: 'var(--text-sm)', fontFamily: 'inherit',
-                padding: '0 6px 0 2px', cursor: 'pointer'
+                // Same ink and size as `selectStyle` (and so as the Trip form's
+                // currency picker) rather than muted small text, which read as a
+                // label rather than something you could change. It stays inside
+                // the amount control — one field, one box — with a divider so it
+                // still looks like its own control.
+                // `flex: none` with a tight padding, because at base font size the
+                // native select plus its arrow was 70px against a 137px control —
+                // wider than the amount input it sits beside, which is the field
+                // that actually matters. Trimming the padding keeps the matching
+                // ink and type size while handing the width back to the amount.
+                flex: 'none', outline: 'none', background: 'transparent',
+                border: 'none', borderLeft: '1px solid var(--color-border)',
+                color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit',
+                padding: '0 0 0 6px', cursor: 'pointer'
               }}
             >
               {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
