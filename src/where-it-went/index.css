@@ -508,7 +508,8 @@ input {
   }
   .layout-modern .nav-tabs {
     flex-direction: column;
-    width: 100%;
+    width: max-content;
+    align-self: flex-start;
     align-items: stretch !important;
     margin-top: var(--space-2xl);
   }
