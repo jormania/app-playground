@@ -14,6 +14,7 @@ import { defaultTheme } from './lib/theme';
 import Navigation from './components/Navigation';
 import UpcomingBanner from './components/UpcomingBanner';
 import OfflineBanner from './components/OfflineBanner';
+import SkeletonState from './components/SkeletonState';
 import { getUpcomingBills, billsWithinLeadTime, DEFAULT_LEAD_DAYS } from './lib/upcoming';
 import { writeReminderState } from './lib/reminders';
 import {
@@ -356,7 +357,9 @@ export default function App() {
     config?.features?.flairAmbientGlow ? 'flair-ambient' : '',
     config?.features?.flairGlass ? 'flair-glass' : '',
     config?.features?.flairStagger ? 'flair-stagger' : '',
-    config?.features?.flairHover ? 'flair-hover' : ''
+    config?.features?.flairHover ? 'flair-hover' : '',
+    config?.features?.flairModernLayout ? 'layout-modern' : '',
+    config?.features?.flairCompactDensity ? 'density-compact' : ''
   ].filter(Boolean).join(' ');
 
   return (
@@ -382,22 +385,19 @@ export default function App() {
           </button>
         </div>
       )}
-      {/* Outside the reading column on purpose: the nav's own contents are wider
-          than 800px once the tab labels show, so keeping it inside made it
-          overflow its box at every width and scroll the page sideways around
-          900px. Out here it simply spans the window. */}
-      <Navigation
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        onAddClick={() => { setRepeatDraft(null); setShowAddForm(true); }}
-        period={period}
-        onPeriodClick={() => setShowPeriodSheet(true)}
-        onFilterClick={() => setShowFilterSheet(true)}
-        filtersActive={filterType !== 'All' || categoryFilter !== 'All' || searchQuery.trim() !== ''}
-        duplicateCount={duplicateCount}
-      />
+      <div className="app-layout-container" style={{ display: 'flex', flex: 1, flexDirection: 'column' }}>
+        <Navigation
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          onAddClick={() => { setRepeatDraft(null); setShowAddForm(true); }}
+          period={period}
+          onPeriodClick={() => setShowPeriodSheet(true)}
+          onFilterClick={() => setShowFilterSheet(true)}
+          filtersActive={filterType !== 'All' || categoryFilter !== 'All' || searchQuery.trim() !== ''}
+          duplicateCount={duplicateCount}
+        />
 
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 var(--space-md) var(--space-md)' }}>
+        <div className="main-content-wrapper" style={{ maxWidth: '800px', width: '100%', margin: '0 auto', padding: '0 var(--space-md) var(--space-md)' }}>
 
       {/* One banner slot, shared. Offline/pending state outranks the upcoming
           reminder — a queued write is more urgent than something due in 3
@@ -468,17 +468,7 @@ export default function App() {
 
       <main>
         {loading ? (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }} className="skeleton-kpi-grid">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="shimmer-bg" style={{ height: '90px', borderRadius: 'var(--radius-lg)' }} />
-              ))}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-xl)' }}>
-              <div className="shimmer-bg" style={{ height: '400px', borderRadius: 'var(--radius-lg)' }} />
-              <div className="shimmer-bg" style={{ height: '400px', borderRadius: 'var(--radius-lg)' }} />
-            </div>
-          </div>
+          <SkeletonState activeTab={activeTab} />
         ) : loadError ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-2xl)', textAlign: 'center', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid color-mix(in srgb, var(--color-danger) 30%, transparent)', marginTop: 'var(--space-xl)' }}>
             <div style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>⚠️</div>
@@ -531,7 +521,8 @@ export default function App() {
           </>
         )}
       </main>
-    </div>
+      </div>
+      </div>
     </div>
   );
 }

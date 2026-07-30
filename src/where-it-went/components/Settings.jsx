@@ -347,6 +347,20 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             checked={features.flairHover === true}
             onChange={e => setFeatures(f => ({ ...f, flairHover: e.target.checked }))}
           />
+
+          <SettingsToggle
+            label="Modern Layout"
+            hint="Moves navigation to a left sidebar on desktop and a bottom tab bar on mobile."
+            checked={features.flairModernLayout === true}
+            onChange={e => setFeatures(f => ({ ...f, flairModernLayout: e.target.checked }))}
+          />
+
+          <SettingsToggle
+            label="Compact Density"
+            hint="Reduces padding and font sizes slightly to fit more data on the screen."
+            checked={features.flairCompactDensity === true}
+            onChange={e => setFeatures(f => ({ ...f, flairCompactDensity: e.target.checked }))}
+          />
         </div>
       </CollapsibleSection>
 

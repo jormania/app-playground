@@ -424,3 +424,106 @@ input {
     transform: translateY(0);
   }
 }
+/* ==========================================================================
+   VISUAL FLAIR OVERRIDES (LAYOUT & DENSITY)
+   ========================================================================== */
+
+/* 5. Density Controls (Compact Mode) */
+.density-compact {
+  --space-2xl: 24px;
+  --space-xl: 16px;
+  --space-lg: 12px;
+  --space-md: 8px;
+  --space-sm: 4px;
+  --space-xs: 2px;
+  --text-lg: 1rem;
+  --text-base: 0.85rem;
+  --text-sm: 0.75rem;
+  --text-xs: 0.65rem;
+}
+
+/* 6. Modern Layout (Sidebar on Desktop, Bottom Tabs on Mobile) */
+.layout-modern .app-layout-container {
+  display: flex !important;
+  flex: 1;
+  overflow: hidden;
+}
+
+@media (min-width: 800px) {
+  .layout-modern .app-layout-container {
+    flex-direction: row !important;
+    align-items: flex-start;
+  }
+  .layout-modern .mobile-nav-header {
+    flex-direction: column;
+    width: 250px;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    align-items: flex-start !important;
+    padding: var(--space-xl) var(--space-lg) !important;
+    border-right: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent) !important;
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+    box-sizing: border-box;
+  }
+  .layout-modern .nav-tabs {
+    flex-direction: column;
+    width: 100%;
+    align-items: stretch !important;
+    margin-top: var(--space-2xl);
+  }
+  .layout-modern .nav-tab-btn {
+    justify-content: flex-start !important;
+    padding: var(--space-md) var(--space-lg) !important;
+  }
+  .layout-modern .nav-controls {
+    margin-left: 0 !important;
+    margin-top: var(--space-md);
+  }
+  .layout-modern .main-content-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-xl) !important;
+  }
+}
+
+@media (max-width: 799px) {
+  .layout-modern .app-layout-container {
+    flex-direction: column !important;
+  }
+  .layout-modern .mobile-nav-header {
+    position: fixed !important;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto !important;
+    z-index: 1000;
+    border-top: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent) !important;
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+    padding-bottom: env(safe-area-inset-bottom, var(--space-md)) !important;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .layout-modern .nav-logo {
+    display: none !important;
+  }
+  .layout-modern .nav-tabs {
+    flex: 1;
+    justify-content: space-around !important;
+    width: 100%;
+  }
+  .layout-modern .nav-tab-btn {
+    flex-direction: column;
+    font-size: 10px !important;
+    gap: 4px;
+    padding: var(--space-xs) !important;
+  }
+  .layout-modern .nav-tab-text {
+    font-size: 0.65rem;
+  }
+  .layout-modern .main-content-wrapper {
+    padding-bottom: 120px !important; /* space for bottom nav */
+  }
+}

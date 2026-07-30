@@ -7,8 +7,12 @@ import { Modal } from '../../ds/components/Modal';
 import { AlertModal } from '../../ds';
 import TransactionForm from './TransactionForm';
 import { getCategoryColor } from '../lib/colors';
+import { parseTxDate } from '../lib/dates';
+import Sparkline from './Sparkline';
+import UpcomingBills from './UpcomingBills';
 import { formatCurrency, formatCurrencyCompact } from '../lib/currency';
 import { useCountUp } from '../lib/useCountUp';
+import { ReceiptText, PieChart, TrendingUp, PiggyBank } from 'lucide-react';
 import {
   filterByPeriod,
   filterByPreviousPeriod,
@@ -198,7 +202,8 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
     return {
       labels: keys.map(k => buckets[k].label),
       income: keys.map(k => buckets[k].income),
-      expense: keys.map(k => buckets[k].expense)
+      expense: keys.map(k => buckets[k].expense),
+      net: keys.map(k => buckets[k].income - buckets[k].expense)
     };
   }, [filteredTransactions, activePeriod]);
   const trendKey = useMemo(() => JSON.stringify(trendSeries), [trendSeries]);
@@ -516,9 +521,9 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         overflowX: 'auto', paddingBottom: 'var(--space-xs)', WebkitOverflowScrolling: 'touch'
       }}>
         {[
-          { label: 'Income', value: animatedIncome, real: income, prev: prevIncome, color: 'var(--color-success)', inverse: false },
-          { label: 'Expenses', value: animatedExpenses, real: expenses, prev: prevExpenses, color: 'var(--color-danger)', inverse: true },
-          { label: 'Net', value: animatedNet, real: net, prev: prevNet, color: net >= 0 ? 'var(--color-success)' : 'var(--color-danger)', inverse: false }
+          { label: 'Income', value: animatedIncome, real: income, prev: prevIncome, color: 'var(--color-success)', inverse: false, data: trendSeries.income },
+          { label: 'Expenses', value: animatedExpenses, real: expenses, prev: prevExpenses, color: 'var(--color-danger)', inverse: true, data: trendSeries.expense },
+          { label: 'Net', value: animatedNet, real: net, prev: prevNet, color: net >= 0 ? 'var(--color-success)' : 'var(--color-danger)', inverse: false, data: trendSeries.net }
         ].map(kpi => (
           <div
             key={kpi.label}
@@ -531,14 +536,19 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
             <div title={formatCurrency(kpi.real)} style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: kpi.color, whiteSpace: 'nowrap', marginBottom: '4px' }}>
               {formatCurrencyCompact(kpi.value)}
             </div>
-            <div>{getTrendBadge(kpi.real, kpi.prev, kpi.inverse)}</div>
+            <div style={{ position: 'relative', zIndex: 1 }}>{getTrendBadge(kpi.real, kpi.prev, kpi.inverse)}</div>
+            <div style={{ marginTop: '-10px', marginLeft: '-var(--space-md)', marginRight: '-var(--space-md)', marginBottom: '-var(--space-md)' }}>
+              <Sparkline data={kpi.data} color={kpi.color} height={30} />
+            </div>
           </div>
         ))}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-xl)' }}>
         <div className="card-container stagger-2" style={CARD}>
-          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>🧾 Latest Transactions</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
+            <ReceiptText size={20} color="var(--color-muted)" /> Latest Transactions
+          </h2>
           {filteredTransactions.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-xl) var(--space-md)', textAlign: 'center' }}>
               <div style={{ fontSize: '36px', marginBottom: 'var(--space-sm)' }}>🍃</div>
@@ -626,8 +636,8 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
             card and the card scrolled a little. Chart.js runs with
             maintainAspectRatio:false and fills whatever box it is given. */}
         <div className="card-container stagger-2" style={{ ...CARD, height: '450px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0, marginBottom: 'var(--space-md)' }}>
-            {chartType === 'Income' ? '📈 Income by Category' : '📊 Expenses by Category'}
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0, marginBottom: 'var(--space-md)' }}>
+            <PieChart size={20} color="var(--color-muted)" /> {chartType === 'Income' ? 'Income by Category' : 'Expenses by Category'}
           </h2>
           {chartData.length === 0 ? (
             <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
@@ -651,7 +661,9 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         <div className="card-container stagger-3" style={{ ...CARD, marginTop: 'var(--space-xl)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
             <div>
-              <h2 style={{ fontSize: 'var(--text-lg)', margin: 0 }}>💰 Budget Limits</h2>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--text-lg)', margin: 0 }}>
+                <PiggyBank size={20} color="var(--color-muted)" /> Budget Limits
+              </h2>
               <p style={{ margin: '2px 0 0 0', fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
                 Each category is measured against its own budget window — never the selected period or filters.
               </p>
@@ -770,8 +782,10 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
       )}
 
       {config?.features?.cashFlow !== false && (
-        <div className="trend-chart-container card-container stagger-4" style={{ ...CARD, marginTop: 'var(--space-xl)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0, marginBottom: 'var(--space-md)' }}>📊 Cash Flow Trend</h2>
+        <div className="card-container stagger-4" style={{ ...CARD, height: '400px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0, marginBottom: 'var(--space-md)' }}>
+            <TrendingUp size={20} color="var(--color-muted)" /> Cash Flow Trend
+          </h2>
           {trendSeries.labels.length === 0 ? (
             <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: 0 }}>No income or spending recorded in this period yet.</p>
           ) : (
