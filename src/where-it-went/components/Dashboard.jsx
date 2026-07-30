@@ -180,8 +180,13 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
       const sortKey = isYearly
         ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
         : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      // A 2-digit year here ("Aug 26") reads exactly like a day-of-month —
+      // a monthly total for August 2026 was mistaken for a single Aug 26th
+      // transaction. Every other month+year label in this app (budgets.js,
+      // forecast.js, PeriodSheet, period.js) already uses a 4-digit year for
+      // this reason; this was the one outlier.
       const label = isYearly
-        ? d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' })
+        ? d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
         : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
       if (!buckets[sortKey]) buckets[sortKey] = { label, expense: 0, income: 0 };
       if (tx.type === 'Expense') buckets[sortKey].expense += tx.amount;
