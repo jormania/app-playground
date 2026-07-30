@@ -486,6 +486,9 @@ input {
     width: 100%;
     gap: var(--space-lg) !important;
   }
+  .layout-modern .nav-logo {
+    text-align: center !important;
+  }
   .layout-modern .nav-add-btn {
     width: 100%;
     padding: var(--space-md) !important;
