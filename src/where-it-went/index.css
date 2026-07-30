@@ -580,6 +580,7 @@ input {
     font-size: 0.65rem !important;
   }
   .layout-modern .main-content-wrapper {
+    padding-top: var(--space-xl) !important;
     padding-bottom: 120px !important; /* space for bottom nav */
   }
 }
