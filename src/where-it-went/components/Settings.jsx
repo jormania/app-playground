@@ -15,6 +15,11 @@ import { defaultTheme } from '../lib/theme';
 import { readJson, writeJson } from '../lib/storage';
 import ReminderSettings from './ReminderSettings';
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
 /**
  * A named, persistently-collapsible chunk of Settings.
  *
@@ -381,7 +386,9 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                       <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{sub.name}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginTop: '4px' }}>
                         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
-                          Every {ordinal(sub.dayOfMonth)} of the month
+                          {sub.frequency === 'Yearly'
+                            ? `Every ${MONTH_NAMES[Math.min(Math.max(Number(sub.monthOfYear) || 1, 1), 12) - 1]} ${ordinal(sub.dayOfMonth)}`
+                            : `Every ${ordinal(sub.dayOfMonth)} of the month`}
                         </span>
                         <span style={{
                           fontSize: '0.65rem', fontWeight: 'var(--weight-bold)', padding: '2px 6px',

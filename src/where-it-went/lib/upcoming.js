@@ -63,8 +63,11 @@ export function getUpcomingBills(subscriptions, transactions, options = {}) {
 
   const bills = [];
   for (const sub of subs) {
+    const isYearly = sub.frequency === 'Yearly';
+    const targetMonthIndex = Math.min(Math.max(Number(sub.monthOfYear) || 1, 1), 12) - 1;
     for (let i = 0; i <= monthSpan; i++) {
       const cursor = new Date(todayMidnight.getFullYear(), todayMidnight.getMonth() + i, 1);
+      if (isYearly && cursor.getMonth() !== targetMonthIndex) continue;
       // Clamped for short months — `new Date(2026, 1, 31)` would roll into March.
       const dueDate = dueDateFor(cursor.getFullYear(), cursor.getMonth(), sub.dayOfMonth);
 

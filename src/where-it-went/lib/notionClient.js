@@ -305,6 +305,10 @@ export class NotionClient {
       amount: row.properties.Amount?.number || 0,
       type: row.properties.Type?.select?.name || 'Expense',
       dayOfMonth: row.properties.DayOfMonth?.number || 1,
+      // Blank reads as Monthly, same convention as Categories' Budget Period —
+      // every subscription saved before Yearly existed has no Frequency at all.
+      frequency: row.properties.Frequency?.select?.name || 'Monthly',
+      monthOfYear: row.properties['Month of Year']?.number || null,
       categoryId: row.properties.Category?.relation?.[0]?.id || '',
       accountId: row.properties.Account?.relation?.[0]?.id || '',
       active: row.properties.Active?.checkbox !== false,
@@ -329,6 +333,8 @@ export class NotionClient {
       'Amount': { number: Number(sub.amount) || 0 },
       'Type': { select: { name: sub.type || 'Expense' } },
       'DayOfMonth': { number: Number(sub.dayOfMonth) || 1 },
+      'Frequency': { select: { name: sub.frequency || 'Monthly' } },
+      'Month of Year': { number: sub.frequency === 'Yearly' ? (Number(sub.monthOfYear) || 1) : null },
       'Category': relation(sub.categoryId),
       'Account': relation(sub.accountId),
       'Active': { checkbox: sub.active !== false },
@@ -358,6 +364,10 @@ export class NotionClient {
     if (updates.amount !== undefined) properties['Amount'] = { number: Number(updates.amount) || 0 };
     if (updates.type !== undefined) properties['Type'] = { select: { name: updates.type } };
     if (updates.dayOfMonth !== undefined) properties['DayOfMonth'] = { number: Number(updates.dayOfMonth) || 1 };
+    if (updates.frequency !== undefined) properties['Frequency'] = { select: { name: updates.frequency || 'Monthly' } };
+    if (updates.monthOfYear !== undefined) {
+      properties['Month of Year'] = { number: updates.frequency === 'Yearly' ? (Number(updates.monthOfYear) || 1) : null };
+    }
     if (updates.categoryId !== undefined) properties['Category'] = relation(updates.categoryId);
     if (updates.accountId !== undefined) properties['Account'] = relation(updates.accountId);
     if (updates.active !== undefined) properties['Active'] = { checkbox: updates.active };

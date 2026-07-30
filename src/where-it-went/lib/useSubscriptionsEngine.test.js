@@ -56,6 +56,31 @@ describe('getDueDates', () => {
     const dates = getDueDates(31, '2025-12-31', new Date(2026, 2, 31));
     expect(dates).toEqual(['2026-01-31', '2026-02-28', '2026-03-31']);
   });
+
+  describe('Yearly frequency', () => {
+    it('with no history, is due this year if its month/day have already passed', () => {
+      // today is 15 Jul 2026; a March-renewing plan is already past.
+      expect(getDueDates(18, null, today, 'Yearly', 3)).toEqual(['2026-03-18']);
+    });
+
+    it('with no history, is not due yet if its month has not arrived', () => {
+      expect(getDueDates(18, null, today, 'Yearly', 9)).toEqual([]);
+    });
+
+    it('does not fire again the same year once processed', () => {
+      const dates = getDueDates(18, '2026-03-18', today, 'Yearly', 3);
+      expect(dates).toEqual([]);
+    });
+
+    it('backfills a missed year, still just one occurrence', () => {
+      const dates = getDueDates(18, '2025-03-18', today, 'Yearly', 3);
+      expect(dates).toEqual(['2026-03-18']);
+    });
+
+    it('clamps day 31 in a month that does not have it', () => {
+      expect(getDueDates(31, null, new Date(2026, 4, 5), 'Yearly', 4)).toEqual(['2026-04-30']);
+    });
+  });
 });
 
 describe('isAlreadyPosted', () => {

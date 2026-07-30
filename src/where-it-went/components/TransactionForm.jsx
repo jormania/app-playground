@@ -287,7 +287,10 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
         ]}
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-lg)' }}>
+      {/* Not an even 1fr/1fr split — the date renders a full "DD/MM/YYYY" and
+          was cropping its last digit, while the Amount box (a couple of
+          digits plus a 3-letter currency) had room to spare at that width. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 6fr) minmax(0, 5fr)', gap: 'var(--space-lg)' }}>
         <Field label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} required />
 
         {/* Amount + currency share one control rather than sitting in separate

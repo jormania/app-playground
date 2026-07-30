@@ -5,6 +5,9 @@ import { fetchRate, convert, canConvert, BASE_CURRENCY } from './fx';
 /** Hard stop so a very stale `lastProcessed` can't generate years of back-charges. */
 export const MAX_BACKFILL_MONTHS = 12;
 
+/** Same hard stop, expressed in years, for a Yearly subscription. */
+export const MAX_BACKFILL_YEARS = 5;
+
 export const SUBSCRIPTION_TAG = 'Subscription';
 export const GENERATED_TAG = 'Auto-generated';
 
@@ -24,23 +27,38 @@ export function dueDateFor(year, monthIndex, dayOfMonth) {
  * Every due date at or before `today` that hasn't been processed yet.
  * Dates are plain local `YYYY-MM-DD` strings — never `toISOString()`, which shifted
  * a 1st-of-the-month charge into the previous month for any timezone east of UTC.
+ *
+ * `frequency` defaults to `'Monthly'` so every existing caller (and every
+ * subscription saved before Yearly existed) is unaffected. A `'Yearly'`
+ * subscription fires once a year, in `monthOfYear` (1-12) — the loop still
+ * walks a month at a time so a clamped day-of-month never drifts, it just
+ * skips every cursor whose month doesn't match.
  */
-export function getDueDates(dayOfMonth, lastProcessedDate, today = new Date()) {
+export function getDueDates(dayOfMonth, lastProcessedDate, today = new Date(), frequency = 'Monthly', monthOfYear = 1) {
   const todayStr = toDateString(today);
   const due = [];
+  const isYearly = frequency === 'Yearly';
+  const targetMonthIndex = Math.min(Math.max(Number(monthOfYear) || 1, 1), 12) - 1;
 
   const lastProcessed = lastProcessedDate ? parseTxDate(lastProcessedDate) : null;
-  // Start the month after the last processed one; with no history, just this month.
+  // Start the month after the last processed one; with no history, just this
+  // month for Monthly. A Yearly subscription with no history instead starts
+  // from January, so a target month earlier in the current year than "today"
+  // (a March renewal found in July) is still picked up as due, the same way
+  // a Monthly subscription treats an already-passed day this month as due.
   const startYear = lastProcessed ? lastProcessed.getFullYear() : today.getFullYear();
-  const startMonth = lastProcessed ? lastProcessed.getMonth() + 1 : today.getMonth();
+  const startMonth = lastProcessed ? lastProcessed.getMonth() + 1 : (isYearly ? 0 : today.getMonth());
 
-  for (let i = 0; i < MAX_BACKFILL_MONTHS; i++) {
+  const limit = isYearly ? MAX_BACKFILL_YEARS * 12 : MAX_BACKFILL_MONTHS;
+
+  for (let i = 0; i < limit; i++) {
     // Anchored on the *start* month each iteration, so a clamped date never drifts.
     const cursor = new Date(startYear, startMonth + i, 1);
     if (cursor.getFullYear() > today.getFullYear() ||
         (cursor.getFullYear() === today.getFullYear() && cursor.getMonth() > today.getMonth())) {
       break;
     }
+    if (isYearly && cursor.getMonth() !== targetMonthIndex) continue;
     const dateStr = dueDateFor(cursor.getFullYear(), cursor.getMonth(), dayOfMonth);
     if (dateStr <= todayStr && (!lastProcessedDate || dateStr > String(lastProcessedDate).slice(0, 10))) {
       due.push(dateStr);
@@ -111,7 +129,7 @@ export function planSubscriptionRun(data, today = new Date()) {
   const transactions = data?.transactions || [];
 
   return subs.map(sub => {
-    const dueDates = getDueDates(sub.dayOfMonth, sub.lastProcessed, today);
+    const dueDates = getDueDates(sub.dayOfMonth, sub.lastProcessed, today, sub.frequency, sub.monthOfYear);
     const toPost = dueDates.filter(d => !isAlreadyPosted(transactions, sub, d));
     const alreadyPresent = dueDates.filter(d => isAlreadyPosted(transactions, sub, d));
     return { sub, dueDates, toPost, alreadyPresent };

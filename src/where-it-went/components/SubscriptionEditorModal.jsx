@@ -15,11 +15,18 @@ const selectStyle = {
   color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit'
 };
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
 export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, onSave, onDelete }) {
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState('Expense');
+  const [frequency, setFrequency] = useState('Monthly');
   const [dayOfMonth, setDayOfMonth] = useState(1);
+  const [monthOfYear, setMonthOfYear] = useState(1);
   const [categoryId, setCategoryId] = useState('');
   const [accountId, setAccountId] = useState('');
   const [active, setActive] = useState(true);
@@ -41,6 +48,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
   const amountId = useId();
   const currencySelectId = useId();
   const baseAmountId = useId();
+  const monthSelectId = useId();
 
   // Same three refs TransactionForm uses for the same reasons: don't overwrite
   // a hand-edited RON figure, don't restate a saved foreign amount at today's
@@ -54,7 +62,9 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
     if (sub) {
       setName(sub.name || '');
       setType(sub.type || 'Expense');
+      setFrequency(sub.frequency || 'Monthly');
       setDayOfMonth(sub.dayOfMonth || 1);
+      setMonthOfYear(sub.monthOfYear || 1);
       setCategoryId(sub.categoryId || '');
       setAccountId(sub.accountId || '');
       setActive(sub.active !== false);
@@ -68,7 +78,9 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
       setName('');
       setAmount('');
       setType('Expense');
+      setFrequency('Monthly');
       setDayOfMonth(1);
+      setMonthOfYear(1);
       // A recurring bill is a subscription far more often than not, so start
       // there instead of whichever category the Notion query happened to
       // return first — that was frequently a mismatched guess the user had
@@ -127,8 +139,12 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
   const parsedBase = parseFloat(baseAmount);
   const baseValid = Number.isFinite(parsedBase) && parsedBase > 0;
   const parsedDay = parseInt(dayOfMonth, 10);
+  const isYearly = frequency === 'Yearly';
+  const parsedMonth = parseInt(monthOfYear, 10);
   const canSubmit = !!name.trim() && amountValid && (!isForeign || baseValid) &&
-    Number.isInteger(parsedDay) && parsedDay >= 1 && parsedDay <= 31 && !!categoryId && !!accountId;
+    Number.isInteger(parsedDay) && parsedDay >= 1 && parsedDay <= 31 &&
+    (!isYearly || (Number.isInteger(parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12)) &&
+    !!categoryId && !!accountId;
 
   const effectiveRate = isForeign && amountValid && baseValid ? impliedRate(parsedBase, parsedAmount) : null;
   const rateNote = isForeign
@@ -141,6 +157,8 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
     if (!canSubmit) {
       if (isForeign && !baseValid) {
         setFormError(`Enter the ${BASE_CURRENCY} amount — no exchange rate was available to work it out automatically.`);
+      } else if (isYearly && !(Number.isInteger(parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12)) {
+        setFormError('Pick a month for this yearly subscription.');
       } else {
         setFormError('Fill in every required field with a valid amount and a day between 1 and 31.');
       }
@@ -153,7 +171,9 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
       // RON stays the source of truth, same as a transaction.
       amount: isForeign ? parsedBase : parsedAmount,
       type,
+      frequency,
       dayOfMonth: parsedDay,
+      monthOfYear: isYearly ? parsedMonth : null,
       categoryId,
       accountId,
       active,
@@ -269,7 +289,29 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
           />
         </div>
 
-        <Field label="Day of Month (1-31)" type="number" min="1" max="31" value={dayOfMonth} onChange={e => setDayOfMonth(e.target.value)} required />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Repeats</label>
+          <SegmentedControl
+            value={frequency}
+            onChange={setFrequency}
+            options={[
+              { value: 'Monthly', label: 'Monthly' },
+              { value: 'Yearly', label: 'Yearly' }
+            ]}
+          />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: isYearly ? 'repeat(2, minmax(0, 1fr))' : '1fr', gap: '6px' }}>
+          <Field label="Day of Month (1-31)" type="number" min="1" max="31" value={dayOfMonth} onChange={e => setDayOfMonth(e.target.value)} required />
+          {isYearly && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label htmlFor={monthSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Month</label>
+              <select id={monthSelectId} value={monthOfYear} onChange={e => setMonthOfYear(e.target.value)} style={selectStyle}>
+                {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+              </select>
+            </div>
+          )}
+        </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '6px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

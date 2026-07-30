@@ -113,6 +113,22 @@ describe('getUpcomingBills', () => {
     });
     expect(bills.map(b => b.dueDate)).toEqual(['2027-01-03']);
   });
+
+  it('a yearly subscription only appears once, in its own month', () => {
+    const bills = getUpcomingBills(
+      [sub({ frequency: 'Yearly', monthOfYear: 9, dayOfMonth: 18 })],
+      [], { today, horizonDays: 365 },
+    );
+    expect(bills.map(b => b.dueDate)).toEqual(['2026-09-18']);
+  });
+
+  it('a yearly subscription due earlier this year rolls to next year', () => {
+    const bills = getUpcomingBills(
+      [sub({ frequency: 'Yearly', monthOfYear: 3, dayOfMonth: 18 })],
+      [], { today, horizonDays: 365 },
+    );
+    expect(bills.map(b => b.dueDate)).toEqual(['2027-03-18']);
+  });
 });
 
 describe('billsWithinLeadTime', () => {

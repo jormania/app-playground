@@ -36,6 +36,12 @@ Create five full-page databases anywhere in your Notion workspace with the follo
   subscription is just as often income (rent collected from a tenant) as an
   expense (a streaming plan).
 - **DayOfMonth**: `DayOfMonth` (Number property)
+- **Frequency**: `Frequency` (Select property with options: `Monthly`, `Yearly`) — blank
+  reads as Monthly, same convention as Categories' `Budget Period`, so every
+  subscription saved before this field existed keeps working unchanged.
+- **Month of Year**: `Month of Year` (Number property, 1-12) — only meaningful when
+  `Frequency` is `Yearly`; ignored for Monthly. Paired with `DayOfMonth` to pin a
+  yearly charge (e.g. a March-renewing annual plan) to one calendar date a year.
 - **Category**: `Category` (Relation property -> Connect to Categories Database)
 - **Account**: `Account` (Relation property -> Connect to Accounts Database)
 - **Active**: `Active` (Checkbox property)

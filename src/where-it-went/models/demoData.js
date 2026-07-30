@@ -260,6 +260,19 @@ const RAW_SUBSCRIPTIONS = [
     "accountId": "acc_credit",
     "active": false,
     "lastProcessed": "2026-12-31T00:00:00.000Z"
+  },
+  {
+    "id": "sub_6",
+    "name": "Claude Pro",
+    "amount": 950,
+    "type": "Expense",
+    "frequency": "Yearly",
+    "dayOfMonth": 18,
+    "monthOfYear": 3,
+    "categoryId": "cat_subscriptions",
+    "accountId": "acc_credit",
+    "active": true,
+    "lastProcessed": "2026-03-18T00:00:00.000Z"
   }
 ];
 

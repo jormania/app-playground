@@ -273,12 +273,24 @@ export default function App() {
 
   // Auto-post missed subscription charges — never against the demo fixture.
   //
+  // Root cause of a real duplicate-posting bug: this used to check only the
+  // *explicit* `config.demoMode` flag, not `showingSampleData` (which is also
+  // true for a brand-new install that has never connected Notion at all —
+  // see `hasNotionConfig` above). A session with no token was showing sample
+  // data everywhere else in the UI while this gate still considered the
+  // engine "safe" to run against it, because `config.demoMode` was simply
+  // `undefined` rather than `true`. Every reload re-mounted the engine fresh
+  // (its own `hasRun` guard is per-mount, not global) and posted the same
+  // occurrence again each time — not specific to any one subscription's
+  // currency or frequency, since the bug was in whether the engine should be
+  // running at all, not in what it computed once running.
+  //
   // Also never while offline, while showing a stale snapshot, or with writes
   // still queued. The engine decides what to post by checking the ledger for an
   // existing charge; run it against data that predates the queue and that check
   // reads a ledger missing those rows, so it posts every one of them a second
   // time. This is the sharpest edge in the whole offline feature.
-  const engineSafe = !config.demoMode && isOnline() && staleAt === null && pendingCount === 0;
+  const engineSafe = !showingSampleData && isOnline() && staleAt === null && pendingCount === 0;
   useSubscriptionsEngine({ data, client, onDataChange: loadData, enabled: engineSafe });
 
   const handleConfigSave = (newConfig) => {
