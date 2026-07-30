@@ -453,14 +453,14 @@ input {
 
 .layout-modern .main-content-wrapper {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: scroll; /* Forces track to stay visible, eliminating animation flash */
   min-height: 0; /* Critical flexbug fix: allows container to scroll instead of growing infinitely */
 }
 
 @media (min-width: 800px) {
   .layout-modern .app-layout-container {
     flex-direction: row !important;
-    align-items: flex-start;
+    align-items: stretch !important;
   }
   .layout-modern .mobile-nav-header {
     flex-direction: column;
