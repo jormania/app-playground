@@ -43,6 +43,7 @@ export default function UpcomingBanner({ bills, leadDays, categoriesById, onView
 
   return (
     <div
+      className="card-container stagger-1"
       style={{
         display: 'flex',
         alignItems: 'center',

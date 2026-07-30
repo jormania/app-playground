@@ -73,7 +73,7 @@ export default function DuplicateReview({
   const tone = 'var(--color-warning)';
 
   return (
-    <div style={{
+    <div className="card-container stagger-2" style={{
       marginBottom: 'var(--space-md)',
       padding: 'var(--space-md)',
       backgroundColor: `color-mix(in srgb, ${tone} 10%, var(--color-surface))`,

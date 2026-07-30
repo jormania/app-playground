@@ -168,7 +168,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
       />
 
       {filtered.length === 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-2xl)', textAlign: 'center', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', marginTop: 'var(--space-md)' }}>
+        <div className="card-container stagger-3" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-2xl)', textAlign: 'center', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', marginTop: 'var(--space-md)' }}>
           <div style={{ fontSize: '48px', marginBottom: 'var(--space-sm)' }}>🍃</div>
           <h3 style={{ margin: '0 0 var(--space-xs) 0', color: 'var(--color-ink)' }}>Nothing here</h3>
           <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
@@ -177,7 +177,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
           </p>
         </div>
       ) : (
-        <div style={{ marginTop: 'var(--space-md)' }}>
+        <div className="card-container stagger-3" style={{ marginTop: 'var(--space-md)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-sm)', padding: '0 var(--space-md) var(--space-sm)', fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>
             <span>{filtered.length} transaction{filtered.length === 1 ? '' : 's'}</span>
             <span>
