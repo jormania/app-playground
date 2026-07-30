@@ -44,11 +44,11 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
       // on its own — no negative margins needed to escape the padding.
       marginBottom: 'var(--space-md)'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+      <div className="nav-brand-container" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
         <h1 className="nav-logo" style={{ color: 'var(--color-accent)', margin: 0, cursor: 'pointer' }} onClick={() => onTabChange('dashboard')}>
           W<span className="nav-logo-text">hereItWent</span>
         </h1>
-        <Button variant="primary" size="sm" onClick={onAddClick} style={{ padding: '4px 12px' }}>
+        <Button variant="primary" size="sm" onClick={onAddClick} style={{ padding: '4px 12px' }} className="nav-add-btn nav-add-btn-classic">
           <span className="nav-add-icon">+</span>
           <span className="nav-add-text">&nbsp;Add</span>
         </Button>
@@ -84,6 +84,11 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
       </div>
 
       <div className="nav-controls" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginLeft: 'var(--space-xs)' }}>
+        <Button variant="primary" size="sm" onClick={onAddClick} style={{ padding: '4px 12px' }} className="nav-add-btn nav-add-btn-modern">
+          <span className="nav-add-icon">+</span>
+          <span className="nav-add-text">&nbsp;Add</span>
+        </Button>
+
         {['transactions', 'dashboard', 'insights'].includes(activeTab) && (
           <button
             className="nav-filter-btn"

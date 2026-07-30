@@ -462,7 +462,7 @@ input {
     top: 0;
     align-items: flex-start !important;
     padding: var(--space-xl) var(--space-lg) !important;
-    border-right: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent) !important;
+    border-right: none !important;
     border-bottom: none !important;
     margin-bottom: 0 !important;
     box-sizing: border-box;
@@ -483,6 +483,12 @@ input {
   .layout-modern .nav-controls {
     margin-left: 0 !important;
     margin-top: var(--space-md);
+  }
+  .layout-modern .nav-add-btn-classic {
+    display: none !important;
+  }
+  .layout-modern .nav-add-btn-modern {
+    display: flex !important;
   }
   .layout-modern .main-content-wrapper {
     flex: 1;
@@ -529,4 +535,8 @@ input {
   .layout-modern .main-content-wrapper {
     padding-bottom: 120px !important; /* space for bottom nav */
   }
+}
+
+.nav-add-btn-modern {
+  display: none !important;
 }
