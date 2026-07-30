@@ -187,7 +187,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
             </span>
           </div>
 
-          <div className="transaction-list-header" style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', color: 'var(--color-muted)', fontSize: 'var(--text-sm)', borderBottom: '1px solid var(--color-border)', fontWeight: 'var(--weight-medium)' }}>
+          <div className="transaction-list-header" style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', paddingLeft: 'calc(var(--space-lg) + 4px)', color: 'var(--color-muted)', fontSize: 'var(--text-sm)', borderBottom: '1px solid var(--color-border)', fontWeight: 'var(--weight-medium)' }}>
             {sortConfig.key !== 'date' && (
               <button className="tx-sort-btn" onClick={() => handleSort('date')}>Date{getSortIndicator('date')}</button>
             )}
