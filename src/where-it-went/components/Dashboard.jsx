@@ -206,7 +206,8 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
     const labels = Object.keys(groupedByCategory);
     if (labels.length === 0) return undefined;
 
-    const mutedColor = getComputedStyle(document.documentElement).getPropertyValue('--color-muted').trim() || '#5a636e';
+    const inkColor = getComputedStyle(document.documentElement).getPropertyValue('--color-ink').trim() || '#1b1f24';
+    const surfaceColor = getComputedStyle(document.documentElement).getPropertyValue('--color-surface').trim() || '#ffffff';
     const values = Object.values(groupedByCategory);
     const totalAmount = values.reduce((a, b) => a + b, 0);
 
@@ -217,20 +218,35 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         datasets: [{
           data: values,
           backgroundColor: labels.map(k => getCategoryColor(k)),
-          borderColor: getComputedStyle(document.documentElement).getPropertyValue('--color-surface').trim() || '#ffffff',
-          borderWidth: 2
+          borderColor: surfaceColor,
+          borderWidth: 3,
+          hoverOffset: 6
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        cutout: '65%',
+        layout: {
+          padding: 10
+        },
         plugins: {
           legend: {
-            position: window.innerWidth < 768 ? 'bottom' : 'right',
-            labels: { color: mutedColor, font: { size: window.innerWidth < 768 ? 12 : 13 }, padding: 10, boxWidth: 12 }
+            position: 'bottom',
+            labels: { 
+              color: inkColor, 
+              font: { size: 13, weight: '500' }, 
+              padding: 20, 
+              usePointStyle: true 
+            }
           },
           title: { display: false },
           tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            titleFont: { size: 14, weight: 'bold' },
+            bodyFont: { size: 13 },
+            padding: 12,
+            cornerRadius: 8,
             callbacks: {
               label: (context) => {
                 const value = context.parsed;
@@ -261,36 +277,86 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
 
     const inkColor = getComputedStyle(document.documentElement).getPropertyValue('--color-ink').trim() || '#1b1f24';
     const mutedColor = getComputedStyle(document.documentElement).getPropertyValue('--color-muted').trim() || '#5a636e';
+    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--color-border').trim() || '#e1e4e8';
 
-    trendChartInstance.current = new Chart(trendChartRef.current, {
+    const canvas = trendChartRef.current;
+    const ctx = canvas.getContext('2d');
+    // Use offsetHeight or fallback to 300 for the gradient height
+    const chartHeight = canvas.offsetHeight || 300;
+
+    const incomeGradient = ctx.createLinearGradient(0, 0, 0, chartHeight);
+    incomeGradient.addColorStop(0, 'hsla(142, 71%, 45%, 0.8)');
+    incomeGradient.addColorStop(1, 'hsla(142, 71%, 45%, 0.1)');
+
+    const expenseGradient = ctx.createLinearGradient(0, 0, 0, chartHeight);
+    expenseGradient.addColorStop(0, 'hsla(348, 83%, 60%, 0.8)');
+    expenseGradient.addColorStop(1, 'hsla(348, 83%, 60%, 0.1)');
+
+    trendChartInstance.current = new Chart(canvas, {
       type: 'bar',
       data: {
         labels: trendSeries.labels,
         datasets: [
-          { label: 'Income', data: trendSeries.income, backgroundColor: 'hsl(142, 71%, 45%)', borderRadius: 4 },
-          { label: 'Expense', data: trendSeries.expense, backgroundColor: 'hsl(348, 83%, 60%)', borderRadius: 4 }
+          { 
+            label: 'Income', 
+            data: trendSeries.income, 
+            backgroundColor: incomeGradient, 
+            borderColor: 'hsl(142, 71%, 45%)',
+            borderWidth: 2,
+            borderRadius: 6 
+          },
+          { 
+            label: 'Expense', 
+            data: trendSeries.expense, 
+            backgroundColor: expenseGradient, 
+            borderColor: 'hsl(348, 83%, 60%)',
+            borderWidth: 2,
+            borderRadius: 6 
+          }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: {
+          padding: { top: 10 }
+        },
         scales: {
           x: {
-            grid: { color: 'transparent' },
+            grid: { display: false },
             ticks: {
-              color: mutedColor, autoSkip: true, maxTicksLimit: 8,
-              maxRotation: 0, minRotation: 0,
-              font: { size: window.innerWidth < 600 ? 10 : 12 }
+              color: inkColor, 
+              autoSkip: true, 
+              maxTicksLimit: 8,
+              maxRotation: 0, 
+              minRotation: 0,
+              font: { size: window.innerWidth < 600 ? 11 : 13, weight: '500' }
             }
           },
           y: {
-            grid: { color: getComputedStyle(document.documentElement).getPropertyValue('--color-border').trim() || '#e1e4e8' },
-            ticks: { color: mutedColor, callback: (value) => formatCurrencyCompact(value) }
+            border: { display: false },
+            grid: { color: borderColor, drawTicks: false },
+            ticks: { 
+              color: inkColor,
+              padding: 8,
+              font: { size: 12, weight: '500' },
+              callback: (value) => formatCurrencyCompact(value) 
+            }
           }
         },
         plugins: {
-          legend: { position: 'top', labels: { color: inkColor } },
-          tooltip: { callbacks: { label: (context) => ` ${context.dataset.label}: ${formatCurrency(context.parsed.y)}` } }
+          legend: { 
+            position: 'bottom', 
+            labels: { color: inkColor, font: { size: 13, weight: '500' }, padding: 20, usePointStyle: true } 
+          },
+          tooltip: { 
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            titleFont: { size: 14, weight: 'bold' },
+            bodyFont: { size: 13 },
+            padding: 12,
+            cornerRadius: 8,
+            callbacks: { label: (context) => ` ${context.dataset.label}: ${formatCurrency(context.parsed.y)}` } 
+          }
         }
       }
     });
@@ -310,8 +376,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
       frame = window.requestAnimationFrame(() => {
         frame = null;
         if (chartInstance.current) {
-          chartInstance.current.options.plugins.legend.position = window.innerWidth < 768 ? 'bottom' : 'right';
-          chartInstance.current.update();
+          // Legend position is now statically set to bottom, no resize update needed for it
         }
         if (trendChartInstance.current) {
           trendChartInstance.current.options.scales.x.ticks.font.size = window.innerWidth < 600 ? 10 : 12;
