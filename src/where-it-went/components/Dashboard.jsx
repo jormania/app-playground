@@ -284,13 +284,18 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
     // Use offsetHeight or fallback to 300 for the gradient height
     const chartHeight = canvas.offsetHeight || 300;
 
-    const incomeGradient = ctx.createLinearGradient(0, 0, 0, chartHeight);
-    incomeGradient.addColorStop(0, 'hsla(142, 71%, 45%, 0.8)');
-    incomeGradient.addColorStop(1, 'hsla(142, 71%, 45%, 0.1)');
+    // ctx can be null in environments without a real canvas backend (e.g. tests) — fall back to a flat color.
+    const incomeGradient = ctx ? ctx.createLinearGradient(0, 0, 0, chartHeight) : 'hsla(142, 71%, 45%, 0.4)';
+    if (ctx) {
+      incomeGradient.addColorStop(0, 'hsla(142, 71%, 45%, 0.8)');
+      incomeGradient.addColorStop(1, 'hsla(142, 71%, 45%, 0.1)');
+    }
 
-    const expenseGradient = ctx.createLinearGradient(0, 0, 0, chartHeight);
-    expenseGradient.addColorStop(0, 'hsla(348, 83%, 60%, 0.8)');
-    expenseGradient.addColorStop(1, 'hsla(348, 83%, 60%, 0.1)');
+    const expenseGradient = ctx ? ctx.createLinearGradient(0, 0, 0, chartHeight) : 'hsla(348, 83%, 60%, 0.4)';
+    if (ctx) {
+      expenseGradient.addColorStop(0, 'hsla(348, 83%, 60%, 0.8)');
+      expenseGradient.addColorStop(1, 'hsla(348, 83%, 60%, 0.1)');
+    }
 
     trendChartInstance.current = new Chart(canvas, {
       type: 'bar',
