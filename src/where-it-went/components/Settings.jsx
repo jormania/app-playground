@@ -83,15 +83,23 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const [theme, setTheme] = useState(config.theme || defaultTheme());
   // Transfers default OFF — most people don't need to track internal
   // account-to-account moves, so the feature stays invisible until asked for.
-  const [features, setFeatures] = useState(config.features || { 
-    budgeting: true, 
-    cashFlow: true, 
-    transfers: false, 
-    upcoming: true,
-    flairAmbientGlow: false,
-    flairGlass: false,
-    flairStagger: false,
-    flairHover: false
+  const baseFeatures = config.features || {};
+  const [features, setFeatures] = useState({ 
+    budgeting: baseFeatures.budgeting ?? true, 
+    cashFlow: baseFeatures.cashFlow ?? true, 
+    transfers: baseFeatures.transfers ?? false, 
+    upcoming: baseFeatures.upcoming ?? true,
+    flairMaster: baseFeatures.flairMaster ?? true,
+    flairTactile: baseFeatures.flairTactile ?? true,
+    flairPulse: baseFeatures.flairPulse ?? true,
+    flairEmpty: baseFeatures.flairEmpty ?? true,
+    flairBudget: baseFeatures.flairBudget ?? true,
+    flairTheme: baseFeatures.flairTheme ?? true,
+    flairTab: baseFeatures.flairTab ?? true,
+    flairAmbientGlow: baseFeatures.flairAmbientGlow ?? false,
+    flairGlass: baseFeatures.flairGlass ?? false,
+    flairStagger: baseFeatures.flairStagger ?? false,
+    flairHover: baseFeatures.flairHover ?? false
   });
   const [upcomingLeadDays, setUpcomingLeadDays] = useState(config.upcomingLeadDays ?? DEFAULT_LEAD_DAYS);
   const [status, setStatus] = useState({ type: '', msg: '' });
@@ -261,7 +269,6 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           <Field label="Trips Database ID or Link (Optional)" type="text" value={tripsDb} onChange={e => setTripsDb(e.target.value)} />
         </div>
       </CollapsibleSection>
-
       <CollapsibleSection id="features" title="Feature Toggles">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
           {/* Every switch says what it actually changes. Four unlabelled toggles
@@ -316,36 +323,105 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
       </CollapsibleSection>
 
       <CollapsibleSection id="visual-flair" title="Visual Flair">
-        <div style={{ padding: '0 var(--space-sm) var(--space-md)' }}>
-          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', marginBottom: 'var(--space-md)' }}>
+        <div style={{ padding: '0 var(--space-sm) var(--space-md)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>
             Add state-of-the-art UI flourishes to the app. (Requires modern browser).
           </div>
           
           <SettingsToggle
+            label="Master Toggle: Enable All Visual Flair"
+            hint="Switch off to immediately disable all non-essential animations, transitions, and hover effects."
+            checked={features.flairMaster}
+            onChange={e => setFeatures(f => {
+              const on = e.target.checked;
+              return {
+                ...f,
+                flairMaster: on,
+                flairTactile: on,
+                flairPulse: on,
+                flairEmpty: on,
+                flairBudget: on,
+                flairTheme: on,
+                flairTab: on,
+                flairAmbientGlow: on,
+                flairGlass: on,
+                flairStagger: on,
+                flairHover: on
+              };
+            })}
+          />
+          <SettingsToggle
+            label="Tactile Press States"
+            hint="Interactive elements physically scale down when pressed."
+            checked={features.flairTactile && features.flairMaster !== false}
+            disabled={features.flairMaster === false}
+            onChange={e => setFeatures(f => ({ ...f, flairTactile: e.target.checked }))}
+          />
+          <SettingsToggle
+            label="Add Button Pulse"
+            hint="The primary action button continuously pulses when hovered."
+            checked={features.flairPulse && features.flairMaster !== false}
+            disabled={features.flairMaster === false}
+            onChange={e => setFeatures(f => ({ ...f, flairPulse: e.target.checked }))}
+          />
+          <SettingsToggle
+            label="Animated Empty States"
+            hint="Empty state icons float gently to keep the page feeling alive."
+            checked={features.flairEmpty && features.flairMaster !== false}
+            disabled={features.flairMaster === false}
+            onChange={e => setFeatures(f => ({ ...f, flairEmpty: e.target.checked }))}
+          />
+          <SettingsToggle
+            label="Budget Bar Growth"
+            hint="Budget chart bars smoothly animate from 0 to their target value on load."
+            checked={features.flairBudget && features.flairMaster !== false}
+            disabled={features.flairMaster === false}
+            onChange={e => setFeatures(f => ({ ...f, flairBudget: e.target.checked }))}
+          />
+          <SettingsToggle
+            label="Theme Transitions"
+            hint="Colors crossfade elegantly rather than snapping instantly when navigating or switching dark mode."
+            checked={features.flairTheme && features.flairMaster !== false}
+            disabled={features.flairMaster === false}
+            onChange={e => setFeatures(f => ({ ...f, flairTheme: e.target.checked }))}
+          />
+          <SettingsToggle
+            label="Active Tab Glow"
+            hint="The selected navigation tab icon pops with an animated scale effect."
+            checked={features.flairTab && features.flairMaster !== false}
+            disabled={features.flairMaster === false}
+            onChange={e => setFeatures(f => ({ ...f, flairTab: e.target.checked }))}
+          />
+          
+          <SettingsToggle
             label="Ambient Mesh Glow"
             hint="Adds a slowly animating, blurred gradient to the background to give the app depth."
-            checked={features.flairAmbientGlow === true}
+            checked={features.flairAmbientGlow === true && features.flairMaster !== false}
+            disabled={features.flairMaster === false}
             onChange={e => setFeatures(f => ({ ...f, flairAmbientGlow: e.target.checked }))}
           />
           
           <SettingsToggle
             label="Frosted Glassmorphism"
             hint="Cards and containers become slightly translucent, blurring the background beneath them."
-            checked={features.flairGlass === true}
+            checked={features.flairGlass === true && features.flairMaster !== false}
+            disabled={features.flairMaster === false}
             onChange={e => setFeatures(f => ({ ...f, flairGlass: e.target.checked }))}
           />
           
           <SettingsToggle
             label="Waterfall Entrances"
             hint="Sections cascade onto the screen smoothly rather than appearing instantly."
-            checked={features.flairStagger === true}
+            checked={features.flairStagger === true && features.flairMaster !== false}
+            disabled={features.flairMaster === false}
             onChange={e => setFeatures(f => ({ ...f, flairStagger: e.target.checked }))}
           />
 
           <SettingsToggle
             label="Reactive Hover Glows"
             hint="KPI cards and rows lift and glow subtly when you hover over them."
-            checked={features.flairHover === true}
+            checked={features.flairHover === true && features.flairMaster !== false}
+            disabled={features.flairMaster === false}
             onChange={e => setFeatures(f => ({ ...f, flairHover: e.target.checked }))}
           />
 

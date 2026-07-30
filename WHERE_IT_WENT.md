@@ -991,3 +991,8 @@ suite (755 → 770 tests), typecheck and lint all green.
   - **Sparklines**: Added background inline SVG sparkline charts to the Income, Expenses, and Net KPI cards on the dashboard, visualizing the trailing 30-day cash flow at a glance.
   - **Skeleton Loading States**: Replaced the text-based loading fallbacks in App.jsx with structured pulsating skeleton blocks mapping accurately to the component dimensions of Dashboard, Transactions, Insights, and Settings.
   - **Professional Iconography**: Migrated Dashboard emoji headers (e.g., ?? Latest Transactions, ?? Income by Category) to professional vector SVGs using the lucide-react library.
+## Visual Flair and Laptop Nav Tweak
+- Created a 'Visual Flair' section in Settings with a Master Toggle.
+- Implemented Tactile Press States, FAB Pulse, Animated Empty States, Budget Bar Growth, Theme Transitions, and Active Tab Glow.
+- Added Master Toggle support for existing legacy flair options.
+- Centered the SVG and text horizontally within the navigation tabs on the laptop view.

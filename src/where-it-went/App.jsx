@@ -354,14 +354,19 @@ export default function App() {
   };
 
   const flairClasses = [
-    config?.features?.flairAmbientGlow ? 'flair-ambient' : '',
-    config?.features?.flairGlass ? 'flair-glass' : '',
-    config?.features?.flairStagger ? 'flair-stagger' : '',
-    config?.features?.flairHover ? 'flair-hover' : '',
+    (config?.features?.flairMaster !== false && config?.features?.flairAmbientGlow) ? 'flair-ambient' : '',
+    (config?.features?.flairMaster !== false && config?.features?.flairGlass) ? 'flair-glass' : '',
+    (config?.features?.flairMaster !== false && config?.features?.flairStagger) ? 'flair-stagger' : '',
+    (config?.features?.flairMaster !== false && config?.features?.flairHover) ? 'flair-hover' : '',
     config?.features?.flairModernLayout ? 'layout-modern' : '',
-    config?.features?.flairCompactDensity ? 'density-compact' : ''
+    config?.features?.flairCompactDensity ? 'density-compact' : '',
+    (config?.features?.flairMaster !== false && config?.features?.flairTactile !== false) ? 'flair-tactile' : '',
+    (config?.features?.flairMaster !== false && config?.features?.flairPulse !== false) ? 'flair-pulse' : '',
+    (config?.features?.flairMaster !== false && config?.features?.flairEmpty !== false) ? 'flair-empty' : '',
+    (config?.features?.flairMaster !== false && config?.features?.flairBudget !== false) ? 'flair-budget' : '',
+    (config?.features?.flairMaster !== false && config?.features?.flairTheme !== false) ? 'flair-theme' : '',
+    (config?.features?.flairMaster !== false && config?.features?.flairTab !== false) ? 'flair-tab' : ''
   ].filter(Boolean).join(' ');
-
   return (
     <div className={flairClasses} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Shown whenever the figures on screen are samples — which includes a

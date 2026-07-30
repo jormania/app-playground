@@ -501,7 +501,7 @@ input {
     display: none !important;
   }
   .layout-modern .nav-tab-btn {
-    justify-content: flex-start !important;
+    justify-content: center !important;
     padding: var(--space-md) var(--space-lg) !important;
   }
   .layout-modern .nav-controls {
@@ -619,4 +619,100 @@ input {
 
 .nav-controls-modern {
   display: none !important;
+}
+
+/* ==========================================================================
+   Visual Flair Classes (Toggled in Settings)
+   ========================================================================== */
+
+/* 1. Tactile Press States */
+.flair-tactile button:active,
+.flair-tactile .nav-tab-btn:active,
+.flair-tactile .nav-period-btn:active,
+.flair-tactile .nav-filter-btn:active,
+.flair-tactile .transaction-row:active {
+  transform: scale(0.97) !important;
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 2. Floating Action Button (FAB) Pulse */
+@keyframes fab-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 60%, transparent); }
+  70% { box-shadow: 0 0 0 15px color-mix(in srgb, var(--color-accent) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 0%, transparent); }
+}
+.flair-pulse .nav-add-btn:hover,
+.flair-pulse .nav-add-btn-classic:hover {
+  animation: fab-pulse 1.5s infinite;
+}
+
+/* 3. Animated Empty States */
+@keyframes float-icon {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0); }
+}
+.flair-empty svg[stroke="currentColor"][fill="none"] {
+  /* Simple heuristic: if it's a large unstyled SVG in an empty state, float it.
+     We don't want to target small icons in buttons. We will target SVGs > 32px height if possible,
+     or we can target specific empty state container paths. */
+}
+.flair-empty [style*="font-size: 48px"] svg,
+.flair-empty [style*="height: 48px"] svg,
+.flair-empty [style*="width: 48px"] svg,
+.flair-empty .empty-state-icon svg {
+  animation: float-icon 4s ease-in-out infinite;
+}
+/* Specifically targeting the empty state SVGs we found with width/height > 32px */
+.flair-empty main > div > svg[width="48"],
+.flair-empty main > div > svg[width="64"] {
+  animation: float-icon 4s ease-in-out infinite;
+}
+
+/* 4. Budget Bar Growth */
+@keyframes slideRight {
+  from { width: 0; opacity: 0; }
+  to { opacity: 1; }
+}
+.flair-budget .budget-bar-fill,
+.flair-budget .budget-bar-fill-large {
+  animation: slideRight 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 5. Theme Transitions */
+.flair-theme, .flair-theme * {
+  /* Apply a gentle transition to color properties so dark mode toggle doesn't snap instantly */
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 0.3s;
+  transition-timing-function: ease;
+}
+.flair-theme .nav-tab-btn,
+.flair-theme .transaction-row,
+.flair-theme button,
+.flair-theme input,
+.flair-theme select {
+  /* Keep their specific faster transitions for hover/active states */
+  transition: all 0.2s ease;
+}
+
+/* 6. Active Tab Glow */
+.flair-tab .nav-tab-btn.active {
+  position: relative;
+  overflow: hidden;
+}
+.flair-tab .nav-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  width: 80%;
+  height: 3px;
+  background-color: var(--color-accent);
+  border-radius: 3px 3px 0 0;
+  box-shadow: 0 -2px 8px var(--color-accent);
+  animation: slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes slideUpFade {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
