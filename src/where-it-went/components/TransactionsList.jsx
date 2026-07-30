@@ -180,10 +180,10 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
         <>
           <div className="card-container stagger-2" style={{
             display: 'flex',
-            justifyContent: 'space-between',
+            justifyContent: 'flex-start',
             alignItems: 'center',
             flexWrap: 'wrap',
-            gap: 'var(--space-sm)',
+            gap: '1ch',
             padding: 'var(--space-sm) var(--space-md)',
             marginTop: 'var(--space-md)',
             backgroundColor: 'var(--color-surface)',
@@ -194,8 +194,10 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
             minWidth: 0
           }}>
             <span style={{ color: 'var(--color-muted)' }}>{filtered.length} transaction{filtered.length === 1 ? '' : 's'}</span>
+            <span style={{ color: 'var(--color-muted)' }}>&middot;</span>
             <span style={{ color: 'var(--color-success)' }}>Income +{formatCurrency(totals.income)}</span>
-            <span style={{ color: 'var(--color-danger)' }}>Expense −{formatCurrency(totals.expense)}</span>
+            <span style={{ color: 'var(--color-muted)' }}>&middot;</span>
+            <span style={{ color: 'var(--color-danger)' }}>Expense &minus;{formatCurrency(totals.expense)}</span>
           </div>
           <div className="card-container stagger-3" style={{ marginTop: 'var(--space-md)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
 
