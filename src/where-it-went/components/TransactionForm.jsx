@@ -104,7 +104,6 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
   const suggestedCurrency = selectedTrip?.currency || accountCurrency || BASE_CURRENCY;
   const activeCurrency = currency || suggestedCurrency;
   const isForeign = activeCurrency !== BASE_CURRENCY;
-  const today = toDateString(new Date());
 
   // Suggest an account from the category — for *new* transactions only.
   //
@@ -251,7 +250,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
       />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-md)' }}>
-        <Field label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} required max={today} />
+        <Field label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} required />
 
         {/* Amount + currency share one control rather than sitting in separate
             rows. This replaced a dashed "original amount" box below Account, so

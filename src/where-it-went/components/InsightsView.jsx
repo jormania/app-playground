@@ -459,7 +459,7 @@ export default function InsightsView({ data, period, filterProps, config }) {
                       {new Date(tx.date).toLocaleDateString()}
                     </div>
                   </div>
-                  <div style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-base)' }}>{formatCurrency(tx.amount)}</div>
+                  <div style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-base)', whiteSpace: 'nowrap', flexShrink: 0, marginLeft: 'var(--space-sm)' }}>{formatCurrency(tx.amount)}</div>
                 </li>
               ))}
             </ul>
@@ -615,7 +615,7 @@ export default function InsightsView({ data, period, filterProps, config }) {
                             <span style={{ fontWeight: 'var(--weight-medium)' }}>{tx.description}</span>
                             <div style={{ fontSize: '11px', color: 'var(--color-muted)' }}>{new Date(tx.date).toLocaleDateString()}</div>
                           </div>
-                          <span style={{ fontWeight: 'var(--weight-bold)' }}>{formatCurrency(tx.amount)}</span>
+                          <span style={{ fontWeight: 'var(--weight-bold)', whiteSpace: 'nowrap', flexShrink: 0, marginLeft: 'var(--space-sm)' }}>{formatCurrency(tx.amount)}</span>
                         </li>
                       ))}
                     </ul>
@@ -791,8 +791,8 @@ export default function InsightsView({ data, period, filterProps, config }) {
                               <span style={{ fontWeight: 'var(--weight-medium)' }}>{tx.description}</span>
                               <div style={{ fontSize: '11px', color: 'var(--color-muted)' }}>{new Date(tx.date).toLocaleDateString()}</div>
                             </div>
-                            <span style={{ fontWeight: 'var(--weight-bold)', textAlign: 'right' }}>
-                              <div>{formatCurrency(tx.amount)}</div>
+                            <span style={{ fontWeight: 'var(--weight-bold)', textAlign: 'right', flexShrink: 0, marginLeft: 'var(--space-sm)' }}>
+                              <div style={{ whiteSpace: 'nowrap' }}>{formatCurrency(tx.amount)}</div>
                               <div style={{ fontSize: '11px', color: 'var(--color-muted)', fontWeight: 'normal' }}>
                                 {tx.percentageOfExpense ? `${tx.percentageOfExpense.toFixed(0)}% of total` : ''}
                               </div>
@@ -980,8 +980,8 @@ export default function InsightsView({ data, period, filterProps, config }) {
                               <span style={{ fontWeight: 'var(--weight-medium)' }}>{tx.description}</span>
                               <div style={{ fontSize: '11px', color: 'var(--color-muted)' }}>{new Date(tx.date).toLocaleDateString()}</div>
                             </div>
-                            <span style={{ fontWeight: 'var(--weight-bold)', textAlign: 'right' }}>
-                              <div>{formatCurrency(tx.amount)}</div>
+                            <span style={{ fontWeight: 'var(--weight-bold)', textAlign: 'right', flexShrink: 0, marginLeft: 'var(--space-sm)' }}>
+                              <div style={{ whiteSpace: 'nowrap' }}>{formatCurrency(tx.amount)}</div>
                               <div style={{ fontSize: '11px', color: 'var(--color-muted)', fontWeight: 'normal' }}>
                                 {tx.percentageOfSpend ? `${tx.percentageOfSpend.toFixed(0)}% of total` : ''}
                               </div>
