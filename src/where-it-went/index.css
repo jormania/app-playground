@@ -517,7 +517,7 @@ input {
     display: none !important;
   }
   .layout-modern .nav-tab-btn {
-    justify-content: center !important;
+    justify-content: flex-start !important;
     padding: var(--space-md) var(--space-lg) !important;
   }
   .layout-modern .nav-controls {
