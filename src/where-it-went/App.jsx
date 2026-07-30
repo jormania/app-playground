@@ -352,8 +352,15 @@ export default function App() {
     setShowAddForm(true);
   };
 
+  const flairClasses = [
+    config?.features?.flairAmbientGlow ? 'flair-ambient' : '',
+    config?.features?.flairGlass ? 'flair-glass' : '',
+    config?.features?.flairStagger ? 'flair-stagger' : '',
+    config?.features?.flairHover ? 'flair-hover' : ''
+  ].filter(Boolean).join(' ');
+
   return (
-    <>
+    <div className={flairClasses} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Shown whenever the figures on screen are samples — which includes a
           brand-new install that has never been configured, not just the explicit
           demo flag. Previously a first-run user saw a full ledger of invented
@@ -525,6 +532,6 @@ export default function App() {
         )}
       </main>
     </div>
-    </>
+    </div>
   );
 }

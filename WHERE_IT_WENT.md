@@ -113,12 +113,17 @@ Click **Save Configuration**. The app will now read and write directly to your N
 - **KPIs**: View total Income, Expenses, and Net Cash Flow for the selected period. Displayed on a touch-friendly, horizontally scrollable row for mobile devices to prevent wrapping.
 - **Budget Limits**: Track spending against a limit per category, set **per month, per quarter or per year** — optionally anchored to a renewal date, and optionally carrying unspent room (and overspend) into the next period. Each bar is labelled with its own window (`Jul 2026`, `Q3 2026`, `2026`) and is measured against that window regardless of the selected period or filters. Edit limits, periods and rollover from "Edit Budgets"; changes sync back to your Notion Categories database.
 - **Expense Breakdown Chart**: A highly responsive, animated `Chart.js` Doughnut visualization of spending by category, themed to match the app's aesthetic. Features deterministic category coloring that creates a cohesive color language across the entire app.
-- **Cash Flow Trend Visualization**: A `Chart.js` Bar chart showing daily (or monthly) spending and income patterns over the selected time period.
+- **Cash Flow Trend Visualization**: A `Chart.js` Bar chart showing daily (or monthly) spending and income patterns over the selected time period. Features mathematical trend lines (Moving Average, Linear Regression Trajectory, or Smooth Curves) controllable via a Segmented Control in Settings to visualize spending momentum.
 - **Aesthetic Refinements (Round 3 Polish)**: 
   - Implementation of a global typography update adopting the highly readable, modern `Outfit` font to impart a slick, premium feel.
   - A frosted-glass (`backdrop-filter: blur()`) sticky header for deep dimensional scrolling.
   - Animated, fintech-style "Odometer" number counters for Dashboard KPIs (`useCountUp` hook).
   - Tactile, hover-responsive row states across all lists with Category Color Edge Bleeds for rapid visual scanning.
+  - **Premium Visual Flair (Opt-in via Settings):**
+    - **Ambient Mesh Glow:** Animated, hardware-accelerated blurred gradients mapped to accent colors in the background.
+    - **Glassmorphism Elevation:** Translucent UI cards (`backdrop-filter: blur(16px)`) that float over the ambient mesh.
+    - **Staggered Waterfall Entrances:** CSS-driven cascading load animations for data sections.
+    - **Reactive Hover States:** Soft, metric-tinted (green/red) glow shadows on touch/hover, strictly guarded by `@media (hover: hover)` for perfect mobile degradation on devices like the Galaxy S24.
 
 ### Advanced Insights Engine
 - **Monthly Reflection Highlights**: Generates beautiful, metric-driven cards summarizing the top takeaways for the month (Spending Trend, Top Discretionary Expense, Rent Coverage, and Unexpected Expenses) utilizing a clean, highly scannable UI.

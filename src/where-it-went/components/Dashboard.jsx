@@ -17,6 +17,7 @@ import {
 } from '../lib/period';
 import { getUpcomingBills, getUpcomingTransactions, DEFAULT_HORIZON_DAYS } from '../lib/upcoming';
 import { computeAllBudgets, monthlyEquivalent } from '../lib/budgets';
+import { calculateMovingAverage, calculateLinearRegression } from '../lib/trends';
 
 const CARD = {
   padding: 'var(--space-lg)',
@@ -302,28 +303,86 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
       expenseGradient.addColorStop(1, 'hsla(348, 83%, 60%, 0.1)');
     }
 
+    const baseDatasets = [
+      { 
+        label: 'Income', 
+        data: trendSeries.income, 
+        backgroundColor: incomeGradient, 
+        borderColor: 'hsl(142, 71%, 45%)',
+        borderWidth: 2,
+        borderRadius: 6,
+        order: 2
+      },
+      { 
+        label: 'Expense', 
+        data: trendSeries.expense, 
+        backgroundColor: expenseGradient, 
+        borderColor: 'hsl(348, 83%, 60%)',
+        borderWidth: 2,
+        borderRadius: 6,
+        order: 2
+      }
+    ];
+
+    const trendMode = config?.features?.trendLineMode || 'none';
+    const activeDatasets = [...baseDatasets];
+
+    if (trendMode !== 'none') {
+      let incomeTrendData, expenseTrendData;
+      let tension = 0;
+      let borderDash = [];
+      
+      if (trendMode === 'moving_average') {
+        incomeTrendData = calculateMovingAverage(trendSeries.income, 3);
+        expenseTrendData = calculateMovingAverage(trendSeries.expense, 3);
+        tension = 0.4;
+      } else if (trendMode === 'linear_regression') {
+        incomeTrendData = calculateLinearRegression(trendSeries.income);
+        expenseTrendData = calculateLinearRegression(trendSeries.expense);
+        borderDash = [5, 5];
+      } else if (trendMode === 'smooth') {
+        incomeTrendData = trendSeries.income;
+        expenseTrendData = trendSeries.expense;
+        tension = 0.4;
+      }
+
+      // Add lines on top of the bars
+      activeDatasets.push({
+        type: 'line',
+        label: 'Income Trend',
+        data: incomeTrendData,
+        borderColor: 'hsl(142, 71%, 45%)',
+        borderWidth: 3,
+        tension,
+        cubicInterpolationMode: tension > 0 ? 'monotone' : 'default',
+        borderDash,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        fill: false,
+        order: 1
+      });
+
+      activeDatasets.push({
+        type: 'line',
+        label: 'Expense Trend',
+        data: expenseTrendData,
+        borderColor: 'hsl(348, 83%, 60%)',
+        borderWidth: 3,
+        tension,
+        cubicInterpolationMode: tension > 0 ? 'monotone' : 'default',
+        borderDash,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        fill: false,
+        order: 1
+      });
+    }
+
     trendChartInstance.current = new Chart(canvas, {
       type: 'bar',
       data: {
         labels: trendSeries.labels,
-        datasets: [
-          { 
-            label: 'Income', 
-            data: trendSeries.income, 
-            backgroundColor: incomeGradient, 
-            borderColor: 'hsl(142, 71%, 45%)',
-            borderWidth: 2,
-            borderRadius: 6 
-          },
-          { 
-            label: 'Expense', 
-            data: trendSeries.expense, 
-            backgroundColor: expenseGradient, 
-            borderColor: 'hsl(348, 83%, 60%)',
-            borderWidth: 2,
-            borderRadius: 6 
-          }
-        ]
+        datasets: activeDatasets
       },
       options: {
         responsive: true,
@@ -357,7 +416,13 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         plugins: {
           legend: { 
             position: 'bottom', 
-            labels: { color: inkColor, font: { size: 13, weight: '500' }, padding: 20, usePointStyle: true } 
+            labels: { 
+              color: inkColor, 
+              font: { size: 13, weight: '500' }, 
+              padding: 20, 
+              usePointStyle: true,
+              filter: (item) => !item.text.includes('Trend')
+            } 
           },
           tooltip: { 
             backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -377,7 +442,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         trendChartInstance.current = null;
       }
     };
-  }, [trendKey, trendSeries, config?.theme]);
+  }, [trendKey, trendSeries, config?.theme, config?.features?.trendLineMode]);
 
   useEffect(() => {
     let frame = null;
@@ -457,7 +522,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         ].map(kpi => (
           <div
             key={kpi.label}
-            className="kpi-card"
+            className={`kpi-card kpi-${kpi.label.toLowerCase()} stagger-1`}
             style={{ flex: 1, minWidth: '100px', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}
           >
             <div style={{ marginBottom: '4px' }}>
@@ -472,7 +537,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-xl)' }}>
-        <div style={CARD}>
+        <div className="card-container stagger-2" style={CARD}>
           <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>🧾 Latest Transactions</h2>
           {filteredTransactions.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-xl) var(--space-md)', textAlign: 'center' }}>
@@ -560,7 +625,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
             (really ~49px once its margin counts), so the canvas overflowed the
             card and the card scrolled a little. Chart.js runs with
             maintainAspectRatio:false and fills whatever box it is given. */}
-        <div style={{ ...CARD, height: '450px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div className="card-container stagger-2" style={{ ...CARD, height: '450px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0, marginBottom: 'var(--space-md)' }}>
             {chartType === 'Income' ? '📈 Income by Category' : '📊 Expenses by Category'}
           </h2>
@@ -583,7 +648,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
       </div>
 
       {config?.features?.budgeting !== false && (
-        <div style={{ ...CARD, marginTop: 'var(--space-xl)' }}>
+        <div className="card-container stagger-3" style={{ ...CARD, marginTop: 'var(--space-xl)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
             <div>
               <h2 style={{ fontSize: 'var(--text-lg)', margin: 0 }}>💰 Budget Limits</h2>
@@ -699,13 +764,13 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
           section on the Dashboard. Independent of the selected period: a bill
           due next week is due next week whether you're looking at July or 2026. */}
       {config?.features?.upcoming !== false && (
-        <div id="upcoming-bills-card" style={{ ...CARD, marginTop: 'var(--space-xl)' }}>
+        <div id="upcoming-bills-card" className="card-container stagger-4" style={{ ...CARD, marginTop: 'var(--space-xl)' }}>
           <UpcomingBills bills={upcomingBills} transactions={upcomingTransactions} categories={data.categories} horizonDays={upcomingHorizonDays} />
         </div>
       )}
 
       {config?.features?.cashFlow !== false && (
-        <div className="trend-chart-container" style={{ ...CARD, marginTop: 'var(--space-xl)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div className="trend-chart-container card-container stagger-4" style={{ ...CARD, marginTop: 'var(--space-xl)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <h2 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0, marginBottom: 'var(--space-md)' }}>📊 Cash Flow Trend</h2>
           {trendSeries.labels.length === 0 ? (
             <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: 0 }}>No income or spending recorded in this period yet.</p>

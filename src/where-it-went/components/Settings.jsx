@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
 import { SettingsToggle } from '../../ds/components/SettingsToggle';
+import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { PromptModal } from '../../ds';
 import { NotionClient } from '../lib/notionClient';
 import SubscriptionEditorModal from './SubscriptionEditorModal';
@@ -82,7 +83,16 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const [theme, setTheme] = useState(config.theme || defaultTheme());
   // Transfers default OFF — most people don't need to track internal
   // account-to-account moves, so the feature stays invisible until asked for.
-  const [features, setFeatures] = useState(config.features || { budgeting: true, cashFlow: true, transfers: false, upcoming: true });
+  const [features, setFeatures] = useState(config.features || { 
+    budgeting: true, 
+    cashFlow: true, 
+    transfers: false, 
+    upcoming: true,
+    flairAmbientGlow: false,
+    flairGlass: false,
+    flairStagger: false,
+    flairHover: false
+  });
   const [upcomingLeadDays, setUpcomingLeadDays] = useState(config.upcomingLeadDays ?? DEFAULT_LEAD_DAYS);
   const [status, setStatus] = useState({ type: '', msg: '' });
   const [showScrubPrompt, setShowScrubPrompt] = useState(false);
@@ -268,6 +278,22 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             checked={features.cashFlow}
             onChange={e => setFeatures(f => ({ ...f, cashFlow: e.target.checked }))}
           />
+          {features.cashFlow !== false && (
+            <div style={{ paddingLeft: 'calc(var(--space-lg) + 24px)', marginTop: '-var(--space-sm)' }}>
+              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)', marginBottom: '4px' }}>Cash flow trend line</div>
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: '8px', maxWidth: '400px', lineHeight: 1.4 }}>Overlay a mathematical trend line on the chart to visualize your spending momentum.</div>
+              <SegmentedControl
+                options={[
+                  { value: 'none', label: 'Off' },
+                  { value: 'smooth', label: 'Curve' },
+                  { value: 'moving_average', label: 'Average' },
+                  { value: 'linear_regression', label: 'Trajectory' }
+                ]}
+                value={features.trendLineMode || 'none'}
+                onChange={value => setFeatures(f => ({ ...f, trendLineMode: value }))}
+              />
+            </div>
+          )}
           <SettingsToggle
             label="Transfers"
             hint="Adds a third transaction type for moving money between your own accounts. Transfers are never counted as income or spending."
@@ -284,6 +310,42 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             hint="Warn you before a recurring transaction happens, on the Dashboard and in a bar at the top."
             checked={features.upcoming !== false}
             onChange={e => setFeatures(f => ({ ...f, upcoming: e.target.checked }))}
+          />
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection id="visual-flair" title="Visual Flair">
+        <div style={{ padding: '0 var(--space-sm) var(--space-md)' }}>
+          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', marginBottom: 'var(--space-md)' }}>
+            Add state-of-the-art UI flourishes to the app. (Requires modern browser).
+          </div>
+          
+          <SettingsToggle
+            label="Ambient Mesh Glow"
+            hint="Adds a slowly animating, blurred gradient to the background to give the app depth."
+            checked={features.flairAmbientGlow === true}
+            onChange={e => setFeatures(f => ({ ...f, flairAmbientGlow: e.target.checked }))}
+          />
+          
+          <SettingsToggle
+            label="Frosted Glassmorphism"
+            hint="Cards and containers become slightly translucent, blurring the background beneath them."
+            checked={features.flairGlass === true}
+            onChange={e => setFeatures(f => ({ ...f, flairGlass: e.target.checked }))}
+          />
+          
+          <SettingsToggle
+            label="Waterfall Entrances"
+            hint="Sections cascade onto the screen smoothly rather than appearing instantly."
+            checked={features.flairStagger === true}
+            onChange={e => setFeatures(f => ({ ...f, flairStagger: e.target.checked }))}
+          />
+
+          <SettingsToggle
+            label="Reactive Hover Glows"
+            hint="KPI cards and rows lift and glow subtly when you hover over them."
+            checked={features.flairHover === true}
+            onChange={e => setFeatures(f => ({ ...f, flairHover: e.target.checked }))}
           />
         </div>
       </CollapsibleSection>
