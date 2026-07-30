@@ -985,3 +985,9 @@ suite (755 → 770 tests), typecheck and lint all green.
   4× the average, not 3×. No bug found; the baseline itself already excludes
   the period being judged and requires ≥2 months of real history, per the
   audit pass from 2026-07-29.
+- **Holistic UX Upgrades**: Applied a suite of toggleable aesthetic and structural changes under the Visual Flair settings block.
+  - **Modern Layout**: Toggles the navigation structure. Replaces the top navigation bar with a fixed left sidebar on desktop widths, and a sticky bottom tab bar on mobile (e.g. S24), keeping the UI clear and navigation easily reachable.
+  - **Compact Density**: Tightens CSS padding and spacing variables across the app allowing more data density on screen.
+  - **Sparklines**: Added background inline SVG sparkline charts to the Income, Expenses, and Net KPI cards on the dashboard, visualizing the trailing 30-day cash flow at a glance.
+  - **Skeleton Loading States**: Replaced the text-based loading fallbacks in App.jsx with structured pulsating skeleton blocks mapping accurately to the component dimensions of Dashboard, Transactions, Insights, and Settings.
+  - **Professional Iconography**: Migrated Dashboard emoji headers (e.g., ?? Latest Transactions, ?? Income by Category) to professional vector SVGs using the lucide-react library.
