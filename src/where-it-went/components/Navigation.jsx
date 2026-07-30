@@ -45,8 +45,9 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
       marginBottom: 'var(--space-md)'
     }}>
       <div className="nav-brand-container" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
-        <h1 className="nav-logo" style={{ color: 'var(--color-accent)', margin: 0, cursor: 'pointer' }} onClick={() => onTabChange('dashboard')}>
-          W<span className="nav-logo-text">hereItWent</span>
+        <h1 className="nav-logo" style={{ color: 'var(--color-accent)', margin: 0, cursor: 'pointer', marginRight: 'var(--space-md)' }} onClick={() => onTabChange('dashboard')}>
+          <span className="nav-logo-short">WiW</span>
+          <span className="nav-logo-full">WhereItWent</span>
         </h1>
         <Button variant="primary" size="sm" onClick={onAddClick} style={{ padding: '4px 12px' }} className="nav-add-btn nav-add-btn-classic">
           <span className="nav-add-icon">

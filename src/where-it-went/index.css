@@ -149,6 +149,9 @@ summary,
 input {
   -webkit-tap-highlight-color: transparent;
 }
+.nav-logo-short {
+  display: none;
+}
 
 /* The nav bar used to live inside the 800px reading column while its own
    contents need roughly 885px once the tab labels show — so it overflowed its
@@ -170,8 +173,11 @@ input {
     padding-right: var(--space-xs) !important;
     gap: 4px !important;
   }
-  .nav-logo-text {
+  .nav-logo-full {
     display: none;
+  }
+  .nav-logo-short {
+    display: inline;
   }
   .nav-add-text {
     display: none;
