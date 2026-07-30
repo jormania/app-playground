@@ -532,12 +532,13 @@ input {
     display: none !important;
   }
   .layout-modern .nav-brand-container {
-    position: absolute;
-    bottom: calc(100% + var(--space-md));
-    right: var(--space-md);
-    left: auto;
-    width: auto;
-    padding: 0;
+    position: absolute !important;
+    bottom: calc(100% + var(--space-md)) !important;
+    right: var(--space-md) !important;
+    left: auto !important;
+    width: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
   .layout-modern .nav-add-btn-classic {
     display: flex !important;
@@ -567,17 +568,20 @@ input {
     justify-content: space-around !important;
     width: 100%;
     gap: 0 !important;
+    padding: 0 !important;
   }
   .layout-modern .nav-tab-btn {
     flex-direction: column;
     gap: 2px;
-    padding: var(--space-sm) 2px !important;
+    padding: var(--space-sm) 0 !important;
     min-height: 56px;
     flex: 1;
   }
   .layout-modern .nav-tab-text {
     display: block !important;
     font-size: 0.65rem !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.2px;
   }
   .layout-modern .main-content-wrapper {
     padding-top: var(--space-xl) !important;
