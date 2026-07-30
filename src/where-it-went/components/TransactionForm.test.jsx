@@ -72,6 +72,17 @@ describe('TransactionForm', () => {
     expect(accountSelect.value).toBe('a1');
   });
 
+  it.each([
+    ['Expense', 'e.g. Groceries'],
+    ['Income', 'e.g. Salary'],
+  ])('hints a %s description with %s', (type, hint) => {
+    // Suggesting "Groceries" while logging income reads as though the form has
+    // not noticed what you are doing.
+    render(<TransactionForm categories={categories} accounts={accounts} onSave={vi.fn()} onCancel={vi.fn()} />);
+    if (type === 'Income') fireEvent.click(screen.getByRole('radio', { name: 'Income' }));
+    expect(screen.getByPlaceholderText(hint)).toBeDefined();
+  });
+
   it('never re-picks the account when the category is corrected on an existing transaction', () => {
     // Fixing a miscategorised row must not quietly move the money somewhere
     // else. The picker used to skip only the first render, so any later
@@ -140,6 +151,32 @@ describe('TransactionForm', () => {
       await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
       const [, data] = onSave.mock.calls[0];
       expect(data).toMatchObject({ type: 'Transfer', categoryId: '', accountId: 'a1', toAccountId: 'a2' });
+    });
+
+    it('starts both ends unset, so neither can be saved by accident', async () => {
+      // From used to arrive pre-filled with the first account, which made the
+      // most likely mistake — leaving it alone — also the easiest one.
+      render(<TransactionForm categories={categories} accounts={accounts} allowTransfer onSave={vi.fn()} onCancel={vi.fn()} />);
+      fireEvent.click(screen.getByRole('radio', { name: 'Transfer' }));
+
+      expect(screen.getByLabelText(/^From/).value).toBe('');
+      expect(screen.getByLabelText(/^To/).value).toBe('');
+      // Both offer the same short placeholder.
+      expect(screen.getByLabelText(/^From/).querySelector('option[value=""]').textContent).toBe('Select…');
+      expect(screen.getByLabelText(/^To/).querySelector('option[value=""]').textContent).toBe('Select…');
+    });
+
+    it('never offers the same account on both ends', async () => {
+      render(<TransactionForm categories={categories} accounts={accounts} allowTransfer onSave={vi.fn()} onCancel={vi.fn()} />);
+      fireEvent.click(screen.getByRole('radio', { name: 'Transfer' }));
+
+      fireEvent.change(screen.getByLabelText(/^To/), { target: { value: 'a2' } });
+      const fromValues = [...screen.getByLabelText(/^From/).options].map(o => o.value);
+      expect(fromValues).not.toContain('a2');
+
+      fireEvent.change(screen.getByLabelText(/^From/), { target: { value: 'a1' } });
+      const toValues = [...screen.getByLabelText(/^To/).options].map(o => o.value);
+      expect(toValues).not.toContain('a1');
     });
 
     it('will not save a transfer without a destination account', async () => {

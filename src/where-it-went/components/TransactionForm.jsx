@@ -7,6 +7,7 @@ import { sortTrips } from '../services/trips';
 import { pickDefaultAccount } from '../lib/accountPicker';
 import { toDateString } from '../lib/period';
 import { BASE_CURRENCY, CURRENCIES, fetchRate, convert, impliedRate, formatRateNote, canConvert } from '../lib/fx';
+import { formatAccountLabel } from '../lib/accounts';
 
 const selectStyle = {
   width: '100%',
@@ -231,7 +232,13 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
     >
       <SegmentedControl
         value={type}
-        onChange={(val) => { setType(val); setCategoryId(''); }}
+        onChange={(val) => {
+          setType(val);
+          setCategoryId('');
+          // A transfer has no sensible default source: pre-filling From meant the
+          // most likely mistake (leaving it as-is) was also the easiest one.
+          if (val === 'Transfer') { setAccountId(''); setToAccountId(''); }
+        }}
         options={[
           { value: 'Expense', label: 'Expense' },
           { value: 'Income', label: 'Income' },
@@ -330,7 +337,17 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
         </div>
       )}
 
-      <Field label="Description" type="text" value={description} onChange={e => setDescription(e.target.value)} required placeholder={isTransfer ? 'e.g. Revolut top-up' : 'e.g. Groceries'} />
+      {/* The hint follows the type — suggesting "Groceries" while logging income
+          reads as though the form has not noticed what you are doing. */}
+      <Field
+        label="Description" type="text" value={description}
+        onChange={e => setDescription(e.target.value)} required
+        placeholder={
+          isTransfer ? 'e.g. Revolut top-up'
+            : type === 'Income' ? 'e.g. Salary'
+              : 'e.g. Groceries'
+        }
+      />
 
       {/* Category and Account share a row: two dropdowns that classify the same
           transaction, and stacking them cost a whole row the modal couldn't
@@ -348,7 +365,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
             Category <span style={{ color: 'var(--color-danger)' }}>*</span>
           </label>
           <select id={categorySelectId} value={categoryId} onChange={e => setCategoryId(e.target.value)} required style={selectStyle}>
-            <option value="" disabled>Select category...</option>
+            <option value="" disabled>Select…</option>
             {availableCategories.map(c => (
               <option key={c.id} value={c.id}>{c.icon ? `${c.icon} ${c.name}` : c.name}</option>
             ))}
@@ -386,8 +403,13 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
           required
           style={selectStyle}
         >
-          {sortedAccounts.map(a => (
-            <option key={a.id} value={a.id}>{a.name}{a.currency && a.currency !== BASE_CURRENCY ? ` (${a.currency})` : ''}</option>
+          {/* Only a transfer gets a blank first option: Income and Expense keep a
+              sensible pre-selection from the category. */}
+          {isTransfer && <option value="">Select…</option>}
+          {/* Symmetrical with To, which already excludes From: neither end may
+              offer the account the other one is using. */}
+          {sortedAccounts.filter(a => !isTransfer || a.id !== toAccountId).map(a => (
+            <option key={a.id} value={a.id}>{formatAccountLabel(a)}</option>
           ))}
         </select>
       </div>
@@ -401,9 +423,9 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
             To <span style={{ color: 'var(--color-danger)' }}>*</span>
           </label>
           <select id={toAccountSelectId} value={toAccountId} onChange={e => setToAccountId(e.target.value)} required style={selectStyle}>
-            <option value="">Select account…</option>
+            <option value="">Select…</option>
             {sortedAccounts.filter(a => a.id !== accountId).map(a => (
-              <option key={a.id} value={a.id}>{a.name}{a.currency && a.currency !== BASE_CURRENCY ? ` (${a.currency})` : ''}</option>
+              <option key={a.id} value={a.id}>{formatAccountLabel(a)}</option>
             ))}
           </select>
         </div>
@@ -421,7 +443,9 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
             ✈️ Trip
           </label>
           <select id={tripSelectId} value={tripId} onChange={e => setTripId(e.target.value)} style={selectStyle}>
-            <option value="">Not part of a trip</option>
+            {/* "None", not "Select…": the trip is optional, and not being part of
+                a trip is a real answer rather than an unfilled field. */}
+            <option value="">None</option>
             {sortTrips(trips || []).map(t => (
               <option key={t.id} value={t.id}>{t.name}{t.destination ? ` (${t.destination})` : ''}</option>
             ))}

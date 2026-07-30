@@ -7,7 +7,10 @@ WhereItWent uses Notion as its database backend. To fully use the app (beyond De
 Create five full-page databases anywhere in your Notion workspace with the following schemas.
 
 ### 1.1 Accounts Database
-- **Name**: `Name` (Title property)
+- **Name**: `Name` (Title property). The page **icon** (an emoji) is read and shown wherever
+  the account appears — dropdowns, the ledger's Account column, the transfer route. Two
+  accounts may share a name if their currencies differ; the icon and the currency suffix are
+  what tell them apart.
 - **Type**: `Type` (Select property with options: e.g., Bank, Fintech, Cash, Broker)
 - **Currency**: `Currency` (Select property with options: RON, EUR, USD, etc.)
 - **Active**: `Active` (Checkbox property)
@@ -772,3 +775,30 @@ duplicate rules, offline behaviour, a settings reference, PWA install, an
 explicit list of what the app does *not* do, and a troubleshooting FAQ. Schema
 tables scroll in their own containers so the page never scrolls sideways on a
 phone.
+
+## Account icons, defaults and dropdown wording (2026-07-30)
+
+- **Account page icons are now read and displayed**, matching how category icons
+  already worked. `formatAccountLabel` in `lib/accounts.js` is the single source
+  for how an account is written — icon, name, and the currency suffix *only* when
+  it differs from RON. It is used by the transaction form (both ends of a
+  transfer included), the ledger's Account column and its group headers, the
+  duplicate review, and the subscription editor. Those five had genuinely
+  drifted: some appended the currency, some didn't, and none showed the icon.
+- **A `Cash` account was created** in the live Accounts database. The rule
+  routing Rent and Gift income to Cash had been correct since it was written, but
+  there was no Cash account to route *to*, so both silently fell through to
+  Checking. Live accounts also gained icons: 🏦 Checking, 📱 Revolut (RON),
+  💶 Revolut (EUR), 💳 Credit Card, 💵 Cash — the EUR one deliberately different,
+  since currency is the only thing distinguishing it from its namesake.
+- **A transfer now starts with both ends unset**, each reading `Select…`.
+  Pre-filling *From* with the first account meant the most likely mistake —
+  leaving it alone — was also the easiest one. Neither end offers the account the
+  other is using.
+- **Dropdown placeholders are consistent**: `Select…` for a required choice
+  (category, account, from, to). Optional selects say **`None`** instead — the
+  trip on a transaction, and a trip's own currency — because for a nullable field
+  "Select…" implies you must choose, when "not part of a trip" is a real answer.
+- **The description hint follows the type**: `e.g. Salary` for income rather than
+  `e.g. Groceries`, which read as though the form hadn't noticed what you were
+  doing.

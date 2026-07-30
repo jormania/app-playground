@@ -1,4 +1,5 @@
 import { useState, useEffect, useId } from 'react';
+import { formatAccountLabel } from '../lib/accounts';
 import { Modal } from '../../ds/components/Modal';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
@@ -107,15 +108,15 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label htmlFor={categorySelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Category <span style={{ color: 'var(--color-danger)' }}>*</span></label>
             <select id={categorySelectId} value={categoryId} onChange={e => setCategoryId(e.target.value)} required style={selectStyle}>
-              <option value="">Select...</option>
+              <option value="">Select…</option>
               {(data?.categories || []).filter(c => c.type === type).map(c => <option key={c.id} value={c.id}>{c.icon ? c.icon + ' ' : ''}{c.name}</option>)}
             </select>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label htmlFor={accountSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Account <span style={{ color: 'var(--color-danger)' }}>*</span></label>
             <select id={accountSelectId} value={accountId} onChange={e => setAccountId(e.target.value)} required style={selectStyle}>
-              <option value="">Select...</option>
-              {(data?.accounts || []).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+              <option value="">Select…</option>
+              {(data?.accounts || []).map(a => <option key={a.id} value={a.id}>{formatAccountLabel(a)}</option>)}
             </select>
           </div>
         </div>

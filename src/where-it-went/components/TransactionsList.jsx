@@ -8,6 +8,7 @@ import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 import { filterByPeriod, parseTxDate } from '../lib/period';
 import { readJson, writeJson } from '../lib/storage';
+import { accountLabelById } from '../lib/accounts';
 
 const PAGE_SIZE = 200;
 
@@ -109,7 +110,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
       } else if (sortConfig.key === 'category') {
         label = categoriesById.get(tx.categoryId)?.name || (tx.type === 'Transfer' ? '🔁 Transfer' : '⚠️ Unknown');
       } else if (sortConfig.key === 'account') {
-        label = accountsById.get(tx.accountId)?.name || '— No account';
+        label = accountLabelById(accountsById, tx.accountId, { fallback: '— No account' });
       } else if (sortConfig.key === 'description') {
         label = ((tx.description || '#')[0] || '#').toUpperCase();
       } else {
@@ -257,8 +258,8 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                         are visible without opening the row. */}
                     <div className="tx-col-account" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {isTransfer && tx.toAccountId
-                        ? `${accountsById.get(tx.accountId)?.name || '—'} → ${accountsById.get(tx.toAccountId)?.name || '—'}`
-                        : (accountsById.get(tx.accountId)?.name || '—')}
+                        ? `${accountLabelById(accountsById, tx.accountId)} → ${accountLabelById(accountsById, tx.toAccountId)}`
+                        : accountLabelById(accountsById, tx.accountId)}
                     </div>
                     <div className="tx-col-amount" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
                       <div style={{

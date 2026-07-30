@@ -165,36 +165,42 @@ export const DEMO_ACCOUNTS = [
     "id": "acc_checking",
     "name": "Checking Account",
     "type": "Asset",
+    "icon": "🏦",
     "currency": "RON"
   },
   {
     "id": "acc_savings",
     "name": "Savings Account",
     "type": "Asset",
+    "icon": "🐖",
     "currency": "RON"
   },
   {
     "id": "acc_credit",
     "name": "Credit Card",
     "type": "Liability",
+    "icon": "💳",
     "currency": "RON"
   },
   {
     "id": "acc_revolut_ron",
     "name": "Revolut",
     "type": "Asset",
+    "icon": "📱",
     "currency": "RON"
   },
   {
     "id": "acc_revolut",
     "name": "Revolut",
     "type": "Asset",
+    "icon": "💶",
     "currency": "EUR"
   },
   {
     "id": "acc_cash",
     "name": "Cash",
     "type": "Asset",
+    "icon": "💵",
     "currency": "RON"
   }
 ];

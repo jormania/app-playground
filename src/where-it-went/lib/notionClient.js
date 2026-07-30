@@ -143,6 +143,10 @@ export class NotionClient {
       id: row.id,
       name: plainText(row.properties.Name?.title),
       type: row.properties.Type?.select?.name || '',
+      // Same treatment categories already get: the Notion page icon is the
+      // account's identity. It does real work here too — two accounts can share
+      // a name and differ only by currency.
+      icon: row.icon?.type === 'emoji' ? row.icon.emoji : null,
       currency: row.properties.Currency?.select?.name || 'RON'
     })).filter(a => a.name.trim() !== '');
   }

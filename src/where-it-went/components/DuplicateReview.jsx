@@ -4,6 +4,7 @@ import { ConfirmModal, AlertModal } from '../../ds';
 import { formatCurrency } from '../lib/currency';
 import { readJson, writeJson } from '../lib/storage';
 import { findDuplicateGroups, withoutDismissed, groupKey, mergeFields } from '../lib/duplicates';
+import { formatAccountLabel } from '../lib/accounts';
 
 const DISMISS_KEY = 'whereItWent_dupe_dismissed';
 
@@ -138,7 +139,7 @@ export default function DuplicateReview({ transactions, categoriesById, accounts
                         </div>
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {t.date} · {cat?.name || 'Uncategorized'}
-                          {acc?.name ? ` · ${acc.name}` : ''}
+                          {acc ? ` · ${formatAccountLabel(acc)}` : ''}
                           {t.notes ? ` · ${t.notes}` : ''}
                         </div>
                       </button>

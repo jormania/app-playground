@@ -103,7 +103,8 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
                 color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit'
               }}
             >
-              <option value="">Account</option>
+              {/* Optional: blank means "whatever the account uses". */}
+              <option value="">None</option>
               {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
