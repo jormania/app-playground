@@ -6,9 +6,11 @@ import { AlertModal } from '../../ds';
 import { formatCurrency } from '../lib/currency';
 import { BUDGET_PERIODS, normalizePeriod, formatPeriodSuffix } from '../lib/budgets';
 
+// Matches ds/Field's own input box, same reasoning as TransactionForm.jsx —
+// a --color-bg fill read as a flat grey slab next to Field's own inputs.
 const selectStyle = {
   width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-md)',
-  border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)',
+  border: '1px solid var(--color-border-2)', backgroundColor: 'var(--color-surface)',
   color: 'var(--color-ink)', fontSize: 'var(--text-sm)', fontFamily: 'inherit'
 };
 

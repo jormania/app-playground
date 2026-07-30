@@ -9,12 +9,16 @@ import { toDateString } from '../lib/period';
 import { BASE_CURRENCY, CURRENCIES, fetchRate, convert, impliedRate, formatRateNote, canConvert } from '../lib/fx';
 import { formatAccountLabel } from '../lib/accounts';
 
+// Matches ds/Field's own input box (surface fill, --color-border-2) rather
+// than the page background — a plain <select> filled with --color-bg read as
+// a flat grey slab next to Field's crisply-bordered text inputs in the same
+// form, even though both were meant to look like the same kind of control.
 const selectStyle = {
   width: '100%',
   padding: '10px 12px',
   borderRadius: 'var(--radius-md)',
-  border: '1px solid var(--color-border)',
-  backgroundColor: 'var(--color-bg)',
+  border: '1px solid var(--color-border-2)',
+  backgroundColor: 'var(--color-surface)',
   color: 'var(--color-ink)',
   fontSize: 'var(--text-base)',
   fontFamily: 'inherit'
@@ -246,7 +250,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
         ]}
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-sm)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-md)' }}>
         <Field label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} required max={today} />
 
         {/* Amount + currency share one control rather than sitting in separate
@@ -259,8 +263,8 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
           </label>
           <div style={{
             display: 'flex', alignItems: 'stretch', minWidth: 0,
-            border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
-            backgroundColor: 'var(--color-bg)', overflow: 'hidden'
+            border: '1px solid var(--color-border-2)', borderRadius: 'var(--radius-md)',
+            backgroundColor: 'var(--color-surface)', overflow: 'hidden'
           }}>
             <input
               id={amountId} type="number" inputMode="decimal" step="0.01" min="0" required placeholder="0.00"
@@ -296,7 +300,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
                 // that actually matters. Trimming the padding keeps the matching
                 // ink and type size while handing the width back to the amount.
                 flex: 'none', outline: 'none', background: 'transparent',
-                border: 'none', borderLeft: '1px solid var(--color-border)',
+                border: 'none', borderLeft: '1px solid var(--color-border-2)',
                 color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit',
                 padding: '0 0 0 6px', cursor: 'pointer'
               }}
@@ -325,8 +329,8 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
               onChange={e => { baseTouched.current = true; setBaseAmount(e.target.value); }}
               style={{
                 flex: 'none', width: '84px', padding: '3px 6px',
-                border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
-                backgroundColor: 'var(--color-bg)', color: 'var(--color-ink)',
+                border: '1px solid var(--color-border-2)', borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'var(--color-surface)', color: 'var(--color-ink)',
                 fontSize: 'var(--text-xs)', fontFamily: 'inherit'
               }}
             />

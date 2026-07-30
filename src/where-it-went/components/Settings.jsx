@@ -426,12 +426,12 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                   ? 'var(--color-success)'
                   : trip.status === 'Completed'
                     ? 'var(--color-muted)'
-                    : 'var(--color-primary)';
+                    : 'var(--color-accent)';
                 const statusBg = trip.status === 'Active'
                   ? 'color-mix(in srgb, var(--color-success) 15%, transparent)'
                   : trip.status === 'Completed'
                     ? 'color-mix(in srgb, var(--color-muted) 15%, transparent)'
-                    : 'color-mix(in srgb, var(--color-primary) 15%, transparent)';
+                    : 'color-mix(in srgb, var(--color-accent) 15%, transparent)';
 
                 return (
                   <div

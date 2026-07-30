@@ -421,7 +421,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
                           background: isUnknownCat ? 'color-mix(in srgb, var(--color-muted) 10%, transparent)' : `color-mix(in srgb, ${catColor} 10%, transparent)`,
                           color: isUnknownCat ? 'var(--color-muted)' : catColor,
                           border: `1px solid ${isUnknownCat ? 'var(--color-border)' : `color-mix(in srgb, ${catColor} 30%, transparent)`}`,
-                          borderRadius: 'var(--radius-full)'
+                          borderRadius: 'var(--radius-pill)'
                         }}>
                           {isUnknownCat ? '⚠️ Unknown' : isTransfer ? `🔁 ${catName}` : catName}
                         </span>
@@ -432,7 +432,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
                         color: tx.type === 'Income' ? 'var(--color-success)' : 'var(--color-ink)',
                         background: tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-ink) 5%, transparent)',
                         border: tx.type === 'Income' ? '1px solid color-mix(in srgb, var(--color-success) 20%, transparent)' : '1px solid color-mix(in srgb, var(--color-border) 50%, transparent)',
-                        padding: '4px 10px', borderRadius: 'var(--radius-full)',
+                        padding: '4px 10px', borderRadius: 'var(--radius-pill)',
                         fontWeight: 'var(--weight-medium)', fontSize: 'var(--text-sm)'
                       }}>
                         {tx.type === 'Income' ? '+' : tx.type === 'Expense' ? '−' : '±'}{formatCurrency(tx.amount)}

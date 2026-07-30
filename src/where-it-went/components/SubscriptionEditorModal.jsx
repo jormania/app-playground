@@ -6,9 +6,11 @@ import { Button } from '../../ds/components/Button';
 import { ConfirmModal } from '../../ds';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 
+// Matches ds/Field's own input box, same reasoning as TransactionForm.jsx —
+// a --color-bg fill read as a flat grey slab next to Field's own inputs.
 const selectStyle = {
   width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-md)',
-  border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)',
+  border: '1px solid var(--color-border-2)', backgroundColor: 'var(--color-surface)',
   color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit'
 };
 
@@ -42,7 +44,14 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
       setAmount('');
       setType('Expense');
       setDayOfMonth(1);
-      setCategoryId(data?.categories?.[0]?.id || '');
+      // A recurring bill is a subscription far more often than not, so start
+      // there instead of whichever category the Notion query happened to
+      // return first — that was frequently a mismatched guess the user had
+      // to correct on every single add.
+      const expenseCategories = (data?.categories || []).filter(c => c.type === 'Expense');
+      const subsCategory = expenseCategories.find(c => (c.name || '').trim().toLowerCase() === 'subscriptions')
+        || expenseCategories.find(c => /subscri/i.test(c.name || ''));
+      setCategoryId(subsCategory?.id || data?.categories?.[0]?.id || '');
       setAccountId(data?.accounts?.[0]?.id || '');
       setActive(true);
     }

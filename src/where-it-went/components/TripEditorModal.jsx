@@ -99,7 +99,7 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
               onChange={e => setCurrency(e.target.value)}
               style={{
                 width: '100%', minWidth: 0, padding: '10px 8px', borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)',
+                border: '1px solid var(--color-border-2)', backgroundColor: 'var(--color-surface)',
                 color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit'
               }}
             >

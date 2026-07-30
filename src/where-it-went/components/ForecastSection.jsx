@@ -23,8 +23,8 @@ export default function ForecastSection({ forecast }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)', flexWrap: 'wrap' }}>
         <span style={{
           fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-bold)', textTransform: 'uppercase',
-          letterSpacing: '0.1em', color: 'var(--color-primary)',
-          backgroundColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)',
+          letterSpacing: '0.1em', color: 'var(--color-accent)',
+          backgroundColor: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
           padding: '2px 8px', borderRadius: 'var(--radius-sm)'
         }}>Ahead</span>
         <h2 style={{ fontSize: 'var(--text-xl)', margin: 0, color: 'var(--color-ink)' }}>Next 90 Days</h2>

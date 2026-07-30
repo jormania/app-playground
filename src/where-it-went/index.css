@@ -1,3 +1,20 @@
+/* Two accent hues Insights uses for its specialty cards (Travel = brass/gold,
+   Nora = purple) to keep those sections visually distinct from the shared
+   accent/success/warning/danger palette. `src/ds/tokens.css` is the universal
+   vocabulary every app reads — these are WhereItWent-only, so they live here
+   rather than there. Both were referenced via `var(--color-brass)` /
+   `var(--color-purple)` with no definition anywhere, which resolves to nothing:
+   every KPI value, bar segment and callout border using them was silently
+   colourless. */
+:root {
+  --color-brass:  #b58900; /* Solarized yellow — distinct from --color-warning's orange */
+  --color-purple: #6c71c4; /* Solarized violet */
+}
+:root[data-theme="dark"] {
+  --color-brass:  #c69a53; /* bronze — distinct from --color-warning's #e0af68 */
+  --color-purple: #bb9af7; /* Tokyo Night magenta/purple */
+}
+
 body {
   --font-sans: 'Outfit', system-ui, sans-serif;
   font-family: var(--font-sans);

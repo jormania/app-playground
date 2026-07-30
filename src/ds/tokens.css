@@ -31,6 +31,14 @@ body {
 }
 
 :root {
+  /* Tells the browser to draw its own native chrome — a <select>'s open
+     dropdown, a date input's calendar popup, scrollbars — in a matching
+     palette instead of always defaulting to light. Without this, opening a
+     plain <select> under the dark theme below popped a stark white listbox
+     with black text: correct per spec, but visually broken against the rest
+     of the app. */
+  color-scheme: light;
+
   /* ── Colour: surfaces (back-to-front) ─────────────────────────────────── */
   --color-bg:        #eee8d5; /* Solarized base2 */
   --color-bg-sunken: #e6dfcb; 
@@ -109,6 +117,8 @@ body {
    accents and the type/space/radius scales are shared, so components don't
    special-case the theme. Fill in / tune these as the system matures. */
 :root[data-theme="dark"] {
+  color-scheme: dark;
+
   --color-bg:        #1a1b26;
   --color-bg-sunken: #16161e;
   --color-surface:   #24283b;

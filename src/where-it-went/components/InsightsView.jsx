@@ -76,7 +76,7 @@ export default function InsightsView({ data, period, filterProps, config }) {
         {/* Period in Review */}
         {insights.summaryParagraph && (
           <div style={{ marginBottom: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', borderLeft: '4px solid var(--color-accent)' }}>
-            <p style={{ margin: 0, fontSize: 'var(--text-md)', lineHeight: 1.6, color: 'var(--color-ink)' }}>
+            <p style={{ margin: 0, fontSize: 'var(--text-base)', lineHeight: 1.6, color: 'var(--color-ink)' }}>
               <strong>📅 {periodLabel} in Review:</strong> {insights.summaryParagraph}
             </p>
           </div>
@@ -102,7 +102,7 @@ export default function InsightsView({ data, period, filterProps, config }) {
                 }}>
                   <div style={{ fontSize: '24px' }}>{alert.type === 'warning' ? '⚠️' : '🌟'}</div>
                   <div>
-                    <div style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-md)', color: 'var(--color-ink)' }}>{alert.title}</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-base)', color: 'var(--color-ink)' }}>{alert.title}</div>
                     <div style={{ fontSize: 'var(--text-sm)', color: tone }}>{alert.message}</div>
                   </div>
                 </div>
@@ -329,7 +329,7 @@ export default function InsightsView({ data, period, filterProps, config }) {
                   </div>
                 </div>
                 
-                <h4 style={{ fontSize: 'var(--text-md)', margin: 'var(--space-sm) 0 0 0' }}>Sources</h4>
+                <h4 style={{ fontSize: 'var(--text-base)', margin: 'var(--space-sm) 0 0 0' }}>Sources</h4>
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {insights.incomeStreams.map((stream, idx) => (
                     <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-sm) 0', borderBottom: idx === insights.incomeStreams.length - 1 ? 'none' : '1px solid var(--color-border)' }}>
@@ -420,7 +420,7 @@ export default function InsightsView({ data, period, filterProps, config }) {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
                       <div style={{ fontSize: '10px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Spend</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)', fontSize: 'var(--text-md)' }}>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)', fontSize: 'var(--text-base)' }}>
                         {formatCurrency(vendor.total)}
                       </div>
                     </div>
@@ -459,7 +459,7 @@ export default function InsightsView({ data, period, filterProps, config }) {
                       {new Date(tx.date).toLocaleDateString()}
                     </div>
                   </div>
-                  <div style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-md)' }}>{formatCurrency(tx.amount)}</div>
+                  <div style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-base)' }}>{formatCurrency(tx.amount)}</div>
                 </li>
               ))}
             </ul>
@@ -508,19 +508,19 @@ export default function InsightsView({ data, period, filterProps, config }) {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px', backgroundColor: 'var(--color-surface-2)', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginBottom: 'var(--space-md)', width: '100%', boxSizing: 'border-box' }}>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: '10px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Total Spend</div>
-                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-brass)', fontSize: 'var(--text-md)' }}>{formatCurrency(behavioral.travelAnalysis.totalSpend)}</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-brass)', fontSize: 'var(--text-base)' }}>{formatCurrency(behavioral.travelAnalysis.totalSpend)}</div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: '10px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Share of Budget</div>
-                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-md)' }}>{(behavioral.travelAnalysis.shareOfTotalExpense * 100).toFixed(1)}%</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-base)' }}>{(behavioral.travelAnalysis.shareOfTotalExpense * 100).toFixed(1)}%</div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: '10px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Avg Transaction</div>
-                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-md)' }}>{formatCurrency(behavioral.travelAnalysis.averageTxAmount)}</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-base)' }}>{formatCurrency(behavioral.travelAnalysis.averageTxAmount)}</div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: '10px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Transactions</div>
-                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-md)' }}>{behavioral.travelAnalysis.count}</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-base)' }}>{behavioral.travelAnalysis.count}</div>
                   </div>
                 </div>
               )}
@@ -658,7 +658,7 @@ export default function InsightsView({ data, period, filterProps, config }) {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px', backgroundColor: 'var(--color-surface-2)', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginBottom: 'var(--space-md)', width: '100%', boxSizing: 'border-box' }}>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: '10px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Net Cash Flow</div>
-                    <div style={{ fontWeight: 'var(--weight-bold)', color: behavioral.propertyAnalysis.netFlow >= 0 ? 'var(--color-success)' : 'var(--color-danger)', fontSize: 'var(--text-md)' }}>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: behavioral.propertyAnalysis.netFlow >= 0 ? 'var(--color-success)' : 'var(--color-danger)', fontSize: 'var(--text-base)' }}>
                       {behavioral.propertyAnalysis.netFlow >= 0 ? '+' : ''}{formatCurrency(behavioral.propertyAnalysis.netFlow)}
                     </div>
                     {behavioral.propertyAnalysis.prevNetFlow !== undefined && (
@@ -669,7 +669,7 @@ export default function InsightsView({ data, period, filterProps, config }) {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: '10px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Rental Income</div>
-                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-success)', fontSize: 'var(--text-md)' }}>{formatCurrency(behavioral.propertyAnalysis.totalIncome)}</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-success)', fontSize: 'var(--text-base)' }}>{formatCurrency(behavioral.propertyAnalysis.totalIncome)}</div>
                     {behavioral.propertyAnalysis.prevTotalIncome !== undefined && (
                       <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '1px' }}>
                         {behavioral.propertyAnalysis.diffIncomeFromPrev === 0 ? 'Stable' : `${behavioral.propertyAnalysis.diffIncomeFromPrev > 0 ? '+' : ''}${formatCurrency(behavioral.propertyAnalysis.diffIncomeFromPrev)} vs prev`}
@@ -678,7 +678,7 @@ export default function InsightsView({ data, period, filterProps, config }) {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: '10px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Expenses</div>
-                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)', fontSize: 'var(--text-md)' }}>{formatCurrency(behavioral.propertyAnalysis.totalExpense)}</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)', fontSize: 'var(--text-base)' }}>{formatCurrency(behavioral.propertyAnalysis.totalExpense)}</div>
                     {behavioral.propertyAnalysis.prevTotalExpense !== undefined && (
                       <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '1px' }}>
                         {behavioral.propertyAnalysis.diffExpenseFromPrev === 0 ? 'Stable' : `${behavioral.propertyAnalysis.diffExpenseFromPrev > 0 ? '+' : ''}${formatCurrency(behavioral.propertyAnalysis.diffExpenseFromPrev)} vs prev`}
@@ -687,7 +687,7 @@ export default function InsightsView({ data, period, filterProps, config }) {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: '10px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Expense Ratio</div>
-                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-md)' }}>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-base)' }}>
                       {behavioral.propertyAnalysis.expenseRatio !== null ? `${(behavioral.propertyAnalysis.expenseRatio * 100).toFixed(0)}%` : '0%'}
                     </div>
                     {behavioral.propertyAnalysis.diffRatioFromPrev !== null && behavioral.propertyAnalysis.diffRatioFromPrev !== undefined && (
@@ -840,7 +840,7 @@ export default function InsightsView({ data, period, filterProps, config }) {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', backgroundColor: 'var(--color-surface-2)', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginBottom: 'var(--space-md)', width: '100%', boxSizing: 'border-box' }}>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: '10px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Share of Budget</div>
-                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-purple)', fontSize: 'var(--text-md)' }}>{(behavioral.noraAnalysis.shareOfTotalExpense * 100).toFixed(1)}%</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-purple)', fontSize: 'var(--text-base)' }}>{(behavioral.noraAnalysis.shareOfTotalExpense * 100).toFixed(1)}%</div>
                     {behavioral.noraAnalysis.diffShareFromPrev !== null && behavioral.noraAnalysis.diffShareFromPrev !== undefined && (
                       <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '1px' }}>
                         {Math.round(behavioral.noraAnalysis.diffShareFromPrev * 100) === 0 ? 'Stable' : `${behavioral.noraAnalysis.diffShareFromPrev > 0 ? '+' : ''}${(behavioral.noraAnalysis.diffShareFromPrev * 100).toFixed(1)}% pts`}
@@ -849,7 +849,7 @@ export default function InsightsView({ data, period, filterProps, config }) {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: '10px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Support This Period</div>
-                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-md)' }}>{formatCurrency(behavioral.noraAnalysis.totalSpend)}</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-base)' }}>{formatCurrency(behavioral.noraAnalysis.totalSpend)}</div>
                     {behavioral.noraAnalysis.prevTotalSpend > 0 && (
                       <div style={{ fontSize: '10px', color: 'var(--color-muted)', marginTop: '1px' }}>
                         {behavioral.noraAnalysis.diffFromPrev === 0 ? 'Stable' : `${behavioral.noraAnalysis.diffFromPrev > 0 ? '+' : ''}${formatCurrency(behavioral.noraAnalysis.diffFromPrev)} vs prev`}
@@ -858,11 +858,11 @@ export default function InsightsView({ data, period, filterProps, config }) {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: '10px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Primary Focus</div>
-                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-md)', lineHeight: 1.2 }}>{behavioral.noraAnalysis.primaryFocusText}</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-base)', lineHeight: 1.2 }}>{behavioral.noraAnalysis.primaryFocusText}</div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: '10px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px' }}>Transactions</div>
-                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-md)' }}>{behavioral.noraAnalysis.count}</div>
+                    <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)', fontSize: 'var(--text-base)' }}>{behavioral.noraAnalysis.count}</div>
                   </div>
                 </div>
               )}
