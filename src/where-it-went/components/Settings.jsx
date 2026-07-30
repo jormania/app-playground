@@ -228,6 +228,14 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     }
   };
 
+  const handleFeatureToggle = (featureKey, value) => {
+    setFeatures(f => {
+      const newFeatures = { ...f, [featureKey]: value };
+      onSave({ ...config, features: newFeatures });
+      return newFeatures;
+    });
+  };
+
   const handleThemeToggle = (newTheme) => {
     setTheme(newTheme);
     if (onThemeChange) onThemeChange(newTheme);
@@ -277,13 +285,13 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             label="Budget limits"
             hint="Show spending limits per category on the Dashboard, with progress bars."
             checked={features.budgeting}
-            onChange={e => setFeatures(f => ({ ...f, budgeting: e.target.checked }))}
+            onChange={e => handleFeatureToggle('budgeting', e.target.checked)}
           />
           <SettingsToggle
             label="Cash flow"
             hint="Show the income-vs-expenses chart, and the 90-day projection in Insights."
             checked={features.cashFlow}
-            onChange={e => setFeatures(f => ({ ...f, cashFlow: e.target.checked }))}
+            onChange={e => handleFeatureToggle('cashFlow', e.target.checked)}
           />
           {features.cashFlow !== false && (
             <div style={{ paddingLeft: 'calc(var(--space-lg) + 24px)', marginTop: '-var(--space-sm)' }}>
@@ -306,7 +314,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             label="Transfers"
             hint="Adds a third transaction type for moving money between your own accounts. Transfers are never counted as income or spending."
             checked={features.transfers === true}
-            onChange={e => setFeatures(f => ({ ...f, transfers: e.target.checked }))}
+            onChange={e => handleFeatureToggle('transfers', e.target.checked)}
           />
           {/* On by default — `!== false` so a config saved before this key
               existed opts in without needing a migration. Named "activity"
@@ -317,7 +325,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             label="Upcoming activity"
             hint="Warn you before a recurring transaction happens, on the Dashboard and in a bar at the top."
             checked={features.upcoming !== false}
-            onChange={e => setFeatures(f => ({ ...f, upcoming: e.target.checked }))}
+            onChange={e => handleFeatureToggle('upcoming', e.target.checked)}
           />
         </div>
       </CollapsibleSection>
@@ -355,42 +363,42 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             hint="Interactive elements physically scale down when pressed."
             checked={features.flairTactile && features.flairMaster !== false}
             disabled={features.flairMaster === false}
-            onChange={e => setFeatures(f => ({ ...f, flairTactile: e.target.checked }))}
+            onChange={e => handleFeatureToggle('flairTactile', e.target.checked)}
           />
           <SettingsToggle
             label="Add Button Pulse"
             hint="The primary action button continuously pulses when hovered."
             checked={features.flairPulse && features.flairMaster !== false}
             disabled={features.flairMaster === false}
-            onChange={e => setFeatures(f => ({ ...f, flairPulse: e.target.checked }))}
+            onChange={e => handleFeatureToggle('flairPulse', e.target.checked)}
           />
           <SettingsToggle
             label="Animated Empty States"
             hint="Empty state icons float gently to keep the page feeling alive."
             checked={features.flairEmpty && features.flairMaster !== false}
             disabled={features.flairMaster === false}
-            onChange={e => setFeatures(f => ({ ...f, flairEmpty: e.target.checked }))}
+            onChange={e => handleFeatureToggle('flairEmpty', e.target.checked)}
           />
           <SettingsToggle
             label="Budget Bar Growth"
             hint="Budget chart bars smoothly animate from 0 to their target value on load."
             checked={features.flairBudget && features.flairMaster !== false}
             disabled={features.flairMaster === false}
-            onChange={e => setFeatures(f => ({ ...f, flairBudget: e.target.checked }))}
+            onChange={e => handleFeatureToggle('flairBudget', e.target.checked)}
           />
           <SettingsToggle
             label="Theme Transitions"
             hint="Colors crossfade elegantly rather than snapping instantly when navigating or switching dark mode."
             checked={features.flairTheme && features.flairMaster !== false}
             disabled={features.flairMaster === false}
-            onChange={e => setFeatures(f => ({ ...f, flairTheme: e.target.checked }))}
+            onChange={e => handleFeatureToggle('flairTheme', e.target.checked)}
           />
           <SettingsToggle
             label="Active Tab Glow"
             hint="The selected navigation tab icon pops with an animated scale effect."
             checked={features.flairTab && features.flairMaster !== false}
             disabled={features.flairMaster === false}
-            onChange={e => setFeatures(f => ({ ...f, flairTab: e.target.checked }))}
+            onChange={e => handleFeatureToggle('flairTab', e.target.checked)}
           />
           
           <SettingsToggle
@@ -398,7 +406,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             hint="Adds a slowly animating, blurred gradient to the background to give the app depth."
             checked={features.flairAmbientGlow === true && features.flairMaster !== false}
             disabled={features.flairMaster === false}
-            onChange={e => setFeatures(f => ({ ...f, flairAmbientGlow: e.target.checked }))}
+            onChange={e => handleFeatureToggle('flairAmbientGlow', e.target.checked)}
           />
           
           <SettingsToggle
@@ -406,7 +414,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             hint="Cards and containers become slightly translucent, blurring the background beneath them."
             checked={features.flairGlass === true && features.flairMaster !== false}
             disabled={features.flairMaster === false}
-            onChange={e => setFeatures(f => ({ ...f, flairGlass: e.target.checked }))}
+            onChange={e => handleFeatureToggle('flairGlass', e.target.checked)}
           />
           
           <SettingsToggle
@@ -414,7 +422,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             hint="Sections cascade onto the screen smoothly rather than appearing instantly."
             checked={features.flairStagger === true && features.flairMaster !== false}
             disabled={features.flairMaster === false}
-            onChange={e => setFeatures(f => ({ ...f, flairStagger: e.target.checked }))}
+            onChange={e => handleFeatureToggle('flairStagger', e.target.checked)}
           />
 
           <SettingsToggle
@@ -422,21 +430,21 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             hint="KPI cards and rows lift and glow subtly when you hover over them."
             checked={features.flairHover === true && features.flairMaster !== false}
             disabled={features.flairMaster === false}
-            onChange={e => setFeatures(f => ({ ...f, flairHover: e.target.checked }))}
+            onChange={e => handleFeatureToggle('flairHover', e.target.checked)}
           />
 
           <SettingsToggle
             label="Modern Layout"
             hint="Moves navigation to a left sidebar on desktop and a bottom tab bar on mobile."
             checked={features.flairModernLayout === true}
-            onChange={e => setFeatures(f => ({ ...f, flairModernLayout: e.target.checked }))}
+            onChange={e => handleFeatureToggle('flairModernLayout', e.target.checked)}
           />
 
           <SettingsToggle
             label="Compact Density"
             hint="Reduces padding and font sizes slightly to fit more data on the screen."
             checked={features.flairCompactDensity === true}
-            onChange={e => setFeatures(f => ({ ...f, flairCompactDensity: e.target.checked }))}
+            onChange={e => handleFeatureToggle('flairCompactDensity', e.target.checked)}
           />
         </div>
       </CollapsibleSection>
