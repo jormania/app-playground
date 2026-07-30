@@ -557,37 +557,27 @@ input {
     display: none !important;
   }
   .layout-modern .nav-controls {
-    position: absolute;
-    bottom: calc(100% + var(--space-md));
-    left: var(--space-md);
-    right: auto;
-    margin: 0 !important;
-    background: color-mix(in srgb, var(--color-bg) 85%, transparent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-radius: 20px;
-    padding: 6px 12px;
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--color-ink) 10%, transparent);
-    border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
+    display: none !important;
   }
-  .layout-modern .nav-controls button {
-    padding: 8px !important;
+  .layout-modern .nav-controls-modern {
+    display: flex !important;
   }
   .layout-modern .nav-tabs {
     flex: 1;
     justify-content: space-around !important;
     width: 100%;
+    gap: 0 !important;
   }
   .layout-modern .nav-tab-btn {
     flex-direction: column;
-    gap: 4px;
-    padding: var(--space-sm) var(--space-xs) !important;
+    gap: 2px;
+    padding: var(--space-sm) 2px !important;
     min-height: 56px;
     flex: 1;
   }
   .layout-modern .nav-tab-text {
     display: block !important;
-    font-size: 0.75rem !important;
+    font-size: 0.65rem !important;
   }
   .layout-modern .main-content-wrapper {
     padding-bottom: 120px !important; /* space for bottom nav */
