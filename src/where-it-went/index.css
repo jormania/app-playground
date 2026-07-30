@@ -467,6 +467,17 @@ input {
     margin-bottom: 0 !important;
     box-sizing: border-box;
   }
+  .layout-modern .nav-brand-container {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100%;
+    gap: var(--space-lg) !important;
+  }
+  .layout-modern .nav-add-btn {
+    width: 100%;
+    padding: var(--space-md) !important;
+    justify-content: center !important;
+  }
   .layout-modern .nav-tabs {
     flex-direction: column;
     width: 100%;

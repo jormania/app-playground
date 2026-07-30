@@ -52,6 +52,10 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
           <span className="nav-add-icon">+</span>
           <span className="nav-add-text">&nbsp;Add</span>
         </Button>
+        <Button variant="primary" size="sm" onClick={onAddClick} style={{ padding: '4px 12px' }} className="nav-add-btn nav-add-btn-modern">
+          <span className="nav-add-icon">+</span>
+          <span className="nav-add-text">&nbsp;Add Transaction</span>
+        </Button>
       </div>
 
       <div className="nav-spacer" style={{ flex: 1 }} />
@@ -84,11 +88,6 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
       </div>
 
       <div className="nav-controls" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginLeft: 'var(--space-xs)' }}>
-        <Button variant="primary" size="sm" onClick={onAddClick} style={{ padding: '4px 12px' }} className="nav-add-btn nav-add-btn-modern">
-          <span className="nav-add-icon">+</span>
-          <span className="nav-add-text">&nbsp;Add</span>
-        </Button>
-
         {['transactions', 'dashboard', 'insights'].includes(activeTab) && (
           <button
             className="nav-filter-btn"
