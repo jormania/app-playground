@@ -178,26 +178,24 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
         </div>
       ) : (
         <>
-          <div className="stagger-2" style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--space-md)' }}>
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-              alignItems: 'center',
-              columnGap: 'var(--space-lg)',
-              rowGap: 'var(--space-xs)',
-              padding: '8px 24px',
-              backgroundColor: 'var(--color-surface)',
-              borderRadius: '999px',
-              border: '1px solid var(--color-border)',
-              fontSize: 'var(--text-sm)',
-              fontWeight: 'var(--weight-medium)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
-            }}>
-              <span style={{ color: 'var(--color-muted)' }}>{filtered.length} transaction{filtered.length === 1 ? '' : 's'}</span>
-              <span style={{ color: 'var(--color-success)' }}>Income +{formatCurrency(totals.income)}</span>
-              <span style={{ color: 'var(--color-danger)' }}>Expense −{formatCurrency(totals.expense)}</span>
-            </div>
+          <div className="card-container stagger-2" style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 'var(--space-sm)',
+            padding: 'var(--space-sm) var(--space-md)',
+            marginTop: 'var(--space-md)',
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)',
+            fontSize: 'var(--text-sm)',
+            fontWeight: 'var(--weight-medium)',
+            minWidth: 0
+          }}>
+            <span style={{ color: 'var(--color-muted)' }}>{filtered.length} transaction{filtered.length === 1 ? '' : 's'}</span>
+            <span style={{ color: 'var(--color-success)' }}>Income +{formatCurrency(totals.income)}</span>
+            <span style={{ color: 'var(--color-danger)' }}>Expense −{formatCurrency(totals.expense)}</span>
           </div>
           <div className="card-container stagger-3" style={{ marginTop: 'var(--space-md)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
 
