@@ -291,6 +291,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                 ]}
                 value={features.trendLineMode || 'none'}
                 onChange={value => setFeatures(f => ({ ...f, trendLineMode: value }))}
+                size="sm"
               />
             </div>
           )}
