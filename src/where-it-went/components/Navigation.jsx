@@ -49,12 +49,16 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
           W<span className="nav-logo-text">hereItWent</span>
         </h1>
         <Button variant="primary" size="sm" onClick={onAddClick} style={{ padding: '4px 12px' }} className="nav-add-btn nav-add-btn-classic">
-          <span className="nav-add-icon">+</span>
-          <span className="nav-add-text">&nbsp;Add</span>
+          <span className="nav-add-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </span>
+          <span className="nav-add-text">Add</span>
         </Button>
         <Button variant="primary" size="sm" onClick={onAddClick} style={{ padding: '4px 12px' }} className="nav-add-btn nav-add-btn-modern">
-          <span className="nav-add-icon">+</span>
-          <span className="nav-add-text">&nbsp;Add Transaction</span>
+          <span className="nav-add-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </span>
+          <span className="nav-add-text">Add Transaction</span>
         </Button>
       </div>
 
