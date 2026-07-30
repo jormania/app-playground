@@ -996,3 +996,7 @@ suite (755 → 770 tests), typecheck and lint all green.
 - Implemented Tactile Press States, FAB Pulse, Animated Empty States, Budget Bar Growth, Theme Transitions, and Active Tab Glow.
 - Added Master Toggle support for existing legacy flair options.
 - Centered the SVG and text horizontally within the navigation tabs on the laptop view.
+
+## Transaction List Grid Alignment
+- Modified grid-template-columns in mobile layout to use fixed widths for consistent vertical spreadsheet-like alignment.
+- Moved the Repeat button to its own dedicated column for both mobile and desktop views.

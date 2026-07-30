@@ -228,10 +228,10 @@ input {
     display: none !important;
   }
   .transaction-row {
-    grid-template-columns: minmax(0, 1fr) auto auto !important;
+    grid-template-columns: minmax(0, 1fr) 95px 24px 90px !important;
   }
   .transaction-list-header {
-    grid-template-columns: minmax(0, 1fr) auto auto !important;
+    grid-template-columns: minmax(0, 1fr) 95px 24px 90px !important;
   }
 }
 
