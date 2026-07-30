@@ -447,6 +447,8 @@ input {
   display: flex !important;
   flex: 1;
   overflow: hidden;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
 }
 
 @media (min-width: 800px) {
@@ -507,6 +509,7 @@ input {
     flex: 1;
     overflow-y: auto;
     padding: var(--space-xl) !important;
+    scrollbar-gutter: stable;
   }
 }
 
