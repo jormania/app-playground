@@ -277,28 +277,36 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Type</label>
-          <SegmentedControl
-            value={type}
-            onChange={val => { setType(val); setCategoryId(''); }}
-            options={[
-              { value: 'Expense', label: 'Expense' },
-              { value: 'Income', label: 'Income' }
-            ]}
-          />
-        </div>
+        {/* Type and Repeats share a row — both are compact segmented controls,
+            and pairing them (like Category/Account below) reclaims a full row
+            of height. Without it, adding the Yearly toggle tipped this modal
+            into needing a scrollbar on a real laptop viewport (~650-700px
+            tall), even though it still fit on a taller desktop screen and on
+            mobile, where the layout is unaffected. */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '6px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+            <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Type</label>
+            <SegmentedControl
+              value={type}
+              onChange={val => { setType(val); setCategoryId(''); }}
+              options={[
+                { value: 'Expense', label: 'Expense' },
+                { value: 'Income', label: 'Income' }
+              ]}
+            />
+          </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Repeats</label>
-          <SegmentedControl
-            value={frequency}
-            onChange={setFrequency}
-            options={[
-              { value: 'Monthly', label: 'Monthly' },
-              { value: 'Yearly', label: 'Yearly' }
-            ]}
-          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+            <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Repeats</label>
+            <SegmentedControl
+              value={frequency}
+              onChange={setFrequency}
+              options={[
+                { value: 'Monthly', label: 'Monthly' },
+                { value: 'Yearly', label: 'Yearly' }
+              ]}
+            />
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: isYearly ? 'repeat(2, minmax(0, 1fr))' : '1fr', gap: '6px' }}>
