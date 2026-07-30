@@ -554,6 +554,7 @@ input {
     color: var(--color-accent) !important;
     box-shadow: none !important;
     align-items: center !important;
+    justify-content: center !important;
     width: auto !important;
     height: auto !important;
   }
@@ -561,6 +562,8 @@ input {
     display: flex !important;
     align-items: center;
     justify-content: center;
+    height: 20px !important;
+    line-height: 0 !important;
   }
   .layout-modern .nav-add-text {
     display: block !important;
@@ -580,6 +583,7 @@ input {
     padding: var(--space-sm) 0 !important;
     min-height: 56px;
     flex: 1;
+    justify-content: center !important;
   }
   .layout-modern .nav-tab-text {
     display: block !important;
