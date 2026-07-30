@@ -451,6 +451,12 @@ input {
   max-height: 100dvh !important;
 }
 
+.layout-modern .main-content-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0; /* Critical flexbug fix: allows container to scroll instead of growing infinitely */
+}
+
 @media (min-width: 800px) {
   .layout-modern .app-layout-container {
     flex-direction: row !important;
@@ -506,8 +512,6 @@ input {
     display: flex !important;
   }
   .layout-modern .main-content-wrapper {
-    flex: 1;
-    overflow-y: auto;
     padding: var(--space-xl) !important;
     scrollbar-gutter: stable;
   }
