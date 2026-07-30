@@ -181,9 +181,9 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
           <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-sm)', padding: '0 var(--space-md) var(--space-sm)', fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>
             <span>{filtered.length} transaction{filtered.length === 1 ? '' : 's'}</span>
             <span>
-              <span style={{ color: 'var(--color-success)' }}>+{formatCurrency(totals.income)}</span>
+              <span style={{ color: 'var(--color-success)' }}>Income +{formatCurrency(totals.income)}</span>
               {'  '}
-              <span style={{ color: 'var(--color-danger)' }}>−{formatCurrency(totals.expense)}</span>
+              <span style={{ color: 'var(--color-danger)' }}>Expense −{formatCurrency(totals.expense)}</span>
             </span>
           </div>
 
