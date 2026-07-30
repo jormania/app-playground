@@ -99,7 +99,9 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     flairAmbientGlow: baseFeatures.flairAmbientGlow ?? false,
     flairGlass: baseFeatures.flairGlass ?? false,
     flairStagger: baseFeatures.flairStagger ?? false,
-    flairHover: baseFeatures.flairHover ?? false
+    flairHover: baseFeatures.flairHover ?? false,
+    flairModernLayout: baseFeatures.flairModernLayout ?? false,
+    flairCompactDensity: baseFeatures.flairCompactDensity ?? false
   });
   const [upcomingLeadDays, setUpcomingLeadDays] = useState(config.upcomingLeadDays ?? DEFAULT_LEAD_DAYS);
   const [status, setStatus] = useState({ type: '', msg: '' });
