@@ -54,7 +54,7 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
         </Button>
       </div>
 
-      <div style={{ flex: 1 }} />
+      <div className="nav-spacer" style={{ flex: 1 }} />
 
       <div className="nav-tabs" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
         {tabs.map(tab => {
