@@ -277,16 +277,22 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
           </div>
         )}
 
-        {/* Type and Repeats share a row — both are compact segmented controls,
-            and pairing them (like Category/Account below) reclaims a full row
-            of height. Without it, adding the Yearly toggle tipped this modal
-            into needing a scrollbar on a real laptop viewport (~650-700px
-            tall), even though it still fit on a taller desktop screen and on
-            mobile, where the layout is unaffected. */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '6px' }}>
+        {/* Type and Repeats share a row on a wide-enough dialog — pairing them
+            (like Category/Account below) reclaims a full row of height, which
+            fixes a scrollbar the Yearly toggle introduced on laptop viewports
+            (~650-700px tall). But neither SegmentedControl compresses (fixed
+            options, nowrap text), so forcing a strict 2-up grid clipped
+            "Income" and "Yearly" mid-word on a real phone, where the dialog
+            itself is only ~295px of content wide — nowhere near the ~170px
+            each control actually needs at `size="sm"`. `auto-fit` with a
+            minmax matched to that real minimum falls back to one column per
+            row (the original, safe layout) below ~425px of dialog width, and
+            only pairs them once there's genuinely room. */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '6px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
             <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Type</label>
             <SegmentedControl
+              size="sm"
               value={type}
               onChange={val => { setType(val); setCategoryId(''); }}
               options={[
@@ -299,6 +305,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
             <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Repeats</label>
             <SegmentedControl
+              size="sm"
               value={frequency}
               onChange={setFrequency}
               options={[
