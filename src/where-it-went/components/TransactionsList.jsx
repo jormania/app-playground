@@ -251,7 +251,8 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                         background: isUnknownCat ? 'color-mix(in srgb, var(--color-muted) 10%, transparent)' : `color-mix(in srgb, ${catColor} 10%, transparent)`,
                         color: isUnknownCat ? 'var(--color-muted)' : catColor,
                         border: `1px solid ${isUnknownCat ? 'var(--color-border)' : `color-mix(in srgb, ${catColor} 30%, transparent)`}`,
-                        borderRadius: 'var(--radius-pill)', display: 'inline-block'
+                        borderRadius: 'var(--radius-pill)', display: 'inline-block',
+                        maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                       }}>
                         {isUnknownCat ? '⚠️ Unknown' : isTransfer ? `🔁 ${displayCatName}` : displayCatName}
                       </span>
