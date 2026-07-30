@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { cx } from '../lib/cx'
 import styles from './Modal.module.css'
@@ -20,6 +20,22 @@ export interface ModalProps {
 export function Modal({ open, onClose, title, children, className }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
+  const [isMounted, setIsMounted] = useState(open)
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      setIsMounted(true)
+      setIsAnimatingOut(false)
+    } else if (isMounted) {
+      setIsAnimatingOut(true)
+      const timer = setTimeout(() => {
+        setIsMounted(false)
+        setIsAnimatingOut(false)
+      }, 250) // Match CSS animation duration
+      return () => clearTimeout(timer)
+    }
+  }, [open, isMounted])
 
   useEffect(() => {
     if (!open) return
@@ -64,7 +80,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
     }
   }, [open, onClose])
 
-  if (!open) return null
+  if (!isMounted) return null
 
   // Portalled straight to <body>: a CSS `transform` (or `filter`/`will-change`)
   // on ANY ancestor — e.g. Cabinet's AppTile, whose .tile gets a hover
@@ -73,7 +89,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
   // box rather than centering it on screen. Rendering outside the React tree
   // this way sidesteps that regardless of where <Modal> gets used from.
   return createPortal(
-    <div className={styles.overlay}>
+    <div className={cx(styles.overlay, isAnimatingOut && styles.closing)}>
       <div className={styles.scrim} onClick={onClose} aria-hidden />
       <div
         ref={dialogRef}

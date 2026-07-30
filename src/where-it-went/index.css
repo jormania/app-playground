@@ -544,9 +544,9 @@ input {
   }
   .layout-modern .nav-brand-container {
     position: absolute !important;
-    bottom: calc(100% + var(--space-xl)) !important;
-    right: var(--space-md) !important;
-    left: auto !important;
+    bottom: calc(100% + var(--space-md)) !important;
+    left: var(--space-lg) !important;
+    right: auto !important;
     width: auto !important;
     padding: 0 !important;
     margin: 0 !important;
