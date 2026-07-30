@@ -90,7 +90,7 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
           );
           
           if (tab === 'settings') {
-            const filterBtn = ['transactions', 'dashboard', 'insights'].includes(activeTab) ? (
+            const filterBtn = (
               <button
                 key="modern-filter"
                 className="nav-tab-btn nav-controls-modern"
@@ -105,7 +105,7 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
                   <span aria-hidden style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--color-accent)', border: '1px solid var(--color-bg)' }} />
                 )}
               </button>
-            ) : null;
+            );
             
             const periodBtn = (
               <button
@@ -120,7 +120,7 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
               </button>
             );
             
-            return [filterBtn, periodBtn, btn].filter(Boolean);
+            return [filterBtn, periodBtn, btn];
           }
           
           return btn;
@@ -128,20 +128,18 @@ export default function Navigation({ activeTab, onTabChange, onAddClick, period,
       </div>
 
       <div className="nav-controls" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginLeft: 'var(--space-xs)' }}>
-        {['transactions', 'dashboard', 'insights'].includes(activeTab) && (
-          <button
-            className="nav-filter-btn"
-            onClick={onFilterClick}
-            title={filtersActive ? 'Filters active — tap to change' : 'Filter'}
-            aria-label={filtersActive ? 'Filters active — tap to change' : 'Filter'}
-            style={filtersActive ? { position: 'relative' } : undefined}
-          >
-            {Icons.filter}
-            {filtersActive && (
-              <span aria-hidden style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--color-accent)', border: '1px solid var(--color-bg)' }} />
-            )}
-          </button>
-        )}
+        <button
+          className="nav-filter-btn"
+          onClick={onFilterClick}
+          title={filtersActive ? 'Filters active — tap to change' : 'Filter'}
+          aria-label={filtersActive ? 'Filters active — tap to change' : 'Filter'}
+          style={filtersActive ? { position: 'relative' } : undefined}
+        >
+          {Icons.filter}
+          {filtersActive && (
+            <span aria-hidden style={{ position: 'absolute', top: 0, right: -2, width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--color-accent)', border: '2px solid var(--color-bg)' }} />
+          )}
+        </button>
 
         <button
           className="nav-period-btn"
