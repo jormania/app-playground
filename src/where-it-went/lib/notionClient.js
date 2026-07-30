@@ -308,7 +308,12 @@ export class NotionClient {
       categoryId: row.properties.Category?.relation?.[0]?.id || '',
       accountId: row.properties.Account?.relation?.[0]?.id || '',
       active: row.properties.Active?.checkbox !== false,
-      lastProcessed: (row.properties.LastProcessed?.date?.start || '').slice(0, 10) || null
+      lastProcessed: (row.properties.LastProcessed?.date?.start || '').slice(0, 10) || null,
+      // Informational only, same as a transaction's — Amount stays the RON
+      // source of truth. Lets a subscription be paid or received in another
+      // currency (a EUR-denominated plan, rent collected from a foreign tenant).
+      originalAmount: row.properties['Original Amount']?.number ?? null,
+      originalCurrency: row.properties['Original Currency']?.select?.name || ''
     }));
   }
 
@@ -326,7 +331,9 @@ export class NotionClient {
       'DayOfMonth': { number: Number(sub.dayOfMonth) || 1 },
       'Category': relation(sub.categoryId),
       'Account': relation(sub.accountId),
-      'Active': { checkbox: sub.active !== false }
+      'Active': { checkbox: sub.active !== false },
+      'Original Amount': { number: sub.originalAmount ?? null },
+      'Original Currency': sub.originalCurrency ? { select: { name: sub.originalCurrency } } : { select: null }
     };
     if (sub.lastProcessed) {
       properties['LastProcessed'] = { date: { start: String(sub.lastProcessed).slice(0, 10) } };
@@ -354,6 +361,10 @@ export class NotionClient {
     if (updates.categoryId !== undefined) properties['Category'] = relation(updates.categoryId);
     if (updates.accountId !== undefined) properties['Account'] = relation(updates.accountId);
     if (updates.active !== undefined) properties['Active'] = { checkbox: updates.active };
+    if (updates.originalAmount !== undefined) properties['Original Amount'] = { number: updates.originalAmount ?? null };
+    if (updates.originalCurrency !== undefined) {
+      properties['Original Currency'] = updates.originalCurrency ? { select: { name: updates.originalCurrency } } : { select: null };
+    }
     if (updates.lastProcessed !== undefined) {
       properties['LastProcessed'] = updates.lastProcessed
         ? { date: { start: String(updates.lastProcessed).slice(0, 10) } }

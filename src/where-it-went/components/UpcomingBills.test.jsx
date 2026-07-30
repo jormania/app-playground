@@ -63,6 +63,33 @@ describe('UpcomingBills', () => {
     render(<UpcomingBills bills={[]} categories={categories} horizonDays={30} />);
     expect(screen.getByText(/Nothing due in the next 30 days/)).toBeDefined();
   });
+
+  it('splits into Expenses and Income sections', () => {
+    render(<UpcomingBills bills={bills} categories={categories} horizonDays={30} />);
+    expect(screen.getByText('💸 Expenses')).toBeDefined();
+    expect(screen.getByText('💰 Income')).toBeDefined();
+  });
+
+  it('also lists a future-dated one-off transaction, with a pin icon rather than the recurring glyph', () => {
+    const transactions = [{
+      id: 'tx1', name: 'Hotel stay', amount: 1500, type: 'Expense',
+      categoryId: 'c1', dueDate: '2026-07-25', daysUntil: 10,
+    }];
+    render(<UpcomingBills bills={[]} transactions={transactions} categories={categories} horizonDays={30} />);
+    expect(screen.getByText('Hotel stay')).toBeDefined();
+    // Nested wrapper (for the optional foreign-currency line) means the
+    // amount text matches at two levels when that line is absent — assert
+    // presence rather than uniqueness.
+    expect(screen.getAllByText('−1,500.00 L').length).toBeGreaterThan(0);
+  });
+
+  it('is not empty when only a one-off transaction is due, even with no subscriptions', () => {
+    const transactions = [{
+      id: 'tx1', name: 'Hotel stay', amount: 1500, type: 'Expense', categoryId: 'c1', dueDate: '2026-07-25', daysUntil: 10,
+    }];
+    render(<UpcomingBills bills={[]} transactions={transactions} categories={categories} horizonDays={30} />);
+    expect(screen.queryByText(/Nothing due in the next 30 days/)).toBeNull();
+  });
 });
 
 describe('UpcomingBanner', () => {
@@ -71,14 +98,17 @@ describe('UpcomingBanner', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('names the single bill rather than counting to one', () => {
+  it('names the single item rather than counting to one, signed by type', () => {
     render(<UpcomingBanner bills={[bills[0]]} leadDays={5} />);
-    expect(screen.getByText(/Netflix · 60\.00 L due in 5 days/)).toBeDefined();
+    expect(screen.getByText(/Netflix · −60\.00 L due in 5 days/)).toBeDefined();
   });
 
-  it('summarises with a count and a total once there is more than one', () => {
+  it('summarises with a count and a net total once there is more than one', () => {
     render(<UpcomingBanner bills={bills} leadDays={7} />);
-    expect(screen.getByText(/2 bills due in the next 7 days/)).toBeDefined();
+    // Doesn't say "bills" — rent collected as income is just as much an
+    // upcoming item as a subscription charge. Net, not summed raw: 9,000
+    // income − 60 expense = +8,940, not a meaningless 9,060.
+    expect(screen.getByText(/2 due in the next 7 days · \+8,940\.00/)).toBeDefined();
   });
 
   it('cannot be dismissed — an unpaid bill should not be silenceable', () => {

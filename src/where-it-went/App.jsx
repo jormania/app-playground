@@ -54,6 +54,9 @@ export default function App() {
     handleTabChange('insights');
   };
 
+  // Same one-shot pattern for the Upcoming banner → Dashboard's agenda card.
+  const [scrollToUpcoming, setScrollToUpcoming] = useState(false);
+
   // Lifted global states for Navigation
   const [period, setPeriod] = useState(uiState.period || 'this_month');
   const [filterType, setFilterType] = useState(uiState.filterType || 'All');
@@ -377,9 +380,9 @@ export default function App() {
 
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 var(--space-md) var(--space-md)' }}>
 
-      {/* One banner slot, shared. Offline/pending state outranks the bill
-          reminder — a queued write is more urgent than a bill due in 3 days,
-          and stacking two strips would eat the top of every screen. */}
+      {/* One banner slot, shared. Offline/pending state outranks the upcoming
+          reminder — a queued write is more urgent than something due in 3
+          days, and stacking two strips would eat the top of every screen. */}
       {(staleAt !== null || pendingCount > 0 || failedCount > 0) ? (
         <OfflineBanner
           staleAt={staleAt}
@@ -392,7 +395,7 @@ export default function App() {
           bills={dueSoon}
           leadDays={leadDays}
           categoriesById={categoriesById}
-          onView={() => handleTabChange('dashboard')}
+          onView={() => { setScrollToUpcoming(true); handleTabChange('dashboard'); }}
         />
       )}
 
@@ -473,6 +476,8 @@ export default function App() {
                 data={data} client={client} onDataChange={loadData} onNavigate={handleTabChange}
                 config={config} period={period} filterProps={filterProps}
                 onViewTripInInsights={handleViewTripInInsights}
+                scrollToUpcoming={scrollToUpcoming}
+                onConsumeScrollToUpcoming={() => setScrollToUpcoming(false)}
               />
             )}
             {activeTab === 'transactions' && (

@@ -133,9 +133,14 @@ describe('trimSentIds', () => {
 
 describe('formatBillNotification', () => {
   it('phrases the near dates in words', () => {
-    const bill = { name: 'Rent', amount: 2400, dueDate: '2026-07-16' };
-    expect(formatBillNotification(bill, now)).toBe('Rent · 2,400.00 L due tomorrow');
+    const bill = { name: 'Rent', amount: 2400, dueDate: '2026-07-16', type: 'Expense' };
+    expect(formatBillNotification(bill, now)).toBe('Rent · −2,400.00 L due tomorrow');
     expect(formatBillNotification({ ...bill, dueDate: '2026-07-15' }, now)).toMatch(/due today$/);
     expect(formatBillNotification({ ...bill, dueDate: '2026-07-18' }, now)).toMatch(/due in 3 days$/);
+  });
+
+  it('signs income differently — rent collected as a landlord is not an expense', () => {
+    const bill = { name: 'Tenant Rent', amount: 2400, dueDate: '2026-07-16', type: 'Income' };
+    expect(formatBillNotification(bill, now)).toBe('Tenant Rent · +2,400.00 L due tomorrow');
   });
 });

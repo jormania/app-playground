@@ -15,7 +15,7 @@ import {
   getPreviousPeriodRange,
   parseTxDate
 } from '../lib/period';
-import { getUpcomingBills, DEFAULT_HORIZON_DAYS } from '../lib/upcoming';
+import { getUpcomingBills, getUpcomingTransactions, DEFAULT_HORIZON_DAYS } from '../lib/upcoming';
 import { computeAllBudgets, monthlyEquivalent } from '../lib/budgets';
 
 const CARD = {
@@ -26,7 +26,7 @@ const CARD = {
   boxShadow: 'var(--shadow-sm)'
 };
 
-export default function Dashboard({ data, client, onDataChange, onNavigate, config, period = 'this_month', filterProps, onViewTripInInsights }) {
+export default function Dashboard({ data, client, onDataChange, onNavigate, config, period = 'this_month', filterProps, onViewTripInInsights, scrollToUpcoming, onConsumeScrollToUpcoming }) {
   const activePeriod = period || 'this_month';
   const allowTransfer = config?.features?.transfers === true;
   const { filterType: filter = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
@@ -42,6 +42,20 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
   useEffect(() => {
     const timer = setTimeout(() => setLoaded(true), 100);
     return () => clearTimeout(timer);
+  }, []);
+
+  // Set only by the Upcoming banner strip — clicking it used to just switch to
+  // the Dashboard tab and leave the agenda card wherever it fell in the
+  // scroll, several sections down. Consumed once on mount (Dashboard remounts
+  // fresh each time the tab is switched to), so returning here later via the
+  // nav tab doesn't keep re-scrolling.
+  useEffect(() => {
+    if (!scrollToUpcoming) return;
+    if (onConsumeScrollToUpcoming) onConsumeScrollToUpcoming();
+    requestAnimationFrame(() => {
+      document.getElementById('upcoming-bills-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const categoriesById = useMemo(
@@ -338,6 +352,15 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
     [data.subscriptions, data.transactions, upcomingHorizonDays],
   );
 
+  // Future-dated transactions already in the ledger — a hotel stay booked and
+  // logged ahead of time — surfaced alongside the subscription agenda rather
+  // than only findable by scrolling the ledger. `upcomingBills` is passed in
+  // so an occurrence a subscription already claims is never listed twice.
+  const upcomingTransactions = useMemo(
+    () => getUpcomingTransactions(data.transactions, upcomingBills, { horizonDays: upcomingHorizonDays }),
+    [data.transactions, upcomingBills, upcomingHorizonDays],
+  );
+
   const rowKeyHandler = (tx) => (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -601,8 +624,8 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
           section on the Dashboard. Independent of the selected period: a bill
           due next week is due next week whether you're looking at July or 2026. */}
       {config?.features?.upcoming !== false && (
-        <div style={{ ...CARD, marginTop: 'var(--space-xl)' }}>
-          <UpcomingBills bills={upcomingBills} categories={data.categories} horizonDays={upcomingHorizonDays} />
+        <div id="upcoming-bills-card" style={{ ...CARD, marginTop: 'var(--space-xl)' }}>
+          <UpcomingBills bills={upcomingBills} transactions={upcomingTransactions} categories={data.categories} horizonDays={upcomingHorizonDays} />
         </div>
       )}
 

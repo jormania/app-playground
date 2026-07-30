@@ -12,8 +12,9 @@ import { useDiagnosticsReveal } from '../../shared/notify/useDiagnosticsReveal';
 const ENABLED_KEY = 'whereItWent_reminders_enabled';
 
 /**
- * The opt-in for background bill reminders, plus the tap-to-reveal diagnostics
- * panel every app on this foundation carries.
+ * The opt-in for background reminders about upcoming recurring transactions
+ * (a subscription charge or income you collect, like rent), plus the
+ * tap-to-reveal diagnostics panel every app on this foundation carries.
  *
  * Honesty is the point here: background delivery only works in an installed PWA
  * on Chromium, and Periodic Background Sync timing is a lower bound rather than
@@ -94,15 +95,16 @@ export default function ReminderSettings({ data, leadDays }) {
         style={{ margin: '0 0 var(--space-xs) 0', fontSize: 'var(--text-lg)', color: 'var(--color-ink)', cursor: 'default' }}
         onClick={onHeadingTap}
       >
-        Bill Reminders
+        Recurring Reminders
       </h2>
       <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
-        Get a notification when a subscription is about to be charged, even with the app closed.
-        Uses your lead time above. Everything happens on this device — nothing is sent anywhere.
+        Get a notification when a recurring transaction is about to happen — a subscription
+        charge or income you collect, like rent — even with the app closed. Uses your lead time
+        above. Everything happens on this device — nothing is sent anywhere.
       </p>
 
       <SettingsToggle
-        label="Notify me about upcoming bills"
+        label="Notify me about upcoming transactions"
         checked={enabled}
         disabled={busy || !caps.notifications}
         onChange={e => handleToggle(e.target.checked)}

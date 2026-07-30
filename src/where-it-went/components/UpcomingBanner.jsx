@@ -2,13 +2,15 @@ import { formatCurrency } from '../lib/currency';
 import { formatDaysUntil } from '../lib/upcoming';
 
 /**
- * The one interrupt surface in the app: a slim strip naming what's about to be
- * charged. Deliberately not a nav tab — the header is already full.
+ * The one interrupt surface in the app: a slim strip naming what's about to
+ * happen — a subscription can post a charge (Spotify) or a payment you
+ * collect (rent from a tenant), so this never assumes which. Deliberately not
+ * a nav tab — the header is already full.
  *
  * **Not dismissible, by request.** It was originally snoozeable for 24h, but a
- * snooze on a bill that is still unpaid just hides the one thing you wanted to
- * be told about, and it stayed hidden. A bill is either due soon or it isn't;
- * the strip disappears on its own once the charge lands in the ledger.
+ * snooze on something still unresolved just hides the one thing you wanted to
+ * be told about, and it stayed hidden. It's either due soon or it isn't; the
+ * strip disappears on its own once it lands in the ledger.
  *
  * Tinted background + token-coloured text rather than a solid fill, which is
  * the contrast pattern the rest of the app settled on (a solid --color-warning
@@ -18,16 +20,26 @@ export default function UpcomingBanner({ bills, leadDays, categoriesById, onView
   if (!bills || bills.length === 0) return null;
 
   const soonest = bills[0];
-  const total = bills.reduce((acc, b) => acc + (Number(b.sub?.amount) || 0), 0);
+  // Signed, not summed raw — a Spotify charge and rent collected as a
+  // landlord move money in opposite directions, and adding their magnitudes
+  // together produced a "total" that meant nothing (the same mistake the
+  // Total Global Budget bar made before it was fixed to net properly).
+  const total = bills.reduce((acc, b) => {
+    const amt = Number(b.sub?.amount) || 0;
+    return acc + (b.sub?.type === 'Income' ? amt : -amt);
+  }, 0);
   const tone = 'var(--color-warning)';
 
   // The category's own emoji, so the strip carries the same visual identity the
   // ledger and the agenda use rather than a generic bell.
   const soonestIcon = categoriesById?.get(soonest.sub.categoryId)?.icon || '';
+  // Income due (rent collected as a landlord) reads very differently from an
+  // expense about to post — the sign says which without naming the type.
+  const sign = soonest.sub.type === 'Income' ? '+' : '−';
 
   const message = bills.length === 1
-    ? `${soonestIcon ? soonestIcon + ' ' : ''}${soonest.sub.name} · ${formatCurrency(soonest.sub.amount)} due ${formatDaysUntil(soonest.daysUntil)}`
-    : `${bills.length} bills due in the next ${leadDays} days · ${formatCurrency(total)}`;
+    ? `${soonestIcon ? soonestIcon + ' ' : ''}${soonest.sub.name} · ${sign}${formatCurrency(soonest.sub.amount)} due ${formatDaysUntil(soonest.daysUntil)}`
+    : `${bills.length} due in the next ${leadDays} days · ${total >= 0 ? '+' : '−'}${formatCurrency(Math.abs(total))}`;
 
   return (
     <div

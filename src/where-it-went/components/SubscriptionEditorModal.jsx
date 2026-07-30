@@ -1,10 +1,11 @@
-import { useState, useEffect, useId } from 'react';
+import { useState, useEffect, useId, useRef } from 'react';
 import { formatAccountLabel } from '../lib/accounts';
 import { Modal } from '../../ds/components/Modal';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
 import { ConfirmModal } from '../../ds';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
+import { BASE_CURRENCY, fetchRate, convert, impliedRate, formatRateNote, canConvert, orderedCurrencies } from '../lib/fx';
 
 // Matches ds/Field's own input box, same reasoning as TransactionForm.jsx —
 // a --color-bg fill read as a flat grey slab next to Field's own inputs.
@@ -22,6 +23,14 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
   const [categoryId, setCategoryId] = useState('');
   const [accountId, setAccountId] = useState('');
   const [active, setActive] = useState(true);
+  // A subscription has no fixed calendar date to convert against — it recurs
+  // on a day of month, not a single day — so this is always "today's" rate,
+  // a convenience for typing the figure once, not a historical record.
+  const [currency, setCurrency] = useState('');
+  const [baseAmount, setBaseAmount] = useState('');
+  const [rate, setRate] = useState(null);
+  const [rateDate, setRateDate] = useState(null);
+  const [rateLoading, setRateLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
@@ -29,16 +38,32 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
   const categorySelectId = useId();
   const accountSelectId = useId();
   const activeCheckboxId = useId();
+  const amountId = useId();
+  const currencySelectId = useId();
+  const baseAmountId = useId();
+
+  // Same three refs TransactionForm uses for the same reasons: don't overwrite
+  // a hand-edited RON figure, don't restate a saved foreign amount at today's
+  // rate just for reopening it, and let choosing a different account reset an
+  // un-chosen currency back to that account's own.
+  const baseTouched = useRef(false);
+  const initialAmount = useRef('');
+  const currencyTouched = useRef(false);
 
   useEffect(() => {
     if (sub) {
       setName(sub.name || '');
-      setAmount(sub.amount || '');
       setType(sub.type || 'Expense');
       setDayOfMonth(sub.dayOfMonth || 1);
       setCategoryId(sub.categoryId || '');
       setAccountId(sub.accountId || '');
       setActive(sub.active !== false);
+      const seedForeign = sub.originalCurrency && sub.originalAmount != null;
+      setAmount(seedForeign ? sub.originalAmount : (sub.amount ?? ''));
+      setCurrency(sub.originalCurrency || '');
+      setBaseAmount(seedForeign ? (sub.amount ?? '') : '');
+      initialAmount.current = String(seedForeign ? sub.originalAmount : (sub.amount ?? ''));
+      currencyTouched.current = !!sub.originalCurrency;
     } else {
       setName('');
       setAmount('');
@@ -54,32 +79,86 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
       setCategoryId(subsCategory?.id || data?.categories?.[0]?.id || '');
       setAccountId(data?.accounts?.[0]?.id || '');
       setActive(true);
+      setCurrency('');
+      setBaseAmount('');
+      initialAmount.current = '';
+      currencyTouched.current = false;
     }
+    baseTouched.current = false;
     setFormError(null);
   }, [sub, isOpen, data]);
 
+  const selectedAccount = (data?.accounts || []).find(a => a.id === accountId);
+  const accountCurrency = selectedAccount?.currency || BASE_CURRENCY;
+  const activeCurrency = currency || accountCurrency || BASE_CURRENCY;
+  const isForeign = activeCurrency !== BASE_CURRENCY;
+  const currencyOptions = orderedCurrencies(accountCurrency);
+
+  // Look up today's rate whenever the currency changes. Silent on failure —
+  // no rate simply means no suggested conversion, never a block on saving.
+  useEffect(() => {
+    let cancelled = false;
+    if (!isForeign || !canConvert(activeCurrency)) {
+      setRate(null);
+      setRateDate(null);
+      return undefined;
+    }
+    setRateLoading(true);
+    fetchRate(activeCurrency, BASE_CURRENCY, new Date())
+      .then(result => {
+        if (cancelled) return;
+        setRate(result?.rate ?? null);
+        setRateDate(result?.date ?? null);
+      })
+      .finally(() => { if (!cancelled) setRateLoading(false); });
+    return () => { cancelled = true; };
+  }, [isForeign, activeCurrency]);
+
+  // Keep the RON total in step with the typed amount — until it's edited by hand.
+  useEffect(() => {
+    if (!isForeign || baseTouched.current || rate == null) return;
+    if (String(amount) === String(initialAmount.current)) return;
+    const converted = convert(amount, rate);
+    if (converted != null) setBaseAmount(String(converted));
+  }, [amount, rate, isForeign]);
+
   const parsedAmount = parseFloat(amount);
+  const amountValid = Number.isFinite(parsedAmount) && parsedAmount > 0;
+  const parsedBase = parseFloat(baseAmount);
+  const baseValid = Number.isFinite(parsedBase) && parsedBase > 0;
   const parsedDay = parseInt(dayOfMonth, 10);
-  const canSubmit = !!name.trim() && Number.isFinite(parsedAmount) && parsedAmount > 0 &&
+  const canSubmit = !!name.trim() && amountValid && (!isForeign || baseValid) &&
     Number.isInteger(parsedDay) && parsedDay >= 1 && parsedDay <= 31 && !!categoryId && !!accountId;
+
+  const effectiveRate = isForeign && amountValid && baseValid ? impliedRate(parsedBase, parsedAmount) : null;
+  const rateNote = isForeign
+    ? formatRateNote(activeCurrency, effectiveRate ?? rate, rateDate, { stale: effectiveRate != null && rate == null })
+    : '';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError(null);
     if (!canSubmit) {
-      setFormError('Fill in every required field with a valid amount and a day between 1 and 31.');
+      if (isForeign && !baseValid) {
+        setFormError(`Enter the ${BASE_CURRENCY} amount — no exchange rate was available to work it out automatically.`);
+      } else {
+        setFormError('Fill in every required field with a valid amount and a day between 1 and 31.');
+      }
       return;
     }
 
     setSaving(true);
     const subData = {
       name: name.trim(),
-      amount: parsedAmount,
+      // RON stays the source of truth, same as a transaction.
+      amount: isForeign ? parsedBase : parsedAmount,
       type,
       dayOfMonth: parsedDay,
       categoryId,
       accountId,
-      active
+      active,
+      originalAmount: isForeign ? parsedAmount : null,
+      originalCurrency: isForeign ? activeCurrency : '',
     };
 
     try {
@@ -98,7 +177,83 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '6px', overflowX: 'hidden', boxSizing: 'border-box', minWidth: 0 }}>
         <Field label="Name" value={name} onChange={e => setName(e.target.value)} required />
 
-        <Field label="Amount" type="number" step="0.01" min="0" value={amount} onChange={e => setAmount(e.target.value)} required />
+        {/* Amount + currency share one control, same pattern as Add Transaction —
+            sometimes this is paid or received in Lei, sometimes in Euro or
+            another currency, and the account's own currency is suggested. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+          <label htmlFor={amountId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
+            Amount <span style={{ color: 'var(--color-danger)' }}>*</span>
+          </label>
+          <div style={{
+            display: 'flex', alignItems: 'stretch', minWidth: 0, height: '44px',
+            border: '1px solid var(--color-border-2)', borderRadius: 'var(--radius-md)',
+            backgroundColor: 'var(--color-surface)', overflow: 'hidden', boxSizing: 'border-box'
+          }}>
+            <input
+              id={amountId} type="number" inputMode="decimal" step="0.01" min="0" required placeholder="0.00"
+              className="wiw-no-spinner"
+              value={amount} onChange={e => setAmount(e.target.value)}
+              style={{
+                flex: 1, minWidth: 0, width: '100%', padding: '10px 0 10px 12px',
+                border: 'none', outline: 'none', background: 'transparent',
+                color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit'
+              }}
+            />
+            <select
+              id={currencySelectId}
+              aria-label="Currency"
+              value={activeCurrency}
+              onChange={e => {
+                setCurrency(e.target.value);
+                currencyTouched.current = true;
+                baseTouched.current = false;
+                initialAmount.current = null;
+              }}
+              style={{
+                flex: 'none', outline: 'none', background: 'transparent',
+                border: 'none', borderLeft: '1px solid var(--color-border-2)',
+                color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit',
+                padding: '0 0 0 6px', cursor: 'pointer'
+              }}
+            >
+              {currencyOptions.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {isForeign && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
+              <span style={{ flex: 'none' }}>≈</span>
+              <input
+                id={baseAmountId}
+                aria-label={`Amount in ${BASE_CURRENCY}`}
+                type="number" inputMode="decimal" step="0.01" min="0" placeholder="0.00"
+                className="wiw-no-spinner"
+                value={baseAmount}
+                onChange={e => { baseTouched.current = true; setBaseAmount(e.target.value); }}
+                style={{
+                  flex: 'none', width: '84px', padding: '3px 6px',
+                  border: '1px solid var(--color-border-2)', borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'var(--color-surface)', color: 'var(--color-ink)',
+                  fontSize: 'var(--text-xs)', fontFamily: 'inherit'
+                }}
+              />
+              <span style={{ flex: 'none' }}>L</span>
+            </div>
+            <div
+              title={rateNote || undefined}
+              style={{ fontSize: '11px', color: 'var(--color-muted)', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+            >
+              {rateLoading
+                ? 'Fetching exchange rate…'
+                : rateNote
+                  ? `Rate: ${rateNote}`
+                  : `No rate available for ${activeCurrency} — enter the ${BASE_CURRENCY} amount yourself`}
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Type</label>
           <SegmentedControl
@@ -123,7 +278,19 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label htmlFor={accountSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Account <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-            <select id={accountSelectId} value={accountId} onChange={e => setAccountId(e.target.value)} required style={selectStyle}>
+            <select
+              id={accountSelectId}
+              value={accountId}
+              onChange={e => {
+                setAccountId(e.target.value);
+                // Same rule as the transaction form: a hand-picked currency
+                // shouldn't shadow the newly-chosen account's own forever.
+                currencyTouched.current = false;
+                setCurrency('');
+              }}
+              required
+              style={selectStyle}
+            >
               <option value="">Select…</option>
               {(data?.accounts || []).map(a => <option key={a.id} value={a.id}>{formatAccountLabel(a)}</option>)}
             </select>

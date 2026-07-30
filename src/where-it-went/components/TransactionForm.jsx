@@ -287,7 +287,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
         ]}
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-md)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-lg)' }}>
         <Field label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} required />
 
         {/* Amount + currency share one control rather than sitting in separate
@@ -299,9 +299,9 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
             Amount <span style={{ color: 'var(--color-danger)' }}>*</span>
           </label>
           <div style={{
-            display: 'flex', alignItems: 'stretch', minWidth: 0,
+            display: 'flex', alignItems: 'stretch', minWidth: 0, height: '44px',
             border: '1px solid var(--color-border-2)', borderRadius: 'var(--radius-md)',
-            backgroundColor: 'var(--color-surface)', overflow: 'hidden'
+            backgroundColor: 'var(--color-surface)', overflow: 'hidden', boxSizing: 'border-box'
           }}>
             <input
               id={amountId} type="number" inputMode="decimal" step="0.01" min="0" required placeholder="0.00"
@@ -491,9 +491,29 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
           cutting off Notes and the Save button. */}
       {isTravelCategory && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-          <label htmlFor={tripSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
-            ✈️ Trip
-          </label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px' }}>
+            <label htmlFor={tripSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
+              ✈️ Trip
+            </label>
+            {/* Shares the label's row rather than adding one below it — the
+                form must not scroll, and a whole extra line was the difference
+                between fitting and not. Only offered where a real callback
+                exists (the edit flows) and a trip is actually selected. */}
+            {onViewTrip && tripId && (
+              <button
+                type="button"
+                onClick={() => onViewTrip(tripId)}
+                style={{
+                  background: 'none', border: 'none', padding: 0,
+                  color: 'var(--color-accent)', fontSize: 'var(--text-xs)',
+                  cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                View in Insights →
+              </button>
+            )}
+          </div>
           <select id={tripSelectId} value={tripId} onChange={e => setTripId(e.target.value)} style={selectStyle}>
             {/* "None", not "Select…": the trip is optional, and not being part of
                 a trip is a real answer rather than an unfilled field. */}
@@ -502,22 +522,6 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
               <option key={t.id} value={t.id}>{t.name}{t.destination ? ` (${t.destination})` : ''}</option>
             ))}
           </select>
-          {/* Only offered where a real callback exists (the edit flows) and a
-              trip is actually selected — jumping to a trip nobody picked yet
-              has nothing to show. */}
-          {onViewTrip && tripId && (
-            <button
-              type="button"
-              onClick={() => onViewTrip(tripId)}
-              style={{
-                alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0,
-                marginTop: '2px', color: 'var(--color-accent)', fontSize: 'var(--text-xs)',
-                cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit'
-              }}
-            >
-              View this trip in Insights →
-            </button>
-          )}
         </div>
       )}
 

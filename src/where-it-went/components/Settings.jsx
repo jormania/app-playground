@@ -18,7 +18,7 @@ import ReminderSettings from './ReminderSettings';
 /**
  * A named, persistently-collapsible chunk of Settings.
  *
- * Notion config, feature toggles, bill reminders, subscriptions and trips
+ * Notion config, feature toggles, upcoming-activity reminders, subscriptions and trips
  * used to be one uninterrupted scroll — fine with a couple of subscriptions
  * and trips, unwieldy with a dozen+ of either. Every section defaults open
  * (nothing changes for anyone who never touches this), but a collapsed choice
@@ -270,10 +270,13 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             onChange={e => setFeatures(f => ({ ...f, transfers: e.target.checked }))}
           />
           {/* On by default — `!== false` so a config saved before this key
-              existed opts in without needing a migration. */}
+              existed opts in without needing a migration. Named "activity"
+              rather than "bills": a recurring subscription can be a charge
+              (Spotify) or a payment you collect (rent from a tenant), and
+              "bill" only fits one of those. */}
           <SettingsToggle
-            label="Upcoming bills"
-            hint="Warn you before a subscription is charged, on the Dashboard and in a bar at the top."
+            label="Upcoming activity"
+            hint="Warn you before a recurring transaction happens, on the Dashboard and in a bar at the top."
             checked={features.upcoming !== false}
             onChange={e => setFeatures(f => ({ ...f, upcoming: e.target.checked }))}
           />
@@ -353,9 +356,10 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           action={<Button variant="secondary" onClick={() => setIsAddingSub(true)}>+ Add Subscription</Button>}
         >
           <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
-            Anything charged on the same day each month — rent, streaming, the gym. WhereItWent
-            adds each one to your ledger automatically on its day, and warns you a few days
-            beforehand so nothing lands unexpectedly.
+            Anything that recurs on the same day each month — an expense like streaming or the
+            gym, or income like a salary or rent you collect as a landlord. WhereItWent adds each
+            one to your ledger automatically on its day, and warns you a few days beforehand so
+            nothing lands unexpectedly.
           </p>
 
           {features.upcoming !== false && (

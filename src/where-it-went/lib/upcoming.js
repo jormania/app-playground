@@ -10,7 +10,7 @@
  * claimed by both, so a bill can't be both "upcoming" and auto-posted.
  */
 import { dueDateFor, isAlreadyPosted } from './useSubscriptionsEngine';
-import { parseTxDate, toDateString } from './period';
+import { parseTxDate, toDateString, toMonthKey } from './period';
 
 /** How far ahead the agenda looks by default. */
 export const DEFAULT_HORIZON_DAYS = 30;
@@ -23,7 +23,7 @@ const MAX_HORIZON_MONTHS = 24;
 
 /** Whole days between two local dates, DST-safe (a DST day is 23h or 25h, so
  *  the raw division lands on 0.96 or 1.04 — rounding recovers the intent). */
-function daysBetween(fromDate, toDate) {
+export function daysBetween(fromDate, toDate) {
   return Math.round((toDate.getTime() - fromDate.getTime()) / 86400000);
 }
 
@@ -96,6 +96,59 @@ export function getUpcomingBills(subscriptions, transactions, options = {}) {
 export function billsWithinLeadTime(bills, leadDays = DEFAULT_LEAD_DAYS) {
   if (!(leadDays > 0)) return [];
   return (bills || []).filter(b => !b.alreadyPosted && b.daysUntil <= leadDays);
+}
+
+/**
+ * Manually-entered transactions dated after today and within the horizon — a
+ * future hotel stay, a plane ticket, already logged. The app allows a future
+ * date on any transaction, and until now nothing surfaced those anywhere but
+ * "somewhere down the ledger" — the agenda only ever knew about subscriptions.
+ *
+ * `bills` (from `getUpcomingBills`) is required so an occurrence a subscription
+ * already claims — `alreadyPosted: true` means some real transaction matched it
+ * on name + amount + month — is never *also* listed here as an unrelated
+ * one-off. Without that check, entering next month's rent by hand would show
+ * up twice: once (correctly, greyed out) under the subscription, and again as
+ * a phantom "one-off".
+ */
+export function getUpcomingTransactions(transactions, bills, options = {}) {
+  const { horizonDays = DEFAULT_HORIZON_DAYS, today = new Date() } = options;
+  if (!(horizonDays > 0)) return [];
+
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const todayStr = toDateString(todayMidnight);
+  const horizonEnd = new Date(todayMidnight.getFullYear(), todayMidnight.getMonth(), todayMidnight.getDate() + horizonDays);
+  const horizonEndStr = toDateString(horizonEnd);
+
+  const claimed = new Set(
+    (bills || [])
+      .filter(b => b.alreadyPosted)
+      .map(b => `${b.sub.name}|${Number(b.sub.amount)}|${toMonthKey(b.dueDate)}`),
+  );
+
+  return (transactions || [])
+    .filter(t => {
+      if (!t || t.type === 'Transfer') return false; // neither an expense nor income to bucket
+      const dateStr = String(t.date || '').slice(0, 10);
+      if (!(dateStr > todayStr && dateStr <= horizonEndStr)) return false;
+      const key = `${t.description}|${Number(t.amount)}|${toMonthKey(t.date)}`;
+      return !claimed.has(key);
+    })
+    .map(t => {
+      const due = parseTxDate(t.date);
+      return {
+        id: t.id,
+        name: t.description,
+        amount: t.amount,
+        type: t.type,
+        categoryId: t.categoryId,
+        originalAmount: t.originalAmount,
+        originalCurrency: t.originalCurrency,
+        dueDate: String(t.date).slice(0, 10),
+        daysUntil: due ? daysBetween(todayMidnight, due) : null,
+      };
+    })
+    .sort((a, b) => (a.dueDate === b.dueDate ? 0 : (a.dueDate < b.dueDate ? -1 : 1)));
 }
 
 /** Total value of a set of occurrences, signed by type (Income adds, Expense subtracts). */

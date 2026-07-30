@@ -79,7 +79,10 @@ function formatBill(bill, now) {
   var days = daysUntilDue(bill.dueDate, now);
   var when = days === 0 ? 'today' : days === 1 ? 'tomorrow' : 'in ' + days + ' days';
   var amount = Number(bill.amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return bill.name + ' · ' + amount + ' L due ' + when;
+  // Signed — an occurrence is just as often income due (rent collected as a
+  // landlord) as an expense about to post.
+  var sign = bill.type === 'Income' ? '+' : '−';
+  return bill.name + ' · ' + sign + amount + ' L due ' + when;
 }
 
 // Mirror of billsToNotify() in lib/reminders.js.
@@ -102,11 +105,11 @@ function maybeNotify() {
     var due = billsToNotify(state, sent, now);
     if (due.length === 0) return undefined;
 
-    // One notification for one bill; a single summary for several, so a quiet
-    // week and a busy one don't feel equally noisy.
+    // One notification for one occurrence; a single summary for several, so a
+    // quiet week and a busy one don't feel equally noisy.
     var body = due.length === 1
       ? formatBill(due[0], now)
-      : due.length + ' bills due soon · ' + due.map(function (b) { return b.name; }).join(', ');
+      : due.length + ' due soon · ' + due.map(function (b) { return b.name; }).join(', ');
 
     return self.registration.showNotification('WhereItWent', {
       body: body,

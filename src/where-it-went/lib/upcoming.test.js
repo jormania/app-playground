@@ -5,6 +5,7 @@ import {
   sumBills,
   formatDaysUntil,
   isSnoozed,
+  getUpcomingTransactions,
   DEFAULT_HORIZON_DAYS,
 } from './upcoming';
 
@@ -175,5 +176,70 @@ describe('isSnoozed', () => {
   it('is false for a missing or corrupted value', () => {
     expect(isSnoozed(undefined, now)).toBe(false);
     expect(isSnoozed('not a number', now)).toBe(false);
+  });
+});
+
+const tx = (over = {}) => ({
+  id: 't1', description: 'Hotel stay', amount: 1500, type: 'Expense',
+  categoryId: 'c-travel', date: '2026-08-01', ...over,
+});
+
+describe('getUpcomingTransactions', () => {
+  it('surfaces a future-dated transaction within the horizon', () => {
+    const result = getUpcomingTransactions([tx()], [], { today, horizonDays: 30 });
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe('Hotel stay');
+    expect(result[0].dueDate).toBe('2026-08-01');
+    expect(result[0].daysUntil).toBe(17);
+  });
+
+  it('excludes a transaction dated today or in the past', () => {
+    const result = getUpcomingTransactions([tx({ date: '2026-07-15' }), tx({ id: 't2', date: '2026-07-01' })], [], { today });
+    expect(result).toEqual([]);
+  });
+
+  it('excludes a transaction past the horizon', () => {
+    const result = getUpcomingTransactions([tx({ date: '2026-08-20' })], [], { today, horizonDays: 30 });
+    expect(result).toEqual([]);
+  });
+
+  it('excludes Transfers — neither an expense nor income to bucket', () => {
+    const result = getUpcomingTransactions([tx({ type: 'Transfer' })], [], { today, horizonDays: 30 });
+    expect(result).toEqual([]);
+  });
+
+  it('never duplicates an occurrence a subscription already claims', () => {
+    // Entering next month's rent by hand shouldn't show up twice: once
+    // (correctly) greyed out under the subscription, and again as a
+    // phantom unrelated one-off.
+    const bills = getUpcomingBills(
+      [{ id: 's1', name: 'Rent', amount: 2400, type: 'Expense', dayOfMonth: 5, active: true }],
+      [{ id: 't1', description: 'Rent', amount: 2400, date: '2026-08-05' }],
+      { today, horizonDays: 30 },
+    );
+    expect(bills[0].alreadyPosted).toBe(true);
+
+    const result = getUpcomingTransactions(
+      [{ id: 't1', description: 'Rent', amount: 2400, type: 'Expense', date: '2026-08-05' }],
+      bills,
+      { today, horizonDays: 30 },
+    );
+    expect(result).toEqual([]);
+  });
+
+  it('carries the foreign-currency context through, same as a transaction row', () => {
+    const result = getUpcomingTransactions(
+      [tx({ originalAmount: 300, originalCurrency: 'EUR' })], [], { today, horizonDays: 30 },
+    );
+    expect(result[0].originalAmount).toBe(300);
+    expect(result[0].originalCurrency).toBe('EUR');
+  });
+
+  it('sorts soonest first', () => {
+    const result = getUpcomingTransactions(
+      [tx({ id: 't1', date: '2026-08-10' }), tx({ id: 't2', date: '2026-07-20' })],
+      [], { today, horizonDays: 30 },
+    );
+    expect(result.map(r => r.id)).toEqual(['t2', 't1']);
   });
 });

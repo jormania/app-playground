@@ -94,7 +94,7 @@ describe('Settings Component', () => {
     });
   });
 
-  it('Upcoming Bills toggle defaults ON, including for a config saved before the key existed', () => {
+  it('Upcoming activity toggle defaults ON, including for a config saved before the key existed', () => {
     // The stored features object predates `upcoming`, so the checkbox has to
     // read `!== false` rather than a truthy check — otherwise every existing
     // user would silently have the feature off with no way to know why.
@@ -104,10 +104,10 @@ describe('Settings Component', () => {
     };
 
     render(<Settings config={mockConfig} onSave={vi.fn()} onThemeChange={vi.fn()} onDone={vi.fn()} />);
-    expect(screen.getByLabelText('Upcoming bills').checked).toBe(true);
+    expect(screen.getByLabelText('Upcoming activity').checked).toBe(true);
   });
 
-  it('turning Upcoming Bills off hides the lead-time input and saves the flag', async () => {
+  it('turning Upcoming activity off hides the lead-time input and saves the flag', async () => {
     const mockConfig = {
       token: 'secret_token', categoriesDb: 'cat_id', accountsDb: 'acc_id', transactionsDb: 'tx_id',
       theme: 'dark', subscriptionsDb: 'sub_id'
@@ -123,7 +123,7 @@ describe('Settings Component', () => {
 
     expect(screen.getByLabelText(/warn me this many days ahead/i)).toBeDefined();
 
-    fireEvent.click(screen.getByLabelText('Upcoming bills'));
+    fireEvent.click(screen.getByLabelText('Upcoming activity'));
     expect(screen.queryByLabelText(/warn me this many days ahead/i)).toBeNull();
 
     fireEvent.click(screen.getByText('Save Configuration'));

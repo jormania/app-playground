@@ -53,9 +53,17 @@ export default function InsightsView({ data, period, filterProps, config, initia
 
   // Consume the one-shot jump target once, on mount only, so returning to
   // Insights later via the nav tab (not another "View this trip") doesn't
-  // keep reapplying a stale filter.
+  // keep reapplying a stale filter. Also scrolls to the Travel card itself —
+  // landing on the tab and leaving the user to scroll past three other
+  // sections to find the trip they just asked for defeated the whole point.
   useEffect(() => {
-    if (initialTripFilter && onConsumeInitialTripFilter) onConsumeInitialTripFilter();
+    if (!initialTripFilter) return;
+    if (onConsumeInitialTripFilter) onConsumeInitialTripFilter();
+    // One frame so the Travel card (which depends on `insights`, computed in
+    // the same render) has actually painted before measuring its position.
+    requestAnimationFrame(() => {
+      document.getElementById('travel-insights-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -520,7 +528,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
 
         {/* Travel Insights Card */}
         {behavioral.travelAnalysis && (
-          <div style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <div id="travel-insights-card" style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
               <div style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
                 <h3 style={{ fontSize: 'var(--text-lg)', margin: '0 0 4px 0' }}>✈️ Travel Insights</h3>
                 <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: '0 0 var(--space-sm) 0' }}>

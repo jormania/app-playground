@@ -29,13 +29,22 @@ Create five full-page databases anywhere in your Notion workspace with the follo
 
 ### 1.3 Subscriptions Database
 - **Name**: `Name` (Title property)
-- **Amount**: `Amount` (Number property)
-- **Type**: `Type` (Select property with options: `Income`, `Expense`)
+- **Amount**: `Amount` (Number property) — always in RON, the source of truth. When
+  the subscription is paid or collected in another currency, this is the converted
+  figure, exactly like a Transaction's `Amount (RON)`.
+- **Type**: `Type` (Select property with options: `Income`, `Expense`) — a
+  subscription is just as often income (rent collected from a tenant) as an
+  expense (a streaming plan).
 - **DayOfMonth**: `DayOfMonth` (Number property)
 - **Category**: `Category` (Relation property -> Connect to Categories Database)
 - **Account**: `Account` (Relation property -> Connect to Accounts Database)
 - **Active**: `Active` (Checkbox property)
 - **LastProcessed**: `LastProcessed` (Date property)
+- **Original Amount**: `Original Amount` (Number property) — informational only,
+  same role as a Transaction's. What was actually paid or received in the
+  original currency, when it isn't RON.
+- **Original Currency**: `Original Currency` (Select property, same registered
+  option list as Transactions' `Original Currency` — see §1.5).
 
 ### 1.4 Trips Database
 - **Name**: `Name` (Title property)
@@ -131,13 +140,13 @@ Click **Save Configuration**. The app will now read and write directly to your N
 - **Subscription Management**: View active and inactive subscriptions with beautifully styled status badges. Click on any subscription to seamlessly edit its details directly in a modal.
 - **Auto-Ledger Injection**: The App automatically evaluates missed payments on launch and injects them into the ledger on their correct day of the month.
 - **Seamless Notion Sync**: Powered by a 4th Notion database ("Subscriptions") to persist subscription data.
-- **Upcoming Bills** (on by default, see Settings → Feature Toggles): the engine *posts* charges on their due date, and this *warns* you before it does. Two surfaces, neither of which adds anything to the navigation bar:
-  - A **"Next 30 Days" agenda** on the Dashboard listing every scheduled charge with its date, how far away it is, and a net total. Like budgets, it ignores the selected period and any active filters — a bill due next week is due next week whether you're looking at July or at 2026. An occurrence you've already entered by hand is greyed out and marked "already recorded".
-  - A **slim reminder strip** above the content, shown only when something falls inside your lead time (default 5 days, configurable in Settings → Recurring Subscriptions). Tap it to jump to the agenda, or dismiss it to snooze for 24 hours. Dismissing only silences the strip — the agenda card stays put.
-  - **Background notifications** (opt-in, Settings → Bill Reminders): a notification when a bill falls inside the lead time, even with the app closed. On-device only — nothing is sent anywhere. Background delivery needs an **installed PWA on Chromium**; iOS Safari and ordinary browser tabs fall back to the in-app strip, and the settings panel says so rather than offering a toggle that can't work. Seven taps on the "Bill Reminders" heading reveals a diagnostics panel for when a reminder goes quiet.
+- **Upcoming Activity** (on by default, see Settings → Feature Toggles): the engine *posts* each occurrence on its due date, and this *warns* you before it does — a subscription is just as often income (rent collected as a landlord) as an expense (Spotify), so nothing here assumes which. Two surfaces, neither of which adds anything to the navigation bar:
+  - A **"Next 30 Days" agenda** on the Dashboard, split into Expenses and Income with a combined net total, listing every scheduled occurrence with its date and how far away it is. It also surfaces **future-dated transactions you've already logged by hand** — a hotel stay booked ahead of time, a plane ticket — not just subscriptions; an occurrence a subscription already claims is never listed twice. Like budgets, it ignores the selected period and any active filters — something due next week is due next week whether you're looking at July or at 2026. An occurrence you've already entered by hand is greyed out and marked "already recorded".
+  - A **slim reminder strip** above the content, shown only when something falls inside your lead time (default 5 days, configurable in Settings → Recurring Subscriptions), signed so a charge and a payment due to you read differently at a glance. It clears itself once the transaction lands in the ledger — not dismissible, since silencing something still outstanding would hide the one thing worth being told about.
+  - **Background notifications** (opt-in, Settings → Recurring Reminders): a notification when something falls inside the lead time, even with the app closed. On-device only — nothing is sent anywhere. Background delivery needs an **installed PWA on Chromium**; iOS Safari and ordinary browser tabs fall back to the in-app strip, and the settings panel says so rather than offering a toggle that can't work. Seven taps on the "Recurring Reminders" heading reveals a diagnostics panel for when a reminder goes quiet.
 
 ### Settings & Customization
-- **Feature Toggles**: Customize your Dashboard by enabling or disabling specific features — the Budgeting Engine, the Cash Flow Trend chart, Transfers (see above; off by default), and Upcoming Bills (see above; on by default).
+- **Feature Toggles**: Customize your Dashboard by enabling or disabling specific features — the Budgeting Engine, the Cash Flow Trend chart, Transfers (see above; off by default), and Upcoming Activity (see above; on by default).
 - **Theme Support**: Seamlessly toggle between Light and Dark mode using a clean, icon-based toggle switch.
 
 ### Under the Hood
@@ -903,3 +912,65 @@ app in `apps-registry.js` — it had drifted to **three** apps simultaneously
 reminds you to unset it on the previous one. Replaced with a structural rule:
 `APPS[0]` — new apps go at the top of the registry — is authoritative, so
 there's nothing to remember and nothing that can desync again.
+
+## Feedback pass on the 1.0 release (2026-07-30)
+
+Real usage against the golden release surfaced seven issues. All fixed; full
+suite (755 → 770 tests), typecheck and lint all green.
+
+- **"View this trip in Insights" landed at the top of the page.** The trip
+  filter *was* being pre-selected correctly, but nothing scrolled to the
+  Travel Insights card — reaching it still meant scrolling past three other
+  sections by hand. Fixed with a mount-only `scrollIntoView`, the same
+  one-shot pattern the jump itself already used.
+- **The Repeat icon was breaking the ledger's two-line-per-row limit.** It sat
+  stacked below the amount pill, so a foreign-currency transaction (which
+  already uses a second line for its original amount) grew a third line.
+  Moved onto the amount pill's own row.
+- **Form polish**: "View this trip in Insights" now shares the Trip label's
+  row instead of adding one below it (the edit modal had started scrolling
+  again — a regression from adding that link in the first pass). The Amount
+  box gets an explicit 44px height to match `Field`'s own inputs pixel-for-
+  pixel, and the Date/Amount gap widened from 12px to 24px.
+- **The Upcoming banner didn't scroll to the agenda either** — same fix,
+  same one-shot pattern, applied to Dashboard's `upcoming-bills-card`.
+- **"Bill" language didn't fit every scenario.** A recurring subscription is
+  just as often income (rent collected from a tenant) as an expense
+  (Spotify) — "Upcoming Bills", "Bill Reminders" and "3 bills due soon" all
+  assumed the wrong direction for half the use cases. Renamed throughout to
+  "Upcoming Activity" / "Recurring Reminders" / neutral phrasing, and every
+  amount shown in a reminder or banner is now signed (`+`/`−`) so the
+  direction is legible without reading the word "bill" into it. The banner's
+  multi-item total is now netted (income − expense) rather than summed raw,
+  which had the same "6,500" mixed-timescale problem the budget total once did.
+- **Subscriptions can now be recorded in another currency**, reusing the exact
+  FX pattern from Add Transaction: an inline currency picker on the Amount
+  field, live ECB-rate conversion to RON (using today's rate, since a
+  subscription has no fixed calendar date to convert against), and an
+  overridable RON figure. Two new Notion properties on the Subscriptions
+  database — `Original Amount` (Number) and `Original Currency` (Select,
+  same 16-currency vocabulary as Transactions) — applied directly to the live
+  workspace via the Notion MCP, matching `notionClient.js`. The subscriptions
+  engine carries the foreign-currency context onto whatever it auto-posts,
+  so an auto-generated ledger row shows the same secondary currency line a
+  manual entry would.
+- **The Next 30 Days widget was sparse and under-used.** Three changes:
+  - Split into **Expenses** and **Income** sections (the combined Net stays a
+    single figure at the top — that's the number that actually answers "am I
+    in the clear").
+  - **Future-dated transactions already logged by hand** now appear alongside
+    subscription occurrences — a hotel stay booked ahead of time, not just
+    recurring charges. New pure function `getUpcomingTransactions()` in
+    `lib/upcoming.js`, de-duplicated against subscription occurrences so
+    entering next month's rent by hand can never show up twice.
+  - **Deliberately not added to notifications**: a one-off future transaction
+    is already visible twice over (future-dated rows sort first in the
+    ledger, and now in this agenda) — a third nudge would be noise, not help.
+    Background reminders stay scoped to subscriptions, where the app is the
+    only thing that knows a charge is coming.
+- **Verified the "Pattern Deviation" percentage math** (Travel/Property/Nora
+  alerts): `((current − baseline average) / baseline average) × 100` is the
+  standard "percent above" formula — "300% above average" correctly means
+  4× the average, not 3×. No bug found; the baseline itself already excludes
+  the period being judged and requires ≥2 months of real history, per the
+  audit pass from 2026-07-29.

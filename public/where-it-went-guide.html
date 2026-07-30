@@ -182,14 +182,16 @@
   <h3>4.4 Subscriptions <span class="pill">optional</span></h3>
   <div class="tablewrap"><table class="schema">
     <tr><th>Property</th><th>Type</th><th>Notes</th></tr>
-    <tr><td>Name</td><td>Title</td><td>Used as the transaction description when a charge is posted.</td></tr>
-    <tr><td>Amount</td><td>Number</td><td>In RON.</td></tr>
-    <tr><td>Type</td><td>Select</td><td><code>Income</code> or <code>Expense</code> — a salary can be recurring too.</td></tr>
+    <tr><td>Name</td><td>Title</td><td>Used as the transaction description when an occurrence is posted.</td></tr>
+    <tr><td>Amount</td><td>Number</td><td>In RON — the source of truth, same role as a Transaction's <code>Amount (RON)</code>.</td></tr>
+    <tr><td>Type</td><td>Select</td><td><code>Income</code> or <code>Expense</code> — rent collected from a tenant is a recurring subscription too, just as much as a streaming plan.</td></tr>
     <tr><td>DayOfMonth</td><td>Number</td><td>1–31. A 31 in a short month is clamped to the last day, never rolled into the next.</td></tr>
     <tr><td>Category</td><td>Relation → Categories</td><td></td></tr>
     <tr><td>Account</td><td>Relation → Accounts</td><td></td></tr>
     <tr><td>Active</td><td>Checkbox</td><td>Unchecked stops both posting and reminders.</td></tr>
     <tr><td>LastProcessed</td><td>Date</td><td>Managed by the app. Do not edit by hand.</td></tr>
+    <tr><td>Original Amount</td><td>Number</td><td>Informational only, same as a Transaction's. What's actually paid or received when it isn't RON.</td></tr>
+    <tr><td>Original Currency</td><td>Select</td><td>Same registered option list as Transactions' <code>Original Currency</code> above.</td></tr>
   </table></div>
 
   <h3>4.5 Trips <span class="pill">optional</span></h3>
@@ -243,15 +245,16 @@
   <p>Tick <b>Roll unspent room over</b> and whatever you did not spend is added to the next window. Overspend carries too, as a negative — money already spent cannot be un-spent, and forgiving it each period would quietly hide the hole.</p>
   <p class="muted">Carry is recalculated from your transaction history every time, never stored. So correcting a transaction from three months ago fixes every window after it automatically, and there is no second copy of the number to fall out of step.</p>
 
-  <h2 id="recurring">8. Recurring bills &amp; reminders <span class="pill on">on by default</span></h2>
-  <p>Add anything charged on the same day each month under <b>Settings → Recurring Subscriptions</b>. Two things then happen.</p>
-  <h3>It posts the charge</h3>
-  <p>On launch, any charge whose day has arrived is written into the ledger, tagged <code>Subscription</code> and <code>Auto-generated</code>. Before writing, the ledger is checked for a matching charge that month, so a failed run or a second device cannot double-post. Backfill is capped at 12 months.</p>
+  <h2 id="recurring">8. Recurring transactions &amp; reminders <span class="pill on">on by default</span></h2>
+  <p>Add anything that recurs on the same day each month under <b>Settings → Recurring Subscriptions</b> — an expense like streaming or the gym, or income like a salary or rent you collect as a landlord. Two things then happen, regardless of which direction the money moves.</p>
+  <h3>It posts the transaction</h3>
+  <p>On launch, any occurrence whose day has arrived is written into the ledger, tagged <code>Subscription</code> and <code>Auto-generated</code>. Before writing, the ledger is checked for a matching entry that month, so a failed run or a second device cannot double-post. Backfill is capped at 12 months.</p>
   <h3>It warns you first</h3>
-  <p>A <b>Next 30 Days</b> agenda on the Dashboard lists what is coming, with a net total; a charge you already entered by hand is greyed out as "already recorded". A slim bar at the top names anything inside your lead time (default 5 days, configurable). That bar cannot be dismissed on purpose — silencing an unpaid bill hides the one thing worth being told about. It clears itself when the charge lands.</p>
+  <p>A <b>Next 30 Days</b> agenda on the Dashboard lists what is coming, split into Expenses and Income with a combined net total. It isn't only subscriptions: a future-dated transaction you've already logged by hand — a hotel stay booked ahead of time, a plane ticket — shows up here too, marked with a 📌 rather than the recurring 🔁, and never doubled up with a subscription occurrence that already claims it. An occurrence you already entered by hand is greyed out as "already recorded". A slim bar at the top names anything inside your lead time (default 5 days, configurable), signed so you can tell a charge from a payment you're due to collect. That bar cannot be dismissed on purpose — silencing something still outstanding hides the one thing worth being told about. It clears itself when the transaction lands.</p>
   <h3>Notifications while the app is closed <span class="pill off">opt-in</span></h3>
-  <p><b>Settings → Bill Reminders</b> turns on a device notification a few days before a charge. It is entirely on-device — no server, no push service, nothing sent anywhere.</p>
-  <p class="warn">Background delivery needs the app <b>installed</b> (see <a href="#install">§13</a>) on <b>Chromium</b> — desktop or Android. iOS Safari and ordinary browser tabs fall back to the in-app bar, and the settings panel says so rather than offering a switch that cannot work. Even where supported, the browser decides when to wake the app: the lead time is a floor, not a promise. Seven taps on the <b>Bill Reminders</b> heading reveals a diagnostics panel for when a reminder goes quiet.</p>
+  <p><b>Settings → Recurring Reminders</b> turns on a device notification a few days before an occurrence, whichever direction it moves money. It is entirely on-device — no server, no push service, nothing sent anywhere.</p>
+  <p class="muted">Covers subscription occurrences only — a future-dated transaction you've logged by hand deliberately doesn't also trigger a notification. It's already visible twice over without one: at the top of the ledger (future-dated rows sort first) and in the Next 30 Days agenda. A third nudge for the same fact would be noise, not help.</p>
+  <p class="warn">Background delivery needs the app <b>installed</b> (see <a href="#install">§13</a>) on <b>Chromium</b> — desktop or Android. iOS Safari and ordinary browser tabs fall back to the in-app bar, and the settings panel says so rather than offering a switch that cannot work. Even where supported, the browser decides when to wake the app: the lead time is a floor, not a promise. Seven taps on the <b>Recurring Reminders</b> heading reveals a diagnostics panel for when a reminder goes quiet.</p>
 
   <h2 id="insights">9. Insights &amp; the 90-day forecast</h2>
   <p>The Insights tab is organised by what you can do about it.</p>
@@ -298,8 +301,8 @@
     <dd>The income-vs-expenses chart, and the 90-day projection in Insights.</dd>
     <dt>Transfers <span class="pill off">off</span></dt>
     <dd>The third transaction type. Most people never need to track internal moves, so it stays invisible until asked for.</dd>
-    <dt>Upcoming bills <span class="pill on">on</span></dt>
-    <dd>The Dashboard agenda and the reminder bar. Turning this off also turns off background notifications.</dd>
+    <dt>Upcoming activity <span class="pill on">on</span></dt>
+    <dd>The Dashboard agenda and the reminder bar, for both recurring expenses and recurring income. Turning this off also turns off background notifications.</dd>
   </dl>
   <h3>Managing data</h3>
   <p><b>Recurring Subscriptions</b> and <b>Trips Management</b> let you add, edit and remove those records without leaving the app. Deleting archives in Notion.</p>
@@ -345,7 +348,7 @@
     <dd>If you have two accounts with the same name in different currencies, the app prefers the RON one for everyday spending. Pick the other explicitly when you mean it, and the currency follows the account.</dd>
 
     <dt>Reminders are enabled but nothing arrives.</dt>
-    <dd>Check, in order: the app is <b>installed</b> and launched from its icon; the browser is Chromium; notification permission is granted; and a bill genuinely falls inside your lead time. Then use the diagnostics panel — seven taps on the Bill Reminders heading. Background delivery is best-effort by design and the browser may simply decline.</dd>
+    <dd>Check, in order: the app is <b>installed</b> and launched from its icon; the browser is Chromium; notification permission is granted; and something genuinely falls inside your lead time. Then use the diagnostics panel — seven taps on the Recurring Reminders heading. Background delivery is best-effort by design and the browser may simply decline.</dd>
 
     <dt>The app says it is showing old data.</dt>
     <dd>It could not reach Notion and is showing the last copy it downloaded. Anything you change is queued and marked <code>⏳ Syncing</code>, and goes out when the connection returns.</dd>

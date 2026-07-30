@@ -116,7 +116,11 @@ export function useSubscriptionsEngine({ data, client, onDataChange, enabled = t
               accountId: sub.accountId,
               date: dateStr,
               notes: 'Generated from a recurring subscription.',
-              tags: [SUBSCRIPTION_TAG, GENERATED_TAG]
+              tags: [SUBSCRIPTION_TAG, GENERATED_TAG],
+              // Carries the subscription's own foreign-currency context onto
+              // the posted row, same as a manually-entered transaction shows.
+              originalAmount: sub.originalAmount ?? null,
+              originalCurrency: sub.originalCurrency || '',
             });
             madeChanges = true;
             lastSettled = dateStr;

@@ -112,14 +112,16 @@ export function trimSentIds(ids) {
   return list.length <= MAX_SENT_IDS ? list : list.slice(list.length - MAX_SENT_IDS);
 }
 
-/** The notification text for one bill. */
+/** The notification text for one occurrence — signed, since it may as easily
+ * be income due (rent collected as a landlord) as an expense about to post. */
 export function formatBillNotification(bill, now = new Date()) {
   const days = daysUntilDue(bill.dueDate, now);
   const when = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
   const amount = Number(bill.amount).toLocaleString('en-US', {
     minimumFractionDigits: 2, maximumFractionDigits: 2,
   });
-  return `${bill.name} · ${amount} L due ${when}`;
+  const sign = bill.type === 'Income' ? '+' : '−';
+  return `${bill.name} · ${sign}${amount} L due ${when}`;
 }
 
 /** Mirror the snapshot into IndexedDB. Never throws — reminders are a bonus. */

@@ -31,7 +31,7 @@ afterEach(() => {
 describe('ReminderSettings', () => {
   it('starts off and turns on once permission is granted', async () => {
     render(<ReminderSettings data={data} leadDays={5} />);
-    const toggle = screen.getByLabelText(/notify me about upcoming bills/i);
+    const toggle = screen.getByLabelText(/notify me about upcoming transactions/i);
     expect(toggle.checked).toBe(false);
 
     fireEvent.click(toggle);
@@ -44,7 +44,7 @@ describe('ReminderSettings', () => {
     // Without an explicit re-mirror the worker keeps reading `enabled: false`
     // until the next reload and nothing ever fires.
     render(<ReminderSettings data={data} leadDays={7} />);
-    fireEvent.click(screen.getByLabelText(/notify me about upcoming bills/i));
+    fireEvent.click(screen.getByLabelText(/notify me about upcoming transactions/i));
 
     await waitFor(() => expect(writeReminderState).toHaveBeenCalledWith(data, { enabled: true, leadDays: 7 }));
   });
@@ -52,7 +52,7 @@ describe('ReminderSettings', () => {
   it('re-mirrors with enabled false when switched off', async () => {
     localStorage.setItem('whereItWent_reminders_enabled', 'true');
     render(<ReminderSettings data={data} leadDays={5} />);
-    fireEvent.click(screen.getByLabelText(/notify me about upcoming bills/i));
+    fireEvent.click(screen.getByLabelText(/notify me about upcoming transactions/i));
 
     await waitFor(() => expect(writeReminderState).toHaveBeenCalledWith(data, { enabled: false, leadDays: 5 }));
     expect(unregisterPeriodicSync).toHaveBeenCalled();
@@ -63,7 +63,7 @@ describe('ReminderSettings', () => {
     // refuses to move.
     enableReminders.mockResolvedValue('denied');
     render(<ReminderSettings data={data} leadDays={5} />);
-    const toggle = screen.getByLabelText(/notify me about upcoming bills/i);
+    const toggle = screen.getByLabelText(/notify me about upcoming transactions/i);
 
     fireEvent.click(toggle);
     await waitFor(() => expect(writeReminderState).toHaveBeenCalledWith(data, { enabled: false, leadDays: 5 }));
@@ -74,7 +74,7 @@ describe('ReminderSettings', () => {
   it('explains itself when the browser cannot show notifications at all', () => {
     capabilities.mockReturnValue({ notifications: false, periodicSync: false, serviceWorker: false });
     render(<ReminderSettings data={data} leadDays={5} />);
-    expect(screen.getByLabelText(/notify me about upcoming bills/i).disabled).toBe(true);
+    expect(screen.getByLabelText(/notify me about upcoming transactions/i).disabled).toBe(true);
     expect(screen.getByText(/cannot show notifications/i)).toBeDefined();
   });
 
