@@ -1000,3 +1000,9 @@ suite (755 → 770 tests), typecheck and lint all green.
 ## Transaction List Grid Alignment
 - Modified grid-template-columns in mobile layout to use fixed widths for consistent vertical spreadsheet-like alignment.
 - Moved the Repeat button to its own dedicated column for both mobile and desktop views.
+
+## UI & Navigation Refinements
+- **Transaction List Summary Redesign**: Extracted the transaction list summary (transaction count, total income, total expense) from the main list card into its own distinct, full-width pill matching the visual styling of the "Upcoming" banner. Spaced elements evenly (`space-between`) for clarity.
+- **Mobile Navigation Header Refinements**: Changed the logo text to "WiW" on mobile screens (while retaining "WhereItWent" on desktop) and adjusted margin spacing to save horizontal space and prevent header elements from crowding the "Add" button.
+- **Modern Layout Navigation Alignment**: Adjusted the desktop sidebar navigation tabs (`.layout-modern .nav-tab-btn`) from center-aligned to left-aligned (`justify-content: flex-start`). This ensures the navigation icons form a strong, clean vertical line, vastly improving visual scanning and eliminating the ragged-edge effect.
+- **Settings State Initialization Fix**: Fixed a visual glitch where "Compact Density" and "Modern Layout" did not correctly reflect their toggled state when re-opening the Settings tab. They are now properly loaded into the initial component state in `Settings.jsx`.
