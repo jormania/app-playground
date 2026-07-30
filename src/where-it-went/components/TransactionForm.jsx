@@ -289,8 +289,12 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
 
       {/* Not an even 1fr/1fr split — the date renders a full "DD/MM/YYYY" and
           was cropping its last digit, while the Amount box (a couple of
-          digits plus a 3-letter currency) had room to spare at that width. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 6fr) minmax(0, 5fr)', gap: 'var(--space-lg)' }}>
+          digits plus a 3-letter currency) had room to spare at that width.
+          The 10fr:9fr ratio plus the tighter gap below is calibrated to leave
+          the Date column at essentially its old pixel width (unchanged, still
+          uncropped) while handing Amount the reclaimed gap space — about one
+          more digit of room for a larger figure. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 10fr) minmax(0, 9fr)', gap: 'var(--space-md)' }}>
         <Field label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} required />
 
         {/* Amount + currency share one control rather than sitting in separate
