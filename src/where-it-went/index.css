@@ -201,6 +201,10 @@ input {
     margin-left: auto !important;
     overflow-x: hidden;
   }
+  .main-content-wrapper {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
   /* Transaction form actions: Delete + Cancel + Save don't fit one line at
      375px with default padding, and letting them wrap costs a whole 44px row
      -- enough to push the modal into a scrollbar. Tightening the horizontal

@@ -233,7 +233,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                       </div>
                     )}
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</div>
+                      <div style={{ fontWeight: 'var(--weight-medium)', fontSize: 'var(--text-sm)', color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</div>
                       {/* A note used to be write-only: typed into the form, read by the
                           classifiers, never shown again. One line, truncated. */}
                       {tx.notes && (
