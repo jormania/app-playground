@@ -453,8 +453,13 @@ input {
 
 .layout-modern .main-content-wrapper {
   flex: 1;
-  overflow-y: scroll; /* Forces track to stay visible, eliminating animation flash */
+  overflow-y: auto;
   min-height: 0; /* Critical flexbug fix: allows container to scroll instead of growing infinitely */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.layout-modern .main-content-wrapper::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
 @media (min-width: 800px) {
@@ -513,7 +518,6 @@ input {
   }
   .layout-modern .main-content-wrapper {
     padding: var(--space-xl) !important;
-    scrollbar-gutter: stable;
   }
 }
 
