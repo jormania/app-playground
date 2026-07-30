@@ -129,7 +129,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
 
         {/* Period in Review */}
         {insights.summaryParagraph && (
-          <div style={{ marginBottom: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', borderLeft: '4px solid var(--color-accent)' }}>
+          <div className="card-container stagger-1" style={{ marginBottom: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', borderLeft: '4px solid var(--color-accent)' }}>
             <p style={{ margin: 0, fontSize: 'var(--text-base)', lineHeight: 1.6, color: 'var(--color-ink)' }}>
               <strong>📅 {periodLabel} in Review:</strong> {insights.summaryParagraph}
             </p>
@@ -174,7 +174,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
         {insights.wins && insights.wins.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
             <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', color: 'var(--color-ink)' }}>Financial Wins</h3>
-            <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-success)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+            <div className="card-container stagger-2" style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-success)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
               <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
                 {insights.wins.map((win, idx) => (
                   <li key={idx} style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', color: 'var(--color-ink)', fontWeight: 'var(--weight-medium)' }}>
@@ -202,7 +202,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 'var(--space-xl)', marginBottom: 'var(--space-xl)', width: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
           
           {/* Financial Health with Savings Rate emphasized as Primary KPI */}
-          <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="card-container stagger-2" style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
             <h3 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
               Financial Health
             </h3>
@@ -253,7 +253,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
           </div>
 
           {/* Merged Fixed Costs & Structural Costs */}
-          <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="card-container stagger-3" style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
             <h3 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
               Fixed & Structural Costs
             </h3>
@@ -301,7 +301,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 'var(--space-xl)' }}>
           {/* The 50/30/20 Rule */}
-          <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="card-container stagger-3" style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
             <h3 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
               The 50/30/20 Rule
             </h3>
@@ -370,7 +370,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
           </div>
 
           {/* Income Dependency */}
-          <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="card-container stagger-4" style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
             <h3 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
               Income Dependency
             </h3>
@@ -425,7 +425,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 'var(--space-xl)', marginBottom: 'var(--space-xl)', width: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
           
           {/* Spending by Category Change - Limited to top 5 most significant shifts */}
-          <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="card-container stagger-4" style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
             <h3 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
               Category Trends (MoM)
             </h3>
@@ -458,7 +458,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
           </div>
 
           {/* Frequent Spending with explicitly labeled values */}
-          <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="card-container stagger-4" style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
             <h3 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
               Frequent Spending
             </h3>
@@ -495,7 +495,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
           </div>
 
           {/* Largest Transactions with category badges */}
-          <div style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="card-container stagger-4" style={{ padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
             <h3 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', fontSize: 'var(--text-lg)', marginTop: 0 }}>
               Largest Transactions
             </h3>
@@ -528,7 +528,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
 
         {/* Travel Insights Card */}
         {behavioral.travelAnalysis && (
-          <div id="travel-insights-card" style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <div id="travel-insights-card" className="card-container stagger-4" style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
               <div style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
                 <h3 style={{ fontSize: 'var(--text-lg)', margin: '0 0 4px 0' }}>✈️ Travel Insights</h3>
                 <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', margin: '0 0 var(--space-sm) 0' }}>
@@ -699,7 +699,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
 
         {/* Property Insights Card (Operations Dashboard) */}
         {behavioral.propertyAnalysis && (
-          <div style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="card-container stagger-4" style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
                 <div>
                   <h3 style={{ fontSize: 'var(--text-lg)', margin: 0 }}>
@@ -881,7 +881,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
 
         {/* Nora Insights Card (Family Support Dashboard) */}
         {behavioral.noraAnalysis && (
-          <div style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="card-container stagger-4" style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-xs)', marginBottom: 'var(--space-md)', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
                 <div>
                   <h3 style={{ fontSize: 'var(--text-lg)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
