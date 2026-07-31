@@ -15,7 +15,7 @@ import { BASE_CURRENCY } from './fx';
 /** "📱 Revolut" · "💶 Revolut (EUR)" · "Checking" when there is no icon. */
 export function formatAccountLabel(account, { fallback = '—' } = {}) {
   if (!account || !account.name) return fallback;
-  const icon = account.icon ? `${account.icon} ` : '';
+  const icon = ''; // SVG used in components instead
   const suffix = account.currency && account.currency !== BASE_CURRENCY
     ? ` (${account.currency})`
     : '';

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Button } from '../../ds/components/Button';
 import { CategoryIcon } from './CategoryIcon';
+import { AccountIcon } from './AccountIcon';
 import { ConfirmModal, AlertModal } from '../../ds';
 import { formatCurrency } from '../lib/currency';
 import { readJson, writeJson } from '../lib/storage';

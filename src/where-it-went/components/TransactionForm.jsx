@@ -514,31 +514,7 @@ export default function TransactionForm({ transactions = [], categories, account
         <label htmlFor={accountSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
           {isTransfer ? 'From' : 'Account'} <span style={{ color: 'var(--color-danger)' }}>*</span>
         </label>
-        <select
-          id={accountSelectId}
-          value={accountId}
-          onChange={e => {
-            manualEdit.current.account = true;
-            setAccountId(e.target.value);
-            // Choosing a different account should adopt that account's currency.
-            // Previously a hand-picked currency shadowed it permanently, so
-            // realising you had the wrong account left you with the wrong
-            // currency and no way back to the default.
-            currencyTouched.current = false;
-            setCurrency('');
-          }}
-          required
-          style={selectStyle}
-        >
-          {/* Only a transfer gets a blank first option: Income and Expense keep a
-              sensible pre-selection from the category. */}
-          {isTransfer && <option value="">Select…</option>}
-          {/* Symmetrical with To, which already excludes From: neither end may
-              offer the account the other one is using. */}
-          {sortedAccounts.filter(a => !isTransfer || a.id !== toAccountId).map(a => (
-            <option key={a.id} value={a.id}>{formatAccountLabel(a)}</option>
-          ))}
-        </select>
+        <AccountSelect id={accountSelectId} value={accountId} onChange={e => { manualEdit.current.account = true; setAccountId(e.target.value); currencyTouched.current = false; }} required style={selectStyle} accounts={sortedAccounts.filter(a => !isTransfer || a.id !== toAccountId)} />
       </div>
 
       {/* A transfer has two ends. Recording only one meant "Revolut top-up from
@@ -549,12 +525,7 @@ export default function TransactionForm({ transactions = [], categories, account
           <label htmlFor={toAccountSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
             To <span style={{ color: 'var(--color-danger)' }}>*</span>
           </label>
-          <select id={toAccountSelectId} value={toAccountId} onChange={e => setToAccountId(e.target.value)} required style={selectStyle}>
-            <option value="">Select…</option>
-            {sortedAccounts.filter(a => a.id !== accountId).map(a => (
-              <option key={a.id} value={a.id}>{formatAccountLabel(a)}</option>
-            ))}
-          </select>
+          <AccountSelect id={toAccountSelectId} value={toAccountId} onChange={e => setToAccountId(e.target.value)} required style={selectStyle} accounts={sortedAccounts.filter(a => a.id !== accountId)} />
         </div>
       )}
       </div>

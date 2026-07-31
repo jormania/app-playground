@@ -1,4 +1,5 @@
 import { CategoryIcon } from './CategoryIcon';
+import { AccountIcon } from './AccountIcon';
 import { useEffect, useMemo, useState } from 'react';
 import TransactionForm from './TransactionForm';
 import DuplicateReview from './DuplicateReview';
@@ -351,10 +352,21 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                     </div>
                     {/* A transfer's account cell reads as a route, so both ends
                         are visible without opening the row. */}
-                    <div className="tx-col-account" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {isTransfer && tx.toAccountId
-                        ? `${accountLabelById(accountsById, tx.accountId)} → ${accountLabelById(accountsById, tx.toAccountId)}`
-                        : accountLabelById(accountsById, tx.accountId)}
+                    <div className="tx-col-account" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center' }}>
+                      {isTransfer && tx.toAccountId ? (
+                        <>
+                          <AccountIcon account={accountsById.get(tx.accountId)} style={{ marginRight: '4px' }} />
+                          {accountLabelById(accountsById, tx.accountId)}
+                          <span style={{ margin: '0 4px' }}>→</span>
+                          <AccountIcon account={accountsById.get(tx.toAccountId)} style={{ marginRight: '4px' }} />
+                          {accountLabelById(accountsById, tx.toAccountId)}
+                        </>
+                      ) : (
+                        <>
+                          <AccountIcon account={accountsById.get(tx.accountId)} style={{ marginRight: '4px' }} />
+                          {accountLabelById(accountsById, tx.accountId)}
+                        </>
+                      )}
                     </div>
                     <div className="tx-col-repeat" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '4px' }}>
                       {onRepeat && (

@@ -114,11 +114,7 @@ export default function TemplateEditorModal({ isOpen, onClose, template, categor
             <label htmlFor={accountSelectId} style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)", color: "var(--color-ink)" }}>
               Account <span style={{ color: "var(--color-danger)" }}>*</span>
             </label>
-            <select id={accountSelectId} value={accountId} onChange={e => setAccountId(e.target.value)} required style={selectStyle}>
-              {sortedAccounts.map(a => (
-                <option key={a.id} value={a.id}>{formatAccountLabel(a)}</option>
-              ))}
-            </select>
+            <AccountSelect id={accountSelectId} value={accountId} onChange={e => setAccountId(e.target.value)} required style={selectStyle} accounts={sortedAccounts} />
           </div>
         </div>
 
