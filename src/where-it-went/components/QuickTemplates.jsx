@@ -14,12 +14,6 @@ export default function QuickTemplates({ templates = [], onApplyTemplate, onSave
 
   return (
     <div style={{ marginBottom: 'var(--space-lg)' }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 'var(--space-xs)' }}>
-        <Button variant="ghost" size="xs" onClick={() => setIsEditing(!isEditing)}>
-          {isEditing ? 'Done' : 'Edit'}
-        </Button>
-      </div>
-
       <div className="quick-tx-container">
         {activeTemplates.map(t => (
           <button
@@ -37,6 +31,19 @@ export default function QuickTemplates({ templates = [], onApplyTemplate, onSave
             + Add Template
           </button>
         )}
+        <button
+          type="button"
+          className="action-pill-btn"
+          onClick={() => setIsEditing(!isEditing)}
+          style={{ 
+            color: 'var(--color-accent)', 
+            backgroundColor: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
+            border: 'none',
+            marginLeft: 'auto'
+          }}
+        >
+          {isEditing ? 'Done' : 'Edit'}
+        </button>
       </div>
 
       {editingTemplate && (
