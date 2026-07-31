@@ -81,6 +81,7 @@ Create five full-page databases anywhere in your Notion workspace with the follo
 - **Notes**: `Notes` (Text / Rich text property)
 - **Tags**: `Tags` (Multi-select property)
 - **Recurring**: `Recurring` (Checkbox property)
+- **Reconciled**: `Reconciled` (Checkbox property) — marks if the transaction matches the bank statement.
 - **Created At**: `Created At` (Created Time property)
 
 ### 1.6 Quick Templates Database
