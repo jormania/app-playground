@@ -1,15 +1,16 @@
 import { useState, useRef } from "react";
 
-export function SwipeableRow({ children, onSwipeLeft, onSwipeRight, onLongPress, enabled = true }) {
+export function SwipeableRow({ children, onSwipeLeft, onSwipeRight, onLongPress, onClick, enabled = true }) {
   const [translateX, setTranslateX] = useState(0);
   const [swiping, setSwiping] = useState(false);
   const startX = useRef(0);
   const currentX = useRef(0);
   const timerRef = useRef(null);
+  const longPressTriggered = useRef(false);
   const threshold = 80;
 
   if (!enabled) {
-    return <div className="transaction-row-wrapper">{children}</div>;
+    return <div className="transaction-row-wrapper" onClick={onClick}>{children}</div>;
   }
 
   const clearLongPressTimer = () => {
@@ -22,10 +23,12 @@ export function SwipeableRow({ children, onSwipeLeft, onSwipeRight, onLongPress,
   const handleStart = (clientX) => {
     startX.current = clientX;
     currentX.current = clientX;
+    longPressTriggered.current = false;
     setSwiping(true);
 
     if (onLongPress) {
       timerRef.current = setTimeout(() => {
+        longPressTriggered.current = true;
         onLongPress();
         timerRef.current = null;
       }, 500);
@@ -61,6 +64,21 @@ export function SwipeableRow({ children, onSwipeLeft, onSwipeRight, onLongPress,
     setTranslateX(0);
   };
 
+  const handleClickCapture = (e) => {
+    if (longPressTriggered.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
+    // If they swipe, don't trigger click
+    if (Math.abs(translateX) > 10) {
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
+    if (onClick) onClick(e);
+  };
+
   return (
     <div 
       className="transaction-row-wrapper"
@@ -73,6 +91,7 @@ export function SwipeableRow({ children, onSwipeLeft, onSwipeRight, onLongPress,
       onMouseMove={(e) => handleMove(e.clientX)}
       onMouseUp={handleEnd}
       onMouseLeave={handleEnd}
+      onClickCapture={handleClickCapture}
       onContextMenu={(e) => {
         // Prevent default context menu on long press if we handle it
         if (onLongPress) {
