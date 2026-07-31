@@ -21,6 +21,7 @@ import { getUpcomingBills, getUpcomingTransactions, DEFAULT_HORIZON_DAYS } from 
 import { computeAllBudgets, monthlyEquivalent } from '../lib/budgets';
 import { calculateMovingAverage, calculateLinearRegression } from '../lib/trends';
 import QuickTemplates from './QuickTemplates';
+import SmartTextEntry from './SmartTextEntry';
 
 const CARD = {
   padding: 'var(--space-lg)',
@@ -514,6 +515,15 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
 
   return (
     <div className="fade-in">
+      <SmartTextEntry
+        accounts={data.accounts || []}
+        categories={data.categories || []}
+        onAdd={async (tx) => {
+          await client.addTransaction(tx);
+          await onDataChange();
+        }}
+      />
+
       {config?.features?.quickTemplates && (
         <QuickTemplates 
           templates={data.templates} 
