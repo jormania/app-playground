@@ -139,7 +139,7 @@ export default function TripExportModal({ trip, data, onClose }) {
                           {t.description}
                         </div>
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', display: 'flex', gap: '4px' }}>
-                          <span>{toDateString(t.date)}</span>
+                          <span>{new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                           <span>•</span>
                           <span>{cat?.name || 'Uncategorized'}</span>
                         </div>

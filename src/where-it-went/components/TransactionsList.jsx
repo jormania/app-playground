@@ -196,7 +196,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
     return out;
   }, [filtered, visibleCount, sortConfig.key, categoriesById, accountsById]);
 
-  const gridTemplate = sortConfig.key === 'date' ? '2fr 1fr 1fr 1fr' : '1fr 2fr 1fr 1fr 1fr';
+  const gridTemplate = sortConfig.key === 'date' ? '3fr 1fr 1fr 120px' : '100px 3fr 1fr 1fr 120px';
 
   /** A row still sitting in the offline outbox, drawn as clearly unsent. */
   const pendingBadge = (tx) => (tx.pending ? (
