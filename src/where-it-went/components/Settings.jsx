@@ -8,6 +8,8 @@ import { NotionClient } from '../lib/notionClient';
 import SubscriptionEditorModal from './SubscriptionEditorModal';
 import TemplateEditorModal from './TemplateEditorModal';
 import TripEditorModal from './TripEditorModal';
+import TripExportModal from './TripExportModal';
+import { generateDeepInsights } from '../lib/analytics';
 import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 import { ordinal } from '../lib/period';
@@ -118,6 +120,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [isAddingTemplate, setIsAddingTemplate] = useState(false);
   const [editingTrip, setEditingTrip] = useState(null);
+  const [exportingTrip, setExportingTrip] = useState(null);
   const [failedJobs, setFailedJobs] = useState(() => readFailed());
   const [isAddingTrip, setIsAddingTrip] = useState(false);
 
@@ -826,6 +829,18 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                         </span>
                       </div>
                     </div>
+                    <div>
+                      <Button 
+                        variant="secondary" 
+                        style={{ padding: '4px 8px', fontSize: 'var(--text-xs)' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExportingTrip(trip);
+                        }}
+                      >
+                        Export
+                      </Button>
+                    </div>
                   </div>
                 );
               })
@@ -877,6 +892,14 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             await client.deleteTrip(id);
             if (onDataChange) onDataChange();
           }}
+        />
+      )}
+
+      {exportingTrip && (
+        <TripExportModal
+          trip={exportingTrip}
+          data={data}
+          onClose={() => setExportingTrip(null)}
         />
       )}
 
