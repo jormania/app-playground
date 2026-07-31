@@ -405,27 +405,32 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
         </div>
         </>
       )}
-      {selectedTxs.size > 0 && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          backgroundColor: 'var(--color-surface)',
-          borderTop: '1px solid var(--color-border)',
-          padding: 'var(--space-md)',
-          display: 'flex', gap: 'var(--space-sm)',
-          alignItems: 'center', justifyContent: 'space-between',
-          boxShadow: '0 -4px 12px rgba(0,0,0,0.1)',
-          zIndex: 50,
-          flexWrap: 'wrap'
-        }}>
-          <div style={{ fontWeight: 'bold' }}>{selectedTxs.size} selected</div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <Button size="sm" variant="secondary" onClick={() => setShowBulkCategoryModal(true)} disabled={bulkProcessing}>Categorize</Button>
-            <Button size="sm" variant="secondary" onClick={handleBulkReconcile} disabled={bulkProcessing}>Reconcile</Button>
-            <Button size="sm" variant="danger" onClick={handleBulkDelete} disabled={bulkProcessing}>Delete</Button>
-            <Button size="sm" variant="ghost" onClick={() => setSelectedTxs(new Set())} disabled={bulkProcessing}>Cancel</Button>
+      {selectedTxs.size > 0 && (() => {
+        const singleTx = selectedTxs.size === 1 ? (data.transactions || []).find(t => selectedTxs.has(t.id)) : null;
+        return (
+          <div style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0,
+            backgroundColor: 'var(--color-surface)',
+            borderTop: '1px solid var(--color-border)',
+            padding: 'var(--space-md)',
+            display: 'flex', gap: 'var(--space-sm)',
+            alignItems: 'center', justifyContent: 'space-between',
+            boxShadow: '0 -4px 12px rgba(0,0,0,0.1)',
+            zIndex: 50,
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ fontWeight: 'bold' }}>{selectedTxs.size} selected</div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {singleTx && onSplit && <Button size="sm" variant="secondary" onClick={() => onSplit(singleTx)} disabled={bulkProcessing}>Split</Button>}
+              {singleTx && onRepeat && <Button size="sm" variant="secondary" onClick={() => onRepeat(singleTx)} disabled={bulkProcessing}>Repeat</Button>}
+              <Button size="sm" variant="secondary" onClick={() => setShowBulkCategoryModal(true)} disabled={bulkProcessing}>Categorize</Button>
+              <Button size="sm" variant="secondary" onClick={handleBulkReconcile} disabled={bulkProcessing}>Reconcile</Button>
+              <Button size="sm" variant="danger" onClick={handleBulkDelete} disabled={bulkProcessing}>Delete</Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelectedTxs(new Set())} disabled={bulkProcessing}>Cancel</Button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <Modal isOpen={showBulkCategoryModal} onClose={() => setShowBulkCategoryModal(false)} title="Bulk Categorize">
          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '8px', padding: '16px' }}>
