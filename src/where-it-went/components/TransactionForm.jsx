@@ -353,11 +353,8 @@ export default function TransactionForm({ transactions = [], categories, account
       {/* Not an even 1fr/1fr split — the date renders a full "DD/MM/YYYY" and
           was cropping its last digit, while the Amount box (a couple of
           digits plus a 3-letter currency) had room to spare at that width.
-          The 10fr:9fr ratio plus the tighter gap below is calibrated to leave
-          the Date column at essentially its old pixel width (unchanged, still
-          uncropped) while handing Amount the reclaimed gap space — about one
-          more digit of room for a larger figure. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 10fr) minmax(0, 9fr)', gap: 'var(--space-md)' }}>
+          The ratio has been further adjusted to give Amount more space. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 8.5fr) minmax(0, 11.5fr)', gap: 'var(--space-md)' }}>
         <Field label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} required />
 
         {/* Amount + currency share one control rather than sitting in separate
@@ -407,51 +404,45 @@ export default function TransactionForm({ transactions = [], categories, account
         </div>
       </div>
 
-      {/* The editable RON total (a card's own fee beats any published rate)
-          and the rate that produced it, on their own line each — cramming
-          both into one line was unreadable at the font size this has to fit
-          at. Both still individually clamp to one line and ellipsise rather
-          than wrap, so this never grows past two short lines. */}
+      {/* The editable RON total and the rate that produced it, placed on the
+          same line to conserve vertical space on smaller mobile screens. */}
       {isForeign && (
         <div style={{ 
-          display: 'flex', flexDirection: 'column', gap: '6px', 
-          padding: '10px 12px', borderRadius: 'var(--radius-md)', 
+          display: 'flex', alignItems: 'center', gap: '8px', 
+          padding: '8px 12px', borderRadius: 'var(--radius-md)', 
           backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border-2)' 
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-muted)', flex: 'none' }}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-            <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, position: 'relative' }}>
-              <input
-                id={baseAmountId}
-                aria-label={`Amount in ${BASE_CURRENCY}`}
-                type="number" inputMode="decimal" step="0.01" min="0" placeholder="0.00"
-                className="wiw-no-spinner"
-                value={baseAmount}
-                onChange={e => { baseTouched.current = true; setBaseAmount(e.target.value); }}
-                style={{
-                  width: '100%', padding: '6px 40px 6px 10px',
-                  border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
-                  backgroundColor: 'var(--color-surface)', color: 'var(--color-ink)',
-                  fontSize: 'var(--text-sm)', fontFamily: 'inherit', fontWeight: 'var(--weight-medium)',
-                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)'
-                }}
-              />
-              <span style={{ position: 'absolute', right: '10px', color: 'var(--color-muted)', fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-bold)' }}>{BASE_CURRENCY}</span>
-            </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-muted)', flex: 'none' }}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          <div style={{ display: 'flex', alignItems: 'center', flex: 'none', width: '90px', position: 'relative' }}>
+            <input
+              id={baseAmountId}
+              aria-label={`Amount in ${BASE_CURRENCY}`}
+              type="number" inputMode="decimal" step="0.01" min="0" placeholder="0.00"
+              className="wiw-no-spinner"
+              value={baseAmount}
+              onChange={e => { baseTouched.current = true; setBaseAmount(e.target.value); }}
+              style={{
+                width: '100%', padding: '6px 36px 6px 8px',
+                border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'var(--color-surface)', color: 'var(--color-ink)',
+                fontSize: 'var(--text-sm)', fontFamily: 'inherit', fontWeight: 'var(--weight-medium)',
+                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)'
+              }}
+            />
+            <span style={{ position: 'absolute', right: '8px', color: 'var(--color-muted)', fontSize: '10px', fontWeight: 'var(--weight-bold)' }}>{BASE_CURRENCY}</span>
           </div>
           <div
             title={rateNote || undefined}
             style={{
-              fontSize: '11px', color: 'var(--color-muted)', minWidth: 0,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              paddingLeft: '24px'
+              flex: 1, fontSize: '11px', color: 'var(--color-muted)', minWidth: 0,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
             }}
           >
             {rateLoading
-              ? 'Fetching exchange rate…'
+              ? 'Fetching rate…'
               : rateNote
                 ? `Rate: ${rateNote}`
-                : `No rate available for ${activeCurrency} — enter the ${BASE_CURRENCY} amount yourself`}
+                : `No rate available`}
           </div>
         </div>
       )}
