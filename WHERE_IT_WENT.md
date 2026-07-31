@@ -1020,3 +1020,8 @@ suite (755 → 770 tests), typecheck and lint all green.
 - **Template Management**: Provided an embedded "Edit Mode" in the Dashboard to add, modify, and delete templates natively within the app, synchronizing back to Notion.
 - **Automated Database Provisioning**: In the Settings UI, added a 1-click "Initialize Database" button that dynamically uses the Notion API to create the Quick Templates Database structure as a child of the `App Databases` page, saving the user from manual schema setup.
 - **Smart Duplicate Defaults**: Clicking the "Duplicate" action on any historical transaction now correctly seeds the duplication form with **today's date**, instead of the historical date, matching real-world logic that duplicated transactions usually happen *now*. It does not auto-save, preserving the opportunity to make adjustments before submission.
+
+  - **Transaction List Actions Layout**: Replaced the space-inefficient Flex wrap layout of the transaction selection bottom bar with a strict two-row layout on mobile and a perfectly centered single-row layout on desktop. It uses horizontally scrolling pills (`action-pill-btn`) to ensure action buttons never collapse onto a third row or wrap improperly regardless of screen size or selection count.
+  - **Quick Transactions Redesign**: Upgraded the Quick Transactions pills on the Dashboard to use the same horizontal scroll pattern with translucent backgrounds and no borders, saving vertical space and looking much cleaner.
+  - **Trip Export Crash Fix**: Decoupled `TripExportModal` from the global `generateDeepInsights` engine to prevent a React crash when evaluating trip data, resolving the bug that opened a blank screen. Replaced it with a fast, specialized reduce function tailored for trip exports.
+
