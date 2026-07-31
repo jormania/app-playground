@@ -86,7 +86,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   // Transfers default OFF — most people don't need to track internal
   // account-to-account moves, so the feature stays invisible until asked for.
   const baseFeatures = config.features || {};
-  const [features, setFeatures] = useState({ 
+  const [features, setFeatures] = useState({
     budgeting: baseFeatures.budgeting ?? true, 
     cashFlow: baseFeatures.cashFlow ?? true, 
     transfers: baseFeatures.transfers ?? false, 
@@ -105,6 +105,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     flairHover: baseFeatures.flairHover ?? false,
     flairModernLayout: baseFeatures.flairModernLayout ?? false,
     flairCompactDensity: baseFeatures.flairCompactDensity ?? false,
+    flairLucideIcons: baseFeatures.flairLucideIcons ?? false,
     mobileSwipe: baseFeatures.mobileSwipe ?? true
   });
   const [upcomingLeadDays, setUpcomingLeadDays] = useState(config.upcomingLeadDays ?? DEFAULT_LEAD_DAYS);
@@ -411,9 +412,17 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                 flairAmbientGlow: on,
                 flairGlass: on,
                 flairStagger: on,
-                flairHover: on
+                flairHover: on,
+                flairLucideIcons: on
               };
             })}
+          />
+          <SettingsToggle
+            label="Use Lucide Icons"
+            hint="Replace the classical emoji icons with elegant Lucide SVGs across the entire app."
+            checked={features.flairLucideIcons === true && features.flairMaster !== false}
+            disabled={features.flairMaster === false}
+            onChange={e => handleFeatureToggle('flairLucideIcons', e.target.checked)}
           />
           <SettingsToggle
             label="Tactile Press States"

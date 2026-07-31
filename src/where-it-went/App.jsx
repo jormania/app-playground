@@ -23,6 +23,7 @@ import {
   createOfflineClient, saveSnapshot, readSnapshot, readOutbox, readFailed,
   flushOutbox, isOnline, applyLocally,
 } from './lib/outbox';
+import { FeaturesContext } from './FeaturesContext';
 import PeriodSheet from './components/PeriodSheet';
 import FilterSheet from './components/FilterSheet';
 import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS, DEMO_TRIPS, DEMO_TEMPLATES } from './models/demoData';
@@ -419,6 +420,7 @@ export default function App() {
     (config?.features?.mobileSwipe !== false) ? 'swipe-enabled' : ''
   ].filter(Boolean).join(' ');
   return (
+    <FeaturesContext.Provider value={config?.features || {}}>
     <div className={flairClasses} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Shown whenever the figures on screen are samples — which includes a
           brand-new install that has never been configured, not just the explicit
@@ -591,5 +593,6 @@ export default function App() {
       </div>
       </div>
     </div>
+    </FeaturesContext.Provider>
   );
 }

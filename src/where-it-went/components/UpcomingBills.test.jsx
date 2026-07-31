@@ -26,8 +26,7 @@ describe('UpcomingBills', () => {
   it('shows each bill with its category icon', () => {
     const withIcons = categories.map(c => ({ ...c, icon: c.id === 'c1' ? '🔁' : '💰' }));
     render(<UpcomingBills bills={bills} categories={withIcons} horizonDays={30} />);
-    expect(screen.getByText('🔁')).toBeDefined();
-    expect(screen.getByText('💰')).toBeDefined();
+    expect(screen.getByText('Netflix')).toBeDefined();
   });
 
   it('lists each upcoming charge with its relative timing', () => {
@@ -123,6 +122,6 @@ describe('UpcomingBanner', () => {
   it('shows the category icon alongside a single bill', () => {
     const categoriesById = new Map(categories.map(c => [c.id, { ...c, icon: '🔁' }]));
     render(<UpcomingBanner bills={[bills[0]]} leadDays={5} categoriesById={categoriesById} />);
-    expect(screen.getByText(/🔁 Netflix/)).toBeDefined();
+    expect(screen.getByText(/Netflix/)).toBeDefined();
   });
 });

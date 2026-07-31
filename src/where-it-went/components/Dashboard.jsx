@@ -763,7 +763,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
                 return (
                   <div key={b.id}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 'var(--weight-medium)', display: 'flex', alignItems: 'center' }}><CategoryIcon name={b.name} style={{marginRight: '6px'}}/>{b.name}</span>
+                      <span style={{ fontWeight: 'var(--weight-medium)', display: 'flex', alignItems: 'center' }}><CategoryIcon category={b} style={{marginRight: '6px'}}/>{b.name}</span>
                       <span style={{ color: isOver ? 'var(--color-danger)' : b.spent === 0 ? 'var(--color-muted)' : 'var(--color-ink)' }}>
                         {b.spent === 0
                           ? <em style={{ fontSize: 'var(--text-xs)' }}>Nothing spent yet</em>

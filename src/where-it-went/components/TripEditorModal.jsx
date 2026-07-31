@@ -3,6 +3,7 @@ import { CURRENCIES } from '../lib/fx';
 import { Modal } from '../../ds/components/Modal';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
+import { CurrencySelect } from './CurrencySelect';
 import { ConfirmModal } from '../../ds';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { validateTrip } from '../domain/Trip';
@@ -93,20 +94,17 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
             <label htmlFor="trip-currency" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
               Currency
             </label>
-            <select
+            <CurrencySelect
               id="trip-currency"
               value={currency}
+              currencies={['', ...CURRENCIES]}
               onChange={e => setCurrency(e.target.value)}
               style={{
-                width: '100%', minWidth: 0, padding: '10px 8px', borderRadius: 'var(--radius-md)',
+                width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--color-border-2)', backgroundColor: 'var(--color-surface)',
                 color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit'
               }}
-            >
-              {/* Optional: blank means "whatever the account uses". */}
-              <option value="">None</option>
-              {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            />
           </div>
         </div>
 

@@ -8,13 +8,26 @@ export function CategorySelect({ id, value, onChange, categories, required, styl
   const selectedCat = categories.find(c => c.id === value);
   
   return (
-    <>
+    <div style={{ position: 'relative', width: '100%' }}>
+      <select 
+        id={id} 
+        value={value} 
+        onChange={onChange}
+        required={required}
+        disabled={disabled}
+        aria-hidden="true"
+        tabIndex={-1}
+        style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', pointerEvents: 'none', appearance: 'none' }}
+      >
+        <option value="" disabled>Select…</option>
+        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </select>
       <Button 
         type="button" 
         variant="secondary" 
         onClick={() => setOpen(true)} 
         disabled={disabled}
-        id={id}
+        value={value}
         style={{ 
           width: '100%', 
           display: 'flex', 
@@ -30,7 +43,7 @@ export function CategorySelect({ id, value, onChange, categories, required, styl
         }}
       >
         <span style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-          {selectedCat && <CategoryIcon name={selectedCat.name} style={{ marginRight: '8px' }} />}
+          {selectedCat && <CategoryIcon category={selectedCat} style={{ marginRight: '8px' }} />}
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {selectedCat ? selectedCat.name : 'Select…'}
           </span>
@@ -52,12 +65,12 @@ export function CategorySelect({ id, value, onChange, categories, required, styl
               }}
               style={{ padding: '6px 8px', justifyContent: 'flex-start' }}
             >
-              <CategoryIcon name={cat.name} style={{ opacity: cat.id === value ? 1 : 0.7, marginRight: '6px' }} />
+              <CategoryIcon category={cat} style={{ opacity: cat.id === value ? 1 : 0.7, marginRight: '6px' }} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
             </Button>
           ))}
         </div>
       </Modal>
-    </>
+    </div>
   );
 }

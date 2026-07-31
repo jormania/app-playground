@@ -109,7 +109,7 @@ export default function BudgetEditorModal({ isOpen, onClose, categories, client,
                   type="number"
                   min="0"
                   placeholder="No Limit"
-                  label={<span style={{display: 'flex', alignItems: 'center'}}><CategoryIcon name={c.name} style={{marginRight: '6px'}} />{c.name}</span>}
+                  label={<span style={{display: 'flex', alignItems: 'center'}}><CategoryIcon category={c} style={{marginRight: '6px'}} />{c.name}</span>}
                   value={limits[c.id]}
                   onChange={(e) => setLimits({ ...limits, [c.id]: e.target.value })}
                 />

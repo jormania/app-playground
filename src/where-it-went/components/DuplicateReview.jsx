@@ -144,7 +144,7 @@ export default function DuplicateReview({
                           textDecoration: onInspect ? 'underline dotted' : 'none',
                           textUnderlineOffset: '3px'
                         }}>
-                          <>{cat && <CategoryIcon name={cat.name} style={{ marginRight: '4px' }} />}{t.description}</>
+                          <>{cat && <CategoryIcon category={cat} style={{ marginRight: '4px' }} />}{t.description}</>
                         </div>
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {t.date} · {cat?.name || 'Uncategorized'}

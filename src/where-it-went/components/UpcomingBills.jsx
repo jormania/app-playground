@@ -1,4 +1,5 @@
 import { formatCurrency } from '../lib/currency';
+import { CategoryIcon } from './CategoryIcon';
 import { formatDaysUntil } from '../lib/upcoming';
 import { getCategoryColor } from '../lib/colors';
 import { parseTxDate } from '../lib/period';
@@ -90,7 +91,7 @@ export default function UpcomingBills({ bills, transactions, categories, horizon
             rather than the recurring-arrows glyph — it isn't a pattern, it's
             a single logged commitment. */}
         <span aria-hidden style={{ flex: 'none', fontSize: '16px', width: '20px', textAlign: 'center' }}>
-          cat ? <CategoryIcon name={cat.name} size={16} /> : (item.kind === 'transaction' ? '📌' : '🔁')
+          {cat ? <CategoryIcon category={cat} size={16} /> : (item.kind === 'transaction' ? '📌' : '🔁')}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{

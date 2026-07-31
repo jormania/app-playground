@@ -21,8 +21,28 @@ export const CATEGORY_ICONS = {
   rent: Home,
 };
 
-export function CategoryIcon({ name, size = 14, style = {}, ...props }) {
-  const n = (name || '').toLowerCase();
-  const Icon = CATEGORY_ICONS[n] || Tag;
-  return <Icon size={size} style={{ flexShrink: 0, ...style }} {...props} />;
+import { useContext } from 'react';
+import { FeaturesContext } from '../FeaturesContext';
+
+export function CategoryIcon({ category, name, size = 14, style = {}, ...props }) {
+  const features = useContext(FeaturesContext);
+  const useLucide = features?.flairLucideIcons === true;
+
+  if (useLucide) {
+    const catName = (category?.name || name || '').toLowerCase();
+    const Icon = CATEGORY_ICONS[catName] || Tag;
+    return <Icon size={size} style={{ flexShrink: 0, ...style }} {...props} />;
+  }
+
+  // Classical SVG (emoji text)
+  const iconText = category?.icon || '📌';
+  return (
+    <span 
+      aria-hidden="true" 
+      style={{ fontSize: `${size + 2}px`, width: `${size + 6}px`, textAlign: 'center', flexShrink: 0, display: 'inline-block', lineHeight: 1, ...style }} 
+      {...props}
+    >
+      {iconText}
+    </span>
+  );
 }

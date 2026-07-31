@@ -3,6 +3,7 @@ import { formatAccountLabel } from '../lib/accounts';
 import { Modal } from '../../ds/components/Modal';
 import { CategorySelect } from './CategorySelect';
 import { AccountSelect } from './AccountSelect';
+import { CurrencySelect } from './CurrencySelect';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
 import { ConfirmModal } from '../../ds';
@@ -224,10 +225,11 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
                 color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit'
               }}
             />
-            <select
+            <CurrencySelect
               id={currencySelectId}
               aria-label="Currency"
               value={activeCurrency}
+              currencies={currencyOptions}
               onChange={e => {
                 setCurrency(e.target.value);
                 currencyTouched.current = true;
@@ -240,9 +242,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
                 color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit',
                 padding: '0 0 0 6px', cursor: 'pointer'
               }}
-            >
-              {currencyOptions.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            />
           </div>
         </div>
 
@@ -333,16 +333,21 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '6px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label htmlFor={categorySelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Category <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-            <select id={categorySelectId} value={categoryId} onChange={e => setCategoryId(e.target.value)} required style={selectStyle}>
-              <option value="">Select…</option>
-              {(data?.categories || []).filter(c => c.type === type).map(c => <option key={c.id} value={c.id}>{c.icon ? c.icon + ' ' : ''}{c.name}</option>)}
-            </select>
+            <CategorySelect 
+              id={categorySelectId} 
+              value={categoryId} 
+              onChange={e => setCategoryId(e.target.value)} 
+              required 
+              style={selectStyle}
+              categories={(data?.categories || []).filter(c => c.type === type)}
+            />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label htmlFor={accountSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Account <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-            <select
+            <AccountSelect
               id={accountSelectId}
               value={accountId}
+              accounts={(data?.accounts || [])}
               onChange={e => {
                 setAccountId(e.target.value);
                 // Same rule as the transaction form: a hand-picked currency
@@ -352,10 +357,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
               }}
               required
               style={selectStyle}
-            >
-              <option value="">Select…</option>
-              {(data?.accounts || []).map(a => <option key={a.id} value={a.id}>{formatAccountLabel(a)}</option>)}
-            </select>
+            />
           </div>
         </div>
 

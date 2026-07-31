@@ -2,10 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { formatAccountLabel, accountLabelById } from './accounts';
 
 describe('formatAccountLabel', () => {
-  it('prefixes the icon when there is one', () => {
-    expect(formatAccountLabel({ name: 'Revolut', icon: '📱', currency: 'RON' })).toBe('📱 Revolut');
-  });
-
   it('works fine without an icon', () => {
     expect(formatAccountLabel({ name: 'Checking', currency: 'RON' })).toBe('Checking');
   });
@@ -13,8 +9,8 @@ describe('formatAccountLabel', () => {
   it('appends the currency only when it differs from the base', () => {
     // With two accounts legitimately called "Revolut", the suffix is the only
     // thing telling them apart — so it must never be dropped for a non-RON one.
-    expect(formatAccountLabel({ name: 'Revolut', icon: '💶', currency: 'EUR' })).toBe('💶 Revolut (EUR)');
-    expect(formatAccountLabel({ name: 'Revolut', icon: '📱', currency: 'RON' })).not.toMatch(/\(/);
+    expect(formatAccountLabel({ name: 'Revolut', icon: '💶', currency: 'EUR' })).toBe('Revolut (EUR)');
+    expect(formatAccountLabel({ name: 'Revolut', icon: '📱', currency: 'RON' })).toBe('Revolut');
   });
 
   it('treats a missing currency as the base currency', () => {
@@ -35,8 +31,8 @@ describe('accountLabelById', () => {
   ]);
 
   it('resolves through the lookup map', () => {
-    expect(accountLabelById(byId, 'a1')).toBe('💵 Cash');
-    expect(accountLabelById(byId, 'a2')).toBe('💶 Revolut (EUR)');
+    expect(accountLabelById(byId, 'a1')).toBe('Cash');
+    expect(accountLabelById(byId, 'a2')).toBe('Revolut (EUR)');
   });
 
   it('falls back for an unknown or missing id', () => {

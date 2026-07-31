@@ -2,6 +2,7 @@ import React, { useState, useId } from "react";
 import { Modal } from "../../ds/components/Modal";
 import { Field } from "../../ds/components/Field";
 import { Button } from "../../ds/components/Button";
+import { CategorySelect } from "./CategorySelect";
 
 const selectStyle = {
   width: "100%",

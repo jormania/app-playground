@@ -12,12 +12,13 @@ export interface ModalProps {
   title: string
   children: ReactNode
   className?: string
+  style?: React.CSSProperties
 }
 
 /** A token-styled dialog. Closes on the × button, backdrop click, or Escape.
  *  While open it traps focus inside the dialog and restores focus to the
  *  previously-focused element on close. */
-export function Modal({ open, onClose, title, children, className }: ModalProps) {
+export function Modal({ open, onClose, title, children, className, style }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const [isMounted, setIsMounted] = useState(open)
@@ -98,6 +99,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cx(styles.dialog, className)}
+        style={style}
       >
         <div className={styles.header}>
           <h2 id={titleId} className={styles.title}>

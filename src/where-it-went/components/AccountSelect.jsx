@@ -9,13 +9,26 @@ export function AccountSelect({ id, value, onChange, accounts, required, style, 
   const selectedAcc = accounts.find(a => a.id === value);
   
   return (
-    <>
+    <div style={{ position: 'relative', width: '100%' }}>
+      <select 
+        id={id} 
+        value={value} 
+        onChange={onChange}
+        required={required}
+        disabled={disabled}
+        aria-hidden="true"
+        tabIndex={-1}
+        style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', pointerEvents: 'none', appearance: 'none' }}
+      >
+        <option value="" disabled>Select…</option>
+        {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+      </select>
       <Button 
         type="button" 
         variant="secondary" 
         onClick={() => setOpen(true)} 
         disabled={disabled}
-        id={id}
+        value={value}
         style={{ 
           width: '100%', 
           display: 'flex', 
@@ -59,6 +72,6 @@ export function AccountSelect({ id, value, onChange, accounts, required, style, 
           ))}
         </div>
       </Modal>
-    </>
+    </div>
   );
 }

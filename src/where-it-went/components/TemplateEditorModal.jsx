@@ -5,6 +5,8 @@ import { Button } from "../../ds/components/Button";
 import { ConfirmModal } from "../../ds";
 import { SegmentedControl } from "../../ds/components/SegmentedControl";
 import { formatAccountLabel } from "../lib/accounts";
+import { CategorySelect } from './CategorySelect';
+import { AccountSelect } from './AccountSelect';
 
 const selectStyle = {
   width: "100%",

@@ -63,9 +63,11 @@ export default function FilterSheet({ isOpen, onClose, filterType, categoryFilte
         {categoryFilterApplies && (
           <div>
             <label style={{ display: 'block', fontSize: 'var(--text-sm)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>Category</label>
-            <select
-              value={localCategory}
+            <CategorySelect
+              id="cat-filter"
+              value={localCategory === 'All' ? 'All' : localCategory}
               onChange={(e) => setLocalCategory(e.target.value)}
+              categories={[{ id: 'All', name: 'All Categories' }, ...relevantCategories]}
               style={{
                 width: '100%',
                 padding: 'var(--space-sm)',
@@ -75,12 +77,7 @@ export default function FilterSheet({ isOpen, onClose, filterType, categoryFilte
                 color: 'var(--color-ink)',
                 fontSize: 'var(--text-sm)'
               }}
-            >
-              <option value="All">All Categories</option>
-              {relevantCategories.map(c => (
-                <option key={c.id} value={c.id}>{c.icon ? `${c.icon} ${c.name}` : c.name}</option>
-              ))}
-            </select>
+            />
           </div>
         )}
 

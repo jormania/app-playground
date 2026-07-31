@@ -9,6 +9,9 @@ import { toDateString } from '../lib/period';
 import { BASE_CURRENCY, fetchRate, convert, impliedRate, formatRateNote, canConvert, orderedCurrencies, recordRecentCurrency } from '../lib/fx';
 import { formatAccountLabel } from '../lib/accounts';
 import { readJson, writeJson } from '../lib/storage';
+import { CategorySelect } from './CategorySelect';
+import { AccountSelect } from './AccountSelect';
+import { CurrencySelect } from './CurrencySelect';
 
 // Frequent income loggers (freelancers, landlords) used to reselect Income on
 // every single "+ Add" — the form always opened on Expense regardless of what
@@ -380,10 +383,11 @@ export default function TransactionForm({ transactions = [], categories, account
                 color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit'
               }}
             />
-            <select
+            <CurrencySelect
               id={currencySelectId}
               aria-label="Currency"
               value={activeCurrency}
+              currencies={currencyOptions}
               onChange={e => {
                 setCurrency(e.target.value);
                 currencyTouched.current = true;
@@ -393,24 +397,12 @@ export default function TransactionForm({ transactions = [], categories, account
                 initialAmount.current = null;
               }}
               style={{
-                // Same ink and size as `selectStyle` (and so as the Trip form's
-                // currency picker) rather than muted small text, which read as a
-                // label rather than something you could change. It stays inside
-                // the amount control — one field, one box — with a divider so it
-                // still looks like its own control.
-                // `flex: none` with a tight padding, because at base font size the
-                // native select plus its arrow was 70px against a 137px control —
-                // wider than the amount input it sits beside, which is the field
-                // that actually matters. Trimming the padding keeps the matching
-                // ink and type size while handing the width back to the amount.
                 flex: 'none', outline: 'none', background: 'transparent',
                 border: 'none', borderLeft: '1px solid var(--color-border-2)',
                 color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit',
-                padding: '0 0 0 6px', cursor: 'pointer'
+                padding: '0 8px', cursor: 'pointer', height: '100%'
               }}
-            >
-              {currencyOptions.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            />
           </div>
         </div>
       </div>
@@ -421,30 +413,38 @@ export default function TransactionForm({ transactions = [], categories, account
           at. Both still individually clamp to one line and ellipsise rather
           than wrap, so this never grows past two short lines. */}
       {isForeign && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
-            <span style={{ flex: 'none' }}>≈</span>
-            <input
-              id={baseAmountId}
-              aria-label={`Amount in ${BASE_CURRENCY}`}
-              type="number" inputMode="decimal" step="0.01" min="0" placeholder="0.00"
-              className="wiw-no-spinner"
-              value={baseAmount}
-              onChange={e => { baseTouched.current = true; setBaseAmount(e.target.value); }}
-              style={{
-                flex: 'none', width: '84px', padding: '3px 6px',
-                border: '1px solid var(--color-border-2)', borderRadius: 'var(--radius-sm)',
-                backgroundColor: 'var(--color-surface)', color: 'var(--color-ink)',
-                fontSize: 'var(--text-xs)', fontFamily: 'inherit'
-              }}
-            />
-            <span style={{ flex: 'none' }}>L</span>
+        <div style={{ 
+          display: 'flex', flexDirection: 'column', gap: '6px', 
+          padding: '10px 12px', borderRadius: 'var(--radius-md)', 
+          backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border-2)' 
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-muted)', flex: 'none' }}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, position: 'relative' }}>
+              <input
+                id={baseAmountId}
+                aria-label={`Amount in ${BASE_CURRENCY}`}
+                type="number" inputMode="decimal" step="0.01" min="0" placeholder="0.00"
+                className="wiw-no-spinner"
+                value={baseAmount}
+                onChange={e => { baseTouched.current = true; setBaseAmount(e.target.value); }}
+                style={{
+                  width: '100%', padding: '6px 40px 6px 10px',
+                  border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'var(--color-surface)', color: 'var(--color-ink)',
+                  fontSize: 'var(--text-sm)', fontFamily: 'inherit', fontWeight: 'var(--weight-medium)',
+                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)'
+                }}
+              />
+              <span style={{ position: 'absolute', right: '10px', color: 'var(--color-muted)', fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-bold)' }}>{BASE_CURRENCY}</span>
+            </div>
           </div>
           <div
             title={rateNote || undefined}
             style={{
               fontSize: '11px', color: 'var(--color-muted)', minWidth: 0,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              paddingLeft: '24px'
             }}
           >
             {rateLoading
