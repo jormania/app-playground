@@ -813,7 +813,7 @@ select option {
 .tx-bottom-bar-actions,
 .quick-tx-container {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: nowrap;
   overflow-x: auto;
   width: 100%;
@@ -831,7 +831,7 @@ select option {
   background: color-mix(in srgb, var(--color-ink) 8%, transparent);
   border: none;
   border-radius: var(--radius-pill);
-  padding: 6px 14px;
+  padding: 6px 12px;
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   color: var(--color-ink);
