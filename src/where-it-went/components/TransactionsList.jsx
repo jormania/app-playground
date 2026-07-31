@@ -1,3 +1,4 @@
+import { Briefcase, MoreHorizontal, PiggyBank, Landmark, Home, Heart, ShoppingCart, Smile, Plane, Car, Coffee, Utensils, Lightbulb, Gift, Tag } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import TransactionForm from './TransactionForm';
 import DuplicateReview from './DuplicateReview';
@@ -20,6 +21,33 @@ function signedAmount(tx) {
   if (tx?.type === 'Expense') return -value;
   return 0; // a transfer changes no total, so it sorts between the two
 }
+
+
+const CATEGORY_ICONS = {
+  freelance: Briefcase,
+  other: MoreHorizontal,
+  investing: PiggyBank,
+  'taxes & fees': Landmark,
+  property: Home,
+  health: Heart,
+  shopping: ShoppingCart,
+  leisure: Smile,
+  nora: Smile,
+  travel: Plane,
+  transport: Car,
+  dining: Coffee,
+  food: Utensils,
+  utilities: Lightbulb,
+  housing: Home,
+  loan: Landmark,
+  gift: Gift,
+  rent: Home,
+};
+const getCategoryIcon = (name) => {
+  const n = (name || '').toLowerCase();
+  const Icon = CATEGORY_ICONS[n] || Tag;
+  return <Icon size={14} style={{ marginRight: '6px', opacity: 0.7, flexShrink: 0 }} />;
+};
 
 export default function TransactionsList({ data, client, onDataChange, filterProps, period, allowTransfer = false, onRepeat, onSplit, mobileSwipe, dismissedDuplicates, onDismissedDuplicatesChange, onViewTripInInsights }) {
   const { filterType: filter = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
@@ -447,12 +475,15 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
       })()}
 
       <Modal open={showBulkCategoryModal} onClose={() => setShowBulkCategoryModal(false)} title="Bulk Categorize">
-         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '8px', padding: '16px' }}>
-           {(data.categories || []).map(cat => (
-             <Button key={cat.id} variant="secondary" onClick={() => handleBulkCategorize(cat.id)} disabled={bulkProcessing}>{cat.name}</Button>
-           ))}
-         </div>
-      </Modal>
+           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', padding: '12px' }}>
+             {(data.categories || []).map(cat => (
+               <Button key={cat.id} size="sm" variant="secondary" onClick={() => handleBulkCategorize(cat.id)} disabled={bulkProcessing} style={{ padding: '6px 8px', justifyContent: 'flex-start' }}>
+                 {getCategoryIcon(cat.name)}
+                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
+               </Button>
+             ))}
+           </div>
+        </Modal>
 
       {editingTx && (
         <Modal open={true} title="Edit Transaction" onClose={() => setEditingTx(null)}>
