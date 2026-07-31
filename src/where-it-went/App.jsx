@@ -9,6 +9,7 @@ import { Button } from '../ds/components/Button';
 import { Modal } from '../ds/components/Modal';
 import { AlertModal } from '../ds';
 import { useSubscriptionsEngine } from './lib/useSubscriptionsEngine';
+import { useTripEngine } from './lib/useTripEngine';
 import { readJson, writeJson } from './lib/storage';
 import { defaultTheme } from './lib/theme';
 import Navigation from './components/Navigation';
@@ -293,6 +294,7 @@ export default function App() {
   // time. This is the sharpest edge in the whole offline feature.
   const engineSafe = !showingSampleData && isOnline() && staleAt === null && pendingCount === 0;
   useSubscriptionsEngine({ data, client, onDataChange: loadData, enabled: engineSafe });
+  useTripEngine({ data, client, onDataChange: loadData, enabled: engineSafe });
 
   const handleConfigSave = (newConfig) => {
     writeJson('whereItWent_config', newConfig);
