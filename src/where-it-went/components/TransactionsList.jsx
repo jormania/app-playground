@@ -309,7 +309,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                           background: tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-ink) 5%, transparent)',
                           border: tx.type === 'Income' ? '1px solid color-mix(in srgb, var(--color-success) 20%, transparent)' : '1px solid color-mix(in srgb, var(--color-border) 50%, transparent)',
                           padding: '4px 10px', borderRadius: 'var(--radius-pill)',
-                          fontWeight: 'var(--weight-medium)', fontSize: 'var(--text-base)', whiteSpace: 'nowrap'
+                          fontWeight: 'var(--weight-medium)', fontSize: 'var(--text-sm)', whiteSpace: 'nowrap'
                         }}>
                           {sign}{formatCurrency(Math.abs(tx.amount))}
                         </div>
