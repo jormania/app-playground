@@ -501,10 +501,10 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           action={<Button variant="secondary" onClick={() => setIsAddingSub(true)}>+ Add Subscription</Button>}
         >
           <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
-            Anything that recurs on the same day each month — an expense like streaming or the
-            gym, or income like a salary or rent you collect as a landlord. WhereItWent adds each
-            one to your ledger automatically on its day, and warns you a few days beforehand so
-            nothing lands unexpectedly.
+            Anything that recurs on a schedule (monthly or yearly) — an expense like streaming, 
+            the gym, or annual insurance, or income like a salary or rent you collect as a landlord. 
+            WhereItWent adds each one to your ledger automatically on its day, and warns you a few days 
+            beforehand so nothing lands unexpectedly.
           </p>
 
           {features.upcoming !== false && (
