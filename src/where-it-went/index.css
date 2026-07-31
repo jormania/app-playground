@@ -149,6 +149,10 @@ summary,
 input {
   -webkit-tap-highlight-color: transparent;
 }
+select option {
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+}
 .nav-logo-short {
   display: none;
 }
