@@ -4,7 +4,9 @@
 export function parseSmartText(text, accounts = [], categories = []) {
   if (!text || typeof text !== 'string') return null;
 
+  let remainingText = text;
   const lower = text.toLowerCase();
+  
   const tx = {
     amount: 0,
     currency: 'RON',
@@ -12,45 +14,61 @@ export function parseSmartText(text, accounts = [], categories = []) {
     date: new Date().toISOString().slice(0, 10),
     accountId: '',
     categoryId: '',
-    description: text.trim(), // Keep raw prompt as requested to preserve context
+    description: '',
+  };
+
+  // Helper to remove a regex match from remainingText (case insensitive)
+  const stripRegex = (regex) => {
+    remainingText = remainingText.replace(regex, ' ');
+  };
+  
+  // Helper to remove a literal string from remainingText (case insensitive)
+  const stripString = (str) => {
+    const escaped = str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    remainingText = remainingText.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), ' ');
   };
 
   // 1. Parse Amount
-  // Matches any integer number. e.g. 15, 200
   const amountMatch = text.match(/\b(\d+)\b/);
   if (amountMatch) {
     tx.amount = parseInt(amountMatch[1], 10);
+    // Strip the exact matched number
+    remainingText = remainingText.replace(new RegExp(`\\b${amountMatch[1]}\\b`), ' ');
   } else {
-    // If we absolutely cannot find a number, we can't create a transaction.
     return null;
   }
 
   // 2. Parse Type
-  if (/\b(income|salary|bonus|paycheck)\b/.test(lower)) {
+  const typeMatch = remainingText.match(/\b(income|salary|bonus|paycheck)\b/i);
+  if (typeMatch) {
     tx.type = 'Income';
+    stripRegex(/\b(income|salary|bonus|paycheck)\b/gi);
   }
 
   // 3. Parse Date
   const today = new Date();
-  if (/\byesterday\b/.test(lower)) {
+  if (/\byesterday\b/i.test(remainingText)) {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     tx.date = yesterday.toISOString().slice(0, 10);
-  } else if (/\bday before yesterday\b/.test(lower)) {
+    stripRegex(/\byesterday\b/gi);
+  } else if (/\bday before yesterday\b/i.test(remainingText)) {
     const dayBefore = new Date(today);
     dayBefore.setDate(dayBefore.getDate() - 2);
     tx.date = dayBefore.toISOString().slice(0, 10);
+    stripRegex(/\bday before yesterday\b/gi);
+  } else if (/\btoday\b/i.test(remainingText)) {
+    stripRegex(/\btoday\b/gi);
   }
 
   // 4. Parse Account
-  // The user explicitly requested to default to Revolut.
   const revolutAccount = accounts.find(a => a.name.toLowerCase().includes('revolut'));
   let matchedAccount = null;
 
-  // Check if they explicitly mentioned any account name
   for (const account of accounts) {
-    if (lower.includes(account.name.toLowerCase())) {
+    if (remainingText.toLowerCase().includes(account.name.toLowerCase())) {
       matchedAccount = account;
+      stripString(account.name);
       break;
     }
   }
@@ -64,17 +82,22 @@ export function parseSmartText(text, accounts = [], categories = []) {
   }
 
   // 5. Parse Category
-  // We sort categories by descending length so "Eating Out" matches before "Eating"
   const sortedCategories = [...categories].sort((a, b) => b.name.length - a.name.length);
   
   for (const category of sortedCategories) {
     const catNameLower = category.name.toLowerCase();
-    // Allow fuzzy substring matching for category names
-    if (lower.includes(catNameLower)) {
+    if (remainingText.toLowerCase().includes(catNameLower)) {
       tx.categoryId = category.id;
+      stripString(category.name);
       break;
     }
   }
+  
+  // Also strip structural noise words like "for", "from", "at" if they are left hanging
+  stripRegex(/\b(for|from|at)\b/gi);
+
+  // Clean up extra spaces and punctuation left behind
+  tx.description = remainingText.replace(/\s+/g, ' ').trim();
 
   return tx;
 }

@@ -24,7 +24,7 @@ describe('smartParser', () => {
     expect(tx.type).toBe('Expense');
     expect(tx.accountId).toBe('acc-revolut');
     expect(tx.categoryId).toBe('');
-    expect(tx.description).toBe('15 for lunch');
+    expect(tx.description).toBe('lunch');
     expect(tx.date).toBe(new Date().toISOString().slice(0, 10));
   });
 
@@ -32,6 +32,7 @@ describe('smartParser', () => {
     const tx = parseSmartText('30 for coffee from Cash', mockAccounts, mockCategories);
     expect(tx.amount).toBe(30);
     expect(tx.accountId).toBe('acc-cash');
+    expect(tx.description).toBe('coffee');
   });
 
   it('detects yesterday', () => {
@@ -42,12 +43,14 @@ describe('smartParser', () => {
     today.setDate(today.getDate() - 1);
     expect(tx.date).toBe(today.toISOString().slice(0, 10));
     expect(tx.categoryId).toBe('cat-shopping');
+    expect(tx.description).toBe('');
   });
 
   it('detects income', () => {
     const tx = parseSmartText('5000 salary', mockAccounts, mockCategories);
     expect(tx.amount).toBe(5000);
     expect(tx.type).toBe('Income');
+    expect(tx.description).toBe('');
   });
 
   it('returns null if no integer is found', () => {
