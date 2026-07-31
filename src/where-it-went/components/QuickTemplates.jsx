@@ -23,22 +23,22 @@ export default function QuickTemplates({ templates = [], onApplyTemplate, onSave
         </Button>
       </div>
 
-      <div style={{ display: 'flex', gap: 'var(--space-sm)', overflowX: 'auto', paddingBottom: 'var(--space-xs)' }}>
+      <div className="quick-tx-container">
         {activeTemplates.map(t => (
-          <Button
+          <button
+            type="button"
             key={t.id}
-            variant={isEditing ? 'outline' : 'secondary'}
-            size="sm"
+            className="action-pill-btn"
+            style={isEditing ? { border: '1px solid var(--color-border)', background: 'var(--color-surface)' } : {}}
             onClick={() => isEditing ? setEditingTemplate(t) : onApplyTemplate(t)}
-            style={{ whiteSpace: 'nowrap' }}
           >
             {t.description}
-          </Button>
+          </button>
         ))}
         {isEditing && (
-          <Button variant="outline" size="sm" onClick={() => setEditingTemplate({})} style={{ whiteSpace: 'nowrap', borderStyle: 'dashed' }}>
+          <button type="button" className="action-pill-btn" onClick={() => setEditingTemplate({})} style={{ border: '1px dashed var(--color-border)', background: 'transparent' }}>
             + Add Template
-          </Button>
+          </button>
         )}
       </div>
 

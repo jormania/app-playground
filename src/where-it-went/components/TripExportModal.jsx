@@ -9,19 +9,6 @@ import { toDateString } from '../lib/period';
 export default function TripExportModal({ trip, data, onClose }) {
   const [copied, setCopied] = useState(false);
 
-  // Use the same deep insights logic from InsightsView
-  const insights = useMemo(() => {
-    return generateDeepInsights(data, 'all_time', { tripFilter: trip.id });
-  }, [data, trip.id]);
-
-  // Sort categories by total spending
-  const categoryBreakdown = useMemo(() => {
-    if (!insights) return [];
-    return Object.values(insights.currentMetrics.catSums)
-      .filter(c => c.type === 'Expense' && c.total > 0)
-      .sort((a, b) => b.total - a.total);
-  }, [insights]);
-
   // List all transactions associated with this trip
   const tripTransactions = useMemo(() => {
     if (!data?.transactions) return [];
@@ -30,7 +17,32 @@ export default function TripExportModal({ trip, data, onClose }) {
       .sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [data, trip.id]);
 
-  const totalExpense = insights?.currentMetrics?.totalExpense || 0;
+  // Sort categories by total spending
+  const categoryBreakdown = useMemo(() => {
+    const sums = {};
+    let total = 0;
+    tripTransactions.forEach(t => {
+      if (t.type === 'Expense') {
+        sums[t.categoryId] = (sums[t.categoryId] || 0) + t.amount;
+        total += t.amount;
+      }
+    });
+    
+    return {
+      total,
+      breakdown: Object.entries(sums)
+        .map(([id, amount]) => {
+          const cat = data.categories?.find(c => c.id === id);
+          return { id, name: cat?.name || 'Uncategorized', cat, total: amount };
+        })
+        .sort((a, b) => b.total - a.total)
+    };
+  }, [tripTransactions, data.categories]);
+
+  const totalExpense = categoryBreakdown.total;
+  const breakdownList = categoryBreakdown.breakdown;
+
+
 
   const handleCopyText = async () => {
     const lines = [];
@@ -41,7 +53,7 @@ export default function TripExportModal({ trip, data, onClose }) {
     lines.push('');
 
     lines.push(`-- Category Breakdown --`);
-    categoryBreakdown.forEach(c => {
+    breakdownList.forEach(c => {
       lines.push(`${c.name}: ${c.total.toFixed(0)} ${BASE_CURRENCY}`);
     });
     lines.push('');
@@ -91,16 +103,16 @@ export default function TripExportModal({ trip, data, onClose }) {
             </div>
           </div>
 
-          {categoryBreakdown.length > 0 && (
+          {breakdownList.length > 0 && (
             <div>
               <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)', marginBottom: '12px', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px' }}>
                 Category Breakdown
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {categoryBreakdown.map(c => (
+                {breakdownList.map(c => (
                   <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <CategoryIcon categoryId={c.id} categories={data.categories} />
+                      <CategoryIcon category={c.cat} name={c.name} />
                       <span style={{ fontSize: 'var(--text-base)', color: 'var(--color-ink)' }}>{c.name}</span>
                     </div>
                     <span style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>

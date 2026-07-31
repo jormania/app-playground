@@ -787,3 +787,90 @@ select option {
   }
 }
 
+
+/* Bottom bar in TransactionsList (mobile: 2 rows; laptop: center buttons) */
+.tx-bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-md);
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.tx-bottom-bar-header {
+  font-weight: bold;
+  align-self: flex-start;
+}
+
+.tx-bottom-bar-actions,
+.quick-tx-container {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  width: 100%;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.tx-bottom-bar-actions::-webkit-scrollbar,
+.quick-tx-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* Translucent pill style for Dashboard Quick Transactions and Bottom Bar */
+.action-pill-btn {
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--color-ink) 8%, transparent);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-ink);
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.action-pill-btn:hover {
+  background: color-mix(in srgb, var(--color-ink) 12%, transparent);
+}
+.action-pill-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.action-pill-btn.danger {
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  color: var(--color-danger);
+}
+.action-pill-btn.danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 15%, transparent);
+}
+
+@media (min-width: 768px) {
+  .tx-bottom-bar {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .tx-bottom-bar-header {
+    flex: 1;
+    align-self: center;
+  }
+  .tx-bottom-bar-actions {
+    flex: 2;
+    justify-content: center;
+    width: auto;
+  }
+  .tx-bottom-bar::after {
+    content: "";
+    flex: 1;
+  }
+}
+

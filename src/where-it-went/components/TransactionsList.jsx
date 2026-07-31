@@ -196,7 +196,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
     return out;
   }, [filtered, visibleCount, sortConfig.key, categoriesById, accountsById]);
 
-  const gridTemplate = sortConfig.key === 'date' ? '2fr 1fr 1fr 40px 1fr' : '1fr 2fr 1fr 1fr 40px 1fr';
+  const gridTemplate = sortConfig.key === 'date' ? '2fr 1fr 1fr 1fr' : '1fr 2fr 1fr 1fr 1fr';
 
   /** A row still sitting in the offline outbox, drawn as clearly unsent. */
   const pendingBadge = (tx) => (tx.pending ? (
@@ -277,7 +277,6 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
             <button className="tx-sort-btn" onClick={() => handleSort('description')}>Description{getSortIndicator('description')}</button>
             <button className="tx-sort-btn tx-col-category" style={{ textAlign: 'center' }} onClick={() => handleSort('category')}>Category{getSortIndicator('category')}</button>
             <button className="tx-sort-btn tx-col-account" onClick={() => handleSort('account')}>Account{getSortIndicator('account')}</button>
-            <div className="tx-col-repeat"></div>
             <button className="tx-sort-btn tx-col-amount" style={{ textAlign: 'right' }} onClick={() => handleSort('amount')}>Amount{getSortIndicator('amount')}</button>
           </div>
 
@@ -368,29 +367,6 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                         </>
                       )}
                     </div>
-                    <div className="tx-col-repeat" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '4px' }}>
-                      {onRepeat && (
-                        <button
-                          type="button"
-                          title="Repeat this transaction"
-                          aria-label={`Repeat ${tx.description || 'transaction'}`}
-                          onClick={(e) => { e.stopPropagation(); onRepeat(tx); }}
-                          style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            width: '20px', height: '20px', padding: 0,
-                            background: 'none', border: '1px solid var(--color-border)', borderRadius: '50%',
-                            color: 'var(--color-muted)', cursor: 'pointer', flex: 'none'
-                          }}
-                        >
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="17 1 21 5 17 9"></polyline>
-                            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
-                            <polyline points="7 23 3 19 7 15"></polyline>
-                            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
-                          </svg>
-                        </button>
-                      )}
-                    </div>
                     <div className="tx-col-amount" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <div style={{
@@ -437,25 +413,15 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
         });
         const reconcileText = allSelectedReconciled ? 'Unreconcile' : 'Reconcile';
         return (
-          <div style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0,
-            backgroundColor: 'var(--color-surface)',
-            borderTop: '1px solid var(--color-border)',
-            padding: 'var(--space-md)',
-            display: 'flex', gap: 'var(--space-sm)',
-            alignItems: 'center', justifyContent: 'space-between',
-            boxShadow: '0 -4px 12px rgba(0,0,0,0.1)',
-            zIndex: 50,
-            flexWrap: 'wrap'
-          }}>
-            <div style={{ fontWeight: 'bold' }}>{selectedTxs.size} selected</div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {singleTx && onSplit && <Button size="sm" variant="secondary" onClick={() => onSplit(singleTx)} disabled={bulkProcessing}>Split</Button>}
-              {singleTx && onRepeat && <Button size="sm" variant="secondary" onClick={() => onRepeat(singleTx)} disabled={bulkProcessing}>Repeat</Button>}
-              <Button size="sm" variant="secondary" onClick={() => setShowBulkCategoryModal(true)} disabled={bulkProcessing}>Categorize</Button>
-              <Button size="sm" variant="secondary" onClick={handleBulkReconcile} disabled={bulkProcessing}>{reconcileText}</Button>
-              <Button size="sm" variant="danger" onClick={handleBulkDelete} disabled={bulkProcessing}>Delete</Button>
-              <Button size="sm" variant="ghost" onClick={() => setSelectedTxs(new Set())} disabled={bulkProcessing}>Cancel</Button>
+          <div className="tx-bottom-bar">
+            <div className="tx-bottom-bar-header">{selectedTxs.size} selected</div>
+            <div className="tx-bottom-bar-actions">
+              {singleTx && onSplit && <button type="button" className="action-pill-btn" onClick={() => onSplit(singleTx)} disabled={bulkProcessing}>Split</button>}
+              {singleTx && onRepeat && <button type="button" className="action-pill-btn" onClick={() => onRepeat(singleTx)} disabled={bulkProcessing}>Repeat</button>}
+              <button type="button" className="action-pill-btn" onClick={() => setShowBulkCategoryModal(true)} disabled={bulkProcessing}>Categorize</button>
+              <button type="button" className="action-pill-btn" onClick={handleBulkReconcile} disabled={bulkProcessing}>{reconcileText}</button>
+              <button type="button" className="action-pill-btn danger" onClick={handleBulkDelete} disabled={bulkProcessing}>Delete</button>
+              <button type="button" className="action-pill-btn" onClick={() => setSelectedTxs(new Set())} disabled={bulkProcessing}>Cancel</button>
             </div>
           </div>
         );
