@@ -104,7 +104,8 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     flairStagger: baseFeatures.flairStagger ?? false,
     flairHover: baseFeatures.flairHover ?? false,
     flairModernLayout: baseFeatures.flairModernLayout ?? false,
-    flairCompactDensity: baseFeatures.flairCompactDensity ?? false
+    flairCompactDensity: baseFeatures.flairCompactDensity ?? false,
+    mobileSwipe: baseFeatures.mobileSwipe ?? true
   });
   const [upcomingLeadDays, setUpcomingLeadDays] = useState(config.upcomingLeadDays ?? DEFAULT_LEAD_DAYS);
   const [status, setStatus] = useState({ type: '', msg: '' });
@@ -376,6 +377,12 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             hint="Warn you before a recurring transaction happens, on the Dashboard and in a bar at the top."
             checked={features.upcoming !== false}
             onChange={e => handleFeatureToggle('upcoming', e.target.checked)}
+          />
+          <SettingsToggle
+            label="Mobile Swipe Gestures"
+            hint="Enable swiping left or right on a transaction to quickly Repeat or Split it."
+            checked={features.mobileSwipe !== false}
+            onChange={e => handleFeatureToggle('mobileSwipe', e.target.checked)}
           />
         </div>
       </CollapsibleSection>

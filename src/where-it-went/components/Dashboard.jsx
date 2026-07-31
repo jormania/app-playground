@@ -30,7 +30,7 @@ const CARD = {
   boxShadow: 'var(--shadow-sm)'
 };
 
-export default function Dashboard({ data, client, onDataChange, onNavigate, config, period = 'this_month', filterProps, onViewTripInInsights, scrollToUpcoming, onConsumeScrollToUpcoming }) {
+export default function Dashboard({ data, client, onDataChange, onNavigate, config, period = 'this_month', filterProps, onViewTripInInsights, scrollToUpcoming, onConsumeScrollToUpcoming, onPrefillTransaction }) {
   const activePeriod = period || 'this_month';
   const allowTransfer = config?.features?.transfers === true;
   const { filterType: filter = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
@@ -520,6 +520,10 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
           categories={data.categories}
           accounts={data.accounts}
           onApplyTemplate={async (tpl) => {
+            if (!tpl.amount) {
+              if (onPrefillTransaction) onPrefillTransaction(tpl);
+              return;
+            }
             const tx = {
               description: tpl.description,
               amount: tpl.amount || 0,

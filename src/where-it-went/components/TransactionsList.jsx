@@ -9,6 +9,7 @@ import { formatCurrency } from '../lib/currency';
 import { filterByPeriod, parseTxDate } from '../lib/period';
 import { readJson, writeJson } from '../lib/storage';
 import { accountLabelById } from '../lib/accounts';
+import { SwipeableRow } from './SwipeableRow';
 
 const PAGE_SIZE = 200;
 
@@ -20,7 +21,7 @@ function signedAmount(tx) {
   return 0; // a transfer changes no total, so it sorts between the two
 }
 
-export default function TransactionsList({ data, client, onDataChange, filterProps, period, allowTransfer = false, onRepeat, dismissedDuplicates, onDismissedDuplicatesChange, onViewTripInInsights }) {
+export default function TransactionsList({ data, client, onDataChange, filterProps, period, allowTransfer = false, onRepeat, onSplit, mobileSwipe, dismissedDuplicates, onDismissedDuplicatesChange, onViewTripInInsights }) {
   const { filterType: filter = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
 
   const [sortConfig, setSortConfig] = useState(() => readJson('whereItWent_sort', { key: 'date', direction: 'desc' }));
@@ -231,9 +232,14 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                 const sign = tx.type === 'Income' ? '+' : tx.type === 'Expense' ? '−' : '±';
 
                 return (
-                  <div
+                  <SwipeableRow
                     key={tx.id}
-                    className="transaction-row"
+                    enabled={mobileSwipe}
+                    onSwipeRight={() => onRepeat?.(tx)}
+                    onSwipeLeft={() => onSplit?.(tx)}
+                  >
+                    <div
+                      className="transaction-row"
                     role="button"
                     tabIndex={0}
                     aria-label={`Edit ${tx.description || 'transaction'}`}
@@ -321,6 +327,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                       )}
                     </div>
                   </div>
+                  </SwipeableRow>
                 );
               })}
             </section>

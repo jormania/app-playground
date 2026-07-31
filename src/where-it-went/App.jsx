@@ -5,6 +5,7 @@ import TransactionsList from './components/TransactionsList';
 import Settings from './components/Settings';
 import InsightsView from './components/InsightsView';
 import TransactionForm from './components/TransactionForm';
+import SplitTransactionModal from './components/SplitTransactionModal';
 import { Button } from '../ds/components/Button';
 import { Modal } from '../ds/components/Modal';
 import { AlertModal } from '../ds';
@@ -39,10 +40,10 @@ export default function App() {
   const [loadError, setLoadError] = useState(null);
   const [saveError, setSaveError] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  // Set only by "Repeat" on a ledger row — carries a past transaction's
-  // details into a fresh Add form (never an edit: no id, no notes, no tags).
-  // Cleared on every close so a plain "+ Add" right after never reuses it.
+  // Set only by "Repeat" on a ledger row
   const [repeatDraft, setRepeatDraft] = useState(null);
+
+  const [splittingTx, setSplittingTx] = useState(null);
 
   // Lifted (not owned by DuplicateReview) so the Transactions nav-tab dot
   // updates the instant a group is dismissed, not just on the next reload.
@@ -342,6 +343,48 @@ export default function App() {
    * details. Explicit field list rather than a spread: id/notes/tags must
    * never carry over (a fresh Add, not an edit of the original row), and this
    * can't silently pick up a future field nobody meant to repeat. */
+  const submitSplitTransaction = async ({ originalTx, splitAmount, remainderAmount, splitOriginalAmount, remainderOriginalAmount, splitCategoryId }) => {
+    try {
+      // 1. Update the original transaction to the remainder.
+      const updatedOriginal = {
+        ...originalTx,
+        amount: remainderAmount,
+        originalAmount: remainderOriginalAmount ?? originalTx.originalAmount
+      };
+      
+      const newSplitTx = {
+        ...originalTx,
+        id: undefined,
+        description: `${originalTx.description} (Split)`,
+        amount: splitAmount,
+        originalAmount: splitOriginalAmount ?? originalTx.originalAmount,
+        type: originalTx.type === 'Income' ? 'Expense' : originalTx.type,
+        categoryId: splitCategoryId,
+      };
+
+      await client.updateTransaction(originalTx.id, updatedOriginal);
+      await client.addTransaction(newSplitTx);
+      
+      await loadData();
+      setSplittingTx(null);
+    } catch (e) {
+      console.error('Failed to split transaction:', e);
+      throw e;
+    }
+  };
+
+  const handlePrefillTransaction = (tpl) => {
+    if (!tpl) return;
+    setRepeatDraft({
+      type: tpl.type || 'Expense',
+      description: tpl.description,
+      amount: '',
+      categoryId: tpl.categoryId,
+      accountId: tpl.accountId,
+    });
+    setShowAddForm(true);
+  };
+
   const handleRepeatTransaction = (tx) => {
     if (!tx) return;
     setRepeatDraft({
@@ -372,7 +415,8 @@ export default function App() {
     (config?.features?.flairMaster !== false && config?.features?.flairEmpty !== false) ? 'flair-empty' : '',
     (config?.features?.flairMaster !== false && config?.features?.flairBudget !== false) ? 'flair-budget' : '',
     (config?.features?.flairMaster !== false && config?.features?.flairTheme !== false) ? 'flair-theme' : '',
-    (config?.features?.flairMaster !== false && config?.features?.flairTab !== false) ? 'flair-tab' : ''
+    (config?.features?.flairMaster !== false && config?.features?.flairTab !== false) ? 'flair-tab' : '',
+    (config?.features?.mobileSwipe !== false) ? 'swipe-enabled' : ''
   ].filter(Boolean).join(' ');
   return (
     <div className={flairClasses} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -455,22 +499,30 @@ export default function App() {
         }}
       />
 
-      <Modal
-        open={showAddForm}
-        onClose={closeAddForm}
-        title={repeatDraft ? 'Repeat Transaction' : 'New Transaction'}
-      >
-        <TransactionForm
-          transactions={data.transactions}
+        <Modal
+          open={showAddForm}
+          onClose={closeAddForm}
+          title={repeatDraft ? 'Repeat Transaction' : 'New Transaction'}
+        >
+          <TransactionForm
+            transactions={data.transactions}
+            categories={data.categories}
+            accounts={data.accounts}
+            trips={data.trips}
+            allowTransfer={allowTransfer}
+            prefill={repeatDraft}
+            onSave={handleAddTransaction}
+            onCancel={closeAddForm}
+          />
+        </Modal>
+
+        <SplitTransactionModal
+          isOpen={!!splittingTx}
+          onClose={() => setSplittingTx(null)}
+          transaction={splittingTx}
           categories={data.categories}
-          accounts={data.accounts}
-          trips={data.trips}
-          allowTransfer={allowTransfer}
-          prefill={repeatDraft}
-          onSave={handleAddTransaction}
-          onCancel={closeAddForm}
+          onSave={submitSplitTransaction}
         />
-      </Modal>
 
       <AlertModal
         isOpen={!!saveError}
@@ -503,12 +555,14 @@ export default function App() {
                 onViewTripInInsights={handleViewTripInInsights}
                 scrollToUpcoming={scrollToUpcoming}
                 onConsumeScrollToUpcoming={() => setScrollToUpcoming(false)}
+                onPrefillTransaction={handlePrefillTransaction}
               />
             )}
             {activeTab === 'transactions' && (
               <TransactionsList
                 data={data} client={client} onDataChange={loadData} filterProps={filterProps}
                 period={period} allowTransfer={allowTransfer} onRepeat={handleRepeatTransaction}
+                onSplit={setSplittingTx} mobileSwipe={config?.features?.mobileSwipe !== false}
                 dismissedDuplicates={dismissedDuplicates} onDismissedDuplicatesChange={setDismissedDuplicates}
                 onViewTripInInsights={handleViewTripInInsights}
               />
