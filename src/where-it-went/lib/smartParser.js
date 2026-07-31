@@ -2,14 +2,18 @@
  * Parses a natural language string into a transaction object for the Where It Went app.
  */
 // A heuristic map of common expense keywords to standard category concepts
+// Maps to: Freelance, Other, Investing, Taxes & Fees, Property, Health, Shopping, Leisure, Nora, Travel, Transport, Dining, Food, Utilities, Housing, Loan, Gift, Rent, Salary
 const CATEGORY_HEURISTICS = {
-  'food': ['lunch', 'dinner', 'breakfast', 'coffee', 'starbucks', 'cafe', 'restaurant', 'meal', 'pizza', 'burger', 'drink', 'beverage', 'bar', 'mcdonalds', 'kfc', 'subway'],
-  'groceries': ['supermarket', 'market', 'kaufland', 'carrefour', 'lidl', 'auchan', 'mega image', 'profi', 'penny', 'water', 'milk', 'grocery'],
+  'food': ['lunch', 'breakfast', 'coffee', 'starbucks', 'cafe', 'restaurant', 'meal', 'pizza', 'burger', 'drink', 'beverage', 'bar', 'mcdonalds', 'kfc', 'subway', 'supermarket', 'market', 'kaufland', 'carrefour', 'lidl', 'auchan', 'mega image', 'profi', 'penny', 'water', 'milk', 'grocery', 'groceries'],
+  'dining': ['dinner', 'date'],
   'transport': ['uber', 'bolt', 'taxi', 'bus', 'train', 'metro', 'flight', 'fuel', 'gas', 'parking', 'transit'],
-  'shopping': ['amazon', 'clothes', 'shoes', 'electronics', 'gift', 'mall', 'store', 'emag', 'zara', 'h&m'],
+  'shopping': ['amazon', 'clothes', 'shoes', 'electronics', 'mall', 'store', 'emag', 'zara', 'h&m'],
   'health': ['pharmacy', 'doctor', 'meds', 'hospital', 'dentist', 'gym', 'fitness', 'medical'],
-  'entertainment': ['movie', 'cinema', 'netflix', 'spotify', 'game', 'concert', 'party', 'club'],
-  'bills': ['electricity', 'internet', 'phone', 'rent', 'subscription', 'utility', 'utilities'],
+  'leisure': ['movie', 'cinema', 'netflix', 'spotify', 'game', 'concert', 'party', 'club', 'entertainment', 'hobby'],
+  'utilities': ['electricity', 'internet', 'phone', 'subscription', 'utility', 'bills', 'water bill', 'gas bill'],
+  'gift': ['present', 'gift'],
+  'travel': ['hotel', 'airbnb', 'flight', 'vacation', 'holiday'],
+  'nora': ['nora'],
 };
 
 export function parseSmartText(text, accounts = [], categories = []) {
@@ -28,14 +32,20 @@ export function parseSmartText(text, accounts = [], categories = []) {
     description: '',
   };
 
+  // Helper to remove an exact regex match
   const stripRegex = (regex) => {
     remainingText = remainingText.replace(regex, ' ');
   };
   
+  // Helper to remove an exact string match
   const stripString = (str) => {
     const escaped = str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     remainingText = remainingText.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), ' ');
   };
+
+  // 0. Pre-clean structural action words and explicit currency
+  stripRegex(/\b(bought a|bought|paid for|paid|spent)\b/gi);
+  stripRegex(/\b(lei|ron|bucks|dollars|euro|euros)\b/gi);
 
   // 1. Parse Amount
   const amountMatch = text.match(/\b(\d+)\b/);
@@ -50,7 +60,6 @@ export function parseSmartText(text, accounts = [], categories = []) {
   const typeMatch = remainingText.match(/\b(income|salary|bonus|paycheck)\b/i);
   if (typeMatch) {
     tx.type = 'Income';
-    // We intentionally do NOT strip the income keyword so the description doesn't become empty
   }
 
   // 3. Parse Date
@@ -74,17 +83,21 @@ export function parseSmartText(text, accounts = [], categories = []) {
   let matchedAccount = null;
 
   for (const account of accounts) {
-    // Check for exact substring match first
-    if (remainingText.toLowerCase().includes(account.name.toLowerCase())) {
+    const accName = account.name;
+    const accFirstWord = accName.split(' ')[0];
+    
+    // Create regexes that optionally swallow the preposition that points to the account
+    const exactRegex = new RegExp(`\\b(?:from|using|with)?\\s*${accName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+    const firstWordRegex = new RegExp(`\\b(?:from|using|with)?\\s*${accFirstWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+
+    if (remainingText.toLowerCase().includes(accName.toLowerCase())) {
       matchedAccount = account;
-      stripString(account.name);
+      stripRegex(exactRegex);
       break;
     }
-    // Fallback: check if the first word of the account name is mentioned (e.g. "ING" for "ING Bank")
-    const firstWord = account.name.split(' ')[0].toLowerCase();
-    if (firstWord.length > 2 && new RegExp(`\\b${firstWord}\\b`, 'i').test(remainingText)) {
+    if (accFirstWord.length > 2 && new RegExp(`\\b${accFirstWord}\\b`, 'i').test(remainingText)) {
       matchedAccount = account;
-      stripString(firstWord);
+      stripRegex(firstWordRegex);
       break;
     }
   }
@@ -100,7 +113,6 @@ export function parseSmartText(text, accounts = [], categories = []) {
   // 5. Parse Category (Strict & Heuristic Inference)
   const sortedCategories = [...categories].sort((a, b) => b.name.length - a.name.length);
   
-  // Phase 1: Try strict matching (the user literally typed the exact category name)
   for (const category of sortedCategories) {
     const catNameLower = category.name.toLowerCase();
     if (remainingText.toLowerCase().includes(catNameLower)) {
@@ -109,41 +121,42 @@ export function parseSmartText(text, accounts = [], categories = []) {
     }
   }
 
-  // Phase 2: If strict match failed, try heuristic inference based on common keywords
-  let matchedKeyword = null;
   if (!tx.categoryId) {
     for (const [concept, keywords] of Object.entries(CATEGORY_HEURISTICS)) {
       const foundKeyword = keywords.find(k => remainingText.toLowerCase().includes(k));
       if (foundKeyword) {
-        // We found a hit in our heuristic map (e.g. they typed "uber", concept is "transport").
-        // Now try to map this "concept" to the user's actual dynamic category array.
-        // Try strict concept match first
         let inferredCategory = sortedCategories.find(c => c.name.toLowerCase().includes(concept));
-        
-        // If not found, try fallbacks
         if (!inferredCategory) {
           inferredCategory = sortedCategories.find(c => 
-            (concept === 'transport' && c.name.toLowerCase().includes('transit')) ||
             (concept === 'food' && c.name.toLowerCase().includes('dining')) ||
-            (concept === 'groceries' && c.name.toLowerCase().includes('food')) 
+            (concept === 'dining' && c.name.toLowerCase().includes('food'))
           );
         }
-
         if (inferredCategory) {
           tx.categoryId = inferredCategory.id;
-          matchedKeyword = foundKeyword;
           break;
         }
       }
     }
   }
 
-  // Also strip structural parasite words like "for", "from", "at", "to", "in", "on", "a", "the", "with"
-  stripRegex(/\b(for|from|at|to|in|on|a|an|the|with)\b/gi);
-
-  // Clean up extra spaces and punctuation left behind
+  // 6. Contextual Cleanup for Description
+  // Clean up extra spaces
   let cleanedDesc = remainingText.replace(/\s+/g, ' ').trim();
   
+  // Trim dangling prepositions from the START of the phrase
+  // e.g. "for lunch" -> "lunch", "at the store" -> "the store", "to the mall" -> "the mall"
+  cleanedDesc = cleanedDesc.replace(/^(for|from|at|to|in|on|with)\s+/i, '');
+  // Trim dangling articles from the START
+  cleanedDesc = cleanedDesc.replace(/^(a|an|the)\s+/i, '');
+  
+  // Trim dangling prepositions from the END of the phrase
+  // e.g. "dinner with" -> "dinner", "pizza for" -> "pizza"
+  cleanedDesc = cleanedDesc.replace(/\s+(for|from|at|to|in|on|with|a|an|the)$/i, '');
+
+  // Final trim
+  cleanedDesc = cleanedDesc.trim();
+
   // Capitalize the first letter of the description
   if (cleanedDesc.length > 0) {
     tx.description = cleanedDesc.charAt(0).toUpperCase() + cleanedDesc.slice(1);
