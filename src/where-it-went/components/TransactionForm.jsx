@@ -354,7 +354,7 @@ export default function TransactionForm({ transactions = [], categories, account
           was cropping its last digit, while the Amount box (a couple of
           digits plus a 3-letter currency) had room to spare at that width.
           The ratio has been adjusted to ensure the full year fits in the Date field. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(135px, 10fr) minmax(0, 11fr)', gap: 'var(--space-md)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(145px, 10fr) minmax(0, 11fr)', gap: 'var(--space-md)' }}>
         <Field label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} required />
 
         {/* Amount + currency share one control rather than sitting in separate
