@@ -25,6 +25,6 @@ describe('TripExportModal', () => {
       </FeaturesContext.Provider>
     );
 
-    expect(screen.getByText('Test Trip')).toBeInTheDocument();
+    expect(screen.getByText('Test Trip')).toBeTruthy();
   });
 });
