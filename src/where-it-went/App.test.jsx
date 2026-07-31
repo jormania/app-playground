@@ -27,7 +27,7 @@ describe('App — Transfers toggle clears a stale Transfer filter', () => {
     render(<App />);
 
     // Sanity check: the Filter Sheet starts out offering Transfers, active.
-    fireEvent.click(await screen.findByTitle(/filters active/i));
+    fireEvent.click((await screen.findAllByTitle(/filters active/i))[0]);
     expect(screen.getByRole('radio', { name: 'Transfers' }).getAttribute('aria-checked')).toBe('true');
     fireEvent.keyDown(document, { key: 'Escape' }); // BottomSheet has no close button — Escape dismisses it
 
@@ -44,7 +44,7 @@ describe('App — Transfers toggle clears a stale Transfer filter', () => {
     await waitFor(() => {
       expect(screen.queryByTitle(/filters active/i)).toBeNull();
     });
-    fireEvent.click(screen.getByTitle('Filter'));
+    fireEvent.click(screen.getAllByTitle('Filter')[0]);
     expect(screen.queryByRole('radio', { name: 'Transfers' })).toBeNull();
   });
 });

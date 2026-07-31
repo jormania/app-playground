@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { useState } from 'react'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Modal } from './Modal'
 
@@ -95,7 +95,9 @@ describe('Modal', () => {
     await user.click(opener)
     expect(screen.getByRole('dialog')).toBeTruthy()
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('dialog')).toBeNull()
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull()
+    })
     expect(document.activeElement).toBe(opener)
   })
 })
