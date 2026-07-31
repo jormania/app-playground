@@ -580,7 +580,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                 logged for you each month.
               </div>
             ) : (
-              data.subscriptions.map(sub => {
+              [...data.subscriptions].sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(sub => {
                 const catName = data.categories?.find(c => c.id === sub.categoryId)?.name || 'Unknown';
                 const catColor = getCategoryColor(catName);
                 return (
@@ -649,7 +649,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                 No templates yet. Add your daily coffee or bus ticket for quick access.
               </div>
             ) : (
-              data.templates.map(tpl => {
+              [...data.templates].sort((a, b) => (a.description || '').localeCompare(b.description || '')).map(tpl => {
                 const catName = data.categories?.find(c => c.id === tpl.categoryId)?.name || 'Unknown';
                 const catColor = getCategoryColor(catName);
                 return (

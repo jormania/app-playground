@@ -29,6 +29,65 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
   const [actionError, setActionError] = useState(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
+  // Bulk Mode
+  const [selectedTxs, setSelectedTxs] = useState(new Set());
+  const [showBulkCategoryModal, setShowBulkCategoryModal] = useState(false);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+
+  const toggleSelection = (id) => {
+    setSelectedTxs(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkReconcile = async () => {
+    setBulkProcessing(true);
+    try {
+      const jobs = Array.from(selectedTxs).map(id => client.updateTransaction(id, { reconciled: true }));
+      await Promise.all(jobs);
+      setSelectedTxs(new Set());
+      if (onDataChange) onDataChange();
+    } catch (e) {
+      setActionError(e.message || 'Failed to bulk update');
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Delete ${selectedTxs.size} transactions?`)) return;
+    setBulkProcessing(true);
+    try {
+      const jobs = Array.from(selectedTxs).map(id => client.deleteTransaction(id));
+      await Promise.all(jobs);
+      setSelectedTxs(new Set());
+      if (onDataChange) onDataChange();
+    } catch (e) {
+      setActionError(e.message || 'Failed to bulk delete');
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
+  const handleBulkCategorize = async (categoryId) => {
+    setBulkProcessing(true);
+    try {
+      const jobs = Array.from(selectedTxs).map(id => client.updateTransaction(id, { categoryId }));
+      await Promise.all(jobs);
+      setSelectedTxs(new Set());
+      setShowBulkCategoryModal(false);
+      if (onDataChange) onDataChange();
+    } catch (e) {
+      setActionError(e.message || 'Failed to bulk update');
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
+
   useEffect(() => { writeJson('whereItWent_sort', sortConfig); }, [sortConfig]);
   // A new filter/period/sort should start from the top of the list again.
   useEffect(() => { setVisibleCount(PAGE_SIZE); }, [filter, categoryFilter, searchQuery, period, sortConfig]);
@@ -346,6 +405,36 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
         </div>
         </>
       )}
+      {selectedTxs.size > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0,
+          backgroundColor: 'var(--color-surface)',
+          borderTop: '1px solid var(--color-border)',
+          padding: 'var(--space-md)',
+          display: 'flex', gap: 'var(--space-sm)',
+          alignItems: 'center', justifyContent: 'space-between',
+          boxShadow: '0 -4px 12px rgba(0,0,0,0.1)',
+          zIndex: 50,
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ fontWeight: 'bold' }}>{selectedTxs.size} selected</div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <Button size="sm" variant="secondary" onClick={() => setShowBulkCategoryModal(true)} disabled={bulkProcessing}>Categorize</Button>
+            <Button size="sm" variant="secondary" onClick={handleBulkReconcile} disabled={bulkProcessing}>Reconcile</Button>
+            <Button size="sm" variant="danger" onClick={handleBulkDelete} disabled={bulkProcessing}>Delete</Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelectedTxs(new Set())} disabled={bulkProcessing}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      <Modal isOpen={showBulkCategoryModal} onClose={() => setShowBulkCategoryModal(false)} title="Bulk Categorize">
+         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '8px', padding: '16px' }}>
+           {(data.categories || []).map(cat => (
+             <Button key={cat.id} variant="secondary" onClick={() => handleBulkCategorize(cat.id)} disabled={bulkProcessing}>{cat.name}</Button>
+           ))}
+         </div>
+      </Modal>
+
       {editingTx && (
         <Modal open={true} title="Edit Transaction" onClose={() => setEditingTx(null)}>
           <TransactionForm

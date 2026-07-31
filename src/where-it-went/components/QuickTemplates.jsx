@@ -7,7 +7,8 @@ export default function QuickTemplates({ templates = [], onApplyTemplate, onSave
   const [isEditing, setIsEditing] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
 
-  const activeTemplates = isEditing ? templates : templates.filter(t => t.active !== false);
+  const activeTemplates = (isEditing ? templates : templates.filter(t => t.active !== false))
+    .sort((a, b) => (a.description || '').localeCompare(b.description || ''));
 
   if (activeTemplates.length === 0 && !isEditing) return null;
 
@@ -31,7 +32,7 @@ export default function QuickTemplates({ templates = [], onApplyTemplate, onSave
             onClick={() => isEditing ? setEditingTemplate(t) : onApplyTemplate(t)}
             style={{ whiteSpace: 'nowrap' }}
           >
-            {t.description} {t.amount ? `(${formatCurrency(t.amount)})` : ''}
+            {t.description}
           </Button>
         ))}
         {isEditing && (

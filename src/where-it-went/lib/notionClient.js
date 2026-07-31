@@ -174,6 +174,7 @@ export class NotionClient {
       // `To Account` the destination; it stays empty for Income and Expense.
       toAccountId: row.properties['To Account']?.relation?.[0]?.id || '',
       tripId: row.properties.Trip?.relation?.[0]?.id || '',
+      reconciled: row.properties.Reconciled?.checkbox || false,
       // Read by the Travel/Property/Nora classifiers — previously never fetched.
       notes: plainText(row.properties.Notes?.rich_text),
       // The RON amount stays the source of truth for every total; these two are
@@ -225,6 +226,7 @@ export class NotionClient {
           'Account': relation(tx.accountId),
           'To Account': relation(tx.toAccountId),
           'Trip': relation(tx.tripId),
+          'Reconciled': { checkbox: !!tx.reconciled },
           'Notes': richText(tx.notes),
           'Original Amount': { number: tx.originalAmount ?? null },
           'Original Currency': tx.originalCurrency ? { select: { name: tx.originalCurrency } } : { select: null },
@@ -250,6 +252,7 @@ export class NotionClient {
     if (updates.accountId !== undefined) properties['Account'] = relation(updates.accountId);
     if (updates.toAccountId !== undefined) properties['To Account'] = relation(updates.toAccountId);
     if (updates.tripId !== undefined) properties['Trip'] = relation(updates.tripId);
+    if (updates.reconciled !== undefined) properties['Reconciled'] = { checkbox: !!updates.reconciled };
     if (updates.notes !== undefined) properties['Notes'] = richText(updates.notes);
     if (updates.originalAmount !== undefined) properties['Original Amount'] = { number: updates.originalAmount ?? null };
     if (updates.originalCurrency !== undefined) {
