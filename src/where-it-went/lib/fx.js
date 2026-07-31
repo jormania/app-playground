@@ -177,7 +177,7 @@ export function convert(amount, rate) {
   const value = Number(amount);
   const r = Number(rate);
   if (!Number.isFinite(value) || !Number.isFinite(r) || r <= 0) return null;
-  return Math.round(value * r * 100) / 100;
+  return Math.ceil(value * r);
 }
 
 /**

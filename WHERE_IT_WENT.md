@@ -1015,3 +1015,7 @@ suite (755 → 770 tests), typecheck and lint all green.
   - Trips that have crossed the day *after* their end date automatically transition to **Completed**.
 - **Notion Syncing**: Transitions are immediately persisted to the underlying Notion database via `client.updateTrip()`, ensuring the backend matches the frontend reality.
 - **Safety**: Uses the same safety net as the Subscription Engine—skipping updates when offline, when showing sample data, or during pending network queues. Tests guarantee boundary edge cases behave correctly.
+
+## Currency Formatting & UI Refinements
+- **Currency Rounding**: Removed decimal places when displaying Lei across the application, as they were unnecessary visual noise. Currency conversions now strictly round up (`Math.ceil`) to the nearest integer.
+- **Mobile Transaction Grid**: Reduced the width of the Amount column on mobile screens from 84px to 64px. Because decimals were removed, this column no longer needed extra width, allowing that space to be reclaimed for the Description field.

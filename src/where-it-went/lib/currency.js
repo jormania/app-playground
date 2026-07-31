@@ -6,12 +6,12 @@ const LEI = ' L';
  * lei, so 12.50 rendered as "13 L" and 0.40 as "0 L").
  */
 export function formatCurrency(amount) {
-  if (amount === undefined || amount === null) return '0.00' + LEI;
+  if (amount === undefined || amount === null) return '0' + LEI;
   const n = Number(amount);
   if (!Number.isFinite(n)) return '—';
   return n.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }) + LEI;
 }
 

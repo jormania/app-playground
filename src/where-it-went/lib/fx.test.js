@@ -86,8 +86,8 @@ describe('orderedCurrencies', () => {
 });
 
 describe('convert', () => {
-  it('multiplies and rounds to cents', () => {
-    expect(convert(8.5, 5.2318)).toBe(44.47);
+  it('converts correctly', () => {
+    expect(convert(8.5, 5.2318)).toBe(45);
   });
 
   it('is null for unusable input', () => {

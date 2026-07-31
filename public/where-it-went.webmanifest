@@ -6,7 +6,7 @@
   "start_url": "/where-it-went-react.html",
   "scope": "/where-it-went-react.html",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#161b22",
   "theme_color": "#238636",
   "icons": [

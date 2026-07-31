@@ -242,11 +242,11 @@ select option {
     display: none !important;
   }
   .transaction-row {
-    grid-template-columns: minmax(0, 1fr) 76px 20px 84px !important;
+    grid-template-columns: minmax(0, 1fr) 76px 20px 64px !important;
     gap: 2px !important;
   }
   .transaction-list-header {
-    grid-template-columns: minmax(0, 1fr) 76px 20px 84px !important;
+    grid-template-columns: minmax(0, 1fr) 76px 20px 64px !important;
     gap: 2px !important;
   }
 }
