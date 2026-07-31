@@ -1013,7 +1013,202 @@ suite (755 → 770 tests), typecheck and lint all green.
 
 ## Currency Formatting & UI Refinements
 - **Currency Rounding**: Removed decimal places when displaying Lei across the application, as they were unnecessary visual noise. Currency conversions now strictly round up (`Math.ceil`) to the nearest integer.
-- **Mobile Transaction Grid**: Reduced the width of the Amount column on mobile screens from 84px to 64px. Because decimals were removed, this column no longer needed extra width, allowing that space to be reclaimed for the Description field.
+## Go-live audit (2026-07-30)
+
+A full pass before switching to live Notion data — bugs, styling, and a schema
+cross-check against this guide. Full suite (741 → 748 tests at this point),
+typecheck and lint all green; verified live in the browser in both themes.
+
+- **Undefined CSS custom properties**: `--color-brass`, `--color-purple`,
+  `--color-primary`, `--radius-full` and `--text-md` were used across Insights,
+  Dashboard, the ledger, Settings and the forecast card with no definition
+  anywhere in the design system — every `var()` silently resolved to nothing,
+  dropping colour, radius or font-size on ~19 rendered elements. The three with
+  exact DS equivalents were renamed (`--color-accent`, `--radius-pill`,
+  `--text-base`); `--color-brass` and `--color-purple` are genuinely distinct
+  accent hues used consistently for the Travel and Nora cards, so they were
+  added as WhereItWent-scoped tokens in `index.css` rather than collapsed into
+  an existing colour.
+- **Native form chrome had no theme**: `src/ds/tokens.css` never declared
+  `color-scheme`, so every `<select>`'s open dropdown and every date input's
+  calendar popup rendered stark default-light browser chrome regardless of the
+  app's own theme. Fixed at the DS level (`color-scheme: light` / `dark`),
+  which benefits every app on the shared design system, not just this one.
+- **Gray form fields**: the Amount box and several hand-rolled `<select>`s
+  (Category, Account, To, Trip, Currency, the budget editor's period picker)
+  were filled with `--color-bg` (the page background) instead of
+  `--color-surface` (what `ds/Field`'s own inputs use) — next to a real Field,
+  they read as a flat grey slab. Unified across `TransactionForm`,
+  `SubscriptionEditorModal`, `BudgetEditorModal` and `TripEditorModal`.
+- Widened the Date/Amount gap in the transaction form (12px → 16px column gap;
+  doesn't affect the documented no-scroll height budgets).
+- **Add Subscription's default category** was whatever Notion returned first;
+  now prefers a category literally named "Subscriptions" when one exists.
+- Confirmed no schema drift between `notionClient.js` and this guide's §4, and
+  confirmed demo/live data stay fully isolated (demo mode always builds the
+  Notion client with an empty token, so writes silently no-op onto the
+  in-memory fixture and can never reach a live workspace).
+
+## Quality-of-life pass (2026-07-30) — the 1.0 release
+
+Ten ideas from a fresh read of the codebase, independent of
+[`WHERE_IT_WENT_ROADMAP.md`](WHERE_IT_WENT_ROADMAP.md) (which covers the seven
+features shipped 2026-07-29). Nine shipped; bulk ledger actions is deliberately
+deferred — see below. Full suite: 741 → 755 tests.
+
+- **Theme follows the OS on first run** (`lib/theme.js`). The app always
+  opened in dark theme regardless of the device's own setting — every other
+  themed app in this repo (Journal, Wanderlist, Sol Odyssey, Daily Stoic)
+  seeds its initial theme from `prefers-color-scheme`. Only affects a brand
+  new install; once a theme is explicitly chosen, it always wins. An inline
+  script in `where-it-went-react.html` applies it before first paint, so a
+  light-mode device doesn't flash dark before React mounts.
+- **"+ Add" remembers the last-used type.** Frequent income loggers
+  (freelancers, landlords) used to reselect Income on every single Add. Scoped
+  to *adding* — never touches what type an edit shows — and falls back
+  gracefully if Transfers gets toggled off between visits.
+- **"Repeat" on a ledger row** reopens Add pre-filled from that transaction —
+  the same coffee, the same parking fee, without retyping it. Explicit about
+  what carries over: date resets to today, notes and tags start blank (both
+  are instance-specific), and the category-suggests-account effect is skipped
+  entirely so a repeat can never silently swap the account you actually used.
+- **A duplicate-count dot on the Transactions tab** (matching the existing
+  filters-active dot), so a pending review is discoverable without already
+  being on that screen. `DuplicateReview`'s dismissed-list state moved up to
+  `App.jsx` so the dot clears the instant something is dismissed, not just on
+  the next reload.
+- **The currency picker is ordered by relevance** (`orderedCurrencies` in
+  `lib/fx.js`): RON first, then the account's/trip's own currency, then
+  recently-used currencies, then the rest — instead of one flat 16-item list
+  every traveler scrolled through the same way regardless of which two or
+  three currencies they actually use.
+- **"View this trip in Insights"** on a transaction with a trip assigned jumps
+  straight to the Travel Insights card with that trip pre-selected, instead of
+  requiring a manual pick from the trip-filter dropdown after navigating over.
+- **The Total Global Budget bar no longer mixes timescales.** Summing a
+  500/month category and a 6,000/year one straight together produced "6,500" —
+  a number on no coherent scale. `monthlyEquivalent()` in `lib/budgets.js`
+  normalizes every category's contribution to its monthly-equivalent share
+  first; the card says "(per month)" and explains itself whenever a
+  non-monthly budget is in the mix.
+- **Settings sections are collapsible and remember your choice.** Notion
+  config, feature toggles, subscriptions and trips used to be one
+  uninterrupted scroll — fine with a couple of each, unwieldy with a dozen+.
+  Every section still defaults open (nothing changes for anyone who never
+  touches this); a collapsed choice persists per device, so putting a section
+  away is a one-time action.
+- **"Copy summary" in Insights** copies the period's editorial paragraph plus
+  the headline figures (income, expenses, net, savings rate) as plain text —
+  for pasting into a chat or a note without screenshotting the card.
+- **Deferred: bulk actions in the ledger.** Multi-select plus move-to-category
+  / move-to-account / delete, for cleaning up several misfiled transactions at
+  once. Scoped and designed, kept on the backlog at the user's request rather
+  than shipped in this pass.
+
+### Also fixed: the "Latest" pill on the front page
+
+`index.html`'s app-grid card carried a manually-set `latest: true` flag per
+app in `apps-registry.js` — it had drifted to **three** apps simultaneously
+(WhereItWent, Click Deck, Loom), because adding a new "latest" app never
+reminds you to unset it on the previous one. Replaced with a structural rule:
+`APPS[0]` — new apps go at the top of the registry — is authoritative, so
+there's nothing to remember and nothing that can desync again.
+
+## Feedback pass on the 1.0 release (2026-07-30)
+
+Real usage against the golden release surfaced seven issues. All fixed; full
+suite (755 → 770 tests), typecheck and lint all green.
+
+- **"View this trip in Insights" landed at the top of the page.** The trip
+  filter *was* being pre-selected correctly, but nothing scrolled to the
+  Travel Insights card — reaching it still meant scrolling past three other
+  sections by hand. Fixed with a mount-only `scrollIntoView`, the same
+  one-shot pattern the jump itself already used.
+- **The Repeat icon was breaking the ledger's two-line-per-row limit.** It sat
+  stacked below the amount pill, so a foreign-currency transaction (which
+  already uses a second line for its original amount) grew a third line.
+  Moved onto the amount pill's own row.
+- **Form polish**: "View this trip in Insights" now shares the Trip label's
+  row instead of adding one below it (the edit modal had started scrolling
+  again — a regression from adding that link in the first pass). The Amount
+  box gets an explicit 44px height to match `Field`'s own inputs pixel-for-
+  pixel, and the Date/Amount gap widened from 12px to 24px.
+- **The Upcoming banner didn't scroll to the agenda either** — same fix,
+  same one-shot pattern, applied to Dashboard's `upcoming-bills-card`.
+- **"Bill" language didn't fit every scenario.** A recurring subscription is
+  just as often income (rent collected from a tenant) as an expense
+  (Spotify) — "Upcoming Bills", "Bill Reminders" and "3 bills due soon" all
+  assumed the wrong direction for half the use cases. Renamed throughout to
+  "Upcoming Activity" / "Recurring Reminders" / neutral phrasing, and every
+  amount shown in a reminder or banner is now signed (`+`/`−`) so the
+  direction is legible without reading the word "bill" into it. The banner's
+  multi-item total is now netted (income − expense) rather than summed raw,
+  which had the same "6,500" mixed-timescale problem the budget total once did.
+- **Subscriptions can now be recorded in another currency**, reusing the exact
+  FX pattern from Add Transaction: an inline currency picker on the Amount
+  field, live ECB-rate conversion to RON (using today's rate, since a
+  subscription has no fixed calendar date to convert against), and an
+  overridable RON figure. Two new Notion properties on the Subscriptions
+  database — `Original Amount` (Number) and `Original Currency` (Select,
+  same 16-currency vocabulary as Transactions) — applied directly to the live
+  workspace via the Notion MCP, matching `notionClient.js`. The subscriptions
+  engine carries the foreign-currency context onto whatever it auto-posts,
+  so an auto-generated ledger row shows the same secondary currency line a
+  manual entry would.
+- **The Next 30 Days widget was sparse and under-used.** Three changes:
+  - Split into **Expenses** and **Income** sections (the combined Net stays a
+    single figure at the top — that's the number that actually answers "am I
+    in the clear").
+  - **Future-dated transactions already logged by hand** now appear alongside
+    subscription occurrences — a hotel stay booked ahead of time, not just
+    recurring charges. New pure function `getUpcomingTransactions()` in
+    `lib/upcoming.js`, de-duplicated against subscription occurrences so
+    entering next month's rent by hand can never show up twice.
+  - **Deliberately not added to notifications**: a one-off future transaction
+    is already visible twice over (future-dated rows sort first in the
+    ledger, and now in this agenda) — a third nudge would be noise, not help.
+    Background reminders stay scoped to subscriptions, where the app is the
+    only thing that knows a charge is coming.
+- **Verified the "Pattern Deviation" percentage math** (Travel/Property/Nora
+  alerts): `((current − baseline average) / baseline average) × 100` is the
+  standard "percent above" formula — "300% above average" correctly means
+  4× the average, not 3×. No bug found; the baseline itself already excludes
+  the period being judged and requires ≥2 months of real history, per the
+  audit pass from 2026-07-29.
+- **Holistic UX Upgrades**: Applied a suite of toggleable aesthetic and structural changes under the Visual Flair settings block.
+  - **Modern Layout**: Toggles the navigation structure. Replaces the top navigation bar with a fixed left sidebar on desktop widths, and a sticky bottom tab bar on mobile (e.g. S24), keeping the UI clear and navigation easily reachable.
+  - **Compact Density**: Tightens CSS padding and spacing variables across the app allowing more data density on screen.
+  - **Sparklines**: Added background inline SVG sparkline charts to the Income, Expenses, and Net KPI cards on the dashboard, visualizing the trailing 30-day cash flow at a glance.
+  - **Skeleton Loading States**: Replaced the text-based loading fallbacks in App.jsx with structured pulsating skeleton blocks mapping accurately to the component dimensions of Dashboard, Transactions, Insights, and Settings.
+  - **Professional Iconography**: Migrated Dashboard emoji headers (e.g., ?? Latest Transactions, ?? Income by Category) to professional vector SVGs using the lucide-react library.
+## Visual Flair and Laptop Nav Tweak
+- Created a 'Visual Flair' section in Settings with a Master Toggle.
+- Implemented Tactile Press States, FAB Pulse, Animated Empty States, Budget Bar Growth, Theme Transitions, and Active Tab Glow.
+- Added Master Toggle support for existing legacy flair options.
+- Centered the SVG and text horizontally within the navigation tabs on the laptop view.
+
+## Transaction List Grid Alignment
+- Modified grid-template-columns in mobile layout to use fixed widths for consistent vertical spreadsheet-like alignment.
+- Moved the Repeat button to its own dedicated column for both mobile and desktop views.
+
+## UI & Navigation Refinements
+- **Transaction List Summary Redesign**: Extracted the transaction list summary (transaction count, total income, total expense) from the main list card into its own distinct, full-width pill matching the visual styling of the "Upcoming" banner. Spaced elements evenly (`space-between`) for clarity.
+- **Mobile Navigation Header Refinements**: Changed the logo text to "WiW" on mobile screens (while retaining "WhereItWent" on desktop) and adjusted margin spacing to save horizontal space and prevent header elements from crowding the "Add" button.
+- **Modern Layout Navigation Alignment**: Adjusted the desktop sidebar navigation tabs (`.layout-modern .nav-tab-btn`) from center-aligned to left-aligned (`justify-content: flex-start`). This ensures the navigation icons form a strong, clean vertical line, vastly improving visual scanning and eliminating the ragged-edge effect.
+- **Settings State Initialization Fix**: Fixed a visual glitch where "Compact Density" and "Modern Layout" did not correctly reflect their toggled state when re-opening the Settings tab. They are now properly loaded into the initial component state in `Settings.jsx`.
+
+## Automatic Trip Status Engine
+- **Background Synchronization**: Implemented `useTripEngine`, a new background worker that runs once per session to evaluate trip start and end dates against the current date.
+- **State Boundaries**: 
+  - Trips missing dates remain unchanged.
+  - Trips whose start date has arrived (but haven't passed their end date) automatically transition to **Active**.
+  - Trips that have crossed the day *after* their end date automatically transition to **Completed**.
+- **Notion Syncing**: Transitions are immediately persisted to the underlying Notion database via `client.updateTrip()`, ensuring the backend matches the frontend reality.
+- **Safety**: Uses the same safety net as the Subscription Engine—skipping updates when offline, when showing sample data, or during pending network queues. Tests guarantee boundary edge cases behave correctly.
+
+## Currency Formatting & UI Refinements
+- **Currency Rounding**: Removed decimal places when displaying Lei across the application, as they were unnecessary visual noise. Currency conversions now strictly round up (`Math.ceil`) to the nearest integer.
+- **Mobile Transaction Grid**: Reduced the width of the Amount column on mobile screens from 64px. Because decimals were removed, this column no longer needed extra width, allowing that space to be reclaimed for the Description field.
 
 ## Quick Templates & Smart Auto-Fill Updates
 - **1-Tap Quick Entry Shortcuts**: Added Quick Templates to the Dashboard (toggled via Feature Toggles). This introduces a new Notion database (Quick Templates) to persistently store these shortcuts. Clicking a template logs a transaction with the pre-filled amount, type, category, and account using today's date instantly without opening the modal.
@@ -1025,3 +1220,8 @@ suite (755 → 770 tests), typecheck and lint all green.
   - **Quick Transactions Redesign**: Upgraded the Quick Transactions pills on the Dashboard to use the same horizontal scroll pattern with translucent backgrounds and no borders, saving vertical space and looking much cleaner.
   - **Trip Export Crash Fix**: Decoupled `TripExportModal` from the global `generateDeepInsights` engine to prevent a React crash when evaluating trip data, resolving the bug that opened a blank screen. Replaced it with a fast, specialized reduce function tailored for trip exports.
 
+## Smart Text Entry
+- **Natural Language Parsing**: Added a sleek glassmorphic text input on the Dashboard that allows logging a transaction by simply typing a natural language phrase (e.g. "bought a pizza for 45 lei" or "25 uber to the mall"). It instantly extracts the amount, matches known currencies, infers the date, and uses exact keywords to map to the correct Account and Category.
+- **Context-Aware Cleanups**: Uses a deterministic cleaning pipeline that preserves conversational prepositions inside the description (e.g. "Dinner with friends") while cleanly stripping structural prepositions at the ends of phrases.
+- **Explicit Category Mapping**: The inference engine perfectly maps unknown keywords to the exact user categories via heuristics (e.g., "netflix" -> `Leisure`, "uber" -> `Transport`), while gracefully falling back to a blank category if the input is entirely unmatched, enabling the user to just tap enter and build the transaction in the database immediately without multiple clicks or dropdown confirmations.
+- **Redundant UI Removed**: Cleaned up the Dashboard by removing the redundant "Quick Entry" heading above the template shortcut pills, keeping the screen compact.
