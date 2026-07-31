@@ -44,14 +44,14 @@ export function parseSmartText(text, accounts = [], categories = []) {
   };
 
   // 0. Pre-clean structural action words and explicit currency
-  stripRegex(/\b(bought a|bought|paid for|paid|spent)\b/gi);
+  stripRegex(/\b(bought a|bought|paid for|paid|spent|cost|charged|sent to|sent|transferred to|transferred|gave)\b/gi);
   stripRegex(/\b(lei|ron|bucks|dollars|euro|euros)\b/gi);
 
-  // 1. Parse Amount
-  const amountMatch = text.match(/\b(\d+)\b/);
+  // 1. Parse Amount (swallow optional decimals so they don't linger, e.g. 25.50)
+  const amountMatch = text.match(/\b(\d+)(?:[.,]\d+)?\b/);
   if (amountMatch) {
     tx.amount = parseInt(amountMatch[1], 10);
-    remainingText = remainingText.replace(new RegExp(`\\b${amountMatch[1]}\\b`), ' ');
+    remainingText = remainingText.replace(amountMatch[0], ' ');
   } else {
     return null;
   }
@@ -87,8 +87,8 @@ export function parseSmartText(text, accounts = [], categories = []) {
     const accFirstWord = accName.split(' ')[0];
     
     // Create regexes that optionally swallow the preposition that points to the account
-    const exactRegex = new RegExp(`\\b(?:from|using|with)?\\s*${accName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-    const firstWordRegex = new RegExp(`\\b(?:from|using|with)?\\s*${accFirstWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+    const exactRegex = new RegExp(`\\b(?:from|using|with|to)?\\s*${accName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+    const firstWordRegex = new RegExp(`\\b(?:from|using|with|to)?\\s*${accFirstWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
 
     if (remainingText.toLowerCase().includes(accName.toLowerCase())) {
       matchedAccount = account;
@@ -144,15 +144,21 @@ export function parseSmartText(text, accounts = [], categories = []) {
   // Clean up extra spaces
   let cleanedDesc = remainingText.replace(/\s+/g, ' ').trim();
   
-  // Trim dangling prepositions from the START of the phrase
-  // e.g. "for lunch" -> "lunch", "at the store" -> "the store", "to the mall" -> "the mall"
-  cleanedDesc = cleanedDesc.replace(/^(for|from|at|to|in|on|with)\s+/i, '');
-  // Trim dangling articles from the START
-  cleanedDesc = cleanedDesc.replace(/^(a|an|the)\s+/i, '');
-  
-  // Trim dangling prepositions from the END of the phrase
-  // e.g. "dinner with" -> "dinner", "pizza for" -> "pizza"
-  cleanedDesc = cleanedDesc.replace(/\s+(for|from|at|to|in|on|with|a|an|the)$/i, '');
+  // Clean up stray punctuation
+  cleanedDesc = cleanedDesc.replace(/[.,;:]/g, '');
+
+  // Strip dangling preposition/article combinations from the START
+  let previous;
+  do {
+    previous = cleanedDesc;
+    cleanedDesc = cleanedDesc.replace(/^(for|from|at|to|in|on|with|a|an|the)\s+/i, '').trim();
+  } while (cleanedDesc !== previous);
+
+  // Strip dangling preposition/article combinations from the END
+  do {
+    previous = cleanedDesc;
+    cleanedDesc = cleanedDesc.replace(/\s+(for|from|at|to|in|on|with|a|an|the)$/i, '').trim();
+  } while (cleanedDesc !== previous);
 
   // Final trim
   cleanedDesc = cleanedDesc.trim();
@@ -161,7 +167,13 @@ export function parseSmartText(text, accounts = [], categories = []) {
   if (cleanedDesc.length > 0) {
     tx.description = cleanedDesc.charAt(0).toUpperCase() + cleanedDesc.slice(1);
   } else {
-    tx.description = '';
+    // Fallback if description is empty
+    if (tx.categoryId) {
+      const cat = categories.find(c => c.id === tx.categoryId);
+      tx.description = cat ? cat.name : 'Expense';
+    } else {
+      tx.description = 'Expense';
+    }
   }
 
   return tx;

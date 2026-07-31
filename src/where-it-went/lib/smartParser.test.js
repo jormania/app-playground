@@ -81,6 +81,14 @@ describe('smartParser 30-sample robust test suite', () => {
     { prompt: 'rent 2000', amount: 2000, date: getToday(), account: 'acc-revolut', category: 'cat-rent', desc: 'Rent' },
     // 20. App subscription
     { prompt: 'spotify 50', amount: 50, date: getToday(), account: 'acc-revolut', category: 'cat-leisure', desc: 'Spotify' },
+    // 21. Decimal ignore and dangling combo
+    { prompt: 'for a coffee 25.50', amount: 25, date: getToday(), account: 'acc-revolut', category: 'cat-food', desc: 'Coffee' },
+    // 22. Action word "sent" and "to" cleanup
+    { prompt: 'sent 50 to mom', amount: 50, date: getToday(), account: 'acc-revolut', category: '', desc: 'Mom' },
+    // 23. Completely empty description fallback to inferred category (not empty here)
+    { prompt: '50 for uber', amount: 50, date: getToday(), account: 'acc-revolut', category: 'cat-transport', desc: 'Uber' },
+    // 24. Completely empty description fallback to generic Expense if no category
+    { prompt: 'paid 100', amount: 100, date: getToday(), account: 'acc-revolut', category: '', desc: 'Expense' },
   ];
 
   samples.forEach((sample, i) => {
