@@ -39,7 +39,14 @@ export default function UpcomingBanner({ bills, leadDays, categoriesById, onView
   const sign = soonest.sub.type === 'Income' ? '+' : '−';
 
   const message = bills.length === 1
-    ? `${soonestIcon ? soonestIcon + ' ' : ''}${soonest.sub.name} · ${sign}${formatCurrency(soonest.sub.amount)} due ${formatDaysUntil(soonest.daysUntil)}`
+    ? (
+        <span style={{ display: 'inline-flex', alignItems: 'center', maxWidth: '100%', overflow: 'hidden' }}>
+          {soonestIcon}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {soonest.sub.name} · {sign}{formatCurrency(soonest.sub.amount)} due {formatDaysUntil(soonest.daysUntil)}
+          </span>
+        </span>
+      )
     : `${bills.length} due in the next ${leadDays} days · ${total >= 0 ? '+' : '−'}${formatCurrency(Math.abs(total))}`;
 
   return (
