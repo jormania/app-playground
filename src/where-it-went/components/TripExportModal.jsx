@@ -75,7 +75,7 @@ export default function TripExportModal({ trip, data, onClose }) {
 
   return (
     <Modal open={true} onClose={onClose} title="Trip Export" style={{ maxWidth: '400px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px', maxHeight: '80vh', overflowY: 'auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px' }}>
         
         {/* Receipt-style snapshot card */}
         <div style={{ 
