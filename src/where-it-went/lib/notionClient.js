@@ -196,7 +196,8 @@ export class NotionClient {
       amount: row.properties.Amount?.number ?? null,
       categoryId: row.properties.Category?.relation?.[0]?.id || '',
       accountId: row.properties.Account?.relation?.[0]?.id || '',
-      type: row.properties.Type?.select?.name || 'Expense'
+      type: row.properties.Type?.select?.name || 'Expense',
+      active: row.properties.Active?.checkbox !== false
     }));
   }
 
@@ -287,7 +288,8 @@ export class NotionClient {
           'Amount': { number: Number(tpl.amount) || 0 },
           'Type': { select: { name: tpl.type || 'Expense' } },
           'Category': relation(tpl.categoryId),
-          'Account': relation(tpl.accountId)
+          'Account': relation(tpl.accountId),
+          'Active': { checkbox: tpl.active !== false }
         }
       }
     });
@@ -306,6 +308,7 @@ export class NotionClient {
     if (updates.type !== undefined) properties['Type'] = { select: { name: updates.type } };
     if (updates.categoryId !== undefined) properties['Category'] = relation(updates.categoryId);
     if (updates.accountId !== undefined) properties['Account'] = relation(updates.accountId);
+    if (updates.active !== undefined) properties['Active'] = { checkbox: updates.active !== false };
 
     return this._request({ path: `pages/${tplId}`, method: 'PATCH', body: { properties } });
   }
@@ -328,6 +331,7 @@ export class NotionClient {
         Amount: { number: { format: 'number' } },
         Category: { relation: { database_id: categoriesDbId, single_property: {} } },
         Account: { relation: { database_id: accountsDbId, single_property: {} } },
+        Active: { checkbox: {} },
         Type: {
           select: {
             options: [

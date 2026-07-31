@@ -6,6 +6,7 @@ import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { PromptModal } from '../../ds';
 import { NotionClient } from '../lib/notionClient';
 import SubscriptionEditorModal from './SubscriptionEditorModal';
+import TemplateEditorModal from './TemplateEditorModal';
 import TripEditorModal from './TripEditorModal';
 import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
@@ -112,6 +113,8 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const [scrubProgress, setScrubProgress] = useState(null);
   const [editingSub, setEditingSub] = useState(null);
   const [isAddingSub, setIsAddingSub] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [isAddingTemplate, setIsAddingTemplate] = useState(false);
   const [editingTrip, setEditingTrip] = useState(null);
   const [failedJobs, setFailedJobs] = useState(() => readFailed());
   const [isAddingTrip, setIsAddingTrip] = useState(false);
@@ -622,6 +625,73 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         </CollapsibleSection>
       )}
 
+      {/* Quick Templates Management Section */}
+      {features.quickTemplates && data?.templates && (
+        <CollapsibleSection
+          id="quickTemplates"
+          title="Quick Templates"
+          action={<Button variant="secondary" onClick={() => setIsAddingTemplate(true)}>+ Add Template</Button>}
+        >
+          <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
+            1-Tap Quick Entry Shortcuts for highly repetitive daily expenses. These are pinned to your Dashboard for instant access.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+            {data.templates.length === 0 ? (
+              <div style={{ color: 'var(--color-muted)', fontStyle: 'italic', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                No templates yet. Add your daily coffee or bus ticket for quick access.
+              </div>
+            ) : (
+              data.templates.map(tpl => {
+                const catName = data.categories?.find(c => c.id === tpl.categoryId)?.name || 'Unknown';
+                const catColor = getCategoryColor(catName);
+                return (
+                  <div
+                    key={tpl.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setEditingTemplate(tpl)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditingTemplate(tpl); } }}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)',
+                      borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)',
+                      borderLeft: `4px solid ${catColor}`, cursor: 'pointer',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-2)'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-surface)'}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{tpl.description}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginTop: '4px' }}>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
+                          {catName}
+                        </span>
+                        <span style={{
+                          fontSize: '0.65rem', fontWeight: 'var(--weight-bold)', padding: '2px 6px',
+                          borderRadius: 'var(--radius-sm)',
+                          backgroundColor: tpl.active !== false ? 'color-mix(in srgb, var(--color-success) 15%, transparent)' : 'color-mix(in srgb, var(--color-muted) 15%, transparent)',
+                          color: tpl.active !== false ? 'var(--color-success)' : 'var(--color-muted)',
+                          textTransform: 'uppercase', letterSpacing: '0.5px'
+                        }}>
+                          {tpl.active !== false ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: tpl.type === 'Income' ? 'var(--color-success)' : 'var(--color-ink)' }}>
+                        {tpl.type === 'Income' ? '+' : '-'}{formatCurrency(tpl.amount)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </CollapsibleSection>
+      )}
+
       {(isAddingSub || editingSub) && (
         <SubscriptionEditorModal
           isOpen={isAddingSub || !!editingSub}
@@ -636,6 +706,35 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           onDelete={async (id) => {
             await client.deleteSubscription(id);
             if (onDataChange) onDataChange();
+          }}
+        />
+      )}
+
+      {(isAddingTemplate || editingTemplate) && (
+        <TemplateEditorModal
+          isOpen={true}
+          template={editingTemplate}
+          categories={data?.categories || []}
+          accounts={data?.accounts || []}
+          onClose={() => {
+            setIsAddingTemplate(false);
+            setEditingTemplate(null);
+          }}
+          onSave={async (tpl) => {
+            if (editingTemplate) {
+              await client?.updateTemplate?.(editingTemplate.id, tpl);
+            } else {
+              await client?.addTemplate?.(tpl);
+            }
+            if (onDataChange) onDataChange();
+            setIsAddingTemplate(false);
+            setEditingTemplate(null);
+          }}
+          onDelete={async (id) => {
+            await client?.deleteTemplate?.(id);
+            if (onDataChange) onDataChange();
+            setIsAddingTemplate(false);
+            setEditingTemplate(null);
           }}
         />
       )}

@@ -7,7 +7,9 @@ export default function QuickTemplates({ templates = [], onApplyTemplate, onSave
   const [isEditing, setIsEditing] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
 
-  if (templates.length === 0 && !isEditing) return null;
+  const activeTemplates = isEditing ? templates : templates.filter(t => t.active !== false);
+
+  if (activeTemplates.length === 0 && !isEditing) return null;
 
   return (
     <div style={{ marginBottom: 'var(--space-lg)' }}>
@@ -21,7 +23,7 @@ export default function QuickTemplates({ templates = [], onApplyTemplate, onSave
       </div>
 
       <div style={{ display: 'flex', gap: 'var(--space-sm)', overflowX: 'auto', paddingBottom: 'var(--space-xs)' }}>
-        {templates.map(t => (
+        {activeTemplates.map(t => (
           <Button
             key={t.id}
             variant={isEditing ? 'outline' : 'secondary'}

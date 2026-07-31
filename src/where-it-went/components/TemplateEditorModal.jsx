@@ -10,6 +10,7 @@ export default function TemplateEditorModal({ isOpen, onClose, template, categor
   const [type, setType] = useState(template?.type || 'Expense');
   const [categoryId, setCategoryId] = useState(template?.categoryId || '');
   const [accountId, setAccountId] = useState(template?.accountId || accounts[0]?.id || '');
+  const [active, setActive] = useState(template?.active !== false);
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -22,8 +23,10 @@ export default function TemplateEditorModal({ isOpen, onClose, template, categor
         amount,
         type,
         categoryId,
-        accountId
+        accountId,
+        active
       });
+      onClose();
     } finally {
       setSaving(false);
     }
@@ -78,6 +81,11 @@ export default function TemplateEditorModal({ isOpen, onClose, template, categor
           >
             {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+          <input type="checkbox" id="template-active-checkbox" checked={active} onChange={e => setActive(e.target.checked)} />
+          <label htmlFor="template-active-checkbox" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink)' }}>Active (shows on Dashboard)</label>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
