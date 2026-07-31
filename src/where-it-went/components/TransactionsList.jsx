@@ -433,7 +433,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
         );
       })()}
 
-      <Modal isOpen={showBulkCategoryModal} onClose={() => setShowBulkCategoryModal(false)} title="Bulk Categorize">
+      <Modal open={showBulkCategoryModal} onClose={() => setShowBulkCategoryModal(false)} title="Bulk Categorize">
          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '8px', padding: '16px' }}>
            {(data.categories || []).map(cat => (
              <Button key={cat.id} variant="secondary" onClick={() => handleBulkCategorize(cat.id)} disabled={bulkProcessing}>{cat.name}</Button>
