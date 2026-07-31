@@ -24,7 +24,9 @@ beforeEach(() => {
   // The form now remembers the last-used Add type in localStorage — without
   // clearing it, whichever test runs first (and picks Income/Transfer)
   // leaked its choice into every test after it.
-  localStorage.clear();
+  try {
+    localStorage.clear();
+  } catch (e) {}
 });
 
 afterEach(() => {
@@ -37,7 +39,7 @@ describe('TransactionForm', () => {
     render(<TransactionForm categories={categories} accounts={accounts} onSave={onSave} onCancel={vi.fn()} />);
 
     fireEvent.change(screen.getByPlaceholderText('e.g. Groceries'), { target: { value: 'Milk' } });
-    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '12.5' } });
+    fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '12.5' } });
     fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'c1' } });
 
     fireEvent.submit(document.querySelector('form'));
@@ -53,7 +55,7 @@ describe('TransactionForm', () => {
     render(<TransactionForm categories={categories} accounts={accounts} onSave={onSave} onCancel={vi.fn()} />);
 
     fireEvent.change(screen.getByPlaceholderText('e.g. Groceries'), { target: { value: 'Milk' } });
-    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '0' } });
+    fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '0' } });
     fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'c1' } });
 
     fireEvent.submit(document.querySelector('form'));
@@ -123,7 +125,7 @@ describe('TransactionForm', () => {
     render(<TransactionForm categories={categories} accounts={accounts} onSave={onSave} onCancel={vi.fn()} />);
 
     fireEvent.change(screen.getByPlaceholderText('e.g. Groceries'), { target: { value: 'Milk' } });
-    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '10' } });
+    fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '10' } });
     fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'c1' } });
     fireEvent.submit(document.querySelector('form'));
 
@@ -146,7 +148,7 @@ describe('TransactionForm', () => {
       expect(screen.queryByLabelText(/^category/i)).toBeNull();
 
       fireEvent.change(screen.getByPlaceholderText('e.g. Revolut top-up'), { target: { value: 'Top-up' } });
-      fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '200' } });
+      fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '200' } });
       // A transfer now needs both ends.
       fireEvent.change(screen.getByLabelText(/^From/), { target: { value: 'a1' } });
       fireEvent.change(screen.getByLabelText(/^To/), { target: { value: 'a2' } });
@@ -189,7 +191,7 @@ describe('TransactionForm', () => {
 
       fireEvent.click(screen.getByRole('radio', { name: 'Transfer' }));
       fireEvent.change(screen.getByPlaceholderText('e.g. Revolut top-up'), { target: { value: 'Top-up' } });
-      fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '200' } });
+      fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '200' } });
       fireEvent.submit(document.querySelector('form'));
 
       expect(onSave).not.toHaveBeenCalled();
@@ -203,7 +205,7 @@ describe('TransactionForm', () => {
 
       fireEvent.click(screen.getByRole('radio', { name: 'Transfer' }));
       fireEvent.change(screen.getByPlaceholderText('e.g. Revolut top-up'), { target: { value: 'Top-up' } });
-      fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '200' } });
+      fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '200' } });
       // The To list excludes the From account, so force the collision directly.
       const to = screen.getByLabelText(/^To/);
       Object.defineProperty(to, 'value', { value: 'a1', configurable: true });
@@ -218,7 +220,7 @@ describe('TransactionForm', () => {
       render(<TransactionForm categories={categories} accounts={accounts} allowTransfer onSave={onSave} onCancel={vi.fn()} />);
 
       fireEvent.change(screen.getByPlaceholderText('e.g. Groceries'), { target: { value: 'Milk' } });
-      fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '10' } });
+      fireEvent.change(screen.getByPlaceholderText('0'), { target: { value: '10' } });
       fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'c1' } });
       fireEvent.submit(document.querySelector('form'));
 
