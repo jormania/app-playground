@@ -412,7 +412,6 @@ export default function TransactionForm({ transactions = [], categories, account
           padding: '8px 12px', borderRadius: 'var(--radius-md)', 
           backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border-2)' 
         }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-muted)', flex: 'none' }}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
           <div style={{ display: 'flex', alignItems: 'center', flex: 'none', width: '90px', position: 'relative' }}>
             <input
               id={baseAmountId}

@@ -249,7 +249,6 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
         {isForeign && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 'none', fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
-              <span style={{ flex: 'none' }}>≈</span>
               <input
                 id={baseAmountId}
                 aria-label={`Amount in ${BASE_CURRENCY}`}
