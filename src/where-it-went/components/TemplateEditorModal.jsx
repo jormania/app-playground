@@ -98,7 +98,7 @@ export default function TemplateEditorModal({ isOpen, onClose, template, categor
               Category <span style={{ color: "var(--color-danger)" }}>*</span>
             </label>
             <select id={categorySelectId} value={categoryId} onChange={e => setCategoryId(e.target.value)} required style={selectStyle}>
-              <option value="" disabled>Select�</option>
+              <option value="" disabled>Select…</option>
               {availableCategories.map(c => (
                 <option key={c.id} value={c.id}>{c.icon ? `${c.icon} ${c.name}` : c.name}</option>
               ))}
@@ -106,7 +106,7 @@ export default function TemplateEditorModal({ isOpen, onClose, template, categor
             {selectedCat?.description && (
               <details style={{ marginTop: "2px" }}>
                 <summary style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)", cursor: "pointer", userSelect: "none", listStyle: "none", display: "flex", alignItems: "center", gap: "4px" }}>
-                  <span style={{ fontSize: "10px" }}>?</span> Category description
+                  <span style={{ fontSize: "10px" }}>▶</span> Category description
                 </summary>
                 <div style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)", marginTop: "4px", fontStyle: "italic", lineHeight: "1.4", paddingLeft: "14px" }}>
                   {selectedCat.description}
