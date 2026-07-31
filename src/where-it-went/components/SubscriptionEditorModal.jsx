@@ -1,6 +1,7 @@
 import { useState, useEffect, useId, useRef } from 'react';
 import { formatAccountLabel } from '../lib/accounts';
 import { Modal } from '../../ds/components/Modal';
+import { CategorySelect } from './CategorySelect';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
 import { ConfirmModal } from '../../ds';

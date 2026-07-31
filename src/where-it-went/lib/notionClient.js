@@ -121,7 +121,7 @@ export class NotionClient {
         id: row.id,
         name: plainText(row.properties.Name?.title),
         type: row.properties.Type?.select?.name || 'Expense',
-        icon: row.icon?.type === 'emoji' ? row.icon.emoji : null,
+        icon: null, // Legacy emojis disabled in favor of Lucide SVGs
         description: plainText(row.properties.Description?.rich_text),
         budgetLimit: row.properties['Monthly Limit (RON)']?.number || null,
         // The property keeps its original name for schema stability — renaming it
@@ -146,7 +146,7 @@ export class NotionClient {
       // Same treatment categories already get: the Notion page icon is the
       // account's identity. It does real work here too — two accounts can share
       // a name and differ only by currency.
-      icon: row.icon?.type === 'emoji' ? row.icon.emoji : null,
+      icon: null, // Legacy emojis disabled in favor of Lucide SVGs
       currency: row.properties.Currency?.select?.name || 'RON'
     })).filter(a => a.name.trim() !== '');
   }

@@ -32,7 +32,7 @@ export default function UpcomingBanner({ bills, leadDays, categoriesById, onView
 
   // The category's own emoji, so the strip carries the same visual identity the
   // ledger and the agenda use rather than a generic bell.
-  const soonestIcon = categoriesById?.get(soonest.sub.categoryId)?.icon || '';
+  const soonestIcon = <CategoryIcon name={categoriesById?.get(soonest.sub.categoryId)?.name} style={{ marginRight: '4px' }} />;
   // Income due (rent collected as a landlord) reads very differently from an
   // expense about to post — the sign says which without naming the type.
   const sign = soonest.sub.type === 'Income' ? '+' : '−';

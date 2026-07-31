@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Button } from '../../ds/components/Button';
+import { CategoryIcon } from './CategoryIcon';
 import { ConfirmModal, AlertModal } from '../../ds';
 import { formatCurrency } from '../lib/currency';
 import { readJson, writeJson } from '../lib/storage';
@@ -142,7 +143,7 @@ export default function DuplicateReview({
                           textDecoration: onInspect ? 'underline dotted' : 'none',
                           textUnderlineOffset: '3px'
                         }}>
-                          {cat?.icon ? `${cat.icon} ` : ''}{t.description}
+                          <>{cat && <CategoryIcon name={cat.name} style={{ marginRight: '4px' }} />}{t.description}</>
                         </div>
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {t.date} · {cat?.name || 'Uncategorized'}

@@ -90,7 +90,7 @@ export default function UpcomingBills({ bills, transactions, categories, horizon
             rather than the recurring-arrows glyph — it isn't a pattern, it's
             a single logged commitment. */}
         <span aria-hidden style={{ flex: 'none', fontSize: '16px', width: '20px', textAlign: 'center' }}>
-          {cat?.icon || (item.kind === 'transaction' ? '📌' : '🔁')}
+          cat ? <CategoryIcon name={cat.name} size={16} /> : (item.kind === 'transaction' ? '📌' : '🔁')
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{

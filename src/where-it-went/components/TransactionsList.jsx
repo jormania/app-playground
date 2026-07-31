@@ -1,4 +1,4 @@
-import { Briefcase, MoreHorizontal, PiggyBank, Landmark, Home, Heart, ShoppingCart, Smile, Plane, Car, Coffee, Utensils, Lightbulb, Gift, Tag } from 'lucide-react';
+import { CategoryIcon } from './CategoryIcon';
 import { useEffect, useMemo, useState } from 'react';
 import TransactionForm from './TransactionForm';
 import DuplicateReview from './DuplicateReview';
@@ -6,6 +6,7 @@ import { Button } from '../../ds/components/Button';
 import { Modal } from '../../ds/components/Modal';
 import { AlertModal } from '../../ds';
 import { getCategoryColor } from '../lib/colors';
+import { CategoryIcon } from './CategoryIcon';
 import { formatCurrency } from '../lib/currency';
 import { filterByPeriod, parseTxDate } from '../lib/period';
 import { readJson, writeJson } from '../lib/storage';
@@ -23,31 +24,6 @@ function signedAmount(tx) {
 }
 
 
-const CATEGORY_ICONS = {
-  freelance: Briefcase,
-  other: MoreHorizontal,
-  investing: PiggyBank,
-  'taxes & fees': Landmark,
-  property: Home,
-  health: Heart,
-  shopping: ShoppingCart,
-  leisure: Smile,
-  nora: Smile,
-  travel: Plane,
-  transport: Car,
-  dining: Coffee,
-  food: Utensils,
-  utilities: Lightbulb,
-  housing: Home,
-  loan: Landmark,
-  gift: Gift,
-  rent: Home,
-};
-const getCategoryIcon = (name) => {
-  const n = (name || '').toLowerCase();
-  const Icon = CATEGORY_ICONS[n] || Tag;
-  return <Icon size={14} style={{ marginRight: '6px', opacity: 0.7, flexShrink: 0 }} />;
-};
 
 export default function TransactionsList({ data, client, onDataChange, filterProps, period, allowTransfer = false, onRepeat, onSplit, mobileSwipe, dismissedDuplicates, onDismissedDuplicatesChange, onViewTripInInsights }) {
   const { filterType: filter = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
@@ -478,7 +454,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', padding: '12px' }}>
              {(data.categories || []).map(cat => (
                <Button key={cat.id} size="sm" variant="secondary" onClick={() => handleBulkCategorize(cat.id)} disabled={bulkProcessing} style={{ padding: '6px 8px', justifyContent: 'flex-start' }}>
-                 {getCategoryIcon(cat.name)}
+                 <CategoryIcon name={cat.name} style={{ marginRight: '6px' }} />
                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
                </Button>
              ))}

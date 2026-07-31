@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../ds/components/Button';
+import { CategoryIcon } from './CategoryIcon';
 import { Field } from '../../ds/components/Field';
 import { Modal } from '../../ds/components/Modal';
 import { AlertModal } from '../../ds';
@@ -108,7 +109,7 @@ export default function BudgetEditorModal({ isOpen, onClose, categories, client,
                   type="number"
                   min="0"
                   placeholder="No Limit"
-                  label={`${c.icon ? `${c.icon} ` : ''}${c.name}`}
+                  label={<span style={{display: 'flex', alignItems: 'center'}}><CategoryIcon name={c.name} style={{marginRight: '6px'}} />{c.name}</span>}
                   value={limits[c.id]}
                   onChange={(e) => setLimits({ ...limits, [c.id]: e.target.value })}
                 />

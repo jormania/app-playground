@@ -119,12 +119,7 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
             <label htmlFor={categorySelectId} style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)", color: "var(--color-ink)" }}>
               Split Category <span style={{ color: "var(--color-danger)" }}>*</span>
             </label>
-            <select id={categorySelectId} value={splitCategoryId} onChange={e => setSplitCategoryId(e.target.value)} required style={selectStyle}>
-              <option value="" disabled>Select…</option>
-              {filteredCategories.map(c => (
-                <option key={c.id} value={c.id}>{c.icon ? `${c.icon} ${c.name}` : c.name}</option>
-              ))}
-            </select>
+            <CategorySelect id={categorySelectId} value={splitCategoryId} onChange={e => setSplitCategoryId(e.target.value)} required style={selectStyle} categories={filteredCategories} />
           </div>
         </div>
 

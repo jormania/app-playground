@@ -495,12 +495,7 @@ export default function TransactionForm({ transactions = [], categories, account
           <label htmlFor={categorySelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
             Category <span style={{ color: 'var(--color-danger)' }}>*</span>
           </label>
-          <select id={categorySelectId} value={categoryId} onChange={e => { manualEdit.current.category = true; setCategoryId(e.target.value); }} required style={selectStyle}>
-            <option value="" disabled>Select…</option>
-            {availableCategories.map(c => (
-              <option key={c.id} value={c.id}>{c.icon ? `${c.icon} ${c.name}` : c.name}</option>
-            ))}
-          </select>
+          <CategorySelect id={categorySelectId} value={categoryId} onChange={e => { manualEdit.current.category = true; setCategoryId(e.target.value); }} required style={selectStyle} categories={availableCategories} />
           {selectedCat?.description && (
             <details style={{ marginTop: '2px' }}>
               <summary style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', cursor: 'pointer', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import BottomSheet from './BottomSheet';
 import { Button } from '../../ds/components/Button';
+import { CategorySelect } from './CategorySelect';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 
 export default function FilterSheet({ isOpen, onClose, filterType, categoryFilter, searchQuery, onApply, categories, allowTransfer = false }) {
