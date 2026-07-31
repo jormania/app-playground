@@ -19,9 +19,9 @@ export function SwipeableRow({ children, onSwipeLeft, onSwipeRight, onLongPress,
     }
   };
 
-  const handleTouchStart = (e) => {
-    startX.current = e.touches[0].clientX;
-    currentX.current = e.touches[0].clientX;
+  const handleStart = (clientX) => {
+    startX.current = clientX;
+    currentX.current = clientX;
     setSwiping(true);
 
     if (onLongPress) {
@@ -32,9 +32,9 @@ export function SwipeableRow({ children, onSwipeLeft, onSwipeRight, onLongPress,
     }
   };
 
-  const handleTouchMove = (e) => {
+  const handleMove = (clientX) => {
     if (!swiping) return;
-    currentX.current = e.touches[0].clientX;
+    currentX.current = clientX;
     const diff = currentX.current - startX.current;
     
     if (Math.abs(diff) > 10) {
@@ -47,7 +47,7 @@ export function SwipeableRow({ children, onSwipeLeft, onSwipeRight, onLongPress,
     else setTranslateX(diff);
   };
 
-  const handleTouchEnd = () => {
+  const handleEnd = () => {
     clearLongPressTimer();
     if (!swiping) return;
     setSwiping(false);
@@ -64,13 +64,21 @@ export function SwipeableRow({ children, onSwipeLeft, onSwipeRight, onLongPress,
   return (
     <div 
       className="transaction-row-wrapper"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
+      style={{ userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}
+      onTouchStart={(e) => handleStart(e.touches[0].clientX)}
+      onTouchMove={(e) => handleMove(e.touches[0].clientX)}
+      onTouchEnd={handleEnd}
+      onTouchCancel={handleEnd}
+      onMouseDown={(e) => handleStart(e.clientX)}
+      onMouseMove={(e) => handleMove(e.clientX)}
+      onMouseUp={handleEnd}
+      onMouseLeave={handleEnd}
       onContextMenu={(e) => {
         // Prevent default context menu on long press if we handle it
-        if (onLongPress) e.preventDefault();
+        if (onLongPress) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
       }}
     >
       <div className="swipe-action-bg">
