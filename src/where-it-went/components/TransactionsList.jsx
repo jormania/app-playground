@@ -6,7 +6,6 @@ import { Button } from '../../ds/components/Button';
 import { Modal } from '../../ds/components/Modal';
 import { AlertModal } from '../../ds';
 import { getCategoryColor } from '../lib/colors';
-import { CategoryIcon } from './CategoryIcon';
 import { formatCurrency } from '../lib/currency';
 import { filterByPeriod, parseTxDate } from '../lib/period';
 import { readJson, writeJson } from '../lib/storage';
@@ -452,7 +451,10 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
 
       <Modal open={showBulkCategoryModal} onClose={() => setShowBulkCategoryModal(false)} title="Bulk Categorize">
            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', padding: '12px' }}>
-             {(data.categories || []).map(cat => (
+             {(data.categories || []).filter(cat => {
+               const selectedTypes = new Set(Array.from(selectedTxs).map(id => data.transactions.find(t => t.id === id)?.type).filter(t => t && t !== 'Transfer'));
+               return selectedTypes.size === 0 || selectedTypes.has(cat.type);
+             }).map(cat => (
                <Button key={cat.id} size="sm" variant="secondary" onClick={() => handleBulkCategorize(cat.id)} disabled={bulkProcessing} style={{ padding: '6px 8px', justifyContent: 'flex-start' }}>
                  <CategoryIcon name={cat.name} style={{ marginRight: '6px' }} />
                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
