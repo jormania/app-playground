@@ -79,7 +79,8 @@ export function parseSmartText(text, accounts = [], categories = []) {
   }
 
   // 4. Parse Account
-  const revolutAccount = accounts.find(a => a.name.toLowerCase().includes('revolut'));
+  const revolutExact = accounts.find(a => a.name.toLowerCase() === 'revolut' || a.name.toLowerCase() === 'revolut (ron)');
+  const revolutAccount = revolutExact || accounts.find(a => a.name.toLowerCase().includes('revolut'));
   let matchedAccount = null;
 
   for (const account of accounts) {
