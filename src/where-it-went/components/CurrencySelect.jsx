@@ -37,7 +37,7 @@ export function CurrencySelect({ id, value, onChange, currencies, style, disable
       </button>
 
       <Modal open={open} onClose={() => setOpen(false)} title="Select Currency" style={{ maxWidth: '280px', margin: '0 auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '12px', maxHeight: '60vh', overflowY: 'auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '12px' }}>
           {currencies.map(code => (
             <button
               key={code}
