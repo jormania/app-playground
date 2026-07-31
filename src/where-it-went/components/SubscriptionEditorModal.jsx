@@ -216,7 +216,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
             backgroundColor: 'var(--color-surface)', overflow: 'hidden', boxSizing: 'border-box'
           }}>
             <input
-              id={amountId} type="number" inputMode="decimal" step="0.01" min="0" required placeholder="0.00"
+              id={amountId} type="number" inputMode="decimal" step="0.01" min="0" required placeholder="0"
               className="wiw-no-spinner"
               value={amount} onChange={e => setAmount(e.target.value)}
               style={{
@@ -252,7 +252,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
               <input
                 id={baseAmountId}
                 aria-label={`Amount in ${BASE_CURRENCY}`}
-                type="number" inputMode="decimal" step="0.01" min="0" placeholder="0.00"
+                type="number" inputMode="decimal" step="0.01" min="0" placeholder="0"
                 className="wiw-no-spinner"
                 value={baseAmount}
                 onChange={e => { baseTouched.current = true; setBaseAmount(e.target.value); }}
