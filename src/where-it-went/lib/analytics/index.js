@@ -163,17 +163,17 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
   const pctChangeFromPrev = prevTotalSpend > 0 ? (diffFromPrev / prevTotalSpend) : null;
 
   const subcatLabels = {
-    accommodation: '🏨 Accommodation & Resort',
-    transit: '✈️ Transit & Flights',
-    dining: '🍽️ Dining & Bar',
-    activities: '🎟️ Tours & Activities',
-    shopping: '🛍️ Souvenirs & Shopping',
-    other: '📦 Other Overhead'
+    accommodation: { iconName: 'accommodation', name: 'Accommodation & Resort' },
+    transit: { iconName: 'transit', name: 'Transit & Flights' },
+    dining: { iconName: 'dining', name: 'Dining & Bar' },
+    activities: { iconName: 'activities', name: 'Tours & Activities' },
+    shopping: { iconName: 'shopping', name: 'Souvenirs & Shopping' },
+    other: { iconName: 'other', name: 'Travel Overhead' }
   };
   const dominantEntry = Object.entries(travelBreakdown).sort((a, b) => b[1] - a[1])[0];
   const dominantSubcategory = dominantEntry && dominantEntry[1] > 0 ? {
     key: dominantEntry[0],
-    label: subcatLabels[dominantEntry[0]],
+    ...subcatLabels[dominantEntry[0]],
     amount: dominantEntry[1],
     percentage: totalTravelSpend > 0 ? dominantEntry[1] / totalTravelSpend : 0
   } : null;
@@ -255,23 +255,23 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     .forEach(t => sumInto(prevPropBreakdown, classify(searchText(t), PROPERTY_KEYWORDS), t.amount));
 
   const propSubcatLabels = {
-    mortgage: '🏦 Mortgage & Loans',
-    maintenance: '🛠️ Maintenance & Repairs',
-    taxes: '🏛️ Taxes & Insurance',
-    utilities: '💡 Utilities & HOA Fees',
-    other: '📦 Property Overhead'
+    mortgage: { iconName: 'mortgage', name: 'Mortgage & Loans' },
+    maintenance: { iconName: 'maintenance', name: 'Maintenance & Repairs' },
+    taxes: { iconName: 'taxes', name: 'Taxes & Insurance' },
+    utilities: { iconName: 'utilities', name: 'Utilities & HOA Fees' },
+    other: { iconName: 'other', name: 'Property Overhead' }
   };
   const dominantPropEntry = Object.entries(propBreakdown).sort((a, b) => b[1] - a[1])[0];
   const dominantPropSubcat = dominantPropEntry && dominantPropEntry[1] > 0 ? {
     key: dominantPropEntry[0],
-    label: propSubcatLabels[dominantPropEntry[0]],
+    ...propSubcatLabels[dominantPropEntry[0]],
     amount: dominantPropEntry[1],
     percentage: totalPropExpense > 0 ? (dominantPropEntry[1] / totalPropExpense) : 0
   } : null;
 
   const growthDrivers = Object.keys(propBreakdown).map(k => ({
     key: k,
-    label: propSubcatLabels[k],
+    ...propSubcatLabels[k],
     diff: propBreakdown[k] - (prevPropBreakdown[k] || 0)
   })).sort((a, b) => b.diff - a.diff);
   const primaryDriver = growthDrivers[0] && growthDrivers[0].diff > 30 ? growthDrivers[0] : null;
@@ -282,7 +282,7 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
       totalPropExpense > propBaseline.average * 1.25 && (totalPropExpense - propBaseline.average) > 150) {
     const pctAbove = ((totalPropExpense - propBaseline.average) / propBaseline.average) * 100;
     const driverText = primaryDriver
-      ? `, driven primarily by a ${formatCurrency(primaryDriver.diff)} increase in ${primaryDriver.label}`
+      ? `, driven primarily by a ${formatCurrency(primaryDriver.diff)} increase in ${primaryDriver.name}`
       : '';
     propUnusualSpending = {
       type: 'high',
@@ -311,7 +311,7 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     operationsSummary = `Logged ${formatCurrency(totalPropExpense)} of property operating overhead with no rental revenue recorded this period. `;
   }
   if (propUnusualSpending && primaryDriver) {
-    operationsSummary += `The spike was driven by ${primaryDriver.label} (${formatCurrency(propBreakdown[primaryDriver.key])}).`;
+    operationsSummary += `The spike was driven by ${primaryDriver.name} (${formatCurrency(propBreakdown[primaryDriver.key])}).`;
   } else if (diffExpenseFromPrev !== 0 && prevPropExpense > 0) {
     const dir = diffExpenseFromPrev > 0 ? 'increased' : 'decreased';
     operationsSummary += `Operating overhead ${dir} by ${formatCurrency(Math.abs(diffExpenseFromPrev))} versus the previous period.`;
@@ -366,17 +366,17 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
   prevNoraTx.forEach(t => sumInto(prevNoraBreakdown, classify(searchText(t), NORA_KEYWORDS), t.amount));
 
   const noraSubcatLabels = {
-    education: '📚 Education & Tuition',
-    activities: '🎟️ Sports & Extracurriculars',
-    health: '🏥 Healthcare & Pediatrician',
-    clothes: '👗 Clothing & Shoes',
-    gifts: '🎁 Toys & Gifts',
-    other: '📦 Child Overhead'
+    education: { iconName: 'education', name: 'Education & Tuition' },
+    activities: { iconName: 'activities', name: 'Sports & Extracurriculars' },
+    health: { iconName: 'health', name: 'Healthcare & Pediatrician' },
+    clothes: { iconName: 'clothes', name: 'Clothing & Shoes' },
+    gifts: { iconName: 'gifts', name: 'Toys & Gifts' },
+    other: { iconName: 'other', name: 'Child Overhead' }
   };
 
   const noraGrowthDrivers = Object.keys(noraBreakdown).map(k => ({
     key: k,
-    label: noraSubcatLabels[k],
+    ...noraSubcatLabels[k],
     diff: noraBreakdown[k] - (prevNoraBreakdown[k] || 0)
   })).sort((a, b) => b.diff - a.diff);
   const noraPrimaryDriver = noraGrowthDrivers[0] && noraGrowthDrivers[0].diff > 20 ? noraGrowthDrivers[0] : null;
@@ -384,7 +384,7 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
   const dominantNoraEntry = Object.entries(noraBreakdown).sort((a, b) => b[1] - a[1])[0];
   const dominantNoraSubcat = dominantNoraEntry && dominantNoraEntry[1] > 0 ? {
     key: dominantNoraEntry[0],
-    label: noraSubcatLabels[dominantNoraEntry[0]],
+    ...noraSubcatLabels[dominantNoraEntry[0]],
     amount: dominantNoraEntry[1],
     percentage: totalNoraSpend > 0 ? (dominantNoraEntry[1] / totalNoraSpend) : 0
   } : null;
@@ -396,7 +396,7 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
       totalNoraSpend > noraBaseline.average * 1.25 && (totalNoraSpend - noraBaseline.average) > 150) {
     const pctAbove = ((totalNoraSpend - noraBaseline.average) / noraBaseline.average) * 100;
     const driverText = noraPrimaryDriver
-      ? `, driven primarily by ${noraPrimaryDriver.label.replace(/^\S+\s/, '')} (${formatCurrency(noraBreakdown[noraPrimaryDriver.key])})`
+      ? `, driven primarily by ${noraPrimaryDriver.name} (${formatCurrency(noraBreakdown[noraPrimaryDriver.key])})`
       : '';
 
     // Seasonality is judged on the period's own months, not on one arbitrary row.
@@ -427,7 +427,7 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
   const educationShare = totalNoraSpend > 0 ? (noraBreakdown.education / totalNoraSpend) * 100 : 0;
   const primaryFocusText = noraBreakdown.education > 0
     ? `Education (${educationShare.toFixed(0)}%)`
-    : (dominantNoraSubcat ? dominantNoraSubcat.label.replace(/^\S+\s/, '') : 'General Support');
+    : (dominantNoraSubcat ? dominantNoraSubcat.name : 'General Support');
 
   let supportSummary = `Family support accounted for ${(shareOfTotalExpense * 100).toFixed(1)}% (${formatCurrency(totalNoraSpend)}) of total household spending this period. `;
   if (noraBreakdown.education > 0) {
@@ -436,7 +436,7 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
       ? ', supported by routine enrichment in sports, activities and seasonal needs. '
       : ', representing all recorded support this period. ';
   } else if (dominantNoraSubcat) {
-    supportSummary += `${dominantNoraSubcat.label.replace(/^\S+\s/, '')} was the largest support focus (${formatCurrency(dominantNoraSubcat.amount)}). `;
+    supportSummary += `${dominantNoraSubcat.name} was the largest support focus (${formatCurrency(dominantNoraSubcat.amount)}). `;
   }
   if (noraSeasonalNote) {
     supportSummary += 'Spending reflects expected seasonal commitments rather than unexpected growth.';

@@ -7,6 +7,7 @@ import { projectCashFlow } from '../lib/analytics/forecast';
 import ForecastSection from './ForecastSection';
 import NoraAvatar from './NoraAvatar';
 import { Button } from '../../ds/components/Button';
+import { CategoryIcon } from './CategoryIcon';
 
 /** Clipboard write with a same-origin fallback for browsers/contexts where
  * the async Clipboard API isn't available (older Safari, non-HTTPS dev). */
@@ -613,23 +614,24 @@ export default function InsightsView({ data, period, filterProps, config, initia
                     </h4>
                     {behavioral.travelAnalysis.dominantSubcategory && (
                       <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink)', backgroundColor: 'var(--color-surface-2)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', marginBottom: '10px', borderLeft: '3px solid var(--color-brass)' }}>
-                        👑 <b>Dominant Category:</b> {behavioral.travelAnalysis.dominantSubcategory.label} accounted for <b>{(behavioral.travelAnalysis.dominantSubcategory.percentage * 100).toFixed(0)}%</b> of travel spending in this period ({formatCurrency(behavioral.travelAnalysis.dominantSubcategory.amount)}).
+                        👑 <b>Dominant Category:</b> {behavioral.travelAnalysis.dominantSubcategory.name} accounted for <b>{(behavioral.travelAnalysis.dominantSubcategory.percentage * 100).toFixed(0)}%</b> of travel spending in this period ({formatCurrency(behavioral.travelAnalysis.dominantSubcategory.amount)}).
                       </div>
                     )}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {[
-                        { label: '🏨 Accommodation & Resort', amount: behavioral.travelAnalysis.breakdown.accommodation, color: 'var(--color-purple)' },
-                        { label: '✈️ Transit & Flights', amount: behavioral.travelAnalysis.breakdown.transit, color: 'var(--color-brass)' },
-                        { label: '🍽️ Dining & Bar', amount: behavioral.travelAnalysis.breakdown.dining, color: 'var(--color-warning)' },
-                        { label: '🎟️ Tours & Activities', amount: behavioral.travelAnalysis.breakdown.activities, color: 'var(--color-success)' },
-                        { label: '🛍️ Shopping', amount: behavioral.travelAnalysis.breakdown.shopping, color: 'var(--color-danger)' },
-                        { label: '📦 Other', amount: behavioral.travelAnalysis.breakdown.other, color: 'var(--color-muted)' }
+                        { iconName: 'accommodation', name: 'Accommodation & Resort', amount: behavioral.travelAnalysis.breakdown.accommodation, color: 'var(--color-purple)' },
+                        { iconName: 'transit', name: 'Transit & Flights', amount: behavioral.travelAnalysis.breakdown.transit, color: 'var(--color-brass)' },
+                        { iconName: 'dining', name: 'Dining & Bar', amount: behavioral.travelAnalysis.breakdown.dining, color: 'var(--color-warning)' },
+                        { iconName: 'activities', name: 'Tours & Activities', amount: behavioral.travelAnalysis.breakdown.activities, color: 'var(--color-success)' },
+                        { iconName: 'shopping', name: 'Shopping', amount: behavioral.travelAnalysis.breakdown.shopping, color: 'var(--color-danger)' },
+                        { iconName: 'other', name: 'Other', amount: behavioral.travelAnalysis.breakdown.other, color: 'var(--color-muted)' }
                       ].filter(item => item.amount > 0).map((item, idx) => {
                         const pct = (item.amount / behavioral.travelAnalysis.totalSpend) * 100;
                         return (
                           <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 'var(--text-sm)', gap: '8px' }}>
-                            <span style={{ color: 'var(--color-ink)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {item.label}
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-ink)', minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                              <CategoryIcon name={item.iconName} size={14} style={{ flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
                             </span>
                             <span style={{ fontWeight: 'var(--weight-medium)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                               {formatCurrency(item.amount)} ({pct.toFixed(0)}%)
@@ -794,22 +796,23 @@ export default function InsightsView({ data, period, filterProps, config, initia
                       </h4>
                       {behavioral.propertyAnalysis.dominantSubcategory && (
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink)', backgroundColor: 'var(--color-surface-2)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', marginBottom: '12px', borderLeft: '3px solid var(--color-brass)' }}>
-                          👑 <b>Primary Operating Cost:</b> {behavioral.propertyAnalysis.dominantSubcategory.label} dominated operating overhead this period, representing <b>{(behavioral.propertyAnalysis.dominantSubcategory.percentage * 100).toFixed(0)}%</b> ({formatCurrency(behavioral.propertyAnalysis.dominantSubcategory.amount)}) of total property expenditures.
+                          👑 <b>Primary Operating Cost:</b> {behavioral.propertyAnalysis.dominantSubcategory.name} dominated operating overhead this period, representing <b>{(behavioral.propertyAnalysis.dominantSubcategory.percentage * 100).toFixed(0)}%</b> ({formatCurrency(behavioral.propertyAnalysis.dominantSubcategory.amount)}) of total property expenditures.
                         </div>
                       )}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {[
-                          { label: '🏦 Mortgage & Structural Loans', amount: behavioral.propertyAnalysis.breakdown.mortgage, color: 'var(--color-purple)' },
-                          { label: '🛠️ Maintenance & Repairs', amount: behavioral.propertyAnalysis.breakdown.maintenance, color: 'var(--color-danger)' },
-                          { label: '🏛️ Property Taxes & Insurance', amount: behavioral.propertyAnalysis.breakdown.taxes, color: 'var(--color-brass)' },
-                          { label: '💡 Utilities & HOA Fees', amount: behavioral.propertyAnalysis.breakdown.utilities, color: 'var(--color-warning)' },
-                          { label: '📦 Other Property Overhead', amount: behavioral.propertyAnalysis.breakdown.other, color: 'var(--color-muted)' }
+                          { iconName: 'mortgage', name: 'Mortgage & Structural Loans', amount: behavioral.propertyAnalysis.breakdown.mortgage, color: 'var(--color-purple)' },
+                          { iconName: 'maintenance', name: 'Maintenance & Repairs', amount: behavioral.propertyAnalysis.breakdown.maintenance, color: 'var(--color-danger)' },
+                          { iconName: 'taxes', name: 'Property Taxes & Insurance', amount: behavioral.propertyAnalysis.breakdown.taxes, color: 'var(--color-brass)' },
+                          { iconName: 'utilities', name: 'Utilities & HOA Fees', amount: behavioral.propertyAnalysis.breakdown.utilities, color: 'var(--color-warning)' },
+                          { iconName: 'other', name: 'Other Property Overhead', amount: behavioral.propertyAnalysis.breakdown.other, color: 'var(--color-muted)' }
                         ].filter(item => item.amount > 0).map((item, idx) => {
                           const pct = behavioral.propertyAnalysis.totalExpense > 0 ? (item.amount / behavioral.propertyAnalysis.totalExpense) * 100 : 0;
                           return (
                             <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
-                              <span style={{ color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {item.label}
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-ink)', minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                <CategoryIcon name={item.iconName} size={14} style={{ flexShrink: 0 }} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
                               </span>
                               <span style={{ fontWeight: 'var(--weight-medium)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                 {formatCurrency(item.amount)} ({pct.toFixed(0)}%)
@@ -952,7 +955,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
                       </h4>
                       {behavioral.noraAnalysis.dominantSubcategory && (
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink)', backgroundColor: 'var(--color-surface-2)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', marginBottom: '14px', borderLeft: '3px solid var(--color-purple)' }}>
-                          👑 <b>Primary Focus:</b> {behavioral.noraAnalysis.dominantSubcategory.label} accounted for <b>{(behavioral.noraAnalysis.dominantSubcategory.percentage * 100).toFixed(0)}%</b> of family support this period ({formatCurrency(behavioral.noraAnalysis.dominantSubcategory.amount)}).
+                          👑 <b>Primary Focus:</b> {behavioral.noraAnalysis.dominantSubcategory.name} accounted for <b>{(behavioral.noraAnalysis.dominantSubcategory.percentage * 100).toFixed(0)}%</b> of family support this period ({formatCurrency(behavioral.noraAnalysis.dominantSubcategory.amount)}).
                         </div>
                       )}
                       
@@ -962,14 +965,15 @@ export default function InsightsView({ data, period, filterProps, config, initia
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
                         {[
-                          { label: '📚 Education & Tuition', amount: behavioral.noraAnalysis.breakdown.education, color: 'var(--color-purple)' },
-                          { label: '🏥 Healthcare & Pediatrician', amount: behavioral.noraAnalysis.breakdown.health, color: 'var(--color-danger)' }
+                          { iconName: 'education', name: 'Education & Tuition', amount: behavioral.noraAnalysis.breakdown.education, color: 'var(--color-purple)' },
+                          { iconName: 'health', name: 'Healthcare & Pediatrician', amount: behavioral.noraAnalysis.breakdown.health, color: 'var(--color-danger)' }
                         ].filter(item => item.amount > 0).map((item, idx) => {
                           const pct = (item.amount / behavioral.noraAnalysis.totalSpend) * 100;
                           return (
                             <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
-                              <span style={{ color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {item.label}
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-ink)', minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                <CategoryIcon name={item.iconName} size={14} style={{ flexShrink: 0 }} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
                               </span>
                               <span style={{ fontWeight: 'var(--weight-medium)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                 {formatCurrency(item.amount)} ({pct.toFixed(0)}%)
@@ -985,16 +989,17 @@ export default function InsightsView({ data, period, filterProps, config, initia
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {[
-                          { label: '🎟️ Sports & Extracurriculars', amount: behavioral.noraAnalysis.breakdown.activities, color: 'var(--color-success)' },
-                          { label: '👗 Clothing & Shoes', amount: behavioral.noraAnalysis.breakdown.clothes, color: 'var(--color-warning)' },
-                          { label: '🎁 Toys & Gifts', amount: behavioral.noraAnalysis.breakdown.gifts, color: 'var(--color-brass)' },
-                          { label: '📦 Child Overhead', amount: behavioral.noraAnalysis.breakdown.other, color: 'var(--color-muted)' }
+                          { iconName: 'activities', name: 'Sports & Extracurriculars', amount: behavioral.noraAnalysis.breakdown.activities, color: 'var(--color-success)' },
+                          { iconName: 'clothes', name: 'Clothing & Shoes', amount: behavioral.noraAnalysis.breakdown.clothes, color: 'var(--color-warning)' },
+                          { iconName: 'gifts', name: 'Toys & Gifts', amount: behavioral.noraAnalysis.breakdown.gifts, color: 'var(--color-brass)' },
+                          { iconName: 'other', name: 'Child Overhead', amount: behavioral.noraAnalysis.breakdown.other, color: 'var(--color-muted)' }
                         ].filter(item => item.amount > 0).map((item, idx) => {
                           const pct = (item.amount / behavioral.noraAnalysis.totalSpend) * 100;
                           return (
                             <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 'var(--text-sm)' }}>
-                              <span style={{ color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {item.label}
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-ink)', minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                <CategoryIcon name={item.iconName} size={14} style={{ flexShrink: 0 }} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
                               </span>
                               <span style={{ fontWeight: 'var(--weight-medium)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                 {formatCurrency(item.amount)} ({pct.toFixed(0)}%)

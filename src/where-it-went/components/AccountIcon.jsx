@@ -6,23 +6,31 @@ export function AccountIcon({ account, size = 14, style = {}, ...props }) {
   const features = useContext(FeaturesContext);
   const useLucide = features?.flairLucideIcons === true;
 
+  const t = (account?.type || '').toLowerCase();
+  const n = (account?.name || '').toLowerCase();
+
   if (useLucide) {
-    const t = (account?.type || '').toLowerCase();
-    const n = (account?.name || '').toLowerCase();
-    
     let Icon = Landmark;
     if (n.includes('revolut')) Icon = Globe;
-    else if (t.includes('checking')) Icon = Wallet;
-    else if (t.includes('credit')) Icon = CreditCard;
-    else if (t.includes('savings')) Icon = PiggyBank;
-    else if (t.includes('cash')) Icon = Banknote;
-    else if (t.includes('investment')) Icon = TrendingUp;
+    else if (t.includes('credit') || n.includes('credit')) Icon = CreditCard;
+    else if (t.includes('checking') || n.includes('checking')) Icon = Landmark;
+    else if (t.includes('savings') || n.includes('savings')) Icon = PiggyBank;
+    else if (t.includes('cash') || n.includes('cash')) Icon = Banknote;
+    else if (t.includes('investment') || n.includes('investment')) Icon = TrendingUp;
 
     return <Icon size={size} style={{ flexShrink: 0, ...style }} {...props} />;
   }
 
   // Classical SVG (emoji text)
-  const iconText = account?.icon || '🏦';
+  let fallbackEmoji = '🏦';
+  if (n.includes('revolut')) fallbackEmoji = '🌍';
+  else if (t.includes('credit') || n.includes('credit')) fallbackEmoji = '💳';
+  else if (t.includes('checking') || n.includes('checking')) fallbackEmoji = '🏦';
+  else if (t.includes('savings') || n.includes('savings')) fallbackEmoji = '🐷';
+  else if (t.includes('cash') || n.includes('cash')) fallbackEmoji = '💵';
+  else if (t.includes('investment') || n.includes('investment')) fallbackEmoji = '📈';
+
+  const iconText = account?.icon || fallbackEmoji;
   return (
     <span 
       aria-hidden="true" 
