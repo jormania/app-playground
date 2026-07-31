@@ -293,17 +293,18 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                 return (
                   <SwipeableRow
                     key={tx.id}
-                    enabled={mobileSwipe}
-                    onSwipeRight={() => onRepeat?.(tx)}
-                    onSwipeLeft={() => onSplit?.(tx)}
+                    enabled={true}
+                    onSwipeRight={mobileSwipe ? () => onRepeat?.(tx) : undefined}
+                    onSwipeLeft={mobileSwipe ? () => onSplit?.(tx) : undefined}
+                    onLongPress={() => toggleSelection(tx.id)}
+                    onClick={() => selectedTxs.size > 0 ? toggleSelection(tx.id) : setEditingTx(tx)}
                   >
                     <div
                       className="transaction-row"
                     role="button"
                     tabIndex={0}
                     aria-label={`Edit ${tx.description || 'transaction'}`}
-                    style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', paddingLeft: 'var(--space-lg)', alignItems: 'center', backgroundColor: tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 3%, var(--color-surface))' : 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${catColor}`, cursor: 'pointer' }}
-                    onClick={() => setEditingTx(tx)}
+                    style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', paddingLeft: 'var(--space-lg)', alignItems: 'center', backgroundColor: selectedTxs.has(tx.id) ? 'color-mix(in srgb, var(--color-primary) 15%, var(--color-surface))' : tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 3%, var(--color-surface))' : 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${selectedTxs.has(tx.id) ? 'var(--color-primary)' : catColor}`, cursor: 'pointer' }}
                     onKeyDown={rowKeyHandler(tx)}
                   >
                     {sortConfig.key !== 'date' && (
