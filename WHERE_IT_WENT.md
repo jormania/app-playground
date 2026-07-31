@@ -186,19 +186,6 @@ Click **Save Configuration**. The app will now read and write directly to your N
   - **Global Romanian Lei Formatting (" L")**: Standardized monetary display across all components, charts, tooltips, and analytics summaries to append `" L"` (e.g., `1,250 L`) for clean, space-efficient Romanian currency depiction on mobile devices.
   - **Resilient Insights Rendering**: Updated Property and Nora analytics engines to return structured analysis objects even when 0 transactions exist in the selected time period, presenting helpful, educational empty states instead of hiding dashboard cards.
   - **Timestamp Indicator**: Real-time "Insights generated" timestamp indicating when analytics were last calculated.
-- **UI Polish (2026-07-25 → 2026-07-26)**:
-  - **KPI Stat Grid Layout**: Replaced horizontal flexbox + `1px` divider strips in Travel, Property, and Nora Insight card headers with responsive `auto-fit` CSS grids. KPIs now tile cleanly on all widths and never overflow horizontally.
-  - **Specialty Insights Out of Grid**: Moved Travel Insights, Property Insights, and Nora Insights cards out of the shared `auto-fit` grid into standalone full-width sections inside the Explore block. Eliminates the "shifted right" overflow visible on mobile when these wide cards were treated as equal-width grid columns alongside narrow panels (Category Trends, Frequent Spending, Largest Transactions).
-  - **Insights Grid Overflow Safety**: Added `overflow: hidden` and `boxSizing: border-box` to both Understand and Explore section grids so child cards can never escape the viewport on narrow screens.
-  - **Dashboard Chart Title**: Moved "Expenses / Income by Category" title from inside the Chart.js canvas (where it overlapped the legend) into a standalone HTML `<h2>` heading above the chart. Legend is now positioned to the right on desktop and moves to the bottom on screens below 768 px.
-  - **Add Trip Modal — No Scroll on Laptop**: Reduced form gap from `--space-md` to `--space-sm` so the Add Trip form content fits within the modal's 720 px max-height constraint without a scrollbar on standard 1080 p laptop screens.
-  - **Add Trip Modal — Dates Side-by-Side on Mobile**: Changed Start Date / End Date grid from `repeat(auto-fit, minmax(140px, 1fr))` (which collapsed to two separate rows on narrow screens) to a fixed `1fr 1fr` two-column layout so both date fields always render side by side regardless of screen width.
-  - **Colored Dot Removal**: Removed 8px circular legend-style dot indicators from all four breakdown lists in the Insights page (Travel, Property, Nora ×2). These were chart-legend markers with no accompanying chart, causing confusion (e.g., a red dot on "Maintenance & Repairs" that looked like a warning signal). Category emojis provide sufficient visual identity.
-
-## Pre-Production Hardening (2026-07-26)
-
-A complete audit and hardening pass before switching to live Notion data. 19 issues addressed across 7 files.
-
 ### 🔴 Blockers Fixed
 - **Notion Pagination** (`notionClient.js`): Added `_fetchAllPages()` helper that loops on `has_more` + `next_cursor` with `page_size: 100`. All five fetch methods (Categories, Accounts, Transactions, Subscriptions, Trips) now retrieve unlimited records. Previously silently capped at 100 results.
 - **Error UI on Failed Load** (`App.jsx`): Added `loadError` state. When the live Notion `Promise.all` fetch fails, a full-screen error card is shown with the error message, a Retry button, and an Open Settings button. Previously the app silently rendered an empty dashboard with only a `console.error`.

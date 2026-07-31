@@ -49,11 +49,21 @@
 }
 
 .secondary {
-  background: var(--color-surface, #ffffff);
+  background: color-mix(in srgb, var(--color-ink) 8%, transparent);
+  color: var(--color-ink, #1b1f24);
+  border-color: transparent;
+}
+.secondary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-ink) 12%, transparent);
+  border-color: transparent;
+}
+
+.outline {
+  background: transparent;
   color: var(--color-ink, #1b1f24);
   border-color: var(--color-border, #e3e6ea);
 }
-.secondary:hover:not(:disabled) {
+.outline:hover:not(:disabled) {
   background: var(--color-surface-2, #f8f9fb);
   border-color: var(--color-border-2, #cdd2d9);
 }
