@@ -1006,3 +1006,12 @@ suite (755 → 770 tests), typecheck and lint all green.
 - **Mobile Navigation Header Refinements**: Changed the logo text to "WiW" on mobile screens (while retaining "WhereItWent" on desktop) and adjusted margin spacing to save horizontal space and prevent header elements from crowding the "Add" button.
 - **Modern Layout Navigation Alignment**: Adjusted the desktop sidebar navigation tabs (`.layout-modern .nav-tab-btn`) from center-aligned to left-aligned (`justify-content: flex-start`). This ensures the navigation icons form a strong, clean vertical line, vastly improving visual scanning and eliminating the ragged-edge effect.
 - **Settings State Initialization Fix**: Fixed a visual glitch where "Compact Density" and "Modern Layout" did not correctly reflect their toggled state when re-opening the Settings tab. They are now properly loaded into the initial component state in `Settings.jsx`.
+
+## Automatic Trip Status Engine
+- **Background Synchronization**: Implemented `useTripEngine`, a new background worker that runs once per session to evaluate trip start and end dates against the current date.
+- **State Boundaries**: 
+  - Trips missing dates remain unchanged.
+  - Trips whose start date has arrived (but haven't passed their end date) automatically transition to **Active**.
+  - Trips that have crossed the day *after* their end date automatically transition to **Completed**.
+- **Notion Syncing**: Transitions are immediately persisted to the underlying Notion database via `client.updateTrip()`, ensuring the backend matches the frontend reality.
+- **Safety**: Uses the same safety net as the Subscription Engine—skipping updates when offline, when showing sample data, or during pending network queues. Tests guarantee boundary edge cases behave correctly.
