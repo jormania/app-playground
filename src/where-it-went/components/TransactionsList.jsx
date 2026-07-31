@@ -46,7 +46,12 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
   const handleBulkReconcile = async () => {
     setBulkProcessing(true);
     try {
-      const jobs = Array.from(selectedTxs).map(id => client.updateTransaction(id, { reconciled: true }));
+      const allSelectedReconciled = Array.from(selectedTxs).every(id => {
+        const tx = data.transactions.find(t => t.id === id);
+        return tx && tx.reconciled;
+      });
+      const shouldReconcile = !allSelectedReconciled;
+      const jobs = Array.from(selectedTxs).map(id => client.updateTransaction(id, { reconciled: shouldReconcile }));
       await Promise.all(jobs);
       setSelectedTxs(new Set());
       if (onDataChange) onDataChange();
@@ -313,7 +318,10 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
                       </div>
                     )}
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 'var(--weight-medium)', fontSize: 'var(--text-base)', color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</div>
+                      <div style={{ fontWeight: 'var(--weight-medium)', fontSize: 'var(--text-base)', color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {tx.reconciled && <span title="Reconciled" style={{ color: 'var(--color-success)', marginRight: '6px', fontSize: '14px' }}>✓</span>}
+                        {tx.description}
+                      </div>
                       {/* A note used to be write-only: typed into the form, read by the
                           classifiers, never shown again. One line, truncated. */}
                       {tx.notes && (
@@ -408,6 +416,11 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
       )}
       {selectedTxs.size > 0 && (() => {
         const singleTx = selectedTxs.size === 1 ? (data.transactions || []).find(t => selectedTxs.has(t.id)) : null;
+        const allSelectedReconciled = Array.from(selectedTxs).every(id => {
+          const tx = (data.transactions || []).find(t => t.id === id);
+          return tx && tx.reconciled;
+        });
+        const reconcileText = allSelectedReconciled ? 'Unreconcile' : 'Reconcile';
         return (
           <div style={{
             position: 'fixed', bottom: 0, left: 0, right: 0,
@@ -425,7 +438,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
               {singleTx && onSplit && <Button size="sm" variant="secondary" onClick={() => onSplit(singleTx)} disabled={bulkProcessing}>Split</Button>}
               {singleTx && onRepeat && <Button size="sm" variant="secondary" onClick={() => onRepeat(singleTx)} disabled={bulkProcessing}>Repeat</Button>}
               <Button size="sm" variant="secondary" onClick={() => setShowBulkCategoryModal(true)} disabled={bulkProcessing}>Categorize</Button>
-              <Button size="sm" variant="secondary" onClick={handleBulkReconcile} disabled={bulkProcessing}>Reconcile</Button>
+              <Button size="sm" variant="secondary" onClick={handleBulkReconcile} disabled={bulkProcessing}>{reconcileText}</Button>
               <Button size="sm" variant="danger" onClick={handleBulkDelete} disabled={bulkProcessing}>Delete</Button>
               <Button size="sm" variant="ghost" onClick={() => setSelectedTxs(new Set())} disabled={bulkProcessing}>Cancel</Button>
             </div>
