@@ -14,10 +14,7 @@ export default function QuickTemplates({ templates = [], onApplyTemplate, onSave
 
   return (
     <div style={{ marginBottom: 'var(--space-lg)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-xs)' }}>
-        <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-bold)', color: 'var(--color-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Quick Entry
-        </h2>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 'var(--space-xs)' }}>
         <Button variant="ghost" size="xs" onClick={() => setIsEditing(!isEditing)}>
           {isEditing ? 'Done' : 'Edit'}
         </Button>
