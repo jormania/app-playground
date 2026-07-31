@@ -24,7 +24,7 @@ describe('smartParser', () => {
     expect(tx.type).toBe('Expense');
     expect(tx.accountId).toBe('acc-revolut');
     expect(tx.categoryId).toBe('');
-    expect(tx.description).toBe('lunch');
+    expect(tx.description).toBe('Lunch');
     expect(tx.date).toBe(new Date().toISOString().slice(0, 10));
   });
 
@@ -32,7 +32,7 @@ describe('smartParser', () => {
     const tx = parseSmartText('30 for coffee from Cash', mockAccounts, mockCategories);
     expect(tx.amount).toBe(30);
     expect(tx.accountId).toBe('acc-cash');
-    expect(tx.description).toBe('coffee');
+    expect(tx.description).toBe('Coffee');
   });
 
   it('detects yesterday', () => {

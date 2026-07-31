@@ -93,11 +93,18 @@ export function parseSmartText(text, accounts = [], categories = []) {
     }
   }
   
-  // Also strip structural noise words like "for", "from", "at" if they are left hanging
-  stripRegex(/\b(for|from|at)\b/gi);
+  // Also strip structural parasite words like "for", "from", "at", "to", "in", "on", "a", "the"
+  stripRegex(/\b(for|from|at|to|in|on|a|an|the)\b/gi);
 
   // Clean up extra spaces and punctuation left behind
-  tx.description = remainingText.replace(/\s+/g, ' ').trim();
+  let cleanedDesc = remainingText.replace(/\s+/g, ' ').trim();
+  
+  // Capitalize the first letter of the description
+  if (cleanedDesc.length > 0) {
+    tx.description = cleanedDesc.charAt(0).toUpperCase() + cleanedDesc.slice(1);
+  } else {
+    tx.description = '';
+  }
 
   return tx;
 }
