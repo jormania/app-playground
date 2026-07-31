@@ -247,8 +247,8 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
         </div>
 
         {isForeign && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 'none', fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
               <span style={{ flex: 'none' }}>≈</span>
               <input
                 id={baseAmountId}
@@ -258,7 +258,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
                 value={baseAmount}
                 onChange={e => { baseTouched.current = true; setBaseAmount(e.target.value); }}
                 style={{
-                  flex: 'none', width: '84px', padding: '3px 6px',
+                  flex: 'none', width: '80px', padding: '3px 6px',
                   border: '1px solid var(--color-border-2)', borderRadius: 'var(--radius-sm)',
                   backgroundColor: 'var(--color-surface)', color: 'var(--color-ink)',
                   fontSize: 'var(--text-xs)', fontFamily: 'inherit'
@@ -268,13 +268,13 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
             </div>
             <div
               title={rateNote || undefined}
-              style={{ fontSize: '11px', color: 'var(--color-muted)', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+              style={{ flex: 1, fontSize: '11px', color: 'var(--color-muted)', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
             >
               {rateLoading
-                ? 'Fetching exchange rate…'
+                ? 'Fetching rate…'
                 : rateNote
                   ? `Rate: ${rateNote}`
-                  : `No rate available for ${activeCurrency} — enter the ${BASE_CURRENCY} amount yourself`}
+                  : `No rate available`}
             </div>
           </div>
         )}
