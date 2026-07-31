@@ -1,11 +1,11 @@
-import { Briefcase, MoreHorizontal, PiggyBank, Landmark, Home, Heart, ShoppingCart, Smile, Plane, Car, Coffee, Utensils, Lightbulb, Gift, Tag } from 'lucide-react';
+import { Briefcase, MoreHorizontal, PiggyBank, Landmark, Home, Heart, ShoppingCart, Smile, Plane, Car, Coffee, Utensils, Lightbulb, Gift, Tag, Building, Key } from 'lucide-react';
 
 export const CATEGORY_ICONS = {
   freelance: Briefcase,
   other: MoreHorizontal,
   investing: PiggyBank,
   'taxes & fees': Landmark,
-  property: Home,
+  property: Building,
   health: Heart,
   shopping: ShoppingCart,
   leisure: Smile,
@@ -18,7 +18,7 @@ export const CATEGORY_ICONS = {
   housing: Home,
   loan: Landmark,
   gift: Gift,
-  rent: Home,
+  rent: Key,
 };
 
 import { useContext } from 'react';
