@@ -24,10 +24,10 @@ import {
 } from './lib/outbox';
 import PeriodSheet from './components/PeriodSheet';
 import FilterSheet from './components/FilterSheet';
-import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS, DEMO_TRIPS } from './models/demoData';
+import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS, DEMO_TRIPS, DEMO_TEMPLATES } from './models/demoData';
 import { findDuplicateGroups, withoutDismissed, DUPE_DISMISS_KEY } from './lib/duplicates';
 
-const EMPTY_DATA = { categories: [], accounts: [], transactions: [], subscriptions: [], trips: [] };
+const EMPTY_DATA = { categories: [], accounts: [], transactions: [], subscriptions: [], trips: [], templates: [] };
 
 export default function App() {
   const [uiState] = useState(() => readJson('whereItWent_ui_state', {}));
@@ -198,7 +198,8 @@ export default function App() {
         accounts: [...DEMO_ACCOUNTS],
         transactions: [...DEMO_TRANSACTIONS],
         subscriptions: [...DEMO_SUBSCRIPTIONS],
-        trips: [...DEMO_TRIPS]
+        trips: [...DEMO_TRIPS],
+        templates: [...DEMO_TEMPLATES]
       });
       setLoading(false);
       return;
@@ -221,14 +222,15 @@ export default function App() {
         setFailedCount(readFailed().length);
       }
 
-      const [categories, accounts, transactions, subscriptions, trips] = await Promise.all([
+      const [categories, accounts, transactions, subscriptions, trips, templates] = await Promise.all([
         client.fetchCategories(),
         client.fetchAccounts(),
         client.fetchTransactions(),
         client.fetchSubscriptions(),
-        client.fetchTrips()
+        client.fetchTrips(),
+        client.fetchTemplates()
       ]);
-      const fresh = { categories, accounts, transactions, subscriptions, trips };
+      const fresh = { categories, accounts, transactions, subscriptions, trips, templates };
       // Snapshot the server truth, but *show* it with anything still queued on
       // top — a partially-failed flush leaves items behind that must stay visible.
       saveSnapshot(fresh);
@@ -351,6 +353,8 @@ export default function App() {
       tripId: tx.tripId,
       originalAmount: tx.originalAmount,
       originalCurrency: tx.originalCurrency,
+      notes: tx.notes,
+      tags: tx.tags,
     });
     setShowAddForm(true);
   };
@@ -456,6 +460,7 @@ export default function App() {
         title={repeatDraft ? 'Repeat Transaction' : 'New Transaction'}
       >
         <TransactionForm
+          transactions={data.transactions}
           categories={data.categories}
           accounts={data.accounts}
           trips={data.trips}

@@ -82,6 +82,13 @@ Create five full-page databases anywhere in your Notion workspace with the follo
 - **Tags**: `Tags` (Multi-select property)
 - **Recurring**: `Recurring` (Checkbox property)
 - **Created At**: `Created At` (Created Time property)
+
+### 1.6 Quick Templates Database
+  - **Description**: `Description` (Title property)
+  - **Amount**: `Amount` (Number property, formatted as number)
+  - **Type**: `Type` (Select property with options: `Income`, `Expense`)
+  - **Category**: `Category` (Relation property -> Connect to Categories Database)
+  - **Account**: `Account` (Relation property -> Connect to Accounts Database)
 - **Updated At**: `Updated At` (Last Edited Time property)
 
 ## 2. Generate a Notion Integration Token
@@ -1019,3 +1026,9 @@ suite (755 → 770 tests), typecheck and lint all green.
 ## Currency Formatting & UI Refinements
 - **Currency Rounding**: Removed decimal places when displaying Lei across the application, as they were unnecessary visual noise. Currency conversions now strictly round up (`Math.ceil`) to the nearest integer.
 - **Mobile Transaction Grid**: Reduced the width of the Amount column on mobile screens from 84px to 64px. Because decimals were removed, this column no longer needed extra width, allowing that space to be reclaimed for the Description field.
+
+## Quick Templates & Smart Auto-Fill Updates
+- **1-Tap Quick Entry Shortcuts**: Added Quick Templates to the Dashboard (toggled via Feature Toggles). This introduces a new Notion database (Quick Templates) to persistently store these shortcuts. Clicking a template logs a transaction with the pre-filled amount, type, category, and account using today's date instantly without opening the modal.
+- **Template Management**: Provided an embedded "Edit Mode" in the Dashboard to add, modify, and delete templates natively within the app, synchronizing back to Notion.
+- **Automated Database Provisioning**: In the Settings UI, added a 1-click "Initialize Database" button that dynamically uses the Notion API to create the Quick Templates Database structure as a child of the `App Databases` page, saving the user from manual schema setup.
+- **Smart Duplicate Defaults**: Clicking the "Duplicate" action on any historical transaction now correctly seeds the duplication form with **today's date**, instead of the historical date, matching real-world logic that duplicated transactions usually happen *now*. It does not auto-save, preserving the opportunity to make adjustments before submission.

@@ -30,7 +30,7 @@ const selectStyle = {
   fontFamily: 'inherit'
 };
 
-export default function TransactionForm({ categories, accounts, trips = [], onSave, onCancel, initialTx, onDelete, allowTransfer = false, prefill = null, onViewTrip }) {
+export default function TransactionForm({ transactions = [], categories, accounts, trips = [], onSave, onCancel, initialTx, onDelete, allowTransfer = false, prefill = null, onViewTrip }) {
   // `prefill` seeds the same fields as `initialTx` (values, not identity) but
   // only when adding — "Repeat" hands one over to reopen the Add form loaded
   // with a past transaction's details rather than blank. `initialTx` always
@@ -63,9 +63,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
   const [accountId, setAccountId] = useState(seed?.accountId || accounts[0]?.id || '');
   const [tripId, setTripId] = useState(seed?.tripId || '');
   const [toAccountId, setToAccountId] = useState(seed?.toAccountId || '');
-  // Notes are instance-specific ("gate C14", "half for Ana") — a repeat starts
-  // with a clean one rather than carrying yesterday's context forward.
-  const [notes, setNotes] = useState(initialTx?.notes || '');
+  const [notes, setNotes] = useState(seed?.notes || '');
   // One amount field, whose currency is selectable. When it isn't RON the typed
   // figure is the *original* amount and the RON total is derived from it — which
   // is the way a foreign charge is actually experienced ("I paid 8.50 EUR"),
@@ -103,6 +101,67 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
   // Tracks whether the user has chosen a currency by hand, so changing the
   // Account can stop overriding it — and can reset it when they do.
   const currencyTouched = useRef(!!seed?.originalCurrency);
+
+  const manualEdit = useRef({
+    category: !!seed?.categoryId,
+    account: !!seed?.accountId,
+    type: !!seed?.type
+  });
+  const [autoFilledHint, setAutoFilledHint] = useState(false);
+
+  // Smart Auto-Fill from History
+  useEffect(() => {
+    if (initialTx || prefill || !transactions || transactions.length === 0) return;
+    
+    const descTerm = description.trim().toLowerCase();
+    const notesTerm = notes.trim().toLowerCase();
+
+    if (descTerm.length < 3 && notesTerm.length < 3) {
+      setAutoFilledHint(false);
+      return;
+    }
+
+    const matches = transactions.filter(t => {
+      const tDesc = (t.description || '').toLowerCase();
+      const tNotes = (t.notes || '').toLowerCase();
+      
+      const matchDesc = descTerm.length >= 3 && tDesc === descTerm;
+      const matchNotes = notesTerm.length >= 3 && tNotes === notesTerm;
+      
+      return matchDesc || matchNotes;
+    });
+
+    if (matches.length === 0) {
+      setAutoFilledHint(false);
+      return;
+    }
+
+    const counts = { category: {}, account: {}, type: {} };
+    matches.forEach(t => {
+      if (t.categoryId) counts.category[t.categoryId] = (counts.category[t.categoryId] || 0) + 1;
+      if (t.accountId) counts.account[t.accountId] = (counts.account[t.accountId] || 0) + 1;
+      if (t.type) counts.type[t.type] = (counts.type[t.type] || 0) + 1;
+    });
+
+    const getTop = (map) => {
+      let top = null, max = 0;
+      for (const [k, v] of Object.entries(map)) {
+        if (v > max) { max = v; top = k; }
+      }
+      return top;
+    };
+
+    const topCat = getTop(counts.category);
+    const topAcc = getTop(counts.account);
+    const topType = getTop(counts.type);
+
+    let filled = false;
+    if (topType && !manualEdit.current.type) { setType(topType); filled = true; }
+    if (topCat && !manualEdit.current.category) { setCategoryId(topCat); filled = true; }
+    if (topAcc && !manualEdit.current.account) { setAccountId(topAcc); filled = true; }
+
+    if (filled) setAutoFilledHint(true);
+  }, [description, notes, transactions, initialTx, prefill]);
 
   const sortedAccounts = [...accounts].sort((a, b) => a.name.localeCompare(b.name));
   const isTransfer = type === 'Transfer';
@@ -240,7 +299,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
         notes: notes.trim(),
         originalAmount: isForeign ? parsedAmount : null,
         originalCurrency: isForeign ? activeCurrency : '',
-        tags: initialTx?.tags || []
+        tags: seed?.tags || []
       });
       if (!initialTx) writeJson(LAST_TYPE_KEY, type);
       if (isForeign) recordRecentCurrency(activeCurrency);
@@ -274,6 +333,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
       <SegmentedControl
         value={type}
         onChange={(val) => {
+          manualEdit.current.type = true;
           setType(val);
           setCategoryId('');
           // A transfer has no sensible default source: pre-filling From meant the
@@ -400,6 +460,18 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
           reads as though the form has not noticed what you are doing. */}
       <Field
         label="Description" type="text" value={description}
+        labelRight={autoFilledHint ? (
+          <span style={{ fontSize: '11px', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            Auto-filled from history
+          </span>
+        ) : null}
         onChange={e => setDescription(e.target.value)} required
         placeholder={
           isTransfer ? 'e.g. Revolut top-up'
@@ -423,7 +495,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
           <label htmlFor={categorySelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
             Category <span style={{ color: 'var(--color-danger)' }}>*</span>
           </label>
-          <select id={categorySelectId} value={categoryId} onChange={e => setCategoryId(e.target.value)} required style={selectStyle}>
+          <select id={categorySelectId} value={categoryId} onChange={e => { manualEdit.current.category = true; setCategoryId(e.target.value); }} required style={selectStyle}>
             <option value="" disabled>Select…</option>
             {availableCategories.map(c => (
               <option key={c.id} value={c.id}>{c.icon ? `${c.icon} ${c.name}` : c.name}</option>
@@ -451,6 +523,7 @@ export default function TransactionForm({ categories, accounts, trips = [], onSa
           id={accountSelectId}
           value={accountId}
           onChange={e => {
+            manualEdit.current.account = true;
             setAccountId(e.target.value);
             // Choosing a different account should adopt that account's currency.
             // Previously a hand-picked currency shadowed it permanently, so

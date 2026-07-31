@@ -20,6 +20,7 @@ import {
 import { getUpcomingBills, getUpcomingTransactions, DEFAULT_HORIZON_DAYS } from '../lib/upcoming';
 import { computeAllBudgets, monthlyEquivalent } from '../lib/budgets';
 import { calculateMovingAverage, calculateLinearRegression } from '../lib/trends';
+import QuickTemplates from './QuickTemplates';
 
 const CARD = {
   padding: 'var(--space-lg)',
@@ -513,6 +514,38 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
 
   return (
     <div className="fade-in">
+      {config?.features?.quickTemplates && (
+        <QuickTemplates 
+          templates={data.templates} 
+          categories={data.categories}
+          accounts={data.accounts}
+          onApplyTemplate={async (tpl) => {
+            const tx = {
+              description: tpl.description,
+              amount: tpl.amount || 0,
+              type: tpl.type || 'Expense',
+              categoryId: tpl.categoryId,
+              accountId: tpl.accountId,
+              date: new Date().toISOString().slice(0, 10),
+            };
+            await client.addTransaction(tx);
+            await onDataChange();
+          }}
+          onSaveTemplate={async (tpl) => {
+            if (tpl.id) {
+              await client.updateTemplate(tpl.id, tpl);
+            } else {
+              await client.addTemplate(tpl);
+            }
+            await onDataChange();
+          }}
+          onDeleteTemplate={async (id) => {
+            await client.deleteTemplate(id);
+            await onDataChange();
+          }}
+        />
+      )}
+
       {/* KPI Cards */}
       <div style={{
         display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)',
@@ -808,6 +841,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
       {editingTx && (
         <Modal open={true} title="Edit Transaction" onClose={() => setEditingTx(null)}>
           <TransactionForm
+            transactions={data.transactions}
             categories={data.categories}
             accounts={data.accounts}
             trips={data.trips}

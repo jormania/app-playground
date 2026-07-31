@@ -40,13 +40,13 @@ describe('UpcomingBills', () => {
   it('nets income against expenses in the header', () => {
     render(<UpcomingBills bills={bills} categories={categories} horizonDays={30} />);
     // 9,000 income − 60 expense = +8,940
-    expect(screen.getByText(/\+8,940\.00/)).toBeDefined();
+    expect(screen.getByText(/\+8,940/)).toBeDefined();
   });
 
   it('signs income and expense rows differently', () => {
     render(<UpcomingBills bills={bills} categories={categories} horizonDays={30} />);
-    expect(screen.getByText('−60.00 L')).toBeDefined();
-    expect(screen.getByText('+9,000.00 L')).toBeDefined();
+    expect(screen.getByText('−60 L')).toBeDefined();
+    expect(screen.getByText('+9,000 L')).toBeDefined();
   });
 
   it('marks an occurrence that is already in the ledger', () => {
@@ -80,7 +80,7 @@ describe('UpcomingBills', () => {
     // Nested wrapper (for the optional foreign-currency line) means the
     // amount text matches at two levels when that line is absent — assert
     // presence rather than uniqueness.
-    expect(screen.getAllByText('−1,500.00 L').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('−1,500 L').length).toBeGreaterThan(0);
   });
 
   it('is not empty when only a one-off transaction is due, even with no subscriptions', () => {
@@ -100,7 +100,7 @@ describe('UpcomingBanner', () => {
 
   it('names the single item rather than counting to one, signed by type', () => {
     render(<UpcomingBanner bills={[bills[0]]} leadDays={5} />);
-    expect(screen.getByText(/Netflix · −60\.00 L due in 5 days/)).toBeDefined();
+    expect(screen.getByText(/Netflix · −60 L due in 5 days/)).toBeDefined();
   });
 
   it('summarises with a count and a net total once there is more than one', () => {
@@ -108,7 +108,7 @@ describe('UpcomingBanner', () => {
     // Doesn't say "bills" — rent collected as income is just as much an
     // upcoming item as a subscription charge. Net, not summed raw: 9,000
     // income − 60 expense = +8,940, not a meaningless 9,060.
-    expect(screen.getByText(/2 due in the next 7 days · \+8,940\.00/)).toBeDefined();
+    expect(screen.getByText(/2 due in the next 7 days · \+8,940/)).toBeDefined();
   });
 
   it('cannot be dismissed — an unpaid bill should not be silenceable', () => {

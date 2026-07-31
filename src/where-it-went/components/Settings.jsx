@@ -63,7 +63,7 @@ function CollapsibleSection({ id, title, action, children }) {
 }
 
 const EMPTY_CONFIG_FIELDS = {
-  token: '', transactionsDb: '', categoriesDb: '', accountsDb: '', subscriptionsDb: '', tripsDb: ''
+  token: '', transactionsDb: '', categoriesDb: '', accountsDb: '', subscriptionsDb: '', tripsDb: '', templatesDb: ''
 };
 
 function extractNotionId(input) {
@@ -80,6 +80,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const [accountsDb, setAccountsDb] = useState(config.accountsDb || '');
   const [subscriptionsDb, setSubscriptionsDb] = useState(config.subscriptionsDb || '');
   const [tripsDb, setTripsDb] = useState(config.tripsDb || '');
+  const [templatesDb, setTemplatesDb] = useState(config.templatesDb || '');
   const [theme, setTheme] = useState(config.theme || defaultTheme());
   // Transfers default OFF — most people don't need to track internal
   // account-to-account moves, so the feature stays invisible until asked for.
@@ -89,6 +90,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     cashFlow: baseFeatures.cashFlow ?? true, 
     transfers: baseFeatures.transfers ?? false, 
     upcoming: baseFeatures.upcoming ?? true,
+    quickTemplates: baseFeatures.quickTemplates ?? false,
     flairMaster: baseFeatures.flairMaster ?? true,
     flairTactile: baseFeatures.flairTactile ?? true,
     flairPulse: baseFeatures.flairPulse ?? true,
@@ -121,6 +123,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     accountsDb: extractNotionId(accountsDb),
     subscriptionsDb: extractNotionId(subscriptionsDb),
     tripsDb: extractNotionId(tripsDb),
+    templatesDb: extractNotionId(templatesDb),
     theme,
     features,
     upcomingLeadDays: Number(upcomingLeadDays) > 0 ? Number(upcomingLeadDays) : DEFAULT_LEAD_DAYS,
@@ -139,6 +142,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     setAccountsDb('');
     setSubscriptionsDb('');
     setTripsDb('');
+    setTemplatesDb('');
     // `demoMode: true` is not decoration — it is what the success message below
     // has always claimed. Without it the app served fixture data while the flag
     // read false, so the DEMO MODE banner stayed hidden *and* the subscriptions
@@ -149,6 +153,29 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
       upcomingLeadDays: Number(upcomingLeadDays) || DEFAULT_LEAD_DAYS,
     });
     setStatus({ type: 'success', msg: 'Disconnected from Notion. You are now in demo mode, exploring sample data — nothing you change here touches your Notion workspace.' });
+  };
+
+  const handleCreateTemplatesDb = async () => {
+    try {
+      setStatus({ type: 'loading', msg: 'Creating database...' });
+      
+      // We need the parent page ID. We can get it from the categories DB since it's required.
+      const catDbMeta = await client._request({ path: `databases/${categoriesDb}`, method: 'GET' });
+      if (!catDbMeta?.parent?.page_id) {
+        throw new Error("Could not find parent page ID from Categories Database.");
+      }
+      
+      const newDb = await client.createTemplatesDatabase(catDbMeta.parent.page_id, categoriesDb, accountsDb);
+      
+      const newId = newDb.id.replace(/-/g, '');
+      setTemplatesDb(newId);
+      
+      setStatus({ type: 'success', msg: 'Quick Templates database created!' });
+      setTimeout(() => setStatus({ type: '', msg: '' }), 3000);
+    } catch (err) {
+      console.error(err);
+      setStatus({ type: 'error', msg: err.message || 'Failed to create database.' });
+    }
   };
 
   const handleSave = async () => {
@@ -277,6 +304,18 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           <Field label="Transactions Database ID or Link" type="text" value={transactionsDb} onChange={e => setTransactionsDb(e.target.value)} />
           <Field label="Subscriptions Database ID or Link" type="text" value={subscriptionsDb} onChange={e => setSubscriptionsDb(e.target.value)} />
           <Field label="Trips Database ID or Link (Optional)" type="text" value={tripsDb} onChange={e => setTripsDb(e.target.value)} />
+          {features.quickTemplates && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <Field label="Quick Templates Database ID or Link" type="text" value={templatesDb} onChange={e => setTemplatesDb(e.target.value)} />
+              {!templatesDb && categoriesDb && accountsDb && (
+                <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                  <Button variant="outline" size="sm" onClick={handleCreateTemplatesDb}>
+                    Initialize Quick Templates Database
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </CollapsibleSection>
       <CollapsibleSection id="features" title="Feature Toggles">
@@ -294,6 +333,12 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             hint="Show the income-vs-expenses chart, and the 90-day projection in Insights."
             checked={features.cashFlow}
             onChange={e => handleFeatureToggle('cashFlow', e.target.checked)}
+          />
+          <SettingsToggle
+            label="Quick Templates"
+            hint="1-Tap Quick Entry Shortcuts for highly repetitive daily expenses, pinned to the Dashboard."
+            checked={features.quickTemplates === true}
+            onChange={e => handleFeatureToggle('quickTemplates', e.target.checked)}
           />
           {features.cashFlow !== false && (
             <div style={{ paddingLeft: 'calc(var(--space-lg) + 24px)', marginTop: '-var(--space-sm)' }}>

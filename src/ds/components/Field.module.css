@@ -5,10 +5,17 @@
 }
 
 .label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
   font-family: var(--font-sans, "Inter", system-ui, sans-serif);
   font-size: var(--text-sm, 0.875rem);
   font-weight: var(--weight-medium, 500);
   color: var(--color-ink, #1b1f24);
+}
+
+.labelRight {
+  font-weight: normal;
 }
 
 .required {

@@ -19,14 +19,16 @@ const categories = [
   { id: 'cat_freelance', name: 'Freelance', type: 'Income', icon: '💻', description: 'Side gigs' },
   { id: 'cat_investing', name: 'Investing', type: 'Expense', icon: '📈', description: 'Stocks, crypto' },
   { id: 'cat_property', name: 'Property', type: 'Expense', icon: '🏢', description: 'Property tax, maintenance' },
-  { id: 'cat_taxes', name: 'Taxes & Fees', type: 'Expense', icon: '🏛️', description: 'Taxes, accounting fees' }
+  { id: 'cat_taxes', name: 'Taxes & Fees', type: 'Expense', icon: '🏛️', description: 'Taxes, accounting fees' },
+  { id: 'cat_transfer', name: 'Transfer', type: 'Transfer', icon: '🔄', description: 'Account transfers' }
 ];
 
 const accounts = [
-  { id: 'acc_checking', name: 'Checking Account', type: 'Asset' },
-  { id: 'acc_savings', name: 'Savings Account', type: 'Asset' },
-  { id: 'acc_credit', name: 'Credit Card', type: 'Liability' },
-  { id: 'acc_revolut', name: 'Revolut', type: 'Asset' },
+  { id: 'acc_checking', name: 'ING Current', currency: 'RON', type: 'Checking' },
+  { id: 'acc_credit', name: 'ING Credit', currency: 'RON', type: 'Credit' },
+  { id: 'acc_savings', name: 'ING Savings', currency: 'RON', type: 'Savings' },
+  { id: 'acc_revolut', name: 'Revolut RON', currency: 'RON', type: 'Checking' },
+  { id: 'acc_revolut_eur', name: 'Revolut EUR', currency: 'EUR', type: 'Checking' },
   { id: 'acc_cash', name: 'Cash', type: 'Asset' }
 ];
 
@@ -73,33 +75,46 @@ for (let month = 0; month < 12; month++) {
     });
   });
 
+  const groceries = ['Mega Image', 'Profi', 'Carrefour', 'Kaufland'];
   for(let i = 0; i < rand(3, 5); i++) {
-    transactions.push({ id: 'demo_tx_' + txId++, description: 'Mega Image', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(50, 300), type: 'Expense', categoryId: 'cat_food', accountId: 'acc_revolut', tags: [] });
+    const desc = groceries[rand(0, groceries.length - 1)];
+    transactions.push({ id: 'demo_tx_' + txId++, description: desc, date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(50, 300), type: 'Expense', categoryId: 'cat_food', accountId: 'acc_revolut', tags: [] });
   }
 
+  const restaurants = ['Simbio', 'Shift Pub', 'Energiea', 'Dianei 4'];
   for(let i = 0; i < rand(2, 6); i++) {
-    transactions.push({ id: 'demo_tx_' + txId++, description: 'Restaurant', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(80, 250), type: 'Expense', categoryId: 'cat_dining', accountId: 'acc_credit', tags: [] });
+    const desc = restaurants[rand(0, restaurants.length - 1)];
+    transactions.push({ id: 'demo_tx_' + txId++, description: desc, date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(80, 250), type: 'Expense', categoryId: 'cat_dining', accountId: 'acc_credit', tags: [] });
   }
 
+  const cafes = ['Beans & Dots', 'Origo', 'M60', 'Starbucks'];
   for(let i = 0; i < rand(3, 7); i++) {
-    transactions.push({ id: 'demo_tx_' + txId++, description: 'Starbucks', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(15, 35), type: 'Expense', categoryId: 'cat_dining', accountId: 'acc_revolut', tags: [] });
+    const desc = cafes[rand(0, cafes.length - 1)];
+    transactions.push({ id: 'demo_tx_' + txId++, description: desc, date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(15, 35), type: 'Expense', categoryId: 'cat_dining', accountId: 'acc_revolut', tags: [] });
   }
 
+  const rides = ['Uber', 'Bolt', 'Metrorex', 'STB'];
   for(let i = 0; i < rand(2, 5); i++) {
-    transactions.push({ id: 'demo_tx_' + txId++, description: 'Uber/Bolt', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(20, 60), type: 'Expense', categoryId: 'cat_transport', accountId: 'acc_revolut', tags: [] });
+    const desc = rides[rand(0, rides.length - 1)];
+    transactions.push({ id: 'demo_tx_' + txId++, description: desc, date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(20, 60), type: 'Expense', categoryId: 'cat_transport', accountId: 'acc_revolut', tags: [] });
   }
 
+  const shopping = ['Emag', 'Carturesti', 'Zara', 'H&M'];
   for(let i = 0; i < rand(1, 4); i++) {
-    transactions.push({ id: 'demo_tx_' + txId++, description: 'Amazon', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(30, 200), type: 'Expense', categoryId: 'cat_shopping', accountId: 'acc_credit', tags: [] });
+    const desc = shopping[rand(0, shopping.length - 1)];
+    transactions.push({ id: 'demo_tx_' + txId++, description: desc, date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(30, 200), type: 'Expense', categoryId: 'cat_shopping', accountId: 'acc_credit', tags: [] });
   }
 
-  transactions.push({ id: 'demo_tx_' + txId++, description: 'Gas Station', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(150, 300), type: 'Expense', categoryId: 'cat_transport', accountId: 'acc_credit', tags: [] });
+  transactions.push({ id: 'demo_tx_' + txId++, description: 'OMV Gas Station', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(150, 300), type: 'Expense', categoryId: 'cat_transport', accountId: 'acc_credit', tags: [] });
 
-  if (rand(0, 1)) transactions.push({ id: 'demo_tx_' + txId++, description: 'Clothing Store', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(100, 500), type: 'Expense', categoryId: 'cat_shopping', accountId: 'acc_credit', tags: [] });
-  if (rand(0, 1)) transactions.push({ id: 'demo_tx_' + txId++, description: 'Cinema', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(40, 80), type: 'Expense', categoryId: 'cat_entertainment', accountId: 'acc_revolut', tags: [] });
+  if (rand(0, 1)) transactions.push({ id: 'demo_tx_' + txId++, description: 'World Class Romania', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(100, 500), type: 'Expense', categoryId: 'cat_health', accountId: 'acc_credit', tags: [] });
+  if (rand(0, 1)) transactions.push({ id: 'demo_tx_' + txId++, description: 'Therme Bucuresti', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(80, 250), type: 'Expense', categoryId: 'cat_entertainment', accountId: 'acc_revolut', tags: [] });
+  if (rand(0, 1)) transactions.push({ id: 'demo_tx_' + txId++, description: 'Tinder Gold', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: 75, type: 'Expense', categoryId: 'cat_subscriptions', accountId: 'acc_revolut', tags: [] });
+  if (rand(0, 1)) transactions.push({ id: 'demo_tx_' + txId++, description: 'Eden', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(40, 120), type: 'Expense', categoryId: 'cat_entertainment', accountId: 'acc_revolut', tags: [] });
   
   if (rand(0, 3) === 0) transactions.push({ id: 'demo_tx_' + txId++, description: 'Pharmacy', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(30, 150), type: 'Expense', categoryId: 'cat_health', accountId: 'acc_credit', tags: [] });
   if (rand(0, 2) === 0) transactions.push({ id: 'demo_tx_' + txId++, description: 'Haircut', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(60, 120), type: 'Expense', categoryId: 'cat_personal_care', accountId: 'acc_checking', tags: [] });
+  if (rand(0, 4) === 0) transactions.push({ id: 'demo_tx_' + txId++, description: 'Transfer to Revolut', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(100, 500), type: 'Transfer', categoryId: 'cat_transfer', accountId: 'acc_checking', tags: [], toAccountId: 'acc_revolut' });
   if (month === 2 || month === 8) transactions.push({ id: 'demo_tx_' + txId++, description: 'Online Course', date: `2026-${m}-${String(rand(1, 28)).padStart(2, '0')}`, amount: rand(200, 500), type: 'Expense', categoryId: 'cat_education', accountId: 'acc_credit', tags: [] });
   
   // Specific trip scenario: Poland Autumn 2026 (trip in October, month === 9)
@@ -147,6 +162,12 @@ for (let month = 0; month < 12; month++) {
 // Sort by date descending
 transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-const content = `export const DEMO_CATEGORIES = ${JSON.stringify(categories, null, 2)};\n\nexport const DEMO_ACCOUNTS = ${JSON.stringify(accounts, null, 2)};\n\nexport const DEMO_SUBSCRIPTIONS = ${JSON.stringify(subscriptions, null, 2)};\n\nexport const DEMO_TRIPS = ${JSON.stringify(trips, null, 2)};\n\nexport const DEMO_TRANSACTIONS = ${JSON.stringify(transactions, null, 2)};\n`;
+const templates = [
+  { id: 'demo_tpl_1', description: 'Coffee', amount: 15, categoryId: 'cat_dining', accountId: 'acc_revolut', type: 'Expense' },
+  { id: 'demo_tpl_2', description: 'STB Ticket', amount: 3, categoryId: 'cat_transport', accountId: 'acc_revolut', type: 'Expense' },
+  { id: 'demo_tpl_3', description: 'Lunch', amount: 45, categoryId: 'cat_dining', accountId: 'acc_revolut', type: 'Expense' }
+];
+
+const content = `export const DEMO_CATEGORIES = ${JSON.stringify(categories, null, 2)};\n\nexport const DEMO_ACCOUNTS = ${JSON.stringify(accounts, null, 2)};\n\nexport const DEMO_SUBSCRIPTIONS = ${JSON.stringify(subscriptions, null, 2)};\n\nexport const DEMO_TRIPS = ${JSON.stringify(trips, null, 2)};\n\nexport const DEMO_TRANSACTIONS = ${JSON.stringify(transactions, null, 2)};\n\nexport const DEMO_TEMPLATES = ${JSON.stringify(templates, null, 2)};\n`;
 
 fs.writeFileSync('src/where-it-went/models/demoData.js', content);

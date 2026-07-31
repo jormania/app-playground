@@ -270,7 +270,7 @@ describe('TransactionForm', () => {
       fireEvent.change(screen.getByLabelText(/account/i), { target: { value: 'a2' } });
       fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '8.5' } });
 
-      await waitFor(() => expect(screen.getByLabelText('Amount in RON').value).toBe('42.5'));
+      await waitFor(() => expect(screen.getByLabelText('Amount in RON').value).toBe('43'));
     });
 
     it('saves RON as the amount and the typed figure as the original', async () => {
@@ -282,12 +282,12 @@ describe('TransactionForm', () => {
       fireEvent.change(screen.getByPlaceholderText('e.g. Groceries'), { target: { value: 'Cafe' } });
       fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '8.5' } });
       fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'c1' } });
-      await waitFor(() => expect(screen.getByLabelText('Amount in RON').value).toBe('42.5'));
+      await waitFor(() => expect(screen.getByLabelText('Amount in RON').value).toBe('43'));
       fireEvent.submit(document.querySelector('form'));
 
       await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
       const [, data] = onSave.mock.calls[0];
-      expect(data.amount).toBe(42.5); // RON stays the source of truth
+      expect(data.amount).toBe(43); // RON stays the source of truth
       expect(data.originalAmount).toBe(8.5);
       expect(data.originalCurrency).toBe('EUR');
     });
@@ -299,7 +299,7 @@ describe('TransactionForm', () => {
 
       fireEvent.change(screen.getByLabelText(/account/i), { target: { value: 'a2' } });
       fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '8.5' } });
-      await waitFor(() => expect(screen.getByLabelText('Amount in RON').value).toBe('42.5'));
+      await waitFor(() => expect(screen.getByLabelText('Amount in RON').value).toBe('43'));
 
       fireEvent.change(screen.getByLabelText('Amount in RON'), { target: { value: '44.10' } });
       fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '9' } });

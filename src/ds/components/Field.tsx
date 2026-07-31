@@ -4,6 +4,7 @@ import styles from './Field.module.css'
 
 export interface FieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string
+  labelRight?: React.ReactNode
   hint?: string
   error?: string
   required?: boolean
@@ -13,7 +14,7 @@ export interface FieldProps extends React.InputHTMLAttributes<HTMLInputElement> 
  *  takes precedence and marks the input invalid). Inputs stay ≥16px so mobile
  *  Safari never auto-zooms on focus. */
 export const Field = forwardRef<HTMLInputElement, FieldProps>(
-  ({ label, hint, error, required, id, className, ...props }, ref) => {
+  ({ label, labelRight, hint, error, required, id, className, ...props }, ref) => {
     const autoId = useId()
     const inputId = id ?? autoId
     const hintId = hint ? `${inputId}-hint` : undefined
@@ -21,13 +22,16 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(
     return (
       <div className={styles.field}>
         <label htmlFor={inputId} className={styles.label}>
-          {label}
-          {required && (
-            <span className={styles.required} aria-hidden>
-              {' '}
-              *
-            </span>
-          )}
+          <span>
+            {label}
+            {required && (
+              <span className={styles.required} aria-hidden>
+                {' '}
+                *
+              </span>
+            )}
+          </span>
+          {labelRight && <span className={styles.labelRight}>{labelRight}</span>}
         </label>
         <input
           ref={ref}

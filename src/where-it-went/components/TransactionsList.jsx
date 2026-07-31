@@ -342,6 +342,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
       {editingTx && (
         <Modal open={true} title="Edit Transaction" onClose={() => setEditingTx(null)}>
           <TransactionForm
+            transactions={data.transactions}
             categories={data.categories}
             accounts={data.accounts}
             trips={data.trips}

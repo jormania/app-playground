@@ -1,4 +1,4 @@
-import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS, DEMO_TRIPS } from '../models/demoData';
+import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS, DEMO_TRIPS, DEMO_TEMPLATES } from '../models/demoData';
 
 const PROXY_URL = '/api/notion';
 
@@ -27,9 +27,9 @@ const richText = (value) => ({ rich_text: value ? [{ text: { content: String(val
 const title = (value) => ({ title: [{ text: { content: String(value ?? '') } }] });
 
 export class NotionClient {
-  constructor(token, dbIds) {
+  constructor(token, { categories, accounts, transactions, subscriptions, trips, templates }) {
     this.token = token;
-    this.dbIds = dbIds;
+    this.dbIds = { categories, accounts, transactions, subscriptions, trips, templates };
   }
 
   /**
@@ -185,6 +185,21 @@ export class NotionClient {
     }));
   }
 
+  async fetchTemplates() {
+    const demo = this._demoOr(this.dbIds?.templates, DEMO_TEMPLATES);
+    if (demo.use) return demo.rows;
+
+    const rows = await this._fetchAllPages(this.dbIds.templates);
+    return rows.map(row => ({
+      id: row.id,
+      description: plainText(row.properties.Description?.title),
+      amount: row.properties.Amount?.number ?? null,
+      categoryId: row.properties.Category?.relation?.[0]?.id || '',
+      accountId: row.properties.Account?.relation?.[0]?.id || '',
+      type: row.properties.Type?.select?.name || 'Expense'
+    }));
+  }
+
   async addTransaction(tx) {
     if (!tx) throw new NotionError('No transaction data supplied.', 0);
 
@@ -252,6 +267,83 @@ export class NotionClient {
     }
     // Notion "delete" is an archive — the page stays recoverable from the trash.
     await this._request({ path: `pages/${txId}`, method: 'PATCH', body: { archived: true } });
+  }
+
+  async addTemplate(tpl) {
+    if (!tpl) throw new NotionError('No template data supplied.', 0);
+    if (!this.token || !this.dbIds?.templates) {
+      const newTpl = { ...tpl, id: 'demo_tpl_' + Date.now() };
+      DEMO_TEMPLATES.unshift(newTpl);
+      return newTpl;
+    }
+
+    return this._request({
+      path: 'pages',
+      method: 'POST',
+      body: {
+        parent: { database_id: this.dbIds.templates },
+        properties: {
+          'Description': title(tpl.description),
+          'Amount': { number: Number(tpl.amount) || 0 },
+          'Type': { select: { name: tpl.type || 'Expense' } },
+          'Category': relation(tpl.categoryId),
+          'Account': relation(tpl.accountId)
+        }
+      }
+    });
+  }
+
+  async updateTemplate(tplId, updates) {
+    if (!this.token || !this.dbIds?.templates) {
+      const tpl = DEMO_TEMPLATES.find(t => t.id === tplId);
+      if (tpl) Object.assign(tpl, updates);
+      return tpl;
+    }
+
+    const properties = {};
+    if (updates.description !== undefined) properties['Description'] = title(updates.description);
+    if (updates.amount !== undefined) properties['Amount'] = { number: Number(updates.amount) || 0 };
+    if (updates.type !== undefined) properties['Type'] = { select: { name: updates.type } };
+    if (updates.categoryId !== undefined) properties['Category'] = relation(updates.categoryId);
+    if (updates.accountId !== undefined) properties['Account'] = relation(updates.accountId);
+
+    return this._request({ path: `pages/${tplId}`, method: 'PATCH', body: { properties } });
+  }
+
+  async deleteTemplate(tplId) {
+    if (!this.token || !this.dbIds?.templates) {
+      const idx = DEMO_TEMPLATES.findIndex(t => t.id === tplId);
+      if (idx !== -1) DEMO_TEMPLATES.splice(idx, 1);
+      return;
+    }
+    return this._request({ path: `blocks/${tplId}`, method: 'DELETE' });
+  }
+
+  async createTemplatesDatabase(parentPageId, categoriesDbId, accountsDbId) {
+    const payload = {
+      parent: { type: 'page_id', page_id: parentPageId },
+      title: [{ type: 'text', text: { content: 'WiW Quick Templates' } }],
+      properties: {
+        Description: { title: {} },
+        Amount: { number: { format: 'number' } },
+        Category: { relation: { database_id: categoriesDbId, single_property: {} } },
+        Account: { relation: { database_id: accountsDbId, single_property: {} } },
+        Type: {
+          select: {
+            options: [
+              { name: 'Expense', color: 'red' },
+              { name: 'Income', color: 'green' },
+              { name: 'Transfer', color: 'blue' }
+            ]
+          }
+        }
+      }
+    };
+    return this._request({
+      path: 'databases',
+      method: 'POST',
+      body: payload
+    });
   }
 
   async updateCategoryLimit(categoryId, limit) {
