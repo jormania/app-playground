@@ -99,8 +99,9 @@ export default function App() {
     accounts: config.accountsDb,
     transactions: config.transactionsDb,
     subscriptions: config.subscriptionsDb,
-    trips: config.tripsDb
-  }), [config.demoMode, config.token, config.categoriesDb, config.accountsDb, config.transactionsDb, config.subscriptionsDb, config.tripsDb]);
+    trips: config.tripsDb,
+    templates: config.templatesDb
+  }), [config.demoMode, config.token, config.categoriesDb, config.accountsDb, config.transactionsDb, config.subscriptionsDb, config.tripsDb, config.templatesDb]);
 
   // Every existing call site keeps using `client` unchanged; the wrapper only
   // intercepts transaction writes and diverts them to the outbox when the
