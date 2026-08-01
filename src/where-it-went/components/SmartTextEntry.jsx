@@ -140,7 +140,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onS
         alignItems: 'center',
         backgroundColor: 'var(--color-surface)',
         border: '1px solid var(--color-border)',
-        borderRadius: 'var(--radius-lg)',
+        borderRadius: '99px',
         boxShadow: 'var(--shadow-sm)',
         padding: '8px 16px',
         marginBottom: 'var(--space-xl)',
@@ -159,7 +159,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onS
         value={text}
         onChange={(e) => setText(e.target.value)}
         disabled={isParsing}
-        placeholder={config?.features?.aiParser ? "✨ 15 for lunch..." : "15 for lunch..."}
+        placeholder={config?.features?.aiParser ? "✨ Describe a transaction..." : "Describe a transaction..."}
         style={{
           flex: 1,
           border: 'none',

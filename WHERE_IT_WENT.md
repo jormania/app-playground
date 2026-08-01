@@ -506,6 +506,10 @@ workaround be removed.
 ### Daily Totals in Ledger
 The Transactions list now shows Income and Expense totals directly on each group's sticky header (e.g. `Income +150 L · Expense -50 L`). This provides immediate visibility into daily cash flow without needing to calculate mentally, matching the style found at the top of the list.
 
+### UI Alignment & Smart Text Polish
+- **Overall Ledger Header**: Updated the overall transaction list header to use `space-between` alignment, pushing the Income and Expense totals to the right to mirror the new daily header layout, while keeping the transaction count on the left.
+- **Smart Text Entry**: Redesigned the text input to feature a fully rounded "pill" shape (`borderRadius: 99px`) to match the Insights chat input. Simplified the placeholder text to `"✨ Describe a transaction..."` to reduce visual noise.
+
 ## Feedback pass (2026-07-29)
 
 ### Merging a duplicate failed in demo mode
