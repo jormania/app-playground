@@ -22,7 +22,7 @@ describe('TransactionsList Component', () => {
   };
 
   it('renders transactions and sorts by amount', () => {
-    render(<TransactionsList data={mockData} client={mockClient} onDataChange={vi.fn()} />);
+    render(<TransactionsList data={mockData} client={mockClient} onDataChange={vi.fn()} period="all_time" />);
     
     expect(screen.getByText('Groceries')).toBeDefined();
     expect(screen.getByText('Salary')).toBeDefined();
@@ -50,13 +50,13 @@ describe('TransactionsList Component', () => {
       ]
     };
 
-    const { rerender } = render(<TransactionsList data={dataWithNote} client={mockClient} onDataChange={vi.fn()} />);
+    const { rerender } = render(<TransactionsList data={dataWithNote} client={mockClient} onDataChange={vi.fn()} period="all_time" />);
     expect(screen.getByText(/Plumber, kitchen leak/)).toBeDefined();
 
     // "plumber" appears nowhere but the note — the row is only findable if the
     // search reads notes.
     rerender(
-      <TransactionsList data={dataWithNote} client={mockClient} onDataChange={vi.fn()} filterProps={{ searchQuery: 'plumber' }} />
+      <TransactionsList data={dataWithNote} client={mockClient} onDataChange={vi.fn()} filterProps={{ searchQuery: 'plumber' }} period="all_time" />
     );
     expect(screen.getByText('Invoice 4471')).toBeDefined();
     expect(screen.queryByText('Salary')).toBeNull();
@@ -73,7 +73,7 @@ describe('TransactionsList Component', () => {
         { id: '3', date: '2026-07-23', description: 'Revolut top-up', amount: 200, type: 'Transfer', categoryId: '', accountId: 'a1' }
       ]
     };
-    render(<TransactionsList data={dataWithTransfer} client={mockClient} onDataChange={vi.fn()} />);
+    render(<TransactionsList data={dataWithTransfer} client={mockClient} onDataChange={vi.fn()} period="all_time" />);
     expect(screen.getByText('🔁 Transfer')).toBeDefined();
     expect(screen.queryByText('⚠️ Unknown')).toBeNull();
   });

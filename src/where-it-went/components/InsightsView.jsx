@@ -2,12 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { generateDeepInsights } from '../lib/analytics';
 import { formatShareableSummary } from '../lib/analytics/summaries';
 import { formatCurrency } from '../lib/currency';
-import { formatPeriodLabel } from '../lib/period';
+import { formatPeriodLabel, filterByPeriod } from '../lib/period';
 import { projectCashFlow } from '../lib/analytics/forecast';
 import ForecastSection from './ForecastSection';
 import NoraAvatar from './NoraAvatar';
 import { Button } from '../../ds/components/Button';
 import { CategoryIcon } from './CategoryIcon';
+import SmartInsightsChat from './SmartInsightsChat';
 
 /** Clipboard write with a same-origin fallback for browsers/contexts where
  * the async Clipboard API isn't available (older Safari, non-HTTPS dev). */
@@ -108,6 +109,14 @@ export default function InsightsView({ data, period, filterProps, config, initia
       <div style={{ marginBottom: 'var(--space-lg)' }}>
         <h1 style={{ fontSize: 'var(--text-2xl)', margin: 0, color: 'var(--color-ink)' }}>Financial Insights</h1>
       </div>
+
+      {config?.features?.aiParser && (
+        <SmartInsightsChat 
+          transactions={filterByPeriod(data.transactions || [], period)} 
+          categories={data.categories || []} 
+          config={config} 
+        />
+      )}
 
       {!insights ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-2xl)', textAlign: 'center', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>

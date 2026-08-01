@@ -7,6 +7,7 @@ import { Modal } from '../../ds/components/Modal';
 import { AlertModal } from '../../ds';
 import TransactionForm from './TransactionForm';
 import { getCategoryColor } from '../lib/colors';
+import { CategoryIcon } from './CategoryIcon';
 import Sparkline from './Sparkline';
 import { formatCurrency, formatCurrencyCompact } from '../lib/currency';
 import { useCountUp } from '../lib/useCountUp';

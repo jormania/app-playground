@@ -154,3 +154,76 @@ Rules:
     tripId: t.tripId,
   })).filter(t => (t.action === 'delete' && t.id) || (t.amount && (t.accountId || t.action === 'update'))); // Strip out completely invalid ones
 }
+
+
+export async function askInsightsAI(question, transactions, categories, apiKey) {
+  if (!apiKey) {
+    throw new Error('Claude API Key is missing. Please add it in Settings.');
+  }
+
+  const categoryList = (categories || [])
+    .filter(c => c.active !== false && c.id && c.name)
+    .map(c => `- ${c.name} (Type: ${c.type})`)
+    .join('\n');
+
+  // To keep tokens low and relevant, we pass a compressed JSON representation
+  // of the transactions provided.
+  const compressedTxs = transactions.map(t => ({
+    d: t.date,
+    desc: t.description,
+    amt: t.amount,
+    cat: categories?.find(c => c.id === t.categoryId)?.name || 'Unknown',
+    t: t.type
+  }));
+
+  const systemPrompt = `You are a helpful, analytical financial assistant. 
+You are answering a question about the user's spending data for a specific period.
+The user's categories are:
+${categoryList}
+
+Here is the JSON data of their transactions for the period in question:
+${JSON.stringify(compressedTxs)}
+
+Rules for your response:
+1. Answer the user's question accurately based ONLY on the provided data.
+2. Keep your answer extremely concise, short, and snappy (1-3 sentences max).
+3. Do NOT "roast" the user or be judgmental. Be encouraging and analytical.
+4. Use basic markdown for formatting (bolding numbers, etc.) but do not output a code block.
+5. If the data provided does not contain the answer, say so politely.`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: 500,
+      temperature: 0.2,
+      system: systemPrompt,
+      messages: [
+        {
+          role: 'user',
+          content: question,
+        },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    let errText = '';
+    try {
+      const errJson = await res.json();
+      errText = errJson.error?.message || res.statusText;
+    } catch (e) {
+      errText = res.statusText;
+    }
+    throw new Error(`API ${res.status}: ${errText}`);
+  }
+
+  const data = await res.json();
+  return data.content[0].text.trim();
+}
