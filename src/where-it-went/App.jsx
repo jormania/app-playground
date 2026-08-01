@@ -34,7 +34,7 @@ const EMPTY_DATA = { categories: [], accounts: [], transactions: [], subscriptio
 export default function App() {
   const [uiState] = useState(() => readJson('whereItWent_ui_state', {}));
 
-  const [activeTab, setActiveTab] = useState(uiState.activeTab || 'dashboard');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [previousTab, setPreviousTab] = useState('dashboard');
   const [data, setData] = useState(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
@@ -68,8 +68,8 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    writeJson('whereItWent_ui_state', { activeTab, period, filterType, categoryFilter });
-  }, [activeTab, period, filterType, categoryFilter]);
+    writeJson('whereItWent_ui_state', { period, filterType, categoryFilter });
+  }, [period, filterType, categoryFilter]);
 
   // Sheet visibility states
   const [showPeriodSheet, setShowPeriodSheet] = useState(false);
