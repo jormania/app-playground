@@ -23,12 +23,14 @@ describe('aiParser', () => {
       content: [{
         text: JSON.stringify({
           transactions: [{
+            action: 'create',
             amount: 15,
             categoryId: 'cat-food',
             accountId: 'acc-revolut-ron',
             description: 'Lunch',
             date: '2026-08-01',
-            type: 'Expense'
+            type: 'Expense',
+            isSubscription: false
           }]
         })
       }]
@@ -51,7 +53,10 @@ describe('aiParser', () => {
       date: '2026-08-01',
       type: 'Expense',
       toAccountId: undefined,
-      tripId: undefined
+      tripId: undefined,
+      action: 'create',
+      id: undefined,
+      isSubscription: false
     }]);
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -91,5 +96,35 @@ describe('aiParser', () => {
 
     const result = await parseTextWithAI('just some gibberish text', mockAccounts, mockCategories, [], 'fake-key');
     expect(result).toEqual([]);
+  });
+
+  it('correctly maps update actions', async () => {
+    const mockResponse = {
+      content: [{
+        text: JSON.stringify({
+          transactions: [{
+            action: 'update',
+            id: 'local_tx_123',
+            amount: 20,
+            categoryId: 'cat-food',
+            accountId: 'acc-revolut-ron',
+            description: 'Lunch',
+            date: '2026-08-01',
+            type: 'Expense'
+          }]
+        })
+      }]
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockResponse)
+    });
+
+    const result = await parseTextWithAI('change it to 20', mockAccounts, mockCategories, [], 'fake-key', [{ id: 'local_tx_123', amount: 15, description: 'Lunch' }]);
+    
+    expect(result[0].action).toBe('update');
+    expect(result[0].id).toBe('local_tx_123');
+    expect(result[0].amount).toBe(20);
   });
 });

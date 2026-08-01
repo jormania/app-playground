@@ -521,8 +521,17 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         accounts={data.accounts || []}
         categories={data.categories || []}
         trips={data.trips || []}
+        recentTransactions={(data.transactions || []).slice(0, 15)}
         onAdd={async (tx) => {
           return await client.addTransaction(tx);
+        }}
+        onUpdate={async (id, updates) => {
+          return await client.updateTransaction(id, updates);
+        }}
+        onAddSubscription={async (sub) => {
+          if (client.addSubscription) {
+            return await client.addSubscription(sub);
+          }
         }}
         onSuccess={async (addedIds) => {
           await onDataChange();

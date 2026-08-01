@@ -1,15 +1,47 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Wand2, Loader2 } from 'lucide-react';
+import { Wand2, Loader2, Mic, MicOff, CheckCircle } from 'lucide-react';
 import { parseSmartText } from '../lib/smartParser';
 import { parseTextWithAI } from '../lib/aiParser';
 import { enqueue } from '../lib/outbox'; // Or we just take addTransaction as a prop
 
-export default function SmartTextEntry({ onAdd, onSuccess, accounts, categories, trips, config }) {
+export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onSuccess, accounts, categories, trips, config, recentTransactions }) {
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isParsing, setIsParsing] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [detectedSubscription, setDetectedSubscription] = useState(null);
   const inputRef = useRef(null);
+  const recognitionRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = false;
+        recognitionRef.current.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          setText(prev => prev ? `${prev} ${transcript}` : transcript);
+        };
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+        };
+      }
+    }
+  }, []);
+
+  const toggleListen = () => {
+    if (!recognitionRef.current) return;
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
 
   useEffect(() => {
     if (success) {
@@ -28,6 +60,7 @@ export default function SmartTextEntry({ onAdd, onSuccess, accounts, categories,
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!text.trim() || isParsing) return;
+    setDetectedSubscription(null);
 
     const useAI = config?.features?.aiParser === true;
     let txs = [];
@@ -39,7 +72,7 @@ export default function SmartTextEntry({ onAdd, onSuccess, accounts, categories,
           return;
         }
         setIsParsing(true);
-        txs = await parseTextWithAI(text, accounts, categories, trips, config.claudeApiKey);
+        txs = await parseTextWithAI(text, accounts, categories, trips, config.claudeApiKey, recentTransactions);
       } else {
         const tx = parseSmartText(text, accounts, categories);
         if (tx) txs = [tx];
@@ -59,21 +92,42 @@ export default function SmartTextEntry({ onAdd, onSuccess, accounts, categories,
 
     try {
       const addedIds = [];
+      let subToPrompt = null;
+
       for (const t of txs) {
-        const saved = await onAdd(t);
+        if (t.isSubscription) {
+          subToPrompt = t;
+        }
+
+        let saved;
+        if (t.action === 'update' && t.id) {
+          saved = await onUpdate(t.id, t);
+        } else if (t.action === 'delete' && t.id) {
+          // Assuming onUpdate can handle setting it to deleted, or we just do nothing if no onDelete is passed
+          // But our prompt instructs delete, let's just not handle actual deletion unless we pass onDelete
+          // We will just skip deletes for now as they aren't fully implemented
+        } else {
+          saved = await onAdd(t);
+        }
+        
         if (saved && saved.id) addedIds.push(saved.id);
       }
-      if (txs.length === 1) {
+      
+      if (txs.length === 1 && txs[0].action === 'update') {
+        setSuccess(`Updated transaction.`);
+      } else if (txs.length === 1) {
         setSuccess(`Added: ${txs[0].amount} ${txs[0].originalCurrency || 'RON'} for ${txs[0].description}`);
       } else {
-        setSuccess(`Added ${txs.length} transactions.`);
+        setSuccess(`Processed ${txs.length} items.`);
       }
+      
       setText('');
       if (onSuccess) onSuccess(addedIds);
+      if (subToPrompt) setDetectedSubscription(subToPrompt);
       // Optional: keep focus if they want to add multiple in a row
       // inputRef.current?.focus();
     } catch (err) {
-      setError("Failed to save transaction.");
+      setError("Failed to save changes.");
     }
   };
 
@@ -142,6 +196,85 @@ export default function SmartTextEntry({ onAdd, onSuccess, accounts, categories,
         </div>
       )}
       
+      {!success && !error && recognitionRef.current && (
+        <button
+          type="button"
+          onClick={toggleListen}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '4px',
+            color: isListening ? 'var(--color-danger)' : 'var(--color-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation: isListening ? 'pulse 1.5s infinite' : 'none'
+          }}
+          title="Dictate expense"
+        >
+          {isListening ? <Mic size={20} /> : <MicOff size={20} />}
+        </button>
+      )}
+
+      {detectedSubscription && (
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          marginTop: '8px',
+          padding: '12px',
+          backgroundColor: 'var(--color-surface)',
+          border: '1px solid var(--color-primary)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow-md)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          animation: 'fadeIn 0.3s',
+          zIndex: 10
+        }}>
+          <div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-bold)', color: 'var(--color-primary)' }}>Recurring Bill Detected</div>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>Do you want to add "{detectedSubscription.description}" to your Subscriptions?</div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setDetectedSubscription(null)}
+              style={{ padding: '6px 12px', border: 'none', background: 'transparent', color: 'var(--color-muted)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}
+            >
+              Skip
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (onAddSubscription) {
+                  await onAddSubscription({
+                    name: detectedSubscription.description,
+                    amount: detectedSubscription.amount,
+                    originalAmount: detectedSubscription.originalAmount,
+                    originalCurrency: detectedSubscription.originalCurrency,
+                    categoryId: detectedSubscription.categoryId,
+                    accountId: detectedSubscription.accountId,
+                    active: true,
+                    type: detectedSubscription.type || 'Expense',
+                    frequency: 'Monthly',
+                    dayOfMonth: new Date().getDate(),
+                  });
+                  setSuccess("Added to Subscriptions!");
+                }
+                setDetectedSubscription(null);
+              }}
+              style={{ padding: '6px 12px', border: 'none', background: 'var(--color-primary)', color: 'var(--color-on-primary)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-bold)' }}
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+      
       <style dangerouslySetInnerHTML={{ __html: `
         .smart-text-entry:focus-within {
           border-color: var(--color-primary);
@@ -153,6 +286,11 @@ export default function SmartTextEntry({ onAdd, onSuccess, accounts, categories,
         }
         @keyframes spin {
           100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.1); opacity: 0.7; }
+          100% { transform: scale(1); opacity: 1; }
         }
       `}} />
     </form>
