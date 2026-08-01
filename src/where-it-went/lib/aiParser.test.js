@@ -13,7 +13,7 @@ const mockAccounts = [
 
 describe('aiParser', () => {
   it('throws an error if apiKey is missing', async () => {
-    await expect(parseTextWithAI('15 for lunch', mockAccounts, mockCategories, ''))
+    await expect(parseTextWithAI('15 for lunch', mockAccounts, mockCategories, [], ''))
       .rejects
       .toThrow('Claude API Key is missing');
   });
@@ -37,7 +37,7 @@ describe('aiParser', () => {
       json: () => Promise.resolve(mockResponse)
     });
 
-    const result = await parseTextWithAI('15 for lunch on revolut', mockAccounts, mockCategories, 'fake-key');
+    const result = await parseTextWithAI('15 for lunch on revolut', mockAccounts, mockCategories, [], 'fake-key');
 
     expect(result).toEqual({
       amount: 15,
@@ -68,7 +68,7 @@ describe('aiParser', () => {
       json: () => Promise.resolve(mockResponse)
     });
 
-    const result = await parseTextWithAI('50 groceries cash', mockAccounts, mockCategories, 'fake-key');
+    const result = await parseTextWithAI('50 groceries cash', mockAccounts, mockCategories, [], 'fake-key');
     expect(result.amount).toBe(50);
   });
 
@@ -84,7 +84,7 @@ describe('aiParser', () => {
       json: () => Promise.resolve(mockResponse)
     });
 
-    const result = await parseTextWithAI('just some gibberish text', mockAccounts, mockCategories, 'fake-key');
+    const result = await parseTextWithAI('just some gibberish text', mockAccounts, mockCategories, [], 'fake-key');
     expect(result).toBeNull();
   });
 });

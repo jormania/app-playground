@@ -519,6 +519,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         config={config}
         accounts={data.accounts || []}
         categories={data.categories || []}
+        trips={data.trips || []}
         onAdd={async (tx) => {
           await client.addTransaction(tx);
           await onDataChange();

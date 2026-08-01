@@ -2,7 +2,7 @@
  * AI-powered transaction parser using Claude (Anthropic API).
  */
 
-export async function parseTextWithAI(text, accounts, categories, apiKey) {
+export async function parseTextWithAI(text, accounts, categories, trips, apiKey) {
   if (!apiKey) {
     throw new Error('Claude API Key is missing. Please add it in Settings.');
   }
@@ -19,6 +19,11 @@ export async function parseTextWithAI(text, accounts, categories, apiKey) {
     .map(a => `- ${a.name} (Currency: ${a.currency || 'RON'}, ID: ${a.id})`)
     .join('\n');
 
+  const tripList = (trips || [])
+    .filter(t => t.id && t.name)
+    .map(t => `- ${t.name} (ID: ${t.id})`)
+    .join('\n');
+
   const systemPrompt = `You are a financial transaction parser. The user will provide a natural language string describing an expense, income, or transfer.
 You must return a valid JSON object matching this schema exactly:
 {
@@ -26,6 +31,7 @@ You must return a valid JSON object matching this schema exactly:
   "categoryId": String,
   "accountId": String,
   "toAccountId": String,
+  "tripId": String,
   "type": "Expense" | "Income" | "Transfer",
   "description": String,
   "date": String
@@ -37,6 +43,9 @@ ${categoryList}
 Available Accounts:
 ${accountList}
 
+Available Trips:
+${tripList || 'None'}
+
 Rules:
 1. ONLY return the raw JSON object. Do not wrap in markdown or backticks. No conversational filler.
 2. "amount" MUST be a positive Number (e.g. 15, not "15"). If no amount is found, return an error object instead: {"error": "No amount found"}.
@@ -45,7 +54,8 @@ Rules:
 5. "type" MUST be "Expense", "Income", or "Transfer". Default to "Expense".
 6. "categoryId": Find the ID of the most appropriate category from the list. This is required unless type is Transfer.
 7. "accountId": Find the ID of the most appropriate account from the list. If the user mentions an account name (e.g. "Revolut"), use its ID. If they don't specify, use your best judgment or default to the most generic/first account.
-8. "toAccountId": ONLY provide this if type is "Transfer". It is the ID of the destination account.`;
+8. "toAccountId": ONLY provide this if type is "Transfer". It is the ID of the destination account.
+9. "tripId": ONLY provide this if the transaction is associated with one of the Available Trips.`;
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -106,5 +116,6 @@ Rules:
     categoryId: parsed.categoryId,
     accountId: parsed.accountId,
     toAccountId: parsed.toAccountId,
+    tripId: parsed.tripId,
   };
 }
