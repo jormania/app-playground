@@ -187,10 +187,12 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
       }
 
       if (!current || current.label !== label) {
-        current = { label, items: [] };
+        current = { label, items: [], income: 0, expense: 0 };
         out.push(current);
       }
       current.items.push(tx);
+      if (tx.type === 'Income') current.income += tx.amount;
+      else if (tx.type === 'Expense') current.expense += tx.amount;
     });
 
     return out;
@@ -283,8 +285,15 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
           {groups.map((group, gi) => (
             <section key={`${group.label}-${gi}`}>
               {group.label && (
-                <div style={{ position: 'sticky', top: 0, backgroundColor: 'color-mix(in srgb, var(--color-bg) 95%, transparent)', backdropFilter: 'blur(4px)', padding: '4px var(--space-md)', margin: 'var(--space-sm) 0 2px 0', fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-bold)', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', zIndex: 1, borderRadius: 'var(--radius-sm)' }}>
-                  {group.label}
+                <div style={{ position: 'sticky', top: 0, backgroundColor: 'color-mix(in srgb, var(--color-bg) 95%, transparent)', backdropFilter: 'blur(4px)', padding: '4px var(--space-md)', margin: 'var(--space-sm) 0 2px 0', fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-bold)', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', zIndex: 1, borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>{group.label}</span>
+                  {(group.income > 0 || group.expense > 0) && (
+                    <div style={{ display: 'flex', gap: '1ch', textTransform: 'none', letterSpacing: 'normal' }}>
+                      {group.income > 0 && <span style={{ color: 'var(--color-success)' }}>Income +{formatCurrency(group.income)}</span>}
+                      {group.income > 0 && group.expense > 0 && <span style={{ color: 'var(--color-muted)' }}>&middot;</span>}
+                      {group.expense > 0 && <span style={{ color: 'var(--color-danger)' }}>Expense &minus;{formatCurrency(group.expense)}</span>}
+                    </div>
+                  )}
                 </div>
               )}
               {group.items.map(tx => {

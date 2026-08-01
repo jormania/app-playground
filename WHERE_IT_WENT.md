@@ -501,6 +501,11 @@ silently. The same hang affects Touch Grass, Sol Odyssey and Journal of Delights
 in dev; fixing it in `src/shared/notify/periodicSync.ts` would let this local
 workaround be removed.
 
+## Enhancements (2026-08-01)
+
+### Daily Totals in Ledger
+The Transactions list now shows Income and Expense totals directly on each group's sticky header (e.g. `Income +150 L · Expense -50 L`). This provides immediate visibility into daily cash flow without needing to calculate mentally, matching the style found at the top of the list.
+
 ## Feedback pass (2026-07-29)
 
 ### Merging a duplicate failed in demo mode
