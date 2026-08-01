@@ -81,7 +81,7 @@ Rules:
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 150,
+      max_tokens: 1000,
       temperature: 0.1,
       system: systemPrompt,
       messages: [
