@@ -4,7 +4,7 @@ import { parseSmartText } from '../lib/smartParser';
 import { parseTextWithAI } from '../lib/aiParser';
 import { enqueue } from '../lib/outbox'; // Or we just take addTransaction as a prop
 
-export default function SmartTextEntry({ onAdd, accounts, categories, trips, config }) {
+export default function SmartTextEntry({ onAdd, onSuccess, accounts, categories, trips, config }) {
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -69,6 +69,7 @@ export default function SmartTextEntry({ onAdd, accounts, categories, trips, con
         setSuccess(`Added ${txs.length} transactions.`);
       }
       setText('');
+      if (onSuccess) onSuccess(addedIds);
       // Optional: keep focus if they want to add multiple in a row
       // inputRef.current?.focus();
     } catch (err) {
