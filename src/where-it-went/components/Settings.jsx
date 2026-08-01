@@ -66,7 +66,7 @@ function CollapsibleSection({ id, title, action, children }) {
 }
 
 const EMPTY_CONFIG_FIELDS = {
-  token: '', transactionsDb: '', categoriesDb: '', accountsDb: '', subscriptionsDb: '', tripsDb: '', templatesDb: ''
+  token: '', transactionsDb: '', categoriesDb: '', accountsDb: '', subscriptionsDb: '', tripsDb: '', templatesDb: '', claudeApiKey: ''
 };
 
 function extractNotionId(input) {
@@ -84,6 +84,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const [subscriptionsDb, setSubscriptionsDb] = useState(config.subscriptionsDb || '');
   const [tripsDb, setTripsDb] = useState(config.tripsDb || '');
   const [templatesDb, setTemplatesDb] = useState(config.templatesDb || '');
+  const [claudeApiKey, setClaudeApiKey] = useState(config.claudeApiKey || '');
   const [theme, setTheme] = useState(config.theme || defaultTheme());
   // Transfers default OFF — most people don't need to track internal
   // account-to-account moves, so the feature stays invisible until asked for.
@@ -108,7 +109,8 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     flairModernLayout: baseFeatures.flairModernLayout ?? false,
     flairCompactDensity: baseFeatures.flairCompactDensity ?? false,
     flairLucideIcons: baseFeatures.flairLucideIcons ?? false,
-    mobileSwipe: baseFeatures.mobileSwipe ?? true
+    mobileSwipe: baseFeatures.mobileSwipe ?? true,
+    aiParser: baseFeatures.aiParser ?? false
   });
   const [upcomingLeadDays, setUpcomingLeadDays] = useState(config.upcomingLeadDays ?? DEFAULT_LEAD_DAYS);
   const [status, setStatus] = useState({ type: '', msg: '' });
@@ -132,6 +134,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     subscriptionsDb: extractNotionId(subscriptionsDb),
     tripsDb: extractNotionId(tripsDb),
     templatesDb: extractNotionId(templatesDb),
+    claudeApiKey: claudeApiKey.trim(),
     theme,
     features,
     upcomingLeadDays: Number(upcomingLeadDays) > 0 ? Number(upcomingLeadDays) : DEFAULT_LEAD_DAYS,
@@ -151,6 +154,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     setSubscriptionsDb('');
     setTripsDb('');
     setTemplatesDb('');
+    setClaudeApiKey('');
     // `demoMode: true` is not decoration — it is what the success message below
     // has always claimed. Without it the app served fixture data while the flag
     // read false, so the DEMO MODE banner stayed hidden *and* the subscriptions
@@ -517,6 +521,34 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           />
         </div>
       </CollapsibleSection>
+
+      <CollapsibleSection id="ai" title="AI & Automation">
+        <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
+          Supercharge your transaction logging with Claude AI. Instead of strict keyword rules, you can 
+          type natural phrases and the AI will perfectly categorize them, match exact accounts, and 
+          infer dates.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+          <SettingsToggle
+            label="Enable AI Parser"
+            hint="Replaces the local Smart Text Entry parser with a Claude-powered cloud engine."
+            checked={features.aiParser === true}
+            onChange={e => handleFeatureToggle('aiParser', e.target.checked)}
+          />
+          {features.aiParser && (
+            <div style={{ maxWidth: '300px' }}>
+              <Field
+                label="Anthropic API Key"
+                type="password"
+                value={claudeApiKey}
+                onChange={e => setClaudeApiKey(e.target.value)}
+                placeholder="sk-ant-api03-..."
+              />
+            </div>
+          )}
+        </div>
+      </CollapsibleSection>
+
 
       {/* Rejected offline writes — surfaced with the real error rather than
           dropped, which is the whole point of the outbox having a dead-letter

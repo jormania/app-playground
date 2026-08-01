@@ -516,6 +516,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
   return (
     <div className="fade-in">
       <SmartTextEntry
+        config={config}
         accounts={data.accounts || []}
         categories={data.categories || []}
         onAdd={async (tx) => {

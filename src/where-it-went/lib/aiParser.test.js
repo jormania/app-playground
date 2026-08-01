@@ -1,0 +1,90 @@
+import { describe, it, expect, vi } from 'vitest';
+import { parseTextWithAI } from './aiParser';
+
+const mockCategories = [
+  { id: 'cat-food', name: 'Food', type: 'Expense' },
+  { id: 'cat-salary', name: 'Salary', type: 'Income' },
+];
+
+const mockAccounts = [
+  { id: 'acc-revolut', name: 'Revolut', currency: 'RON' },
+  { id: 'acc-cash', name: 'Cash', currency: 'RON' },
+];
+
+describe('aiParser', () => {
+  it('throws an error if apiKey is missing', async () => {
+    await expect(parseTextWithAI('15 for lunch', mockAccounts, mockCategories, ''))
+      .rejects
+      .toThrow('Claude API Key is missing');
+  });
+
+  it('correctly maps API JSON output to a transaction object', async () => {
+    const mockResponse = {
+      content: [{
+        text: JSON.stringify({
+          amount: 15,
+          categoryId: 'cat-food',
+          accountId: 'acc-revolut',
+          description: 'Lunch',
+          date: '2026-08-01',
+          type: 'Expense'
+        })
+      }]
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockResponse)
+    });
+
+    const result = await parseTextWithAI('15 for lunch on revolut', mockAccounts, mockCategories, 'fake-key');
+
+    expect(result).toEqual({
+      amount: 15,
+      categoryId: 'cat-food',
+      accountId: 'acc-revolut',
+      description: 'Lunch',
+      date: '2026-08-01',
+      type: 'Expense',
+      toAccountId: undefined
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    const callArgs = global.fetch.mock.calls[0][1];
+    expect(callArgs.headers['x-api-key']).toBe('fake-key');
+    const body = JSON.parse(callArgs.body);
+    expect(body.messages[0].content).toBe('15 for lunch on revolut');
+  });
+
+  it('strips markdown backticks if returned', async () => {
+    const mockResponse = {
+      content: [{
+        text: '\`\`\`json\n{"amount": 50, "categoryId": "cat-food", "accountId": "acc-cash", "description": "Groceries", "date": "2026-08-01", "type": "Expense"}\n\`\`\`'
+      }]
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockResponse)
+    });
+
+    const result = await parseTextWithAI('50 groceries cash', mockAccounts, mockCategories, 'fake-key');
+    expect(result.amount).toBe(50);
+  });
+
+  it('returns null if AI indicates an error (no amount found)', async () => {
+    const mockResponse = {
+      content: [{
+        text: JSON.stringify({ error: 'No amount found' })
+      }]
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockResponse)
+    });
+
+    const result = await parseTextWithAI('just some gibberish text', mockAccounts, mockCategories, 'fake-key');
+    expect(result).toBeNull();
+  });
+});

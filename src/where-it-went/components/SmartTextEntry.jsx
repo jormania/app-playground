@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Wand2 } from 'lucide-react';
+import { Wand2, Loader2 } from 'lucide-react';
 import { parseSmartText } from '../lib/smartParser';
+import { parseTextWithAI } from '../lib/aiParser';
 import { enqueue } from '../lib/outbox'; // Or we just take addTransaction as a prop
 
-export default function SmartTextEntry({ onAdd, accounts, categories }) {
+export default function SmartTextEntry({ onAdd, accounts, categories, config }) {
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isParsing, setIsParsing] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -25,9 +27,29 @@ export default function SmartTextEntry({ onAdd, accounts, categories }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!text.trim()) return;
+    if (!text.trim() || isParsing) return;
 
-    const tx = parseSmartText(text, accounts, categories);
+    const useAI = config?.features?.aiParser === true;
+    let tx = null;
+
+    try {
+      if (useAI) {
+        if (!config?.claudeApiKey) {
+          setError("Claude API Key is missing. Please add it in Settings.");
+          return;
+        }
+        setIsParsing(true);
+        tx = await parseTextWithAI(text, accounts, categories, config.claudeApiKey);
+      } else {
+        tx = parseSmartText(text, accounts, categories);
+      }
+    } catch (err) {
+      setError(err.message || "Failed to parse text.");
+      setIsParsing(false);
+      return;
+    } finally {
+      setIsParsing(false);
+    }
     
     if (!tx) {
       setError("Couldn't find an amount in that text.");
@@ -62,13 +84,18 @@ export default function SmartTextEntry({ onAdd, accounts, categories }) {
       }}
       className="smart-text-entry"
     >
-      <Wand2 size={20} color="var(--color-primary)" style={{ marginRight: '12px', flexShrink: 0 }} />
+      {isParsing ? (
+        <Loader2 size={20} color="var(--color-primary)" style={{ marginRight: '12px', flexShrink: 0, animation: 'spin 1s linear infinite' }} />
+      ) : (
+        <Wand2 size={20} color={config?.features?.aiParser ? "var(--color-primary)" : "var(--color-muted)"} style={{ marginRight: '12px', flexShrink: 0 }} />
+      )}
       <input
         ref={inputRef}
         type="text"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Type a quick expense (e.g. '15 for lunch yesterday')"
+        disabled={isParsing}
+        placeholder={config?.features?.aiParser ? "✨ AI: Describe an expense (e.g. '15 for lunch yesterday')" : "Type a quick expense (e.g. '15 for lunch yesterday')"}
         style={{
           flex: 1,
           border: 'none',
@@ -113,6 +140,9 @@ export default function SmartTextEntry({ onAdd, accounts, categories }) {
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(4px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes spin {
+          100% { transform: rotate(360deg); }
         }
       `}} />
     </form>
