@@ -22,12 +22,14 @@ describe('aiParser', () => {
     const mockResponse = {
       content: [{
         text: JSON.stringify({
-          amount: 15,
-          categoryId: 'cat-food',
-          accountId: 'acc-revolut',
-          description: 'Lunch',
-          date: '2026-08-01',
-          type: 'Expense'
+          transactions: [{
+            amount: 15,
+            categoryId: 'cat-food',
+            accountId: 'acc-revolut-ron',
+            description: 'Lunch',
+            date: '2026-08-01',
+            type: 'Expense'
+          }]
         })
       }]
     };
@@ -39,15 +41,18 @@ describe('aiParser', () => {
 
     const result = await parseTextWithAI('15 for lunch on revolut', mockAccounts, mockCategories, [], 'fake-key');
 
-    expect(result).toEqual({
+    expect(result).toEqual([{
       amount: 15,
+      originalAmount: undefined,
+      originalCurrency: undefined,
       categoryId: 'cat-food',
-      accountId: 'acc-revolut',
+      accountId: 'acc-revolut-ron',
       description: 'Lunch',
       date: '2026-08-01',
       type: 'Expense',
-      toAccountId: undefined
-    });
+      toAccountId: undefined,
+      tripId: undefined
+    }]);
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     const callArgs = global.fetch.mock.calls[0][1];
@@ -59,7 +64,7 @@ describe('aiParser', () => {
   it('strips markdown backticks if returned', async () => {
     const mockResponse = {
       content: [{
-        text: '\`\`\`json\n{"amount": 50, "categoryId": "cat-food", "accountId": "acc-cash", "description": "Groceries", "date": "2026-08-01", "type": "Expense"}\n\`\`\`'
+        text: '\`\`\`json\n{"transactions": [{"amount": 50, "categoryId": "cat-food", "accountId": "acc-cash", "description": "Groceries", "date": "2026-08-01", "type": "Expense"}]}\n\`\`\`'
       }]
     };
 
@@ -69,13 +74,13 @@ describe('aiParser', () => {
     });
 
     const result = await parseTextWithAI('50 groceries cash', mockAccounts, mockCategories, [], 'fake-key');
-    expect(result.amount).toBe(50);
+    expect(result[0].amount).toBe(50);
   });
 
-  it('returns null if AI indicates an error (no amount found)', async () => {
+  it('returns empty array if AI indicates an error (no amount found)', async () => {
     const mockResponse = {
       content: [{
-        text: JSON.stringify({ error: 'No amount found' })
+        text: JSON.stringify({ transactions: [] })
       }]
     };
 
@@ -85,6 +90,6 @@ describe('aiParser', () => {
     });
 
     const result = await parseTextWithAI('just some gibberish text', mockAccounts, mockCategories, [], 'fake-key');
-    expect(result).toBeNull();
+    expect(result).toEqual([]);
   });
 });

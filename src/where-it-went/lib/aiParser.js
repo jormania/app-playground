@@ -19,22 +19,35 @@ export async function parseTextWithAI(text, accounts, categories, trips, apiKey)
     .map(a => `- ${a.name} (Currency: ${a.currency || 'RON'}, ID: ${a.id})`)
     .join('\n');
 
+  const sixtyDaysAgo = new Date();
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
   const tripList = (trips || [])
-    .filter(t => t.id && t.name)
+    .filter(t => {
+      if (!t.id || !t.name) return false;
+      if (t.endDate && new Date(t.endDate) < sixtyDaysAgo) return false;
+      return true;
+    })
     .map(t => `- ${t.name} (ID: ${t.id})`)
     .join('\n');
 
-  const systemPrompt = `You are a financial transaction parser. The user will provide a natural language string describing an expense, income, or transfer.
+  const systemPrompt = `You are a financial transaction parser. The user will provide a natural language string describing one or more expenses, incomes, or transfers.
 You must return a valid JSON object matching this schema exactly:
 {
-  "amount": Number,
-  "categoryId": String,
-  "accountId": String,
-  "toAccountId": String,
-  "tripId": String,
-  "type": "Expense" | "Income" | "Transfer",
-  "description": String,
-  "date": String
+  "transactions": [
+    {
+      "amount": Number,
+      "originalAmount": Number,
+      "originalCurrency": String,
+      "categoryId": String,
+      "accountId": String,
+      "toAccountId": String,
+      "tripId": String,
+      "type": "Expense" | "Income" | "Transfer",
+      "description": String,
+      "date": String
+    }
+  ]
 }
 
 Available Categories:
@@ -48,14 +61,15 @@ ${tripList || 'None'}
 
 Rules:
 1. ONLY return the raw JSON object. Do not wrap in markdown or backticks. No conversational filler.
-2. "amount" MUST be a positive Number (e.g. 15, not "15"). If no amount is found, return an error object instead: {"error": "No amount found"}.
-3. "description" should be clean and concise (e.g., "Uber to mall", "Lunch"). Strip off any trailing prepositions that were meant to introduce the amount.
-4. "date" MUST be a string in "YYYY-MM-DD" format. Today is ${todayStr}. Interpret words like "yesterday", "last friday", or specific dates relative to today. If no date is given or implied, use today's date (${todayStr}).
-5. "type" MUST be "Expense", "Income", or "Transfer". Default to "Expense".
-6. "categoryId": Find the ID of the most appropriate category from the list. This is required unless type is Transfer.
-7. "accountId": Find the ID of the most appropriate account from the list. If the user mentions an account name (e.g. "Revolut"), use its ID. If they don't specify, use your best judgment or default to the most generic/first account.
-8. "toAccountId": ONLY provide this if type is "Transfer". It is the ID of the destination account.
-9. "tripId": ONLY provide this if the transaction is associated with one of the Available Trips.`;
+2. The user might describe multiple transactions in one message. Create a discrete object for each one in the "transactions" array.
+3. "amount" MUST be a positive Number (e.g. 15). If the user mentions a foreign currency (e.g., "paid 20 EUR" but the account is RON), map the "amount" to your best estimate or the raw value, but you MUST provide "originalAmount" (Number) and "originalCurrency" (String, e.g. "EUR") so the system can calculate the real exchange rate.
+4. "description" should be clean and concise (e.g., "Uber to mall", "Lunch"). Strip off any trailing prepositions that were meant to introduce the amount.
+5. "date" MUST be a string in "YYYY-MM-DD" format. Today is ${todayStr}. Interpret words like "yesterday" relative to today. If no date is given, use today's date (${todayStr}).
+6. "type" MUST be "Expense", "Income", or "Transfer". Default to "Expense".
+7. "categoryId": Find the ID of the most appropriate category from the list. This is required unless type is Transfer.
+8. "accountId": Find the ID of the most appropriate account from the list. If they mention an account (e.g. "Revolut"), use its ID. If they don't, use your best judgment or default to the most generic/first account.
+9. "toAccountId": ONLY provide this if type is "Transfer".
+10. "tripId": ONLY provide this if the transaction is associated with one of the Available Trips.`;
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -100,22 +114,20 @@ Rules:
 
   const parsed = JSON.parse(responseText);
 
-  if (parsed.error) {
-    return null; // Signals to the caller that amount wasn't found or parse failed
+  if (!parsed.transactions || !Array.isArray(parsed.transactions) || parsed.transactions.length === 0) {
+    return []; // No valid transactions found
   }
 
-  if (!parsed.amount || !parsed.accountId) {
-    return null; // Minimum viable transaction fields missing
-  }
-
-  return {
-    description: parsed.description,
-    amount: parsed.amount,
-    date: parsed.date,
-    type: parsed.type || 'Expense',
-    categoryId: parsed.categoryId,
-    accountId: parsed.accountId,
-    toAccountId: parsed.toAccountId,
-    tripId: parsed.tripId,
-  };
+  return parsed.transactions.map(t => ({
+    description: t.description,
+    amount: t.amount,
+    originalAmount: t.originalAmount,
+    originalCurrency: t.originalCurrency,
+    date: t.date,
+    type: t.type || 'Expense',
+    categoryId: t.categoryId,
+    accountId: t.accountId,
+    toAccountId: t.toAccountId,
+    tripId: t.tripId,
+  })).filter(t => t.amount && t.accountId); // Strip out completely invalid ones
 }

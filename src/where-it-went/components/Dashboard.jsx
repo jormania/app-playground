@@ -38,6 +38,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const [highlightedTxIds, setHighlightedTxIds] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -521,8 +522,16 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         categories={data.categories || []}
         trips={data.trips || []}
         onAdd={async (tx) => {
-          await client.addTransaction(tx);
+          return await client.addTransaction(tx);
+        }}
+        onSuccess={async (addedIds) => {
           await onDataChange();
+          if (addedIds && addedIds.length > 0) {
+            setHighlightedTxIds(addedIds);
+            setTimeout(() => {
+              setHighlightedTxIds(prev => prev.filter(id => !addedIds.includes(id)));
+            }, 3000);
+          }
         }}
       />
 
@@ -614,10 +623,11 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
                 const catName = category?.name || (isTransfer ? 'Transfer' : 'Unknown');
                 const catColor = isTransfer ? 'var(--color-muted)' : getCategoryColor(catName);
                 const txDate = parseTxDate(tx.date);
+                const isHighlighted = highlightedTxIds.includes(tx.id);
                 return (
                   <li
                     key={tx.id}
-                    className="transaction-row"
+                    className={`transaction-row ${isHighlighted ? 'highlight-pulse' : ''}`}
                     role="button"
                     tabIndex={0}
                     aria-label={`Edit ${tx.description || 'transaction'}`}

@@ -30,7 +30,7 @@ export default function SmartTextEntry({ onAdd, accounts, categories, trips, con
     if (!text.trim() || isParsing) return;
 
     const useAI = config?.features?.aiParser === true;
-    let tx = null;
+    let txs = [];
 
     try {
       if (useAI) {
@@ -39,9 +39,10 @@ export default function SmartTextEntry({ onAdd, accounts, categories, trips, con
           return;
         }
         setIsParsing(true);
-        tx = await parseTextWithAI(text, accounts, categories, trips, config.claudeApiKey);
+        txs = await parseTextWithAI(text, accounts, categories, trips, config.claudeApiKey);
       } else {
-        tx = parseSmartText(text, accounts, categories);
+        const tx = parseSmartText(text, accounts, categories);
+        if (tx) txs = [tx];
       }
     } catch (err) {
       setError(err.message || "Failed to parse text.");
@@ -51,14 +52,22 @@ export default function SmartTextEntry({ onAdd, accounts, categories, trips, con
       setIsParsing(false);
     }
     
-    if (!tx) {
+    if (!txs || txs.length === 0) {
       setError("Couldn't find an amount in that text.");
       return;
     }
 
     try {
-      await onAdd(tx);
-      setSuccess(`Added: ${tx.amount} RON for ${tx.description}`);
+      const addedIds = [];
+      for (const t of txs) {
+        const saved = await onAdd(t);
+        if (saved && saved.id) addedIds.push(saved.id);
+      }
+      if (txs.length === 1) {
+        setSuccess(`Added: ${txs[0].amount} ${txs[0].originalCurrency || 'RON'} for ${txs[0].description}`);
+      } else {
+        setSuccess(`Added ${txs.length} transactions.`);
+      }
       setText('');
       // Optional: keep focus if they want to add multiple in a row
       // inputRef.current?.focus();
