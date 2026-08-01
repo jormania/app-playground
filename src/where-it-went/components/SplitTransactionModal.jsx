@@ -3,17 +3,10 @@ import { Modal } from "../../ds/components/Modal";
 import { Field } from "../../ds/components/Field";
 import { Button } from "../../ds/components/Button";
 import { CategorySelect } from "./CategorySelect";
+import { FormError } from "../../ds/components/FormError";
+import { ModalFooter } from "../../ds/components/ModalFooter";
 
-const selectStyle = {
-  width: "100%",
-  padding: "10px 12px",
-  borderRadius: "var(--radius-md)",
-  border: "1px solid var(--color-border-2)",
-  backgroundColor: "var(--color-surface)",
-  color: "var(--color-ink)",
-  fontSize: "var(--text-base)",
-  fontFamily: "inherit"
-};
+
 
 export default function SplitTransactionModal({ isOpen, onClose, transaction, categories = [], onSave }) {
   const [splitAmount, setSplitAmount] = useState("");
@@ -117,10 +110,7 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
           />
 
           <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0 }}>
-            <label htmlFor={categorySelectId} style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)", color: "var(--color-ink)" }}>
-              Split Category <span style={{ color: "var(--color-danger)" }}>*</span>
-            </label>
-            <CategorySelect id={categorySelectId} value={splitCategoryId} onChange={e => setSplitCategoryId(e.target.value)} required style={selectStyle} categories={filteredCategories} />
+            <CategorySelect id={categorySelectId} value={splitCategoryId} onChange={e => setSplitCategoryId(e.target.value)} required label="Split Category" categories={filteredCategories} />
           </div>
         </div>
 
@@ -145,16 +135,13 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
           </div>
         )}
 
-        {formError && (
-          <div role="alert" style={{ fontSize: "var(--text-sm)", color: "var(--color-danger)", backgroundColor: "color-mix(in srgb, var(--color-danger) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--color-danger) 30%, transparent)", padding: "var(--space-sm)", borderRadius: "var(--radius-sm)" }}>
-            {formError}
-          </div>
-        )}
+        <FormError error={formError} />
 
-        <div style={{ display: "flex", gap: "var(--space-sm)", marginTop: "8px", justifyContent: "flex-end" }}>
-          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button type="submit" variant="primary" disabled={saving || !canSubmit}>{saving ? "Saving..." : "Save Split"}</Button>
-        </div>
+        <ModalFooter
+          onCancel={onClose}
+          isSaving={saving}
+          saveLabel="Save Split"
+        />
       </form>
     </Modal>
   );

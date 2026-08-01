@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { Button } from '../../ds/components/Button';
 import { Modal } from '../../ds/components/Modal';
+import { FormField } from '../../ds/components/FormField';
 import { AccountIcon } from './AccountIcon';
 import { formatAccountLabel } from '../lib/accounts';
 
-export function AccountSelect({ id, value, onChange, accounts, required, style, disabled }) {
+export function AccountSelect({ id, value, onChange, accounts, label, required, error, style, disabled }) {
   const [open, setOpen] = useState(false);
   const selectedAcc = accounts.find(a => a.id === value);
   
-  return (
+  const content = (
     <div style={{ position: 'relative', width: '100%' }}>
       <select 
         id={id} 
@@ -38,7 +39,7 @@ export function AccountSelect({ id, value, onChange, accounts, required, style, 
           color: value ? 'var(--color-ink)' : 'var(--color-muted)', 
           padding: '8px 12px',
           height: '40px', // standard select height
-          border: '1px solid var(--color-border)',
+          border: error ? '1px solid var(--color-danger)' : '1px solid var(--color-border)',
           borderRadius: 'var(--radius-md)',
           ...style 
         }}
@@ -51,6 +52,7 @@ export function AccountSelect({ id, value, onChange, accounts, required, style, 
         </span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginLeft: '8px' }}><path d="m6 9 6 6 6-6"/></svg>
       </Button>
+
 
       <Modal open={open} onClose={() => setOpen(false)} title="Select Account">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '4px', padding: '12px', maxHeight: '60vh', overflowY: 'auto' }}>
@@ -74,4 +76,15 @@ export function AccountSelect({ id, value, onChange, accounts, required, style, 
       </Modal>
     </div>
   );
+
+  if (label) {
+    return (
+      <FormField label={label} required={required} error={error} htmlFor={id}>
+        {content}
+      </FormField>
+    );
+  }
+  
+  return content;
 }
+

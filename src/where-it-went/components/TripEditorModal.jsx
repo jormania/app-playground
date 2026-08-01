@@ -6,6 +6,9 @@ import { Button } from '../../ds/components/Button';
 import { CurrencySelect } from './CurrencySelect';
 import { ConfirmModal } from '../../ds';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
+import { FormError } from '../../ds/components/FormError';
+import { ModalFooter } from '../../ds/components/ModalFooter';
+import { SelectField } from '../../ds/components/SelectField';
 import { validateTrip } from '../domain/Trip';
 
 export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelete }) {
@@ -90,22 +93,10 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
             pairing it with anything made the two overlap on a phone. */}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 'var(--space-sm)', alignItems: 'end' }}>
           <Field label="Destination" placeholder="e.g. Billund, Denmark" value={destination} onChange={e => setDestination(e.target.value)} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-            <label htmlFor="trip-currency" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
-              Currency
-            </label>
-            <CurrencySelect
-              id="trip-currency"
-              value={currency}
-              currencies={['', ...CURRENCIES]}
-              onChange={e => setCurrency(e.target.value)}
-              style={{
-                width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border-2)', backgroundColor: 'var(--color-surface)',
-                color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit'
-              }}
-            />
-          </div>
+          <SelectField label="Currency" id="trip-currency" value={currency} onChange={e => setCurrency(e.target.value)}>
+            <option value="">None</option>
+            {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </SelectField>
         </div>
 
         {/* `minmax(0, 1fr)`, not a bare `1fr`: a date input's intrinsic width is
@@ -131,25 +122,13 @@ export default function TripEditorModal({ isOpen, onClose, trip, onSave, onDelet
 
         <Field label="Notes" placeholder="Optional trip notes..." value={notes} onChange={e => setNotes(e.target.value)} />
 
-        {formError && (
-          <div role="alert" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger)', backgroundColor: 'color-mix(in srgb, var(--color-danger) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-danger) 30%, transparent)', padding: 'var(--space-sm)', borderRadius: 'var(--radius-sm)' }}>
-            {formError}
-          </div>
-        )}
+        <FormError error={formError} />
 
-        <div className="tx-form-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', marginTop: 'var(--space-xs)' }}>
-          {trip && (
-            <div style={{ marginRight: 'auto' }}>
-              <Button type="button" variant="danger" disabled={saving} onClick={() => setShowConfirmDelete(true)}>Delete</Button>
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: 'var(--space-sm)', marginLeft: trip ? 0 : 'auto' }}>
-            <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
-            <Button type="submit" variant="primary" disabled={saving || !name.trim()}>
-              {saving ? 'Saving...' : 'Save'}
-            </Button>
-          </div>
-        </div>
+        <ModalFooter
+          onCancel={onClose}
+          onDelete={trip && onDelete ? () => setShowConfirmDelete(true) : undefined}
+          isSaving={saving}
+        />
       </form>
       <ConfirmModal
         isOpen={showConfirmDelete}

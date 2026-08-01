@@ -3,17 +3,11 @@ import { Button } from '../../ds/components/Button';
 import { CategoryIcon } from './CategoryIcon';
 import { Field } from '../../ds/components/Field';
 import { Modal } from '../../ds/components/Modal';
-import { AlertModal } from '../../ds';
+import { FormError } from '../../ds/components/FormError';
+import { ModalFooter } from '../../ds/components/ModalFooter';
+import { SelectField } from '../../ds/components/SelectField';
 import { formatCurrency } from '../lib/currency';
 import { BUDGET_PERIODS, normalizePeriod, formatPeriodSuffix } from '../lib/budgets';
-
-// Matches ds/Field's own input box, same reasoning as TransactionForm.jsx —
-// a --color-bg fill read as a flat grey slab next to Field's own inputs.
-const selectStyle = {
-  width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-md)',
-  border: '1px solid var(--color-border-2)', backgroundColor: 'var(--color-surface)',
-  color: 'var(--color-ink)', fontSize: 'var(--text-sm)', fontFamily: 'inherit'
-};
 
 export default function BudgetEditorModal({ isOpen, onClose, categories, client, onDataChange }) {
   const [limits, setLimits] = useState({});
@@ -113,16 +107,15 @@ export default function BudgetEditorModal({ isOpen, onClose, categories, client,
                   value={limits[c.id]}
                   onChange={(e) => setLimits({ ...limits, [c.id]: e.target.value })}
                 />
-                <select
+                <SelectField
                   aria-label={`${c.name} budget period`}
                   value={periods[c.id] || 'Monthly'}
                   onChange={(e) => setPeriods({ ...periods, [c.id]: e.target.value })}
-                  style={selectStyle}
                 >
                   {BUDGET_PERIODS.map(p => (
                     <option key={p} value={p}>per {formatPeriodSuffix(p)}</option>
                   ))}
-                </select>
+                </SelectField>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', cursor: 'pointer' }}>
                   <input
                     type="checkbox"
@@ -136,20 +129,15 @@ export default function BudgetEditorModal({ isOpen, onClose, categories, client,
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-md)' }}>
-          <Button variant="secondary" onClick={onClose} disabled={saveStatus !== 'idle'}>Cancel</Button>
-          <Button variant="primary" onClick={handleSave} disabled={saveStatus !== 'idle'}>
-            {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved! ✓' : 'Save Limits'}
-          </Button>
-        </div>
-      </div>
+        <FormError error={error} />
 
-      <AlertModal
-        isOpen={!!error}
-        title="Could not save budgets"
-        message={error || ''}
-        onClose={() => setError(null)}
-      />
+        <ModalFooter
+          onCancel={onClose}
+          onSave={handleSave}
+          isSaving={saveStatus === 'saving'}
+          saveLabel={saveStatus === 'saved' ? 'Saved! ✓' : 'Save Limits'}
+        />
+      </div>
     </Modal>
   );
 }

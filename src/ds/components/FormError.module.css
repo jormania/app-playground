@@ -1,0 +1,10 @@
+.formError {
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--color-danger, #d23f3f);
+  background-color: color-mix(in srgb, var(--color-danger, #d23f3f) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-danger, #d23f3f) 30%, transparent);
+  padding: var(--space-sm, 12px);
+  border-radius: var(--radius-sm, 6px);
+  margin-top: var(--space-xs, 8px);
+}

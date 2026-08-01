@@ -136,7 +136,8 @@ describe('SubscriptionEditorModal', () => {
     fireEvent.change(screen.getByLabelText(/Category/i), { target: { value: 'cat1' } });
     fireEvent.change(screen.getByLabelText(/Account/i), { target: { value: 'acc1' } });
 
-    expect(screen.getByText('Save').closest('button').disabled).toBe(true);
+    fireEvent.submit(screen.getByText('Save').closest('form'));
+    expect(screen.getByRole('alert').textContent).toContain('Fill in every required field');
   });
 
   describe('currency', () => {

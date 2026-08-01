@@ -8,15 +8,12 @@ import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
 import { ConfirmModal } from '../../ds';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
+import { FormError } from '../../ds/components/FormError';
+import { ModalFooter } from '../../ds/components/ModalFooter';
+import { SelectField } from '../../ds/components/SelectField';
 import { BASE_CURRENCY, fetchRate, convert, impliedRate, formatRateNote, canConvert, orderedCurrencies } from '../lib/fx';
 
-// Matches ds/Field's own input box, same reasoning as TransactionForm.jsx —
-// a --color-bg fill read as a flat grey slab next to Field's own inputs.
-const selectStyle = {
-  width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-md)',
-  border: '1px solid var(--color-border-2)', backgroundColor: 'var(--color-surface)',
-  color: 'var(--color-ink)', fontSize: 'var(--text-base)', fontFamily: 'inherit'
-};
+
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -320,29 +317,24 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
         <div style={{ display: 'grid', gridTemplateColumns: isYearly ? 'repeat(2, minmax(0, 1fr))' : '1fr', gap: '6px' }}>
           <Field label="Day of Month (1-31)" type="number" min="1" max="31" value={dayOfMonth} onChange={e => setDayOfMonth(e.target.value)} required />
           {isYearly && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label htmlFor={monthSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Month</label>
-              <select id={monthSelectId} value={monthOfYear} onChange={e => setMonthOfYear(e.target.value)} style={selectStyle}>
-                {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-              </select>
-            </div>
+            <SelectField label="Month" id={monthSelectId} value={monthOfYear} onChange={e => setMonthOfYear(e.target.value)}>
+              {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+            </SelectField>
           )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '6px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label htmlFor={categorySelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Category <span style={{ color: 'var(--color-danger)' }}>*</span></label>
             <CategorySelect 
               id={categorySelectId} 
               value={categoryId} 
               onChange={e => setCategoryId(e.target.value)} 
               required 
-              style={selectStyle}
+              label="Category"
               categories={(data?.categories || []).filter(c => c.type === type)}
             />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label htmlFor={accountSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>Account <span style={{ color: 'var(--color-danger)' }}>*</span></label>
             <AccountSelect
               id={accountSelectId}
               value={accountId}
@@ -355,7 +347,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
                 setCurrency('');
               }}
               required
-              style={selectStyle}
+              label="Account"
             />
           </div>
         </div>
@@ -365,25 +357,13 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
           <label htmlFor={activeCheckboxId} style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink)' }}>Active (auto-generates transactions)</label>
         </div>
 
-        {formError && (
-          <div role="alert" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger)', backgroundColor: 'color-mix(in srgb, var(--color-danger) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-danger) 30%, transparent)', padding: 'var(--space-sm)', borderRadius: 'var(--radius-sm)' }}>
-            {formError}
-          </div>
-        )}
+        <FormError error={formError} />
 
-        <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: '4px' }}>
-          {sub && (
-            <div style={{ marginRight: 'auto' }}>
-              <Button type="button" variant="danger" disabled={saving} onClick={() => setShowConfirmDelete(true)}>Delete</Button>
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: 'var(--space-sm)', marginLeft: sub ? 0 : 'auto' }}>
-            <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
-            <Button type="submit" variant="primary" disabled={saving || !canSubmit}>
-              {saving ? 'Saving...' : 'Save'}
-            </Button>
-          </div>
-        </div>
+        <ModalFooter
+          onCancel={onClose}
+          onDelete={sub ? () => setShowConfirmDelete(true) : undefined}
+          isSaving={saving}
+        />
       </form>
       <ConfirmModal
         isOpen={showConfirmDelete}

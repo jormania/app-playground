@@ -509,6 +509,8 @@ The Transactions list now shows Income and Expense totals directly on each group
 ### UI Alignment & Smart Text Polish
 - **Overall Ledger Header**: Updated the overall transaction list header to use `space-between` alignment, pushing the Income and Expense totals to the right to mirror the new daily header layout, while keeping the transaction count on the left.
 - **Smart Text Entry**: Redesigned the text input to feature a fully rounded "pill" shape (`borderRadius: 99px`) to match the Insights chat input. Simplified the placeholder text to `"✨ Describe a transaction..."` to reduce visual noise.
+- **Modal & Form UX Standardization**: Extracted common patterns into reusable Design System components (`FormError`, `ModalFooter`, `SelectField`). All modals and forms now use these components to guarantee consistent, safe wrapping on mobile viewports (preventing horizontal scroll) and deterministic label/input alignments.
+- **Inline Validation**: Replaced silently disabled "Save" buttons with inline validation errors. Users can now click "Save" on incomplete forms to immediately see what fields require attention via a standardized `<FormError>` banner.
 
 ## Feedback pass (2026-07-29)
 

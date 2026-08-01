@@ -1,4 +1,4 @@
-﻿import React, { useState, useId } from "react";
+import React, { useState, useId } from "react";
 import { Modal } from "../../ds/components/Modal";
 import { Field } from "../../ds/components/Field";
 import { Button } from "../../ds/components/Button";
@@ -7,17 +7,10 @@ import { SegmentedControl } from "../../ds/components/SegmentedControl";
 import { formatAccountLabel } from "../lib/accounts";
 import { CategorySelect } from './CategorySelect';
 import { AccountSelect } from './AccountSelect';
+import { FormError } from "../../ds/components/FormError";
+import { ModalFooter } from "../../ds/components/ModalFooter";
 
-const selectStyle = {
-  width: "100%",
-  padding: "10px 12px",
-  borderRadius: "var(--radius-md)",
-  border: "1px solid var(--color-border-2)",
-  backgroundColor: "var(--color-surface)",
-  color: "var(--color-ink)",
-  fontSize: "var(--text-base)",
-  fontFamily: "inherit"
-};
+
 
 export default function TemplateEditorModal({ isOpen, onClose, template, categories = [], accounts = [], onSave, onDelete }) {
   const [description, setDescription] = useState(template?.description || "");
@@ -96,10 +89,7 @@ export default function TemplateEditorModal({ isOpen, onClose, template, categor
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(135px, 1fr))", gap: "var(--space-sm)", alignItems: "start" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0 }}>
-            <label htmlFor={categorySelectId} style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)", color: "var(--color-ink)" }}>
-              Category <span style={{ color: "var(--color-danger)" }}>*</span>
-            </label>
-            <CategorySelect id={categorySelectId} value={categoryId} onChange={e => setCategoryId(e.target.value)} required style={selectStyle} categories={availableCategories} />
+            <CategorySelect id={categorySelectId} value={categoryId} onChange={e => setCategoryId(e.target.value)} required label="Category" categories={availableCategories} />
             {selectedCat?.description && (
               <details style={{ marginTop: "2px" }}>
                 <summary style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)", cursor: "pointer", userSelect: "none", listStyle: "none", display: "flex", alignItems: "center", gap: "4px" }}>
@@ -113,10 +103,7 @@ export default function TemplateEditorModal({ isOpen, onClose, template, categor
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0 }}>
-            <label htmlFor={accountSelectId} style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-medium)", color: "var(--color-ink)" }}>
-              Account <span style={{ color: "var(--color-danger)" }}>*</span>
-            </label>
-            <AccountSelect id={accountSelectId} value={accountId} onChange={e => setAccountId(e.target.value)} required style={selectStyle} accounts={sortedAccounts} />
+            <AccountSelect id={accountSelectId} value={accountId} onChange={e => setAccountId(e.target.value)} required label="Account" accounts={sortedAccounts} />
           </div>
         </div>
 
@@ -125,23 +112,13 @@ export default function TemplateEditorModal({ isOpen, onClose, template, categor
           <label htmlFor="template-active-checkbox" style={{ fontSize: "var(--text-sm)", color: "var(--color-ink)", userSelect: "none" }}>Active (shows on Dashboard)</label>
         </div>
 
-        {formError && (
-          <div role="alert" style={{ fontSize: "var(--text-sm)", color: "var(--color-danger)", backgroundColor: "color-mix(in srgb, var(--color-danger) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--color-danger) 30%, transparent)", padding: "var(--space-sm)", borderRadius: "var(--radius-sm)" }}>
-            {formError}
-          </div>
-        )}
+        <FormError error={formError} />
 
-        <div className="tx-form-actions" style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-sm)", marginTop: "4px" }}>
-          {template && onDelete && (
-            <div style={{ marginRight: "auto" }}>
-              <Button type="button" variant="danger" disabled={saving} onClick={() => setShowConfirmDelete(true)}>Delete</Button>
-            </div>
-          )}
-          <div style={{ display: "flex", gap: "var(--space-sm)", marginLeft: (template && onDelete) ? 0 : "auto" }}>
-            <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
-            <Button type="submit" variant="primary" disabled={saving || !canSubmit}>{saving ? "Saving..." : "Save"}</Button>
-          </div>
-        </div>
+        <ModalFooter
+          onCancel={onClose}
+          onDelete={template && onDelete ? () => setShowConfirmDelete(true) : undefined}
+          isSaving={saving}
+        />
 
         <ConfirmModal
           isOpen={showConfirmDelete}

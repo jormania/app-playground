@@ -12,26 +12,16 @@ import { readJson, writeJson } from '../lib/storage';
 import { CategorySelect } from './CategorySelect';
 import { AccountSelect } from './AccountSelect';
 import { CurrencySelect } from './CurrencySelect';
+import { FormError } from '../../ds/components/FormError';
+import { ModalFooter } from '../../ds/components/ModalFooter';
+import { SelectField } from '../../ds/components/SelectField';
 
 // Frequent income loggers (freelancers, landlords) used to reselect Income on
 // every single "+ Add" — the form always opened on Expense regardless of what
 // was entered last. Scoped to *adding*, never to editing an existing row.
 const LAST_TYPE_KEY = 'whereItWent_last_add_type';
 
-// Matches ds/Field's own input box (surface fill, --color-border-2) rather
-// than the page background — a plain <select> filled with --color-bg read as
-// a flat grey slab next to Field's crisply-bordered text inputs in the same
-// form, even though both were meant to look like the same kind of control.
-const selectStyle = {
-  width: '100%',
-  padding: '10px 12px',
-  borderRadius: 'var(--radius-md)',
-  border: '1px solid var(--color-border-2)',
-  backgroundColor: 'var(--color-surface)',
-  color: 'var(--color-ink)',
-  fontSize: 'var(--text-base)',
-  fontFamily: 'inherit'
-};
+
 
 export default function TransactionForm({ transactions = [], categories, accounts, trips = [], onSave, onCancel, initialTx, onDelete, allowTransfer = false, prefill = null, onViewTrip }) {
   // `prefill` seeds the same fields as `initialTx` (values, not identity) but
@@ -482,10 +472,7 @@ export default function TransactionForm({ transactions = [], categories, account
         null
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-          <label htmlFor={categorySelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
-            Category <span style={{ color: 'var(--color-danger)' }}>*</span>
-          </label>
-          <CategorySelect id={categorySelectId} value={categoryId} onChange={e => { manualEdit.current.category = true; setCategoryId(e.target.value); }} required style={selectStyle} categories={availableCategories} />
+          <CategorySelect id={categorySelectId} value={categoryId} onChange={e => { manualEdit.current.category = true; setCategoryId(e.target.value); }} required categories={availableCategories} label="Category" />
           {selectedCat?.description && (
             <details style={{ marginTop: '2px' }}>
               <summary style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', cursor: 'pointer', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -501,10 +488,7 @@ export default function TransactionForm({ transactions = [], categories, account
 
       {/* Account */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-        <label htmlFor={accountSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
-          {isTransfer ? 'From' : 'Account'} <span style={{ color: 'var(--color-danger)' }}>*</span>
-        </label>
-        <AccountSelect id={accountSelectId} value={accountId} onChange={e => { manualEdit.current.account = true; setAccountId(e.target.value); currencyTouched.current = false; }} required style={selectStyle} accounts={sortedAccounts.filter(a => !isTransfer || a.id !== toAccountId)} />
+        <AccountSelect id={accountSelectId} value={accountId} onChange={e => { manualEdit.current.account = true; setAccountId(e.target.value); currencyTouched.current = false; }} required accounts={sortedAccounts.filter(a => !isTransfer || a.id !== toAccountId)} label={isTransfer ? 'From' : 'Account'} />
       </div>
 
       {/* A transfer has two ends. Recording only one meant "Revolut top-up from
@@ -512,10 +496,7 @@ export default function TransactionForm({ transactions = [], categories, account
           could total or reconcile against either account. */}
       {isTransfer && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-          <label htmlFor={toAccountSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
-            To <span style={{ color: 'var(--color-danger)' }}>*</span>
-          </label>
-          <AccountSelect id={toAccountSelectId} value={toAccountId} onChange={e => setToAccountId(e.target.value)} required style={selectStyle} accounts={sortedAccounts.filter(a => a.id !== accountId)} />
+          <AccountSelect id={toAccountSelectId} value={toAccountId} onChange={e => setToAccountId(e.target.value)} required accounts={sortedAccounts.filter(a => a.id !== accountId)} label="To" />
         </div>
       )}
       </div>
@@ -526,16 +507,13 @@ export default function TransactionForm({ transactions = [], categories, account
           90px, which was the difference between this form fitting a phone and
           cutting off Notes and the Save button. */}
       {isTravelCategory && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px' }}>
-            <label htmlFor={tripSelectId} style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>
-              ✈️ Trip
-            </label>
-            {/* Shares the label's row rather than adding one below it — the
-                form must not scroll, and a whole extra line was the difference
-                between fitting and not. Only offered where a real callback
-                exists (the edit flows) and a trip is actually selected. */}
-            {onViewTrip && tripId && (
+        <SelectField
+          id={tripSelectId}
+          value={tripId}
+          onChange={e => setTripId(e.target.value)}
+          label="✈️ Trip"
+          labelRight={
+            onViewTrip && tripId && (
               <button
                 type="button"
                 onClick={() => onViewTrip(tripId)}
@@ -548,48 +526,29 @@ export default function TransactionForm({ transactions = [], categories, account
               >
                 View in Insights →
               </button>
-            )}
-          </div>
-          <select id={tripSelectId} value={tripId} onChange={e => setTripId(e.target.value)} style={selectStyle}>
-            {/* "None", not "Select…": the trip is optional, and not being part of
-                a trip is a real answer rather than an unfilled field. */}
-            <option value="">None</option>
-            {sortTrips(trips || []).map(t => (
-              <option key={t.id} value={t.id}>{t.name}{t.destination ? ` (${t.destination})` : ''}</option>
-            ))}
-          </select>
-        </div>
+            )
+          }
+        >
+          {/* "None", not "Select…": the trip is optional, and not being part of
+              a trip is a real answer rather than an unfilled field. */}
+          <option value="">None</option>
+          {sortTrips(trips || []).map(t => (
+            <option key={t.id} value={t.id}>{t.name}{t.destination ? ` (${t.destination})` : ''}</option>
+          ))}
+        </SelectField>
       )}
 
 
       {/* Notes — read by the Travel / Property / Family classifiers */}
       <Field label="Notes (optional)" type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Context for later" />
 
-      {formError && (
-        <div role="alert" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger)', backgroundColor: 'color-mix(in srgb, var(--color-danger) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-danger) 30%, transparent)', padding: 'var(--space-sm)', borderRadius: 'var(--radius-sm)' }}>
-          {formError}
-        </div>
-      )}
+      <FormError error={formError} />
 
-      {/* Wraps because Delete + Cancel + Save don't fit on one line at 375px —
-          the Save button was being clipped off the right edge of the edit form
-          (the add form has no Delete, which is why it looked fine there). */}
-      {/* No extra marginTop here — the form's own row gap already separates
-          this from Notes above it, and the FX line above needed the room more
-          than this did once it grew to two lines. */}
-      <div className="tx-form-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-        {initialTx && onDelete && (
-          <div style={{ marginRight: 'auto' }}>
-            <Button type="button" variant="danger" disabled={isSaving} onClick={() => setShowConfirmDelete(true)}>Delete</Button>
-          </div>
-        )}
-        <div style={{ display: 'flex', gap: 'var(--space-sm)', marginLeft: (initialTx && onDelete) ? 0 : 'auto' }}>
-          <Button type="button" variant="secondary" onClick={onCancel} disabled={isSaving}>Cancel</Button>
-          <Button type="submit" variant="primary" disabled={isSaving || !canSubmit}>
-            {isSaving ? 'Saving...' : 'Save'}
-          </Button>
-        </div>
-      </div>
+      <ModalFooter 
+        onCancel={onCancel} 
+        onDelete={initialTx && onDelete ? () => setShowConfirmDelete(true) : undefined} 
+        isSaving={isSaving} 
+      />
 
       <ConfirmModal
         isOpen={showConfirmDelete}
