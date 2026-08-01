@@ -4,7 +4,85 @@ WhereItWent uses Notion as its database backend. To fully use the app (beyond De
 
 ## 1. Create the Databases in Notion
 
-Create five full-page databases anywhere in your Notion workspace with the following schemas.
+Create six full-page databases anywhere in your Notion workspace with the following schemas.
+
+### 1.1 Accounts Database
+- **Name**: `Name` (Title property). The page **icon** (an emoji) is read and shown wherever
+  the account appears — dropdowns, the ledger's Account column, the transfer route. Two
+  accounts may share a name if their currencies differ; the icon and the currency suffix are
+  what tell them apart.
+- **Type**: `Type` (Select property with options: e.g., Bank, Fintech, Cash, Broker)
+- **Currency**: `Currency` (Select property with options: RON, EUR, USD, etc.)
+- **Active**: `Active` (Checkbox property)
+
+### 1.2 Categories Database
+- **Name**: `Name` (Title property)
+- **Type**: `Type` (Select property with options exactly as: `Income`, `Expense`)
+- **Active**: `Active` (Checkbox property)
+- **Monthly Limit (RON)**: `Monthly Limit (RON)` (Number property) — despite the name this is
+  the limit for **one budget period**, which is a month only when `Budget Period` says so. The
+  property keeps its original name deliberately: renaming it would break every existing database.
+- **Budget Period**: `Budget Period` (Select: `Monthly`, `Quarterly`, `Yearly`) — blank reads as Monthly
+- **Budget Anchor**: `Budget Anchor` (Date, optional) — the renewal date a quarterly/yearly window
+  counts from, e.g. insurance that renews each March. Ignored for Monthly.
+- **Budget Rollover**: `Budget Rollover` (Checkbox) — carry unspent room (and overspend) forward
+
+### 1.3 Subscriptions Database
+- **Name**: `Name` (Title property)
+- **Amount**: `Amount` (Number property) — always in RON, the source of truth. When
+  the subscription is paid or collected in another currency, this is the converted
+  figure, exactly like a Transaction's `Amount (RON)`.
+- **Type**: `Type` (Select property with options: `Income`, `Expense`) — a
+  subscription is just as often income (rent collected from a tenant) as an
+  expense (a streaming plan).
+- **DayOfMonth**: `DayOfMonth` (Number property)
+- **Frequency**: `Frequency` (Select property with options: `Monthly`, `Yearly`) — blank
+  reads as Monthly, same convention as Categories' `Budget Period`, so every
+  subscription saved before this field existed keeps working unchanged.
+- **Month of Year**: `Month of Year` (Number property, 1-12) — only meaningful when
+  `Frequency` is `Yearly`; ignored for Monthly. Paired with `DayOfMonth` to pin a
+  yearly charge (e.g. a March-renewing annual plan) to one calendar date a year.
+- **Category**: `Category` (Relation property -> Connect to Categories Database)
+- **Account**: `Account` (Relation property -> Connect to Accounts Database)
+- **Active**: `Active` (Checkbox property)
+- **LastProcessed**: `LastProcessed` (Date property)
+- **Original Amount**: `Original Amount` (Number property) — informational only,
+  same role as a Transaction's. What was actually paid or received in the
+  original currency, when it isn't RON.
+- **Original Currency**: `Original Currency` (Select property, same registered
+  option list as Transactions' `Original Currency` — see §1.5).
+
+### 1.4 Trips Database
+- **Name**: `Name` (Title property)
+- **Destination**: `Destination` (Text / Rich text property)
+- **Start Date**: `Start Date` (Date property)
+- **End Date**: `End Date` (Date property)
+- **Status**: `Status` (Select property with options: `Planned`, `Active`, `Completed`)
+- **Currency**: `Currency` (Select property — same option list as `Original Currency` below)
+- **Notes**: `Notes` (Text / Rich text property)
+
+### 1.5 Transactions Database
+- **Description**: `Description` (Title property)
+- **Date**: `Date` (Date property)
+- **Amount (RON)**: `Amount (RON)` (Number property)
+- **Original Amount**: `Original Amount` (Number property)
+- **To Account**: `To Account` (Relation property -> Connect to Accounts Database) — a
+  Transfer's destination; `Account` is its source. Empty for Income and Expense.
+- **Original Currency**: `Original Currency` (Select property). **Every currency the app offers
+  must be registered here as an option.** Notion selects are a closed vocabulary and a page update
+  is atomic, so writing an unregistered option makes Notion reject the *entire* patch — silently
+  dropping the amount, notes and everything else in the same write. The registered set is
+  `RON, EUR, USD, GBP, CHF, PLN, HUF, CZK, BGN, TRY, SEK, NOK, DKK, JPY, CAD, AUD`, mirrored in
+  `CURRENCIES` in [`lib/fx.js`](src/where-it-went/lib/fx.js). Keep the two in step.
+- **Type**: `Type` (Select property with options: `Income`, `Expense`, `Transfer`)
+- **Category**: `Category` (Relation property -> Connect to Categories Database)
+# WhereItWent
+
+WhereItWent uses Notion as its database backend. To fully use the app (beyond Demo mode), you need to create six databases in your Notion workspace and connect them to the app.
+
+## 1. Create the Databases in Notion
+
+Create six full-page databases anywhere in your Notion workspace with the following schemas.
 
 ### 1.1 Accounts Database
 - **Name**: `Name` (Title property). The page **icon** (an emoji) is read and shown wherever
@@ -81,97 +159,6 @@ Create five full-page databases anywhere in your Notion workspace with the follo
 - **Notes**: `Notes` (Text / Rich text property)
 - **Tags**: `Tags` (Multi-select property)
 - **Recurring**: `Recurring` (Checkbox property)
-- **Reconciled**: `Reconciled` (Checkbox property) — marks if the transaction matches the bank statement.
-- **Created At**: `Created At` (Created Time property)
-
-### 1.6 Quick Templates Database
-  - **Description**: `Description` (Title property)
-  - **Amount**: `Amount` (Number property, formatted as number)
-  - **Type**: `Type` (Select property with options: `Income`, `Expense`)
-  - **Category**: `Category` (Relation property -> Connect to Categories Database)
-  - **Account**: `Account` (Relation property -> Connect to Accounts Database)
-- **Updated At**: `Updated At` (Last Edited Time property)
-
-## 2. Generate a Notion Integration Token
-1. Go to [Notion Integrations](https://www.notion.so/my-integrations).
-2. Create a new integration, give it a name (e.g., "WhereItWent").
-3. Copy the **Internal Integration Secret**.
-4. In Notion, go to each of the five databases you created, click the `...` menu on the top right -> `Connections` -> `Add connections` and search for your integration name to share the database with it.
-
-## 3. Configure the App
-Open the WhereItWent application and navigate to the **Settings** tab.
-
-Enter the following:
-- **Notion Integration Token**: The secret you copied in step 2.
-- **Transactions Database ID**: The ID from your Transactions database URL.
-- **Categories Database ID**: The ID from your Categories database URL.
-- **Accounts Database ID**: The ID from your Accounts database URL.
-- **Subscriptions Database ID**: The ID from your Subscriptions database URL.
-- **Trips Database ID**: The ID from your Trips database URL (e.g., `3a8d3e6d60db81ec9b43f3c7cb9c0c4a`).
-
-*(To find a database ID, look at its Notion URL: `https://www.notion.so/{workspace}/<DATABASE_ID>?v=...`. The ID is the 32-character string before the `?v=`)*
-
-Click **Save Configuration**. The app will now read and write directly to your Notion workspace!
-
-
-## 4. Features Overview
-
-### Dashboard & Analytics
-- **Time-Period Filtering**: `This Month`, `Last Month`, `Last 3 Months`, `Last 6 Months`, `This Year` or `All Time`, adjusting the KPIs, charts and Insights together. Optimized for mobile with compact sizing.
-- **KPIs**: View total Income, Expenses, and Net Cash Flow for the selected period. Displayed on a touch-friendly, horizontally scrollable row for mobile devices to prevent wrapping.
-- **Budget Limits**: Track spending against a limit per category, set **per month, per quarter or per year** — optionally anchored to a renewal date, and optionally carrying unspent room (and overspend) into the next period. Each bar is labelled with its own window (`Jul 2026`, `Q3 2026`, `2026`) and is measured against that window regardless of the selected period or filters. Edit limits, periods and rollover from "Edit Budgets"; changes sync back to your Notion Categories database.
-- **Expense Breakdown Chart**: A highly responsive, animated `Chart.js` Doughnut visualization of spending by category, themed to match the app's aesthetic. Features deterministic category coloring that creates a cohesive color language across the entire app.
-- **Cash Flow Trend Visualization**: A `Chart.js` Bar chart showing daily (or monthly) spending and income patterns over the selected time period. Features mathematical trend lines (Moving Average, Linear Regression Trajectory, or Smooth Curves) controllable via a Segmented Control in Settings to visualize spending momentum.
-- **Aesthetic Refinements (Round 3 Polish)**: 
-  - Implementation of a global typography update adopting the highly readable, modern `Outfit` font to impart a slick, premium feel.
-  - A frosted-glass (`backdrop-filter: blur()`) sticky header for deep dimensional scrolling.
-  - Animated, fintech-style "Odometer" number counters for Dashboard KPIs (`useCountUp` hook).
-  - Tactile, hover-responsive row states across all lists with Category Color Edge Bleeds for rapid visual scanning.
-  - **Premium Visual Flair (Opt-in via Settings):**
-    - **Ambient Mesh Glow:** Animated, hardware-accelerated blurred gradients mapped to accent colors in the background.
-    - **Glassmorphism Elevation:** Translucent UI cards (`backdrop-filter: blur(16px)`) that float over the ambient mesh.
-    - **Staggered Waterfall Entrances:** CSS-driven cascading load animations for data sections.
-    - **Reactive Hover States:** Soft, metric-tinted (green/red) glow shadows on touch/hover, strictly guarded by `@media (hover: hover)` for perfect mobile degradation on devices like the Galaxy S24.
-
-### Advanced Insights Engine
-- **Monthly Reflection Highlights**: Generates beautiful, metric-driven cards summarizing the top takeaways for the month (Spending Trend, Top Discretionary Expense, Rent Coverage, and Unexpected Expenses) utilizing a clean, highly scannable UI.
-- **Income Insights**: Automatically separates and tracks `Salary`, `Rent`, and `Other` income. Flags when expected monthly income has not yet been collected.
-- **Smart Recurring Expense Detection**: 
-  - **Subscriptions & Utilities**: Dedicated alerts for recurring bills, making sure nothing slips through the cracks.
-  - **Variable Precision Guard**: Custom logic prevents false positives on highly variable "daily" categories (like `Food`, `Groceries`, `Transport`) by demanding exact amount + description matches, while allowing flexibility in categories like `Alimony` where amounts may change.
-- **Investment Tracking**: Automatically detects if an investment deposit was made this month and reminds you if you haven't done so.
-- **Top Increases**: Compares current month spending to the previous month on a category-by-category basis, flagging significant surges in spending.
-
-### Transactions Management
-- **Full Ledger Control**: Click on any transaction from the Dashboard or Transactions list to open a modal where you can completely edit its details (amount, category, description, date) or delete it from the Notion database entirely.
-- **Global Search & Filter**: Powerful, instant search across transaction descriptions, categories, and amounts. Includes a quick category dropdown filter.
-- **Multi-Column Sorting**: Sort your ledger by Date, Description, Amount, Category, or Account, in both ascending and descending order.
-- **Auto-Account Preselection**: When adding a new transaction, selecting a Category (e.g., `Salary`) automatically preselects your preferred default Account (e.g., `Checking`), dramatically speeding up data entry.
-- **Category Emojis**: Native Notion emojis are automatically pulled and displayed inline for each category.
-- **Category Tooltips**: Add descriptions to your Notion Categories database to have them show up as helpful tooltips in the app.
-- **Deterministic Color Tags**: Categories maintain the same elegant, modern color capsules across tables, charts, and lists, establishing a recognizable visual identity.
-- **Slim Interface**: A highly optimized, compact design using `size="sm"` components, ensuring dense information display without horizontal wrapping.
-- **Transfers** (opt-in — off by default, see Settings → Feature Toggles): a third transaction type alongside Expense/Income for money moving between your own accounts. A transfer names **both ends — From and To** — which must differ, stored as `Account` and `To Account`; the ledger renders the pair as `Cash → Revolut`. Transfers skip categorization entirely and are excluded from every income/expense total, budget, and Insights calculation, showing a `🔁 Transfer` badge and a `±` sign instead of `+`/`−`.
-- **Multi-Currency Amounts with live FX**: Give an Account — or a Trip — a `Currency` other than `RON` and the amount field lets you type what you actually paid. The RON figure fills in from the **European Central Bank's rate for that transaction's date**, with the rate shown in words (`Rate: 1 EUR = 5.2353 RON (29 Jul)`). RON remains the source of truth for every total; the foreign amount is recorded alongside and shown as a secondary line in the Dashboard and the ledger. You can override the RON figure by hand — a card's own fee beats any published rate — and a trip's currency takes precedence over the account's. Rates are cached per day; offline, the last known rate is used and labelled as such.
-
-### Subscriptions Engine
-- **Automated Recurring Billing**: Added a Subscriptions Management panel in Settings that allows you to define recurring monthly payments (e.g., YouTube Premium, Netflix, Rent).
-- **Subscription Management**: View active and inactive subscriptions with beautifully styled status badges. Click on any subscription to seamlessly edit its details directly in a modal.
-- **Auto-Ledger Injection**: The App automatically evaluates missed payments on launch and injects them into the ledger on their correct day of the month.
-- **Seamless Notion Sync**: Powered by a 4th Notion database ("Subscriptions") to persist subscription data.
-- **Upcoming Activity** (on by default, see Settings → Feature Toggles): the engine *posts* each occurrence on its due date, and this *warns* you before it does — a subscription is just as often income (rent collected as a landlord) as an expense (Spotify), so nothing here assumes which. Two surfaces, neither of which adds anything to the navigation bar:
-  - A **"Next 30 Days" agenda** on the Dashboard, split into Expenses and Income with a combined net total, listing every scheduled occurrence with its date and how far away it is. It also surfaces **future-dated transactions you've already logged by hand** — a hotel stay booked ahead of time, a plane ticket — not just subscriptions; an occurrence a subscription already claims is never listed twice. Like budgets, it ignores the selected period and any active filters — something due next week is due next week whether you're looking at July or at 2026. An occurrence you've already entered by hand is greyed out and marked "already recorded".
-  - A **slim reminder strip** above the content, shown only when something falls inside your lead time (default 5 days, configurable in Settings → Recurring Subscriptions), signed so a charge and a payment due to you read differently at a glance. It clears itself once the transaction lands in the ledger — not dismissible, since silencing something still outstanding would hide the one thing worth being told about.
-  - **Background notifications** (opt-in, Settings → Recurring → Notifications): a notification when something falls inside the lead time, even with the app closed. On-device only — nothing is sent anywhere. Background delivery needs an **installed PWA on Chromium**; iOS Safari and ordinary browser tabs fall back to the in-app strip, and the settings panel says so rather than offering a toggle that can't work. Seven taps on the "Notifications" heading reveals a diagnostics panel for when a reminder goes quiet.
-
-### Settings & Customization
-- **Feature Toggles**: Customize your Dashboard by enabling or disabling specific features — the Budgeting Engine, the Cash Flow Trend chart, Transfers (see above; off by default), and Upcoming Activity (see above; on by default).
-- **Theme Support**: Seamlessly toggle between Light and Dark mode using a clean, icon-based toggle switch.
-
-### Under the Hood
-- **React + Vite**: Fast, modern frontend toolchain for instantaneous HMR and optimized production bundles.
-- **BYO Token Architecture**: "Bring Your Own Token" design ensures your Notion data remains completely private. The app talks directly to Notion from your local browser via a lightweight MCP proxy, with no central database.
-- **Custom Design System (DS)**: Built entirely on a custom, state-of-the-art CSS custom property architecture (`--color-surface`, `--color-ink`, `--space-md`, etc.) for seamless light/dark themes and a premium aesthetic without heavy CSS frameworks.
 - **PWA Ready**: Offline-capable app shell that can be installed on iOS, Android, or Desktop.
 - **Vitest Coverage**: Robust component testing with 100% pass rates across the suite.
 - **Scrub & Demo Mode**: Instantly archive live data to start fresh, and seamlessly switch between live Notion data and comprehensive local demo data for testing or showcasing the app safely without affecting your real finances.
