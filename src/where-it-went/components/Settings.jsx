@@ -110,7 +110,8 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     flairCompactDensity: baseFeatures.flairCompactDensity ?? false,
     flairLucideIcons: baseFeatures.flairLucideIcons ?? false,
     mobileSwipe: baseFeatures.mobileSwipe ?? true,
-    aiParser: baseFeatures.aiParser ?? false
+    aiParser: baseFeatures.aiParser ?? false,
+    trendLineMode: baseFeatures.trendLineMode ?? 'none'
   });
   const [upcomingLeadDays, setUpcomingLeadDays] = useState(config.upcomingLeadDays ?? DEFAULT_LEAD_DAYS);
   const [status, setStatus] = useState({ type: '', msg: '' });
