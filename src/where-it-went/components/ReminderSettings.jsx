@@ -90,12 +90,12 @@ export default function ReminderSettings({ data, leadDays }) {
   }
 
   return (
-    <div style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}>
+    <div style={{ marginBottom: 'var(--space-xl)' }}>
       <h2
         style={{ margin: '0 0 var(--space-xs) 0', fontSize: 'var(--text-lg)', color: 'var(--color-ink)', cursor: 'default' }}
         onClick={onHeadingTap}
       >
-        Recurring Reminders
+        Notifications
       </h2>
       <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
         Get a notification when a recurring transaction is about to happen — a subscription

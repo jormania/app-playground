@@ -253,7 +253,6 @@ export default function TripExportModal({ trip, data, onClose }) {
         )}
 
         <div style={{ display: 'flex', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
-          <Button variant="secondary" onClick={onClose} style={{ flex: 1 }}>Close</Button>
           <Button variant="secondary" onClick={handleDownloadCSV} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
             <Download size={16} /> CSV
           </Button>

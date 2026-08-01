@@ -518,10 +518,6 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         </div>
       </CollapsibleSection>
 
-      {features.upcoming !== false && (
-        <ReminderSettings data={data} leadDays={Number(upcomingLeadDays) || DEFAULT_LEAD_DAYS} />
-      )}
-
       {/* Rejected offline writes — surfaced with the real error rather than
           dropped, which is the whole point of the outbox having a dead-letter
           list instead of retrying a malformed write forever. */}
@@ -564,7 +560,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
       {data?.subscriptions && (
         <CollapsibleSection
           id="subscriptions"
-          title="Recurring Subscriptions"
+          title="Recurring"
           action={<Button variant="secondary" onClick={() => setIsAddingSub(true)}>+ Add Subscription</Button>}
         >
           <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
@@ -575,14 +571,17 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           </p>
 
           {features.upcoming !== false && (
-            <div style={{ maxWidth: '220px', marginBottom: 'var(--space-md)' }}>
-              <Field
-                label="Warn me this many days ahead"
-                type="number" min="1" max="31"
-                value={upcomingLeadDays}
-                onChange={e => setUpcomingLeadDays(e.target.value)}
-              />
-            </div>
+            <>
+              <div style={{ maxWidth: '220px', marginBottom: 'var(--space-md)' }}>
+                <Field
+                  label="Warn me this many days ahead"
+                  type="number" min="1" max="31"
+                  value={upcomingLeadDays}
+                  onChange={e => setUpcomingLeadDays(e.target.value)}
+                />
+              </div>
+              <ReminderSettings data={data} leadDays={Number(upcomingLeadDays) || DEFAULT_LEAD_DAYS} />
+            </>
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
