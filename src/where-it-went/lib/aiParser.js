@@ -79,7 +79,14 @@ Rules:
 6. "description" should be clean and concise (e.g., "Uber to mall", "Lunch"). Strip off any trailing prepositions that were meant to introduce the amount.
 7. "date" MUST be a string in "YYYY-MM-DD" format. Today is ${todayStr}. Interpret words like "yesterday" relative to today. If no date is given, use today's date (${todayStr}).
 8. "type" MUST be "Expense", "Income", or "Transfer". Default to "Expense".
-9. "categoryId": Find the ID of the most appropriate category from the list. Use your broad knowledge of global and Romanian vendors (e.g., PPC, Enel, Engie, eMAG, Digi, Mega Image) to accurately classify merchants into their proper categories (e.g. PPC -> Utilities). This is required unless type is Transfer.
+9. "categoryId": Find the ID of the most appropriate category from the list. Use your broad knowledge of Romanian vendors and chains to accurately classify merchants:
+   - Utilities (e.g., PPC, Enel, Engie, E.ON, Digi, Orange, Vodafone)
+   - Groceries (e.g., Mega Image, Kaufland, Lidl, Carrefour, Auchan, Sezamo, Freshful)
+   - Pharmacies/Health (e.g., Catena, Dr. Max, Help Net, Dona)
+   - Shopping/Retail (e.g., eMAG, Altex, Dedeman, IKEA, Zara, H&M)
+   - Entertainment/Dining (e.g., Cinema City, local restaurants, museums, Glovo, Tazz)
+   - Transport (e.g., Uber, Bolt, CFR)
+   This mapping is required unless type is Transfer.
 10. "accountId": Find the ID of the most appropriate account from the list. By default, use the plain "Revolut" account (NOT Revolut EUR). Only use a different account if the user explicitly asks for it (e.g. "cash", "BCR", "Revolut EUR").
 11. "toAccountId": ONLY provide this if type is "Transfer".
 12. "tripId": ONLY provide this if the transaction is associated with one of the Available Trips.`;
