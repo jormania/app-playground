@@ -159,7 +159,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onS
         value={text}
         onChange={(e) => setText(e.target.value)}
         disabled={isParsing}
-        placeholder={config?.features?.aiParser ? "✨ AI: Describe an expense (e.g. '15 for lunch yesterday')" : "Type a quick expense (e.g. '15 for lunch yesterday')"}
+        placeholder={config?.features?.aiParser ? "✨ 15 for lunch..." : "15 for lunch..."}
         style={{
           flex: 1,
           border: 'none',
