@@ -75,12 +75,12 @@ Rules:
 2. The user might describe multiple transactions in one message. Create a discrete object for each one in the "transactions" array.
 3. If the user mentions a SPLIT expense (e.g., "Paid 100 for dinner but John owes me 50"), return TWO transactions: one Expense for 100 on "Dining" (or similar), and one Income/Transfer for 50 representing the debt to be received.
 4. "action" defaults to "create". If the user wants to edit or delete a past transaction (e.g., "change that to 20", "delete the lunch expense"), use "update" or "delete" and provide the "id" from Recent Transactions.
-5. "amount" MUST be a positive Number (e.g. 15). If the user mentions a foreign currency (e.g., "paid 20 EUR" but the account is RON), map the "amount" to your best estimate or the raw value, but you MUST provide "originalAmount" (Number) and "originalCurrency" (String, e.g. "EUR") so the system can calculate the real exchange rate.
+5. "amount" MUST be a positive Number (e.g. 15). By default, all values are in RON unless stated otherwise. If the user mentions a foreign currency (e.g., "paid 20 EUR"), map the "amount" to your best estimate or the raw value, but you MUST provide "originalAmount" (Number) and "originalCurrency" (String, e.g. "EUR").
 6. "description" should be clean and concise (e.g., "Uber to mall", "Lunch"). Strip off any trailing prepositions that were meant to introduce the amount.
 7. "date" MUST be a string in "YYYY-MM-DD" format. Today is ${todayStr}. Interpret words like "yesterday" relative to today. If no date is given, use today's date (${todayStr}).
 8. "type" MUST be "Expense", "Income", or "Transfer". Default to "Expense".
-9. "categoryId": Find the ID of the most appropriate category from the list. This is required unless type is Transfer.
-10. "accountId": Find the ID of the most appropriate account from the list. If they mention an account (e.g. "Revolut"), use its ID. If they don't, use your best judgment or default to the most generic/first account.
+9. "categoryId": Find the ID of the most appropriate category from the list. Use your broad knowledge of global and Romanian vendors (e.g., PPC, Enel, Engie, eMAG, Digi, Mega Image) to accurately classify merchants into their proper categories (e.g. PPC -> Utilities). This is required unless type is Transfer.
+10. "accountId": Find the ID of the most appropriate account from the list. By default, use the plain "Revolut" account (NOT Revolut EUR). Only use a different account if the user explicitly asks for it (e.g. "cash", "BCR", "Revolut EUR").
 11. "toAccountId": ONLY provide this if type is "Transfer".
 12. "tripId": ONLY provide this if the transaction is associated with one of the Available Trips.`;
 
