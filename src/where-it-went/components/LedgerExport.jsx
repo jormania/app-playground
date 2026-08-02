@@ -128,15 +128,51 @@ export default function LedgerExport({ data }) {
     .badge.income { background-color: #d1fae5; color: #065f46; }
     .badge.expense { background-color: #fee2e2; color: #991b1b; }
     .badge.transfer { background-color: #f3f4f6; color: #374151; }
+    
+    .filters {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      background: white;
+      padding: 16px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    .filters input, .filters select {
+      padding: 10px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 1em;
+      outline: none;
+      flex: 1;
+    }
+    .filters input:focus, .filters select:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+    .hidden {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>Transaction Ledger</h1>
-    <div class="meta">Exported on ${new Date().toLocaleString()} &bull; ${data.transactions?.length || 0} Transactions</div>
+    <div class="meta">Exported on ${new Date().toLocaleString()} &bull; <span id="count">${data.transactions?.length || 0}</span> Transactions</div>
   </div>
+  
+  <div class="filters">
+    <input type="text" id="searchInput" placeholder="Search description, category, or account...">
+    <select id="typeFilter" style="flex: 0 0 200px;">
+      <option value="all">All Types</option>
+      <option value="income">Income</option>
+      <option value="expense">Expense</option>
+      <option value="transfer">Transfer</option>
+    </select>
+  </div>
+
   <div class="card">
-    <table>
+    <table id="ledgerTable">
       <thead>
         <tr>
           <th>Date</th>
@@ -152,6 +188,39 @@ export default function LedgerExport({ data }) {
       </tbody>
     </table>
   </div>
+
+  <script>
+    const searchInput = document.getElementById('searchInput');
+    const typeFilter = document.getElementById('typeFilter');
+    const tableRows = document.querySelectorAll('#ledgerTable tbody tr');
+    const countDisplay = document.getElementById('count');
+
+    function filterTable() {
+      const searchTerm = searchInput.value.toLowerCase();
+      const typeTerm = typeFilter.value.toLowerCase();
+      let visibleCount = 0;
+
+      tableRows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        const typeBadge = row.querySelector('.badge').innerText.toLowerCase();
+        
+        const matchesSearch = text.includes(searchTerm);
+        const matchesType = typeTerm === 'all' || typeBadge === typeTerm;
+
+        if (matchesSearch && matchesType) {
+          row.classList.remove('hidden');
+          visibleCount++;
+        } else {
+          row.classList.add('hidden');
+        }
+      });
+      
+      countDisplay.innerText = visibleCount;
+    }
+
+    searchInput.addEventListener('input', filterTable);
+    typeFilter.addEventListener('change', filterTable);
+  </script>
 </body>
 </html>
       `;
