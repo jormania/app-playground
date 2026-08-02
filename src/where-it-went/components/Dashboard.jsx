@@ -19,7 +19,7 @@ import {
 } from '../lib/period';
 import { applyFilters } from '../lib/filtering';
 import { getUpcomingBills, getUpcomingTransactions, DEFAULT_HORIZON_DAYS } from '../lib/upcoming';
-import { computeAllBudgets, monthlyEquivalent } from '../lib/budgets';
+import { computeAllBudgets, monthlyEquivalent, tripSpentInWindow } from '../lib/budgets';
 import { calculateMovingAverage, calculateLinearRegression } from '../lib/trends';
 import PullToRefresh from './PullToRefresh';
 import QuickTemplates from './QuickTemplates';
@@ -785,6 +785,10 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
               {budgets.map(b => {
                 const percent = b.percent;
                 const isOver = b.isOver;
+                // Trip-linked spend for this category in its current window,
+                // always computed against the full (un-filtered) transactions so
+                // the annotation is visible in both toggle states.
+                const tripSpent = tripSpentInWindow(data.transactions, b.id, b.window);
                 return (
                   <div key={b.id} className="budget-mini-card">
                     <div>
@@ -822,6 +826,16 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
                         transition: 'width 1s cubic-bezier(0.16, 1, 0.3, 1) 0.1s'
                       }}></div>
                     </div>
+                    {tripSpent > 0 && (
+                      <div style={{ marginTop: '6px', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span>✈️</span>
+                        <span>
+                          {excludeTripSpend
+                            ? <>{formatCurrency(tripSpent)} trip spend excluded</>
+                            : <>{formatCurrency(tripSpent)} of which is trip-linked</>}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })}

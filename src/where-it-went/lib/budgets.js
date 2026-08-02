@@ -108,6 +108,20 @@ export function spentInWindow(transactions, categoryId, window) {
   return total;
 }
 
+/** Trip-linked portion of spending for one category inside a `[start, end)` range. */
+export function tripSpentInWindow(transactions, categoryId, window) {
+  let total = 0;
+  for (const tx of transactions || []) {
+    if (tx.categoryId !== categoryId) continue;
+    if (tx.type !== 'Expense') continue;
+    if (!tx.tripId) continue; // only trip-tagged
+    const d = parseTxDate(tx.date);
+    if (!d || d < window.start || d >= window.end) continue;
+    total += Number(tx.amount) || 0;
+  }
+  return total;
+}
+
 /**
  * Room carried into the current window from previous ones.
  *
