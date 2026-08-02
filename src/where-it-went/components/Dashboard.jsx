@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
-import BudgetEditorModal from './BudgetEditorModal';
 import UpcomingBills from './UpcomingBills';
 import { Button } from '../../ds/components/Button';
 import { Modal } from '../../ds/components/Modal';
@@ -39,7 +38,6 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
   const activePeriod = period || 'this_month';
   const allowTransfer = config?.features?.transfers === true;
   const { filterType: filter = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
-  const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [highlightedTxIds, setHighlightedTxIds] = useState([]);
@@ -677,7 +675,6 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
                 Each category is measured against its own budget window — never the selected period or filters.
               </p>
             </div>
-            <Button size="sm" variant="secondary" onClick={() => setShowBudgetModal(true)}>Edit Budgets</Button>
           </div>
 
           {budgets.length > 0 ? (
@@ -822,15 +819,6 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
           )}
         </div>
       )}
-
-      <BudgetEditorModal
-        isOpen={showBudgetModal}
-        onClose={() => setShowBudgetModal(false)}
-        categories={data.categories}
-        client={client}
-        onDataChange={onDataChange}
-      />
-
       {editingTx && (
         <Modal open={true} title="Edit Transaction" onClose={() => setEditingTx(null)}>
           <TransactionForm

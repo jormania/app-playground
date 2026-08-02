@@ -11,7 +11,7 @@ const TemplateEditorModal = lazy(() => import('./TemplateEditorModal'));
 const TripEditorModal = lazy(() => import('./TripEditorModal'));
 const TripExportModal = lazy(() => import('./TripExportModal'));
 const LedgerExport = lazy(() => import('./LedgerExport'));
-
+const BudgetSettings = lazy(() => import('./BudgetSettings'));
 import { generateDeepInsights } from '../lib/analytics';
 import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
@@ -565,6 +565,18 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             ))}
           </div>
         </div>
+      )}
+
+      {features.budgeting !== false && data?.categories && (
+        <CollapsibleSection id="budgets" title="Budget Limits">
+          <Suspense fallback={<div style={{ padding: 'var(--space-md)' }}>Loading budget editor...</div>}>
+            <BudgetSettings
+              categories={data.categories}
+              client={client}
+              onDataChange={onDataChange}
+            />
+          </Suspense>
+        </CollapsibleSection>
       )}
 
       {data?.subscriptions && (
