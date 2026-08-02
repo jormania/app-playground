@@ -19,7 +19,7 @@ import {
 } from '../lib/period';
 import { applyFilters } from '../lib/filtering';
 import { getUpcomingBills, getUpcomingTransactions, DEFAULT_HORIZON_DAYS } from '../lib/upcoming';
-import { computeAllBudgets, monthlyEquivalent, tripSpentInWindow } from '../lib/budgets';
+import { computeAllBudgets, monthlyEquivalent, tripSpentInWindow, MONTHS_PER } from '../lib/budgets';
 import { calculateMovingAverage, calculateLinearRegression } from '../lib/trends';
 import PullToRefresh from './PullToRefresh';
 import QuickTemplates from './QuickTemplates';
@@ -719,10 +719,16 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
                     const m = monthlyEquivalent(b);
                     acc.limit += m.limit;
                     acc.spent += m.spent;
+                    // Base limit ignores rollover carry — used for income comparison
+                    // so that historical unspent room doesn't make the allocation look
+                    // larger than what you actually set as your monthly budget.
+                    const months = MONTHS_PER[b.window?.period] || 1;
+                    acc.baseLimit += (b.limit || 0) / months;
                     return acc;
-                  }, { limit: 0, spent: 0 });
+                  }, { limit: 0, spent: 0, baseLimit: 0 });
                   const totalLimit = totals.limit;
                   const totalSpent = totals.spent;
+                  const baseTotalLimit = totals.baseLimit;
                   const remaining = totalLimit - totalSpent;
                   const percent = totalLimit > 0 ? Math.min((totalSpent / totalLimit) * 100, 100) : 0;
                   const isOver = totalSpent > totalLimit;
@@ -763,15 +769,15 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
                       {(config?.monthlyIncome > 0) && (
                         <div style={{ marginTop: 'var(--space-md)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: '4px' }}>
-                            <span>{formatCurrency(totalLimit)} budgeted of {formatCurrency(config.monthlyIncome)} income</span>
-                            <span style={{ color: totalLimit > config.monthlyIncome ? 'var(--color-danger)' : 'var(--color-success)', fontWeight: 'var(--weight-bold)' }}>
-                              {totalLimit > config.monthlyIncome ? 'Over-allocated' : `${formatCurrency(config.monthlyIncome - totalLimit)} unallocated`}
+                            <span>{formatCurrency(baseTotalLimit)} budgeted of {formatCurrency(config.monthlyIncome)} income</span>
+                            <span style={{ color: baseTotalLimit > config.monthlyIncome ? 'var(--color-danger)' : 'var(--color-success)', fontWeight: 'var(--weight-bold)' }}>
+                              {baseTotalLimit > config.monthlyIncome ? 'Over-allocated' : `${formatCurrency(config.monthlyIncome - baseTotalLimit)} unallocated`}
                             </span>
                           </div>
                           <div style={{ height: '4px', backgroundColor: 'var(--color-surface-2)', borderRadius: '2px', overflow: 'hidden', width: '100%' }}>
                             <div style={{
-                              width: loaded ? `${Math.min((totalLimit / config.monthlyIncome) * 100, 100)}%` : '0%', height: '100%',
-                              backgroundColor: totalLimit > config.monthlyIncome ? 'var(--color-danger)' : 'var(--color-success)',
+                              width: loaded ? `${Math.min((baseTotalLimit / config.monthlyIncome) * 100, 100)}%` : '0%', height: '100%',
+                              backgroundColor: baseTotalLimit > config.monthlyIncome ? 'var(--color-danger)' : 'var(--color-success)',
                               transition: 'width 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s'
                             }}></div>
                           </div>
