@@ -119,9 +119,18 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
   const animatedExpenses = useCountUp(expenses);
   const animatedNet = useCountUp(net);
 
+  const [excludeTripSpend, setExcludeTripSpend] = useState(false);
+
+  const txForBudgets = useMemo(
+    () => excludeTripSpend
+      ? (data.transactions || []).filter(tx => !tx.tripId)
+      : data.transactions,
+    [data.transactions, excludeTripSpend]
+  );
+
   const budgets = useMemo(
-    () => computeAllBudgets(data.categories, data.transactions),
-    [data.transactions, data.categories],
+    () => computeAllBudgets(data.categories, txForBudgets),
+    [txForBudgets, data.categories],
   );
 
   const budgetLeft = useMemo(() => {
@@ -675,6 +684,22 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
                 Each category is measured against its own budget window — never the selected period or filters.
               </p>
             </div>
+            <button
+              onClick={() => setExcludeTripSpend(v => !v)}
+              title={excludeTripSpend ? 'Trip spend is excluded — click to include it' : 'Click to exclude trip-linked transactions from budgets'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '4px 10px', borderRadius: '999px', fontSize: 'var(--text-xs)',
+                fontWeight: 'var(--weight-medium)', cursor: 'pointer',
+                border: '1px solid', transition: 'all 0.2s',
+                backgroundColor: excludeTripSpend ? 'color-mix(in srgb, var(--color-accent) 15%, transparent)' : 'transparent',
+                borderColor: excludeTripSpend ? 'var(--color-accent)' : 'var(--color-border)',
+                color: excludeTripSpend ? 'var(--color-accent)' : 'var(--color-muted)',
+              }}
+            >
+              <span style={{ fontSize: '10px' }}>✈️</span>
+              {excludeTripSpend ? 'Excl. trip spend' : 'Incl. trip spend'}
+            </button>
           </div>
 
           {budgets.length > 0 ? (
