@@ -30,10 +30,13 @@ function cleanDescription(description) {
 }
 
 /**
- * Returns `true` when the description contains "with Nora" (case-insensitive).
+ * Returns `true` when the description OR notes contain "with Nora" (case-insensitive).
+ * The AI parser often extracts contextual phrases like "with Nora" into the notes
+ * field rather than leaving them in the description.
  */
-export function hasNoraTrigger(description) {
-  return /with nora/i.test(description || '');
+export function hasNoraTrigger(tx) {
+  return /with nora/i.test(tx?.description || '') ||
+         /with nora/i.test(tx?.notes || '');
 }
 
 /**
@@ -46,7 +49,7 @@ export function hasNoraTrigger(description) {
  * caller never silently loses money.
  */
 export function applyNoraSplit(tx, categories) {
-  if (!hasNoraTrigger(tx.description)) return [tx];
+  if (!hasNoraTrigger(tx)) return [tx];
 
   const noraCategory = (categories || []).find(
     c => c.name.toLowerCase() === 'nora'
@@ -61,11 +64,14 @@ export function applyNoraSplit(tx, categories) {
 
   const half = Math.round(((Number(tx.amount) || 0) / 2) * 100) / 100;
   const cleanDesc = cleanDescription(tx.description);
+  // Also strip "with Nora" from notes if the AI parser placed it there.
+  const cleanNotes = (tx.notes || '').replace(WITH_NORA_RE, '').trim() || undefined;
 
   const yourTx = {
     ...tx,
     description: cleanDesc,
     amount: half,
+    notes: cleanNotes,
   };
 
   const noraTx = {
@@ -73,6 +79,7 @@ export function applyNoraSplit(tx, categories) {
     description: cleanDesc,
     amount: half,
     categoryId: noraCategory.id,
+    notes: cleanNotes,
   };
 
   return [yourTx, noraTx];
