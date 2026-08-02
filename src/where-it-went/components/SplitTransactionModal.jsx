@@ -40,7 +40,7 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
     const ratio = numSplit / numOriginal;
     splitOriginalAmount = Math.ceil(transaction.originalAmount * ratio);
     if (isIncome) {
-      remainderOriginalAmount = transaction.originalAmount + splitOriginalAmount;
+      remainderOriginalAmount = transaction.originalAmount;
     } else {
       remainderOriginalAmount = transaction.originalAmount - splitOriginalAmount;
     }

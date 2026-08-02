@@ -10,8 +10,8 @@ export function formatCurrency(amount) {
   const n = Number(amount);
   if (!Number.isFinite(n)) return '—';
   return n.toLocaleString('en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }) + LEI;
 }
 

@@ -487,16 +487,9 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
     [data.transactions, data.categories],
   );
 
-  // Like budgets, deliberately independent of the selected period and of the
-  // active filters: "what's due next" is a fact about the calendar, not about
-  // whichever slice of history is currently on screen.
-  const upcomingHorizonDays = Number(config?.upcomingHorizonDays) > 0
-    ? Number(config.upcomingHorizonDays)
-    : DEFAULT_HORIZON_DAYS;
-
   const upcomingBills = useMemo(
-    () => getUpcomingBills(data.subscriptions, data.transactions, { horizonDays: upcomingHorizonDays }),
-    [data.subscriptions, data.transactions, upcomingHorizonDays],
+    () => getUpcomingBills(data.subscriptions, data.transactions, { horizonDays: DEFAULT_HORIZON_DAYS }),
+    [data.subscriptions, data.transactions],
   );
 
   // Future-dated transactions already in the ledger — a hotel stay booked and
@@ -504,8 +497,8 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
   // than only findable by scrolling the ledger. `upcomingBills` is passed in
   // so an occurrence a subscription already claims is never listed twice.
   const upcomingTransactions = useMemo(
-    () => getUpcomingTransactions(data.transactions, upcomingBills, { horizonDays: upcomingHorizonDays }),
-    [data.transactions, upcomingBills, upcomingHorizonDays],
+    () => getUpcomingTransactions(data.transactions, upcomingBills, { horizonDays: DEFAULT_HORIZON_DAYS }),
+    [data.transactions, upcomingBills],
   );
 
   const rowKeyHandler = (tx) => (e) => {
@@ -603,7 +596,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
               {formatCurrencyCompact(kpi.value)}
             </div>
             <div style={{ position: 'relative', zIndex: 1 }}>{getTrendBadge(kpi.real, kpi.prev, kpi.inverse)}</div>
-            <div style={{ marginTop: '-10px', marginLeft: '-var(--space-md)', marginRight: '-var(--space-md)', marginBottom: '-var(--space-md)' }}>
+            <div style={{ marginTop: '-10px', marginLeft: 'calc(-1 * var(--space-md))', marginRight: 'calc(-1 * var(--space-md))', marginBottom: 'calc(-1 * var(--space-md))' }}>
               <Sparkline data={kpi.data} color={kpi.color} height={30} />
             </div>
           </div>
@@ -844,7 +837,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
           due next week is due next week whether you're looking at July or 2026. */}
       {config?.features?.upcoming !== false && (
         <div id="upcoming-bills-card" className="card-container stagger-4" style={{ ...CARD, marginTop: 'var(--space-xl)' }}>
-          <UpcomingBills bills={upcomingBills} transactions={upcomingTransactions} categories={data.categories} horizonDays={upcomingHorizonDays} />
+          <UpcomingBills bills={upcomingBills} transactions={upcomingTransactions} categories={data.categories} horizonDays={DEFAULT_HORIZON_DAYS} />
         </div>
       )}
 

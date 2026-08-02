@@ -7,6 +7,7 @@ export function SwipeableRow({ children, onSwipeLeft, onSwipeRight, onLongPress,
   const currentX = useRef(0);
   const timerRef = useRef(null);
   const longPressTriggered = useRef(false);
+  const hasSwiped = useRef(false);
   const threshold = 80;
 
   if (!enabled) {
@@ -24,6 +25,7 @@ export function SwipeableRow({ children, onSwipeLeft, onSwipeRight, onLongPress,
     startX.current = clientX;
     currentX.current = clientX;
     longPressTriggered.current = false;
+    hasSwiped.current = false;
     setSwiping(true);
 
     if (onLongPress) {
@@ -42,6 +44,7 @@ export function SwipeableRow({ children, onSwipeLeft, onSwipeRight, onLongPress,
     
     if (Math.abs(diff) > 10) {
       clearLongPressTimer();
+      hasSwiped.current = true;
     }
     
     // Optional: Add resistance or boundaries
@@ -71,9 +74,11 @@ export function SwipeableRow({ children, onSwipeLeft, onSwipeRight, onLongPress,
       return;
     }
     // If they swipe, don't trigger click
-    if (Math.abs(translateX) > 10) {
+    if (hasSwiped.current || Math.abs(translateX) > 10) {
       e.stopPropagation();
       e.preventDefault();
+      // Only clear it after handling to allow the event to be stopped
+      setTimeout(() => { hasSwiped.current = false; }, 0);
       return;
     }
     if (onClick) onClick(e);

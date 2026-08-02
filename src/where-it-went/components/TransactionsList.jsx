@@ -55,8 +55,9 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
         return tx && tx.reconciled;
       });
       const shouldReconcile = !allSelectedReconciled;
-      const jobs = Array.from(selectedTxs).map(id => client.updateTransaction(id, { reconciled: shouldReconcile }));
-      await Promise.all(jobs);
+      for (const id of Array.from(selectedTxs)) {
+        await client.updateTransaction(id, { reconciled: shouldReconcile });
+      }
       setSelectedTxs(new Set());
       if (onDataChange) onDataChange();
     } catch (e) {
@@ -70,8 +71,9 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
     if (!window.confirm(`Delete ${selectedTxs.size} transactions?`)) return;
     setBulkProcessing(true);
     try {
-      const jobs = Array.from(selectedTxs).map(id => client.deleteTransaction(id));
-      await Promise.all(jobs);
+      for (const id of Array.from(selectedTxs)) {
+        await client.deleteTransaction(id);
+      }
       setSelectedTxs(new Set());
       if (onDataChange) onDataChange();
     } catch (e) {
@@ -84,8 +86,9 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
   const handleBulkCategorize = async (categoryId) => {
     setBulkProcessing(true);
     try {
-      const jobs = Array.from(selectedTxs).map(id => client.updateTransaction(id, { categoryId }));
-      await Promise.all(jobs);
+      for (const id of Array.from(selectedTxs)) {
+        await client.updateTransaction(id, { categoryId });
+      }
       setSelectedTxs(new Set());
       setShowBulkCategoryModal(false);
       if (onDataChange) onDataChange();

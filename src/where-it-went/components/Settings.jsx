@@ -354,7 +354,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             onChange={e => handleFeatureToggle('quickTemplates', e.target.checked)}
           />
           {features.cashFlow !== false && (
-            <div style={{ paddingLeft: 'calc(var(--space-lg) + 24px)', marginTop: '-var(--space-sm)' }}>
+            <div style={{ paddingLeft: 'calc(var(--space-lg) + 24px)', marginTop: 'calc(-1 * var(--space-sm))' }}>
               <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)', marginBottom: '4px' }}>Cash flow trend line</div>
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginBottom: '8px', maxWidth: '400px', lineHeight: 1.4 }}>Overlay a mathematical trend line on the chart to visualize your spending momentum.</div>
               <SegmentedControl
@@ -365,7 +365,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                   { value: 'linear_regression', label: 'Trajectory' }
                 ]}
                 value={features.trendLineMode || 'none'}
-                onChange={value => setFeatures(f => ({ ...f, trendLineMode: value }))}
+                onChange={value => handleFeatureToggle('trendLineMode', value)}
                 size="sm"
               />
             </div>
@@ -406,10 +406,10 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             label="Master Toggle: Enable All Visual Flair"
             hint="Switch off to immediately disable all non-essential animations, transitions, and hover effects."
             checked={features.flairMaster}
-            onChange={e => setFeatures(f => {
+            onChange={e => {
               const on = e.target.checked;
-              return {
-                ...f,
+              const next = {
+                ...features,
                 flairMaster: on,
                 flairTactile: on,
                 flairPulse: on,
@@ -423,7 +423,9 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                 flairHover: on,
                 flairLucideIcons: on
               };
-            })}
+              setFeatures(next);
+              onSave({ ...config, features: next });
+            }}
           />
           <SettingsToggle
             label="Use Lucide Icons"

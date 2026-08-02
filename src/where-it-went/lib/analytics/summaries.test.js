@@ -14,9 +14,9 @@ describe('formatShareableSummary', () => {
     const text = formatShareableSummary('July 2026', insights);
     expect(text).toContain('July 2026 in Review');
     expect(text).toContain('You spent 500 L this period.');
-    expect(text).toContain('Income: 1,000 L');
-    expect(text).toContain('Expenses: 500 L');
-    expect(text).toContain('Net: 500 L');
+    expect(text).toContain('Income: 1,000.00 L');
+    expect(text).toContain('Expenses: 500.00 L');
+    expect(text).toContain('Net: 500.00 L');
     expect(text).toContain('Savings rate: 50.0%');
   });
 
