@@ -682,7 +682,7 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
 
           {budgets.length > 0 ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)' }}>
-              <div style={{ gridColumn: '1 / -1', padding: 'var(--space-md)', backgroundColor: 'var(--color-bg)', borderRadius: 'var(--radius-md)' }}>
+              <div className="budget-hero-card" style={{ gridColumn: '1 / -1', marginBottom: 'var(--space-md)' }}>
                 {(() => {
                   // Each category's own limit/spent is already correct against
                   // its own window — but a monthly 500 and a yearly 6 000
@@ -701,20 +701,31 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
                   }, { limit: 0, spent: 0 });
                   const totalLimit = totals.limit;
                   const totalSpent = totals.spent;
+                  const remaining = totalLimit - totalSpent;
                   const percent = totalLimit > 0 ? Math.min((totalSpent / totalLimit) * 100, 100) : 0;
                   const isOver = totalSpent > totalLimit;
                   return (
                     <>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: 'var(--weight-bold)' }}>
-                          Total Global Budget{mixedPeriods ? ' (per month)' : ''}
-                        </span>
-                        <span style={{ color: isOver ? 'var(--color-danger)' : 'var(--color-ink)', fontWeight: 'var(--weight-bold)' }}>
-                          {formatCurrency(totalSpent)} / {formatCurrency(totalLimit)}
-                        </span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', gap: 'var(--space-xs)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                        <div>
+                          <h3 style={{ margin: '0 0 4px 0', fontSize: 'var(--text-lg)', color: 'var(--color-ink)' }}>
+                            Total Global Budget{mixedPeriods ? ' (per month)' : ''}
+                          </h3>
+                          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>
+                            {formatCurrency(totalSpent)} spent of {formatCurrency(totalLimit)}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-muted)', marginBottom: '4px' }}>
+                            {isOver ? 'Over Budget' : 'Remaining'}
+                          </div>
+                          <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--weight-bold)', color: isOver ? 'var(--color-danger)' : 'var(--color-accent)' }}>
+                            {isOver ? formatCurrency(Math.abs(remaining)) : formatCurrency(remaining)}
+                          </div>
+                        </div>
                       </div>
                       {mixedPeriods && (
-                        <p style={{ margin: '0 0 8px 0', fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
+                        <p style={{ margin: '0 0 16px 0', fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>
                           Quarterly and yearly budgets are shown here at their monthly-equivalent share, so this
                           combined figure is on one consistent scale.
                         </p>
@@ -735,30 +746,34 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
                 const percent = b.percent;
                 const isOver = b.isOver;
                 return (
-                  <div key={b.id}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 'var(--weight-medium)', display: 'flex', alignItems: 'center' }}><CategoryIcon category={b} style={{marginRight: '6px'}}/>{b.name}</span>
-                      <span style={{ color: isOver ? 'var(--color-danger)' : b.spent === 0 ? 'var(--color-muted)' : 'var(--color-ink)' }}>
-                        {b.spent === 0
-                          ? <em style={{ fontSize: 'var(--text-xs)' }}>Nothing spent yet</em>
-                          : <>{formatCurrency(b.spent)} / {formatCurrency(b.effectiveLimit)}</>}
-                      </span>
-                    </div>
-                    {/* The window label is not decoration: without it a yearly
-                        budget sitting at 40% reads as "40% of this month". */}
-                    <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
-                      <span>{b.window.label}</span>
-                      {b.hasRollover && b.carry !== 0 && (
-                        <span style={{
-                          padding: '1px 5px', borderRadius: 'var(--radius-sm)',
-                          backgroundColor: b.carry > 0
-                            ? 'color-mix(in srgb, var(--color-success) 15%, transparent)'
-                            : 'color-mix(in srgb, var(--color-danger) 15%, transparent)',
-                          color: b.carry > 0 ? 'var(--color-success)' : 'var(--color-danger)'
-                        }}>
-                          {b.carry > 0 ? '+' : '−'}{formatCurrency(Math.abs(b.carry))} rolled over
-                        </span>
-                      )}
+                  <div key={b.id} className="budget-mini-card">
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', gap: 'var(--space-xs)', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                        <span style={{ fontWeight: 'var(--weight-bold)', display: 'flex', alignItems: 'center' }}><CategoryIcon category={b} style={{marginRight: '8px'}}/>{b.name}</span>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ color: isOver ? 'var(--color-danger)' : b.spent === 0 ? 'var(--color-muted)' : 'var(--color-ink)', fontWeight: 'var(--weight-bold)' }}>
+                            {b.spent === 0
+                              ? <em style={{ fontSize: 'var(--text-xs)', fontWeight: 'normal' }}>Nothing spent yet</em>
+                              : <>{formatCurrency(b.spent)} / {formatCurrency(b.effectiveLimit)}</>}
+                          </span>
+                        </div>
+                      </div>
+                      {/* The window label is not decoration: without it a yearly
+                          budget sitting at 40% reads as "40% of this month". */}
+                      <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
+                        <span>{b.window.label}</span>
+                        {b.hasRollover && b.carry !== 0 && (
+                          <span style={{
+                            padding: '1px 5px', borderRadius: 'var(--radius-sm)',
+                            backgroundColor: b.carry > 0
+                              ? 'color-mix(in srgb, var(--color-success) 15%, transparent)'
+                              : 'color-mix(in srgb, var(--color-danger) 15%, transparent)',
+                            color: b.carry > 0 ? 'var(--color-success)' : 'var(--color-danger)'
+                          }}>
+                            {b.carry > 0 ? '+' : '−'}{formatCurrency(Math.abs(b.carry))} rolled over
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="budget-bar-wrapper" role="progressbar" aria-valuenow={Math.round(percent)} aria-valuemin={0} aria-valuemax={100} aria-label={`${b.name} budget used`}>
                       <div style={{

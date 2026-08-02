@@ -902,3 +902,30 @@ select option {
 .highlight-pulse {
   animation: pulseGlow 3s ease-out forwards;
 }
+
+/* Budget Widget Redesign */
+.budget-hero-card {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 15%, transparent), color-mix(in srgb, var(--color-surface-2) 50%, transparent));
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 20%, var(--color-border));
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+
+.budget-mini-card {
+  background-color: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+@media (hover: hover) {
+  .budget-mini-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+    border-color: color-mix(in srgb, var(--color-border) 80%, var(--color-ink));
+  }
+}
