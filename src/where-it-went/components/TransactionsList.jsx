@@ -10,7 +10,6 @@ import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 import { filterByPeriod, parseTxDate } from '../lib/period';
 import { applyFilters } from '../lib/filtering';
-import { signedAmount } from '../lib/budgets';
 import { readJson, writeJson } from '../lib/storage';
 import { accountLabelById } from '../lib/accounts';
 import { SwipeableRow } from './SwipeableRow';
