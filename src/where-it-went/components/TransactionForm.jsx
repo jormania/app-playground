@@ -62,7 +62,7 @@ export default function TransactionForm({ transactions = [], categories, account
   // is the way a foreign charge is actually experienced ("I paid 8.50 EUR"),
   // rather than asking for the converted figure you don't know yet.
   const [currency, setCurrency] = useState(seed?.originalCurrency || '');
-  const [baseAmount, setBaseAmount] = useState(seed?.originalCurrency ? (seed?.amount ?? '') : '');
+  const [baseAmount, setBaseAmount] = useState(seed?.originalCurrency && seed?.amount != null ? String(Math.round(Number(seed.amount))) : '');
   const [rate, setRate] = useState(null);
   const [rateDate, setRateDate] = useState(null);
   const [rateLoading, setRateLoading] = useState(false);
@@ -397,7 +397,7 @@ export default function TransactionForm({ transactions = [], categories, account
             <input
               id={baseAmountId}
               aria-label={`Amount in ${BASE_CURRENCY}`}
-              type="number" inputMode="decimal" step="0.01" min="0" placeholder="0"
+              type="number" inputMode="numeric" step="1" min="0" placeholder="0"
               className="wiw-no-spinner"
               value={baseAmount}
               onChange={e => { baseTouched.current = true; setBaseAmount(e.target.value); }}

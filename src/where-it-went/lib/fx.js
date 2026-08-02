@@ -177,7 +177,7 @@ export function convert(amount, rate) {
   const value = Number(amount);
   const r = Number(rate);
   if (!Number.isFinite(value) || !Number.isFinite(r) || r <= 0) return null;
-  return Math.ceil(value * r);
+  return Math.round(value * r);
 }
 
 /**
@@ -206,7 +206,7 @@ export function formatRateNote(currency, rate, rateDate, { stale = false } = {})
   // `Number(null)` is 0, which is finite — without the explicit null/zero guard
   // a missing rate renders as a confident-looking "1 EUR = 0.00 RON".
   if (rate == null || !Number.isFinite(Number(rate)) || Number(rate) <= 0) return '';
-  const pretty = Number(rate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  const pretty = Number(rate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const cur = String(currency).toUpperCase();
 
   const d = rateDate ? new Date(`${String(rateDate).slice(0, 10)}T00:00:00`) : null;

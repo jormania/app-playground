@@ -136,6 +136,8 @@ export function planSubscriptionRun(data, today = new Date()) {
   }).filter(plan => plan.dueDates.length > 0);
 }
 
+let engineHasRun = false;
+
 /**
  * Posts missed subscription charges once per session.
  *
@@ -143,13 +145,11 @@ export function planSubscriptionRun(data, today = new Date()) {
  * on every reload made the demo drift away from its fixture.
  */
 export function useSubscriptionsEngine({ data, client, onDataChange, enabled = true }) {
-  const hasRun = useRef(false);
-
   useEffect(() => {
-    if (!enabled || hasRun.current) return;
+    if (!enabled || engineHasRun) return;
     if (!data || !data.subscriptions || data.subscriptions.length === 0) return;
 
-    hasRun.current = true;
+    engineHasRun = true;
 
     (async () => {
       const plans = planSubscriptionRun(data, new Date());

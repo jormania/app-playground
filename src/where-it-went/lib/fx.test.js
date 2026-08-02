@@ -89,7 +89,7 @@ describe('orderedCurrencies', () => {
 
 describe('convert', () => {
   it('converts correctly', () => {
-    expect(convert(8.5, 5.2318)).toBe(45);
+    expect(convert(8.5, 5.2318)).toBe(44);
   });
 
   it('is null for unusable input', () => {
@@ -115,7 +115,7 @@ describe('formatRateNote', () => {
     // matters: the amount field beside this already ends in "L", so a second
     // "L" here would read as one confused number.
     const note = formatRateNote('eur', 5.2318, '2026-07-28');
-    expect(note).toMatch(/^1 EUR = 5\.2318 RON /);
+    expect(note).toMatch(/^1 EUR = 5\.23 RON /);
     expect(note).not.toMatch(/ L\b/);
     expect(note).not.toContain('·');
     expect(note).not.toContain('ECB');
