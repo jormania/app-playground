@@ -678,7 +678,7 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
           </div>
 
           {budgets.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)' }}>
+            <div className="budget-grid">
               <div className="budget-hero-card" style={{ gridColumn: '1 / -1', marginBottom: 'var(--space-md)' }}>
                 {(() => {
                   // Each category's own limit/spent is already correct against

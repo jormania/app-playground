@@ -904,6 +904,18 @@ select option {
 }
 
 /* Budget Widget Redesign */
+.budget-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-md);
+}
+@media (min-width: 600px) {
+  .budget-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-lg);
+  }
+}
+
 .budget-hero-card {
   background: linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 15%, transparent), color-mix(in srgb, var(--color-surface-2) 50%, transparent));
   border-radius: var(--radius-lg);
