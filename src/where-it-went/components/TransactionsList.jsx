@@ -158,7 +158,7 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
       if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [data.transactions, filter, categoryFilter, searchQuery, period, sortConfig, categoriesById, accountsById]);
+  }, [data.transactions, period, sortConfig, categoriesById, accountsById, filterProps]);
 
   const totals = useMemo(() => filtered.reduce((acc, t) => {
     if (t.type === 'Income') acc.income += t.amount;

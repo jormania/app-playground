@@ -126,7 +126,7 @@ Rules:
     try {
       const errJson = await res.json();
       errText = errJson.error?.message || res.statusText;
-    } catch (e) {
+    } catch (_e) {
       errText = res.statusText;
     }
     throw new Error(`API ${res.status}: ${errText}`);
@@ -136,8 +136,8 @@ Rules:
   let responseText = data.content[0].text.trim();
 
   // Strip potential markdown wrappers just in case
-  if (responseText.startsWith('\`\`\`')) {
-    responseText = responseText.replace(/^\`\`\`(json)?\n/, '').replace(/\n\`\`\`$/, '');
+  if (responseText.startsWith('```')) {
+    responseText = responseText.replace(/^```(json)?\n/, '').replace(/\n```$/, '');
   }
 
   const parsed = JSON.parse(responseText);
@@ -227,7 +227,7 @@ Rules for your response:
     try {
       const errJson = await res.json();
       errText = errJson.error?.message || res.statusText;
-    } catch (e) {
+    } catch (_e) {
       errText = res.statusText;
     }
     throw new Error(`API ${res.status}: ${errText}`);

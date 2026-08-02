@@ -80,6 +80,7 @@ export default function App() {
       setPreviousTab(activeTab);
     }
     setActiveTab(newTab);
+    window.scrollTo(0, 0);
   };
 
   const [config, setConfig] = useState(() => readJson('whereItWent_config', {}));
