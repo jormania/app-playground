@@ -5,7 +5,7 @@ import { Field } from '../../ds/components/Field';
 import { FormError } from '../../ds/components/FormError';
 import { SelectField } from '../../ds/components/SelectField';
 import { formatCurrency } from '../lib/currency';
-import { BUDGET_PERIODS, normalizePeriod, formatPeriodSuffix } from '../lib/budgets';
+import { BUDGET_PERIODS, normalizePeriod, formatPeriodSuffix, MONTHS_PER } from '../lib/budgets';
 
 export default function BudgetSettings({ categories, client, onDataChange }) {
   const [limits, setLimits] = useState({});
@@ -68,7 +68,14 @@ export default function BudgetSettings({ categories, client, onDataChange }) {
     }
   };
 
-  const totalBudget = Object.values(limits).reduce((acc, val) => acc + (Number(val) || 0), 0);
+  const totalBudget = expenseCategories.reduce((acc, c) => {
+    const rawVal = Number(limits[c.id]) || 0;
+    const period = normalizePeriod(periods[c.id]);
+    const months = MONTHS_PER[period] || 1;
+    return acc + (rawVal / months);
+  }, 0);
+
+  const mixedPeriods = expenseCategories.some(c => normalizePeriod(periods[c.id]) !== 'Monthly');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
@@ -78,7 +85,9 @@ export default function BudgetSettings({ categories, client, onDataChange }) {
       </p>
 
       <div style={{ padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', textAlign: 'center' }}>
-        <div style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: '4px' }}>Total Global Budget</div>
+        <div style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: '4px' }}>
+          Total Global Budget{mixedPeriods ? ' (per month)' : ''}
+        </div>
         <div style={{ color: 'var(--color-accent)', fontSize: 'var(--text-xl)', fontWeight: 'var(--weight-bold)' }}>
           {formatCurrency(totalBudget)}
         </div>

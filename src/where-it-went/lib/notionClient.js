@@ -26,6 +26,14 @@ const plainText = (runs) => (Array.isArray(runs) ? runs.map(r => r?.plain_text |
 const richText = (value) => ({ rich_text: value ? [{ text: { content: String(value) } }] : [] });
 const title = (value) => ({ title: [{ text: { content: String(value ?? '') } }] });
 
+const sortCategories = (categories) => {
+  return [...categories].sort((a, b) => {
+    if (a.name === 'Other') return 1;
+    if (b.name === 'Other') return -1;
+    return a.name.localeCompare(b.name);
+  });
+};
+
 export class NotionClient {
   constructor(token, { categories, accounts, transactions, subscriptions, trips, templates }) {
     this.token = token;
@@ -113,10 +121,10 @@ export class NotionClient {
 
   async fetchCategories() {
     const demo = this._demoOr(this.dbIds?.categories, DEMO_CATEGORIES);
-    if (demo.use) return demo.rows;
+    if (demo.use) return sortCategories(demo.rows);
 
     const rows = await this._fetchAllPages(this.dbIds.categories);
-    return rows
+    const parsed = rows
       .map(row => ({
         id: row.id,
         name: plainText(row.properties.Name?.title),
@@ -132,6 +140,8 @@ export class NotionClient {
         budgetRollover: row.properties['Budget Rollover']?.checkbox === true
       }))
       .filter(c => c.name.trim() !== ''); // drop rows with a blank title
+      
+    return sortCategories(parsed);
   }
 
   async fetchAccounts() {
