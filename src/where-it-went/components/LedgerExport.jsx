@@ -163,19 +163,25 @@ export default function LedgerExport({ data }) {
   
   <div class="filters">
     <input type="text" id="searchInput" placeholder="Search description, category, or account...">
-    <select id="typeFilter" style="flex: 0 0 150px;">
+    <select id="typeFilter" style="flex: 0 0 120px;">
       <option value="all">All Types</option>
       <option value="income">Income</option>
       <option value="expense">Expense</option>
       <option value="transfer">Transfer</option>
     </select>
-    <select id="periodFilter" style="flex: 0 0 160px;">
+    <select id="periodFilter" style="flex: 0 0 140px;">
       <option value="all_time">All Time</option>
       <option value="this_month">This Month</option>
       <option value="last_month">Last Month</option>
       <option value="last_3_months">Last 3 Months</option>
       <option value="last_6_months">Last 6 Months</option>
       <option value="this_year">This Year</option>
+    </select>
+    <select id="categoryFilter" style="flex: 0 0 150px;">
+      <option value="all">All Categories</option>
+    </select>
+    <select id="accountFilter" style="flex: 0 0 150px;">
+      <option value="all">All Accounts</option>
     </select>
   </div>
 
@@ -201,8 +207,34 @@ export default function LedgerExport({ data }) {
     const searchInput = document.getElementById('searchInput');
     const typeFilter = document.getElementById('typeFilter');
     const periodFilter = document.getElementById('periodFilter');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const accountFilter = document.getElementById('accountFilter');
     const tableRows = document.querySelectorAll('#ledgerTable tbody tr');
     const countDisplay = document.getElementById('count');
+
+    // Populate category and account dropdowns dynamically
+    const categories = new Set();
+    const accounts = new Set();
+    tableRows.forEach(row => {
+      const cat = row.cells[3].innerText.trim();
+      const acc = row.cells[4].innerText.trim();
+      if (cat) categories.add(cat);
+      if (acc) accounts.add(acc);
+    });
+    
+    Array.from(categories).sort().forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.toLowerCase();
+      opt.innerText = cat;
+      categoryFilter.appendChild(opt);
+    });
+    
+    Array.from(accounts).sort().forEach(acc => {
+      const opt = document.createElement('option');
+      opt.value = acc.toLowerCase();
+      opt.innerText = acc;
+      accountFilter.appendChild(opt);
+    });
 
     // Anchor 'relative' periods to the moment of export, not the moment the file is viewed
     const exportDate = new Date('${new Date().toISOString()}');
@@ -242,18 +274,24 @@ export default function LedgerExport({ data }) {
       const searchTerm = searchInput.value.toLowerCase();
       const typeTerm = typeFilter.value.toLowerCase();
       const periodTerm = periodFilter.value;
+      const catTerm = categoryFilter.value;
+      const accTerm = accountFilter.value;
       let visibleCount = 0;
 
       tableRows.forEach(row => {
         const dateStr = row.cells[0].innerText;
-        const text = row.innerText.toLowerCase();
         const typeBadge = row.querySelector('.badge').innerText.toLowerCase();
+        const catStr = row.cells[3].innerText.toLowerCase();
+        const accStr = row.cells[4].innerText.toLowerCase();
+        const text = row.innerText.toLowerCase();
         
         const matchesSearch = text.includes(searchTerm);
         const matchesType = typeTerm === 'all' || typeBadge === typeTerm;
         const matchesPeriod = isInPeriod(dateStr, periodTerm);
+        const matchesCat = catTerm === 'all' || catStr === catTerm;
+        const matchesAcc = accTerm === 'all' || accStr === accTerm;
 
-        if (matchesSearch && matchesType && matchesPeriod) {
+        if (matchesSearch && matchesType && matchesPeriod && matchesCat && matchesAcc) {
           row.classList.remove('hidden');
           visibleCount++;
         } else {
@@ -267,6 +305,8 @@ export default function LedgerExport({ data }) {
     searchInput.addEventListener('input', filterTable);
     typeFilter.addEventListener('change', filterTable);
     periodFilter.addEventListener('change', filterTable);
+    categoryFilter.addEventListener('change', filterTable);
+    accountFilter.addEventListener('change', filterTable);
   </script>
 </body>
 </html>
