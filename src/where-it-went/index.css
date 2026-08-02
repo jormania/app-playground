@@ -911,8 +911,13 @@ select option {
 }
 @media (min-width: 600px) {
   .budget-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: var(--space-lg);
+  }
+}
+@media (min-width: 900px) {
+  .budget-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
