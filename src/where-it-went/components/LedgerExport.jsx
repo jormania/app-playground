@@ -163,11 +163,19 @@ export default function LedgerExport({ data }) {
   
   <div class="filters">
     <input type="text" id="searchInput" placeholder="Search description, category, or account...">
-    <select id="typeFilter" style="flex: 0 0 200px;">
+    <select id="typeFilter" style="flex: 0 0 150px;">
       <option value="all">All Types</option>
       <option value="income">Income</option>
       <option value="expense">Expense</option>
       <option value="transfer">Transfer</option>
+    </select>
+    <select id="periodFilter" style="flex: 0 0 160px;">
+      <option value="all_time">All Time</option>
+      <option value="this_month">This Month</option>
+      <option value="last_month">Last Month</option>
+      <option value="last_3_months">Last 3 Months</option>
+      <option value="last_6_months">Last 6 Months</option>
+      <option value="this_year">This Year</option>
     </select>
   </div>
 
@@ -192,22 +200,60 @@ export default function LedgerExport({ data }) {
   <script>
     const searchInput = document.getElementById('searchInput');
     const typeFilter = document.getElementById('typeFilter');
+    const periodFilter = document.getElementById('periodFilter');
     const tableRows = document.querySelectorAll('#ledgerTable tbody tr');
     const countDisplay = document.getElementById('count');
+
+    // Anchor 'relative' periods to the moment of export, not the moment the file is viewed
+    const exportDate = new Date('${new Date().toISOString()}');
+    const exportYear = exportDate.getFullYear();
+    const exportMonth = exportDate.getMonth();
+
+    function isInPeriod(dateStr, period) {
+      if (period === 'all_time') return true;
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return false;
+      
+      const startOfExportMonth = new Date(exportYear, exportMonth, 1);
+      
+      if (period === 'this_month') {
+        return d >= startOfExportMonth && d < new Date(exportYear, exportMonth + 1, 1);
+      }
+      if (period === 'last_month') {
+        const start = new Date(exportYear, exportMonth - 1, 1);
+        return d >= start && d < startOfExportMonth;
+      }
+      if (period === 'last_3_months') {
+        const start = new Date(exportYear, exportMonth - 2, 1);
+        return d >= start && d < new Date(exportYear, exportMonth + 1, 1);
+      }
+      if (period === 'last_6_months') {
+        const start = new Date(exportYear, exportMonth - 5, 1);
+        return d >= start && d < new Date(exportYear, exportMonth + 1, 1);
+      }
+      if (period === 'this_year') {
+        const start = new Date(exportYear, 0, 1);
+        return d >= start && d < new Date(exportYear + 1, 0, 1);
+      }
+      return true;
+    }
 
     function filterTable() {
       const searchTerm = searchInput.value.toLowerCase();
       const typeTerm = typeFilter.value.toLowerCase();
+      const periodTerm = periodFilter.value;
       let visibleCount = 0;
 
       tableRows.forEach(row => {
+        const dateStr = row.cells[0].innerText;
         const text = row.innerText.toLowerCase();
         const typeBadge = row.querySelector('.badge').innerText.toLowerCase();
         
         const matchesSearch = text.includes(searchTerm);
         const matchesType = typeTerm === 'all' || typeBadge === typeTerm;
+        const matchesPeriod = isInPeriod(dateStr, periodTerm);
 
-        if (matchesSearch && matchesType) {
+        if (matchesSearch && matchesType && matchesPeriod) {
           row.classList.remove('hidden');
           visibleCount++;
         } else {
@@ -220,6 +266,7 @@ export default function LedgerExport({ data }) {
 
     searchInput.addEventListener('input', filterTable);
     typeFilter.addEventListener('change', filterTable);
+    periodFilter.addEventListener('change', filterTable);
   </script>
 </body>
 </html>
