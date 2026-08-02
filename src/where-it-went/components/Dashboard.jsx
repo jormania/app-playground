@@ -508,9 +508,9 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
       )}
 
       {/* KPI Cards */}
-      <div style={{
+      <div className="hide-scrollbar" style={{
         display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)',
-        overflowX: 'auto', paddingBottom: 'var(--space-xs)', WebkitOverflowScrolling: 'touch'
+        overflowX: 'auto', overflowY: 'hidden', paddingBottom: 'var(--space-xs)', WebkitOverflowScrolling: 'touch'
       }}>
         {[
           { label: 'Income', value: animatedIncome, real: income, prev: prevIncome, color: 'var(--color-success)', inverse: false, data: trendSeries.income, fKey: 'income' },
