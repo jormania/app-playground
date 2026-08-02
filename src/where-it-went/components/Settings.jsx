@@ -857,6 +857,15 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         </CollapsibleSection>
       )}
 
+      <CollapsibleSection id="export" title="Data Export">
+        <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
+          Download your entire transaction history as a CSV or HTML file for backup or analysis in other tools.
+        </p>
+        <Suspense fallback={<div>Loading export module...</div>}>
+          <LedgerExport data={data} />
+        </Suspense>
+      </CollapsibleSection>
+
       <div style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}>
         {status.msg && (
           <div role="status" style={{
@@ -908,14 +917,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         )}
       </Suspense>
 
-      <CollapsibleSection id="export" title="Data Export">
-        <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
-          Download your entire transaction history as a CSV file for backup or analysis in other tools.
-        </p>
-        <Suspense fallback={<div>Loading export module...</div>}>
-          <LedgerExport data={data} />
-        </Suspense>
-      </CollapsibleSection>
+
 
       <PromptModal
         isOpen={showScrubPrompt}

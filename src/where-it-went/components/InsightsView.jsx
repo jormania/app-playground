@@ -128,10 +128,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
         </div>
       ) : (<>
 
-      <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)', flexWrap: 'wrap' }}>
-        <MonthlyDigest transactions={data.transactions || []} categories={data.categories || []} period="this_month" title="This Month" />
-        <MonthlyDigest transactions={data.transactions || []} categories={data.categories || []} period="this_year" title="This Year" />
-      </div>
+
 
       {/* SECTION: ACT */}
       <div style={{ marginBottom: 'var(--space-2xl)' }}>
@@ -198,6 +195,18 @@ export default function InsightsView({ data, period, filterProps, config, initia
             </div>
           </div>
         )}
+      </div>
+
+      {/* SECTION: REVIEW */}
+      <div style={{ marginBottom: 'var(--space-2xl)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)' }}>
+          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-bold)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-accent)', backgroundColor: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', padding: '2px 8px', borderRadius: 'var(--radius-sm)' }}>Review</span>
+          <h2 style={{ fontSize: 'var(--text-xl)', margin: 0, color: 'var(--color-ink)' }}>Current Standing</h2>
+        </div>
+        <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
+          <MonthlyDigest transactions={data.transactions || []} categories={data.categories || []} period="this_month" title="This Month" />
+          <MonthlyDigest transactions={data.transactions || []} categories={data.categories || []} period="this_year" title="This Year" />
+        </div>
       </div>
 
       {/* SECTION: AHEAD — the forecast. Placed straight after "Act" because it's

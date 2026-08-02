@@ -60,7 +60,7 @@ export default function PullToRefresh({ onRefresh, children }) {
   }, [startY, currentY, pullDistance, refreshing, onRefresh]);
 
   return (
-    <div ref={containerRef} style={{ height: '100%', overflowY: 'auto', position: 'relative' }}>
+    <div ref={containerRef} className="hide-scrollbar" style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', position: 'relative' }}>
       <div 
         style={{
           position: 'absolute',
@@ -105,6 +105,8 @@ export default function PullToRefresh({ onRefresh, children }) {
       </div>
       <style>{`
         @keyframes spin { 100% { transform: rotate(360deg); } }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
     </div>
   );
