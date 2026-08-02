@@ -13,6 +13,7 @@ import { useSubscriptionsEngine } from './lib/useSubscriptionsEngine';
 import { useTripEngine } from './lib/useTripEngine';
 import { readJson, writeJson } from './lib/storage';
 import { defaultTheme } from './lib/theme';
+import { applyNoraSplit } from './lib/noraSplit';
 import Navigation from './components/Navigation';
 import UpcomingBanner from './components/UpcomingBanner';
 import OfflineBanner from './components/OfflineBanner';
@@ -325,7 +326,10 @@ export default function App() {
    */
   const handleAddTransaction = async (_id, tx) => {
     try {
-      await client.addTransaction(tx);
+      const txs = applyNoraSplit(tx, data?.categories || []);
+      for (const t of txs) {
+        await client.addTransaction(t);
+      }
       await loadData();
       setShowAddForm(false);
       setRepeatDraft(null);

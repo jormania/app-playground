@@ -25,6 +25,7 @@ import PullToRefresh from './PullToRefresh';
 import QuickTemplates from './QuickTemplates';
 import SmartTextEntry from './SmartTextEntry';
 import { getChartColors, getDoughnutOptions, getBarOptions } from '../lib/chartConfig';
+import { applyNoraSplit } from '../lib/noraSplit';
 
 const CARD = {
   padding: 'var(--space-lg)',
@@ -457,7 +458,13 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
         trips={data.trips || []}
         recentTransactions={(data.transactions || []).slice(0, 15)}
         onAdd={async (tx) => {
-          return await client.addTransaction(tx);
+          const txs = applyNoraSplit(tx, data.categories || []);
+          const ids = [];
+          for (const t of txs) {
+            const result = await client.addTransaction(t);
+            if (result?.id) ids.push(result.id);
+          }
+          return ids.length === 1 ? { id: ids[0] } : ids;
         }}
         onUpdate={async (id, updates) => {
           return await client.updateTransaction(id, updates);
