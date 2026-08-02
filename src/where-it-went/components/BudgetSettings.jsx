@@ -90,9 +90,9 @@ export default function BudgetSettings({ categories, client, onDataChange }) {
           income categories cannot have a limit.
         </p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 'var(--space-md)' }}>
+        <div className="budget-grid">
           {expenseCategories.map(c => (
-            <div key={c.id} style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div key={c.id} className="budget-mini-card" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px', justifyContent: 'flex-start' }}>
               <Field
                 type="number"
                 min="0"
