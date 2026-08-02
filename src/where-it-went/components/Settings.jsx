@@ -316,7 +316,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
           <SettingsToggle
             label="Budget limits"
-            hint="Show spending limits per category on the Dashboard, with progress bars."
+            hint="Show spending limits per category on the Dashboard, with progress bars, and the Budget Left KPI card."
             checked={features.budgeting}
             onChange={e => handleFeatureToggle('budgeting', e.target.checked)}
           />

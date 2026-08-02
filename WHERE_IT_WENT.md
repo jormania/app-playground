@@ -1247,3 +1247,30 @@ suite (755 → 770 tests), typecheck and lint all green.
 - **Ledger Export**: Implemented a "Data Export" section in `Settings.jsx` featuring `LedgerExport.jsx`, allowing users to download their full transaction history as a clean CSV file.
 - **Filtering Refactor & Duplicate Logic**: Extracted scattered filtering logic into a centralized `lib/filtering.js` for consistency across all views (Dashboard, TransactionsList).
 - **Chart Reactivity & UI Polish**: Fixed Chart.js initialization in `Dashboard.jsx` to dynamically respect theme changes via `useLayoutEffect`. Added selection highlights to `PeriodSheet`. Added a visual "✈️ Trip" badge to the Date field in `TransactionForm` when a transaction belongs to a trip. Organized "Multi-Currency Totals" correctly inside the Feature Toggles section.
+
+## 4. The AI Parser
+WhereItWent includes a powerful, Claude-powered AI parser that allows you to log transactions conversationally rather than filling out forms manually.
+
+### How it Works
+When enabled in **Settings** (under **AI & Automation**), the main "Smart Text Entry" box on your dashboard switches from basic keyword matching to full natural language processing. 
+
+The AI engine is deeply context-aware. It has real-time access to your:
+- **Accounts:** (e.g., it knows if you say "paid from BCR" to route it there instead of the default Revolut account).
+- **Categories:** (It uses its broad knowledge of merchants to perfectly assign "Mega Image" to Groceries or "Cinema City" to Entertainment).
+- **Active Trips:** (If you log a transaction in PLN while on an active Poland trip, it links the transaction to that trip automatically).
+- **Recent Transactions:** (It can understand updates and deletions to recent entries).
+
+### What to Expect & Best Practices
+
+1. **Title-Cased & Clean Descriptions:** The AI will automatically clean up your conversational input. It formats descriptions neatly (e.g. "Dinner at McDonald's") and strips out filler verbs ("I bought", "Paid on card").
+2. **Brand Standardization:** If you type shorthand (like "McD" or "e-mag"), the parser will expand these to their official brand names ("McDonald's", "eMAG").
+3. **Multi-Item Purchases:** You don't need to categorize every single item in a grocery haul. If you type *"bought milk, eggs, and bread at Mega Image for 200"*, the AI will log the description as **"Groceries at Mega Image"**, and neatly store the specific items ("milk, eggs, and bread") in the transaction's **Notes** field!
+4. **Split Expenses:** The AI understands debt and splits. If you type *"Paid 100 for dinner but John owes me 50"*, the AI will create **two** transactions for you: one 100 RON Expense, and one 50 RON Income (or Transfer) representing the pending debt.
+5. **Editing/Deleting:** Because it sees your recent ledger, you can just tell it to fix mistakes. Typed *"change that lunch to 20"* or *"delete the coffee expense"* and it will find the correct row and modify it in place.
+
+### The "Examples" Feature (Few-Shot Learning)
+Under the hood, the AI uses a concept called **Few-Shot Prompting**. We supply the engine with structural examples of what a perfect transaction looks like. This forces the LLM to adhere to a strict, highly organized ledger format rather than just guessing.
+For example, the engine sees this exact rule under the hood:
+- *Input:* "bought milk, eggs, and bread at e-mag for 200"
+- *Expected:* Logs `description: "Groceries at eMAG"`, `notes: "milk, eggs, and bread"`.
+This guarantees consistent, clean data across all your entries without you needing to do the manual organizing.

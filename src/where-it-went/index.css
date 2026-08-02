@@ -817,7 +817,6 @@ select option {
   align-self: flex-start;
 }
 
-.tx-bottom-bar-actions,
 .quick-tx-container {
   display: flex;
   gap: 6px;
@@ -827,9 +826,17 @@ select option {
   scrollbar-width: none;
   padding-bottom: 2px;
 }
-.tx-bottom-bar-actions::-webkit-scrollbar,
 .quick-tx-container::-webkit-scrollbar {
   display: none;
+}
+
+.tx-bottom-bar-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  width: 100%;
+  padding-bottom: 2px;
 }
 
 /* Translucent pill style for Dashboard Quick Transactions and Bottom Bar */

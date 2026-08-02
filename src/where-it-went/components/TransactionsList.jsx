@@ -1,6 +1,7 @@
 import { CategoryIcon } from './CategoryIcon';
 import { AccountIcon } from './AccountIcon';
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import TransactionForm from './TransactionForm';
 import DuplicateReview from './DuplicateReview';
 import { Button } from '../../ds/components/Button';
@@ -425,7 +426,7 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
           return tx && tx.reconciled;
         });
         const reconcileText = allSelectedReconciled ? 'Unreconcile' : 'Reconcile';
-        return (
+        return createPortal(
           <div className="tx-bottom-bar">
             <div className="tx-bottom-bar-header">{selectedTxs.size} selected</div>
             <div className="tx-bottom-bar-actions">
@@ -433,10 +434,11 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
               {onRepeat && <button type="button" className="action-pill-btn" onClick={() => singleTx && onRepeat(singleTx)} disabled={bulkProcessing || !singleTx} style={{ visibility: singleTx ? 'visible' : 'hidden' }}>Repeat</button>}
               <button type="button" className="action-pill-btn" onClick={() => setShowBulkCategoryModal(true)} disabled={bulkProcessing}>Categorize</button>
               <button type="button" className="action-pill-btn" onClick={handleBulkReconcile} disabled={bulkProcessing}>{reconcileText}</button>
-              <button type="button" className="action-pill-btn danger" onClick={handleBulkDelete} disabled={bulkProcessing}>Delete</button>
+              <button type="button" className="action-pill-btn danger" style={{ color: 'var(--color-danger)' }} onClick={handleBulkDelete} disabled={bulkProcessing}>Delete</button>
               <button type="button" className="action-pill-btn" onClick={() => setSelectedTxs(new Set())} disabled={bulkProcessing}>Cancel</button>
             </div>
-          </div>
+          </div>,
+          document.body
         );
       })()}
 

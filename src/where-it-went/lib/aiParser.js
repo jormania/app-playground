@@ -53,10 +53,17 @@ You must return a valid JSON object matching this schema exactly:
       "tripId": String,
       "type": "Expense" | "Income" | "Transfer",
       "description": String,
+      "notes": String,
       "date": String
     }
   ]
 }
+
+Examples:
+- Input: "paid 50 RON on card for lunch at japanos"
+  Output JSON: {"transactions": [{"action": "create", "amount": 50, "description": "Lunch at Japanos", "date": "${todayStr}", "type": "Expense", "categoryId": "<ID for Dining>"}]}
+- Input: "bought milk, eggs, and bread at e-mag for 200"
+  Output JSON: {"transactions": [{"action": "create", "amount": 200, "description": "Groceries at eMAG", "notes": "milk, eggs, and bread", "date": "${todayStr}", "type": "Expense", "categoryId": "<ID for Groceries>"}]}
 
 Available Categories:
 ${categoryList}
@@ -76,10 +83,11 @@ Rules:
 3. If the user mentions a SPLIT expense (e.g., "Paid 100 for dinner but John owes me 50"), return TWO transactions: one Expense for 100 on "Dining" (or similar), and one Income/Transfer for 50 representing the debt to be received.
 4. "action" defaults to "create". If the user wants to edit or delete a past transaction (e.g., "change that to 20", "delete the lunch expense"), use "update" or "delete" and provide the "id" from Recent Transactions.
 5. "amount" MUST be a positive Number (e.g. 15). By default, all values are in RON unless stated otherwise. If the user mentions a foreign currency (e.g., "paid 20 EUR"), map the "amount" to your best estimate or the raw value, but you MUST provide "originalAmount" (Number) and "originalCurrency" (String, e.g. "EUR").
-6. "description" should be clean and concise (e.g., "Uber to mall", "Lunch"). Strip off any trailing prepositions that were meant to introduce the amount.
-7. "date" MUST be a string in "YYYY-MM-DD" format. Today is ${todayStr}. Interpret words like "yesterday" relative to today. If no date is given, use today's date (${todayStr}).
-8. "type" MUST be "Expense", "Income", or "Transfer". Default to "Expense".
-9. "categoryId": Find the ID of the most appropriate category from the list. Use your broad knowledge of Romanian vendors and chains to accurately classify merchants:
+6. "description" should be clean and concise. Always format it in Title Case. Standardize merchant names to their official brand names (e.g., convert 'McD' to 'McDonald's', 'Mega' to 'Mega Image'). Strip out filler verbs ('spent', 'paid', 'bought') and payment methods ('on card', 'in cash'). Extract only the core essence of the transaction.
+7. "description" format: Whenever possible, format it as "<action/item> at/from <venue>" (e.g., "Dinner at McDonald's"). If the user lists multiple items from a single store (e.g., 'milk and eggs at Mega Image'), summarize the description as '[Category] at [Venue]' (e.g., 'Groceries at Mega Image') and move the detailed list of items into the "notes" field. If the expense is for Nora and categorized as such, DO NOT include phrases like "for Nora" or "with Nora" in the description.
+8. "date" MUST be a string in "YYYY-MM-DD" format. Today is ${todayStr}. Interpret words like "yesterday" relative to today. If no date is given, use today's date (${todayStr}).
+9. "type" MUST be "Expense", "Income", or "Transfer". Default to "Expense".
+10. "categoryId": Find the ID of the most appropriate category from the list. Use your broad knowledge of Romanian vendors and chains to accurately classify merchants:
    - Utilities (e.g., PPC, Enel, Engie, E.ON, Digi, Orange, Vodafone)
    - Groceries (e.g., Mega Image, Kaufland, Lidl, Carrefour, Auchan, Sezamo, Freshful)
    - Pharmacies/Health (e.g., Catena, Dr. Max, Help Net, Dona)
@@ -87,9 +95,9 @@ Rules:
    - Entertainment/Dining (e.g., Cinema City, local restaurants, museums, Glovo, Tazz)
    - Transport (e.g., Uber, Bolt, CFR)
    This mapping is required unless type is Transfer.
-10. "accountId": Find the ID of the most appropriate account from the list. By default, use the plain "Revolut" account (NOT Revolut EUR). Only use a different account if the user explicitly asks for it (e.g. "cash", "BCR", "Revolut EUR").
-11. "toAccountId": ONLY provide this if type is "Transfer".
-12. "tripId": ONLY provide this if the transaction is associated with one of the Available Trips.`;
+11. "accountId": Find the ID of the most appropriate account from the list. By default, use the plain "Revolut" account (NOT Revolut EUR). Only use a different account if the user explicitly asks for it (e.g. "cash", "BCR", "Revolut EUR").
+12. "toAccountId": ONLY provide this if type is "Transfer".
+13. "tripId": ONLY provide this if the transaction is associated with one of the Available Trips.`;
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -143,6 +151,7 @@ Rules:
     id: t.id,
     isSubscription: !!t.isSubscription,
     description: t.description,
+    notes: t.notes,
     amount: t.amount,
     originalAmount: t.originalAmount,
     originalCurrency: t.originalCurrency,

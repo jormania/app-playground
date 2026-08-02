@@ -517,7 +517,7 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
           { label: 'Expenses', value: animatedExpenses, real: expenses, prev: prevExpenses, color: 'var(--color-danger)', inverse: true, data: trendSeries.expense, fKey: 'expense' },
           { label: 'Net', value: animatedNet, real: net, prev: prevNet, color: net >= 0 ? 'var(--color-success)' : 'var(--color-danger)', inverse: false, data: trendSeries.net, fKey: 'net' },
           { label: 'Budget Left', value: animatedBudgetLeft, real: budgetLeft, prev: null, color: 'var(--color-ink)', inverse: false, data: null, fKey: null }
-        ].filter(kpi => kpi.label !== 'Budget Left' || config?.features?.budget !== false).map(kpi => (
+        ].filter(kpi => kpi.label !== 'Budget Left' || config?.features?.budgeting !== false).map(kpi => (
           <div
             key={kpi.label}
             className={`kpi-card kpi-${kpi.label.replace(' ', '-').toLowerCase()} stagger-1`}
