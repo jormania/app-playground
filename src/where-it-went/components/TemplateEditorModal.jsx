@@ -59,7 +59,7 @@ export default function TemplateEditorModal({ isOpen, onClose, template, categor
 
   return (
     <Modal open={isOpen} onClose={onClose} title={template ? "Edit Template" : "New Template"}>
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "8px", boxSizing: "border-box", minWidth: 0, padding: "0 3px" }}>
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "8px", overflowX: "hidden", boxSizing: "border-box", minWidth: 0 }}>
         <SegmentedControl
           options={[{ value: "Expense", label: "Expense" }, { value: "Income", label: "Income" }]}
           value={type}

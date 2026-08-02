@@ -312,16 +312,7 @@ export default function TransactionForm({ transactions = [], categories, account
   return (
     <form
       onSubmit={handleSubmit}
-      style={{
-        display: 'flex', flexDirection: 'column', gap: '8px',
-        boxSizing: 'border-box', minWidth: 0,
-        // 3px of horizontal breathing room, and no overflow clipping. A focus
-        // ring is a box-shadow, so `overflow-x: hidden` sliced it off the
-        // right-hand field of every paired row — which read as the field itself
-        // being cut off. The layout now fits without clipping, so the guard is
-        // no longer needed; the padding gives the ring somewhere to land.
-        padding: '0 3px',
-      }}
+      style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowX: 'hidden', boxSizing: 'border-box', minWidth: 0 }}
     >
       <SegmentedControl
         value={type}
