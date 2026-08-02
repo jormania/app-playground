@@ -1231,3 +1231,11 @@ suite (755 → 770 tests), typecheck and lint all green.
 - **Chat with your Data**: On the Insights tab, users can ask questions about their spending for the active period (e.g., "What was my biggest expense?"). The AI analyzes the local JSON data of the filtered transactions and responds instantly.
 - **Romanian Cultural Context**: The system prompt is explicitly primed with Romanian merchant contexts (eMAG, Sezamo, Catena, Cinema City, PPC, Enel) ensuring it understands and correctly categorizes local consumer chains without manual oversight.
 - **Smart Defaults**: Ensures standard default values—currency snaps to RON unless stated otherwise, and the default "Revolut" account is utilized implicitly to prevent accidental logging against specialized accounts like "Revolut (EUR)".
+
+## Codebase Audit Fixes (Section 1)
+- **Dashboard & KPIs**: Fixed a CSS parsing error that caused KPI sparkline margins to collapse on mobile due to invalid negations (e.g., `-var(--space-md)`). Simplified upcoming bills calendar logic.
+- **Currency Presentation**: Restored `formatCurrency` to consistently render two decimal places for amounts displayed within the ledger, preventing silent truncations in the UI while preserving exact reconciling totals.
+- **Settings State Persistence**: Resolved a bug where toggling visual flair configurations or the mathematical trend line modes would not immediately persist to local state or Notion, ensuring toggles always apply predictably.
+- **API Optimization**: Completely refactored the bulk operations handler (Delete, Categorize, Reconcile) in `TransactionsList.jsx` to execute sequentially instead of heavily parallelizing requests via `Promise.all()`, mitigating Notion API `rate_limit_error` bottlenecks when selecting large batches of transactions.
+- **Mobile Race Conditions**: Hardened the mobile swipe handler (`SwipeableRow.jsx`) with a `hasSwiped` ref boundary, preventing touch event propagation that mistakenly fired the transaction edit click handler immediately after a swipe-to-split gesture on devices like the S24.
+- **Split Transaction Math**: Fixed the "remainderOriginalAmount" logic in `SplitTransactionModal.jsx` for Income transactions where the user had entered a foreign currency, ensuring the Gross amount calculation remains accurate without artificially inflating the base original figure.
