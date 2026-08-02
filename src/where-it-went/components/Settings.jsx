@@ -575,7 +575,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
               client={client}
               onDataChange={onDataChange}
               config={config}
-              onConfigChange={handleConfigSave}
+              onConfigChange={onSave}
             />
           </Suspense>
         </CollapsibleSection>
