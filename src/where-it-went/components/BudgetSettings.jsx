@@ -7,10 +7,11 @@ import { SelectField } from '../../ds/components/SelectField';
 import { formatCurrency } from '../lib/currency';
 import { BUDGET_PERIODS, normalizePeriod, formatPeriodSuffix, MONTHS_PER } from '../lib/budgets';
 
-export default function BudgetSettings({ categories, client, onDataChange }) {
+export default function BudgetSettings({ categories, client, onDataChange, config, onConfigChange }) {
   const [limits, setLimits] = useState({});
   const [periods, setPeriods] = useState({});
   const [rollovers, setRollovers] = useState({});
+  const [monthlyIncome, setMonthlyIncome] = useState('');
   const [saveStatus, setSaveStatus] = useState('idle');
   const [error, setError] = useState(null);
 
@@ -30,6 +31,7 @@ export default function BudgetSettings({ categories, client, onDataChange }) {
     setLimits(initial);
     setPeriods(initialPeriods);
     setRollovers(initialRollovers);
+    setMonthlyIncome(config?.monthlyIncome || '');
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories]);
@@ -54,6 +56,10 @@ export default function BudgetSettings({ categories, client, onDataChange }) {
 
       for (const update of updates) {
         await client.updateCategoryBudget(update.id, update.patch);
+      }
+      
+      if (onConfigChange && config) {
+        onConfigChange({ ...config, monthlyIncome: Number(monthlyIncome) || 0 });
       }
 
       setSaveStatus('saved');
@@ -83,6 +89,17 @@ export default function BudgetSettings({ categories, client, onDataChange }) {
         Set a limit per category and choose how long it lasts. With rollover on, unspent
         room carries into the next window — and an overspend carries too.
       </p>
+      
+      <div style={{ maxWidth: '250px' }}>
+        <Field
+          label="Expected Monthly Income"
+          type="number"
+          min="0"
+          placeholder="e.g. 15000"
+          value={monthlyIncome}
+          onChange={(e) => setMonthlyIncome(e.target.value)}
+        />
+      </div>
 
       <div style={{ padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', textAlign: 'center' }}>
         <div style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: '4px' }}>
