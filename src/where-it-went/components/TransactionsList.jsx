@@ -429,8 +429,8 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
           <div className="tx-bottom-bar">
             <div className="tx-bottom-bar-header">{selectedTxs.size} selected</div>
             <div className="tx-bottom-bar-actions">
-              {singleTx && onSplit && <button type="button" className="action-pill-btn" onClick={() => onSplit(singleTx)} disabled={bulkProcessing}>Split</button>}
-              {singleTx && onRepeat && <button type="button" className="action-pill-btn" onClick={() => onRepeat(singleTx)} disabled={bulkProcessing}>Repeat</button>}
+              {onSplit && <button type="button" className="action-pill-btn" onClick={() => singleTx && onSplit(singleTx)} disabled={bulkProcessing || !singleTx} style={{ visibility: singleTx ? 'visible' : 'hidden' }}>Split</button>}
+              {onRepeat && <button type="button" className="action-pill-btn" onClick={() => singleTx && onRepeat(singleTx)} disabled={bulkProcessing || !singleTx} style={{ visibility: singleTx ? 'visible' : 'hidden' }}>Repeat</button>}
               <button type="button" className="action-pill-btn" onClick={() => setShowBulkCategoryModal(true)} disabled={bulkProcessing}>Categorize</button>
               <button type="button" className="action-pill-btn" onClick={handleBulkReconcile} disabled={bulkProcessing}>{reconcileText}</button>
               <button type="button" className="action-pill-btn danger" onClick={handleBulkDelete} disabled={bulkProcessing}>Delete</button>

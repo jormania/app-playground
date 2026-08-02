@@ -1,12 +1,14 @@
 .footer {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-sm, 12px);
   margin-top: var(--space-xs, 8px);
 }
 
 .left {
-  margin-right: auto;
+  display: flex;
+  align-items: center;
 }
 
 .right {
