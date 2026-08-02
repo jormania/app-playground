@@ -127,7 +127,11 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
   );
 
   const budgetLeft = useMemo(() => {
-    return budgets.reduce((sum, b) => sum + (b.remaining > 0 ? b.remaining : 0), 0);
+    return budgets.reduce((sum, b) => {
+      const eq = monthlyEquivalent(b);
+      const remaining = eq.limit - eq.spent;
+      return sum + (remaining > 0 ? remaining : 0);
+    }, 0);
   }, [budgets]);
   
   const animatedBudgetLeft = useCountUp(budgetLeft);
