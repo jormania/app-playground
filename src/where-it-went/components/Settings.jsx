@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
 import { SettingsToggle } from '../../ds/components/SettingsToggle';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { PromptModal } from '../../ds';
 import { NotionClient } from '../lib/notionClient';
-import SubscriptionEditorModal from './SubscriptionEditorModal';
-import TemplateEditorModal from './TemplateEditorModal';
-import TripEditorModal from './TripEditorModal';
-import TripExportModal from './TripExportModal';
+
+const SubscriptionEditorModal = lazy(() => import('./SubscriptionEditorModal'));
+const TemplateEditorModal = lazy(() => import('./TemplateEditorModal'));
+const TripEditorModal = lazy(() => import('./TripEditorModal'));
+const TripExportModal = lazy(() => import('./TripExportModal'));
+const LedgerExport = lazy(() => import('./LedgerExport'));
+
 import { generateDeepInsights } from '../lib/analytics';
 import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
@@ -111,6 +114,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     flairLucideIcons: baseFeatures.flairLucideIcons ?? false,
     mobileSwipe: baseFeatures.mobileSwipe ?? true,
     aiParser: baseFeatures.aiParser ?? false,
+    multiCurrency: baseFeatures.multiCurrency ?? false,
     trendLineMode: baseFeatures.trendLineMode ?? 'none'
   });
   const [upcomingLeadDays, setUpcomingLeadDays] = useState(config.upcomingLeadDays ?? DEFAULT_LEAD_DAYS);
@@ -142,11 +146,6 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     ...extra
   });
 
-  /**
-   * Emptying every field and pressing Save is the documented way to disconnect —
-   * it used to call a function (`handleClear`) that didn't exist anywhere in this
-   * file, throwing a ReferenceError and leaving the form stuck.
-   */
   const handleClear = () => {
     setToken('');
     setTransactionsDb('');
@@ -156,11 +155,6 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     setTripsDb('');
     setTemplatesDb('');
     setClaudeApiKey('');
-    // `demoMode: true` is not decoration — it is what the success message below
-    // has always claimed. Without it the app served fixture data while the flag
-    // read false, so the DEMO MODE banner stayed hidden *and* the subscriptions
-    // engine, the reminder snapshot and the offline outbox all treated sample
-    // data as real.
     onSave({
       ...EMPTY_CONFIG_FIELDS, theme, features, demoMode: true,
       upcomingLeadDays: Number(upcomingLeadDays) || DEFAULT_LEAD_DAYS,
@@ -171,18 +165,13 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const handleCreateTemplatesDb = async () => {
     try {
       setStatus({ type: 'loading', msg: 'Creating database...' });
-      
-      // We need the parent page ID. We can get it from the categories DB since it's required.
       const catDbMeta = await client._request({ path: `databases/${categoriesDb}`, method: 'GET' });
       if (!catDbMeta?.parent?.page_id) {
         throw new Error("Could not find parent page ID from Categories Database.");
       }
-      
       const newDb = await client.createTemplatesDatabase(catDbMeta.parent.page_id, categoriesDb, accountsDb);
-      
       const newId = newDb.id.replace(/-/g, '');
       setTemplatesDb(newId);
-      
       setStatus({ type: 'success', msg: 'Quick Templates database created!' });
       setTimeout(() => setStatus({ type: '', msg: '' }), 3000);
     } catch (err) {
@@ -193,17 +182,14 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
 
   const handleSave = async () => {
     setStatus({ type: '', msg: '' });
-
     if (!token.trim() && !transactionsDb && !categoriesDb && !accountsDb) {
       handleClear();
       return;
     }
-
     if (!token.trim() || !transactionsDb || !categoriesDb || !accountsDb) {
       setStatus({ type: 'error', msg: 'Please fill in the Token, Categories, Accounts and Transactions fields to connect to Notion.' });
       return;
     }
-
     setTesting(true);
     try {
       const testClient = new NotionClient(token.trim(), {
@@ -213,14 +199,10 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         subscriptions: extractNotionId(subscriptionsDb),
         trips: extractNotionId(tripsDb)
       });
-
-      // Test every configured database, not just Categories — a typo'd Transactions
-      // ID used to save cleanly and only surface as the generic load-error screen.
       const checks = [testClient.fetchCategories(), testClient.fetchAccounts(), testClient.fetchTransactions()];
       if (subscriptionsDb) checks.push(testClient.fetchSubscriptions());
       if (tripsDb) checks.push(testClient.fetchTrips());
       await Promise.all(checks);
-
       setStatus({ type: 'success', msg: 'Connection successful!' });
       onSave(buildConfig());
       setTimeout(() => { if (onDone) onDone(); }, 1000);
@@ -257,7 +239,6 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
       const result = await liveClient.scrubTransactionsAndSubscriptions({
         onProgress: (done, total) => setScrubProgress({ done, total })
       });
-
       onSave(buildConfig({ demoMode: true }));
       setStatus({ type: 'success', msg: `Scrub complete — archived ${result.archived} record${result.archived === 1 ? '' : 's'} in Notion (recoverable from its trash). Entered Demo Mode.` });
       setTimeout(() => { if (onDone) onDone(); }, 1500);
@@ -333,8 +314,6 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
       </CollapsibleSection>
       <CollapsibleSection id="features" title="Feature Toggles">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-          {/* Every switch says what it actually changes. Four unlabelled toggles
-              are four things you have to turn on and off to find out. */}
           <SettingsToggle
             label="Budget limits"
             hint="Show spending limits per category on the Dashboard, with progress bars."
@@ -376,11 +355,6 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             checked={features.transfers === true}
             onChange={e => handleFeatureToggle('transfers', e.target.checked)}
           />
-          {/* On by default — `!== false` so a config saved before this key
-              existed opts in without needing a migration. Named "activity"
-              rather than "bills": a recurring subscription can be a charge
-              (Spotify) or a payment you collect (rent from a tenant), and
-              "bill" only fits one of those. */}
           <SettingsToggle
             label="Upcoming activity"
             hint="Warn you before a recurring transaction happens, on the Dashboard and in a bar at the top."
@@ -392,6 +366,12 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
             hint="Enable swiping left or right on a transaction to quickly Repeat or Split it."
             checked={features.mobileSwipe !== false}
             onChange={e => handleFeatureToggle('mobileSwipe', e.target.checked)}
+          />
+          <SettingsToggle
+            label="Multi-Currency Totals"
+            hint="KPI cards calculate and display foreign currency aggregations instead of unifying entirely to RON."
+            checked={features.multiCurrency}
+            onChange={e => handleFeatureToggle('multiCurrency', e.target.checked)}
           />
         </div>
       </CollapsibleSection>
@@ -552,10 +532,6 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         </div>
       </CollapsibleSection>
 
-
-      {/* Rejected offline writes — surfaced with the real error rather than
-          dropped, which is the whole point of the outbox having a dead-letter
-          list instead of retrying a malformed write forever. */}
       {failedJobs.length > 0 && (
         <div style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}>
           <h2 style={{ margin: '0 0 var(--space-xs) 0', fontSize: 'var(--text-lg)', color: 'var(--color-danger)' }}>
@@ -591,7 +567,6 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         </div>
       )}
 
-      {/* Subscriptions Management Section */}
       {data?.subscriptions && (
         <CollapsibleSection
           id="subscriptions"
@@ -636,6 +611,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                     tabIndex={0}
                     onClick={() => setEditingSub(sub)}
                     onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditingSub(sub); } }}
+                    className="settings-row"
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)',
@@ -643,8 +619,6 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                       borderLeft: `4px solid ${catColor}`, cursor: 'pointer',
                       transition: 'background-color 0.2s'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-2)'}
-                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-surface)'}
                   >
                     <div>
                       <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{sub.name}</div>
@@ -678,7 +652,6 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         </CollapsibleSection>
       )}
 
-      {/* Quick Templates Management Section */}
       {features.quickTemplates && data?.templates && (
         <CollapsibleSection
           id="quickTemplates"
@@ -705,6 +678,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                     tabIndex={0}
                     onClick={() => setEditingTemplate(tpl)}
                     onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditingTemplate(tpl); } }}
+                    className="settings-row"
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)',
@@ -712,8 +686,6 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                       borderLeft: `4px solid ${catColor}`, cursor: 'pointer',
                       transition: 'background-color 0.2s'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-2)'}
-                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-surface)'}
                   >
                     <div>
                       <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{tpl.description}</div>
@@ -745,54 +717,57 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         </CollapsibleSection>
       )}
 
-      {(isAddingSub || editingSub) && (
-        <SubscriptionEditorModal
-          isOpen={isAddingSub || !!editingSub}
-          onClose={() => { setIsAddingSub(false); setEditingSub(null); }}
-          sub={editingSub}
-          data={data}
-          onSave={async (id, subData) => {
-            if (id) await client.updateSubscription(id, subData);
-            else await client.addSubscription(subData);
-            if (onDataChange) onDataChange();
-          }}
-          onDelete={async (id) => {
-            await client.deleteSubscription(id);
-            if (onDataChange) onDataChange();
-          }}
-        />
-      )}
+      <Suspense fallback={null}>
+        {(isAddingSub || editingSub) && (
+          <SubscriptionEditorModal
+            isOpen={isAddingSub || !!editingSub}
+            onClose={() => { setIsAddingSub(false); setEditingSub(null); }}
+            sub={editingSub}
+            data={data}
+            onSave={async (id, subData) => {
+              if (id) await client.updateSubscription(id, subData);
+              else await client.addSubscription(subData);
+              if (onDataChange) onDataChange();
+            }}
+            onDelete={async (id) => {
+              await client.deleteSubscription(id);
+              if (onDataChange) onDataChange();
+            }}
+          />
+        )}
+      </Suspense>
 
-      {(isAddingTemplate || editingTemplate) && (
-        <TemplateEditorModal
-          isOpen={true}
-          template={editingTemplate}
-          categories={data?.categories || []}
-          accounts={data?.accounts || []}
-          onClose={() => {
-            setIsAddingTemplate(false);
-            setEditingTemplate(null);
-          }}
-          onSave={async (tpl) => {
-            if (editingTemplate) {
-              await client?.updateTemplate?.(editingTemplate.id, tpl);
-            } else {
-              await client?.addTemplate?.(tpl);
-            }
-            if (onDataChange) onDataChange();
-            setIsAddingTemplate(false);
-            setEditingTemplate(null);
-          }}
-          onDelete={async (id) => {
-            await client?.deleteTemplate?.(id);
-            if (onDataChange) onDataChange();
-            setIsAddingTemplate(false);
-            setEditingTemplate(null);
-          }}
-        />
-      )}
+      <Suspense fallback={null}>
+        {(isAddingTemplate || editingTemplate) && (
+          <TemplateEditorModal
+            isOpen={true}
+            template={editingTemplate}
+            categories={data?.categories || []}
+            accounts={data?.accounts || []}
+            onClose={() => {
+              setIsAddingTemplate(false);
+              setEditingTemplate(null);
+            }}
+            onSave={async (tpl) => {
+              if (editingTemplate) {
+                await client?.updateTemplate?.(editingTemplate.id, tpl);
+              } else {
+                await client?.addTemplate?.(tpl);
+              }
+              if (onDataChange) onDataChange();
+              setIsAddingTemplate(false);
+              setEditingTemplate(null);
+            }}
+            onDelete={async (id) => {
+              await client?.deleteTemplate?.(id);
+              if (onDataChange) onDataChange();
+              setIsAddingTemplate(false);
+              setEditingTemplate(null);
+            }}
+          />
+        )}
+      </Suspense>
 
-      {/* Trips Management Section */}
       {data?.trips && (
         <CollapsibleSection
           id="trips"
@@ -831,6 +806,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                     tabIndex={0}
                     onClick={() => setEditingTrip(trip)}
                     onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditingTrip(trip); } }}
+                    className="settings-row"
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)',
@@ -838,8 +814,6 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                       borderLeft: `4px solid ${statusColor}`, cursor: 'pointer',
                       transition: 'background-color 0.2s'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-2)'}
-                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-surface)'}
                   >
                     <div>
                       <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>{trip.name}</div>
@@ -883,16 +857,11 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         </CollapsibleSection>
       )}
 
-      {/* Save/Erase sit at the very bottom, below every other section, so
-          they read as the page's closing actions rather than getting lost
-          between Feature Toggles and everything that follows them. */}
       <div style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--color-border)' }}>
         {status.msg && (
           <div role="status" style={{
             marginBottom: 'var(--space-md)',
             padding: 'var(--space-sm)', borderRadius: 'var(--radius-md)',
-            // Token-derived, not hardcoded rgba: the old literal red/green ignored
-            // the theme entirely and would have stayed iOS-red on any repalette.
             backgroundColor: `color-mix(in srgb, ${status.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)'} 12%, transparent)`,
             color: status.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)',
             border: `1px solid color-mix(in srgb, ${status.type === 'error' ? 'var(--color-danger)' : 'var(--color-success)'} 30%, transparent)`
@@ -912,30 +881,41 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
         </div>
       </div>
 
-      {(isAddingTrip || editingTrip) && (
-        <TripEditorModal
-          isOpen={isAddingTrip || !!editingTrip}
-          onClose={() => { setIsAddingTrip(false); setEditingTrip(null); }}
-          trip={editingTrip}
-          onSave={async (id, tripData) => {
-            if (id) await client.updateTrip(id, tripData);
-            else await client.addTrip(tripData);
-            if (onDataChange) onDataChange();
-          }}
-          onDelete={async (id) => {
-            await client.deleteTrip(id);
-            if (onDataChange) onDataChange();
-          }}
-        />
-      )}
+      <Suspense fallback={null}>
+        {(isAddingTrip || editingTrip) && (
+          <TripEditorModal
+            isOpen={isAddingTrip || !!editingTrip}
+            onClose={() => { setIsAddingTrip(false); setEditingTrip(null); }}
+            trip={editingTrip}
+            onSave={async (id, tripData) => {
+              if (id) await client.updateTrip(id, tripData);
+              else await client.addTrip(tripData);
+              if (onDataChange) onDataChange();
+            }}
+            onDelete={async (id) => {
+              await client.deleteTrip(id);
+              if (onDataChange) onDataChange();
+            }}
+          />
+        )}
 
-      {exportingTrip && (
-        <TripExportModal
-          trip={exportingTrip}
-          data={data}
-          onClose={() => setExportingTrip(null)}
-        />
-      )}
+        {exportingTrip && (
+          <TripExportModal
+            trip={exportingTrip}
+            data={data}
+            onClose={() => setExportingTrip(null)}
+          />
+        )}
+      </Suspense>
+
+      <CollapsibleSection id="export" title="Data Export">
+        <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
+          Download your entire transaction history as a CSV file for backup or analysis in other tools.
+        </p>
+        <Suspense fallback={<div>Loading export module...</div>}>
+          <LedgerExport data={data} />
+        </Suspense>
+      </CollapsibleSection>
 
       <PromptModal
         isOpen={showScrubPrompt}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
 import { NotionClient } from './lib/notionClient';
 import Dashboard from './components/Dashboard';
 import TransactionsList from './components/TransactionsList';
@@ -255,7 +255,7 @@ export default function App() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', config.theme || defaultTheme());
   }, [config.theme]);
 

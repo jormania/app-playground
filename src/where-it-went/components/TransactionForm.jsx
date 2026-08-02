@@ -1,4 +1,4 @@
-import { useState, useEffect, useId, useRef } from 'react';
+import { useState, useEffect, useId, useRef, useMemo } from 'react';
 import { Field } from '../../ds/components/Field';
 import { Button } from '../../ds/components/Button';
 import { ConfirmModal } from '../../ds';
@@ -69,6 +69,10 @@ export default function TransactionForm({ transactions = [], categories, account
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+
+  const pastDescriptions = useMemo(() => {
+    return Array.from(new Set(transactions.map(t => (t.description || '').trim()).filter(Boolean)));
+  }, [transactions]);
 
   const categorySelectId = useId();
   const accountSelectId = useId();
@@ -336,7 +340,34 @@ export default function TransactionForm({ transactions = [], categories, account
           digits plus a 3-letter currency) had room to spare at that width.
           The ratio has been adjusted to ensure the full year fits in the Date field. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(145px, 10fr) minmax(0, 11fr)', gap: 'var(--space-md)' }}>
-        <Field label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} required />
+        <Field 
+          label="Date" 
+          type="date" 
+          value={date} 
+          onChange={e => setDate(e.target.value)} 
+          required 
+          labelRight={
+            tripId ? (
+              <span 
+                title={(trips.find(t => t.id === tripId) || {}).name || 'Assigned to Trip'}
+                style={{ 
+                  fontSize: '10px', 
+                  backgroundColor: 'var(--color-surface-2)', 
+                  color: 'var(--color-ink)', 
+                  padding: '2px 6px', 
+                  borderRadius: 'var(--radius-sm)', 
+                  fontWeight: 'var(--weight-bold)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: '80px'
+                }}
+              >
+                ✈️ Trip
+              </span>
+            ) : null
+          }
+        />
 
         {/* Amount + currency share one control rather than sitting in separate
             rows. This replaced a dashed "original amount" box below Account, so
@@ -429,8 +460,11 @@ export default function TransactionForm({ transactions = [], categories, account
 
       {/* The hint follows the type — suggesting "Groceries" while logging income
           reads as though the form has not noticed what you are doing. */}
+      <datalist id="desc-suggestions">
+        {pastDescriptions.map(desc => <option key={desc} value={desc} />)}
+      </datalist>
       <Field
-        label="Description" type="text" value={description}
+        label="Description" type="text" value={description} list="desc-suggestions"
         labelRight={autoFilledHint ? (
           <span style={{ fontSize: '11px', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

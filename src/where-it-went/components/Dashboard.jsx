@@ -18,11 +18,14 @@ import {
   getPreviousPeriodRange,
   parseTxDate
 } from '../lib/period';
+import { applyFilters } from '../lib/filtering';
 import { getUpcomingBills, getUpcomingTransactions, DEFAULT_HORIZON_DAYS } from '../lib/upcoming';
 import { computeAllBudgets, monthlyEquivalent } from '../lib/budgets';
 import { calculateMovingAverage, calculateLinearRegression } from '../lib/trends';
+import PullToRefresh from './PullToRefresh';
 import QuickTemplates from './QuickTemplates';
 import SmartTextEntry from './SmartTextEntry';
+import { getChartColors, getDoughnutOptions, getBarOptions } from '../lib/chartConfig';
 
 const CARD = {
   padding: 'var(--space-lg)',
@@ -32,7 +35,7 @@ const CARD = {
   boxShadow: 'var(--shadow-sm)'
 };
 
-export default function Dashboard({ data, client, onDataChange, onNavigate, config, period = 'this_month', filterProps, onViewTripInInsights, scrollToUpcoming, onConsumeScrollToUpcoming, onPrefillTransaction }) {
+function DashboardInner({ data, client, onDataChange, onNavigate, config, period = 'this_month', filterProps, onViewTripInInsights, scrollToUpcoming, onConsumeScrollToUpcoming, onPrefillTransaction }) {
   const activePeriod = period || 'this_month';
   const allowTransfer = config?.features?.transfers === true;
   const { filterType: filter = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
@@ -77,18 +80,8 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
   // One pass for type/category/search; the period filter lives in lib/period so the
   // Dashboard, the ledger and the insights engine can never disagree again.
   const scoped = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    return (data.transactions || []).filter(t => {
-      if (filter !== 'All' && t.type !== filter) return false;
-      if (categoryFilter !== 'All' && t.categoryId !== categoryFilter) return false;
-      if (!q) return true;
-      const desc = (t.description || '').toLowerCase();
-      const cat = (categoriesById.get(t.categoryId)?.name || '').toLowerCase();
-      const acc = (accountsById.get(t.accountId)?.name || '').toLowerCase();
-      const notes = (t.notes || '').toLowerCase();
-      return desc.includes(q) || cat.includes(q) || acc.includes(q) || notes.includes(q);
-    });
-  }, [data.transactions, filter, categoryFilter, searchQuery, categoriesById, accountsById]);
+    return applyFilters(data.transactions, filterProps || {}, categoriesById, accountsById);
+  }, [data.transactions, filterProps, categoriesById, accountsById]);
 
   const filteredTransactions = useMemo(
     () => filterByPeriod(scoped, activePeriod).sort((a, b) => String(b.date).localeCompare(String(a.date))),
@@ -101,10 +94,21 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
   );
   const previousIsPartial = getPreviousPeriodRange(activePeriod).partial === true;
 
-  const { income, expenses, net } = useMemo(() => {
-    const inc = filteredTransactions.filter(t => t.type === 'Income').reduce((acc, t) => acc + t.amount, 0);
-    const exp = filteredTransactions.filter(t => t.type === 'Expense').reduce((acc, t) => acc + t.amount, 0);
-    return { income: inc, expenses: exp, net: inc - exp };
+  const { income, expenses, net, foreign } = useMemo(() => {
+    let inc = 0, exp = 0;
+    const f = {};
+    filteredTransactions.forEach(t => {
+      if (t.type === 'Income') inc += t.amount;
+      if (t.type === 'Expense') exp += t.amount;
+      
+      const c = t.originalCurrency;
+      if (c && c !== 'RON') {
+        if (!f[c]) f[c] = { income: 0, expense: 0 };
+        if (t.type === 'Income') f[c].income += t.originalAmount;
+        if (t.type === 'Expense') f[c].expense += t.originalAmount;
+      }
+    });
+    return { income: inc, expenses: exp, net: inc - exp, foreign: f };
   }, [filteredTransactions]);
 
   const { prevIncome, prevExpenses, prevNet } = useMemo(() => {
@@ -116,6 +120,17 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
   const animatedIncome = useCountUp(income);
   const animatedExpenses = useCountUp(expenses);
   const animatedNet = useCountUp(net);
+
+  const budgets = useMemo(
+    () => computeAllBudgets(data.categories, data.transactions),
+    [data.transactions, data.categories],
+  );
+
+  const budgetLeft = useMemo(() => {
+    return budgets.reduce((sum, b) => sum + (b.remaining > 0 ? b.remaining : 0), 0);
+  }, [budgets]);
+  
+  const animatedBudgetLeft = useCountUp(budgetLeft);
 
   /**
    * Trend vs the previous period. For a month in progress the comparison window is
@@ -219,7 +234,6 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
     const labels = Object.keys(groupedByCategory);
     if (labels.length === 0) return undefined;
 
-    const inkColor = getComputedStyle(document.documentElement).getPropertyValue('--color-ink').trim() || '#1b1f24';
     const surfaceColor = getComputedStyle(document.documentElement).getPropertyValue('--color-surface').trim() || '#ffffff';
     const values = Object.values(groupedByCategory);
     const totalAmount = values.reduce((a, b) => a + b, 0);
@@ -236,40 +250,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
           hoverOffset: 6
         }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '65%',
-        layout: {
-          padding: 10
-        },
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { 
-              color: inkColor, 
-              font: { size: 13, weight: '500' }, 
-              padding: 20, 
-              usePointStyle: true 
-            }
-          },
-          title: { display: false },
-          tooltip: {
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            titleFont: { size: 14, weight: 'bold' },
-            bodyFont: { size: 13 },
-            padding: 12,
-            cornerRadius: 8,
-            callbacks: {
-              label: (context) => {
-                const value = context.parsed;
-                const percentage = totalAmount > 0 ? ((value / totalAmount) * 100).toFixed(1) : '0.0';
-                return ` ${context.label}: ${formatCurrency(value)} (${percentage}%)`;
-              }
-            }
-          }
-        }
-      }
+      options: getDoughnutOptions(totalAmount)
     });
 
     return () => {
@@ -391,56 +372,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         labels: trendSeries.labels,
         datasets: activeDatasets
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        layout: {
-          padding: { top: 10 }
-        },
-        scales: {
-          x: {
-            grid: { display: false },
-            ticks: {
-              color: inkColor, 
-              autoSkip: true, 
-              maxTicksLimit: 8,
-              maxRotation: 0, 
-              minRotation: 0,
-              font: { size: window.innerWidth < 600 ? 11 : 13, weight: '500' }
-            }
-          },
-          y: {
-            border: { display: false },
-            grid: { color: borderColor, drawTicks: false },
-            ticks: { 
-              color: inkColor,
-              padding: 8,
-              font: { size: 12, weight: '500' },
-              callback: (value) => formatCurrencyCompact(value) 
-            }
-          }
-        },
-        plugins: {
-          legend: { 
-            position: 'bottom', 
-            labels: { 
-              color: inkColor, 
-              font: { size: 13, weight: '500' }, 
-              padding: 20, 
-              usePointStyle: true,
-              filter: (item) => !item.text.includes('Trend')
-            } 
-          },
-          tooltip: { 
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            titleFont: { size: 14, weight: 'bold' },
-            bodyFont: { size: 13 },
-            padding: 12,
-            cornerRadius: 8,
-            callbacks: { label: (context) => ` ${context.dataset.label}: ${formatCurrency(context.parsed.y)}` } 
-          }
-        }
-      }
+      options: getBarOptions()
     });
 
     return () => {
@@ -482,10 +414,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
   // Each category is now measured against *its own* window (monthly, quarterly
   // or yearly, optionally anchored to a renewal month) rather than against the
   // calendar month, and picks up any rollover carried in from earlier windows.
-  const budgets = useMemo(
-    () => computeAllBudgets(data.categories, data.transactions),
-    [data.transactions, data.categories],
-  );
+
 
   const upcomingBills = useMemo(
     () => getUpcomingBills(data.subscriptions, data.transactions, { horizonDays: DEFAULT_HORIZON_DAYS }),
@@ -580,14 +509,15 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         overflowX: 'auto', paddingBottom: 'var(--space-xs)', WebkitOverflowScrolling: 'touch'
       }}>
         {[
-          { label: 'Income', value: animatedIncome, real: income, prev: prevIncome, color: 'var(--color-success)', inverse: false, data: trendSeries.income },
-          { label: 'Expenses', value: animatedExpenses, real: expenses, prev: prevExpenses, color: 'var(--color-danger)', inverse: true, data: trendSeries.expense },
-          { label: 'Net', value: animatedNet, real: net, prev: prevNet, color: net >= 0 ? 'var(--color-success)' : 'var(--color-danger)', inverse: false, data: trendSeries.net }
+          { label: 'Income', value: animatedIncome, real: income, prev: prevIncome, color: 'var(--color-success)', inverse: false, data: trendSeries.income, fKey: 'income' },
+          { label: 'Expenses', value: animatedExpenses, real: expenses, prev: prevExpenses, color: 'var(--color-danger)', inverse: true, data: trendSeries.expense, fKey: 'expense' },
+          { label: 'Net', value: animatedNet, real: net, prev: prevNet, color: net >= 0 ? 'var(--color-success)' : 'var(--color-danger)', inverse: false, data: trendSeries.net, fKey: 'net' },
+          { label: 'Budget Left', value: animatedBudgetLeft, real: budgetLeft, prev: null, color: 'var(--color-ink)', inverse: false, data: null, fKey: null }
         ].map(kpi => (
           <div
             key={kpi.label}
-            className={`kpi-card kpi-${kpi.label.toLowerCase()} stagger-1`}
-            style={{ flex: 1, minWidth: '100px', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}
+            className={`kpi-card kpi-${kpi.label.replace(' ', '-').toLowerCase()} stagger-1`}
+            style={{ flex: 1, minWidth: '100px', padding: 'var(--space-md)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', position: 'relative' }}
           >
             <div style={{ marginBottom: '4px' }}>
               <h3 style={{ margin: 0, color: 'var(--color-muted)', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)' }}>{kpi.label}</h3>
@@ -595,10 +525,25 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
             <div title={formatCurrency(kpi.real)} style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', color: kpi.color, whiteSpace: 'nowrap', marginBottom: '4px' }}>
               {formatCurrencyCompact(kpi.value)}
             </div>
-            <div style={{ position: 'relative', zIndex: 1 }}>{getTrendBadge(kpi.real, kpi.prev, kpi.inverse)}</div>
-            <div style={{ marginTop: '-10px', marginLeft: 'calc(-1 * var(--space-md))', marginRight: 'calc(-1 * var(--space-md))', marginBottom: 'calc(-1 * var(--space-md))' }}>
-              <Sparkline data={kpi.data} color={kpi.color} height={30} />
-            </div>
+            {config?.features?.multiCurrency && kpi.fKey && Object.keys(foreign).length > 0 ? (
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '4px', zIndex: 1, position: 'relative' }}>
+                {Object.entries(foreign).map(([currency, data]) => {
+                  let fVal = 0;
+                  if (kpi.fKey === 'income') fVal = data.income;
+                  if (kpi.fKey === 'expense') fVal = data.expense;
+                  if (kpi.fKey === 'net') fVal = data.income - data.expense;
+                  if (fVal === 0) return null;
+                  return <span key={currency}>{fVal > 0 && kpi.fKey !== 'expense' ? '+' : ''}{formatCurrencyCompact(fVal).replace(' L', ` ${currency}`)}</span>;
+                })}
+              </div>
+            ) : (
+              <div className="kpi-trend-badge" style={{ position: 'relative', zIndex: 1 }}>{getTrendBadge(kpi.real, kpi.prev, kpi.inverse)}</div>
+            )}
+            {kpi.data && (
+              <div style={{ marginTop: '-10px', marginLeft: 'calc(-1 * var(--space-md))', marginRight: 'calc(-1 * var(--space-md))', marginBottom: 'calc(-1 * var(--space-md))' }}>
+                <Sparkline data={kpi.data} color={kpi.color} height={30} />
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -615,7 +560,7 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
               <p style={{ margin: '4px 0 0 0', color: 'var(--color-muted)', fontSize: 'var(--text-sm)' }}>Try adjusting your filters or date range.</p>
             </div>
           ) : (
-            <ul style={{ listStyle: 'none', padding: 0 }}>
+            <ul style={{ listStyle: 'none', padding: 0, paddingBottom: 'var(--space-sm)' }}>
               {filteredTransactions.slice(0, 5).map(tx => {
                 const category = categoriesById.get(tx.categoryId);
                 // A Transfer legitimately has no category — that's not the same
@@ -911,5 +856,13 @@ export default function Dashboard({ data, client, onDataChange, onNavigate, conf
         onClose={() => setActionError(null)}
       />
     </div>
+  );
+}
+
+export default function Dashboard(props) {
+  return (
+    <PullToRefresh onRefresh={props.onDataChange}>
+      <DashboardInner {...props} />
+    </PullToRefresh>
   );
 }

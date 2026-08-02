@@ -103,7 +103,7 @@ export default function PeriodSheet({ isOpen, onClose, period, onPeriodChange })
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
           padding: 'var(--space-sm)', border: '1px solid var(--color-border)', 
           borderRadius: 'var(--radius-sm)', 
-          backgroundColor: selectedPeriod.match(/^\d{4}-\d{2}$/) ? 'var(--color-surface-2)' : 'transparent'
+          backgroundColor: selectedPeriod === getMonthString(pickerDate) ? 'var(--color-surface-2)' : 'transparent'
         }}>
           <button onClick={() => shiftMonth(-1)} style={{ background: 'none', border: 'none', color: 'var(--color-ink)', cursor: 'pointer', padding: '0 8px' }}>&lt;</button>
           <span 
@@ -120,7 +120,7 @@ export default function PeriodSheet({ isOpen, onClose, period, onPeriodChange })
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
           padding: 'var(--space-sm)', border: '1px solid var(--color-border)', 
           borderRadius: 'var(--radius-sm)',
-          backgroundColor: selectedPeriod.match(/^\d{4}$/) ? 'var(--color-surface-2)' : 'transparent'
+          backgroundColor: selectedPeriod === pickerDate.getFullYear().toString() ? 'var(--color-surface-2)' : 'transparent'
         }}>
           <button onClick={() => shiftYear(-1)} style={{ background: 'none', border: 'none', color: 'var(--color-ink)', cursor: 'pointer', padding: '0 8px' }}>&lt;</button>
           <div 

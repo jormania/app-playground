@@ -9,6 +9,7 @@ import NoraAvatar from './NoraAvatar';
 import { Button } from '../../ds/components/Button';
 import { CategoryIcon } from './CategoryIcon';
 import SmartInsightsChat from './SmartInsightsChat';
+import MonthlyDigest from './MonthlyDigest';
 
 /** Clipboard write with a same-origin fallback for browsers/contexts where
  * the async Clipboard API isn't available (older Safari, non-HTTPS dev). */
@@ -105,10 +106,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
   return (
     <div className="insights-view" style={{ maxWidth: '1200px', margin: '0 auto', padding: 'var(--space-md)', width: '100%', boxSizing: 'border-box' }}>
       
-      {/* Header */}
-      <div style={{ marginBottom: 'var(--space-lg)' }}>
-        <h1 style={{ fontSize: 'var(--text-2xl)', margin: 0, color: 'var(--color-ink)' }}>Financial Insights</h1>
-      </div>
+      {/* Header removed as requested */}
 
       {config?.features?.aiParser && (
         <SmartInsightsChat 
@@ -129,6 +127,11 @@ export default function InsightsView({ data, period, filterProps, config, initia
           </p>
         </div>
       ) : (<>
+
+      <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)', flexWrap: 'wrap' }}>
+        <MonthlyDigest transactions={data.transactions || []} categories={data.categories || []} period="this_month" title="This Month" />
+        <MonthlyDigest transactions={data.transactions || []} categories={data.categories || []} period="this_year" title="This Year" />
+      </div>
 
       {/* SECTION: ACT */}
       <div style={{ marginBottom: 'var(--space-2xl)' }}>

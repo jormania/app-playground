@@ -83,22 +83,47 @@ export default function FilterSheet({ isOpen, onClose, filterType, categoryFilte
 
         <div>
           <label style={{ display: 'block', fontSize: 'var(--text-sm)', color: 'var(--color-muted)', marginBottom: 'var(--space-xs)' }}>Search Description</label>
-          <input
-            type="text"
-            placeholder="Search..."
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-            style={{
-              width: '100%',
-              padding: 'var(--space-sm)',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--color-border)',
-              backgroundColor: 'var(--color-surface)',
-              color: 'var(--color-ink)',
-              fontSize: 'var(--text-sm)',
-              boxSizing: 'border-box'
-            }}
-          />
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input
+              type="text"
+              placeholder="Search..."
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              style={{
+                width: '100%',
+                padding: 'var(--space-sm)',
+                paddingRight: '32px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-surface)',
+                color: 'var(--color-ink)',
+                fontSize: 'var(--text-sm)',
+                boxSizing: 'border-box'
+              }}
+            />
+            {localSearch && (
+              <button
+                type="button"
+                onClick={() => setLocalSearch('')}
+                aria-label="Clear search"
+                style={{
+                  position: 'absolute',
+                  right: '8px',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--color-muted)',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '50%'
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
       </div>

@@ -9,9 +9,12 @@ import { AlertModal } from '../../ds';
 import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 import { filterByPeriod, parseTxDate } from '../lib/period';
+import { applyFilters } from '../lib/filtering';
+import { signedAmount } from '../lib/budgets';
 import { readJson, writeJson } from '../lib/storage';
 import { accountLabelById } from '../lib/accounts';
 import { SwipeableRow } from './SwipeableRow';
+import PullToRefresh from './PullToRefresh';
 
 const PAGE_SIZE = 200;
 
@@ -23,9 +26,15 @@ function signedAmount(tx) {
   return 0; // a transfer changes no total, so it sorts between the two
 }
 
+export default function TransactionsList(props) {
+  return (
+    <PullToRefresh onRefresh={props.onDataChange}>
+      <TransactionsListInner {...props} />
+    </PullToRefresh>
+  );
+}
 
-
-export default function TransactionsList({ data, client, onDataChange, filterProps, period, allowTransfer = false, onRepeat, onSplit, mobileSwipe, dismissedDuplicates, onDismissedDuplicatesChange, onViewTripInInsights }) {
+function TransactionsListInner({ data, client, onDataChange, filterProps, period, allowTransfer = false, onRepeat, onSplit, mobileSwipe, dismissedDuplicates, onDismissedDuplicatesChange, onViewTripInInsights }) {
   const { filterType: filter = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
 
   const [sortConfig, setSortConfig] = useState(() => readJson('whereItWent_sort', { key: 'date', direction: 'desc' }));
@@ -120,18 +129,7 @@ export default function TransactionsList({ data, client, onDataChange, filterPro
   };
 
   const filtered = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    const scoped = (data.transactions || []).filter(t => {
-      if (filter !== 'All' && t.type !== filter) return false;
-      if (categoryFilter !== 'All' && t.categoryId !== categoryFilter) return false;
-      if (!q) return true;
-      const desc = (t.description || '').toLowerCase();
-      const cat = (categoriesById.get(t.categoryId)?.name || '').toLowerCase();
-      const acc = (accountsById.get(t.accountId)?.name || '').toLowerCase();
-      const notes = (t.notes || '').toLowerCase();
-      const amountMatch = String(t.amount ?? '').includes(q);
-      return desc.includes(q) || cat.includes(q) || acc.includes(q) || notes.includes(q) || amountMatch;
-    });
+    const scoped = applyFilters(data.transactions, filterProps || {}, categoriesById, accountsById);
 
     const inPeriod = filterByPeriod(scoped, period);
 
