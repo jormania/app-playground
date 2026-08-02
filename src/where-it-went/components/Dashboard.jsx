@@ -533,7 +533,7 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
                   if (kpi.fKey === 'expense') fVal = data.expense;
                   if (kpi.fKey === 'net') fVal = data.income - data.expense;
                   if (fVal === 0) return null;
-                  return <span key={currency}>{fVal > 0 && kpi.fKey !== 'expense' ? '+' : ''}{formatCurrencyCompact(fVal).replace(' L', ` ${currency}`)}</span>;
+                  return <span key={currency}>{kpi.fKey === 'net' && fVal > 0 ? '+' : ''}{formatCurrencyCompact(fVal).replace(' L', ` ${currency}`)}</span>;
                 })}
               </div>
             ) : (
