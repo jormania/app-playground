@@ -45,7 +45,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onS
 
   useEffect(() => {
     if (success) {
-      const timer = setTimeout(() => setSuccess(''), 2500);
+      const timer = setTimeout(() => setSuccess(''), 5000);
       return () => clearTimeout(timer);
     }
   }, [success]);
