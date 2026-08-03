@@ -1,6 +1,6 @@
 import { CategoryIcon } from './CategoryIcon';
 import { AccountIcon } from './AccountIcon';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import TransactionForm from './TransactionForm';
 import DuplicateReview from './DuplicateReview';
@@ -47,6 +47,16 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
   const [showBulkCategoryModal, setShowBulkCategoryModal] = useState(false);
   const [bulkProcessing, setBulkProcessing] = useState(false);
 
+  // Action toast
+  const [toast, setToast] = useState(null); // { message, key }
+  const toastTimerRef = useRef(null);
+  const showToast = useCallback((message) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    const key = Date.now();
+    setToast({ message, key });
+    toastTimerRef.current = setTimeout(() => setToast(null), 5000);
+  }, []);
+
   const toggleSelection = (id) => {
     setSelectedTxs(prev => {
       const next = new Set(prev);
@@ -67,8 +77,10 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
       for (const id of Array.from(selectedTxs)) {
         await client.updateTransaction(id, { reconciled: shouldReconcile });
       }
+      const count = selectedTxs.size;
       setSelectedTxs(new Set());
       if (onDataChange) onDataChange();
+      showToast(`${shouldReconcile ? '✓ Reconciled' : '↩ Unreconciled'} ${count} transaction${count !== 1 ? 's' : ''}`);
     } catch (e) {
       setActionError(e.message || 'Failed to bulk update');
     } finally {
@@ -79,12 +91,14 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
   const handleBulkDelete = async () => {
     if (!window.confirm(`Delete ${selectedTxs.size} transactions?`)) return;
     setBulkProcessing(true);
+    const count = selectedTxs.size;
     try {
       for (const id of Array.from(selectedTxs)) {
         await client.deleteTransaction(id);
       }
       setSelectedTxs(new Set());
       if (onDataChange) onDataChange();
+      showToast(`🗑 Deleted ${count} transaction${count !== 1 ? 's' : ''}`);
     } catch (e) {
       setActionError(e.message || 'Failed to bulk delete');
     } finally {
@@ -94,6 +108,8 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
 
   const handleBulkCategorize = async (categoryId) => {
     setBulkProcessing(true);
+    const count = selectedTxs.size;
+    const catName = (data.categories || []).find(c => c.id === categoryId)?.name || 'category';
     try {
       for (const id of Array.from(selectedTxs)) {
         await client.updateTransaction(id, { categoryId });
@@ -101,6 +117,7 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
       setSelectedTxs(new Set());
       setShowBulkCategoryModal(false);
       if (onDataChange) onDataChange();
+      showToast(`🏷 ${count} transaction${count !== 1 ? 's' : ''} → ${catName}`);
     } catch (e) {
       setActionError(e.message || 'Failed to bulk update');
     } finally {
@@ -430,8 +447,8 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
           <div className="tx-bottom-bar">
             <div className="tx-bottom-bar-header">{selectedTxs.size} selected</div>
             <div className="tx-bottom-bar-actions">
-              {onSplit && <button type="button" className="action-pill-btn" onClick={() => { if (singleTx) onSplit(singleTx, () => setSelectedTxs(new Set())); }} disabled={bulkProcessing || !singleTx} style={{ opacity: singleTx ? 1 : 0.5 }}>Split</button>}
-              {onRepeat && <button type="button" className="action-pill-btn" onClick={() => { if (singleTx) { setSelectedTxs(new Set()); onRepeat(singleTx); } }} disabled={bulkProcessing || !singleTx} style={{ opacity: singleTx ? 1 : 0.5 }}>Repeat</button>}
+              {onSplit && <button type="button" className="action-pill-btn" onClick={() => { if (singleTx) { onSplit(singleTx, () => { setSelectedTxs(new Set()); showToast('✂ Transaction split into 2'); }); } }} disabled={bulkProcessing || !singleTx} style={{ opacity: singleTx ? 1 : 0.5 }}>Split</button>}
+              {onRepeat && <button type="button" className="action-pill-btn" onClick={() => { if (singleTx) { setSelectedTxs(new Set()); showToast(`↺ Repeating: ${singleTx.description}`); onRepeat(singleTx); } }} disabled={bulkProcessing || !singleTx} style={{ opacity: singleTx ? 1 : 0.5 }}>Repeat</button>}
               <button type="button" className="action-pill-btn" onClick={() => setShowBulkCategoryModal(true)} disabled={bulkProcessing}>Categorize</button>
               <button type="button" className="action-pill-btn" onClick={handleBulkReconcile} disabled={bulkProcessing}>{reconcileText}</button>
               <button type="button" className="action-pill-btn danger" style={{ color: 'var(--color-danger)' }} onClick={handleBulkDelete} disabled={bulkProcessing}>Delete</button>
@@ -504,5 +521,13 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
         onClose={() => setActionError(null)}
       />
     </div>
+
+      {/* Action toast — bottom-right, above nav */}
+      {toast && createPortal(
+        <div key={toast.key} className="action-toast">
+          {toast.message}
+        </div>,
+        document.body
+      )}
   );
 }
