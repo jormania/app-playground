@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Wand2, Loader2, Mic, MicOff, CheckCircle } from 'lucide-react';
 import { parseSmartText } from '../lib/smartParser';
 import { parseTextWithAI } from '../lib/aiParser';
-import { hasNoraTrigger } from '../lib/noraSplit';
+import { parseNoraSplitGroup, stripNoraGroup } from '../lib/noraSplit';
 
 export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onSuccess, accounts, categories, trips, config, recentTransactions }) {
   const [text, setText] = useState('');
@@ -62,14 +62,11 @@ export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onS
     if (!text.trim() || isParsing) return;
     setDetectedSubscription(null);
 
-    // Detect and strip "with Nora" BEFORE sending to the AI parser.
-    // If the AI sees "Nora" it maps it as the category directly instead of
-    // treating it as a split signal, which swallows the trigger entirely.
+    // Detect and strip the full "with Nora [and ...]" group BEFORE AI parsing.
+    // If the AI sees names it maps them as categories, swallowing the split signal.
     const rawText = text.trim();
-    const withNora = hasNoraTrigger({ description: rawText });
-    const cleanedText = withNora
-      ? rawText.replace(/,?\s*with nora\s*,?/gi, ' ').replace(/\s{2,}/g, ' ').trim()
-      : rawText;
+    const { found: withNora, totalPeople: withNoraCount } = parseNoraSplitGroup(rawText);
+    const cleanedText = withNora ? stripNoraGroup(rawText) : rawText;
 
     const useAI = config?.features?.aiParser === true;
     let txs = [];
@@ -108,10 +105,9 @@ export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onS
           subToPrompt = t;
         }
 
-        // Re-stamp the Nora flag so applyNoraSplit in onAdd fires correctly.
-        // The parser never saw the phrase (we stripped it), so we signal the
-        // split by adding a sentinel field instead.
-        const tWithFlag = withNora ? { ...t, withNora: true } : t;
+        // Stamp the group count so applyNoraSplit calculates the correct fraction.
+        // withNoraCount=2 → 50/50, withNoraCount=3 → 1/3 Nora / 2/3 you, etc.
+        const tWithFlag = withNora ? { ...t, withNoraCount } : t;
 
         let saved;
         if (t.action === 'update' && t.id) {
