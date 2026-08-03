@@ -6,10 +6,12 @@ import { CategorySelect } from "./CategorySelect";
 import { FormError } from "../../ds/components/FormError";
 import { ModalFooter } from "../../ds/components/ModalFooter";
 
-
+const QUICK_PCTS = [10, 25, 33, 50, 67, 75, 90];
 
 export default function SplitTransactionModal({ isOpen, onClose, transaction, categories = [], onSave }) {
+  const [mode, setMode] = useState("amount"); // "amount" | "percent"
   const [splitAmount, setSplitAmount] = useState("");
+  const [splitPct, setSplitPct] = useState("");
   const [splitCategoryId, setSplitCategoryId] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
@@ -20,13 +22,12 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
 
   const isIncome = transaction.type === "Income";
   const numOriginal = Number(transaction.amount) || 0;
-  
-  // The user inputs a split amount in the base currency (RON).
-  const numSplit = Number(splitAmount) || 0;
 
-  // The math:
-  // For Expense: Total is original. Remainder = original - split.
-  // For Income: The original was NET. The new split is an EXPENSE. So Gross Income = Net + Expense.
+  // Derive the active split amount from whichever mode is active.
+  const numSplit = mode === "percent"
+    ? Math.round((Number(splitPct) / 100) * numOriginal * 100) / 100
+    : Number(splitAmount) || 0;
+
   let remainderAmount = 0;
   if (isIncome) {
     remainderAmount = numOriginal + numSplit;
@@ -46,16 +47,13 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
     }
   }
 
-  // Prevent invalid splits
-  // Expense splits cannot be more than the total (remainder < 0).
-  // Splits must be positive.
   const isInvalid = !isIncome && (numSplit >= numOriginal || numSplit <= 0);
   const isIncomeInvalid = isIncome && numSplit <= 0;
 
-  const canSubmit = splitAmount !== "" && splitCategoryId && !(isIncome ? isIncomeInvalid : isInvalid);
+  const hasValue = mode === "percent" ? splitPct !== "" : splitAmount !== "";
+  const canSubmit = hasValue && splitCategoryId && !(isIncome ? isIncomeInvalid : isInvalid);
 
   const splitCategoryType = isIncome ? "Expense" : transaction.type;
-  
   const filteredCategories = categories
     .filter(c => c.type === splitCategoryType)
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -66,7 +64,6 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
     setSaving(true);
     setFormError("");
     try {
-      // Pass the rounded/computed amounts back to App.jsx to orchestrate Notion logic.
       await onSave({
         originalTx: transaction,
         splitAmount: Math.ceil(numSplit),
@@ -83,10 +80,39 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
     }
   };
 
+  const toggleStyle = (active) => ({
+    flex: 1,
+    padding: "6px 0",
+    fontSize: "var(--text-sm)",
+    fontWeight: active ? "var(--weight-bold)" : "var(--weight-normal)",
+    borderRadius: "var(--radius-sm)",
+    border: "none",
+    cursor: "pointer",
+    transition: "all 0.18s",
+    backgroundColor: active ? "var(--color-accent)" : "transparent",
+    color: active ? "#fff" : "var(--color-muted)",
+  });
+
+  const chipStyle = (active) => ({
+    padding: "5px 10px",
+    borderRadius: "999px",
+    fontSize: "var(--text-xs)",
+    fontWeight: "var(--weight-medium)",
+    cursor: "pointer",
+    border: "1px solid",
+    transition: "all 0.15s",
+    backgroundColor: active
+      ? "color-mix(in srgb, var(--color-accent) 18%, transparent)"
+      : "transparent",
+    borderColor: active ? "var(--color-accent)" : "var(--color-border)",
+    color: active ? "var(--color-accent)" : "var(--color-muted)",
+  });
+
   return (
     <Modal open={isOpen} onClose={onClose} title="Split Transaction">
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px", boxSizing: "border-box", minWidth: 0 }}>
-        
+
+        {/* Original transaction summary */}
         <div style={{ padding: "12px", backgroundColor: "var(--color-surface-2)", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", display: "flex", flexDirection: "column", gap: "8px" }}>
           <div style={{ fontSize: "var(--text-sm)", color: "var(--color-muted)" }}>
             Original Transaction ({isIncome ? "Net Income" : "Total Expense"})
@@ -96,35 +122,80 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
           </div>
         </div>
 
+        {/* Mode toggle */}
+        <div style={{ display: "flex", gap: "2px", backgroundColor: "var(--color-surface-2)", borderRadius: "var(--radius-sm)", padding: "3px", border: "1px solid var(--color-border)" }}>
+          <button type="button" style={toggleStyle(mode === "amount")} onClick={() => setMode("amount")}>
+            Amount (RON)
+          </button>
+          <button type="button" style={toggleStyle(mode === "percent")} onClick={() => setMode("percent")}>
+            Percentage %
+          </button>
+        </div>
+
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <Field 
-            label={isIncome ? "Embedded Expense Amount (RON)" : "Split Amount (RON)"} 
-            type="number" 
-            step="1" 
-            min="1"
-            max={isIncome ? undefined : Math.max(1, numOriginal - 1)}
-            value={splitAmount} 
-            onChange={e => setSplitAmount(e.target.value)} 
-            placeholder="Enter split amount"
-            required
-          />
+          {mode === "amount" ? (
+            <Field
+              label={isIncome ? "Embedded Expense Amount (RON)" : "Split Amount (RON)"}
+              type="number"
+              step="1"
+              min="1"
+              max={isIncome ? undefined : Math.max(1, numOriginal - 1)}
+              value={splitAmount}
+              onChange={e => setSplitAmount(e.target.value)}
+              placeholder="Enter split amount"
+              required
+            />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {/* Quick-select chips */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {QUICK_PCTS.map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    style={chipStyle(Number(splitPct) === p)}
+                    onClick={() => setSplitPct(String(p))}
+                  >
+                    {p}%
+                  </button>
+                ))}
+              </div>
+              {/* Custom % input */}
+              <Field
+                label="Custom %"
+                type="number"
+                step="1"
+                min="1"
+                max="99"
+                value={splitPct}
+                onChange={e => setSplitPct(e.target.value)}
+                placeholder="e.g. 40"
+              />
+              {splitPct !== "" && !isNaN(Number(splitPct)) && Number(splitPct) > 0 && (
+                <div style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)" }}>
+                  {splitPct}% of {numOriginal} RON = <strong>{Math.ceil(numSplit)} RON</strong>
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0 }}>
             <CategorySelect id={categorySelectId} value={splitCategoryId} onChange={e => setSplitCategoryId(e.target.value)} required label="Split Category" categories={filteredCategories} />
           </div>
         </div>
 
-        {splitAmount !== "" && !isNaN(numSplit) && numSplit > 0 && (
+        {/* Result preview */}
+        {hasValue && !isNaN(numSplit) && numSplit > 0 && (
           <div style={{ padding: "12px", backgroundColor: isInvalid ? "color-mix(in srgb, var(--color-danger) 10%, transparent)" : "color-mix(in srgb, var(--color-success) 10%, transparent)", borderRadius: "var(--radius-md)", border: `1px solid ${isInvalid ? "var(--color-danger)" : "var(--color-success)"}` }}>
             <div style={{ fontSize: "var(--text-sm)", fontWeight: "var(--weight-bold)", color: "var(--color-ink)", marginBottom: "4px" }}>
               Resulting Transactions:
             </div>
             <ul style={{ fontSize: "var(--text-sm)", color: "var(--color-ink)", margin: 0, paddingLeft: "20px", display: "flex", flexDirection: "column", gap: "4px" }}>
               <li>
-                {isIncome ? "Gross Income" : "Remainder"}: <strong>{Math.ceil(remainderAmount)}</strong> {remainderOriginalAmount && `(approx. ${remainderOriginalAmount} ${transaction.originalCurrency})`} (stays in {categories.find(c => c.id === transaction.categoryId)?.name || "original category"})
+                {isIncome ? "Gross Income" : "Remainder"}: <strong>{Math.ceil(remainderAmount)}</strong> RON {remainderOriginalAmount && `(approx. ${remainderOriginalAmount} ${transaction.originalCurrency})`} (stays in {categories.find(c => c.id === transaction.categoryId)?.name || "original category"})
               </li>
               <li>
-                New Split: <strong>{Math.ceil(numSplit)}</strong> {splitOriginalAmount && `(approx. ${splitOriginalAmount} ${transaction.originalCurrency})`} (goes to selected category)
+                New Split: <strong>{Math.ceil(numSplit)}</strong> RON {splitOriginalAmount && `(approx. ${splitOriginalAmount} ${transaction.originalCurrency})`} (goes to selected category)
               </li>
             </ul>
             {isInvalid && (
