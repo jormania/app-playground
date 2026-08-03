@@ -49,7 +49,9 @@ export function hasNoraTrigger(tx) {
  * caller never silently loses money.
  */
 export function applyNoraSplit(tx, categories) {
-  if (!hasNoraTrigger(tx)) return [tx];
+  // tx.withNora is set by SmartTextEntry when it strips the phrase before AI parsing,
+  // so the AI never misinterprets it as a category name.
+  if (!hasNoraTrigger(tx) && !tx.withNora) return [tx];
 
   const noraCategory = (categories || []).find(
     c => c.name.toLowerCase() === 'nora'

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Wand2, Loader2, Mic, MicOff, CheckCircle } from 'lucide-react';
 import { parseSmartText } from '../lib/smartParser';
 import { parseTextWithAI } from '../lib/aiParser';
-import { enqueue } from '../lib/outbox'; // Or we just take addTransaction as a prop
+import { hasNoraTrigger } from '../lib/noraSplit';
 
 export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onSuccess, accounts, categories, trips, config, recentTransactions }) {
   const [text, setText] = useState('');
@@ -62,6 +62,15 @@ export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onS
     if (!text.trim() || isParsing) return;
     setDetectedSubscription(null);
 
+    // Detect and strip "with Nora" BEFORE sending to the AI parser.
+    // If the AI sees "Nora" it maps it as the category directly instead of
+    // treating it as a split signal, which swallows the trigger entirely.
+    const rawText = text.trim();
+    const withNora = hasNoraTrigger({ description: rawText });
+    const cleanedText = withNora
+      ? rawText.replace(/,?\s*with nora\s*,?/gi, ' ').replace(/\s{2,}/g, ' ').trim()
+      : rawText;
+
     const useAI = config?.features?.aiParser === true;
     let txs = [];
 
@@ -72,9 +81,9 @@ export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onS
           return;
         }
         setIsParsing(true);
-        txs = await parseTextWithAI(text, accounts, categories, trips, config.claudeApiKey, recentTransactions);
+        txs = await parseTextWithAI(cleanedText, accounts, categories, trips, config.claudeApiKey, recentTransactions);
       } else {
-        const tx = parseSmartText(text, accounts, categories);
+        const tx = parseSmartText(cleanedText, accounts, categories);
         if (tx) txs = [tx];
       }
     } catch (err) {
@@ -99,15 +108,18 @@ export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onS
           subToPrompt = t;
         }
 
+        // Re-stamp the Nora flag so applyNoraSplit in onAdd fires correctly.
+        // The parser never saw the phrase (we stripped it), so we signal the
+        // split by adding a sentinel field instead.
+        const tWithFlag = withNora ? { ...t, withNora: true } : t;
+
         let saved;
         if (t.action === 'update' && t.id) {
           saved = await onUpdate(t.id, t);
         } else if (t.action === 'delete' && t.id) {
-          // Assuming onUpdate can handle setting it to deleted, or we just do nothing if no onDelete is passed
-          // But our prompt instructs delete, let's just not handle actual deletion unless we pass onDelete
-          // We will just skip deletes for now as they aren't fully implemented
+          // skip — delete not fully implemented
         } else {
-          saved = await onAdd(t);
+          saved = await onAdd(tWithFlag);
         }
         
         if (saved && saved.id) addedIds.push(saved.id);
