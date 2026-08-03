@@ -46,6 +46,7 @@ export default function App() {
   const [repeatDraft, setRepeatDraft] = useState(null);
 
   const [splittingTx, setSplittingTx] = useState(null);
+  const [splitClearSelectionCb, setSplitClearSelectionCb] = useState(null);
 
   // Lifted (not owned by DuplicateReview) so the Transactions nav-tab dot
   // updates the instant a group is dismissed, not just on the next reload.
@@ -373,6 +374,7 @@ export default function App() {
       
       await loadData();
       setSplittingTx(null);
+      if (splitClearSelectionCb) { splitClearSelectionCb(); setSplitClearSelectionCb(null); }
     } catch (e) {
       console.error('Failed to split transaction:', e);
       throw e;
@@ -569,7 +571,7 @@ export default function App() {
               <TransactionsList
                 data={data} client={client} onDataChange={loadData} filterProps={filterProps}
                 period={period} allowTransfer={allowTransfer} onRepeat={handleRepeatTransaction}
-                onSplit={setSplittingTx} mobileSwipe={config?.features?.mobileSwipe !== false}
+                onSplit={(tx, clearCb) => { setSplittingTx(tx); setSplitClearSelectionCb(() => clearCb || null); }} mobileSwipe={config?.features?.mobileSwipe !== false}
                 dismissedDuplicates={dismissedDuplicates} onDismissedDuplicatesChange={setDismissedDuplicates}
                 onViewTripInInsights={handleViewTripInInsights}
               />

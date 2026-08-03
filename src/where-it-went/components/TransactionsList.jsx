@@ -430,8 +430,8 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
           <div className="tx-bottom-bar">
             <div className="tx-bottom-bar-header">{selectedTxs.size} selected</div>
             <div className="tx-bottom-bar-actions">
-              {onSplit && <button type="button" className="action-pill-btn" onClick={() => singleTx && onSplit(singleTx)} disabled={bulkProcessing || !singleTx} style={{ opacity: singleTx ? 1 : 0.5 }}>Split</button>}
-              {onRepeat && <button type="button" className="action-pill-btn" onClick={() => singleTx && onRepeat(singleTx)} disabled={bulkProcessing || !singleTx} style={{ opacity: singleTx ? 1 : 0.5 }}>Repeat</button>}
+              {onSplit && <button type="button" className="action-pill-btn" onClick={() => { if (singleTx) onSplit(singleTx, () => setSelectedTxs(new Set())); }} disabled={bulkProcessing || !singleTx} style={{ opacity: singleTx ? 1 : 0.5 }}>Split</button>}
+              {onRepeat && <button type="button" className="action-pill-btn" onClick={() => { if (singleTx) { setSelectedTxs(new Set()); onRepeat(singleTx); } }} disabled={bulkProcessing || !singleTx} style={{ opacity: singleTx ? 1 : 0.5 }}>Repeat</button>}
               <button type="button" className="action-pill-btn" onClick={() => setShowBulkCategoryModal(true)} disabled={bulkProcessing}>Categorize</button>
               <button type="button" className="action-pill-btn" onClick={handleBulkReconcile} disabled={bulkProcessing}>{reconcileText}</button>
               <button type="button" className="action-pill-btn danger" style={{ color: 'var(--color-danger)' }} onClick={handleBulkDelete} disabled={bulkProcessing}>Delete</button>
