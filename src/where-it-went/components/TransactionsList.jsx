@@ -520,7 +520,6 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
         message={actionError || ''}
         onClose={() => setActionError(null)}
       />
-    </div>
 
       {/* Action toast — bottom-right, above nav */}
       {toast && createPortal(
@@ -529,5 +528,6 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
         </div>,
         document.body
       )}
+    </div>
   );
 }

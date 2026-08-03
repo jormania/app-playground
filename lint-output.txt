@@ -1,0 +1,182 @@
+﻿
+> app-playground@1.0.0 lint
+> eslint .
+
+
+C:\Users\Gabriel\dev\app-playground\api\_lib\clickdeckReviews.js
+  34:12  error  'err' is defined but never used. Allowed unused caught errors must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\cleanup.cjs
+  1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  1:12  error  'require' is not defined                 no-undef
+
+C:\Users\Gabriel\dev\app-playground\find-covers.cjs
+   1:15  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+   1:15  error  'require' is not defined                 no-undef
+  14:74  error  Unnecessary escape character: \"         no-useless-escape
+  14:76  error  Unnecessary escape character: \'         no-useless-escape
+  15:7   error  'console' is not defined                 no-undef
+
+C:\Users\Gabriel\dev\app-playground\generateDemoData.cjs
+  1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  1:12  error  'require' is not defined                 no-undef
+
+C:\Users\Gabriel\dev\app-playground\patch-accounts.cjs
+   1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+   1:12  error  'require' is not defined                 no-undef
+  14:5   error  'console' is not defined                 no-undef
+  73:1   error  'console' is not defined                 no-undef
+
+C:\Users\Gabriel\dev\app-playground\patch-bulk.cjs
+  1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  1:12  error  'require' is not defined                 no-undef
+
+C:\Users\Gabriel\dev\app-playground\patch-categories.cjs
+   1:12  error  A `require()` style import is forbidden    @typescript-eslint/no-require-imports
+   1:12  error  'require' is not defined                   no-undef
+   2:7   error  'glob' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   2:14  error  A `require()` style import is forbidden    @typescript-eslint/no-require-imports
+   2:14  error  'require' is not defined                   no-undef
+   3:7   error  'path' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   3:14  error  A `require()` style import is forbidden    @typescript-eslint/no-require-imports
+   3:14  error  'require' is not defined                   no-undef
+  19:5   error  'console' is not defined                   no-undef
+  97:1   error  'console' is not defined                   no-undef
+
+C:\Users\Gabriel\dev\app-playground\patch-currency.cjs
+   1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+   1:12  error  'require' is not defined                 no-undef
+  10:5   error  'console' is not defined                 no-undef
+  23:1   error  'console' is not defined                 no-undef
+
+C:\Users\Gabriel\dev\app-playground\patch-forms.cjs
+   1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+   1:12  error  'require' is not defined                 no-undef
+  11:5   error  'console' is not defined                 no-undef
+  37:1   error  'console' is not defined                 no-undef
+
+C:\Users\Gabriel\dev\app-playground\patch-modal.cjs
+  1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  1:12  error  'require' is not defined                 no-undef
+
+C:\Users\Gabriel\dev\app-playground\patch-remaining.cjs
+   1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+   1:12  error  'require' is not defined                 no-undef
+  14:5   error  'console' is not defined                 no-undef
+
+C:\Users\Gabriel\dev\app-playground\scratch-fix.cjs
+  1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  1:12  error  'require' is not defined                 no-undef
+
+C:\Users\Gabriel\dev\app-playground\scratch_debug.js
+  1:19  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+C:\Users\Gabriel\dev\app-playground\src\click-deck\App.jsx
+  242:6  warning  React Hook useEffect has a missing dependency: 'loadGames'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Gabriel\dev\app-playground\src\click-deck\components\GameEditorModal.jsx
+  76:6  warning  React Hook useEffect has a missing dependency: 'handleClose'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Gabriel\dev\app-playground\src\ds\components\SelectField.tsx
+  4:21  error  'FormFieldProps' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\src\where-it-went\components\AccountIcon.jsx
+  1:72  error  'Wallet' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\src\where-it-went\components\Dashboard.jsx
+   27:10  error  'getChartColors' is defined but never used. Allowed unused vars must match /^_/u           @typescript-eslint/no-unused-vars
+   41:39  error  'categoryFilter' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   41:63  error  'searchQuery' is assigned a value but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+  284:11  error  'inkColor' is assigned a value but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+  285:11  error  'mutedColor' is assigned a value but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+  286:11  error  'borderColor' is assigned a value but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\src\where-it-went\components\DuplicateReview.jsx
+  4:10  error  'AccountIcon' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\src\where-it-went\components\QuickTemplates.jsx
+  2:10  error  'Button' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+  3:10  error  'formatCurrency' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\src\where-it-went\components\Settings.jsx
+  15:10  error  'generateDeepInsights' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\src\where-it-went\components\SmartTextEntry.jsx
+    2:39  error  'CheckCircle' is defined but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+  137:14  error  'err' is defined but never used. Allowed unused caught errors must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\src\where-it-went\components\SplitTransactionModal.jsx
+  4:10  error  'Button' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\src\where-it-went\components\SubscriptionEditorModal.jsx
+  2:10  error  'formatAccountLabel' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  8:10  error  'Button' is defined but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\src\where-it-went\components\TemplateEditorModal.jsx
+  4:10  error  'Button' is defined but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+  7:10  error  'formatAccountLabel' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\src\where-it-went\components\TransactionForm.jsx
+   3:10  error  'Button' is defined but never used. Allowed unused vars must match /^_/u              @typescript-eslint/no-unused-vars
+  10:10  error  'formatAccountLabel' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\src\where-it-went\components\TransactionForm.test.jsx
+  29:12  error  'e' is defined but never used. Allowed unused caught errors must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\src\where-it-went\components\TripEditorModal.jsx
+  5:10  error  'Button' is defined but never used. Allowed unused vars must match /^_/u          @typescript-eslint/no-unused-vars
+  6:10  error  'CurrencySelect' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\src\where-it-went\components\TripExportModal.test.jsx
+  6:32  error  'vi' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\src\where-it-went\lib\aiParser.test.js
+  72:16   error  Unnecessary escape character: \`  no-useless-escape
+  72:18   error  Unnecessary escape character: \`  no-useless-escape
+  72:20   error  Unnecessary escape character: \`  no-useless-escape
+  72:184  error  Unnecessary escape character: \`  no-useless-escape
+  72:186  error  Unnecessary escape character: \`  no-useless-escape
+  72:188  error  Unnecessary escape character: \`  no-useless-escape
+
+C:\Users\Gabriel\dev\app-playground\src\where-it-went\lib\smartParser.js
+  23:9  error  'lower' is assigned a value but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+  41:9  error  'stripString' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\src\where-it-went\lib\useSubscriptionsEngine.js
+  1:21  error  'useRef' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\steam-search.js
+  22:32  error  'reject' is defined but never used. Allowed unused args must match /^_/u      @typescript-eslint/no-unused-vars
+  35:18  error  'e' is defined but never used. Allowed unused caught errors must match /^_/u  @typescript-eslint/no-unused-vars
+  39:20  error  'e' is defined but never used. Allowed unused args must match /^_/u           @typescript-eslint/no-unused-vars
+
+C:\Users\Gabriel\dev\app-playground\test-urls.cjs
+   1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+   1:12  error  'require' is not defined                 no-undef
+   2:15  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+   2:15  error  'require' is not defined                 no-undef
+  30:13  error  'console' is not defined                 no-undef
+  32:3   error  'console' is not defined                 no-undef
+
+C:\Users\Gabriel\dev\app-playground\update-seed.cjs
+   1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+   1:12  error  'require' is not defined                 no-undef
+  22:24  error  Unnecessary escape character: \"         no-useless-escape
+  22:39  error  Unnecessary escape character: \}         no-useless-escape
+  22:53  error  Unnecessary escape character: \"         no-useless-escape
+  22:57  error  Unnecessary escape character: \"         no-useless-escape
+  22:61  error  Unnecessary escape character: \"         no-useless-escape
+  23:42  error  Unnecessary escape character: \"         no-useless-escape
+  23:63  error  Unnecessary escape character: \"         no-useless-escape
+  27:1   error  'console' is not defined                 no-undef
+
+C:\Users\Gabriel\dev\app-playground\validate-covers.cjs
+   1:15  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+   1:15  error  'require' is not defined                 no-undef
+   2:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+   2:12  error  'require' is not defined                 no-undef
+  25:7   error  'console' is not defined                 no-undef
+  27:7   error  'console' is not defined                 no-undef
+
+Ô£û 103 problems (101 errors, 2 warnings)
+
