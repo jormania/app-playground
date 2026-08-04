@@ -106,8 +106,14 @@ export function applyNoraSplit(tx, categories) {
   const cleanDesc  = stripNoraGroup(tx.description);
   const cleanNotes = stripNoraGroup(tx.notes) || undefined;
 
+  // The manual Split modal marks its new row with " (Split)" specifically so
+  // duplicate detection's same-day/identical-description override (which
+  // otherwise ignores mismatched categories) doesn't pair it with the
+  // remainder. An even-numbered Nora split (e.g. 50/50) produces two rows
+  // with the *same* amount too, so without an equivalent marker here they
+  // were false-flagged as duplicates. Mirrors that existing convention.
   const yourTx = { ...tx, description: cleanDesc, amount: yourShare,  notes: cleanNotes };
-  const noraTx = { ...tx, description: cleanDesc, amount: noraShare,  notes: cleanNotes, categoryId: noraCategory.id };
+  const noraTx = { ...tx, description: `${cleanDesc} (Nora)`, amount: noraShare,  notes: cleanNotes, categoryId: noraCategory.id };
 
   return [yourTx, noraTx];
 }

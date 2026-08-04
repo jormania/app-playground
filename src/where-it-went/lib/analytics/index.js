@@ -219,8 +219,8 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
   // ── Property ─────────────────────────────────────────────────────────────
   const isPropertyTx = t => {
     const cat = getCatName(t.categoryId).toLowerCase();
-    if (matchesAny(cat, ['propert', 'rental', 'real estate'])) return true;
-    return matchesAny(searchText(t), ['propert', 'tenant', 'mortgage', 'rental']);
+    if (matchesAny(cat, ['propert', 'rental', 'real estate', '=rent'])) return true;
+    return matchesAny(searchText(t), ['propert', 'tenant', 'mortgage', 'rental', 'landlord']);
   };
 
   const propTx = txInHorizon.filter(isPropertyTx);

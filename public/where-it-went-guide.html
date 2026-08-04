@@ -215,6 +215,10 @@
   <h3>Repeat</h3>
   <p>Every row in the ledger has a small ↻ next to its amount. Tap it and Add reopens pre-filled with that transaction's description, amount, category and account — the same coffee, the same parking fare, without retyping it. The date resets to today and notes start blank, since both are specific to the moment, not the purchase.</p>
 
+  <h3>Split</h3>
+  <p>Tap <b>Split</b> on a ledger row to carve part of it into its own transaction under a different category — a shop that was half groceries, half household becomes two rows. Choose an amount or a percentage; the original row keeps the remainder and description, the new row is marked <code>(Split)</code> so it reads as a deliberate division rather than a duplicate entry.</p>
+  <p><b>"with Nora" auto-splits automatically.</b> Typing or dictating a description containing <code>with Nora</code> — optionally followed by more names, e.g. <code>with Nora and Vio</code> — divides the amount evenly by however many people are named (including you) and files Nora's share under the <b>Nora</b> category the moment you save. The <code>with Nora …</code> phrase itself is stripped from both descriptions.</p>
+
   <h3>Transfers <span class="pill off">off by default</span></h3>
   <p>Turn on <b>Transfers</b> in Settings to record money moving between your own accounts — cash into Revolut, current account into savings. A transfer names both ends, <b>From</b> and <b>To</b>, and they must differ.</p>
   <p>Transfers have no category and are <b>excluded from every income and expense total</b>, every budget and every Insights figure. They exist so the ledger reflects reality without inflating what you appear to earn or spend. In the ledger they show as <code>Cash → Revolut</code> with a <code>±</code> amount.</p>
@@ -278,6 +282,7 @@
     <li><b>Habitual charges are left alone.</b> If the same vendor and amount appears on three or more separate days it is a fixed price — the same coffee, the same fare — where a matching amount means nothing. A vendor whose charges vary landing on the identical figure twice is far more telling. This is measured from your own history, not from a list of guessed vendor names.</li>
     <li><b>Same day, same vendor, same card</b> is the only combination rated <code>high</code>. Anything crossing midnight stays a suggestion.</li>
     <li><b>Two foreign charges</b> must also agree on the original amount and currency, not just the converted RON figure.</li>
+    <li><b>Same-day, identical-description pairs are checked even across categories</b> — the one exception to "share a category" above, meant to still catch a charge typed twice under two different categories by mistake. A genuine <b>Split</b> (including an auto-split from <code>with Nora</code>) avoids it because the new row's description is distinguishable from the original's, which is why splitting always renames one side rather than leaving both identical.</li>
   </ul>
   <p>Tap either row to open it in full before deciding. Choosing <b>Keep this</b> copies over any notes, trip or tags the other row has and that this one lacks, then archives the rest — behind a confirmation. <b>Not duplicates</b> is remembered on this device.</p>
 
@@ -325,8 +330,7 @@
   <ul>
     <li><b>No account balances or net worth.</b> The app records movement, not holdings — which is why the forecast projects cash flow rather than a balance.</li>
     <li><b>No bank import.</b> Every row is entered by hand, or posted by the recurring engine.</li>
-    <li><b>No CSV import or export from the app.</b> Notion does both, and your data is already there.</li>
-    <li><b>No split transactions.</b> A shop that was half groceries, half household needs two rows.</li>
+    <li><b>No CSV import or export from the app.</b> Notion does both, and your data is already there. There is an exception: <b>Settings → Data Export</b> downloads the full ledger as a CSV file.</li>
     <li><b>No savings goals</b>, no receipt attachments, no tag editing in the form, no in-app undo.</li>
     <li><b>No household or shared access.</b> Deliberately single-person; share the Notion databases if someone else needs to see them.</li>
     <li><b>One base currency, RON.</b> Foreign amounts are recorded and converted, but every total is in RON.</li>

@@ -1,4 +1,3 @@
-import React from 'react';
 import styles from './FormError.module.css';
 
 export interface FormErrorProps {

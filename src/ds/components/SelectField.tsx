@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react';
 import { cx } from '../lib/cx';
 import fieldStyles from './Field.module.css';
-import { FormField, FormFieldProps } from './FormField';
+import { FormField } from './FormField';
 
 export interface SelectFieldProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: React.ReactNode;

@@ -1274,3 +1274,43 @@ For example, the engine sees this exact rule under the hood:
 - *Input:* "bought milk, eggs, and bread at e-mag for 200"
 - *Expected:* Logs `description: "Groceries at eMAG"`, `notes: "milk, eggs, and bread"`.
 This guarantees consistent, clean data across all your entries without you needing to do the manual organizing.
+
+## Bugfix pass: Property Insights rent, and Nora-split false duplicates (2026-08-04)
+
+Two bugs reported from real use, both traced to features that shipped without
+updating the two systems that classify transactions by shape rather than by
+an explicit flag: Property Insights' `isPropertyTx` and duplicate detection's
+same-day/identical-description override.
+
+- **Rent income sat at 0 L in Property Insights despite a logged "Rent"
+  transaction.** `isPropertyTx` (`lib/analytics/index.js`) matched category
+  names against `propert`/`rental`/`real estate` and description text against
+  `propert`/`tenant`/`mortgage`/`rental` — none of which match a category
+  literally named **Rent**, or a description like "Rent from Sinaia" (`rent`
+  is not a substring of `rental`). Property expenses filed under Maintenance
+  &amp; Repairs matched fine and looked correctly analyzed, which made the
+  zeroed income line read as an isolated data problem rather than a
+  classifier gap. Added `=rent` (exact word) to the category check and
+  `landlord` to the text check.
+- **Nora auto-split transactions were flagged as duplicates.** The manual
+  **Split** modal has always appended `(Split)` to its new row's description
+  specifically so duplicate detection's same-day + identical-description
+  override (the one case that pairs transactions across different
+  categories) doesn't catch it. `applyNoraSplit` (`lib/noraSplit.js`), added
+  later, never got the same marker — an even-numbered split (2 people, 50/50)
+  produces two rows with the *same* amount, same day, same account and an
+  *identical* description in two different categories (the regular category
+  and Nora), which is exactly what that override exists to catch. `noraTx`'s
+  description now gets ` (Nora)` appended, the same convention as `(Split)`.
+  Odd-numbered splits (e.g. 1/3 to Nora) were never affected, since the two
+  shares aren't equal and duplicate detection buckets by exact amount first.
+  Repeat was checked too — reported alongside splits as a source of false
+  positives, but not found to have any beyond correctly flagging two rows
+  that genuinely are identical (same description, amount, category, account,
+  same-day), which is the intended behaviour.
+- **Documented for the first time**: Split and the `with Nora` auto-split
+  were not in `where-it-went-guide.html` at all — §14 ("Honest limits") still
+  claimed *"No split transactions"*, a leftover from before either feature
+  existed. Added a Split subsection to §5, corrected §14 (also documenting
+  the CSV export in Settings, similarly undocumented), and added a note to
+  §10 explaining why a genuine split doesn't trip the duplicate reviewer.

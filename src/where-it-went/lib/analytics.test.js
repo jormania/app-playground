@@ -102,6 +102,20 @@ describe('generateDeepInsights', () => {
     expect(breakdown.other).toBe(400);
   });
 
+  it('counts income filed under a category literally named "Rent" as property income', () => {
+    const data = {
+      categories: [{ id: 'rent', name: 'Rent', type: 'Income' }],
+      transactions: [
+        // "Rent" contains no substring of "rental"/"propert"/"tenant"/"mortgage" —
+        // this used to fall through isPropertyTx entirely, leaving Property
+        // Insights' Rental Income stuck at 0 despite a logged income transaction.
+        { id: 't1', date: NOW.toISOString(), type: 'Income', amount: 2886, categoryId: 'rent', description: 'Rent from Sinaia' }
+      ]
+    };
+    const result = generateDeepInsights(data, 'this_month', null, NOW);
+    expect(result.behavioral.propertyAnalysis.totalIncome).toBe(2886);
+  });
+
   it('does not count money moved into savings/investing as consumption in the savings rate', () => {
     const data = {
       categories: [
