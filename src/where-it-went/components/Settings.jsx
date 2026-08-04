@@ -17,7 +17,7 @@ import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 import { ordinal } from '../lib/period';
 import { DEFAULT_LEAD_DAYS } from '../lib/upcoming';
-import { readFailed, discardFailed, retryFailed } from '../lib/outbox';
+import { readFailed, discardFailed } from '../lib/outbox';
 import { defaultTheme } from '../lib/theme';
 import { readJson, writeJson } from '../lib/storage';
 import ReminderSettings from './ReminderSettings';
@@ -79,7 +79,7 @@ function extractNotionId(input) {
   return match ? match[1] : str;
 }
 
-export default function Settings({ config, onSave, onThemeChange, onDone, data, client, onDataChange }) {
+export default function Settings({ config, onSave, onThemeChange, onDone, data, client, onDataChange, onRetryFailed }) {
   const [token, setToken] = useState(config.token || '');
   const [transactionsDb, setTransactionsDb] = useState(config.transactionsDb || '');
   const [categoriesDb, setCategoriesDb] = useState(config.categoriesDb || '');
@@ -555,7 +555,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                   </div>
                   <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-danger)' }}>{job.lastError}</div>
                 </div>
-                <Button size="sm" variant="secondary" onClick={() => { retryFailed(job.id); setFailedJobs(readFailed()); }}>
+                <Button size="sm" variant="secondary" onClick={async () => { await onRetryFailed(job.id); setFailedJobs(readFailed()); }}>
                   Retry
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => { discardFailed(job.id); setFailedJobs(readFailed()); }}>

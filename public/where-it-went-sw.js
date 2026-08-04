@@ -11,6 +11,7 @@
 importScripts('/shared-notify-idb.js');
 
 var CACHE = 'whereitwent-cache-v1';
+var CACHE_PREFIX = 'whereitwent-';
 var DB = 'wiw-reminders', STORE = 'kv', APP = '/where-it-went-react.html';
 var SYNC_TAG = 'wiw-bill-reminders';
 var MAX_SENT_IDS = 200;
@@ -22,8 +23,12 @@ self.addEventListener('install', function () {
 self.addEventListener('activate', function (e) {
   e.waitUntil(
     caches.keys().then(function (keys) {
+      // Cache Storage is origin-wide — this repo hosts many apps on one
+      // origin, so only ever touch our own prefixed caches, never another
+      // app's.
       return Promise.all(
-        keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); })
+        keys.filter(function (k) { return k.indexOf(CACHE_PREFIX) === 0 && k !== CACHE; })
+          .map(function (k) { return caches.delete(k); })
       );
     }).then(function () { return self.clients.claim(); })
   );

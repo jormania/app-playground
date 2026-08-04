@@ -439,13 +439,16 @@ would reject the whole patch.
 - **Reads**: every successful load is mirrored, so the app paints instantly and a
   failed refresh shows the cached ledger behind a "Showing data from 14:32 —
   offline" strip instead of an error card implying the data is gone.
-- **Writes**: an ordered outbox. `createOfflineClient` wraps the Notion client
-  with `Object.create` (not a spread — the methods live on the class prototype),
-  so every existing call site gained offline support without changing. Flushing
-  **stops at the first retryable failure** rather than skipping ahead; reordering
-  writes can resurrect a deleted row or edit something that doesn't exist yet.
-  Anything Notion rejects outright is parked in Settings → "Changes Notion
-  rejected" with the real error and Retry/Discard, never dropped silently.
+- **Writes**: an ordered outbox, but only for **transactions** — `createOfflineClient`
+  wraps `addTransaction`/`updateTransaction`/`deleteTransaction` with `Object.create`
+  (not a spread — the methods live on the class prototype), so every call site for
+  those three gained offline support without changing. **Subscriptions and Trips are
+  not wrapped** — those writes need a live connection and fail directly while
+  offline. Flushing **stops at the first retryable failure** rather than skipping
+  ahead; reordering writes can resurrect a deleted row or edit something that
+  doesn't exist yet. Anything Notion rejects outright is parked in Settings →
+  "Changes Notion rejected" with the real error and Retry/Discard, never dropped
+  silently.
 - **The sharpest edge**: the subscriptions engine is now blocked while offline,
   while showing a stale snapshot, or with writes still queued. It decides what to
   post by checking the ledger for an existing charge — run it against data that

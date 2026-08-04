@@ -290,7 +290,7 @@
   <p>Every successful load is mirrored locally, so the app opens instantly and keeps working without a connection.</p>
   <ul>
     <li><b>Reading:</b> if a refresh fails, the ledger you already have is shown behind a bar reading <em>Showing data from 14:32 — offline</em>. It never pretends to be current.</li>
-    <li><b>Writing:</b> changes are saved on the device and queued. They appear in the ledger immediately, marked <code>⏳ Syncing</code>, and are sent in order when the connection returns.</li>
+    <li><b>Writing:</b> adding, editing, or deleting a <b>transaction</b> is saved on the device and queued. It appears in the ledger immediately, marked <code>⏳ Syncing</code>, and is sent in order when the connection returns. Subscription and Trip changes are <b>not</b> queued this way — they need a live connection and will show an error if you're offline.</li>
     <li><b>Order is preserved.</b> If one change cannot be sent, everything after it waits rather than jumping the queue — reordering writes could resurrect a row you deleted.</li>
     <li><b>Nothing is dropped silently.</b> Anything Notion actively rejects is listed under <b>Settings → Changes Notion rejected</b> with the real error, and Retry / Discard.</li>
   </ul>

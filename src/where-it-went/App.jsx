@@ -22,7 +22,7 @@ import { getUpcomingBills, billsWithinLeadTime, DEFAULT_LEAD_DAYS } from './lib/
 import { writeReminderState } from './lib/reminders';
 import {
   createOfflineClient, saveSnapshot, readSnapshot, readOutbox, readFailed,
-  flushOutbox, isOnline, applyLocally,
+  flushOutbox, isOnline, applyLocally, retryFailed,
 } from './lib/outbox';
 import { FeaturesContext } from './FeaturesContext';
 import PeriodSheet from './components/PeriodSheet';
@@ -279,6 +279,17 @@ export default function App() {
     };
     window.addEventListener('online', onOnline);
     return () => window.removeEventListener('online', onOnline);
+  }, [baseClient, loadData]);
+
+  // Re-queuing a failed job alone just moves it back into the outbox — it
+  // still needs an actual flush, or it sits there until the next reload or
+  // online transition, silently, with no sign anything was "retried."
+  const handleRetryFailed = useCallback(async (jobId) => {
+    retryFailed(jobId);
+    await flushOutbox(baseClient);
+    setPendingCount(readOutbox().length);
+    setFailedCount(readFailed().length);
+    loadData();
   }, [baseClient, loadData]);
 
   // Auto-post missed subscription charges — never against the demo fixture.
@@ -592,6 +603,7 @@ export default function App() {
                 data={data}
                 client={client}
                 onDataChange={loadData}
+                onRetryFailed={handleRetryFailed}
               />
             )}
           </>
