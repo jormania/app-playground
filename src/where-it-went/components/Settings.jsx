@@ -88,6 +88,9 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   const [tripsDb, setTripsDb] = useState(config.tripsDb || '');
   const [templatesDb, setTemplatesDb] = useState(config.templatesDb || '');
   const [claudeApiKey, setClaudeApiKey] = useState(config.claudeApiKey || '');
+  // Default true so every config saved before this existed keeps behaving
+  // exactly as it always has — persisted in localStorage, not sessionStorage.
+  const [rememberDevice, setRememberDevice] = useState(config.rememberDevice !== false);
   const [theme, setTheme] = useState(config.theme || defaultTheme());
   // Transfers default OFF — most people don't need to track internal
   // account-to-account moves, so the feature stays invisible until asked for.
@@ -140,6 +143,7 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     tripsDb: extractNotionId(tripsDb),
     templatesDb: extractNotionId(templatesDb),
     claudeApiKey: claudeApiKey.trim(),
+    rememberDevice,
     theme,
     features,
     upcomingLeadDays: Number(upcomingLeadDays) > 0 ? Number(upcomingLeadDays) : DEFAULT_LEAD_DAYS,
@@ -147,6 +151,14 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
   });
 
   const handleClear = () => {
+    const result = onSave({
+      ...EMPTY_CONFIG_FIELDS, theme, features, demoMode: true,
+      upcomingLeadDays: Number(upcomingLeadDays) || DEFAULT_LEAD_DAYS,
+    });
+    if (result && result.ok === false) {
+      setStatus({ type: 'error', msg: result.reason });
+      return;
+    }
     setToken('');
     setTransactionsDb('');
     setCategoriesDb('');
@@ -155,10 +167,6 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
     setTripsDb('');
     setTemplatesDb('');
     setClaudeApiKey('');
-    onSave({
-      ...EMPTY_CONFIG_FIELDS, theme, features, demoMode: true,
-      upcomingLeadDays: Number(upcomingLeadDays) || DEFAULT_LEAD_DAYS,
-    });
     setStatus({ type: 'success', msg: 'Disconnected from Notion. You are now in demo mode, exploring sample data — nothing you change here touches your Notion workspace.' });
   };
 
@@ -203,8 +211,12 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
       if (subscriptionsDb) checks.push(testClient.fetchSubscriptions());
       if (tripsDb) checks.push(testClient.fetchTrips());
       await Promise.all(checks);
+      const result = onSave(buildConfig());
+      if (result && result.ok === false) {
+        setStatus({ type: 'error', msg: result.reason });
+        return;
+      }
       setStatus({ type: 'success', msg: 'Connection successful!' });
-      onSave(buildConfig());
       setTimeout(() => { if (onDone) onDone(); }, 1000);
     } catch (e) {
       console.error('Notion connection test failed:', e);
@@ -216,7 +228,11 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
 
   const handleScrub = async () => {
     if (!token.trim() || !transactionsDb) {
-      onSave(buildConfig({ demoMode: true }));
+      const result = onSave(buildConfig({ demoMode: true }));
+      if (result && result.ok === false) {
+        setStatus({ type: 'error', msg: result.reason });
+        return;
+      }
       if (onDone) onDone();
       return;
     }
@@ -239,7 +255,11 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
       const result = await liveClient.scrubTransactionsAndSubscriptions({
         onProgress: (done, total) => setScrubProgress({ done, total })
       });
-      onSave(buildConfig({ demoMode: true }));
+      const saveResult = onSave(buildConfig({ demoMode: true }));
+      if (saveResult && saveResult.ok === false) {
+        setStatus({ type: 'error', msg: saveResult.reason });
+        return;
+      }
       setStatus({ type: 'success', msg: `Scrub complete — archived ${result.archived} record${result.archived === 1 ? '' : 's'} in Notion (recoverable from its trash). Entered Demo Mode.` });
       setTimeout(() => { if (onDone) onDone(); }, 1500);
     } catch (e) {
@@ -293,6 +313,12 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
       <CollapsibleSection id="connection" title="Connection Details">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
           <Field label="Notion Integration Token" type="password" value={token} onChange={e => setToken(e.target.value)} placeholder="ntn_..." hint="Stored only on this device and sent straight to Notion — never to us." />
+          <SettingsToggle
+            label="Remember me on this device"
+            hint="On (default) keeps the token above saved here so the app reopens without reconnecting. Off keeps it only for this browser tab — useful on a shared or public computer."
+            checked={rememberDevice}
+            onChange={e => setRememberDevice(e.target.checked)}
+          />
           <Field label="Categories Database ID or Link" type="text" value={categoriesDb} onChange={e => setCategoriesDb(e.target.value)} />
           <Field label="Accounts Database ID or Link" type="text" value={accountsDb} onChange={e => setAccountsDb(e.target.value)} />
           <Field label="Transactions Database ID or Link" type="text" value={transactionsDb} onChange={e => setTransactionsDb(e.target.value)} />

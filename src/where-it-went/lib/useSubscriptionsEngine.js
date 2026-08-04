@@ -153,13 +153,32 @@ export function useSubscriptionsEngine({ data, client, onDataChange, enabled = t
 
     (async () => {
       const plans = planSubscriptionRun(data, new Date());
+      if (plans.every(p => p.toPost.length === 0)) return;
+
+      // Re-check against the freshest ledger right before writing anything,
+      // rather than trusting `data` — which can be minutes or hours old on a
+      // tab left open. Two devices racing to post the same occurrence is
+      // exactly the scenario `isAlreadyPosted` exists to catch, and the
+      // window it has to work with was previously "however long this tab
+      // has been open" instead of "however long this fetch takes". This
+      // can't make the check-then-write atomic — Notion has no such
+      // primitive to offer — but it closes almost all of the real gap.
+      let freshTransactions = data.transactions;
+      try {
+        freshTransactions = await client.fetchTransactions();
+      } catch {
+        // A failed pre-check shouldn't block posting on a good connection
+        // moments later — fall back to what's already in hand.
+      }
+
       let madeChanges = false;
 
-      for (const { sub, dueDates, toPost } of plans) {
+      for (const { sub, dueDates } of plans) {
         let lastSettled = null;
+        const toPostNow = dueDates.filter(d => !isAlreadyPosted(freshTransactions, sub, d));
 
         for (const dateStr of dueDates) {
-          if (!toPost.includes(dateStr)) {
+          if (!toPostNow.includes(dateStr)) {
             // Already in the ledger — count it as settled so lastProcessed advances.
             lastSettled = dateStr;
             continue;

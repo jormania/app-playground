@@ -54,10 +54,18 @@ export default function DuplicateReview({
     try {
       const losers = group.txs.filter(t => t.id !== survivor.id);
       // Rescue anything the survivor is missing before the other rows go.
+      // Merged against a running copy, not the original `survivor` object —
+      // with 3+ duplicates, diffing every loser against the same stale
+      // snapshot meant whatever an earlier loser had just contributed (a
+      // note, a trip, a tag) wasn't visible yet when the next loser was
+      // checked, so mergeFields saw it as still "missing" and could pull in
+      // conflicting data instead of leaving the already-rescued value alone.
+      let merged = survivor;
       for (const loser of losers) {
-        const updates = mergeFields(survivor, loser);
+        const updates = mergeFields(merged, loser);
         if (Object.keys(updates).length > 0) {
           await client.updateTransaction(survivor.id, updates);
+          merged = { ...merged, ...updates };
         }
       }
       for (const loser of losers) {

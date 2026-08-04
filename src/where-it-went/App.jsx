@@ -11,7 +11,7 @@ import { Modal } from '../ds/components/Modal';
 import { AlertModal } from '../ds';
 import { useSubscriptionsEngine } from './lib/useSubscriptionsEngine';
 import { useTripEngine } from './lib/useTripEngine';
-import { readJson, writeJson } from './lib/storage';
+import { readJson, writeJson, readSessionJson, writeSessionJson, removeJson, removeSessionJson } from './lib/storage';
 import { defaultTheme } from './lib/theme';
 import { applyNoraSplit } from './lib/noraSplit';
 import Navigation from './components/Navigation';
@@ -22,7 +22,7 @@ import { getUpcomingBills, billsWithinLeadTime, DEFAULT_LEAD_DAYS } from './lib/
 import { writeReminderState } from './lib/reminders';
 import {
   createOfflineClient, saveSnapshot, readSnapshot, readOutbox, readFailed,
-  flushOutbox, isOnline, applyLocally, retryFailed,
+  flushOutbox, isOnline, applyLocally, retryFailed, canSwitchWorkspace, clearWorkspaceCache,
 } from './lib/outbox';
 import { FeaturesContext } from './FeaturesContext';
 import PeriodSheet from './components/PeriodSheet';
@@ -85,7 +85,14 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  const [config, setConfig] = useState(() => readJson('whereItWent_config', {}));
+  const [config, setConfig] = useState(() => {
+    // localStorage is checked first — that's every existing install's config,
+    // and stays the default going forward. sessionStorage only ever holds
+    // anything if someone opted out of being remembered on this device (see
+    // handleConfigSave), so it's the fallback, not the primary source.
+    const persisted = readJson('whereItWent_config', null);
+    return persisted || readSessionJson('whereItWent_config', {});
+  });
 
   // Stable identity: a fresh client on every render re-triggered every effect that
   // depends on it (notably the subscriptions engine).
@@ -316,7 +323,26 @@ export default function App() {
   useTripEngine({ data, client, onDataChange: loadData, enabled: engineSafe });
 
   const handleConfigSave = (newConfig) => {
-    writeJson('whereItWent_config', newConfig);
+    // The snapshot mirror and outbox aren't scoped per workspace — refuse to
+    // switch while something is still queued for the one being left, or it
+    // gets flushed into the new workspace's databases instead. See
+    // `canSwitchWorkspace` for why blocking beats trying to keep two
+    // workspaces' caches side by side.
+    const { ok, changed, reason } = canSwitchWorkspace(config, newConfig);
+    if (!ok) return { ok: false, reason };
+    if (changed) clearWorkspaceCache();
+
+    // Off by default keeps every existing install's behavior unchanged —
+    // this only takes the sessionStorage branch for someone who explicitly
+    // opted out of being remembered on this device.
+    const remember = newConfig.rememberDevice !== false;
+    if (remember) {
+      writeJson('whereItWent_config', newConfig);
+      removeSessionJson('whereItWent_config');
+    } else {
+      writeSessionJson('whereItWent_config', newConfig);
+      removeJson('whereItWent_config');
+    }
     setConfig(newConfig);
     // Turning Transfers off shouldn't leave the ledger stuck on a filter that's
     // no longer offered anywhere in the UI — the Filter Sheet only shows the
@@ -325,6 +351,7 @@ export default function App() {
     if (newConfig?.features?.transfers !== true && filterType === 'Transfer') {
       setFilterType('All');
     }
+    return { ok: true };
   };
 
   const handleThemeChange = (newTheme) => {

@@ -7,6 +7,7 @@ import {
   enqueue, readOutbox, writeOutbox, readFailed, writeFailed,
   flushOutbox, applyLocally, isRetryable, isLocalId, newLocalId,
   discardFailed, retryFailed, createOfflineClient,
+  workspaceIdentity, canSwitchWorkspace, clearWorkspaceCache,
 } from './outbox';
 import { NotionClient, NotionError } from './notionClient';
 
@@ -131,6 +132,29 @@ describe('flushOutbox', () => {
     expect(client.updateTransaction).toHaveBeenCalledWith('notion-1', { amount: 20 });
   });
 
+  it('carries a temp-id mapping across two separate flush calls', async () => {
+    // The scenario that used to lose data: an `add` succeeds and resolves a
+    // local id, then the very next queued item for that same row hits a
+    // retryable failure — leaving the mapping needed to resolve it stranded
+    // if the next flush (a later reload, or the next `online` event) started
+    // from a blank map instead of picking up where this one left off.
+    const client = makeClient();
+    client.updateTransaction.mockRejectedValueOnce(new NotionError('offline', 0));
+    enqueue('add', tx({ id: 'local_tx_1' }));
+    enqueue('update', { id: 'local_tx_1', updates: { amount: 20 } });
+
+    const first = await flushOutbox(client);
+    expect(first.sent).toBe(1);
+    expect(readOutbox()).toHaveLength(1); // the update is still queued
+
+    // A brand new flush call, as if the page had reloaded — no in-memory
+    // state survives from the call above, only what's in storage.
+    const second = await flushOutbox(client);
+    expect(client.updateTransaction).toHaveBeenLastCalledWith('notion-1', { amount: 20 });
+    expect(second.sent).toBe(1);
+    expect(readOutbox()).toEqual([]);
+  });
+
   it('stops at the first retryable failure instead of skipping ahead', async () => {
     // Reordering writes can resurrect a deleted row or edit something that
     // doesn't exist yet, so everything after a failure has to wait its turn.
@@ -243,5 +267,78 @@ describe('failed jobs', () => {
 
   it('reports when there is nothing to retry', () => {
     expect(retryFailed('nope')).toBe(false);
+  });
+});
+
+describe('workspaceIdentity', () => {
+  it('is the same for an identical config', () => {
+    const a = { token: 't1', transactionsDb: 'db1', categoriesDb: 'db2' };
+    const b = { token: 't1', transactionsDb: 'db1', categoriesDb: 'db2' };
+    expect(workspaceIdentity(a)).toBe(workspaceIdentity(b));
+  });
+
+  it('differs when the token changes', () => {
+    expect(workspaceIdentity({ token: 't1', transactionsDb: 'db1' }))
+      .not.toBe(workspaceIdentity({ token: 't2', transactionsDb: 'db1' }));
+  });
+
+  it('differs when a database id changes', () => {
+    expect(workspaceIdentity({ token: 't1', transactionsDb: 'db1' }))
+      .not.toBe(workspaceIdentity({ token: 't1', transactionsDb: 'db2' }));
+  });
+
+  it('is one fixed identity for demo mode regardless of leftover fields', () => {
+    expect(workspaceIdentity({ demoMode: true, token: 'stale-1' }))
+      .toBe(workspaceIdentity({ demoMode: true, token: 'stale-2' }));
+  });
+
+  it('is empty for a missing config', () => {
+    expect(workspaceIdentity(null)).toBe('');
+    expect(workspaceIdentity(undefined)).toBe('');
+  });
+});
+
+describe('canSwitchWorkspace', () => {
+  const workspaceA = { token: 'tA', transactionsDb: 'dbA' };
+  const workspaceB = { token: 'tB', transactionsDb: 'dbB' };
+
+  it('allows switching workspaces when nothing is queued', () => {
+    expect(canSwitchWorkspace(workspaceA, workspaceB)).toEqual({ ok: true, changed: true });
+  });
+
+  it('allows saving within the same workspace even with items queued', () => {
+    enqueue('add', tx());
+    expect(canSwitchWorkspace(workspaceA, { ...workspaceA, theme: 'dark' })).toEqual({ ok: true, changed: false });
+  });
+
+  it('blocks switching workspaces while writes are still queued for the one being left', () => {
+    enqueue('add', tx());
+    const result = canSwitchWorkspace(workspaceA, workspaceB);
+    expect(result.ok).toBe(false);
+    expect(result.reason).toMatch(/have not synced/);
+  });
+});
+
+describe('clearWorkspaceCache', () => {
+  it('wipes the snapshot, outbox, failed jobs and id map together', async () => {
+    saveSnapshot({ transactions: [tx()] });
+    enqueue('add', tx({ id: 'local_tx_1' }));
+    writeFailed([{ id: 'j1', op: 'add', payload: {} }]);
+    const client = { addTransaction: vi.fn().mockResolvedValue({ id: 'notion-1' }) };
+    // Prime the id map the way `flushOutbox` would leave it behind.
+    const stuck = { updateTransaction: vi.fn().mockRejectedValueOnce(new NotionError('offline', 0)) };
+    enqueue('update', { id: 'local_tx_1', updates: { amount: 1 } });
+    await flushOutbox({ ...client, ...stuck });
+
+    clearWorkspaceCache();
+
+    expect(readSnapshot()).toBeNull();
+    expect(readOutbox()).toEqual([]);
+    expect(readFailed()).toEqual([]);
+    // Nothing left over to resolve a future local id against the old workspace.
+    const client2 = { updateTransaction: vi.fn().mockResolvedValue({}) };
+    enqueue('update', { id: 'local_tx_1', updates: { amount: 2 } });
+    await flushOutbox(client2);
+    expect(client2.updateTransaction).toHaveBeenCalledWith('local_tx_1', { amount: 2 });
   });
 });

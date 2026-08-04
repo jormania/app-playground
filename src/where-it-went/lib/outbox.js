@@ -20,6 +20,7 @@ import { readJson, writeJson } from './storage';
 const SNAPSHOT_KEY = 'whereItWent_snapshot';
 const OUTBOX_KEY = 'whereItWent_outbox';
 const FAILED_KEY = 'whereItWent_outbox_failed';
+const IDMAP_KEY = 'whereItWent_outbox_idmap';
 
 /** Temp ids are recognisable so the UI can mark a row as not-yet-synced. */
 export const LOCAL_ID_PREFIX = 'local_tx_';
@@ -69,6 +70,25 @@ export function readFailed() {
 
 export function writeFailed(items) {
   writeJson(FAILED_KEY, items);
+}
+
+// --- local -> Notion id map ---------------------------------------------------
+
+/**
+ * Persisted separately from the in-memory map `flushOutbox` used to build in
+ * one call. Without this, a flush that posted an `add` and then hit a
+ * retryable failure on the very next item threw the mapping away — the next
+ * flush (next reload, or the next `online` event) started from an empty map
+ * and sent a later queued `update`/`delete` for that same row straight to its
+ * fake `local_tx_*` id instead of the real Notion id it had already learned.
+ */
+function readIdMap() {
+  const map = readJson(IDMAP_KEY, {});
+  return map && typeof map === 'object' ? map : {};
+}
+
+function writeIdMap(map) {
+  writeJson(IDMAP_KEY, map);
 }
 
 /** Queue one write. Order is preserved — it's the whole point. */
@@ -126,7 +146,11 @@ export async function flushOutbox(client, { onProgress } = {}) {
   const queue = readOutbox();
   if (queue.length === 0) return { sent: 0, failed: 0, remaining: 0, idMap: {} };
 
-  const idMap = {};
+  // Rehydrate rather than start empty: a prior call may have posted an `add`
+  // and then hit a retryable failure on the very next item, and that mapping
+  // is the only way a still-queued `update`/`delete` for the same row finds
+  // its real Notion id instead of the fake local one.
+  const idMap = readIdMap();
   let sent = 0;
   const failures = [];
   let index = 0;
@@ -136,7 +160,12 @@ export async function flushOutbox(client, { onProgress } = {}) {
     try {
       if (item.op === 'add') {
         const created = await client.addTransaction(item.payload);
-        if (created?.id) idMap[item.payload.id] = created.id;
+        if (created?.id) {
+          idMap[item.payload.id] = created.id;
+          // Persisted immediately, not just at the end of the loop — the very
+          // next item in this same batch is what a lost mapping would break.
+          writeIdMap(idMap);
+        }
       } else if (item.op === 'update') {
         const realId = idMap[item.payload.id] || item.payload.id;
         await client.updateTransaction(realId, item.payload.updates);
@@ -163,6 +192,17 @@ export async function flushOutbox(client, { onProgress } = {}) {
   const stillQueued = queue.slice(index);
   writeOutbox(stillQueued);
   if (failures.length > 0) writeFailed([...readFailed(), ...failures]);
+
+  // Prune entries nothing queued or parked still needs, so this doesn't grow
+  // forever across a long-lived install.
+  const stillReferenced = new Set(
+    [...stillQueued, ...failures].map(i => i.payload?.id).filter(Boolean)
+  );
+  const prunedIdMap = {};
+  for (const [localId, realId] of Object.entries(idMap)) {
+    if (stillReferenced.has(localId)) prunedIdMap[localId] = realId;
+  }
+  writeIdMap(prunedIdMap);
 
   return { sent, failed: failures.length, remaining: stillQueued.length, idMap };
 }
@@ -241,4 +281,58 @@ export function createOfflineClient(client) {
     );
 
   return wrapper;
+}
+
+// --- workspace identity -------------------------------------------------------
+
+/**
+ * A stable fingerprint of *which* Notion workspace a config points at — never
+ * the raw token itself, just enough to tell "same workspace" from "different
+ * one". Demo mode is its own identity regardless of what token/db ids happen
+ * to still be sitting in the fields, since it never reads or writes any of
+ * them.
+ */
+export function workspaceIdentity(config) {
+  if (!config) return '';
+  if (config.demoMode) return 'demo';
+  return [
+    config.token, config.categoriesDb, config.accountsDb, config.transactionsDb,
+    config.subscriptionsDb, config.tripsDb, config.templatesDb,
+  ].map(v => v || '').join('|');
+}
+
+/**
+ * Whether it's safe to switch from one workspace to another right now.
+ *
+ * The snapshot mirror and the outbox are not scoped per workspace — they're
+ * a single mirror of "whatever's currently connected". That's fine as long
+ * as switching only ever happens with nothing left to send: otherwise a
+ * write queued for workspace A gets flushed straight into workspace B's
+ * databases the next time the app comes online, and until then the stale
+ * mirror briefly shows A's ledger while B is still loading. Blocking the
+ * switch outright — rather than trying to keep two workspaces' caches side
+ * by side — is the simpler, correct answer for an app one person uses on
+ * one workspace at a time.
+ */
+export function canSwitchWorkspace(oldConfig, newConfig) {
+  const changed = workspaceIdentity(oldConfig) !== workspaceIdentity(newConfig);
+  if (changed && readOutbox().length > 0) {
+    return {
+      ok: false,
+      changed,
+      reason: 'You have changes that have not synced to Notion yet. Reconnect to '
+        + 'the internet and let them send (or discard them, if that\'s what you '
+        + 'want) before switching workspaces — otherwise they\'d be sent to the '
+        + 'new one instead of where they were meant to go.',
+    };
+  }
+  return { ok: true, changed };
+}
+
+/** Drop everything cached for the workspace being left, so none of it bleeds into the next one. */
+export function clearWorkspaceCache() {
+  clearSnapshot();
+  writeOutbox([]);
+  writeFailed([]);
+  writeIdMap({});
 }

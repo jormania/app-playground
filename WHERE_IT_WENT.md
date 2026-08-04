@@ -1317,3 +1317,52 @@ same-day/identical-description override.
   existed. Added a Split subsection to §5, corrected §14 (also documenting
   the CSV export in Settings, similarly undocumented), and added a note to
   §10 explaining why a genuine split doesn't trip the duplicate reviewer.
+
+## Offline-audit fixes: workspace isolation, id-map durability, merge order, posting race (2026-08-04)
+
+Five issues from an external code audit, re-verified against current code
+before fixing (a couple had already been overtaken by other work — see the
+"still valid" note on each below where it matters).
+
+- **Switching Notion workspaces could leak data across them.** The snapshot
+  mirror and outbox (`lib/outbox.js`) are a single, unscoped cache of
+  "whatever's currently connected" — reconnecting to a different token/set of
+  database ids didn't clear it, so a write still queued for workspace A could
+  flush into workspace B once it finally sent, and B's first paint could
+  briefly show A's cached ledger. Rather than scoping every cache key per
+  workspace (real fix, much bigger surface, needs a migration), `handleConfigSave`
+  now refuses to switch while anything is still queued (`canSwitchWorkspace`)
+  and clears the snapshot/outbox/failed-jobs/id-map (`clearWorkspaceCache`)
+  whenever the token or any database id actually changes. Simpler and
+  correct for an app one person uses on one workspace at a time.
+- **A partially-flushed offline sequence could lose its own id mapping.**
+  `flushOutbox`'s local-id → real-Notion-id map used to live only in memory
+  for the duration of one call — if an `add` succeeded and the very next
+  queued `update`/`delete` for that same row hit a retryable failure, the
+  next flush (next reload, or the next `online` event) started from a blank
+  map and sent the stale `local_tx_*` string as if it were a real page id.
+  The map is now persisted (`whereItWent_outbox_idmap`) and rehydrated at the
+  start of every flush, pruned back down once nothing queued or failed still
+  needs an entry.
+- **Merging 3+ duplicate transactions could drop an earlier loser's rescued
+  data.** `DuplicateReview`'s merge loop diffed every loser against the
+  *original* survivor object, so a later loser's `mergeFields` call couldn't
+  see what an earlier loser had just contributed and could overwrite it.
+  Fixed by folding each merge's result into a running copy before diffing
+  the next one.
+- **Two devices could both post the same subscription occurrence.**
+  `isAlreadyPosted` only ever checked whatever `data` the engine happened to
+  have in memory — on a tab left open for hours, that's a wide window for
+  another device to post the same charge first without this one noticing.
+  The engine now re-fetches the ledger immediately before writing anything
+  and re-checks against that fresh copy. This narrows the race a lot but
+  doesn't close it entirely — Notion has no atomic check-and-write primitive
+  to build true idempotency on, so a genuinely simultaneous post from two
+  devices is still possible; the duplicate reviewer remains the backstop.
+- **The Notion token had no session-only option.** It's always been stored
+  in plaintext `localStorage` with no alternative — reasonable for a personal
+  daily-use app, but a bad fit on a shared or public machine. Added
+  **Settings → Connection Details → "Remember me on this device"** (on by
+  default, matching every existing install's behaviour exactly): switching
+  it off stores the config in `sessionStorage` instead, cleared once the tab
+  closes, and clears any leftover `localStorage` copy.
