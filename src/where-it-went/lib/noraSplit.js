@@ -103,7 +103,10 @@ export function applyNoraSplit(tx, categories) {
   const noraShare = Math.round((total / totalPeople) * 100) / 100;
   const yourShare = Math.round((total - noraShare) * 100) / 100;
 
-  const cleanDesc  = stripNoraGroup(tx.description);
+  // A description that was *only* "with Nora" (or "with Nora and Vio") strips
+  // to nothing — fall back rather than writing a blank Notion title (and a
+  // Nora row literally named " (Nora)").
+  const cleanDesc = stripNoraGroup(tx.description) || 'Shared expense';
   const cleanNotes = stripNoraGroup(tx.notes) || undefined;
 
   // The manual Split modal marks its new row with " (Split)" specifically so

@@ -6,7 +6,7 @@ import TransactionForm from './TransactionForm';
 import DuplicateReview from './DuplicateReview';
 import { Button } from '../../ds/components/Button';
 import { Modal } from '../../ds/components/Modal';
-import { AlertModal } from '../../ds';
+import { AlertModal, ConfirmModal } from '../../ds';
 import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 import { filterByPeriod, parseTxDate } from '../lib/period';
@@ -17,6 +17,33 @@ import { SwipeableRow } from './SwipeableRow';
 import PullToRefresh from './PullToRefresh';
 
 const PAGE_SIZE = 200;
+
+/** Notion allows ~3 requests/second — the same pacing notionClient.js uses for
+ * its own paced bulk operation (scrub), so a big selection doesn't trip the
+ * rate limit and rely entirely on 429 retry/backoff to recover. */
+const BULK_WRITE_SPACING_MS = 350;
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Run one write per id, sequentially and paced. Stops at the first failure —
+ * reordering bulk writes is no safer here than in the outbox — but reports
+ * exactly how many succeeded before that happened, so the caller can refresh
+ * and clear only the ids that actually landed rather than either wiping a
+ * selection that partially failed or leaving it looking untouched.
+ */
+async function runBulk(ids, action) {
+  const succeeded = [];
+  for (let i = 0; i < ids.length; i++) {
+    try {
+      await action(ids[i]);
+      succeeded.push(ids[i]);
+    } catch (e) {
+      return { succeeded, failedId: ids[i], error: e };
+    }
+    if (i < ids.length - 1) await sleep(BULK_WRITE_SPACING_MS);
+  }
+  return { succeeded, failedId: null, error: null };
+}
 
 /** Amount as money moving: income positive, expense negative, transfer neutral. */
 function signedAmount(tx) {
@@ -45,6 +72,7 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
   // Bulk Mode
   const [selectedTxs, setSelectedTxs] = useState(new Set());
   const [showBulkCategoryModal, setShowBulkCategoryModal] = useState(false);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [bulkProcessing, setBulkProcessing] = useState(false);
 
   // Action toast
@@ -56,6 +84,9 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
     setToast({ message, key });
     toastTimerRef.current = setTimeout(() => setToast(null), 5000);
   }, []);
+  // The timer would otherwise keep a stale setState alive past unmount if the
+  // tab is switched inside the 5s window.
+  useEffect(() => () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); }, []);
 
   const toggleSelection = (id) => {
     setSelectedTxs(prev => {
@@ -66,63 +97,66 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
     });
   };
 
+  /** Drop the ids a partially-failed bulk run *did* land, so retrying only
+   * touches what's actually still left, instead of either clearing a
+   * selection that partially failed or leaving it looking wholly untouched. */
+  const settlePartial = (succeeded) => {
+    if (succeeded.length === 0) return;
+    setSelectedTxs(prev => {
+      const next = new Set(prev);
+      succeeded.forEach(id => next.delete(id));
+      return next;
+    });
+  };
+
   const handleBulkReconcile = async () => {
     setBulkProcessing(true);
-    try {
-      const allSelectedReconciled = Array.from(selectedTxs).every(id => {
-        const tx = data.transactions.find(t => t.id === id);
-        return tx && tx.reconciled;
-      });
-      const shouldReconcile = !allSelectedReconciled;
-      for (const id of Array.from(selectedTxs)) {
-        await client.updateTransaction(id, { reconciled: shouldReconcile });
-      }
-      const count = selectedTxs.size;
-      setSelectedTxs(new Set());
-      if (onDataChange) onDataChange();
-      showToast(`${shouldReconcile ? '✓ Reconciled' : '↩ Unreconciled'} ${count} transaction${count !== 1 ? 's' : ''}`);
-    } catch (e) {
-      setActionError(e.message || 'Failed to bulk update');
-    } finally {
-      setBulkProcessing(false);
+    const ids = Array.from(selectedTxs);
+    const allSelectedReconciled = ids.every(id => {
+      const tx = data.transactions.find(t => t.id === id);
+      return tx && tx.reconciled;
+    });
+    const shouldReconcile = !allSelectedReconciled;
+    const { succeeded, error } = await runBulk(ids, id => client.updateTransaction(id, { reconciled: shouldReconcile }));
+    if (onDataChange && succeeded.length > 0) await onDataChange();
+    settlePartial(succeeded);
+    setBulkProcessing(false);
+    if (error) {
+      setActionError(`${error.message || 'Failed to bulk update'} — ${succeeded.length} of ${ids.length} updated before this happened.`);
+      return;
     }
+    showToast(`${shouldReconcile ? '✓ Reconciled' : '↩ Unreconciled'} ${succeeded.length} transaction${succeeded.length !== 1 ? 's' : ''}`);
   };
 
   const handleBulkDelete = async () => {
-    if (!window.confirm(`Delete ${selectedTxs.size} transactions?`)) return;
+    setShowBulkDeleteConfirm(false);
     setBulkProcessing(true);
-    const count = selectedTxs.size;
-    try {
-      for (const id of Array.from(selectedTxs)) {
-        await client.deleteTransaction(id);
-      }
-      setSelectedTxs(new Set());
-      if (onDataChange) onDataChange();
-      showToast(`🗑 Deleted ${count} transaction${count !== 1 ? 's' : ''}`);
-    } catch (e) {
-      setActionError(e.message || 'Failed to bulk delete');
-    } finally {
-      setBulkProcessing(false);
+    const ids = Array.from(selectedTxs);
+    const { succeeded, error } = await runBulk(ids, id => client.deleteTransaction(id));
+    if (onDataChange && succeeded.length > 0) await onDataChange();
+    settlePartial(succeeded);
+    setBulkProcessing(false);
+    if (error) {
+      setActionError(`${error.message || 'Failed to bulk delete'} — ${succeeded.length} of ${ids.length} deleted before this happened.`);
+      return;
     }
+    showToast(`🗑 Deleted ${succeeded.length} transaction${succeeded.length !== 1 ? 's' : ''}`);
   };
 
   const handleBulkCategorize = async (categoryId) => {
     setBulkProcessing(true);
-    const count = selectedTxs.size;
+    const ids = Array.from(selectedTxs);
     const catName = (data.categories || []).find(c => c.id === categoryId)?.name || 'category';
-    try {
-      for (const id of Array.from(selectedTxs)) {
-        await client.updateTransaction(id, { categoryId });
-      }
-      setSelectedTxs(new Set());
-      setShowBulkCategoryModal(false);
-      if (onDataChange) onDataChange();
-      showToast(`🏷 ${count} transaction${count !== 1 ? 's' : ''} → ${catName}`);
-    } catch (e) {
-      setActionError(e.message || 'Failed to bulk update');
-    } finally {
-      setBulkProcessing(false);
+    const { succeeded, error } = await runBulk(ids, id => client.updateTransaction(id, { categoryId }));
+    if (onDataChange && succeeded.length > 0) await onDataChange();
+    settlePartial(succeeded);
+    setShowBulkCategoryModal(false);
+    setBulkProcessing(false);
+    if (error) {
+      setActionError(`${error.message || 'Failed to bulk update'} — ${succeeded.length} of ${ids.length} moved to ${catName} before this happened.`);
+      return;
     }
+    showToast(`🏷 ${succeeded.length} transaction${succeeded.length !== 1 ? 's' : ''} → ${catName}`);
   };
 
 
@@ -343,7 +377,7 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
                     role="button"
                     tabIndex={0}
                     aria-label={`Edit ${tx.description || 'transaction'}`}
-                    style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', paddingLeft: 'var(--space-lg)', alignItems: 'center', backgroundColor: selectedTxs.has(tx.id) ? 'color-mix(in srgb, var(--color-primary) 15%, var(--color-surface))' : tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 3%, var(--color-surface))' : 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${selectedTxs.has(tx.id) ? 'var(--color-primary)' : catColor}`, cursor: 'pointer' }}
+                    style={{ display: 'grid', gridTemplateColumns: gridTemplate, gap: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', paddingLeft: 'var(--space-lg)', alignItems: 'center', backgroundColor: selectedTxs.has(tx.id) ? 'color-mix(in srgb, var(--color-accent) 15%, var(--color-surface))' : tx.type === 'Income' ? 'color-mix(in srgb, var(--color-success) 3%, var(--color-surface))' : 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', borderLeft: `4px solid ${selectedTxs.has(tx.id) ? 'var(--color-accent)' : catColor}`, cursor: 'pointer' }}
                     onKeyDown={rowKeyHandler(tx)}
                   >
                     {sortConfig.key !== 'date' && (
@@ -451,7 +485,7 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
               {onRepeat && <button type="button" className="action-pill-btn" onClick={() => { if (singleTx) { setSelectedTxs(new Set()); showToast(`↺ Repeating: ${singleTx.description}`); onRepeat(singleTx); } }} disabled={bulkProcessing || !singleTx} style={{ opacity: singleTx ? 1 : 0.5 }}>Repeat</button>}
               <button type="button" className="action-pill-btn" onClick={() => setShowBulkCategoryModal(true)} disabled={bulkProcessing}>Categorize</button>
               <button type="button" className="action-pill-btn" onClick={handleBulkReconcile} disabled={bulkProcessing}>{reconcileText}</button>
-              <button type="button" className="action-pill-btn danger" style={{ color: 'var(--color-danger)' }} onClick={handleBulkDelete} disabled={bulkProcessing}>Delete</button>
+              <button type="button" className="action-pill-btn danger" style={{ color: 'var(--color-danger)' }} onClick={() => setShowBulkDeleteConfirm(true)} disabled={bulkProcessing}>Delete</button>
               <button type="button" className="action-pill-btn" onClick={() => setSelectedTxs(new Set())} disabled={bulkProcessing}>Cancel</button>
             </div>
           </div>,
@@ -460,22 +494,49 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
       })()}
 
       <Modal open={showBulkCategoryModal} onClose={() => setShowBulkCategoryModal(false)} title="Bulk Categorize">
-           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', padding: '12px' }}>
-             {(data.categories || []).filter(cat => {
-               const selectedTypes = new Set(Array.from(selectedTxs).map(id => {
-                 const t = data.transactions.find(tx => tx.id === id);
-                 if (!t) return null;
-                 return t.type || (t.amount < 0 ? 'Expense' : 'Income');
-               }).filter(t => t && t !== 'Transfer'));
-               return selectedTypes.size === 0 || selectedTypes.has(cat.type);
-             }).map(cat => (
-               <Button key={cat.id} size="sm" variant="secondary" onClick={() => handleBulkCategorize(cat.id)} disabled={bulkProcessing} style={{ padding: '6px 8px', justifyContent: 'flex-start' }}>
-                 <CategoryIcon category={cat} style={{ marginRight: '6px' }} />
-                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
-               </Button>
-             ))}
-           </div>
+           {(() => {
+             // Transfers are deliberately not filtered out of this set (unlike
+             // before) — a selection made entirely of Transfers has no
+             // matching category by design (no category is typed "Transfer"),
+             // and should show that plainly rather than falling through to
+             // "no filter" and offering every category in the workspace.
+             const selectedTypes = new Set(Array.from(selectedTxs).map(id => {
+               const t = data.transactions.find(tx => tx.id === id);
+               if (!t) return null;
+               return t.type || (t.amount < 0 ? 'Expense' : 'Income');
+             }).filter(Boolean));
+             const eligible = (data.categories || []).filter(cat =>
+               selectedTypes.size === 0 || selectedTypes.has(cat.type));
+
+             if (eligible.length === 0) {
+               return (
+                 <p style={{ padding: '12px', margin: 0, color: 'var(--color-muted)', fontSize: 'var(--text-sm)' }}>
+                   Transfers move money between your own accounts, so they have no category to assign.
+                 </p>
+               );
+             }
+             return (
+               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', padding: '12px' }}>
+                 {eligible.map(cat => (
+                   <Button key={cat.id} size="sm" variant="secondary" onClick={() => handleBulkCategorize(cat.id)} disabled={bulkProcessing} style={{ padding: '6px 8px', justifyContent: 'flex-start' }}>
+                     <CategoryIcon category={cat} style={{ marginRight: '6px' }} />
+                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
+                   </Button>
+                 ))}
+               </div>
+             );
+           })()}
         </Modal>
+
+      <ConfirmModal
+        isOpen={showBulkDeleteConfirm}
+        title="Delete Transactions"
+        message={`Are you sure you want to delete ${selectedTxs.size} transaction${selectedTxs.size !== 1 ? 's' : ''}? They will be archived in Notion and can be restored from the trash there.`}
+        confirmText="Delete"
+        variant="danger"
+        onConfirm={handleBulkDelete}
+        onCancel={() => setShowBulkDeleteConfirm(false)}
+      />
 
       {editingTx && (
         <Modal open={true} title="Edit Transaction" onClose={() => setEditingTx(null)}>
@@ -523,7 +584,7 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
 
       {/* Action toast — bottom-right, above nav */}
       {toast && createPortal(
-        <div key={toast.key} className="action-toast">
+        <div key={toast.key} className="action-toast" role="status" aria-live="polite">
           {toast.message}
         </div>,
         document.body

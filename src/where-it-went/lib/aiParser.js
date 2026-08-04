@@ -1,13 +1,17 @@
 /**
  * AI-powered transaction parser using Claude (Anthropic API).
  */
+import { toDateString, parseTxDate } from './period';
 
 export async function parseTextWithAI(text, accounts, categories, trips, apiKey, recentTransactions = []) {
   if (!apiKey) {
     throw new Error('Claude API Key is missing. Please add it in Settings.');
   }
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  // Local date, not toISOString() — which is UTC and hands the AI the wrong
+  // "today" for anyone east of UTC between local midnight and UTC midnight,
+  // throwing off every relative date ("yesterday") it resolves.
+  const todayStr = toDateString(new Date());
 
   const categoryList = (categories || [])
     .filter(c => c.active !== false && c.id && c.name)
@@ -25,7 +29,8 @@ export async function parseTextWithAI(text, accounts, categories, trips, apiKey,
   const tripList = (trips || [])
     .filter(t => {
       if (!t.id || !t.name) return false;
-      if (t.endDate && new Date(t.endDate) < sixtyDaysAgo) return false;
+      const end = t.endDate ? parseTxDate(t.endDate) : null;
+      if (end && end < sixtyDaysAgo) return false;
       return true;
     })
     .map(t => `- ${t.name} (ID: ${t.id})`)
@@ -133,14 +138,26 @@ Rules:
   }
 
   const data = await res.json();
-  let responseText = data.content[0].text.trim();
+  const rawText = data?.content?.[0]?.text;
+  if (typeof rawText !== 'string') {
+    throw new Error('The AI returned an empty response. Please try again.');
+  }
+  let responseText = rawText.trim();
 
   // Strip potential markdown wrappers just in case
   if (responseText.startsWith('```')) {
     responseText = responseText.replace(/^```(json)?\n/, '').replace(/\n```$/, '');
   }
 
-  const parsed = JSON.parse(responseText);
+  let parsed;
+  try {
+    parsed = JSON.parse(responseText);
+  } catch {
+    // A max_tokens truncation (batch mode emits one object per transaction) or
+    // any other malformed reply must read as a normal, retryable failure — not
+    // an uncaught SyntaxError.
+    throw new Error('Could not understand the AI response — it may have been cut off. Try a shorter description.');
+  }
 
   if (!parsed.transactions || !Array.isArray(parsed.transactions) || parsed.transactions.length === 0) {
     return []; // No valid transactions found
@@ -161,7 +178,14 @@ Rules:
     accountId: t.accountId,
     toAccountId: t.toAccountId,
     tripId: t.tripId,
-  })).filter(t => (t.action === 'delete' && t.id) || (t.amount && (t.accountId || t.action === 'update'))); // Strip out completely invalid ones
+  })).filter(t => {
+    // Strip out completely invalid ones. An update/delete needs an id to act
+    // on — the old check let an id-less "update" straight through to
+    // `client.updateTransaction(undefined, …)`.
+    if (t.action === 'delete') return !!t.id;
+    if (t.action === 'update') return !!t.id;
+    return !!t.amount && !!t.accountId;
+  });
 }
 
 

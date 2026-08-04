@@ -81,7 +81,7 @@ export default function SmartInsightsChat({ transactions, categories, config }) 
           display: 'flex',
           alignItems: 'center',
           backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-primary)',
+          border: '1px solid var(--color-accent)',
           borderRadius: '99px',
           padding: '8px 16px',
           boxShadow: 'var(--shadow-md)',
@@ -93,9 +93,9 @@ export default function SmartInsightsChat({ transactions, categories, config }) 
         }}
       >
         {isParsing ? (
-          <Loader2 size={20} color="var(--color-primary)" style={{ marginRight: '12px', flexShrink: 0, animation: 'spin 1s linear infinite' }} />
+          <Loader2 size={20} color="var(--color-accent)" style={{ marginRight: '12px', flexShrink: 0, animation: 'spin 1s linear infinite' }} />
         ) : (
-          <Sparkles size={20} color="var(--color-primary)" style={{ marginRight: '12px', flexShrink: 0 }} />
+          <Sparkles size={20} color="var(--color-accent)" style={{ marginRight: '12px', flexShrink: 0 }} />
         )}
         
         <input

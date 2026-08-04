@@ -1,10 +1,8 @@
 import React, { useState, useId } from "react";
 import { Modal } from "../../ds/components/Modal";
 import { Field } from "../../ds/components/Field";
-import { Button } from "../../ds/components/Button";
 import { ConfirmModal } from "../../ds";
 import { SegmentedControl } from "../../ds/components/SegmentedControl";
-import { formatAccountLabel } from "../lib/accounts";
 import { CategorySelect } from './CategorySelect';
 import { AccountSelect } from './AccountSelect';
 import { FormError } from "../../ds/components/FormError";

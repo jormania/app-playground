@@ -52,8 +52,8 @@ export function CurrencySelect({ id, value, onChange, currencies, style, disable
                 padding: '10px 12px',
                 borderRadius: 'var(--radius-md)',
                 border: 'none',
-                backgroundColor: code === value ? 'var(--color-primary)' : 'var(--color-surface)',
-                color: code === value ? 'var(--color-on-primary)' : 'var(--color-ink)',
+                backgroundColor: code === value ? 'var(--color-accent)' : 'var(--color-surface)',
+                color: code === value ? 'var(--color-on-accent)' : 'var(--color-ink)',
                 cursor: 'pointer',
                 textAlign: 'left'
               }}

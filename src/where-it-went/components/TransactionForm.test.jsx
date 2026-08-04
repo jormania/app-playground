@@ -26,7 +26,7 @@ beforeEach(() => {
   // leaked its choice into every test after it.
   try {
     localStorage.clear();
-  } catch (e) {}
+  } catch (_e) {}
 });
 
 afterEach(() => {

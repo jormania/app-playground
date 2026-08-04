@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { daysInMonth, parseTxDate, toDateString, toMonthKey } from './period';
 import { fetchRate, convert, canConvert, BASE_CURRENCY } from './fx';
 
@@ -152,8 +152,16 @@ export function useSubscriptionsEngine({ data, client, onDataChange, enabled = t
     engineHasRun = true;
 
     (async () => {
+      // `planSubscriptionRun` already filters to plans with at least one due
+      // date, so an empty list means nothing due at all. Bailing out instead
+      // on "nothing left *to post*" used to also skip every plan whose due
+      // dates were already fully present in the ledger (hand-entered, or
+      // posted by another device) — so `lastProcessed` never advanced for a
+      // subscription only ever entered manually, and `getDueDates` kept
+      // re-deriving the same growing backlog every session until it started
+      // falling off the MAX_BACKFILL window.
       const plans = planSubscriptionRun(data, new Date());
-      if (plans.every(p => p.toPost.length === 0)) return;
+      if (plans.length === 0) return;
 
       // Re-check against the freshest ledger right before writing anything,
       // rather than trusting `data` — which can be minutes or hours old on a

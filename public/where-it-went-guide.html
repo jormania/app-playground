@@ -175,6 +175,7 @@
     <tr><td>Notes</td><td>Text</td><td>Free text. Also read by the Travel/Property/family classifiers.</td></tr>
     <tr><td>Tags</td><td>Multi-select</td><td>Register <code>Subscription</code> and <code>Auto-generated</code> — the recurring engine stamps both.</td></tr>
     <tr><td>Recurring</td><td>Checkbox</td><td>Reserved.</td></tr>
+    <tr><td>Reconciled</td><td>Checkbox</td><td>Written on every add and edit. Must exist, or adding your very first transaction is rejected outright — Notion's atomic write rejects the whole page, not just this field, when a property it doesn't recognise is sent.</td></tr>
     <tr><td>Created At</td><td>Created time</td><td>Automatic.</td></tr>
     <tr><td>Updated At</td><td>Last edited time</td><td>Automatic.</td></tr>
   </table></div>
@@ -206,6 +207,20 @@
     <tr><td>Notes</td><td>Text</td><td></td></tr>
   </table></div>
 
+  <h3>4.6 Quick Templates <span class="pill">optional</span></h3>
+  <p>Only needed if <b>Settings → Feature Toggles → Quick Templates</b> is turned on. Settings has a
+  one-click <b>"Initialize Database"</b> button that creates this for you as a child of the same page
+  as Categories — the table below is only for manual setup.</p>
+  <div class="tablewrap"><table class="schema">
+    <tr><th>Property</th><th>Type</th><th>Notes</th></tr>
+    <tr><td>Description</td><td>Title</td><td></td></tr>
+    <tr><td>Amount</td><td>Number</td><td>Optional. A template saved with no amount opens the Add form pre-filled instead of logging instantly — there's nothing to log yet.</td></tr>
+    <tr><td>Type</td><td>Select</td><td><code>Income</code>, <code>Expense</code>, <code>Transfer</code>.</td></tr>
+    <tr><td>Category</td><td>Relation → Categories</td><td></td></tr>
+    <tr><td>Account</td><td>Relation → Accounts</td><td></td></tr>
+    <tr><td>Active</td><td>Checkbox</td><td></td></tr>
+  </table></div>
+
   <h2 id="recording">5. Recording money</h2>
   <p>Everything starts at <b>+ Add</b> in the header. The form adapts to the type you pick, and remembers whichever type you added last — so a freelancer logging mostly Income doesn't reselect it every time.</p>
 
@@ -227,8 +242,15 @@
   <h3>Editing and deleting</h3>
   <p>Tap any row in the ledger or on the Dashboard to open it. Deleting <b>archives</b> the Notion page rather than destroying it — recoverable from Notion's trash for 30 days. The app itself has no undo.</p>
 
+  <h3>Smart Text Entry</h3>
+  <p>The pill-shaped input above the Dashboard's KPI cards logs a transaction from a plain sentence — "bought a pizza for 45 lei", "25 uber to the mall" — instead of filling out the form. A microphone icon dictates it instead of typing. By default it runs a small local parser; type "with Nora" (optionally followed by more names) anywhere in the text and it splits the amount evenly and files the extra share under the <b>Nora</b> category, exactly like the Split modal's own Nora auto-split.</p>
+  <p><b>Settings → AI &amp; Automation → Enable AI Parser</b> <span class="pill off">off by default</span> swaps the local parser for the Claude API, given your own Anthropic API key (stored only on this device, sent straight to Anthropic). It understands multiple transactions in one message, splits ("paid 100 for dinner but Alex owes me 60"), corrections against your last 15 transactions ("change that lunch to 20", "delete the coffee expense"), and offers to save a repeating charge to Subscriptions when it looks like one. On the Insights tab the same key powers a small chat that answers plain-language questions about the transactions in the selected period.</p>
+
+  <h3>Reconcile and bulk actions</h3>
+  <p>Long-press a row (or select several) to enter selection mode, which opens a bottom action bar. <b>Reconcile</b> marks a transaction as checked against a bank statement, shown as a small ✓ on the row — purely a personal marker, it changes no total. From the same bar you can also bulk-categorize, bulk-delete (with a confirmation, same as deleting a single row) or, with exactly one selected, Split or Repeat it.</p>
+
   <h2 id="currency">6. Foreign currency &amp; travel</h2>
-  <p>Give an account or a trip a currency other than RON and the amount field lets you type <b>what you actually paid</b>. The RON figure is filled in underneath from the European Central Bank's rate for that date, with the rate spelled out: <code>Rate: 1 EUR = 5.2353 RON (29 Jul)</code>.</p>
+  <p>Give an account or a trip a currency other than RON and the amount field lets you type <b>what you actually paid</b>. The RON figure is filled in underneath from the European Central Bank's rate for that date, with the rate spelled out: <code>Rate: 1 EUR = 5.24 RON (29 Jul)</code>.</p>
   <ul>
     <li><b>RON stays the source of truth.</b> Every total, budget and chart is built from it. The foreign amount is recorded alongside as context.</li>
     <li><b>You can override the RON figure.</b> Type over it and it stops following the rate — a card's own fee beats any published number. The displayed rate then reflects what you actually got.</li>
@@ -308,6 +330,14 @@
     <dd>The third transaction type. Most people never need to track internal moves, so it stays invisible until asked for.</dd>
     <dt>Upcoming activity <span class="pill on">on</span></dt>
     <dd>The Dashboard agenda and the reminder bar, for both recurring expenses and recurring income. Turning this off also turns off background notifications.</dd>
+    <dt>Mobile Swipe Gestures <span class="pill on">on</span></dt>
+    <dd>Swipe a ledger row left or right to quickly Repeat or Split it.</dd>
+    <dt>Multi-Currency Totals <span class="pill off">off</span></dt>
+    <dd>KPI cards show a per-currency breakdown alongside the RON total instead of unifying entirely to RON. Replaces the trend badge on any KPI where the period has foreign-currency activity.</dd>
+    <dt>Quick Templates <span class="pill off">off</span></dt>
+    <dd>1-tap shortcuts pinned to the Dashboard for repetitive entries, backed by their own optional Notion database (§4.6). Settings can create that database for you.</dd>
+    <dt>Enable AI Parser <span class="pill off">off</span></dt>
+    <dd>Under <b>AI &amp; Automation</b>. Swaps Smart Text Entry's local parser for the Claude API — needs your own Anthropic API key, entered right below the toggle. See <a href="#recording">§5</a>.</dd>
   </dl>
   <h3>Managing data</h3>
   <p><b>Recurring Subscriptions</b> and <b>Trips Management</b> let you add, edit and remove those records without leaving the app. Deleting archives in Notion.</p>

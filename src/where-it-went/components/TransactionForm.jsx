@@ -1,13 +1,11 @@
 import { useState, useEffect, useId, useRef, useMemo } from 'react';
 import { Field } from '../../ds/components/Field';
-import { Button } from '../../ds/components/Button';
 import { ConfirmModal } from '../../ds';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { sortTrips } from '../services/trips';
 import { pickDefaultAccount } from '../lib/accountPicker';
 import { toDateString } from '../lib/period';
 import { BASE_CURRENCY, fetchRate, convert, impliedRate, formatRateNote, canConvert, orderedCurrencies, recordRecentCurrency } from '../lib/fx';
-import { formatAccountLabel } from '../lib/accounts';
 import { readJson, writeJson } from '../lib/storage';
 import { CategorySelect } from './CategorySelect';
 import { AccountSelect } from './AccountSelect';

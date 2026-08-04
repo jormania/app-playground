@@ -1,10 +1,10 @@
-import React, { useState, useId } from "react";
+import React, { useState, useId, useEffect } from "react";
 import { Modal } from "../../ds/components/Modal";
 import { Field } from "../../ds/components/Field";
-import { Button } from "../../ds/components/Button";
 import { CategorySelect } from "./CategorySelect";
 import { FormError } from "../../ds/components/FormError";
 import { ModalFooter } from "../../ds/components/ModalFooter";
+import { formatCurrency } from "../lib/currency";
 
 const QUICK_PCTS = [10, 25, 33, 50, 67, 75, 90];
 
@@ -18,6 +18,18 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
 
   const categorySelectId = useId();
 
+  // The modal is always mounted (App.jsx toggles it with `isOpen`, not by
+  // unmounting), so without this every field kept whatever a *previous*
+  // transaction's split left behind — mode, amount, category and all.
+  useEffect(() => {
+    if (!isOpen) return;
+    setMode("amount");
+    setSplitAmount("");
+    setSplitPct("");
+    setSplitCategoryId("");
+    setFormError("");
+  }, [isOpen, transaction?.id]);
+
   if (!transaction) return null;
 
   const isIncome = transaction.type === "Income";
@@ -28,27 +40,33 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
     ? Math.round((Number(splitPct) / 100) * numOriginal * 100) / 100
     : Number(splitAmount) || 0;
 
-  let remainderAmount = 0;
-  if (isIncome) {
-    remainderAmount = numOriginal + numSplit;
-  } else {
-    remainderAmount = numOriginal - numSplit;
-  }
+  // Round the split once, then derive the remainder from *that* rounded value
+  // — never round both sides independently. Splitting 101 at 33% used to ceil
+  // both halves (34 + 68 = 102), quietly inventing a leu on every non-integer
+  // split.
+  const roundedSplit = Math.max(0, Math.ceil(numSplit));
+  const roundedOriginal = Math.round(numOriginal);
+  const remainderAmount = isIncome ? roundedOriginal + roundedSplit : roundedOriginal - roundedSplit;
 
   let splitOriginalAmount = null;
   let remainderOriginalAmount = null;
-  if (transaction.originalCurrency && transaction.originalAmount) {
+  if (transaction.originalCurrency && transaction.originalAmount && numOriginal > 0) {
     const ratio = numSplit / numOriginal;
     splitOriginalAmount = Math.ceil(transaction.originalAmount * ratio);
-    if (isIncome) {
-      remainderOriginalAmount = transaction.originalAmount;
-    } else {
-      remainderOriginalAmount = transaction.originalAmount - splitOriginalAmount;
-    }
+    // Mirrors the RON side: an income split grosses the remainder back up by
+    // the carved-out amount rather than leaving it frozen at the original
+    // figure, which used to imply a different exchange rate on the surviving
+    // row than the one actually used.
+    remainderOriginalAmount = isIncome
+      ? transaction.originalAmount + splitOriginalAmount
+      : transaction.originalAmount - splitOriginalAmount;
   }
 
-  const isInvalid = !isIncome && (numSplit >= numOriginal || numSplit <= 0);
-  const isIncomeInvalid = isIncome && numSplit <= 0;
+  // Validity is checked against the *rounded* split — a 99.5 split of 100
+  // reads as valid pre-rounding but rounds to 100, which would zero out (or
+  // invert) the remainder once actually saved.
+  const isInvalid = !isIncome && (roundedSplit >= roundedOriginal || roundedSplit <= 0);
+  const isIncomeInvalid = isIncome && roundedSplit <= 0;
 
   const hasValue = mode === "percent" ? splitPct !== "" : splitAmount !== "";
   const canSubmit = hasValue && splitCategoryId && !(isIncome ? isIncomeInvalid : isInvalid);
@@ -60,14 +78,23 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      if (!hasValue) setFormError("Enter a split amount or percentage.");
+      else if (!splitCategoryId) setFormError("Choose a category for the split.");
+      else if (isIncome ? isIncomeInvalid : isInvalid) {
+        setFormError(isIncome
+          ? "Enter a split amount greater than zero."
+          : "Split amount must be greater than zero and less than the total expense.");
+      }
+      return;
+    }
     setSaving(true);
     setFormError("");
     try {
       await onSave({
         originalTx: transaction,
-        splitAmount: Math.ceil(numSplit),
-        remainderAmount: Math.ceil(remainderAmount),
+        splitAmount: roundedSplit,
+        remainderAmount,
         splitOriginalAmount,
         remainderOriginalAmount,
         splitCategoryId
@@ -84,7 +111,7 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
     flex: 1,
     padding: "6px 0",
     fontSize: "var(--text-sm)",
-    fontWeight: active ? "var(--weight-bold)" : "var(--weight-normal)",
+    fontWeight: active ? "var(--weight-bold)" : "var(--weight-regular)",
     borderRadius: "var(--radius-sm)",
     border: "none",
     cursor: "pointer",
@@ -118,7 +145,7 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
             Original Transaction ({isIncome ? "Net Income" : "Total Expense"})
           </div>
           <div style={{ fontSize: "var(--text-lg)", fontWeight: "var(--weight-bold)", color: "var(--color-ink)" }}>
-            {transaction.description} &middot; {numOriginal} {transaction.originalCurrency ? `RON (${transaction.originalAmount} ${transaction.originalCurrency})` : "RON"}
+            {transaction.description} &middot; {formatCurrency(numOriginal)}{transaction.originalCurrency ? ` (${transaction.originalAmount} ${transaction.originalCurrency})` : ""}
           </div>
         </div>
 
@@ -173,7 +200,7 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
               />
               {splitPct !== "" && !isNaN(Number(splitPct)) && Number(splitPct) > 0 && (
                 <div style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)" }}>
-                  {splitPct}% of {numOriginal} RON = <strong>{Math.ceil(numSplit)} RON</strong>
+                  {splitPct}% of {formatCurrency(numOriginal)} = <strong>{formatCurrency(roundedSplit)}</strong>
                 </div>
               )}
             </div>
@@ -192,10 +219,10 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
             </div>
             <ul style={{ fontSize: "var(--text-sm)", color: "var(--color-ink)", margin: 0, paddingLeft: "20px", display: "flex", flexDirection: "column", gap: "4px" }}>
               <li>
-                {isIncome ? "Gross Income" : "Remainder"}: <strong>{Math.ceil(remainderAmount)}</strong> RON {remainderOriginalAmount && `(approx. ${remainderOriginalAmount} ${transaction.originalCurrency})`} (stays in {categories.find(c => c.id === transaction.categoryId)?.name || "original category"})
+                {isIncome ? "Gross Income" : "Remainder"}: <strong>{formatCurrency(remainderAmount)}</strong> {remainderOriginalAmount && `(approx. ${remainderOriginalAmount} ${transaction.originalCurrency})`} (stays in {categories.find(c => c.id === transaction.categoryId)?.name || "original category"})
               </li>
               <li>
-                New Split: <strong>{Math.ceil(numSplit)}</strong> RON {splitOriginalAmount && `(approx. ${splitOriginalAmount} ${transaction.originalCurrency})`} (goes to selected category)
+                New Split: <strong>{formatCurrency(roundedSplit)}</strong> {splitOriginalAmount && `(approx. ${splitOriginalAmount} ${transaction.originalCurrency})`} (goes to selected category)
               </li>
             </ul>
             {isInvalid && (

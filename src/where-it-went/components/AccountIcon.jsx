@@ -1,4 +1,4 @@
-import { Landmark, CreditCard, PiggyBank, Banknote, TrendingUp, Globe, Wallet } from 'lucide-react';
+import { Landmark, CreditCard, PiggyBank, Banknote, TrendingUp, Globe } from 'lucide-react';
 import { useContext } from 'react';
 import { FeaturesContext } from '../FeaturesContext';
 

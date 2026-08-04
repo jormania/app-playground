@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { CURRENCIES } from '../lib/fx';
 import { Modal } from '../../ds/components/Modal';
 import { Field } from '../../ds/components/Field';
-import { Button } from '../../ds/components/Button';
-import { CurrencySelect } from './CurrencySelect';
 import { ConfirmModal } from '../../ds';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { FormError } from '../../ds/components/FormError';

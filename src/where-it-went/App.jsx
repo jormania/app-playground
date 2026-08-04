@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { NotionClient } from './lib/notionClient';
 import Dashboard from './components/Dashboard';
 import TransactionsList from './components/TransactionsList';
@@ -201,7 +201,17 @@ export default function App() {
     return { ...dataset, transactions };
   }, []);
 
+  // `loadData` is recreated whenever `client`/`baseClient` change (any config
+  // save), and re-fires via the effect below. With no sequencing, a slow load
+  // kicked off under the *previous* config could resolve after a newer one and
+  // overwrite it with stale data — including mirroring the stale data as the
+  // new "last successful load" snapshot. Each call claims the next sequence
+  // number; a call whose number no longer matches the latest one when it
+  // reaches an await simply stops applying its result.
+  const loadSeqRef = useRef(0);
+
   const loadData = useCallback(async () => {
+    const seq = ++loadSeqRef.current;
     setLoading(true);
     setLoadError(null);
 
@@ -231,6 +241,7 @@ export default function App() {
       // ledger that already includes it.
       if (isOnline() && readOutbox().length > 0) {
         await flushOutbox(baseClient);
+        if (seq !== loadSeqRef.current) return;
         setPendingCount(readOutbox().length);
         setFailedCount(readFailed().length);
       }
@@ -243,6 +254,7 @@ export default function App() {
         client.fetchTrips(),
         client.fetchTemplates()
       ]);
+      if (seq !== loadSeqRef.current) return;
       const fresh = { categories, accounts, transactions, subscriptions, trips, templates };
       // Snapshot the server truth, but *show* it with anything still queued on
       // top — a partially-failed flush leaves items behind that must stay visible.
@@ -250,6 +262,7 @@ export default function App() {
       setData(withPendingWrites(fresh));
       setStaleAt(null);
     } catch (e) {
+      if (seq !== loadSeqRef.current) return;
       console.error('Failed to fetch data:', e);
       if (snapshot) {
         // Showing the ledger you downloaded an hour ago beats an error card
@@ -260,6 +273,7 @@ export default function App() {
         setLoadError(e.message || 'Failed to load data from Notion.');
       }
     }
+    if (seq !== loadSeqRef.current) return;
     setLoading(false);
   }, [client, baseClient, config.demoMode, withPendingWrites]);
 
@@ -384,19 +398,19 @@ export default function App() {
     setRepeatDraft(null);
   };
 
-  /** "Repeat" on a ledger row — reopens Add loaded with that transaction's
-   * details. Explicit field list rather than a spread: id/notes/tags must
-   * never carry over (a fresh Add, not an edit of the original row), and this
-   * can't silently pick up a future field nobody meant to repeat. */
+  /**
+   * Splits one transaction into two: a new row for the carved-out amount, and
+   * the original reduced to the remainder.
+   *
+   * Adds the new row *before* shrinking the original. If the add fails, the
+   * original is untouched and nothing is lost — worst case is retrying. The
+   * previous order updated the original to the remainder first and added
+   * second: a failure on that second write left the original already reduced
+   * with no split row ever created, so the carved-out amount simply vanished
+   * from the ledger.
+   */
   const submitSplitTransaction = async ({ originalTx, splitAmount, remainderAmount, splitOriginalAmount, remainderOriginalAmount, splitCategoryId }) => {
     try {
-      // 1. Update the original transaction to the remainder.
-      const updatedOriginal = {
-        ...originalTx,
-        amount: remainderAmount,
-        originalAmount: remainderOriginalAmount ?? originalTx.originalAmount
-      };
-      
       const newSplitTx = {
         ...originalTx,
         id: undefined,
@@ -407,9 +421,15 @@ export default function App() {
         categoryId: splitCategoryId,
       };
 
-      await client.updateTransaction(originalTx.id, updatedOriginal);
+      const updatedOriginal = {
+        ...originalTx,
+        amount: remainderAmount,
+        originalAmount: remainderOriginalAmount ?? originalTx.originalAmount
+      };
+
       await client.addTransaction(newSplitTx);
-      
+      await client.updateTransaction(originalTx.id, updatedOriginal);
+
       await loadData();
       setSplittingTx(null);
       if (splitClearSelectionCb) { splitClearSelectionCb(); setSplitClearSelectionCb(null); }
@@ -431,6 +451,10 @@ export default function App() {
     setShowAddForm(true);
   };
 
+  /** "Repeat" on a ledger row — reopens Add pre-filled from that transaction.
+   * Date is deliberately not carried (TransactionForm always seeds it to
+   * today); everything else, including notes and tags, carries over so a
+   * recurring purchase doesn't need retyping context every time. */
   const handleRepeatTransaction = (tx) => {
     if (!tx) return;
     setRepeatDraft({

@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Wand2, Loader2, Mic, MicOff, CheckCircle } from 'lucide-react';
+import { Wand2, Loader2, Mic, MicOff } from 'lucide-react';
 import { parseSmartText } from '../lib/smartParser';
 import { parseTextWithAI } from '../lib/aiParser';
 import { parseNoraSplitGroup, stripNoraGroup } from '../lib/noraSplit';
 
-export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onSuccess, accounts, categories, trips, config, recentTransactions }) {
+export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscription, onSuccess, accounts, categories, trips, config, recentTransactions }) {
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -99,6 +99,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onS
     try {
       const addedIds = [];
       let subToPrompt = null;
+      let added = 0, updated = 0, deleted = 0;
 
       for (const t of txs) {
         if (t.isSubscription) {
@@ -109,32 +110,39 @@ export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onS
         // withNoraCount=2 → 50/50, withNoraCount=3 → 1/3 Nora / 2/3 you, etc.
         const tWithFlag = withNora ? { ...t, withNoraCount } : t;
 
-        let saved;
         if (t.action === 'update' && t.id) {
-          saved = await onUpdate(t.id, t);
+          await onUpdate(t.id, t);
+          updated++;
         } else if (t.action === 'delete' && t.id) {
-          // skip — delete not fully implemented
+          if (onDelete) {
+            await onDelete(t.id);
+            deleted++;
+          }
         } else {
-          saved = await onAdd(tWithFlag);
+          const saved = await onAdd(tWithFlag);
+          if (saved && saved.id) addedIds.push(saved.id);
+          added++;
         }
-        
-        if (saved && saved.id) addedIds.push(saved.id);
       }
-      
-      if (txs.length === 1 && txs[0].action === 'update') {
-        setSuccess(`Updated transaction.`);
-      } else if (txs.length === 1) {
-        setSuccess(`Added: ${txs[0].amount} ${txs[0].originalCurrency || 'RON'} for ${txs[0].description}`);
+
+      if (added + updated + deleted === 1) {
+        if (updated) setSuccess('Updated transaction.');
+        else if (deleted) setSuccess('Deleted transaction.');
+        else setSuccess(`Added: ${txs[0].amount} ${txs[0].originalCurrency || 'RON'} for ${txs[0].description}`);
       } else {
-        setSuccess(`Processed ${txs.length} items.`);
+        const parts = [];
+        if (added) parts.push(`${added} added`);
+        if (updated) parts.push(`${updated} updated`);
+        if (deleted) parts.push(`${deleted} deleted`);
+        setSuccess(parts.length > 0 ? `${parts.join(', ')}.` : `Processed ${txs.length} items.`);
       }
-      
+
       setText('');
       if (onSuccess) onSuccess(addedIds);
       if (subToPrompt) setDetectedSubscription(subToPrompt);
       // Optional: keep focus if they want to add multiple in a row
       // inputRef.current?.focus();
-    } catch (err) {
+    } catch (_err) {
       setError("Failed to save changes.");
     }
   };
@@ -157,9 +165,9 @@ export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onS
       className="smart-text-entry"
     >
       {isParsing ? (
-        <Loader2 size={20} color="var(--color-primary)" style={{ marginRight: '12px', flexShrink: 0, animation: 'spin 1s linear infinite' }} />
+        <Loader2 size={20} color="var(--color-accent)" style={{ marginRight: '12px', flexShrink: 0, animation: 'spin 1s linear infinite' }} />
       ) : (
-        <Wand2 size={20} color={config?.features?.aiParser ? "var(--color-primary)" : "var(--color-muted)"} style={{ marginRight: '12px', flexShrink: 0 }} />
+        <Wand2 size={20} color={config?.features?.aiParser ? "var(--color-accent)" : "var(--color-muted)"} style={{ marginRight: '12px', flexShrink: 0 }} />
       )}
       <input
         ref={inputRef}
@@ -234,7 +242,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onS
           marginTop: '8px',
           padding: '12px',
           backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-primary)',
+          border: '1px solid var(--color-accent)',
           borderRadius: 'var(--radius-lg)',
           boxShadow: 'var(--shadow-md)',
           display: 'flex',
@@ -244,7 +252,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onS
           zIndex: 10
         }}>
           <div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-bold)', color: 'var(--color-primary)' }}>Recurring Bill Detected</div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-bold)', color: 'var(--color-accent)' }}>Recurring Bill Detected</div>
             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>Do you want to add "{detectedSubscription.description}" to your Subscriptions?</div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -275,7 +283,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onS
                 }
                 setDetectedSubscription(null);
               }}
-              style={{ padding: '6px 12px', border: 'none', background: 'var(--color-primary)', color: 'var(--color-on-primary)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-bold)' }}
+              style={{ padding: '6px 12px', border: 'none', background: 'var(--color-accent)', color: 'var(--color-on-accent)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-bold)' }}
             >
               Add
             </button>
@@ -285,8 +293,8 @@ export default function SmartTextEntry({ onAdd, onUpdate, onAddSubscription, onS
       
       <style dangerouslySetInnerHTML={{ __html: `
         .smart-text-entry:focus-within {
-          border-color: var(--color-primary);
-          box-shadow: 0 0 0 3px var(--color-primary-muted);
+          border-color: var(--color-accent);
+          box-shadow: 0 0 0 3px var(--color-accent);
         }
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(4px); }

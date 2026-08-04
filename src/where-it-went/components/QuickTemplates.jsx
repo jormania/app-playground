@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { Button } from '../../ds/components/Button';
-import { formatCurrency } from '../lib/currency';
 import TemplateEditorModal from './TemplateEditorModal';
 
 export default function QuickTemplates({ templates = [], onApplyTemplate, onSaveTemplate, onDeleteTemplate, categories, accounts }) {

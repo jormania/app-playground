@@ -39,6 +39,20 @@ export const HABITUAL_OCCURRENCES = 3;
 /** Token overlap above which two descriptions are considered the same thing. */
 const SIMILARITY_THRESHOLD = 0.6;
 
+/** The markers Split (`lib/analytics` App.jsx) and the Nora auto-split
+ * (`lib/noraSplit.js`) append to the carved-out row's description, precisely
+ * so a genuine, deliberate split is never mistaken for a double-entry. */
+const DELIBERATE_SPLIT_SUFFIXES = [' (Split)', ' (Nora)'];
+
+/** True when one description is exactly the other plus a split marker — a
+ * transaction and the row it was deliberately split into, not two separate
+ * purchases that happen to look alike. */
+function isDeliberateSplitPair(a, b) {
+  const da = a.description || '';
+  const db = b.description || '';
+  return DELIBERATE_SPLIT_SUFFIXES.some(suffix => da === db + suffix || db === da + suffix);
+}
+
 /**
  * Lowercase, strip diacritics and punctuation, collapse whitespace.
  * "Café  in Vienna!" and "cafe in vienna" have to land on the same string.
@@ -133,6 +147,12 @@ export function scorePair(a, b, options = {}) {
 
   const similarity = descriptionSimilarity(a.description, b.description);
   if (similarity < SIMILARITY_THRESHOLD) return null;
+
+  // A deliberate Split or Nora auto-split, regardless of which category either
+  // half landed in. Without this, picking the *same* category for both halves
+  // of an even split (same amount, same day, same account) skipped the
+  // different-category override below entirely and still got flagged.
+  if (isDeliberateSplitPair(a, b)) return null;
 
   const sameAccount = !!a.accountId && a.accountId === b.accountId;
   const sameCategory = (a.categoryId || '') === (b.categoryId || '');

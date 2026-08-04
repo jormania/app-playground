@@ -1,10 +1,10 @@
 # WhereItWent
 
-WhereItWent uses Notion as its database backend. To fully use the app (beyond Demo mode), you need to create five databases in your Notion workspace and connect them to the app.
+WhereItWent uses Notion as its database backend. To fully use the app (beyond Demo mode), you need to create six databases in your Notion workspace and connect them to the app — a seventh, Quick Templates, is optional (§1.6).
 
 ## 1. Create the Databases in Notion
 
-Create six full-page databases anywhere in your Notion workspace with the following schemas.
+Create full-page databases anywhere in your Notion workspace with the following schemas.
 
 ### 1.1 Accounts Database
 - **Name**: `Name` (Title property). The page **icon** (an emoji) is read and shown wherever
@@ -19,84 +19,8 @@ Create six full-page databases anywhere in your Notion workspace with the follow
 - **Name**: `Name` (Title property)
 - **Type**: `Type` (Select property with options exactly as: `Income`, `Expense`)
 - **Active**: `Active` (Checkbox property)
-- **Monthly Limit (RON)**: `Monthly Limit (RON)` (Number property) — despite the name this is
-  the limit for **one budget period**, which is a month only when `Budget Period` says so. The
-  property keeps its original name deliberately: renaming it would break every existing database.
-- **Budget Period**: `Budget Period` (Select: `Monthly`, `Quarterly`, `Yearly`) — blank reads as Monthly
-- **Budget Anchor**: `Budget Anchor` (Date, optional) — the renewal date a quarterly/yearly window
-  counts from, e.g. insurance that renews each March. Ignored for Monthly.
-- **Budget Rollover**: `Budget Rollover` (Checkbox) — carry unspent room (and overspend) forward
-
-### 1.3 Subscriptions Database
-- **Name**: `Name` (Title property)
-- **Amount**: `Amount` (Number property) — always in RON, the source of truth. When
-  the subscription is paid or collected in another currency, this is the converted
-  figure, exactly like a Transaction's `Amount (RON)`.
-- **Type**: `Type` (Select property with options: `Income`, `Expense`) — a
-  subscription is just as often income (rent collected from a tenant) as an
-  expense (a streaming plan).
-- **DayOfMonth**: `DayOfMonth` (Number property)
-- **Frequency**: `Frequency` (Select property with options: `Monthly`, `Yearly`) — blank
-  reads as Monthly, same convention as Categories' `Budget Period`, so every
-  subscription saved before this field existed keeps working unchanged.
-- **Month of Year**: `Month of Year` (Number property, 1-12) — only meaningful when
-  `Frequency` is `Yearly`; ignored for Monthly. Paired with `DayOfMonth` to pin a
-  yearly charge (e.g. a March-renewing annual plan) to one calendar date a year.
-- **Category**: `Category` (Relation property -> Connect to Categories Database)
-- **Account**: `Account` (Relation property -> Connect to Accounts Database)
-- **Active**: `Active` (Checkbox property)
-- **LastProcessed**: `LastProcessed` (Date property)
-- **Original Amount**: `Original Amount` (Number property) — informational only,
-  same role as a Transaction's. What was actually paid or received in the
-  original currency, when it isn't RON.
-- **Original Currency**: `Original Currency` (Select property, same registered
-  option list as Transactions' `Original Currency` — see §1.5).
-
-### 1.4 Trips Database
-- **Name**: `Name` (Title property)
-- **Destination**: `Destination` (Text / Rich text property)
-- **Start Date**: `Start Date` (Date property)
-- **End Date**: `End Date` (Date property)
-- **Status**: `Status` (Select property with options: `Planned`, `Active`, `Completed`)
-- **Currency**: `Currency` (Select property — same option list as `Original Currency` below)
-- **Notes**: `Notes` (Text / Rich text property)
-
-### 1.5 Transactions Database
-- **Description**: `Description` (Title property)
-- **Date**: `Date` (Date property)
-- **Amount (RON)**: `Amount (RON)` (Number property)
-- **Original Amount**: `Original Amount` (Number property)
-- **To Account**: `To Account` (Relation property -> Connect to Accounts Database) — a
-  Transfer's destination; `Account` is its source. Empty for Income and Expense.
-- **Original Currency**: `Original Currency` (Select property). **Every currency the app offers
-  must be registered here as an option.** Notion selects are a closed vocabulary and a page update
-  is atomic, so writing an unregistered option makes Notion reject the *entire* patch — silently
-  dropping the amount, notes and everything else in the same write. The registered set is
-  `RON, EUR, USD, GBP, CHF, PLN, HUF, CZK, BGN, TRY, SEK, NOK, DKK, JPY, CAD, AUD`, mirrored in
-  `CURRENCIES` in [`lib/fx.js`](src/where-it-went/lib/fx.js). Keep the two in step.
-- **Type**: `Type` (Select property with options: `Income`, `Expense`, `Transfer`)
-- **Category**: `Category` (Relation property -> Connect to Categories Database)
-# WhereItWent
-
-WhereItWent uses Notion as its database backend. To fully use the app (beyond Demo mode), you need to create six databases in your Notion workspace and connect them to the app.
-
-## 1. Create the Databases in Notion
-
-Create six full-page databases anywhere in your Notion workspace with the following schemas.
-
-### 1.1 Accounts Database
-- **Name**: `Name` (Title property). The page **icon** (an emoji) is read and shown wherever
-  the account appears — dropdowns, the ledger's Account column, the transfer route. Two
-  accounts may share a name if their currencies differ; the icon and the currency suffix are
-  what tell them apart.
-- **Type**: `Type` (Select property with options: e.g., Bank, Fintech, Cash, Broker)
-- **Currency**: `Currency` (Select property with options: RON, EUR, USD, etc.)
-- **Active**: `Active` (Checkbox property)
-
-### 1.2 Categories Database
-- **Name**: `Name` (Title property)
-- **Type**: `Type` (Select property with options exactly as: `Income`, `Expense`)
-- **Active**: `Active` (Checkbox property)
+- **Description**: `Description` (Text / Rich text property, optional) — shown as a collapsible
+  detail under the category picker in the transaction form.
 - **Monthly Limit (RON)**: `Monthly Limit (RON)` (Number property) — despite the name this is
   the limit for **one budget period**, which is a month only when `Budget Period` says so. The
   property keeps its original name deliberately: renaming it would break every existing database.
@@ -156,9 +80,26 @@ Create six full-page databases anywhere in your Notion workspace with the follow
 - **Category**: `Category` (Relation property -> Connect to Categories Database)
 - **Account**: `Account` (Relation property -> Connect to Accounts Database)
 - **Trip**: `Trip` (Relation property -> Connect to Trips Database)
+- **Reconciled**: `Reconciled` (Checkbox property) — written on every add/update. Without this
+  property present, creating the very first transaction 400s and (per the atomic-patch rule
+  above) the whole write is rejected, not just this field.
 - **Notes**: `Notes` (Text / Rich text property)
 - **Tags**: `Tags` (Multi-select property)
 - **Recurring**: `Recurring` (Checkbox property)
+
+### 1.6 Quick Templates Database (optional)
+Only needed if Settings → Feature Toggles → Quick Templates is turned on. Settings has a
+1-click "Initialize Database" button that creates this automatically as a child of the same
+parent page as the Categories database — manual setup below is only for reference.
+- **Description**: `Description` (Title property)
+- **Amount**: `Amount` (Number property)
+- **Type**: `Type` (Select property with options: `Income`, `Expense`, `Transfer`)
+- **Category**: `Category` (Relation property -> Connect to Categories Database)
+- **Account**: `Account` (Relation property -> Connect to Accounts Database)
+- **Active**: `Active` (Checkbox property)
+
+## Feature Summary (1.0 Overhaul)
+
 - **PWA Ready**: Offline-capable app shell that can be installed on iOS, Android, or Desktop.
 - **Vitest Coverage**: Robust component testing with 100% pass rates across the suite.
 - **Scrub & Demo Mode**: Instantly archive live data to start fresh, and seamlessly switch between live Notion data and comprehensive local demo data for testing or showcasing the app safely without affecting your real finances.
@@ -173,6 +114,11 @@ Create six full-page databases anywhere in your Notion workspace with the follow
   - **Global Romanian Lei Formatting (" L")**: Standardized monetary display across all components, charts, tooltips, and analytics summaries to append `" L"` (e.g., `1,250 L`) for clean, space-efficient Romanian currency depiction on mobile devices.
   - **Resilient Insights Rendering**: Updated Property and Nora analytics engines to return structured analysis objects even when 0 transactions exist in the selected time period, presenting helpful, educational empty states instead of hiding dashboard cards.
   - **Timestamp Indicator**: Real-time "Insights generated" timestamp indicating when analytics were last calculated.
+
+## Early Hardening & Polish Pass
+
+Predates the "Full Audit & Hardening Pass" below.
+
 ### 🔴 Blockers Fixed
 - **Notion Pagination** (`notionClient.js`): Added `_fetchAllPages()` helper that loops on `has_more` + `next_cursor` with `page_size: 100`. All five fetch methods (Categories, Accounts, Transactions, Subscriptions, Trips) now retrieve unlimited records. Previously silently capped at 100 results.
 - **Error UI on Failed Load** (`App.jsx`): Added `loadError` state. When the live Notion `Promise.all` fetch fails, a full-screen error card is shown with the error message, a Retry button, and an Open Settings button. Previously the app silently rendered an empty dashboard with only a `console.error`.
@@ -197,7 +143,6 @@ Create six full-page databases anywhere in your Notion workspace with the follow
 - **Empty Category Names Filtered** (`notionClient.js`): Categories and Accounts with blank Notion page titles are now filtered out on fetch, preventing blank `<option>` elements in the Transaction form.
 - **Unknown Category Visual Callout** (`Dashboard.jsx`, `TransactionsList.jsx`): Transactions with a deleted or missing category now display a ⚠️ Unknown badge (muted styling) instead of silently falling back to the word "Unknown" in the category color. Account lookup falls back to "—" dash instead of "Unknown".
 - **Negative Amount Prevention** (`TransactionForm.jsx`): Amount input now has `min="0"`. Negative values could corrupt Insights totals and savings rate calculations.
-- **Future Date Prevention** (`TransactionForm.jsx`): Date input now has `max={today}`. Prevents accidentally logging transactions with future dates.
 - **Notion Query Sort Order** (`notionClient.js`): `fetchTransactions` now sends `sorts: [{ property: 'Date', direction: 'descending' }]` so results are deterministically ordered across pagination pages.
 
 ## Full Audit & Hardening Pass (2026-07-29)
@@ -565,9 +510,10 @@ before. Both the strip and the agenda now show the category's own emoji.
   the FX helper is two short clamped lines instead of one crowded one. Measured
   at 920x700: 464px of content in a 464px body. At 375px the paired row falls
   back to one column and still fits.
-- **The rate line reads in plain language** — `Rate: 1 EUR = 5.2353 RON
-  (29 Jul)`. It previously rendered `· 1 EUR = 5.2353 L · ECB 29 Jul`, where the
-  second "L" collided with the amount field's own "L" and `ECB` was unexplained.
+- **The rate line reads in plain language** — `Rate: 1 EUR = 5.24 RON
+  (29 Jul)` (two decimal places — `formatRateNote` in `lib/fx.js`). It previously
+  rendered `· 1 EUR = 5.2353 L · ECB 29 Jul`, where the second "L" collided with
+  the amount field's own "L" and `ECB` was unexplained.
 - **Add Trip no longer scrolls either**: Status and Currency share a row.
 - **Number inputs lost their spinner arrows.** Nobody nudges a grocery bill up
   by one leu, and the steppers ate room in a tight field. `inputMode="decimal"`
@@ -974,201 +920,6 @@ suite (755 → 770 tests), typecheck and lint all green.
     is already visible twice over (future-dated rows sort first in the
     ledger, and now in this agenda) — a third nudge would be noise, not help.
     Background reminders stay scoped to subscriptions, where the app is the
-    only thing that knows a charge is coming.
-- **Verified the "Pattern Deviation" percentage math** (Travel/Property/Nora
-  alerts): `((current − baseline average) / baseline average) × 100` is the
-  standard "percent above" formula — "300% above average" correctly means
-  4× the average, not 3×. No bug found; the baseline itself already excludes
-  the period being judged and requires ≥2 months of real history, per the
-  audit pass from 2026-07-29.
-- **Holistic UX Upgrades**: Applied a suite of toggleable aesthetic and structural changes under the Visual Flair settings block.
-  - **Modern Layout**: Toggles the navigation structure. Replaces the top navigation bar with a fixed left sidebar on desktop widths, and a sticky bottom tab bar on mobile (e.g. S24), keeping the UI clear and navigation easily reachable.
-  - **Compact Density**: Tightens CSS padding and spacing variables across the app allowing more data density on screen.
-  - **Sparklines**: Added background inline SVG sparkline charts to the Income, Expenses, and Net KPI cards on the dashboard, visualizing the trailing 30-day cash flow at a glance.
-  - **Skeleton Loading States**: Replaced the text-based loading fallbacks in App.jsx with structured pulsating skeleton blocks mapping accurately to the component dimensions of Dashboard, Transactions, Insights, and Settings.
-  - **Professional Iconography**: Migrated Dashboard emoji headers (e.g., ?? Latest Transactions, ?? Income by Category) to professional vector SVGs using the lucide-react library.
-## Visual Flair and Laptop Nav Tweak
-- Created a 'Visual Flair' section in Settings with a Master Toggle.
-- Implemented Tactile Press States, FAB Pulse, Animated Empty States, Budget Bar Growth, Theme Transitions, and Active Tab Glow.
-- Added Master Toggle support for existing legacy flair options.
-- Centered the SVG and text horizontally within the navigation tabs on the laptop view.
-
-## Transaction List Grid Alignment
-- Modified grid-template-columns in mobile layout to use fixed widths for consistent vertical spreadsheet-like alignment.
-- Moved the Repeat button to its own dedicated column for both mobile and desktop views.
-
-## UI & Navigation Refinements
-- **Transaction List Summary Redesign**: Extracted the transaction list summary (transaction count, total income, total expense) from the main list card into its own distinct, full-width pill matching the visual styling of the "Upcoming" banner. Spaced elements evenly (`space-between`) for clarity.
-- **Mobile Navigation Header Refinements**: Changed the logo text to "WiW" on mobile screens (while retaining "WhereItWent" on desktop) and adjusted margin spacing to save horizontal space and prevent header elements from crowding the "Add" button.
-- **Modern Layout Navigation Alignment**: Adjusted the desktop sidebar navigation tabs (`.layout-modern .nav-tab-btn`) from center-aligned to left-aligned (`justify-content: flex-start`). This ensures the navigation icons form a strong, clean vertical line, vastly improving visual scanning and eliminating the ragged-edge effect.
-- **Settings State Initialization Fix**: Fixed a visual glitch where "Compact Density" and "Modern Layout" did not correctly reflect their toggled state when re-opening the Settings tab. They are now properly loaded into the initial component state in `Settings.jsx`.
-
-## Automatic Trip Status Engine
-- **Background Synchronization**: Implemented `useTripEngine`, a new background worker that runs once per session to evaluate trip start and end dates against the current date.
-- **State Boundaries**: 
-  - Trips missing dates remain unchanged.
-  - Trips whose start date has arrived (but haven't passed their end date) automatically transition to **Active**.
-  - Trips that have crossed the day *after* their end date automatically transition to **Completed**.
-- **Notion Syncing**: Transitions are immediately persisted to the underlying Notion database via `client.updateTrip()`, ensuring the backend matches the frontend reality.
-- **Safety**: Uses the same safety net as the Subscription Engine—skipping updates when offline, when showing sample data, or during pending network queues. Tests guarantee boundary edge cases behave correctly.
-
-## Currency Formatting & UI Refinements
-- **Currency Rounding**: Removed decimal places when displaying Lei across the application, as they were unnecessary visual noise. Currency conversions now strictly round up (`Math.ceil`) to the nearest integer.
-## Go-live audit (2026-07-30)
-
-A full pass before switching to live Notion data — bugs, styling, and a schema
-cross-check against this guide. Full suite (741 → 748 tests at this point),
-typecheck and lint all green; verified live in the browser in both themes.
-
-- **Undefined CSS custom properties**: `--color-brass`, `--color-purple`,
-  `--color-primary`, `--radius-full` and `--text-md` were used across Insights,
-  Dashboard, the ledger, Settings and the forecast card with no definition
-  anywhere in the design system — every `var()` silently resolved to nothing,
-  dropping colour, radius or font-size on ~19 rendered elements. The three with
-  exact DS equivalents were renamed (`--color-accent`, `--radius-pill`,
-  `--text-base`); `--color-brass` and `--color-purple` are genuinely distinct
-  accent hues used consistently for the Travel and Nora cards, so they were
-  added as WhereItWent-scoped tokens in `index.css` rather than collapsed into
-  an existing colour.
-- **Native form chrome had no theme**: `src/ds/tokens.css` never declared
-  `color-scheme`, so every `<select>`'s open dropdown and every date input's
-  calendar popup rendered stark default-light browser chrome regardless of the
-  app's own theme. Fixed at the DS level (`color-scheme: light` / `dark`),
-  which benefits every app on the shared design system, not just this one.
-- **Gray form fields**: the Amount box and several hand-rolled `<select>`s
-  (Category, Account, To, Trip, Currency, the budget editor's period picker)
-  were filled with `--color-bg` (the page background) instead of
-  `--color-surface` (what `ds/Field`'s own inputs use) — next to a real Field,
-  they read as a flat grey slab. Unified across `TransactionForm`,
-  `SubscriptionEditorModal`, `BudgetEditorModal` and `TripEditorModal`.
-- Widened the Date/Amount gap in the transaction form (12px → 16px column gap;
-  doesn't affect the documented no-scroll height budgets).
-- **Add Subscription's default category** was whatever Notion returned first;
-  now prefers a category literally named "Subscriptions" when one exists.
-- Confirmed no schema drift between `notionClient.js` and this guide's §4, and
-  confirmed demo/live data stay fully isolated (demo mode always builds the
-  Notion client with an empty token, so writes silently no-op onto the
-  in-memory fixture and can never reach a live workspace).
-
-## Quality-of-life pass (2026-07-30) — the 1.0 release
-
-Ten ideas from a fresh read of the codebase, independent of
-[`WHERE_IT_WENT_ROADMAP.md`](WHERE_IT_WENT_ROADMAP.md) (which covers the seven
-features shipped 2026-07-29). Nine shipped; bulk ledger actions is deliberately
-deferred — see below. Full suite: 741 → 755 tests.
-
-- **Theme follows the OS on first run** (`lib/theme.js`). The app always
-  opened in dark theme regardless of the device's own setting — every other
-  themed app in this repo (Journal, Wanderlist, Sol Odyssey, Daily Stoic)
-  seeds its initial theme from `prefers-color-scheme`. Only affects a brand
-  new install; once a theme is explicitly chosen, it always wins. An inline
-  script in `where-it-went-react.html` applies it before first paint, so a
-  light-mode device doesn't flash dark before React mounts.
-- **"+ Add" remembers the last-used type.** Frequent income loggers
-  (freelancers, landlords) used to reselect Income on every single Add. Scoped
-  to *adding* — never touches what type an edit shows — and falls back
-  gracefully if Transfers gets toggled off between visits.
-- **"Repeat" on a ledger row** reopens Add pre-filled from that transaction —
-  the same coffee, the same parking fee, without retyping it. Explicit about
-  what carries over: date resets to today, notes and tags start blank (both
-  are instance-specific), and the category-suggests-account effect is skipped
-  entirely so a repeat can never silently swap the account you actually used.
-- **A duplicate-count dot on the Transactions tab** (matching the existing
-  filters-active dot), so a pending review is discoverable without already
-  being on that screen. `DuplicateReview`'s dismissed-list state moved up to
-  `App.jsx` so the dot clears the instant something is dismissed, not just on
-  the next reload.
-- **The currency picker is ordered by relevance** (`orderedCurrencies` in
-  `lib/fx.js`): RON first, then the account's/trip's own currency, then
-  recently-used currencies, then the rest — instead of one flat 16-item list
-  every traveler scrolled through the same way regardless of which two or
-  three currencies they actually use.
-- **"View this trip in Insights"** on a transaction with a trip assigned jumps
-  straight to the Travel Insights card with that trip pre-selected, instead of
-  requiring a manual pick from the trip-filter dropdown after navigating over.
-- **The Total Global Budget bar no longer mixes timescales.** Summing a
-  500/month category and a 6,000/year one straight together produced "6,500" —
-  a number on no coherent scale. `monthlyEquivalent()` in `lib/budgets.js`
-  normalizes every category's contribution to its monthly-equivalent share
-  first; the card says "(per month)" and explains itself whenever a
-  non-monthly budget is in the mix.
-- **Settings sections are collapsible and remember your choice.** Notion
-  config, feature toggles, subscriptions and trips used to be one
-  uninterrupted scroll — fine with a couple of each, unwieldy with a dozen+.
-  Every section still defaults open (nothing changes for anyone who never
-  touches this); a collapsed choice persists per device, so putting a section
-  away is a one-time action.
-- **"Copy summary" in Insights** copies the period's editorial paragraph plus
-  the headline figures (income, expenses, net, savings rate) as plain text —
-  for pasting into a chat or a note without screenshotting the card.
-- **Deferred: bulk actions in the ledger.** Multi-select plus move-to-category
-  / move-to-account / delete, for cleaning up several misfiled transactions at
-  once. Scoped and designed, kept on the backlog at the user's request rather
-  than shipped in this pass.
-
-### Also fixed: the "Latest" pill on the front page
-
-`index.html`'s app-grid card carried a manually-set `latest: true` flag per
-app in `apps-registry.js` — it had drifted to **three** apps simultaneously
-(WhereItWent, Click Deck, Loom), because adding a new "latest" app never
-reminds you to unset it on the previous one. Replaced with a structural rule:
-`APPS[0]` — new apps go at the top of the registry — is authoritative, so
-there's nothing to remember and nothing that can desync again.
-
-## Feedback pass on the 1.0 release (2026-07-30)
-
-Real usage against the golden release surfaced seven issues. All fixed; full
-suite (755 → 770 tests), typecheck and lint all green.
-
-- **"View this trip in Insights" landed at the top of the page.** The trip
-  filter *was* being pre-selected correctly, but nothing scrolled to the
-  Travel Insights card — reaching it still meant scrolling past three other
-  sections by hand. Fixed with a mount-only `scrollIntoView`, the same
-  one-shot pattern the jump itself already used.
-- **The Repeat icon was breaking the ledger's two-line-per-row limit.** It sat
-  stacked below the amount pill, so a foreign-currency transaction (which
-  already uses a second line for its original amount) grew a third line.
-  Moved onto the amount pill's own row.
-- **Form polish**: "View this trip in Insights" now shares the Trip label's
-  row instead of adding one below it (the edit modal had started scrolling
-  again — a regression from adding that link in the first pass). The Amount
-  box gets an explicit 44px height to match `Field`'s own inputs pixel-for-
-  pixel, and the Date/Amount gap widened from 12px to 24px.
-- **The Upcoming banner didn't scroll to the agenda either** — same fix,
-  same one-shot pattern, applied to Dashboard's `upcoming-bills-card`.
-- **"Bill" language didn't fit every scenario.** A recurring subscription is
-  just as often income (rent collected from a tenant) as an expense
-  (Spotify) — "Upcoming Bills", "Bill Reminders" and "3 bills due soon" all
-  assumed the wrong direction for half the use cases. Renamed throughout to
-  "Upcoming Activity" / "Recurring Reminders" / neutral phrasing, and every
-  amount shown in a reminder or banner is now signed (`+`/`−`) so the
-  direction is legible without reading the word "bill" into it. The banner's
-  multi-item total is now netted (income − expense) rather than summed raw,
-  which had the same "6,500" mixed-timescale problem the budget total once did.
-- **Subscriptions can now be recorded in another currency**, reusing the exact
-  FX pattern from Add Transaction: an inline currency picker on the Amount
-  field, live ECB-rate conversion to RON (using today's rate, since a
-  subscription has no fixed calendar date to convert against), and an
-  overridable RON figure. Two new Notion properties on the Subscriptions
-  database — `Original Amount` (Number) and `Original Currency` (Select,
-  same 16-currency vocabulary as Transactions) — applied directly to the live
-  workspace via the Notion MCP, matching `notionClient.js`. The subscriptions
-  engine carries the foreign-currency context onto whatever it auto-posts,
-  so an auto-generated ledger row shows the same secondary currency line a
-  manual entry would.
-- **The Next 30 Days widget was sparse and under-used.** Three changes:
-  - Split into **Expenses** and **Income** sections (the combined Net stays a
-    single figure at the top — that's the number that actually answers "am I
-    in the clear").
-  - **Future-dated transactions already logged by hand** now appear alongside
-    subscription occurrences — a hotel stay booked ahead of time, not just
-    recurring charges. New pure function `getUpcomingTransactions()` in
-    `lib/upcoming.js`, de-duplicated against subscription occurrences so
-    entering next month's rent by hand can never show up twice.
-  - **Deliberately not added to notifications**: a one-off future transaction
-    is already visible twice over (future-dated rows sort first in the
-    ledger, and now in this agenda) — a third nudge would be noise, not help.
-    Background reminders stay scoped to subscriptions, where the app is the
     only thing that knows a charge is coming. They have also been reorganized
     under the "Recurring" section in Settings and renamed to "Notifications"
     for a cleaner hierarchy.
@@ -1210,11 +961,11 @@ suite (755 → 770 tests), typecheck and lint all green.
 - **Safety**: Uses the same safety net as the Subscription Engine—skipping updates when offline, when showing sample data, or during pending network queues. Tests guarantee boundary edge cases behave correctly.
 
 ## Currency Formatting & UI Refinements
-- **Currency Rounding**: Removed decimal places when displaying Lei across the application, as they were unnecessary visual noise. Currency conversions now strictly round up (`Math.ceil`) to the nearest integer.
+- **Currency Rounding**: Removed decimal places when displaying Lei across the application, as they were unnecessary visual noise. `lib/currency.js` rounds (not ceils) to the nearest integer for display; `lib/fx.js`'s `convert()` does the same for FX conversions.
 - **Mobile Transaction Grid**: Reduced the width of the Amount column on mobile screens from 64px. Because decimals were removed, this column no longer needed extra width, allowing that space to be reclaimed for the Description field.
 
 ## Quick Templates & Smart Auto-Fill Updates
-- **1-Tap Quick Entry Shortcuts**: Added Quick Templates to the Dashboard (toggled via Feature Toggles). This introduces a new Notion database (Quick Templates) to persistently store these shortcuts. Clicking a template logs a transaction with the pre-filled amount, type, category, and account using today's date instantly without opening the modal.
+- **1-Tap Quick Entry Shortcuts**: Added Quick Templates to the Dashboard (toggled via Feature Toggles). This introduces a new Notion database (Quick Templates, §1.6) to persistently store these shortcuts. Clicking a template with a pre-filled amount logs a transaction with that amount, type, category, and account using today's date instantly without opening the modal; a template saved with no amount instead opens the Add form pre-filled, since there's nothing to log yet.
 - **Template Management**: Provided an embedded "Edit Mode" in the Dashboard to add, modify, and delete templates natively within the app, synchronizing back to Notion.
 - **Automated Database Provisioning**: In the Settings UI, added a 1-click "Initialize Database" button that dynamically uses the Notion API to create the Quick Templates Database structure as a child of the `App Databases` page, saving the user from manual schema setup.
 - **Inline Edit Action**: The Edit button for templates was moved directly inline with the template pills themselves, matching their styling and maintaining horizontal alignment without breaking layout.
@@ -1225,7 +976,7 @@ suite (755 → 770 tests), typecheck and lint all green.
   - **Trip Export Crash Fix**: Decoupled `TripExportModal` from the global `generateDeepInsights` engine to prevent a React crash when evaluating trip data, resolving the bug that opened a blank screen. Replaced it with a fast, specialized reduce function tailored for trip exports.
 
 ## Smart Text Entry (Claude AI Integration)
-- **Natural Language Parsing**: Added a sleek glassmorphic text input on the Dashboard backed by the **Claude API** (`claude-3-5-haiku-20241022`). This replaces the rigid local regex parser, allowing users to log transactions conversationally (e.g., "bought a pizza for 45 lei", "25 uber to the mall"). It instantly extracts amounts, currencies, inferring the date relative to today ("yesterday"), and mapping to the exact Categories and Accounts.
+- **Natural Language Parsing**: Added a sleek glassmorphic text input on the Dashboard backed by the **Claude API** (`claude-haiku-4-5-20251001`). This replaces the rigid local regex parser, allowing users to log transactions conversationally (e.g., "bought a pizza for 45 lei", "25 uber to the mall"). It instantly extracts amounts, currencies, inferring the date relative to today ("yesterday"), and mapping to the exact Categories and Accounts.
 - **Voice-to-Text Dictation**: Integrated the Web Speech API directly into the text input via a microphone icon. Users can tap to dictate complex transactions verbally, which are seamlessly piped into the AI parser for evaluation without ever touching the keyboard.
 - **Batch Processing**: The AI handles multiple transactions in one go. Saying "15 for lunch and 50 EUR for groceries" logs two discrete transactions perfectly classified into their respective categories and currencies instantly.
 - **Context-Aware Follow-Ups & Edits**: The AI reads the last 15 recorded transactions to support conversational corrections (e.g., "change that lunch to 25 instead of 15" or "delete the last transaction"). It outputs structured `update` or `delete` actions directly mapping back to the Notion database to patch the previous entry.

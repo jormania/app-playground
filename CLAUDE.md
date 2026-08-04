@@ -10,8 +10,15 @@ Building an App**. This file is its enforced, in-repo companion.
 
 ## Before declaring any task done
 
-Run **`npm test`** and **`npm run typecheck`** and make sure both pass. Don't
-call a change complete on green-looking code alone.
+Run **`npm test`**, **`npm run typecheck`**, and **`npx eslint <changed paths>`**
+and make sure all three pass. Don't call a change complete on green-looking
+code alone.
+
+Running `vitest` directly (rather than through `npm test`) without
+`NODE_OPTIONS=--no-experimental-webstorage` makes Node's native `localStorage`
+shadow jsdom's — every storage-touching test then fails with `Cannot read
+properties of undefined (reading 'clear')`, which reads like a real
+regression but isn't. Either run `npm test`, or set that env var yourself.
 
 ## Design-system boundary (one-way, enforced)
 

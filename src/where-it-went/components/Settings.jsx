@@ -12,7 +12,6 @@ const TripEditorModal = lazy(() => import('./TripEditorModal'));
 const TripExportModal = lazy(() => import('./TripExportModal'));
 const LedgerExport = lazy(() => import('./LedgerExport'));
 const BudgetSettings = lazy(() => import('./BudgetSettings'));
-import { generateDeepInsights } from '../lib/analytics';
 import { getCategoryColor } from '../lib/colors';
 import { formatCurrency } from '../lib/currency';
 import { ordinal } from '../lib/period';

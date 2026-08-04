@@ -116,7 +116,7 @@ export default function TripExportModal({ trip, data, onClose }) {
         
         {/* Premium Header Card */}
         <div style={{ 
-          background: 'linear-gradient(135deg, var(--color-primary) 0%, #7c3aed 100%)',
+          background: 'linear-gradient(135deg, var(--color-accent) 0%, #7c3aed 100%)',
           borderRadius: 'var(--radius-lg)', 
           padding: '24px',
           color: '#ffffff',
@@ -182,7 +182,7 @@ export default function TripExportModal({ trip, data, onClose }) {
               {breakdownList.map(c => (
                 <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'var(--color-surface)', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', transition: 'transform 0.2s, box-shadow 0.2s' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-accent)' }}>
                       <CategoryIcon category={c.cat} name={c.name} size={16} />
                     </div>
                     <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink)', fontWeight: 'var(--weight-medium)' }}>{c.name}</span>

@@ -485,14 +485,27 @@ export default function InsightsView({ data, period, filterProps, config, initia
               Frequent Spending
             </h3>
             <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)' }}>
-              High frequency vendors that silently drain cash flow.
+              Vendors you buy from often. Repeating by nature — a bus fare, a grocery run — isn't
+              a problem; the ones flagged <strong>Worth a look</strong> are discretionary and add up.
             </p>
             {behavioral.frequentSpending.length > 0 ? (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {behavioral.frequentSpending.map((vendor, idx) => (
                   <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--space-sm) 0', borderBottom: idx === behavioral.frequentSpending.length - 1 ? 'none' : '1px solid var(--color-border)' }}>
                     <div>
-                      <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)' }}>{vendor.name}</div>
+                      <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {vendor.name}
+                        <span style={{
+                          fontSize: '10px', padding: '1px 6px', borderRadius: 'var(--radius-pill)',
+                          textTransform: 'uppercase', letterSpacing: '0.03em', fontWeight: 'var(--weight-bold)',
+                          color: vendor.isEssential ? 'var(--color-muted)' : 'var(--color-warning)',
+                          background: vendor.isEssential
+                            ? 'color-mix(in srgb, var(--color-muted) 12%, transparent)'
+                            : 'color-mix(in srgb, var(--color-warning) 15%, transparent)',
+                        }}>
+                          {vendor.isEssential ? 'Routine' : 'Worth a look'}
+                        </span>
+                      </div>
                       <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: '4px', display: 'flex', gap: 'var(--space-sm)' }}>
                         <span><strong>Count:</strong> {vendor.count}</span>
                         <span>•</span>
@@ -501,7 +514,7 @@ export default function InsightsView({ data, period, filterProps, config, initia
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
                       <div style={{ fontSize: '10px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Spend</div>
-                      <div style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-danger)', fontSize: 'var(--text-base)' }}>
+                      <div style={{ fontWeight: 'var(--weight-bold)', color: vendor.isEssential ? 'var(--color-ink)' : 'var(--color-danger)', fontSize: 'var(--text-base)' }}>
                         {formatCurrency(vendor.total)}
                       </div>
                     </div>

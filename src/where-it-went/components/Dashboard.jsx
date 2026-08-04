@@ -15,7 +15,8 @@ import {
   filterByPeriod,
   filterByPreviousPeriod,
   getPreviousPeriodRange,
-  parseTxDate
+  parseTxDate,
+  toDateString
 } from '../lib/period';
 import { applyFilters } from '../lib/filtering';
 import { getUpcomingBills, getUpcomingTransactions, DEFAULT_HORIZON_DAYS } from '../lib/upcoming';
@@ -24,7 +25,7 @@ import { calculateMovingAverage, calculateLinearRegression } from '../lib/trends
 import PullToRefresh from './PullToRefresh';
 import QuickTemplates from './QuickTemplates';
 import SmartTextEntry from './SmartTextEntry';
-import { getChartColors, getDoughnutOptions, getBarOptions } from '../lib/chartConfig';
+import { getDoughnutOptions, getBarOptions } from '../lib/chartConfig';
 import { applyNoraSplit } from '../lib/noraSplit';
 
 const CARD = {
@@ -38,7 +39,7 @@ const CARD = {
 function DashboardInner({ data, client, onDataChange, onNavigate, config, period = 'this_month', filterProps, onViewTripInInsights, scrollToUpcoming, onConsumeScrollToUpcoming, onPrefillTransaction }) {
   const activePeriod = period || 'this_month';
   const allowTransfer = config?.features?.transfers === true;
-  const { filterType: filter = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
+  const { filterType: filter = 'All' } = filterProps || {};
   const [editingTx, setEditingTx] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [highlightedTxIds, setHighlightedTxIds] = useState([]);
@@ -101,7 +102,10 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
       if (t.type === 'Expense') exp += t.amount;
       
       const c = t.originalCurrency;
-      if (c && c !== 'RON') {
+      // Guard the amount too — a currency recorded with no amount (shouldn't
+      // happen, but nothing enforces it at the schema level) would otherwise
+      // add `undefined` and poison every foreign KPI figure with NaN.
+      if (c && c !== 'RON' && Number.isFinite(t.originalAmount)) {
         if (!f[c]) f[c] = { income: 0, expense: 0 };
         if (t.type === 'Income') f[c].income += t.originalAmount;
         if (t.type === 'Expense') f[c].expense += t.originalAmount;
@@ -281,9 +285,11 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
     }
     if (trendSeries.labels.length === 0) return undefined;
 
-    const inkColor = getComputedStyle(document.documentElement).getPropertyValue('--color-ink').trim() || '#1b1f24';
-    const mutedColor = getComputedStyle(document.documentElement).getPropertyValue('--color-muted').trim() || '#5a636e';
-    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--color-border').trim() || '#e1e4e8';
+    // Read the theme's own success/danger colors rather than a hardcoded HSL pair,
+    // so a repalette (or the dark/light swap) reaches this chart like every other
+    // surface in the app.
+    const successColor = getComputedStyle(document.documentElement).getPropertyValue('--color-success').trim() || '#859900';
+    const dangerColor = getComputedStyle(document.documentElement).getPropertyValue('--color-danger').trim() || '#dc322f';
 
     const canvas = trendChartRef.current;
     const ctx = canvas.getContext('2d');
@@ -291,33 +297,33 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
     const chartHeight = canvas.offsetHeight || 300;
 
     // ctx can be null in environments without a real canvas backend (e.g. tests) — fall back to a flat color.
-    const incomeGradient = ctx ? ctx.createLinearGradient(0, 0, 0, chartHeight) : 'hsla(142, 71%, 45%, 0.4)';
+    const incomeGradient = ctx ? ctx.createLinearGradient(0, 0, 0, chartHeight) : `color-mix(in srgb, ${successColor} 40%, transparent)`;
     if (ctx) {
-      incomeGradient.addColorStop(0, 'hsla(142, 71%, 45%, 0.8)');
-      incomeGradient.addColorStop(1, 'hsla(142, 71%, 45%, 0.1)');
+      incomeGradient.addColorStop(0, `color-mix(in srgb, ${successColor} 80%, transparent)`);
+      incomeGradient.addColorStop(1, `color-mix(in srgb, ${successColor} 10%, transparent)`);
     }
 
-    const expenseGradient = ctx ? ctx.createLinearGradient(0, 0, 0, chartHeight) : 'hsla(348, 83%, 60%, 0.4)';
+    const expenseGradient = ctx ? ctx.createLinearGradient(0, 0, 0, chartHeight) : `color-mix(in srgb, ${dangerColor} 40%, transparent)`;
     if (ctx) {
-      expenseGradient.addColorStop(0, 'hsla(348, 83%, 60%, 0.8)');
-      expenseGradient.addColorStop(1, 'hsla(348, 83%, 60%, 0.1)');
+      expenseGradient.addColorStop(0, `color-mix(in srgb, ${dangerColor} 80%, transparent)`);
+      expenseGradient.addColorStop(1, `color-mix(in srgb, ${dangerColor} 10%, transparent)`);
     }
 
     const baseDatasets = [
-      { 
-        label: 'Income', 
-        data: trendSeries.income, 
-        backgroundColor: incomeGradient, 
-        borderColor: 'hsl(142, 71%, 45%)',
+      {
+        label: 'Income',
+        data: trendSeries.income,
+        backgroundColor: incomeGradient,
+        borderColor: successColor,
         borderWidth: 2,
         borderRadius: 6,
         order: 2
       },
-      { 
-        label: 'Expense', 
-        data: trendSeries.expense, 
-        backgroundColor: expenseGradient, 
-        borderColor: 'hsl(348, 83%, 60%)',
+      {
+        label: 'Expense',
+        data: trendSeries.expense,
+        backgroundColor: expenseGradient,
+        borderColor: dangerColor,
         borderWidth: 2,
         borderRadius: 6,
         order: 2
@@ -351,7 +357,7 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
         type: 'line',
         label: 'Income Trend',
         data: incomeTrendData,
-        borderColor: 'hsl(142, 71%, 45%)',
+        borderColor: successColor,
         borderWidth: 3,
         tension,
         cubicInterpolationMode: tension > 0 ? 'monotone' : 'default',
@@ -366,7 +372,7 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
         type: 'line',
         label: 'Expense Trend',
         data: expenseTrendData,
-        borderColor: 'hsl(348, 83%, 60%)',
+        borderColor: dangerColor,
         borderWidth: 3,
         tension,
         cubicInterpolationMode: tension > 0 ? 'monotone' : 'default',
@@ -469,6 +475,9 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
         onUpdate={async (id, updates) => {
           return await client.updateTransaction(id, updates);
         }}
+        onDelete={async (id) => {
+          await client.deleteTransaction(id);
+        }}
         onAddSubscription={async (sub) => {
           if (client.addSubscription) {
             return await client.addSubscription(sub);
@@ -501,7 +510,9 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
               type: tpl.type || 'Expense',
               categoryId: tpl.categoryId,
               accountId: tpl.accountId,
-              date: new Date().toISOString().slice(0, 10),
+              // Local date, not toISOString() — which lands on the previous day
+              // for anyone east of UTC between local midnight and UTC midnight.
+              date: toDateString(new Date()),
             };
             await client.addTransaction(tx);
             await onDataChange();

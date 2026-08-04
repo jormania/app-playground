@@ -20,8 +20,7 @@ export function parseSmartText(text, accounts = [], categories = []) {
   if (!text || typeof text !== 'string') return null;
 
   let remainingText = text;
-  const lower = text.toLowerCase();
-  
+
   const tx = {
     amount: 0,
     currency: 'RON',
@@ -37,12 +36,6 @@ export function parseSmartText(text, accounts = [], categories = []) {
     remainingText = remainingText.replace(regex, ' ');
   };
   
-  // Helper to remove an exact string match
-  const stripString = (str) => {
-    const escaped = str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    remainingText = remainingText.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), ' ');
-  };
-
   // 0. Pre-clean structural action words and explicit currency
   stripRegex(/\b(bought a|bought|paid for|paid|spent|cost|charged|sent to|sent|transferred to|transferred|gave)\b/gi);
   stripRegex(/\b(lei|ron|bucks|dollars|euro|euros)\b/gi);

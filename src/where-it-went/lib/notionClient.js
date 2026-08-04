@@ -25,6 +25,10 @@ const relation = (id) => ({ relation: id ? [{ id }] : [] });
 const plainText = (runs) => (Array.isArray(runs) ? runs.map(r => r?.plain_text || '').join('') : '');
 const richText = (value) => ({ rich_text: value ? [{ text: { content: String(value) } }] : [] });
 const title = (value) => ({ title: [{ text: { content: String(value ?? '') } }] });
+/** The page's own emoji icon, or null for anything else (a custom image icon,
+ * or no icon at all) — an account/category page icon is text data the app
+ * can render inline, not an image it can fetch and cache. */
+const pageEmoji = (row) => (row?.icon?.type === 'emoji' ? row.icon.emoji : null);
 
 const sortCategories = (categories) => {
   return [...categories].sort((a, b) => {
@@ -129,7 +133,7 @@ export class NotionClient {
         id: row.id,
         name: plainText(row.properties.Name?.title),
         type: row.properties.Type?.select?.name || 'Expense',
-        icon: null, // Legacy emojis disabled in favor of Lucide SVGs
+        icon: pageEmoji(row),
         description: plainText(row.properties.Description?.rich_text),
         budgetLimit: row.properties['Monthly Limit (RON)']?.number || null,
         // The property keeps its original name for schema stability — renaming it
@@ -156,7 +160,7 @@ export class NotionClient {
       // Same treatment categories already get: the Notion page icon is the
       // account's identity. It does real work here too — two accounts can share
       // a name and differ only by currency.
-      icon: null, // Legacy emojis disabled in favor of Lucide SVGs
+      icon: pageEmoji(row),
       currency: row.properties.Currency?.select?.name || 'RON'
     })).filter(a => a.name.trim() !== '');
   }
@@ -332,7 +336,9 @@ export class NotionClient {
       if (idx !== -1) DEMO_TEMPLATES.splice(idx, 1);
       return;
     }
-    return this._request({ path: `blocks/${tplId}`, method: 'DELETE' });
+    // The proxy only allows GET/POST/PATCH (DELETE isn't a Notion REST verb
+    // anyway) — archive it, exactly like every other delete in this client.
+    return this._request({ path: `pages/${tplId}`, method: 'PATCH', body: { archived: true } });
   }
 
   async createTemplatesDatabase(parentPageId, categoriesDbId, accountsDbId) {

@@ -12,14 +12,17 @@
  */
 import { BASE_CURRENCY } from './fx';
 
-/** "📱 Revolut" · "💶 Revolut (EUR)" · "Checking" when there is no icon. */
+/**
+ * "Revolut" · "Revolut (EUR)" — text only. Every call site already renders its
+ * own `<AccountIcon>` next to this label, so the icon is never baked into the
+ * string itself (that would double it up).
+ */
 export function formatAccountLabel(account, { fallback = '—' } = {}) {
   if (!account || !account.name) return fallback;
-  const icon = ''; // SVG used in components instead
   const suffix = account.currency && account.currency !== BASE_CURRENCY
     ? ` (${account.currency})`
     : '';
-  return `${icon}${account.name}${suffix}`;
+  return `${account.name}${suffix}`;
 }
 
 /** The same label, resolved from an id via a lookup map. */

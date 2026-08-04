@@ -1,8 +1,8 @@
-export function applyFilters(transactions, { filter, categoryFilter, searchQuery }, categoriesById, accountsById) {
+export function applyFilters(transactions, { filterType, categoryFilter, searchQuery }, categoriesById, accountsById) {
   const q = (searchQuery || '').trim().toLowerCase();
-  
+
   return (transactions || []).filter(t => {
-    if (filter && filter !== 'All' && t.type !== filter) return false;
+    if (filterType && filterType !== 'All' && t.type !== filterType) return false;
     if (categoryFilter && categoryFilter !== 'All' && t.categoryId !== categoryFilter) return false;
     if (!q) return true;
     

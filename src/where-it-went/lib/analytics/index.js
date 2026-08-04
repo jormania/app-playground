@@ -10,6 +10,7 @@ import { generateSummaryParagraph } from './summaries';
 import { formatCurrency } from '../currency';
 import {
   RULES,
+  KEYWORDS,
   TRAVEL_KEYWORDS,
   PROPERTY_KEYWORDS,
   NORA_KEYWORDS,
@@ -36,8 +37,12 @@ function sumInto(buckets, key, amount) {
   buckets[key] = (buckets[key] || 0) + amount;
 }
 
-/** Applies the type/category/search filters (period handling lives in lib/period). */
-function applyFilters(transactions, byId, accountsById, filterProps) {
+/**
+ * Applies the type/category/search filters (period handling lives in lib/period).
+ * Exported only so a shared-contract test can run it and `lib/filtering.js`
+ * against identical input — the two had drifted before (see filtering.test.js).
+ */
+export function applyFilters(transactions, byId, accountsById, filterProps) {
   const { filterType = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
   const q = searchQuery.trim().toLowerCase();
 
@@ -51,7 +56,8 @@ function applyFilters(transactions, byId, accountsById, filterProps) {
     const cat = (byId.get(t.categoryId)?.name || '').toLowerCase();
     const acc = (accountsById.get(t.accountId)?.name || '').toLowerCase();
     const notes = (t.notes || '').toLowerCase();
-    return desc.includes(q) || cat.includes(q) || acc.includes(q) || notes.includes(q);
+    const amountMatch = String(t.amount ?? '').includes(q);
+    return desc.includes(q) || cat.includes(q) || acc.includes(q) || notes.includes(q) || amountMatch;
   });
 }
 
@@ -122,10 +128,22 @@ export function generateDeepInsights(data, period = 'this_month', filterProps = 
     vendorCounts[desc].total += tx.amount;
   });
 
+  // A vendor bought from often isn't automatically a problem — a bus ticket or
+  // a grocery run repeats by nature and is exactly the kind of low-value,
+  // essential purchase a "silently drains cash flow" framing would wrongly
+  // flag. `isEssential` reuses the same Needs/Wants keyword classification the
+  // 50/30/20 breakdown already applies to categories, so a category like
+  // Transport or Groceries reads as routine rather than a habit worth
+  // reconsidering; only frequent *discretionary* spend (dining, entertainment,
+  // shopping) keeps the "worth a look" framing.
   const frequentSpending = Object.values(vendorCounts)
     .filter(v => v.count >= 3 && v.total > 0)
     .sort((a, b) => b.count - a.count)
-    .map(v => ({ ...v, average: v.total / v.count }))
+    .map(v => ({
+      ...v,
+      average: v.total / v.count,
+      isEssential: matchesAny((v.catName || '').toLowerCase(), KEYWORDS.NEEDS),
+    }))
     .slice(0, 5);
 
   // ── Travel ───────────────────────────────────────────────────────────────

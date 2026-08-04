@@ -69,7 +69,7 @@ describe('aiParser', () => {
   it('strips markdown backticks if returned', async () => {
     const mockResponse = {
       content: [{
-        text: '\`\`\`json\n{"transactions": [{"amount": 50, "categoryId": "cat-food", "accountId": "acc-cash", "description": "Groceries", "date": "2026-08-01", "type": "Expense"}]}\n\`\`\`'
+        text: '```json\n{"transactions": [{"amount": 50, "categoryId": "cat-food", "accountId": "acc-cash", "description": "Groceries", "date": "2026-08-01", "type": "Expense"}]}\n```'
       }]
     };
 
