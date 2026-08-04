@@ -493,11 +493,12 @@ export default function InsightsView({ data, period, filterProps, config, initia
                 {behavioral.frequentSpending.map((vendor, idx) => (
                   <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--space-sm) 0', borderBottom: idx === behavioral.frequentSpending.length - 1 ? 'none' : '1px solid var(--color-border)' }}>
                     <div>
-                      <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ fontWeight: 'var(--weight-medium)', color: 'var(--color-ink)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', rowGap: '4px' }}>
                         {vendor.name}
                         <span style={{
                           fontSize: '10px', padding: '1px 6px', borderRadius: 'var(--radius-pill)',
                           textTransform: 'uppercase', letterSpacing: '0.03em', fontWeight: 'var(--weight-bold)',
+                          whiteSpace: 'nowrap', flexShrink: 0,
                           color: vendor.isEssential ? 'var(--color-muted)' : 'var(--color-warning)',
                           background: vendor.isEssential
                             ? 'color-mix(in srgb, var(--color-muted) 12%, transparent)'
