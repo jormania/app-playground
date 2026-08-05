@@ -18,12 +18,24 @@ export default function SmartInsightsChat({ transactions, categories, config }) 
         recognitionRef.current = new SpeechRecognition();
         recognitionRef.current.continuous = false;
         recognitionRef.current.interimResults = false;
+        // The device's own language setting, rather than whatever default the
+        // engine falls back to (browsers disagree on that, inconsistently).
+        recognitionRef.current.lang = navigator.language || 'en-US';
         recognitionRef.current.onresult = (event) => {
           const transcript = event.results[0][0].transcript;
           setText(prev => prev ? `${prev} ${transcript}` : transcript);
         };
         recognitionRef.current.onend = () => {
           setIsListening(false);
+        };
+        recognitionRef.current.onerror = (event) => {
+          setIsListening(false);
+          if (event.error === 'no-speech' || event.error === 'aborted') return;
+          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            setError('Microphone access was denied. Enable it in your browser settings to dictate.');
+          } else {
+            setError('Dictation failed. Please try again or type instead.');
+          }
         };
       }
     }

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Wand2, Loader2, Mic, MicOff } from 'lucide-react';
+import { ConfirmModal } from '../../ds';
 import { parseSmartText } from '../lib/smartParser';
 import { parseTextWithAI } from '../lib/aiParser';
 import { parseNoraSplitGroup, stripNoraGroup } from '../lib/noraSplit';
@@ -11,6 +12,12 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
   const [isParsing, setIsParsing] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [detectedSubscription, setDetectedSubscription] = useState(null);
+  // Holds a whole parsed batch when it contains a delete action, so it can be
+  // reviewed before anything runs. Creates/updates alone still execute
+  // instantly — deleting is the one action here with no undo, so it's the one
+  // that gets a checkpoint, matching how the rest of the app treats delete
+  // (single and bulk delete both confirm; adding never has).
+  const [pendingDeleteBatch, setPendingDeleteBatch] = useState(null);
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
 
@@ -21,12 +28,27 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
         recognitionRef.current = new SpeechRecognition();
         recognitionRef.current.continuous = false;
         recognitionRef.current.interimResults = false;
+        // Explicit rather than left to the engine's own default, which some
+        // browsers resolve from the OS locale and others from the page's own
+        // <html lang>, inconsistently — the device's own language setting is
+        // the one signal that's actually meaningful here.
+        recognitionRef.current.lang = navigator.language || 'en-US';
         recognitionRef.current.onresult = (event) => {
           const transcript = event.results[0][0].transcript;
           setText(prev => prev ? `${prev} ${transcript}` : transcript);
         };
         recognitionRef.current.onend = () => {
           setIsListening(false);
+        };
+        recognitionRef.current.onerror = (event) => {
+          setIsListening(false);
+          // "no-speech" is just silence — not worth interrupting with an error.
+          if (event.error === 'no-speech' || event.error === 'aborted') return;
+          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            setError('Microphone access was denied. Enable it in your browser settings to dictate.');
+          } else {
+            setError('Dictation failed. Please try again or type instead.');
+          }
         };
       }
     }
@@ -56,6 +78,80 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
       return () => clearTimeout(timer);
     }
   }, [error]);
+
+  /**
+   * Runs one already-parsed batch against Notion, sequentially so an error
+   * midway leaves earlier items in place rather than reordering writes.
+   *
+   * Reports exactly how far it got. The previous version wrapped the whole
+   * loop in one try/catch: a failure on item 2 of 3 reported a flat "Failed
+   * to save changes" with no sign the first item had already landed, no
+   * ledger refresh to show it, and an open invitation to resubmit the same
+   * text and duplicate it.
+   */
+  const executeBatch = async (txs, { withNora, withNoraCount }) => {
+    const addedIds = [];
+    let subToPrompt = null;
+    let added = 0, updated = 0, deleted = 0;
+    let failure = null;
+
+    for (const t of txs) {
+      if (t.isSubscription) subToPrompt = t;
+
+      // Stamp the group count so applyNoraSplit calculates the correct fraction.
+      // withNoraCount=2 → 50/50, withNoraCount=3 → 1/3 Nora / 2/3 you, etc.
+      const tWithFlag = withNora ? { ...t, withNoraCount } : t;
+
+      try {
+        if (t.action === 'update' && t.id) {
+          await onUpdate(t.id, t);
+          updated++;
+        } else if (t.action === 'delete' && t.id) {
+          if (onDelete) {
+            await onDelete(t.id);
+            deleted++;
+          }
+        } else {
+          const saved = await onAdd(tWithFlag);
+          if (saved && saved.id) addedIds.push(saved.id);
+          added++;
+        }
+      } catch (err) {
+        failure = err;
+        break;
+      }
+    }
+
+    const settled = added + updated + deleted;
+
+    if (failure) {
+      const parts = [];
+      if (added) parts.push(`${added} added`);
+      if (updated) parts.push(`${updated} updated`);
+      if (deleted) parts.push(`${deleted} deleted`);
+      setError(settled > 0
+        ? `${parts.join(', ')} before this failed: ${failure.message || 'could not save the rest.'}`
+        : (failure.message || 'Failed to save changes.'));
+    } else if (settled === 1) {
+      if (updated) setSuccess('Updated transaction.');
+      else if (deleted) setSuccess('Deleted transaction.');
+      else setSuccess(`Added: ${txs[0].amount} ${txs[0].originalCurrency || 'RON'} for ${txs[0].description}`);
+      setText('');
+    } else {
+      const parts = [];
+      if (added) parts.push(`${added} added`);
+      if (updated) parts.push(`${updated} updated`);
+      if (deleted) parts.push(`${deleted} deleted`);
+      setSuccess(parts.length > 0 ? `${parts.join(', ')}.` : `Processed ${txs.length} items.`);
+      setText('');
+    }
+
+    // Refresh on any partial progress too, not only a clean run — otherwise a
+    // batch that half-succeeded before failing shows nothing for it until the
+    // next unrelated reload.
+    if (settled > 0 && onSuccess) onSuccess(addedIds);
+    if (!failure && subToPrompt) setDetectedSubscription(subToPrompt);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -90,61 +186,28 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
     } finally {
       setIsParsing(false);
     }
-    
+
     if (!txs || txs.length === 0) {
       setError("Couldn't find an amount in that text.");
       return;
     }
 
-    try {
-      const addedIds = [];
-      let subToPrompt = null;
-      let added = 0, updated = 0, deleted = 0;
-
-      for (const t of txs) {
-        if (t.isSubscription) {
-          subToPrompt = t;
-        }
-
-        // Stamp the group count so applyNoraSplit calculates the correct fraction.
-        // withNoraCount=2 → 50/50, withNoraCount=3 → 1/3 Nora / 2/3 you, etc.
-        const tWithFlag = withNora ? { ...t, withNoraCount } : t;
-
-        if (t.action === 'update' && t.id) {
-          await onUpdate(t.id, t);
-          updated++;
-        } else if (t.action === 'delete' && t.id) {
-          if (onDelete) {
-            await onDelete(t.id);
-            deleted++;
-          }
-        } else {
-          const saved = await onAdd(tWithFlag);
-          if (saved && saved.id) addedIds.push(saved.id);
-          added++;
-        }
-      }
-
-      if (added + updated + deleted === 1) {
-        if (updated) setSuccess('Updated transaction.');
-        else if (deleted) setSuccess('Deleted transaction.');
-        else setSuccess(`Added: ${txs[0].amount} ${txs[0].originalCurrency || 'RON'} for ${txs[0].description}`);
-      } else {
-        const parts = [];
-        if (added) parts.push(`${added} added`);
-        if (updated) parts.push(`${updated} updated`);
-        if (deleted) parts.push(`${deleted} deleted`);
-        setSuccess(parts.length > 0 ? `${parts.join(', ')}.` : `Processed ${txs.length} items.`);
-      }
-
-      setText('');
-      if (onSuccess) onSuccess(addedIds);
-      if (subToPrompt) setDetectedSubscription(subToPrompt);
-      // Optional: keep focus if they want to add multiple in a row
-      // inputRef.current?.focus();
-    } catch (_err) {
-      setError("Failed to save changes.");
+    // A delete is the one action here with no undo — hold the whole batch for
+    // an explicit confirmation rather than running it straight through the
+    // way an add or an update does. Any accompanying creates/updates in the
+    // same message wait too, so nothing in the batch runs out of order.
+    if (txs.some(t => t.action === 'delete' && t.id)) {
+      setPendingDeleteBatch({ txs, withNora, withNoraCount });
+      return;
     }
+
+    await executeBatch(txs, { withNora, withNoraCount });
+  };
+
+  const confirmPendingDelete = async () => {
+    const batch = pendingDeleteBatch;
+    setPendingDeleteBatch(null);
+    if (batch) await executeBatch(batch.txs, { withNora: batch.withNora, withNoraCount: batch.withNoraCount });
   };
 
   return (
@@ -290,7 +353,28 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
           </div>
         </div>
       )}
-      
+
+      {pendingDeleteBatch && (() => {
+        const deletes = pendingDeleteBatch.txs.filter(t => t.action === 'delete' && t.id);
+        const others = pendingDeleteBatch.txs.length - deletes.length;
+        const targets = deletes.map(t => {
+          const match = recentTransactions.find(rt => rt.id === t.id);
+          return match ? `"${match.description}" (${match.amount} L)` : 'a transaction';
+        });
+        return (
+          <ConfirmModal
+            isOpen={true}
+            title={deletes.length === 1 ? 'Delete this transaction?' : `Delete ${deletes.length} transactions?`}
+            message={`${targets.join(', ')} will be archived in Notion and can be restored from its trash there.`
+              + (others > 0 ? ` The other ${others} change${others !== 1 ? 's' : ''} in this message will still be saved.` : '')}
+            confirmText="Delete"
+            variant="danger"
+            onConfirm={confirmPendingDelete}
+            onCancel={() => setPendingDeleteBatch(null)}
+          />
+        );
+      })()}
+
       <style dangerouslySetInnerHTML={{ __html: `
         .smart-text-entry:focus-within {
           border-color: var(--color-accent);

@@ -1117,3 +1117,53 @@ before fixing (a couple had already been overtaken by other work — see the
   default, matching every existing install's behaviour exactly): switching
   it off stores the config in `sessionStorage` instead, cleared once the tab
   closes, and clears any leftover `localStorage` copy.
+
+## AI parser hardening (2026-08-05)
+
+The AI Parser was deliberately left free to make its own best call on
+ambiguous input — no review step before a parsed transaction saves, even for
+a batch that creates several at once. That's a considered trade-off, not an
+oversight, but it raises the bar on everything *around* the model's own
+judgment: a hallucinated id, an unregistered currency, or a slow connection
+must never be able to corrupt or block the save.
+
+- **Foreign-currency amounts are re-derived from a live ECB rate, not the
+  model's own guess.** The prompt only ever asked it for "your best estimate";
+  the manual entry form has never trusted an LLM for that, and this shouldn't
+  either. `lib/aiParser.js`'s `hardenTransaction` calls the same
+  `fetchRate`/`convert` from `lib/fx.js` that `TransactionForm` uses, keyed on
+  the transaction's own date. A missing or unavailable rate (BGN, or a network
+  hiccup) falls back to the AI's figure rather than blocking the save — the
+  same rule `lib/fx.js` applies everywhere else.
+- **`categoryId` / `accountId` / `toAccountId` / `tripId` are validated
+  against the lists actually offered**, not trusted as returned. A
+  hallucinated or malformed category/trip id is dropped (the row still saves,
+  just uncategorised — a one-tap fix); a bad `accountId` falls back to the
+  same category-aware default `pickDefaultAccount` (`lib/accountPicker.js`)
+  the manual form uses, rather than losing the whole transaction. A Transfer
+  that can't resolve to two distinct real accounts is dropped outright — that
+  case isn't "mostly right" the way a wrong category is.
+- **`originalCurrency` is validated against the registered 16-currency
+  vocabulary** (case-normalized). An unregistered value used to reach
+  `notionClient` and reject the *entire* atomic write per the closed-select
+  rule documented in §1.5; it's now stripped (along with `originalAmount`)
+  before that can happen, falling back to a plain RON transaction instead of
+  a failed save.
+- **A parsed batch containing a delete now waits for one explicit
+  confirmation** before anything in it runs — creates and updates alone still
+  execute instantly. Every other delete path in the app (single row, bulk)
+  already confirms; natural-language matching against the last 15
+  transactions is exactly the kind of match that can pick the wrong row, and
+  unlike a wrong amount or category, a delete has no "fix it after" recovery
+  inside the app.
+- **A batch failing partway through now reports exactly how far it got**
+  ("1 added before this failed: …") and still refreshes the ledger to show
+  what did save, instead of a flat "Failed to save changes" that hid
+  successful earlier items and invited a duplicate resubmit.
+- **Both Claude calls now time out** (20s) instead of leaving the input
+  disabled indefinitely on a hung connection, and `askInsightsAI` gained the
+  same empty-response guard `parseTextWithAI` already had.
+- **Voice dictation sets its recognition language from the device's own
+  locale** instead of leaving it to the browser's inconsistent default, and
+  reports a clear message when microphone access is denied rather than
+  silently doing nothing.
