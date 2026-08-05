@@ -4,6 +4,7 @@ import { ConfirmModal } from '../../ds';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 import { sortTrips } from '../services/trips';
 import { pickDefaultAccount } from '../lib/accountPicker';
+import { selectableCategories } from '../lib/categories';
 import { toDateString } from '../lib/period';
 import { BASE_CURRENCY, fetchRate, convert, impliedRate, formatRateNote, canConvert, orderedCurrencies, recordRecentCurrency } from '../lib/fx';
 import { readJson, writeJson } from '../lib/storage';
@@ -167,9 +168,7 @@ export default function TransactionForm({ transactions = [], categories, account
   // A Transfer moves money between the user's own accounts/pockets rather than
   // being earned or spent, so it has no natural Income/Expense category — the
   // Notion schema doesn't type any category "Transfer".
-  const availableCategories = categories
-    .filter(c => c.type === type)
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const availableCategories = selectableCategories(categories, type, categoryId);
 
   const selectedCat = categories.find(c => c.id === categoryId);
   const isTravelCategory = !!selectedCat && (selectedCat.name || '').toLowerCase().includes('travel');

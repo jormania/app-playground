@@ -134,6 +134,9 @@ export class NotionClient {
         name: plainText(row.properties.Name?.title),
         type: row.properties.Type?.select?.name || 'Expense',
         icon: pageEmoji(row),
+        // Never actually read before — every category appeared in every
+        // picker regardless of what this checkbox said in Notion.
+        active: row.properties.Active?.checkbox !== false,
         description: plainText(row.properties.Description?.rich_text),
         budgetLimit: row.properties['Monthly Limit (RON)']?.number || null,
         // The property keeps its original name for schema stability — renaming it

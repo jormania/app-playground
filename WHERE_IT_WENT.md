@@ -1167,3 +1167,32 @@ must never be able to corrupt or block the save.
   locale** instead of leaving it to the browser's inconsistent default, and
   reports a clear message when microphone access is denied rather than
   silently doing nothing.
+
+## Categories actually respect `Active` (2026-08-05)
+
+`Active` has existed on the Categories schema since §1.2 was first written,
+and `lib/aiParser.js` was already filtering on it — but `notionClient.js`'s
+`fetchCategories()` never read the property off the Notion row in the first
+place, so every category's `active` came back `undefined` and every filter
+checking it (`!== false`) silently always passed. In the live workspace,
+every Income category had `Active` checked and every Expense category
+didn't — a real, deliberate-looking split that had zero effect anywhere in
+the app.
+
+- **`fetchCategories()` now reads `Active`** off the Notion page.
+- **New `lib/categories.js`** (`selectableCategories`) is the one place that
+  decides what a category picker offers: inactive categories are hidden from
+  a *new* pick, but a category already assigned to the row being edited (or
+  already applied as the ledger's filter) is never dropped — deactivating
+  "Travel" can't retroactively blank the category on every trip you've
+  logged, or make it impossible to filter the ledger down to just that
+  category's history. Wired into `TransactionForm`, `TemplateEditorModal`,
+  `SplitTransactionModal`, the bulk-categorize picker in `TransactionsList`,
+  and `FilterSheet`'s category filter. `BudgetSettings` and `lib/aiParser.js`
+  were intentionally left alone — the former is a management view that needs
+  to show everything to let you reactivate a category, and the latter
+  already had its own correct `active !== false` filter, which simply never
+  had real data to filter on before.
+- **Live workspace data updated to match intent**: every category is now
+  `Active` except **Other**, which stays off — every other category is in
+  genuine current use.

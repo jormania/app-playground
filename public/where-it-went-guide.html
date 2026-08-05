@@ -142,7 +142,7 @@
     <tr><th>Property</th><th>Type</th><th>Notes</th></tr>
     <tr><td>Name</td><td>Title</td><td>Shown throughout the app. The page <b>icon</b> (an emoji) is picked up and shown beside it.</td></tr>
     <tr><td>Type</td><td>Select</td><td>Exactly <code>Income</code> or <code>Expense</code>. Drives which categories appear for which transaction type.</td></tr>
-    <tr><td>Active</td><td>Checkbox</td><td>Reserved; not currently used to filter.</td></tr>
+    <tr><td>Active</td><td>Checkbox</td><td>Unchecked hides the category from every picker for a <em>new</em> pick — the transaction form, templates, splits, and the ledger filter. It's never dropped from a row already filed under it, so switching a category off doesn't touch existing transactions and it still appears if you filter to it directly.</td></tr>
     <tr><td>Description</td><td>Text</td><td>Optional. Appears as an expandable hint under the category picker.</td></tr>
     <tr><td>Monthly Limit (RON)</td><td>Number</td><td>The spending limit for <b>one budget period</b> — a month only when <code>Budget Period</code> says so. The name is historical and kept so existing databases keep working.</td></tr>
     <tr><td>Budget Period</td><td>Select</td><td><code>Monthly</code>, <code>Quarterly</code> or <code>Yearly</code>. Blank reads as Monthly.</td></tr>

@@ -183,6 +183,24 @@ describe('NotionClient — reads', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2); // did not loop forever on the repeated cursor
   });
 
+  it('reads a category\'s Active checkbox — previously never parsed at all, so every category behaved as active regardless of the checkbox', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      results: [
+        { id: 'cat1', properties: { Name: { title: [{ plain_text: 'Salary' }] }, Type: { select: { name: 'Income' } }, Active: { checkbox: true } } },
+        { id: 'cat2', properties: { Name: { title: [{ plain_text: 'Other' }] }, Type: { select: { name: 'Expense' } }, Active: { checkbox: false } } },
+        // No Active property at all — an older row saved before the checkbox existed must still read as active.
+        { id: 'cat3', properties: { Name: { title: [{ plain_text: 'Food' }] }, Type: { select: { name: 'Expense' } } } },
+      ],
+      has_more: false
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new NotionClient('secret', { categories: 'db1' });
+    const rows = await client.fetchCategories();
+    const byName = Object.fromEntries(rows.map(r => [r.name, r.active]));
+    expect(byName).toEqual({ Salary: true, Other: false, Food: true });
+  });
+
   it('returns an empty list — never demo rows — when a token is set but a database id is missing', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

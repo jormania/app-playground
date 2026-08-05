@@ -5,6 +5,7 @@ import { CategorySelect } from "./CategorySelect";
 import { FormError } from "../../ds/components/FormError";
 import { ModalFooter } from "../../ds/components/ModalFooter";
 import { formatCurrency } from "../lib/currency";
+import { selectableCategories } from "../lib/categories";
 
 const QUICK_PCTS = [10, 25, 33, 50, 67, 75, 90];
 
@@ -72,9 +73,7 @@ export default function SplitTransactionModal({ isOpen, onClose, transaction, ca
   const canSubmit = hasValue && splitCategoryId && !(isIncome ? isIncomeInvalid : isInvalid);
 
   const splitCategoryType = isIncome ? "Expense" : transaction.type;
-  const filteredCategories = categories
-    .filter(c => c.type === splitCategoryType)
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const filteredCategories = selectableCategories(categories, splitCategoryType, splitCategoryId);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

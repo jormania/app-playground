@@ -505,8 +505,11 @@ function TransactionsListInner({ data, client, onDataChange, filterProps, period
                if (!t) return null;
                return t.type || (t.amount < 0 ? 'Expense' : 'Income');
              }).filter(Boolean));
+             // A bulk assignment is always a fresh pick across possibly many rows —
+             // no single existing selection to preserve the way a single-row edit
+             // has, so an inactive category is simply not offered here.
              const eligible = (data.categories || []).filter(cat =>
-               selectedTypes.size === 0 || selectedTypes.has(cat.type));
+               cat.active !== false && (selectedTypes.size === 0 || selectedTypes.has(cat.type)));
 
              if (eligible.length === 0) {
                return (

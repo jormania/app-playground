@@ -3,6 +3,7 @@ import { Modal } from "../../ds/components/Modal";
 import { Field } from "../../ds/components/Field";
 import { ConfirmModal } from "../../ds";
 import { SegmentedControl } from "../../ds/components/SegmentedControl";
+import { selectableCategories } from '../lib/categories';
 import { CategorySelect } from './CategorySelect';
 import { AccountSelect } from './AccountSelect';
 import { FormError } from "../../ds/components/FormError";
@@ -25,9 +26,7 @@ export default function TemplateEditorModal({ isOpen, onClose, template, categor
   const accountSelectId = useId();
 
   const sortedAccounts = [...accounts].sort((a, b) => a.name.localeCompare(b.name));
-  const availableCategories = categories
-    .filter(c => c.type === type)
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const availableCategories = selectableCategories(categories, type, categoryId);
   const selectedCat = categories.find(c => c.id === categoryId);
 
   const canSubmit = !!description.trim() && !!categoryId && !!accountId;

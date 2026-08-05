@@ -50,6 +50,30 @@ describe('TransactionForm', () => {
     expect(data).toMatchObject({ description: 'Milk', amount: 12.5, categoryId: 'c1' });
   });
 
+  it('hides an inactive category from the picker on a new transaction', () => {
+    const withInactive = [
+      { id: 'c1', name: 'Groceries', type: 'Expense' },
+      { id: 'c2', name: 'Other', type: 'Expense', active: false },
+    ];
+    render(<TransactionForm categories={withInactive} accounts={accounts} onSave={vi.fn()} onCancel={vi.fn()} />);
+
+    const options = Array.from(screen.getByLabelText(/category/i).querySelectorAll('option')).map(o => o.textContent);
+    expect(options).not.toContain('Other');
+  });
+
+  it('keeps an inactive category visible when editing a transaction already filed under it', () => {
+    const withInactive = [
+      { id: 'c1', name: 'Groceries', type: 'Expense' },
+      { id: 'c2', name: 'Other', type: 'Expense', active: false },
+    ];
+    const initialTx = { id: 'tx1', description: 'Misc', amount: 10, type: 'Expense', categoryId: 'c2', accountId: 'a1', date: '2026-08-01' };
+    render(<TransactionForm categories={withInactive} accounts={accounts} initialTx={initialTx} onSave={vi.fn()} onCancel={vi.fn()} />);
+
+    const options = Array.from(screen.getByLabelText(/category/i).querySelectorAll('option')).map(o => o.textContent);
+    expect(options).toContain('Other');
+    expect(screen.getByLabelText(/category/i).value).toBe('c2');
+  });
+
   it('blocks submission and shows an error when the amount is zero', async () => {
     const onSave = vi.fn();
     render(<TransactionForm categories={categories} accounts={accounts} onSave={onSave} onCancel={vi.fn()} />);

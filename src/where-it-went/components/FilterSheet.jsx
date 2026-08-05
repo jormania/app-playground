@@ -29,7 +29,12 @@ export default function FilterSheet({ isOpen, onClose, filterType, categoryFilte
     setLocalSearch('');
   };
 
-  const relevantCategories = categories.filter(c => localType === 'All' || c.type === localType);
+  // An inactive category is hidden from the picker, unless it's the one
+  // already applied — filtering *to* a category you've since deactivated is
+  // exactly how you'd review its old history, and that option shouldn't
+  // disappear the moment you turn the category off.
+  const relevantCategories = categories.filter(c =>
+    (localType === 'All' || c.type === localType) && (c.active !== false || c.id === localCategory));
   // Transfers carry no category at all, so a category picker would only ever be
   // able to produce an empty result set here.
   const categoryFilterApplies = localType !== 'Transfer';
