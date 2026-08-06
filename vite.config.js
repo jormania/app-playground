@@ -253,6 +253,7 @@ export default defineConfig({
         loom: resolve(__dirname, 'loom-react.html'),
         clickDeck: resolve(__dirname, 'click-deck-react.html'),
         whereItWent: resolve(__dirname, 'where-it-went-react.html'),
+        fitCheck: resolve(__dirname, 'fit-check-react.html'),
         dsShowcase: resolve(__dirname, 'ds-showcase.html'),
         cabinet: resolve(__dirname, 'cabinet.html'),
       }

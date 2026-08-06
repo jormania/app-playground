@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Fit Check">
+  <title>Fit Check</title>
+  <!--
+    Launcher tile, following Nora's sketch closely: a rounded near-black square,
+    one tall needle-thin sparkle a little above centre, and a scattered
+    constellation of smaller ones at mixed sizes. The violet gradient runs pale
+    at the top-left into deep magenta at the bottom-right.
+
+    The sparkle is the Japanese "kirakira" mark, so the East-Asian thread was
+    already in her drawing. It's made explicit — quietly — by the background:
+    SEIGAIHA (青海波), the overlapping-wave pattern printed on kimono and hanbok
+    textiles for centuries. A cloth pattern under a wardrobe app, held at very
+    low contrast so it reads as texture on the dark field rather than as
+    decoration competing with the sparkles.
+
+    The rounded corners mean this art has TRANSPARENT corners, which a maskable
+    icon must not. The generator flattens them onto the field colour for the
+    maskable PNG — see scripts/generate-fit-check-icons.mjs. Everything
+    meaningful stays inside the maskable safe zone (centre circle, radius 205),
+    so nothing is clipped whatever shape a launcher applies.
+  -->
+  <defs>
+    <linearGradient id="fcField" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#1b1424"/>
+      <stop offset="1" stop-color="#100b16"/>
+    </linearGradient>
+
+    <linearGradient id="fcSpark" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#f3c4ee"/>
+      <stop offset="0.4" stop-color="#d484d0"/>
+      <stop offset="0.75" stop-color="#b8419b"/>
+      <stop offset="1" stop-color="#8d2b7d"/>
+    </linearGradient>
+
+    <radialGradient id="fcBloom" cx="0.5" cy="0.47" r="0.45">
+      <stop offset="0" stop-color="#b8419b" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#b8419b" stop-opacity="0"/>
+    </radialGradient>
+
+    <!--
+      Seigaiha. Concentric arcs on a 48px pitch, radius 48 so each fan overlaps
+      its neighbours by half; alternate rows shift by 24 (half the pitch), which
+      is what makes the pattern read as waves rather than stacked scallops.
+    -->
+    <pattern id="fcSeigaiha" patternUnits="userSpaceOnUse" width="96" height="96">
+      <g fill="none" stroke="#e8a5dd" stroke-width="2.6" stroke-opacity="0.07">
+        <g>
+          <path d="M-48 48a48 48 0 0 1 96 0M-33 48a33 33 0 0 1 66 0M-18 48a18 18 0 0 1 36 0"/>
+          <path d="M0 48a48 48 0 0 1 96 0M15 48a33 33 0 0 1 66 0M30 48a18 18 0 0 1 36 0"/>
+          <path d="M48 48a48 48 0 0 1 96 0M63 48a33 33 0 0 1 66 0M78 48a18 18 0 0 1 36 0"/>
+        </g>
+        <g transform="translate(-24 48)">
+          <path d="M-48 48a48 48 0 0 1 96 0M-33 48a33 33 0 0 1 66 0M-18 48a18 18 0 0 1 36 0"/>
+          <path d="M0 48a48 48 0 0 1 96 0M15 48a33 33 0 0 1 66 0M30 48a18 18 0 0 1 36 0"/>
+          <path d="M48 48a48 48 0 0 1 96 0M63 48a33 33 0 0 1 66 0M78 48a18 18 0 0 1 36 0"/>
+          <path d="M96 48a48 48 0 0 1 96 0M111 48a33 33 0 0 1 66 0M126 48a18 18 0 0 1 36 0"/>
+        </g>
+      </g>
+    </pattern>
+
+    <!--
+      One sparkle, centred on the origin, drawn once and reused at eight sizes.
+      Each quadrant is a quadratic curve whose control point sits at the centre —
+      that's what pinches the waist into the thin four-pointed star. The 0.32
+      waist ratio is Nora's: fatter and it stops reading as a sparkle and starts
+      reading as a compass rose.
+    -->
+    <path id="fcStar" d="M0-100Q0 0 32 0Q0 0 0 100Q0 0-32 0Q0 0 0-100Z"/>
+
+    <!-- Holds the pattern off the very edge, where a launcher mask may crop. -->
+    <radialGradient id="fcFade" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.5" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="fcFadeMask">
+      <rect width="512" height="512" fill="url(#fcFade)"/>
+    </mask>
+
+    <clipPath id="fcTile">
+      <rect width="512" height="512" rx="112"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#fcTile)">
+    <rect width="512" height="512" fill="url(#fcField)"/>
+    <rect width="512" height="512" fill="url(#fcSeigaiha)" mask="url(#fcFadeMask)"/>
+    <rect width="512" height="512" fill="url(#fcBloom)"/>
+
+    <g fill="url(#fcSpark)">
+      <!-- Hero. R=170 keeps it inside the 205 safe radius. -->
+      <use href="#fcStar" transform="translate(252 244) scale(1.7)"/>
+      <!-- The constellation: mixed sizes, scattered rather than arranged. -->
+      <use href="#fcStar" transform="translate(374 148) scale(0.46)"/>
+      <use href="#fcStar" transform="translate(154 168) scale(0.29)"/>
+      <use href="#fcStar" transform="translate(136 330) scale(0.37)"/>
+      <use href="#fcStar" transform="translate(382 316) scale(0.25)"/>
+      <use href="#fcStar" transform="translate(300 402) scale(0.19)"/>
+      <use href="#fcStar" transform="translate(196 412) scale(0.14)"/>
+      <use href="#fcStar" transform="translate(408 236) scale(0.12)"/>
+      <use href="#fcStar" transform="translate(118 244) scale(0.16)"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Fit Check</title>
+  <meta name="description" content="A friendly wardrobe companion that helps you decide what to wear." />
+  <meta name="theme-color" content="#b8419b" />
+  <script>
+    // Apply the saved (or OS-preferred) theme before first paint, so a dark-mode
+    // device doesn't flash light before App.tsx's own effect corrects it.
+    try {
+      var cfg = JSON.parse(localStorage.getItem('fitCheck_config') || 'null');
+      var theme = cfg && cfg.theme;
+      var dark = theme === 'dark' || (!theme && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    } catch (e) {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  </script>
+  <!-- The transparent mark for the tab (a dark tile fights every browser theme);
+       the full tile for the iOS home screen, which draws it on its own. -->
+  <link rel="icon" type="image/svg+xml" href="/fit-check-logo.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/fit-check-favicon-32.png" />
+  <link rel="apple-touch-icon" href="/fit-check-icon-192.png" />
+  <link rel="manifest" href="/fit-check.webmanifest" />
+  <script defer src="/_vercel/insights/script.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/fit-check/main.tsx"></script>
+</body>
+</html>

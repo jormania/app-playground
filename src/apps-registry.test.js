@@ -14,6 +14,7 @@ const REACT_VITE_TITLES = [
   'Loom',
   'Click Deck',
   'WhereItWent',
+  'Fit Check',
 ]
 
 // Codex Alchymicus dropped its "— KCD2" suffix when it grew to cover KCD1 too

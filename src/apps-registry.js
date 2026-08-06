@@ -29,6 +29,28 @@ export const CAT_TAGS = new Set(["gaming", "fitness", "outdoor", "mindfulness", 
 
 export const APPS = [
   {
+    emoji: "👗",
+    iconBg: "rgba(184,65,155,0.15)",
+    title: "Fit Check",
+    subtitle: "wardrobe · weather · outfits · notion",
+    deployed: "Aug 2026",
+    tech: "React + Vite + Notion",
+    tags: ["wardrobe", "outfits", "weather", "notion", "ai", "react", "vite"],
+    ds: true,
+    kind: "react-vite",
+    manifest: "/fit-check.webmanifest",
+    description: "A wardrobe companion that answers one question: what should I wear today? Photograph the clothes you own and they tag themselves — colour, warmth, style. Pick a mood, and it reads the weather and offers three outfits you could actually put on. Wear one or skip it; over time it learns what you reach for. Clothes can live in two homes at once, and everything stays in your own Notion workspace.",
+    features: [
+      "Three outfit suggestions a day, chosen from what you actually own, for the weather that's actually outside — scored by warmth against temperature, rain and wind suitability, colour compatibility and mood, with a nudge away from whatever you wore yesterday",
+      "Photograph a garment and it tags itself — category, colours, warmth and style — from a single pass, with every suggestion editable by hand",
+      "Two wardrobes for two homes, with anything you carry between them marked as living in both",
+      "Favourites, wear counts and a history of what you actually put on versus what you skipped",
+      "Works offline: photos are cached on the device after the first load, so the wardrobe opens instantly and keeps working without a signal",
+      "Everything lives in your own Notion workspace — no account, no subscription, nothing stored anywhere else",
+    ],
+    file: "fit-check-react.html",
+  },
+  {
     emoji: "💸",
     iconBg: "rgba(34,197,94,0.15)",
     title: "WhereItWent",

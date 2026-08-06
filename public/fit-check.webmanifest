@@ -1,0 +1,17 @@
+{
+  "name": "Fit Check",
+  "short_name": "Fit Check",
+  "description": "A friendly wardrobe companion that helps you decide what to wear.",
+  "id": "/fit-check-react.html",
+  "start_url": "/fit-check-react.html",
+  "scope": "/fit-check-react.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#120d18",
+  "theme_color": "#b8419b",
+  "icons": [
+    { "src": "/fit-check-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/fit-check-icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/fit-check-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

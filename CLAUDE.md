@@ -46,6 +46,7 @@ before working in that app. Don't hold app internals here; this table is a route
 | Click Deck | `src/click-deck/` | JSX, **not DS** (self-styled) — [`CLICK_DECK.md`](CLICK_DECK.md) |
 | Wanderlist | `src/wanderlist/` | JSX, **not DS** (self-styled) — [`WANDERLIST.md`](WANDERLIST.md) |
 | WhereItWent | `src/where-it-went/` | JSX, DS — schema is load-bearing, read [`WHERE_IT_WENT.md`](WHERE_IT_WENT.md) before touching it; also [`WHERE_IT_WENT_ROADMAP.md`](WHERE_IT_WENT_ROADMAP.md) |
+| Fit Check | `src/fit-check/` | **strict TS**, DS — Notion select options are a **closed vocabulary** and its tags are AI-assigned; read [`FIT_CHECK.md`](FIT_CHECK.md) before touching `lib/vocabulary.ts`. Also [`FIT_CHECK_ROADMAP.md`](FIT_CHECK_ROADMAP.md), [`FIT_CHECK_DISCOVERY.md`](FIT_CHECK_DISCOVERY.md) |
 | Journal of Delights | `src/journal/` | JSX, legacy, no typecheck |
 | Kettlebell Training | `src/kettlebell/` | JSX, legacy, no typecheck |
 | Touch Grass | `src/touch-grass/` | JSX, legacy, no typecheck |
@@ -56,7 +57,7 @@ Card/tile data (name, icon, blurb, tags) for every app lives in one place —
 grid and The Cabinet. See [`CABINET.md`](CABINET.md) for the new-app checklist.
 
 `tsconfig.json` covers **`src/sol-odyssey`, `src/daily-stoic`, `src/ds`,
-`src/shared`**; `npm run typecheck` checks all four. Other React apps are
+`src/shared`, `src/fit-check`**; `npm run typecheck` checks all five. Other React apps are
 plain JS/JSX by design and left out of typecheck (they can still import from
 `src/shared`).
 
@@ -71,6 +72,16 @@ another app. Also [`src/shared/installFlag.ts`](src/shared/installFlag.ts) —
 every `react-vite` app calls `watchInstalled('<file>.html')` once at startup
 so The Cabinet can detect install reliably; add this call for any new PWA app
 (see CABINET.md's "Install detection, take two").
+
+Promoted here once a second app needed them — **extend these rather than copying
+an app's local copy**: [`weather.ts`](src/shared/weather.ts) (Open-Meteo fetch +
+WMO mapping; Touch Grass wraps it to add its own prose),
+[`photo.ts`](src/shared/photo.ts) (canvas downscale before upload; Wanderlist
+re-exports it, Journal keeps its older legacy copy), and
+[`storage.ts`](src/shared/storage.ts) (localStorage/sessionStorage helpers that
+can't throw; WhereItWent re-exports it). Each promotion left the original path
+working as a thin re-export, so the old app's tests prove the move was
+behaviour-preserving.
 
 ## Service workers & dev
 
