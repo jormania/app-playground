@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Loader2, RotateCcw } from 'lucide-react'
-import { Button, Field, SegmentedControl } from '../../ds'
+import { Camera, Loader2, RotateCcw, Sparkles } from 'lucide-react'
+import { Button, Field } from '../../ds'
 import { resizePhoto, isImageFile, photoFilename } from '../../shared/photo.ts'
 import { makeThumb } from '../lib/lqip.ts'
 import { putPhoto } from '../lib/imageCache.ts'
 import { NotionClient } from '../lib/notionClient.ts'
+import { suggestTags, emptyTags, type SuggestedTags } from '../lib/tagging.ts'
+import TagEditor from './TagEditor.tsx'
 import { type FitCheckConfig } from '../lib/config.ts'
-import { CATEGORIES, type Category } from '../lib/vocabulary.ts'
 import { activeWardrobes, type Wardrobe } from '../lib/wardrobes.ts'
 import type { Garment } from '../lib/types.ts'
 
@@ -31,7 +32,9 @@ export default function AddGarment({ config, wardrobes, onAdded, onCancel }: Pro
   const [file, setFile] = useState<Blob | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [name, setName] = useState('')
-  const [category, setCategory] = useState<Category>('Top')
+  const [tags, setTags] = useState<SuggestedTags>(emptyTags)
+  const [tagging, setTagging] = useState(false)
+  const [tagNote, setTagNote] = useState('')
   // Defaults to whichever wardrobe is being viewed, else the first active one.
   // Something sensible pre-selected matters: the charter asks for taps over
   // forms, and a garment saved into no wardrobe is a small mess to undo.
@@ -64,10 +67,36 @@ export default function AddGarment({ config, wardrobes, onAdded, onCancel }: Pro
       return
     }
     setError('')
+    setTagNote('')
+    let resized: Blob
     try {
-      setFile(await resizePhoto(picked))
+      resized = await resizePhoto(picked)
+      setFile(resized)
     } catch (err) {
       setError((err as Error).message)
+      return
+    }
+
+    // Tagging is a shortcut, never a gate: the form is fully usable while this
+    // runs and equally usable if it fails. Without a key we simply don't ask.
+    if (!config.anthropicKey) {
+      setTagNote('Add an AI key in Settings and photos will tag themselves.')
+      return
+    }
+    setTagging(true)
+    try {
+      const suggested = await suggestTags(config.anthropicKey, resized)
+      setTags(suggested)
+      if (suggested.name) setName((prev) => prev || suggested.name!)
+      setTagNote(
+        suggested.category
+          ? 'Tagged automatically — change anything that looks wrong.'
+          : "Couldn't tell what this is — pick the tags yourself.",
+      )
+    } catch (err) {
+      setTagNote(`${(err as Error).message} You can still tag it by hand.`)
+    } finally {
+      setTagging(false)
     }
   }
 
@@ -81,12 +110,20 @@ export default function AddGarment({ config, wardrobes, onAdded, onCancel }: Pro
         garments: config.garmentsDbId,
         outfits: config.outfitsDbId,
       })
-      const label = name.trim() || category
+      const label = name.trim() || tags.category || 'Something'
 
       // Create the row first so there is something to attach to, then upload.
       // If the upload fails the garment still exists, tagged and named, with a
       // placeholder — recoverable. The reverse order can orphan an upload.
-      const created = await client.createGarment({ name: label, category, wardrobeIds, thumb })
+      const created = await client.createGarment({
+        name: label,
+        category: tags.category,
+        colours: tags.colours,
+        warmth: tags.warmth,
+        styles: tags.styles,
+        wardrobeIds,
+        thumb,
+      })
       if (!created) {
         setError('Add your Notion details in Settings first.')
         setSaving(false)
@@ -159,14 +196,14 @@ export default function AddGarment({ config, wardrobes, onAdded, onCancel }: Pro
             />
           </div>
 
-          <section className="fc-settings-group" style={{ marginTop: 16 }}>
-            <p className="fc-settings-hint">Where does it go?</p>
-            <SegmentedControl
-              value={category}
-              onChange={(v) => setCategory(v as Category)}
-              options={CATEGORIES.map((c) => ({ value: c, label: c }))}
-            />
-          </section>
+          {tagging && (
+            <p className="fc-status" role="status">
+              <Sparkles size={14} className="fc-spin" aria-hidden="true" /> Working out what this is…
+            </p>
+          )}
+          {!tagging && tagNote && <p className="fc-settings-hint">{tagNote}</p>}
+
+          <TagEditor tags={tags} onChange={setTags} disabled={saving} />
 
           {choices.length > 0 && (
             <section className="fc-settings-group">
@@ -205,7 +242,11 @@ export default function AddGarment({ config, wardrobes, onAdded, onCancel }: Pro
             <Button onClick={save} disabled={saving}>
               {saving ? <><Loader2 size={16} className="fc-spin" /> Saving…</> : 'Add to wardrobe'}
             </Button>
-            <Button variant="ghost" onClick={() => setFile(null)} disabled={saving}>
+            <Button
+              variant="ghost"
+              onClick={() => { setFile(null); setTags(emptyTags()); setTagNote('') }}
+              disabled={saving}
+            >
               <RotateCcw size={16} aria-hidden="true" /> Retake
             </Button>
           </div>

@@ -221,6 +221,16 @@ body {
   outline-offset: 2px;
 }
 
+/* Tag rows wrap freely — the colour list is long and must never push the page
+   sideways. */
+.fc-tag-row {
+  margin-top: 16px;
+}
+
+.fc-tag-row .fc-settings-hint {
+  margin-bottom: 8px;
+}
+
 .fc-notice {
   margin: 0 0 4px;
   padding: 8px 12px;

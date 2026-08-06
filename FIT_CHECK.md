@@ -263,7 +263,48 @@ confirmation naming the count, and after deleting a 12-garment wardrobe **all 18
 garments survived** as unfiled with a notice. Everything-off leaves unfiled
 clothes reachable. `npm test` 2227 passing / 188 files, typecheck and lint clean.
 
-### M3 — Tagging ⏳
+### M3 — Tagging ✅ (2026-08-06)
 
-One-shot Haiku photo→tags, validated against `lib/vocabulary.ts` before any
-write, plus a manual correction UI.
+Photograph a garment and it tags itself: name, category, colours, warmth,
+style. One Haiku call on the image, no conversation, no follow-up.
+
+**Built**
+
+- `lib/tagging.ts` — the prompt (generated from `vocabulary.ts`, so it can never
+  drift from what Notion accepts), the call, and `parseTagResponse`
+- `components/TagEditor.tsx` — every value is a chip; nothing to type, so
+  nothing to mistype. Tapping a selected single-choice chip clears it, so a
+  wrong guess is one tap to undo
+
+**The parser is the guarantee, not the prompt**
+
+`parseTagResponse` is deliberately *forgiving about shape* and *utterly strict
+about values*. It digs JSON out of code fences and prose, accepts a
+comma-separated string where a list was asked for, rescues casing — none of that
+is worth failing over. But any value outside the vocabulary is dropped, because
+that is the one thing that breaks a Notion write. It never throws; an
+unparseable answer just means Nora fills the form herself.
+
+Brace-matching is string-aware rather than `indexOf`/`lastIndexOf`, which breaks
+the moment the model adds a trailing sentence containing a brace.
+
+**Tagging is a shortcut, never a gate.** No key, offline, a refusal, a timeout —
+the form is identical and fully usable, just with empty chips. The AI only ever
+saves typing.
+
+**Bug caught by its own test:** `emptyTags` was a shared constant, and
+`{ ...EMPTY_TAGS }` is a *shallow* copy — every empty result handed out the same
+`colours` and `styles` arrays, so one caller's edit leaked into the next. The
+form mutates these as Nora corrects tags, so it was a live bug. Now a factory.
+
+**Verified in the browser** against a stubbed Anthropic response containing
+`"dusty rose"` and `"cottagecore"` (both invalid), `"mid"` and `"Casual"` (wrong
+case), wrapped in a code fence inside prose. The invalid pair was dropped, the
+casing rescued, the name auto-filled, and the request carried the right model,
+a base64 JPEG, `temperature: 0` and the full vocabulary in the system prompt.
+`npm test` 2255 passing / 189 files, typecheck and lint clean.
+
+### M4 — The point ⏳
+
+Weather + mood + the deterministic three-outfit recommender. **This is the
+milestone where the app becomes the thing it is for.**
