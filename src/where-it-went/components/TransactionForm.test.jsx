@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import TransactionForm from './TransactionForm';
 import { fetchRate } from '../lib/fx';
+import { writeJson } from '../lib/storage';
 
 // Never hit the network from a unit test; each case sets the rate it needs.
 vi.mock('../lib/fx', async (importOriginal) => ({
@@ -21,9 +22,8 @@ const multiCurrencyAccounts = [
 beforeEach(() => {
   fetchRate.mockReset();
   fetchRate.mockResolvedValue(null);
-  // The form now remembers the last-used Add type in localStorage — without
-  // clearing it, whichever test runs first (and picks Income/Transfer)
-  // leaked its choice into every test after it.
+  // General hygiene — the form still persists things like recently-used
+  // currencies to localStorage, which must not leak between tests.
   try {
     localStorage.clear();
   } catch (_e) {}
@@ -48,6 +48,23 @@ describe('TransactionForm', () => {
     const [id, data] = onSave.mock.calls[0];
     expect(id).toBeNull();
     expect(data).toMatchObject({ description: 'Milk', amount: 12.5, categoryId: 'c1' });
+  });
+
+  it('a blank "+ Add" always opens on Expense, even if Income was used last', () => {
+    // A stale key from before this was removed must also be ignored, not
+    // just "nothing to remember yet".
+    writeJson('whereItWent_last_add_type', 'Income');
+    render(<TransactionForm categories={categories} accounts={accounts} onSave={vi.fn()} onCancel={vi.fn()} />);
+
+    expect(screen.getByRole('radio', { name: 'Expense' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('radio', { name: 'Income' }).getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('a Repeat draft still opens on the original transaction\'s own type', () => {
+    const prefill = { type: 'Income', description: 'Salary', amount: 5000, categoryId: 'c1', accountId: 'a1' };
+    render(<TransactionForm categories={categories} accounts={accounts} prefill={prefill} onSave={vi.fn()} onCancel={vi.fn()} />);
+
+    expect(screen.getByRole('radio', { name: 'Income' }).getAttribute('aria-checked')).toBe('true');
   });
 
   it('hides an inactive category from the picker on a new transaction', () => {

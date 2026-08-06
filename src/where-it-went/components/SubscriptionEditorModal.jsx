@@ -18,6 +18,19 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+// Values match `Date#getDay()` (0 = Sunday) — the same convention
+// lib/useSubscriptionsEngine.js and lib/upcoming.js use — displayed
+// Monday-first since that's the more familiar week start here.
+const WEEKDAYS = [
+  { value: 1, label: 'Monday' },
+  { value: 2, label: 'Tuesday' },
+  { value: 3, label: 'Wednesday' },
+  { value: 4, label: 'Thursday' },
+  { value: 5, label: 'Friday' },
+  { value: 6, label: 'Saturday' },
+  { value: 0, label: 'Sunday' },
+];
+
 export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, onSave, onDelete }) {
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
@@ -47,6 +60,7 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
   const currencySelectId = useId();
   const baseAmountId = useId();
   const monthSelectId = useId();
+  const weekdaySelectId = useId();
 
   // Same three refs TransactionForm uses for the same reasons: don't overwrite
   // a hand-edited RON figure, don't restate a saved foreign amount at today's
@@ -138,9 +152,13 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
   const baseValid = Number.isFinite(parsedBase) && parsedBase > 0;
   const parsedDay = parseInt(dayOfMonth, 10);
   const isYearly = frequency === 'Yearly';
+  const isWeekly = frequency === 'Weekly';
   const parsedMonth = parseInt(monthOfYear, 10);
+  // Weekly reuses the same field for a day of week (0-6) instead of a day of
+  // month (1-31) — see the WEEKDAYS comment above.
+  const dayValid = Number.isInteger(parsedDay) && (isWeekly ? (parsedDay >= 0 && parsedDay <= 6) : (parsedDay >= 1 && parsedDay <= 31));
   const canSubmit = !!name.trim() && amountValid && (!isForeign || baseValid) &&
-    Number.isInteger(parsedDay) && parsedDay >= 1 && parsedDay <= 31 &&
+    dayValid &&
     (!isYearly || (Number.isInteger(parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12)) &&
     !!categoryId && !!accountId;
 
@@ -157,6 +175,8 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
         setFormError(`Enter the ${BASE_CURRENCY} amount — no exchange rate was available to work it out automatically.`);
       } else if (isYearly && !(Number.isInteger(parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12)) {
         setFormError('Pick a month for this yearly subscription.');
+      } else if (isWeekly && !dayValid) {
+        setFormError('Pick a day of the week for this weekly subscription.');
       } else {
         setFormError('Fill in every required field with a valid amount and a day between 1 and 31.');
       }
@@ -303,8 +323,17 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
             <SegmentedControl
               size="sm"
               value={frequency}
-              onChange={setFrequency}
+              onChange={val => {
+                setFrequency(val);
+                // The Day field's meaning flips between "day of month" (1-31)
+                // and "day of week" (0-6) — whatever was typed for one reading
+                // is nonsense under the other, so reset to a value valid in
+                // both (1 = the 1st, or Monday) rather than carry over a
+                // number that silently means something else now.
+                if ((val === 'Weekly') !== (frequency === 'Weekly')) setDayOfMonth(1);
+              }}
               options={[
+                { value: 'Weekly', label: 'Weekly' },
                 { value: 'Monthly', label: 'Monthly' },
                 { value: 'Yearly', label: 'Yearly' }
               ]}
@@ -313,7 +342,13 @@ export default function SubscriptionEditorModal({ isOpen, onClose, sub, data, on
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: isYearly ? 'repeat(2, minmax(0, 1fr))' : '1fr', gap: '6px' }}>
-          <Field label="Day of Month (1-31)" type="number" min="1" max="31" value={dayOfMonth} onChange={e => setDayOfMonth(e.target.value)} required />
+          {isWeekly ? (
+            <SelectField label="Day of Week" id={weekdaySelectId} value={dayOfMonth} onChange={e => setDayOfMonth(e.target.value)}>
+              {WEEKDAYS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+            </SelectField>
+          ) : (
+            <Field label="Day of Month (1-31)" type="number" min="1" max="31" value={dayOfMonth} onChange={e => setDayOfMonth(e.target.value)} required />
+          )}
           {isYearly && (
             <SelectField label="Month" id={monthSelectId} value={monthOfYear} onChange={e => setMonthOfYear(e.target.value)}>
               {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}

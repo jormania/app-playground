@@ -1196,3 +1196,61 @@ the app.
 - **Live workspace data updated to match intent**: every category is now
   `Active` except **Other**, which stays off — every other category is in
   genuine current use.
+
+## "+ Add" defaults to Expense, "Other" always sorts last, Weekly subscriptions (2026-08-05)
+
+Three requests from real usage, unrelated except in size.
+
+### "+ Add" no longer remembers Income
+
+The 2026-07-30 QoL pass added remembering the last-used type on "+ Add", so a
+freelancer logging mostly Income wouldn't have to reselect it every time. In
+practice one Income entry left every subsequent "+ Add" — including ordinary
+everyday expenses — defaulting to Income too. Removed `whereItWent_last_add_type`
+entirely; a blank "+ Add" now always opens on Expense, unconditionally.
+**Repeat is unaffected** — it still reopens on the original transaction's own
+type, since carrying that over is the whole point of Repeat.
+
+### "Other" always sorts last
+
+`notionClient.js`'s `sortCategories()` has pinned "Other" last (instead of
+wherever it falls alphabetically) since categories were first fetched — but
+`TransactionForm`, `TemplateEditorModal` and `SplitTransactionModal` each ran
+their own plain `.sort((a, b) => a.name.localeCompare(b.name))` on top of that
+correctly-ordered list, silently undoing it. New `compareCategories` in
+`lib/categories.js` is now the single comparator every category list in the
+app sorts with — `notionClient.js` reuses it too, so the rule can no longer
+drift between the fetch-level sort and whatever a component re-sorts with.
+
+### Weekly subscriptions
+
+`Frequency` gains a third option alongside Monthly and Yearly, registered on
+the live Notion Subscriptions database. A week doesn't fit the existing
+month-cursor model at all — it needs no clamping (unlike a month, every week
+has exactly seven days) and can recur several times inside one calendar
+month, which the model was never built to expect:
+
+- **`DayOfMonth` is reused for a day of week (0–6, matching `Date#getDay()`)
+  when `Frequency` is Weekly** — the same "one field means something
+  different depending on Frequency" convention `Month of Year` already
+  established for Yearly. `SubscriptionEditorModal` swaps the number input
+  for a weekday picker so this is never typed by hand.
+- **New `getWeeklyDueDates`** in `lib/useSubscriptionsEngine.js` walks real
+  calendar days by sevens from the first matching weekday, rather than
+  reusing the month-cursor loop. With no history it starts from *this* week
+  only, matching the existing "no history = just this period" rule Monthly
+  ("just this month") and Yearly ("just this year") already follow — not a
+  52-week backfill for a subscription that was only just added.
+- **`isAlreadyPosted` had to stop matching by month for Weekly.** Its
+  Monthly/Yearly matching (same description + amount within the same
+  calendar month) assumes at most one occurrence a month; a Weekly
+  subscription can have four or five in the same month, and month-matching
+  would have silently treated all of them as duplicates of the first. Weekly
+  now matches the exact date instead.
+- **`lib/upcoming.js`'s forecast agenda** gained the equivalent forward-looking
+  weekly walk, so the Next 30 Days card and the cash-flow forecast both
+  project weekly bills correctly instead of only ever showing Monthly/Yearly
+  ones.
+- Settings' subscription list and the guide's schema table were updated to
+  match; the live Notion `Frequency` select now has Monthly/Weekly/Yearly
+  registered as options.

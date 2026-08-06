@@ -129,6 +129,34 @@ describe('getUpcomingBills', () => {
     );
     expect(bills.map(b => b.dueDate)).toEqual(['2027-03-18']);
   });
+
+  describe('Weekly frequency', () => {
+    // 15 Jul 2026 is a Wednesday.
+    it('returns one entry per occurrence across the horizon, not just the next one', () => {
+      const bills = getUpcomingBills([sub({ frequency: 'Weekly', dayOfMonth: 1 })], [], { today }); // Monday
+      expect(bills.map(b => b.dueDate)).toEqual(['2026-07-20', '2026-07-27', '2026-08-03', '2026-08-10']);
+    });
+
+    it('excludes today even when today is the target weekday', () => {
+      // Today (Wed) matching the target must roll to *next* Wednesday — the
+      // same "today belongs to the posting engine" rule Monthly/Yearly follow.
+      const bills = getUpcomingBills([sub({ frequency: 'Weekly', dayOfMonth: 3 })], [], { today, horizonDays: 8 });
+      expect(bills.map(b => b.dueDate)).toEqual(['2026-07-22']);
+    });
+
+    it('flags an occurrence the ledger already contains, by exact date', () => {
+      const transactions = [{ id: 't1', description: 'Netflix', amount: 60, date: '2026-07-20' }];
+      const bills = getUpcomingBills([sub({ frequency: 'Weekly', dayOfMonth: 1 })], transactions, { today, horizonDays: 7 });
+      expect(bills.map(b => b.dueDate)).toEqual(['2026-07-20']);
+      expect(bills[0].alreadyPosted).toBe(true);
+    });
+
+    it('does not flag a same-month, different-week occurrence as already posted', () => {
+      const transactions = [{ id: 't1', description: 'Netflix', amount: 60, date: '2026-07-13' }]; // a different Monday
+      const bills = getUpcomingBills([sub({ frequency: 'Weekly', dayOfMonth: 1 })], transactions, { today, horizonDays: 7 });
+      expect(bills[0].alreadyPosted).toBe(false);
+    });
+  });
 });
 
 describe('billsWithinLeadTime', () => {

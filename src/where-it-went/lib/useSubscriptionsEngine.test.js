@@ -81,6 +81,35 @@ describe('getDueDates', () => {
       expect(getDueDates(31, null, new Date(2026, 4, 5), 'Yearly', 4)).toEqual(['2026-04-30']);
     });
   });
+
+  describe('Weekly frequency', () => {
+    // 15 Jul 2026 is a Wednesday.
+    it('with no history, is due this week if the day has already passed', () => {
+      expect(getDueDates(1, null, today, 'Weekly')).toEqual(['2026-07-13']); // Monday
+    });
+
+    it('with no history, is due today if today is the target day', () => {
+      expect(getDueDates(3, null, today, 'Weekly')).toEqual(['2026-07-15']); // Wednesday
+    });
+
+    it('with no history, is not due yet if this week\'s day has not arrived', () => {
+      expect(getDueDates(5, null, today, 'Weekly')).toEqual([]); // Friday, still ahead
+    });
+
+    it('backfills every missed Monday since lastProcessed, not a whole year', () => {
+      const dates = getDueDates(1, '2026-06-01', today, 'Weekly');
+      expect(dates).toEqual(['2026-06-08', '2026-06-15', '2026-06-22', '2026-06-29', '2026-07-06', '2026-07-13']);
+    });
+
+    it('does not fire again the same week once processed', () => {
+      expect(getDueDates(1, '2026-07-13', today, 'Weekly')).toEqual([]);
+    });
+
+    it('never backfills more than MAX_BACKFILL_WEEKS, even from a very stale lastProcessed', () => {
+      const dates = getDueDates(1, '2000-01-01', today, 'Weekly');
+      expect(dates.length).toBeLessThanOrEqual(52);
+    });
+  });
 });
 
 describe('isAlreadyPosted', () => {
@@ -108,6 +137,17 @@ describe('isAlreadyPosted', () => {
     const sub = { name: 'Netflix', amount: 53, originalAmount: 10, originalCurrency: 'EUR' };
     const transactions = [{ description: 'Netflix', amount: 53, originalAmount: 11, originalCurrency: 'EUR', date: '2026-08-05' }];
     expect(isAlreadyPosted(transactions, sub, '2026-08-01')).toBe(false);
+  });
+
+  it('matches a Weekly subscription on the exact date, not the whole month', () => {
+    // A weekly bill can legitimately have four or five separate occurrences
+    // in one calendar month — month-granularity matching (the Monthly/Yearly
+    // rule above) would treat every one of them as "already posted" the
+    // moment the first lands.
+    const sub = { name: 'Gym', amount: 20, frequency: 'Weekly' };
+    const transactions = [{ description: 'Gym', amount: 20, date: '2026-07-06' }];
+    expect(isAlreadyPosted(transactions, sub, '2026-07-06')).toBe(true);
+    expect(isAlreadyPosted(transactions, sub, '2026-07-13')).toBe(false); // same month, different week
   });
 });
 

@@ -155,4 +155,22 @@ describe('Settings Component', () => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ upcomingLeadDays: 10 }));
     });
   });
+
+  it('shows a Weekly subscription\'s day of week, not a day-of-month reading', () => {
+    const mockConfig = {
+      token: 'secret_token', categoriesDb: 'cat_id', accountsDb: 'acc_id', transactionsDb: 'tx_id',
+      theme: 'dark', subscriptionsDb: 'sub_id'
+    };
+    const data = {
+      categories: [{ id: 'cat1', name: 'Health', type: 'Expense' }],
+      accounts: [{ id: 'acc1', name: 'Cash' }],
+      subscriptions: [{
+        id: 'sub1', name: 'Gym', amount: 20, frequency: 'Weekly', dayOfMonth: 3, // Wednesday
+        type: 'Expense', categoryId: 'cat1', accountId: 'acc1', active: true,
+      }],
+    };
+
+    render(<Settings config={mockConfig} onSave={vi.fn()} onThemeChange={vi.fn()} onDone={vi.fn()} data={data} />);
+    expect(screen.getByText('Every Wednesday')).toBeDefined();
+  });
 });

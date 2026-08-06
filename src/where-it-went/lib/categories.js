@@ -13,8 +13,21 @@
  * category on every transaction already filed under it, and can't hide a
  * category from the filter you're currently using to review its own history.
  */
+/**
+ * Alphabetical, except "Other" — the catch-all — always sorts last rather
+ * than wherever it happens to fall in the alphabet. The single shared
+ * comparator every category list in the app should sort with, so "Other"
+ * can't end up back in normal alphabetical order the moment a component
+ * re-sorts a list that started out correctly ordered from `notionClient.js`.
+ */
+export function compareCategories(a, b) {
+  if (a.name === 'Other') return b.name === 'Other' ? 0 : 1;
+  if (b.name === 'Other') return -1;
+  return a.name.localeCompare(b.name);
+}
+
 export function selectableCategories(categories, type, keepSelectedId = null) {
   return (categories || [])
     .filter(c => c.type === type && (c.active !== false || c.id === keepSelectedId))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort(compareCategories);
 }

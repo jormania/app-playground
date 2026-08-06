@@ -201,6 +201,22 @@ describe('NotionClient — reads', () => {
     expect(byName).toEqual({ Salary: true, Other: false, Food: true });
   });
 
+  it('always sorts "Other" last, regardless of where it would alphabetize', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      results: [
+        { id: 'cat1', properties: { Name: { title: [{ plain_text: 'Utilities' }] }, Type: { select: { name: 'Expense' } } } },
+        { id: 'cat2', properties: { Name: { title: [{ plain_text: 'Other' }] }, Type: { select: { name: 'Expense' } } } },
+        { id: 'cat3', properties: { Name: { title: [{ plain_text: 'Dining' }] }, Type: { select: { name: 'Expense' } } } },
+      ],
+      has_more: false
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new NotionClient('secret', { categories: 'db1' });
+    const rows = await client.fetchCategories();
+    expect(rows.map(r => r.name)).toEqual(['Dining', 'Utilities', 'Other']);
+  });
+
   it('returns an empty list — never demo rows — when a token is set but a database id is missing', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

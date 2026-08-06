@@ -7,20 +7,12 @@ import { pickDefaultAccount } from '../lib/accountPicker';
 import { selectableCategories } from '../lib/categories';
 import { toDateString } from '../lib/period';
 import { BASE_CURRENCY, fetchRate, convert, impliedRate, formatRateNote, canConvert, orderedCurrencies, recordRecentCurrency } from '../lib/fx';
-import { readJson, writeJson } from '../lib/storage';
 import { CategorySelect } from './CategorySelect';
 import { AccountSelect } from './AccountSelect';
 import { CurrencySelect } from './CurrencySelect';
 import { FormError } from '../../ds/components/FormError';
 import { ModalFooter } from '../../ds/components/ModalFooter';
 import { SelectField } from '../../ds/components/SelectField';
-
-// Frequent income loggers (freelancers, landlords) used to reselect Income on
-// every single "+ Add" — the form always opened on Expense regardless of what
-// was entered last. Scoped to *adding*, never to editing an existing row.
-const LAST_TYPE_KEY = 'whereItWent_last_add_type';
-
-
 
 export default function TransactionForm({ transactions = [], categories, accounts, trips = [], onSave, onCancel, initialTx, onDelete, allowTransfer = false, prefill = null, onViewTrip }) {
   // `prefill` seeds the same fields as `initialTx` (values, not identity) but
@@ -38,11 +30,12 @@ export default function TransactionForm({ transactions = [], categories, account
       if (seed.type === 'Transfer' && !allowTransfer && !initialTx) return 'Expense';
       return seed.type;
     }
-    const remembered = readJson(LAST_TYPE_KEY, 'Expense');
-    // The remembered type might no longer be offered (Transfers toggled off
-    // since the last visit) — fall back rather than opening on a type with no
-    // matching segment.
-    return remembered === 'Transfer' && !allowTransfer ? 'Expense' : remembered;
+    // A blank "+ Add" always opens on Expense — the far more common case —
+    // regardless of what type was last used. This used to remember the last
+    // type (so a freelancer logging mostly Income didn't have to reselect it
+    // every time), but that meant one Income entry left every subsequent
+    // "+ Add" defaulting to Income too, including for everyday expenses.
+    return 'Expense';
   });
   const [description, setDescription] = useState(seed?.description || '');
   const [amount, setAmount] = useState(
@@ -295,7 +288,6 @@ export default function TransactionForm({ transactions = [], categories, account
         originalCurrency: isForeign ? activeCurrency : '',
         tags: seed?.tags || []
       });
-      if (!initialTx) writeJson(LAST_TYPE_KEY, type);
       if (isForeign) recordRecentCurrency(activeCurrency);
     } catch (err) {
       // The parent shows its own dialog; keep the form open with the values intact.

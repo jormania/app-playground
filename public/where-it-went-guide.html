@@ -186,7 +186,9 @@
     <tr><td>Name</td><td>Title</td><td>Used as the transaction description when an occurrence is posted.</td></tr>
     <tr><td>Amount</td><td>Number</td><td>In RON — the source of truth, same role as a Transaction's <code>Amount (RON)</code>.</td></tr>
     <tr><td>Type</td><td>Select</td><td><code>Income</code> or <code>Expense</code> — rent collected from a tenant is a recurring subscription too, just as much as a streaming plan.</td></tr>
-    <tr><td>DayOfMonth</td><td>Number</td><td>1–31. A 31 in a short month is clamped to the last day, never rolled into the next.</td></tr>
+    <tr><td>Frequency</td><td>Select</td><td><code>Monthly</code>, <code>Weekly</code>, or <code>Yearly</code>. Blank reads as Monthly, so every subscription saved before this existed keeps working unchanged.</td></tr>
+    <tr><td>DayOfMonth</td><td>Number</td><td>Meaning depends on <code>Frequency</code>. Monthly/Yearly: day of month, 1–31 (a 31 in a short month is clamped to the last day, never rolled into the next). Weekly: day of week instead, 0–6 (0 = Sunday) — the editor shows a weekday picker, not a number field, so this is never typed by hand.</td></tr>
+    <tr><td>Month of Year</td><td>Number</td><td>1–12. Only meaningful when <code>Frequency</code> is Yearly; ignored otherwise.</td></tr>
     <tr><td>Category</td><td>Relation → Categories</td><td></td></tr>
     <tr><td>Account</td><td>Relation → Accounts</td><td></td></tr>
     <tr><td>Active</td><td>Checkbox</td><td>Unchecked stops both posting and reminders.</td></tr>
@@ -222,7 +224,7 @@
   </table></div>
 
   <h2 id="recording">5. Recording money</h2>
-  <p>Everything starts at <b>+ Add</b> in the header. The form adapts to the type you pick, and remembers whichever type you added last — so a freelancer logging mostly Income doesn't reselect it every time.</p>
+  <p>Everything starts at <b>+ Add</b> in the header, which always opens on Expense — the far more common case — regardless of what you added last. The form adapts to whichever type you pick.</p>
 
   <h3>Expense and Income</h3>
   <p>Date, amount, description, category, account. Choosing a category <b>suggests an account</b> based on how that kind of money usually moves — salary to the current account, rent and gifts to cash, everyday spending to the card you actually use. It is only ever a suggestion, and it never fires when you are editing an existing transaction: an account already recorded is a fact about where money went, and correcting a category must not quietly move it.</p>
@@ -273,9 +275,9 @@
   <p class="muted">Carry is recalculated from your transaction history every time, never stored. So correcting a transaction from three months ago fixes every window after it automatically, and there is no second copy of the number to fall out of step.</p>
 
   <h2 id="recurring">8. Recurring transactions &amp; reminders <span class="pill on">on by default</span></h2>
-  <p>Add anything that recurs on the same day each month under <b>Settings → Recurring Subscriptions</b> — an expense like streaming or the gym, or income like a salary or rent you collect as a landlord. Two things then happen, regardless of which direction the money moves.</p>
+  <p>Add anything that recurs under <b>Settings → Recurring Subscriptions</b> — weekly, monthly, or yearly — an expense like streaming, the gym, or annual insurance, or income like a salary or rent you collect as a landlord. Two things then happen, regardless of which direction the money moves.</p>
   <h3>It posts the transaction</h3>
-  <p>On launch, any occurrence whose day has arrived is written into the ledger, tagged <code>Subscription</code> and <code>Auto-generated</code>. Before writing, the ledger is checked for a matching entry that month, so a failed run or a second device cannot double-post. Backfill is capped at 12 months.</p>
+  <p>On launch, any occurrence whose day has arrived is written into the ledger, tagged <code>Subscription</code> and <code>Auto-generated</code>. Before writing, the ledger is checked for a matching entry — by month for a Monthly or Yearly subscription (one occurrence a month, at most), or by the exact date for a Weekly one, since the same month can hold four or five separate occurrences of those. Either way a failed run or a second device cannot double-post. Backfill is capped at 12 months for Monthly, 52 weeks for Weekly, and 5 years for Yearly.</p>
   <h3>It warns you first</h3>
   <p>A <b>Next 30 Days</b> agenda on the Dashboard lists what is coming, split into Expenses and Income with a combined net total. It isn't only subscriptions: a future-dated transaction you've already logged by hand — a hotel stay booked ahead of time, a plane ticket — shows up here too, marked with a 📌 rather than the recurring 🔁, and never doubled up with a subscription occurrence that already claims it. An occurrence you already entered by hand is greyed out as "already recorded". A slim bar at the top names anything inside your lead time (default 5 days, configurable), signed so you can tell a charge from a payment you're due to collect. That bar cannot be dismissed on purpose — silencing something still outstanding hides the one thing worth being told about. It clears itself when the transaction lands.</p>
   <h3>Notifications while the app is closed <span class="pill off">opt-in</span></h3>

@@ -26,6 +26,10 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+// Index matches `Date#getDay()` (0 = Sunday) — the same convention
+// SubscriptionEditorModal's day-of-week picker stores.
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 /**
  * A named, persistently-collapsible chunk of Settings.
  *
@@ -613,8 +617,8 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
           action={<Button variant="secondary" onClick={() => setIsAddingSub(true)}>+ Add Subscription</Button>}
         >
           <p style={{ color: 'var(--color-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-md)' }}>
-            Anything that recurs on a schedule (monthly or yearly) — an expense like streaming, 
-            the gym, or annual insurance, or income like a salary or rent you collect as a landlord. 
+            Anything that recurs on a schedule (weekly, monthly, or yearly) — an expense like streaming,
+            the gym, or annual insurance, or income like a salary or rent you collect as a landlord.
             WhereItWent adds each one to your ledger automatically on its day, and warns you a few days 
             beforehand so nothing lands unexpectedly.
           </p>
@@ -665,7 +669,9 @@ export default function Settings({ config, onSave, onThemeChange, onDone, data, 
                         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
                           {sub.frequency === 'Yearly'
                             ? `Every ${MONTH_NAMES[Math.min(Math.max(Number(sub.monthOfYear) || 1, 1), 12) - 1]} ${ordinal(sub.dayOfMonth)}`
-                            : `Every ${ordinal(sub.dayOfMonth)} of the month`}
+                            : sub.frequency === 'Weekly'
+                              ? `Every ${WEEKDAY_NAMES[Math.min(Math.max(Number(sub.dayOfMonth) || 0, 0), 6)]}`
+                              : `Every ${ordinal(sub.dayOfMonth)} of the month`}
                         </span>
                         <span style={{
                           fontSize: '0.65rem', fontWeight: 'var(--weight-bold)', padding: '2px 6px',

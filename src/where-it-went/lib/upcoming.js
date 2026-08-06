@@ -28,6 +28,29 @@ export function daysBetween(fromDate, toDate) {
 }
 
 /**
+ * Every `YYYY-MM-DD` on the given day of week (0-6, matching `Date#getDay()`)
+ * strictly after `todayMidnight` and at or before `horizonEnd`. Mirrors
+ * `useSubscriptionsEngine.js`'s own weekly walk, forward instead of back —
+ * a week needs no month-length clamping, so this just steps by sevens.
+ */
+function weeklyDatesInRange(dayOfWeek, todayMidnight, horizonEnd) {
+  const target = Math.min(Math.max(Number(dayOfWeek) || 0, 0), 6);
+  const dates = [];
+
+  const cursor = new Date(todayMidnight);
+  // `|| 7` rather than `% 7` landing on 0: today itself must never qualify —
+  // "strictly after today" is the same total split the module-level docs
+  // describe, and today's own occurrence belongs to the posting engine.
+  cursor.setDate(cursor.getDate() + ((target - cursor.getDay() + 7) % 7 || 7));
+
+  while (cursor <= horizonEnd) {
+    dates.push(toDateString(cursor));
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  return dates;
+}
+
+/**
  * Every subscription charge due strictly after `today` and within the horizon.
  *
  * Returns one entry per *occurrence*, not per subscription — a 90-day horizon
@@ -63,6 +86,19 @@ export function getUpcomingBills(subscriptions, transactions, options = {}) {
 
   const bills = [];
   for (const sub of subs) {
+    if (sub.frequency === 'Weekly') {
+      for (const dueDate of weeklyDatesInRange(sub.dayOfMonth, todayMidnight, horizonEnd)) {
+        const due = parseTxDate(dueDate);
+        bills.push({
+          sub,
+          dueDate,
+          daysUntil: daysBetween(todayMidnight, due),
+          alreadyPosted: isAlreadyPosted(txs, sub, dueDate),
+        });
+      }
+      continue;
+    }
+
     const isYearly = sub.frequency === 'Yearly';
     const targetMonthIndex = Math.min(Math.max(Number(sub.monthOfYear) || 1, 1), 12) - 1;
     for (let i = 0; i <= monthSpan; i++) {

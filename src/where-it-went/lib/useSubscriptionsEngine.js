@@ -8,6 +8,9 @@ export const MAX_BACKFILL_MONTHS = 12;
 /** Same hard stop, expressed in years, for a Yearly subscription. */
 export const MAX_BACKFILL_YEARS = 5;
 
+/** Same hard stop, expressed in weeks, for a Weekly subscription — a year's worth. */
+export const MAX_BACKFILL_WEEKS = 52;
+
 export const SUBSCRIPTION_TAG = 'Subscription';
 export const GENERATED_TAG = 'Auto-generated';
 
@@ -24,6 +27,46 @@ export function dueDateFor(year, monthIndex, dayOfMonth) {
 }
 
 /**
+ * Every Weekly due date at or before `today`, after `lastProcessedDate`.
+ *
+ * `dayOfWeek` reuses the same `DayOfMonth` Notion property Monthly/Yearly use,
+ * the same convention `Month of Year` already sets ("ignored for Monthly") —
+ * for Weekly it means a day of the *week* instead, 0-6 matching `Date#getDay()`
+ * (0 = Sunday). Unlike a month, a week never needs clamping (every week has
+ * exactly seven days), so this walks real calendar days by sevens from the
+ * first matching weekday on/after the start point, rather than a month-cursor.
+ *
+ * With no history, starts from *this* week only — matching the "no history
+ * means just the current period" convention Monthly ("just this month") and
+ * Yearly ("just this year") already use, not a year-long backfill for a
+ * subscription that was only just added.
+ */
+function getWeeklyDueDates(dayOfWeek, lastProcessedDate, today) {
+  const todayStr = toDateString(today);
+  const due = [];
+  const target = Math.min(Math.max(Number(dayOfWeek) || 0, 0), 6);
+
+  const lastProcessed = lastProcessedDate ? parseTxDate(lastProcessedDate) : null;
+  const start = lastProcessed
+    ? new Date(lastProcessed.getFullYear(), lastProcessed.getMonth(), lastProcessed.getDate() + 1)
+    : new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
+
+  const cursor = new Date(start);
+  cursor.setDate(cursor.getDate() + ((target - cursor.getDay() + 7) % 7));
+
+  for (let i = 0; i < MAX_BACKFILL_WEEKS; i++) {
+    if (cursor > today) break;
+    const dateStr = toDateString(cursor);
+    if (dateStr <= todayStr && (!lastProcessedDate || dateStr > String(lastProcessedDate).slice(0, 10))) {
+      due.push(dateStr);
+    }
+    cursor.setDate(cursor.getDate() + 7);
+  }
+
+  return due;
+}
+
+/**
  * Every due date at or before `today` that hasn't been processed yet.
  * Dates are plain local `YYYY-MM-DD` strings — never `toISOString()`, which shifted
  * a 1st-of-the-month charge into the previous month for any timezone east of UTC.
@@ -32,9 +75,16 @@ export function dueDateFor(year, monthIndex, dayOfMonth) {
  * subscription saved before Yearly existed) is unaffected. A `'Yearly'`
  * subscription fires once a year, in `monthOfYear` (1-12) — the loop still
  * walks a month at a time so a clamped day-of-month never drifts, it just
- * skips every cursor whose month doesn't match.
+ * skips every cursor whose month doesn't match. `'Weekly'` delegates to
+ * `getWeeklyDueDates` entirely — a week doesn't fit the month-cursor model at
+ * all, since it needs no clamping and can recur several times within one
+ * calendar month.
  */
 export function getDueDates(dayOfMonth, lastProcessedDate, today = new Date(), frequency = 'Monthly', monthOfYear = 1) {
+  if (frequency === 'Weekly') {
+    return getWeeklyDueDates(dayOfMonth, lastProcessedDate, today);
+  }
+
   const todayStr = toDateString(today);
   const due = [];
   const isYearly = frequency === 'Yearly';
@@ -83,14 +133,23 @@ export function getDueDates(dayOfMonth, lastProcessedDate, today = new Date(), f
  * amount is what stays fixed (Netflix always charges the same 10 EUR
  * regardless of what that's worth in RON this month), so that's what a
  * foreign subscription matches on instead.
+ *
+ * Matching granularity depends on frequency: Monthly/Yearly match by *month*
+ * (a subscription fires at most once a month, so this tolerates a manual
+ * entry landing on a slightly different day than the computed due date).
+ * Weekly can't use that — the same month legitimately holds four or five
+ * separate occurrences — so it matches the *exact* date instead.
  */
 export function isAlreadyPosted(transactions, sub, dateStr) {
-  const month = toMonthKey(dateStr);
   const isForeign = !!sub.originalCurrency && sub.originalAmount != null;
+  const sameOccurrence = sub.frequency === 'Weekly'
+    ? (tx) => String(tx.date).slice(0, 10) === String(dateStr).slice(0, 10)
+    : (tx) => toMonthKey(tx.date) === toMonthKey(dateStr);
+
   return (transactions || []).some(tx => {
     if (!tx) return false;
     if ((tx.description || '') !== sub.name) return false;
-    if (toMonthKey(tx.date) !== month) return false;
+    if (!sameOccurrence(tx)) return false;
     if (isForeign) {
       return tx.originalCurrency === sub.originalCurrency && Number(tx.originalAmount) === Number(sub.originalAmount);
     }

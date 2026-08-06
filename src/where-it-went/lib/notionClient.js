@@ -1,4 +1,5 @@
 import { DEMO_CATEGORIES, DEMO_ACCOUNTS, DEMO_TRANSACTIONS, DEMO_SUBSCRIPTIONS, DEMO_TRIPS, DEMO_TEMPLATES } from '../models/demoData';
+import { compareCategories } from './categories';
 
 const PROXY_URL = '/api/notion';
 
@@ -30,13 +31,10 @@ const title = (value) => ({ title: [{ text: { content: String(value ?? '') } }] 
  * can render inline, not an image it can fetch and cache. */
 const pageEmoji = (row) => (row?.icon?.type === 'emoji' ? row.icon.emoji : null);
 
-const sortCategories = (categories) => {
-  return [...categories].sort((a, b) => {
-    if (a.name === 'Other') return 1;
-    if (b.name === 'Other') return -1;
-    return a.name.localeCompare(b.name);
-  });
-};
+// "Other" always sorts last — the shared rule every category list in the app
+// uses, defined once in lib/categories.js so it can't drift between here and
+// whatever a picker component re-sorts with.
+const sortCategories = (categories) => [...categories].sort(compareCategories);
 
 export class NotionClient {
   constructor(token, { categories, accounts, transactions, subscriptions, trips, templates }) {

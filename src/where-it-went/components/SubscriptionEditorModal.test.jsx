@@ -140,6 +140,57 @@ describe('SubscriptionEditorModal', () => {
     expect(screen.getByRole('alert').textContent).toContain('Fill in every required field');
   });
 
+  describe('Weekly frequency', () => {
+    it('swaps the Day of Month field for a Day of Week picker', () => {
+      render(<SubscriptionEditorModal isOpen={true} onClose={vi.fn()} data={mockData} onSave={vi.fn()} onDelete={vi.fn()} />);
+
+      expect(screen.getByLabelText(/Day of Month/i)).toBeDefined();
+      expect(screen.queryByLabelText(/Day of Week/i)).toBeNull();
+
+      fireEvent.click(screen.getByRole('radio', { name: 'Weekly' }));
+
+      expect(screen.queryByLabelText(/Day of Month/i)).toBeNull();
+      expect(screen.getByLabelText(/Day of Week/i)).toBeDefined();
+    });
+
+    it('resets the day value when switching between Monthly and Weekly, since it means something different in each', () => {
+      render(<SubscriptionEditorModal isOpen={true} onClose={vi.fn()} data={mockData} onSave={vi.fn()} onDelete={vi.fn()} />);
+
+      fireEvent.change(screen.getByLabelText(/Day of Month/i), { target: { value: '25' } });
+      fireEvent.click(screen.getByRole('radio', { name: 'Weekly' }));
+      // 25 would be nonsense as a day-of-week (0-6) — must not carry over.
+      expect(screen.getByLabelText(/Day of Week/i).value).toBe('1');
+    });
+
+    it('saves a Weekly subscription with the chosen day of week', async () => {
+      const onSave = vi.fn().mockResolvedValue();
+      render(<SubscriptionEditorModal isOpen={true} onClose={vi.fn()} data={mockData} onSave={onSave} onDelete={vi.fn()} />);
+
+      fireEvent.change(screen.getByLabelText(/Name/i), { target: { value: 'Gym' } });
+      fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '20' } });
+      fireEvent.click(screen.getByRole('radio', { name: 'Weekly' }));
+      fireEvent.change(screen.getByLabelText(/Day of Week/i), { target: { value: '5' } }); // Friday
+      fireEvent.change(screen.getByLabelText(/Category/i), { target: { value: 'cat1' } });
+      fireEvent.change(screen.getByLabelText(/Account/i), { target: { value: 'acc1' } });
+      fireEvent.click(screen.getByText('Save'));
+
+      await waitFor(() => expect(onSave).toHaveBeenCalledWith(null, expect.objectContaining({
+        name: 'Gym', frequency: 'Weekly', dayOfMonth: 5, monthOfYear: null,
+      })));
+    });
+
+    it('loads an existing Weekly subscription with its day of week pre-selected', () => {
+      const mockSub = {
+        id: 'sub1', name: 'Gym', amount: 20, frequency: 'Weekly', dayOfMonth: 3, // Wednesday
+        type: 'Expense', categoryId: 'cat1', accountId: 'acc1', active: true,
+      };
+      render(<SubscriptionEditorModal isOpen={true} onClose={vi.fn()} sub={mockSub} data={mockData} onSave={vi.fn()} onDelete={vi.fn()} />);
+
+      expect(screen.getByRole('radio', { name: 'Weekly' }).getAttribute('aria-checked')).toBe('true');
+      expect(screen.getByLabelText(/Day of Week/i).value).toBe('3');
+    });
+  });
+
   describe('currency', () => {
     it('defaults the currency to the selected account and shows no RON helper for RON', () => {
       render(<SubscriptionEditorModal isOpen={true} onClose={vi.fn()} data={multiCurrencyData} onSave={vi.fn()} onDelete={vi.fn()} />);
