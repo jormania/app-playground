@@ -8,6 +8,7 @@ import Settings from './components/Settings.tsx'
 import { NotionClient } from './lib/notionClient.ts'
 import { pruneCache } from './lib/imageCache.ts'
 import { loadConfig, saveConfig, isConfigured, type FitCheckConfig } from './lib/config.ts'
+import { resolveFilter, type Wardrobe } from './lib/wardrobes.ts'
 import type { Garment } from './lib/types.ts'
 
 const TAB_TITLES: Record<Tab, { title: string; subtitle: string }> = {
@@ -21,9 +22,12 @@ export default function App() {
   const [config, setConfig] = useState<FitCheckConfig>(loadConfig)
   const [tab, setTab] = useState<Tab>('wardrobe')
   const [garments, setGarments] = useState<Garment[]>([])
+  const [wardrobes, setWardrobes] = useState<Wardrobe[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [adding, setAdding] = useState(false)
+  const [wardrobeBusy, setWardrobeBusy] = useState(false)
+  const [wardrobeProgress, setWardrobeProgress] = useState('')
 
   // Theme: an explicit choice wins, otherwise follow the device. The entry HTML
   // applies the same rule before first paint so there's no flash.
@@ -49,11 +53,13 @@ export default function App() {
     const client = new NotionClient(config.notionToken, {
       garments: config.garmentsDbId,
       outfits: config.outfitsDbId,
+      wardrobes: config.wardrobesDbId,
     })
-    client.listGarments()
-      .then((rows) => {
+    Promise.all([client.listGarments(), client.listWardrobes()])
+      .then(([rows, wardrobeRows]) => {
         if (cancelled) return
         setGarments(rows)
+        setWardrobes(wardrobeRows)
         // Cached photos for garments that no longer exist would otherwise
         // accumulate forever. Fire-and-forget housekeeping.
         void pruneCache(rows.map((g) => g.id))
@@ -61,9 +67,77 @@ export default function App() {
       .catch((e: Error) => { if (!cancelled) setError(e.message) })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [config.notionToken, config.garmentsDbId, config.outfitsDbId])
+  }, [config.notionToken, config.garmentsDbId, config.outfitsDbId, config.wardrobesDbId])
 
   const demoMode = !isConfigured(config)
+
+  // Wardrobe edits follow one path whether or not Notion is connected: apply
+  // locally first, then persist if we can. In demo mode "persist" is simply a
+  // no-op, so the whole feature is explorable before anything is set up — the
+  // changes just live for the session, which is what demo data should do.
+  const wardrobeClient = useCallback(() => new NotionClient(config.notionToken, {
+    garments: config.garmentsDbId,
+    outfits: config.outfitsDbId,
+    wardrobes: config.wardrobesDbId,
+  }), [config.notionToken, config.garmentsDbId, config.outfitsDbId, config.wardrobesDbId])
+
+  const canPersistWardrobes = Boolean(config.notionToken && config.wardrobesDbId)
+
+  const runWardrobeTask = useCallback(async (task: () => Promise<void>) => {
+    setWardrobeBusy(true)
+    setError('')
+    try {
+      await task()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setWardrobeBusy(false)
+      setWardrobeProgress('')
+    }
+  }, [])
+
+  const createWardrobe = useCallback(async (name: string, order: number) => {
+    await runWardrobeTask(async () => {
+      if (canPersistWardrobes) {
+        const created = await wardrobeClient().createWardrobe({ name, active: true, order })
+        if (created) setWardrobes((prev) => [...prev, created])
+        return
+      }
+      setWardrobes((prev) => [
+        ...prev,
+        { id: `local_w_${Date.now()}`, name, active: true, order },
+      ])
+    })
+  }, [canPersistWardrobes, wardrobeClient, runWardrobeTask])
+
+  const patchWardrobe = useCallback(async (id: string, patch: Partial<Omit<Wardrobe, 'id'>>) => {
+    await runWardrobeTask(async () => {
+      setWardrobes((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w)))
+      if (canPersistWardrobes) await wardrobeClient().updateWardrobe(id, patch)
+    })
+  }, [canPersistWardrobes, wardrobeClient, runWardrobeTask])
+
+  const deleteWardrobe = useCallback(async (wardrobe: Wardrobe) => {
+    await runWardrobeTask(async () => {
+      if (canPersistWardrobes) {
+        await wardrobeClient().deleteWardrobe(wardrobe.id, garments, (done, total) => {
+          setWardrobeProgress(`Unfiling ${done} of ${total}…`)
+        })
+      }
+      // Local state mirrors exactly what the server does: the clothes survive,
+      // unfiled, rather than disappearing with the wardrobe.
+      setGarments((prev) => prev.map((g) => (
+        g.wardrobeIds.includes(wardrobe.id)
+          ? { ...g, wardrobeIds: g.wardrobeIds.filter((w) => w !== wardrobe.id) }
+          : g
+      )))
+      setWardrobes((prev) => prev.filter((w) => w.id !== wardrobe.id))
+      // The filter may have been pointing at what was just deleted.
+      setConfig((prev) => (
+        prev.wardrobeFilterId === wardrobe.id ? { ...prev, wardrobeFilterId: null } : prev
+      ))
+    })
+  }, [canPersistWardrobes, wardrobeClient, runWardrobeTask, garments])
   const { title, subtitle } = adding && tab === 'wardrobe'
     ? { title: 'Add something', subtitle: 'Photograph it and it joins your wardrobe.' }
     : TAB_TITLES[tab]
@@ -96,6 +170,7 @@ export default function App() {
           adding ? (
             <AddGarment
               config={config}
+              wardrobes={wardrobes}
               onCancel={() => setAdding(false)}
               onAdded={(garment) => {
                 setGarments((prev) => [...prev, garment])
@@ -108,8 +183,9 @@ export default function App() {
             <>
               <WardrobeGrid
                 garments={garments}
-                config={config}
-                onHomeChange={(home) => updateConfig({ activeHome: home })}
+                wardrobes={wardrobes}
+                filterId={resolveFilter(config.wardrobeFilterId, wardrobes)}
+                onFilterChange={(id) => updateConfig({ wardrobeFilterId: id })}
               />
               <div className="fc-actions">
                 <Button onClick={() => setAdding(true)} disabled={demoMode}>
@@ -137,7 +213,20 @@ export default function App() {
           </p>
         )}
 
-        {tab === 'settings' && <Settings config={config} onChange={updateConfig} />}
+        {tab === 'settings' && (
+          <Settings
+            config={config}
+            onChange={updateConfig}
+            wardrobes={wardrobes}
+            garments={garments}
+            wardrobeBusy={wardrobeBusy}
+            wardrobeProgress={wardrobeProgress}
+            onCreateWardrobe={createWardrobe}
+            onRenameWardrobe={(id, name) => patchWardrobe(id, { name })}
+            onToggleWardrobe={(id, active) => patchWardrobe(id, { active })}
+            onDeleteWardrobe={deleteWardrobe}
+          />
+        )}
       </main>
 
       <Navigation tab={tab} onChange={setTab} />

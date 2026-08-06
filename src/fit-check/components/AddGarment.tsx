@@ -5,8 +5,9 @@ import { resizePhoto, isImageFile, photoFilename } from '../../shared/photo.ts'
 import { makeThumb } from '../lib/lqip.ts'
 import { putPhoto } from '../lib/imageCache.ts'
 import { NotionClient } from '../lib/notionClient.ts'
-import { homeLabel, type FitCheckConfig } from '../lib/config.ts'
-import { CATEGORIES, type Category, type Home } from '../lib/vocabulary.ts'
+import { type FitCheckConfig } from '../lib/config.ts'
+import { CATEGORIES, type Category } from '../lib/vocabulary.ts'
+import { activeWardrobes, type Wardrobe } from '../lib/wardrobes.ts'
 import type { Garment } from '../lib/types.ts'
 
 /** Charter: guide users toward photos the app can actually work with. Kept to
@@ -20,16 +21,25 @@ const TIPS = [
 
 interface Props {
   config: FitCheckConfig
+  wardrobes: Wardrobe[]
   onAdded: (garment: Garment) => void
   onCancel: () => void
 }
 
-export default function AddGarment({ config, onAdded, onCancel }: Props) {
+export default function AddGarment({ config, wardrobes, onAdded, onCancel }: Props) {
+  const choices = activeWardrobes(wardrobes)
   const [file, setFile] = useState<Blob | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [category, setCategory] = useState<Category>('Top')
-  const [home, setHome] = useState<Home>('Both')
+  // Defaults to whichever wardrobe is being viewed, else the first active one.
+  // Something sensible pre-selected matters: the charter asks for taps over
+  // forms, and a garment saved into no wardrobe is a small mess to undo.
+  const [wardrobeIds, setWardrobeIds] = useState<string[]>(() => {
+    const viewing = choices.find((w) => w.id === config.wardrobeFilterId)
+    if (viewing) return [viewing.id]
+    return choices.length > 0 ? [choices[0].id] : []
+  })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -76,7 +86,7 @@ export default function AddGarment({ config, onAdded, onCancel }: Props) {
       // Create the row first so there is something to attach to, then upload.
       // If the upload fails the garment still exists, tagged and named, with a
       // placeholder — recoverable. The reverse order can orphan an upload.
-      const created = await client.createGarment({ name: label, category, home, thumb })
+      const created = await client.createGarment({ name: label, category, wardrobeIds, thumb })
       if (!created) {
         setError('Add your Notion details in Settings first.')
         setSaving(false)
@@ -158,18 +168,38 @@ export default function AddGarment({ config, onAdded, onCancel }: Props) {
             />
           </section>
 
-          <section className="fc-settings-group">
-            <p className="fc-settings-hint">Which home does it live in?</p>
-            <SegmentedControl
-              value={home}
-              onChange={(v) => setHome(v as Home)}
-              options={[
-                { value: 'Both', label: 'Both' },
-                { value: 'Home A', label: homeLabel(config, 'Home A') },
-                { value: 'Home B', label: homeLabel(config, 'Home B') },
-              ]}
-            />
-          </section>
+          {choices.length > 0 && (
+            <section className="fc-settings-group">
+              <p className="fc-settings-hint">
+                Where does it live? Pick more than one if it travels.
+              </p>
+              <div className="fc-chips">
+                {choices.map((w) => {
+                  const on = wardrobeIds.includes(w.id)
+                  return (
+                    <button
+                      key={w.id}
+                      type="button"
+                      className="fc-chip"
+                      role="checkbox"
+                      aria-checked={on}
+                      data-selected={on}
+                      onClick={() => setWardrobeIds((prev) =>
+                        on ? prev.filter((id) => id !== w.id) : [...prev, w.id],
+                      )}
+                    >
+                      {w.name}
+                    </button>
+                  )
+                })}
+              </div>
+              {wardrobeIds.length === 0 && (
+                <p className="fc-settings-hint" style={{ marginTop: 8 }}>
+                  It won't belong to a wardrobe — you can file it later.
+                </p>
+              )}
+            </section>
+          )}
 
           <div className="fc-actions">
             <Button onClick={save} disabled={saving}>

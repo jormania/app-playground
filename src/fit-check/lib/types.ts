@@ -1,4 +1,4 @@
-import type { Category, Colour, Home, Mood, Style, Verdict, Warmth } from './vocabulary.ts'
+import type { Category, Colour, Mood, Style, Verdict, Warmth } from './vocabulary.ts'
 
 /** One item of clothing. Mirrors the "Fit Check — Garments" Notion database. */
 export interface Garment {
@@ -12,13 +12,26 @@ export interface Garment {
   colours: Colour[]
   warmth: Warmth | null
   styles: Style[]
-  home: Home
+  /**
+   * Which wardrobes this garment lives in — Notion page ids, many-to-many.
+   * Two ids is the old "Both"; zero is allowed and means unfiled (see
+   * lib/wardrobes.ts for why that state is supported rather than prevented).
+   */
+  wardrobeIds: string[]
   favourite: boolean
   wearCount: number
   /** YYYY-MM-DD, or null if never worn. */
   lastWorn: string | null
-  /** False = archived out of suggestions, but not deleted. */
-  active: boolean
+  /**
+   * True = put away: out of the grid and out of suggestions, but not deleted.
+   *
+   * Named for the negative on purpose. It was `active`, which collided with
+   * `Wardrobe.active` (a different idea — "temporarily hidden") and read
+   * identically at a glance. Inverting also fixes a real wart: Notion can't
+   * distinguish an unset checkbox from `false`, so `active` needed an explicit
+   * `true` on every create, whereas `archived` wants exactly the default.
+   */
+  archived: boolean
 }
 
 /** One outfit that was suggested and acted on. Mirrors "Fit Check — Outfits". */

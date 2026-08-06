@@ -12,10 +12,11 @@
  *   · Every select/multi_select value is coerced through lib/vocabulary before
  *     it is written. An unregistered option makes Notion reject the whole patch.
  */
-import { DEMO_GARMENTS, DEMO_OUTFITS } from '../models/demoData.ts'
+import { DEMO_GARMENTS, DEMO_OUTFITS, DEMO_WARDROBES } from '../models/demoData.ts'
 import type { Garment, Outfit } from './types.ts'
+import type { Wardrobe } from './wardrobes.ts'
 import {
-  CATEGORIES, COLOURS, HOMES, MOODS, STYLES, VERDICTS, WARMTHS,
+  CATEGORIES, COLOURS, MOODS, STYLES, VERDICTS, WARMTHS,
   coerceMany, coerceOne,
 } from './vocabulary.ts'
 
@@ -76,14 +77,25 @@ function readGarment(row: NotionPage): Garment {
     colours: coerceMany(COLOURS, (p.Colours?.multi_select || []).map((o: { name: string }) => o.name)),
     warmth: coerceOne(WARMTHS, p.Warmth?.select?.name),
     styles: coerceMany(STYLES, (p.Style?.multi_select || []).map((o: { name: string }) => o.name)),
-    home: coerceOne(HOMES, p.Home?.select?.name) ?? 'Both',
+    wardrobeIds: (p.Wardrobes?.relation || []).map((r: { id: string }) => r.id),
     favourite: Boolean(p.Favourite?.checkbox),
     wearCount: typeof p['Wear Count']?.number === 'number' ? p['Wear Count'].number : 0,
     lastWorn: p['Last Worn']?.date?.start || null,
-    // An unset checkbox reads false, but a garment nobody has archived should
-    // be active. Notion sends `false` for both, so absence can't be detected —
-    // the app writes Active: true on create and this stays a plain read.
+    // Unset reads as false, which is exactly right here: a garment nobody has
+    // put away is not archived. (This was the other way round when the field
+    // was `Active`, and needed an explicit write on every create.)
+    archived: Boolean(p.Archived?.checkbox),
+  }
+}
+
+function readWardrobe(row: NotionPage): Wardrobe {
+  const p = row.properties || {}
+  return {
+    id: row.id,
+    name: plainText(p.Name?.title) || 'Wardrobe',
     active: Boolean(p.Active?.checkbox),
+    // Unordered rows sort last rather than jumping to the front.
+    order: typeof p.Order?.number === 'number' ? p.Order.number : Number.MAX_SAFE_INTEGER,
   }
 }
 
@@ -106,6 +118,7 @@ function readOutfit(row: NotionPage): Outfit {
 export interface DbIds {
   garments?: string
   outfits?: string
+  wardrobes?: string
 }
 
 export class NotionClient {
@@ -211,13 +224,17 @@ export class NotionClient {
     if (garment.colours !== undefined) props.Colours = multiOf(coerceMany(COLOURS, garment.colours))
     if (garment.warmth !== undefined) props.Warmth = selectOf(coerceOne(WARMTHS, garment.warmth))
     if (garment.styles !== undefined) props.Style = multiOf(coerceMany(STYLES, garment.styles))
-    if (garment.home !== undefined) props.Home = selectOf(coerceOne(HOMES, garment.home))
+    // A relation carries page ids, not names — nothing to validate against a
+    // vocabulary, and renaming a wardrobe can never invalidate this write.
+    if (garment.wardrobeIds !== undefined) {
+      props.Wardrobes = { relation: garment.wardrobeIds.map((id) => ({ id })) }
+    }
     if (garment.favourite !== undefined) props.Favourite = { checkbox: garment.favourite }
     if (garment.wearCount !== undefined) props['Wear Count'] = { number: garment.wearCount }
     if (garment.lastWorn !== undefined) {
       props['Last Worn'] = { date: garment.lastWorn ? { start: garment.lastWorn } : null }
     }
-    if (garment.active !== undefined) props.Active = { checkbox: garment.active }
+    if (garment.archived !== undefined) props.Archived = { checkbox: garment.archived }
     return props
   }
 
@@ -227,7 +244,7 @@ export class NotionClient {
       path: 'pages',
       body: {
         parent: { database_id: this.dbIds.garments },
-        properties: this._garmentProperties({ active: true, wearCount: 0, ...garment }),
+        properties: this._garmentProperties({ wearCount: 0, ...garment }),
       },
     })
     await sleep(WRITE_SPACING_MS)
@@ -243,6 +260,78 @@ export class NotionClient {
     })
     await sleep(WRITE_SPACING_MS)
     return row ? readGarment(row) : null
+  }
+
+  // ── Wardrobes ─────────────────────────────────────────────────────────────
+
+  async listWardrobes(): Promise<Wardrobe[]> {
+    const demo = this._demoOr(this.dbIds.wardrobes, DEMO_WARDROBES)
+    if (demo.use) return demo.rows
+    if (!this.dbIds.wardrobes) return []
+    return (await this._queryAll(this.dbIds.wardrobes)).map(readWardrobe)
+  }
+
+  async createWardrobe(wardrobe: { name: string; active?: boolean; order?: number }): Promise<Wardrobe | null> {
+    if (!this.token || !this.dbIds.wardrobes) return null
+    const row = await this._request({
+      path: 'pages',
+      body: {
+        parent: { database_id: this.dbIds.wardrobes },
+        properties: {
+          Name: title(wardrobe.name),
+          Active: { checkbox: wardrobe.active ?? true },
+          Order: { number: wardrobe.order ?? 1 },
+        },
+      },
+    })
+    await sleep(WRITE_SPACING_MS)
+    return row ? readWardrobe(row) : null
+  }
+
+  async updateWardrobe(id: string, patch: Partial<Omit<Wardrobe, 'id'>>): Promise<Wardrobe | null> {
+    if (!this.token) return null
+    const props: Record<string, unknown> = {}
+    if (patch.name !== undefined) props.Name = title(patch.name)
+    if (patch.active !== undefined) props.Active = { checkbox: patch.active }
+    if (patch.order !== undefined) props.Order = { number: patch.order }
+    const row = await this._request({ path: `pages/${id}`, method: 'PATCH', body: { properties: props } })
+    await sleep(WRITE_SPACING_MS)
+    return row ? readWardrobe(row) : null
+  }
+
+  /**
+   * Delete a wardrobe, unfiling its garments first.
+   *
+   * Order matters. Notion keeps relations pointing at an archived page, so
+   * archiving the wardrobe alone would leave every garment referencing
+   * something that no longer exists — invisible in the app (the visibility rule
+   * treats an unresolvable id as hidden) and confusing in Notion. Clearing the
+   * relation first means the clothes end up honestly unfiled, which the UI
+   * surfaces so they can be re-filed.
+   *
+   * The clothes themselves are never deleted. `onProgress` exists because this
+   * is one write per affected garment, paced at ~3/s for Notion's rate limit —
+   * a wardrobe holding 40 things takes a noticeable moment, and the UI says so
+   * rather than appearing to hang.
+   */
+  async deleteWardrobe(
+    id: string,
+    affectedGarments: Garment[],
+    onProgress?: (done: number, total: number) => void,
+  ): Promise<void> {
+    if (!this.token) return
+    const members = affectedGarments.filter((g) => g.wardrobeIds.includes(id))
+    let done = 0
+    for (const garment of members) {
+      await this.updateGarment(garment.id, {
+        wardrobeIds: garment.wardrobeIds.filter((w) => w !== id),
+      })
+      onProgress?.(++done, members.length)
+    }
+    // Notion's API has no hard delete; archiving is what its own UI calls
+    // "Delete", and it stays recoverable from the trash.
+    await this._request({ path: `pages/${id}`, method: 'PATCH', body: { archived: true } })
+    await sleep(WRITE_SPACING_MS)
   }
 
   /**
@@ -305,8 +394,16 @@ export class NotionClient {
     if (!this.dbIds.garments) return { ok: false, message: 'Add the Garments database id first.' }
     try {
       await this._request({ path: `databases/${this.dbIds.garments}`, method: 'GET' })
+      if (this.dbIds.wardrobes) {
+        await this._request({ path: `databases/${this.dbIds.wardrobes}`, method: 'GET' })
+      }
       if (this.dbIds.outfits) {
         await this._request({ path: `databases/${this.dbIds.outfits}`, method: 'GET' })
+      }
+      // Named explicitly, because wardrobes silently living only on this device
+      // is exactly the failure this database exists to prevent.
+      if (!this.dbIds.wardrobes) {
+        return { ok: true, message: "Connected — but add the Wardrobes database too, or your wardrobes won't follow you to another device." }
       }
       return { ok: true, message: 'Connected. Your wardrobe is ready.' }
     } catch (e) {

@@ -38,14 +38,11 @@ export const STYLES = [
 ] as const
 export type Style = (typeof STYLES)[number]
 
-/**
- * Stable keys, never shown raw to Nora. She renames the homes in Settings and
- * the app maps key → display name (see lib/config.ts). Renaming the Notion
- * option itself would orphan every row already referencing it — the same
- * closed-vocabulary hazard from a different direction.
- */
-export const HOMES = ['Home A', 'Home B', 'Both'] as const
-export type Home = (typeof HOMES)[number]
+// Wardrobes are deliberately NOT here. They were once a closed `select`
+// (`Home A | Home B | Both`), which meant a fixed number of them and made
+// renaming risky. They are now their own Notion database, related to Garments
+// by page id — so their names are ordinary data, free to change, and no write
+// can be invalidated by one. See lib/wardrobes.ts.
 
 export const MOODS = ['Comfy', 'Confident', 'Sporty', 'Cosy', 'Put-together', 'Low-key'] as const
 export type Mood = (typeof MOODS)[number]

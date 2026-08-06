@@ -184,6 +184,162 @@ body {
 }
 .fc-filter-row::-webkit-scrollbar { display: none; }
 
+/* ── Chips (wardrobe filter, wardrobe picker) ────────────────────────────── */
+/* Chips rather than a SegmentedControl because the number of wardrobes is
+   unbounded — an even-width track only reads well at two or three options. */
+.fc-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fc-filter-row .fc-chips {
+  flex-wrap: nowrap;
+}
+
+.fc-chip {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fc-chip[data-selected='true'] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: 600;
+}
+
+.fc-chip:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.fc-notice {
+  margin: 0 0 4px;
+  padding: 8px 12px;
+  border-radius: var(--fc-tile-radius);
+  background: var(--color-surface-2);
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+}
+
+/* ── Wardrobe manager ────────────────────────────────────────────────────── */
+.fc-wardrobe-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fc-wardrobe-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Switched off reads as faded, matching what it does to the rest of the UI. */
+.fc-wardrobe-row[data-inactive='true'] .fc-wardrobe-name,
+.fc-wardrobe-row[data-inactive='true'] .fc-wardrobe-count {
+  opacity: 0.5;
+}
+
+.fc-wardrobe-name {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: inherit;
+  /* ≥16px or mobile Safari zooms the page on focus. */
+  font-size: 1rem;
+}
+
+.fc-wardrobe-name:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+.fc-wardrobe-count {
+  min-width: 2ch;
+  text-align: right;
+  color: var(--color-faint);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.fc-wardrobe-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.fc-wardrobe-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: none;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.fc-wardrobe-delete:hover:not(:disabled) {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.fc-wardrobe-delete:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.fc-wardrobe-note {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--color-faint);
+  font-size: 0.75rem;
+}
+
+.fc-add-wardrobe {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.fc-add-wardrobe > *:first-child {
+  flex: 1;
+}
+
+.fc-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ── Bottom navigation ───────────────────────────────────────────────────── */
 .fc-nav {
   position: fixed;

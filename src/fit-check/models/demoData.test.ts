@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { DEMO_GARMENTS, DEMO_OUTFITS } from './demoData.ts'
-import { CATEGORIES, COLOURS, HOMES, MOODS, STYLES, VERDICTS, WARMTHS } from '../lib/vocabulary.ts'
+import { DEMO_GARMENTS, DEMO_OUTFITS, DEMO_WARDROBES } from './demoData.ts'
+import { CATEGORIES, COLOURS, MOODS, STYLES, VERDICTS, WARMTHS } from '../lib/vocabulary.ts'
 
 // Fixtures are the first thing anyone sees, and they're also what the app is
 // developed against. If they drift from the closed vocabulary, the demo looks
@@ -10,7 +10,6 @@ describe('demo garments obey the closed vocabulary', () => {
   it.each(DEMO_GARMENTS)('$name', (g) => {
     expect(CATEGORIES).toContain(g.category)
     expect(WARMTHS).toContain(g.warmth)
-    expect(HOMES).toContain(g.home)
     for (const c of g.colours) expect(COLOURS).toContain(c)
     for (const s of g.styles) expect(STYLES).toContain(s)
   })
@@ -41,13 +40,34 @@ describe('demo data is internally consistent', () => {
     for (const category of CATEGORIES) expect(seen).toContain(category)
   })
 
-  it('spans both homes plus Both, so the home filter is exercised', () => {
-    const seen = new Set(DEMO_GARMENTS.map((g) => g.home))
-    for (const home of HOMES) expect(seen).toContain(home)
+  it('only references wardrobes that exist', () => {
+    const ids = new Set(DEMO_WARDROBES.map((w) => w.id))
+    for (const g of DEMO_GARMENTS) {
+      for (const wid of g.wardrobeIds) expect(ids).toContain(wid)
+    }
   })
 
-  it('includes an archived garment, so the Active filter has something to hide', () => {
-    expect(DEMO_GARMENTS.some((g) => !g.active)).toBe(true)
+  it('exercises the wardrobe filter: each active one, plus shared clothes', () => {
+    const active = DEMO_WARDROBES.filter((w) => w.active)
+    for (const w of active) {
+      expect(DEMO_GARMENTS.some((g) => g.wardrobeIds.includes(w.id))).toBe(true)
+    }
+    // "In both places" is now just membership of two wardrobes.
+    expect(DEMO_GARMENTS.some((g) => g.wardrobeIds.length > 1)).toBe(true)
+  })
+
+  it('includes an inactive wardrobe, so that state is visible in the demo', () => {
+    expect(DEMO_WARDROBES.some((w) => !w.active)).toBe(true)
+  })
+
+  it('gives wardrobes unique ids and non-empty names', () => {
+    const ids = DEMO_WARDROBES.map((w) => w.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    for (const w of DEMO_WARDROBES) expect(w.name.trim()).toBeTruthy()
+  })
+
+  it('includes a put-away garment, so the archived filter has something to hide', () => {
+    expect(DEMO_GARMENTS.some((g) => g.archived)).toBe(true)
   })
 
   it('uses ISO dates throughout', () => {

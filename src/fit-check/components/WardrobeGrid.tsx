@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
-import { SegmentedControl } from '../../ds'
 import type { Garment } from '../lib/types.ts'
-import { CATEGORIES, type Home } from '../lib/vocabulary.ts'
-import { homeLabel, type FitCheckConfig } from '../lib/config.ts'
+import { CATEGORIES } from '../lib/vocabulary.ts'
+import { visibleGarments, unassignedGarments, activeWardrobes, type Wardrobe } from '../lib/wardrobes.ts'
 import { useGarmentPhoto } from '../lib/useGarmentPhoto.ts'
+import WardrobeFilter from './WardrobeFilter.tsx'
 
 /**
  * Turn a stored `thumb` into something paintable. Two shapes are supported so
@@ -20,12 +20,6 @@ export function thumbStyle(thumb: string | null): React.CSSProperties {
     return { backgroundImage: `url(data:image/jpeg;base64,${thumb})` }
   }
   return {}
-}
-
-/** Garments for a home. "Both" means everywhere, so it matches every row. */
-export function garmentsForHome(garments: Garment[], home: Home): Garment[] {
-  if (home === 'Both') return garments
-  return garments.filter((g) => g.home === home || g.home === 'Both')
 }
 
 /**
@@ -58,16 +52,28 @@ function GarmentTile({ garment, onSelect }: { garment: Garment; onSelect?: (g: G
 
 interface Props {
   garments: Garment[]
-  config: FitCheckConfig
-  onHomeChange: (home: Home) => void
+  wardrobes: Wardrobe[]
+  filterId: string | null
+  onFilterChange: (id: string | null) => void
   onSelect?: (garment: Garment) => void
 }
 
-export default function WardrobeGrid({ garments, config, onHomeChange, onSelect }: Props) {
+export default function WardrobeGrid({
+  garments, wardrobes, filterId, onFilterChange, onSelect,
+}: Props) {
   const visible = useMemo(
-    () => garmentsForHome(garments, config.activeHome).filter((g) => g.active),
-    [garments, config.activeHome],
+    () => visibleGarments(garments, wardrobes, filterId).filter((g) => !g.archived),
+    [garments, wardrobes, filterId],
   )
+
+  // Clothes left behind by a deleted wardrobe. Only worth mentioning in the
+  // "All" view — inside a specific wardrobe they are by definition not here.
+  const unfiled = useMemo(
+    () => (filterId ? [] : unassignedGarments(visible)),
+    [visible, filterId],
+  )
+
+  const nothingActive = wardrobes.length > 0 && activeWardrobes(wardrobes).length === 0
 
   const sections = useMemo(
     () => CATEGORIES
@@ -79,21 +85,29 @@ export default function WardrobeGrid({ garments, config, onHomeChange, onSelect 
   return (
     <>
       <div className="fc-filter-row">
-        <SegmentedControl
-          value={config.activeHome}
-          onChange={(v) => onHomeChange(v as Home)}
-          options={[
-            { value: 'Both', label: 'Both' },
-            { value: 'Home A', label: homeLabel(config, 'Home A') },
-            { value: 'Home B', label: homeLabel(config, 'Home B') },
-          ]}
-        />
+        <WardrobeFilter wardrobes={wardrobes} value={filterId} onChange={onFilterChange} />
       </div>
 
-      {visible.length === 0 ? (
-        <p className="fc-empty">
-          Nothing here yet. Add a few things and they'll show up.
+      {unfiled.length > 0 && (
+        <p className="fc-notice" role="status">
+          {unfiled.length === 1 ? '1 thing isn’t' : `${unfiled.length} things aren’t`} in
+          a wardrobe yet — they still show up here.
         </p>
+      )}
+
+      {visible.length === 0 ? (
+        nothingActive ? (
+          // Distinguishing "you own nothing" from "you switched everything off"
+          // matters: the second looks identical and is trivially fixable.
+          <p className="fc-empty">
+            All your wardrobes are switched off, so there's nothing to show.
+            Turn one back on in Settings.
+          </p>
+        ) : (
+          <p className="fc-empty">
+            Nothing here yet. Add a few things and they'll show up.
+          </p>
+        )
       ) : (
         sections.map(({ category, items }) => (
           <section key={category}>

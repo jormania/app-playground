@@ -2,11 +2,22 @@ import { useEffect, useRef, useState } from 'react'
 import { Check } from 'lucide-react'
 import { Button, Field, SegmentedControl } from '../../ds'
 import { NotionClient } from '../lib/notionClient.ts'
+import WardrobeManager from './WardrobeManager.tsx'
 import type { FitCheckConfig } from '../lib/config.ts'
+import type { Wardrobe } from '../lib/wardrobes.ts'
+import type { Garment } from '../lib/types.ts'
 
 interface Props {
   config: FitCheckConfig
   onChange: (patch: Partial<FitCheckConfig>) => void
+  wardrobes: Wardrobe[]
+  garments: Garment[]
+  wardrobeBusy: boolean
+  wardrobeProgress: string
+  onCreateWardrobe: (name: string, order: number) => Promise<void>
+  onRenameWardrobe: (id: string, name: string) => Promise<void>
+  onToggleWardrobe: (id: string, active: boolean) => Promise<void>
+  onDeleteWardrobe: (wardrobe: Wardrobe) => Promise<void>
 }
 
 /**
@@ -14,7 +25,10 @@ interface Props {
  * Everything here is bring-your-own-key per repo convention: nothing ships in
  * the repo, and none of it leaves this device except as a per-request header.
  */
-export default function Settings({ config, onChange }: Props) {
+export default function Settings({
+  config, onChange, wardrobes, garments, wardrobeBusy, wardrobeProgress,
+  onCreateWardrobe, onRenameWardrobe, onToggleWardrobe, onDeleteWardrobe,
+}: Props) {
   const [testing, setTesting] = useState(false)
   const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null)
 
@@ -43,6 +57,7 @@ export default function Settings({ config, onChange }: Props) {
     const client = new NotionClient(config.notionToken, {
       garments: config.garmentsDbId,
       outfits: config.outfitsDbId,
+      wardrobes: config.wardrobesDbId,
     })
     setStatus(await client.testConnection())
     setTesting(false)
@@ -78,30 +93,16 @@ export default function Settings({ config, onChange }: Props) {
         />
       </section>
 
-      <section className="fc-settings-group">
-        <h2>Your two homes</h2>
-        <p className="fc-settings-hint">
-          Call them whatever you actually call them. Only the names change — nothing moves.
-        </p>
-        <div className="fc-field-stack">
-          <Field
-            label="First home"
-            value={config.homeNames['Home A']}
-            placeholder="Home A"
-            onChange={(e) =>
-              onChange({ homeNames: { ...config.homeNames, 'Home A': e.target.value } })
-            }
-          />
-          <Field
-            label="Second home"
-            value={config.homeNames['Home B']}
-            placeholder="Home B"
-            onChange={(e) =>
-              onChange({ homeNames: { ...config.homeNames, 'Home B': e.target.value } })
-            }
-          />
-        </div>
-      </section>
+      <WardrobeManager
+        wardrobes={wardrobes}
+        garments={garments}
+        busy={wardrobeBusy}
+        progress={wardrobeProgress}
+        onCreate={onCreateWardrobe}
+        onRename={onRenameWardrobe}
+        onToggleActive={onToggleWardrobe}
+        onDelete={onDeleteWardrobe}
+      />
 
       <section className="fc-settings-group">
         <h2>Notion</h2>
@@ -121,6 +122,12 @@ export default function Settings({ config, onChange }: Props) {
             label="Garments database ID"
             value={config.garmentsDbId}
             onChange={(e) => onChange({ garmentsDbId: e.target.value })}
+          />
+          <Field
+            label="Wardrobes database ID"
+            value={config.wardrobesDbId}
+            onChange={(e) => onChange({ wardrobesDbId: e.target.value })}
+            hint="Without this, your wardrobes can't be saved or shared between devices."
           />
           <Field
             label="Outfits database ID"

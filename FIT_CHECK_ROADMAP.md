@@ -18,7 +18,8 @@ roadmap below is what to build next, in roughly this order.
 
 ### In scope for MVP
 
-- Home A / Home B wardrobes — **add, copy, move** only
+- Any number of wardrobes — add, rename, delete, switch on/off (built early;
+  see §3 for why)
 - Clothing catalogue + photography
 - **One-shot** AI tagging (colour, category, warmth, style) at photo time
 - Mood selection
@@ -94,14 +95,48 @@ keyboard would fill. One shot, no context, no follow-up turns.
 
 ## 3 · Wardrobe management depth
 
-**Deferred because:** the charter itself says avoid being a wardrobe database.
-Archive, restore, duplicate and free reorganisation are database verbs.
+**Now in the MVP** (built early, on purpose — see below): wardrobes are their
+own Notion database, any number of them, each add/rename/delete-with-confirm and
+switchable on and off, syncing between devices. A garment belongs to as many
+wardrobes as it lives in.
 
-**MVP ships:** add, copy between homes, move between homes, delete.
+Building this before M3 rather than after was the right call: the Garments table
+had zero rows, so replacing the old `Home` select with a relation cost nothing.
+The same change after real data would have been a migration.
 
-**Later:** archive + restore (seasonal storage is the genuine use case — "my
-winter coats aren't relevant in June"), then bulk reorganise if it's ever asked
-for. Duplicate is probably never needed; copy-between-homes covers it.
+**Still deferred:** bulk reorganise (move twenty things at once). Duplicate is
+probably never needed — a garment simply belongs to two wardrobes.
+
+### 3a · Wardrobe ideas worth considering later
+
+Deliberately *not* built, to keep the feature light. In rough order of how much
+they'd earn their place:
+
+- **Outfits → Wardrobe relation.** The moment history exists (M5), "what did I
+  wear at Dad's?" is an obvious question. One property on a table that is still
+  empty; adding it after M5 has run for a while means backfilling. **Add this
+  when M5 lands, not later.**
+- **Wardrobes as contexts, not just places.** The data model already allows it
+  (a garment in N wardrobes), so nothing blocks "school week", "summer storage"
+  or "suitcase for Greece". Resist ever hard-coding *a wardrobe is a house*.
+  Costs nothing to keep possible; would cost a lot to retrofit.
+- **Reordering by drag.** `order` is a plain number, fine for a handful. Real
+  reordering wants fractional ordering (insert at the midpoint between
+  neighbours) so a move rewrites one row instead of all of them. Isolated in
+  `nextOrder()` for exactly this reason — it's a one-function change.
+- **Syncing which wardrobe is selected.** Currently device-local on purpose: the
+  filter is a *view* preference, and syncing it makes a phone jump around while
+  a tablet is in use. But if "I'm at Dad's this week" becomes a *state* rather
+  than a filter, it belongs in Notion. Product question, not a technical one —
+  wait for Nora to want it.
+- **Icons or colours per wardrobe.** Cheap and tempting. Skipped because every
+  wardrobe feature makes this more of a wardrobe database and less of a friend
+  that says what to wear. Ten minutes if she asks.
+
+**Known limit, watch rather than fix:** deleting a wardrobe unfiles its garments
+one write at a time, paced at Notion's ~3/s. Forty garments is roughly fourteen
+seconds, with progress shown. Notion has no bulk relation update, so the honest
+options are a background queue or accepting the wait. Accept it until it hurts.
 
 ---
 

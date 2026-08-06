@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  CATEGORIES, COLOURS, STYLES, WARMTHS, HOMES, MOODS,
+  CATEGORIES, COLOURS, STYLES, WARMTHS, MOODS,
   isKnown, coerceOne, coerceMany, vocabularyForPrompt,
 } from './vocabulary.ts'
 
@@ -52,7 +52,7 @@ describe('the guarantee this module exists for', () => {
       'dusty rose', 'cottagecore', '', '   ', 'Top; DROP', '<script>', 'null',
       'Tops', 'top-ish', '0', 'undefined',
     ]
-    for (const lists of [CATEGORIES, COLOURS, STYLES, WARMTHS, HOMES, MOODS]) {
+    for (const lists of [CATEGORIES, COLOURS, STYLES, WARMTHS, MOODS]) {
       for (const value of hostile) {
         const one = coerceOne(lists, value)
         expect(one === null || (lists as readonly string[]).includes(one)).toBe(true)

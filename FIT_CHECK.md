@@ -54,13 +54,43 @@ unit-tested.
 
 ---
 
-## Home A / Home B
+## Wardrobes
 
-The Notion option names are **stable keys and never change**. Nora renames the
-homes in Settings; the app maps key → display name via `homeLabel()` in
-[`lib/config.ts`](src/fit-check/lib/config.ts). Renaming the Notion option
-instead would orphan every row referencing it — rule 1 from another direction.
-`Both` means "lives in both places" and is not renameable.
+Their own Notion database, related to Garments **by page id**. That is the whole
+design in one sentence, and it is what makes the rest simple: a wardrobe's name
+is ordinary data, so renaming is a title edit that can never invalidate a write.
+Rule 1 does not apply to wardrobes at all — a relation isn't a vocabulary.
+
+`Both` is gone with nothing replacing it: a garment relates to as many wardrobes
+as it lives in. Two is the old `Both`; zero is allowed and means unfiled.
+
+All the rules live in [`lib/wardrobes.ts`](src/fit-check/lib/wardrobes.ts) as
+pure functions. The one that matters:
+
+> A garment is hidden **iff** it belongs to at least one wardrobe **that
+> exists**, and every existing wardrobe it belongs to is switched off.
+
+Each clause is load-bearing:
+
+- *at least one* — a garment in an active **and** an inactive wardrobe stays
+  visible. Switching one wardrobe off must never empty another.
+- *that exists* — the Wardrobes database id is its own Settings field, so
+  configuring Garments first is a normal state. Without this clause the app
+  opens completely empty. (Caught by a test asserting the opposite of a sibling
+  test; both couldn't be right, and this is the safe one.)
+- *every* — anything reachable through a wardrobe that's switched on stays
+  reachable.
+
+Deleting a wardrobe **clears its relations first, then archives the page**.
+Notion keeps relations pointing at archived pages, so the other order would
+leave every garment referencing something invisible. The clothes are never
+deleted — they end up honestly unfiled, and the grid says so.
+
+`Garment.archived` is named for the negative deliberately: it used to be
+`active`, which collided with `Wardrobe.active` (a different idea) and read
+identically at a glance. Inverting also fixed a wart — Notion can't tell an
+unset checkbox from `false`, so `active` needed an explicit write on every
+create, whereas `archived` wants exactly the default.
 
 ---
 
@@ -195,6 +225,43 @@ clean. In-browser: LQIP generated through the real canvas encoder across plain /
 noisy / adversarial sources (1084 / 1204 / 1312 chars, all true LQIPs); capture
 screen, guidance chips and retake render at 375×812; last Settings row clears
 the nav by 52px at full scroll; no console errors.
+
+### M2.1 — Wardrobes (2026-08-06)
+
+Pulled forward from the roadmap on Gabriel's call, and he was right: the
+Garments table had **zero rows**, so replacing the `Home` select with a relation
+cost nothing. After real data it would have been a migration.
+
+**Built**
+
+- `Fit Check — Wardrobes` Notion database (Name · Active · Order) and a dual
+  `Wardrobes` relation on Garments; the `Home` select dropped
+- `lib/wardrobes.ts` — every rule as a pure function, ~50 tests
+- `components/WardrobeManager.tsx` (in Settings) — add, rename, on/off,
+  delete-with-confirmation
+- `components/WardrobeFilter.tsx` — chips, because the number of wardrobes is
+  now unbounded and a SegmentedControl only reads well at two or three
+- Settings gained a **Wardrobes database ID** field; `testConnection` says
+  outright when it's missing, since that's the case where wardrobes silently
+  fail to sync
+- Demo mode gained three fixture wardrobes and **full management** — add,
+  rename, toggle and delete all work with no Notion at all, changes living for
+  the session. One code path: apply locally, persist only if configured.
+
+**The bug worth remembering**
+
+`visibleGarments` originally hid garments whose wardrobes didn't resolve. Two of
+my own tests then contradicted each other, which is how it surfaced. The losing
+rule was the dangerous one: **the Wardrobes database ID is a separate, optional
+Settings field**, so anyone configuring Garments first would have opened the app
+to a completely empty grid with no explanation. Hiding now requires a wardrobe
+to actually *exist*. There's a named regression test.
+
+**Verified in demo mode** — filters (All 18 / Mum's 14 / Dad's 11), add, empty
+name refused, toggle on/off, rename propagating to the chips, delete
+confirmation naming the count, and after deleting a 12-garment wardrobe **all 18
+garments survived** as unfiled with a notice. Everything-off leaves unfiled
+clothes reachable. `npm test` 2227 passing / 188 files, typecheck and lint clean.
 
 ### M3 — Tagging ⏳
 
