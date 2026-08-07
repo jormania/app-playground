@@ -15,6 +15,7 @@
 import { DEMO_GARMENTS, DEMO_OUTFITS, DEMO_WARDROBES } from '../models/demoData.ts'
 import type { Garment, Outfit } from './types.ts'
 import type { Wardrobe } from './wardrobes.ts'
+import { parseNotionId } from '../../shared/notionId.ts'
 import {
   CATEGORIES, COLOURS, MOODS, STYLES, VERDICTS, WARMTHS,
   coerceMany, coerceOne,
@@ -128,7 +129,18 @@ export class NotionClient {
 
   constructor(token: string, dbIds: DbIds = {}) {
     this.token = token
-    this.dbIds = dbIds
+    // Second line of defence. `loadConfig` already migrates stored values, and
+    // Settings normalises what's typed — but these ids get interpolated
+    // straight into a request path, so a full URL slipping through produces
+    // `databases/https://app.notion.com/...` and Notion answers "Invalid
+    // request URL", which tells you nothing about what's actually wrong.
+    // Normalising at the point of use means no future caller can reintroduce
+    // that, whatever it passes in.
+    this.dbIds = {
+      garments: parseNotionId(dbIds.garments) || dbIds.garments,
+      wardrobes: parseNotionId(dbIds.wardrobes) || dbIds.wardrobes,
+      outfits: parseNotionId(dbIds.outfits) || dbIds.outfits,
+    }
   }
 
   async _request({ path, method = 'POST', body, version, retries = MAX_RETRIES }: {
