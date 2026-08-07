@@ -227,8 +227,8 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
       <TagEditor tags={tags} onChange={setTags} disabled={saving} />
 
       {choices.length > 0 && (
-        <section className="fc-settings-group">
-          <p className="fc-settings-hint">Wardrobes</p>
+        <section className="fc-settings-group" style={{ marginTop: 24 }}>
+          <h3 className="fc-modal-heading" data-colour="purple">Wardrobes</h3>
           <div className="fc-chips">
             {choices.map((w) => {
               const on = wardrobeIds.includes(w.id)

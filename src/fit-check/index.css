@@ -1130,6 +1130,18 @@ button:not(:disabled):active {
   font-size: 1rem;
   margin: 0 0 4px;
 }
+.fc-modal-heading {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin: 0 0 12px;
+}
+
+.fc-modal-heading[data-colour="pink"] { color: var(--color-cat-tops); }
+.fc-modal-heading[data-colour="blue"] { color: var(--color-cat-bottoms); }
+.fc-modal-heading[data-colour="orange"] { color: var(--color-cat-outerwear); }
+.fc-modal-heading[data-colour="emerald"] { color: var(--color-cat-footwear); }
+.fc-modal-heading[data-colour="purple"] { color: var(--color-cat-accessories); }
 
 .fc-settings-hint {
   color: var(--color-muted);

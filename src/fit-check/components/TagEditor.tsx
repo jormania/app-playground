@@ -39,7 +39,7 @@ export default function TagEditor({
 
   return (
     <>
-      <TagRow label="What kind of thing is it?">
+      <TagRow label="What kind of thing is it?" colour="pink">
         {CATEGORIES.map((c) => (
           <Chip
             key={c}
@@ -51,7 +51,7 @@ export default function TagEditor({
         ))}
       </TagRow>
 
-      <TagRow label="How warm is it?">
+      <TagRow label="How warm is it?" colour="orange">
         {WARMTHS.map((w) => (
           <Chip
             key={w}
@@ -63,7 +63,7 @@ export default function TagEditor({
         ))}
       </TagRow>
 
-      <TagRow label="Colours">
+      <TagRow label="Colours" colour="blue">
         {COLOURS.map((c) => (
           <Chip
             key={c}
@@ -75,7 +75,7 @@ export default function TagEditor({
         ))}
       </TagRow>
 
-      <TagRow label="When would you wear it?">
+      <TagRow label="When would you wear it?" colour="emerald">
         {STYLES.map((s) => (
           <Chip
             key={s}
@@ -90,10 +90,10 @@ export default function TagEditor({
   )
 }
 
-function TagRow({ label, children }: { label: string; children: React.ReactNode }) {
+function TagRow({ label, colour, children }: { label: string; colour?: string; children: React.ReactNode }) {
   return (
     <section className="fc-tag-row">
-      <p className="fc-settings-hint">{label}</p>
+      <h3 className="fc-modal-heading" data-colour={colour}>{label}</h3>
       <div className="fc-chips">{children}</div>
     </section>
   )
