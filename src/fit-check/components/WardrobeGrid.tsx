@@ -136,7 +136,7 @@ export default function WardrobeGrid({
           </p>
         ) : (
           <p className="fc-empty">
-            Nothing here yet. Add a few things and they'll show up.
+            Nothing in here yet. Photograph a few things and they'll turn up.
           </p>
         )
       ) : (

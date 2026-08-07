@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Check, Loader2, RefreshCw } from 'lucide-react'
 import { Button, Field, SegmentedControl } from '../../ds'
 import { NotionClient } from '../lib/notionClient.ts'
+import { parseNotionId } from '../../shared/notionId.ts'
 import WardrobeManager from './WardrobeManager.tsx'
 import type { FitCheckConfig } from '../lib/config.ts'
 import type { Wardrobe } from '../lib/wardrobes.ts'
@@ -38,16 +39,45 @@ interface Props {
  * own specific message ("API token is invalid.") instead of the limiter's.
  *
  * `current` guards against a no-op commit (tabbing through without editing).
+ *
+ * `transform` lets the database fields accept a pasted Notion URL and store the
+ * bare id — see `commitId` below.
  */
-function commitOnBlur(current: string, onCommit: (value: string) => void) {
+function commitOnBlur(
+  current: string,
+  onCommit: (value: string) => void,
+  transform: (raw: string) => string = (v) => v,
+) {
   return {
     onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
-      if (e.target.value !== current) onCommit(e.target.value)
+      const value = transform(e.target.value)
+      // Reflect the normalised value back into the (uncontrolled) input, so
+      // pasting a URL visibly resolves to the id rather than leaving the box
+      // showing something different from what was stored.
+      if (e.target.value !== value) e.target.value = value
+      if (value !== current) onCommit(value)
     },
     onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') e.currentTarget.blur()
     },
   }
+}
+
+/**
+ * Database fields accept whatever Notion's "Copy link" produces, not just a
+ * bare id — that's what people actually paste, and asking for "the ID" means
+ * explaining where to find a 32-char hex string inside a URL.
+ *
+ * An unrecognisable value is kept verbatim rather than silently blanked: if
+ * someone pastes something odd, showing it back (and letting "Test connection"
+ * fail with a real message) beats wiping the field and leaving them guessing.
+ */
+function commitId(current: string, onCommit: (value: string) => void) {
+  return commitOnBlur(current, onCommit, (raw) => {
+    const trimmed = raw.trim()
+    if (!trimmed) return ''
+    return parseNotionId(trimmed) || trimmed
+  })
 }
 
 /**
@@ -104,7 +134,10 @@ export default function Settings({
           nothing jumps as it fades), and putting it last means that reserved
           space sits at the right-hand edge instead of indenting the note. */}
       <p className="fc-autosave" role="status">
-        <span>Everything here saves as you type.</span>
+        {/* Not "saves as you type" any more: since M5.5 the token/database
+            fields commit when you leave them, so that wording was actively
+            wrong for the exact fields people are most anxious about. */}
+        <span>Everything here saves itself. There's no Save button.</span>
         <span
           className="fc-autosave-flash"
           data-visible={justSaved}
@@ -161,20 +194,21 @@ export default function Settings({
             hint="Leave empty to explore with the demo wardrobe."
           />
           <Field
-            label="Garments database ID"
+            label="Garments database"
             defaultValue={config.garmentsDbId}
-            {...commitOnBlur(config.garmentsDbId, (v) => onChange({ garmentsDbId: v }))}
+            {...commitId(config.garmentsDbId, (v) => onChange({ garmentsDbId: v }))}
+            hint="Paste the Notion link or the ID — either works."
           />
           <Field
-            label="Wardrobes database ID"
+            label="Wardrobes database"
             defaultValue={config.wardrobesDbId}
-            {...commitOnBlur(config.wardrobesDbId, (v) => onChange({ wardrobesDbId: v }))}
+            {...commitId(config.wardrobesDbId, (v) => onChange({ wardrobesDbId: v }))}
             hint="Without this, your wardrobes can't be saved or shared between devices."
           />
           <Field
-            label="Outfits database ID"
+            label="Outfits database"
             defaultValue={config.outfitsDbId}
-            {...commitOnBlur(config.outfitsDbId, (v) => onChange({ outfitsDbId: v }))}
+            {...commitId(config.outfitsDbId, (v) => onChange({ outfitsDbId: v }))}
           />
         </div>
         <div className="fc-actions" style={{ marginTop: 12 }}>

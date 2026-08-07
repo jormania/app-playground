@@ -262,6 +262,36 @@ body {
   background-size: cover;
   background-position: center;
   overflow: hidden;
+  /* Anchors the Quick Swap button. */
+  position: relative;
+}
+
+/* Quick Swap. Sits over the piece's thumbnail, same treatment as the wardrobe
+   tile's favourite star: its own translucent dark chip so the icon stays
+   legible over any photo, in either theme. Only rendered when the piece
+   actually has an alternative. */
+.fc-swap {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 999px;
+  background: rgba(20, 16, 24, 0.58);
+  color: #fff;
+  cursor: pointer;
+  padding: 0;
+}
+
+.fc-swap:hover { background: rgba(20, 16, 24, 0.78); }
+
+.fc-swap:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
 .fc-outfit-name {

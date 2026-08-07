@@ -18,7 +18,7 @@ export default function History({ outfits, garments, wardrobes, onToggleFavourit
   if (outfits.length === 0) {
     return (
       <p className="fc-empty">
-        Once you wear or skip something on Today, it shows up here.
+        Nothing worn yet. Wear or skip something on Today and it'll appear here.
       </p>
     )
   }

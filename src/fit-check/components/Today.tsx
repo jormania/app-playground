@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Loader2, X } from 'lucide-react'
+import { Check, Loader2, Repeat2, X } from 'lucide-react'
 import type { CurrentWeather } from '../../shared/weather.ts'
 import { Button } from '../../ds'
-import { recommend, type OutfitSuggestion, type RecommendContext } from '../lib/recommend.ts'
+import {
+  recommend, alternativesFor, swapPiece,
+  type OutfitSuggestion, type RecommendContext,
+} from '../lib/recommend.ts'
 import { MOODS, type Mood, type Verdict } from '../lib/vocabulary.ts'
 import { visibleGarments, type Wardrobe } from '../lib/wardrobes.ts'
 import { useGarmentPhoto } from '../lib/useGarmentPhoto.ts'
@@ -37,17 +40,35 @@ export default function Today({
     [garments, wardrobes, filterId],
   )
 
+  const ctx: RecommendContext = {
+    temp: weather?.temp ?? null,
+    condition: weather?.condition ?? 'clear',
+    wind: weather?.wind ?? 0,
+    mood,
+    today: todayIso(),
+  }
+
   function buildOutfits(): OutfitSuggestion[] {
-    const ctx: RecommendContext = {
-      temp: weather?.temp ?? null,
-      condition: weather?.condition ?? 'clear',
-      wind: weather?.wind ?? 0,
-      mood,
-      today: todayIso(),
-    }
     // Reads the CURRENT garments/wardrobes/filterId at call time — see the
     // effect below for why that's fine even though they're not in its deps.
     return recommend(visibleGarments(garments, wardrobes, filterId), ctx)
+  }
+
+  /**
+   * Quick Swap: keep this outfit, change one piece. Rewrites only the card that
+   * changed, leaving the other two suggestions alone — the point is "these
+   * shoes, not those", not "give me three new outfits".
+   */
+  function handleSwap(slot: number, garmentId: string) {
+    setOutfits((prev) => prev.map((o) => (
+      o.slot === slot ? swapPiece(o, garmentId, available, ctx) : o
+    )))
+  }
+
+  /** Is there anything else in the wardrobe this piece could become? The ring
+   *  always contains the piece itself, so "more than one" means "yes". */
+  function swappable(outfit: OutfitSuggestion, garmentId: string): boolean {
+    return alternativesFor(outfit, garmentId, available, ctx).length > 1
   }
 
   // Pinned for the session, not a plain useMemo over `available`. Marking a
@@ -102,18 +123,22 @@ export default function Today({
       {outfits.length === 0 ? (
         <p className="fc-empty">
           {available.length === 0
-            ? "Add a few things to your wardrobe and I'll put outfits together."
-            : 'Not quite enough to build an outfit yet — a top, something to wear with it, and you’re away.'}
+            ? "Your wardrobe is empty, so there's nothing to suggest yet. Photograph a few things first."
+            : 'Almost there — one top and something to wear with it, and I can start putting outfits together.'}
         </p>
       ) : (
         <div className="fc-outfits">
           {outfits.map((outfit) => (
             <OutfitCard
-              key={outfit.id}
+              // Keyed on slot, not id: swapping a piece changes the id, and
+              // keying on that would remount the card and flash every photo.
+              key={outfit.slot}
               outfit={outfit}
               verdict={verdicts[outfit.id]}
               recording={recordingIds.has(outfit.id)}
               onRecord={(v) => onRecordVerdict(outfit, v)}
+              swappable={swappable}
+              onSwap={(garmentId) => handleSwap(outfit.slot, garmentId)}
             />
           ))}
         </div>
@@ -123,17 +148,29 @@ export default function Today({
 }
 
 function OutfitCard({
-  outfit, verdict, recording, onRecord,
+  outfit, verdict, recording, onRecord, swappable, onSwap,
 }: {
   outfit: OutfitSuggestion
   verdict: Verdict | undefined
   recording: boolean
   onRecord: (verdict: Verdict) => void
+  /** Which pieces of THIS outfit have somewhere to swap to. */
+  swappable: (outfit: OutfitSuggestion, garmentId: string) => boolean
+  onSwap: (garmentId: string) => void
 }) {
+  // Once a verdict is in, the card is settled — swapping it would leave the
+  // "Worn today" label describing an outfit that is no longer on screen.
+  const canSwap = !verdict && !recording
   return (
     <article className="fc-outfit">
       <div className="fc-outfit-row">
-        {outfit.garments.map((g) => <OutfitPiece key={g.id} garment={g} />)}
+        {outfit.garments.map((g) => (
+          <OutfitPiece
+            key={g.id}
+            garment={g}
+            onSwap={canSwap && swappable(outfit, g.id) ? () => onSwap(g.id) : undefined}
+          />
+        ))}
       </div>
       <p className="fc-outfit-why">{outfit.why}</p>
 
@@ -157,12 +194,28 @@ function OutfitCard({
   )
 }
 
-function OutfitPiece({ garment }: { garment: Garment }) {
+function OutfitPiece({ garment, onSwap }: { garment: Garment; onSwap?: () => void }) {
   const photo = useGarmentPhoto(garment)
   return (
     <div className="fc-outfit-piece">
-      <span className="fc-outfit-thumb" style={thumbStyle(garment.thumb)} aria-hidden="true">
+      {/* Not aria-hidden, unlike the History/Wardrobe thumbs this mirrors: it
+          now contains a real button, and hiding the container would hide that
+          button from screen readers entirely. The image inside carries alt=""
+          so the decorative part is still ignored. */}
+      <span className="fc-outfit-thumb" style={thumbStyle(garment.thumb)}>
         {photo && <img className="fc-tile-photo" src={photo} alt="" loading="lazy" decoding="async" />}
+        {/* Only rendered when there's actually something else to wear — a
+            swap button that does nothing is worse than no button. */}
+        {onSwap && (
+          <button
+            type="button"
+            className="fc-swap"
+            aria-label={`Swap ${garment.name} for something else`}
+            onClick={onSwap}
+          >
+            <Repeat2 size={13} aria-hidden="true" />
+          </button>
+        )}
       </span>
       <span className="fc-outfit-name">{garment.name}</span>
     </div>

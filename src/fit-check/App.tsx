@@ -219,6 +219,10 @@ export default function App() {
    * personalisation; a skip is not a permanent mark against anything.
    */
   const recordVerdict = useCallback(async (outfit: OutfitSuggestion, verdict: Verdict) => {
+    // The buttons disable via `recordingIds`, but that only takes effect on the
+    // next render — two taps inside one frame would both get through and write
+    // two history rows for one outfit.
+    if (recordingIds.has(outfit.id) || verdicts[outfit.id]) return
     setRecordingIds((prev) => new Set(prev).add(outfit.id))
     setError('')
     try {
@@ -247,8 +251,17 @@ export default function App() {
           garmentIds.includes(g.id) ? { ...g, wearCount: g.wearCount + 1, lastWorn: date } : g
         )))
         if (!demoMode) {
-          for (const g of outfit.garments) {
-            await client().updateGarment(g.id, { wearCount: g.wearCount + 1, lastWorn: date })
+          for (const stale of outfit.garments) {
+            // Count up from the CURRENT garment, not from `outfit.garments` —
+            // that's a snapshot pinned when the suggestions were built. Two
+            // cards can share a pair of shoes; wearing both would otherwise
+            // write `snapshot + 1` twice, so Notion ends up one behind the
+            // local count and stays wrong from then on.
+            const current = garments.find((g) => g.id === stale.id) ?? stale
+            await client().updateGarment(stale.id, {
+              wearCount: current.wearCount + 1,
+              lastWorn: date,
+            })
           }
         }
       }
@@ -263,7 +276,7 @@ export default function App() {
         return next
       })
     }
-  }, [mood, weather, resolvedFilterId, canPersistOutfits, demoMode, client])
+  }, [mood, weather, resolvedFilterId, canPersistOutfits, demoMode, client, garments, recordingIds, verdicts])
 
   const { title, subtitle } = adding && tab === 'wardrobe'
     ? { title: 'Add something', subtitle: 'Photograph it and it joins your wardrobe.' }
@@ -282,7 +295,7 @@ export default function App() {
         {demoMode && tab !== 'settings' && (
           <p className="fc-demo-banner" role="status">
             <span aria-hidden="true">👀</span>
-            You're looking at a demo wardrobe — nothing here is yours yet.
+            This is a demo wardrobe. Nice clothes, but they're not yours yet.
           </p>
         )}
 
