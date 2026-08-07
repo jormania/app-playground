@@ -63,15 +63,7 @@ export function toNotionProps(thread) {
 }
 
 // Pull a Notion database/page id out of whatever a user pastes: a full URL, a
-// bare 32-char id, or a dashed UUID. Returns the compact 32-char id, or ''.
-// (Same parser shape as Wanderlist / Journal of Delights.)
-export function parseNotionId(input) {
-  if (!input) return ''
-  const s = String(input).trim()
-  const uuid = s.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)
-  if (uuid) return uuid[0].replace(/-/g, '').toLowerCase()
-  const path = s.split(/[?#]/)[0]
-  if (/^[0-9a-f]{32}$/i.test(path)) return path.toLowerCase()
-  const m = path.match(/[-/]([0-9a-f]{32})\/?$/i)
-  return m ? m[1].toLowerCase() : ''
-}
+// bare 32-char id, or a dashed UUID. Promoted to src/shared/notionId.ts when
+// Fit Check became the fourth app to need it; this stays as the import path
+// Loom's own modules already use, so nothing here changed behaviourally.
+export { parseNotionId } from '../../shared/notionId.ts'
