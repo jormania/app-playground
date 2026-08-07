@@ -1,4 +1,4 @@
-.app {
+:global(:root) {
   --surface-bg: #ffffff;
   --text-base: #121213;
   --text-subtle: #787c7e;
@@ -6,6 +6,24 @@
   --border-subtle: #d3d6da;
   --border-base: #878a8c;
 
+  /* Map to DS tokens for Modals */
+  --color-surface: var(--surface-bg);
+  --color-ink: var(--text-base);
+  --color-border: var(--border-subtle);
+  --color-surface-2: var(--surface-float);
+  --color-muted: var(--text-subtle);
+}
+
+:global(:root[data-theme="dark"]) {
+  --surface-bg: #121213;
+  --text-base: #ffffff;
+  --text-subtle: #818384;
+  --surface-float: #818384;
+  --border-subtle: #3a3a3c;
+  --border-base: #565758;
+}
+
+.app {
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -15,15 +33,7 @@
   background: var(--surface-bg);
   color: var(--text-base);
   font-family: var(--font-sans, "Inter", system-ui, sans-serif);
-}
-
-:global([data-theme="dark"]) .app {
-  --surface-bg: #121213;
-  --text-base: #ffffff;
-  --text-subtle: #818384;
-  --surface-float: #818384;
-  --border-subtle: #3a3a3c;
-  --border-base: #565758;
+  overflow: hidden;
 }
 
 .header {

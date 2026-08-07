@@ -125,6 +125,22 @@ export function useGameState(difficulty, dictionary, urlSeed = null) {
       // Normal flow (no seed):
       // Only resume if it's the same day. 
       // If it's a new day, the old game is discarded (reset at midnight).
+      // If the old game was still in progress and they had guessed at least once, count it as a loss.
+      if (stored && stored.date !== today) {
+        if (stored.status === 'playing' && stored.guesses.length > 0) {
+          // Record a loss for the abandoned game
+          const previousStats = JSON.parse(localStorage.getItem(STATS_KEY)) || { dictionaries: {} }
+          const prevDict = stored.dictionary || 'standard'
+          if (!previousStats.dictionaries[prevDict]) {
+            previousStats.dictionaries[prevDict] = { played: 0, wins: 0, currentStreak: 0, maxStreak: 0, distribution: [0,0,0,0,0,0] }
+          }
+          const s = previousStats.dictionaries[prevDict]
+          s.played += 1
+          s.currentStreak = 0
+          localStorage.setItem(STATS_KEY, JSON.stringify(previousStats))
+        }
+      }
+
       if (stored && stored.date === today) {
         // If they changed settings but haven't started playing, apply them.
         // Otherwise, keep the locked settings for the in-progress game.
@@ -179,11 +195,15 @@ export function useGameState(difficulty, dictionary, urlSeed = null) {
 
   const forfeitGame = () => {
     if (gameState.status !== 'playing') return
-    setGameState(prev => ({
-      ...prev,
-      status: 'lost'
-    }))
-    updateStats(false, 6, gameState.dictionary)
+    const newState = { ...gameState, status: 'lost' }
+    setGameState(newState)
+    localStorage.setItem(GAME_KEY, JSON.stringify(newState))
+    updateStats(false, gameState.guesses.length, gameState.dictionary)
+  }
+
+  const resetStats = () => {
+    localStorage.removeItem(STATS_KEY)
+    setStats({ ...DEFAULT_STATS })
   }
 
   const startNextGame = (currentDifficulty, currentDictionary) => {

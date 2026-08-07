@@ -25,5 +25,6 @@ Because the repo is at its Vercel serverless limit, Lexi5 is 100% client-side. T
 - **Smart Keyboard**: An optional setting that adds positional memory (small dots) to yellow keys, reminding you which positions you've already tried a letter in.
 - **High-Fidelity Social Sharing**: Instead of simple text emojis, the "Share" button utilizes `html2canvas` and the Web Share API to generate and share a clean, beautiful image of your game board.
 - **Animations & Haptics**: Full NYT-style animations including tile pops, invalid word shake, and a staggered victory dance. Includes mobile `navigator.vibrate` haptics and a confetti celebration upon beating the Crown word.
-- **Hard Mode**: Revealed hints must be used in subsequent guesses.
+- **Hard Mode**: Revealed hints must be used in subsequent guesses (and green letters must remain in their exact positions).
+- **Statistics Management**: In-progress games are automatically forfeited if left unfinished past midnight, and users have the option to securely reset their statistics via a destructive confirmation modal.
 - **PWA**: Fully installable as an offline-first app, registered in The Cabinet.

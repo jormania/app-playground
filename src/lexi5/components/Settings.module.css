@@ -76,17 +76,16 @@
   justify-content: space-between;
   padding: 16px;
   margin: 16px 0;
-  background-color: var(--surface-bg, #1a1a1b);
-  border: 1px solid var(--border-subtle, #3a3a3c);
+  background-color: var(--surface-float);
   border-radius: 8px;
   text-decoration: none;
-  color: var(--text-base, #ffffff);
+  color: var(--text-base);
   font-weight: 500;
-  transition: background-color 0.2s;
+  transition: opacity 0.2s;
 }
 
 .guideLink:hover {
-  background-color: var(--surface-float, #272729);
+  opacity: 0.8;
 }
 
 .advanced {

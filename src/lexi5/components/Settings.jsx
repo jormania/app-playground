@@ -1,12 +1,13 @@
 import React, { useState } from 'react'
-import { Modal, SettingsToggle, Button, Field } from '../../ds'
+import { Modal, SettingsToggle, Button, Field, SegmentedControl } from '../../ds'
 import { ChevronRight } from 'lucide-react'
 import styles from './Settings.module.css'
 
-export function Settings({ open, onClose, config, updateConfig }) {
+export function Settings({ open, onClose, config, updateConfig, resetStats }) {
   const [showCurate, setShowCurate] = useState(false)
   const [apiKey, setApiKey] = useState('')
   const [curating, setCurating] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   const handleCurate = async () => {
     if (!apiKey) return
@@ -87,19 +88,18 @@ export function Settings({ open, onClose, config, updateConfig }) {
           onChange={(e) => updateConfig({ smartKeyboard: e.target.checked })}
         />
         
-        <SettingsToggle
-          label="Dark Theme"
-          description="Force dark mode instead of following system"
-          checked={config.theme === 'dark'}
-          onChange={(e) => updateConfig({ theme: e.target.checked ? 'dark' : (config.theme === 'light' ? 'light' : null) })}
-        />
-        
-        <SettingsToggle
-          label="Light Theme"
-          description="Force light mode instead of following system"
-          checked={config.theme === 'light'}
-          onChange={(e) => updateConfig({ theme: e.target.checked ? 'light' : (config.theme === 'dark' ? 'dark' : null) })}
-        />
+        <div className={styles.dictionarySection}>
+          <label className={styles.dictionaryLabel}>Theme</label>
+          <SegmentedControl
+            options={[
+              { label: 'System', value: 'system' },
+              { label: 'Light', value: 'light' },
+              { label: 'Dark', value: 'dark' },
+            ]}
+            value={config.theme || 'system'}
+            onChange={(val) => updateConfig({ theme: val === 'system' ? null : val })}
+          />
+        </div>
       </div>
 
       <a href="/lexi5-guide.html" target="_blank" rel="noopener noreferrer" className={styles.guideLink}>
@@ -118,20 +118,43 @@ export function Settings({ open, onClose, config, updateConfig }) {
               Provide an Anthropic API key to re-curate the daily answers list using Claude 3 Haiku. 
               (Note: For security, keys are never saved to the server).
             </p>
-            <Field label="API Key">
-              <input 
-                type="password" 
-                value={apiKey} 
-                onChange={e => setApiKey(e.target.value)} 
-                placeholder="sk-ant-..."
-              />
-            </Field>
+            <Field 
+              label="API Key"
+              type="password" 
+              value={apiKey} 
+              onChange={e => setApiKey(e.target.value)} 
+              placeholder="sk-ant-..."
+            />
             <Button onClick={handleCurate} disabled={curating || !apiKey}>
               {curating ? 'Curating...' : 'Start Curation'}
             </Button>
           </div>
         )}
+        
+        <Button variant="ghost" onClick={() => setShowResetConfirm(true)} style={{color: 'var(--red, #f44336)'}}>
+          Reset Statistics
+        </Button>
       </div>
+
+      <Modal open={showResetConfirm} onClose={() => setShowResetConfirm(false)} title="Reset Statistics">
+        <p style={{textAlign: 'center', marginBottom: '24px', fontSize: '1.1rem'}}>
+          Are you sure you want to permanently erase all your gameplay statistics?
+          <br />
+          <span style={{color: 'var(--text-subtle)', fontSize: '0.9rem'}}>This action cannot be undone.</span>
+        </p>
+        <div style={{display: 'flex', gap: '12px', justifyContent: 'center'}}>
+          <Button variant="ghost" onClick={() => setShowResetConfirm(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" style={{backgroundColor: 'var(--red, #f44336)', borderColor: 'var(--red, #f44336)'}} onClick={() => {
+            resetStats()
+            setShowResetConfirm(false)
+            alert('Statistics reset.')
+          }}>
+            Confirm Reset
+          </Button>
+        </div>
+      </Modal>
     </Modal>
   )
 }

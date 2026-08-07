@@ -17,7 +17,7 @@ export function App() {
   // Extract seed from URL if present
   const [urlSeed] = useState(() => new URLSearchParams(window.location.search).get('seed'))
   
-  const { gameState, stats, addGuess, startNextGame, forfeitGame } = useGameState(config.difficulty, config.dictionary, urlSeed)
+  const { gameState, stats, addGuess, startNextGame, forfeitGame, resetStats } = useGameState(config.difficulty, config.dictionary, urlSeed)
   
   const [word, setWord] = useState(() => getWord(gameState.dictionary, gameState.date, gameState.iteration))
   
@@ -115,30 +115,51 @@ export function App() {
     if (gameState.difficulty === 'hard' && gameState.guesses.length > 0) {
       const lastGuess = gameState.guesses[gameState.guesses.length - 1]
       
-      // Check greens
-      for (let i = 0; i < 5; i++) {
-        if (lastGuess[i] === word[i] && currentGuess[i] !== word[i]) {
-          showToast(`Must use ${lastGuess[i].toUpperCase()} in position ${i + 1}`)
-          hapticError()
-          setInvalidGuess(true)
-          setTimeout(() => setInvalidGuess(false), 600)
-          return
-        }
-      }
-      
-      // Check yellows (simplified: must contain previously discovered letters)
-      // A full wordle hard mode is slightly more complex, but this covers the basics
+      // Calculate exact hints for the last guess to enforce rules
       const wordLetters = word.split('')
-      const requiredLetters = []
+      const lastGuessLetters = lastGuess.split('')
+      
+      const greens = Array(5).fill(false)
+      const targetCounts = {}
+      for (const char of wordLetters) {
+        targetCounts[char] = (targetCounts[char] || 0) + 1
+      }
+      
+      // Step 1: Enforce greens
       for (let i = 0; i < 5; i++) {
-        if (lastGuess[i] !== word[i] && wordLetters.includes(lastGuess[i])) {
-          requiredLetters.push(lastGuess[i])
+        if (lastGuess[i] === word[i]) {
+          if (currentGuess[i] !== lastGuess[i]) {
+            showToast(`Must use ${lastGuess[i].toUpperCase()} in position ${i + 1}`)
+            hapticError()
+            setInvalidGuess(true)
+            setTimeout(() => setInvalidGuess(false), 600)
+            return
+          }
+          greens[i] = true
+          targetCounts[lastGuess[i]] -= 1
         }
       }
       
-      for (const req of requiredLetters) {
-        if (!currentGuess.includes(req)) {
-          showToast(`Guess must contain ${req.toUpperCase()}`)
+      // Step 2: Calculate yellows required
+      const requiredYellows = {}
+      for (let i = 0; i < 5; i++) {
+        if (!greens[i] && targetCounts[lastGuess[i]] > 0) {
+          requiredYellows[lastGuess[i]] = (requiredYellows[lastGuess[i]] || 0) + 1
+          targetCounts[lastGuess[i]] -= 1
+        }
+      }
+      
+      // Step 3: Enforce yellows
+      const currentCounts = {}
+      for (let i = 0; i < 5; i++) {
+        if (currentGuess[i] !== word[i]) { // only non-green count towards satisfying yellows
+          currentCounts[currentGuess[i]] = (currentCounts[currentGuess[i]] || 0) + 1
+        }
+      }
+      
+      for (const [char, count] of Object.entries(requiredYellows)) {
+        if ((currentCounts[char] || 0) < count) {
+          showToast(`Guess must contain ${char.toUpperCase()}`)
           hapticError()
           setInvalidGuess(true)
           setTimeout(() => setInvalidGuess(false), 600)
@@ -223,7 +244,8 @@ export function App() {
         open={showSettings} 
         onClose={() => setShowSettings(false)} 
         config={config} 
-        updateConfig={updateConfig} 
+        updateConfig={updateConfig}
+        resetStats={resetStats}
       />
       
       <Stats 
