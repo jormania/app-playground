@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lexi5 — Guide</title>
+<meta name="description" content="How to play Lexi5, what the different dictionaries mean, and how statistics work." />
+<link rel="icon" type="image/svg+xml" href="/lexi5-icon-192.png" />
+<meta name="theme-color" content="#538d4e" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #eee8d5; --bg2: #e6dfcb; --surface: #fdf6e3; --surface2: #eee8d5;
+    --border: #d5ccb7; --border2: #93a1a1;
+    --ink: #586e75; --muted: #657b83; --faint: #93a1a1;
+    --accent: #538d4e; --accent2: #4a7d45; --on-accent: #fffafd;
+    --success: #859900;
+    --display: 'Fraunces', Georgia, serif;
+    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121213; --bg2: #1a1a1b; --surface: #272729; --surface2: #3a3a3c;
+      --border: #3a3a3c; --border2: #565f89;
+      --ink: #d7dadc; --muted: #818384; --faint: #565f89;
+      --accent: #538d4e; --accent2: #4a7d45; --on-accent: #ffffff;
+      --success: #538d4e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    line-height: 1.65;
+    color: var(--ink);
+    background: var(--bg2);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 42rem; margin: 0 auto; padding: 2.75rem 1.25rem 5rem; }
+
+  header.brand { text-align: center; margin-bottom: 2.25rem; }
+  .mark { width: 64px; height: 64px; margin: 0 auto 0.75rem; display: block; border-radius: 12px; }
+  h1 {
+    font-family: var(--display); font-weight: 600;
+    font-size: clamp(2.2rem, 9vw, 3rem); letter-spacing: -0.01em;
+    margin: 0; color: var(--accent);
+  }
+  .tagline { font-family: var(--display); font-style: italic; font-weight: 500; font-size: 1.1rem; color: var(--muted); margin: 0.4rem 0 0; }
+
+  h2 {
+    font-family: var(--display); font-weight: 600;
+    font-size: 1.5rem; margin: 2.5rem 0 0.7rem; color: var(--ink);
+  }
+  h3 { font-family: var(--display); font-weight: 600; font-size: 1.1rem; margin: 1.4rem 0 0.4rem; color: var(--ink); }
+  p { margin: 0.6rem 0; color: var(--muted); }
+  p.lede { font-size: 1.08rem; color: var(--ink); }
+  ul, ol { margin: 0.6rem 0; padding-left: 1.3rem; color: var(--muted); }
+  li { margin: 0.45rem 0; }
+  li b, li strong, p strong { color: var(--ink); font-weight: 600; }
+  a { color: var(--accent2); }
+  
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 1rem 1.25rem; margin: 1rem 0;
+  }
+  
+  .tile-demo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    font-weight: bold;
+    color: white;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  .tile-correct { background-color: #538d4e; border: 1px solid #538d4e; }
+  .tile-present { background-color: #b59f3b; border: 1px solid #b59f3b; }
+  .tile-absent { background-color: #3a3a3c; border: 1px solid #3a3a3c; }
+
+  .rule { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0 0; }
+  .muted { color: var(--faint); font-size: 0.9rem; }
+  footer { margin-top: 3rem; text-align: center; }
+  .backlink {
+    display: inline-block; margin-top: 0.5rem; padding: 0.7rem 1.4rem;
+    background: var(--accent); color: var(--on-accent); border-radius: 999px;
+    text-decoration: none; font-weight: 700; font-family: var(--display);
+  }
+  .backlink:hover { background: var(--accent2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="brand">
+    <img class="mark" src="/lexi5-icon-192.png" alt="" />
+    <h1>Lexi5</h1>
+    <p class="tagline">five letters, six chances.</p>
+  </header>
+
+  <p class="lede">
+    Lexi5 is a daily word puzzle. You have six tries to guess a hidden 5-letter word. 
+    After each guess, the colour of the tiles will change to show how close your guess was to the word.
+  </p>
+
+  <h2>How to play</h2>
+  <div class="card">
+    <p><span class="tile-demo tile-correct">W</span> <strong>Green</strong>: The letter is in the word and in the correct spot.</p>
+    <p><span class="tile-demo tile-present">E</span> <strong>Yellow</strong>: The letter is in the word but in the wrong spot.</p>
+    <p><span class="tile-demo tile-absent">A</span> <strong>Gray</strong>: The letter is not in the word in any spot.</p>
+  </div>
+
+  <h2>Dictionaries & Difficulty</h2>
+  <p>
+    Lexi5 comes with three different dictionary tiers that drastically change the difficulty and vocabulary pool. 
+    You can switch between them in the <b>Settings</b> menu.
+  </p>
+  <ul>
+    <li><b>Standard</b>: Uses the official curated list of ~2,300 common English words. If you want the traditional experience, stick here.</li>
+    <li><b>Expanded</b>: Uses the Stanford GraphBase list of ~5,700 words. You'll encounter more obscure vocabulary and plural nouns.</li>
+    <li><b>Expert</b>: Uses the massive list of ~13,100 words originally allowed as guesses. This mode is extremely challenging and frequently results in highly unusual answers.</li>
+  </ul>
+  
+  <p>Lexi5 automatically fetches the dictionary definition of the winning word and displays it on the stats screen — perfect for when you finally guess an obscure word in Expert mode!</p>
+
+  <h3>Hard Mode</h3>
+  <p>
+    Turning on <b>Hard Mode</b> forces you to use any revealed hints in subsequent guesses. 
+    For example, if you find a green 'A' in the second spot, every following guess <em>must</em> have an 'A' in the second spot.
+    It stops you from throwing out a completely unrelated word just to eliminate vowels.
+  </p>
+
+  <h2>Stats & Unlimited Play</h2>
+  <p>
+    Your statistics (games played, win percentage, and guess distribution) are tracked separately for each dictionary. 
+    A 100% win rate on Standard won't be ruined if you experiment with Expert mode!
+  </p>
+  <p>
+    Unlike the original game, once you finish the daily word, you can tap <b>Play Again</b> to keep going. 
+    Lexi5 deterministically creates a new word for every game you play in a day, meaning you can play infinitely without ever running out. 
+    You can also use the <b>Share</b> button to send a specific "seed link" to a friend so they can play the exact same grid you just solved.
+  </p>
+
+  <hr class="rule" />
+
+  <footer>
+    <a class="backlink" href="/lexi5-react.html">Open Lexi5 →</a>
+  </footer>
+</div>
+</body>
+</html>

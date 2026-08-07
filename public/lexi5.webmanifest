@@ -1,0 +1,17 @@
+{
+  "name": "Lexi5",
+  "short_name": "Lexi5",
+  "description": "A daily 5-letter word challenge.",
+  "id": "/lexi5-react.html",
+  "start_url": "/lexi5-react.html",
+  "scope": "/lexi5-react.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#120d18",
+  "theme_color": "#6366f1",
+  "icons": [
+    { "src": "/lexi5-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/lexi5-icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/lexi5-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

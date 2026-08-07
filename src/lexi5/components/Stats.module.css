@@ -1,0 +1,170 @@
+.statsContainer {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.statBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.statNum {
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.distTitle {
+  font-size: 1rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 24px;
+}
+
+.distRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.distNum {
+  font-weight: bold;
+  width: 12px;
+}
+
+.distBar {
+  background-color: var(--surface-float);
+  color: var(--text-base);
+  padding: 2px 8px;
+  font-size: 0.875rem;
+  font-weight: bold;
+  display: flex;
+  justify-content: flex-end;
+  min-width: fit-content;
+  animation: growBar 0.8s ease-out forwards;
+  transform-origin: left;
+}
+
+@keyframes growBar {
+  0% { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+
+.distBar.hasData {
+  background-color: #538d4e;
+  color: #fff;
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.wordReveal {
+  font-size: 1.25rem;
+}
+
+.definition {
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  text-align: center;
+  max-width: 80%;
+  margin: 8px 0;
+}
+
+/* Hidden Share Card for html2canvas */
+.shareCard {
+  width: 400px;
+  padding: 32px;
+  background-color: #121213;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.shareHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  width: 100%;
+}
+
+.shareTitle {
+  font-size: 2rem;
+  font-family: "Cinzel", serif;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.shareTitle span {
+  font-size: 1rem;
+  font-family: var(--font-sans);
+  color: #818384;
+  margin-left: 8px;
+}
+
+.shareAttempt {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.shareGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shareRow {
+  display: flex;
+  gap: 8px;
+}
+
+.shareTile {
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+}
+
+.shareCorrect {
+  background-color: #538d4e;
+}
+
+.sharePresent {
+  background-color: #b59f3b;
+}
+
+.shareAbsent {
+  background-color: #3a3a3c;
+}
+
+.shareDef {
+  font-size: 1rem;
+  color: #d7dadc;
+  text-align: center;
+  border-top: 1px solid #3a3a3c;
+  padding-top: 16px;
+  width: 100%;
+}

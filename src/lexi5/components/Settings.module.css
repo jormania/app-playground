@@ -1,0 +1,117 @@
+.settingsList {
+  display: flex;
+  flex-direction: column;
+}
+
+.dictionarySection {
+  padding: 0 16px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dictionaryLabel {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-base);
+}
+
+.dictionaryDesc {
+  font-size: 0.85rem;
+  color: var(--text-subtle);
+  line-height: 1.4;
+}
+
+.dictionaryDesc p {
+  margin: 0 0 6px 0;
+}
+
+.dictionaryDesc ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.dictionaryDesc li {
+  margin-bottom: 4px;
+}
+
+.selectWrapper {
+  position: relative;
+  display: flex;
+}
+
+.dropdown {
+  flex: 1;
+  appearance: none;
+  background-color: var(--surface-bg, #1a1a1b);
+  border: 1px solid var(--border-subtle, #3a3a3c);
+  color: var(--text-base, #ffffff);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.dropdown:focus {
+  border-color: var(--accent, #538d4e);
+}
+
+.selectWrapper::after {
+  content: "▼";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 0.7rem;
+  color: var(--text-subtle);
+}
+
+.guideLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  margin: 16px 0;
+  background-color: var(--surface-bg, #1a1a1b);
+  border: 1px solid var(--border-subtle, #3a3a3c);
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--text-base, #ffffff);
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.guideLink:hover {
+  background-color: var(--surface-float, #272729);
+}
+
+.advanced {
+  margin-top: 24px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.curateCard {
+  margin-top: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: var(--surface-bg);
+  border: 1px solid var(--border-subtle, #3a3a3c);
+  border-radius: 8px;
+}
+
+.curateDesc {
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  margin: 0;
+  line-height: 1.4;
+}
