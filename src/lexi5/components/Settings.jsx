@@ -1,5 +1,10 @@
 import React, { useState } from 'react'
-import { Modal, SettingsToggle, Button, Field, SegmentedControl } from '../../ds'
+import { SettingsToggle } from '../../ds'
+import { Button } from '../../ds/components/Button'
+import { Modal } from '../../ds/components/Modal'
+import { ConfirmModal } from '../../ds/components/Dialogs'
+import { Field } from '../../ds/components/Field'
+import { SegmentedControl } from '../../ds'
 import { ChevronRight } from 'lucide-react'
 import styles from './Settings.module.css'
 
@@ -18,6 +23,7 @@ export function Settings({ open, onClose, config, updateConfig, resetStats }) {
         headers: {
           'x-api-key': apiKey,
           'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
           'content-type': 'application/json'
         },
         body: JSON.stringify({
@@ -26,7 +32,10 @@ export function Settings({ open, onClose, config, updateConfig, resetStats }) {
           messages: [{ role: 'user', content: 'Generate a JSON array of 500 interesting 5-letter English words for a word game. Only output the raw JSON array of strings, nothing else.' }]
         })
       })
-      if (!res.ok) throw new Error('API request failed')
+      if (!res.ok) {
+        const errText = await res.text().catch(() => 'Unknown error')
+        throw new Error(`Status ${res.status}: ${errText}`)
+      }
       const data = await res.json()
       const text = data.content[0].text
       const match = text.match(/\[([\s\S]*?)\]/)
@@ -136,25 +145,19 @@ export function Settings({ open, onClose, config, updateConfig, resetStats }) {
         </Button>
       </div>
 
-      <Modal open={showResetConfirm} onClose={() => setShowResetConfirm(false)} title="Reset Statistics">
-        <p style={{textAlign: 'center', marginBottom: '24px', fontSize: '1.1rem'}}>
-          Are you sure you want to permanently erase all your gameplay statistics?
-          <br />
-          <span style={{color: 'var(--text-subtle)', fontSize: '0.9rem'}}>This action cannot be undone.</span>
-        </p>
-        <div style={{display: 'flex', gap: '12px', justifyContent: 'center'}}>
-          <Button variant="ghost" onClick={() => setShowResetConfirm(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" style={{backgroundColor: 'var(--red, #f44336)', borderColor: 'var(--red, #f44336)'}} onClick={() => {
-            resetStats()
-            setShowResetConfirm(false)
-            alert('Statistics reset.')
-          }}>
-            Confirm Reset
-          </Button>
-        </div>
-      </Modal>
+      <ConfirmModal 
+        isOpen={showResetConfirm} 
+        onCancel={() => setShowResetConfirm(false)} 
+        title="Reset Statistics"
+        message="Are you sure you want to permanently erase all your gameplay statistics? This action cannot be undone."
+        confirmText="Confirm Reset"
+        variant="danger"
+        onConfirm={() => {
+          resetStats()
+          setShowResetConfirm(false)
+          alert('Statistics reset.')
+        }}
+      />
     </Modal>
   )
 }
