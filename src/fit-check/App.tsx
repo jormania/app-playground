@@ -42,9 +42,20 @@ export default function App() {
   // back still shows "Worn today" instead of asking again.
   const [verdicts, setVerdicts] = useState<Record<string, Verdict>>({})
   const [recordingIds, setRecordingIds] = useState<Set<string>>(new Set())
+  // Which wardrobe(s) the last-added garment went into. AddGarment already
+  // defaults to whichever wardrobe is currently filtered to; this only matters
+  // as the fallback when viewing "All" — adding five things in a row while
+  // browsing everywhere shouldn't mean re-tapping the same wardrobe chip five
+  // times. Session-only on purpose: it's a small convenience, not a setting.
+  const [lastWardrobeIds, setLastWardrobeIds] = useState<string[] | null>(null)
 
   // Asked for once per session, and a refusal is fine — Bucharest stands in.
   const { weather, loading: weatherLoading } = useWeather(config.coords)
+
+  // Screens are swapped, not routed to — nothing about switching tabs implies
+  // a scroll reset on its own. Scroll to the bottom of Wardrobe, tap History,
+  // and land halfway down an unrelated page without this.
+  useEffect(() => { window.scrollTo(0, 0) }, [tab])
 
   // Theme: an explicit choice wins, otherwise follow the device. The entry HTML
   // applies the same rule before first paint so there's no flash.
@@ -67,28 +78,55 @@ export default function App() {
     wardrobes: config.wardrobesDbId,
   }), [config.notionToken, config.garmentsDbId, config.outfitsDbId, config.wardrobesDbId])
 
+  // The actual fetch, shared by the automatic reload below and by a manual
+  // "Sync now" in Settings — Notion is the real source of truth, and if
+  // Gabriel fixes a typo directly in a database, this is how that reaches the
+  // app without a full page reload (and losing whatever tab/scroll state
+  // was in the middle of).
+  const loadAll = useCallback(async (isCancelled: () => boolean) => {
+    setError('')
+    const [rows, wardrobeRows, outfitRows] = await Promise.all([
+      client().listGarments(), client().listWardrobes(), client().listOutfits(),
+    ])
+    if (isCancelled()) return
+    setGarments(rows)
+    setWardrobes(wardrobeRows)
+    setOutfits(outfitRows)
+    // `verdicts`/`recordingIds` are keyed by outfit ids computed from THIS
+    // garment set. Swapping the set from under them (demo → live, one Notion
+    // database → another, or a manual sync pulling in an edit) would
+    // otherwise leave Today claiming "Worn today" for a combination the
+    // fresh `outfits` list has no record of — a state History would visibly
+    // disagree with.
+    setVerdicts({})
+    setRecordingIds(new Set())
+    // Cached photos for garments that no longer exist would otherwise
+    // accumulate forever. Fire-and-forget housekeeping.
+    void pruneCache(rows.map((g) => g.id))
+  }, [client])
+
   // Reload whenever the credentials change — not on every config edit, or
   // renaming a wardrobe would refetch the whole thing.
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    setError('')
-    Promise.all([client().listGarments(), client().listWardrobes(), client().listOutfits()])
-      .then(([rows, wardrobeRows, outfitRows]) => {
-        if (cancelled) return
-        setGarments(rows)
-        setWardrobes(wardrobeRows)
-        setOutfits(outfitRows)
-        // Cached photos for garments that no longer exist would otherwise
-        // accumulate forever. Fire-and-forget housekeeping.
-        void pruneCache(rows.map((g) => g.id))
-      })
+    loadAll(() => cancelled)
       .catch((e: Error) => { if (!cancelled) setError(e.message) })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-    // client()'s own identity depends on exactly these same four fields, so
-    // including it triggers no extra runs — just satisfies the lint honestly.
-  }, [config.notionToken, config.garmentsDbId, config.outfitsDbId, config.wardrobesDbId, client])
+  }, [config.notionToken, config.garmentsDbId, config.outfitsDbId, config.wardrobesDbId, loadAll])
+
+  const [syncing, setSyncing] = useState(false)
+  const syncNow = useCallback(async () => {
+    setSyncing(true)
+    try {
+      await loadAll(() => false)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setSyncing(false)
+    }
+  }, [loadAll])
 
   const demoMode = !isConfigured(config)
   const canPersistWardrobes = Boolean(config.notionToken && config.wardrobesDbId)
@@ -260,15 +298,18 @@ export default function App() {
             <AddGarment
               config={config}
               wardrobes={wardrobes}
+              lastWardrobeIds={lastWardrobeIds}
               onCancel={() => setAdding(false)}
               onAdded={(garment) => {
                 setGarments((prev) => [...prev, garment])
+                setLastWardrobeIds(garment.wardrobeIds)
                 setAdding(false)
               }}
             />
           ) : loading ? (
             <p className="fc-empty">Getting your wardrobe…</p>
-          ) : (
+          ) : error ? null : ( // the banner above already explains it; a second,
+            // conflicting "nothing here yet" underneath it doubles the message
             <>
               <WardrobeGrid
                 garments={garments}
@@ -278,13 +319,13 @@ export default function App() {
                 onToggleFavourite={toggleGarmentFavourite}
               />
               <div className="fc-actions">
-                <Button onClick={() => setAdding(true)} disabled={demoMode}>
+                <Button onClick={() => setAdding(true)}>
                   <Plus size={16} aria-hidden="true" /> Add something
                 </Button>
               </div>
               {demoMode && (
                 <p className="fc-settings-hint" style={{ marginTop: 8 }}>
-                  Connect Notion in Settings to start adding your own clothes.
+                  Demo additions last for this visit only.
                 </p>
               )}
             </>
@@ -292,27 +333,35 @@ export default function App() {
         )}
 
         {tab === 'today' && (
-          <Today
-            garments={garments}
-            wardrobes={wardrobes}
-            filterId={resolvedFilterId}
-            weather={weather}
-            weatherLoading={weatherLoading}
-            mood={mood}
-            onMoodChange={setMood}
-            verdicts={verdicts}
-            recordingIds={recordingIds}
-            onRecordVerdict={recordVerdict}
-          />
+          loading ? (
+            <p className="fc-empty">Getting your wardrobe…</p>
+          ) : error ? null : (
+            <Today
+              garments={garments}
+              wardrobes={wardrobes}
+              filterId={resolvedFilterId}
+              weather={weather}
+              weatherLoading={weatherLoading}
+              mood={mood}
+              onMoodChange={setMood}
+              verdicts={verdicts}
+              recordingIds={recordingIds}
+              onRecordVerdict={recordVerdict}
+            />
+          )
         )}
 
         {tab === 'history' && (
-          <History
-            outfits={outfits}
-            garments={garments}
-            wardrobes={wardrobes}
-            onToggleFavourite={toggleOutfitFavourite}
-          />
+          loading ? (
+            <p className="fc-empty">Getting your history…</p>
+          ) : error ? null : (
+            <History
+              outfits={outfits}
+              garments={garments}
+              wardrobes={wardrobes}
+              onToggleFavourite={toggleOutfitFavourite}
+            />
+          )
         )}
 
         {tab === 'settings' && (
@@ -327,6 +376,9 @@ export default function App() {
             onRenameWardrobe={(id, name) => patchWardrobe(id, { name })}
             onToggleWardrobe={(id, active) => patchWardrobe(id, { active })}
             onDeleteWardrobe={deleteWardrobe}
+            demoMode={demoMode}
+            syncing={syncing}
+            onSync={syncNow}
           />
         )}
       </main>

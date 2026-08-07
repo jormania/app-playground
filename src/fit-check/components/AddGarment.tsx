@@ -8,7 +8,7 @@ import { NotionClient } from '../lib/notionClient.ts'
 import { suggestTags, emptyTags, type SuggestedTags } from '../lib/tagging.ts'
 import { useDictation } from '../lib/useDictation.ts'
 import TagEditor from './TagEditor.tsx'
-import { type FitCheckConfig } from '../lib/config.ts'
+import { isConfigured, type FitCheckConfig } from '../lib/config.ts'
 import { activeWardrobes, type Wardrobe } from '../lib/wardrobes.ts'
 import type { Garment } from '../lib/types.ts'
 
@@ -24,11 +24,14 @@ const TIPS = [
 interface Props {
   config: FitCheckConfig
   wardrobes: Wardrobe[]
+  /** Wardrobe ids the last-added garment went into, or null in a fresh
+   *  session. Only used as a fallback — see the initializer below. */
+  lastWardrobeIds: string[] | null
   onAdded: (garment: Garment) => void
   onCancel: () => void
 }
 
-export default function AddGarment({ config, wardrobes, onAdded, onCancel }: Props) {
+export default function AddGarment({ config, wardrobes, lastWardrobeIds, onAdded, onCancel }: Props) {
   const choices = activeWardrobes(wardrobes)
   const [file, setFile] = useState<Blob | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -36,12 +39,19 @@ export default function AddGarment({ config, wardrobes, onAdded, onCancel }: Pro
   const [tags, setTags] = useState<SuggestedTags>(emptyTags)
   const [tagging, setTagging] = useState(false)
   const [tagNote, setTagNote] = useState('')
-  // Defaults to whichever wardrobe is being viewed, else the first active one.
-  // Something sensible pre-selected matters: the charter asks for taps over
-  // forms, and a garment saved into no wardrobe is a small mess to undo.
+  // Three-step fallback, each a bit less specific than the last: (1) whichever
+  // wardrobe is currently being viewed, (2) whatever the last garment added
+  // THIS session went into — adding five things in a row while browsing "All"
+  // shouldn't mean re-tapping the same chip five times, (3) the first active
+  // wardrobe. Something sensible pre-selected matters: the charter asks for
+  // taps over forms, and a garment saved into no wardrobe is a small mess to
+  // undo. Last-used ids are filtered to ones still active, in case a wardrobe
+  // was switched off between adds.
   const [wardrobeIds, setWardrobeIds] = useState<string[]>(() => {
     const viewing = choices.find((w) => w.id === config.wardrobeFilterId)
     if (viewing) return [viewing.id]
+    const stillActive = (lastWardrobeIds ?? []).filter((id) => choices.some((w) => w.id === id))
+    if (stillActive.length > 0) return stillActive
     return choices.length > 0 ? [choices[0].id] : []
   })
   const [saving, setSaving] = useState(false)
@@ -114,11 +124,32 @@ export default function AddGarment({ config, wardrobes, onAdded, onCancel }: Pro
     setError('')
     try {
       const thumb = await makeThumb(file)
+      const label = name.trim() || tags.category || 'Something'
+
+      // Demo mode: build the garment locally and skip Notion entirely, rather
+      // than the "Add something" button being disabled. Wardrobes already work
+      // this way (see App.createWardrobe) — this is the same pattern applied to
+      // garments, so Nora can try the whole photograph-tag-file loop before
+      // Gabriel has connected anything. The photo lives only in the in-memory
+      // cache (lib/imageCache), so it's readable this session but nothing is
+      // written anywhere durable; it won't survive a reload.
+      if (!isConfigured(config)) {
+        const localId = `local_g_${Date.now()}`
+        await putPhoto(localId, file)
+        onAdded({
+          id: localId, name: label, photoUrl: null, thumb,
+          category: tags.category, colours: tags.colours, warmth: tags.warmth,
+          styles: tags.styles, wardrobeIds, favourite: false, wearCount: 0,
+          lastWorn: null, archived: false,
+        })
+        setSaving(false)
+        return
+      }
+
       const client = new NotionClient(config.notionToken, {
         garments: config.garmentsDbId,
         outfits: config.outfitsDbId,
       })
-      const label = name.trim() || tags.category || 'Something'
 
       // Create the row first so there is something to attach to, then upload.
       // If the upload fails the garment still exists, tagged and named, with a

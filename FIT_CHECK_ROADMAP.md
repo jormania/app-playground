@@ -150,6 +150,30 @@ wear counts surfaced in the catalogue, packing lists for trips.
 
 ---
 
+## 4a · Deferred from the M5.5 audit pass
+
+Two QoL suggestions from an external audit (M5.5, `FIT_CHECK.md`) were real but
+too large for an interim milestone. Both got a lighter substitute that ships now
+(a manual "Sync now", scroll-to-top); these are the fuller versions, for if the
+lighter version ever stops being enough.
+
+- **Real pull-to-refresh**, not just a manual Sync button. WhereItWent already
+  has a `PullToRefresh.jsx` — read that first if this is ever built, both for
+  the touch-tracking edge cases it already solved and to keep the gesture
+  feeling consistent across the repo's apps rather than reinventing it.
+  **Build when:** Nora is actually reaching for pull-to-refresh out of habit
+  (an iOS/Android reflex) rather than finding Settings' Sync button.
+- **Genuine offline support** — a real write queue (create/wear/skip/favourite
+  while offline, flushed when the connection returns), *then* an offline
+  indicator that means something. An indicator without the queue behind it
+  would promise a sync that isn't happening — worse than no indicator.
+  WhereItWent's own roadmap treats this as its own substantial feature
+  ("Feature G — Offline support / optimistic writes"), not a QoL tweak; the
+  same is true here. **Build when:** Nora hits a real "I did something and it
+  vanished because I had no signal" moment — not preemptively.
+
+---
+
 ## 5 · Photo pipeline — the Notion workaround
 
 **The problem:** Notion serves uploaded files as short-lived signed S3 URLs. A

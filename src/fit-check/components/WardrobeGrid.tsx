@@ -95,12 +95,23 @@ export default function WardrobeGrid({
 
   const nothingActive = wardrobes.length > 0 && activeWardrobes(wardrobes).length === 0
 
-  const sections = useMemo(
-    () => CATEGORIES
+  const sections = useMemo(() => {
+    const known = CATEGORIES
       .map((category) => ({ category, items: visible.filter((g) => g.category === category) }))
-      .filter((s) => s.items.length > 0),
-    [visible],
-  )
+      .filter((s) => s.items.length > 0)
+    // A garment can reach here with no category — tagging skipped, tagging
+    // failed, or nobody happened to tap a category chip before saving (name is
+    // deliberately optional; category isn't gated either, matching that same
+    // "taps over forms" stance). Without this bucket such a garment matches
+    // none of the six CATEGORIES filters above and silently vanishes from the
+    // grid entirely — not even the empty-state message shows, since `visible`
+    // isn't actually empty. Found by hand, adding a demo garment with no AI
+    // key and no category picked.
+    const uncategorized = visible.filter((g) => !g.category)
+    return uncategorized.length > 0
+      ? [...known, { category: 'Uncategorized' as const, items: uncategorized }]
+      : known
+  }, [visible])
 
   return (
     <>

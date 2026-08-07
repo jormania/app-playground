@@ -20,7 +20,15 @@ export default function Navigation({ tab, onChange }: { tab: Tab; onChange: (t: 
           type="button"
           className="fc-nav-item"
           aria-current={tab === id ? 'page' : undefined}
-          onClick={() => onChange(id)}
+          onClick={() => {
+            // Tapping the tab you're already on scrolls back to the top —
+            // App.tsx separately scrolls to top on an actual tab CHANGE, so
+            // this only fires for the "I'm already here" case: the standard
+            // mobile-tab-bar convention for getting back out of a long grid
+            // without a manual swipe-scroll.
+            if (id === tab) window.scrollTo({ top: 0, behavior: 'smooth' })
+            else onChange(id)
+          }}
         >
           <Icon size={20} aria-hidden="true" />
           {label}

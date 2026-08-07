@@ -419,6 +419,110 @@ horizontal scroll at 375×812 on Today, History or Wardrobe. `npm test` 2317
 passing / 193 files, typecheck and lint clean, build clean, `api/*.js` still
 at 12.
 
+### M5.5 — Audit fixes ✅ (2026-08-07)
+
+An external audit (Gemini Pro, run against the app and this file in
+Antigravity) surfaced real findings alongside some that didn't fit the app's
+ethos. Treated as consultant feedback, not law — each claim was verified
+against the actual code before anything was changed, and two suggestions were
+rejected outright. One genuine bug was found independently, during
+verification, that the audit missed entirely.
+
+**Bugs fixed, all verified against the real code first:**
+
+- **Settings triggered ~1 Notion request per keystroke.** `App`'s data-fetch
+  effect depends on exactly the four credential fields Settings edits, and
+  every `Field` there called `onChange` live. Typing a 32-character token
+  fired three parallel requests per character — comfortably enough to trip
+  `api/_shared.js`'s 20-req/10s limiter before the paste even finished, so a
+  genuinely bad token surfaced "Too many requests" instead of Notion's own
+  specific message. **Fixed** by committing the five credential/key fields on
+  blur (or Enter) instead of per keystroke — the same pattern
+  `WardrobeManager`'s rename field already used. Verified: 34 keystrokes → 0
+  requests while typing, 1 on commit; a genuinely invalid token now shows
+  Notion's real "API token is invalid." message, clean.
+- **`verdicts`/`recordingIds` outlived the data they referenced.** Switching
+  credentials (or a manual sync — see below) replaces `garments`/`outfits`
+  wholesale, but the "Worn today" confirmations are keyed by ids computed from
+  the OLD set. Today could keep claiming a combination was worn while History,
+  freshly reloaded, had no record of it. **Fixed**: both are cleared inside
+  the same fetch that replaces the underlying data.
+- **A load error and the "nothing here yet" empty state rendered
+  simultaneously** on Wardrobe (and, unreported but the same root cause, on
+  Today and History too) — the error banner explained the problem while the
+  content underneath implied there was simply nothing to see. **Fixed**: all
+  three tabs now show a loading message while fetching, nothing extra when
+  `error` is set (the banner already covers it), and the normal content only
+  otherwise.
+
+**Rejected, with reasons:**
+
+- *Hardcoding a "Invalid credentials" message for 401s* — Notion's own
+  passthrough message is already specific ("API token is invalid."); the
+  real problem was the rate limiter masking it with 429 noise, now fixed at
+  the root. A hardcoded override would be less informative, not more.
+- *A dedicated "upload in progress" state for the capture step* — checked:
+  the genuinely slow step (the Notion upload) already shows a spinner and
+  "Saving…"; the only silent moment is a client-side canvas resize that's
+  sub-second. A loading state for that would be spinner-for-spinner's-sake.
+
+**QoL additions, evaluated one at a time against five further suggestions:**
+
+- **Demo mode can now add garments locally**, matching the pattern wardrobes
+  already used (`local_g_<id>`, photo cached in-memory only, nothing written
+  to Notion, doesn't survive a reload). Closes a real inconsistency — wardrobe
+  management was fully usable in demo mode, adding a garment was flatly
+  disabled — and lets Nora try the whole photograph → tag → file loop before
+  Gabriel has connected anything.
+  > **The bug this surfaced, found by hand, not by the audit:** a garment
+  > saved with no category (AI skipped, AI failed, or nobody happened to tap
+  > a category chip — category was never required, matching how the name
+  > field is deliberately optional) matched none of `WardrobeGrid`'s six
+  > `CATEGORIES` sections and vanished from the grid **entirely** — not even
+  > the empty-state message showed, since the garment list wasn't actually
+  > empty. This could happen in the real Notion-backed path too, not only in
+  > demo mode. **Fixed**: an "Uncategorized" section catches anything with no
+  > category, the same "never silently invisible" principle already applied
+  > to wardrobe-unfiled garments.
+- **Tap the active tab to scroll to top** (`Navigation.tsx`), alongside a
+  scroll-to-top on an actual tab *change* (`App.tsx`) — a long Wardrobe grid
+  no longer needs a manual scroll back up. The animated version couldn't be
+  verified directly: `behavior: 'smooth'` never completes in this sandboxed,
+  non-fronted browser pane (confirmed separately — `behavior: 'auto'` works
+  instantly, `'smooth'` doesn't animate at all here). Verified the handler
+  logic itself is correct by intercepting `window.scrollTo` and confirming it
+  fires with the right arguments exactly once, on the self-tap case only.
+- **A manual "Sync now" in Settings**, not the full pull-to-refresh gesture
+  the audit suggested — WhereItWent's `PullToRefresh.jsx` shows what that
+  actually costs in touch-tracking edge cases, too much for this milestone.
+  The fetch logic was extracted into one `loadAll()` shared by the automatic
+  credential-change reload and this manual trigger, so Gabriel can pull in an
+  edit made directly in Notion without a full reload (and losing scroll/tab
+  state). Disabled in demo mode with a one-line explanation — nothing external
+  to sync there.
+- **AddGarment now remembers the last wardrobe used** as a third-tier
+  fallback: (1) whichever wardrobe is currently filtered to, (2) the last
+  wardrobe a garment was actually saved into this session, (3) the first
+  active wardrobe. Only step 2 is new — step 1 already existed and covers the
+  common case; step 2 fixes adding five things in a row while browsing "All"
+  meaning five repeats of the same tap. Session-only by design (a `useState`
+  in `App`, not persisted) — a convenience, not a setting. Verified: added a
+  garment to Dad's only, opened Add again untouched, and it defaulted to
+  Dad's rather than back to the alphabetically-first wardrobe.
+- ~~*An offline badge*~~ — **not built**, see roadmap. The app has no real
+  offline queue behind it (unlike WhereItWent's own roadmap Feature G); a
+  badge implying "this synced later" without an actual queue would be a
+  promise the app doesn't keep, and building genuine offline support is a
+  real feature, not a milestone-interim QoL tweak.
+
+**Verified in the browser**, beyond what's noted above: the "Uncategorized"
+fix confirmed live (a garment saved with no category now appears in its own
+section, 19 tiles total, no horizontal scroll); an invalid-token scenario
+shows the clean Notion 401 message with no duplicate empty-state anywhere.
+`npm test` 2317 passing / 193 files (unchanged — these were UI/state-flow
+fixes, not new pure-function surface), typecheck and lint clean, build clean,
+`api/*.js` still at 12.
+
 ### M6 — Ship ⏳
 
 Nora's user guide (`public/fit-check-guide.html`), the Notion paperwork the
