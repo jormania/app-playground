@@ -74,7 +74,7 @@ export function App() {
   const handleShareBoard = () => {
     const seedStr = btoa(`${gameState.date}|${gameState.iteration}|${gameState.dictionary}`)
     const shareUrl = `${window.location.origin}${window.location.pathname}?seed=${seedStr}`
-    navigator.clipboard.writeText(`Play my Lexi5 board: ${shareUrl}`).then(() => {
+    navigator.clipboard.writeText(shareUrl).then(() => {
       showToast('Share link copied to clipboard!')
     })
   }
