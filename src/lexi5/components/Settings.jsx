@@ -5,17 +5,22 @@ import { Modal } from '../../ds/components/Modal'
 import { ConfirmModal } from '../../ds/components/Dialogs'
 import { Field } from '../../ds/components/Field'
 import { SegmentedControl } from '../../ds'
-import { ChevronRight } from 'lucide-react'
+import { getWordProgress } from '../lib/gameState'
 import styles from './Settings.module.css'
 
-export function Settings({ open, onClose, config, updateConfig, resetStats }) {
+export function Settings({ open, onClose, config, updateConfig, resetStats, gameState }) {
   const [showCurate, setShowCurate] = useState(false)
   const [apiKey, setApiKey] = useState('')
   const [curating, setCurating] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [showRecurateConfirm, setShowRecurateConfirm] = useState(false)
 
-  const handleCurate = async () => {
-    if (!apiKey) return
+  const hasCustomDict = !!localStorage.getItem('lexi5_custom_dict')
+  const customProgress = hasCustomDict && gameState
+    ? getWordProgress('custom', gameState.date, gameState.iteration)
+    : null
+
+  const runCurate = async () => {
     setCurating(true)
     try {
       const res = await fetch('/api/anthropic-proxy/v1/messages', {
@@ -28,7 +33,7 @@ export function Settings({ open, onClose, config, updateConfig, resetStats }) {
         },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 1500,
+          max_tokens: 4096,
           messages: [{ role: 'user', content: 'Generate a JSON array of 500 interesting 5-letter English words for a word game. Only output the raw JSON array of strings, nothing else.' }]
         })
       })
@@ -39,10 +44,18 @@ export function Settings({ open, onClose, config, updateConfig, resetStats }) {
       const data = await res.json()
       const text = data.content[0].text
       const match = text.match(/\[([\s\S]*?)\]/)
-      
-      if (!match) throw new Error("Could not parse JSON array from AI response. AI said: " + text.substring(0, 150) + (text.length > 150 ? '...' : ''))
-      
-      let words = JSON.parse(match[0])
+
+      let words
+      if (match) {
+        words = JSON.parse(match[0])
+      } else {
+        // Response likely got truncated before the closing bracket — recover
+        // whatever complete quoted words were returned instead of failing outright.
+        words = [...text.matchAll(/"([a-zA-Z]+)"/g)].map(m => m[1])
+        if (words.length === 0) {
+          throw new Error("Could not parse JSON array from AI response. AI said: " + text.substring(0, 150) + (text.length > 150 ? '...' : ''))
+        }
+      }
       words = words.map(w => w.toLowerCase()).filter(w => w.length === 5 && /^[a-z]+$/.test(w))
       
       if (words.length === 0) throw new Error("AI did not return any valid 5-letter words.")
@@ -56,6 +69,15 @@ export function Settings({ open, onClose, config, updateConfig, resetStats }) {
     } finally {
       setCurating(false)
     }
+  }
+
+  const handleCurate = () => {
+    if (!apiKey) return
+    if (hasCustomDict) {
+      setShowRecurateConfirm(true)
+      return
+    }
+    runCurate()
   }
 
   return (
@@ -118,26 +140,34 @@ export function Settings({ open, onClose, config, updateConfig, resetStats }) {
           <Button variant="ghost" onClick={() => setShowCurate(!showCurate)}>
             Advanced: Dictionary Curation
           </Button>
-          {config.dictionary === 'custom' && !!localStorage.getItem('lexi5_custom_dict') && (
+          {config.dictionary === 'custom' && hasCustomDict && (
             <span className={styles.activePill}>Active</span>
           )}
         </div>
-        
+
         {showCurate && (
           <div className={styles.curateCard}>
             <p className={styles.curateDesc}>
-              Provide an Anthropic API key to re-curate the daily answers list using Claude 4.5 Haiku. 
+              Provide an Anthropic API key to re-curate the daily answers list using Claude 4.5 Haiku.
               (Note: For security, keys are never saved to the server).
+              Words are shown in a shuffled order so none repeats until every word in the list has
+              been used, then it starts a fresh cycle.
             </p>
-            <Field 
+            {customProgress && (
+              <p className={styles.curateDesc}>
+                Current list: {customProgress.total} words — {customProgress.position} used so far
+                this cycle.
+              </p>
+            )}
+            <Field
               label="API Key"
-              type="password" 
-              value={apiKey} 
-              onChange={e => setApiKey(e.target.value)} 
+              type="password"
+              value={apiKey}
+              onChange={e => setApiKey(e.target.value)}
               placeholder="sk-ant-..."
             />
             <Button onClick={handleCurate} disabled={curating || !apiKey}>
-              {curating ? 'Curating...' : 'Start Curation'}
+              {curating ? 'Curating...' : hasCustomDict ? 'Refresh Word List' : 'Start Curation'}
             </Button>
           </div>
         )}
@@ -158,6 +188,19 @@ export function Settings({ open, onClose, config, updateConfig, resetStats }) {
           resetStats()
           setShowResetConfirm(false)
           alert('Statistics reset.')
+        }}
+      />
+
+      <ConfirmModal
+        isOpen={showRecurateConfirm}
+        onCancel={() => setShowRecurateConfirm(false)}
+        title="Refresh Word List"
+        message="This replaces your existing custom word list with a brand new one. The old list's no-repeat cycle progress will be lost. Continue?"
+        confirmText="Refresh"
+        variant="danger"
+        onConfirm={() => {
+          setShowRecurateConfirm(false)
+          runCurate()
         }}
       />
     </Modal>

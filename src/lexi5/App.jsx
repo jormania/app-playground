@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useConfig } from './lib/config'
-import { useGameState, getWord, isValidGuess } from './lib/gameState'
+import { useGameState, getWord, getWordProgress, isValidGuess } from './lib/gameState'
 import { hapticTap, hapticError, hapticWin } from './lib/haptics'
 import { Board } from './components/Board'
 import { Keyboard } from './components/Keyboard'
@@ -71,6 +71,14 @@ export function App() {
     setTimeout(() => setToast(null), 2000)
   }
 
+  // Let the player know when they've cycled through every word in the list and it's starting over
+  useEffect(() => {
+    const { total, justWrapped } = getWordProgress(gameState.dictionary, gameState.date, gameState.iteration)
+    if (justWrapped) {
+      showToast(`You've played all ${total} words in this list — starting a fresh cycle!`)
+    }
+  }, [gameState.dictionary, gameState.date, gameState.iteration])
+
   const handleShareBoard = () => {
     const seedStr = encodeURIComponent(btoa(`${gameState.date}|${gameState.iteration}|${gameState.dictionary}`))
     const shareUrl = `${window.location.origin}${window.location.pathname}?seed=${seedStr}`
@@ -117,8 +125,7 @@ export function App() {
       
       // Calculate exact hints for the last guess to enforce rules
       const wordLetters = word.split('')
-      const lastGuessLetters = lastGuess.split('')
-      
+
       const greens = Array(5).fill(false)
       const targetCounts = {}
       for (const char of wordLetters) {
@@ -240,12 +247,13 @@ export function App() {
         </div>
       )}
 
-      <Settings 
-        open={showSettings} 
-        onClose={() => setShowSettings(false)} 
-        config={config} 
+      <Settings
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        config={config}
         updateConfig={updateConfig}
         resetStats={resetStats}
+        gameState={gameState}
       />
       
       <Stats 
