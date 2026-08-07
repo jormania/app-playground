@@ -5,5 +5,11 @@
     { "path": "/api/wanderlist-remind", "schedule": "0 16 * * *" },
     { "path": "/api/wanderlist-remind", "schedule": "0 17 * * *" },
     { "path": "/api/clickdeck-pricing", "schedule": "0 2 * * *" }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/anthropic-proxy/:match*",
+      "destination": "https://api.anthropic.com/:match*"
+    }
   ]
 }
