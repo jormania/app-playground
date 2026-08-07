@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weatherLine, weatherSnapshot } from './weatherText.ts'
+import { weatherSnapshot } from './weatherText.ts'
 import type { CurrentWeather } from '../../shared/weather.ts'
 
 const w = (over: Partial<CurrentWeather> = {}): CurrentWeather => ({
@@ -7,22 +7,20 @@ const w = (over: Partial<CurrentWeather> = {}): CurrentWeather => ({
   isDay: true, code: 0, ...over,
 })
 
-describe('weatherLine', () => {
-  it('reads as a sentence fragment', () => {
-    expect(weatherLine(w({ temp: 18.4, condition: 'rain' }))).toBe('18°C and raining')
-  })
-  it('rounds the temperature', () => {
-    expect(weatherLine(w({ temp: 18.6 }))).toContain('19°C')
-  })
-  it('falls back to the raw condition for anything unmapped', () => {
-    expect(weatherLine(w({ condition: 'partly-cloudy' as never }))).toContain('a bit cloudy')
-  })
-  it('is empty without weather', () => expect(weatherLine(null)).toBe(''))
-})
-
 describe('weatherSnapshot', () => {
   it('matches the format documented on the Notion Weather property', () => {
     expect(weatherSnapshot(w({ temp: 8, condition: 'rain' }))).toBe('8°C, rain')
   })
+
+  it('rounds the temperature', () => {
+    expect(weatherSnapshot(w({ temp: 18.6 }))).toContain('19°C')
+  })
+
+  it('keeps the raw condition slug, not the prose', () => {
+    // Deliberate: the stored value should stay parseable, and the display words
+    // live in weatherVisual.ts next to the icon they're shown with.
+    expect(weatherSnapshot(w({ condition: 'partly-cloudy' }))).toBe('18°C, partly-cloudy')
+  })
+
   it('is empty without weather', () => expect(weatherSnapshot(null)).toBe(''))
 })

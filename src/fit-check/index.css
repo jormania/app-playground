@@ -217,10 +217,122 @@ body {
 .fc-filter-row::-webkit-scrollbar { display: none; }
 
 /* ── Today ───────────────────────────────────────────────────────────────── */
-.fc-weather {
-  margin: 0 0 4px;
-  color: var(--color-muted);
+
+/* The sky, as the first thing on the screen. Each condition carries its own
+   pair of tints (--fc-sky-1/2), used for the icon orb and a wash across the
+   card, so a glance reads the weather before any words are parsed. Set per
+   condition rather than inline so light and dark are handled in one place and
+   the tint can't drift from the icon sitting on it. */
+.fc-weather-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--fc-tile-radius);
+  background:
+    linear-gradient(
+      120deg,
+      color-mix(in srgb, var(--fc-sky-1) 20%, transparent),
+      color-mix(in srgb, var(--fc-sky-2) 10%, transparent) 65%,
+      transparent
+    ),
+    var(--color-surface);
+}
+
+/* Every tint here carries a WHITE glyph at >= 3:1 (WCAG's non-text minimum) —
+   checked, not guessed. The first, prettier palette failed on six of seven:
+   snow's pale ice blue came out at 1.56:1, effectively an invisible icon. If
+   you brighten any of these later, re-check both stops against #fff first;
+   pastel skies look lovely on a swatch and lose the icon entirely. The card's
+   own wash mixes these down to 20%/10%, so depth here costs nothing there. */
+.fc-weather-card { --fc-sky-1: #64748b; --fc-sky-2: #475569; }
+.fc-weather-card[data-condition='clear']         { --fc-sky-1: #d97706; --fc-sky-2: #c2410c; }
+.fc-weather-card[data-condition='partly-cloudy'] { --fc-sky-1: #3b82f6; --fc-sky-2: #d97706; }
+.fc-weather-card[data-condition='overcast']      { --fc-sky-1: #64748b; --fc-sky-2: #475569; }
+.fc-weather-card[data-condition='fog']           { --fc-sky-1: #6b7280; --fc-sky-2: #4b5563; }
+.fc-weather-card[data-condition='rain']          { --fc-sky-1: #2563eb; --fc-sky-2: #1e40af; }
+.fc-weather-card[data-condition='snow']          { --fc-sky-1: #0284c7; --fc-sky-2: #0369a1; }
+.fc-weather-card[data-condition='thunder']       { --fc-sky-1: #7c3aed; --fc-sky-2: #5b21b6; }
+
+.fc-weather-orb {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--fc-sky-1), var(--fc-sky-2));
+  /* The gradients are chosen to carry a white glyph in both themes; leaving
+     this to --color-on-accent would wash out on the paler skies. */
+  color: #fff;
+}
+
+.fc-weather-read {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+/* The temperature is the headline because it's what actually drives the
+   suggestions — warmth-vs-temperature is the recommender's strongest signal. */
+.fc-weather-temp {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.fc-weather-deg {
   font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  margin-left: 1px;
+}
+
+.fc-weather-words {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.fc-weather-sub {
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+}
+
+/* ── The mood question ───────────────────────────────────────────────────── */
+/* This is the app's central question, and it used to be styled with
+   `.fc-settings-hint` — the same class as "Follows your phone unless you pick
+   one." It read like a caption because it literally was one. It's a real
+   heading now, in the display face, at a size that asks to be answered. */
+.fc-mood {
+  margin-bottom: 22px;
+}
+
+.fc-mood-question {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+
+/* Bigger than the wardrobe filter's chips — these are the primary input on the
+   screen, not a filter, and they should feel worth pressing. */
+.fc-mood-chips .fc-chip {
+  padding: 9px 16px;
+  font-size: 0.875rem;
+}
+
+.fc-mood-chips .fc-chip[data-selected='true'] {
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--color-accent) 40%, transparent);
 }
 
 .fc-outfits {
@@ -681,6 +793,65 @@ body {
 }
 
 /* ── Settings ────────────────────────────────────────────────────────────── */
+
+/* The way into the guide. Sits at the very top of Settings because a PWA opened
+   from the home screen never passes index.html's app card, so this is the only
+   route Nora has to it. Tinted with the accent rather than styled as a plain
+   settings row, so it reads as an invitation rather than another field. */
+.fc-guide-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  border: 1px solid var(--color-ring);
+  border-radius: var(--fc-tile-radius);
+  background: var(--color-glow);
+  color: var(--color-ink);
+  text-decoration: none;
+  /* Comfortably past the 44px touch-target minimum on both target phones. */
+  min-height: 60px;
+}
+
+.fc-guide-link:hover {
+  border-color: var(--color-accent);
+}
+
+.fc-guide-link:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.fc-guide-link-mark {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  color: var(--color-accent);
+}
+
+.fc-guide-link-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.fc-guide-link-text b {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.fc-guide-link-text span {
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+}
+
+.fc-guide-link-chevron {
+  flex: none;
+  margin-left: auto;
+  color: var(--color-faint);
+}
 
 /* There is no Save button — config persists on every change. This says so, and
    flashes a confirmation when it happens, so the absence reads as "nothing to

@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Loader2, Repeat2, X } from 'lucide-react'
+import {
+  Check, Loader2, Repeat2, X,
+  Sun, CloudSun, Cloud, CloudFog, CloudRain, Snowflake, CloudLightning,
+} from 'lucide-react'
 import type { CurrentWeather } from '../../shared/weather.ts'
 import { Button } from '../../ds'
 import {
@@ -10,7 +13,7 @@ import { MOODS, type Mood, type Verdict } from '../lib/vocabulary.ts'
 import { visibleGarments, type Wardrobe } from '../lib/wardrobes.ts'
 import { useGarmentPhoto } from '../lib/useGarmentPhoto.ts'
 import { thumbStyle } from './WardrobeGrid.tsx'
-import { weatherLine } from '../lib/weatherText.ts'
+import { weatherVisual, temperatureWord, type WeatherIconName } from '../lib/weatherVisual.ts'
 import { todayIso } from '../lib/today.ts'
 import type { Garment } from '../lib/types.ts'
 
@@ -91,17 +94,11 @@ export default function Today({
 
   return (
     <>
-      <p className="fc-weather">
-        {weatherLoading
-          ? 'Checking the weather…'
-          : weather
-            ? `${weatherLine(weather)}.`
-            : "Couldn't get the weather — these are just based on what you own."}
-      </p>
+      <WeatherCard weather={weather} loading={weatherLoading} />
 
-      <section className="fc-tag-row">
-        <p className="fc-settings-hint">How do you want to feel today?</p>
-        <div className="fc-chips">
+      <section className="fc-mood">
+        <h2 className="fc-mood-question">How do you want to feel today?</h2>
+        <div className="fc-chips fc-mood-chips">
           {MOODS.map((m) => (
             <button
               key={m}
@@ -144,6 +141,73 @@ export default function Today({
         </div>
       )}
     </>
+  )
+}
+
+const WEATHER_ICONS: Record<WeatherIconName, typeof Sun> = {
+  'sun': Sun,
+  'cloud-sun': CloudSun,
+  'cloud': Cloud,
+  'cloud-fog': CloudFog,
+  'cloud-rain': CloudRain,
+  'snowflake': Snowflake,
+  'cloud-lightning': CloudLightning,
+}
+
+/**
+ * Today's sky, as the first thing on the screen.
+ *
+ * The temperature is the headline because it's what actually drives the
+ * suggestions below — the recommender weights warmth-vs-temperature above
+ * everything else, so the number that matters most is the number shown biggest.
+ *
+ * Colour comes from `data-condition` in the stylesheet rather than inline
+ * styles, so both themes are handled in one place and the tint can't drift from
+ * the icon it sits behind.
+ */
+function WeatherCard({ weather, loading }: { weather: CurrentWeather | null; loading: boolean }) {
+  if (loading) {
+    return (
+      <section className="fc-weather-card" data-condition="overcast" aria-busy="true">
+        <span className="fc-weather-orb"><Loader2 size={24} className="fc-spin" aria-hidden="true" /></span>
+        <span className="fc-weather-read"><b className="fc-weather-words">Checking the weather…</b></span>
+      </section>
+    )
+  }
+
+  // No weather is not an error state — the recommender simply stops weighting
+  // warmth and works from what she owns, so this says that rather than alarming.
+  if (!weather) {
+    return (
+      <section className="fc-weather-card" data-condition="fog">
+        <span className="fc-weather-orb"><CloudFog size={24} aria-hidden="true" /></span>
+        <span className="fc-weather-read">
+          <b className="fc-weather-words">No weather right now</b>
+          <span className="fc-weather-sub">Going on what you own instead.</span>
+        </span>
+      </section>
+    )
+  }
+
+  const visual = weatherVisual(weather.condition)
+  const Icon = WEATHER_ICONS[visual.icon]
+  const temp = weather.temp === null ? null : Math.round(weather.temp)
+  const feel = temperatureWord(weather.temp)
+
+  return (
+    <section className="fc-weather-card" data-condition={weather.condition}>
+      <span className="fc-weather-orb"><Icon size={24} aria-hidden="true" /></span>
+      <span className="fc-weather-read">
+        {temp !== null && (
+          <b className="fc-weather-temp">
+            {temp}<span className="fc-weather-deg">°C</span>
+          </b>
+        )}
+        <span className="fc-weather-sub">
+          {[feel, visual.words].filter(Boolean).join(' · ')}
+        </span>
+      </span>
+    </section>
   )
 }
 

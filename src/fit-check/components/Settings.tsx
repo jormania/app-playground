@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Loader2, RefreshCw } from 'lucide-react'
+import { Check, ChevronRight, Loader2, RefreshCw } from 'lucide-react'
 import { Button, Field, SegmentedControl } from '../../ds'
 import { NotionClient } from '../lib/notionClient.ts'
 import { parseNotionId } from '../../shared/notionId.ts'
@@ -81,6 +81,33 @@ function commitId(current: string, onCommit: (value: string) => void) {
 }
 
 /**
+ * The app's own sparkle, inline — same quadratic-curve geometry as
+ * public/fit-check-logo.svg (each quadrant's control point sits at the centre,
+ * which is what pinches the waist into the four-pointed star). Drawn here
+ * rather than loaded as an <img> so it inherits `currentColor` and follows the
+ * theme; at this size the tile's seigaiha background would be mud anyway.
+ */
+function SparkMark() {
+  return (
+    <svg
+      className="fc-guide-link-mark"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path
+        d="M0-100Q0 0 42 0Q0 0 0 100Q0 0-42 0Q0 0 0-100Z"
+        transform="translate(9.5 13) scale(0.1)"
+      />
+      <path
+        d="M0-100Q0 0 42 0Q0 0 0 100Q0 0-42 0Q0 0 0-100Z"
+        transform="translate(18 6) scale(0.045)"
+      />
+    </svg>
+  )
+}
+
+/**
  * Settings is Gabriel's screen, not Nora's — she should never need to open it.
  * Everything here is bring-your-own-key per repo convention: nothing ships in
  * the repo, and none of it leaves this device except as a per-request header.
@@ -130,6 +157,34 @@ export default function Settings({
 
   return (
     <>
+      {/*
+        The guide's only other link lives in the Notion section below — which is
+        Gabriel's half of this screen, and buried in hint text. Nora installs
+        this as a PWA and opens it from her home screen, so she never passes
+        index.html's app card and would have no route to the guide at all.
+        Settings is where people look for help, so it goes first, above the
+        setup machinery, phrased for her rather than for whoever holds the
+        Notion token.
+
+        target="_blank" deliberately: the manifest scope is
+        /fit-check-react.html, so the guide is OUT of scope. Navigating in place
+        from a standalone PWA would drop her into a browser view with no
+        reliable way back into the app.
+      */}
+      <a
+        className="fc-guide-link"
+        href="/fit-check-guide.html"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <SparkMark />
+        <span className="fc-guide-link-text">
+          <b>How Fit Check works</b>
+          <span>A short guide — what everything does, in plain words.</span>
+        </span>
+        <ChevronRight size={18} aria-hidden="true" className="fc-guide-link-chevron" />
+      </a>
+
       {/* Note first, pill second: the pill keeps its space when hidden (so
           nothing jumps as it fades), and putting it last means that reserved
           space sits at the right-hand edge instead of indenting the note. */}
