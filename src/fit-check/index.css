@@ -184,6 +184,71 @@ body {
 }
 .fc-filter-row::-webkit-scrollbar { display: none; }
 
+/* ── Today ───────────────────────────────────────────────────────────────── */
+.fc-weather {
+  margin: 0 0 4px;
+  color: var(--color-muted);
+  font-size: 0.9375rem;
+}
+
+.fc-outfits {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.fc-outfit {
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--fc-tile-radius);
+  background: var(--color-surface);
+}
+
+.fc-outfit-row {
+  display: flex;
+  gap: 10px;
+  /* An outfit can run to five pieces; the strip scrolls, the page never does. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.fc-outfit-row::-webkit-scrollbar { display: none; }
+
+.fc-outfit-piece {
+  flex: 0 0 84px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fc-outfit-thumb {
+  display: block;
+  width: 84px;
+  aspect-ratio: 3 / 4;
+  border-radius: 10px;
+  background-color: var(--color-surface-2);
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+
+.fc-outfit-name {
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  color: var(--color-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* The "why" line is the promise that this is explainable, not a black box. */
+.fc-outfit-why {
+  margin: 10px 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-ink);
+}
+
 /* ── Chips (wardrobe filter, wardrobe picker) ────────────────────────────── */
 /* Chips rather than a SegmentedControl because the number of wardrobes is
    unbounded — an even-width track only reads well at two or three options. */

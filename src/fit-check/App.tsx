@@ -3,12 +3,15 @@ import { Plus } from 'lucide-react'
 import { Button } from '../ds'
 import Navigation, { type Tab } from './components/Navigation.tsx'
 import WardrobeGrid from './components/WardrobeGrid.tsx'
+import Today from './components/Today.tsx'
 import AddGarment from './components/AddGarment.tsx'
 import Settings from './components/Settings.tsx'
 import { NotionClient } from './lib/notionClient.ts'
 import { pruneCache } from './lib/imageCache.ts'
 import { loadConfig, saveConfig, isConfigured, type FitCheckConfig } from './lib/config.ts'
 import { resolveFilter, type Wardrobe } from './lib/wardrobes.ts'
+import { useWeather } from './lib/useWeather.ts'
+import type { Mood } from './lib/vocabulary.ts'
 import type { Garment } from './lib/types.ts'
 
 const TAB_TITLES: Record<Tab, { title: string; subtitle: string }> = {
@@ -28,6 +31,10 @@ export default function App() {
   const [adding, setAdding] = useState(false)
   const [wardrobeBusy, setWardrobeBusy] = useState(false)
   const [wardrobeProgress, setWardrobeProgress] = useState('')
+  const [mood, setMood] = useState<Mood | null>(null)
+
+  // Asked for once per session, and a refusal is fine — Bucharest stands in.
+  const { weather, loading: weatherLoading } = useWeather(config.coords)
 
   // Theme: an explicit choice wins, otherwise follow the device. The entry HTML
   // applies the same rule before first paint so there's no flash.
@@ -202,9 +209,15 @@ export default function App() {
         )}
 
         {tab === 'today' && (
-          <p className="fc-empty">
-            Outfit suggestions arrive in the next update.
-          </p>
+          <Today
+            garments={garments}
+            wardrobes={wardrobes}
+            filterId={resolveFilter(config.wardrobeFilterId, wardrobes)}
+            weather={weather}
+            weatherLoading={weatherLoading}
+            mood={mood}
+            onMoodChange={setMood}
+          />
         )}
 
         {tab === 'history' && (

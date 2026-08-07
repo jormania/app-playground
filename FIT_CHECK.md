@@ -304,7 +304,51 @@ casing rescued, the name auto-filled, and the request carried the right model,
 a base64 JPEG, `temperature: 0` and the full vocabulary in the system prompt.
 `npm test` 2255 passing / 189 files, typecheck and lint clean.
 
-### M4 — The point ⏳
+### M4 — The point ✅ (2026-08-06)
 
-Weather + mood + the deterministic three-outfit recommender. **This is the
-milestone where the app becomes the thing it is for.**
+Weather + mood + three outfits. The app now answers the question it exists for.
+
+**Built**
+
+- `lib/recommend.ts` — the scorer and outfit builder, 41 tests
+- `lib/useWeather.ts` — geolocation with the Bucharest fallback; a refused
+  permission is a normal outcome, not an error
+- `components/Today.tsx` — the weather line, six mood chips, three outfit cards
+
+**Deliberately the least clever code in the app.** A pure function: no AI, no
+network, no randomness. That buys the four things the charter actually asks for
+— instant, offline, unit-testable, and able to explain itself. An LLM here would
+cost all four and gain nothing a teenager would notice.
+
+Scoring is a pile of readable rules, not tuned weights, so when a suggestion
+looks wrong the fix is obvious from reading the file:
+
+- **Warmth vs temperature is the strongest signal** (+3 exact, −4 opposite),
+  because it's the one mistake you feel all day. A favourite gets +1 — enough to
+  break a tie, never enough to put a favourite T-shirt on in February. There's a
+  test for exactly that.
+- Mood maps to styles; rain boosts outerwear and penalises `summery`; wind
+  favours `layering`; worn-yesterday is nudged down, worn-never-in-months up.
+- Every outfit carries a one-line `why`, assembled from the same reasons the
+  scorer produced — so the explanation can never disagree with the score.
+
+**Bug found in the browser, not by tests:** the first cut only excluded the
+*anchor* between rounds, so all three outfits came back wearing the same Chelsea
+boots. It scored perfectly well and read as the app repeating itself. Now
+earlier picks are *discouraged* (−6) rather than excluded — enough to vary the
+shoes whenever alternatives exist, not enough to force a wrong choice, and with
+one pair in the wardrobe it still repeats them rather than going barefoot. Both
+behaviours have tests.
+
+**Verified in the browser** at 29°C: three distinct outfits with three different
+shoes, no coat, all Light-warmth. Switching to Sporty surfaced trainers and
+cargo trousers; Confident led with the going-out dress and the smart pinafore
+and said "feels confident"; clearing the mood restored the original set exactly.
+No horizontal scroll at 375×812. `npm test` 2294 passing / 190 files, typecheck
+and lint clean.
+
+### M5 — The loop closes ⏳
+
+Wear/skip (skip means *not today*, per Nora), favourites, the history log, and
+voice dictation. **Add the Outfits → Wardrobe relation here** — see
+`FIT_CHECK_ROADMAP.md` §3a; later means backfilling.
