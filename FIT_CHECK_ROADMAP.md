@@ -25,6 +25,7 @@ roadmap below is what to build next, in roughly this order.
 - Mood selection
 - Weather-aware suggestions (`src/shared/weather.ts`, Bucharest fallback)
 - Three outfit recommendations — **deterministic scoring, no AI in this path**
+- Quick Swap — change one piece of a suggestion without losing the rest (M7)
 - Favourites
 - Outfit history (a plain log; "what did I wear")
 - Voice: **dictation only** (reuse WhereItWent's `webkitSpeechRecognition`)

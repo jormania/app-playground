@@ -42,6 +42,7 @@ export const APPS = [
     description: "A wardrobe companion that answers one question: what should I wear today? Photograph the clothes you own and they tag themselves — colour, warmth, style. Pick a mood, and it reads the weather and offers three outfits you could actually put on, each with a one-line reason why. Wear one or tell it not today; either way it remembers. Clothes can live in any number of wardrobes at once, and everything stays in your own Notion workspace.",
     features: [
       "Three outfit suggestions a day, chosen from what you actually own, for the weather that's actually outside — scored by warmth against temperature, rain and wind suitability, colour compatibility and mood, with a nudge away from whatever you wore yesterday",
+      "Quick Swap: almost right is the normal case, so tap any single piece to cycle it through the alternatives you own — same outfit, different shoes — with the reason line updating as you go and the original always one more tap away",
       "Photograph a garment and it tags itself — category, colours, warmth and style — from a single pass, with every suggestion editable by hand or by voice",
       "Any number of wardrobes, named and organised however you actually keep your clothes, each switchable on or off without losing anything",
       "Favourites, wear counts, and a history of every outfit you've worn or skipped, with the weather and mood at the time",
