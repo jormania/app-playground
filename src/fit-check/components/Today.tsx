@@ -241,13 +241,13 @@ function OutfitCard({
       {verdict ? (
         <p className="fc-outfit-status" data-verdict={verdict} role="status">
           {verdict === 'Worn' ? <Check size={14} aria-hidden="true" /> : <X size={14} aria-hidden="true" />}
-          {verdict === 'Worn' ? 'Worn today' : 'Skipped for today'}
+          {verdict === 'Worn' ? 'Wearing today' : 'Skipped for today'}
         </p>
       ) : (
         <div className="fc-outfit-actions">
           <Button size="sm" onClick={() => onRecord('Worn')} disabled={recording}>
             {recording ? <Loader2 size={14} className="fc-spin" aria-hidden="true" /> : <Check size={14} aria-hidden="true" />}
-            {' '}Wore this
+            {' '}Wear this
           </Button>
           <Button size="sm" variant="ghost" onClick={() => onRecord('Skipped')} disabled={recording}>
             <X size={14} aria-hidden="true" /> Not today

@@ -9,10 +9,10 @@ import type { Garment } from './types.ts'
 const wardrobe = (id: string, over: Partial<Wardrobe> = {}): Wardrobe =>
   ({ id, name: id, active: true, order: 1, ...over })
 
-const garment = (id: string, wardrobeIds: string[]): Garment => ({
+const garment = (id: string, wardrobeIds: string[], overrides: Partial<Garment> = {}): Garment => ({
   id, name: id, photoUrl: null, thumb: null, category: 'Top', colours: [],
   warmth: null, styles: [], wardrobeIds, favourite: false, wearCount: 0,
-  lastWorn: null, archived: false,
+  lastWorn: null, archived: false, retired: false, ...overrides,
 })
 
 describe('sortWardrobes', () => {

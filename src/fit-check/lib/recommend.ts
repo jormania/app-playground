@@ -288,13 +288,17 @@ export function recommend(
     for (const g of chosen) seenBefore.add(g.id)
 
     suggestions.push({
-      slot: round,
+      slot: 0, // Assigned after sorting
       id: outfitId(chosen),
       garments: chosen,
       score: scoreOutfit(chosen, ctx),
       why: explain(chosen, ctx),
     })
   }
+
+  // Prioritize most complete outfits (most garments)
+  suggestions.sort((a, b) => b.garments.length - a.garments.length)
+  suggestions.forEach((s, i) => { s.slot = i })
 
   return suggestions
 }

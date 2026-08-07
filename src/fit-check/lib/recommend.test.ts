@@ -9,7 +9,7 @@ import type { Garment } from './types.ts'
 const g = (id: string, over: Partial<Garment> = {}): Garment => ({
   id, name: id, photoUrl: null, thumb: null, category: 'Top', colours: ['black'],
   warmth: 'Mid', styles: ['casual'], wardrobeIds: ['w'], favourite: false,
-  wearCount: 0, lastWorn: null, archived: false, ...over,
+  wearCount: 0, lastWorn: null, archived: false, retired: false, ...over,
 })
 
 const ctx = (over: Partial<RecommendContext> = {}): RecommendContext => ({

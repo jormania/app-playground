@@ -645,3 +645,22 @@ cycling ran boots → sandals → trainers → boots, wrapping correctly; the �
 disappeared after "Wore this"; History logged the **swapped** combination, not
 the original; and the button is a real labelled, focusable button with no
 aria-hidden ancestor.
+
+### M8 — Garment Actions (2026-08-07)
+
+Expanded actions on an individual garment, moved off the main flow into a "..."
+menu inside the existing `GarmentDetailsModal`, preserving the loop's simplicity
+while making the app more forgiving.
+
+**Built:**
+- **Retire:** A less destructive alternative to delete. A retired garment is 
+  excluded from suggestions and active wardrobes, but its history remains intact.
+  It appears at the end of the wardrobe filters inside a dedicated "Retired" view.
+- **Delete:** Full row archive. Helpful for mistakes or tests.
+- **Toggle Favourite:** Direct from the detail modal rather than just the tile.
+- `App.tsx` and `notionClient.ts` gained the necessary Notion integration.
+- Demo data populated with a retired item so the view works offline.
+
+**Verified in the browser:** AddGarment and models updated to handle `retired`,
+typechecks all clean, tests pass. Filtering correctly surfaces retired items only 
+when the "Retired" chip is selected, hiding them otherwise.

@@ -257,3 +257,15 @@ because the name fixes every one of these:
       **Apps at a glance**
 - [ ] `npm test`, `npm run typecheck`, `npx eslint <paths>` all green
 - [ ] Push to `main` confirmed with Gabriel first — it auto-deploys to production
+
+---
+
+## 8 · Other Garment Actions (Modal / Menu)
+
+**MVP ships (M8):** a "..." menu in the garment details modal for less common or destructive actions (Toggle Favourite, Retire, Delete).
+
+**Later recommendations:**
+- **Move (Bulk or Single):** Easily transfer a garment to another wardrobe or file it under multiple wardrobes directly from the modal, without using the chips.
+- **Duplicate:** Helpful when buying the same basic t-shirt in three colours.
+- **Mark for Donation/Sell:** More granular state than just "Retired", helpful for tracking items meant to leave the house but still physically present.
+- **Add to Packing List:** Add the garment to a temporary trip wardrobe (a "context" rather than a place, as discussed in §3a).

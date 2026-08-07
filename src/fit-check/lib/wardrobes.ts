@@ -114,9 +114,12 @@ export function visibleGarments(
   wardrobes: Wardrobe[],
   filterId: string | null,
 ): Garment[] {
+  if (filterId === 'retired') return garments.filter((g) => g.retired)
+  const activeGarments = garments.filter((g) => !g.retired)
+
   const resolved = resolveFilter(filterId, wardrobes)
-  if (resolved) return garments.filter((g) => g.wardrobeIds.includes(resolved))
-  return garments.filter((g) => !isGarmentHidden(g, wardrobes))
+  if (resolved) return activeGarments.filter((g) => g.wardrobeIds.includes(resolved))
+  return activeGarments.filter((g) => !isGarmentHidden(g, wardrobes))
 }
 
 /** The wardrobes a garment belongs to, in display order. */

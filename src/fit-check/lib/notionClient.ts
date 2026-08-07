@@ -86,6 +86,7 @@ function readGarment(row: NotionPage): Garment {
     // put away is not archived. (This was the other way round when the field
     // was `Active`, and needed an explicit write on every create.)
     archived: Boolean(p.Archived?.checkbox),
+    retired: Boolean(p.Retired?.checkbox),
   }
 }
 
@@ -248,6 +249,7 @@ export class NotionClient {
       props['Last Worn'] = { date: garment.lastWorn ? { start: garment.lastWorn } : null }
     }
     if (garment.archived !== undefined) props.Archived = { checkbox: garment.archived }
+    if (garment.retired !== undefined) props.Retired = { checkbox: garment.retired }
     return props
   }
 
@@ -273,6 +275,16 @@ export class NotionClient {
     })
     await sleep(WRITE_SPACING_MS)
     return row ? readGarment(row) : null
+  }
+
+  async deleteGarment(id: string): Promise<void> {
+    if (!this.token) return
+    await this._request({
+      path: `pages/${id}`,
+      method: 'PATCH',
+      body: { archived: true },
+    })
+    await sleep(WRITE_SPACING_MS)
   }
 
   /**

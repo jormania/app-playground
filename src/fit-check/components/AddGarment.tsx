@@ -140,7 +140,7 @@ export default function AddGarment({ config, wardrobes, lastWardrobeIds, onAdded
           id: localId, name: label, photoUrl: null, thumb,
           category: tags.category, colours: tags.colours, warmth: tags.warmth,
           styles: tags.styles, wardrobeIds, favourite: false, wearCount: 0,
-          lastWorn: null, archived: false,
+          lastWorn: null, archived: false, retired: false,
         })
         setSaving(false)
         return

@@ -32,6 +32,10 @@ export interface Garment {
    * `true` on every create, whereas `archived` wants exactly the default.
    */
   archived: boolean
+  /**
+   * True = lost, gifted, or permanently retired. Excluded from grid and suggestions.
+   */
+  retired: boolean
 }
 
 /** One outfit that was suggested and acted on. Mirrors "Fit Check — Outfits". */

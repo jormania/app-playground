@@ -7,6 +7,7 @@ import Today from './components/Today.tsx'
 import History from './components/History.tsx'
 import AddGarment from './components/AddGarment.tsx'
 import Settings from './components/Settings.tsx'
+import GarmentDetailsModal from './components/GarmentDetailsModal.tsx'
 import { NotionClient } from './lib/notionClient.ts'
 import { pruneCache } from './lib/imageCache.ts'
 import { loadConfig, saveConfig, isConfigured, type FitCheckConfig } from './lib/config.ts'
@@ -34,6 +35,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [adding, setAdding] = useState(false)
+  const [selectedGarment, setSelectedGarment] = useState<Garment | null>(null)
   const [wardrobeBusy, setWardrobeBusy] = useState(false)
   const [wardrobeProgress, setWardrobeProgress] = useState('')
   const [mood, setMood] = useState<Mood | null>(null)
@@ -328,6 +330,7 @@ export default function App() {
               wardrobes={wardrobes}
               filterId={resolvedFilterId}
               onFilterChange={(id) => updateConfig({ wardrobeFilterId: id })}
+              onSelect={setSelectedGarment}
               onToggleFavourite={toggleGarmentFavourite}
               action={
                 <div className="fc-wardrobe-action">
@@ -395,6 +398,30 @@ export default function App() {
           />
         )}
       </main>
+
+      <GarmentDetailsModal
+        garment={selectedGarment}
+        open={!!selectedGarment}
+        config={config}
+        wardrobes={wardrobes}
+        onClose={() => setSelectedGarment(null)}
+        onUpdate={(updated) => {
+          setGarments((prev) => prev.map((g) => (g.id === updated.id ? updated : g)))
+        }}
+        onDelete={(id) => {
+          setGarments((prev) => prev.filter((g) => g.id !== id))
+          setSelectedGarment(null)
+          if (!demoMode) {
+            runTask(async () => { await client().deleteGarment(id) })
+          }
+        }}
+        onToggleFavourite={(garment) => {
+          toggleGarmentFavourite(garment)
+          if (selectedGarment?.id === garment.id) {
+            setSelectedGarment({ ...garment, favourite: !garment.favourite })
+          }
+        }}
+      />
 
       <Navigation tab={tab} onChange={setTab} />
     </>

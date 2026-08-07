@@ -51,6 +51,16 @@ export default function WardrobeFilter({
           {w.name}
         </button>
       ))}
+      <button
+        type="button"
+        role="radio"
+        aria-checked={value === 'retired'}
+        className="fc-chip"
+        data-selected={value === 'retired'}
+        onClick={() => onChange('retired')}
+      >
+        Retired
+      </button>
     </div>
   )
 }
