@@ -243,6 +243,5 @@ export function useGameState(difficulty, dictionary, urlSeed = null) {
       }
     })
   }
-
-  return { gameState, stats, addGuess, startNextGame, forfeitGame }
+  return { gameState, stats, addGuess, startNextGame, forfeitGame, resetStats }
 }
