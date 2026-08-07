@@ -265,7 +265,7 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
             <div 
               style={{
                 position: 'absolute', bottom: '100%', left: 0, marginBottom: 8,
-                background: 'var(--bg-card)', border: '1px solid var(--border)',
+                background: 'var(--color-surface)', border: '1px solid var(--color-border)',
                 borderRadius: 8, padding: 4, display: 'flex', flexDirection: 'column',
                 minWidth: 160, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
               }}
@@ -276,7 +276,7 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '8px 12px', background: 'none', border: 'none',
-                  color: 'var(--text)', textAlign: 'left', cursor: 'pointer',
+                  color: 'var(--color-ink)', textAlign: 'left', cursor: 'pointer',
                   borderRadius: 4, width: '100%'
                 }}
               >
@@ -291,7 +291,7 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '8px 12px', background: 'none', border: 'none',
-                    color: 'var(--text)', textAlign: 'left', cursor: 'pointer',
+                    color: 'var(--color-ink)', textAlign: 'left', cursor: 'pointer',
                     borderRadius: 4, width: '100%'
                   }}
                 >
@@ -304,7 +304,7 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '8px 12px', background: 'none', border: 'none',
-                    color: 'var(--text)', textAlign: 'left', cursor: 'pointer',
+                    color: 'var(--color-ink)', textAlign: 'left', cursor: 'pointer',
                     borderRadius: 4, width: '100%'
                   }}
                 >
@@ -318,7 +318,7 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '8px 12px', background: 'none', border: 'none',
-                  color: 'var(--danger)', textAlign: 'left', cursor: 'pointer',
+                  color: 'var(--color-danger)', textAlign: 'left', cursor: 'pointer',
                   borderRadius: 4, width: '100%'
                 }}
               >
