@@ -6,8 +6,8 @@ import { Board } from './components/Board'
 import { Keyboard } from './components/Keyboard'
 import { Settings } from './components/Settings'
 import { Stats } from './components/Stats'
-import { IconButton } from '../ds'
-import { HelpCircle, Flag, BarChart2, Settings as SettingsIcon } from 'lucide-react'
+import { IconButton, Modal, Button } from '../ds'
+import { HelpCircle, Flag, BarChart2, Settings as SettingsIcon, Share2 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import styles from './App.module.css'
 
@@ -30,6 +30,7 @@ export function App() {
   const [invalidGuess, setInvalidGuess] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showStats, setShowStats] = useState(false)
+  const [showForfeitModal, setShowForfeitModal] = useState(false)
   const [toast, setToast] = useState(null)
 
   // Show stats automatically when game ends, trigger confetti, update favicon
@@ -68,6 +69,14 @@ export function App() {
   const showToast = (msg) => {
     setToast(msg)
     setTimeout(() => setToast(null), 2000)
+  }
+
+  const handleShareBoard = () => {
+    const seedStr = btoa(`${gameState.date}|${gameState.iteration}|${gameState.dictionary}`)
+    const shareUrl = `${window.location.origin}${window.location.pathname}?seed=${seedStr}`
+    navigator.clipboard.writeText(`Play my Lexi5 board: ${shareUrl}`).then(() => {
+      showToast('Share link copied to clipboard!')
+    })
   }
 
   const onChar = useCallback((char) => {
@@ -162,13 +171,16 @@ export function App() {
             <HelpCircle size={20} />
           </IconButton>
           {gameState.status === 'playing' && gameState.guesses.length > 0 && (
-            <IconButton onClick={() => confirm('Are you sure you want to give up?') && forfeitGame()} title="Give up">
+            <IconButton onClick={() => setShowForfeitModal(true)} title="Give up">
               <Flag size={20} />
             </IconButton>
           )}
         </div>
         <h1 className={styles.title}>Lexi5</h1>
         <div className={styles.rightActions}>
+          <IconButton onClick={handleShareBoard} title="Share game link">
+            <Share2 size={20} />
+          </IconButton>
           <IconButton onClick={() => setShowStats(true)} title="Statistics">
             <BarChart2 size={20} />
           </IconButton>
@@ -225,6 +237,25 @@ export function App() {
           setShowStats(false)
         }}
       />
+      
+      <Modal open={showForfeitModal} onClose={() => setShowForfeitModal(false)} title="Give Up?">
+        <p style={{textAlign: 'center', marginBottom: '24px', fontSize: '1.1rem'}}>
+          Are you sure you want to forfeit this game? 
+          <br />
+          <span style={{color: 'var(--text-subtle)', fontSize: '0.9rem'}}>This counts as a loss.</span>
+        </p>
+        <div style={{display: 'flex', gap: '12px', justifyContent: 'center'}}>
+          <Button variant="ghost" onClick={() => setShowForfeitModal(false)}>
+            Nevermind
+          </Button>
+          <Button variant="primary" onClick={() => {
+            forfeitGame()
+            setShowForfeitModal(false)
+          }}>
+            Yes, Give Up
+          </Button>
+        </div>
+      </Modal>
     </div>
   )
 }

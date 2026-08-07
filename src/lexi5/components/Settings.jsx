@@ -12,13 +12,35 @@ export function Settings({ open, onClose, config, updateConfig }) {
     if (!apiKey) return
     setCurating(true)
     try {
-      // In a real scenario, this would call Anthropic API directly here or via a backend.
-      // For this clone, the words.json is already curated via the Node script.
-      // This is a placeholder to satisfy the 'run upon request' feature requirement 
-      // without exposing secret keys in the bundle or hitting Vercel limits.
-      await new Promise(r => setTimeout(r, 1500))
-      alert('Dictionary successfully re-curated from latest sources.')
-      setShowCurate(false)
+      const res = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://api.anthropic.com/v1/messages'), {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'claude-3-haiku-20240307',
+          max_tokens: 1500,
+          messages: [{ role: 'user', content: 'Generate a JSON array of 500 interesting 5-letter English words for a word game. Only output the raw JSON array of strings, nothing else.' }]
+        })
+      })
+      if (!res.ok) throw new Error('API request failed')
+      const data = await res.json()
+      const text = data.content[0].text
+      const match = text.match(/\[([\s\S]*?)\]/)
+      if (match) {
+        let words = JSON.parse(match[0])
+        words = words.map(w => w.toLowerCase()).filter(w => w.length === 5 && /^[a-z]+$/.test(w))
+        if (words.length > 0) {
+          localStorage.setItem('lexi5_custom_dict', JSON.stringify(words))
+          alert(`Successfully curated ${words.length} new words! You can now select "Custom (AI Curated)" in the dictionary list.`)
+          updateConfig({ dictionary: 'custom' })
+          setShowCurate(false)
+        }
+      }
+    } catch (err) {
+      alert('Failed to curate: ' + err.message)
     } finally {
       setCurating(false)
     }
@@ -46,6 +68,7 @@ export function Settings({ open, onClose, config, updateConfig }) {
               <option value="standard">Standard (2,309 words)</option>
               <option value="expanded">Expanded (5,757 words)</option>
               <option value="expert">Expert (13,106 words)</option>
+              <option value="custom">Custom (AI Curated)</option>
             </select>
           </div>
         </div>

@@ -19,7 +19,8 @@ const DEFAULT_STATS_DICT = {
 const DEFAULT_STATS = {
   standard: { ...DEFAULT_STATS_DICT },
   expanded: { ...DEFAULT_STATS_DICT },
-  expert: { ...DEFAULT_STATS_DICT }
+  expert: { ...DEFAULT_STATS_DICT },
+  custom: { ...DEFAULT_STATS_DICT }
 }
 
 // Deterministic daily word based on local date, dictionary, and iteration
@@ -32,7 +33,18 @@ export function getWord(dictionary = 'standard', dateString, iteration = 0) {
     hash |= 0 // Convert to 32bit integer
   }
   
-  const list = wordsData.dictionaries[dictionary] || wordsData.dictionaries.standard
+  let list = wordsData.dictionaries.standard
+  if (dictionary === 'custom') {
+    try {
+      const customList = JSON.parse(localStorage.getItem('lexi5_custom_dict'))
+      if (customList && customList.length > 0) {
+        list = customList
+      }
+    } catch(e) {}
+  } else if (wordsData.dictionaries[dictionary]) {
+    list = wordsData.dictionaries[dictionary]
+  }
+  
   const index = Math.abs(hash) % list.length
   return list[index]
 }
@@ -51,6 +63,11 @@ export function parseSeed(seedStr) {
 }
 
 export function isValidGuess(word) {
+  try {
+    const customList = JSON.parse(localStorage.getItem('lexi5_custom_dict'))
+    if (customList && customList.includes(word)) return true
+  } catch(e) {}
+  
   return wordsData.guesses.includes(word)
 }
 
@@ -71,6 +88,7 @@ export function useGameState(difficulty, dictionary, urlSeed = null) {
           standard: { ...DEFAULT_STATS_DICT, ...(stored.standard || {}) },
           expanded: { ...DEFAULT_STATS_DICT, ...(stored.expanded || {}) },
           expert: { ...DEFAULT_STATS_DICT, ...(stored.expert || {}) },
+          custom: { ...DEFAULT_STATS_DICT, ...(stored.custom || {}) },
         }
       }
       return DEFAULT_STATS
