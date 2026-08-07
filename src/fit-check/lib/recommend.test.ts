@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   recommend, scoreGarment, targetWarmth, isWet, daysSince, explain,
+  alternativesFor, swapPiece,
   type RecommendContext,
 } from './recommend.ts'
 import type { Garment } from './types.ts'
@@ -272,5 +273,135 @@ describe('explain', () => {
 
   it('falls back gracefully when there is nothing to say', () => {
     expect(explain([], ctx())).toBe('A simple option for today.')
+  })
+})
+
+describe('Quick Swap — alternativesFor', () => {
+  const outfitOf = (...ids: string[]) => {
+    const all = wardrobe()
+    const garments = ids.map((id) => all.find((g) => g.id === id)!)
+    return { slot: 0, id: ids.slice().sort().join('+'), garments, score: 0, why: '' }
+  }
+
+  it('offers every same-category garment, current one included', () => {
+    // The current piece stays in the list on purpose — that ring is what lets
+    // swapPiece cycle back to where it started without tracking an index.
+    const alts = alternativesFor(outfitOf('tee', 'jeans', 'trainers'), 'trainers', wardrobe(), ctx())
+    expect(alts.map((g) => g.id).sort()).toEqual(['boots', 'trainers'])
+  })
+
+  it('never offers something already worn elsewhere in the same outfit', () => {
+    const twoShoes = [...wardrobe(), g('sandals', { category: 'Shoes' })]
+    const outfit = { ...outfitOf('tee', 'jeans', 'trainers') }
+    outfit.garments = [...outfit.garments, twoShoes.find((x) => x.id === 'boots')!]
+    const alts = alternativesFor(outfit, 'trainers', twoShoes, ctx())
+    expect(alts.map((g) => g.id)).not.toContain('boots')
+  })
+
+  it('ranks alternatives by how well they suit today', () => {
+    const alts = alternativesFor(outfitOf('tee', 'jeans', 'trainers'), 'trainers', wardrobe(), ctx({ temp: 0 }))
+    // Freezing: the warm boots should outrank the light trainers.
+    expect(alts[0].id).toBe('boots')
+  })
+
+  it('ignores put-away garments', () => {
+    const withArchived = [...wardrobe(), g('old-shoes', { category: 'Shoes', archived: true })]
+    const alts = alternativesFor(outfitOf('tee', 'jeans', 'trainers'), 'trainers', withArchived, ctx())
+    expect(alts.map((g) => g.id)).not.toContain('old-shoes')
+  })
+
+  it('returns nothing for a garment that is not in the outfit', () => {
+    expect(alternativesFor(outfitOf('tee', 'jeans'), 'boots', wardrobe(), ctx())).toEqual([])
+  })
+})
+
+describe('Quick Swap — swapPiece', () => {
+  const build = (over: Partial<RecommendContext> = {}) => {
+    const [outfit] = recommend(wardrobe(), ctx(over))
+    return outfit
+  }
+
+  it('changes only the piece asked for', () => {
+    const before = build()
+    const shoes = before.garments.find((g) => g.category === 'Shoes')!
+    const after = swapPiece(before, shoes.id, wardrobe(), ctx())
+
+    const unchanged = (o: typeof before) => o.garments.filter((g) => g.category !== 'Shoes').map((g) => g.id)
+    expect(unchanged(after)).toEqual(unchanged(before))
+    expect(after.garments.find((g) => g.category === 'Shoes')!.id).not.toBe(shoes.id)
+  })
+
+  it('keeps the piece in its original position, so the outfit does not reshuffle', () => {
+    const before = build()
+    const shoes = before.garments.find((g) => g.category === 'Shoes')!
+    const index = before.garments.findIndex((g) => g.id === shoes.id)
+    const after = swapPiece(before, shoes.id, wardrobe(), ctx())
+    expect(after.garments[index].category).toBe('Shoes')
+  })
+
+  it('recomputes the id, so a swapped outfit is a different outfit', () => {
+    // verdicts is keyed by id — wearing one combination must not mark another.
+    const before = build()
+    const shoes = before.garments.find((g) => g.category === 'Shoes')!
+    const after = swapPiece(before, shoes.id, wardrobe(), ctx())
+    expect(after.id).not.toBe(before.id)
+  })
+
+  it('keeps the same slot, so the card does not remount', () => {
+    const before = build()
+    const shoes = before.garments.find((g) => g.category === 'Shoes')!
+    expect(swapPiece(before, shoes.id, wardrobe(), ctx()).slot).toBe(before.slot)
+  })
+
+  it('recomputes the reason to match the new outfit', () => {
+    const before = build()
+    const shoes = before.garments.find((g) => g.category === 'Shoes')!
+    const after = swapPiece(before, shoes.id, wardrobe(), ctx())
+    expect(after.why.length).toBeGreaterThan(0)
+    expect(after.why.endsWith('.')).toBe(true)
+  })
+
+  it('cycles back to the original, so a swap is always undoable', () => {
+    const before = build()
+    const shoes = before.garments.find((g) => g.category === 'Shoes')!
+    // Two pairs of shoes in the fixture wardrobe, so two taps come full circle.
+    const once = swapPiece(before, shoes.id, wardrobe(), ctx())
+    const twice = swapPiece(once, once.garments.find((g) => g.category === 'Shoes')!.id, wardrobe(), ctx())
+    expect(twice.garments.map((g) => g.id)).toEqual(before.garments.map((g) => g.id))
+    expect(twice.id).toBe(before.id)
+  })
+
+  it('is a no-op when there is nothing to swap to', () => {
+    // One pair of shoes in the whole wardrobe — tapping swap must not blank it
+    // out or throw; it simply does nothing.
+    const thin = [
+      g('tee', { category: 'Top' }), g('jeans', { category: 'Bottom' }),
+      g('only-shoes', { category: 'Shoes' }),
+    ]
+    const [outfit] = recommend(thin, ctx())
+    const shoes = outfit.garments.find((x) => x.category === 'Shoes')!
+    expect(swapPiece(outfit, shoes.id, thin, ctx())).toBe(outfit)
+  })
+
+  it('is a no-op for a garment that is not in the outfit', () => {
+    const outfit = build()
+    expect(swapPiece(outfit, 'not-a-real-id', wardrobe(), ctx())).toBe(outfit)
+  })
+
+  it('is deterministic — the same swap twice gives the same result', () => {
+    const before = build()
+    const shoes = before.garments.find((g) => g.category === 'Shoes')!
+    const a = swapPiece(before, shoes.id, wardrobe(), ctx())
+    const b = swapPiece(before, shoes.id, wardrobe(), ctx())
+    expect(a.garments.map((g) => g.id)).toEqual(b.garments.map((g) => g.id))
+    expect(a.score).toBe(b.score)
+  })
+
+  it('does not mutate the outfit it was given', () => {
+    const before = build()
+    const snapshot = before.garments.map((g) => g.id)
+    const shoes = before.garments.find((g) => g.category === 'Shoes')!
+    swapPiece(before, shoes.id, wardrobe(), ctx())
+    expect(before.garments.map((g) => g.id)).toEqual(snapshot)
   })
 })

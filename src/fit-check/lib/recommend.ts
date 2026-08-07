@@ -26,8 +26,19 @@ export interface RecommendContext {
 }
 
 export interface OutfitSuggestion {
-  /** Stable across renders: derived from the garment ids it contains. */
+  /**
+   * Derived from the garment ids it contains, so it changes when a piece is
+   * swapped. That's deliberate: a swapped outfit IS a different outfit, and
+   * `verdicts` is keyed by this — wearing one combination shouldn't mark a
+   * different one as worn.
+   */
   id: string
+  /**
+   * Which of the three cards this is (0, 1, 2). Unlike `id`, it survives a
+   * Quick Swap — so React keys off this and the card doesn't remount (and
+   * visibly flicker its photos) every time a piece changes.
+   */
+  slot: number
   garments: Garment[]
   score: number
   /** One plain sentence. Nora should always be able to ask "why this?" */
@@ -193,6 +204,25 @@ function pick(
 }
 
 /**
+ * An outfit's identity: its garment ids, sorted so the same set always yields
+ * the same id regardless of the order pieces were chosen or swapped in.
+ */
+function outfitId(garments: Garment[]): string {
+  return garments.map((g) => g.id).sort().join('+')
+}
+
+/**
+ * How good an outfit is as a whole — the mean of its pieces, plus a nudge for
+ * colour harmony. Shared by `recommend` and `swapPiece` so a swapped outfit is
+ * scored on exactly the same terms as a generated one.
+ */
+function scoreOutfit(garments: Garment[], ctx: RecommendContext): number {
+  if (garments.length === 0) return 0
+  const mean = garments.reduce((sum, g) => sum + scoreGarment(g, ctx).total, 0) / garments.length
+  return Math.round((mean + colourHarmony(garments)) * 100) / 100
+}
+
+/**
  * Build up to `count` outfits.
  *
  * Greedy with an anchor: each round picks the best available Top or Dress, then
@@ -255,21 +285,87 @@ export function recommend(
       if (coat) { chosen.push(coat); used.add(coat.id) }
     }
 
-    const score =
-      chosen.reduce((sum, g) => sum + scoreGarment(g, ctx).total, 0) / chosen.length +
-      colourHarmony(chosen)
-
     for (const g of chosen) seenBefore.add(g.id)
 
     suggestions.push({
-      id: chosen.map((g) => g.id).sort().join('+'),
+      slot: round,
+      id: outfitId(chosen),
       garments: chosen,
-      score: Math.round(score * 100) / 100,
+      score: scoreOutfit(chosen, ctx),
       why: explain(chosen, ctx),
     })
   }
 
   return suggestions
+}
+
+// ── Quick Swap ──────────────────────────────────────────────────────────────
+
+/**
+ * Every garment that could stand in for `garmentId` in this outfit, best first,
+ * INCLUDING the one currently in place.
+ *
+ * Same-category only. Swapping a Dress for a Top would restructure the outfit
+ * (a dress is a complete outfit; a top needs a bottom), which is a different
+ * and much larger feature — "change the shoes" is the actual ask.
+ *
+ * Including the current garment is what makes `swapPiece` able to cycle without
+ * the UI tracking an index: the list is a ring, and stepping off the end lands
+ * back where it started.
+ */
+export function alternativesFor(
+  outfit: OutfitSuggestion,
+  garmentId: string,
+  wardrobe: Garment[],
+  ctx: RecommendContext,
+): Garment[] {
+  const current = outfit.garments.find((g) => g.id === garmentId)
+  if (!current) return []
+  const inOutfit = new Set(outfit.garments.map((g) => g.id))
+  return wardrobe
+    .filter((g) => !g.archived)
+    .filter((g) => g.category === current.category)
+    // Everything else already in this outfit is unavailable — but the piece
+    // being replaced stays in the ring.
+    .filter((g) => g.id === current.id || !inOutfit.has(g.id))
+    .sort((a, b) =>
+      scoreGarment(b, ctx).total - scoreGarment(a, ctx).total || a.id.localeCompare(b.id))
+}
+
+/**
+ * Swap one piece for the next-best alternative, keeping everything else
+ * exactly as it is — "this outfit, but different shoes".
+ *
+ * Cycles: repeated calls walk the ranked ring of same-category garments and
+ * eventually return to the original, so a swap is always undoable by tapping
+ * again rather than needing an undo button.
+ *
+ * Returns the outfit unchanged when there's nothing to swap to, so the caller
+ * never has to special-case a one-pair-of-shoes wardrobe.
+ */
+export function swapPiece(
+  outfit: OutfitSuggestion,
+  garmentId: string,
+  wardrobe: Garment[],
+  ctx: RecommendContext,
+): OutfitSuggestion {
+  const ring = alternativesFor(outfit, garmentId, wardrobe, ctx)
+  if (ring.length <= 1) return outfit
+
+  const currentIndex = ring.findIndex((g) => g.id === garmentId)
+  if (currentIndex === -1) return outfit
+  const next = ring[(currentIndex + 1) % ring.length]
+
+  // Position is preserved, so the outfit doesn't visually reshuffle around the
+  // piece that changed.
+  const garments = outfit.garments.map((g) => (g.id === garmentId ? next : g))
+  return {
+    ...outfit,
+    id: outfitId(garments),
+    garments,
+    score: scoreOutfit(garments, ctx),
+    why: explain(garments, ctx),
+  }
 }
 
 /**
