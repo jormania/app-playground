@@ -162,21 +162,23 @@ export function scorePair(a, b, options = {}) {
   // same-description match overrides that.
   if (!sameCategory && !(gap === 0 && similarity === 1)) return null;
 
-  // A vendor+amount pair seen on several separate days is a habit, not a slip.
-  // Those only count when they land on the *same* day, where a genuine
-  // double-entry still stands out against the pattern.
+  // A vendor+amount pair seen on several separate days is a habit, not a slip —
+  // and that includes two occurrences on the *same* day. A fixed-price habitual
+  // charge (a transit fare, a daily coffee) can legitimately happen twice in one
+  // day; nothing about a same-day pair distinguishes "entered twice by mistake"
+  // from "bought it twice", so once a charge is established as habitual it's
+  // excluded regardless of the gap.
   const habitual = habitIndex ? habitCount(habitIndex, a) >= HABITUAL_OCCURRENCES : false;
-  if (habitual && gap !== 0) return null;
+  if (habitual) return null;
 
   const reasons = [];
   reasons.push(gap === 0 ? 'same day' : `${gap} day${gap === 1 ? '' : 's'} apart`);
   reasons.push(similarity === 1 ? 'identical description' : 'similar description');
   if (sameAccount) reasons.push('same account');
-  if (habitual) reasons.push('though this amount is a regular charge here');
 
   // Same day, same vendor, same amount, same card is the strongest tell there
   // is. Anything spanning a date boundary stays a suggestion, not an assertion.
-  const confidence = (gap === 0 && similarity === 1 && sameAccount && !habitual) ? 'high' : 'medium';
+  const confidence = (gap === 0 && similarity === 1 && sameAccount) ? 'high' : 'medium';
 
   return { confidence, similarity, gap, habitual, reason: reasons.join(' · ') };
 }

@@ -124,8 +124,10 @@ describe('scorePair', () => {
     expect(scorePair(rows[0], rows[1], { habitIndex })).toBeNull();
   });
 
-  it('keeps a same-day repeat even for a habitual amount, but only as medium', () => {
-    // Two identical fares on the *same* day still stand out against the habit.
+  it('drops a same-day repeat of a habitual amount too — two fares in one day is normal, not a slip', () => {
+    // A fixed-price habitual charge (a bus fare, a daily coffee) can legitimately
+    // happen twice in one day; nothing about landing on the same day tells you
+    // that's a mistake rather than a second, real purchase.
     const rows = [
       tx({ id: 'a', description: 'Metro', amount: 3, date: '2026-07-01' }),
       tx({ id: 'b', description: 'Metro', amount: 3, date: '2026-07-01' }),
@@ -133,10 +135,7 @@ describe('scorePair', () => {
       tx({ id: 'd', description: 'Metro', amount: 3, date: '2026-07-09' }),
     ];
     const habitIndex = buildHabitIndex(rows);
-    const score = scorePair(rows[0], rows[1], { habitIndex });
-    expect(score.confidence).toBe('medium');
-    expect(score.habitual).toBe(true);
-    expect(score.reason).toMatch(/regular charge/);
+    expect(scorePair(rows[0], rows[1], { habitIndex })).toBeNull();
   });
 
   it('keeps a cross-day pair when the vendor rarely charges that exact amount', () => {
