@@ -46,6 +46,7 @@ export const APPS = [
       "Photograph a garment and it tags itself — category, colours, warmth and style — from a single pass, with every suggestion editable by hand or by voice",
       "Any number of wardrobes, named and organised however you actually keep your clothes, each switchable on or off without losing anything",
       "Favourites, wear counts, and a history of every outfit you've worn or skipped, with the weather and mood at the time",
+      "Retire something you've lost or given away without erasing its history, and every delete — a garment, an outfit record — gives you a few seconds to undo it before it's gone",
       "Works offline: photos are cached on the device after the first load, so the wardrobe opens instantly and keeps working without a signal",
       "Everything lives in your own Notion workspace — no account, no subscription, nothing stored anywhere else",
     ],

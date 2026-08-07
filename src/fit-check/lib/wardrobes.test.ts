@@ -95,6 +95,15 @@ describe('resolveFilter', () => {
     expect(resolveFilter('dad', [mum, dad])).toBe(null)
   })
   it('passes All straight through', () => expect(resolveFilter(null, [mum])).toBe(null))
+
+  it('passes the retired sentinel straight through, not through the wardrobe lookup', () => {
+    // 'retired' isn't a wardrobe id — it used to fall into the "no match"
+    // branch and get reset to null, which meant the Retired chip could never
+    // actually select anything (M8 regression: a retired garment became
+    // permanently unreachable, with no way to open it and Unretire).
+    expect(resolveFilter('retired', [mum, dad])).toBe('retired')
+    expect(resolveFilter('retired', [])).toBe('retired')
+  })
 })
 
 describe('visibleGarments', () => {
@@ -139,6 +148,22 @@ describe('visibleGarments', () => {
   it('with no wardrobes at all, everything is visible', () => {
     // First run, before Nora has made any — the app must not look broken.
     expect(visibleGarments(garments, [], null)).toHaveLength(garments.length)
+  })
+
+  it('excludes a retired garment from every ordinary view', () => {
+    const withRetired = [...garments, garment('retiredOne', ['mum'], { retired: true })]
+    expect(visibleGarments(withRetired, all, null).map((g) => g.id)).not.toContain('retiredOne')
+    expect(visibleGarments(withRetired, all, 'mum').map((g) => g.id)).not.toContain('retiredOne')
+  })
+
+  it('the "retired" filter shows only retired garments, active or not', () => {
+    const withRetired = [
+      ...garments,
+      garment('retiredOne', ['mum'], { retired: true }),
+      garment('retiredUnfiled', [], { retired: true }),
+    ]
+    expect(visibleGarments(withRetired, all, 'retired').map((g) => g.id).sort())
+      .toEqual(['retiredOne', 'retiredUnfiled'])
   })
 })
 

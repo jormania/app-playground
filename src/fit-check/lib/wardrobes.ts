@@ -95,9 +95,17 @@ export function unassignedGarments(garments: Garment[]): Garment[] {
  * wardrobe itself — deleted here, deleted on another device, or switched off
  * since. Any of those falls back to "All" rather than showing an empty grid
  * with no explanation.
+ *
+ * `'retired'` is a sentinel, not a wardrobe id — it must pass through
+ * unchanged. It used to fall into the "no matching wardrobe" branch below and
+ * get silently reset to `null`, which meant the Retired chip could never
+ * actually select anything: choosing it just bounced straight back to "All"
+ * on the next render, and a retired garment became permanently unreachable
+ * (no way to open it and Unretire).
  */
 export function resolveFilter(filterId: string | null, wardrobes: Wardrobe[]): string | null {
   if (!filterId) return null
+  if (filterId === 'retired') return 'retired'
   const match = wardrobes.find((w) => w.id === filterId)
   if (!match || !match.active) return null
   return filterId

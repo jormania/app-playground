@@ -235,7 +235,7 @@ export function recommend(
   ctx: RecommendContext,
   count = 3,
 ): OutfitSuggestion[] {
-  const wearable = garments.filter((g) => !g.archived)
+  const wearable = garments.filter((g) => !g.archived && !g.retired)
   const suggestions: OutfitSuggestion[] = []
   const usedAnchors = new Set<string>()
   // Everything any earlier suggestion used. Three outfits sharing one pair of
@@ -327,7 +327,7 @@ export function alternativesFor(
   if (!current) return []
   const inOutfit = new Set(outfit.garments.map((g) => g.id))
   return wardrobe
-    .filter((g) => !g.archived)
+    .filter((g) => !g.archived && !g.retired)
     .filter((g) => g.category === current.category)
     // Everything else already in this outfit is unavailable — but the piece
     // being replaced stays in the ring.

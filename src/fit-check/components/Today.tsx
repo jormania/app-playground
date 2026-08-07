@@ -38,8 +38,13 @@ export default function Today({
   garments, wardrobes, filterId, weather, weatherLoading, mood, onMoodChange,
   verdicts, recordingIds, onRecordVerdict,
 }: Props) {
+  // The "Retired" wardrobe filter is a Wardrobe-tab concept — Today shares the
+  // same filterId (it's one device-level setting), but suggesting outfits from
+  // a retired-only pool makes no sense. Falling back to "All" here means
+  // switching tabs while Retired is selected never surprises Nora with three
+  // outfits built entirely from things she's put away.
   const available = useMemo(
-    () => visibleGarments(garments, wardrobes, filterId),
+    () => visibleGarments(garments, wardrobes, filterId === 'retired' ? null : filterId),
     [garments, wardrobes, filterId],
   )
 

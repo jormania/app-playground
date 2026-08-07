@@ -695,3 +695,57 @@ Injected a layer of premium polish and micro-interactions to make the applicatio
 - **Time-of-Day Glow:** A faint, fixed radial background gradient shifts dynamically based on the user's local hour (peach at dawn, transparent by day, amber at dusk, and deep blue at night).
 
 **Verified in the browser:** Native CSS animations ensure high 60fps performance without JavaScript overhead. Typechecks and unit tests pass cleanly.
+
+### R1 — M8 audit and fixes (2026-08-07)
+
+M8–M8.3 were built externally (Gemini Pro, in Antigravity), then pulled into
+this repo and audited before the first real release. Four of the walkthrough's
+claims didn't hold up under a read of the actual code and the live Notion
+schema — worth recording, since the failure mode in every case was the same:
+a string or a schema field that looked right in isolation but didn't match
+what the rest of the app actually uses.
+
+- **The Retired view could never be reached.** `WardrobeFilter`'s "Retired"
+  chip set `wardrobeFilterId: 'retired'`, but `resolveFilter()` treated any
+  id that didn't match a real wardrobe as stale and reset it to `null` — so
+  selecting Retired silently bounced back to "All" on the next render. Worse:
+  since `visibleGarments()` already excludes retired garments from every
+  *other* view, a retired garment became permanently unreachable — no way to
+  open it and Unretire. `resolveFilter()` now special-cases `'retired'` as a
+  sentinel, passed straight through. Today ignores it when building
+  suggestions (a "retired only" pool of outfit ideas makes no sense), and
+  `recommend()`/`alternativesFor()` now also filter out `retired` defensively,
+  matching the existing `archived` pattern rather than trusting the caller.
+- **The live Notion schema was never actually updated.** The walkthrough
+  claimed `notionClient.ts` "gained the necessary Notion integration" for
+  `retired`, but the **Garments** database (and the Starter Template's copy)
+  had no `Retired` property at all. Every real Retire/Unretire against an
+  actual Notion connection would 400 — only demo mode ever worked, because
+  demo mode skips Notion entirely. Added the `Retired` checkbox to both.
+- **Four of six category heading colours were dead.** M8.2's "Vibrant
+  Category Headings" targeted `data-category="Tops"`, `"Bottoms"`,
+  `"One-pieces"`, `"Footwear"`, `"Accessories"` — plural/renamed guesses that
+  don't match `CATEGORIES` in `lib/vocabulary.ts` (`Top`, `Bottom`, `Dress`,
+  `Outerwear`, `Shoes`, `Accessory`). Only Outerwear and Uncategorized ever
+  coloured correctly; the other four silently fell back to plain ink. Fixed
+  to the real category strings.
+- **`index.css` had ~170 lines of duplicated rules** — the whole Settings
+  block plus the squish/stagger/pulse-attention animations were pasted twice
+  (once around M8, again in the "fix Today.tsx crash" commit), differing only
+  in that the second copy also carried `.fc-modal-heading`, which turned out
+  to be the only genuinely new rule in that span. Removed the duplicate,
+  kept `.fc-modal-heading`.
+
+Also cleaned up along the way: `GarmentDetailsModal`'s dropdown menu, retake
+button and action row were ~150 lines of inline `style={{...}}` objects,
+inconsistent with how the rest of the app is styled — moved to `fc-modal-*`
+classes in `index.css`. Added regression tests for the retired-filter fix in
+`wardrobes.test.ts` and `recommend.test.ts`; there were none before (the M8
+commits only touched fixture shapes for TypeScript, not the actual retired
+behaviour). `recommend()`'s "prioritise the most complete outfit first" sort
+(M8, sorts the three suggestions by garment count and reassigns `slot`
+afterward) was checked against the Quick Swap `slot`-stability contract and
+left as-is — it runs once per generation, before any swap, so it doesn't
+violate it.
+
+Regression suite: 2363 tests / 196 files, typecheck and lint clean.

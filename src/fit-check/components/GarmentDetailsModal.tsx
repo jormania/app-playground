@@ -171,7 +171,7 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
 
   return (
     <Modal title="Garment Details" open={open} onClose={() => { if (!saving) onClose() }}>
-      <div className="fc-capture" style={{ marginBottom: 16, position: 'relative' }}>
+      <div className="fc-capture fc-capture--modal">
         {currentPhotoUrl ? (
           <img className="fc-capture-preview" src={currentPhotoUrl} alt={name} />
         ) : (
@@ -186,17 +186,10 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
         )}
         <button
           type="button"
+          className="fc-retake-btn"
           onClick={() => inputRef.current?.click()}
           aria-label="Retake photo"
           disabled={saving}
-          style={{
-            position: 'absolute', bottom: 8, right: 8,
-            background: 'rgba(0,0,0,0.6)', color: 'white',
-            border: 'none', borderRadius: '50%',
-            width: 40, height: 40,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer'
-          }}
         >
           {saving && file ? <Loader2 size={20} className="fc-spin" /> : <Camera size={20} />}
         </button>
@@ -218,7 +211,7 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
           disabled={saving}
         />
         {garment.wearCount > 0 && (
-          <p className="fc-settings-hint" style={{ margin: '-4px 0 16px' }}>
+          <p className="fc-settings-hint fc-wear-count-hint">
             Worn {garment.wearCount} time{garment.wearCount === 1 ? '' : 's'}
           </p>
         )}
@@ -227,7 +220,7 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
       <TagEditor tags={tags} onChange={setTags} disabled={saving} />
 
       {choices.length > 0 && (
-        <section className="fc-settings-group" style={{ marginTop: 24 }}>
+        <section className="fc-settings-group fc-modal-wardrobes">
           <h3 className="fc-modal-heading" data-colour="purple">Wardrobes</h3>
           <div className="fc-chips">
             {choices.map((w) => {
@@ -253,82 +246,55 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
         </section>
       )}
 
-      {error && <p className="fc-status" data-ok="false" role="alert" style={{ marginTop: 16 }}>{error}</p>}
+      {error && <p className="fc-status fc-modal-error" data-ok="false" role="alert">{error}</p>}
 
-      <div className="fc-actions" style={{ marginTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ position: 'relative' }}>
+      <div className="fc-actions fc-modal-actions">
+        <div className="fc-modal-menu">
           <IconButton onClick={() => setMenuOpen(!menuOpen)} aria-label="More actions" aria-expanded={menuOpen} disabled={saving}>
             <MoreVertical size={20} />
           </IconButton>
-          
+
           {menuOpen && (
-            <div 
-              style={{
-                position: 'absolute', bottom: '100%', left: 0, marginBottom: 8,
-                background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-                borderRadius: 8, padding: 4, display: 'flex', flexDirection: 'column',
-                minWidth: 160, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-              }}
-            >
-              <button 
+            <div className="fc-modal-menu-list">
+              <button
                 type="button"
+                className="fc-modal-menu-item"
                 onClick={() => { setMenuOpen(false); onToggleFavourite(garment) }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px 12px', background: 'none', border: 'none',
-                  color: 'var(--color-ink)', textAlign: 'left', cursor: 'pointer',
-                  borderRadius: 4, width: '100%'
-                }}
               >
                 <Star size={16} fill={garment.favourite ? 'currentColor' : 'none'} />
                 {garment.favourite ? 'Unfavourite' : 'Favourite'}
               </button>
-              
+
               {!garment.retired ? (
-                <button 
+                <button
                   type="button"
+                  className="fc-modal-menu-item"
                   onClick={() => { setMenuOpen(false); setRetireConfirm(true) }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '8px 12px', background: 'none', border: 'none',
-                    color: 'var(--color-ink)', textAlign: 'left', cursor: 'pointer',
-                    borderRadius: 4, width: '100%'
-                  }}
                 >
                   <Archive size={16} /> Retire
                 </button>
               ) : (
-                <button 
+                <button
                   type="button"
+                  className="fc-modal-menu-item"
                   onClick={() => { setMenuOpen(false); setRetiredStatus(false) }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '8px 12px', background: 'none', border: 'none',
-                    color: 'var(--color-ink)', textAlign: 'left', cursor: 'pointer',
-                    borderRadius: 4, width: '100%'
-                  }}
                 >
                   <Archive size={16} /> Unretire
                 </button>
               )}
-              
-              <button 
+
+              <button
                 type="button"
+                className="fc-modal-menu-item fc-modal-menu-item--danger"
                 onClick={() => { setMenuOpen(false); setDeleteConfirm(true) }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px 12px', background: 'none', border: 'none',
-                  color: 'var(--color-danger)', textAlign: 'left', cursor: 'pointer',
-                  borderRadius: 4, width: '100%'
-                }}
               >
                 <Trash2 size={16} /> Delete
               </button>
             </div>
           )}
         </div>
-        
-        <div style={{ display: 'flex', gap: 8 }}>
+
+        <div className="fc-modal-actions-right">
           <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button onClick={save} disabled={saving}>
             {saving ? <><Loader2 size={16} className="fc-spin" /> Saving…</> : 'Save changes'}

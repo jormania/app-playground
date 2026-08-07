@@ -248,6 +248,17 @@ describe('recommend — thin and awkward wardrobes', () => {
     ], ctx())
     for (const o of outfits) expect(o.garments.map((g) => g.id)).not.toContain('old')
   })
+
+  it('ignores retired garments entirely', () => {
+    // Defense in depth: Today already filters retired garments out before
+    // calling recommend(), but recommend() shouldn't trust that — the same
+    // way it doesn't trust callers not to pass archived garments.
+    const outfits = recommend([
+      g('gone', { category: 'Top', retired: true }),
+      g('tee', { category: 'Top' }), g('jeans', { category: 'Bottom' }),
+    ], ctx())
+    for (const o of outfits) expect(o.garments.map((g) => g.id)).not.toContain('gone')
+  })
 })
 
 describe('explain', () => {
@@ -312,6 +323,12 @@ describe('Quick Swap — alternativesFor', () => {
 
   it('returns nothing for a garment that is not in the outfit', () => {
     expect(alternativesFor(outfitOf('tee', 'jeans'), 'boots', wardrobe(), ctx())).toEqual([])
+  })
+
+  it('never offers a retired garment as a swap', () => {
+    const withRetired = [...wardrobe(), g('retired-shoes', { category: 'Shoes', retired: true })]
+    const alts = alternativesFor(outfitOf('tee', 'jeans', 'trainers'), 'trainers', withRetired, ctx())
+    expect(alts.map((g) => g.id)).not.toContain('retired-shoes')
   })
 })
 
