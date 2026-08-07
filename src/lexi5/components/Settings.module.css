@@ -97,6 +97,18 @@
   align-items: center;
 }
 
+.activePill {
+  display: inline-block;
+  padding: 2px 8px;
+  background-color: var(--accent, #538d4e);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 999px;
+  letter-spacing: 0.05em;
+}
+
 .curateCard {
   margin-top: 12px;
   padding: 16px;

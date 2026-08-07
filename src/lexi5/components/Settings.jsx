@@ -103,9 +103,14 @@ export function Settings({ open, onClose, config, updateConfig, resetStats }) {
       </div>
 
       <div className={styles.advanced}>
-        <Button variant="ghost" onClick={() => setShowCurate(!showCurate)}>
-          Advanced: Dictionary Curation
-        </Button>
+        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+          <Button variant="ghost" onClick={() => setShowCurate(!showCurate)}>
+            Advanced: Dictionary Curation
+          </Button>
+          {config.dictionary === 'custom' && (
+            <span className={styles.activePill}>Active</span>
+          )}
+        </div>
         
         {showCurate && (
           <div className={styles.curateCard}>
