@@ -76,10 +76,12 @@ interface Props {
   onFilterChange: (id: string | null) => void
   onSelect?: (garment: Garment) => void
   onToggleFavourite?: (garment: Garment) => void
+  /** The primary action for this screen, rendered under the wardrobe filter. */
+  action?: React.ReactNode
 }
 
 export default function WardrobeGrid({
-  garments, wardrobes, filterId, onFilterChange, onSelect, onToggleFavourite,
+  garments, wardrobes, filterId, onFilterChange, onSelect, onToggleFavourite, action,
 }: Props) {
   const visible = useMemo(
     () => visibleGarments(garments, wardrobes, filterId).filter((g) => !g.archived),
@@ -118,6 +120,15 @@ export default function WardrobeGrid({
       <div className="fc-filter-row">
         <WardrobeFilter wardrobes={wardrobes} value={filterId} onChange={onFilterChange} />
       </div>
+
+      {/* Directly under the filter, not stranded below the grid. Adding a
+          garment defaults it to whichever wardrobe is currently filtered to
+          (see AddGarment), so "pick a wardrobe → add to it → here's what's in
+          it" puts the action next to the thing that decides where it lands.
+          Passed in as a slot rather than built here: App owns whether adding
+          is possible and what the demo caveat says; this component only owns
+          where it sits. */}
+      {action}
 
       {unfiled.length > 0 && (
         <p className="fc-notice" role="status">

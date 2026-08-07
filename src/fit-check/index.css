@@ -554,6 +554,17 @@ body {
   margin-bottom: 8px;
 }
 
+/* The Wardrobe screen's primary action, sitting between the filter and the
+   grid. Wraps so the demo caveat drops to its own line on a narrow phone
+   rather than squeezing the button. */
+.fc-wardrobe-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 14px 0 16px;
+}
+
 .fc-notice {
   margin: 0 0 4px;
   padding: 8px 12px;

@@ -323,25 +323,25 @@ export default function App() {
             <p className="fc-empty">Getting your wardrobe…</p>
           ) : error ? null : ( // the banner above already explains it; a second,
             // conflicting "nothing here yet" underneath it doubles the message
-            <>
-              <WardrobeGrid
-                garments={garments}
-                wardrobes={wardrobes}
-                filterId={resolvedFilterId}
-                onFilterChange={(id) => updateConfig({ wardrobeFilterId: id })}
-                onToggleFavourite={toggleGarmentFavourite}
-              />
-              <div className="fc-actions">
-                <Button onClick={() => setAdding(true)}>
-                  <Plus size={16} aria-hidden="true" /> Add something
-                </Button>
-              </div>
-              {demoMode && (
-                <p className="fc-settings-hint" style={{ marginTop: 8 }}>
-                  Demo additions last for this visit only.
-                </p>
-              )}
-            </>
+            <WardrobeGrid
+              garments={garments}
+              wardrobes={wardrobes}
+              filterId={resolvedFilterId}
+              onFilterChange={(id) => updateConfig({ wardrobeFilterId: id })}
+              onToggleFavourite={toggleGarmentFavourite}
+              action={
+                <div className="fc-wardrobe-action">
+                  <Button onClick={() => setAdding(true)}>
+                    <Plus size={16} aria-hidden="true" /> Add something
+                  </Button>
+                  {demoMode && (
+                    <span className="fc-settings-hint">
+                      Demo additions last for this visit only.
+                    </span>
+                  )}
+                </div>
+              }
+            />
           )
         )}
 
