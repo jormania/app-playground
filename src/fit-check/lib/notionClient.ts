@@ -334,6 +334,16 @@ export class NotionClient {
     return row ? readOutfit(row) : null
   }
 
+  async deleteOutfit(id: string): Promise<void> {
+    if (!this.token) return
+    await this._request({
+      path: `pages/${id}`,
+      method: 'PATCH',
+      body: { archived: true },
+    })
+    await sleep(WRITE_SPACING_MS)
+  }
+
   // ── Wardrobes ─────────────────────────────────────────────────────────────
 
   async listWardrobes(): Promise<Wardrobe[]> {

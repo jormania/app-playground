@@ -55,6 +55,9 @@ function GarmentTile({
           )}
         </span>
         <span className="fc-tile-name">{garment.name}</span>
+        {garment.wearCount > 0 && (
+          <span className="fc-tile-wear-count">{garment.wearCount}x</span>
+        )}
       </button>
       <button
         type="button"

@@ -8,6 +8,7 @@ import History from './components/History.tsx'
 import AddGarment from './components/AddGarment.tsx'
 import Settings from './components/Settings.tsx'
 import GarmentDetailsModal from './components/GarmentDetailsModal.tsx'
+import UndoToast from './components/UndoToast.tsx'
 import { NotionClient } from './lib/notionClient.ts'
 import { pruneCache } from './lib/imageCache.ts'
 import { loadConfig, saveConfig, isConfigured, type FitCheckConfig } from './lib/config.ts'
@@ -49,7 +50,9 @@ export default function App() {
   // as the fallback when viewing "All" — adding five things in a row while
   // browsing everywhere shouldn't mean re-tapping the same wardrobe chip five
   // times. Session-only on purpose: it's a small convenience, not a setting.
+  // times. Session-only on purpose: it's a small convenience, not a setting.
   const [lastWardrobeIds, setLastWardrobeIds] = useState<string[] | null>(null)
+  const [undoToast, setUndoToast] = useState<{ id: string, message: string, onUndo: () => void } | null>(null)
 
   // Asked for once per session, and a refusal is fine — Bucharest stands in.
   const { weather, loading: weatherLoading } = useWeather(config.coords)
@@ -376,6 +379,32 @@ export default function App() {
               garments={garments}
               wardrobes={wardrobes}
               onToggleFavourite={toggleOutfitFavourite}
+              onDeleteOutfit={(outfit) => {
+                const deletedOutfit = outfits.find(o => o.id === outfit.id)
+                setOutfits((prev) => prev.filter((o) => o.id !== outfit.id))
+                
+                if (!deletedOutfit) return
+                
+                let executeDelete = true
+                
+                const timeout = setTimeout(() => {
+                  if (executeDelete && canPersistOutfits) {
+                    runTask(async () => { await client().deleteOutfit(outfit.id) })
+                  }
+                  setUndoToast(current => current?.id === outfit.id ? null : current)
+                }, 5000)
+                
+                setUndoToast({
+                  id: outfit.id,
+                  message: `Outfit log deleted`,
+                  onUndo: () => {
+                    executeDelete = false
+                    clearTimeout(timeout)
+                    setOutfits((prev) => [...prev, deletedOutfit])
+                    setUndoToast(null)
+                  }
+                })
+              }}
             />
           )
         )}
@@ -409,11 +438,31 @@ export default function App() {
           setGarments((prev) => prev.map((g) => (g.id === updated.id ? updated : g)))
         }}
         onDelete={(id) => {
+          const deletedGarment = garments.find(g => g.id === id)
           setGarments((prev) => prev.filter((g) => g.id !== id))
           setSelectedGarment(null)
-          if (!demoMode) {
-            runTask(async () => { await client().deleteGarment(id) })
-          }
+          
+          if (!deletedGarment) return
+          
+          let executeDelete = true
+          
+          const timeout = setTimeout(() => {
+            if (executeDelete && !demoMode) {
+              runTask(async () => { await client().deleteGarment(id) })
+            }
+            setUndoToast(current => current?.id === id ? null : current)
+          }, 5000)
+          
+          setUndoToast({
+            id,
+            message: `Garment deleted`,
+            onUndo: () => {
+              executeDelete = false
+              clearTimeout(timeout)
+              setGarments((prev) => [...prev, deletedGarment])
+              setUndoToast(null)
+            }
+          })
         }}
         onToggleFavourite={(garment) => {
           toggleGarmentFavourite(garment)
@@ -424,6 +473,14 @@ export default function App() {
       />
 
       <Navigation tab={tab} onChange={setTab} />
+      
+      {undoToast && (
+        <UndoToast
+          key={undoToast.id}
+          message={undoToast.message}
+          onUndo={undoToast.onUndo}
+        />
+      )}
     </>
   )
 }

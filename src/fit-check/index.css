@@ -165,6 +165,13 @@ body {
   overflow: hidden;
 }
 
+.fc-tile-wear-count {
+  padding: 0 8px 8px;
+  font-size: 0.6875rem;
+  color: var(--color-faint);
+  font-weight: 500;
+}
+
 /* A real button now (garment favouriting), not a decorative badge — sits over
    the tile's top-right corner. Its own semi-transparent dark chip keeps a
    white star legible over any photo or placeholder colour, light or dark

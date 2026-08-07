@@ -1,4 +1,4 @@
-import { Heart } from 'lucide-react'
+import { Heart, Trash2 } from 'lucide-react'
 import { useGarmentPhoto } from '../lib/useGarmentPhoto.ts'
 import { thumbStyle } from './WardrobeGrid.tsx'
 import type { Garment, Outfit } from '../lib/types.ts'
@@ -9,12 +9,13 @@ interface Props {
   garments: Garment[]
   wardrobes: Wardrobe[]
   onToggleFavourite: (outfit: Outfit) => void
+  onDeleteOutfit: (outfit: Outfit) => void
 }
 
 /** Every outfit that was ever acted on, most recent first — both Worn and
  *  Skipped, since "not today" (per Nora: skip means that, not "never again")
  *  is still worth a record of what was actually considered. */
-export default function History({ outfits, garments, wardrobes, onToggleFavourite }: Props) {
+export default function History({ outfits, garments, wardrobes, onToggleFavourite, onDeleteOutfit }: Props) {
   if (outfits.length === 0) {
     return (
       <p className="fc-empty">
@@ -39,6 +40,7 @@ export default function History({ outfits, garments, wardrobes, onToggleFavourit
           byId={byId}
           wardrobeById={wardrobeById}
           onToggleFavourite={() => onToggleFavourite(outfit)}
+          onDelete={() => onDeleteOutfit(outfit)}
         />
       ))}
     </div>
@@ -46,12 +48,13 @@ export default function History({ outfits, garments, wardrobes, onToggleFavourit
 }
 
 function HistoryEntry({
-  outfit, byId, wardrobeById, onToggleFavourite,
+  outfit, byId, wardrobeById, onToggleFavourite, onDelete,
 }: {
   outfit: Outfit
   byId: Map<string, Garment>
   wardrobeById: Map<string, Wardrobe>
   onToggleFavourite: () => void
+  onDelete: () => void
 }) {
   // A garment can be deleted after an outfit wore it; the record stays honest
   // about the count without crashing on the missing lookup.
@@ -74,15 +77,25 @@ function HistoryEntry({
             {wardrobeNames.length > 0 && <> · {wardrobeNames.join(', ')}</>}
           </p>
         </div>
-        <button
-          type="button"
-          className="fc-history-fav"
-          aria-label={outfit.favourite ? 'Remove from favourites' : 'Mark as a favourite'}
-          aria-pressed={outfit.favourite}
-          onClick={onToggleFavourite}
-        >
-          <Heart size={16} aria-hidden="true" fill={outfit.favourite ? 'currentColor' : 'none'} />
-        </button>
+        <div style={{ display: 'flex', gap: 6, flex: 'none' }}>
+          <button
+            type="button"
+            className="fc-history-fav"
+            aria-label={outfit.favourite ? 'Remove from favourites' : 'Mark as a favourite'}
+            aria-pressed={outfit.favourite}
+            onClick={onToggleFavourite}
+          >
+            <Heart size={16} aria-hidden="true" fill={outfit.favourite ? 'currentColor' : 'none'} />
+          </button>
+          <button
+            type="button"
+            className="fc-history-fav"
+            aria-label="Delete outfit record"
+            onClick={onDelete}
+          >
+            <Trash2 size={16} aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       {pieces.length > 0 && (

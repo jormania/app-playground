@@ -148,18 +148,18 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
     }
   }
 
-  async function retire() {
+  async function setRetiredStatus(status: boolean) {
     if (!garment) return
     setSaving(true)
     setError('')
     try {
       if (!isConfigured(config)) {
-        onUpdate({ ...garment, retired: true })
+        onUpdate({ ...garment, retired: status })
         onClose()
         return
       }
       const client = new NotionClient(config.notionToken, { garments: config.garmentsDbId })
-      const updated = await client.updateGarment(garment.id, { retired: true })
+      const updated = await client.updateGarment(garment.id, { retired: status })
       if (!updated) throw new Error('Update failed')
       onUpdate(updated)
       onClose()
@@ -217,6 +217,11 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
           onChange={(e) => setName(e.target.value)}
           disabled={saving}
         />
+        {garment.wearCount > 0 && (
+          <p className="fc-settings-hint" style={{ margin: '-4px 0 16px' }}>
+            Worn {garment.wearCount} time{garment.wearCount === 1 ? '' : 's'}
+          </p>
+        )}
       </div>
 
       <TagEditor tags={tags} onChange={setTags} disabled={saving} />
@@ -279,7 +284,7 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
                 {garment.favourite ? 'Unfavourite' : 'Favourite'}
               </button>
               
-              {!garment.retired && (
+              {!garment.retired ? (
                 <button 
                   type="button"
                   onClick={() => { setMenuOpen(false); setRetireConfirm(true) }}
@@ -291,6 +296,19 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
                   }}
                 >
                   <Archive size={16} /> Retire
+                </button>
+              ) : (
+                <button 
+                  type="button"
+                  onClick={() => { setMenuOpen(false); setRetiredStatus(false) }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 12px', background: 'none', border: 'none',
+                    color: 'var(--text)', textAlign: 'left', cursor: 'pointer',
+                    borderRadius: 4, width: '100%'
+                  }}
+                >
+                  <Archive size={16} /> Unretire
                 </button>
               )}
               
@@ -323,7 +341,7 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
         message="It will be removed from your active wardrobes and suggestions, but kept in Notion for your records."
         confirmText="Retire garment"
         isOpen={retireConfirm}
-        onConfirm={retire}
+        onConfirm={() => setRetiredStatus(true)}
         onCancel={() => setRetireConfirm(false)}
       />
 

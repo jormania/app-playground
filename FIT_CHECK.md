@@ -664,3 +664,16 @@ while making the app more forgiving.
 **Verified in the browser:** AddGarment and models updated to handle `retired`,
 typechecks all clean, tests pass. Filtering correctly surfaces retired items only 
 when the "Retired" chip is selected, hiding them otherwise.
+
+### M8.1 — App Safety & Reversibility (2026-08-07)
+
+Expanded on the garment actions to make Fit Check more forgiving, avoiding permanent
+mistakes without introducing a complex "Trash" view.
+
+**Built:**
+- **Unretire:** A one-tap reactivation inside `GarmentDetailsModal` if the item is already retired.
+- **Delayed Deletion & Undo Toast:** Instead of immediately calling Notion to archive, deleting a garment visually hides it and shows a 5-second `UndoToast`. Tapping "Undo" restores it locally and cancels the API call entirely.
+- **Undo Outfit Logs:** The History tab gained a delete button for outfits. Accidental "Wore this" / "Not today" clicks can now be reverted by archiving the log, restoring the recommender's state safely.
+- **Wear Count Display:** `wearCount` is now lightly surfaced as a small `5x` indicator on garment tiles and "Worn: X times" inside the details modal, making its invisible effect on the recommender more transparent.
+
+**Verified in the browser:** Tests and typechecks pass. Undo correctly cancels the delayed timeout, restoring items without hitting Notion.
