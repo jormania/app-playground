@@ -68,10 +68,11 @@ export default function App() {
   const [filterType, setFilterType] = useState(uiState.filterType || 'All');
   const [categoryFilter, setCategoryFilter] = useState(uiState.categoryFilter || 'All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [unreconciledOnly, setUnreconciledOnly] = useState(uiState.unreconciledOnly === true);
 
   useEffect(() => {
-    writeJson('whereItWent_ui_state', { period, filterType, categoryFilter });
-  }, [period, filterType, categoryFilter]);
+    writeJson('whereItWent_ui_state', { period, filterType, categoryFilter, unreconciledOnly });
+  }, [period, filterType, categoryFilter, unreconciledOnly]);
 
   // Sheet visibility states
   const [showPeriodSheet, setShowPeriodSheet] = useState(false);
@@ -123,8 +124,8 @@ export default function App() {
   // Likewise: an inline object literal here busted InsightsView's useMemo on every
   // render, re-running the whole analytics engine each time.
   const filterProps = useMemo(
-    () => ({ filterType, categoryFilter, searchQuery }),
-    [filterType, categoryFilter, searchQuery]
+    () => ({ filterType, categoryFilter, searchQuery, unreconciledOnly }),
+    [filterType, categoryFilter, searchQuery, unreconciledOnly]
   );
 
   // Off by default — most people don't need to track internal account-to-account
@@ -520,7 +521,7 @@ export default function App() {
           period={period}
           onPeriodClick={() => setShowPeriodSheet(true)}
           onFilterClick={() => setShowFilterSheet(true)}
-          filtersActive={filterType !== 'All' || categoryFilter !== 'All' || searchQuery.trim() !== ''}
+          filtersActive={filterType !== 'All' || categoryFilter !== 'All' || searchQuery.trim() !== '' || unreconciledOnly}
           duplicateCount={duplicateCount}
         />
 
@@ -562,11 +563,13 @@ export default function App() {
         filterType={filterType}
         categoryFilter={categoryFilter}
         searchQuery={searchQuery}
+        unreconciledOnly={unreconciledOnly}
         allowTransfer={allowTransfer}
-        onApply={({ filterType: ft, categoryFilter: cf, searchQuery: sq }) => {
+        onApply={({ filterType: ft, categoryFilter: cf, searchQuery: sq, unreconciledOnly: uo }) => {
           setFilterType(ft);
           setCategoryFilter(cf);
           setSearchQuery(sq);
+          setUnreconciledOnly(uo);
         }}
       />
 

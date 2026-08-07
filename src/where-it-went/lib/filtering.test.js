@@ -54,4 +54,26 @@ describe('applyFilters', () => {
     );
     expect(result.map(t => t.id)).toEqual(['2']);
   });
+
+  it('unreconciledOnly drops any transaction already marked reconciled', () => {
+    const reconciled = { ...expense, id: '3', reconciled: true };
+    const result = applyFilters(
+      [income, expense, reconciled],
+      { filterType: 'All', categoryFilter: 'All', searchQuery: '', unreconciledOnly: true },
+      categoriesById,
+      accountsById,
+    );
+    expect(result.map(t => t.id)).toEqual(['1', '2']);
+  });
+
+  it('unreconciledOnly is a no-op when off, reconciled or not', () => {
+    const reconciled = { ...expense, id: '3', reconciled: true };
+    const result = applyFilters(
+      [income, expense, reconciled],
+      { filterType: 'All', categoryFilter: 'All', searchQuery: '', unreconciledOnly: false },
+      categoriesById,
+      accountsById,
+    );
+    expect(result).toHaveLength(3);
+  });
 });

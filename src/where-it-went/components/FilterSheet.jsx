@@ -4,10 +4,11 @@ import { Button } from '../../ds/components/Button';
 import { CategorySelect } from './CategorySelect';
 import { SegmentedControl } from '../../ds/components/SegmentedControl';
 
-export default function FilterSheet({ isOpen, onClose, filterType, categoryFilter, searchQuery, onApply, categories, allowTransfer = false }) {
+export default function FilterSheet({ isOpen, onClose, filterType, categoryFilter, searchQuery, unreconciledOnly = false, onApply, categories, allowTransfer = false }) {
   const [localType, setLocalType] = useState(filterType);
   const [localCategory, setLocalCategory] = useState(categoryFilter);
   const [localSearch, setLocalSearch] = useState(searchQuery);
+  const [localUnreconciledOnly, setLocalUnreconciledOnly] = useState(unreconciledOnly);
 
   // Sync state when modal opens
   useEffect(() => {
@@ -15,11 +16,12 @@ export default function FilterSheet({ isOpen, onClose, filterType, categoryFilte
       setLocalType(filterType);
       setLocalCategory(categoryFilter);
       setLocalSearch(searchQuery);
+      setLocalUnreconciledOnly(unreconciledOnly);
     }
-  }, [isOpen, filterType, categoryFilter, searchQuery]);
+  }, [isOpen, filterType, categoryFilter, searchQuery, unreconciledOnly]);
 
   const handleApply = () => {
-    onApply({ filterType: localType, categoryFilter: localCategory, searchQuery: localSearch });
+    onApply({ filterType: localType, categoryFilter: localCategory, searchQuery: localSearch, unreconciledOnly: localUnreconciledOnly });
     onClose();
   };
 
@@ -27,6 +29,7 @@ export default function FilterSheet({ isOpen, onClose, filterType, categoryFilte
     setLocalType('All');
     setLocalCategory('All');
     setLocalSearch('');
+    setLocalUnreconciledOnly(false);
   };
 
   // An inactive category is hidden from the picker, unless it's the one
@@ -130,6 +133,15 @@ export default function FilterSheet({ isOpen, onClose, filterType, categoryFilte
             )}
           </div>
         </div>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', fontSize: 'var(--text-sm)', color: 'var(--color-ink)', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={localUnreconciledOnly}
+            onChange={(e) => setLocalUnreconciledOnly(e.target.checked)}
+          />
+          Unreconciled only
+        </label>
 
       </div>
 

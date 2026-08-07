@@ -21,9 +21,9 @@ const accountsById = new Map([
 ]);
 
 const transactions = [
-  { id: '1', type: 'Income', amount: 3000, description: 'Salary', categoryId: 'cat-salary', accountId: 'acc-revolut', notes: '' },
-  { id: '2', type: 'Expense', amount: 45, description: 'Mega Image run', categoryId: 'cat-groceries', accountId: 'acc-cash', notes: 'weekly shop' },
-  { id: '3', type: 'Transfer', amount: 200, description: 'Cash top-up', categoryId: '', accountId: 'acc-revolut', notes: '' },
+  { id: '1', type: 'Income', amount: 3000, description: 'Salary', categoryId: 'cat-salary', accountId: 'acc-revolut', notes: '', reconciled: true },
+  { id: '2', type: 'Expense', amount: 45, description: 'Mega Image run', categoryId: 'cat-groceries', accountId: 'acc-cash', notes: 'weekly shop', reconciled: false },
+  { id: '3', type: 'Transfer', amount: 200, description: 'Cash top-up', categoryId: '', accountId: 'acc-revolut', notes: '', reconciled: false },
 ];
 
 const cases = [
@@ -37,6 +37,8 @@ const cases = [
   { filterType: 'All', categoryFilter: 'All', searchQuery: 'weekly' },
   { filterType: 'All', categoryFilter: 'All', searchQuery: '45' },
   { filterType: 'Expense', categoryFilter: 'cat-groceries', searchQuery: 'shop' },
+  { filterType: 'All', categoryFilter: 'All', searchQuery: '', unreconciledOnly: true },
+  { filterType: 'All', categoryFilter: 'All', searchQuery: '', unreconciledOnly: false },
 ];
 
 describe('lib/filtering.js and lib/analytics/index.js applyFilters stay in step', () => {

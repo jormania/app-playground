@@ -43,12 +43,13 @@ function sumInto(buckets, key, amount) {
  * against identical input — the two had drifted before (see filtering.test.js).
  */
 export function applyFilters(transactions, byId, accountsById, filterProps) {
-  const { filterType = 'All', categoryFilter = 'All', searchQuery = '' } = filterProps || {};
+  const { filterType = 'All', categoryFilter = 'All', searchQuery = '', unreconciledOnly = false } = filterProps || {};
   const q = searchQuery.trim().toLowerCase();
 
   return transactions.filter(t => {
     if (filterType !== 'All' && t.type !== filterType) return false;
     if (categoryFilter !== 'All' && t.categoryId !== categoryFilter) return false;
+    if (unreconciledOnly && t.reconciled) return false;
     if (!q) return true;
     // Same fields as the Dashboard and the ledger — the three views used to search
     // different things for the same query.
