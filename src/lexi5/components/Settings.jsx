@@ -102,11 +102,6 @@ export function Settings({ open, onClose, config, updateConfig, resetStats }) {
         </div>
       </div>
 
-      <a href="/lexi5-guide.html" target="_blank" rel="noopener noreferrer" className={styles.guideLink}>
-        <span>A short guide — how to play and use settings</span>
-        <ChevronRight size={18} color="var(--text-subtle)" />
-      </a>
-
       <div className={styles.advanced}>
         <Button variant="ghost" onClick={() => setShowCurate(!showCurate)}>
           Advanced: Dictionary Curation

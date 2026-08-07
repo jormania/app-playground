@@ -191,7 +191,7 @@ export function App() {
           <IconButton onClick={() => window.open('/lexi5-guide.html', '_blank')} title="How to play">
             <HelpCircle size={20} />
           </IconButton>
-          {gameState.status === 'playing' && gameState.guesses.length > 0 && (
+          {gameState.status === 'playing' && (
             <IconButton onClick={() => setShowForfeitModal(true)} title="Give up">
               <Flag size={20} />
             </IconButton>
