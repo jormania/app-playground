@@ -37,7 +37,7 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain }) {
         canvas.toBlob(async (blob) => {
           if (!blob) return
           
-          const seedStr = btoa(`${gameState.date}|${gameState.iteration}|${gameState.dictionary}`)
+          const seedStr = encodeURIComponent(btoa(`${gameState.date}|${gameState.iteration}|${gameState.dictionary}`))
           const shareUrl = `${window.location.origin}${window.location.pathname}?seed=${seedStr}`
           const attempt = gameState.status === 'won' ? gameState.guesses.length : 'X'
           const text = `Lexi5 (${gameState.dictionary}) ${attempt}/6\nPlay this board: ${shareUrl}`
