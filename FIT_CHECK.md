@@ -677,3 +677,20 @@ mistakes without introducing a complex "Trash" view.
 - **Wear Count Display:** `wearCount` is now lightly surfaced as a small `5x` indicator on garment tiles and "Worn: X times" inside the details modal, making its invisible effect on the recommender more transparent.
 
 **Verified in the browser:** Tests and typechecks pass. Undo correctly cancels the delayed timeout, restoring items without hitting Notion.
+
+### M8.2 & M8.3 — Visual Flair & Environmental Ambience (2026-08-07)
+
+Injected a layer of premium polish and micro-interactions to make the application feel more tactile, alive, and connected to the real world, heavily relying on performant CSS transitions instead of JS-heavy animations.
+
+**Built:**
+- **Tactile Squish:** Buttons, history icons, and garment tiles now slightly shrink (`transform: scale(0.97)`) while `:active`, adding physical "weight" to interactions.
+- **Cascading Entrances:** Garment tiles in the Wardrobe fade and slide up with staggered delays when loading or switching filters.
+- **Success Burst:** Tapping "Wear this" flashes a satisfying success glow over the outfit card.
+- **Graceful Skip:** Tapping "Not today" smoothly collapses and fades out the outfit suggestion rather than instantly snapping it away.
+- **Image Shimmers:** Low-quality placeholders (`LQIPs`) feature a continuously sweeping gradient shimmer before the real image loads.
+- **Vibrant Categories:** Wardrobe headings use distinct, high-contrast colours that adapt seamlessly to light/dark themes.
+- **Weather Animations:** Weather orbs on the Today screen are fully animated (rotating sun, drifting clouds, bobbing rain/snow) based on the `data-condition`.
+- **Favourite Star Pop:** Toggling a garment favourite plays an elastic scaling pop and casts a brief drop-shadow glow.
+- **Time-of-Day Glow:** A faint, fixed radial background gradient shifts dynamically based on the user's local hour (peach at dawn, transparent by day, amber at dusk, and deep blue at night).
+
+**Verified in the browser:** Native CSS animations ensure high 60fps performance without JavaScript overhead. Typechecks and unit tests pass cleanly.
