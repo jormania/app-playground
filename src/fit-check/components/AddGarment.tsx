@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Loader2, RotateCcw, Sparkles } from 'lucide-react'
-import { Button, Field } from '../../ds'
+import { Camera, Loader2, Mic, MicOff, RotateCcw, Sparkles } from 'lucide-react'
+import { Button, Field, IconButton } from '../../ds'
 import { resizePhoto, isImageFile, photoFilename } from '../../shared/photo.ts'
 import { makeThumb } from '../lib/lqip.ts'
 import { putPhoto } from '../lib/imageCache.ts'
 import { NotionClient } from '../lib/notionClient.ts'
 import { suggestTags, emptyTags, type SuggestedTags } from '../lib/tagging.ts'
+import { useDictation } from '../lib/useDictation.ts'
 import TagEditor from './TagEditor.tsx'
 import { type FitCheckConfig } from '../lib/config.ts'
 import { activeWardrobes, type Wardrobe } from '../lib/wardrobes.ts'
@@ -46,6 +47,13 @@ export default function AddGarment({ config, wardrobes, onAdded, onCancel }: Pro
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // One-shot dictation into the name field only — no session, no follow-up
+  // turns (FIT_CHECK_ROADMAP.md §2). "a blue denim jacket" fills the field
+  // exactly as typing it would.
+  const dictation = useDictation((transcript) => {
+    setName((prev) => (prev ? `${prev} ${transcript}` : transcript))
+  })
 
   // The preview is an object URL over the resized blob; revoke it when it's
   // replaced or the screen closes, or every retake leaks one.
@@ -189,10 +197,22 @@ export default function AddGarment({ config, wardrobes, onAdded, onCancel }: Pro
           <div className="fc-field-stack" style={{ marginTop: 16 }}>
             <Field
               label="What is it?"
+              labelRight={dictation.supported ? (
+                <IconButton
+                  size="sm"
+                  aria-label={dictation.listening ? 'Stop dictating' : 'Dictate the name'}
+                  selected={dictation.listening}
+                  onClick={dictation.toggle}
+                >
+                  {dictation.listening
+                    ? <MicOff size={14} aria-hidden="true" />
+                    : <Mic size={14} aria-hidden="true" />}
+                </IconButton>
+              ) : undefined}
               value={name}
               placeholder="Blue denim jacket"
               onChange={(e) => setName(e.target.value)}
-              hint="Optional — you can leave this and fix it later."
+              hint={dictation.error || 'Optional — you can leave this and fix it later.'}
             />
           </div>
 

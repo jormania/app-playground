@@ -347,8 +347,80 @@ and said "feels confident"; clearing the mood restored the original set exactly.
 No horizontal scroll at 375×812. `npm test` 2294 passing / 190 files, typecheck
 and lint clean.
 
-### M5 — The loop closes ⏳
+### M5 — The loop closes ✅ (2026-08-07)
 
-Wear/skip (skip means *not today*, per Nora), favourites, the history log, and
-voice dictation. **Add the Outfits → Wardrobe relation here** — see
-`FIT_CHECK_ROADMAP.md` §3a; later means backfilling.
+Wear/skip, favourites, a history log, and voice dictation for adding a
+garment. The app now completes the full cycle the charter describes: see three
+outfits, act on one, and it remembers.
+
+**Built**
+
+- `lib/today.ts`, `lib/weatherText.ts` — small pure helpers, split out of
+  `Today.tsx` so App could reuse the exact same "today" and weather-snapshot
+  logic when writing a history row, rather than risking two copies drifting
+  - `lib/useDictation.ts` — one-shot voice-to-text, mirroring WhereItWent's
+  `SmartTextEntry` (same event handling, same quiet treatment of "no-speech"),
+  wired into `AddGarment`'s name field via a mic `IconButton` in the label
+- `components/History.tsx` — every outfit ever acted on, most recent first,
+  both Worn and Skipped (skip means *not today*, not *never again*, so it's
+  still worth a record of what was considered), with a favourite toggle
+- `App.recordVerdict` — writes an `Outfit` row on Wear or Skip; only Wear
+  touches the garments (`wearCount`+1, `lastWorn` = today), feeding the
+  recommender's recency nudge and the roadmap's future personalisation
+- **Outfits → Wardrobe relation**, added to Notion while the table was still
+  effectively empty — see `FIT_CHECK_ROADMAP.md` §3a, which said to do this
+  the moment M5 landed rather than backfill later. `recordVerdict` populates it
+  from whichever wardrobe is currently filtered to (empty under "All")
+- Garment favouriting is now real: the star on a `WardrobeGrid` tile is a
+  genuine toggle, not a static badge
+
+**The bug that mattered most this milestone, found by hand, not by a test:**
+marking an outfit "Worn" updates `wearCount`/`lastWorn` on its garments, which
+feeds straight back into `recommend()`'s recency penalty. Today's suggestions
+were a plain `useMemo` over the live `garments` prop, so confirming an outfit
+could immediately drop that exact combination out of its own top three —
+the card the user just confirmed would be replaced by something else, with no
+visible confirmation. It read as "nothing happened."
+
+Fixed by pinning the suggestion set for the session: `Today` now computes
+outfits into `useState`, refreshed by an effect that deliberately reacts to
+mood and to the weather settling — genuine reasons for new suggestions — and
+**not** to `garments` or `wardrobes` changing. A new pool of clothes only
+reaches Today via a tab switch anyway, since `AddGarment` lives on the
+Wardrobe tab; that unmounts and remounts `Today`, giving the state
+initializer a fresh read. Verified: Wear/Skip now confirm in place, a mood
+change still legitimately rerolls the list, and a re-surfaced outfit correctly
+remembers an earlier verdict (`verdicts` is keyed by the outfit's own id,
+which survives a reroll if the same combination comes back).
+
+**Other decisions worth keeping:**
+
+- *The favourite star is a sibling button, not a nested one.* A star inside
+  the tile's own `<button>` would be invalid HTML (nested interactive
+  elements) and browsers handle the click ambiguously. `.fc-tile-wrap` gives
+  tile and star a shared positioned box instead — verified in the browser that
+  tapping the star toggles the favourite without also triggering the tile.
+- *Skip never touches a garment.* Per Nora's decision, "not today" carries no
+  data consequence beyond the log entry — no `archived`, no recency penalty.
+  Only Wear feeds back into scoring.
+- *`recordVerdict` writes the Outfit row before touching garments*, and always
+  updates local state first, persisting after — the same "apply locally,
+  persist if configured" shape as the wardrobe mutations, so the whole loop
+  works identically in demo mode with no Notion connected at all.
+
+**Verified in the browser:** wore one suggestion (confirmed in place, no
+reshuffle), skipped another (same), changed mood (legitimate reroll, prior
+verdicts preserved by id), checked History (both new rows present with correct
+verdict/date/weather/mood), favourited a past outfit and a garment tile (both
+toggle correctly, tile click still works), dictation mic renders and toggles
+without error (real transcription unavailable in this sandboxed browser —
+verified separately via `useDictation.test.ts`'s fake-recognizer suite). No
+horizontal scroll at 375×812 on Today, History or Wardrobe. `npm test` 2317
+passing / 193 files, typecheck and lint clean, build clean, `api/*.js` still
+at 12.
+
+### M6 — Ship ⏳
+
+Nora's user guide (`public/fit-check-guide.html`), the Notion paperwork the
+playbook requires (App Spec, Starter Template, Handover, a row in **Apps at a
+glance**), and accessibility/mobile polish on the Galaxy S24 and Poco F3.

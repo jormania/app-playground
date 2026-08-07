@@ -92,8 +92,16 @@ body {
   gap: var(--fc-grid-gap);
 }
 
-.fc-tile {
+/* Wraps a tile and its favourite star as SIBLINGS, not parent/child — a star
+   button nested inside the tile button would be invalid HTML (nested
+   interactive elements), so the wrap is what gives them a shared, positioned
+   box instead. Layout-only: no border or background of its own. */
+.fc-tile-wrap {
   position: relative;
+}
+
+.fc-tile {
+  width: 100%;
   display: flex;
   flex-direction: column;
   padding: 0;
@@ -157,13 +165,37 @@ body {
   overflow: hidden;
 }
 
+/* A real button now (garment favouriting), not a decorative badge — sits over
+   the tile's top-right corner. Its own semi-transparent dark chip keeps a
+   white star legible over any photo or placeholder colour, light or dark
+   theme alike, rather than relying on a drop-shadow to do that job. 28px is
+   below the 44px touch-target guideline, but the tile itself is only 104px
+   wide; a full-size target would swallow a third of it for a secondary
+   action. Accept the trade at this scale — the primary tap (the tile itself)
+   stays full-size. */
 .fc-tile-fav {
   position: absolute;
   top: 6px;
   right: 6px;
-  font-size: 0.875rem;
-  line-height: 1;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 999px;
+  background: rgba(20, 16, 24, 0.55);
+  color: #fff;
+  cursor: pointer;
+}
+
+.fc-tile-fav:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.fc-tile-fav[aria-pressed='true'] {
+  color: #ffd76a;
 }
 
 .fc-empty {
@@ -247,6 +279,90 @@ body {
   margin: 10px 0 0;
   font-size: 0.8125rem;
   color: var(--color-ink);
+}
+
+.fc-outfit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* The confirmed state after Wear/Skip — replaces the buttons rather than
+   sitting alongside them, so a card reads as settled, not still asking. */
+.fc-outfit-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.fc-outfit-status[data-verdict='Worn'] { color: var(--color-success); }
+.fc-outfit-status[data-verdict='Skipped'] { color: var(--color-muted); }
+
+/* ── History ─────────────────────────────────────────────────────────────── */
+.fc-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fc-history-entry {
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--fc-tile-radius);
+  background: var(--color-surface);
+}
+
+.fc-history-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.fc-history-date {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+
+.fc-history-meta {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+}
+
+.fc-history-verdict {
+  font-weight: 600;
+}
+.fc-history-verdict[data-verdict='Worn'] { color: var(--color-success); }
+
+.fc-history-fav {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: none;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.fc-history-fav:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.fc-history-fav[aria-pressed='true'] {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
 }
 
 /* ── Chips (wardrobe filter, wardrobe picker) ────────────────────────────── */

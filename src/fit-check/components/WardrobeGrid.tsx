@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Star } from 'lucide-react'
 import type { Garment } from '../lib/types.ts'
 import { CATEGORIES } from '../lib/vocabulary.ts'
 import { visibleGarments, unassignedGarments, activeWardrobes, type Wardrobe } from '../lib/wardrobes.ts'
@@ -26,27 +27,45 @@ export function thumbStyle(thumb: string | null): React.CSSProperties {
  * One garment. Its own component so the photo hook runs per tile — the
  * placeholder paints immediately from data the page query already returned, and
  * the real photo fades in over it once the cache or the proxy answers.
+ *
+ * The favourite star is a SEPARATE sibling button, not nested inside the tile
+ * button — nested interactive elements are invalid HTML and browsers handle
+ * the click ambiguously. `.fc-tile-wrap` gives them a shared, positioned box.
  */
-function GarmentTile({ garment, onSelect }: { garment: Garment; onSelect?: (g: Garment) => void }) {
+function GarmentTile({
+  garment, onSelect, onToggleFavourite,
+}: {
+  garment: Garment
+  onSelect?: (g: Garment) => void
+  onToggleFavourite?: (g: Garment) => void
+}) {
   const photo = useGarmentPhoto(garment)
   return (
-    <button type="button" className="fc-tile" onClick={() => onSelect?.(garment)}>
-      <span className="fc-tile-thumb" style={thumbStyle(garment.thumb)} aria-hidden="true">
-        {photo && (
-          <img
-            className="fc-tile-photo"
-            src={photo}
-            alt=""
-            loading="lazy"
-            decoding="async"
-          />
-        )}
-      </span>
-      {garment.favourite && (
-        <span className="fc-tile-fav" aria-label="Favourite" role="img">⭐</span>
-      )}
-      <span className="fc-tile-name">{garment.name}</span>
-    </button>
+    <div className="fc-tile-wrap">
+      <button type="button" className="fc-tile" onClick={() => onSelect?.(garment)}>
+        <span className="fc-tile-thumb" style={thumbStyle(garment.thumb)} aria-hidden="true">
+          {photo && (
+            <img
+              className="fc-tile-photo"
+              src={photo}
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
+          )}
+        </span>
+        <span className="fc-tile-name">{garment.name}</span>
+      </button>
+      <button
+        type="button"
+        className="fc-tile-fav"
+        aria-label={garment.favourite ? `Remove ${garment.name} from favourites` : `Favourite ${garment.name}`}
+        aria-pressed={garment.favourite}
+        onClick={(e) => { e.stopPropagation(); onToggleFavourite?.(garment) }}
+      >
+        <Star size={14} aria-hidden="true" fill={garment.favourite ? 'currentColor' : 'none'} />
+      </button>
+    </div>
   )
 }
 
@@ -56,10 +75,11 @@ interface Props {
   filterId: string | null
   onFilterChange: (id: string | null) => void
   onSelect?: (garment: Garment) => void
+  onToggleFavourite?: (garment: Garment) => void
 }
 
 export default function WardrobeGrid({
-  garments, wardrobes, filterId, onFilterChange, onSelect,
+  garments, wardrobes, filterId, onFilterChange, onSelect, onToggleFavourite,
 }: Props) {
   const visible = useMemo(
     () => visibleGarments(garments, wardrobes, filterId).filter((g) => !g.archived),
@@ -114,7 +134,12 @@ export default function WardrobeGrid({
             <h2 className="fc-section-heading">{category}</h2>
             <div className="fc-grid">
               {items.map((g) => (
-                <GarmentTile key={g.id} garment={g} onSelect={onSelect} />
+                <GarmentTile
+                  key={g.id}
+                  garment={g}
+                  onSelect={onSelect}
+                  onToggleFavourite={onToggleFavourite}
+                />
               ))}
             </div>
           </section>

@@ -112,10 +112,11 @@ probably never needed — a garment simply belongs to two wardrobes.
 Deliberately *not* built, to keep the feature light. In rough order of how much
 they'd earn their place:
 
-- **Outfits → Wardrobe relation.** The moment history exists (M5), "what did I
-  wear at Dad's?" is an obvious question. One property on a table that is still
-  empty; adding it after M5 has run for a while means backfilling. **Add this
-  when M5 lands, not later.**
+- ~~**Outfits → Wardrobe relation.**~~ **Done, M5 (2026-08-07).** Added while
+  the table was still effectively empty, so no backfill was needed. Populated
+  from whichever wardrobe is currently filtered to when a verdict is recorded
+  (empty under "All"). "What did I wear at Dad's?" now has a real answer —
+  see `FIT_CHECK.md`'s M5 entry.
 - **Wardrobes as contexts, not just places.** The data model already allows it
   (a garment in N wardrobes), so nothing blocks "school week", "summer storage"
   or "suitcase for Greece". Resist ever hard-coding *a wardrobe is a house*.

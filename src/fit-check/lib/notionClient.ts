@@ -110,6 +110,7 @@ function readOutfit(row: NotionPage): Outfit {
     weather: plainText(p.Weather?.rich_text),
     verdict: coerceOne(VERDICTS, p.Verdict?.select?.name),
     favourite: Boolean(p.Favourite?.checkbox),
+    wardrobeIds: (p.Wardrobes?.relation || []).map((r: { id: string }) => r.id),
   }
 }
 
@@ -260,6 +261,53 @@ export class NotionClient {
     })
     await sleep(WRITE_SPACING_MS)
     return row ? readGarment(row) : null
+  }
+
+  /**
+   * Build a Notion property patch for an outfit. Same shape as
+   * `_garmentProperties`: closed-vocabulary fields (Mood, Verdict) go through
+   * `coerceOne` before they're written, so a value that somehow reached this
+   * point invalid is dropped rather than taking the whole patch down.
+   */
+  _outfitProperties(outfit: Partial<Outfit>): Record<string, unknown> {
+    const props: Record<string, unknown> = {}
+    if (outfit.name !== undefined) props.Name = title(outfit.name)
+    if (outfit.date !== undefined) props.Date = { date: outfit.date ? { start: outfit.date } : null }
+    if (outfit.garmentIds !== undefined) {
+      props.Garments = { relation: outfit.garmentIds.map((id) => ({ id })) }
+    }
+    if (outfit.mood !== undefined) props.Mood = selectOf(coerceOne(MOODS, outfit.mood))
+    if (outfit.weather !== undefined) props.Weather = richText(outfit.weather)
+    if (outfit.verdict !== undefined) props.Verdict = selectOf(coerceOne(VERDICTS, outfit.verdict))
+    if (outfit.favourite !== undefined) props.Favourite = { checkbox: outfit.favourite }
+    if (outfit.wardrobeIds !== undefined) {
+      props.Wardrobes = { relation: outfit.wardrobeIds.map((id) => ({ id })) }
+    }
+    return props
+  }
+
+  async createOutfit(outfit: Partial<Outfit>): Promise<Outfit | null> {
+    if (!this.token || !this.dbIds.outfits) return null
+    const row = await this._request({
+      path: 'pages',
+      body: {
+        parent: { database_id: this.dbIds.outfits },
+        properties: this._outfitProperties({ favourite: false, ...outfit }),
+      },
+    })
+    await sleep(WRITE_SPACING_MS)
+    return row ? readOutfit(row) : null
+  }
+
+  async updateOutfit(id: string, patch: Partial<Outfit>): Promise<Outfit | null> {
+    if (!this.token) return null
+    const row = await this._request({
+      path: `pages/${id}`,
+      method: 'PATCH',
+      body: { properties: this._outfitProperties(patch) },
+    })
+    await sleep(WRITE_SPACING_MS)
+    return row ? readOutfit(row) : null
   }
 
   // ── Wardrobes ─────────────────────────────────────────────────────────────

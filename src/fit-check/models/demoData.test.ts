@@ -35,6 +35,16 @@ describe('demo data is internally consistent', () => {
     }
   })
 
+  it('only references wardrobes that exist, and exercises the relation', () => {
+    const ids = new Set(DEMO_WARDROBES.map((w) => w.id))
+    for (const outfit of DEMO_OUTFITS) {
+      for (const wid of outfit.wardrobeIds) expect(ids).toContain(wid)
+    }
+    // At least one outfit ties to a specific wardrobe, so "what did I wear at
+    // X?" has a real answer in the demo, not just an empty relation everywhere.
+    expect(DEMO_OUTFITS.some((o) => o.wardrobeIds.length > 0)).toBe(true)
+  })
+
   it('covers every category, so the wardrobe grid is never empty by section', () => {
     const seen = new Set(DEMO_GARMENTS.map((g) => g.category))
     for (const category of CATEGORIES) expect(seen).toContain(category)

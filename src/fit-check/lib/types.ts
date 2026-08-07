@@ -46,4 +46,12 @@ export interface Outfit {
   weather: string
   verdict: Verdict | null
   favourite: boolean
+  /**
+   * Which wardrobe(s) this was worn in, by page id — usually zero or one:
+   * empty when the suggestion was made under "All", populated with the
+   * wardrobe being filtered to otherwise. Added alongside Garments' own
+   * relation (M5) while the table was still empty, so "what did I wear at
+   * Dad's?" is answerable without a later migration.
+   */
+  wardrobeIds: string[]
 }

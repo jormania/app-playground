@@ -130,25 +130,32 @@ export const DEMO_OUTFITS: Outfit[] = [
     id: 'demo_o_1', name: 'Tee + jeans + trainers', date: '2026-08-05',
     garmentIds: ['demo_g_white_tee', 'demo_g_blue_jeans', 'demo_g_white_trainers'],
     mood: 'Comfy', weather: '26°C, clear', verdict: 'Worn', favourite: true,
+    wardrobeIds: [],
   },
   {
     id: 'demo_o_2', name: 'Hoodie + jeans + trainers', date: '2026-08-04',
     garmentIds: ['demo_g_black_hoodie', 'demo_g_blue_jeans', 'demo_g_white_trainers'],
     mood: 'Low-key', weather: '18°C, overcast', verdict: 'Worn', favourite: false,
+    wardrobeIds: [],
   },
   {
+    // Both garments actually live at Mum's, so this one demonstrates the
+    // relation in the demo: "what did you wear at Mum's?" resolves to this.
     id: 'demo_o_3', name: 'Pinafore + boots', date: '2026-08-03',
     garmentIds: ['demo_g_black_dress', 'demo_g_chelsea_boots'],
     mood: 'Put-together', weather: '21°C, a few clouds', verdict: 'Skipped', favourite: false,
+    wardrobeIds: ['demo_w_mum'],
   },
   {
     id: 'demo_o_4', name: 'Floral dress + sandals', date: '2026-08-02',
     garmentIds: ['demo_g_floral_dress', 'demo_g_sandals'],
     mood: 'Confident', weather: '29°C, clear', verdict: 'Worn', favourite: true,
+    wardrobeIds: [],
   },
   {
     id: 'demo_o_5', name: 'Striped tee + cargos', date: '2026-08-01',
     garmentIds: ['demo_g_striped_tee', 'demo_g_cargo_pants', 'demo_g_white_trainers'],
     mood: 'Sporty', weather: '23°C, rain', verdict: 'Worn', favourite: false,
+    wardrobeIds: ['demo_w_dad'],
   },
 ]
