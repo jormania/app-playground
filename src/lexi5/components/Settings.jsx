@@ -27,7 +27,7 @@ export function Settings({ open, onClose, config, updateConfig, resetStats }) {
           'content-type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'claude-3-haiku-20240307',
+          model: 'claude-3-5-sonnet-latest',
           max_tokens: 1500,
           messages: [{ role: 'user', content: 'Generate a JSON array of 500 interesting 5-letter English words for a word game. Only output the raw JSON array of strings, nothing else.' }]
         })
@@ -124,7 +124,7 @@ export function Settings({ open, onClose, config, updateConfig, resetStats }) {
         {showCurate && (
           <div className={styles.curateCard}>
             <p className={styles.curateDesc}>
-              Provide an Anthropic API key to re-curate the daily answers list using Claude 3 Haiku. 
+              Provide an Anthropic API key to re-curate the daily answers list using Claude 3.5 Sonnet. 
               (Note: For security, keys are never saved to the server).
             </p>
             <Field 
