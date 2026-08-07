@@ -18,12 +18,10 @@ export function Settings({ open, onClose, config, updateConfig, resetStats }) {
     if (!apiKey) return
     setCurating(true)
     try {
-      const res = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://api.anthropic.com/v1/messages'), {
+      const res = await fetch('/api/anthropic', {
         method: 'POST',
         headers: {
           'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
           'content-type': 'application/json'
         },
         body: JSON.stringify({
