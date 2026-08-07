@@ -1,38 +1,45 @@
 .settingsList {
   display: flex;
   flex-direction: column;
+  gap: 10px;
 }
 
 .dictionarySection {
-  padding: 0 16px 16px 16px;
+  padding: 0 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
 }
 
 .dictionaryLabel {
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-base);
 }
 
 .dictionaryDesc {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: var(--text-subtle);
-  line-height: 1.4;
+  line-height: 1.25;
 }
 
 .dictionaryDesc p {
-  margin: 0 0 6px 0;
+  margin: 0 0 3px 0;
 }
 
 .dictionaryDesc ul {
   margin: 0;
-  padding-left: 20px;
+  padding-left: 16px;
 }
 
 .dictionaryDesc li {
-  margin-bottom: 4px;
+  margin-bottom: 1px;
+}
+
+/* Locally tightens shared DS components (SettingsToggle) that read --space-sm
+   for their own padding — narrower here without touching the shared token. */
+.tightToggle {
+  --space-sm: 4px;
 }
 
 .selectWrapper {
@@ -43,12 +50,12 @@
 .dropdown {
   flex: 1;
   appearance: none;
-  background-color: var(--surface-bg, #1a1a1b);
-  border: 1px solid var(--border-subtle, #3a3a3c);
-  color: var(--text-base, #ffffff);
-  padding: 10px 14px;
+  background-color: var(--surface-bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-base);
+  padding: 7px 12px;
   border-radius: 8px;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   font-family: inherit;
   cursor: pointer;
   outline: none;
@@ -56,7 +63,12 @@
 }
 
 .dropdown:focus {
-  border-color: var(--accent, #538d4e);
+  border-color: var(--accent);
+}
+
+.dropdown:disabled option:disabled,
+.dropdown option:disabled {
+  color: var(--text-subtle);
 }
 
 .selectWrapper::after {
@@ -89,18 +101,19 @@
 }
 
 .advanced {
-  margin-top: 24px;
+  margin-top: 10px;
   border-top: 1px solid var(--border-subtle);
-  padding-top: 16px;
+  padding-top: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 8px;
 }
 
 .activePill {
   display: inline-block;
   padding: 2px 8px;
-  background-color: var(--accent, #538d4e);
+  background-color: var(--accent);
   color: white;
   font-size: 0.75rem;
   font-weight: 700;
@@ -110,19 +123,31 @@
 }
 
 .curateCard {
-  margin-top: 12px;
-  padding: 16px;
+  width: 100%;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
   background-color: var(--surface-bg);
-  border: 1px solid var(--border-subtle, #3a3a3c);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
+  box-sizing: border-box;
 }
 
 .curateDesc {
-  font-size: 0.875rem;
+  font-size: 0.78rem;
   color: var(--text-subtle);
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.3;
+}
+
+.curateError {
+  font-size: 0.78rem;
+  color: var(--danger);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.dangerButton {
+  color: var(--danger);
 }

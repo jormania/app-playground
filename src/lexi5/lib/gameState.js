@@ -17,10 +17,53 @@ const DEFAULT_STATS_DICT = {
 }
 
 const DEFAULT_STATS = {
+  lite: { ...DEFAULT_STATS_DICT },
   standard: { ...DEFAULT_STATS_DICT },
   expanded: { ...DEFAULT_STATS_DICT },
   expert: { ...DEFAULT_STATS_DICT },
   custom: { ...DEFAULT_STATS_DICT }
+}
+
+// Built-in dictionaries, ordered easiest to hardest (Custom is user-curated, so it's
+// surfaced separately rather than slotted into this difficulty ordering).
+export const BUILTIN_DICTIONARY_ORDER = ['lite', 'standard', 'expanded', 'expert']
+
+export const DICTIONARY_SIZES = BUILTIN_DICTIONARY_ORDER.reduce((acc, key) => {
+  acc[key] = wordsData.dictionaries[key].length
+  return acc
+}, {})
+
+export const DICTIONARY_LABELS = {
+  lite: 'Lite',
+  standard: 'Standard',
+  expanded: 'Expanded',
+  expert: 'Expert',
+  custom: 'Custom (AI Curated)'
+}
+
+export function hasCustomDictionary() {
+  try {
+    const customList = JSON.parse(localStorage.getItem('lexi5_custom_dict'))
+    return !!(customList && customList.length > 0)
+  } catch (_e) {
+    return false
+  }
+}
+
+export function getCustomDictionarySize() {
+  try {
+    const customList = JSON.parse(localStorage.getItem('lexi5_custom_dict'))
+    return customList ? customList.length : 0
+  } catch (_e) {
+    return 0
+  }
+}
+
+// A dictionary of 'custom' with no curated list yet isn't playable — fall back to
+// Standard rather than silently serving Standard words under the 'custom' label.
+export function normalizeDictionary(dictionary) {
+  if (dictionary === 'custom' && !hasCustomDictionary()) return 'standard'
+  return dictionary
 }
 
 function hashString(str) {
@@ -121,97 +164,121 @@ export function isValidGuess(word) {
   return wordsData.guesses.includes(word)
 }
 
-export function useGameState(difficulty, dictionary, urlSeed = null) {
-  const [stats, setStats] = useState(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(STATS_KEY) || 'null')
-      if (stored) {
-        // Migration from non-dictionary stats
-        if (stored.gamesPlayed !== undefined) {
-          return {
-            ...DEFAULT_STATS,
-            standard: { ...DEFAULT_STATS_DICT, ...stored }
-          }
-        }
+// Reads and migrates the stored stats blob (pure — no writes).
+function loadStats() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(STATS_KEY) || 'null')
+    if (stored) {
+      // Migration from non-dictionary stats
+      if (stored.gamesPlayed !== undefined) {
         return {
           ...DEFAULT_STATS,
-          standard: { ...DEFAULT_STATS_DICT, ...(stored.standard || {}) },
-          expanded: { ...DEFAULT_STATS_DICT, ...(stored.expanded || {}) },
-          expert: { ...DEFAULT_STATS_DICT, ...(stored.expert || {}) },
-          custom: { ...DEFAULT_STATS_DICT, ...(stored.custom || {}) },
+          standard: { ...DEFAULT_STATS_DICT, ...stored }
         }
       }
-      return DEFAULT_STATS
-    } catch {
-      return DEFAULT_STATS
+      return {
+        ...DEFAULT_STATS,
+        lite: { ...DEFAULT_STATS_DICT, ...(stored.lite || {}) },
+        standard: { ...DEFAULT_STATS_DICT, ...(stored.standard || {}) },
+        expanded: { ...DEFAULT_STATS_DICT, ...(stored.expanded || {}) },
+        expert: { ...DEFAULT_STATS_DICT, ...(stored.expert || {}) },
+        custom: { ...DEFAULT_STATS_DICT, ...(stored.custom || {}) },
+      }
     }
-  })
+    return DEFAULT_STATS
+  } catch {
+    return DEFAULT_STATS
+  }
+}
 
-  const [gameState, setGameState] = useState(() => {
-    const today = new Date().toDateString()
-    
-    // If a valid URL seed is provided, prioritize it for the game state
-    const parsedSeed = urlSeed ? parseSeed(urlSeed) : null
-    
-    try {
-      const stored = JSON.parse(localStorage.getItem(GAME_KEY))
-      
-      if (parsedSeed) {
-        // If resuming the exact seeded game, load it
-        if (stored && stored.date === parsedSeed.date && stored.iteration === parsedSeed.iteration && stored.dictionary === parsedSeed.dictionary) {
-          return stored
-        }
-        // Otherwise start fresh with the seed
-        return {
+// Folds a loss for a game abandoned mid-play (left unfinished past midnight) into a
+// stats object, using the same shape updateStats writes, so it surfaces in Stats (pure).
+function applyAbandonedLoss(statsObj, dict, wasCrown) {
+  const prevDict = dict || 'standard'
+  const dictStats = { ...DEFAULT_STATS_DICT, ...(statsObj[prevDict] || {}) }
+  return {
+    ...statsObj,
+    [prevDict]: {
+      ...dictStats,
+      gamesPlayed: dictStats.gamesPlayed + 1,
+      crownGamesPlayed: dictStats.crownGamesPlayed + (wasCrown ? 1 : 0),
+      currentStreak: 0,
+      crownCurrentStreak: wasCrown ? 0 : dictStats.crownCurrentStreak
+    }
+  }
+}
+
+// Computes the initial game state (pure — no writes) plus, if a prior game was left
+// unfinished past midnight, the abandonment info needed to record it as a loss.
+function computeInitialGame(difficulty, dictionary, urlSeed) {
+  const today = new Date().toDateString()
+  const parsedSeed = urlSeed ? parseSeed(urlSeed) : null
+  const freshState = {
+    date: today,
+    iteration: 0,
+    guesses: [],
+    status: 'playing', // 'playing', 'won', 'lost'
+    difficulty,
+    dictionary: normalizeDictionary(dictionary)
+  }
+
+  try {
+    const stored = JSON.parse(localStorage.getItem(GAME_KEY))
+
+    if (parsedSeed) {
+      // If resuming the exact seeded game, load it
+      if (stored && stored.date === parsedSeed.date && stored.iteration === parsedSeed.iteration && stored.dictionary === parsedSeed.dictionary) {
+        return { state: stored, abandonment: null }
+      }
+      // Otherwise start fresh with the seed
+      return {
+        state: {
           date: parsedSeed.date,
           iteration: parsedSeed.iteration,
           guesses: [],
           status: 'playing',
           difficulty,
-          dictionary: parsedSeed.dictionary
-        }
+          dictionary: normalizeDictionary(parsedSeed.dictionary)
+        },
+        abandonment: null
       }
-
-      // Normal flow (no seed):
-      // Only resume if it's the same day. 
-      // If it's a new day, the old game is discarded (reset at midnight).
-      // If the old game was still in progress and they had guessed at least once, count it as a loss.
-      if (stored && stored.date !== today) {
-        if (stored.status === 'playing' && stored.guesses.length > 0) {
-          // Record a loss for the abandoned game
-          const previousStats = JSON.parse(localStorage.getItem(STATS_KEY)) || { dictionaries: {} }
-          const prevDict = stored.dictionary || 'standard'
-          if (!previousStats.dictionaries[prevDict]) {
-            previousStats.dictionaries[prevDict] = { played: 0, wins: 0, currentStreak: 0, maxStreak: 0, distribution: [0,0,0,0,0,0] }
-          }
-          const s = previousStats.dictionaries[prevDict]
-          s.played += 1
-          s.currentStreak = 0
-          localStorage.setItem(STATS_KEY, JSON.stringify(previousStats))
-        }
-      }
-
-      if (stored && stored.date === today) {
-        // If they changed settings but haven't started playing, apply them.
-        // Otherwise, keep the locked settings for the in-progress game.
-        if (stored.guesses.length === 0) {
-          return { ...stored, difficulty, dictionary }
-        }
-        return stored
-      }
-    } catch (_e) {
-      // ignore
     }
-    
-    return {
-      date: today,
-      iteration: 0,
-      guesses: [],
-      status: 'playing', // 'playing', 'won', 'lost'
-      difficulty,
-      dictionary
+
+    // Normal flow (no seed):
+    // Only resume if it's the same day.
+    // If it's a new day, the old game is discarded (reset at midnight).
+    // If the old game was still in progress and they had guessed at least once, count it as a loss.
+    let abandonment = null
+    if (stored && stored.date !== today && stored.status === 'playing' && stored.guesses.length > 0) {
+      abandonment = { dict: stored.dictionary, wasCrown: stored.iteration === 0 }
     }
+
+    if (stored && stored.date === today) {
+      // If they changed settings but haven't started playing, apply them.
+      // Otherwise, keep the locked settings for the in-progress game.
+      if (stored.guesses.length === 0) {
+        return { state: { ...stored, difficulty, dictionary: normalizeDictionary(dictionary) }, abandonment }
+      }
+      return { state: stored, abandonment }
+    }
+
+    return { state: freshState, abandonment }
+  } catch (_e) {
+    return { state: freshState, abandonment: null }
+  }
+}
+
+export function useGameState(difficulty, dictionary, urlSeed = null) {
+  // Computed once per mount (both calls are pure and read the same localStorage
+  // snapshot), so the abandoned-game stats adjustment lands in `stats`' own
+  // initializer instead of racing the `stats` write-back effect below.
+  const [stats, setStats] = useState(() => {
+    const base = loadStats()
+    const { abandonment } = computeInitialGame(difficulty, dictionary, urlSeed)
+    return abandonment ? applyAbandonedLoss(base, abandonment.dict, abandonment.wasCrown) : base
   })
+
+  const [gameState, setGameState] = useState(() => computeInitialGame(difficulty, dictionary, urlSeed).state)
 
   useEffect(() => {
     localStorage.setItem(STATS_KEY, JSON.stringify(stats))
@@ -264,7 +331,21 @@ export function useGameState(difficulty, dictionary, urlSeed = null) {
       guesses: [],
       status: 'playing',
       difficulty: currentDifficulty,
-      dictionary: currentDictionary
+      dictionary: normalizeDictionary(currentDictionary)
+    }))
+  }
+
+  // Switching dictionaries mid-game abandons the current puzzle (with no stats
+  // penalty — it wasn't forfeited, the player just picked a different word list)
+  // and deals a fresh word from the new dictionary right away.
+  const switchDictionary = (newDictionary) => {
+    setGameState(prev => ({
+      date: new Date().toDateString(),
+      iteration: 0,
+      guesses: [],
+      status: 'playing',
+      difficulty: prev.difficulty,
+      dictionary: normalizeDictionary(newDictionary)
     }))
   }
 
@@ -293,5 +374,5 @@ export function useGameState(difficulty, dictionary, urlSeed = null) {
       }
     })
   }
-  return { gameState, stats, addGuess, startNextGame, forfeitGame, resetStats }
+  return { gameState, stats, addGuess, startNextGame, switchDictionary, forfeitGame, resetStats }
 }

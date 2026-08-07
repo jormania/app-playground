@@ -3,7 +3,7 @@ import { Modal, Button } from '../../ds'
 import html2canvas from 'html2canvas'
 import styles from './Stats.module.css'
 
-export function Stats({ open, onClose, stats, gameState, word, onPlayAgain }) {
+export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onToast }) {
   const [copied, setCopied] = useState(false)
   const [definition, setDefinition] = useState(null)
   const isFinished = gameState.status !== 'playing'
@@ -45,10 +45,15 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain }) {
           const file = new File([blob], 'lexi5-share.png', { type: 'image/png' })
           
           if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              text,
-              files: [file]
-            })
+            try {
+              await navigator.share({ text, files: [file] })
+            } catch (err) {
+              // AbortError just means the user closed the native share sheet — not a failure.
+              if (err.name !== 'AbortError') {
+                console.error('Failed to share', err)
+                onToast?.('Could not share — try again.')
+              }
+            }
           } else {
             // Fallback to clipboard if supported, or just copy text
             try {
@@ -56,13 +61,16 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain }) {
                 new ClipboardItem({ 'image/png': blob })
               ])
               setCopied(true)
-            } catch (err) {
-              navigator.clipboard.writeText(text).then(() => setCopied(true))
+            } catch (_err) {
+              navigator.clipboard.writeText(text)
+                .then(() => setCopied(true))
+                .catch(() => onToast?.('Could not copy to clipboard — try again.'))
             }
           }
         }, 'image/png')
       } catch (err) {
         console.error('Failed to generate share image', err)
+        onToast?.('Could not generate the share image — try again.')
       }
     }
   }
@@ -86,16 +94,17 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain }) {
           <div className={styles.statLabel}>Win %</div>
         </div>
         <div className={styles.statBox}>
-          <div className={styles.statNum}>{dictStats.crownCurrentStreak || 0}</div>
-          <div className={styles.statLabel}>👑 Streak</div>
-        </div>
-        <div className={styles.statBox}>
-          <div className={styles.statNum}>{dictStats.crownMaxStreak || 0}</div>
-          <div className={styles.statLabel}>Max 👑</div>
-        </div>
-        <div className={styles.statBox}>
           <div className={styles.statNum}>{avgGuesses}</div>
           <div className={styles.statLabel}>Avg</div>
+        </div>
+        <div className={styles.statDivider} aria-hidden="true" />
+        <div className={styles.statBox} title="Crown streak — consecutive wins on the first game of the day">
+          <div className={styles.statNum}>👑{dictStats.crownCurrentStreak || 0}</div>
+          <div className={styles.statLabel}>Streak</div>
+        </div>
+        <div className={styles.statBox} title="Best crown streak ever">
+          <div className={styles.statNum}>👑{dictStats.crownMaxStreak || 0}</div>
+          <div className={styles.statLabel}>Best</div>
         </div>
       </div>
 

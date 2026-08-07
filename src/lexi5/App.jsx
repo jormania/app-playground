@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useConfig } from './lib/config'
-import { useGameState, getWord, getWordProgress, isValidGuess } from './lib/gameState'
+import { useGameState, getWord, getWordProgress, isValidGuess, hasCustomDictionary, DICTIONARY_LABELS } from './lib/gameState'
 import { hapticTap, hapticError, hapticWin } from './lib/haptics'
 import { Board } from './components/Board'
 import { Keyboard } from './components/Keyboard'
@@ -17,7 +17,7 @@ export function App() {
   // Extract seed from URL if present
   const [urlSeed] = useState(() => new URLSearchParams(window.location.search).get('seed'))
   
-  const { gameState, stats, addGuess, startNextGame, forfeitGame, resetStats } = useGameState(config.difficulty, config.dictionary, urlSeed)
+  const { gameState, stats, addGuess, startNextGame, switchDictionary, forfeitGame, resetStats } = useGameState(config.difficulty, config.dictionary, urlSeed)
   
   const [word, setWord] = useState(() => getWord(gameState.dictionary, gameState.date, gameState.iteration))
   
@@ -32,6 +32,7 @@ export function App() {
   const [showStats, setShowStats] = useState(false)
   const [showForfeitModal, setShowForfeitModal] = useState(false)
   const [toast, setToast] = useState(null)
+  const [openSettingsToCurate, setOpenSettingsToCurate] = useState(false)
 
   // Show stats automatically when game ends, trigger confetti, update favicon
   useEffect(() => {
@@ -79,11 +80,47 @@ export function App() {
     }
   }, [gameState.dictionary, gameState.date, gameState.iteration])
 
+  // Defensive backstop: a game can end up pointed at 'custom' with no curated list behind
+  // it (storage cleared mid-session, or a shared seed link from someone else's custom list).
+  // Rather than silently playing Standard words under the 'custom' label, fall back for real.
+  useEffect(() => {
+    if (gameState.dictionary === 'custom' && !hasCustomDictionary()) {
+      switchDictionary('standard')
+      updateConfig({ dictionary: 'standard' })
+      showToast("Your custom word list isn't available — switched to Standard.")
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState.dictionary])
+
+  const handleDictionaryChange = (newDictionary) => {
+    updateConfig({ dictionary: newDictionary })
+    switchDictionary(newDictionary)
+    showToast(`Switched to ${DICTIONARY_LABELS[newDictionary] || newDictionary} — new word, no penalty!`)
+  }
+
+  // Unlike the built-in dictionaries (which just reshuffle silently), Custom needs the
+  // player to actually take an action to get fresh words — so once its cycle has wrapped
+  // at least once, keep a persistent banner up (not just the one-off toast) until they refresh.
+  const customCycleStale = gameState.dictionary === 'custom'
+    && getWordProgress('custom', gameState.date, gameState.iteration).cycleNumber >= 1
+
+  const handleOpenCurate = () => {
+    setOpenSettingsToCurate(true)
+    setShowSettings(true)
+  }
+
+  const handleCloseSettings = () => {
+    setShowSettings(false)
+    setOpenSettingsToCurate(false)
+  }
+
   const handleShareBoard = () => {
     const seedStr = encodeURIComponent(btoa(`${gameState.date}|${gameState.iteration}|${gameState.dictionary}`))
     const shareUrl = `${window.location.origin}${window.location.pathname}?seed=${seedStr}`
     navigator.clipboard.writeText(shareUrl).then(() => {
       showToast('Share link copied to clipboard!')
+    }).catch(() => {
+      showToast("Couldn't copy the link — try again.")
     })
   }
 
@@ -218,6 +255,13 @@ export function App() {
         </div>
       </header>
 
+      {customCycleStale && (
+        <div className={styles.staleBanner}>
+          <span>You've used every word in your Custom list — it's repeating now.</span>
+          <Button size="sm" onClick={handleOpenCurate}>Refresh Now</Button>
+        </div>
+      )}
+
       <main className={styles.main}>
         <div className={styles.boardContainer}>
           <Board 
@@ -249,16 +293,19 @@ export function App() {
 
       <Settings
         open={showSettings}
-        onClose={() => setShowSettings(false)}
+        onClose={handleCloseSettings}
         config={config}
         updateConfig={updateConfig}
+        onDictionaryChange={handleDictionaryChange}
         resetStats={resetStats}
         gameState={gameState}
+        onToast={showToast}
+        initialShowCurate={openSettingsToCurate}
       />
-      
-      <Stats 
-        open={showStats} 
-        onClose={() => setShowStats(false)} 
+
+      <Stats
+        open={showStats}
+        onClose={() => setShowStats(false)}
         stats={stats}
         gameState={gameState}
         word={word}
@@ -266,15 +313,16 @@ export function App() {
           startNextGame(config.difficulty, config.dictionary)
           setShowStats(false)
         }}
+        onToast={showToast}
       />
-      
+
       <Modal open={showForfeitModal} onClose={() => setShowForfeitModal(false)} title="Give Up?">
-        <p style={{textAlign: 'center', marginBottom: '24px', fontSize: '1.1rem'}}>
-          Are you sure you want to forfeit this game? 
+        <p className={styles.forfeitText}>
+          Are you sure you want to forfeit this game?
           <br />
-          <span style={{color: 'var(--text-subtle)', fontSize: '0.9rem'}}>This counts as a loss.</span>
+          <span className={styles.forfeitSubtext}>This counts as a loss.</span>
         </p>
-        <div style={{display: 'flex', gap: '12px', justifyContent: 'center'}}>
+        <div className={styles.forfeitActions}>
           <Button variant="ghost" onClick={() => setShowForfeitModal(false)}>
             Nevermind
           </Button>

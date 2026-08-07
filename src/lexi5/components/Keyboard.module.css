@@ -49,22 +49,22 @@
 
 /* Base key states */
 .correct {
-  background-color: #538d4e;
+  background-color: var(--tile-correct);
   color: #fff;
 }
 
 .present {
-  background-color: #b59f3b;
+  background-color: var(--tile-present);
   color: #fff;
 }
 
 .absent {
-  background-color: #3a3a3c;
+  background-color: var(--tile-absent);
   color: #fff;
 }
 
 :global([data-theme="light"]) .absent {
-  background-color: #787c7e;
+  background-color: var(--tile-absent-light);
 }
 
 .smartDots {

@@ -5,7 +5,7 @@ const CONFIG_KEY = 'lexi5_config'
 const DEFAULT_CONFIG = {
   theme: null, // null = system, 'light', 'dark'
   difficulty: 'normal', // 'normal', 'hard'
-  dictionary: 'standard', // 'standard', 'expanded', 'expert'
+  dictionary: 'standard', // 'lite', 'standard', 'expanded', 'expert', 'custom'
   smartKeyboard: false, // true to show dots on yellow keys
 }
 

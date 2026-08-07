@@ -1,30 +1,53 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { SettingsToggle } from '../../ds'
 import { Button } from '../../ds/components/Button'
 import { Modal } from '../../ds/components/Modal'
 import { ConfirmModal } from '../../ds/components/Dialogs'
 import { Field } from '../../ds/components/Field'
 import { SegmentedControl } from '../../ds'
-import { getWordProgress } from '../lib/gameState'
+import {
+  getWordProgress,
+  hasCustomDictionary,
+  getCustomDictionarySize,
+  BUILTIN_DICTIONARY_ORDER,
+  DICTIONARY_SIZES,
+  DICTIONARY_LABELS
+} from '../lib/gameState'
 import styles from './Settings.module.css'
 
-export function Settings({ open, onClose, config, updateConfig, resetStats, gameState }) {
-  const [showCurate, setShowCurate] = useState(false)
+const CURATE_TIMEOUT_MS = 30000
+
+export function Settings({ open, onClose, config, updateConfig, onDictionaryChange, resetStats, gameState, onToast, initialShowCurate = false }) {
+  const [showCurate, setShowCurate] = useState(initialShowCurate)
   const [apiKey, setApiKey] = useState('')
   const [curating, setCurating] = useState(false)
+  const [curateError, setCurateError] = useState(null)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [showRecurateConfirm, setShowRecurateConfirm] = useState(false)
 
-  const hasCustomDict = !!localStorage.getItem('lexi5_custom_dict')
+  // The Modal delays its own mount by an animation frame or two, so a plain
+  // useState(initialShowCurate) can miss the value if it arrives right as the
+  // modal is opening — react to it explicitly instead of relying on mount timing.
+  useEffect(() => {
+    if (open && initialShowCurate) setShowCurate(true)
+  }, [open, initialShowCurate])
+
+  const hasCustomDict = hasCustomDictionary()
   const customProgress = hasCustomDict && gameState
     ? getWordProgress('custom', gameState.date, gameState.iteration)
     : null
 
   const runCurate = async () => {
     setCurating(true)
+    setCurateError(null)
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), CURATE_TIMEOUT_MS)
+
     try {
       const res = await fetch('/api/anthropic-proxy/v1/messages', {
         method: 'POST',
+        signal: controller.signal,
         headers: {
           'x-api-key': apiKey,
           'anthropic-version': '2023-06-01',
@@ -56,17 +79,21 @@ export function Settings({ open, onClose, config, updateConfig, resetStats, game
           throw new Error("Could not parse JSON array from AI response. AI said: " + text.substring(0, 150) + (text.length > 150 ? '...' : ''))
         }
       }
-      words = words.map(w => w.toLowerCase()).filter(w => w.length === 5 && /^[a-z]+$/.test(w))
-      
+      words = [...new Set(words.map(w => w.toLowerCase()))].filter(w => w.length === 5 && /^[a-z]+$/.test(w))
+
       if (words.length === 0) throw new Error("AI did not return any valid 5-letter words.")
-      
+
       localStorage.setItem('lexi5_custom_dict', JSON.stringify(words))
-      alert(`Successfully curated ${words.length} new words! You can now select "Custom (AI Curated)" in the dictionary list.`)
-      updateConfig({ dictionary: 'custom' })
       setShowCurate(false)
+      onDictionaryChange('custom')
+      onToast(`Custom list curated with ${words.length} words — new word ready!`)
     } catch (err) {
-      alert('Failed to curate: ' + err.message)
+      const message = err.name === 'AbortError'
+        ? 'Curation timed out after 30s. Please try again.'
+        : err.message
+      setCurateError(message)
     } finally {
+      clearTimeout(timeout)
       setCurating(false)
     }
   }
@@ -85,45 +112,47 @@ export function Settings({ open, onClose, config, updateConfig, resetStats, game
       <div className={styles.settingsList}>
         <div className={styles.dictionarySection}>
           <label className={styles.dictionaryLabel}>Word Dictionary</label>
-          <div className={styles.dictionaryDesc}>
-            <p>Choose the word list for new games:</p>
-            <ul>
-              <li><strong>Standard:</strong> Official curated list</li>
-              <li><strong>Expanded:</strong> More variety, some plurals</li>
-              <li><strong>Expert:</strong> Massive list, very obscure</li>
-            </ul>
-          </div>
+          <p className={styles.dictionaryDesc}>
+            Easiest to hardest, left to right. Switching deals a fresh word immediately, no penalty.
+          </p>
           <div className={styles.selectWrapper}>
-            <select 
-              value={config.dictionary} 
-              onChange={e => updateConfig({ dictionary: e.target.value })}
+            <select
+              value={config.dictionary}
+              onChange={e => onDictionaryChange(e.target.value)}
               className={styles.dropdown}
             >
-              <option value="standard">Standard (2,309 words)</option>
-              <option value="expanded">Expanded (5,757 words)</option>
-              <option value="expert">Expert (13,106 words)</option>
-              <option value="custom">Custom (AI Curated)</option>
+              {BUILTIN_DICTIONARY_ORDER.map(key => (
+                <option key={key} value={key}>
+                  {DICTIONARY_LABELS[key]} ({DICTIONARY_SIZES[key].toLocaleString()} words)
+                </option>
+              ))}
+              <option value="custom" disabled={!hasCustomDict}>
+                {DICTIONARY_LABELS.custom}{hasCustomDict ? ` (${getCustomDictionarySize().toLocaleString()} words)` : ' — curate one below first'}
+              </option>
             </select>
           </div>
         </div>
 
-        <SettingsToggle
-          label="Hard Mode"
-          description="Any revealed hints must be used in subsequent guesses"
-          checked={config.difficulty === 'hard'}
-          onChange={(e) => updateConfig({ difficulty: e.target.checked ? 'hard' : 'normal' })}
-        />
-        
-        <SettingsToggle
-          label="Smart Keyboard"
-          description="Show dots on yellow keys for positions you've already tried"
-          checked={config.smartKeyboard === true}
-          onChange={(e) => updateConfig({ smartKeyboard: e.target.checked })}
-        />
-        
+        <div className={styles.tightToggle}>
+          <SettingsToggle
+            label="Hard Mode"
+            description="Any revealed hints must be used in subsequent guesses"
+            checked={config.difficulty === 'hard'}
+            onChange={(e) => updateConfig({ difficulty: e.target.checked ? 'hard' : 'normal' })}
+          />
+
+          <SettingsToggle
+            label="Smart Keyboard"
+            description="Show dots on yellow keys for positions you've already tried"
+            checked={config.smartKeyboard === true}
+            onChange={(e) => updateConfig({ smartKeyboard: e.target.checked })}
+          />
+        </div>
+
         <div className={styles.dictionarySection}>
           <label className={styles.dictionaryLabel}>Theme</label>
           <SegmentedControl
+            size="sm"
             options={[
               { label: 'System', value: 'system' },
               { label: 'Light', value: 'light' },
@@ -148,16 +177,11 @@ export function Settings({ open, onClose, config, updateConfig, resetStats, game
         {showCurate && (
           <div className={styles.curateCard}>
             <p className={styles.curateDesc}>
-              Provide an Anthropic API key to re-curate the daily answers list using Claude 4.5 Haiku.
-              (Note: For security, keys are never saved to the server).
-              Words are shown in a shuffled order so none repeats until every word in the list has
-              been used, then it starts a fresh cycle.
+              Paste an Anthropic API key to curate a list with Claude Haiku (key never saved).
+              {customProgress && ` Current list: ${customProgress.position}/${customProgress.total} words used this cycle.`}
             </p>
-            {customProgress && (
-              <p className={styles.curateDesc}>
-                Current list: {customProgress.total} words — {customProgress.position} used so far
-                this cycle.
-              </p>
+            {curateError && (
+              <p className={styles.curateError}>{curateError}</p>
             )}
             <Field
               label="API Key"
@@ -165,21 +189,22 @@ export function Settings({ open, onClose, config, updateConfig, resetStats, game
               value={apiKey}
               onChange={e => setApiKey(e.target.value)}
               placeholder="sk-ant-..."
+              autoComplete="off"
             />
-            <Button onClick={handleCurate} disabled={curating || !apiKey}>
+            <Button size="sm" onClick={handleCurate} disabled={curating || !apiKey}>
               {curating ? 'Curating...' : hasCustomDict ? 'Refresh Word List' : 'Start Curation'}
             </Button>
           </div>
         )}
-        
-        <Button variant="ghost" onClick={() => setShowResetConfirm(true)} style={{color: 'var(--red, #f44336)'}}>
+
+        <Button variant="ghost" onClick={() => setShowResetConfirm(true)} className={styles.dangerButton}>
           Reset Statistics
         </Button>
       </div>
 
-      <ConfirmModal 
-        isOpen={showResetConfirm} 
-        onCancel={() => setShowResetConfirm(false)} 
+      <ConfirmModal
+        isOpen={showResetConfirm}
+        onCancel={() => setShowResetConfirm(false)}
         title="Reset Statistics"
         message="Are you sure you want to permanently erase all your gameplay statistics? This action cannot be undone."
         confirmText="Confirm Reset"
@@ -187,7 +212,7 @@ export function Settings({ open, onClose, config, updateConfig, resetStats, game
         onConfirm={() => {
           resetStats()
           setShowResetConfirm(false)
-          alert('Statistics reset.')
+          onToast('Statistics reset.')
         }}
       />
 

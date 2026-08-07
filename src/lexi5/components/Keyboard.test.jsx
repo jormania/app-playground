@@ -44,9 +44,9 @@ describe('Keyboard component', () => {
   })
 
   it('renders smart dots for yellow keys when smartKeyboard is enabled', () => {
-    const { getByText, container } = render(
-      <Keyboard 
-        guesses={['tasty']} 
+    const { getByText } = render(
+      <Keyboard
+        guesses={['tasty']}
         word="apple" 
         onChar={() => {}}
         onDelete={() => {}}

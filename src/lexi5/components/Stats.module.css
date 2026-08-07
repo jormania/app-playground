@@ -1,26 +1,47 @@
 .statsContainer {
   display: flex;
+  align-items: stretch;
   justify-content: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 24px;
+  gap: 6px;
+  margin-bottom: 20px;
 }
 
 .statBox {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 2px;
   flex: 1;
+  min-width: 0;
+  padding: 8px 2px;
+  /* --surface-float reads as flat mid-gray in dark mode — not enough contrast
+     against light text (~2.6:1). Match .curateCard's proven pattern instead:
+     page background + a visible border, so text keeps the app's normal
+     (already-correct-contrast) foreground/background pairing. */
+  background: var(--surface-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.statDivider {
+  flex: none;
+  width: 1px;
+  margin: 4px 2px;
+  background: var(--border-subtle);
 }
 
 .statNum {
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: bold;
+  line-height: 1.1;
 }
 
 .statLabel {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
+  color: var(--text-subtle);
   text-align: center;
+  white-space: nowrap;
 }
 
 .distTitle {
@@ -49,14 +70,16 @@
 }
 
 .distBar {
-  background-color: var(--surface-float);
+  background-color: var(--surface-bg);
+  border: 1px solid var(--border-subtle);
   color: var(--text-base);
-  padding: 2px 8px;
+  padding: 1px 7px;
   font-size: 0.875rem;
   font-weight: bold;
   display: flex;
   justify-content: flex-end;
   min-width: fit-content;
+  box-sizing: border-box;
   animation: growBar 0.8s ease-out forwards;
   transform-origin: left;
 }
@@ -67,7 +90,8 @@
 }
 
 .distBar.hasData {
-  background-color: #538d4e;
+  background-color: var(--tile-correct);
+  border-color: var(--tile-correct);
   color: #fff;
 }
 
@@ -149,15 +173,15 @@
 }
 
 .shareCorrect {
-  background-color: #538d4e;
+  background-color: var(--tile-correct);
 }
 
 .sharePresent {
-  background-color: #b59f3b;
+  background-color: var(--tile-present);
 }
 
 .shareAbsent {
-  background-color: #3a3a3c;
+  background-color: var(--tile-absent);
 }
 
 .shareDef {

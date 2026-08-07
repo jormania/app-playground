@@ -5,20 +5,95 @@
 A daily 5-letter word challenge built with React and Vite, featuring multiple curated dictionaries, comprehensive statistics, and a clean interface using the shared design system.
 
 ## Data & Curation
-The game uses three dictionaries that can be switched in Settings for new games:
+The game ships four dictionaries, ordered easiest to hardest, switchable in Settings:
+- **Lite**: 344 hand-picked, everyday words — appropriate for a younger/less-practiced reader.
 - **Standard**: The official original 2,309 word answers.
 - **Expanded**: The 5,757 words from the Stanford GraphBase frequency list.
 - **Expert**: The official list of 13,106 allowed guesses (including obscure words).
 
-The dictionaries are generated via `scripts/curate-lexi5-dictionary.mjs`.
+Standard/Expanded/Expert are generated via `scripts/curate-lexi5-dictionary.mjs`. Lite is
+hand-curated directly in `src/lexi5/data/words.json` (not script-generated — word difficulty
+isn't something the source lists encode, so it needed a human pass) and validated against the
+guess list by the same script's invariants (5 letters, lowercase, real dictionary entries).
+
+A fifth option, **Custom (AI Curated)**, is user-generated: paste an Anthropic API key into
+Settings → "Advanced: Dictionary Curation" and Claude 4.5 Haiku curates a 500-word list on the
+fly. The key is never sent to or stored on our server — the request goes through a Vercel edge
+rewrite (`/api/anthropic-proxy` → `api.anthropic.com`, see `vercel.json`) straight to Anthropic.
+The **Custom** option is disabled in the dropdown until a list has actually been curated, so you
+can't accidentally select a dictionary that silently falls back to Standard.
+
+Switching dictionaries (built-in or Custom) always deals a fresh word immediately and shows a
+toast confirming the switch — it never silently keeps playing the old word under a new label, and
+it never counts as a loss.
+
+### Non-repeating word cycles
+Each dictionary's answer words are served from a deterministic shuffled order (seeded from the
+list's own contents, so re-curating Custom reshuffles automatically) rather than a raw hash
+lookup. This guarantees no word repeats until every word in that list has been used exactly once;
+once a list's cycle completes it reshuffles and starts over, with a toast letting you know. This
+also means Custom re-curation is the only way to avoid ever seeing a repeat past that list's size
+— which was a real gap in the original implementation (words could collide well before the list
+was exhausted). This position/cycle math (`getWordProgress` in `lib/gameState.js`) is a pure
+function of `(dictionary, date, iteration)` — it doesn't matter how much you switch between
+dictionaries and back; a given dictionary's position on a given day is always the same, so nothing
+needs "refreshing" just from navigating away and back.
+
+Unlike the built-in lists (which just reshuffle silently once their cycle completes), Custom
+requires the player to take an action to get fresh words — re-curate. So once Custom's cycle has
+wrapped at least once, a persistent banner stays up on the main screen (not just the one-off
+toast, which is easy to miss) until you tap **Refresh Now**, which jumps straight into Settings
+with the curation panel already open.
 
 ## Game State
 State is entirely local to the device and tracked via `localStorage` keys:
-- `lexi5_stats`: Lifetime statistics (played, won, streaks, guess distribution).
+- `lexi5_stats`: Lifetime statistics (played, won, streaks, guess distribution), one bucket per
+  dictionary (`lite`, `standard`, `expanded`, `expert`, `custom`).
 - `lexi5_game`: The current active game state, keyed to the current date and dictionary.
 - `lexi5_config`: User preferences (theme, difficulty, dictionary).
+- `lexi5_custom_dict`: The AI-curated word list, if one has been generated.
 
-Because the repo is at its Vercel serverless limit, Lexi5 is 100% client-side. The daily word is generated deterministically by hashing the local date.
+The daily word itself needs no server round-trip — it's derived deterministically from the local
+date and the (statically bundled, so identical for every install) dictionary contents. The
+optional Custom dictionary curation feature does call out through the Vercel edge rewrite
+described above, so the app isn't *entirely* server-free, but nothing about normal gameplay
+requires network access once loaded (it's a fully offline-capable PWA).
+
+## Toast notifications
+The app surfaces state changes/errors via a lightweight in-app toast (not blocking native
+`alert()`s) at these points:
+- Invalid guess (wrong length / not in word list), Hard Mode rule violations.
+- Switching dictionaries — confirms the new dictionary and that a fresh word was dealt.
+- A dictionary's word cycle completing and reshuffling.
+- Falling back off an unavailable Custom dictionary (storage cleared, or a shared seed link
+  referencing a Custom list you don't have).
+- Curating/refreshing the Custom dictionary (success, or a readable error inline in Settings).
+- Copying/sharing the board (link copy, image share, and their failure paths).
+- Resetting statistics.
+
+## Theming gotcha: this app maps DS tokens onto its own palette
+`App.module.css`'s `:root` block re-maps several `--color-*` custom properties
+(`--color-surface`, `--color-ink`, `--color-border`, `--color-surface-2`, `--color-muted`) so
+that `src/ds/` components (Modal, SegmentedControl, Field, etc.) render in Lexi5's own
+black/white palette instead of the design system's default Solarized/Tokyo Night theme.
+
+Two things to watch if you touch this:
+1. **Every mapping must be re-declared in the `:root[data-theme="dark"]` block too**, not just
+   the base `:root`. DS's own dark-theme rule for these same properties is an attribute-qualified
+   selector (`:root[data-theme="dark"]`), which is *more specific* than a bare `:root` — a mapping
+   left only in the light block gets silently overridden by DS's own dark value. This exact bug
+   shipped once already (Modal titles and stat numbers briefly rendered in DS's lavender ink
+   instead of white).
+2. **`--color-surface-2` is intentionally its own value, not an alias for `--surface-float`.** DS
+   pairs `--color-surface-2` with `--color-muted` as a background/foreground combo
+   (SegmentedControl's track+inactive-label, Modal's close-button hover, IconButton). Lexi5's own
+   `--surface-float` and `--text-subtle` happen to be the *identical* hex value in dark mode
+   (`#818384`, used for unrelated things — the Keyboard's untried-key background vs. general
+   muted text) — aliasing `--color-surface-2` to `--surface-float` made muted text exactly the
+   same color as its own background, i.e. invisible. `main.jsx` also imports `../ds/tokens.css`
+   *before* `./App` for the same reason — so Lexi5's own CSS loads later and wins same-specificity
+   cascade ties (this matters for the light theme, where the DS/Lexi5 rules for these tokens are
+   equally specific).
 
 ## Features & Polish
 - **Crown Mode vs Infinite**: The first game played each day is the "Crown" word, which tracks its own special streak separate from infinite practice mode.
@@ -26,5 +101,7 @@ Because the repo is at its Vercel serverless limit, Lexi5 is 100% client-side. T
 - **High-Fidelity Social Sharing**: Instead of simple text emojis, the "Share" button utilizes `html2canvas` and the Web Share API to generate and share a clean, beautiful image of your game board.
 - **Animations & Haptics**: Full NYT-style animations including tile pops, invalid word shake, and a staggered victory dance. Includes mobile `navigator.vibrate` haptics and a confetti celebration upon beating the Crown word.
 - **Hard Mode**: Revealed hints must be used in subsequent guesses (and green letters must remain in their exact positions).
-- **Statistics Management**: In-progress games are automatically forfeited if left unfinished past midnight, and users have the option to securely reset their statistics via a destructive confirmation modal.
+- **Statistics Management**: In-progress games are automatically forfeited if left unfinished past midnight (recorded as a loss against the dictionary that game was playing), and users have the option to securely reset their statistics via a destructive confirmation modal.
 - **PWA**: Fully installable as an offline-first app, registered in The Cabinet.
+
+See [`LEXI5_ROADMAP.md`](LEXI5_ROADMAP.md) for deferred/optional follow-ups from the 2026-08-08 audit.

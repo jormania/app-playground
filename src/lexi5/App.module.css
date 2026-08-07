@@ -6,11 +6,26 @@
   --border-subtle: #d3d6da;
   --border-base: #878a8c;
 
-  /* Map to DS tokens for Modals */
+  /* Wordle-style tile/key colors — the single source of truth other Lexi5
+     stylesheets (Board, Keyboard, Stats, Settings) reference instead of
+     repeating these hex values. */
+  --tile-correct: #538d4e;
+  --tile-present: #b59f3b;
+  --tile-absent: #3a3a3c;
+  --tile-absent-light: #787c7e;
+  --accent: var(--tile-correct);
+  --danger: #f44336;
+
+  /* Map to DS tokens for Modals. --color-surface-2 is its OWN value, not an alias
+     for --surface-float: DS pairs --color-surface-2 with --color-muted as a
+     background/foreground combo (SegmentedControl track, Modal close-button hover,
+     IconButton, etc.) — reusing --surface-float there would be fine in light mode
+     but collides exactly with --text-subtle's dark-mode value below, making that
+     text invisible. */
   --color-surface: var(--surface-bg);
   --color-ink: var(--text-base);
   --color-border: var(--border-subtle);
-  --color-surface-2: var(--surface-float);
+  --color-surface-2: #eef0f1;
   --color-muted: var(--text-subtle);
 }
 
@@ -21,6 +36,17 @@
   --surface-float: #818384;
   --border-subtle: #3a3a3c;
   --border-base: #565758;
+
+  /* Re-declared here (not just inherited from the block above) because DS's own
+     dark-theme rule for these same custom properties is more specific than a bare
+     :root — without this, Modal-rendered text (Settings/Stats titles, etc.) would
+     silently pick up DS's ink tone instead of Lexi5's. See the light block above
+     for why --color-surface-2 isn't just --surface-float. */
+  --color-surface: var(--surface-bg);
+  --color-ink: var(--text-base);
+  --color-border: var(--border-subtle);
+  --color-surface-2: #2a2a2c;
+  --color-muted: var(--text-subtle);
 }
 
 .app {
@@ -104,4 +130,35 @@
 @keyframes fade {
   from { opacity: 0; transform: translate(-50%, -10px); }
   to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.staleBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 10px 16px;
+  background: var(--tile-present);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.forfeitText {
+  text-align: center;
+  margin-bottom: 24px;
+  font-size: 1.1rem;
+}
+
+.forfeitSubtext {
+  color: var(--text-subtle);
+  font-size: 0.9rem;
+}
+
+.forfeitActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
 }
