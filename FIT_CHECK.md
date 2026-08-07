@@ -689,6 +689,7 @@ Injected a layer of premium polish and micro-interactions to make the applicatio
 - **Graceful Skip:** Tapping "Not today" smoothly collapses and fades out the outfit suggestion rather than instantly snapping it away.
 - **Image Shimmers:** Low-quality placeholders (`LQIPs`) feature a continuously sweeping gradient shimmer before the real image loads.
 - **Vibrant Categories:** Wardrobe headings use distinct, high-contrast colours that adapt seamlessly to light/dark themes.
+- **Modal Typography Polish:** Inside the Garment Details Modal, the section headings now use the `Vibrant Colours` palette, making the editor pop and ensuring consistency with the Wardrobe tab. Added improved spacing to the "Wardrobes" section for better readability.
 - **Weather Animations:** Weather orbs on the Today screen are fully animated (rotating sun, drifting clouds, bobbing rain/snow) based on the `data-condition`.
 - **Favourite Star Pop:** Toggling a garment favourite plays an elastic scaling pop and casts a brief drop-shadow glow.
 - **Time-of-Day Glow:** A faint, fixed radial background gradient shifts dynamically based on the user's local hour (peach at dawn, transparent by day, amber at dusk, and deep blue at night).
