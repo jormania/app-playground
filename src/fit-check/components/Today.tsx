@@ -227,19 +227,25 @@ function OutfitCard({
   const canSwap = !verdict && !recording
 
   const [burst, setBurst] = useState(false)
+  const [skipped, setSkipped] = useState(false)
   const prevRecording = useRef(recording)
   useEffect(() => {
-    // If we just finished recording and the result is 'Worn', play the burst!
-    if (prevRecording.current && !recording && verdict === 'Worn') {
-      setBurst(true)
-      const t = setTimeout(() => setBurst(false), 800)
-      return () => clearTimeout(t)
+    // If we just finished recording...
+    if (prevRecording.current && !recording) {
+      if (verdict === 'Worn') {
+        setBurst(true)
+        const t = setTimeout(() => setBurst(false), 800)
+        return () => clearTimeout(t)
+      } else if (verdict === 'Skipped') {
+        setSkipped(true)
+        // No need to clear `skipped`; we want it to stay collapsed.
+      }
     }
     prevRecording.current = recording
   }, [recording, verdict])
 
   return (
-    <article className={`fc-outfit ${burst ? 'fc-success-burst' : ''}`}>
+    <article className={`fc-outfit ${burst ? 'fc-success-burst' : ''} ${skipped ? 'fc-skipped-collapse' : ''}`}>
       <div className="fc-outfit-row">
         {outfit.garments.map((g) => (
           <OutfitPiece

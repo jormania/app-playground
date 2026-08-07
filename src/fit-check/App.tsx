@@ -287,9 +287,23 @@ export default function App() {
     ? { title: 'Add something', subtitle: 'Photograph it and it joins your wardrobe.' }
     : TAB_TITLES[tab]
 
+  const [ambientColor, setAmbientColor] = useState('transparent')
+  useEffect(() => {
+    const updateAmbient = () => {
+      const hour = new Date().getHours()
+      if (hour >= 5 && hour < 8) setAmbientColor('var(--color-cat-tops)') // Dawn (peach/fuchsia)
+      else if (hour >= 16 && hour < 19) setAmbientColor('var(--color-cat-outerwear)') // Dusk (amber/orange)
+      else if (hour >= 19 || hour < 5) setAmbientColor('var(--color-cat-bottoms)') // Night (blue)
+      else setAmbientColor('transparent') // Day
+    }
+    updateAmbient()
+    const interval = setInterval(updateAmbient, 60000)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <>
-      <main className="fc-app">
+      <main className="fc-app" style={{ '--fc-ambient-color': ambientColor } as React.CSSProperties}>
         <header className="fc-header">
           <div>
             <h1 className="fc-title">{title}</h1>

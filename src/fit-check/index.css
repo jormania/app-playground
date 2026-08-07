@@ -992,6 +992,200 @@ button:not(:disabled):active {
     box-shadow: 0 0 0 8px color-mix(in srgb, var(--color-accent) 20%, transparent);
   }
 }
+.fc-tips {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fc-tips li {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  color: var(--color-muted);
+  font-size: 0.75rem;
+}
+
+.fc-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.fc-spin {
+  animation: fc-spin 900ms linear infinite;
+  vertical-align: -2px;
+}
+
+@keyframes fc-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fc-spin { animation: none; }
+}
+
+/* ── Settings ────────────────────────────────────────────────────────────── */
+
+/* The way into the guide. Sits at the very top of Settings because a PWA opened
+   from the home screen never passes index.html's app card, so this is the only
+   route Nora has to it. Tinted with the accent rather than styled as a plain
+   settings row, so it reads as an invitation rather than another field. */
+.fc-guide-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  border: 1px solid var(--color-ring);
+  border-radius: var(--fc-tile-radius);
+  background: var(--color-glow);
+  color: var(--color-ink);
+  text-decoration: none;
+  /* Comfortably past the 44px touch-target minimum on both target phones. */
+  min-height: 60px;
+}
+
+.fc-guide-link:hover {
+  border-color: var(--color-accent);
+}
+
+.fc-guide-link:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.fc-guide-link-mark {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  color: var(--color-accent);
+}
+
+.fc-guide-link-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.fc-guide-link-text b {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.fc-guide-link-text span {
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+}
+
+.fc-guide-link-chevron {
+  flex: none;
+  margin-left: auto;
+  color: var(--color-faint);
+}
+
+/* There is no Save button — config persists on every change. This says so, and
+   flashes a confirmation when it happens, so the absence reads as "nothing to
+   do" rather than "something is missing". */
+.fc-autosave {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+  margin: 0 0 18px;
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+}
+
+.fc-autosave-flash {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-success) 16%, transparent);
+  color: var(--color-success);
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 160ms ease-out;
+}
+
+.fc-autosave-flash[data-visible='true'] {
+  opacity: 1;
+}
+
+.fc-settings-group {
+  margin-bottom: 24px;
+}
+
+.fc-settings-group > h2 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  margin: 0 0 4px;
+}
+
+.fc-settings-hint {
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+  margin: 0 0 12px;
+}
+
+.fc-field-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fc-status {
+  margin-top: 10px;
+  font-size: 0.8125rem;
+}
+.fc-status[data-ok='true']  { color: var(--color-success); }
+.fc-status[data-ok='false'] { color: var(--color-danger); }
+
+/* ── Visual Flair Animations ─────────────────────────────────────────────── */
+
+button:not(:disabled):active {
+  transform: scale(0.97);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fc-stagger-item {
+  opacity: 0;
+  animation: fc-stagger-fade-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation-delay: calc(var(--fc-stagger, 0) * 35ms);
+}
+
+@keyframes fc-stagger-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fc-pulse-attention {
+  animation: fc-pulse-breath 2s infinite ease-in-out;
+}
+
+@keyframes fc-pulse-breath {
+  0%, 100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--color-accent) 20%, transparent);
+  }
+}
 
 .fc-success-burst {
   animation: fc-flash-card 0.5s ease-out;
@@ -1009,11 +1203,100 @@ button:not(:disabled):active {
   }
 }
 
+/* M8.3 Ambient Enhancements */
+
+/* Weather Animations */
+.fc-weather-card[data-condition="clear"] .fc-weather-orb svg {
+  animation: fc-spin-slow 20s linear infinite;
+}
+.fc-weather-card[data-condition="partly-cloudy"] .fc-weather-orb svg,
+.fc-weather-card[data-condition="overcast"] .fc-weather-orb svg {
+  animation: fc-drift 4s ease-in-out infinite alternate;
+}
+.fc-weather-card[data-condition="rain"] .fc-weather-orb svg,
+.fc-weather-card[data-condition="snow"] .fc-weather-orb svg,
+.fc-weather-card[data-condition="thunder"] .fc-weather-orb svg {
+  animation: fc-bob 2s ease-in-out infinite alternate;
+}
+.fc-weather-card[data-condition="fog"] .fc-weather-orb svg {
+  animation: fc-pulse-fog 4s ease-in-out infinite alternate;
+}
+
+@keyframes fc-spin-slow {
+  to { transform: rotate(360deg); }
+}
+@keyframes fc-drift {
+  from { transform: translateX(-2px); }
+  to { transform: translateX(2px); }
+}
+@keyframes fc-bob {
+  from { transform: translateY(-2px); }
+  to { transform: translateY(2px); }
+}
+@keyframes fc-pulse-fog {
+  0%, 100% { opacity: 0.7; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+/* Favourite Star Pop */
+.fc-tile-fav[aria-pressed='true'] svg {
+  animation: fc-star-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  filter: drop-shadow(0 0 6px rgba(255, 215, 106, 0.5));
+}
+@keyframes fc-star-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+
+/* Graceful Skip Collapse */
+.fc-outfit.fc-skipped-collapse {
+  animation: fc-collapse-fade 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  overflow: hidden;
+}
+@keyframes fc-collapse-fade {
+  0% {
+    opacity: 1;
+    max-height: 500px;
+    margin-bottom: 32px;
+  }
+  100% {
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 0;
+  }
+}
+
+/* Ambient Time-of-Day Glow */
+.fc-app {
+  position: relative;
+}
+.fc-app::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(
+    circle at 50% 0%,
+    var(--fc-ambient-color, transparent) 0%,
+    transparent 60%
+  );
+  opacity: 0.15;
+  transition: background 2s ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .fc-stagger-item,
   .fc-tile-thumb::after,
   .fc-pulse-attention,
-  .fc-success-burst {
+  .fc-success-burst,
+  .fc-weather-orb svg,
+  .fc-tile-fav[aria-pressed='true'] svg,
+  .fc-outfit.fc-skipped-collapse {
     animation: none;
     opacity: 1;
     transform: none;
