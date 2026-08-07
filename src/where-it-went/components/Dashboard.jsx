@@ -851,12 +851,24 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
                       }}></div>
                     </div>
                     {tripSpent > 0 && (
-                      <div style={{ marginTop: '6px', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <div
+                        style={{ marginTop: '6px', fontSize: 'var(--text-xs)', color: 'var(--color-muted)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px', cursor: 'help', minWidth: 0 }}
+                        title={`Only trip spend dated inside this budget's own window (${b.window.label}) counts here — a trip almost always has costs booked in other months too. For the trip's full total, see Insights → Travel or the trip's own report.`}
+                      >
                         <span>✈️</span>
                         <span>
                           {excludeTripSpend
                             ? <>{formatCurrency(tripSpent)} trip spend excluded</>
-                            : <>{formatCurrency(tripSpent)} of which is trip-linked</>}
+                            // Naming the window explicitly (not just "of which is
+                            // trip-linked") is the fix itself: this line only ever
+                            // reflects the slice of a trip that happens to fall in
+                            // *this* window, never the trip's real total — a
+                            // multi-month trip's earlier-booked costs (flights,
+                            // accommodation) live in whichever month they were
+                            // actually paid, not the trip's own dates. Full
+                            // reasoning lives in the title tooltip rather than
+                            // inline, so this stays one short line on mobile.
+                            : <>{formatCurrency(tripSpent)} of which is trip-linked in {b.window.label}</>}
                         </span>
                       </div>
                     )}
