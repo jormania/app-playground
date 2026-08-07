@@ -34,16 +34,26 @@ lookup. This guarantees no word repeats until every word in that list has been u
 once a list's cycle completes it reshuffles and starts over, with a toast letting you know. This
 also means Custom re-curation is the only way to avoid ever seeing a repeat past that list's size
 — which was a real gap in the original implementation (words could collide well before the list
-was exhausted). This position/cycle math (`getWordProgress` in `lib/gameState.js`) is a pure
-function of `(dictionary, date, iteration)` — it doesn't matter how much you switch between
-dictionaries and back; a given dictionary's position on a given day is always the same, so nothing
+was exhausted). This position/cycle math (`getWordProgress` in `lib/gameState.js`) is a function
+of `(dictionary, date, iteration)` — it doesn't matter how much you switch between dictionaries
+and back; a given built-in dictionary's position on a given day is always the same, so nothing
 needs "refreshing" just from navigating away and back.
+
+For the built-in dictionaries, "cycle" is anchored to the Unix epoch — fine, since those lists
+never change. **Custom is the one exception**: it's anchored to whenever it was last curated
+(`markCustomDictionaryCurated`, storing `lexi5_custom_dict_epoch`), not the epoch. Without that
+anchor, "cycle number" would be days-since-1970 divided by list length — since that's already
+~20,000 days, a freshly curated list would look already-cycled on the day it's created. (This
+shipped as a real bug once: refreshing the Custom list didn't clear the "used every word" banner,
+because the banner was reading the un-anchored epoch-relative cycle number.) A list saved before
+this anchor existed self-heals by anchoring to the first day it's read, rather than claiming
+instant staleness.
 
 Unlike the built-in lists (which just reshuffle silently once their cycle completes), Custom
 requires the player to take an action to get fresh words — re-curate. So once Custom's cycle has
-wrapped at least once, a persistent banner stays up on the main screen (not just the one-off
-toast, which is easy to miss) until you tap **Refresh Now**, which jumps straight into Settings
-with the curation panel already open.
+wrapped at least once *since it was curated*, a persistent banner stays up on the main screen (not
+just the one-off toast, which is easy to miss) until you tap **Refresh Now**, which jumps straight
+into Settings with the curation panel already open.
 
 ## Game State
 State is entirely local to the device and tracked via `localStorage` keys:

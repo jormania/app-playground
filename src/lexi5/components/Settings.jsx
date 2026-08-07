@@ -9,6 +9,7 @@ import {
   getWordProgress,
   hasCustomDictionary,
   getCustomDictionarySize,
+  markCustomDictionaryCurated,
   BUILTIN_DICTIONARY_ORDER,
   DICTIONARY_SIZES,
   DICTIONARY_LABELS
@@ -84,6 +85,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
       if (words.length === 0) throw new Error("AI did not return any valid 5-letter words.")
 
       localStorage.setItem('lexi5_custom_dict', JSON.stringify(words))
+      markCustomDictionaryCurated()
       setShowCurate(false)
       onDictionaryChange('custom')
       onToast(`Custom list curated with ${words.length} words — new word ready!`)

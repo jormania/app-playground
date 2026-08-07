@@ -10,6 +10,7 @@ import {
   normalizeDictionary,
   hasCustomDictionary,
   getCustomDictionarySize,
+  markCustomDictionaryCurated,
   DICTIONARY_SIZES,
   BUILTIN_DICTIONARY_ORDER
 } from './gameState'
@@ -136,6 +137,45 @@ describe('gameState logic', () => {
 
     it('passes through non-custom dictionaries unchanged', () => {
       expect(normalizeDictionary('expert')).toBe('expert')
+    })
+  })
+
+  describe('custom dictionary cycle anchoring (markCustomDictionaryCurated)', () => {
+    it('a freshly curated list is not immediately "stale" despite being far past the Unix epoch', () => {
+      // Without an anchor, cycleNumber = daysSinceEpoch / list.length — since we're
+      // ~20,000 days past 1970, a small/freshly-made list would look already-cycled
+      // on day one. This is the exact bug the anchor exists to prevent.
+      localStorage.setItem('lexi5_custom_dict', JSON.stringify(['apple', 'mango', 'grape']))
+      const today = new Date().toDateString()
+      markCustomDictionaryCurated()
+
+      const progress = getWordProgress('custom', today, 0)
+      expect(progress.cycleNumber).toBe(0)
+      expect(progress.position).toBe(0)
+      expect(progress.justWrapped).toBe(false)
+    })
+
+    it('only reports a wrapped cycle once every word has actually had a turn since curation', () => {
+      const list = ['apple', 'mango', 'grape']
+      localStorage.setItem('lexi5_custom_dict', JSON.stringify(list))
+      const today = new Date().toDateString()
+      markCustomDictionaryCurated()
+
+      const almostWrapped = getWordProgress('custom', addDays(today, list.length - 1), 0)
+      expect(almostWrapped.cycleNumber).toBe(0)
+
+      const wrapped = getWordProgress('custom', addDays(today, list.length), 0)
+      expect(wrapped.cycleNumber).toBe(1)
+      expect(wrapped.justWrapped).toBe(true)
+    })
+
+    it('self-heals a missing curation anchor instead of claiming instant staleness', () => {
+      // Simulates a list saved before this anchor existed — no markCustomDictionaryCurated() call.
+      localStorage.setItem('lexi5_custom_dict', JSON.stringify(['apple', 'mango', 'grape']))
+      const today = new Date().toDateString()
+
+      const progress = getWordProgress('custom', today, 0)
+      expect(progress.cycleNumber).toBe(0)
     })
   })
 

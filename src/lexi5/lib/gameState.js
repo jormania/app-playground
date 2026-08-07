@@ -120,12 +120,37 @@ function daysSinceEpoch(dateString) {
   return Math.floor(new Date(dateString).getTime() / 86400000)
 }
 
+const CUSTOM_DICT_EPOCH_KEY = 'lexi5_custom_dict_epoch'
+
+// Anchors Custom's cycle to the day it was actually curated. Without this, "cycle
+// number" would be days-since-1970 divided by list length — since we're ~20,000
+// days past epoch, that's already several "cycles" for any list under a few
+// thousand words, on the very day it's created. Built-in dictionaries don't need
+// an anchor (anchor 0): they never get recreated, so absolute-epoch cycling is
+// already correct and stable for them.
+function getCustomDictionaryEpoch() {
+  const stored = localStorage.getItem(CUSTOM_DICT_EPOCH_KEY)
+  const parsed = Number(stored)
+  if (stored !== null && !Number.isNaN(parsed)) return parsed
+  // No anchor recorded yet (list curated before this existed, or first read this
+  // session) — anchor to today instead of claiming staleness the list never earned.
+  const today = daysSinceEpoch(new Date().toDateString())
+  try { localStorage.setItem(CUSTOM_DICT_EPOCH_KEY, String(today)) } catch (_e) {}
+  return today
+}
+
+// Call whenever a new Custom list is saved, so its cycle starts counting from today.
+export function markCustomDictionaryCurated() {
+  try { localStorage.setItem(CUSTOM_DICT_EPOCH_KEY, String(daysSinceEpoch(new Date().toDateString()))) } catch (_e) {}
+}
+
 // Where a given (date, iteration) falls in the list's non-repeating cycle:
 // position advances by exactly 1 per calendar day (or extra same-day play), so
 // every word in the list is guaranteed to appear exactly once before any repeat.
 export function getWordProgress(dictionary = 'standard', dateString, iteration = 0) {
   const list = resolveDictionaryList(dictionary)
-  const seq = daysSinceEpoch(dateString) + iteration
+  const anchor = dictionary === 'custom' ? getCustomDictionaryEpoch() : 0
+  const seq = (daysSinceEpoch(dateString) - anchor) + iteration
   const total = list.length
   const position = ((seq % total) + total) % total
   const cycleNumber = Math.floor(seq / total)
