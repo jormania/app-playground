@@ -39,16 +39,18 @@ export function Settings({ open, onClose, config, updateConfig, resetStats }) {
       const data = await res.json()
       const text = data.content[0].text
       const match = text.match(/\[([\s\S]*?)\]/)
-      if (match) {
-        let words = JSON.parse(match[0])
-        words = words.map(w => w.toLowerCase()).filter(w => w.length === 5 && /^[a-z]+$/.test(w))
-        if (words.length > 0) {
-          localStorage.setItem('lexi5_custom_dict', JSON.stringify(words))
-          alert(`Successfully curated ${words.length} new words! You can now select "Custom (AI Curated)" in the dictionary list.`)
-          updateConfig({ dictionary: 'custom' })
-          setShowCurate(false)
-        }
-      }
+      
+      if (!match) throw new Error("Could not parse JSON array from AI response.")
+      
+      let words = JSON.parse(match[0])
+      words = words.map(w => w.toLowerCase()).filter(w => w.length === 5 && /^[a-z]+$/.test(w))
+      
+      if (words.length === 0) throw new Error("AI did not return any valid 5-letter words.")
+      
+      localStorage.setItem('lexi5_custom_dict', JSON.stringify(words))
+      alert(`Successfully curated ${words.length} new words! You can now select "Custom (AI Curated)" in the dictionary list.`)
+      updateConfig({ dictionary: 'custom' })
+      setShowCurate(false)
     } catch (err) {
       alert('Failed to curate: ' + err.message)
     } finally {
@@ -116,7 +118,7 @@ export function Settings({ open, onClose, config, updateConfig, resetStats }) {
           <Button variant="ghost" onClick={() => setShowCurate(!showCurate)}>
             Advanced: Dictionary Curation
           </Button>
-          {config.dictionary === 'custom' && (
+          {config.dictionary === 'custom' && !!localStorage.getItem('lexi5_custom_dict') && (
             <span className={styles.activePill}>Active</span>
           )}
         </div>
