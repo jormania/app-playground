@@ -18,14 +18,14 @@ describe('applyNoraSplit', () => {
     expect(noras.amount).toBe(66);
     expect(noras.categoryId).toBe('nora');
     expect(yours.description).toBe('Lunch at Japanos');
+    // No "(Nora)" suffix — the category already says whose share this is.
+    expect(noras.description).toBe('Lunch at Japanos');
   });
 
-  it('marks the Nora row so an even split is never mistaken for a duplicate', () => {
-    // A 50/50 split produces two rows with the same amount, same day and same
-    // account — exactly what duplicate detection's same-day/identical-
-    // description override is designed to catch across categories. Without a
-    // distinguishing marker (mirroring the manual Split modal's "(Split)"
-    // suffix) these were false-flagged as HIGH-confidence duplicates.
+  it('an even split is never mistaken for a duplicate, even with matching descriptions', () => {
+    // A 50/50 split produces two rows with the same amount, same day, same
+    // account and (now) the identical description too — exactly the shape
+    // duplicate detection has to leave alone once the categories differ.
     const tx = {
       id: 't1', description: 'Lunch at Japanos with Nora', amount: 132,
       date: '2026-08-02', type: 'Expense', categoryId: 'dining', accountId: 'a1',

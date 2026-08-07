@@ -105,10 +105,14 @@ describe('scorePair', () => {
     expect(scorePair(a, b)).toBeNull();
   });
 
-  it('still allows a same-day cross-category pair when the description is identical', () => {
+  it('never flags a cross-category pair, even same-day with an identical description', () => {
+    // This used to be an override ("must be a miscategorised re-entry"), but a
+    // deliberate split (Nora's share vs. yours, a manual Split) produces this
+    // exact shape on purpose — same day, same description, different category
+    // — and the two cases are indistinguishable from these fields alone.
     const a = tx({ categoryId: 'c_dining' });
     const b = tx({ id: 't2', categoryId: 'c_food' });
-    expect(scorePair(a, b)).not.toBeNull();
+    expect(scorePair(a, b)).toBeNull();
   });
 
   it('drops a cross-day pair whose amount is a regular charge for that vendor', () => {

@@ -1254,3 +1254,34 @@ month, which the model was never built to expect:
 - Settings' subscription list and the guide's schema table were updated to
   match; the live Notion `Frequency` select now has Monthly/Weekly/Yearly
   registered as options.
+
+## Duplicate detection: two more false-positive shapes, and dropping the `(Nora)` marker (2026-08-07)
+
+Reported from real use: a routine STB bus fare and a manually-edited Nora
+split both got flagged as possible duplicates.
+
+- **A habitual charge repeating on the *same* day was still flagged.** Once a
+  vendor+amount pair is established as habitual (3+ distinct days —
+  `HABITUAL_OCCURRENCES`), `scorePair` used to keep flagging it anyway if two
+  occurrences landed on the same day, on the theory that a same-day repeat
+  "stands out" more than a cross-day one. Backwards for a fixed-price
+  habitual charge (a transit fare, a daily coffee) that can legitimately
+  happen twice in a day — nothing about the same-day case distinguishes it
+  from a second real purchase. `scorePair` now excludes a habitual pair
+  regardless of the day gap.
+- **Dropped the same-day/identical-description cross-category override
+  entirely**, not just for Nora splits. It existed to catch "typed the same
+  purchase twice, picked a different category by mistake" — but a
+  deliberately split expense (Nora's share vs. yours, or a manual Split where
+  both halves keep the parent's wording) produces the exact same shape on
+  purpose: same day, same amount, same description, different category.
+  There's no way to tell the two apart from these fields alone, and per this
+  module's own bias, a false positive (inviting you to delete half of a real
+  split) is worse than a missed one. A cross-category pair is now never
+  flagged, full stop.
+- **`applyNoraSplit` no longer appends ` (Nora)`** to the split-off row's
+  description (2026-08-04 added it specifically to dodge the override just
+  removed above) — the `Nora` category already says whose share it is, and
+  the suffix was reported as redundant. Safe now that identical-description
+  cross-category pairs are never flagged regardless. Existing rows with the
+  old suffix are unaffected; nothing rewrites past data.

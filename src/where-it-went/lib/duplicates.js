@@ -158,9 +158,18 @@ export function scorePair(a, b, options = {}) {
   const sameCategory = (a.categoryId || '') === (b.categoryId || '');
 
   // Different categories means they were understood as different purchases at
-  // the time — two coffees, not one entered twice. Only an exact same-day,
-  // same-description match overrides that.
-  if (!sameCategory && !(gap === 0 && similarity === 1)) return null;
+  // the time — two coffees, not one entered twice.
+  //
+  // This used to let an exact same-day, identical-description pair through
+  // regardless, on the theory that must be a miscategorised re-entry. But a
+  // deliberate split (Nora's share vs. yours, or a manual split where both
+  // halves keep the parent's wording) produces exactly that same shape —
+  // same day, same description, same amount, different category — and there
+  // is no reliable way to tell "typed it twice by accident" apart from "split
+  // it on purpose" from these fields alone. A missed real duplicate costs a
+  // minute of your own attention; wrongly flagging a real split invites you
+  // to delete half of it.
+  if (!sameCategory) return null;
 
   // A vendor+amount pair seen on several separate days is a habit, not a slip —
   // and that includes two occurrences on the *same* day. A fixed-price habitual
