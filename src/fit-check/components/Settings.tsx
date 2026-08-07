@@ -143,6 +143,13 @@ export default function Settings({
         <h2>Notion</h2>
         <p className="fc-settings-hint">
           Stored on this device only, and sent straight to Notion with each request.
+          New to this?{' '}
+          <a href="https://app.notion.com/p/3b5d3e6d60db81c987d8fbbf162ed216" target="_blank" rel="noopener noreferrer">
+            Duplicate the Starter Template
+          </a>{' '}
+          for all three databases already set up, or the{' '}
+          <a href="/fit-check-guide.html" target="_blank" rel="noopener noreferrer">guide</a>{' '}
+          walks through the whole thing.
         </p>
         <div className="fc-field-stack">
           <Field

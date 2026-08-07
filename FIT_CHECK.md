@@ -523,8 +523,50 @@ shows the clean Notion 401 message with no duplicate empty-state anywhere.
 fixes, not new pure-function surface), typecheck and lint clean, build clean,
 `api/*.js` still at 12.
 
-### M6 — Ship ⏳
+### M6 — Ship ✅ (2026-08-07)
 
-Nora's user guide (`public/fit-check-guide.html`), the Notion paperwork the
-playbook requires (App Spec, Starter Template, Handover, a row in **Apps at a
-glance**), and accessibility/mobile polish on the Galaxy S24 and Poco F3.
+The last milestone. Fit Check is live.
+
+**Built**
+
+- `public/fit-check-guide.html` — written for Nora: what the four tabs do,
+  how to add something, how wardrobes and mood work, favourites and history.
+  A single "the grown-up part" section below a rule covers where the data
+  actually lives, for whoever eventually reads that far — not written *at*
+  her the way the rest of the page is. Follows the repo's standalone-guide
+  convention (self-contained CSS matching the app's own seigaiha/sparkle
+  palette, `prefers-color-scheme` only — no theme-toggle button, matching
+  WhereItWent's guide precedent for a JSON-config app rather than inventing
+  one against a flat localStorage key that doesn't exist here).
+- **Notion paperwork**, per the playbook's definition of done:
+  - **Starter Template** — a `Fit Check — Starter Template` page under
+    **Starter Templates**, holding all three databases fresh (Garments,
+    Wardrobes, Outfits), cross-related to *each other*, not to the live ones —
+    same closed vocabulary, zero rows, de-personalized.
+  - **App Spec** under **App Specs** — purpose, architecture, data model, the
+    recommender's scoring rules, and a milestone summary, written for a future
+    Claude session rather than for Nora.
+  - **Handover** under **App Handovers** — a build-log-style summary of every
+    milestone including the bugs found and how, since that's the detail a
+    resumed session most needs and a Spec doesn't carry well.
+  - A row in **Apps at a glance**, and a link from its Handovers list.
+- **Settings now links out**: the Notion section points to the Starter
+  Template and the guide, matching Sol Odyssey's pattern — the one place in
+  the app (Gabriel's screen) where that's useful.
+- `apps-registry.js`'s description and feature list were **stale** —
+  written before M2.1 replaced the two-home model with any-number-of-wardrobes,
+  and before personalisation was cut from the MVP. Corrected, and the missing
+  `guide` field added.
+
+**Verified in the browser** at 384×854 (Galaxy S24 width) — Wardrobe, Today,
+History and Settings all clean, no horizontal scroll on any tab, the guide
+page itself clean at the same width. The only console error on load is
+`_vercel/insights/script.js` 404ing — the production analytics tag failing
+under `vite dev`, universal across every app in this repo, not specific to
+this change. `npm test` 2317 passing / 193 files (unchanged — this milestone
+was docs, links and a stale-description fix, no new logic), typecheck and
+lint clean, build clean, `api/*.js` still at 12.
+
+**What's left** is only what's in `FIT_CHECK_ROADMAP.md` — every item there
+has a stated trigger condition rather than an open-ended "someday." Nothing
+about the MVP loop itself is unfinished.

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fit Check — Guide</title>
+<meta name="description" content="What Fit Check does and how to use it — photographing clothes, picking a mood, getting outfit ideas, and organising your wardrobes." />
+<link rel="icon" type="image/svg+xml" href="/fit-check-logo.svg" />
+<meta name="theme-color" content="#b8419b" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #eee8d5; --bg2: #e6dfcb; --surface: #fdf6e3; --surface2: #eee8d5;
+    --border: #d5ccb7; --border2: #93a1a1;
+    --ink: #586e75; --muted: #657b83; --faint: #93a1a1;
+    --accent: #b8419b; --accent2: #9c3585; --on-accent: #fffafd;
+    --success: #859900;
+    --display: 'Fraunces', Georgia, serif;
+    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1b26; --bg2: #16161e; --surface: #24283b; --surface2: #292e42;
+      --border: #414868; --border2: #565f89;
+      --ink: #c0caf5; --muted: #9aa5ce; --faint: #565f89;
+      --accent: #e77ac8; --accent2: #f19bd8; --on-accent: #2a0f24;
+      --success: #9ece6a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    line-height: 1.65;
+    color: var(--ink);
+    background:
+      radial-gradient(120% 70% at 50% -10%, var(--surface) 0%, var(--bg) 60%),
+      var(--bg2);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 42rem; margin: 0 auto; padding: 2.75rem 1.25rem 5rem; }
+
+  header.brand { text-align: center; margin-bottom: 2.25rem; }
+  .mark { width: 64px; height: 64px; margin: 0 auto 0.75rem; display: block; }
+  h1 {
+    font-family: var(--display); font-weight: 600;
+    font-size: clamp(2.2rem, 9vw, 3rem); letter-spacing: -0.01em;
+    margin: 0; color: var(--accent);
+  }
+  .tagline { font-family: var(--display); font-style: italic; font-weight: 500; font-size: 1.1rem; color: var(--muted); margin: 0.4rem 0 0; }
+
+  h2 {
+    font-family: var(--display); font-weight: 600;
+    font-size: 1.5rem; margin: 2.5rem 0 0.7rem; color: var(--ink);
+  }
+  h3 { font-family: var(--display); font-weight: 600; font-size: 1.1rem; margin: 1.4rem 0 0.4rem; color: var(--ink); }
+  p { margin: 0.6rem 0; color: var(--muted); }
+  p.lede { font-size: 1.08rem; color: var(--ink); }
+  ul, ol { margin: 0.6rem 0; padding-left: 1.3rem; color: var(--muted); }
+  li { margin: 0.45rem 0; }
+  li b, li strong, p strong { color: var(--ink); font-weight: 600; }
+  a { color: var(--accent2); }
+  code {
+    font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size: 0.85em;
+    background: var(--surface2); color: var(--ink); padding: 1px 6px; border-radius: 5px;
+    border: 1px solid var(--border);
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 1rem 1.25rem; margin: 1rem 0;
+  }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.6rem 0; }
+  .chip {
+    display: inline-block; padding: 0.3rem 0.7rem; border-radius: 999px;
+    background: var(--surface2); border: 1px solid var(--border);
+    font-size: 0.82rem; color: var(--ink);
+  }
+  .tabs { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.8rem 0 1.2rem; }
+  .tab {
+    flex: 1 1 130px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 0.8rem 0.9rem;
+  }
+  .tab b { display: block; color: var(--accent); font-family: var(--display); font-size: 1rem; margin-bottom: 0.2rem; }
+  .tab span { font-size: 0.85rem; color: var(--muted); }
+  .rule { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0 0; }
+  .grownup {
+    margin-top: 1rem; padding-top: 0.2rem;
+  }
+  .grownup > .card { border-color: var(--border2); }
+  .eyebrow {
+    font-family: var(--sans); font-weight: 700; font-size: 0.72rem; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--faint); margin: 0 0 0.5rem;
+  }
+  .cta {
+    display: inline-block; margin-top: 0.5rem; padding: 0.65rem 1.2rem;
+    background: var(--accent); color: var(--on-accent); border-radius: 999px;
+    text-decoration: none; font-weight: 600; font-size: 0.95rem;
+  }
+  .cta:hover { background: var(--accent2); }
+  .muted { color: var(--faint); font-size: 0.9rem; }
+  footer { margin-top: 3rem; text-align: center; }
+  .backlink {
+    display: inline-block; margin-top: 0.5rem; padding: 0.7rem 1.4rem;
+    background: var(--accent); color: var(--on-accent); border-radius: 999px;
+    text-decoration: none; font-weight: 700; font-family: var(--display);
+  }
+  .backlink:hover { background: var(--accent2); }
+  .sign { margin-top: 1.5rem; color: var(--faint); font-style: italic; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="brand">
+    <img class="mark" src="/fit-check-logo.svg" alt="" />
+    <h1>Fit Check</h1>
+    <p class="tagline">what should you wear today?</p>
+  </header>
+
+  <p class="lede">
+    Fit Check is a little wardrobe helper. Take a photo of something you own, it figures out
+    what kind of thing it is, and every day it puts together a few outfits from what you
+    actually have — matched to the weather and however you're feeling. Tap the one you're
+    wearing, or tell it "not today." That's really the whole app.
+  </p>
+
+  <h2>The four tabs</h2>
+  <div class="tabs">
+    <div class="tab"><b>Today</b><span>Your outfit ideas for right now</span></div>
+    <div class="tab"><b>Wardrobe</b><span>Everything you own</span></div>
+    <div class="tab"><b>History</b><span>What you've worn (and skipped)</span></div>
+    <div class="tab"><b>Settings</b><span>The behind-the-scenes stuff</span></div>
+  </div>
+  <p class="muted">Settings is the boring one — that's where the grown-up setup lives, not
+    anything you'll need day to day.</p>
+
+  <h2>Adding something to your wardrobe</h2>
+  <p>From <b>Wardrobe</b>, tap <b>Add something</b> and take a photo.</p>
+  <ul>
+    <li>One item at a time works best — not a whole outfit in one shot.</li>
+    <li>A plain background helps, and good light matters more than a good camera.</li>
+  </ul>
+  <p>
+    Once you've taken the photo, Fit Check has a go at tagging it on its own — what kind of
+    thing it is, its colours, how warm it is, when you'd wear it. It gets this right most of
+    the time. When it doesn't, just tap the chips to fix it — nothing to type, nothing to get
+    wrong. If you'd rather say the name out loud than type it, there's a little microphone
+    next to the name box.
+  </p>
+  <p>
+    You'll also pick which wardrobe it belongs to — see below. You can pick more than one if
+    it moves around with you.
+  </p>
+
+  <h2>Wardrobes</h2>
+  <p>
+    A wardrobe is just a place your clothes live — wherever you actually keep them. You can
+    have as many as you want, name them whatever you actually call them, and switch one off
+    if you don't need to see it for a while (nothing gets deleted, it just steps out of the
+    way until you switch it back on). All of this lives in <b>Settings</b>.
+  </p>
+  <p class="muted">Renaming a wardrobe is always safe, any time — nothing about your clothes
+    changes, only what it's called.</p>
+
+  <h2>Today's outfits</h2>
+  <p>
+    Open <b>Today</b> and Fit Check checks the weather where you are, then puts together
+    three outfits from what you own. Pick how you want to feel — <b>Comfy</b>,
+    <b>Confident</b>, <b>Sporty</b>, <b>Cosy</b>, <b>Put-together</b>, or <b>Low-key</b> — and
+    it'll lean that way. Tap the same mood again to go back to no particular mood.
+  </p>
+  <div class="chip-row">
+    <span class="chip">Comfy</span><span class="chip">Confident</span><span class="chip">Sporty</span>
+    <span class="chip">Cosy</span><span class="chip">Put-together</span><span class="chip">Low-key</span>
+  </div>
+  <p>
+    Every suggestion comes with one line explaining why it picked that — so it's never just a
+    black box guessing at you. Found one you're wearing? Tap <b>Wore this</b>. Not feeling any
+    of them? <b>Not today</b> just means today — nothing is ever held against a piece of
+    clothing forever, it'll happily come back around.
+  </p>
+
+  <h2>History &amp; favourites</h2>
+  <p>
+    <b>History</b> is a running list of everything you've worn or skipped, with the date, the
+    weather, and your mood at the time. Tap the ♥ on any entry to mark it a favourite. You can
+    also star any item in your wardrobe the same way — tap the star on its tile.
+  </p>
+
+  <h2>Light or dark</h2>
+  <p>
+    Fit Check follows your phone's light/dark setting automatically. If you'd rather pick one
+    yourself, that's in Settings too, under Appearance.
+  </p>
+
+  <hr class="rule" />
+
+  <div class="grownup">
+    <p class="eyebrow">The grown-up part</p>
+    <h2>Where your stuff is actually stored</h2>
+    <p>
+      Everything you add — your clothes, your wardrobes, your outfit history — lives in a
+      Notion workspace, not on some company's server. Nothing is collected, nothing is sold,
+      there's no account to make. Someone in your family set this connection up already, so
+      you shouldn't need to touch any of this.
+    </p>
+    <div class="card">
+      <p class="muted" style="margin:0">
+        For whoever manages the Notion side: token and database links are entered once in
+        <b>Settings</b> and stay only on this device — sent straight to Notion, never through
+        a server that stores them. A ready-made
+        <a href="https://app.notion.com/p/3b5d3e6d60db81c987d8fbbf162ed216" target="_blank" rel="noopener">Starter Template</a>
+        has the three databases (Garments, Wardrobes, Outfits) already cross-linked, correctly
+        set up — duplicate it into your own workspace, share each database with your Notion
+        integration, then paste the token and the three database links into Settings and tap
+        <b>Test connection</b>. Without a token, the app runs on realistic demo data and stays
+        fully explorable — including trying out wardrobe and garment management — with nothing
+        saved anywhere once you close the tab.
+      </p>
+    </div>
+  </div>
+
+  <footer>
+    <a class="backlink" href="/fit-check-react.html">Open Fit Check →</a>
+    <p class="sign">for Nora ✦</p>
+  </footer>
+</div>
+</body>
+</html>
