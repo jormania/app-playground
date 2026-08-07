@@ -40,7 +40,7 @@ export function Settings({ open, onClose, config, updateConfig, resetStats }) {
       const text = data.content[0].text
       const match = text.match(/\[([\s\S]*?)\]/)
       
-      if (!match) throw new Error("Could not parse JSON array from AI response.")
+      if (!match) throw new Error("Could not parse JSON array from AI response. AI said: " + text.substring(0, 150) + (text.length > 150 ? '...' : ''))
       
       let words = JSON.parse(match[0])
       words = words.map(w => w.toLowerCase()).filter(w => w.length === 5 && /^[a-z]+$/.test(w))
