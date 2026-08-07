@@ -156,7 +156,7 @@ export default function WardrobeGrid({
       ) : (
         sections.map(({ category, items }) => (
           <section key={category}>
-            <h2 className="fc-section-heading">{category}</h2>
+            <h2 className="fc-section-heading" data-category={category}>{category}</h2>
             <div className="fc-grid">
               {items.map((g) => (
                 <GarmentTile

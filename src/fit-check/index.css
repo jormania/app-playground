@@ -13,12 +13,28 @@
   --fc-tile-radius: 14px;
   --fc-nav-height: 64px;
   --fc-grid-gap: 12px;
+
+  /* Category colors */
+  --color-cat-tops: #d946ef;
+  --color-cat-bottoms: #3b82f6;
+  --color-cat-onepieces: #06b6d4;
+  --color-cat-outerwear: #f59e0b;
+  --color-cat-footwear: #10b981;
+  --color-cat-accessories: #8b5cf6;
 }
 
 :root[data-theme='dark'] {
   --color-accent:       #e77ac8;
   --color-accent-hover: #f19bd8;
   --color-on-accent:    #2a0f24;
+
+  /* Category colors - Dark Mode adjustments */
+  --color-cat-tops: #e879f9;
+  --color-cat-bottoms: #60a5fa;
+  --color-cat-onepieces: #22d3ee;
+  --color-cat-outerwear: #fbbf24;
+  --color-cat-footwear: #34d399;
+  --color-cat-accessories: #a78bfa;
 }
 
 body {
@@ -78,13 +94,22 @@ body {
 /* ── Wardrobe grid ───────────────────────────────────────────────────────── */
 .fc-section-heading {
   font-family: var(--font-display);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-faint);
-  margin: 20px 0 8px;
+  font-size: 1.125rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 28px 0 14px;
+  color: var(--fc-cat-color, var(--color-ink));
+  display: flex;
+  align-items: center;
 }
+
+.fc-section-heading[data-category="Tops"] { --fc-cat-color: var(--color-cat-tops); }
+.fc-section-heading[data-category="Bottoms"] { --fc-cat-color: var(--color-cat-bottoms); }
+.fc-section-heading[data-category="One-pieces"] { --fc-cat-color: var(--color-cat-onepieces); }
+.fc-section-heading[data-category="Outerwear"] { --fc-cat-color: var(--color-cat-outerwear); }
+.fc-section-heading[data-category="Footwear"] { --fc-cat-color: var(--color-cat-footwear); }
+.fc-section-heading[data-category="Accessories"] { --fc-cat-color: var(--color-cat-accessories); }
+.fc-section-heading[data-category="Uncategorized"] { --fc-cat-color: var(--color-faint); }
 
 .fc-grid {
   display: grid;
