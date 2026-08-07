@@ -337,7 +337,10 @@ export default function App() {
               onToggleFavourite={toggleGarmentFavourite}
               action={
                 <div className="fc-wardrobe-action">
-                  <Button onClick={() => setAdding(true)}>
+                  <Button 
+                    className={garments.length === 0 ? "fc-pulse-attention" : ""} 
+                    onClick={() => setAdding(true)}
+                  >
                     <Plus size={16} aria-hidden="true" /> Add something
                   </Button>
                   {demoMode && (

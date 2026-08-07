@@ -225,8 +225,21 @@ function OutfitCard({
   // Once a verdict is in, the card is settled — swapping it would leave the
   // "Worn today" label describing an outfit that is no longer on screen.
   const canSwap = !verdict && !recording
+
+  const [burst, setBurst] = useState(false)
+  const prevRecording = useRef(recording)
+  useEffect(() => {
+    // If we just finished recording and the result is 'Worn', play the burst!
+    if (prevRecording.current && !recording && verdict === 'Worn') {
+      setBurst(true)
+      const t = setTimeout(() => setBurst(false), 800)
+      return () => clearTimeout(t)
+    }
+    prevRecording.current = recording
+  }, [recording, verdict])
+
   return (
-    <article className="fc-outfit">
+    <article className={`fc-outfit ${burst ? 'fc-success-burst' : ''}`}>
       <div className="fc-outfit-row">
         {outfit.garments.map((g) => (
           <OutfitPiece

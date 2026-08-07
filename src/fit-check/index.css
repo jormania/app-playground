@@ -955,3 +955,67 @@ body {
 }
 .fc-status[data-ok='true']  { color: var(--color-success); }
 .fc-status[data-ok='false'] { color: var(--color-danger); }
+
+/* ── Visual Flair Animations ─────────────────────────────────────────────── */
+
+button:not(:disabled):active {
+  transform: scale(0.97);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fc-stagger-item {
+  opacity: 0;
+  animation: fc-stagger-fade-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation-delay: calc(var(--fc-stagger, 0) * 35ms);
+}
+
+@keyframes fc-stagger-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fc-pulse-attention {
+  animation: fc-pulse-breath 2s infinite ease-in-out;
+}
+
+@keyframes fc-pulse-breath {
+  0%, 100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--color-accent) 20%, transparent);
+  }
+}
+
+.fc-success-burst {
+  animation: fc-flash-card 0.5s ease-out;
+}
+
+@keyframes fc-flash-card {
+  0% {
+    background-color: transparent;
+  }
+  30% {
+    background-color: var(--color-glow);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fc-stagger-item,
+  .fc-tile-thumb::after,
+  .fc-pulse-attention,
+  .fc-success-burst {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -144,12 +144,12 @@ export default function WardrobeGrid({
         nothingActive ? (
           // Distinguishing "you own nothing" from "you switched everything off"
           // matters: the second looks identical and is trivially fixable.
-          <p className="fc-empty">
+          <p className="fc-empty fc-stagger-item">
             All your wardrobes are switched off, so there's nothing to show.
             Turn one back on in Settings.
           </p>
         ) : (
-          <p className="fc-empty">
+          <p className="fc-empty fc-stagger-item">
             Nothing in here yet. Photograph a few things and they'll turn up.
           </p>
         )
@@ -158,13 +158,14 @@ export default function WardrobeGrid({
           <section key={category}>
             <h2 className="fc-section-heading" data-category={category}>{category}</h2>
             <div className="fc-grid">
-              {items.map((g) => (
-                <GarmentTile
-                  key={g.id}
-                  garment={g}
-                  onSelect={onSelect}
-                  onToggleFavourite={onToggleFavourite}
-                />
+              {items.map((g, i) => (
+                <div key={g.id} style={{ '--fc-stagger': i } as React.CSSProperties} className="fc-stagger-item">
+                  <GarmentTile
+                    garment={g}
+                    onSelect={onSelect}
+                    onToggleFavourite={onToggleFavourite}
+                  />
+                </div>
               ))}
             </div>
           </section>
