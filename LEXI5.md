@@ -112,6 +112,7 @@ Two things to watch if you touch this:
 - **Animations & Haptics**: Full NYT-style animations including tile pops, invalid word shake, and a staggered victory dance. Includes mobile `navigator.vibrate` haptics and a confetti celebration upon beating the Crown word.
 - **Hard Mode**: Revealed hints must be used in subsequent guesses (and green letters must remain in their exact positions).
 - **Statistics Management**: In-progress games are automatically forfeited if left unfinished past midnight (recorded as a loss against the dictionary that game was playing), and users have the option to securely reset their statistics via a destructive confirmation modal.
+- **Daily Archive**: A modal accessible via the calendar icon allowing players to look up the past 14 days of Crown words for any dictionary.
 - **PWA**: Fully installable as an offline-first app, registered in The Cabinet.
 
 See [`LEXI5_ROADMAP.md`](LEXI5_ROADMAP.md) for deferred/optional follow-ups from the 2026-08-08 audit.

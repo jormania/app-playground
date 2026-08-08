@@ -1,0 +1,90 @@
+.archiveList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 16px;
+}
+
+.dictionarySection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dictionaryLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-base);
+}
+
+.selectWrapper {
+  position: relative;
+  display: flex;
+}
+
+.dropdown {
+  flex: 1;
+  appearance: none;
+  background-color: var(--surface-bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-base);
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.dropdown:focus {
+  border-color: var(--accent);
+}
+
+.selectWrapper::after {
+  content: "▼";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 0.7rem;
+  color: var(--text-subtle);
+}
+
+.daysList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px;
+  background-color: var(--surface-bg);
+}
+
+.dayRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.dayRow:last-child {
+  border-bottom: none;
+}
+
+.dayDate {
+  font-size: 0.85rem;
+  color: var(--text-subtle);
+}
+
+.dayWord {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-base);
+}

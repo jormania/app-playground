@@ -6,8 +6,9 @@ import { Board } from './components/Board'
 import { Keyboard } from './components/Keyboard'
 import { Settings } from './components/Settings'
 import { Stats } from './components/Stats'
+import { Archive } from './components/Archive'
 import { IconButton, Modal, Button } from '../ds'
-import { HelpCircle, Flag, BarChart2, Settings as SettingsIcon, Share2 } from 'lucide-react'
+import { HelpCircle, Flag, BarChart2, Settings as SettingsIcon, Share2, Calendar } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import styles from './App.module.css'
 
@@ -33,6 +34,7 @@ export function App() {
   const [showForfeitModal, setShowForfeitModal] = useState(false)
   const [toast, setToast] = useState(null)
   const [openSettingsToCurate, setOpenSettingsToCurate] = useState(false)
+  const [showArchive, setShowArchive] = useState(false)
 
   // Show stats automatically when game ends, trigger confetti, update favicon
   useEffect(() => {
@@ -233,24 +235,27 @@ export function App() {
       <header className={styles.header}>
         <div className={styles.leftActions}>
           <IconButton onClick={() => window.open('/lexi5-guide.html', '_blank')} title="How to play">
-            <HelpCircle size={20} />
+            <HelpCircle size={18} />
           </IconButton>
           {gameState.status === 'playing' && (
             <IconButton onClick={() => setShowForfeitModal(true)} title="Give up">
-              <Flag size={20} />
+              <Flag size={18} />
             </IconButton>
           )}
+          <IconButton onClick={() => setShowArchive(true)} title="Daily Word Archive">
+            <Calendar size={18} />
+          </IconButton>
         </div>
         <h1 className={styles.title}>Lexi5</h1>
         <div className={styles.rightActions}>
           <IconButton onClick={handleShareBoard} title="Share game link">
-            <Share2 size={20} />
+            <Share2 size={18} />
           </IconButton>
           <IconButton onClick={() => setShowStats(true)} title="Statistics">
-            <BarChart2 size={20} />
+            <BarChart2 size={18} />
           </IconButton>
           <IconButton onClick={() => setShowSettings(true)} title="Settings">
-            <SettingsIcon size={20} />
+            <SettingsIcon size={18} />
           </IconButton>
         </div>
       </header>
@@ -314,6 +319,12 @@ export function App() {
           setShowStats(false)
         }}
         onToast={showToast}
+      />
+
+      <Archive
+        open={showArchive}
+        onClose={() => setShowArchive(false)}
+        currentDictionary={gameState.dictionary}
       />
 
       <Modal open={showForfeitModal} onClose={() => setShowForfeitModal(false)} title="Give Up?">
