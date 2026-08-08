@@ -228,14 +228,17 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
               onChange={e => setModel(e.target.value)}
               hint="Haiku is faster. Sonnet has a wider vocabulary and understands complex themes better."
             >
-              <option value="claude-haiku-4-5-20251001">Claude 3.5 Haiku (Fast)</option>
-              <option value="claude-sonnet-3-5-1022">Claude 3.5 Sonnet (Smart)</option>
+              <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (Fast)</option>
+              <option value="claude-sonnet-5">Claude Sonnet 5 (Smart)</option>
             </SelectField>
             <Field
               label="Word Count"
               type="number"
               value={wordCount}
-              onChange={e => setWordCount(Number(e.target.value))}
+              onChange={e => {
+                const parsed = Number(e.target.value)
+                setWordCount(Number.isFinite(parsed) ? parsed : '')
+              }}
               min="10"
               max="1000"
               hint="How many 5-letter words Claude should generate. A larger list takes slightly longer but lasts more days without repeating."
@@ -257,11 +260,11 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
               hint="Stored only in memory and sent straight to Anthropic. Disappears when you close the app."
             />
             <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-              <Button size="sm" onClick={handleCurate} disabled={curating || !apiKey}>
+              <Button size="sm" onClick={handleCurate} disabled={curating || !apiKey || !wordCount || wordCount < 10 || wordCount > 1000}>
                 {curating ? 'Curating...' : hasCustomDict ? 'Refresh Word List' : 'Start Curation'}
               </Button>
               {hasCustomDict && activeTheme && (
-                <Button size="sm" variant="ghost" onClick={() => triggerCurate('')} disabled={curating || !apiKey}>
+                <Button size="sm" variant="ghost" onClick={() => triggerCurate('')} disabled={curating || !apiKey || !wordCount || wordCount < 10 || wordCount > 1000}>
                   Curate without Theme
                 </Button>
               )}
