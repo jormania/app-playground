@@ -99,11 +99,11 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
         </div>
         <div className={styles.statDivider} aria-hidden="true" />
         <div className={styles.statBox} title="Crown streak — consecutive wins on the first game of the day">
-          <div className={styles.statNum}>👑{dictStats.crownCurrentStreak || 0}</div>
+          <div className={styles.statNum}>{dictStats.crownCurrentStreak || 0}</div>
           <div className={styles.statLabel}>Streak</div>
         </div>
         <div className={styles.statBox} title="Best crown streak ever">
-          <div className={styles.statNum}>👑{dictStats.crownMaxStreak || 0}</div>
+          <div className={styles.statNum}>{dictStats.crownMaxStreak || 0}</div>
           <div className={styles.statLabel}>Best</div>
         </div>
       </div>
