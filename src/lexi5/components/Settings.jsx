@@ -178,7 +178,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
         {showCurate && (
           <div className={styles.curateCard}>
             <p className={styles.curateDesc}>
-              Paste an Anthropic API key to curate a list with Claude Haiku (key never saved).
+              Paste an Anthropic API key to curate a list with Claude.
               {customProgress && ` Current list: ${customProgress.position}/${customProgress.total} words used this cycle.`}
             </p>
             {curateError && (
