@@ -31,7 +31,7 @@ export async function fetchReviewSummary(appId) {
       return { percent: 0, count: 0, desc: review_score_desc || 'No user reviews' }
     }
     return { percent: (total_positive / total_reviews) * 100, count: total_reviews, desc: review_score_desc || '' }
-  } catch (err) {
+  } catch (_err) {
     return null
   }
 }
