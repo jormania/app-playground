@@ -286,7 +286,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
               autoComplete="off"
               hint="Stored only in memory and sent straight to Anthropic. Disappears when you close the app."
             />
-            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
               <Button size="sm" onClick={handleCurate} disabled={curating || !apiKey || !wordCount || wordCount < 10 || wordCount > 1000}>
                 {curating ? 'Curating...' : hasCustomDict ? 'Refresh Word List' : 'Start Curation'}
               </Button>
