@@ -27,6 +27,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
   const [curating, setCurating] = useState(false)
   const [curateError, setCurateError] = useState(null)
   const [wordCount, setWordCount] = useState(500)
+  const [customTheme, setCustomTheme] = useState('')
   const [model, setModel] = useState('claude-haiku-4-5-20251001')
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
@@ -74,7 +75,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
         body: JSON.stringify({
           model,
           max_tokens: 4096,
-          messages: [{ role: 'user', content: `Generate a JSON array of ${wordCount} interesting 5-letter English words for a word game.${exclusions} Only output the raw JSON array of strings, nothing else.` }]
+          messages: [{ role: 'user', content: `Generate a JSON array of ${wordCount} interesting 5-letter English words for a word game.${customTheme ? ` They must relate to this theme: ${customTheme}.` : ''}${exclusions} Only output the raw JSON array of strings, nothing else.` }]
         })
       })
       if (!res.ok) {
@@ -224,6 +225,12 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
               onChange={e => setWordCount(Number(e.target.value))}
               min="10"
               max="1000"
+            />
+            <Field
+              label="Theme (Optional)"
+              value={customTheme}
+              onChange={e => setCustomTheme(e.target.value)}
+              placeholder="e.g. Space, Hard vocabulary"
             />
             <Field
               label="API Key"

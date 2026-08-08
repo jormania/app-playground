@@ -6,7 +6,6 @@ history around that date). This file is the "nice to have, not urgent" leftovers
 
 ## Architecture & State Management
 - **Persistent Toasts / Queue**: Implement a true toast queue system instead of a single string overlay, allowing multiple messages to stack visually without overwriting each other.
-- **Advanced Curation Parameters**: Allow users to specify a *theme* (e.g., "Space-related words", "Hard vocabulary") in Settings instead of purely relying on Claude's random sampling.
 - **Keyboard Key Status Memoization**: Beyond `React.memo`, memoizing the `keyStatuses` dictionary at the root level (instead of recalculating inside the Keyboard component) could save cycles, though it is currently fast enough.
 
 ## Accessibility

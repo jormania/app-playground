@@ -17,7 +17,7 @@ isn't something the source lists encode, so it needed a human pass) and validate
 guess list by the same script's invariants (5 letters, lowercase, real dictionary entries).
 
 A fifth option, **Custom (AI Curated)**, is user-generated: paste an Anthropic API key into
-Settings → "AI Curation" and configure your preferred Claude model (Haiku or Sonnet) and the desired word count (up to 1,000 words). The AI then curates a tailored list on the
+Settings → "AI Curation" and configure your preferred Claude model (Haiku or Sonnet), the desired word count (up to 1,000 words), and an optional freeform theme (e.g., "Space", "Hard vocabulary"). The AI then curates a tailored list on the
 fly. The key is never sent to or stored on our server — the request goes through a Vercel edge
 rewrite (`/api/anthropic-proxy` → `api.anthropic.com`, see `vercel.json`) straight to Anthropic.
 The **Custom** option is disabled in the dropdown until a list has actually been curated, so you
