@@ -33,6 +33,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [showRecurateConfirm, setShowRecurateConfirm] = useState(false)
+  const [pendingThemeOverride, setPendingThemeOverride] = useState(null)
 
   // The Modal delays its own mount by an animation frame or two, so a plain
   // useState(initialShowCurate) can miss the value if it arrives right as the
@@ -129,14 +130,16 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
     }
   }
 
-  const handleCurate = () => {
-    if (!apiKey) return
+  const triggerCurate = (override = null) => {
     if (hasCustomDict) {
+      setPendingThemeOverride(override)
       setShowRecurateConfirm(true)
-      return
+    } else {
+      runCurate(override)
     }
-    runCurate()
   }
+
+  const handleCurate = () => triggerCurate(null)
 
   return (
     <Modal open={open} onClose={onClose} title="Settings">
@@ -174,9 +177,15 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
 
           <SettingsToggle
             label="Smart Keyboard"
-            description="Show dots on yellow keys for positions you've already tried"
-            checked={config.smartKeyboard === true}
-            onChange={(e) => updateConfig({ smartKeyboard: e.target.checked })}
+            description="Keyboard keys will show small dots to indicate which positions you've previously tried for a yellow letter."
+            checked={config.smartKeyboard}
+            onChange={(checked) => updateConfig({ smartKeyboard: checked })}
+          />
+          <SettingsToggle
+            label="High Contrast Mode"
+            description="Uses a blue and orange color palette that is easier to read for some types of color vision deficiency."
+            checked={config.highContrast}
+            onChange={(checked) => updateConfig({ highContrast: checked })}
           />
         </div>
 
@@ -217,6 +226,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
               label="Model"
               value={model}
               onChange={e => setModel(e.target.value)}
+              hint="Haiku is faster. Sonnet has a wider vocabulary and understands complex themes better."
             >
               <option value="claude-haiku-4-5-20251001">Claude 3.5 Haiku (Fast)</option>
               <option value="claude-sonnet-3-5-1022">Claude 3.5 Sonnet (Smart)</option>
@@ -228,12 +238,14 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
               onChange={e => setWordCount(Number(e.target.value))}
               min="10"
               max="1000"
+              hint="How many 5-letter words Claude should generate. A larger list takes slightly longer but lasts more days without repeating."
             />
             <Field
               label="Theme (Optional)"
               value={customTheme}
               onChange={e => setCustomTheme(e.target.value)}
               placeholder="e.g. Space, Hard vocabulary"
+              hint="Type a subject to steer the AI. Leave blank for a random mix of interesting words. Curating applies this to the new list."
             />
             <Field
               label="API Key"
@@ -242,14 +254,15 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
               onChange={e => setApiKey(e.target.value)}
               placeholder="sk-ant-..."
               autoComplete="off"
+              hint="Stored only in memory and sent straight to Anthropic. Disappears when you close the app."
             />
             <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
               <Button size="sm" onClick={handleCurate} disabled={curating || !apiKey}>
                 {curating ? 'Curating...' : hasCustomDict ? 'Refresh Word List' : 'Start Curation'}
               </Button>
               {hasCustomDict && activeTheme && (
-                <Button size="sm" variant="ghost" onClick={() => runCurate('')} disabled={curating || !apiKey}>
-                  Curate Vanilla
+                <Button size="sm" variant="ghost" onClick={() => triggerCurate('')} disabled={curating || !apiKey}>
+                  Curate without Theme
                 </Button>
               )}
               {hasCustomDict && (
@@ -289,7 +302,8 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
         variant="danger"
         onConfirm={() => {
           setShowRecurateConfirm(false)
-          runCurate()
+          runCurate(pendingThemeOverride)
+          setPendingThemeOverride(null)
         }}
       />
 
