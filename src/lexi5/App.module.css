@@ -73,7 +73,7 @@
 
 .leftActions, .rightActions {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   flex: 1;
 }
 

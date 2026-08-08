@@ -236,27 +236,27 @@ export function App() {
     <div className={styles.app}>
       <header className={styles.header}>
         <div className={styles.leftActions}>
-          <IconButton onClick={() => window.open('/lexi5-guide.html', '_blank')} title="How to play">
+          <IconButton size="sm" onClick={() => window.open('/lexi5-guide.html', '_blank')} title="How to play">
             <HelpCircle size={18} />
           </IconButton>
           {gameState.status === 'playing' && (
-            <IconButton onClick={() => setShowForfeitModal(true)} title="Give up">
+            <IconButton size="sm" onClick={() => setShowForfeitModal(true)} title="Give up">
               <Flag size={18} />
             </IconButton>
           )}
-          <IconButton onClick={() => setShowArchive(true)} title="Daily Word Archive">
+          <IconButton size="sm" onClick={() => setShowArchive(true)} title="Daily Word Archive">
             <Calendar size={18} />
           </IconButton>
         </div>
         <h1 className={styles.title}>Lexi5</h1>
         <div className={styles.rightActions}>
-          <IconButton onClick={handleShareBoard} title="Share game link">
+          <IconButton size="sm" onClick={handleShareBoard} title="Share game link">
             <Share2 size={18} />
           </IconButton>
-          <IconButton onClick={() => setShowStats(true)} title="Statistics">
+          <IconButton size="sm" onClick={() => setShowStats(true)} title="Statistics">
             <BarChart2 size={18} />
           </IconButton>
-          <IconButton onClick={() => setShowSettings(true)} title="Settings">
+          <IconButton size="sm" onClick={() => setShowSettings(true)} title="Settings">
             <SettingsIcon size={18} />
           </IconButton>
         </div>
