@@ -89,9 +89,9 @@ function mulberry32(seed) {
 const shuffleCache = new Map()
 
 // A deterministic shuffled permutation of a list's indices, reseeded automatically
-// whenever the list's contents change (e.g. after re-curating the custom dictionary).
-function getShuffledOrder(list) {
-  const key = `${list.length}:${hashString(list.join(','))}`
+// whenever the list's contents change OR when the list completes a full cycle.
+function getShuffledOrder(list, cycleNumber = 0) {
+  const key = `${list.length}:${hashString(list.join(','))}:cycle:${cycleNumber}`
   const cached = shuffleCache.get(key)
   if (cached) return cached
 
@@ -162,8 +162,8 @@ export function getWordProgress(dictionary = 'standard', dateString, iteration =
 // picks from a per-list shuffled order so words don't repeat until the whole list cycles.
 export function getWord(dictionary = 'standard', dateString, iteration = 0) {
   const list = resolveDictionaryList(dictionary)
-  const order = getShuffledOrder(list)
-  const { position } = getWordProgress(dictionary, dateString, iteration)
+  const { position, cycleNumber } = getWordProgress(dictionary, dateString, iteration)
+  const order = getShuffledOrder(list, cycleNumber)
   return list[order[position]]
 }
 
