@@ -132,22 +132,27 @@
 .shareHeader {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   width: 100%;
 }
 
 .shareTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shareTitleMain {
   font-size: 2rem;
   font-family: "Cinzel", serif;
   font-weight: bold;
   line-height: 1;
 }
 
-.shareTitle span {
-  font-size: 1rem;
+.shareTitleSub {
+  font-size: 0.875rem;
   font-family: var(--font-sans);
   color: #818384;
-  margin-left: 8px;
 }
 
 .shareAttempt {

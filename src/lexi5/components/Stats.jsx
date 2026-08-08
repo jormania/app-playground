@@ -186,11 +186,12 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
           <div ref={shareRef} className={styles.shareCard}>
             <div className={styles.shareHeader}>
               <div className={styles.shareTitle}>
-                Lexi5 <span>{gameState.dictionary === 'custom' ? 'custom, AI curated' : gameState.dictionary}</span>
+                <div className={styles.shareTitleMain}>Lexi5</div>
+                <div className={styles.shareTitleSub}>{gameState.dictionary === 'custom' ? 'custom, AI curated' : gameState.dictionary}</div>
               </div>
               <div className={styles.shareAttempt}>
                 {isCrown && <span style={{marginRight: 4}}>👑</span>}
-                {gameState.status === 'won' ? `Guesses: ${gameState.guesses.length} out of 6` : 'Failed (X out of 6)'}
+                {gameState.status === 'won' ? `${gameState.guesses.length}/6` : 'X/6'}
               </div>
             </div>
             <div className={styles.shareGrid}>
