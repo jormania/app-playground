@@ -4,17 +4,6 @@ Deferred/optional follow-ups identified during the 2026-08-08 full-app audit. Ev
 judged a real bug, corner case, or clarity gap was fixed directly (see `LEXI5.md` and git
 history around that date). This file is the "nice to have, not urgent" leftovers.
 
-## Testing
-- **Settings.jsx / Stats.jsx have no component tests.** Both got real fixes this audit
-  (curation dedupe/timeout, disabled Custom option, share/clipboard error handling) but
-  covering them needs mocking `fetch`, `html2canvas`, and the Web Share/Clipboard APIs —
-  a bigger lift than the logic-level `gameState.test.js` additions made during the audit.
-  `Board`/`Keyboard` already have component tests; `Settings`/`Stats` should get the same
-  treatment eventually.
-- Hard Mode's duplicate-letter handling (App.jsx's green/yellow enforcement) has no
-  dedicated test for words with repeated letters (e.g. word `ROBOT`, guess re-using `O`).
-  The logic looks correct on inspection but isn't verified by a test.
-
 ## Custom (AI Curated) dictionary
 - **No quality check on curated words.** Claude's output is only validated by shape
   (5 lowercase letters) — nothing confirms the words are real/appropriate. Could

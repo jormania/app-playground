@@ -160,10 +160,12 @@ export function App() {
 
     // Hard Mode validation
     if (gameState.difficulty === 'hard' && gameState.guesses.length > 0) {
-      const lastGuess = gameState.guesses[gameState.guesses.length - 1]
+      const lastGuess = gameState.guesses[gameState.guesses.length - 1].toLowerCase()
+      const currentGuessLower = currentGuess.toLowerCase()
+      const targetWord = word.toLowerCase()
       
       // Calculate exact hints for the last guess to enforce rules
-      const wordLetters = word.split('')
+      const wordLetters = targetWord.split('')
 
       const greens = Array(5).fill(false)
       const targetCounts = {}
@@ -173,8 +175,8 @@ export function App() {
       
       // Step 1: Enforce greens
       for (let i = 0; i < 5; i++) {
-        if (lastGuess[i] === word[i]) {
-          if (currentGuess[i] !== lastGuess[i]) {
+        if (lastGuess[i] === targetWord[i]) {
+          if (currentGuessLower[i] !== lastGuess[i]) {
             showToast(`Must use ${lastGuess[i].toUpperCase()} in position ${i + 1}`)
             hapticError()
             setInvalidGuess(true)
@@ -198,8 +200,8 @@ export function App() {
       // Step 3: Enforce yellows
       const currentCounts = {}
       for (let i = 0; i < 5; i++) {
-        if (currentGuess[i] !== word[i]) { // only non-green count towards satisfying yellows
-          currentCounts[currentGuess[i]] = (currentCounts[currentGuess[i]] || 0) + 1
+        if (lastGuess[i] !== targetWord[i]) { // only non-green positions from lastGuess can satisfy its yellows
+          currentCounts[currentGuessLower[i]] = (currentCounts[currentGuessLower[i]] || 0) + 1
         }
       }
       

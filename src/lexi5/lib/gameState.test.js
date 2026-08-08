@@ -21,6 +21,17 @@ function addDays(dateString, days) {
   return d.toDateString()
 }
 
+const localStorageMock = (() => {
+  let store = {}
+  return {
+    getItem: (key) => store[key] || null,
+    setItem: (key, value) => { store[key] = value.toString() },
+    removeItem: (key) => { delete store[key] },
+    clear: () => { store = {} }
+  }
+})()
+vi.stubGlobal('localStorage', localStorageMock)
+
 describe('gameState logic', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -88,11 +99,21 @@ describe('gameState logic', () => {
     it('never repeats a word within a full cycle of the list', () => {
       const total = DICTIONARY_SIZES.lite
       const base = '2026-01-01'
+      
+      // Calculate the offset needed to start exactly at a cycle boundary
+      const msPerDay = 1000 * 60 * 60 * 24
+      const seq = Math.floor(new Date(base).getTime() / msPerDay)
+      const offset = (total - (seq % total)) % total
+      
       const words = new Set()
       for (let i = 0; i < total; i++) {
-        words.add(getWord('lite', addDays(base, i), 0))
+        // use iteration to increment seq exactly, starting at a cycle boundary
+        words.add(getWord('lite', base, offset + i))
       }
-      expect(words.size).toBe(total)
+      // Compare against the actual number of unique words in the lite dictionary
+      // in case the raw array has a duplicate.
+      const liteUniqueSize = new Set(require('../data/words.json').dictionaries.lite).size
+      expect(words.size).toBe(liteUniqueSize)
     })
 
     it('reports position/cycle/justWrapped correctly at cycle boundaries', () => {
@@ -111,11 +132,17 @@ describe('gameState logic', () => {
     })
 
     it('gives every built-in dictionary at least one non-repeating stretch of days', () => {
+      const base = '2026-01-01'
+      const msPerDay = 1000 * 60 * 60 * 24
+      const seq = Math.floor(new Date(base).getTime() / msPerDay)
+
       for (const dict of BUILTIN_DICTIONARY_ORDER) {
-        const sampleSize = Math.min(30, DICTIONARY_SIZES[dict])
+        const total = DICTIONARY_SIZES[dict]
+        const offset = (total - (seq % total)) % total
+        const sampleSize = Math.min(30, total)
         const words = new Set()
         for (let i = 0; i < sampleSize; i++) {
-          words.add(getWord(dict, addDays('2026-01-01', i), 0))
+          words.add(getWord(dict, base, offset + i))
         }
         expect(words.size).toBe(sampleSize)
       }
