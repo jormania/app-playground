@@ -21,6 +21,14 @@ import { SelectField } from '../../ds/components/SelectField'
 import styles from './Settings.module.css'
 
 const CURATE_TIMEOUT_MS = 30000
+// Sonnet 5 runs adaptive thinking by default (Haiku 4.5 doesn't unless asked) — this
+// task is a plain word-list generation with no reasoning to do, so thinking is pure
+// wasted cost and latency on Sonnet. Explicitly disabled below only for that model.
+const THINKS_BY_DEFAULT = new Set(['claude-sonnet-5'])
+// Sending the full existing list as an exclusion prompt scales input cost with list
+// size for no real benefit past a certain point — a representative sample is enough
+// to steer the model away from obvious repeats at a fraction of the token cost.
+const MAX_EXCLUSION_SAMPLE = 150
 
 export function Settings({ open, onClose, config, updateConfig, onDictionaryChange, resetStats, gameState, onToast, initialShowCurate = false }) {
   const [showCurate, setShowCurate] = useState(initialShowCurate)
@@ -62,9 +70,25 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
         try {
           const existing = JSON.parse(localStorage.getItem('lexi5_custom_dict'))
           if (existing && existing.length > 0) {
-            exclusions = ` Do not include any of the following words: ${existing.join(', ')}.`
+            const sample = existing.length > MAX_EXCLUSION_SAMPLE
+              ? existing.slice(0, MAX_EXCLUSION_SAMPLE)
+              : existing
+            exclusions = ` Avoid reusing these words: ${sample.join(', ')}.`
           }
         } catch (_e) {}
+      }
+
+      // ~6 tokens/word covers the quotes, comma, and occasional multi-token word with
+      // headroom; a fixed 4096 ceiling risked truncating the largest allowed requests.
+      const dynamicMaxTokens = Math.min(8192, Math.max(1024, Math.round(wordCount * 6) + 200))
+
+      const requestBody = {
+        model,
+        max_tokens: dynamicMaxTokens,
+        messages: [{ role: 'user', content: `Generate a JSON array of ${wordCount} interesting 5-letter English words for a word game.${themeToUse ? ` They must relate to this theme: ${themeToUse}.` : ''}${exclusions} Only output the raw JSON array of strings, nothing else.` }]
+      }
+      if (THINKS_BY_DEFAULT.has(model)) {
+        requestBody.thinking = { type: 'disabled' }
       }
 
       const res = await fetch('/api/anthropic-proxy/v1/messages', {
@@ -76,11 +100,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
           'anthropic-dangerous-direct-browser-access': 'true',
           'content-type': 'application/json'
         },
-        body: JSON.stringify({
-          model,
-          max_tokens: 4096,
-          messages: [{ role: 'user', content: `Generate a JSON array of ${wordCount} interesting 5-letter English words for a word game.${themeToUse ? ` They must relate to this theme: ${themeToUse}.` : ''}${exclusions} Only output the raw JSON array of strings, nothing else.` }]
-        })
+        body: JSON.stringify(requestBody)
       })
       if (!res.ok) {
         const errText = await res.text().catch(() => 'Unknown error')
@@ -170,22 +190,22 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
         <div className={styles.tightToggle}>
           <SettingsToggle
             label="Hard Mode"
-            description="Any revealed hints must be used in subsequent guesses"
+            hint="Any revealed hints must be used in subsequent guesses"
             checked={config.difficulty === 'hard'}
             onChange={(e) => updateConfig({ difficulty: e.target.checked ? 'hard' : 'normal' })}
           />
 
           <SettingsToggle
             label="Smart Keyboard"
-            description="Keyboard keys will show small dots to indicate which positions you've previously tried for a yellow letter."
+            hint="Keyboard keys will show small dots to indicate which positions you've previously tried for a yellow letter."
             checked={config.smartKeyboard}
-            onChange={(checked) => updateConfig({ smartKeyboard: checked })}
+            onChange={(e) => updateConfig({ smartKeyboard: e.target.checked })}
           />
           <SettingsToggle
             label="High Contrast Mode"
-            description="Uses a blue and orange color palette that is easier to read for some types of color vision deficiency."
+            hint="Uses a blue and orange color palette that is easier to read for some types of color vision deficiency."
             checked={config.highContrast}
-            onChange={(checked) => updateConfig({ highContrast: checked })}
+            onChange={(e) => updateConfig({ highContrast: e.target.checked })}
           />
         </div>
 
