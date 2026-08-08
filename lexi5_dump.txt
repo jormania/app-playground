@@ -1,0 +1,3402 @@
+
+--- src\lexi5\App.jsx ---
+import React, { useState, useEffect, useCallback } from 'react'
+import { useConfig } from './lib/config'
+import { useGameState, getWord, getWordProgress, isValidGuess, hasCustomDictionary, DICTIONARY_LABELS } from './lib/gameState'
+import { hapticTap, hapticError, hapticWin } from './lib/haptics'
+import { Board } from './components/Board'
+import { Keyboard } from './components/Keyboard'
+import { Settings } from './components/Settings'
+import { Stats } from './components/Stats'
+import { Archive } from './components/Archive'
+import { IconButton, Modal, Button } from '../ds'
+import { HelpCircle, Flag, BarChart2, Settings as SettingsIcon, Share2, Calendar } from 'lucide-react'
+import confetti from 'canvas-confetti'
+import styles from './App.module.css'
+
+export function App() {
+  const { config, updateConfig } = useConfig()
+  
+  // Extract seed from URL if present
+  const [urlSeed] = useState(() => new URLSearchParams(window.location.search).get('seed'))
+  
+  const { gameState, stats, addGuess, startNextGame, switchDictionary, forfeitGame, resetStats } = useGameState(config.difficulty, config.dictionary, urlSeed)
+  
+  const [word, setWord] = useState(() => getWord(gameState.dictionary, gameState.date, gameState.iteration))
+  
+  // Re-calculate the word if the iteration or dictionary changes in the game state
+  useEffect(() => {
+    setWord(getWord(gameState.dictionary, gameState.date, gameState.iteration))
+  }, [gameState.dictionary, gameState.date, gameState.iteration])
+
+  const [currentGuess, setCurrentGuess] = useState('')
+  const [invalidGuess, setInvalidGuess] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [showStats, setShowStats] = useState(false)
+  const [showForfeitModal, setShowForfeitModal] = useState(false)
+  const [toast, setToast] = useState(null)
+  const [openSettingsToCurate, setOpenSettingsToCurate] = useState(false)
+  const [showArchive, setShowArchive] = useState(false)
+
+  // Show stats automatically when game ends, trigger confetti, update favicon
+  useEffect(() => {
+    if (gameState.status !== 'playing') {
+      const timer = setTimeout(() => setShowStats(true), 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [gameState.status])
+
+  useEffect(() => {
+    if (gameState.status === 'won') {
+      const timer = setTimeout(() => {
+        hapticWin()
+        if (gameState.iteration === 0) {
+          confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } })
+        }
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [gameState.status, gameState.iteration])
+
+  useEffect(() => {
+    const link = document.querySelector('link[rel="icon"]')
+    if (link) {
+      if (gameState.status === 'won') {
+        link.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%23538d4e"/></svg>'
+      } else if (gameState.status === 'lost') {
+        link.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%233a3a3c"/></svg>'
+      } else {
+        link.href = '/lexi5-icon-192.png'
+      }
+    }
+  }, [gameState.status])
+
+  const showToast = (msg) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 2000)
+  }
+
+  // Let the player know when they've cycled through every word in the list and it's starting over
+  useEffect(() => {
+    const { total, justWrapped } = getWordProgress(gameState.dictionary, gameState.date, gameState.iteration)
+    if (justWrapped) {
+      showToast(`You've played all ${total} words in this list — starting a fresh cycle!`)
+    }
+  }, [gameState.dictionary, gameState.date, gameState.iteration])
+
+  // Defensive backstop: a game can end up pointed at 'custom' with no curated list behind
+  // it (storage cleared mid-session, or a shared seed link from someone else's custom list).
+  // Rather than silently playing Standard words under the 'custom' label, fall back for real.
+  useEffect(() => {
+    if (gameState.dictionary === 'custom' && !hasCustomDictionary()) {
+      switchDictionary('standard')
+      updateConfig({ dictionary: 'standard' })
+      showToast("Your custom word list isn't available — switched to Standard.")
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState.dictionary])
+
+  const handleDictionaryChange = (newDictionary) => {
+    updateConfig({ dictionary: newDictionary })
+    switchDictionary(newDictionary)
+    showToast(`Switched to ${DICTIONARY_LABELS[newDictionary] || newDictionary} — new word, no penalty!`)
+  }
+
+  // Unlike the built-in dictionaries (which just reshuffle silently), Custom needs the
+  // player to actually take an action to get fresh words — so once its cycle has wrapped
+  // at least once, keep a persistent banner up (not just the one-off toast) until they refresh.
+  const customCycleStale = gameState.dictionary === 'custom'
+    && getWordProgress('custom', gameState.date, gameState.iteration).cycleNumber >= 1
+
+  const handleOpenCurate = () => {
+    setOpenSettingsToCurate(true)
+    setShowSettings(true)
+  }
+
+  const handleCloseSettings = () => {
+    setShowSettings(false)
+    setOpenSettingsToCurate(false)
+  }
+
+  const handleShareBoard = () => {
+    const seedStr = encodeURIComponent(btoa(`${gameState.date}|${gameState.iteration}|${gameState.dictionary}`))
+    const shareUrl = `${window.location.origin}${window.location.pathname}?seed=${seedStr}`
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      showToast('Share link copied to clipboard!')
+    }).catch(() => {
+      showToast("Couldn't copy the link — try again.")
+    })
+  }
+
+  const onChar = useCallback((char) => {
+    if (gameState.status !== 'playing') return
+    if (currentGuess.length < 5) {
+      hapticTap()
+      setCurrentGuess(prev => prev + char.toLowerCase())
+    }
+  }, [currentGuess, gameState.status])
+
+  const onDelete = useCallback(() => {
+    if (gameState.status !== 'playing') return
+    hapticTap()
+    setCurrentGuess(prev => prev.slice(0, -1))
+  }, [gameState.status])
+
+  const onEnter = useCallback(() => {
+    if (gameState.status !== 'playing') return
+    if (currentGuess.length !== 5) {
+      showToast('Not enough letters')
+      hapticError()
+      setInvalidGuess(true)
+      setTimeout(() => setInvalidGuess(false), 600)
+      return
+    }
+    
+    if (!isValidGuess(currentGuess)) {
+      showToast('Not in word list')
+      hapticError()
+      setInvalidGuess(true)
+      setTimeout(() => setInvalidGuess(false), 600)
+      return
+    }
+
+    // Hard Mode validation
+    if (gameState.difficulty === 'hard' && gameState.guesses.length > 0) {
+      const lastGuess = gameState.guesses[gameState.guesses.length - 1].toLowerCase()
+      const currentGuessLower = currentGuess.toLowerCase()
+      const targetWord = word.toLowerCase()
+      
+      // Calculate exact hints for the last guess to enforce rules
+      const wordLetters = targetWord.split('')
+
+      const greens = Array(5).fill(false)
+      const targetCounts = {}
+      for (const char of wordLetters) {
+        targetCounts[char] = (targetCounts[char] || 0) + 1
+      }
+      
+      // Step 1: Enforce greens
+      for (let i = 0; i < 5; i++) {
+        if (lastGuess[i] === targetWord[i]) {
+          if (currentGuessLower[i] !== lastGuess[i]) {
+            showToast(`Must use ${lastGuess[i].toUpperCase()} in position ${i + 1}`)
+            hapticError()
+            setInvalidGuess(true)
+            setTimeout(() => setInvalidGuess(false), 600)
+            return
+          }
+          greens[i] = true
+          targetCounts[lastGuess[i]] -= 1
+        }
+      }
+      
+      // Step 2: Calculate yellows required
+      const requiredYellows = {}
+      for (let i = 0; i < 5; i++) {
+        if (!greens[i] && targetCounts[lastGuess[i]] > 0) {
+          requiredYellows[lastGuess[i]] = (requiredYellows[lastGuess[i]] || 0) + 1
+          targetCounts[lastGuess[i]] -= 1
+        }
+      }
+      
+      // Step 3: Enforce yellows
+      const currentCounts = {}
+      for (let i = 0; i < 5; i++) {
+        if (lastGuess[i] !== targetWord[i]) { // only non-green positions from lastGuess can satisfy its yellows
+          currentCounts[currentGuessLower[i]] = (currentCounts[currentGuessLower[i]] || 0) + 1
+        }
+      }
+      
+      for (const [char, count] of Object.entries(requiredYellows)) {
+        if ((currentCounts[char] || 0) < count) {
+          showToast(`Guess must contain ${char.toUpperCase()}`)
+          hapticError()
+          setInvalidGuess(true)
+          setTimeout(() => setInvalidGuess(false), 600)
+          return
+        }
+      }
+    }
+
+    addGuess(currentGuess, word)
+    setCurrentGuess('')
+  }, [currentGuess, gameState, word, addGuess])
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey || e.altKey || e.metaKey) return
+      if (e.key === 'Enter') onEnter()
+      else if (e.key === 'Backspace') onDelete()
+      else if (/^[a-zA-Z]$/.test(e.key)) onChar(e.key)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onEnter, onDelete, onChar])
+
+  return (
+    <div className={styles.app}>
+      <header className={styles.header}>
+        <div className={styles.leftActions}>
+          <IconButton size="sm" onClick={() => window.open('/lexi5-guide.html', '_blank')} title="How to play">
+            <HelpCircle size={18} />
+          </IconButton>
+          {gameState.status === 'playing' && (
+            <IconButton size="sm" onClick={() => setShowForfeitModal(true)} title="Give up">
+              <Flag size={18} />
+            </IconButton>
+          )}
+          <IconButton size="sm" onClick={() => setShowArchive(true)} title="Daily Word Archive">
+            <Calendar size={18} />
+          </IconButton>
+        </div>
+        <h1 className={styles.title}>Lexi5</h1>
+        <div className={styles.rightActions}>
+          <IconButton size="sm" onClick={handleShareBoard} title="Share game link">
+            <Share2 size={18} />
+          </IconButton>
+          <IconButton size="sm" onClick={() => setShowStats(true)} title="Statistics">
+            <BarChart2 size={18} />
+          </IconButton>
+          <IconButton size="sm" onClick={() => setShowSettings(true)} title="Settings">
+            <SettingsIcon size={18} />
+          </IconButton>
+        </div>
+      </header>
+
+      {customCycleStale && (
+        <div className={styles.staleBanner}>
+          <span>You've used every word in your Custom list — it's repeating now.</span>
+          <Button size="sm" onClick={handleOpenCurate}>Refresh Now</Button>
+        </div>
+      )}
+
+      <main className={styles.main}>
+        <div className={styles.boardContainer}>
+          <Board 
+            guesses={gameState.guesses} 
+            currentGuess={currentGuess} 
+            word={word}
+            status={gameState.status}
+            invalidGuess={invalidGuess}
+          />
+        </div>
+        
+        <div className={styles.keyboardContainer}>
+          <Keyboard 
+            guesses={gameState.guesses}
+            word={word}
+            onChar={onChar}
+            onDelete={onDelete}
+            onEnter={onEnter}
+            smartKeyboard={config.smartKeyboard}
+          />
+        </div>
+      </main>
+
+      {toast && (
+        <div className={styles.toast}>
+          {toast}
+        </div>
+      )}
+
+      <Settings
+        open={showSettings}
+        onClose={handleCloseSettings}
+        config={config}
+        updateConfig={updateConfig}
+        onDictionaryChange={handleDictionaryChange}
+        resetStats={resetStats}
+        gameState={gameState}
+        onToast={showToast}
+        initialShowCurate={openSettingsToCurate}
+      />
+
+      <Stats
+        open={showStats}
+        onClose={() => setShowStats(false)}
+        stats={stats}
+        gameState={gameState}
+        word={word}
+        onPlayAgain={() => {
+          startNextGame(config.difficulty, config.dictionary)
+          setShowStats(false)
+        }}
+        onToast={showToast}
+      />
+
+      <Archive
+        open={showArchive}
+        onClose={() => setShowArchive(false)}
+        currentDictionary={gameState.dictionary}
+      />
+
+      <Modal open={showForfeitModal} onClose={() => setShowForfeitModal(false)} title="Give Up?">
+        <p className={styles.forfeitText}>
+          Are you sure you want to forfeit this game?
+          <br />
+          <span className={styles.forfeitSubtext}>This counts as a loss.</span>
+        </p>
+        <div className={styles.forfeitActions}>
+          <Button variant="ghost" onClick={() => setShowForfeitModal(false)}>
+            Nevermind
+          </Button>
+          <Button variant="primary" onClick={() => {
+            forfeitGame()
+            setShowForfeitModal(false)
+          }}>
+            Yes, Give Up
+          </Button>
+        </div>
+      </Modal>
+    </div>
+  )
+}
+
+--- src\lexi5\App.module.css ---
+:global(:root) {
+  --surface-bg: #ffffff;
+  --text-base: #121213;
+  --text-subtle: #787c7e;
+  --surface-float: #d3d6da;
+  --border-subtle: #d3d6da;
+  --border-base: #878a8c;
+
+  /* Wordle-style tile/key colors — the single source of truth other Lexi5
+     stylesheets (Board, Keyboard, Stats, Settings) reference instead of
+     repeating these hex values. */
+  --tile-correct: #538d4e;
+  --tile-present: #b59f3b;
+  --tile-absent: #3a3a3c;
+  --tile-absent-light: #787c7e;
+  --accent: var(--tile-correct);
+  --danger: #f44336;
+
+  /* Map to DS tokens for Modals. --color-surface-2 is its OWN value, not an alias
+     for --surface-float: DS pairs --color-surface-2 with --color-muted as a
+     background/foreground combo (SegmentedControl track, Modal close-button hover,
+     IconButton, etc.) — reusing --surface-float there would be fine in light mode
+     but collides exactly with --text-subtle's dark-mode value below, making that
+     text invisible. */
+  --color-surface: var(--surface-bg);
+  --color-ink: var(--text-base);
+  --color-border: var(--border-subtle);
+  --color-surface-2: #eef0f1;
+  --color-muted: var(--text-subtle);
+}
+
+:global(:root[data-theme="dark"]) {
+  --surface-bg: #121213;
+  --text-base: #ffffff;
+  --text-subtle: #818384;
+  --surface-float: #818384;
+  --border-subtle: #3a3a3c;
+  --border-base: #565758;
+
+  /* Re-declared here (not just inherited from the block above) because DS's own
+     dark-theme rule for these same custom properties is more specific than a bare
+     :root — without this, Modal-rendered text (Settings/Stats titles, etc.) would
+     silently pick up DS's ink tone instead of Lexi5's. See the light block above
+     for why --color-surface-2 isn't just --surface-float. */
+  --color-surface: var(--surface-bg);
+  --color-ink: var(--text-base);
+  --color-border: var(--border-subtle);
+  --color-surface-2: #2a2a2c;
+  --color-muted: var(--text-subtle);
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  max-width: 500px;
+  margin: 0 auto;
+  background: var(--surface-bg);
+  color: var(--text-base);
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 65px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.leftActions, .rightActions {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.rightActions {
+  justify-content: flex-end;
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  font-family: "Cinzel", serif;
+  text-align: center;
+  flex: 2;
+  margin: 0;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 16px;
+  min-height: 0;
+}
+
+.boardContainer {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  min-height: 0;
+}
+
+.keyboardContainer {
+  flex-shrink: 0;
+  padding: 0 8px;
+}
+
+.toast {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text-base);
+  color: var(--surface-bg);
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-weight: 600;
+  z-index: 100;
+  animation: fade 0.2s ease-in;
+}
+
+@keyframes fade {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.staleBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 10px 16px;
+  background: var(--tile-present);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.forfeitText {
+  text-align: center;
+  margin-bottom: 24px;
+  font-size: 1.1rem;
+}
+
+.forfeitSubtext {
+  color: var(--text-subtle);
+  font-size: 0.9rem;
+}
+
+.forfeitActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+--- src\lexi5\App.test.jsx ---
+// @vitest-environment happy-dom
+import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest'
+import { render, cleanup, screen, act } from '@testing-library/react'
+import { App } from './App'
+import * as gameState from './lib/gameState'
+import * as config from './lib/config'
+
+// Mock dependencies
+vi.mock('./lib/gameState', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    getWord: vi.fn(),
+    isValidGuess: vi.fn()
+  }
+})
+
+vi.mock('./lib/config', () => ({
+  useConfig: vi.fn()
+}))
+
+// Mock canvas-confetti
+vi.mock('canvas-confetti', () => ({
+  default: vi.fn()
+}))
+
+// Mock haptics
+vi.mock('./lib/haptics', () => ({
+  hapticTap: vi.fn(),
+  hapticError: vi.fn(),
+  hapticWin: vi.fn()
+}))
+
+const localStorageMock = (() => {
+  let store = {}
+  return {
+    getItem: (key) => store[key] || null,
+    setItem: (key, value) => { store[key] = value.toString() },
+    removeItem: (key) => { delete store[key] },
+    clear: () => { store = {} }
+  }
+})()
+vi.stubGlobal('localStorage', localStorageMock)
+
+describe('App component (Hard Mode Validation)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    
+    // Set config to Hard Mode
+    config.useConfig.mockReturnValue({
+      config: {
+        difficulty: 'hard',
+        dictionary: 'standard',
+        theme: 'light',
+        smartKeyboard: true
+      },
+      updateConfig: vi.fn()
+    })
+    
+    // Mock target word and validity
+    gameState.getWord.mockReturnValue('robot')
+    gameState.isValidGuess.mockReturnValue(true)
+    
+    // Reset toast state by resetting DOM (happy-dom handles this between tests)
+  })
+
+  afterEach(cleanup)
+
+  const typeWord = async (word) => {
+    for (const char of word) {
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: char }))
+      })
+    }
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+    })
+  }
+
+  it('rejects guess if a required yellow letter (duplicate) is missing', async () => {
+    render(<App />)
+    
+    // Target word: ROBOT
+    // Guess 1: BOOTS (B: yellow, O: green, O: yellow, T: yellow, S: absent)
+    // Wait, ROBOT has two O's.
+    // Let's guess 'COLOR'
+    // C: absent, O: green, L: absent, O: green, R: yellow. (Wait, ROBOT is R-O-B-O-T).
+    // Let's do guess 1: 'BOOBO'
+    // Actually, let's use 'ROTOR' against 'ROBOT'
+    // R: green, O: green, T: yellow, O: green, R: absent
+    
+    // Let's use simpler guess: 'ROOMS' against 'ROBOT'
+    // R: green, O: green, O: yellow (since ROBOT has another O), M: absent, S: absent
+    await typeWord('rooms')
+    
+    // Now we must use the second O somewhere, and R and the first O in their exact spots.
+    // Let's guess 'ROMAN'
+    // R: green (matches), O: green (matches), M: absent, A: absent, N: absent.
+    // BUT we failed to include the second O (which was yellow).
+    await typeWord('roman')
+    
+    // We expect a toast rejecting this because we missed the yellow 'o'
+    const toast = await screen.findByText(/Guess must contain O/i)
+    expect(toast).toBeTruthy()
+  })
+
+  it('accepts guess if duplicate letter rules are followed', async () => {
+    render(<App />)
+    
+    // Target word: ROBOT
+    // Guess 1: 'ROOMS'
+    // R: green, O: green, O: yellow, M: absent, S: absent
+    await typeWord('rooms')
+    
+    // Guess 2: 'RODEO'
+    // R: green, O: green, D: absent, E: absent, O: yellow (we used the yellow O!)
+    await typeWord('rodeo')
+    
+    // Should NOT get the "Guess must contain O" toast.
+    // Instead, the guess should be accepted, meaning the row updates.
+    // We can verify no error toast appeared.
+    const errorToast = screen.queryByText(/Guess must contain/i)
+    expect(errorToast).toBeNull()
+  })
+})
+
+--- src\lexi5\components\Archive.jsx ---
+import React, { useState, useEffect, useMemo } from 'react'
+import { Modal } from '../../ds'
+import {
+  getWord,
+  hasCustomDictionary,
+  getCustomDictionarySize,
+  BUILTIN_DICTIONARY_ORDER,
+  DICTIONARY_SIZES,
+  DICTIONARY_LABELS,
+  wasGameWon
+} from '../lib/gameState'
+import styles from './Archive.module.css'
+
+export function Archive({ open, onClose, currentDictionary }) {
+  const [dict, setDict] = useState(currentDictionary)
+
+  // Sync dictionary selection when modal opens or currentDictionary changes externally
+  useEffect(() => {
+    if (open) {
+      setDict(currentDictionary)
+    }
+  }, [open, currentDictionary])
+
+  const hasCustomDict = hasCustomDictionary()
+
+  const pastDays = useMemo(() => {
+    return Array.from({ length: 14 }, (_, i) => {
+      const d = new Date()
+      // i = 0 is yesterday, i = 1 is the day before, etc.
+      d.setDate(d.getDate() - (i + 1))
+      return d.toDateString()
+    })
+  }, [])
+
+  return (
+    <Modal open={open} onClose={onClose} title="Daily Word Archive">
+      <div className={styles.archiveList}>
+        <div className={styles.dictionarySection}>
+          <label className={styles.dictionaryLabel}>Select Dictionary</label>
+          <div className={styles.selectWrapper}>
+            <select
+              value={dict}
+              onChange={e => setDict(e.target.value)}
+              className={styles.dropdown}
+            >
+              {BUILTIN_DICTIONARY_ORDER.map(key => (
+                <option key={key} value={key}>
+                  {DICTIONARY_LABELS[key]} ({DICTIONARY_SIZES[key].toLocaleString()} words)
+                </option>
+              ))}
+              <option value="custom" disabled={!hasCustomDict}>
+                {DICTIONARY_LABELS.custom}{hasCustomDict ? ` (${getCustomDictionarySize().toLocaleString()} words)` : ' — curate one in Settings first'}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div className={styles.daysList}>
+          {pastDays.map(dateString => {
+            const word = getWord(dict, dateString, 0)
+            const isWon = wasGameWon(dict, dateString)
+            const dateObj = new Date(dateString)
+            const formattedDate = dateObj.toLocaleDateString(undefined, {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric'
+            })
+            
+            return (
+              <div key={dateString} className={styles.dayRow}>
+                <div className={styles.dayDate}>{formattedDate}</div>
+                <div className={`${styles.dayWord} ${isWon ? styles.dayWordWon : ''}`.trim()}>{word.toUpperCase()}</div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+--- src\lexi5\components\Archive.module.css ---
+.archiveList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 16px;
+}
+
+.dictionarySection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dictionaryLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-base);
+}
+
+.selectWrapper {
+  position: relative;
+  display: flex;
+}
+
+.dropdown {
+  flex: 1;
+  appearance: none;
+  background-color: var(--surface-bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-base);
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.dropdown:focus {
+  border-color: var(--accent);
+}
+
+.selectWrapper::after {
+  content: "▼";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 0.7rem;
+  color: var(--text-subtle);
+}
+
+.daysList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px;
+  background-color: var(--surface-bg);
+}
+
+.dayRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.dayRow:last-child {
+  border-bottom: none;
+}
+
+.dayDate {
+  font-size: 0.85rem;
+  color: var(--text-subtle);
+}
+
+.dayWord {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-base);
+}
+
+.dayWordWon {
+  color: var(--accent);
+}
+
+--- src\lexi5\components\Board.jsx ---
+import React from 'react'
+import styles from './Board.module.css'
+
+export function Board({ guesses, currentGuess, word, status, invalidGuess }) {
+  const empties = guesses.length < 6 ? Array.from({ length: 5 - guesses.length }) : []
+  
+  return (
+    <div className={styles.board}>
+      {guesses.map((guess, i) => (
+        <Row 
+          key={i} 
+          guess={guess} 
+          word={word} 
+          isSubmitted={true} 
+          isWinningRow={status === 'won' && i === guesses.length - 1}
+        />
+      ))}
+      {guesses.length < 6 && (
+        <Row 
+          guess={currentGuess} 
+          word={word} 
+          isSubmitted={false} 
+          isInvalid={invalidGuess} 
+        />
+      )}
+      {empties.map((_, i) => (
+        <Row key={`empty-${i}`} guess="" word={word} isSubmitted={false} />
+      ))}
+    </div>
+  )
+}
+
+function Row({ guess, word, isSubmitted, isInvalid, isWinningRow }) {
+  const tiles = Array.from({ length: 5 })
+  
+  // Scoring logic for Wordle
+  const statuses = Array(5).fill('absent')
+  const wordLetters = word ? word.split('') : []
+  
+  if (isSubmitted) {
+    // First pass: find greens
+    for (let i = 0; i < 5; i++) {
+      if (guess[i] === word[i]) {
+        statuses[i] = 'correct'
+        wordLetters[i] = null // Mark as used
+      }
+    }
+    // Second pass: find yellows
+    for (let i = 0; i < 5; i++) {
+      if (statuses[i] !== 'correct' && wordLetters.includes(guess[i])) {
+        statuses[i] = 'present'
+        wordLetters[wordLetters.indexOf(guess[i])] = null // Mark as used
+      }
+    }
+  }
+
+  return (
+    <div className={`${styles.row} ${isInvalid ? styles.shake : ''} ${isWinningRow ? styles.dance : ''}`}>
+      {tiles.map((_, i) => {
+        const char = guess[i] || ''
+        const tileStatus = isSubmitted ? statuses[i] : (char ? 'tbd' : 'empty')
+        
+        return (
+          <div 
+            key={i} 
+            className={`${styles.tile} ${styles[tileStatus]} ${char && !isSubmitted ? styles.filled : ''}`}
+            style={{ 
+              animationDelay: isWinningRow 
+                ? `${i * 0.25}s, ${1.6 + (i * 0.1)}s` 
+                : (isSubmitted ? `${i * 0.25}s` : '0s') 
+            }}
+          >
+            {char}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+--- src\lexi5\components\Board.module.css ---
+.board {
+  display: grid;
+  grid-template-rows: repeat(6, 1fr);
+  gap: 5px;
+  width: 100%;
+  max-width: min(350px, calc((100dvh - 320px) * 5 / 6));
+  aspect-ratio: 5/6;
+  margin: 0 auto;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+
+.tile {
+  width: 100%;
+  height: 100%;
+  border: 2px solid var(--border-subtle);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2rem;
+  line-height: 2rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  user-select: none;
+  border-radius: 4px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.empty {
+  border-color: var(--border-subtle);
+}
+
+.tbd {
+  border-color: var(--border-base);
+  color: var(--text-base);
+}
+
+.filled {
+  animation: pop 0.1s ease-in-out;
+}
+
+@keyframes pop {
+  0% { transform: scale(0.8); opacity: 0; }
+  40% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes flip {
+  0% { 
+    transform: rotateX(0);
+    background-color: transparent;
+    border-color: var(--border-subtle);
+  }
+  49.99% { 
+    transform: rotateX(90deg);
+    background-color: transparent;
+    border-color: var(--border-subtle);
+  }
+  50% { 
+    transform: rotateX(90deg);
+    border-color: transparent;
+  }
+  100% { 
+    transform: rotateX(0);
+    border-color: transparent;
+  }
+}
+
+.correct {
+  background-color: var(--tile-correct);
+  color: #fff;
+  border-color: var(--tile-correct);
+  box-shadow: inset 0 2px 4px rgba(255,255,255,0.15), 0 2px 6px rgba(0,0,0,0.15);
+  animation: flip 0.6s ease-in forwards;
+}
+
+.present {
+  background-color: var(--tile-present);
+  color: #fff;
+  border-color: var(--tile-present);
+  box-shadow: inset 0 2px 4px rgba(255,255,255,0.15), 0 2px 6px rgba(0,0,0,0.15);
+  animation: flip 0.6s ease-in forwards;
+}
+
+.absent {
+  background-color: var(--tile-absent);
+  color: #fff;
+  border-color: var(--tile-absent);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 2px 6px rgba(0,0,0,0.15);
+  animation: flip 0.6s ease-in forwards;
+}
+
+:global([data-theme="light"]) .absent {
+  background-color: var(--tile-absent-light);
+  border-color: var(--tile-absent-light);
+}
+
+/* Shake animation for invalid words */
+.shake {
+  animation: shake 0.6s;
+}
+
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+
+/* Dance animation for winning */
+.dance .tile {
+  animation-name: flip, dance;
+  animation-duration: 0.6s, 0.6s;
+  animation-timing-function: ease-in, ease-in-out;
+  animation-fill-mode: forwards, none;
+}
+
+@keyframes dance {
+  0%, 100% { transform: translateY(0); }
+  20% { transform: translateY(-20px); }
+  40% { transform: translateY(5px); }
+  60% { transform: translateY(-10px); }
+  80% { transform: translateY(2px); }
+}
+
+--- src\lexi5\components\Board.test.jsx ---
+// @vitest-environment happy-dom
+import { describe, it, expect, afterEach } from 'vitest'
+import { render, cleanup } from '@testing-library/react'
+import { Board } from './Board'
+
+describe('Board component', () => {
+  afterEach(cleanup)
+
+  it('renders a grid with 6 rows of 5 tiles', () => {
+    const { container } = render(
+      <Board 
+        guesses={[]} 
+        currentGuess="" 
+        word="apple" 
+        status="playing" 
+      />
+    )
+    
+    const board = container.firstChild
+    expect(board.children.length).toBe(6)
+    
+    const firstRow = board.children[0]
+    expect(firstRow.children.length).toBe(5)
+  })
+
+  it('correctly applies statuses to submitted rows', () => {
+    // word is 'apple', guess is 'ample'
+    const { container } = render(
+      <Board 
+        guesses={['ample']} 
+        currentGuess="" 
+        word="apple" 
+        status="playing" 
+      />
+    )
+    
+    const firstRowTiles = container.firstChild.children[0].children
+    
+    expect(firstRowTiles[0].className).toMatch(/correct/)
+    expect(firstRowTiles[1].className).toMatch(/absent/)
+    expect(firstRowTiles[2].className).toMatch(/correct/)
+    expect(firstRowTiles[3].className).toMatch(/correct/)
+    expect(firstRowTiles[4].className).toMatch(/correct/)
+  })
+
+  it('applies shake animation to the current row if invalidGuess is true', () => {
+    const { container } = render(
+      <Board 
+        guesses={['first']} 
+        currentGuess="zzzzz" 
+        word="apple" 
+        status="playing" 
+        invalidGuess={true}
+      />
+    )
+    
+    const activeRow = container.firstChild.children[1]
+    expect(activeRow.className).toMatch(/shake/)
+  })
+
+  it('applies dance animation to the winning row', () => {
+    const { container } = render(
+      <Board 
+        guesses={['apple']} 
+        currentGuess="" 
+        word="apple" 
+        status="won" 
+      />
+    )
+    
+    const firstRow = container.firstChild.children[0]
+    expect(firstRow.className).toMatch(/dance/)
+  })
+})
+
+--- src\lexi5\components\Keyboard.jsx ---
+import React from 'react'
+import styles from './Keyboard.module.css'
+
+const ROWS = [
+  ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+  ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+  ['Enter', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'Backspace']
+]
+
+export function Keyboard({ guesses, word, onChar, onDelete, onEnter, smartKeyboard }) {
+  // Determine letter status based on guesses
+  const keyStatuses = {}
+  const triedPositions = {} // letter -> set of indices where it was guessed and was 'present' (not correct)
+  guesses.forEach(guess => {
+    for (let i = 0; i < guess.length; i++) {
+      const letter = guess[i].toUpperCase()
+      const isCorrect = word[i].toUpperCase() === letter
+      const isPresent = word.toUpperCase().includes(letter)
+      
+      if (isCorrect) {
+        keyStatuses[letter] = 'correct'
+      } else if (isPresent && keyStatuses[letter] !== 'correct') {
+        keyStatuses[letter] = 'present'
+        if (!triedPositions[letter]) triedPositions[letter] = new Set()
+        triedPositions[letter].add(i)
+      } else if (!isPresent && !keyStatuses[letter]) {
+        keyStatuses[letter] = 'absent'
+      }
+    }
+  })
+
+  return (
+    <div className={styles.keyboard}>
+      {ROWS.map((row, i) => (
+        <div key={i} className={styles.row}>
+          {row.map(key => {
+            const isEnter = key === 'Enter'
+            const isDel = key === 'Backspace'
+            const status = keyStatuses[key] || 'tbd'
+            
+            return (
+              <button
+                key={key}
+                className={`${styles.key} ${isEnter || isDel ? styles.actionKey : ''} ${styles[status]}`}
+                onClick={() => {
+                  if (isEnter) onEnter()
+                  else if (isDel) onDelete()
+                  else onChar(key)
+                }}
+              >
+                {smartKeyboard && status === 'present' && triedPositions[key] && (
+                  <div className={styles.smartDots}>
+                    {[0,1,2,3,4].map(idx => (
+                      <span key={idx} className={`${styles.dot} ${triedPositions[key].has(idx) ? styles.dotTried : ''}`} />
+                    ))}
+                  </div>
+                )}
+                {isDel ? 'DEL' : key}
+              </button>
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+--- src\lexi5\components\Keyboard.module.css ---
+.keyboard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.key {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  height: 58px;
+  border: 0;
+  border-radius: 4px;
+  background-color: var(--surface-float, #d3d6da);
+  color: var(--text-base);
+  font-weight: bold;
+  font-size: 1.25rem;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.1s;
+  padding: 0;
+  text-transform: uppercase;
+  max-width: 45px;
+  touch-action: manipulation;
+}
+
+.key:active {
+  transform: scale(0.95);
+  opacity: 0.8;
+}
+
+.actionKey {
+  flex: 1.5;
+  font-size: 0.8rem;
+  max-width: 65px;
+}
+
+/* Base key states */
+.correct {
+  background-color: var(--tile-correct);
+  color: #fff;
+}
+
+.present {
+  background-color: var(--tile-present);
+  color: #fff;
+}
+
+.absent {
+  background-color: var(--tile-absent);
+  color: #fff;
+}
+
+:global([data-theme="light"]) .absent {
+  background-color: var(--tile-absent-light);
+}
+
+.smartDots {
+  display: flex;
+  gap: 2px;
+  position: absolute;
+  top: 4px;
+}
+
+.dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+.dotTried {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+:global([data-theme="dark"]) .dotTried {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+--- src\lexi5\components\Keyboard.test.jsx ---
+// @vitest-environment happy-dom
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { render, cleanup, fireEvent } from '@testing-library/react'
+import { Keyboard } from './Keyboard'
+
+describe('Keyboard component', () => {
+  afterEach(cleanup)
+
+  it('renders standard keyboard layout', () => {
+    const { getByText } = render(
+      <Keyboard 
+        guesses={[]} 
+        word="apple" 
+        onChar={() => {}}
+        onDelete={() => {}}
+        onEnter={() => {}}
+        smartKeyboard={false}
+      />
+    )
+    
+    expect(getByText('Q')).toBeDefined()
+    expect(getByText('Enter')).toBeDefined()
+    expect(getByText('DEL')).toBeDefined()
+  })
+
+  it('applies correct, present, and absent classes to keys based on guesses', () => {
+    const { getByText } = render(
+      <Keyboard 
+        guesses={['ample']} 
+        word="apple" 
+        onChar={() => {}}
+        onDelete={() => {}}
+        onEnter={() => {}}
+        smartKeyboard={false}
+      />
+    )
+    
+    // A, P, L, E are correct in 'ample' vs 'apple'
+    expect(getByText('A').className).toMatch(/correct/)
+    expect(getByText('M').className).toMatch(/absent/)
+    expect(getByText('P').className).toMatch(/correct/)
+    expect(getByText('L').className).toMatch(/correct/)
+    expect(getByText('E').className).toMatch(/correct/)
+  })
+
+  it('renders smart dots for yellow keys when smartKeyboard is enabled', () => {
+    const { getByText } = render(
+      <Keyboard
+        guesses={['tasty']}
+        word="apple" 
+        onChar={() => {}}
+        onDelete={() => {}}
+        onEnter={() => {}}
+        smartKeyboard={true}
+      />
+    )
+    
+    // A is present (yellow)
+    const keyA = getByText('A')
+    expect(keyA.className).toMatch(/present/)
+    
+    // It should have the smartDots container
+    const dotsContainer = keyA.querySelector('div')
+    expect(dotsContainer).toBeDefined()
+    expect(dotsContainer.className).toMatch(/smartDots/)
+    
+    // And 5 dots, with index 1 (the 'A' in 'tasty') being 'dotTried'
+    const dots = dotsContainer.querySelectorAll('span')
+    expect(dots.length).toBe(5)
+    expect(dots[1].className).toMatch(/dotTried/)
+    expect(dots[0].className).not.toMatch(/dotTried/)
+  })
+
+  it('calls onChar when a letter key is clicked', () => {
+    const onCharMock = vi.fn()
+    const { getByText } = render(
+      <Keyboard 
+        guesses={[]} 
+        word="apple" 
+        onChar={onCharMock}
+        onDelete={() => {}}
+        onEnter={() => {}}
+      />
+    )
+    
+    fireEvent.click(getByText('K'))
+    expect(onCharMock).toHaveBeenCalledWith('K')
+  })
+})
+
+--- src\lexi5\components\Settings.jsx ---
+import React, { useState, useEffect } from 'react'
+import { SettingsToggle } from '../../ds'
+import { Button } from '../../ds/components/Button'
+import { Modal } from '../../ds/components/Modal'
+import { ConfirmModal } from '../../ds/components/Dialogs'
+import { Field } from '../../ds/components/Field'
+import { SegmentedControl } from '../../ds'
+import {
+  getWordProgress,
+  hasCustomDictionary,
+  getCustomDictionarySize,
+  markCustomDictionaryCurated,
+  removeCustomDictionary,
+  isValidGuess,
+  BUILTIN_DICTIONARY_ORDER,
+  DICTIONARY_SIZES,
+  DICTIONARY_LABELS
+} from '../lib/gameState'
+import { SelectField } from '../../ds/components/SelectField'
+import styles from './Settings.module.css'
+
+const CURATE_TIMEOUT_MS = 30000
+
+export function Settings({ open, onClose, config, updateConfig, onDictionaryChange, resetStats, gameState, onToast, initialShowCurate = false }) {
+  const [showCurate, setShowCurate] = useState(initialShowCurate)
+  const [apiKey, setApiKey] = useState('')
+  const [curating, setCurating] = useState(false)
+  const [curateError, setCurateError] = useState(null)
+  const [wordCount, setWordCount] = useState(500)
+  const [model, setModel] = useState('claude-haiku-4-5-20251001')
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [showRecurateConfirm, setShowRecurateConfirm] = useState(false)
+
+  // The Modal delays its own mount by an animation frame or two, so a plain
+  // useState(initialShowCurate) can miss the value if it arrives right as the
+  // modal is opening — react to it explicitly instead of relying on mount timing.
+  useEffect(() => {
+    if (open && initialShowCurate) setShowCurate(true)
+  }, [open, initialShowCurate])
+
+  const hasCustomDict = hasCustomDictionary()
+  const customProgress = hasCustomDict && gameState
+    ? getWordProgress('custom', gameState.date, gameState.iteration)
+    : null
+
+  const runCurate = async () => {
+    setCurating(true)
+    setCurateError(null)
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), CURATE_TIMEOUT_MS)
+
+    try {
+      let exclusions = ''
+      if (hasCustomDict) {
+        try {
+          const existing = JSON.parse(localStorage.getItem('lexi5_custom_dict'))
+          if (existing && existing.length > 0) {
+            exclusions = ` Do not include any of the following words: ${existing.join(', ')}.`
+          }
+        } catch (_e) {}
+      }
+
+      const res = await fetch('/api/anthropic-proxy/v1/messages', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 4096,
+          messages: [{ role: 'user', content: `Generate a JSON array of ${wordCount} interesting 5-letter English words for a word game.${exclusions} Only output the raw JSON array of strings, nothing else.` }]
+        })
+      })
+      if (!res.ok) {
+        const errText = await res.text().catch(() => 'Unknown error')
+        throw new Error(`Status ${res.status}: ${errText}`)
+      }
+      const data = await res.json()
+      const text = data.content[0].text
+      const match = text.match(/\[([\s\S]*?)\]/)
+
+      let words
+      if (match) {
+        words = JSON.parse(match[0])
+      } else {
+        // Response likely got truncated before the closing bracket — recover
+        // whatever complete quoted words were returned instead of failing outright.
+        words = [...text.matchAll(/"([a-zA-Z]+)"/g)].map(m => m[1])
+        if (words.length === 0) {
+          throw new Error("Could not parse JSON array from AI response. AI said: " + text.substring(0, 150) + (text.length > 150 ? '...' : ''))
+        }
+      }
+      words = [...new Set(words.map(w => w.toLowerCase()))].filter(w => w.length === 5 && /^[a-z]+$/.test(w))
+
+      const validWords = words.filter(w => isValidGuess(w))
+      const discardedCount = words.length - validWords.length
+      words = validWords
+
+      if (words.length === 0) throw new Error("AI did not return any valid 5-letter words.")
+
+      localStorage.setItem('lexi5_custom_dict', JSON.stringify(words))
+      markCustomDictionaryCurated()
+      setShowCurate(false)
+      onDictionaryChange('custom')
+      
+      let toastMsg = `Custom list curated with ${words.length} words — new word ready!`
+      if (discardedCount > 0) {
+        toastMsg = `Curated ${words.length} words (${discardedCount} invalid words discarded) — new word ready!`
+      }
+      onToast(toastMsg)
+    } catch (err) {
+      const message = err.name === 'AbortError'
+        ? 'Curation timed out after 30s. Please try again.'
+        : err.message
+      setCurateError(message)
+    } finally {
+      clearTimeout(timeout)
+      setCurating(false)
+    }
+  }
+
+  const handleCurate = () => {
+    if (!apiKey) return
+    if (hasCustomDict) {
+      setShowRecurateConfirm(true)
+      return
+    }
+    runCurate()
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Settings">
+      <div className={styles.settingsList}>
+        <div className={styles.dictionarySection}>
+          <label className={styles.dictionaryLabel}>Word Dictionary</label>
+          <p className={styles.dictionaryDesc}>
+            Easiest to hardest, left to right. Switching deals a fresh word immediately, no penalty.
+          </p>
+          <div className={styles.selectWrapper}>
+            <select
+              value={config.dictionary}
+              onChange={e => onDictionaryChange(e.target.value)}
+              className={styles.dropdown}
+            >
+              {BUILTIN_DICTIONARY_ORDER.map(key => (
+                <option key={key} value={key}>
+                  {DICTIONARY_LABELS[key]} ({DICTIONARY_SIZES[key].toLocaleString()} words)
+                </option>
+              ))}
+              <option value="custom" disabled={!hasCustomDict}>
+                {DICTIONARY_LABELS.custom}{hasCustomDict ? ` (${getCustomDictionarySize().toLocaleString()} words)` : ' — curate one below first'}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div className={styles.tightToggle}>
+          <SettingsToggle
+            label="Hard Mode"
+            description="Any revealed hints must be used in subsequent guesses"
+            checked={config.difficulty === 'hard'}
+            onChange={(e) => updateConfig({ difficulty: e.target.checked ? 'hard' : 'normal' })}
+          />
+
+          <SettingsToggle
+            label="Smart Keyboard"
+            description="Show dots on yellow keys for positions you've already tried"
+            checked={config.smartKeyboard === true}
+            onChange={(e) => updateConfig({ smartKeyboard: e.target.checked })}
+          />
+        </div>
+
+        <div className={styles.themeRow}>
+          <SegmentedControl
+            size="sm"
+            options={[
+              { label: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>, value: 'system' },
+              { label: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>, value: 'light' },
+              { label: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>, value: 'dark' },
+            ]}
+            value={config.theme || 'system'}
+            onChange={(val) => updateConfig({ theme: val === 'system' ? null : val })}
+          />
+        </div>
+      </div>
+
+      <div className={styles.advanced}>
+        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+          <Button variant="ghost" onClick={() => setShowCurate(!showCurate)}>
+            AI Curation
+          </Button>
+          {config.dictionary === 'custom' && hasCustomDict && (
+            <span className={styles.activePill}>Active</span>
+          )}
+        </div>
+
+        {showCurate && (
+          <div className={styles.curateCard}>
+            <p className={styles.curateDesc}>
+              Paste an Anthropic API key to curate a list with Claude.
+              {customProgress && ` Current list: ${customProgress.position}/${customProgress.total} words used this cycle.`}
+            </p>
+            {curateError && (
+              <p className={styles.curateError}>{curateError}</p>
+            )}
+            <SelectField
+              label="Model"
+              value={model}
+              onChange={e => setModel(e.target.value)}
+            >
+              <option value="claude-haiku-4-5-20251001">Claude 3.5 Haiku (Fast)</option>
+              <option value="claude-sonnet-3-5-1022">Claude 3.5 Sonnet (Smart)</option>
+            </SelectField>
+            <Field
+              label="Word Count"
+              type="number"
+              value={wordCount}
+              onChange={e => setWordCount(Number(e.target.value))}
+              min="10"
+              max="1000"
+            />
+            <Field
+              label="API Key"
+              type="password"
+              value={apiKey}
+              onChange={e => setApiKey(e.target.value)}
+              placeholder="sk-ant-..."
+              autoComplete="off"
+            />
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+              <Button size="sm" onClick={handleCurate} disabled={curating || !apiKey}>
+                {curating ? 'Curating...' : hasCustomDict ? 'Refresh Word List' : 'Start Curation'}
+              </Button>
+              {hasCustomDict && (
+                <Button size="sm" variant="ghost" className={styles.dangerButton} onClick={() => setShowClearConfirm(true)}>
+                  Clear List
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <Button variant="ghost" onClick={() => setShowResetConfirm(true)} className={styles.dangerButton}>
+          Reset Statistics
+        </Button>
+      </div>
+
+      <ConfirmModal
+        isOpen={showResetConfirm}
+        onCancel={() => setShowResetConfirm(false)}
+        title="Reset Statistics"
+        message="Are you sure you want to permanently erase all your gameplay statistics? This action cannot be undone."
+        confirmText="Confirm Reset"
+        variant="danger"
+        onConfirm={() => {
+          resetStats()
+          setShowResetConfirm(false)
+          onToast('Statistics reset.')
+        }}
+      />
+
+      <ConfirmModal
+        isOpen={showRecurateConfirm}
+        onCancel={() => setShowRecurateConfirm(false)}
+        title="Refresh Word List"
+        message="This replaces your existing custom word list with a brand new one. The old list's no-repeat cycle progress will be lost. Continue?"
+        confirmText="Refresh"
+        variant="danger"
+        onConfirm={() => {
+          setShowRecurateConfirm(false)
+          runCurate()
+        }}
+      />
+
+      <ConfirmModal
+        isOpen={showClearConfirm}
+        onCancel={() => setShowClearConfirm(false)}
+        title="Clear Custom List"
+        message="Are you sure you want to delete your custom word list? You will be returned to the Standard dictionary."
+        confirmText="Clear List"
+        variant="danger"
+        onConfirm={() => {
+          removeCustomDictionary()
+          if (config.dictionary === 'custom') {
+            onDictionaryChange('standard')
+          }
+          setShowClearConfirm(false)
+          setShowCurate(false)
+          onToast('Custom list cleared.')
+        }}
+      />
+    </Modal>
+  )
+}
+
+--- src\lexi5\components\Settings.module.css ---
+.settingsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dictionarySection {
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.themeRow {
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dictionaryLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-base);
+}
+
+.dictionaryDesc {
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+  line-height: 1.25;
+}
+
+.dictionaryDesc p {
+  margin: 0 0 3px 0;
+}
+
+.dictionaryDesc ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.dictionaryDesc li {
+  margin-bottom: 1px;
+}
+
+/* Locally tightens shared DS components (SettingsToggle) that read --space-sm
+   for their own padding — narrower here without touching the shared token. */
+.tightToggle {
+  --space-sm: 4px;
+}
+
+.selectWrapper {
+  position: relative;
+  display: flex;
+}
+
+.dropdown {
+  flex: 1;
+  appearance: none;
+  background-color: var(--surface-bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-base);
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.dropdown:focus {
+  border-color: var(--accent);
+}
+
+.dropdown:disabled option:disabled,
+.dropdown option:disabled {
+  color: var(--text-subtle);
+}
+
+.selectWrapper::after {
+  content: "▼";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 0.7rem;
+  color: var(--text-subtle);
+}
+
+.guideLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  margin: 16px 0;
+  background-color: var(--surface-float);
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--text-base);
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.guideLink:hover {
+  opacity: 0.8;
+}
+
+.advanced {
+  margin-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.activePill {
+  display: inline-block;
+  padding: 2px 8px;
+  background-color: var(--accent);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 999px;
+  letter-spacing: 0.05em;
+}
+
+.curateCard {
+  width: 100%;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background-color: var(--surface-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.curateDesc {
+  font-size: 0.78rem;
+  color: var(--text-subtle);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.curateError {
+  font-size: 0.78rem;
+  color: var(--danger);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.dangerButton {
+  color: var(--danger);
+}
+
+--- src\lexi5\components\Settings.test.jsx ---
+// @vitest-environment happy-dom
+import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest'
+import { render, cleanup, screen, fireEvent, waitFor } from '@testing-library/react'
+import { Settings } from './Settings'
+
+// Mock the child components and external dependencies
+vi.mock('../../ds', () => ({
+  Modal: ({ children, open }) => (open ? <div data-testid="modal">{children}</div> : null),
+  SegmentedControl: ({ value, onChange }) => (
+    <select data-testid="segmented-control" value={value} onChange={e => onChange(e.target.value)}>
+      <option value="system">System</option>
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
+  ),
+  Button: ({ children, onClick, disabled }) => (
+    <button data-testid="button" onClick={onClick} disabled={disabled}>{children}</button>
+  ),
+  SettingsToggle: ({ label, description, checked, onChange, disabled }) => (
+    <div data-testid="settings-toggle">
+      <input 
+        type="checkbox" 
+        checked={checked} 
+        onChange={e => onChange(e.target.checked)} 
+        disabled={disabled}
+      />
+      <span>{label}</span>
+      <span>{description}</span>
+    </div>
+  )
+}))
+
+// Mock window.matchMedia
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+})
+
+const localStorageMock = (() => {
+  let store = {}
+  return {
+    getItem: (key) => store[key] || null,
+    setItem: (key, value) => { store[key] = value.toString() },
+    removeItem: (key) => { delete store[key] },
+    clear: () => { store = {} }
+  }
+})()
+vi.stubGlobal('localStorage', localStorageMock)
+
+describe('Settings component', () => {
+  const defaultConfig = {
+    theme: 'system',
+    dictionary: 'standard',
+    difficulty: 'normal',
+    smartKeyboard: true
+  }
+
+  const mockOnConfigChange = vi.fn()
+  const mockOnDictionaryChange = vi.fn()
+  const mockOnDifficultyChange = vi.fn()
+  const mockOnResetStats = vi.fn()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    // Mock fetch for Anthropic API
+    global.fetch = vi.fn()
+  })
+
+  afterEach(cleanup)
+
+  it('disables the Custom dictionary option when no custom list is in localStorage', () => {
+    render(
+      <Settings
+        open={true}
+        onClose={() => {}}
+        config={defaultConfig}
+        onConfigChange={mockOnConfigChange}
+        onDictionaryChange={mockOnDictionaryChange}
+        onDifficultyChange={mockOnDifficultyChange}
+        onResetStats={mockOnResetStats}
+        openToCurate={false}
+      />
+    )
+
+    const select = screen.getAllByRole('combobox')[0]
+    const customOption = Array.from(select.options).find(opt => opt.value === 'custom')
+    expect(customOption.disabled).toBe(true)
+    expect(customOption.textContent).toContain('curate one below first')
+  })
+
+  it('handles curation deduplication correctly', async () => {
+    const mockOnToast = vi.fn()
+    render(
+      <Settings
+        open={true}
+        onClose={() => {}}
+        config={defaultConfig}
+        onConfigChange={mockOnConfigChange}
+        onDictionaryChange={mockOnDictionaryChange}
+        onDifficultyChange={mockOnDifficultyChange}
+        onResetStats={mockOnResetStats}
+        onToast={mockOnToast}
+        openToCurate={false}
+      />
+    )
+    
+    // Setup mock fetch response with duplicates and invalid length words
+    const mockApiResponse = {
+      content: [
+        {
+          text: JSON.stringify(["APPLE", "APPLE", "BERRY", "ROBOT", "TOOOOLONG", "CAT"])
+        }
+      ]
+    }
+    
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockApiResponse
+    })
+
+    // Reveal curation UI first
+    const curateTabButton = screen.getByText('AI Curation')
+    fireEvent.click(curateTabButton)
+
+    // Type API key and trigger curation
+    const apiKeyInput = await screen.findByPlaceholderText('sk-ant-...')
+    fireEvent.change(apiKeyInput, { target: { value: 'sk-ant-test-key' } })
+    
+    const curateButton = screen.getByText('Start Curation')
+    fireEvent.click(curateButton)
+    
+    expect(curateButton.textContent).toBe('Curating...')
+    
+    await waitFor(() => {
+      expect(mockOnToast).toHaveBeenCalledWith(expect.stringContaining('Custom list curated'))
+    })
+    
+    // Deduplication should result in only valid 5-letter words: APPLE, BERRY, ROBOT
+    // Duplicates are removed, too long / too short are removed
+    const storedDict = JSON.parse(localStorage.getItem('lexi5_custom_dict'))
+    expect(storedDict).toEqual(['apple', 'berry', 'robot'])
+    expect(storedDict.length).toBe(3)
+  })
+
+  it('handles curation timeout (AbortError)', async () => {
+    render(
+      <Settings
+        open={true}
+        onClose={() => {}}
+        config={defaultConfig}
+        onConfigChange={mockOnConfigChange}
+        onDictionaryChange={mockOnDictionaryChange}
+        onDifficultyChange={mockOnDifficultyChange}
+        onResetStats={mockOnResetStats}
+        openToCurate={false}
+      />
+    )
+    
+    // Simulate AbortError for timeout
+    global.fetch.mockRejectedValueOnce(new DOMException('The operation was aborted', 'AbortError'))
+
+    const curateTabButton = screen.getByText('AI Curation')
+    fireEvent.click(curateTabButton)
+
+    const apiKeyInput = await screen.findByPlaceholderText('sk-ant-...')
+    fireEvent.change(apiKeyInput, { target: { value: 'sk-ant-test-key' } })
+    
+    const curateButton = screen.getByText('Start Curation')
+    fireEvent.click(curateButton)
+    
+    await waitFor(() => {
+      expect(screen.getByText('Curation timed out after 30s. Please try again.')).toBeTruthy()
+    })
+    
+    // Ensure nothing was saved
+    expect(localStorage.getItem('lexi5_custom_dict')).toBeNull()
+  })
+})
+
+--- src\lexi5\components\Stats.jsx ---
+import React, { useEffect, useState, useRef } from 'react'
+import { Modal, Button } from '../../ds'
+import html2canvas from 'html2canvas'
+import styles from './Stats.module.css'
+
+export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onToast }) {
+  const [copied, setCopied] = useState(false)
+  const [definition, setDefinition] = useState(null)
+  const isFinished = gameState.status !== 'playing'
+  const isCrown = gameState.iteration === 0
+  const dictStats = stats[gameState.dictionary] || stats.standard
+  const shareRef = useRef(null)
+
+  useEffect(() => {
+    if (open) {
+      setCopied(false)
+      if (isFinished && !definition) {
+        fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data && data[0] && data[0].meanings) {
+              const def = data[0].meanings[0].definitions[0].definition
+              setDefinition(def)
+            } else {
+              setDefinition('Definition not found.')
+            }
+          })
+          .catch(() => setDefinition('Failed to load definition.'))
+      }
+    }
+  }, [open, isFinished, word, definition])
+
+  const handleShare = async () => {
+    if (shareRef.current) {
+      try {
+        const canvas = await html2canvas(shareRef.current, { backgroundColor: '#121213', scale: 2 })
+        canvas.toBlob(async (blob) => {
+          if (!blob) return
+          
+          const seedStr = encodeURIComponent(btoa(`${gameState.date}|${gameState.iteration}|${gameState.dictionary}`))
+          const shareUrl = `${window.location.origin}${window.location.pathname}?seed=${seedStr}`
+          const attempt = gameState.status === 'won' ? gameState.guesses.length : 'X'
+          const text = `Lexi5 (${gameState.dictionary}) ${attempt}/6\nPlay this board: ${shareUrl}`
+          
+          const file = new File([blob], 'lexi5-share.png', { type: 'image/png' })
+          
+          if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+              await navigator.share({ text, files: [file] })
+            } catch (err) {
+              // AbortError just means the user closed the native share sheet — not a failure.
+              if (err.name !== 'AbortError') {
+                console.error('Failed to share', err)
+                onToast?.('Could not share — try again.')
+              }
+            }
+          } else {
+            // Fallback to clipboard if supported, or just copy text
+            try {
+              await navigator.clipboard.write([
+                new ClipboardItem({ 'image/png': blob })
+              ])
+              setCopied(true)
+            } catch (_err) {
+              navigator.clipboard.writeText(text)
+                .then(() => setCopied(true))
+                .catch(() => onToast?.('Could not copy to clipboard — try again.'))
+            }
+          }
+        }, 'image/png')
+      } catch (err) {
+        console.error('Failed to generate share image', err)
+        onToast?.('Could not generate the share image — try again.')
+      }
+    }
+  }
+
+  const maxGuessCount = Math.max(...Object.values(dictStats.guesses), 1)
+
+  const totalGuesses = Object.entries(dictStats.guesses).reduce((acc, [num, count]) => acc + (Number(num) * count), 0)
+  const avgGuesses = dictStats.gamesWon > 0 ? (totalGuesses / dictStats.gamesWon).toFixed(1) : '-'
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Statistics (${gameState.dictionary})`}>
+      <div className={styles.statsContainer}>
+        <div className={styles.statBox}>
+          <div className={styles.statNum}>{dictStats.gamesPlayed}</div>
+          <div className={styles.statLabel}>Played</div>
+        </div>
+        <div className={styles.statBox}>
+          <div className={styles.statNum}>
+            {dictStats.gamesPlayed > 0 ? Math.round((dictStats.gamesWon / dictStats.gamesPlayed) * 100) : 0}
+          </div>
+          <div className={styles.statLabel}>Win %</div>
+        </div>
+        <div className={styles.statBox}>
+          <div className={styles.statNum}>{avgGuesses}</div>
+          <div className={styles.statLabel}>Avg</div>
+        </div>
+        <div className={styles.statDivider} aria-hidden="true" />
+        <div className={styles.statBox} title="Crown streak — consecutive wins on the first game of the day">
+          <div className={styles.statNum}>{dictStats.crownCurrentStreak || 0}</div>
+          <div className={styles.statLabel}>Streak</div>
+        </div>
+        <div className={styles.statBox} title="Best crown streak ever">
+          <div className={styles.statNum}>{dictStats.crownMaxStreak || 0}</div>
+          <div className={styles.statLabel}>Best</div>
+        </div>
+      </div>
+
+      <h3 className={styles.distTitle}>Guess Distribution</h3>
+      <div className={styles.distribution}>
+        {[1, 2, 3, 4, 5, 6].map(num => {
+          const count = dictStats.guesses[num] || 0
+          const percent = Math.max((count / maxGuessCount) * 100, 7) // Min 7% width to fit the number
+          
+          return (
+            <div key={num} className={styles.distRow}>
+              <div className={styles.distNum}>{num}</div>
+              <div 
+                className={`${styles.distBar} ${count > 0 ? styles.hasData : ''}`}
+                style={{ width: `${percent}%` }}
+              >
+                {count}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {isFinished && (
+        <div className={styles.footer}>
+          <div className={styles.wordReveal}>
+            The word was: <strong>{word.toUpperCase()}</strong>
+          </div>
+          {definition && (
+            <div className={styles.definition}>
+              <i>{definition}</i>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+            <Button onClick={handleShare}>
+              {copied ? 'Copied to Clipboard!' : 'Share Image'}
+            </Button>
+            <Button variant="primary" onClick={onPlayAgain}>
+              Play Again
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden element for html2canvas generation */}
+      {isFinished && (
+        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+          <div ref={shareRef} className={styles.shareCard}>
+            <div className={styles.shareHeader}>
+              <div className={styles.shareTitle}>
+                Lexi5 <span>{gameState.dictionary}</span>
+              </div>
+              <div className={styles.shareAttempt}>
+                {isCrown && <span style={{marginRight: 4}}>👑</span>}
+                {gameState.status === 'won' ? gameState.guesses.length : 'X'}/6
+              </div>
+            </div>
+            <div className={styles.shareGrid}>
+              {gameState.guesses.map((guess, r) => (
+                <div key={r} className={styles.shareRow}>
+                  {guess.split('').map((letter, i) => {
+                    const l = letter.toUpperCase()
+                    const isCorrect = word[i].toUpperCase() === l
+                    const isPresent = word.toUpperCase().includes(l)
+                    const statusClass = isCorrect ? styles.shareCorrect : (isPresent ? styles.sharePresent : styles.shareAbsent)
+                    return <div key={i} className={`${styles.shareTile} ${statusClass}`}></div>
+                  })}
+                </div>
+              ))}
+            </div>
+            {definition && (
+              <div className={styles.shareDef}>
+                <strong>{word.toUpperCase()}</strong>: {definition.substring(0, 80)}{definition.length > 80 ? '...' : ''}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
+--- src\lexi5\components\Stats.module.css ---
+.statsContainer {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.statBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 2px;
+  /* --surface-float reads as flat mid-gray in dark mode — not enough contrast
+     against light text (~2.6:1). Match .curateCard's proven pattern instead:
+     page background + a visible border, so text keeps the app's normal
+     (already-correct-contrast) foreground/background pairing. */
+  background: var(--surface-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.statDivider {
+  flex: none;
+  width: 1px;
+  margin: 4px 2px;
+  background: var(--border-subtle);
+}
+
+.statNum {
+  font-size: 1.5rem;
+  font-weight: bold;
+  line-height: 1.1;
+}
+
+.statLabel {
+  font-size: 0.65rem;
+  color: var(--text-subtle);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.distTitle {
+  font-size: 1rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 24px;
+}
+
+.distRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.distNum {
+  font-weight: bold;
+  width: 12px;
+}
+
+.distBar {
+  background-color: var(--surface-bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-base);
+  padding: 1px 7px;
+  font-size: 0.875rem;
+  font-weight: bold;
+  display: flex;
+  justify-content: flex-end;
+  min-width: fit-content;
+  box-sizing: border-box;
+  animation: growBar 0.8s ease-out forwards;
+  transform-origin: left;
+}
+
+@keyframes growBar {
+  0% { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+
+.distBar.hasData {
+  background-color: var(--tile-correct);
+  border-color: var(--tile-correct);
+  color: #fff;
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.wordReveal {
+  font-size: 1.25rem;
+}
+
+.definition {
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+  text-align: center;
+  max-width: 80%;
+  margin: 8px 0;
+}
+
+/* Hidden Share Card for html2canvas */
+.shareCard {
+  width: 400px;
+  padding: 32px;
+  background-color: #121213;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.shareHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  width: 100%;
+}
+
+.shareTitle {
+  font-size: 2rem;
+  font-family: "Cinzel", serif;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.shareTitle span {
+  font-size: 1rem;
+  font-family: var(--font-sans);
+  color: #818384;
+  margin-left: 8px;
+}
+
+.shareAttempt {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.shareGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shareRow {
+  display: flex;
+  gap: 8px;
+}
+
+.shareTile {
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+}
+
+.shareCorrect {
+  background-color: var(--tile-correct);
+}
+
+.sharePresent {
+  background-color: var(--tile-present);
+}
+
+.shareAbsent {
+  background-color: var(--tile-absent);
+}
+
+.shareDef {
+  font-size: 1rem;
+  color: #d7dadc;
+  text-align: center;
+  border-top: 1px solid #3a3a3c;
+  padding-top: 16px;
+  width: 100%;
+}
+
+--- src\lexi5\components\Stats.test.jsx ---
+// @vitest-environment happy-dom
+import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest'
+import { render, cleanup, screen, fireEvent, waitFor } from '@testing-library/react'
+import { Stats } from './Stats'
+import html2canvas from 'html2canvas'
+
+// Mock html2canvas
+vi.mock('html2canvas', () => ({
+  default: vi.fn()
+}))
+
+// Mock ds components
+vi.mock('../../ds', () => ({
+  Modal: ({ children, open }) => (open ? <div data-testid="modal">{children}</div> : null),
+  Button: ({ children, onClick, disabled }) => (
+    <button data-testid="button" onClick={onClick} disabled={disabled}>{children}</button>
+  ),
+  SegmentedControl: ({ value, onChange }) => (
+    <select data-testid="segmented-control" value={value} onChange={e => onChange(e.target.value)}>
+      <option value="standard">Standard</option>
+      <option value="lite">Lite</option>
+    </select>
+  )
+}))
+
+// Mock Chart.js to avoid canvas errors
+vi.mock('react-chartjs-2', () => ({
+  Bar: () => <div data-testid="bar-chart" />
+}))
+
+describe('Stats component', () => {
+  const defaultStats = {
+    standard: {
+      gamesPlayed: 10,
+      gamesWon: 8,
+      currentStreak: 2,
+      maxStreak: 5,
+      crownGamesPlayed: 5,
+      crownGamesWon: 4,
+      crownCurrentStreak: 1,
+      crownMaxStreak: 3,
+      guesses: { 1: 0, 2: 1, 3: 2, 4: 3, 5: 1, 6: 1 }
+    }
+  }
+
+  const defaultGameState = {
+    dictionary: 'standard',
+    status: 'won',
+    guesses: ['apple', 'berry', 'robot']
+  }
+
+  const mockOnToast = vi.fn()
+  const mockOnPlayAgain = vi.fn()
+  const mockOnClose = vi.fn()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    
+    // Setup navigator mocks
+    Object.defineProperty(navigator, 'share', { value: vi.fn(), configurable: true })
+    Object.defineProperty(navigator, 'canShare', { value: vi.fn(), configurable: true })
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        write: vi.fn(),
+        writeText: vi.fn()
+      },
+      configurable: true
+    })
+    
+    // Mock Blob and File
+    global.Blob = class Blob {}
+    global.File = class File {}
+    
+    // Mock canvas toBlob
+    global.HTMLCanvasElement.prototype.toBlob = function(callback) {
+      callback(new Blob())
+    }
+  })
+
+  afterEach(cleanup)
+
+  it('invokes navigator.share when canShare is true', async () => {
+    navigator.canShare.mockReturnValue(true)
+    navigator.share.mockResolvedValue(undefined)
+    
+    // Mock html2canvas resolving to a canvas
+    const mockCanvas = document.createElement('canvas')
+    html2canvas.mockResolvedValue(mockCanvas)
+    
+    render(
+      <Stats
+        open={true}
+        onClose={mockOnClose}
+        stats={defaultStats}
+        gameState={defaultGameState}
+        word="ROBOT"
+        onPlayAgain={mockOnPlayAgain}
+        onToast={mockOnToast}
+      />
+    )
+    
+    const shareButton = screen.getByText(/Share Image/)
+    fireEvent.click(shareButton)
+    
+    await waitFor(() => {
+      expect(navigator.share).toHaveBeenCalled()
+      // Button resets
+      expect(shareButton.textContent).toMatch(/Share Image/)
+    })
+  })
+
+  it('handles AbortError quietly when user closes share sheet', async () => {
+    navigator.canShare.mockReturnValue(true)
+    navigator.share.mockRejectedValue(new DOMException('User aborted', 'AbortError'))
+    
+    const mockCanvas = document.createElement('canvas')
+    html2canvas.mockResolvedValue(mockCanvas)
+    
+    render(
+      <Stats
+        open={true}
+        onClose={mockOnClose}
+        stats={defaultStats}
+        gameState={defaultGameState}
+        word="ROBOT"
+        onPlayAgain={mockOnPlayAgain}
+        onToast={mockOnToast}
+      />
+    )
+    
+    const shareButton = screen.getByText(/Share Image/)
+    fireEvent.click(shareButton)
+    
+    await waitFor(() => {
+      expect(navigator.share).toHaveBeenCalled()
+      // Should NOT toast an error if it's an AbortError
+      expect(mockOnToast).not.toHaveBeenCalled()
+      // Button resets
+      expect(shareButton.textContent).toMatch(/Share Image/)
+    })
+  })
+
+  it('falls back to clipboard.write if canShare is false', async () => {
+    navigator.canShare.mockReturnValue(false)
+    navigator.clipboard.write.mockResolvedValue(undefined)
+    
+    const mockCanvas = document.createElement('canvas')
+    html2canvas.mockResolvedValue(mockCanvas)
+    
+    render(
+      <Stats
+        open={true}
+        onClose={mockOnClose}
+        stats={defaultStats}
+        gameState={defaultGameState}
+        word="ROBOT"
+        onPlayAgain={mockOnPlayAgain}
+        onToast={mockOnToast}
+      />
+    )
+    
+    const shareButton = screen.getByText(/Share Image/)
+    fireEvent.click(shareButton)
+    
+    await waitFor(() => {
+      expect(navigator.share).not.toHaveBeenCalled()
+      expect(navigator.clipboard.write).toHaveBeenCalled()
+      expect(shareButton.textContent).toBe('Copied to Clipboard!')
+    })
+  })
+
+  it('falls back to clipboard.writeText if clipboard.write fails', async () => {
+    navigator.canShare.mockReturnValue(false)
+    navigator.clipboard.write.mockRejectedValue(new Error('NotAllowedError'))
+    navigator.clipboard.writeText.mockResolvedValue(undefined)
+    
+    const mockCanvas = document.createElement('canvas')
+    html2canvas.mockResolvedValue(mockCanvas)
+    
+    render(
+      <Stats
+        open={true}
+        onClose={mockOnClose}
+        stats={defaultStats}
+        gameState={defaultGameState}
+        word="ROBOT"
+        onPlayAgain={mockOnPlayAgain}
+        onToast={mockOnToast}
+      />
+    )
+    
+    const shareButton = screen.getByText(/Share Image/)
+    fireEvent.click(shareButton)
+    
+    await waitFor(() => {
+      expect(navigator.clipboard.write).toHaveBeenCalled()
+      expect(navigator.clipboard.writeText).toHaveBeenCalled()
+      expect(shareButton.textContent).toBe('Copied to Clipboard!')
+    })
+  })
+})
+
+--- src\lexi5\lib\config.js ---
+import { useState, useEffect } from 'react'
+
+const CONFIG_KEY = 'lexi5_config'
+
+const DEFAULT_CONFIG = {
+  theme: null, // null = system, 'light', 'dark'
+  difficulty: 'normal', // 'normal', 'hard'
+  dictionary: 'standard', // 'lite', 'standard', 'expanded', 'expert', 'custom'
+  smartKeyboard: false, // true to show dots on yellow keys
+}
+
+export function useConfig() {
+  const [config, setConfig] = useState(() => {
+    try {
+      const stored = localStorage.getItem(CONFIG_KEY)
+      return stored ? { ...DEFAULT_CONFIG, ...JSON.parse(stored) } : DEFAULT_CONFIG
+    } catch {
+      return DEFAULT_CONFIG
+    }
+  })
+
+  useEffect(() => {
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(config))
+    
+    // Apply theme to document
+    const dark = config.theme 
+      ? config.theme === 'dark' 
+      : matchMedia('(prefers-color-scheme: dark)').matches
+    
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+  }, [config])
+
+  const updateConfig = (updates) => {
+    setConfig(prev => ({ ...prev, ...updates }))
+  }
+
+  return { config, updateConfig }
+}
+
+--- src\lexi5\lib\gameState.js ---
+import { useState, useEffect } from 'react'
+import wordsData from '../data/words.json'
+
+const STATS_KEY = 'lexi5_stats'
+const GAME_KEY = 'lexi5_game'
+
+const DEFAULT_STATS_DICT = {
+  gamesPlayed: 0,
+  gamesWon: 0,
+  crownGamesPlayed: 0,
+  crownGamesWon: 0,
+  currentStreak: 0,
+  maxStreak: 0,
+  crownCurrentStreak: 0,
+  crownMaxStreak: 0,
+  guesses: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }
+}
+
+const DEFAULT_STATS = {
+  lite: { ...DEFAULT_STATS_DICT },
+  standard: { ...DEFAULT_STATS_DICT },
+  expanded: { ...DEFAULT_STATS_DICT },
+  expert: { ...DEFAULT_STATS_DICT },
+  custom: { ...DEFAULT_STATS_DICT }
+}
+
+// Built-in dictionaries, ordered easiest to hardest (Custom is user-curated, so it's
+// surfaced separately rather than slotted into this difficulty ordering).
+export const BUILTIN_DICTIONARY_ORDER = ['lite', 'standard', 'expanded', 'expert']
+
+export const DICTIONARY_SIZES = BUILTIN_DICTIONARY_ORDER.reduce((acc, key) => {
+  acc[key] = wordsData.dictionaries[key].length
+  return acc
+}, {})
+
+export const DICTIONARY_LABELS = {
+  lite: 'Lite',
+  standard: 'Standard',
+  expanded: 'Expanded',
+  expert: 'Expert',
+  custom: 'Custom (AI Curated)'
+}
+
+export function hasCustomDictionary() {
+  try {
+    const customList = JSON.parse(localStorage.getItem('lexi5_custom_dict'))
+    return !!(customList && customList.length > 0)
+  } catch (_e) {
+    return false
+  }
+}
+
+export function getCustomDictionarySize() {
+  try {
+    const customList = JSON.parse(localStorage.getItem('lexi5_custom_dict'))
+    return customList ? customList.length : 0
+  } catch (_e) {
+    return 0
+  }
+}
+
+// A dictionary of 'custom' with no curated list yet isn't playable — fall back to
+// Standard rather than silently serving Standard words under the 'custom' label.
+export function normalizeDictionary(dictionary) {
+  if (dictionary === 'custom' && !hasCustomDictionary()) return 'standard'
+  return dictionary
+}
+
+function hashString(str) {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i)
+    hash |= 0 // Convert to 32bit integer
+  }
+  return hash >>> 0
+}
+
+// Deterministic PRNG (mulberry32) so a shuffle is reproducible from a numeric seed
+function mulberry32(seed) {
+  let a = seed
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+const shuffleCache = new Map()
+
+// A deterministic shuffled permutation of a list's indices, reseeded automatically
+// whenever the list's contents change OR when the list completes a full cycle.
+function getShuffledOrder(list, cycleNumber = 0) {
+  const key = `${list.length}:${hashString(list.join(','))}:cycle:${cycleNumber}`
+  const cached = shuffleCache.get(key)
+  if (cached) return cached
+
+  const rand = mulberry32(hashString(key))
+  const order = list.map((_, i) => i)
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1))
+    ;[order[i], order[j]] = [order[j], order[i]]
+  }
+  shuffleCache.set(key, order)
+  return order
+}
+
+function resolveDictionaryList(dictionary) {
+  if (dictionary === 'custom') {
+    try {
+      const customList = JSON.parse(localStorage.getItem('lexi5_custom_dict'))
+      if (customList && customList.length > 0) return customList
+    } catch (_e) {}
+    return wordsData.dictionaries.standard
+  }
+  return wordsData.dictionaries[dictionary] || wordsData.dictionaries.standard
+}
+
+function daysSinceEpoch(dateString) {
+  return Math.floor(new Date(dateString).getTime() / 86400000)
+}
+
+const CUSTOM_DICT_EPOCH_KEY = 'lexi5_custom_dict_epoch'
+
+// Anchors Custom's cycle to the day it was actually curated. Without this, "cycle
+// number" would be days-since-1970 divided by list length — since we're ~20,000
+// days past epoch, that's already several "cycles" for any list under a few
+// thousand words, on the very day it's created. Built-in dictionaries don't need
+// an anchor (anchor 0): they never get recreated, so absolute-epoch cycling is
+// already correct and stable for them.
+function getCustomDictionaryEpoch() {
+  const stored = localStorage.getItem(CUSTOM_DICT_EPOCH_KEY)
+  const parsed = Number(stored)
+  if (stored !== null && !Number.isNaN(parsed)) return parsed
+  // No anchor recorded yet (list curated before this existed, or first read this
+  // session) — anchor to today instead of claiming staleness the list never earned.
+  const today = daysSinceEpoch(new Date().toDateString())
+  try { localStorage.setItem(CUSTOM_DICT_EPOCH_KEY, String(today)) } catch (_e) {}
+  return today
+}
+
+// Call whenever a new Custom list is saved, so its cycle starts counting from today.
+export function markCustomDictionaryCurated() {
+  try { localStorage.setItem(CUSTOM_DICT_EPOCH_KEY, String(daysSinceEpoch(new Date().toDateString()))) } catch (_e) {}
+}
+
+export function removeCustomDictionary() {
+  try {
+    localStorage.removeItem('lexi5_custom_dict')
+    localStorage.removeItem(CUSTOM_DICT_EPOCH_KEY)
+  } catch (_e) {}
+}
+
+// Where a given (date, iteration) falls in the list's non-repeating cycle:
+// position advances by exactly 1 per calendar day (or extra same-day play), so
+// every word in the list is guaranteed to appear exactly once before any repeat.
+export function getWordProgress(dictionary = 'standard', dateString, iteration = 0) {
+  const list = resolveDictionaryList(dictionary)
+  const anchor = dictionary === 'custom' ? getCustomDictionaryEpoch() : 0
+  const seq = (daysSinceEpoch(dateString) - anchor) + iteration
+  const total = list.length
+  const position = ((seq % total) + total) % total
+  const cycleNumber = Math.floor(seq / total)
+  return { position, total, cycleNumber, justWrapped: position === 0 && cycleNumber > 0 }
+}
+
+// Deterministic word based on local date, dictionary, and iteration. Pure function
+// of its inputs (needed so shared/seeded game links resolve to the same word), but
+// picks from a per-list shuffled order so words don't repeat until the whole list cycles.
+export function getWord(dictionary = 'standard', dateString, iteration = 0) {
+  const list = resolveDictionaryList(dictionary)
+  const { position, cycleNumber } = getWordProgress(dictionary, dateString, iteration)
+  const order = getShuffledOrder(list, cycleNumber)
+  return list[order[position]]
+}
+
+export function parseSeed(seedStr) {
+  try {
+    const decoded = atob(seedStr)
+    const [date, iterationStr, dictionary] = decoded.split('|')
+    if (date && iterationStr && dictionary) {
+      return { date, iteration: parseInt(iterationStr, 10), dictionary }
+    }
+  } catch (_e) {
+    // ignore invalid seeds
+  }
+  return null
+}
+
+export function isValidGuess(word) {
+  try {
+    const customList = JSON.parse(localStorage.getItem('lexi5_custom_dict'))
+    if (customList && customList.includes(word)) return true
+  } catch (_e) {}
+  
+  return wordsData.guesses.includes(word)
+}
+
+// Reads and migrates the stored stats blob (pure — no writes).
+function loadStats() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(STATS_KEY) || 'null')
+    if (stored) {
+      // Migration from non-dictionary stats
+      if (stored.gamesPlayed !== undefined) {
+        return {
+          ...DEFAULT_STATS,
+          standard: { ...DEFAULT_STATS_DICT, ...stored }
+        }
+      }
+      return {
+        ...DEFAULT_STATS,
+        lite: { ...DEFAULT_STATS_DICT, ...(stored.lite || {}) },
+        standard: { ...DEFAULT_STATS_DICT, ...(stored.standard || {}) },
+        expanded: { ...DEFAULT_STATS_DICT, ...(stored.expanded || {}) },
+        expert: { ...DEFAULT_STATS_DICT, ...(stored.expert || {}) },
+        custom: { ...DEFAULT_STATS_DICT, ...(stored.custom || {}) },
+      }
+    }
+    return DEFAULT_STATS
+  } catch {
+    return DEFAULT_STATS
+  }
+}
+
+// Folds a loss for a game abandoned mid-play (left unfinished past midnight) into a
+// stats object, using the same shape updateStats writes, so it surfaces in Stats (pure).
+function applyAbandonedLoss(statsObj, dict, wasCrown) {
+  const prevDict = dict || 'standard'
+  const dictStats = { ...DEFAULT_STATS_DICT, ...(statsObj[prevDict] || {}) }
+  return {
+    ...statsObj,
+    [prevDict]: {
+      ...dictStats,
+      gamesPlayed: dictStats.gamesPlayed + 1,
+      crownGamesPlayed: dictStats.crownGamesPlayed + (wasCrown ? 1 : 0),
+      currentStreak: 0,
+      crownCurrentStreak: wasCrown ? 0 : dictStats.crownCurrentStreak
+    }
+  }
+}
+
+// Computes the initial game state (pure — no writes) plus, if a prior game was left
+// unfinished past midnight, the abandonment info needed to record it as a loss.
+function computeInitialGame(difficulty, dictionary, urlSeed) {
+  const today = new Date().toDateString()
+  const parsedSeed = urlSeed ? parseSeed(urlSeed) : null
+  const freshState = {
+    date: today,
+    iteration: 0,
+    guesses: [],
+    status: 'playing', // 'playing', 'won', 'lost'
+    difficulty,
+    dictionary: normalizeDictionary(dictionary)
+  }
+
+  try {
+    const stored = JSON.parse(localStorage.getItem(GAME_KEY))
+
+    if (parsedSeed) {
+      // If resuming the exact seeded game, load it
+      if (stored && stored.date === parsedSeed.date && stored.iteration === parsedSeed.iteration && stored.dictionary === parsedSeed.dictionary) {
+        return { state: stored, abandonment: null }
+      }
+      // Otherwise start fresh with the seed
+      return {
+        state: {
+          date: parsedSeed.date,
+          iteration: parsedSeed.iteration,
+          guesses: [],
+          status: 'playing',
+          difficulty,
+          dictionary: normalizeDictionary(parsedSeed.dictionary)
+        },
+        abandonment: null
+      }
+    }
+
+    // Normal flow (no seed):
+    // Only resume if it's the same day.
+    // If it's a new day, the old game is discarded (reset at midnight).
+    // If the old game was still in progress and they had guessed at least once, count it as a loss.
+    let abandonment = null
+    if (stored && stored.date !== today && stored.status === 'playing' && stored.guesses.length > 0) {
+      abandonment = { dict: stored.dictionary, wasCrown: stored.iteration === 0 }
+    }
+
+    if (stored && stored.date === today) {
+      // If they changed settings but haven't started playing, apply them.
+      // Otherwise, keep the locked settings for the in-progress game.
+      if (stored.guesses.length === 0) {
+        return { state: { ...stored, difficulty, dictionary: normalizeDictionary(dictionary) }, abandonment }
+      }
+      return { state: stored, abandonment }
+    }
+
+    return { state: freshState, abandonment }
+  } catch (_e) {
+    return { state: freshState, abandonment: null }
+  }
+}
+
+export function useGameState(difficulty, dictionary, urlSeed = null) {
+  // Computed once per mount (both calls are pure and read the same localStorage
+  // snapshot), so the abandoned-game stats adjustment lands in `stats`' own
+  // initializer instead of racing the `stats` write-back effect below.
+  const [stats, setStats] = useState(() => {
+    const base = loadStats()
+    const { abandonment } = computeInitialGame(difficulty, dictionary, urlSeed)
+    return abandonment ? applyAbandonedLoss(base, abandonment.dict, abandonment.wasCrown) : base
+  })
+
+  const [gameState, setGameState] = useState(() => computeInitialGame(difficulty, dictionary, urlSeed).state)
+
+  useEffect(() => {
+    localStorage.setItem(STATS_KEY, JSON.stringify(stats))
+  }, [stats])
+
+  useEffect(() => {
+    localStorage.setItem(GAME_KEY, JSON.stringify(gameState))
+  }, [gameState])
+
+  const addGuess = (guess, word) => {
+    if (gameState.status !== 'playing') return
+
+    const newGuesses = [...gameState.guesses, guess]
+    const won = guess === word
+    const lost = newGuesses.length >= 6 && !won
+    
+    let newStatus = 'playing'
+    if (won) newStatus = 'won'
+    else if (lost) newStatus = 'lost'
+
+    setGameState(prev => ({
+      ...prev,
+      guesses: newGuesses,
+      status: newStatus
+    }))
+
+    if (newStatus !== 'playing') {
+      updateStats(won, newGuesses.length, gameState.dictionary)
+    }
+  }
+
+  const forfeitGame = () => {
+    if (gameState.status !== 'playing') return
+    const newState = { ...gameState, status: 'lost' }
+    setGameState(newState)
+    localStorage.setItem(GAME_KEY, JSON.stringify(newState))
+    updateStats(false, gameState.guesses.length, gameState.dictionary)
+  }
+
+  const resetStats = () => {
+    localStorage.removeItem(STATS_KEY)
+    setStats({ ...DEFAULT_STATS })
+  }
+
+  const startNextGame = (currentDifficulty, currentDictionary) => {
+    const today = new Date().toDateString()
+    setGameState(prev => ({
+      date: today,
+      iteration: prev.date === today ? prev.iteration + 1 : 0,
+      guesses: [],
+      status: 'playing',
+      difficulty: currentDifficulty,
+      dictionary: normalizeDictionary(currentDictionary)
+    }))
+  }
+
+  // Switching dictionaries mid-game abandons the current puzzle (with no stats
+  // penalty — it wasn't forfeited, the player just picked a different word list)
+  // and deals a fresh word from the new dictionary right away.
+  const switchDictionary = (newDictionary) => {
+    setGameState(prev => ({
+      date: new Date().toDateString(),
+      iteration: 0,
+      guesses: [],
+      status: 'playing',
+      difficulty: prev.difficulty,
+      dictionary: normalizeDictionary(newDictionary)
+    }))
+  }
+
+  const updateStats = (won, numGuesses, dict) => {
+    if (won && gameState.iteration === 0) {
+      try {
+        const history = JSON.parse(localStorage.getItem('lexi5_history') || '{}')
+        history[`${dict}:${gameState.date}`] = true
+        localStorage.setItem('lexi5_history', JSON.stringify(history))
+      } catch (_e) {}
+    }
+
+    setStats(prev => {
+      const dictStats = prev[dict] || DEFAULT_STATS_DICT
+      const currentStreak = won ? dictStats.currentStreak + 1 : 0
+      
+      const isCrown = gameState.iteration === 0
+      const crownCurrentStreak = isCrown ? (won ? (dictStats.crownCurrentStreak || 0) + 1 : 0) : dictStats.crownCurrentStreak
+      
+      return {
+        ...prev,
+        [dict]: {
+          ...dictStats,
+          gamesPlayed: dictStats.gamesPlayed + 1,
+          gamesWon: dictStats.gamesWon + (won ? 1 : 0),
+          crownGamesPlayed: dictStats.crownGamesPlayed + (isCrown ? 1 : 0),
+          crownGamesWon: dictStats.crownGamesWon + (isCrown && won ? 1 : 0),
+          currentStreak,
+          maxStreak: Math.max(dictStats.maxStreak, currentStreak),
+          crownCurrentStreak,
+          crownMaxStreak: Math.max(dictStats.crownMaxStreak || 0, crownCurrentStreak || 0),
+          guesses: won ? { ...dictStats.guesses, [numGuesses]: dictStats.guesses[numGuesses] + 1 } : dictStats.guesses
+        }
+      }
+    })
+  }
+  return { gameState, stats, addGuess, startNextGame, switchDictionary, forfeitGame, resetStats }
+}
+
+export function wasGameWon(dictionary, dateString) {
+  try {
+    const history = JSON.parse(localStorage.getItem('lexi5_history') || '{}')
+    return !!history[`${dictionary}:${dateString}`]
+  } catch (_e) {
+    return false
+  }
+}
+
+--- src\lexi5\lib\gameState.test.js ---
+// @vitest-environment happy-dom
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { renderHook, act } from '@testing-library/react'
+import {
+  getWord,
+  getWordProgress,
+  parseSeed,
+  isValidGuess,
+  useGameState,
+  normalizeDictionary,
+  hasCustomDictionary,
+  getCustomDictionarySize,
+  markCustomDictionaryCurated,
+  DICTIONARY_SIZES,
+  BUILTIN_DICTIONARY_ORDER
+} from './gameState'
+
+function addDays(dateString, days) {
+  const d = new Date(dateString)
+  d.setDate(d.getDate() + days)
+  return d.toDateString()
+}
+
+const localStorageMock = (() => {
+  let store = {}
+  return {
+    getItem: (key) => store[key] || null,
+    setItem: (key, value) => { store[key] = value.toString() },
+    removeItem: (key) => { delete store[key] },
+    clear: () => { store = {} }
+  }
+})()
+vi.stubGlobal('localStorage', localStorageMock)
+
+describe('gameState logic', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    localStorage.clear()
+  })
+
+  it('getWord generates a deterministic word based on seed data', () => {
+    const word1 = getWord('standard', '2026-08-07', 0)
+    const word2 = getWord('standard', '2026-08-07', 0)
+    const word3 = getWord('standard', '2026-08-07', 1)
+
+    expect(word1).toBeDefined()
+    expect(typeof word1).toBe('string')
+    expect(word1).toBe(word2)
+    expect(word1).not.toBe(word3) // different iteration yields different word
+  })
+
+  it('getWord defaults to standard dictionary if missing', () => {
+    const word1 = getWord('unknown_dict', '2026-08-07', 0)
+    const word2 = getWord('standard', '2026-08-07', 0)
+    expect(word1).toBe(word2)
+  })
+
+  it('parseSeed correctly decodes valid seeds', () => {
+    // encode "2026-08-07|1|expanded"
+    const validSeed = btoa('2026-08-07|1|expanded')
+    const parsed = parseSeed(validSeed)
+
+    expect(parsed).toEqual({
+      date: '2026-08-07',
+      iteration: 1,
+      dictionary: 'expanded'
+    })
+  })
+
+  it('parseSeed returns null for invalid seeds', () => {
+    expect(parseSeed('invalid_base64_+++')).toBeNull()
+    expect(parseSeed(btoa('missing_parts'))).toBeNull()
+  })
+
+  it('isValidGuess validates guesses against the dictionary', () => {
+    expect(isValidGuess('apple')).toBe(true)
+    expect(isValidGuess('zzzzz')).toBe(false) // Assuming zzzzz is not in the dictionary
+  })
+
+  describe('DICTIONARY_SIZES / BUILTIN_DICTIONARY_ORDER', () => {
+    it('orders built-in dictionaries easiest to hardest', () => {
+      expect(BUILTIN_DICTIONARY_ORDER).toEqual(['lite', 'standard', 'expanded', 'expert'])
+    })
+
+    it('reports strictly increasing sizes across the difficulty order', () => {
+      const sizes = BUILTIN_DICTIONARY_ORDER.map(k => DICTIONARY_SIZES[k])
+      for (let i = 1; i < sizes.length; i++) {
+        expect(sizes[i]).toBeGreaterThan(sizes[i - 1])
+      }
+    })
+  })
+
+  describe('no-repeat word cycle (getWordProgress / getWord)', () => {
+    it('never repeats a word within a full cycle of the list', () => {
+      const total = DICTIONARY_SIZES.lite
+      const base = '2026-01-01'
+      
+      // Calculate the offset needed to start exactly at a cycle boundary
+      const msPerDay = 1000 * 60 * 60 * 24
+      const seq = Math.floor(new Date(base).getTime() / msPerDay)
+      const offset = (total - (seq % total)) % total
+      
+      const words = new Set()
+      for (let i = 0; i < total; i++) {
+        // use iteration to increment seq exactly, starting at a cycle boundary
+        words.add(getWord('lite', base, offset + i))
+      }
+      // Compare against the actual number of unique words in the lite dictionary
+      // in case the raw array has a duplicate.
+      const liteUniqueSize = new Set(require('../data/words.json').dictionaries.lite).size
+      expect(words.size).toBe(liteUniqueSize)
+    })
+
+    it('reports position/cycle/justWrapped correctly at cycle boundaries', () => {
+      const total = DICTIONARY_SIZES.lite
+      const epoch = '1970-01-01' // daysSinceEpoch === 0
+
+      const last = getWordProgress('lite', epoch, total - 1)
+      expect(last.position).toBe(total - 1)
+      expect(last.cycleNumber).toBe(0)
+      expect(last.justWrapped).toBe(false)
+
+      const wrapped = getWordProgress('lite', epoch, total)
+      expect(wrapped.position).toBe(0)
+      expect(wrapped.cycleNumber).toBe(1)
+      expect(wrapped.justWrapped).toBe(true)
+    })
+
+    it('gives every built-in dictionary at least one non-repeating stretch of days', () => {
+      const base = '2026-01-01'
+      const msPerDay = 1000 * 60 * 60 * 24
+      const seq = Math.floor(new Date(base).getTime() / msPerDay)
+
+      for (const dict of BUILTIN_DICTIONARY_ORDER) {
+        const total = DICTIONARY_SIZES[dict]
+        const offset = (total - (seq % total)) % total
+        const sampleSize = Math.min(30, total)
+        const words = new Set()
+        for (let i = 0; i < sampleSize; i++) {
+          words.add(getWord(dict, base, offset + i))
+        }
+        expect(words.size).toBe(sampleSize)
+      }
+    })
+  })
+
+  describe('custom dictionary fallback (normalizeDictionary / hasCustomDictionary)', () => {
+    it('falls back "custom" to "standard" when no custom list is stored', () => {
+      expect(hasCustomDictionary()).toBe(false)
+      expect(normalizeDictionary('custom')).toBe('standard')
+    })
+
+    it('keeps "custom" once a non-empty custom list exists', () => {
+      localStorage.setItem('lexi5_custom_dict', JSON.stringify(['apple', 'mango']))
+      expect(hasCustomDictionary()).toBe(true)
+      expect(getCustomDictionarySize()).toBe(2)
+      expect(normalizeDictionary('custom')).toBe('custom')
+    })
+
+    it('passes through non-custom dictionaries unchanged', () => {
+      expect(normalizeDictionary('expert')).toBe('expert')
+    })
+  })
+
+  describe('custom dictionary cycle anchoring (markCustomDictionaryCurated)', () => {
+    it('a freshly curated list is not immediately "stale" despite being far past the Unix epoch', () => {
+      // Without an anchor, cycleNumber = daysSinceEpoch / list.length — since we're
+      // ~20,000 days past 1970, a small/freshly-made list would look already-cycled
+      // on day one. This is the exact bug the anchor exists to prevent.
+      localStorage.setItem('lexi5_custom_dict', JSON.stringify(['apple', 'mango', 'grape']))
+      const today = new Date().toDateString()
+      markCustomDictionaryCurated()
+
+      const progress = getWordProgress('custom', today, 0)
+      expect(progress.cycleNumber).toBe(0)
+      expect(progress.position).toBe(0)
+      expect(progress.justWrapped).toBe(false)
+    })
+
+    it('only reports a wrapped cycle once every word has actually had a turn since curation', () => {
+      const list = ['apple', 'mango', 'grape']
+      localStorage.setItem('lexi5_custom_dict', JSON.stringify(list))
+      const today = new Date().toDateString()
+      markCustomDictionaryCurated()
+
+      const almostWrapped = getWordProgress('custom', addDays(today, list.length - 1), 0)
+      expect(almostWrapped.cycleNumber).toBe(0)
+
+      const wrapped = getWordProgress('custom', addDays(today, list.length), 0)
+      expect(wrapped.cycleNumber).toBe(1)
+      expect(wrapped.justWrapped).toBe(true)
+    })
+
+    it('self-heals a missing curation anchor instead of claiming instant staleness', () => {
+      // Simulates a list saved before this anchor existed — no markCustomDictionaryCurated() call.
+      localStorage.setItem('lexi5_custom_dict', JSON.stringify(['apple', 'mango', 'grape']))
+      const today = new Date().toDateString()
+
+      const progress = getWordProgress('custom', today, 0)
+      expect(progress.cycleNumber).toBe(0)
+    })
+  })
+
+  describe('useGameState', () => {
+    it('normalizes an unusable "custom" dictionary to "standard" on init', () => {
+      const { result } = renderHook(() => useGameState('normal', 'custom', null))
+      expect(result.current.gameState.dictionary).toBe('standard')
+    })
+
+    it('records an abandoned in-progress game as a loss without crashing', () => {
+      vi.setSystemTime(new Date('2020-01-02T12:00:00'))
+      localStorage.setItem('lexi5_game', JSON.stringify({
+        date: 'Wed Jan 01 2020',
+        iteration: 0,
+        guesses: ['apple'],
+        status: 'playing',
+        difficulty: 'normal',
+        dictionary: 'standard'
+      }))
+
+      const { result } = renderHook(() => useGameState('normal', 'standard', null))
+
+      // A fresh game should start today — the abandoned one is not resumed.
+      expect(result.current.gameState.date).toBe(new Date().toDateString())
+      expect(result.current.gameState.guesses).toEqual([])
+
+      const stats = JSON.parse(localStorage.getItem('lexi5_stats'))
+      expect(stats.standard.gamesPlayed).toBe(1)
+      expect(stats.standard.currentStreak).toBe(0)
+      expect(stats.standard.crownGamesPlayed).toBe(1) // iteration 0 === crown game
+    })
+
+    it('does not record a loss for a same-day in-progress game', () => {
+      const today = new Date().toDateString()
+      localStorage.setItem('lexi5_game', JSON.stringify({
+        date: today,
+        iteration: 0,
+        guesses: ['apple'],
+        status: 'playing',
+        difficulty: 'normal',
+        dictionary: 'standard'
+      }))
+
+      renderHook(() => useGameState('normal', 'standard', null))
+
+      const stats = JSON.parse(localStorage.getItem('lexi5_stats'))
+      expect(stats.standard.gamesPlayed).toBe(0)
+    })
+
+    it('switchDictionary starts a fresh game with no stats penalty', () => {
+      const { result } = renderHook(() => useGameState('normal', 'standard', null))
+
+      act(() => {
+        result.current.addGuess('wrong', 'apple')
+      })
+      expect(result.current.gameState.guesses).toEqual(['wrong'])
+
+      const statsBefore = JSON.parse(JSON.stringify(result.current.stats))
+
+      act(() => {
+        result.current.switchDictionary('expanded')
+      })
+
+      expect(result.current.gameState.dictionary).toBe('expanded')
+      expect(result.current.gameState.guesses).toEqual([])
+      expect(result.current.gameState.status).toBe('playing')
+      expect(result.current.stats).toEqual(statsBefore)
+    })
+  })
+})
+
+--- src\lexi5\lib\haptics.js ---
+// Minimal haptics utility for mobile devices
+export function hapticTap() {
+  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+    navigator.vibrate(10) // Light tap for keyboard
+  }
+}
+
+export function hapticError() {
+  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+    navigator.vibrate([30, 50, 30]) // Double pulse for errors
+  }
+}
+
+export function hapticWin() {
+  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+    navigator.vibrate([50, 50, 50, 50, 100]) // Celebration pulse
+  }
+}
+
+--- src\lexi5\main.jsx ---
+import React from 'react'
+import { createRoot } from 'react-dom/client'
+// Imported before ./App so its :root rules load first — Lexi5's own CSS (which
+// remaps --color-ink/--color-surface/etc. to its own tokens) loads after and wins
+// the cascade tie, instead of DS's Solarized-family ink bleeding through Modal text.
+import '../ds/tokens.css'
+import { App } from './App'
+import { watchInstalled } from '../shared/installFlag'
+
+// Register Cabinet install detection flag
+watchInstalled('lexi5-react.html')
+
+// Register the PWA service worker
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/lexi5-sw.js').catch((err) => {
+      console.error('Lexi5 SW registration failed:', err)
+    })
+  })
+}
+
+const root = createRoot(document.getElementById('root'))
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+)

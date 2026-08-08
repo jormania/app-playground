@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useConfig } from './lib/config'
 import { useGameState, getWord, getWordProgress, isValidGuess, hasCustomDictionary, DICTIONARY_LABELS } from './lib/gameState'
 import { hapticTap, hapticError, hapticWin } from './lib/haptics'
@@ -35,6 +35,9 @@ export function App() {
   const [toast, setToast] = useState(null)
   const [openSettingsToCurate, setOpenSettingsToCurate] = useState(false)
   const [showArchive, setShowArchive] = useState(false)
+  
+  const toastTimeoutRef = useRef(null)
+  const shakeTimeoutRef = useRef(null)
 
   // Show stats automatically when game ends, trigger confetti, update favicon
   useEffect(() => {
@@ -71,7 +74,14 @@ export function App() {
 
   const showToast = (msg) => {
     setToast(msg)
-    setTimeout(() => setToast(null), 2000)
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 2000)
+  }
+
+  const triggerShake = () => {
+    setInvalidGuess(true)
+    if (shakeTimeoutRef.current) clearTimeout(shakeTimeoutRef.current)
+    shakeTimeoutRef.current = setTimeout(() => setInvalidGuess(false), 600)
   }
 
   // Let the player know when they've cycled through every word in the list and it's starting over
@@ -145,16 +155,14 @@ export function App() {
     if (currentGuess.length !== 5) {
       showToast('Not enough letters')
       hapticError()
-      setInvalidGuess(true)
-      setTimeout(() => setInvalidGuess(false), 600)
+      triggerShake()
       return
     }
     
     if (!isValidGuess(currentGuess)) {
       showToast('Not in word list')
       hapticError()
-      setInvalidGuess(true)
-      setTimeout(() => setInvalidGuess(false), 600)
+      triggerShake()
       return
     }
 
@@ -179,8 +187,7 @@ export function App() {
           if (currentGuessLower[i] !== lastGuess[i]) {
             showToast(`Must use ${lastGuess[i].toUpperCase()} in position ${i + 1}`)
             hapticError()
-            setInvalidGuess(true)
-            setTimeout(() => setInvalidGuess(false), 600)
+            triggerShake()
             return
           }
           greens[i] = true
@@ -209,8 +216,7 @@ export function App() {
         if ((currentCounts[char] || 0) < count) {
           showToast(`Guess must contain ${char.toUpperCase()}`)
           hapticError()
-          setInvalidGuess(true)
-          setTimeout(() => setInvalidGuess(false), 600)
+          triggerShake()
           return
         }
       }

@@ -30,7 +30,7 @@ export function Archive({ open, onClose, currentDictionary }) {
       d.setDate(d.getDate() - (i + 1))
       return d.toDateString()
     })
-  }, [])
+  }, [open])
 
   return (
     <Modal open={open} onClose={onClose} title="Daily Word Archive">

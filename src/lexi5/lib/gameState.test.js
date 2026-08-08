@@ -14,6 +14,7 @@ import {
   DICTIONARY_SIZES,
   BUILTIN_DICTIONARY_ORDER
 } from './gameState'
+import wordData from '../data/words.json'
 
 function addDays(dateString, days) {
   const d = new Date(dateString)
@@ -112,7 +113,7 @@ describe('gameState logic', () => {
       }
       // Compare against the actual number of unique words in the lite dictionary
       // in case the raw array has a duplicate.
-      const liteUniqueSize = new Set(require('../data/words.json').dictionaries.lite).size
+      const liteUniqueSize = new Set(wordData.dictionaries.lite).size
       expect(words.size).toBe(liteUniqueSize)
     })
 

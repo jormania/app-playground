@@ -1,7 +1,7 @@
-import React from 'react'
+import React, { memo } from 'react'
 import styles from './Board.module.css'
 
-export function Board({ guesses, currentGuess, word, status, invalidGuess }) {
+export const Board = memo(function Board({ guesses, currentGuess, word, status, invalidGuess }) {
   const empties = guesses.length < 6 ? Array.from({ length: 5 - guesses.length }) : []
   
   return (
@@ -28,7 +28,7 @@ export function Board({ guesses, currentGuess, word, status, invalidGuess }) {
       ))}
     </div>
   )
-}
+})
 
 function Row({ guess, word, isSubmitted, isInvalid, isWinningRow }) {
   const tiles = Array.from({ length: 5 })

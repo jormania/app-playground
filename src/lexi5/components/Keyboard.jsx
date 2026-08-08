@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { memo } from 'react'
 import styles from './Keyboard.module.css'
 
 const ROWS = [
@@ -7,7 +7,7 @@ const ROWS = [
   ['Enter', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'Backspace']
 ]
 
-export function Keyboard({ guesses, word, onChar, onDelete, onEnter, smartKeyboard }) {
+export const Keyboard = memo(function Keyboard({ guesses, word, onChar, onDelete, onEnter, smartKeyboard }) {
   // Determine letter status based on guesses
   const keyStatuses = {}
   const triedPositions = {} // letter -> set of indices where it was guessed and was 'present' (not correct)
@@ -63,4 +63,4 @@ export function Keyboard({ guesses, word, onChar, onDelete, onEnter, smartKeyboa
       ))}
     </div>
   )
-}
+})
