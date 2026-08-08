@@ -82,6 +82,15 @@
   overflow: hidden;
 }
 
+.app[data-high-contrast="true"] {
+  --tile-correct: #f5793a;
+  --tile-present: #85c0f9;
+  --color-accent: var(--tile-correct);
+  --color-accent-hover: color-mix(in srgb, var(--tile-correct) 85%, black);
+  --color-glow: color-mix(in srgb, var(--tile-correct) 15%, transparent);
+  --color-ring: color-mix(in srgb, var(--tile-correct) 35%, transparent);
+}
+
 .header {
   display: flex;
   align-items: center;

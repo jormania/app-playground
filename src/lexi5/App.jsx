@@ -245,7 +245,7 @@ export function App() {
   }, [onEnter, onDelete, onChar])
 
   return (
-    <div className={styles.app}>
+    <div className={styles.app} data-high-contrast={config.highContrast ? "true" : undefined}>
       <header className={styles.header}>
         <div className={styles.leftActions}>
           <IconButton size="sm" onClick={() => window.open('/lexi5-guide.html', '_blank')} title="How to play">
