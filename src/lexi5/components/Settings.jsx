@@ -125,7 +125,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
 
       const validWords = words.filter(w => isValidGuess(w))
       const discardedCount = words.length - validWords.length
-      words = validWords
+      words = validWords.slice(0, wordCount)
 
       if (words.length === 0) throw new Error("AI did not return any valid 5-letter words.")
 
