@@ -239,6 +239,7 @@ export function App() {
     if (isInitialized) {
       loadGames()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInitialized])
 
   const handleOnboardingComplete = () => {

@@ -30,6 +30,7 @@ export function Archive({ open, onClose, currentDictionary }) {
       d.setDate(d.getDate() - (i + 1))
       return d.toDateString()
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   return (

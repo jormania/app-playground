@@ -1,0 +1,4 @@
+*.cjs
+scratch/
+steam-search.js
+scratch_debug.js
