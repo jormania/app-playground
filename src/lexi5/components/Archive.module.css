@@ -88,3 +88,7 @@
   letter-spacing: 0.05em;
   color: var(--text-base);
 }
+
+.dayWordWon {
+  color: var(--accent);
+}

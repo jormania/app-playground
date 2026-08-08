@@ -375,6 +375,14 @@ export function useGameState(difficulty, dictionary, urlSeed = null) {
   }
 
   const updateStats = (won, numGuesses, dict) => {
+    if (won && gameState.iteration === 0) {
+      try {
+        const history = JSON.parse(localStorage.getItem('lexi5_history') || '{}')
+        history[`${dict}:${gameState.date}`] = true
+        localStorage.setItem('lexi5_history', JSON.stringify(history))
+      } catch (_e) {}
+    }
+
     setStats(prev => {
       const dictStats = prev[dict] || DEFAULT_STATS_DICT
       const currentStreak = won ? dictStats.currentStreak + 1 : 0
@@ -400,4 +408,13 @@ export function useGameState(difficulty, dictionary, urlSeed = null) {
     })
   }
   return { gameState, stats, addGuess, startNextGame, switchDictionary, forfeitGame, resetStats }
+}
+
+export function wasGameWon(dictionary, dateString) {
+  try {
+    const history = JSON.parse(localStorage.getItem('lexi5_history') || '{}')
+    return !!history[`${dictionary}:${dateString}`]
+  } catch (_e) {
+    return false
+  }
 }

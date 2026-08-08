@@ -6,7 +6,8 @@ import {
   getCustomDictionarySize,
   BUILTIN_DICTIONARY_ORDER,
   DICTIONARY_SIZES,
-  DICTIONARY_LABELS
+  DICTIONARY_LABELS,
+  wasGameWon
 } from '../lib/gameState'
 import styles from './Archive.module.css'
 
@@ -57,6 +58,7 @@ export function Archive({ open, onClose, currentDictionary }) {
         <div className={styles.daysList}>
           {pastDays.map(dateString => {
             const word = getWord(dict, dateString, 0)
+            const isWon = wasGameWon(dict, dateString)
             const dateObj = new Date(dateString)
             const formattedDate = dateObj.toLocaleDateString(undefined, {
               weekday: 'short',
@@ -67,7 +69,7 @@ export function Archive({ open, onClose, currentDictionary }) {
             return (
               <div key={dateString} className={styles.dayRow}>
                 <div className={styles.dayDate}>{formattedDate}</div>
-                <div className={styles.dayWord}>{word.toUpperCase()}</div>
+                <div className={`${styles.dayWord} ${isWon ? styles.dayWordWon : ''}`.trim()}>{word.toUpperCase()}</div>
               </div>
             )
           })}
