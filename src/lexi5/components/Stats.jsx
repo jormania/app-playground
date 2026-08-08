@@ -42,7 +42,7 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
           const seedStr = encodeURIComponent(btoa(`${gameState.date}|${gameState.iteration}|${gameState.dictionary}`))
           const shareUrl = `${window.location.origin}${window.location.pathname}?seed=${seedStr}`
           const dictLabel = gameState.dictionary === 'custom' ? 'custom, AI curated' : gameState.dictionary
-          const attemptText = gameState.status === 'won' ? `Guessed in ${gameState.guesses.length}/6` : 'Failed (X/6)'
+          const attemptText = gameState.status === 'won' ? `Guessed in ${gameState.guesses.length} out of 6` : 'Failed (X out of 6)'
           const text = `Lexi5 (${dictLabel}) — ${attemptText}\nPlay the same word here: ${shareUrl}`
           
           const file = new File([blob], 'lexi5-share.png', { type: 'image/png' })
@@ -188,7 +188,7 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
               </div>
               <div className={styles.shareAttempt}>
                 {isCrown && <span style={{marginRight: 4}}>👑</span>}
-                {gameState.status === 'won' ? `Guesses: ${gameState.guesses.length}/6` : 'Failed (X/6)'}
+                {gameState.status === 'won' ? `Guesses: ${gameState.guesses.length} out of 6` : 'Failed (X out of 6)'}
               </div>
             </div>
             <div className={styles.shareGrid}>
