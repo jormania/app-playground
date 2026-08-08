@@ -11,6 +11,7 @@ import {
   getCustomDictionarySize,
   markCustomDictionaryCurated,
   removeCustomDictionary,
+  getCustomDictionaryTheme,
   isValidGuess,
   BUILTIN_DICTIONARY_ORDER,
   DICTIONARY_SIZES,
@@ -44,10 +45,12 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
   const customProgress = hasCustomDict && gameState
     ? getWordProgress('custom', gameState.date, gameState.iteration)
     : null
+  const activeTheme = hasCustomDict ? getCustomDictionaryTheme() : ''
 
-  const runCurate = async () => {
+  const runCurate = async (themeOverride) => {
     setCurating(true)
     setCurateError(null)
+    const themeToUse = typeof themeOverride === 'string' ? themeOverride : customTheme
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), CURATE_TIMEOUT_MS)
@@ -75,7 +78,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
         body: JSON.stringify({
           model,
           max_tokens: 4096,
-          messages: [{ role: 'user', content: `Generate a JSON array of ${wordCount} interesting 5-letter English words for a word game.${customTheme ? ` They must relate to this theme: ${customTheme}.` : ''}${exclusions} Only output the raw JSON array of strings, nothing else.` }]
+          messages: [{ role: 'user', content: `Generate a JSON array of ${wordCount} interesting 5-letter English words for a word game.${themeToUse ? ` They must relate to this theme: ${themeToUse}.` : ''}${exclusions} Only output the raw JSON array of strings, nothing else.` }]
         })
       })
       if (!res.ok) {
@@ -106,8 +109,8 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
       if (words.length === 0) throw new Error("AI did not return any valid 5-letter words.")
 
       localStorage.setItem('lexi5_custom_dict', JSON.stringify(words))
-      markCustomDictionaryCurated()
-      setShowCurate(false)
+      markCustomDictionaryCurated(themeToUse)
+      setCustomTheme(themeToUse)
       onDictionaryChange('custom')
       
       let toastMsg = `Custom list curated with ${words.length} words — new word ready!`
@@ -205,7 +208,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
           <div className={styles.curateCard}>
             <p className={styles.curateDesc}>
               Paste an Anthropic API key to curate a list with Claude.
-              {customProgress && ` Current list: ${customProgress.position}/${customProgress.total} words used this cycle.`}
+              {customProgress && ` Current list: ${customProgress.position}/${customProgress.total} words used this cycle. Theme: ${activeTheme ? `"${activeTheme}"` : 'Vanilla'}`}
             </p>
             {curateError && (
               <p className={styles.curateError}>{curateError}</p>
@@ -244,6 +247,11 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
               <Button size="sm" onClick={handleCurate} disabled={curating || !apiKey}>
                 {curating ? 'Curating...' : hasCustomDict ? 'Refresh Word List' : 'Start Curation'}
               </Button>
+              {hasCustomDict && activeTheme && (
+                <Button size="sm" variant="ghost" onClick={() => runCurate('')} disabled={curating || !apiKey}>
+                  Curate Vanilla
+                </Button>
+              )}
               {hasCustomDict && (
                 <Button size="sm" variant="ghost" className={styles.dangerButton} onClick={() => setShowClearConfirm(true)}>
                   Clear List

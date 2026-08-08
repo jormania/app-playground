@@ -139,15 +139,27 @@ function getCustomDictionaryEpoch() {
   return today
 }
 
+export function getCustomDictionaryTheme() {
+  return localStorage.getItem('lexi5_custom_dict_theme') || ''
+}
+
 // Call whenever a new Custom list is saved, so its cycle starts counting from today.
-export function markCustomDictionaryCurated() {
-  try { localStorage.setItem(CUSTOM_DICT_EPOCH_KEY, String(daysSinceEpoch(new Date().toDateString()))) } catch (_e) {}
+export function markCustomDictionaryCurated(theme = '') {
+  try { 
+    localStorage.setItem(CUSTOM_DICT_EPOCH_KEY, String(daysSinceEpoch(new Date().toDateString())))
+    if (theme) {
+      localStorage.setItem('lexi5_custom_dict_theme', theme)
+    } else {
+      localStorage.removeItem('lexi5_custom_dict_theme')
+    }
+  } catch (_e) {}
 }
 
 export function removeCustomDictionary() {
   try {
     localStorage.removeItem('lexi5_custom_dict')
     localStorage.removeItem(CUSTOM_DICT_EPOCH_KEY)
+    localStorage.removeItem('lexi5_custom_dict_theme')
   } catch (_e) {}
 }
 
