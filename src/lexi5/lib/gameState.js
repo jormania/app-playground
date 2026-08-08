@@ -117,7 +117,29 @@ function resolveDictionaryList(dictionary) {
 }
 
 function daysSinceEpoch(dateString) {
-  return Math.floor(new Date(dateString).getTime() / 86400000)
+  const d = new Date(dateString)
+  // Force parsing to UTC noon to avoid any midnight DST boundary shifts or timezone drift
+  const utc = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0)
+  return Math.floor(utc / 86400000)
+}
+
+const ENDLESS_PROGRESS_KEY = 'lexi5_endless_progress'
+
+function getEndlessProgress(dictionary) {
+  try {
+    const progress = JSON.parse(localStorage.getItem(ENDLESS_PROGRESS_KEY) || '{}')
+    return progress[dictionary] || 0
+  } catch (_e) {
+    return 0
+  }
+}
+
+function incrementEndlessProgress(dictionary) {
+  try {
+    const progress = JSON.parse(localStorage.getItem(ENDLESS_PROGRESS_KEY) || '{}')
+    progress[dictionary] = (progress[dictionary] || 0) + 1
+    localStorage.setItem(ENDLESS_PROGRESS_KEY, JSON.stringify(progress))
+  } catch (_e) {}
 }
 
 const CUSTOM_DICT_EPOCH_KEY = 'lexi5_custom_dict_epoch'
@@ -168,11 +190,22 @@ export function removeCustomDictionary() {
 // every word in the list is guaranteed to appear exactly once before any repeat.
 export function getWordProgress(dictionary = 'standard', dateString, iteration = 0) {
   const list = resolveDictionaryList(dictionary)
-  const anchor = dictionary === 'custom' ? getCustomDictionaryEpoch() : 0
-  const seq = (daysSinceEpoch(dateString) - anchor) + iteration
   const total = list.length
+  
+  let seq
+  let cycleNumber
+  
+  if (iteration === 0) {
+    const anchor = dictionary === 'custom' ? getCustomDictionaryEpoch() : 0
+    seq = (daysSinceEpoch(dateString) - anchor)
+    cycleNumber = Math.floor(seq / total)
+  } else {
+    // Endless mode uses a massive cycle offset so it never collides with the daily calendar sequence
+    seq = (total * 100) + iteration
+    cycleNumber = Math.floor(seq / total)
+  }
+  
   const position = ((seq % total) + total) % total
-  const cycleNumber = Math.floor(seq / total)
   return { position, total, cycleNumber, justWrapped: position === 0 && cycleNumber > 0 }
 }
 
@@ -369,28 +402,58 @@ export function useGameState(difficulty, dictionary, urlSeed = null) {
 
   const startNextGame = (currentDifficulty, currentDictionary) => {
     const today = new Date().toDateString()
-    setGameState(prev => ({
-      date: today,
-      iteration: prev.date === today ? prev.iteration + 1 : 0,
-      guesses: [],
-      status: 'playing',
-      difficulty: currentDifficulty,
-      dictionary: normalizeDictionary(currentDictionary)
-    }))
+    const dictStr = normalizeDictionary(currentDictionary)
+
+    setGameState(prev => {
+      let nextIter = 0
+      if (prev.date === today) {
+        // Continuing same-day session: if we are finishing the Daily Word (0), or already in Endless (>0)
+        // advance the endless counter.
+        incrementEndlessProgress(dictStr)
+        nextIter = Math.max(1, getEndlessProgress(dictStr))
+      } else {
+        // New day! But check if they already beat this dictionary's daily word on another device/session today
+        if (wasGameWon(dictStr, today)) {
+          incrementEndlessProgress(dictStr)
+          nextIter = Math.max(1, getEndlessProgress(dictStr))
+        }
+      }
+
+      return {
+        date: today,
+        iteration: nextIter,
+        guesses: [],
+        status: 'playing',
+        difficulty: currentDifficulty,
+        dictionary: dictStr
+      }
+    })
   }
 
   // Switching dictionaries mid-game abandons the current puzzle (with no stats
   // penalty — it wasn't forfeited, the player just picked a different word list)
   // and deals a fresh word from the new dictionary right away.
   const switchDictionary = (newDictionary) => {
-    setGameState(prev => ({
-      date: new Date().toDateString(),
-      iteration: 0,
-      guesses: [],
-      status: 'playing',
-      difficulty: prev.difficulty,
-      dictionary: normalizeDictionary(newDictionary)
-    }))
+    const today = new Date().toDateString()
+    const dictStr = normalizeDictionary(newDictionary)
+
+    setGameState(prev => {
+      // Prevent the dictionary-toggle exploit: if they already won today's Daily Word for the
+      // target dictionary, drop them straight into Endless mode so they don't get the Daily Word again.
+      let nextIter = 0
+      if (wasGameWon(dictStr, today)) {
+        nextIter = Math.max(1, getEndlessProgress(dictStr))
+      }
+
+      return {
+        date: today,
+        iteration: nextIter,
+        guesses: [],
+        status: 'playing',
+        difficulty: prev.difficulty,
+        dictionary: dictStr
+      }
+    })
   }
 
   const updateStats = (won, numGuesses, dict) => {

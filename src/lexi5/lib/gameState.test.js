@@ -108,8 +108,11 @@ describe('gameState logic', () => {
       
       const words = new Set()
       for (let i = 0; i < total; i++) {
-        // use iteration to increment seq exactly, starting at a cycle boundary
-        words.add(getWord('lite', base, offset + i))
+        // Because iteration > 0 now leaps to the endless queue, to simulate 
+        // a pure continuous sequence on the calendar queue for the test, we 
+        // must use iteration 0 and spoof the date string to advance by days.
+        const mockDate = new Date(new Date(base).getTime() + (offset + i) * msPerDay).toDateString()
+        words.add(getWord('lite', mockDate, 0))
       }
       // Compare against the actual number of unique words in the lite dictionary
       // in case the raw array has a duplicate.
@@ -120,13 +123,18 @@ describe('gameState logic', () => {
     it('reports position/cycle/justWrapped correctly at cycle boundaries', () => {
       const total = DICTIONARY_SIZES.lite
       const epoch = '1970-01-01' // daysSinceEpoch === 0
-
-      const last = getWordProgress('lite', epoch, total - 1)
+      
+      const msPerDay = 1000 * 60 * 60 * 24
+      // Day (total - 1)
+      const dateLast = new Date(new Date(epoch).getTime() + (total - 1) * msPerDay).toDateString()
+      const last = getWordProgress('lite', dateLast, 0)
       expect(last.position).toBe(total - 1)
       expect(last.cycleNumber).toBe(0)
       expect(last.justWrapped).toBe(false)
 
-      const wrapped = getWordProgress('lite', epoch, total)
+      // Day (total) - Wraps to next cycle
+      const dateWrapped = new Date(new Date(epoch).getTime() + total * msPerDay).toDateString()
+      const wrapped = getWordProgress('lite', dateWrapped, 0)
       expect(wrapped.position).toBe(0)
       expect(wrapped.cycleNumber).toBe(1)
       expect(wrapped.justWrapped).toBe(true)
@@ -143,7 +151,8 @@ describe('gameState logic', () => {
         const sampleSize = Math.min(30, total)
         const words = new Set()
         for (let i = 0; i < sampleSize; i++) {
-          words.add(getWord(dict, base, offset + i))
+          const mockDate = new Date(new Date(base).getTime() + (offset + i) * msPerDay).toDateString()
+          words.add(getWord(dict, mockDate, 0))
         }
         expect(words.size).toBe(sampleSize)
       }
