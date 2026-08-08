@@ -85,7 +85,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
       const requestBody = {
         model,
         max_tokens: dynamicMaxTokens,
-        messages: [{ role: 'user', content: `Generate a JSON array of up to ${wordCount} interesting, REAL 5-letter English words for a word game. All words must be valid dictionary words. If you cannot generate ${wordCount} high-quality words without hallucinating fake words, stop early and return the valid ones you have—do NOT pad the list with fake words or gibberish.${themeToUse ? ` They must all relate to this theme: ${themeToUse}.` : ''}${exclusions} Only output the raw JSON array of strings, nothing else.` }]
+        messages: [{ role: 'user', content: `Generate a JSON array of exactly ${wordCount} interesting, REAL 5-letter English words for a word game. All words must be valid dictionary words.${themeToUse ? ` They must all relate to this theme: ${themeToUse}. If you run out of highly relevant words before reaching ${wordCount}, stop early—do NOT pad with unrelated words.` : ` If you run out of good words before reaching ${wordCount}, stop early—do NOT pad with fake words.`}${exclusions} Only output the raw JSON array of strings, nothing else.` }]
       }
       if (THINKS_BY_DEFAULT.has(model)) {
         requestBody.thinking = { type: 'disabled' }
@@ -125,7 +125,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
 
       const validWords = words.filter(w => isValidGuess(w))
       const discardedCount = words.length - validWords.length
-      words = validWords.slice(0, wordCount)
+      words = validWords
 
       if (words.length === 0) throw new Error("AI did not return any valid 5-letter words.")
 
