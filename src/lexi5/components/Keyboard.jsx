@@ -12,6 +12,7 @@ export const Keyboard = memo(function Keyboard({ guesses, word, onChar, onDelete
   const keyStatuses = {}
   const triedPositions = {} // letter -> set of indices where it was guessed and was 'present' (not correct)
   const correctPositions = {} // letter -> set of indices where it was guessed and was 'correct'
+  const allCorrectPositions = new Set()
   
   guesses.forEach(guess => {
     for (let i = 0; i < guess.length; i++) {
@@ -23,6 +24,7 @@ export const Keyboard = memo(function Keyboard({ guesses, word, onChar, onDelete
         keyStatuses[letter] = 'correct'
         if (!correctPositions[letter]) correctPositions[letter] = new Set()
         correctPositions[letter].add(i)
+        allCorrectPositions.add(i)
       } else if (isPresent) {
         if (keyStatuses[letter] !== 'correct') {
           keyStatuses[letter] = 'present'
@@ -58,7 +60,7 @@ export const Keyboard = memo(function Keyboard({ guesses, word, onChar, onDelete
                   <div className={styles.smartDots}>
                     {[0,1,2,3,4].map(idx => {
                       const isCorrect = correctPositions[key]?.has(idx)
-                      const isTried = triedPositions[key]?.has(idx)
+                      const isTried = triedPositions[key]?.has(idx) || (allCorrectPositions.has(idx) && !isCorrect)
                       return (
                         <span 
                           key={idx} 
