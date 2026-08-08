@@ -84,11 +84,17 @@ export function App() {
     shakeTimeoutRef.current = setTimeout(() => setInvalidGuess(false), 600)
   }
 
-  // Let the player know when they've cycled through every word in the list and it's starting over
+  // Let the player know when they've cycled through every word in the list and it's starting over,
+  // or give them a heads-up when their custom list is about to run out.
   useEffect(() => {
-    const { total, justWrapped } = getWordProgress(gameState.dictionary, gameState.date, gameState.iteration)
+    const { position, total, justWrapped } = getWordProgress(gameState.dictionary, gameState.date, gameState.iteration)
     if (justWrapped) {
       showToast(`You've played all ${total} words in this list — starting a fresh cycle!`)
+    } else if (gameState.dictionary === 'custom' && total > 3) {
+      const remaining = total - position
+      if (remaining <= 3 && remaining > 0) {
+        showToast(`Only ${remaining} word${remaining === 1 ? '' : 's'} remaining in your custom list!`)
+      }
     }
   }, [gameState.dictionary, gameState.date, gameState.iteration])
 
