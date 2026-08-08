@@ -135,12 +135,14 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
           return (
             <div key={num} className={styles.distRow}>
               <div className={styles.distNum}>{num}</div>
-              <div 
-                className={`${styles.distBar} ${count > 0 ? styles.hasData : ''}`}
-                style={{ width: `${percent}%` }}
-              >
-                {count > 0 && dictStats.gamesWon > 0 ? `${count} (${Math.round((count / dictStats.gamesWon) * 100)}%)` : (count > 0 ? count : '')}
-              </div>
+              {count > 0 && (
+                <div 
+                  className={`${styles.distBar} ${styles.hasData}`}
+                  style={{ width: `${percent}%` }}
+                >
+                  {dictStats.gamesWon > 0 ? `${count} (${Math.round((count / dictStats.gamesWon) * 100)}%)` : count}
+                </div>
+              )}
             </div>
           )
         })}
