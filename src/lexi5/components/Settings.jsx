@@ -197,9 +197,10 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
         <div className={styles.tightToggle}>
           <SettingsToggle
             label="Hard Mode"
-            hint="Any revealed hints must be used in subsequent guesses"
+            hint={gameState && gameState.guesses.length > 0 && gameState.status === 'playing' ? "Can only be changed before your first guess." : "Any revealed hints must be used in subsequent guesses"}
             checked={config.difficulty === 'hard'}
             onChange={(e) => updateConfig({ difficulty: e.target.checked ? 'hard' : 'normal' })}
+            disabled={gameState && gameState.guesses.length > 0 && gameState.status === 'playing'}
           />
 
           <SettingsToggle

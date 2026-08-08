@@ -7,7 +7,7 @@ import globals from 'globals'
 // by `npm run typecheck` (tsc); ESLint here catches lint-level bugs across every
 // React app (legacy JSX + strict TS alike).
 export default tseslint.config(
-  { ignores: ['dist/**', 'node_modules/**', 'public/**', 'coverage/**', '.claude/**'] },
+  { ignores: ['dist/**', 'node_modules/**', 'public/**', 'coverage/**', '.claude/**', '*.cjs', 'scratch/**', 'steam-search.js', 'scratch_debug.js'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

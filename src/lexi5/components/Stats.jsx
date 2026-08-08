@@ -10,6 +10,7 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
   const isCrown = gameState.iteration === 0
   const dictStats = stats[gameState.dictionary] || stats.standard
   const shareRef = useRef(null)
+  const [statsCopied, setStatsCopied] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -75,6 +76,20 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
     }
   }
 
+  const handleShareStats = () => {
+    const winPct = dictStats.gamesPlayed > 0 ? Math.round((dictStats.gamesWon / dictStats.gamesPlayed) * 100) : 0
+    const text = `Lexi5 (${gameState.dictionary})\nPlayed: ${dictStats.gamesPlayed}\nWin %: ${winPct}%\nStreak: ${dictStats.crownCurrentStreak || 0}\nMax Streak: ${dictStats.crownMaxStreak || 0}`
+    if (navigator.share && navigator.canShare && navigator.canShare({ text })) {
+      navigator.share({ text }).catch(err => {
+        if (err.name !== 'AbortError') onToast?.('Could not share stats — try again.')
+      })
+    } else {
+      navigator.clipboard.writeText(text)
+        .then(() => setStatsCopied(true))
+        .catch(() => onToast?.('Could not copy to clipboard — try again.'))
+    }
+  }
+
   const maxGuessCount = Math.max(...Object.values(dictStats.guesses), 1)
 
   const totalGuesses = Object.entries(dictStats.guesses).reduce((acc, [num, count]) => acc + (Number(num) * count), 0)
@@ -121,7 +136,7 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
                 className={`${styles.distBar} ${count > 0 ? styles.hasData : ''}`}
                 style={{ width: `${percent}%` }}
               >
-                {count}
+                {count > 0 && dictStats.gamesWon > 0 ? `${count} (${Math.round((count / dictStats.gamesWon) * 100)}%)` : count}
               </div>
             </div>
           )
@@ -131,16 +146,19 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
       {isFinished && (
         <div className={styles.footer}>
           <div className={styles.wordReveal}>
-            The word was: <strong>{word.toUpperCase()}</strong>
+            The word was: <a href={`https://en.wiktionary.org/wiki/${word.toLowerCase()}`} target="_blank" rel="noreferrer" style={{color: 'inherit', textDecoration: 'underline', textUnderlineOffset: '4px'}}><strong>{word.toUpperCase()}</strong></a>
           </div>
           {definition && (
             <div className={styles.definition}>
               <i>{definition}</i>
             </div>
           )}
-          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', marginTop: '12px' }}>
             <Button onClick={handleShare}>
-              {copied ? 'Copied to Clipboard!' : 'Share Image'}
+              {copied ? 'Copied Image!' : 'Share Image'}
+            </Button>
+            <Button variant="ghost" onClick={handleShareStats}>
+              {statsCopied ? 'Copied Stats!' : 'Share Stats'}
             </Button>
             <Button variant="primary" onClick={onPlayAgain}>
               Play Again
