@@ -165,7 +165,7 @@ describe('Stats component', () => {
     await waitFor(() => {
       expect(navigator.share).not.toHaveBeenCalled()
       expect(navigator.clipboard.write).toHaveBeenCalled()
-      expect(shareButton.textContent).toBe('Copied to Clipboard!')
+      expect(shareButton.textContent).toBe('Copied Image!')
     })
   })
 
@@ -195,7 +195,7 @@ describe('Stats component', () => {
     await waitFor(() => {
       expect(navigator.clipboard.write).toHaveBeenCalled()
       expect(navigator.clipboard.writeText).toHaveBeenCalled()
-      expect(shareButton.textContent).toBe('Copied to Clipboard!')
+      expect(shareButton.textContent).toBe('Copied Image!')
     })
   })
 })
