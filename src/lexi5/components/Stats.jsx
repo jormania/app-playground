@@ -165,7 +165,7 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
                 <span>{copied ? 'Copied!' : 'Image'}</span>
               </div>
             </Button>
-            <Button size="sm" variant="ghost" onClick={handleShareStats} style={{ flex: 1, padding: '0 2px', minWidth: 0 }}>
+            <Button size="sm" variant="secondary" onClick={handleShareStats} style={{ flex: 1, padding: '0 2px', minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 <Share2 size={14} style={{ marginRight: '4px', flexShrink: 0 }} />
                 <span>{statsCopied ? 'Copied!' : 'Stats'}</span>

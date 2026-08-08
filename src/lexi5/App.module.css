@@ -27,6 +27,11 @@
   --color-border: var(--border-subtle);
   --color-surface-2: #eef0f1;
   --color-muted: var(--text-subtle);
+  --color-accent: var(--tile-correct);
+  --color-on-accent: #ffffff;
+  --color-accent-hover: color-mix(in srgb, var(--tile-correct) 85%, black);
+  --color-glow: color-mix(in srgb, var(--tile-correct) 15%, transparent);
+  --color-ring: color-mix(in srgb, var(--tile-correct) 35%, transparent);
 }
 
 :global(:root[data-theme="dark"]) {
@@ -47,6 +52,11 @@
   --color-border: var(--border-subtle);
   --color-surface-2: #2a2a2c;
   --color-muted: var(--text-subtle);
+  --color-accent: var(--tile-correct);
+  --color-on-accent: #ffffff;
+  --color-accent-hover: color-mix(in srgb, var(--tile-correct) 85%, black);
+  --color-glow: color-mix(in srgb, var(--tile-correct) 15%, transparent);
+  --color-ring: color-mix(in srgb, var(--tile-correct) 35%, transparent);
 }
 
 :global(body) {
