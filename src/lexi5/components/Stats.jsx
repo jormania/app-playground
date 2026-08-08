@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { Modal, Button } from '../../ds'
+import { Share2 } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import styles from './Stats.module.css'
 
@@ -40,8 +41,9 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
           
           const seedStr = encodeURIComponent(btoa(`${gameState.date}|${gameState.iteration}|${gameState.dictionary}`))
           const shareUrl = `${window.location.origin}${window.location.pathname}?seed=${seedStr}`
-          const attempt = gameState.status === 'won' ? gameState.guesses.length : 'X'
-          const text = `Lexi5 (${gameState.dictionary}) ${attempt}/6\nPlay this board: ${shareUrl}`
+          const dictLabel = gameState.dictionary === 'custom' ? 'custom, AI curated' : gameState.dictionary
+          const attemptText = gameState.status === 'won' ? `Guessed in ${gameState.guesses.length}/6` : 'Failed (X/6)'
+          const text = `Lexi5 (${dictLabel}) — ${attemptText}\nPlay the same word here: ${shareUrl}`
           
           const file = new File([blob], 'lexi5-share.png', { type: 'image/png' })
           
@@ -77,8 +79,9 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
   }
 
   const handleShareStats = () => {
+    const dictLabel = gameState.dictionary === 'custom' ? 'custom, AI curated' : gameState.dictionary
     const winPct = dictStats.gamesPlayed > 0 ? Math.round((dictStats.gamesWon / dictStats.gamesPlayed) * 100) : 0
-    const text = `Lexi5 (${gameState.dictionary})\nPlayed: ${dictStats.gamesPlayed}\nWin %: ${winPct}%\nStreak: ${dictStats.crownCurrentStreak || 0}\nMax Streak: ${dictStats.crownMaxStreak || 0}`
+    const text = `Lexi5 (${dictLabel})\nPlayed: ${dictStats.gamesPlayed}\nWin %: ${winPct}%\nStreak: ${dictStats.currentStreak || 0}\nMax Streak: ${dictStats.maxStreak || 0}`
     if (navigator.share && navigator.canShare && navigator.canShare({ text })) {
       navigator.share({ text }).catch(err => {
         if (err.name !== 'AbortError') onToast?.('Could not share stats — try again.')
@@ -113,12 +116,12 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
           <div className={styles.statLabel}>Avg</div>
         </div>
         <div className={styles.statDivider} aria-hidden="true" />
-        <div className={styles.statBox} title="Crown streak — consecutive wins on the first game of the day">
-          <div className={styles.statNum}>{dictStats.crownCurrentStreak || 0}</div>
+        <div className={styles.statBox} title="Consecutive wins">
+          <div className={styles.statNum}>{dictStats.currentStreak || 0}</div>
           <div className={styles.statLabel}>Streak</div>
         </div>
-        <div className={styles.statBox} title="Best crown streak ever">
-          <div className={styles.statNum}>{dictStats.crownMaxStreak || 0}</div>
+        <div className={styles.statBox} title="Best streak ever">
+          <div className={styles.statNum}>{dictStats.maxStreak || 0}</div>
           <div className={styles.statLabel}>Best</div>
         </div>
       </div>
@@ -136,7 +139,7 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
                 className={`${styles.distBar} ${count > 0 ? styles.hasData : ''}`}
                 style={{ width: `${percent}%` }}
               >
-                {count > 0 && dictStats.gamesWon > 0 ? `${count} (${Math.round((count / dictStats.gamesWon) * 100)}%)` : count}
+                {count > 0 && dictStats.gamesWon > 0 ? `${count} (${Math.round((count / dictStats.gamesWon) * 100)}%)` : (count > 0 ? count : '')}
               </div>
             </div>
           )
@@ -153,15 +156,23 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
               <i>{definition}</i>
             </div>
           )}
-          <div style={{ display: 'flex', flexWrap: 'nowrap', justifyContent: 'center', gap: '4px', marginTop: '12px', width: '100%' }}>
-            <Button onClick={handleShare}>
-              {copied ? 'Copied Image!' : 'Share Image'}
+          <div style={{ display: 'flex', flexWrap: 'nowrap', justifyContent: 'center', gap: '6px', marginTop: '12px', width: '100%' }}>
+            <Button size="sm" onClick={handleShare} style={{ flex: 1, padding: '0 2px', minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <Share2 size={14} style={{ marginRight: '4px', flexShrink: 0 }} />
+                <span>{copied ? 'Copied!' : 'Image'}</span>
+              </div>
             </Button>
-            <Button variant="ghost" onClick={handleShareStats}>
-              {statsCopied ? 'Copied Stats!' : 'Share Stats'}
+            <Button size="sm" variant="ghost" onClick={handleShareStats} style={{ flex: 1, padding: '0 2px', minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <Share2 size={14} style={{ marginRight: '4px', flexShrink: 0 }} />
+                <span>{statsCopied ? 'Copied!' : 'Stats'}</span>
+              </div>
             </Button>
-            <Button variant="primary" onClick={onPlayAgain}>
-              Play Again
+            <Button size="sm" variant="primary" onClick={onPlayAgain} style={{ flex: 1, padding: '0 2px', minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <span>Play Again</span>
+              </div>
             </Button>
           </div>
         </div>
@@ -173,11 +184,11 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
           <div ref={shareRef} className={styles.shareCard}>
             <div className={styles.shareHeader}>
               <div className={styles.shareTitle}>
-                Lexi5 <span>{gameState.dictionary}</span>
+                Lexi5 <span>{gameState.dictionary === 'custom' ? 'custom, AI curated' : gameState.dictionary}</span>
               </div>
               <div className={styles.shareAttempt}>
                 {isCrown && <span style={{marginRight: 4}}>👑</span>}
-                {gameState.status === 'won' ? gameState.guesses.length : 'X'}/6
+                {gameState.status === 'won' ? `Guesses: ${gameState.guesses.length}/6` : 'Failed (X/6)'}
               </div>
             </div>
             <div className={styles.shareGrid}>
@@ -195,7 +206,7 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
             </div>
             {definition && (
               <div className={styles.shareDef}>
-                <strong>{word.toUpperCase()}</strong>: {definition.substring(0, 80)}{definition.length > 80 ? '...' : ''}
+                <strong>HINT</strong>: {definition.substring(0, 80)}{definition.length > 80 ? '...' : ''}
               </div>
             )}
           </div>

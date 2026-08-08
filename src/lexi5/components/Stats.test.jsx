@@ -99,13 +99,13 @@ describe('Stats component', () => {
       />
     )
     
-    const shareButton = screen.getByText(/Share Image/)
+    const shareButton = screen.getByText(/Image/)
     fireEvent.click(shareButton)
     
     await waitFor(() => {
       expect(navigator.share).toHaveBeenCalled()
       // Button resets
-      expect(shareButton.textContent).toMatch(/Share Image/)
+      expect(shareButton.textContent).toMatch(/Image/)
     })
   })
 
@@ -128,7 +128,7 @@ describe('Stats component', () => {
       />
     )
     
-    const shareButton = screen.getByText(/Share Image/)
+    const shareButton = screen.getByText(/Image/)
     fireEvent.click(shareButton)
     
     await waitFor(() => {
@@ -136,7 +136,7 @@ describe('Stats component', () => {
       // Should NOT toast an error if it's an AbortError
       expect(mockOnToast).not.toHaveBeenCalled()
       // Button resets
-      expect(shareButton.textContent).toMatch(/Share Image/)
+      expect(shareButton.textContent).toMatch(/Image/)
     })
   })
 
@@ -159,13 +159,13 @@ describe('Stats component', () => {
       />
     )
     
-    const shareButton = screen.getByText(/Share Image/)
+    const shareButton = screen.getByText(/Image/)
     fireEvent.click(shareButton)
     
     await waitFor(() => {
       expect(navigator.share).not.toHaveBeenCalled()
       expect(navigator.clipboard.write).toHaveBeenCalled()
-      expect(shareButton.textContent).toBe('Copied Image!')
+      expect(shareButton.textContent).toBe('Copied!')
     })
   })
 
@@ -189,13 +189,13 @@ describe('Stats component', () => {
       />
     )
     
-    const shareButton = screen.getByText(/Share Image/)
+    const shareButton = screen.getByText(/Image/)
     fireEvent.click(shareButton)
     
     await waitFor(() => {
       expect(navigator.clipboard.write).toHaveBeenCalled()
       expect(navigator.clipboard.writeText).toHaveBeenCalled()
-      expect(shareButton.textContent).toBe('Copied Image!')
+      expect(shareButton.textContent).toBe('Copied!')
     })
   })
 })

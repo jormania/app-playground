@@ -107,12 +107,12 @@ Two things to watch if you touch this:
    equally specific).
 
 ## Features & Polish
-- **Crown Mode vs Infinite**: The first game played each day is the "Crown" word, which tracks its own special streak separate from infinite practice mode.
+- **Crown Mode vs Infinite**: The first game played each day is the "Crown" word, which tracks its own special streak separate from infinite practice mode. The UI now intelligently displays the global session streak by default, enabling players of endless custom games to track their active win streaks continuously.
 - **Smart Keyboard**: An optional setting that adds positional memory (small dots) to yellow keys, reminding you which positions you've already tried a letter in.
-- **High-Fidelity Social Sharing**: Instead of simple text emojis, the "Share" button utilizes `html2canvas` and the Web Share API to generate and share a clean, beautiful image of your game board.
-- **Animations & Haptics**: Full NYT-style animations including tile pops, invalid word shake, and a staggered victory dance. Includes mobile `navigator.vibrate` haptics and a confetti celebration upon beating the Crown word.
+- **High-Fidelity Social Sharing**: Instead of simple text emojis, the "Share" button utilizes `html2canvas` and the Web Share API to generate and share a clean, beautiful image of your game board. Sharing replaces the target word with a spoiler-free definition hint, and dynamically brands AI-curated custom games.
+- **Animations & Haptics**: Full NYT-style animations including tile pops, invalid word shake, and a staggered victory dance. Includes mobile `navigator.vibrate` haptics and a confetti celebration upon beating the Crown word. The layout features `overscroll-behavior-y: none` to prevent native browser pull-to-refresh from squishing viewport elements.
 - **Hard Mode**: Revealed hints must be used in subsequent guesses (and green letters must remain in their exact positions).
-- **Statistics Management**: In-progress games are automatically forfeited if left unfinished past midnight (recorded as a loss against the dictionary that game was playing), and users have the option to securely reset their statistics via a destructive confirmation modal.
+- **Statistics Management**: In-progress games are automatically forfeited if left unfinished past midnight (recorded as a loss against the dictionary that game was playing), and users have the option to securely reset their statistics via a destructive confirmation modal. Guess distributions intelligently omit the "0" text for empty bars for a cleaner look.
 - **Daily Archive**: A modal accessible via the calendar icon allowing players to look up the past 14 days of Crown words for any dictionary.
 - **PWA**: Fully installable as an offline-first app, registered in The Cabinet.
 

@@ -49,6 +49,10 @@
   --color-muted: var(--text-subtle);
 }
 
+:global(body) {
+  overscroll-behavior-y: none;
+}
+
 .app {
   display: flex;
   flex-direction: column;
