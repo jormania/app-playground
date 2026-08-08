@@ -10,10 +10,13 @@ import {
   hasCustomDictionary,
   getCustomDictionarySize,
   markCustomDictionaryCurated,
+  removeCustomDictionary,
+  isValidGuess,
   BUILTIN_DICTIONARY_ORDER,
   DICTIONARY_SIZES,
   DICTIONARY_LABELS
 } from '../lib/gameState'
+import { SelectField } from '../../ds/components/SelectField'
 import styles from './Settings.module.css'
 
 const CURATE_TIMEOUT_MS = 30000
@@ -23,6 +26,9 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
   const [apiKey, setApiKey] = useState('')
   const [curating, setCurating] = useState(false)
   const [curateError, setCurateError] = useState(null)
+  const [wordCount, setWordCount] = useState(500)
+  const [model, setModel] = useState('claude-haiku-4-5-20251001')
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [showRecurateConfirm, setShowRecurateConfirm] = useState(false)
 
@@ -46,6 +52,16 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
     const timeout = setTimeout(() => controller.abort(), CURATE_TIMEOUT_MS)
 
     try {
+      let exclusions = ''
+      if (hasCustomDict) {
+        try {
+          const existing = JSON.parse(localStorage.getItem('lexi5_custom_dict'))
+          if (existing && existing.length > 0) {
+            exclusions = ` Do not include any of the following words: ${existing.join(', ')}.`
+          }
+        } catch (_e) {}
+      }
+
       const res = await fetch('/api/anthropic-proxy/v1/messages', {
         method: 'POST',
         signal: controller.signal,
@@ -56,9 +72,9 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
           'content-type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
+          model,
           max_tokens: 4096,
-          messages: [{ role: 'user', content: 'Generate a JSON array of 500 interesting 5-letter English words for a word game. Only output the raw JSON array of strings, nothing else.' }]
+          messages: [{ role: 'user', content: `Generate a JSON array of ${wordCount} interesting 5-letter English words for a word game.${exclusions} Only output the raw JSON array of strings, nothing else.` }]
         })
       })
       if (!res.ok) {
@@ -82,13 +98,22 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
       }
       words = [...new Set(words.map(w => w.toLowerCase()))].filter(w => w.length === 5 && /^[a-z]+$/.test(w))
 
+      const validWords = words.filter(w => isValidGuess(w))
+      const discardedCount = words.length - validWords.length
+      words = validWords
+
       if (words.length === 0) throw new Error("AI did not return any valid 5-letter words.")
 
       localStorage.setItem('lexi5_custom_dict', JSON.stringify(words))
       markCustomDictionaryCurated()
       setShowCurate(false)
       onDictionaryChange('custom')
-      onToast(`Custom list curated with ${words.length} words — new word ready!`)
+      
+      let toastMsg = `Custom list curated with ${words.length} words — new word ready!`
+      if (discardedCount > 0) {
+        toastMsg = `Curated ${words.length} words (${discardedCount} invalid words discarded) — new word ready!`
+      }
+      onToast(toastMsg)
     } catch (err) {
       const message = err.name === 'AbortError'
         ? 'Curation timed out after 30s. Please try again.'
@@ -184,6 +209,22 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
             {curateError && (
               <p className={styles.curateError}>{curateError}</p>
             )}
+            <SelectField
+              label="Model"
+              value={model}
+              onChange={e => setModel(e.target.value)}
+            >
+              <option value="claude-haiku-4-5-20251001">Claude 3.5 Haiku (Fast)</option>
+              <option value="claude-sonnet-3-5-1022">Claude 3.5 Sonnet (Smart)</option>
+            </SelectField>
+            <Field
+              label="Word Count"
+              type="number"
+              value={wordCount}
+              onChange={e => setWordCount(Number(e.target.value))}
+              min="10"
+              max="1000"
+            />
             <Field
               label="API Key"
               type="password"
@@ -192,9 +233,16 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
               placeholder="sk-ant-..."
               autoComplete="off"
             />
-            <Button size="sm" onClick={handleCurate} disabled={curating || !apiKey}>
-              {curating ? 'Curating...' : hasCustomDict ? 'Refresh Word List' : 'Start Curation'}
-            </Button>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+              <Button size="sm" onClick={handleCurate} disabled={curating || !apiKey}>
+                {curating ? 'Curating...' : hasCustomDict ? 'Refresh Word List' : 'Start Curation'}
+              </Button>
+              {hasCustomDict && (
+                <Button size="sm" variant="ghost" className={styles.dangerButton} onClick={() => setShowClearConfirm(true)}>
+                  Clear List
+                </Button>
+              )}
+            </div>
           </div>
         )}
 
@@ -227,6 +275,24 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
         onConfirm={() => {
           setShowRecurateConfirm(false)
           runCurate()
+        }}
+      />
+
+      <ConfirmModal
+        isOpen={showClearConfirm}
+        onCancel={() => setShowClearConfirm(false)}
+        title="Clear Custom List"
+        message="Are you sure you want to delete your custom word list? You will be returned to the Standard dictionary."
+        confirmText="Clear List"
+        variant="danger"
+        onConfirm={() => {
+          removeCustomDictionary()
+          if (config.dictionary === 'custom') {
+            onDictionaryChange('standard')
+          }
+          setShowClearConfirm(false)
+          setShowCurate(false)
+          onToast('Custom list cleared.')
         }}
       />
     </Modal>

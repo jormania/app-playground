@@ -144,6 +144,13 @@ export function markCustomDictionaryCurated() {
   try { localStorage.setItem(CUSTOM_DICT_EPOCH_KEY, String(daysSinceEpoch(new Date().toDateString()))) } catch (_e) {}
 }
 
+export function removeCustomDictionary() {
+  try {
+    localStorage.removeItem('lexi5_custom_dict')
+    localStorage.removeItem(CUSTOM_DICT_EPOCH_KEY)
+  } catch (_e) {}
+}
+
 // Where a given (date, iteration) falls in the list's non-repeating cycle:
 // position advances by exactly 1 per calendar day (or extra same-day play), so
 // every word in the list is guaranteed to appear exactly once before any repeat.
