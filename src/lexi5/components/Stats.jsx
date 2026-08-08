@@ -153,7 +153,7 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
               <i>{definition}</i>
             </div>
           )}
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', marginTop: '12px' }}>
+          <div style={{ display: 'flex', flexWrap: 'nowrap', justifyContent: 'center', gap: '4px', marginTop: '12px', width: '100%' }}>
             <Button onClick={handleShare}>
               {copied ? 'Copied Image!' : 'Share Image'}
             </Button>

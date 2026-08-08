@@ -11,6 +11,8 @@ export const Keyboard = memo(function Keyboard({ guesses, word, onChar, onDelete
   // Determine letter status based on guesses
   const keyStatuses = {}
   const triedPositions = {} // letter -> set of indices where it was guessed and was 'present' (not correct)
+  const correctPositions = {} // letter -> set of indices where it was guessed and was 'correct'
+  
   guesses.forEach(guess => {
     for (let i = 0; i < guess.length; i++) {
       const letter = guess[i].toUpperCase()
@@ -19,8 +21,12 @@ export const Keyboard = memo(function Keyboard({ guesses, word, onChar, onDelete
       
       if (isCorrect) {
         keyStatuses[letter] = 'correct'
-      } else if (isPresent && keyStatuses[letter] !== 'correct') {
-        keyStatuses[letter] = 'present'
+        if (!correctPositions[letter]) correctPositions[letter] = new Set()
+        correctPositions[letter].add(i)
+      } else if (isPresent) {
+        if (keyStatuses[letter] !== 'correct') {
+          keyStatuses[letter] = 'present'
+        }
         if (!triedPositions[letter]) triedPositions[letter] = new Set()
         triedPositions[letter].add(i)
       } else if (!isPresent && !keyStatuses[letter]) {
@@ -48,13 +54,20 @@ export const Keyboard = memo(function Keyboard({ guesses, word, onChar, onDelete
                   else onChar(key)
                 }}
               >
-                {smartKeyboard && status === 'present' && triedPositions[key] && (
+                {(smartKeyboard && (status === 'present' || status === 'correct') && (triedPositions[key] || correctPositions[key])) ? (
                   <div className={styles.smartDots}>
-                    {[0,1,2,3,4].map(idx => (
-                      <span key={idx} className={`${styles.dot} ${triedPositions[key].has(idx) ? styles.dotTried : ''}`} />
-                    ))}
+                    {[0,1,2,3,4].map(idx => {
+                      const isCorrect = correctPositions[key]?.has(idx)
+                      const isTried = triedPositions[key]?.has(idx)
+                      return (
+                        <span 
+                          key={idx} 
+                          className={`${styles.dot} ${isCorrect ? styles.dotCorrect : (isTried ? styles.dotTried : '')}`} 
+                        />
+                      )
+                    })}
                   </div>
-                )}
+                ) : null}
                 {isDel ? 'DEL' : key}
               </button>
             )

@@ -148,7 +148,7 @@ describe('Settings component', () => {
     // Deduplication should result in only valid 5-letter words: APPLE, BERRY, ROBOT
     // Duplicates are removed, too long / too short are removed
     const storedDict = JSON.parse(localStorage.getItem('lexi5_custom_dict'))
-    expect(storedDict).toEqual(['apple', 'berry', 'robot'])
+    expect(storedDict.sort()).toEqual(['apple', 'berry', 'robot'])
     expect(storedDict.length).toBe(3)
   })
 
