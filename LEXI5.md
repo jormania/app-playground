@@ -21,7 +21,7 @@ Settings → "AI Curation" and configure your preferred Claude model (Haiku or S
 fly. The key is never sent to or stored on our server — the request goes through a Vercel edge
 rewrite (`/api/anthropic-proxy` → `api.anthropic.com`, see `vercel.json`) straight to Anthropic.
 The **Custom** option is disabled in the dropdown until a list has actually been curated, so you
-can't accidentally select a dictionary that silently falls back to Standard. You can also clear this list at any time from the Settings menu.
+can't accidentally select a dictionary that silently falls back to Standard. You can easily reset a themed list back to a normal list using the "Curate Vanilla" button, or completely clear the list at any time from the Settings menu.
 
 Switching dictionaries (built-in or Custom) always deals a fresh word immediately and shows a
 toast confirming the switch — it never silently keeps playing the old word under a new label, and
@@ -74,6 +74,7 @@ The app surfaces state changes/errors via a lightweight in-app toast (not blocki
 `alert()`s) at these points:
 - Invalid guess (wrong length / not in word list), Hard Mode rule violations.
 - Switching dictionaries — confirms the new dictionary and that a fresh word was dealt.
+- A custom dictionary running low on words (warns when 3 or fewer words remain).
 - A dictionary's word cycle completing and reshuffling.
 - Falling back off an unavailable Custom dictionary (storage cleared, or a shared seed link
   referencing a Custom list you don't have).
