@@ -129,6 +129,13 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
 
       if (words.length === 0) throw new Error("AI did not return any valid 5-letter words.")
 
+      // Shuffle the curated words so the daily sequence isn't alphabetically predictable
+      // (Claude often returns large lists in alphabetical order)
+      for (let i = words.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [words[i], words[j]] = [words[j], words[i]]
+      }
+
       localStorage.setItem('lexi5_custom_dict', JSON.stringify(words))
       markCustomDictionaryCurated(themeToUse)
       setCustomTheme(themeToUse)
