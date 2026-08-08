@@ -85,7 +85,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
       const requestBody = {
         model,
         max_tokens: dynamicMaxTokens,
-        messages: [{ role: 'user', content: `Generate a JSON array of up to ${wordCount} interesting 5-letter English words for a word game.${themeToUse ? ` They must relate to this theme: ${themeToUse}. If you cannot find ${wordCount} valid 5-letter words for this theme, just stop and return the ones you found—do not pad the list with unrelated words.` : ''}${exclusions} Only output the raw JSON array of strings, nothing else.` }]
+        messages: [{ role: 'user', content: `Generate a JSON array of up to ${wordCount} interesting, REAL 5-letter English words for a word game. All words must be valid dictionary words. If you cannot generate ${wordCount} high-quality words without hallucinating fake words, stop early and return the valid ones you have—do NOT pad the list with fake words or gibberish.${themeToUse ? ` They must all relate to this theme: ${themeToUse}.` : ''}${exclusions} Only output the raw JSON array of strings, nothing else.` }]
       }
       if (THINKS_BY_DEFAULT.has(model)) {
         requestBody.thinking = { type: 'disabled' }
