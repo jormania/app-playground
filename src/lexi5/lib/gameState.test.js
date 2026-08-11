@@ -260,10 +260,12 @@ describe('gameState logic', () => {
       expect(afterFullLap.justWrapped).toBe(true)
     })
 
-    it('gives Endless a different word order than Crown even on the same cycleNumber', () => {
-      // Without a mode-distinct shuffle key, Endless game 1 (cycleNumber 0) would use the
-      // exact same permutation as Crown's cycleNumber-0 stretch, so an early endless word
-      // could spoil (exactly match) a future daily word.
+    it('gives Endless a different word order than Crown even when getWordProgress reports the same cycleNumber for both', () => {
+      // getWord's Endless path ignores getWordProgress's cycleNumber entirely (see getWord's
+      // own comment) — it keeps deriving its shuffle key from the original `total * 100 +
+      // iteration` offset, which already keeps Endless's permutation from colliding with
+      // Crown's. This checks that divergence actually holds, independent of whatever
+      // getWordProgress happens to report for reporting/staleness purposes.
       // (This particular list/size is chosen so Crown's and Endless's independently-seeded
       // permutations land on different words at position 0 — with a small list, two distinct
       // seeds can coincidentally agree at any one index, so an arbitrary list risks flaking.)
@@ -273,8 +275,9 @@ describe('gameState logic', () => {
 
       const crownWord = getWord('custom', new Date().toDateString(), 0)
       const endlessWord = getWord('custom', new Date().toDateString(), 1)
-      // Both land on cycleNumber 0, position 0 of their own sequences — only the mode
-      // tag on the shuffle key can make these differ.
+      // getWordProgress reports cycleNumber 0 for both — a reader could otherwise assume
+      // that's what makes the words differ below, but it isn't: getWord doesn't use these
+      // numbers for Endless at all (see above).
       expect(getWordProgress('custom', new Date().toDateString(), 0).cycleNumber).toBe(0)
       expect(getWordProgress('custom', new Date().toDateString(), 1).cycleNumber).toBe(0)
       expect(crownWord).not.toBe(endlessWord)
