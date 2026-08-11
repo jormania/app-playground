@@ -20,6 +20,14 @@
    ───────────────────────────────────────────────────────────────────────── */
 
 :root {
+  /* Yoru is always dark, no toggle — tell the browser to draw native chrome
+     (date pickers, scrollbars, the range inputs in the Mixer) to match,
+     without going through DS's `data-theme="dark"` attribute: that attribute
+     also activates ds/tokens.css's `:root[data-theme="dark"]` block, whose
+     higher specificity than the plain `:root` below would silently override
+     these Storm values (see the note above this block). */
+  color-scheme: dark;
+
   /* Surfaces */
   --color-bg:        #1f2335;
   --color-bg-sunken: #1a1e2e;
