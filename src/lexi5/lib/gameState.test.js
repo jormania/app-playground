@@ -238,7 +238,10 @@ describe('gameState logic', () => {
       // Without a mode-distinct shuffle key, Endless game 1 (cycleNumber 0) would use the
       // exact same permutation as Crown's cycleNumber-0 stretch, so an early endless word
       // could spoil (exactly match) a future daily word.
-      const list = ['apple', 'mango', 'grape', 'peach', 'lemon']
+      // (This particular list/size is chosen so Crown's and Endless's independently-seeded
+      // permutations land on different words at position 0 — with a small list, two distinct
+      // seeds can coincidentally agree at any one index, so an arbitrary list risks flaking.)
+      const list = ['apple', 'mango', 'grape', 'peach', 'lemon', 'berry', 'melon']
       localStorage.setItem('lexi5_custom_dict', JSON.stringify(list))
       markCustomDictionaryCurated()
 
@@ -249,6 +252,49 @@ describe('gameState logic', () => {
       expect(getWordProgress('custom', new Date().toDateString(), 0).cycleNumber).toBe(0)
       expect(getWordProgress('custom', new Date().toDateString(), 1).cycleNumber).toBe(0)
       expect(crownWord).not.toBe(endlessWord)
+    })
+
+    it('Crown word derivation is byte-for-byte unchanged by the Endless mode tag', () => {
+      // Regression guard: an earlier version of the Endless staleness fix (below) tagged
+      // *every* shuffle-cache key with a mode, including Crown's — which reseeds the
+      // shuffle for every date/dictionary Crown has ever served. Since Crown's word isn't
+      // persisted (it's re-derived from (date, iteration) on every load — see App.jsx), that
+      // would silently change the word under an in-progress game after deploy, make the
+      // Archive's past-14-days lookup disagree with what was actually served, and break
+      // previously shared Crown seed links. This reimplements the pre-fix shuffle exactly
+      // (no mode segment in the key) and checks it still matches getWord's Crown output.
+      function hashString(str) {
+        let hash = 0
+        for (let i = 0; i < str.length; i++) {
+          hash = (hash << 5) - hash + str.charCodeAt(i)
+          hash |= 0
+        }
+        return hash >>> 0
+      }
+      function mulberry32(seed) {
+        let a = seed
+        return function () {
+          a |= 0; a = (a + 0x6D2B79F5) | 0
+          let t = Math.imul(a ^ (a >>> 15), 1 | a)
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+        }
+      }
+      function preFixCrownWord(list, cycleNumber, position) {
+        const key = `${list.length}:${hashString(list.join(','))}:cycle:${cycleNumber}`
+        const rand = mulberry32(hashString(key))
+        const order = list.map((_, i) => i)
+        for (let i = order.length - 1; i > 0; i--) {
+          const j = Math.floor(rand() * (i + 1))
+          ;[order[i], order[j]] = [order[j], order[i]]
+        }
+        return list[order[position]]
+      }
+
+      const dateString = '2026-08-11'
+      const { position, cycleNumber } = getWordProgress('standard', dateString, 0)
+      const expected = preFixCrownWord(wordData.dictionaries.standard, cycleNumber, position)
+      expect(getWord('standard', dateString, 0)).toBe(expected)
     })
   })
 

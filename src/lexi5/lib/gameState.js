@@ -90,11 +90,17 @@ const shuffleCache = new Map()
 
 // A deterministic shuffled permutation of a list's indices, reseeded automatically
 // whenever the list's contents change OR when the list completes a full cycle.
-// `mode` keeps Crown's and Endless's permutations independent (see getWord) even
+// `mode` keeps Endless's permutation independent from Crown's (see getWord) even
 // when they land on the same cycleNumber, so an endless word never previews a
-// future Crown word (or vice versa).
+// future Crown word. Crown's key is deliberately left in its original (pre-mode)
+// format — changing it would reseed every already-served Crown word: in-progress
+// games re-derive their word from (date, iteration) on every load rather than
+// persisting it, the Archive looks up past Crown words the same way, and shared
+// seed links encode (date, iteration, dictionary) expecting a stable result.
 function getShuffledOrder(list, cycleNumber = 0, mode = 'crown') {
-  const key = `${list.length}:${hashString(list.join(','))}:${mode}:cycle:${cycleNumber}`
+  const key = mode === 'crown'
+    ? `${list.length}:${hashString(list.join(','))}:cycle:${cycleNumber}`
+    : `${list.length}:${hashString(list.join(','))}:${mode}:cycle:${cycleNumber}`
   const cached = shuffleCache.get(key)
   if (cached) return cached
 

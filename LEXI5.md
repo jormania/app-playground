@@ -46,7 +46,14 @@ keep Endless's shuffle order from colliding with Crown's, which meant `cycleNumb
 ≥100 for *any* Endless game — the Custom "you've used every word" banner could fire after only
 two Endless plays on a 27-word list. Shuffle-order distinctness between Crown and Endless is now
 handled by tagging `getShuffledOrder`'s cache key with the mode instead, so `cycleNumber` (and the
-banner/toasts that key off it) reflects how many words have actually been played.
+banner/toasts that key off it) reflects how many words have actually been played. **Crown's key
+format was deliberately left exactly as it was before this fix** — tagging it too would reseed the
+shuffle for every date/dictionary Crown has ever served, silently changing the word under any
+in-progress Crown game (words aren't persisted, they're re-derived from `(date, iteration)` on
+every load), disagreeing with what the Archive shows for past days, and breaking previously shared
+Crown seed links. Endless's own word-per-iteration mapping does shift as an unavoidable side effect
+of the fix itself (its `position`/`cycleNumber` math changed), but that only affects Endless, which
+has no archived-history or already-shared-link expectation the same way Crown does.
 
 For the built-in dictionaries, "cycle" is anchored to the Unix epoch — fine, since those lists
 never change. **Custom is the one exception**: it's anchored to whenever it was last curated
