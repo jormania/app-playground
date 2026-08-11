@@ -77,6 +77,20 @@ via a quiet `lit · dark · off` control in the top bar — shown always in lit,
 during a peek in the covered modes (tap the sky / black to peek, the control
 appears, pick a mode).
 
+**Keeping the soundscape alive with the screen off** — `Session` holds an
+active [Media Session](src/shared/mediaSession.js) for the whole session
+(`stop` mapped to ending the night; no `play`/`pause`, since Yoru only ever
+ends, never pauses). This isn't for on-screen controls — it's what keeps
+Android Chrome from throttling or suspending the synthesised audio once the
+screen locks, which used to cut the soundscape off well before its own timed
+ebb, especially in *Turn off* (which deliberately drops the wake lock so the
+screen truly can lock). `soundscape.js` also self-heals: alongside the
+existing `resume()` (fired on `visibilitychange`), a 3s watchdog polls for
+and resumes a suspended `AudioContext` directly, since a stray suspension
+doesn't always line up with a visibility event landing in time. Promoted from
+Tempo, which used the same trick first for its own lock-screen transport
+controls — `src/tempo/lib/mediaSession.js` is now a thin re-export.
+
 Under that control sits **one quiet line about the moon**, led by tonight's moon
 drawn at its real phase ([`MoonGlyph`](src/yoru/components/MoonGlyph.jsx), sized
 in `em` so it tracks the text) and then said in words (`moonBrief` in

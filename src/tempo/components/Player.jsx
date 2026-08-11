@@ -54,10 +54,9 @@ export function Player({ mode, segments, resumeFrom = null, onExit }) {
     active: status !== 'done',
     title: currentSegment?.label ?? mode.name,
     artist: mode.name,
+    album: 'Tempo',
     status,
-    onPlay: resume,
-    onPause: pause,
-    onNext: skip,
+    actions: { play: resume, pause, nexttrack: skip },
   })
 
   // Auto-start a fresh session; a resumed one begins paused, awaiting Resume.
