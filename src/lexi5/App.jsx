@@ -96,16 +96,19 @@ export function App() {
     })
   }
 
+  // Split in two so queuing a new message behind an already-showing toast (which changes
+  // toastQueue but not toast) can't restart this timer — it depends only on `toast`, which
+  // only changes when the *displayed* message actually changes.
   useEffect(() => {
-    if (!toast) {
-      if (toastQueue.length > 0) {
-        setToast(toastQueue[0])
-        setToastQueue(prev => prev.slice(1))
-      }
-      return
-    }
+    if (!toast) return
     const timer = setTimeout(() => setToast(null), 2000)
     return () => clearTimeout(timer)
+  }, [toast])
+
+  useEffect(() => {
+    if (toast || toastQueue.length === 0) return
+    setToast(toastQueue[0])
+    setToastQueue(prev => prev.slice(1))
   }, [toast, toastQueue])
 
   const triggerShake = () => {
