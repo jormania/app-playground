@@ -39,21 +39,26 @@ of `(dictionary, date, iteration)` — it doesn't matter how much you switch bet
 and back; a given built-in dictionary's position on a given day is always the same, so nothing
 needs "refreshing" just from navigating away and back.
 
-Endless mode (`iteration > 0`) tracks its own lap count through the list, separate from Crown's
-calendar-anchored one — so a handful of Endless plays doesn't look like the whole list got
-exhausted. It used to fold a large offset (`total * 100`) straight into `cycleNumber` just to
-keep Endless's shuffle order from colliding with Crown's, which meant `cycleNumber` was always
-≥100 for *any* Endless game — the Custom "you've used every word" banner could fire after only
-two Endless plays on a 27-word list. Shuffle-order distinctness between Crown and Endless is now
-handled by tagging `getShuffledOrder`'s cache key with the mode instead, so `cycleNumber` (and the
-banner/toasts that key off it) reflects how many words have actually been played. **Crown's key
-format was deliberately left exactly as it was before this fix** — tagging it too would reseed the
-shuffle for every date/dictionary Crown has ever served, silently changing the word under any
-in-progress Crown game (words aren't persisted, they're re-derived from `(date, iteration)` on
-every load), disagreeing with what the Archive shows for past days, and breaking previously shared
-Crown seed links. Endless's own word-per-iteration mapping does shift as an unavoidable side effect
-of the fix itself (its `position`/`cycleNumber` math changed), but that only affects Endless, which
-has no archived-history or already-shared-link expectation the same way Crown does.
+Endless mode (`iteration > 0`) reports its own lap count through the list for progress/staleness
+purposes, separate from Crown's calendar-anchored one — so a handful of Endless plays doesn't look
+like the whole list got exhausted. `getWordProgress`'s `cycleNumber` used to fold a large offset
+(`total * 100`) straight in for this, which meant it was always ≥100 for *any* Endless game — the
+Custom "you've used every word" banner could fire after only two Endless plays on a 27-word list.
+`getWordProgress` now reports Endless's real lap count (`floor((iteration - 1) / total)`) instead,
+so the banner/toasts that key off it reflect how many words have actually been played.
+
+That fix intentionally stops at *reporting*. `getWord` — which actually picks the word — does
+**not** reuse `getWordProgress`'s numbers for Endless; it keeps computing its own cycleNumber/
+position from that same `total * 100 + iteration` offset, unchanged, in a path of its own. Neither
+Crown's nor Endless's word is persisted (both are re-derived from `(date/dictionary, iteration)` on
+every load — see `App.jsx`), and a shared seed link (`handleShareBoard`) encodes `iteration` for
+Endless games too, so changing *which* word an iteration maps to would silently corrupt an
+in-progress Endless game's tile colors on its next load or resolve a previously-shared Endless link
+to a different word — the same class of bug avoided for Crown, just less obvious since it needed
+tracing through what `total * 100` was actually protecting. That offset was never the source of the
+staleness bug in the first place: it already keeps Endless's shuffle order from colliding with
+Crown's (Crown doesn't reach cycleNumber 100 for centuries on any real list size), so it didn't need
+to change at all — only the number surfaced to the UI did.
 
 For the built-in dictionaries, "cycle" is anchored to the Unix epoch — fine, since those lists
 never change. **Custom is the one exception**: it's anchored to whenever it was last curated
