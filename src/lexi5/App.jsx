@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useConfig } from './lib/config'
 import { useGameState, getWord, getWordProgress, isValidGuess, hasCustomDictionary, DICTIONARY_LABELS } from './lib/gameState'
 import { hapticTap, hapticError, hapticWin } from './lib/haptics'
+import { useWakeLock } from '../shared/useWakeLock'
 import { Board } from './components/Board'
 import { Keyboard } from './components/Keyboard'
 import { Settings } from './components/Settings'
@@ -33,11 +34,18 @@ export function App() {
   const [showStats, setShowStats] = useState(false)
   const [showForfeitModal, setShowForfeitModal] = useState(false)
   const [toast, setToast] = useState(null)
+  const [toastQueue, setToastQueue] = useState([])
   const [openSettingsToCurate, setOpenSettingsToCurate] = useState(false)
   const [showArchive, setShowArchive] = useState(false)
-  
-  const toastTimeoutRef = useRef(null)
+
   const shakeTimeoutRef = useRef(null)
+
+  // Keep the screen awake only while an active game is actually on screen — drop
+  // back to default behavior the moment any menu/modal covers it, or the game ends.
+  useWakeLock(
+    gameState.status === 'playing' &&
+    !showSettings && !showStats && !showArchive && !showForfeitModal
+  )
 
   // Show stats automatically when game ends, trigger confetti, update favicon
   useEffect(() => {
@@ -72,11 +80,36 @@ export function App() {
     }
   }, [gameState.status])
 
+  // A queue rather than a single overwritten string, so an unrelated toast fired while
+  // one's already showing (e.g. a "switched dictionary" toast right before a "curated N
+  // words" toast) gets its own turn on screen instead of silently clobbering the other.
+  // Rapid repeats of the *same* message (e.g. mashing Enter on an invalid guess) don't
+  // pile up — they're deduped against what's showing and what's already queued.
   const showToast = (msg) => {
-    setToast(msg)
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
-    toastTimeoutRef.current = setTimeout(() => setToast(null), 2000)
+    setToast(prevToast => {
+      if (prevToast === null) return msg
+      setToastQueue(prevQueue => {
+        if (msg === prevToast || msg === prevQueue[prevQueue.length - 1]) return prevQueue
+        return [...prevQueue, msg]
+      })
+      return prevToast
+    })
   }
+
+  // Split in two so queuing a new message behind an already-showing toast (which changes
+  // toastQueue but not toast) can't restart this timer — it depends only on `toast`, which
+  // only changes when the *displayed* message actually changes.
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), 2000)
+    return () => clearTimeout(timer)
+  }, [toast])
+
+  useEffect(() => {
+    if (toast || toastQueue.length === 0) return
+    setToast(toastQueue[0])
+    setToastQueue(prev => prev.slice(1))
+  }, [toast, toastQueue])
 
   const triggerShake = () => {
     setInvalidGuess(true)
@@ -305,7 +338,7 @@ export function App() {
       </main>
 
       {toast && (
-        <div className={styles.toast}>
+        <div className={styles.toast} role="status" aria-live="polite" aria-atomic="true">
           {toast}
         </div>
       )}

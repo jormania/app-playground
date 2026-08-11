@@ -105,6 +105,84 @@ describe('App component (Hard Mode Validation)', () => {
     expect(toast).toBeTruthy()
   })
 
+  it('queues a second distinct toast instead of dropping it while one is already showing', async () => {
+    render(<App />)
+
+    await typeWord('rooms')
+
+    // First Hard Mode violation: drop the required green R at position 1.
+    await typeWord('aaaaa')
+    expect(await screen.findByText(/Must use R in position 1/i)).toBeTruthy()
+
+    // Clear the rejected guess and, immediately (before the first toast's ~2s dwell
+    // elapses), fire a second violation with a *different* message. It should queue
+    // behind the first rather than silently overwriting it.
+    for (let i = 0; i < 5; i++) {
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace' }))
+      })
+    }
+    await typeWord('rovvv')
+
+    // Right after firing it, the first toast is still the one on screen — the second
+    // hasn't silently replaced it.
+    expect(screen.getByText(/Must use R in position 1/i)).toBeTruthy()
+    expect(screen.queryByText(/Guess must contain O/i)).toBeNull()
+
+    // Once the first toast's dwell time elapses, the queued one takes its place.
+    expect(await screen.findByText(/Guess must contain O/i, {}, { timeout: 3000 })).toBeTruthy()
+  })
+
+  it("does not restart a showing toast's timer just because a second toast got queued behind it", () => {
+    // Regression test: the queue effect originally depended on [toast, toastQueue], so
+    // pushing a new message onto the queue re-ran the effect and re-armed a fresh 2000ms
+    // timer for whatever toast was already showing — silently extending its display time
+    // by up to another full dwell every time something else got queued behind it.
+    // Only fake setTimeout/clearTimeout — faking everything (the vitest default) also
+    // fakes APIs React's own scheduler relies on (e.g. queueMicrotask/MessageChannel),
+    // which stops `act()` from flushing updates during this test.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      // Each keystroke needs its own act() so the next one's event handler closes over
+      // the state update the previous one just committed — batching several dispatches
+      // into one act() call means later handlers (like Enter) still see the stale
+      // pre-keystroke state, same reason the `typeWord` helper above presses one key
+      // per act().
+      const press = (key) => act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key }))
+      })
+      const typeAndEnter = (word) => {
+        for (const c of word) press(c)
+        press('Enter')
+      }
+
+      render(<App />)
+
+      typeAndEnter('rooms')
+
+      // First toast appears.
+      typeAndEnter('aaaaa')
+      expect(screen.getByText(/Must use R in position 1/i)).toBeTruthy()
+
+      // Just before the first toast would naturally expire, queue a second, distinct one.
+      act(() => {
+        vi.advanceTimersByTime(1900)
+      })
+      for (let i = 0; i < 5; i++) press('Backspace')
+      typeAndEnter('rovvv')
+
+      // Total elapsed since the first toast appeared is now 2100ms — past its original
+      // 2000ms dwell. A timer-restart bug would keep it alive far longer than this.
+      act(() => {
+        vi.advanceTimersByTime(200)
+      })
+      expect(screen.queryByText(/Must use R in position 1/i)).toBeNull()
+      expect(screen.getByText(/Guess must contain O/i)).toBeTruthy()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('accepts guess if duplicate letter rules are followed', async () => {
     render(<App />)
     

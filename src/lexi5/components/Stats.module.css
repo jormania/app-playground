@@ -109,6 +109,15 @@
   font-size: 1.25rem;
 }
 
+/* Text-content stays the real lowercase word (matching the Wiktionary link's href)
+   and is only *styled* uppercase — so selecting/long-pressing the on-screen word
+   (e.g. a phone's "search selected text") searches the actual word, not an
+   all-caps string that can resolve to an unrelated capitalized Wiktionary entry
+   (proper nouns/surnames are separate, case-sensitive pages there). */
+.wordRevealWord {
+  text-transform: uppercase;
+}
+
 .definition {
   font-size: 0.875rem;
   color: var(--text-subtle);

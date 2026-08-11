@@ -157,6 +157,32 @@ describe('gameState logic', () => {
         expect(words.size).toBe(sampleSize)
       }
     })
+
+    it('daysSinceEpoch does not skip or repeat a day across a real DST transition', () => {
+      // daysSinceEpoch re-anchors to UTC noon of the *local calendar date* specifically so a
+      // fractional-day DST shift near local midnight can't nudge the computed day count. That
+      // only actually exercises anything in a timezone that observes DST — this sandbox/CI runs
+      // in UTC, which never does — so this test pins process.env.TZ to one that does for both
+      // the 2026 US spring-forward (Mar 8) and fall-back (Nov 1) transitions, and restores it
+      // afterward so no other test in this file is affected.
+      const originalTZ = process.env.TZ
+      process.env.TZ = 'America/New_York'
+      try {
+        const total = DICTIONARY_SIZES.standard
+
+        const beforeSpringForward = getWordProgress('standard', 'Sat Mar 07 2026', 0)
+        const springForwardDay = getWordProgress('standard', 'Sun Mar 08 2026', 0)
+        const afterSpringForward = getWordProgress('standard', 'Mon Mar 09 2026', 0)
+        expect((springForwardDay.position - beforeSpringForward.position + total) % total).toBe(1)
+        expect((afterSpringForward.position - springForwardDay.position + total) % total).toBe(1)
+
+        const fallBackDay = getWordProgress('standard', 'Sun Nov 01 2026', 0)
+        const afterFallBack = getWordProgress('standard', 'Mon Nov 02 2026', 0)
+        expect((afterFallBack.position - fallBackDay.position + total) % total).toBe(1)
+      } finally {
+        process.env.TZ = originalTZ
+      }
+    })
   })
 
   describe('custom dictionary fallback (normalizeDictionary / hasCustomDictionary)', () => {
@@ -213,6 +239,102 @@ describe('gameState logic', () => {
 
       const progress = getWordProgress('custom', today, 0)
       expect(progress.cycleNumber).toBe(0)
+    })
+
+    it('does not report a wrapped cycle in Endless mode until every word has actually had a turn', () => {
+      // Regression: iteration>0 (Endless) used to fold a `total * 100` shuffle-distinctness
+      // offset straight into cycleNumber, so cycleNumber was always >= 100 for ANY endless
+      // game — meaning the "you've used every word" banner fired after just the second game
+      // on a 27-word list, not after all 27 had actually been played.
+      const list = ['apple', 'mango', 'grape']
+      localStorage.setItem('lexi5_custom_dict', JSON.stringify(list))
+      markCustomDictionaryCurated()
+
+      const today = new Date().toDateString()
+      const secondEndlessGame = getWordProgress('custom', today, 2)
+      expect(secondEndlessGame.cycleNumber).toBe(0)
+      expect(secondEndlessGame.justWrapped).toBe(false)
+
+      const afterFullLap = getWordProgress('custom', today, list.length + 1)
+      expect(afterFullLap.cycleNumber).toBe(1)
+      expect(afterFullLap.justWrapped).toBe(true)
+    })
+
+    it('gives Endless a different word order than Crown even when getWordProgress reports the same cycleNumber for both', () => {
+      // getWord's Endless path ignores getWordProgress's cycleNumber entirely (see getWord's
+      // own comment) — it keeps deriving its shuffle key from the original `total * 100 +
+      // iteration` offset, which already keeps Endless's permutation from colliding with
+      // Crown's. This checks that divergence actually holds, independent of whatever
+      // getWordProgress happens to report for reporting/staleness purposes.
+      // (This particular list/size is chosen so Crown's and Endless's independently-seeded
+      // permutations land on different words at position 0 — with a small list, two distinct
+      // seeds can coincidentally agree at any one index, so an arbitrary list risks flaking.)
+      const list = ['apple', 'mango', 'grape', 'peach', 'lemon', 'berry', 'melon']
+      localStorage.setItem('lexi5_custom_dict', JSON.stringify(list))
+      markCustomDictionaryCurated()
+
+      const crownWord = getWord('custom', new Date().toDateString(), 0)
+      const endlessWord = getWord('custom', new Date().toDateString(), 1)
+      // getWordProgress reports cycleNumber 0 for both — a reader could otherwise assume
+      // that's what makes the words differ below, but it isn't: getWord doesn't use these
+      // numbers for Endless at all (see above).
+      expect(getWordProgress('custom', new Date().toDateString(), 0).cycleNumber).toBe(0)
+      expect(getWordProgress('custom', new Date().toDateString(), 1).cycleNumber).toBe(0)
+      expect(crownWord).not.toBe(endlessWord)
+    })
+
+    it('Crown and Endless word derivation are byte-for-byte unchanged by the staleness fix', () => {
+      // Regression guard: the Endless staleness fix only touches getWordProgress's reported
+      // cycleNumber (used for the "words used"/staleness banner). It must NOT change which
+      // actual word getWord() picks for either mode — neither Crown's nor Endless's word is
+      // persisted, both are re-derived from (date/dictionary, iteration) on every load (see
+      // App.jsx), and a shared seed link (handleShareBoard) encodes iteration for Endless
+      // games too. This reimplements the pre-fix shuffle exactly for both and checks getWord
+      // still matches it.
+      function hashString(str) {
+        let hash = 0
+        for (let i = 0; i < str.length; i++) {
+          hash = (hash << 5) - hash + str.charCodeAt(i)
+          hash |= 0
+        }
+        return hash >>> 0
+      }
+      function mulberry32(seed) {
+        let a = seed
+        return function () {
+          a |= 0; a = (a + 0x6D2B79F5) | 0
+          let t = Math.imul(a ^ (a >>> 15), 1 | a)
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+        }
+      }
+      function preFixWord(list, cycleNumber, position) {
+        const key = `${list.length}:${hashString(list.join(','))}:cycle:${cycleNumber}`
+        const rand = mulberry32(hashString(key))
+        const order = list.map((_, i) => i)
+        for (let i = order.length - 1; i > 0; i--) {
+          const j = Math.floor(rand() * (i + 1))
+          ;[order[i], order[j]] = [order[j], order[i]]
+        }
+        return list[order[position]]
+      }
+
+      const dateString = '2026-08-11'
+      const { position, cycleNumber } = getWordProgress('standard', dateString, 0)
+      const expectedCrown = preFixWord(wordData.dictionaries.standard, cycleNumber, position)
+      expect(getWord('standard', dateString, 0)).toBe(expectedCrown)
+
+      // Endless: pre-fix always computed cycleNumber/position from `total * 100 + iteration`
+      // (regardless of what getWordProgress now reports for that same iteration).
+      const total = wordData.dictionaries.standard.length
+      const iteration = 42
+      const legacySeq = (total * 100) + iteration
+      const expectedEndless = preFixWord(
+        wordData.dictionaries.standard,
+        Math.floor(legacySeq / total),
+        ((legacySeq % total) + total) % total
+      )
+      expect(getWord('standard', dateString, iteration)).toBe(expectedEndless)
     })
   })
 

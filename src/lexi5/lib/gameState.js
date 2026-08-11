@@ -89,7 +89,12 @@ function mulberry32(seed) {
 const shuffleCache = new Map()
 
 // A deterministic shuffled permutation of a list's indices, reseeded automatically
-// whenever the list's contents change OR when the list completes a full cycle.
+// whenever the list's contents change OR when the list completes a full cycle. Deliberately
+// takes a single cycleNumber and nothing else — see getWord for why Crown and Endless each
+// compute the cycleNumber they pass in very differently, but both must funnel through this
+// exact key format unchanged, since changing it reseeds every word this app has ever served
+// under any cycleNumber that's still reachable (in-progress games and shared seed links
+// re-derive their word from scratch on every load rather than persisting it).
 function getShuffledOrder(list, cycleNumber = 0) {
   const key = `${list.length}:${hashString(list.join(','))}:cycle:${cycleNumber}`
   const cached = shuffleCache.get(key)
@@ -185,38 +190,62 @@ export function removeCustomDictionary() {
   } catch (_e) {}
 }
 
-// Where a given (date, iteration) falls in the list's non-repeating cycle:
-// position advances by exactly 1 per calendar day (or extra same-day play), so
-// every word in the list is guaranteed to appear exactly once before any repeat.
+// Where a given (date, iteration) falls in the list's non-repeating cycle, for progress/
+// staleness *reporting* — the Custom "you've used every word" banner, the toasts, and
+// Settings' "N/total words used this cycle" text all key off this. NOT used to pick
+// Endless's actual word — see getWord's own, deliberately different, math for why.
 export function getWordProgress(dictionary = 'standard', dateString, iteration = 0) {
   const list = resolveDictionaryList(dictionary)
   const total = list.length
-  
+
   let seq
   let cycleNumber
-  
+
   if (iteration === 0) {
     const anchor = dictionary === 'custom' ? getCustomDictionaryEpoch() : 0
     seq = (daysSinceEpoch(dateString) - anchor)
     cycleNumber = Math.floor(seq / total)
   } else {
-    // Endless mode uses a massive cycle offset so it never collides with the daily calendar sequence
-    seq = (total * 100) + iteration
+    // Endless mode's own lap count through the list, counted from its own first play
+    // (iteration 1) rather than the calendar — so a handful of Endless plays doesn't look
+    // like the whole list got exhausted (cycleNumber used to be offset by `total * 100`
+    // for an unrelated reason — see getWord — which also made it always >= 100 here,
+    // firing the staleness banner after just a couple of Endless games).
+    seq = iteration - 1
     cycleNumber = Math.floor(seq / total)
   }
-  
+
   const position = ((seq % total) + total) % total
   return { position, total, cycleNumber, justWrapped: position === 0 && cycleNumber > 0 }
 }
 
-// Deterministic word based on local date, dictionary, and iteration. Pure function
-// of its inputs (needed so shared/seeded game links resolve to the same word), but
-// picks from a per-list shuffled order so words don't repeat until the whole list cycles.
+// Deterministic word based on local date, dictionary, and iteration. Pure function of its
+// inputs (needed so shared/seeded game links resolve to the same word), picking from a
+// per-list shuffled order so words don't repeat until the whole list cycles.
 export function getWord(dictionary = 'standard', dateString, iteration = 0) {
   const list = resolveDictionaryList(dictionary)
-  const { position, cycleNumber } = getWordProgress(dictionary, dateString, iteration)
-  const order = getShuffledOrder(list, cycleNumber)
-  return list[order[position]]
+  const total = list.length
+
+  if (iteration === 0) {
+    const { position, cycleNumber } = getWordProgress(dictionary, dateString, iteration)
+    const order = getShuffledOrder(list, cycleNumber)
+    return list[order[position]]
+  }
+
+  // Endless (iteration > 0) deliberately does NOT reuse getWordProgress's (position,
+  // cycleNumber) above — those were fixed to report Endless's real progress, which changes
+  // the numbers for iteration > total. Word *selection* has to stay byte-for-byte identical
+  // to how this app has always picked an Endless word instead, because it isn't persisted:
+  // an in-progress Endless game (or a previously shared seed link — handleShareBoard encodes
+  // iteration too) re-derives its word from scratch via this exact function on every load.
+  // The `total * 100` offset was never actually the staleness bug — it already keeps
+  // Endless's shuffle order from colliding with Crown's (Crown doesn't reach cycleNumber 100
+  // for centuries on any real list size), so there was nothing to fix here.
+  const legacySeq = (total * 100) + iteration
+  const legacyCycleNumber = Math.floor(legacySeq / total)
+  const legacyPosition = ((legacySeq % total) + total) % total
+  const order = getShuffledOrder(list, legacyCycleNumber)
+  return list[order[legacyPosition]]
 }
 
 export function parseSeed(seedStr) {

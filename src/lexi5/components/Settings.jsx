@@ -264,7 +264,12 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
               type="number"
               value={wordCount}
               onChange={e => {
-                const parsed = Number(e.target.value)
+                const raw = e.target.value
+                // Number('') is 0 (finite), not NaN — checking the raw string first is what
+                // actually lets the field go blank while the user is retyping a new count,
+                // instead of it snapping to 0 the instant they clear it.
+                if (raw === '') { setWordCount(''); return }
+                const parsed = Number(raw)
                 setWordCount(Number.isFinite(parsed) ? parsed : '')
               }}
               min="10"

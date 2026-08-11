@@ -39,6 +39,27 @@ of `(dictionary, date, iteration)` — it doesn't matter how much you switch bet
 and back; a given built-in dictionary's position on a given day is always the same, so nothing
 needs "refreshing" just from navigating away and back.
 
+Endless mode (`iteration > 0`) reports its own lap count through the list for progress/staleness
+purposes, separate from Crown's calendar-anchored one — so a handful of Endless plays doesn't look
+like the whole list got exhausted. `getWordProgress`'s `cycleNumber` used to fold a large offset
+(`total * 100`) straight in for this, which meant it was always ≥100 for *any* Endless game — the
+Custom "you've used every word" banner could fire after only two Endless plays on a 27-word list.
+`getWordProgress` now reports Endless's real lap count (`floor((iteration - 1) / total)`) instead,
+so the banner/toasts that key off it reflect how many words have actually been played.
+
+That fix intentionally stops at *reporting*. `getWord` — which actually picks the word — does
+**not** reuse `getWordProgress`'s numbers for Endless; it keeps computing its own cycleNumber/
+position from that same `total * 100 + iteration` offset, unchanged, in a path of its own. Neither
+Crown's nor Endless's word is persisted (both are re-derived from `(date/dictionary, iteration)` on
+every load — see `App.jsx`), and a shared seed link (`handleShareBoard`) encodes `iteration` for
+Endless games too, so changing *which* word an iteration maps to would silently corrupt an
+in-progress Endless game's tile colors on its next load or resolve a previously-shared Endless link
+to a different word — the same class of bug avoided for Crown, just less obvious since it needed
+tracing through what `total * 100` was actually protecting. That offset was never the source of the
+staleness bug in the first place: it already keeps Endless's shuffle order from colliding with
+Crown's (Crown doesn't reach cycleNumber 100 for centuries on any real list size), so it didn't need
+to change at all — only the number surfaced to the UI did.
+
 For the built-in dictionaries, "cycle" is anchored to the Unix epoch — fine, since those lists
 never change. **Custom is the one exception**: it's anchored to whenever it was last curated
 (`markCustomDictionaryCurated`, storing `lexi5_custom_dict_epoch`), not the epoch. Without that
@@ -82,6 +103,12 @@ The app surfaces state changes/errors via a lightweight in-app toast (not blocki
 - Copying/sharing the board (link copy, image share, and their failure paths).
 - Resetting statistics.
 
+Toasts queue rather than overwrite: if one fires while another's still showing, it waits its
+turn instead of silently clobbering the first (immediate repeats of the *same* message are
+deduped against what's showing/queued, so e.g. mashing Enter on an invalid guess doesn't pile
+up a run of identical toasts). The toast itself renders with `role="status" aria-live="polite"
+aria-atomic="true"` so screen readers announce it.
+
 ## Theming gotcha: this app maps DS tokens onto its own palette
 `App.module.css`'s `:root` block re-maps several `--color-*` custom properties
 (`--color-surface`, `--color-ink`, `--color-border`, `--color-surface-2`, `--color-muted`) so
@@ -108,12 +135,25 @@ Two things to watch if you touch this:
 
 ## Features & Polish
 - **Crown Mode vs Infinite**: The first game played each day is the "Crown" word, which tracks its own special streak separate from infinite practice mode. The UI now intelligently displays the global session streak by default, enabling players of endless custom games to track their active win streaks continuously.
-- **Smart Keyboard**: An optional setting that adds positional memory (small dots) to yellow keys, reminding you which positions you've already tried a letter in.
+- **Smart Keyboard**: An optional setting that adds positional memory (small dots) to yellow keys, reminding you which positions you've already tried a letter in. The dots are decorative/`aria-hidden`; every key's actual Wordle status (correct/present/absent) is exposed to assistive tech via `aria-label` regardless of this setting, since color alone doesn't reach a screen reader.
+- **High Contrast Mode**: An optional blue/orange palette swap for the green/yellow tiles, for players with color vision deficiencies that make the default red/green-adjacent palette hard to distinguish.
 - **High-Fidelity Social Sharing**: Instead of simple text emojis, the "Share" button utilizes `html2canvas` and the Web Share API to generate and share a clean, beautiful image of your game board. Sharing replaces the target word with a spoiler-free definition hint, and dynamically brands AI-curated custom games.
 - **Animations & Haptics**: Full NYT-style animations including tile pops, invalid word shake, and a staggered victory dance. Includes mobile `navigator.vibrate` haptics and a confetti celebration upon beating the Crown word. The layout features `overscroll-behavior-y: none` to prevent native browser pull-to-refresh from squishing viewport elements.
 - **Hard Mode**: Revealed hints must be used in subsequent guesses (and green letters must remain in their exact positions).
+- **Screen Wake Lock**: The screen stays awake only while an active game is actually on screen
+  (`gameState.status === 'playing'` and no Settings/Stats/Archive/forfeit modal is open) — moving
+  to any menu, winning, or forfeiting drops back to default OS sleep behavior. Uses
+  `src/shared/useWakeLock.ts`, promoted there once Lexi5 became a third app needing it (Tempo and
+  Yoru re-export it from their old paths).
 - **Statistics Management**: In-progress games are automatically forfeited if left unfinished past midnight (recorded as a loss against the dictionary that game was playing), and users have the option to securely reset their statistics via a destructive confirmation modal. Guess distributions intelligently omit the "0" text for empty bars for a cleaner look.
 - **Daily Archive**: A modal accessible via the calendar icon allowing players to look up the past 14 days of Crown words for any dictionary.
+- **Reveal link stays lowercase in the DOM**: The post-game "The word was: WORD" Wiktionary link
+  displays uppercase via CSS (`text-transform: uppercase` on `.wordRevealWord`) but its actual text
+  content — and the link's `href` — stay lowercase. English Wiktionary treats a capitalized title as
+  a *different, case-sensitive page* (often a surname/proper-noun entry, e.g. "Gully" vs "gully"). If
+  the on-screen text itself were the literal uppercase string, a phone's "search selected text" /
+  circle-to-search on that word would search the all-caps string directly — bypassing our correct
+  lowercase `href` entirely — and could land on the wrong, unrelated entry.
 - **PWA**: Fully installable as an offline-first app, registered in The Cabinet.
 
 See [`LEXI5_ROADMAP.md`](LEXI5_ROADMAP.md) for deferred/optional follow-ups from the 2026-08-08 audit.

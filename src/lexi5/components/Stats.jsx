@@ -151,7 +151,7 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
       {isFinished && (
         <div className={styles.footer}>
           <div className={styles.wordReveal}>
-            The word was: <a href={`https://en.wiktionary.org/wiki/${word.toLowerCase()}`} target="_blank" rel="noreferrer" style={{color: 'inherit', textDecoration: 'underline', textUnderlineOffset: '4px'}}><strong>{word.toUpperCase()}</strong></a>
+            The word was: <a href={`https://en.wiktionary.org/wiki/${word.toLowerCase()}`} target="_blank" rel="noreferrer" style={{color: 'inherit', textDecoration: 'underline', textUnderlineOffset: '4px'}}><strong className={styles.wordRevealWord}>{word.toLowerCase()}</strong></a>
           </div>
           {definition && (
             <div className={styles.definition}>
