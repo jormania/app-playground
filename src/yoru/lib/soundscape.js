@@ -551,6 +551,18 @@ export function createNightSoundscape() {
     if (ctx.state === 'suspended') await ctx.resume().catch(() => {})
     stopped = false
 
+    // Belt-and-suspenders alongside resume() (called on visibilitychange):
+    // some background/screen-lock paths suspend the context without ever
+    // firing a visibility event we'd catch in time (or on a schedule loose
+    // enough — see the Media Session note in Session.jsx — that a stray
+    // suspension goes unnoticed for a while). Poll and self-heal directly
+    // rather than depending solely on that one signal.
+    timers.push(
+      setInterval(() => {
+        if (!stopped && ctx && ctx.state === 'suspended') ctx.resume().catch(() => {})
+      }, 3000),
+    )
+
     master = ctx.createGain()
     master.gain.value = 0.0001
     // A transparent brick-wall safety limiter on the final output, so no extreme

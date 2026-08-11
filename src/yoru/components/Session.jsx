@@ -4,6 +4,7 @@ import Note from './Note'
 import NightSky from './NightSky'
 import { useDescent } from '../lib/useDescent'
 import { useWakeLock } from '../lib/useWakeLock'
+import { useMediaSession } from '../../shared/mediaSession'
 import { useCoords } from '../lib/useCoords'
 import { createNightSoundscape } from '../lib/soundscape'
 import { phaseLabel } from '../lib/breath'
@@ -113,6 +114,23 @@ export default function Session({ session, onNote, onFinish }) {
 
   // Keep the screen awake except in 'off' (there we let the device sleep).
   useWakeLock(!off)
+
+  // An active Media Session — even with no on-screen player to match it — is
+  // what keeps Android Chrome from throttling or suspending the soundscape
+  // once the screen locks (most relevant in 'off', which deliberately drops
+  // the wake lock above, but any display mode can end up screen-off from a
+  // manual lock). Yoru has no pause, only ending, so only 'stop' is wired: a
+  // lock-screen/headset stop ends the night immediately, without the
+  // press-and-hold confirmation the on-screen orb requires (that friction is
+  // for a stray touch through fabric, which doesn't apply to a deliberate
+  // remote control).
+  useMediaSession({
+    active: true,
+    title: 'Yoru — 夜',
+    artist: 'a wind-down for the night',
+    status: 'running',
+    actions: { stop: onFinish },
+  })
 
   const { progress, scale, phase, remainingSec } = useDescent({
     startedAt: session.startedAt,
