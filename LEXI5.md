@@ -39,6 +39,15 @@ of `(dictionary, date, iteration)` — it doesn't matter how much you switch bet
 and back; a given built-in dictionary's position on a given day is always the same, so nothing
 needs "refreshing" just from navigating away and back.
 
+Endless mode (`iteration > 0`) tracks its own lap count through the list, separate from Crown's
+calendar-anchored one — so a handful of Endless plays doesn't look like the whole list got
+exhausted. It used to fold a large offset (`total * 100`) straight into `cycleNumber` just to
+keep Endless's shuffle order from colliding with Crown's, which meant `cycleNumber` was always
+≥100 for *any* Endless game — the Custom "you've used every word" banner could fire after only
+two Endless plays on a 27-word list. Shuffle-order distinctness between Crown and Endless is now
+handled by tagging `getShuffledOrder`'s cache key with the mode instead, so `cycleNumber` (and the
+banner/toasts that key off it) reflects how many words have actually been played.
+
 For the built-in dictionaries, "cycle" is anchored to the Unix epoch — fine, since those lists
 never change. **Custom is the one exception**: it's anchored to whenever it was last curated
 (`markCustomDictionaryCurated`, storing `lexi5_custom_dict_epoch`), not the epoch. Without that
@@ -112,6 +121,11 @@ Two things to watch if you touch this:
 - **High-Fidelity Social Sharing**: Instead of simple text emojis, the "Share" button utilizes `html2canvas` and the Web Share API to generate and share a clean, beautiful image of your game board. Sharing replaces the target word with a spoiler-free definition hint, and dynamically brands AI-curated custom games.
 - **Animations & Haptics**: Full NYT-style animations including tile pops, invalid word shake, and a staggered victory dance. Includes mobile `navigator.vibrate` haptics and a confetti celebration upon beating the Crown word. The layout features `overscroll-behavior-y: none` to prevent native browser pull-to-refresh from squishing viewport elements.
 - **Hard Mode**: Revealed hints must be used in subsequent guesses (and green letters must remain in their exact positions).
+- **Screen Wake Lock**: The screen stays awake only while an active game is actually on screen
+  (`gameState.status === 'playing'` and no Settings/Stats/Archive/forfeit modal is open) — moving
+  to any menu, winning, or forfeiting drops back to default OS sleep behavior. Uses
+  `src/shared/useWakeLock.ts`, promoted there once Lexi5 became a third app needing it (Tempo and
+  Yoru re-export it from their old paths).
 - **Statistics Management**: In-progress games are automatically forfeited if left unfinished past midnight (recorded as a loss against the dictionary that game was playing), and users have the option to securely reset their statistics via a destructive confirmation modal. Guess distributions intelligently omit the "0" text for empty bars for a cleaner look.
 - **Daily Archive**: A modal accessible via the calendar icon allowing players to look up the past 14 days of Crown words for any dictionary.
 - **PWA**: Fully installable as an offline-first app, registered in The Cabinet.

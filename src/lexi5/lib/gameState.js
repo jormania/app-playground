@@ -90,8 +90,11 @@ const shuffleCache = new Map()
 
 // A deterministic shuffled permutation of a list's indices, reseeded automatically
 // whenever the list's contents change OR when the list completes a full cycle.
-function getShuffledOrder(list, cycleNumber = 0) {
-  const key = `${list.length}:${hashString(list.join(','))}:cycle:${cycleNumber}`
+// `mode` keeps Crown's and Endless's permutations independent (see getWord) even
+// when they land on the same cycleNumber, so an endless word never previews a
+// future Crown word (or vice versa).
+function getShuffledOrder(list, cycleNumber = 0, mode = 'crown') {
+  const key = `${list.length}:${hashString(list.join(','))}:${mode}:cycle:${cycleNumber}`
   const cached = shuffleCache.get(key)
   if (cached) return cached
 
@@ -194,17 +197,23 @@ export function getWordProgress(dictionary = 'standard', dateString, iteration =
   
   let seq
   let cycleNumber
-  
+
   if (iteration === 0) {
     const anchor = dictionary === 'custom' ? getCustomDictionaryEpoch() : 0
     seq = (daysSinceEpoch(dateString) - anchor)
     cycleNumber = Math.floor(seq / total)
   } else {
-    // Endless mode uses a massive cycle offset so it never collides with the daily calendar sequence
-    seq = (total * 100) + iteration
+    // Endless mode's own lap count through the list, counted from its own first
+    // play (iteration 1) rather than the calendar. This used to be offset by
+    // `total * 100` so its shuffle order wouldn't collide with Crown's — but that
+    // offset also fed into cycleNumber, so cycleNumber was always >= 100 here,
+    // making `justWrapped`/staleness checks fire after a couple of endless games
+    // instead of after the list was actually exhausted. Shuffle-order distinctness
+    // is handled separately now, in getWord's `mode` argument to getShuffledOrder.
+    seq = iteration - 1
     cycleNumber = Math.floor(seq / total)
   }
-  
+
   const position = ((seq % total) + total) % total
   return { position, total, cycleNumber, justWrapped: position === 0 && cycleNumber > 0 }
 }
@@ -215,7 +224,7 @@ export function getWordProgress(dictionary = 'standard', dateString, iteration =
 export function getWord(dictionary = 'standard', dateString, iteration = 0) {
   const list = resolveDictionaryList(dictionary)
   const { position, cycleNumber } = getWordProgress(dictionary, dateString, iteration)
-  const order = getShuffledOrder(list, cycleNumber)
+  const order = getShuffledOrder(list, cycleNumber, iteration === 0 ? 'crown' : 'endless')
   return list[order[position]]
 }
 

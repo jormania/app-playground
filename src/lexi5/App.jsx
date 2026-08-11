@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useConfig } from './lib/config'
 import { useGameState, getWord, getWordProgress, isValidGuess, hasCustomDictionary, DICTIONARY_LABELS } from './lib/gameState'
 import { hapticTap, hapticError, hapticWin } from './lib/haptics'
+import { useWakeLock } from '../shared/useWakeLock'
 import { Board } from './components/Board'
 import { Keyboard } from './components/Keyboard'
 import { Settings } from './components/Settings'
@@ -38,6 +39,13 @@ export function App() {
   
   const toastTimeoutRef = useRef(null)
   const shakeTimeoutRef = useRef(null)
+
+  // Keep the screen awake only while an active game is actually on screen — drop
+  // back to default behavior the moment any menu/modal covers it, or the game ends.
+  useWakeLock(
+    gameState.status === 'playing' &&
+    !showSettings && !showStats && !showArchive && !showForfeitModal
+  )
 
   // Show stats automatically when game ends, trigger confetti, update favicon
   useEffect(() => {

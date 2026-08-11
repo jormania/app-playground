@@ -80,11 +80,14 @@ WMO mapping; Touch Grass wraps it to add its own prose),
 [`photo.ts`](src/shared/photo.ts) (canvas downscale before upload; Wanderlist
 re-exports it, Journal keeps its older legacy copy),
 [`storage.ts`](src/shared/storage.ts) (localStorage/sessionStorage helpers that
-can't throw; WhereItWent re-exports it), and
+can't throw; WhereItWent re-exports it),
 [`notionId.ts`](src/shared/notionId.ts) (parses a Notion id out of a pasted URL,
 dashed UUID or bare id — Loom re-exports it; Wanderlist and Journal still carry
-their own older copies). Each promotion left the original path working as a thin
-re-export, so the old app's tests prove the move was behaviour-preserving.
+their own older copies), and [`useWakeLock.ts`](src/shared/useWakeLock.ts)
+(screen-awake hook wrapping the Wake Lock API, degrading silently where
+unsupported; Tempo and Yoru re-export it, Lexi5 imports it directly). Each
+promotion left the original path working as a thin re-export, so the old
+app's tests prove the move was behaviour-preserving.
 
 ## Service workers & dev
 

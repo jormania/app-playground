@@ -214,6 +214,42 @@ describe('gameState logic', () => {
       const progress = getWordProgress('custom', today, 0)
       expect(progress.cycleNumber).toBe(0)
     })
+
+    it('does not report a wrapped cycle in Endless mode until every word has actually had a turn', () => {
+      // Regression: iteration>0 (Endless) used to fold a `total * 100` shuffle-distinctness
+      // offset straight into cycleNumber, so cycleNumber was always >= 100 for ANY endless
+      // game — meaning the "you've used every word" banner fired after just the second game
+      // on a 27-word list, not after all 27 had actually been played.
+      const list = ['apple', 'mango', 'grape']
+      localStorage.setItem('lexi5_custom_dict', JSON.stringify(list))
+      markCustomDictionaryCurated()
+
+      const today = new Date().toDateString()
+      const secondEndlessGame = getWordProgress('custom', today, 2)
+      expect(secondEndlessGame.cycleNumber).toBe(0)
+      expect(secondEndlessGame.justWrapped).toBe(false)
+
+      const afterFullLap = getWordProgress('custom', today, list.length + 1)
+      expect(afterFullLap.cycleNumber).toBe(1)
+      expect(afterFullLap.justWrapped).toBe(true)
+    })
+
+    it('gives Endless a different word order than Crown even on the same cycleNumber', () => {
+      // Without a mode-distinct shuffle key, Endless game 1 (cycleNumber 0) would use the
+      // exact same permutation as Crown's cycleNumber-0 stretch, so an early endless word
+      // could spoil (exactly match) a future daily word.
+      const list = ['apple', 'mango', 'grape', 'peach', 'lemon']
+      localStorage.setItem('lexi5_custom_dict', JSON.stringify(list))
+      markCustomDictionaryCurated()
+
+      const crownWord = getWord('custom', new Date().toDateString(), 0)
+      const endlessWord = getWord('custom', new Date().toDateString(), 1)
+      // Both land on cycleNumber 0, position 0 of their own sequences — only the mode
+      // tag on the shuffle key can make these differ.
+      expect(getWordProgress('custom', new Date().toDateString(), 0).cycleNumber).toBe(0)
+      expect(getWordProgress('custom', new Date().toDateString(), 1).cycleNumber).toBe(0)
+      expect(crownWord).not.toBe(endlessWord)
+    })
   })
 
   describe('useGameState', () => {
