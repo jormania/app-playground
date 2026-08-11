@@ -2,10 +2,21 @@
    Yoru — fixed Tokyo Night Storm palette.
 
    Yoru has exactly ONE look: a dim, dark, frameless night. There is no theme
-   toggle and no light mode. This file is loaded AFTER ds/tokens.css at the app
-   root, so these :root overrides win — every DS component (Button,
-   SegmentedControl, NumberStepper…) reads the same tokens and adopts the
-   palette automatically, without any component special-casing Yoru.
+   toggle and no light mode.
+
+   Every rule below that redefines a DS token name is gated behind
+   `[data-yoru-palette]` on <html> (App.jsx sets it unconditionally — 'storm'
+   included, never omitted) rather than relying on plain `:root` + load
+   order. A plain `:root` here ties in specificity with ds/tokens.css's own
+   plain `:root`, and which one wins a tie is decided by whichever loads
+   LAST — true by import order in `vite dev`, but NOT guaranteed in the
+   production build: tokens.css is a shared chunk pulled in by many apps, and
+   Rollup can (and does) emit its stylesheet after this one, silently
+   reverting the whole page to DS's plain light defaults. An attribute
+   selector's higher specificity wins regardless of order, which is exactly
+   how Moonlight/Candlelight below already worked correctly even under the
+   old bug — Storm just needs the same treatment instead of being the bare,
+   order-dependent case.
 
    Palette: Tokyo Night — "Storm" variant (folke.github.io/tokyonight.nvim).
      bg_dark     #1f2335   app background (deepest, for a dim night)
@@ -19,15 +30,37 @@
      terminal    #414868   hairlines
    ───────────────────────────────────────────────────────────────────────── */
 
-:root {
-  /* Yoru is always dark, no toggle — tell the browser to draw native chrome
-     (date pickers, scrollbars, the range inputs in the Mixer) to match,
-     without going through DS's `data-theme="dark"` attribute: that attribute
-     also activates ds/tokens.css's `:root[data-theme="dark"]` block, whose
-     higher specificity than the plain `:root` below would silently override
-     these Storm values (see the note above this block). */
+/* Shared across all three atmospheres — always dark, so native chrome
+   matches regardless of which is active, without going through DS's own
+   `data-theme="dark"` attribute (which would re-activate the ds/tokens.css
+   collision described above). Also every token NONE of the three palette
+   blocks below ever override (type, status colours, shadows, the modal
+   scrim): with the old bare `:root`, those simply applied underneath
+   whichever palette block layered its own overrides on top. Now that Storm
+   is its own `[data-yoru-palette="storm"]` block rather than the bare
+   default, these have to live somewhere that still matches under Moonlight
+   and Candlelight too — the attribute-EXISTS selector, not any one value. */
+:root[data-yoru-palette] {
   color-scheme: dark;
 
+  /* Type — one Japanese superfamily (see main.jsx). Zen Old Mincho is the
+     display face (the 夜 glyph, titles); Zen Kaku Gothic New is the UI text.
+     Minimal, harmonised, and Japanese through and through. */
+  --font-display: 'Zen Old Mincho', 'Yu Mincho', 'Hiragino Mincho Pro', serif;
+  --font-sans: 'Zen Kaku Gothic New', 'Yu Gothic', system-ui, sans-serif;
+  --font-mono: 'Zen Kaku Gothic New', system-ui, sans-serif;
+
+  --color-success: #9ece6a;
+  --color-warning: #e0af68;
+  --color-danger:  #f7768e;
+
+  --color-scrim: rgba(10, 12, 20, 0.66);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+:root[data-yoru-palette="storm"] {
   /* Surfaces */
   --color-bg:        #1f2335;
   --color-bg-sunken: #1a1e2e;
@@ -45,31 +78,16 @@
   --color-accent:       #7aa2f7;
   --color-accent-hover: #89b4fa;
   --color-on-accent:    #1a1b26;
-  --color-success:      #9ece6a;
-  --color-warning:      #e0af68;
-  --color-danger:       #f7768e;
-
-  /* Type — one Japanese superfamily (see main.jsx). Zen Old Mincho is the
-     display face (the 夜 glyph, titles); Zen Kaku Gothic New is the UI text.
-     Minimal, harmonised, and Japanese through and through. */
-  --font-display: 'Zen Old Mincho', 'Yu Mincho', 'Hiragino Mincho Pro', serif;
-  --font-sans: 'Zen Kaku Gothic New', 'Yu Gothic', system-ui, sans-serif;
-  --font-mono: 'Zen Kaku Gothic New', system-ui, sans-serif;
 
   /* Yoru-specific: the breath orb's colour. */
   --yoru-glow:  #bb9af7;
   --yoru-glow2: #7aa2f7;
-
-  --color-scrim: rgba(10, 12, 20, 0.66);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
 }
 
 /* Warmer "Moonlight" palette — a softer, cosier variant of the same night.
-   Applied app-wide via <html data-yoru-palette="moonlight"> (set from App). Only
-   the glow + accent warm toward lilac/periwinkle and the surfaces gain a touch
-   of warmth; the night stays dark. */
+   Applied app-wide via <html data-yoru-palette="moonlight"> (set from App, same
+   as "storm" above). Only the glow + accent warm toward lilac/periwinkle and
+   the surfaces gain a touch of warmth; the night stays dark. */
 :root[data-yoru-palette="moonlight"] {
   --color-bg:        #221f33;
   --color-bg-sunken: #1c1a2b;
