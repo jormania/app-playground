@@ -128,6 +128,13 @@ Two things to watch if you touch this:
   Yoru re-export it from their old paths).
 - **Statistics Management**: In-progress games are automatically forfeited if left unfinished past midnight (recorded as a loss against the dictionary that game was playing), and users have the option to securely reset their statistics via a destructive confirmation modal. Guess distributions intelligently omit the "0" text for empty bars for a cleaner look.
 - **Daily Archive**: A modal accessible via the calendar icon allowing players to look up the past 14 days of Crown words for any dictionary.
+- **Reveal link stays lowercase in the DOM**: The post-game "The word was: WORD" Wiktionary link
+  displays uppercase via CSS (`text-transform: uppercase` on `.wordRevealWord`) but its actual text
+  content — and the link's `href` — stay lowercase. English Wiktionary treats a capitalized title as
+  a *different, case-sensitive page* (often a surname/proper-noun entry, e.g. "Gully" vs "gully"). If
+  the on-screen text itself were the literal uppercase string, a phone's "search selected text" /
+  circle-to-search on that word would search the all-caps string directly — bypassing our correct
+  lowercase `href` entirely — and could land on the wrong, unrelated entry.
 - **PWA**: Fully installable as an offline-first app, registered in The Cabinet.
 
 See [`LEXI5_ROADMAP.md`](LEXI5_ROADMAP.md) for deferred/optional follow-ups from the 2026-08-08 audit.
