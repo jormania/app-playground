@@ -34,10 +34,10 @@ export function App() {
   const [showStats, setShowStats] = useState(false)
   const [showForfeitModal, setShowForfeitModal] = useState(false)
   const [toast, setToast] = useState(null)
+  const [toastQueue, setToastQueue] = useState([])
   const [openSettingsToCurate, setOpenSettingsToCurate] = useState(false)
   const [showArchive, setShowArchive] = useState(false)
-  
-  const toastTimeoutRef = useRef(null)
+
   const shakeTimeoutRef = useRef(null)
 
   // Keep the screen awake only while an active game is actually on screen — drop
@@ -80,11 +80,33 @@ export function App() {
     }
   }, [gameState.status])
 
+  // A queue rather than a single overwritten string, so an unrelated toast fired while
+  // one's already showing (e.g. a "switched dictionary" toast right before a "curated N
+  // words" toast) gets its own turn on screen instead of silently clobbering the other.
+  // Rapid repeats of the *same* message (e.g. mashing Enter on an invalid guess) don't
+  // pile up — they're deduped against what's showing and what's already queued.
   const showToast = (msg) => {
-    setToast(msg)
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
-    toastTimeoutRef.current = setTimeout(() => setToast(null), 2000)
+    setToast(prevToast => {
+      if (prevToast === null) return msg
+      setToastQueue(prevQueue => {
+        if (msg === prevToast || msg === prevQueue[prevQueue.length - 1]) return prevQueue
+        return [...prevQueue, msg]
+      })
+      return prevToast
+    })
   }
+
+  useEffect(() => {
+    if (!toast) {
+      if (toastQueue.length > 0) {
+        setToast(toastQueue[0])
+        setToastQueue(prev => prev.slice(1))
+      }
+      return
+    }
+    const timer = setTimeout(() => setToast(null), 2000)
+    return () => clearTimeout(timer)
+  }, [toast, toastQueue])
 
   const triggerShake = () => {
     setInvalidGuess(true)
@@ -313,7 +335,7 @@ export function App() {
       </main>
 
       {toast && (
-        <div className={styles.toast}>
+        <div className={styles.toast} role="status" aria-live="polite" aria-atomic="true">
           {toast}
         </div>
       )}

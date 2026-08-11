@@ -157,6 +157,32 @@ describe('gameState logic', () => {
         expect(words.size).toBe(sampleSize)
       }
     })
+
+    it('daysSinceEpoch does not skip or repeat a day across a real DST transition', () => {
+      // daysSinceEpoch re-anchors to UTC noon of the *local calendar date* specifically so a
+      // fractional-day DST shift near local midnight can't nudge the computed day count. That
+      // only actually exercises anything in a timezone that observes DST — this sandbox/CI runs
+      // in UTC, which never does — so this test pins process.env.TZ to one that does for both
+      // the 2026 US spring-forward (Mar 8) and fall-back (Nov 1) transitions, and restores it
+      // afterward so no other test in this file is affected.
+      const originalTZ = process.env.TZ
+      process.env.TZ = 'America/New_York'
+      try {
+        const total = DICTIONARY_SIZES.standard
+
+        const beforeSpringForward = getWordProgress('standard', 'Sat Mar 07 2026', 0)
+        const springForwardDay = getWordProgress('standard', 'Sun Mar 08 2026', 0)
+        const afterSpringForward = getWordProgress('standard', 'Mon Mar 09 2026', 0)
+        expect((springForwardDay.position - beforeSpringForward.position + total) % total).toBe(1)
+        expect((afterSpringForward.position - springForwardDay.position + total) % total).toBe(1)
+
+        const fallBackDay = getWordProgress('standard', 'Sun Nov 01 2026', 0)
+        const afterFallBack = getWordProgress('standard', 'Mon Nov 02 2026', 0)
+        expect((afterFallBack.position - fallBackDay.position + total) % total).toBe(1)
+      } finally {
+        process.env.TZ = originalTZ
+      }
+    })
   })
 
   describe('custom dictionary fallback (normalizeDictionary / hasCustomDictionary)', () => {

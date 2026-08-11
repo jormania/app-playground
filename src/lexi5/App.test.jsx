@@ -105,6 +105,34 @@ describe('App component (Hard Mode Validation)', () => {
     expect(toast).toBeTruthy()
   })
 
+  it('queues a second distinct toast instead of dropping it while one is already showing', async () => {
+    render(<App />)
+
+    await typeWord('rooms')
+
+    // First Hard Mode violation: drop the required green R at position 1.
+    await typeWord('aaaaa')
+    expect(await screen.findByText(/Must use R in position 1/i)).toBeTruthy()
+
+    // Clear the rejected guess and, immediately (before the first toast's ~2s dwell
+    // elapses), fire a second violation with a *different* message. It should queue
+    // behind the first rather than silently overwriting it.
+    for (let i = 0; i < 5; i++) {
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace' }))
+      })
+    }
+    await typeWord('rovvv')
+
+    // Right after firing it, the first toast is still the one on screen — the second
+    // hasn't silently replaced it.
+    expect(screen.getByText(/Must use R in position 1/i)).toBeTruthy()
+    expect(screen.queryByText(/Guess must contain O/i)).toBeNull()
+
+    // Once the first toast's dwell time elapses, the queued one takes its place.
+    expect(await screen.findByText(/Guess must contain O/i, {}, { timeout: 3000 })).toBeTruthy()
+  })
+
   it('accepts guess if duplicate letter rules are followed', async () => {
     render(<App />)
     

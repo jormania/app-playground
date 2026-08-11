@@ -98,6 +98,12 @@ The app surfaces state changes/errors via a lightweight in-app toast (not blocki
 - Copying/sharing the board (link copy, image share, and their failure paths).
 - Resetting statistics.
 
+Toasts queue rather than overwrite: if one fires while another's still showing, it waits its
+turn instead of silently clobbering the first (immediate repeats of the *same* message are
+deduped against what's showing/queued, so e.g. mashing Enter on an invalid guess doesn't pile
+up a run of identical toasts). The toast itself renders with `role="status" aria-live="polite"
+aria-atomic="true"` so screen readers announce it.
+
 ## Theming gotcha: this app maps DS tokens onto its own palette
 `App.module.css`'s `:root` block re-maps several `--color-*` custom properties
 (`--color-surface`, `--color-ink`, `--color-border`, `--color-surface-2`, `--color-muted`) so
@@ -124,7 +130,8 @@ Two things to watch if you touch this:
 
 ## Features & Polish
 - **Crown Mode vs Infinite**: The first game played each day is the "Crown" word, which tracks its own special streak separate from infinite practice mode. The UI now intelligently displays the global session streak by default, enabling players of endless custom games to track their active win streaks continuously.
-- **Smart Keyboard**: An optional setting that adds positional memory (small dots) to yellow keys, reminding you which positions you've already tried a letter in.
+- **Smart Keyboard**: An optional setting that adds positional memory (small dots) to yellow keys, reminding you which positions you've already tried a letter in. The dots are decorative/`aria-hidden`; every key's actual Wordle status (correct/present/absent) is exposed to assistive tech via `aria-label` regardless of this setting, since color alone doesn't reach a screen reader.
+- **High Contrast Mode**: An optional blue/orange palette swap for the green/yellow tiles, for players with color vision deficiencies that make the default red/green-adjacent palette hard to distinguish.
 - **High-Fidelity Social Sharing**: Instead of simple text emojis, the "Share" button utilizes `html2canvas` and the Web Share API to generate and share a clean, beautiful image of your game board. Sharing replaces the target word with a spoiler-free definition hint, and dynamically brands AI-curated custom games.
 - **Animations & Haptics**: Full NYT-style animations including tile pops, invalid word shake, and a staggered victory dance. Includes mobile `navigator.vibrate` haptics and a confetti celebration upon beating the Crown word. The layout features `overscroll-behavior-y: none` to prevent native browser pull-to-refresh from squishing viewport elements.
 - **Hard Mode**: Revealed hints must be used in subsequent guesses (and green letters must remain in their exact positions).

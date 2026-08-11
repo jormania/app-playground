@@ -7,6 +7,15 @@ const ROWS = [
   ['Enter', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'Backspace']
 ]
 
+// Spoken alternative to the key's color-only status — a screen reader can't see the
+// green/yellow/gray background, so it needs to be told outright.
+const STATUS_LABEL = {
+  correct: ', correct',
+  present: ', present elsewhere',
+  absent: ', absent',
+  tbd: ''
+}
+
 export const Keyboard = memo(function Keyboard({ guesses, word, onChar, onDelete, onEnter, smartKeyboard }) {
   // Determine letter status based on guesses
   const keyStatuses = {}
@@ -50,6 +59,7 @@ export const Keyboard = memo(function Keyboard({ guesses, word, onChar, onDelete
               <button
                 key={key}
                 className={`${styles.key} ${isEnter || isDel ? styles.actionKey : ''} ${styles[status]}`}
+                aria-label={isEnter || isDel ? undefined : `${key}${STATUS_LABEL[status]}`}
                 onClick={() => {
                   if (isEnter) onEnter()
                   else if (isDel) onDelete()
@@ -57,14 +67,17 @@ export const Keyboard = memo(function Keyboard({ guesses, word, onChar, onDelete
                 }}
               >
                 {(smartKeyboard && (status === 'present' || status === 'correct') && (triedPositions[key] || correctPositions[key])) ? (
-                  <div className={styles.smartDots}>
+                  // Decorative positional hint — its information (which slots this letter has
+                  // already been tried/confirmed in) isn't translated to text; hide it from
+                  // assistive tech rather than leaving it unexplained.
+                  <div className={styles.smartDots} aria-hidden="true">
                     {[0,1,2,3,4].map(idx => {
                       const isCorrect = correctPositions[key]?.has(idx)
                       const isTried = triedPositions[key]?.has(idx) || (allCorrectPositions.has(idx) && !isCorrect)
                       return (
-                        <span 
-                          key={idx} 
-                          className={`${styles.dot} ${isCorrect ? styles.dotCorrect : (isTried ? styles.dotTried : '')}`} 
+                        <span
+                          key={idx}
+                          className={`${styles.dot} ${isCorrect ? styles.dotCorrect : (isTried ? styles.dotTried : '')}`}
                         />
                       )
                     })}

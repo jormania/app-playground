@@ -152,6 +152,33 @@ describe('Settings component', () => {
     expect(storedDict.length).toBe(3)
   })
 
+  it('lets the Word Count field go blank instead of snapping to 0 when cleared', () => {
+    render(
+      <Settings
+        open={true}
+        onClose={() => {}}
+        config={defaultConfig}
+        onConfigChange={mockOnConfigChange}
+        onDictionaryChange={mockOnDictionaryChange}
+        onDifficultyChange={mockOnDifficultyChange}
+        onResetStats={mockOnResetStats}
+        openToCurate={false}
+      />
+    )
+
+    fireEvent.click(screen.getByText('AI Curation'))
+
+    const wordCountInput = screen.getByLabelText('Word Count')
+    // Number('') is 0 (a finite number), not NaN — a naive `Number.isFinite` guard would
+    // let that slip through and snap the field to "0" the instant it's cleared, instead
+    // of letting the player actually retype a fresh count.
+    fireEvent.change(wordCountInput, { target: { value: '' } })
+    expect(wordCountInput.value).toBe('')
+
+    fireEvent.change(wordCountInput, { target: { value: '250' } })
+    expect(wordCountInput.value).toBe('250')
+  })
+
   it('handles curation timeout (AbortError)', async () => {
     render(
       <Settings

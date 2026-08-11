@@ -71,6 +71,42 @@ describe('Keyboard component', () => {
     expect(dots[0].className).not.toMatch(/dotTried/)
   })
 
+  it('exposes key status to assistive tech via aria-label, since color is the only visual signal', () => {
+    const { getByText } = render(
+      <Keyboard
+        guesses={['ample']}
+        word="apple"
+        onChar={() => {}}
+        onDelete={() => {}}
+        onEnter={() => {}}
+        smartKeyboard={false}
+      />
+    )
+
+    expect(getByText('A').getAttribute('aria-label')).toBe('A, correct')
+    expect(getByText('M').getAttribute('aria-label')).toBe('M, absent')
+    // Untried letters have no status worth announcing beyond the letter itself.
+    expect(getByText('Q').getAttribute('aria-label')).toBe('Q')
+    // Enter/Backspace already have clear text content ("Enter"/"DEL") as their name.
+    expect(getByText('Enter').getAttribute('aria-label')).toBeNull()
+  })
+
+  it('hides the decorative smart-dots positional hint from assistive tech', () => {
+    const { getByText } = render(
+      <Keyboard
+        guesses={['tasty']}
+        word="apple"
+        onChar={() => {}}
+        onDelete={() => {}}
+        onEnter={() => {}}
+        smartKeyboard={true}
+      />
+    )
+
+    const dotsContainer = getByText('A').querySelector('div')
+    expect(dotsContainer.getAttribute('aria-hidden')).toBe('true')
+  })
+
   it('calls onChar when a letter key is clicked', () => {
     const onCharMock = vi.fn()
     const { getByText } = render(
