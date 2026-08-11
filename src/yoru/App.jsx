@@ -17,13 +17,13 @@ export default function App() {
   const [session, setSession] = useState(null)
   const [phase, setPhase] = useState('home')
 
-  // Apply the chosen palette app-wide. 'storm' is the default Night (no
-  // attribute); 'moonlight' and 'candlelight' are overrides in yoru.css.
+  // Apply the chosen palette app-wide. Always set explicitly, 'storm'
+  // included — never omitted — so yoru.css's `[data-yoru-palette="storm"]`
+  // rule (see its header comment) always has something to match, rather than
+  // Storm depending on a bare `:root` that ds/tokens.css's own `:root` can
+  // outrace in production.
   useEffect(() => {
-    const root = document.documentElement
-    const palette = settings.palette ?? 'storm'
-    if (palette === 'storm') root.removeAttribute('data-yoru-palette')
-    else root.setAttribute('data-yoru-palette', palette)
+    document.documentElement.setAttribute('data-yoru-palette', settings.palette ?? 'storm')
   }, [settings.palette])
 
   // On open, pick up an unfinished session from earlier this same night.
