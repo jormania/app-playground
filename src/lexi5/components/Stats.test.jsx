@@ -2,30 +2,13 @@
 import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest'
 import { render, cleanup, screen, fireEvent, waitFor } from '@testing-library/react'
 import { Stats } from './Stats'
-import html2canvas from 'html2canvas'
-
-// Mock html2canvas
-vi.mock('html2canvas', () => ({
-  default: vi.fn()
-}))
 
 // Mock ds components
 vi.mock('../../ds', () => ({
-  Modal: ({ children, open }) => (open ? <div data-testid="modal">{children}</div> : null),
+  Modal: ({ children, open, title }) => (open ? <div data-testid="modal" aria-label={title}>{children}</div> : null),
   Button: ({ children, onClick, disabled }) => (
     <button data-testid="button" onClick={onClick} disabled={disabled}>{children}</button>
   ),
-  SegmentedControl: ({ value, onChange }) => (
-    <select data-testid="segmented-control" value={value} onChange={e => onChange(e.target.value)}>
-      <option value="standard">Standard</option>
-      <option value="lite">Lite</option>
-    </select>
-  )
-}))
-
-// Mock Chart.js to avoid canvas errors
-vi.mock('react-chartjs-2', () => ({
-  Bar: () => <div data-testid="bar-chart" />
 }))
 
 describe('Stats component', () => {
@@ -35,167 +18,126 @@ describe('Stats component', () => {
       gamesWon: 8,
       currentStreak: 2,
       maxStreak: 5,
-      crownGamesPlayed: 5,
-      crownGamesWon: 4,
-      crownCurrentStreak: 1,
-      crownMaxStreak: 3,
-      guesses: { 1: 0, 2: 1, 3: 2, 4: 3, 5: 1, 6: 1 }
-    }
+      guesses: { 1: 0, 2: 1, 3: 2, 4: 3, 5: 1, 6: 1 },
+    },
   }
 
   const defaultGameState = {
+    date: 'Wed Aug 12 2026',
+    iteration: 0,
     dictionary: 'standard',
     status: 'won',
-    guesses: ['apple', 'berry', 'robot']
+    guesses: ['apple', 'berry', 'robot'],
+    difficulty: 'normal',
   }
+
+  const idleDefinition = { word: null, status: 'idle', text: null }
 
   const mockOnToast = vi.fn()
   const mockOnPlayAgain = vi.fn()
   const mockOnClose = vi.fn()
+  const mockRequestDefinition = vi.fn()
+
+  const renderStats = (props = {}) =>
+    render(
+      <Stats
+        open
+        onClose={mockOnClose}
+        stats={defaultStats}
+        gameState={defaultGameState}
+        word="robot"
+        onPlayAgain={mockOnPlayAgain}
+        onToast={mockOnToast}
+        highContrast={false}
+        hintUsed={false}
+        definition={idleDefinition}
+        requestDefinition={mockRequestDefinition}
+        {...props}
+      />
+    )
 
   beforeEach(() => {
     vi.clearAllMocks()
-    
-    // Setup navigator mocks
-    Object.defineProperty(navigator, 'share', { value: vi.fn(), configurable: true })
-    Object.defineProperty(navigator, 'canShare', { value: vi.fn(), configurable: true })
+    Object.defineProperty(navigator, 'share', { value: undefined, configurable: true })
+    Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true })
     Object.defineProperty(navigator, 'clipboard', {
-      value: {
-        write: vi.fn(),
-        writeText: vi.fn()
-      },
-      configurable: true
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      configurable: true,
     })
-    
-    // Mock Blob and File
-    global.Blob = class Blob {}
-    global.File = class File {}
-    
-    // Mock canvas toBlob
-    global.HTMLCanvasElement.prototype.toBlob = function(callback) {
-      callback(new Blob())
-    }
   })
 
   afterEach(cleanup)
 
-  it('invokes navigator.share when canShare is true', async () => {
-    navigator.canShare.mockReturnValue(true)
-    navigator.share.mockResolvedValue(undefined)
-    
-    // Mock html2canvas resolving to a canvas
-    const mockCanvas = document.createElement('canvas')
-    html2canvas.mockResolvedValue(mockCanvas)
-    
-    render(
-      <Stats
-        open={true}
-        onClose={mockOnClose}
-        stats={defaultStats}
-        gameState={defaultGameState}
-        word="ROBOT"
-        onPlayAgain={mockOnPlayAgain}
-        onToast={mockOnToast}
-      />
-    )
-    
-    const shareButton = screen.getByText(/Image/)
-    fireEvent.click(shareButton)
-    
-    await waitFor(() => {
-      expect(navigator.share).toHaveBeenCalled()
-      // Button resets
-      expect(shareButton.textContent).toMatch(/Image/)
-    })
+  it('requests the definition for a finished game on open', () => {
+    // Whether that turns into an actual fetch is requestDefinition's call (it owns the
+    // per-word cache, shared with the hint button) — Stats always asks on a fresh open,
+    // covered end-to-end in App.hint.test.jsx.
+    renderStats()
+    expect(mockRequestDefinition).toHaveBeenCalledWith('robot')
   })
 
-  it('handles AbortError quietly when user closes share sheet', async () => {
-    navigator.canShare.mockReturnValue(true)
-    navigator.share.mockRejectedValue(new DOMException('User aborted', 'AbortError'))
-    
-    const mockCanvas = document.createElement('canvas')
-    html2canvas.mockResolvedValue(mockCanvas)
-    
-    render(
-      <Stats
-        open={true}
-        onClose={mockOnClose}
-        stats={defaultStats}
-        gameState={defaultGameState}
-        word="ROBOT"
-        onPlayAgain={mockOnPlayAgain}
-        onToast={mockOnToast}
-      />
-    )
-    
-    const shareButton = screen.getByText(/Image/)
-    fireEvent.click(shareButton)
-    
-    await waitFor(() => {
-      expect(navigator.share).toHaveBeenCalled()
-      // Should NOT toast an error if it's an AbortError
-      expect(mockOnToast).not.toHaveBeenCalled()
-      // Button resets
-      expect(shareButton.textContent).toMatch(/Image/)
-    })
+  it('shows the found definition', () => {
+    renderStats({ definition: { word: 'robot', status: 'found', text: 'A humanoid machine.' } })
+    expect(screen.getByText('A humanoid machine.')).toBeTruthy()
   })
 
-  it('falls back to clipboard.write if canShare is false', async () => {
-    navigator.canShare.mockReturnValue(false)
-    navigator.clipboard.write.mockResolvedValue(undefined)
-    
-    const mockCanvas = document.createElement('canvas')
-    html2canvas.mockResolvedValue(mockCanvas)
-    
-    render(
-      <Stats
-        open={true}
-        onClose={mockOnClose}
-        stats={defaultStats}
-        gameState={defaultGameState}
-        word="ROBOT"
-        onPlayAgain={mockOnPlayAgain}
-        onToast={mockOnToast}
-      />
-    )
-    
-    const shareButton = screen.getByText(/Image/)
-    fireEvent.click(shareButton)
-    
-    await waitFor(() => {
-      expect(navigator.share).not.toHaveBeenCalled()
-      expect(navigator.clipboard.write).toHaveBeenCalled()
-      expect(shareButton.textContent).toBe('Copied!')
-    })
+  it('tells the truth when the API has no entry, distinct from a real failure', () => {
+    renderStats({ definition: { word: 'robot', status: 'not-found', text: null } })
+    expect(screen.getByText('No definition found for this word.')).toBeTruthy()
   })
 
-  it('falls back to clipboard.writeText if clipboard.write fails', async () => {
-    navigator.canShare.mockReturnValue(false)
-    navigator.clipboard.write.mockRejectedValue(new Error('NotAllowedError'))
-    navigator.clipboard.writeText.mockResolvedValue(undefined)
-    
-    const mockCanvas = document.createElement('canvas')
-    html2canvas.mockResolvedValue(mockCanvas)
-    
-    render(
-      <Stats
-        open={true}
-        onClose={mockOnClose}
-        stats={defaultStats}
-        gameState={defaultGameState}
-        word="ROBOT"
-        onPlayAgain={mockOnPlayAgain}
-        onToast={mockOnToast}
-      />
-    )
-    
-    const shareButton = screen.getByText(/Image/)
-    fireEvent.click(shareButton)
-    
+  it('does not blame connectivity for a definition that simply failed to load', () => {
+    renderStats({ definition: { word: 'robot', status: 'error', text: null } })
+    expect(screen.getByText(/try again in a moment/)).toBeTruthy()
+  })
+
+  it('shows nothing while the definition is still in flight', () => {
+    renderStats({ definition: { word: 'robot', status: 'loading', text: null } })
+    expect(screen.queryByText(/No definition|try again|humanoid/)).toBeNull()
+  })
+
+  it('offers a single Share button — no separate Image/Grid/Stats variants', () => {
+    renderStats()
+    expect(screen.getByText('Share')).toBeTruthy()
+    expect(screen.queryByText('Image')).toBeNull()
+    expect(screen.queryByText('Grid')).toBeNull()
+    expect(screen.queryByText('Stats')).toBeNull()
+  })
+
+  it('hides the Share button when there is no grid to share', () => {
+    renderStats({ gameState: { ...defaultGameState, guesses: [] } })
+    expect(screen.queryByText('Share')).toBeNull()
+  })
+
+  it('shares the same emoji-grid text the result bar sends, and toasts on copy', async () => {
+    renderStats()
+    fireEvent.click(screen.getByText('Share'))
+
     await waitFor(() => {
-      expect(navigator.clipboard.write).toHaveBeenCalled()
       expect(navigator.clipboard.writeText).toHaveBeenCalled()
-      expect(shareButton.textContent).toBe('Copied!')
     })
+    const [shared] = navigator.clipboard.writeText.mock.calls[0]
+    expect(shared).toContain('3/6')
+    expect(shared.toLowerCase()).not.toContain('robot')
+    expect(mockOnToast).toHaveBeenCalledWith('Result copied to clipboard!')
+  })
+
+  it('resets scroll when the dictionary picker changes', () => {
+    // Regression: the word/definition/share footer only renders for the currently-played
+    // dictionary, so switching away from it can shrink the panel a lot. Left at whatever
+    // scroll offset the player was at, the panel could land past its new, shorter end.
+    const scrollTo = vi.fn()
+    const originalScrollTo = Element.prototype.scrollTo
+    Element.prototype.scrollTo = scrollTo
+
+    try {
+      renderStats()
+      scrollTo.mockClear() // drop the reset-on-open call, this test is about the picker
+
+      fireEvent.change(screen.getByLabelText('Showing'), { target: { value: 'lite' } })
+      expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
+    } finally {
+      Element.prototype.scrollTo = originalScrollTo
+    }
   })
 })

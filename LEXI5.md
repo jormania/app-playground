@@ -90,6 +90,18 @@ unchanged — the same promotion pattern used for `useWakeLock`:
 - `useGameState.js` — the React hook.
 - `useToastQueue.ts` — the queued toast (see Toast notifications below).
 - `undo.js` — one-step undo for the three destructive actions.
+- `definition.ts` — `fetchDefinition`, the one call to `api.dictionaryapi.dev`. Classifies the
+  outcome as `found` / `not-found` / `error` rather than collapsing everything into a catch
+  block, so a word the API simply doesn't have an entry for (`not-found`, its own 404 or a
+  200 with nothing usable) doesn't get reported to the player as a connectivity problem.
+- `useShareResult.ts` — the one "share your result" action (see Sharing above).
+
+`App.jsx` owns a single `definition` cache keyed by word (`{ word, status, text }`), fetched
+through `requestDefinition`. Both the mid-game hint button and the post-game reveal in
+`<Stats>` (passed down as props) read/write this same cache, so using a hint and then
+finishing the game doesn't fetch the same word's definition from the API twice. The hint is
+only marked used (`lexi5_hint_used`, burning the button) once `requestDefinition` actually
+returns `found` — a failed or empty lookup no longer costs the player their hint.
 
 The pure-logic modules are **TypeScript and covered by `npm run typecheck`** (`src/lexi5/lib`
 is in `tsconfig.json`); the components remain JSX by repo convention. A closed `Config` type
@@ -139,7 +151,10 @@ The app surfaces state changes/errors via a lightweight in-app toast (not blocki
 - Falling back off an unavailable Custom dictionary (storage cleared, or a shared seed link
   referencing a Custom list you don't have).
 - Curating/refreshing the Custom dictionary (success, or a readable error inline in Settings).
-- Copying/sharing the board (link copy, image share, and their failure paths).
+- Copying/sharing the result (link copy and its failure path).
+- A hint request that came back empty or failed (see Hints & definitions below) — the one
+  toast that can fire from a `fetch`, so it's the one place a "check your connection"
+  message has to actually mean that and not just "the API said no".
 - Resetting statistics, clearing the Custom list, and refreshing it — these three carry an
   **Undo** action (see `lib/undo.js`), since each destroys unrecoverable local state and
   refreshing also discards the current list's cycle progress. The snapshot is a single slot
@@ -182,7 +197,12 @@ Two things to watch if you touch this:
 - **Crown Mode vs Infinite**: The first game played each day is the "Crown" word, which tracks its own special streak separate from infinite practice mode. The UI now intelligently displays the global session streak by default, enabling players of endless custom games to track their active win streaks continuously.
 - **Smart Keyboard**: An optional setting that adds positional memory (small dots) to yellow keys, reminding you which positions you've already tried a letter in. The dots are decorative/`aria-hidden`; every key's actual Wordle status (correct/present/absent) is exposed to assistive tech via `aria-label` regardless of this setting, since color alone doesn't reach a screen reader.
 - **High Contrast Mode**: An optional blue/orange palette swap for the green/yellow tiles, for players with color vision deficiencies that make the default red/green-adjacent palette hard to distinguish.
-- **High-Fidelity Social Sharing**: Instead of simple text emojis, the "Share" button utilizes `html2canvas` and the Web Share API to generate and share a clean, beautiful image of your game board. Sharing replaces the target word with a spoiler-free definition hint, and dynamically brands AI-curated custom games.
+- **Sharing**: One Share action (`lib/useShareResult.ts`), used identically by the result bar and
+  the Statistics panel — a score, an emoji grid (`lib/share.ts`'s `buildShareText`), and a link to
+  play the same word, never the answer. Used to be three: a rendered `html2canvas` image, a plain
+  emoji grid, and a plain stats-text summary, each telling a friend a slightly different thing for
+  the same game. The header's link-only "Share game link" is deliberately separate — it invites
+  someone to *today's* word before you've necessarily finished, which a result share can't do.
 - **Animations & Haptics**: Full NYT-style animations including tile pops, invalid word shake, and a staggered victory dance. Includes mobile `navigator.vibrate` haptics and a confetti celebration upon beating the Crown word. The layout features `overscroll-behavior-y: none` to prevent native browser pull-to-refresh from squishing viewport elements.
 - **Hard Mode**: Revealed hints must be used in subsequent guesses (and green letters must remain in their exact positions).
 - **Accessibility**: keyboard keys expose their Wordle status via `aria-label` (colour is

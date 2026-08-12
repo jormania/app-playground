@@ -7,7 +7,8 @@ import { validateHardMode } from './lib/hardMode'
 import { useToastQueue } from './lib/useToastQueue'
 import { applyUndo } from './lib/undo'
 import { msUntilNextWord, formatCountdown } from './lib/dailyCountdown'
-import { buildShareText, shareOrCopy } from './lib/share'
+import { fetchDefinition } from './lib/definition'
+import { useShareResult } from './lib/useShareResult'
 import { readJson, writeJson } from '../shared/storage'
 import { useWakeLock } from '../shared/useWakeLock'
 import { Board } from './components/Board'
@@ -65,7 +66,9 @@ export function App() {
   // "How to play", not greet the player as though they'd just arrived.
   const [isFirstRun, setIsFirstRun] = useState(() => !readJson(SEEN_GUIDE_KEY, false))
   const [hintUsed, setHintUsed] = useState(false)
-  const [hint, setHint] = useState(null)
+  // Keyed by the word it describes so a stale response for a word the player has since
+  // moved on from can't overwrite what's on screen — see requestDefinition below.
+  const [definition, setDefinition] = useState({ word: null, status: 'idle', text: null })
   const [countdown, setCountdown] = useState(() => formatCountdown(msUntilNextWord()))
   // useGameState writes this when a game ends, so it's re-read when the outcome or the
   // round changes — not on every render, which would parse storage on each keystroke.
@@ -148,29 +151,47 @@ export function App() {
     // A new game means a fresh chance to solve it unaided; the same game resumed keeps
     // whatever help it already had.
     setHintUsed(readJson(HINT_KEY, null) === gameKey)
-    setHint(null)
+    setDefinition({ word: null, status: 'idle', text: null })
   }, [gameKey])
 
+  // Mirrors `definition` so requestDefinition can check the latest cached word without
+  // taking a dependency on it — one fetch per word, shared between the hint button and the
+  // post-game reveal in <Stats> instead of each hitting api.dictionaryapi.dev on its own.
+  const definitionRef = useRef(definition)
+  definitionRef.current = definition
+
+  const requestDefinition = useCallback(async (targetWord) => {
+    const cached = definitionRef.current
+    // Only a settled, stable answer is worth serving from cache. 'error' is deliberately
+    // excluded — a transient failure shouldn't make every later click (or Stats reopening)
+    // silently replay the same stale error instead of actually trying again.
+    if (cached.word === targetWord && (cached.status === 'found' || cached.status === 'not-found')) {
+      return cached
+    }
+    setDefinition({ word: targetWord, status: 'loading', text: null })
+    const result = await fetchDefinition(targetWord)
+    const next = { word: targetWord, status: result.status, text: result.status === 'found' ? result.text : null }
+    setDefinition(next)
+    return next
+  }, [])
+
   /**
-   * Reveals the answer's dictionary definition.
+   * Reveals the answer's dictionary definition as a deliberate lifeline. Held back until
+   * the fourth guess so it can't replace playing.
    *
-   * The definition was already being fetched for the post-game reveal, so offering it as a
-   * deliberate lifeline costs nothing new. Held back until the fourth guess so it can't
-   * replace playing, and recorded so the shared result says a hint was used — the score
-   * shouldn't quietly claim to be unaided.
+   * Only marks the hint used once a definition actually comes back — it used to record
+   * that (and burn the button) before the fetch even ran, so a failed lookup still cost
+   * the player their hint with nothing to show for it.
    */
   const handleHint = async () => {
-    setHintUsed(true)
-    writeJson(HINT_KEY, gameKey)
-    try {
-      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
-      if (!res.ok) throw new Error(String(res.status))
-      const data = await res.json()
-      const found = data?.[0]?.meanings?.[0]?.definitions?.[0]?.definition
-      if (found) setHint(found)
-      else showToast("No definition found for this word — you're on your own!")
-    } catch {
-      showToast("Couldn't fetch a definition — check your connection.")
+    const result = await requestDefinition(word)
+    if (result.status === 'found') {
+      setHintUsed(true)
+      writeJson(HINT_KEY, gameKey)
+    } else if (result.status === 'not-found') {
+      showToast("No definition found for this word — you're on your own!")
+    } else {
+      showToast("Couldn't fetch a definition — try again in a moment.")
     }
   }
 
@@ -256,24 +277,15 @@ export function App() {
     window.location.reload()
   }
 
-  // The same grid the Statistics panel offers, one tap from where the game actually ends.
-  const handleShareResult = async () => {
-    const seedStr = encodeURIComponent(btoa(`${gameState.date}|${gameState.iteration}|${gameState.dictionary}`))
-    const text = buildShareText({
-      guesses: gameState.guesses,
-      word,
-      highContrast: config.highContrast,
-      dictionaryLabel: DICTIONARY_LABELS[gameState.dictionary] || gameState.dictionary,
-      won: gameState.status === 'won',
-      iteration: gameState.iteration,
-      hardMode: gameState.difficulty === 'hard',
-      hintUsed,
-      url: `${window.location.origin}${window.location.pathname}?seed=${seedStr}`,
-    })
-    const outcome = await shareOrCopy(text)
-    if (outcome === 'copied') showToast('Result copied to clipboard!')
-    else if (outcome === 'failed') showToast('Could not share or copy — try again.')
-  }
+  // The same share the Statistics panel offers, one tap from where the game actually ends.
+  const { share: handleShareResult } = useShareResult({
+    gameState,
+    word,
+    dictionaryLabel: DICTIONARY_LABELS[gameState.dictionary] || gameState.dictionary,
+    highContrast: config.highContrast,
+    hintUsed,
+    onToast: showToast,
+  })
 
   const handleShareBoard = () => {
     const seedStr = encodeURIComponent(btoa(`${gameState.date}|${gameState.iteration}|${gameState.dictionary}`))
@@ -451,9 +463,9 @@ export function App() {
             </button>
           </div>
         )}
-        {hintUsed && hint && (
+        {hintUsed && definition.word === word && definition.status === 'found' && (
           <div className={styles.hintRow}>
-            <p className={styles.hintText}><b>Hint:</b> <i>{hint}</i></p>
+            <p className={styles.hintText}><b>Hint:</b> <i>{definition.text}</i></p>
           </div>
         )}
 
@@ -524,6 +536,8 @@ export function App() {
         onToast={showToast}
         highContrast={config.highContrast}
         hintUsed={hintUsed}
+        definition={definition}
+        requestDefinition={requestDefinition}
       />
 
       <Archive

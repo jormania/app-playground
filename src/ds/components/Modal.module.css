@@ -120,4 +120,8 @@
   overflow-x: hidden;
   min-height: 0;
   box-sizing: border-box;
+  /* Without this, dragging past the top/bottom of a scrolled dialog body chains the
+     gesture to whatever's behind the modal (the page, or the browser chrome on mobile),
+     so the background visibly shifts once your finger runs out of dialog to scroll. */
+  overscroll-behavior: contain;
 }
