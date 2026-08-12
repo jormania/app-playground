@@ -1,7 +1,12 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest'
-import { render, cleanup, screen, fireEvent, waitFor } from '@testing-library/react'
+import { describe, it, expect, afterEach, vi, beforeAll, beforeEach } from 'vitest'
+import { render, cleanup, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { Settings } from './Settings'
+import { loadGuesses } from '../lib/gameState'
+
+// Curation filters the model's output through isValidGuess, which reads the on-demand
+// guess list — without it every candidate word is rejected.
+beforeAll(async () => { await loadGuesses() })
 
 // Mock the child components and external dependencies
 vi.mock('../../ds', () => ({
@@ -16,16 +21,16 @@ vi.mock('../../ds', () => ({
   Button: ({ children, onClick, disabled }) => (
     <button data-testid="button" onClick={onClick} disabled={disabled}>{children}</button>
   ),
-  SettingsToggle: ({ label, description, checked, onChange, disabled }) => (
+  // Passes the *event*, like the real SettingsToggle — the previous mock handed the
+  // consumer a bare boolean, so `e.target.checked` in Settings would have thrown against
+  // it. The tests only passed because none of them toggled anything.
+  SettingsToggle: ({ label, hint, checked, onChange, disabled }) => (
     <div data-testid="settings-toggle">
-      <input 
-        type="checkbox" 
-        checked={checked} 
-        onChange={e => onChange(e.target.checked)} 
-        disabled={disabled}
-      />
-      <span>{label}</span>
-      <span>{description}</span>
+      <label>
+        {label}
+        <input type="checkbox" checked={checked} onChange={onChange} disabled={disabled} />
+      </label>
+      <span>{hint}</span>
     </div>
   )
 }))
@@ -139,10 +144,12 @@ describe('Settings component', () => {
     const curateButton = screen.getByText('Start Curation')
     fireEvent.click(curateButton)
     
-    expect(curateButton.textContent).toBe('Curating...')
+    expect(curateButton.textContent).toBe('Curating\u2026')
     
     await waitFor(() => {
-      expect(mockOnToast).toHaveBeenCalledWith(expect.stringContaining('Custom list curated'))
+      // Second arg is the optional toast action — absent here because there was no
+      // previous list to undo back to.
+      expect(mockOnToast).toHaveBeenCalledWith(expect.stringContaining('Custom list curated'), undefined)
     })
     
     // Deduplication should result in only valid 5-letter words: APPLE, BERRY, ROBOT
@@ -179,37 +186,68 @@ describe('Settings component', () => {
     expect(wordCountInput.value).toBe('250')
   })
 
-  it('handles curation timeout (AbortError)', async () => {
+  it('reports a curation timeout distinctly from a user cancel', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
+    try {
+      render(
+        <Settings
+          open={true}
+          onClose={() => {}}
+          config={defaultConfig}
+          onDictionaryChange={mockOnDictionaryChange}
+          resetStats={mockOnResetStats}
+          onToast={vi.fn()}
+        />
+      )
+
+      // A request that never settles, so only the 30s timeout can end it.
+      global.fetch.mockImplementation((_url, opts) => new Promise((_resolve, reject) => {
+        opts.signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+      }))
+
+      fireEvent.click(screen.getByText('AI Curation'))
+      fireEvent.change(screen.getByPlaceholderText('sk-ant-...'), { target: { value: 'sk-ant-test-key' } })
+      fireEvent.click(screen.getByText('Start Curation'))
+
+      await act(async () => { vi.advanceTimersByTime(30000) })
+
+      expect(screen.getByText('Curation timed out after 30s. Please try again.')).toBeTruthy()
+      expect(localStorage.getItem('lexi5_custom_dict')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('lets the player cancel a running curation without showing it as an error', async () => {
+    const mockOnToast = vi.fn()
     render(
       <Settings
         open={true}
         onClose={() => {}}
         config={defaultConfig}
-        onConfigChange={mockOnConfigChange}
         onDictionaryChange={mockOnDictionaryChange}
-        onDifficultyChange={mockOnDifficultyChange}
-        onResetStats={mockOnResetStats}
-        openToCurate={false}
+        resetStats={mockOnResetStats}
+        onToast={mockOnToast}
       />
     )
-    
-    // Simulate AbortError for timeout
-    global.fetch.mockRejectedValueOnce(new DOMException('The operation was aborted', 'AbortError'))
 
-    const curateTabButton = screen.getByText('AI Curation')
-    fireEvent.click(curateTabButton)
+    global.fetch.mockImplementation((_url, opts) => new Promise((_resolve, reject) => {
+      opts.signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+    }))
 
-    const apiKeyInput = await screen.findByPlaceholderText('sk-ant-...')
-    fireEvent.change(apiKeyInput, { target: { value: 'sk-ant-test-key' } })
-    
-    const curateButton = screen.getByText('Start Curation')
-    fireEvent.click(curateButton)
-    
+    fireEvent.click(screen.getByText('AI Curation'))
+    fireEvent.change(screen.getByPlaceholderText('sk-ant-...'), { target: { value: 'sk-ant-test-key' } })
+    fireEvent.click(screen.getByText('Start Curation'))
+
+    // The Cancel button only exists while a run is in flight — that reachable abort is
+    // the point of the fix; the AbortController already existed.
+    fireEvent.click(await screen.findByText('Cancel'))
+
     await waitFor(() => {
-      expect(screen.getByText('Curation timed out after 30s. Please try again.')).toBeTruthy()
+      expect(mockOnToast).toHaveBeenCalledWith('Curation cancelled.')
     })
-    
-    // Ensure nothing was saved
+    // A deliberate cancel is not an error state.
+    expect(screen.queryByText(/timed out/i)).toBeNull()
     expect(localStorage.getItem('lexi5_custom_dict')).toBeNull()
   })
 })

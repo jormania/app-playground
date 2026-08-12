@@ -24,10 +24,13 @@ export {
   saveCustomDictionary,
   ensureCustomDictionaryAnchor,
   isValidGuess,
+  loadDictionary,
+  loadGuesses,
+  isDictionaryLoaded,
 } from './dictionaries'
 
 export { getWordProgress, getWord, parseSeed } from './words'
 
-export { wasGameWon } from './stats'
+export { wasGameWon, recordServedWord, getServedWord } from './stats'
 
 export { useGameState } from './useGameState'

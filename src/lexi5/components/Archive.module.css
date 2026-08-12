@@ -94,3 +94,18 @@
 .dayWordWon {
   color: var(--accent);
 }
+
+.archiveNote {
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+  line-height: 1.35;
+  margin: 0 0 4px 0;
+}
+
+.dayWordUnknown {
+  color: var(--text-subtle);
+  font-weight: 400;
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0;
+}

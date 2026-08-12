@@ -6,7 +6,28 @@ import { daysSinceEpoch } from './dateKey'
 const STATS_KEY = 'lexi5_stats'
 const HISTORY_KEY = 'lexi5_history'
 
-const DEFAULT_STATS_DICT = {
+export type DictionaryKey = 'lite' | 'standard' | 'expanded' | 'expert' | 'custom'
+
+/** Per-dictionary counters. "Crown" is the first game of a calendar day. */
+export interface DictStats {
+  gamesPlayed: number
+  gamesWon: number
+  crownGamesPlayed: number
+  crownGamesWon: number
+  currentStreak: number
+  maxStreak: number
+  crownCurrentStreak: number
+  crownMaxStreak: number
+  /** Wins bucketed by how many guesses they took, 1-6. */
+  guesses: Record<number, number>
+}
+
+export type Stats = Record<DictionaryKey, DictStats>
+
+/** `dictionary:dateString` -> true for wins, or the word served for `lexi5_served`. */
+type HistoryMap = Record<string, unknown>
+
+const DEFAULT_STATS_DICT: DictStats = {
   gamesPlayed: 0,
   gamesWon: 0,
   crownGamesPlayed: 0,
@@ -22,9 +43,9 @@ const DEFAULT_STATS_DICT = {
 // the old object literal handed all five dictionaries the *same* nested `guesses` object
 // — safe only for as long as every update spreads before writing, and one direct mutation
 // away from corrupting every dictionary's histogram at once.
-const makeDictStats = () => ({ ...DEFAULT_STATS_DICT, guesses: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 } })
+const makeDictStats = (): DictStats => ({ ...DEFAULT_STATS_DICT, guesses: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 } })
 
-const makeDefaultStats = () => ({
+const makeDefaultStats = (): Stats => ({
   lite: makeDictStats(),
   standard: makeDictStats(),
   expanded: makeDictStats(),
@@ -36,9 +57,9 @@ const makeDefaultStats = () => ({
 
 const HISTORY_RETENTION_DAYS = 30
 
-function pruneHistory(history) {
+function pruneHistory(history: HistoryMap): HistoryMap {
   const cutoff = daysSinceEpoch(new Date().toDateString()) - HISTORY_RETENTION_DAYS
-  const kept = {}
+  const kept: HistoryMap = {}
   for (const [key, value] of Object.entries(history)) {
     const dateString = key.slice(key.indexOf(':') + 1)
     const day = daysSinceEpoch(dateString)
@@ -48,9 +69,9 @@ function pruneHistory(history) {
   return kept
 }
 
-function loadStats() {
+function loadStats(): Stats {
   try {
-    const stored = readJson(STATS_KEY, null)
+    const stored = readJson<any>(STATS_KEY, null)
     if (stored) {
       // Migration from non-dictionary stats
       if (stored.gamesPlayed !== undefined) {
@@ -76,7 +97,7 @@ function loadStats() {
 
 // Folds a loss for a game abandoned mid-play (left unfinished past midnight) into a
 // stats object, using the same shape updateStats writes, so it surfaces in Stats (pure).
-function applyAbandonedLoss(statsObj, dict, wasCrown) {
+function applyAbandonedLoss(statsObj: Stats, dict: DictionaryKey, wasCrown: boolean): Stats {
   const prevDict = dict || 'standard'
   const dictStats = { ...makeDictStats(), ...(statsObj[prevDict] || {}) }
   return {
@@ -93,18 +114,45 @@ function applyAbandonedLoss(statsObj, dict, wasCrown) {
 
 // Computes the initial game state (pure — no writes) plus, if a prior game was left
 
-export function readHistory() {
-  return readJson(HISTORY_KEY, {})
+export function readHistory(): HistoryMap {
+  return readJson<HistoryMap>(HISTORY_KEY, {})
 }
 
-export function recordCrownWin(dict, dateString) {
+export function recordCrownWin(dict: DictionaryKey, dateString: string): void {
   const history = readHistory()
   history[`${dict}:${dateString}`] = true
   writeJson(HISTORY_KEY, pruneHistory(history))
 }
 
-export function wasGameWon(dictionary, dateString) {
-  const history = readJson(HISTORY_KEY, {})
+const SERVED_KEY = 'lexi5_served'
+
+/**
+ * Records which word a dictionary actually served on a given day.
+ *
+ * The Archive used to recompute past days from the *current* word list, which is right
+ * for the built-in dictionaries (they never change) and wrong for Custom: re-curating
+ * replaces the list, so the Archive confidently displayed words that were never that
+ * day's answer. Only Custom needs this — for the built-ins the derivation is stable and
+ * storing 13,106 words' worth of history would be pure waste.
+ */
+export function recordServedWord(dict: DictionaryKey, dateString: string, word: string): void {
+  if (dict !== 'custom') return
+  const served = readJson<HistoryMap>(SERVED_KEY, {})
+  const key = `${dict}:${dateString}`
+  if (served[key] === word) return
+  served[key] = word
+  writeJson(SERVED_KEY, pruneHistory(served))
+}
+
+/** The word actually served, or null if that day predates this record. */
+export function getServedWord(dict: DictionaryKey, dateString: string): string | null {
+  if (dict !== 'custom') return null
+  const served = readJson<HistoryMap>(SERVED_KEY, {})
+  return (served[`${dict}:${dateString}`] as string | undefined) ?? null
+}
+
+export function wasGameWon(dictionary: DictionaryKey, dateString: string): boolean {
+  const history = readHistory()
   return !!history[`${dictionary}:${dateString}`]
 }
 

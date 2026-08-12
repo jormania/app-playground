@@ -24,8 +24,15 @@
     /* Governs the TypeScript code: the Sol Odyssey, Daily Stoic and Fit Check apps, the
        design system (src/ds), and the cross-app shared logic (src/shared). The other apps are
        plain JS/JSX and are intentionally left out of `include` — they still import
-       from src/shared, but only the shared code itself gets typechecked. */
+       from src/shared, but only the shared code itself gets typechecked.
+
+       src/lexi5/lib is the one exception: Lexi5's components stay JSX, but its pure
+       logic — the stats schema (migrated across two versions), the config shape, the
+       tile scorer, Hard Mode and undo — is typed. A closed Config type is what stops a
+       setting being read before it exists in DEFAULT_CONFIG, which is how the High
+       Contrast toggle shipped as an uncontrolled input. Only .ts files are picked up,
+       so the JS modules alongside them are unaffected. */
     "types": ["vitest/globals", "node"]
   },
-  "include": ["src/sol-odyssey", "src/daily-stoic", "src/ds", "src/shared", "src/fit-check"]
+  "include": ["src/sol-odyssey", "src/daily-stoic", "src/ds", "src/shared", "src/fit-check", "src/lexi5/lib"]
 }

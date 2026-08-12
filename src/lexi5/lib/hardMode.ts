@@ -8,12 +8,12 @@ import { scoreGuess } from './score'
  * component tests. It's a pure function of its inputs, so it belongs here where it can be
  * tested directly.
  *
- * @param {string} guess      the guess being submitted
- * @param {string} lastGuess  the previous guess, whose hints must be honoured
- * @param {string} word       the answer
- * @returns {string|null} a player-facing message, or null if the guess is allowed
+ * @param guess     the guess being submitted
+ * @param lastGuess the previous guess, whose hints must be honoured
+ * @param word      the answer
+ * @returns a player-facing message, or null if the guess is allowed
  */
-export function validateHardMode(guess, lastGuess, word) {
+export function validateHardMode(guess: string, lastGuess: string, word: string): string | null {
   const g = String(guess || '').toLowerCase()
   const last = String(lastGuess || '').toLowerCase()
   const target = String(word || '').toLowerCase()
@@ -29,7 +29,7 @@ export function validateHardMode(guess, lastGuess, word) {
 
   // Yellows must reappear somewhere. Counting matters: two yellow E's oblige the next
   // guess to contain two E's, so this compares counts rather than mere presence.
-  const requiredYellows = {}
+  const requiredYellows: Record<string, number> = {}
   for (let i = 0; i < lastStatuses.length; i++) {
     if (lastStatuses[i] === 'present') {
       requiredYellows[last[i]] = (requiredYellows[last[i]] || 0) + 1
@@ -38,7 +38,7 @@ export function validateHardMode(guess, lastGuess, word) {
 
   // Only positions that aren't satisfying a green can pay off a yellow, otherwise a
   // letter locked in place would be double-counted as also covering its own yellow.
-  const available = {}
+  const available: Record<string, number> = {}
   for (let i = 0; i < g.length; i++) {
     if (lastStatuses[i] === 'correct') continue
     available[g[i]] = (available[g[i]] || 0) + 1

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useConfig } from './lib/config'
-import { useGameState, getWord, getWordProgress, isValidGuess, hasCustomDictionary, DICTIONARY_LABELS } from './lib/gameState'
+import { useGameState, getWord, getWordProgress, isValidGuess, hasCustomDictionary, recordServedWord, loadDictionary, isDictionaryLoaded, DICTIONARY_LABELS } from './lib/gameState'
 import { hapticTap, hapticError, hapticWin } from './lib/haptics'
 import { validateHardMode } from './lib/hardMode'
 import { useToastQueue } from './lib/useToastQueue'
+import { applyUndo } from './lib/undo'
 import { useWakeLock } from '../shared/useWakeLock'
 import { Board } from './components/Board'
 import { Keyboard } from './components/Keyboard'
@@ -11,7 +13,7 @@ import { Settings } from './components/Settings'
 import { Stats } from './components/Stats'
 import { Archive } from './components/Archive'
 import { IconButton, Modal, Button } from '../ds'
-import { HelpCircle, Flag, BarChart2, Settings as SettingsIcon, Share2, Calendar } from 'lucide-react'
+import { HelpCircle, Flag, BarChart2, Settings as SettingsIcon, Share2, Calendar, X } from 'lucide-react'
 import styles from './App.module.css'
 
 // A full-board bounce followed by a particle burst is close to a worst case for anyone
@@ -34,6 +36,13 @@ export function App() {
     setWord(getWord(gameState.dictionary, gameState.date, gameState.iteration))
   }, [gameState.dictionary, gameState.date, gameState.iteration])
 
+  // Remember what Custom actually served today, so the Archive can report history that
+  // survives a re-curation instead of recomputing it against whatever list exists now.
+  useEffect(() => {
+    if (gameState.iteration !== 0) return
+    recordServedWord(gameState.dictionary, gameState.date, word)
+  }, [gameState.dictionary, gameState.date, gameState.iteration, word])
+
   const [currentGuess, setCurrentGuess] = useState('')
   const [invalidGuess, setInvalidGuess] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -41,6 +50,7 @@ export function App() {
   const [showForfeitModal, setShowForfeitModal] = useState(false)
   const [openSettingsToCurate, setOpenSettingsToCurate] = useState(false)
   const [showArchive, setShowArchive] = useState(false)
+  const [showResultBar, setShowResultBar] = useState(false)
 
   const shakeTimeoutRef = useRef(null)
   const { toast, showToast } = useToastQueue()
@@ -52,12 +62,17 @@ export function App() {
     !showSettings && !showStats && !showArchive && !showForfeitModal
   )
 
-  // Show stats automatically when game ends, trigger confetti, update favicon
+  // A result bar rather than an auto-opening modal. Stats used to open itself 1.5s after
+  // the game ended, which landed in the middle of the 1.6s victory dance and covered the
+  // finished board before the player had looked at it. The bar appears after the tiles
+  // have settled and leaves the choice of when to leave the board to the player.
   useEffect(() => {
-    if (gameState.status !== 'playing') {
-      const timer = setTimeout(() => setShowStats(true), 1500)
-      return () => clearTimeout(timer)
+    if (gameState.status === 'playing') {
+      setShowResultBar(false)
+      return undefined
     }
+    const timer = setTimeout(() => setShowResultBar(true), prefersReducedMotion() ? 300 : 2200)
+    return () => clearTimeout(timer)
   }, [gameState.status])
 
   useEffect(() => {
@@ -121,7 +136,17 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState.dictionary])
 
-  const handleDictionaryChange = (newDictionary) => {
+  const handleDictionaryChange = async (newDictionary) => {
+    // The new list has to be in memory before the switch lands, or getWord would resolve
+    // against whatever else is loaded and deal a word from the wrong dictionary.
+    if (!isDictionaryLoaded(newDictionary)) {
+      try {
+        await loadDictionary(newDictionary)
+      } catch {
+        showToast("Couldn't load that dictionary — check your connection and try again.")
+        return
+      }
+    }
     updateConfig({ dictionary: newDictionary })
     switchDictionary(newDictionary)
     showToast(`Switched to ${DICTIONARY_LABELS[newDictionary] || newDictionary} — new word, no penalty!`)
@@ -141,6 +166,18 @@ export function App() {
   const handleCloseSettings = () => {
     setShowSettings(false)
     setOpenSettingsToCurate(false)
+  }
+
+  // Restores whatever the last destructive action snapshotted, then re-reads it. Stats
+  // and the game both derive from localStorage, so a reload is the honest way to pick the
+  // restored values up everywhere at once rather than threading them back through state.
+  const handleUndo = () => {
+    const undone = applyUndo()
+    if (!undone) {
+      showToast('Nothing left to undo.')
+      return
+    }
+    window.location.reload()
   }
 
   const handleShareBoard = () => {
@@ -258,6 +295,22 @@ export function App() {
         </div>
       )}
 
+      {showResultBar && !showStats && (
+        <div className={styles.resultBar}>
+          <span className={styles.resultText}>
+            {gameState.status === 'won'
+              ? `Solved in ${gameState.guesses.length} of 6 — the word was ${word.toUpperCase()}.`
+              : `Out of guesses — the word was ${word.toUpperCase()}.`}
+          </span>
+          <div className={styles.resultActions}>
+            <Button size="sm" onClick={() => setShowStats(true)}>Stats</Button>
+            <IconButton size="sm" onClick={() => setShowResultBar(false)} title="Dismiss">
+              <X size={16} />
+            </IconButton>
+          </div>
+        </div>
+      )}
+
       <main className={styles.main}>
         <div className={styles.boardContainer}>
           <div className={styles.boardSizer}>
@@ -283,11 +336,34 @@ export function App() {
         </div>
       </main>
 
-      {toast && (
+      {/* Portalled to <body> and stacked above the modal range. `.app` is position:fixed,
+          which creates a stacking context in Chrome, so a toast rendered inside it was
+          trapped at the app's level in the root stacking order — every modal overlay
+          painted straight over it. That hid every toast fired from Settings (curation
+          finished, list cleared, dictionary switched), and made the Undo action on a
+          destructive change unclickable behind the scrim. */}
+      {toast && createPortal(
         <div className={styles.toast} role="status" aria-live="polite" aria-atomic="true">
-          {toast}
-        </div>
+          <span>{toast.message}</span>
+          {toast.action && (
+            <button type="button" className={styles.toastAction} onClick={toast.action.onClick}>
+              {toast.action.label}
+            </button>
+          )}
+        </div>,
+        document.body
       )}
+
+      {/* The result reached screen-reader users only when the Stats modal took focus a
+          second and a half later. Announced here as soon as the game ends, and assertive
+          because it's the outcome the player was waiting for. */}
+      <div className={styles.srOnly} role="status" aria-live="assertive" aria-atomic="true">
+        {gameState.status === 'won'
+          ? `You won in ${gameState.guesses.length} of 6. The word was ${word.toUpperCase()}.`
+          : gameState.status === 'lost'
+            ? `Out of guesses. The word was ${word.toUpperCase()}.`
+            : ''}
+      </div>
 
       <Settings
         open={showSettings}
@@ -298,6 +374,7 @@ export function App() {
         resetStats={resetStats}
         gameState={gameState}
         onToast={showToast}
+        onUndo={handleUndo}
         initialShowCurate={openSettingsToCurate}
       />
 

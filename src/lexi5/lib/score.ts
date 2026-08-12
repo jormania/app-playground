@@ -9,7 +9,7 @@
  * the player never earned). Anything that needs to colour a guess calls this.
  */
 
-/** @typedef {'correct'|'present'|'absent'} TileStatus */
+export type TileStatus = 'correct' | 'present' | 'absent'
 
 /**
  * Scores a guess against the answer, honouring letter counts.
@@ -18,18 +18,18 @@
  * then the remaining letters are matched positionally. A single pass would let an early
  * misplaced letter consume the occurrence that a later exact match is entitled to.
  *
- * @param {string} guess  five letters, any case
- * @param {string} word   the answer, any case
- * @returns {TileStatus[]} one status per letter of `guess`
+ * @param guess five letters, any case
+ * @param word  the answer, any case
+ * @returns one status per letter of `guess`
  */
-export function scoreGuess(guess, word) {
+export function scoreGuess(guess: string, word: string): TileStatus[] {
   const g = String(guess || '').toLowerCase()
   const w = String(word || '').toLowerCase()
-  const statuses = Array(g.length).fill('absent')
+  const statuses: TileStatus[] = Array(g.length).fill('absent')
 
   // Working copy of the answer's letters; each is nulled once something claims it, so a
   // letter is never credited to more tiles than the answer actually contains.
-  const remaining = w.split('')
+  const remaining: (string | null)[] = w.split('')
 
   for (let i = 0; i < g.length; i++) {
     if (g[i] === remaining[i]) {
@@ -52,19 +52,17 @@ export function scoreGuess(guess, word) {
 
 // Best-to-worst, for folding many tile statuses for the same letter into the one status
 // its keyboard key should show.
-const RANK = { correct: 3, present: 2, absent: 1 }
+const RANK: Record<TileStatus, number> = { correct: 3, present: 2, absent: 1 }
 
 /**
  * Aggregates every guess into a per-letter keyboard status, keeping the best status each
  * letter has earned. Derived from scoreGuess so the keyboard can never disagree with the
  * board about whether a letter is in the word.
  *
- * @param {string[]} guesses
- * @param {string} word
- * @returns {Record<string, TileStatus>} uppercase letter -> status
+ * @returns uppercase letter -> status
  */
-export function keyStatuses(guesses, word) {
-  const out = {}
+export function keyStatuses(guesses: string[], word: string): Record<string, TileStatus> {
+  const out: Record<string, TileStatus> = {}
   for (const guess of guesses) {
     const statuses = scoreGuess(guess, word)
     for (let i = 0; i < guess.length; i++) {

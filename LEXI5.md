@@ -88,7 +88,22 @@ unchanged — the same promotion pattern used for `useWakeLock`:
 - `dictionaries.js` — built-in lists and the whole Custom-list lifecycle.
 - `stats.js` — statistics schema, migrations, Crown-win history.
 - `useGameState.js` — the React hook.
-- `useToastQueue.js` — the queued toast (see Toast notifications below).
+- `useToastQueue.ts` — the queued toast (see Toast notifications below).
+- `undo.js` — one-step undo for the three destructive actions.
+
+The pure-logic modules are **TypeScript and covered by `npm run typecheck`** (`src/lexi5/lib`
+is in `tsconfig.json`); the components remain JSX by repo convention. A closed `Config` type
+is what stops a setting being read before it exists in `DEFAULT_CONFIG` — how the High
+Contrast toggle shipped as an uncontrolled input.
+
+**Word data is loaded on demand.** The four answer lists and the 13,106-word guess list
+were one statically-imported `words.json` (277 KB raw / 97 KB gzipped) in the initial
+bundle; they're separate chunks now, so only the selected dictionary is fetched.
+`words.json` stays the hand-maintained source and `data/dataSync.test.js` pins the splits
+to it — drift there would mean the app serving a different word than the source says.
+There is deliberately **no fallback to another list** when one hasn't loaded: `main.jsx`
+blocks first render on the active dictionary and switching awaits the new one, because
+quietly substituting Standard would hand the player a different puzzle.
 
 **All storage goes through [`src/shared/storage.ts`](src/shared/storage.ts)**, whose helpers
 can't throw. An unguarded `setItem` inside an effect is an uncaught render error — in Safari
@@ -109,7 +124,10 @@ The daily word itself needs no server round-trip — it's derived deterministica
 date and the (statically bundled, so identical for every install) dictionary contents. The
 optional Custom dictionary curation feature does call out through the Vercel edge rewrite
 described above, so the app isn't *entirely* server-free, but nothing about normal gameplay
-requires network access once loaded (it's a fully offline-capable PWA).
+requires network access once loaded. The service worker precaches the entry document,
+manifest and icons on install and serves navigations network-first with a cached fallback,
+so the installed app opens offline — including from a `?seed=` share link, which falls back
+to the cached shell.
 
 ## Toast notifications
 The app surfaces state changes/errors via a lightweight in-app toast (not blocking native
@@ -122,9 +140,15 @@ The app surfaces state changes/errors via a lightweight in-app toast (not blocki
   referencing a Custom list you don't have).
 - Curating/refreshing the Custom dictionary (success, or a readable error inline in Settings).
 - Copying/sharing the board (link copy, image share, and their failure paths).
-- Resetting statistics.
+- Resetting statistics, clearing the Custom list, and refreshing it — these three carry an
+  **Undo** action (see `lib/undo.js`), since each destroys unrecoverable local state and
+  refreshing also discards the current list's cycle progress. The snapshot is a single slot
+  and lives only as long as its toast.
 
-Implemented by `lib/useToastQueue.js`. Toasts queue rather than overwrite: if one fires while another's still showing, it waits its
+Implemented by `lib/useToastQueue.ts`, and **portalled to `<body>` above the modal
+z-index range** — `.app` is `position: fixed`, which creates a stacking context, so a toast
+rendered inside it was painted over by any open modal. Every toast fired from Settings was
+invisible until that was fixed. Toasts queue rather than overwrite: if one fires while another's still showing, it waits its
 turn instead of silently clobbering the first (immediate repeats of the *same* message are
 deduped against what's showing/queued, so e.g. mashing Enter on an invalid guess doesn't pile
 up a run of identical toasts). The toast itself renders with `role="status" aria-live="polite"
@@ -173,7 +197,8 @@ Two things to watch if you touch this:
   `src/shared/useWakeLock.ts`, promoted there once Lexi5 became a third app needing it (Tempo and
   Yoru re-export it from their old paths).
 - **Statistics Management**: In-progress games are automatically forfeited if left unfinished past midnight (recorded as a loss against the dictionary that game was playing), and users have the option to securely reset their statistics via a destructive confirmation modal. Guess distributions intelligently omit the "0" text for empty bars for a cleaner look.
-- **Daily Archive**: A modal accessible via the calendar icon allowing players to look up the past 14 days of Crown words for any dictionary.
+- **Daily Archive**: A modal accessible via the calendar icon allowing players to look up the past 14 days of Crown words for any dictionary. Built-in lists are derived (they never change); **Custom shows only days actually played**, recorded in `lexi5_served` — recomputing it against the current list meant re-curation made the Archive display words that were never that day's answer.
+- **Result bar**: When a game ends, a dismissible bar reports the outcome alongside the board with a Stats action, rather than the Stats modal opening itself over the finished board mid-animation.
 - **Reveal link stays lowercase in the DOM**: The post-game "The word was: WORD" Wiktionary link
   displays uppercase via CSS (`text-transform: uppercase` on `.wordRevealWord`) but its actual text
   content — and the link's `href` — stay lowercase. English Wiktionary treats a capitalized title as

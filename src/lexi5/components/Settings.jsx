@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useId } from 'react'
+import React, { useState, useEffect, useId, useRef } from 'react'
 import { SettingsToggle } from '../../ds'
 import { Button } from '../../ds/components/Button'
 import { Modal } from '../../ds/components/Modal'
@@ -19,6 +19,7 @@ import {
   DICTIONARY_SIZES,
   DICTIONARY_LABELS
 } from '../lib/gameState'
+import { snapshot } from '../lib/undo'
 import { SelectField } from '../../ds/components/SelectField'
 import styles from './Settings.module.css'
 
@@ -32,7 +33,7 @@ const THINKS_BY_DEFAULT = new Set(['claude-sonnet-5'])
 // to steer the model away from obvious repeats at a fraction of the token cost.
 const MAX_EXCLUSION_SAMPLE = 150
 
-export function Settings({ open, onClose, config, updateConfig, onDictionaryChange, resetStats, gameState, onToast, initialShowCurate = false }) {
+export function Settings({ open, onClose, config, updateConfig, onDictionaryChange, resetStats, gameState, onToast, onUndo, initialShowCurate = false }) {
   const [showCurate, setShowCurate] = useState(initialShowCurate)
   const [apiKey, setApiKey] = useState('')
   const [curating, setCurating] = useState(false)
@@ -44,7 +45,25 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [showRecurateConfirm, setShowRecurateConfirm] = useState(false)
   const [pendingThemeOverride, setPendingThemeOverride] = useState(null)
+  const [elapsed, setElapsed] = useState(0)
+  const curateAbortRef = useRef(null)
   const dictionarySelectId = useId()
+
+  // Output dominates this request (a list of words), so a rough per-word output-token
+  // figure is a fair estimate. Deliberately phrased as an order of magnitude rather than
+  // a promise — prices change and we don't read them at runtime.
+  const costEstimate = (() => {
+    const count = Number(wordCount)
+    if (!Number.isFinite(count) || count <= 0) return ''
+    const outputTokens = count * 6
+    const perMillion = model.includes('haiku') ? 5 : 25
+    const cents = (outputTokens / 1_000_000) * perMillion * 100
+    return `Curating ${count} words costs roughly ${cents < 1 ? 'under a cent' : `${cents.toFixed(cents < 10 ? 1 : 0)}¢`}.`
+  })()
+
+  // Stated up front rather than only once the toggle is already disabled — the old hint
+  // explained the constraint at the exact moment it stopped being actionable.
+  const hardModeLocked = !!(gameState && gameState.guesses.length > 0 && gameState.status === 'playing')
 
   // The Modal delays its own mount by an animation frame or two, so a plain
   // useState(initialShowCurate) can miss the value if it arrives right as the
@@ -59,13 +78,29 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
     : null
   const activeTheme = hasCustomDict ? getCustomDictionaryTheme() : ''
 
+  useEffect(() => {
+    if (!curating) return undefined
+    setElapsed(0)
+    const started = Date.now()
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 250)
+    return () => clearInterval(id)
+  }, [curating])
+
+  const cancelCurate = () => {
+    // The controller already existed for the timeout; it just wasn't reachable from the
+    // UI, so a long run could only be waited out.
+    curateAbortRef.current?.abort()
+  }
+
   const runCurate = async (themeOverride) => {
     setCurating(true)
     setCurateError(null)
     const themeToUse = typeof themeOverride === 'string' ? themeOverride : customTheme
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), CURATE_TIMEOUT_MS)
+    curateAbortRef.current = controller
+    let timedOut = false
+    const timeout = setTimeout(() => { timedOut = true; controller.abort() }, CURATE_TIMEOUT_MS)
 
     try {
       let exclusions = ''
@@ -139,25 +174,35 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
         [words[i], words[j]] = [words[j], words[i]]
       }
 
+      // Snapshot only once the replacement is actually in hand — a failed or cancelled
+      // run must not leave an "undo" pointing at a list that was never replaced.
+      const hadPreviousList = hasCustomDict
+      if (hadPreviousList) snapshot('customList', 'Word list refreshed')
+
       if (!saveCustomDictionary(words)) {
         throw new Error("Couldn't save the word list — this browser's storage is full or unavailable.")
       }
       markCustomDictionaryCurated(themeToUse)
       setCustomTheme(themeToUse)
       onDictionaryChange('custom')
-      
+
       let toastMsg = `Custom list curated with ${words.length} words — new word ready!`
       if (discardedCount > 0) {
         toastMsg = `Curated ${words.length} words (${discardedCount} invalid words discarded) — new word ready!`
       }
-      onToast(toastMsg)
+      // Refreshing also throws away the old list's cycle progress, which is the part
+      // players don't expect — so this one is worth being able to take back.
+      onToast(toastMsg, hadPreviousList ? { label: 'Undo', onClick: onUndo } : undefined)
     } catch (err) {
-      const message = err.name === 'AbortError'
-        ? 'Curation timed out after 30s. Please try again.'
-        : err.message
-      setCurateError(message)
+      if (err.name === 'AbortError') {
+        setCurateError(timedOut ? 'Curation timed out after 30s. Please try again.' : null)
+        if (!timedOut) onToast('Curation cancelled.')
+      } else {
+        setCurateError(err.message)
+      }
     } finally {
       clearTimeout(timeout)
+      curateAbortRef.current = null
       setCurating(false)
     }
   }
@@ -204,10 +249,12 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
         <div className={styles.tightToggle}>
           <SettingsToggle
             label="Hard Mode"
-            hint={gameState && gameState.guesses.length > 0 && gameState.status === 'playing' ? "Can only be changed before your first guess." : "Any revealed hints must be used in subsequent guesses"}
+            hint={hardModeLocked
+              ? 'Locked for this game — Hard Mode can only be changed before your first guess.'
+              : 'Any revealed hints must be used in subsequent guesses. Can only be changed before your first guess.'}
             checked={config.difficulty === 'hard'}
             onChange={(e) => updateConfig({ difficulty: e.target.checked ? 'hard' : 'normal' })}
-            disabled={gameState && gameState.guesses.length > 0 && gameState.status === 'playing'}
+            disabled={hardModeLocked}
           />
 
           <SettingsToggle
@@ -297,12 +344,34 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
               onChange={e => setApiKey(e.target.value)}
               placeholder="sk-ant-..."
               autoComplete="off"
-              hint="Stored only in memory and sent straight to Anthropic. Disappears when you close the app."
+              hint={`Kept in memory only — never saved to disk, and gone when you close the app. Sent to api.anthropic.com via this site's proxy (no key ever reaches our server). ${costEstimate}`}
             />
+            {curating && (
+              <div className={styles.curateProgress}>
+                <div
+                  className={styles.curateProgressBar}
+                  role="progressbar"
+                  aria-label="Curating word list"
+                  aria-valuemin={0}
+                  aria-valuemax={CURATE_TIMEOUT_MS / 1000}
+                  aria-valuenow={elapsed}
+                >
+                  <span style={{ width: `${Math.min(100, (elapsed / (CURATE_TIMEOUT_MS / 1000)) * 100)}%` }} />
+                </div>
+                <span className={styles.curateProgressText} aria-live="polite">
+                  Curating… {elapsed}s of up to {CURATE_TIMEOUT_MS / 1000}s
+                </span>
+              </div>
+            )}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
               <Button size="sm" onClick={handleCurate} disabled={curating || !apiKey || !wordCount || wordCount < 10 || wordCount > 1000}>
-                {curating ? 'Curating...' : hasCustomDict ? 'Refresh Word List' : 'Start Curation'}
+                {curating ? 'Curating…' : hasCustomDict ? 'Refresh Word List' : 'Start Curation'}
               </Button>
+              {curating && (
+                <Button size="sm" variant="secondary" onClick={cancelCurate}>
+                  Cancel
+                </Button>
+              )}
               {hasCustomDict && activeTheme && (
                 <Button size="sm" variant="ghost" onClick={() => triggerCurate('')} disabled={curating || !apiKey || !wordCount || wordCount < 10 || wordCount > 1000}>
                   Curate without Theme
@@ -330,9 +399,10 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
         confirmText="Confirm Reset"
         variant="danger"
         onConfirm={() => {
+          snapshot('stats', 'Statistics reset')
           resetStats()
           setShowResetConfirm(false)
-          onToast('Statistics reset.')
+          onToast('Statistics reset.', { label: 'Undo', onClick: onUndo })
         }}
       />
 
@@ -358,13 +428,14 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
         confirmText="Clear List"
         variant="danger"
         onConfirm={() => {
+          snapshot('customList', 'Custom list cleared')
           removeCustomDictionary()
           if (config.dictionary === 'custom') {
             onDictionaryChange('standard')
           }
           setShowClearConfirm(false)
           setShowCurate(false)
-          onToast('Custom list cleared.')
+          onToast('Custom list cleared.', { label: 'Undo', onClick: onUndo })
         }}
       />
     </Modal>

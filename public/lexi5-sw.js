@@ -1,11 +1,32 @@
-// Lexi5's service worker — asset caching only.
-// Navigations are NETWORK-FIRST with a cached fallback, everything else is stale-while-revalidate.
+// Lexi5's service worker.
+// Navigations are NETWORK-FIRST with a cached fallback, everything else is
+// stale-while-revalidate. On install we also PRECACHE the shell, so a player who installs
+// the app and opens it offline before any successful online visit still gets a game —
+// previously the cache was populated purely at runtime, so that first run showed nothing.
 
-var CACHE = 'lexi5-cache-v1';
+var CACHE = 'lexi5-cache-v2';
 var CACHE_PREFIX = 'lexi5-';
 
-self.addEventListener('install', function () {
-  self.skipWaiting();
+// The entry document plus the icons the manifest references. Hashed JS/CSS can't be named
+// here (their filenames change every build) but the document pulls them in on the first
+// online load, and stale-while-revalidate keeps them from then on.
+var PRECACHE_URLS = [
+  '/lexi5-react.html',
+  '/lexi5.webmanifest',
+  '/lexi5-icon-192.png',
+  '/lexi5-icon-512.png'
+];
+
+self.addEventListener('install', function (e) {
+  e.waitUntil(
+    caches.open(CACHE).then(function (cache) {
+      // addAll is all-or-nothing; one 404 would fail the whole install and leave the
+      // worker unregistered, so each URL is allowed to fail on its own.
+      return Promise.all(PRECACHE_URLS.map(function (url) {
+        return cache.add(url).catch(function () { /* offline or missing — runtime cache covers it */ });
+      }));
+    }).then(function () { return self.skipWaiting(); })
+  );
 });
 
 self.addEventListener('activate', function (e) {
@@ -31,7 +52,13 @@ self.addEventListener('fetch', function (e) {
           caches.open(CACHE).then(function (cache) { cache.put(req, copy); });
         }
         return res;
-      }).catch(function () { return caches.match(req); })
+      }).catch(function () {
+        // Offline: serve this navigation from cache, falling back to the precached shell
+        // so a deep link (e.g. a ?seed= share URL) still opens the app.
+        return caches.match(req).then(function (hit) {
+          return hit || caches.match('/lexi5-react.html');
+        });
+      })
     );
     return;
   }

@@ -1,19 +1,65 @@
-import wordsData from '../data/words.json'
 import { readJson, writeJson, removeJson } from '../../shared/storage'
 import { daysSinceEpoch } from './dateKey'
 
-/** The built-in word lists, and the whole lifecycle of the user's curated Custom list. */
+/**
+ * The built-in word lists, and the whole lifecycle of the user's curated Custom list.
+ *
+ * The four answer lists and the 13,106-word guess list used to be one statically-imported
+ * `words.json` — 277 KB raw, 97 KB gzipped, all of it in the initial bundle for a game
+ * that only ever uses one dictionary at a time. They are separate chunks now, fetched on
+ * demand.
+ *
+ * There is deliberately **no fallback to another list** when one hasn't loaded: which list
+ * is in memory decides which word the day serves, so quietly substituting Standard would
+ * hand the player a different puzzle. Callers must load first — `main.jsx` blocks the
+ * first render on the active dictionary, and switching awaits the new one.
+ */
+
+const LOADERS = {
+  lite: () => import('../data/dict-lite.json'),
+  standard: () => import('../data/dict-standard.json'),
+  expanded: () => import('../data/dict-expanded.json'),
+  expert: () => import('../data/dict-expert.json'),
+}
+
+// Sizes are needed synchronously (the dictionary dropdown labels them) but are just four
+// numbers, so they're inlined rather than dragging in the lists that would answer them.
+export const DICTIONARY_SIZES = {
+  lite: 344,
+  standard: 2309,
+  expanded: 5757,
+  expert: 13106,
+}
+
+const loadedLists = new Map()
+let loadedGuesses = null
+
+/** Fetches a built-in list into memory. Idempotent; resolves immediately once cached. */
+export async function loadDictionary(dictionary) {
+  if (dictionary === 'custom') return
+  if (loadedLists.has(dictionary)) return
+  const load = LOADERS[dictionary] || LOADERS.standard
+  const mod = await load()
+  loadedLists.set(dictionary, mod.default)
+}
+
+/** Fetches the allowed-guess list, needed the first time a guess is submitted. */
+export async function loadGuesses() {
+  if (loadedGuesses) return
+  const mod = await import('../data/guesses.json')
+  loadedGuesses = new Set(mod.default)
+}
+
+/** True once this dictionary can be served without substituting a different one. */
+export function isDictionaryLoaded(dictionary) {
+  return dictionary === 'custom' ? true : loadedLists.has(dictionary)
+}
 
 const CUSTOM_DICT_KEY = 'lexi5_custom_dict'
 const CUSTOM_DICT_THEME_KEY = 'lexi5_custom_dict_theme'
 const CUSTOM_DICT_EPOCH_KEY = 'lexi5_custom_dict_epoch'
 
 export const BUILTIN_DICTIONARY_ORDER = ['lite', 'standard', 'expanded', 'expert']
-
-export const DICTIONARY_SIZES = BUILTIN_DICTIONARY_ORDER.reduce((acc, key) => {
-  acc[key] = wordsData.dictionaries[key].length
-  return acc
-}, {})
 
 export const DICTIONARY_LABELS = {
   lite: 'Lite',
@@ -72,9 +118,15 @@ export function resolveDictionaryList(dictionary) {
   if (dictionary === 'custom') {
     const customList = getCustomList()
     if (customList && customList.length > 0) return customList
-    return wordsData.dictionaries.standard
+    // normalizeDictionary already redirects an empty Custom to Standard before this is
+    // reached; if we somehow get here, Standard is the documented fallback.
+    return loadedLists.get('standard') || []
   }
-  return wordsData.dictionaries[dictionary] || wordsData.dictionaries.standard
+  const list = loadedLists.get(dictionary)
+  if (list) return list
+  // Loading is the caller's job (see the module comment). Returning some *other*
+  // dictionary here would silently change which word the day serves.
+  return loadedLists.get('standard') || []
 }
 
 // thousand words, on the very day it's created. Built-in dictionaries don't need
@@ -131,14 +183,10 @@ export function saveCustomDictionary(words) {
   return ok
 }
 
-// Where a given (date, iteration) falls in the list's non-repeating cycle, for progress/
-// staleness *reporting* — the Custom "you've used every word" banner, the toasts, and
-
-const GUESS_SET = new Set(wordsData.guesses)
-
 export function isValidGuess(word) {
   const customList = getCustomList()
   if (customList && customList.includes(word)) return true
-  return GUESS_SET.has(word)
+  // A Set rather than the old `Array.includes` scan over 13,106 entries on every Enter.
+  return loadedGuesses ? loadedGuesses.has(word) : false
 }
 

@@ -188,8 +188,10 @@
   padding: 0 8px;
 }
 
+/* Fixed rather than absolute now that it portals to <body>, and above the Modal's
+   z-index range (50 + nesting depth) so it is visible and clickable over a dialog. */
 .toast {
-  position: absolute;
+  position: fixed;
   top: 80px;
   left: 50%;
   transform: translateX(-50%);
@@ -198,8 +200,11 @@
   padding: 12px 16px;
   border-radius: 4px;
   font-weight: 600;
-  z-index: 100;
+  z-index: 1000;
   animation: fade 0.2s ease-in;
+  display: flex;
+  align-items: center;
+  max-width: calc(100% - 32px);
 }
 
 @keyframes fade {
@@ -252,4 +257,69 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* Visually hidden, still announced. Not `display: none`, which removes it from the
+   accessibility tree along with the visual layout. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Replaces the modal that used to open itself over the finished board. Same information,
+   but it sits alongside the board instead of hiding it, and the player chooses when to
+   move on. */
+.resultBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 10px 16px;
+  background: color-mix(in srgb, var(--tile-correct) 18%, var(--surface-bg));
+  border-bottom: 1px solid color-mix(in srgb, var(--tile-correct) 50%, var(--surface-bg));
+  color: var(--text-base);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.resultText {
+  flex: 1;
+  min-width: 0;
+}
+
+.resultActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.toastAction {
+  font: inherit;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.75rem;
+  background: none;
+  border: 0;
+  padding: 2px 4px;
+  margin-left: 12px;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.toastAction:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 3px;
 }

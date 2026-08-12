@@ -1,7 +1,9 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import {
+  loadDictionary,
+  loadGuesses,
   getWord,
   getWordProgress,
   parseSeed,
@@ -15,6 +17,15 @@ import {
   BUILTIN_DICTIONARY_ORDER
 } from './gameState'
 import wordData from '../data/words.json'
+
+// The answer lists and the guess list are separate chunks now, fetched on demand, so the
+// suite has to put them in memory before exercising anything that reads them.
+beforeAll(async () => {
+  await Promise.all([
+    ...['lite', 'standard', 'expanded', 'expert'].map(d => loadDictionary(d)),
+    loadGuesses(),
+  ])
+})
 
 function addDays(dateString, days) {
   const d = new Date(dateString)

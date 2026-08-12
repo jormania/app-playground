@@ -130,3 +130,33 @@
 .dangerButton {
   color: var(--danger);
 }
+
+/* Curation can occupy most of its 30s timeout; without this the only feedback was a
+   disabled button, which reads as a hung app. Indeterminate progress against the known
+   timeout ceiling — we can't know how far along the model actually is. */
+.curateProgress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.curateProgressBar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border-subtle);
+  overflow: hidden;
+}
+
+.curateProgressBar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.25s linear;
+}
+
+.curateProgressText {
+  font-size: 0.7rem;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+}
