@@ -22,6 +22,14 @@ describe('buildEmojiGrid', () => {
   })
 })
 
+describe('buildEmojiGrid — empty input', () => {
+  it('produces nothing to share when no guesses were made', () => {
+    // A forfeit with an empty board has no grid; the UI hides the button rather than
+    // offering a share that says nothing.
+    expect(buildEmojiGrid({ guesses: [], word: 'robot' })).toBe('')
+  })
+})
+
 describe('buildShareText', () => {
   const base = {
     guesses: ['crane', 'robot'],

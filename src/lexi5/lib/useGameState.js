@@ -208,7 +208,7 @@ export function useGameState(difficulty, dictionary, urlSeed = null) {
   const updateStats = (won, numGuesses, dict) => {
     // Today's practice record, alongside the lifetime figures. Called from the same place
     // so a game can't land in one and not the other.
-    recordFinishedGame(dict, won, gameState.date)
+    recordFinishedGame(dict, won)
 
     if (won && gameState.iteration === 0) {
       recordCrownWin(dict, gameState.date)

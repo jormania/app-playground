@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useConfig } from './lib/config'
 import { useGameState, getWord, getWordProgress, isValidGuess, hasCustomDictionary, recordServedWord, loadDictionary, isDictionaryLoaded, getDayRecord, describeDay, DICTIONARY_LABELS } from './lib/gameState'
@@ -21,6 +21,7 @@ import { HelpCircle, Flag, BarChart2, Settings as SettingsIcon, Share2, Calendar
 import styles from './App.module.css'
 
 const SEEN_GUIDE_KEY = 'lexi5_seen_guide'
+const HINT_KEY = 'lexi5_hint_used'
 
 // A full-board bounce followed by a particle burst is close to a worst case for anyone
 // sensitive to motion, so the celebration is skipped entirely when the OS asks for less.
@@ -60,16 +61,23 @@ export function App() {
   // First run shows the guide unprompted. Lexi5 has four dictionaries, Hard Mode, Crown vs
   // Endless and AI curation — none of it discoverable from an empty grid.
   const [showHowTo, setShowHowTo] = useState(() => !readJson(SEEN_GUIDE_KEY, false))
-  const [isFirstRun] = useState(() => !readJson(SEEN_GUIDE_KEY, false))
+  // Cleared on dismissal: reopening from the header later in the same session should read
+  // "How to play", not greet the player as though they'd just arrived.
+  const [isFirstRun, setIsFirstRun] = useState(() => !readJson(SEEN_GUIDE_KEY, false))
   const [hintUsed, setHintUsed] = useState(false)
   const [hint, setHint] = useState(null)
   const [countdown, setCountdown] = useState(() => formatCountdown(msUntilNextWord()))
-  // Re-read rather than held: useGameState writes it when a game ends, so the value is
-  // only meaningful once the result is in.
-  const dayRecord = showResultBar ? getDayRecord(gameState.dictionary, gameState.date) : null
-  const daySummary = dayRecord ? describeDay(dayRecord) : null
-  // Read on every new round so the header reflects the run you carried into it.
-  const todayRun = getDayRecord(gameState.dictionary, gameState.date).run
+  // useGameState writes this when a game ends, so it's re-read when the outcome or the
+  // round changes — not on every render, which would parse storage on each keystroke.
+  // status/iteration aren't read by the call — they're deliberate cache-busters. The value
+  // lives in storage and is written by useGameState when a game ends, so those are the
+  // moments it can change.
+  const dayRecord = useMemo(
+    () => getDayRecord(gameState.dictionary),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [gameState.dictionary, gameState.status, gameState.iteration]
+  )
+  const daySummary = showResultBar ? describeDay(dayRecord) : null
 
   const shakeTimeoutRef = useRef(null)
   const { toast, showToast } = useToastQueue()
@@ -132,11 +140,16 @@ export function App() {
     return () => clearInterval(id)
   }, [showResultBar, gameState.iteration])
 
-  // A new game means a fresh chance to solve it unaided.
+  // Identifies the game a hint belongs to, so reloading mid-game can't quietly drop the
+  // marker and let a hinted score share itself as unaided.
+  const gameKey = `${gameState.date}|${gameState.iteration}|${gameState.dictionary}`
+
   useEffect(() => {
-    setHintUsed(false)
+    // A new game means a fresh chance to solve it unaided; the same game resumed keeps
+    // whatever help it already had.
+    setHintUsed(readJson(HINT_KEY, null) === gameKey)
     setHint(null)
-  }, [gameState.date, gameState.iteration, gameState.dictionary])
+  }, [gameKey])
 
   /**
    * Reveals the answer's dictionary definition.
@@ -148,6 +161,7 @@ export function App() {
    */
   const handleHint = async () => {
     setHintUsed(true)
+    writeJson(HINT_KEY, gameKey)
     try {
       const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
       if (!res.ok) throw new Error(String(res.status))
@@ -162,6 +176,7 @@ export function App() {
 
   const dismissHowTo = () => {
     setShowHowTo(false)
+    setIsFirstRun(false)
     writeJson(SEEN_GUIDE_KEY, true)
   }
 
@@ -359,7 +374,7 @@ export function App() {
           {gameState.iteration > 0 && (
             <span className={styles.roundBadge}>
               Endless #{gameState.iteration}
-              {todayRun >= 2 && <> · {todayRun} in a row</>}
+              {dayRecord.run >= 2 && <> · {dayRecord.run} in a row</>}
             </span>
           )}
         </div>

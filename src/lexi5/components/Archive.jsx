@@ -144,7 +144,18 @@ export function Archive({ open, onClose, currentDictionary, gameState }) {
             // Words you've already beaten are yours to see. Everything else stays hidden
             // until asked for — this list used to hand out the answer to every puzzle you
             // hadn't played yet, which is the opposite of what an archive should do.
-            const showWord = !word || isWon || revealed.has(dateString)
+            // Keyed by dictionary as well as date: revealing a day under Standard must not
+            // unmask that same date's Expert word when the dropdown changes.
+            const revealKey = `${dict}:${dateString}`
+            const showWord = !word || isWon || revealed.has(revealKey)
+
+            // A Custom day is only replayable while the list that produced it is still the
+            // one in memory. Re-curating replaces it, so the recorded answer and the word
+            // this seed would now deal diverge — offering Play there would start a
+            // different puzzle than the row is showing.
+            const replayable = dict !== 'custom'
+              ? !!word
+              : !!word && getWord('custom', dateString, 0) === word
 
             return (
               <div key={dateString} className={styles.dayRow}>
@@ -163,14 +174,14 @@ export function Archive({ open, onClose, currentDictionary, gameState }) {
                     <button
                       type="button"
                       className={styles.iconAction}
-                      onClick={() => setRevealed(prev => new Set(prev).add(dateString))}
+                      onClick={() => setRevealed(prev => new Set(prev).add(revealKey))}
                       title={`Reveal the word for ${formattedDate}`}
                       aria-label={`Reveal the word for ${formattedDate}`}
                     >
                       <Eye size={15} />
                     </button>
                   )}
-                  {word && (
+                  {replayable && (
                     <button
                       type="button"
                       className={styles.iconAction}
