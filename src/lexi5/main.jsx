@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 // the cascade tie, instead of DS's Solarized-family ink bleeding through Modal text.
 import '../ds/tokens.css'
 import { App } from './App'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { watchInstalled } from '../shared/installFlag'
 
 // Register Cabinet install detection flag
@@ -22,6 +23,8 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 const root = createRoot(document.getElementById('root'))
 root.render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>
 )

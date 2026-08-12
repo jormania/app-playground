@@ -1,10 +1,36 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { cx } from '../lib/cx'
 import styles from './Modal.module.css'
 
 const FOCUSABLE =
   'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
+
+// Dialogs.tsx ships nested dialogs (a ConfirmModal rendered inside an already-open
+// Modal) as a first-class pattern, so more than one Modal is routinely open at once.
+// Each listens for Escape on `document`, and without a shared notion of "which is on
+// top" a single Escape fired every listener and tore down the whole stack — backing out
+// of a confirmation also discarded the panel behind it.
+//
+// "Which is on top" is nesting depth, tracked through context. Neither DOM order nor
+// effect order can stand in for it: React commits portals bottom-up (a nested dialog
+// lands in <body> *before* its parent) and runs child effects first, so both orderings
+// report a nested modal as the lower one. Depth also drives z-index below, since the
+// same bottom-up commit meant a nested dialog painted behind its parent at equal
+// z-index.
+const ModalDepthContext = createContext(0)
+
+// Depth of every currently-open modal. The deepest is the one in front.
+const openDepths = new Map<symbol, number>()
+
+function isTopmost(token: symbol) {
+  const mine = openDepths.get(token)
+  if (mine === undefined) return false
+  for (const depth of openDepths.values()) {
+    if (depth > mine) return false
+  }
+  return true
+}
 
 export interface ModalProps {
   open: boolean
@@ -21,6 +47,10 @@ export interface ModalProps {
 export function Modal({ open, onClose, title, children, className, style }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
+  const parentDepth = useContext(ModalDepthContext)
+  const depth = parentDepth + 1
+  // Stable identity for this instance in the open-modal registry below.
+  const [token] = useState(() => Symbol('modal'))
   const [isMounted, setIsMounted] = useState(open)
   const [isAnimatingOut, setIsAnimatingOut] = useState(false)
 
@@ -38,10 +68,26 @@ export function Modal({ open, onClose, title, children, className, style }: Moda
     }
   }, [open, isMounted])
 
+  // Held in a ref so the focus effect below can depend on `open` alone. Consumers
+  // routinely pass an inline arrow, which is a new identity on every parent render — with
+  // onClose in the dependency array the effect tore down and re-ran on each of those,
+  // restoring and re-grabbing focus, which yanked the caret out of whatever field the
+  // user was typing in every time the parent re-rendered.
+  const onCloseRef = useRef(onClose)
   useEffect(() => {
-    if (!open) return
+    onCloseRef.current = onClose
+  })
+
+  // Depends on isMounted as well as open: a modal opened dynamically renders nothing on
+  // the pass where `open` flips true (isMounted is still false), so the portal — and
+  // dialogRef — only exist on the following commit. Watching open alone meant focus was
+  // never actually moved into such a dialog.
+  useEffect(() => {
+    if (!open || !isMounted) return
     const dialog = dialogRef.current
     const previouslyFocused = document.activeElement as HTMLElement | null
+
+    openDepths.set(token, depth)
 
     const focusables = () =>
       Array.from(dialog?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])
@@ -50,8 +96,10 @@ export function Modal({ open, onClose, title, children, className, style }: Moda
     ;(focusables()[0] ?? dialog)?.focus()
 
     const onKey = (e: KeyboardEvent) => {
+      // A nested dialog owns the keyboard while it's open; everything below it waits.
+      if (!isTopmost(token)) return
       if (e.key === 'Escape') {
-        onClose()
+        onCloseRef.current()
         return
       }
       if (e.key !== 'Tab') return
@@ -77,9 +125,10 @@ export function Modal({ open, onClose, title, children, className, style }: Moda
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
+      openDepths.delete(token)
       previouslyFocused?.focus?.()
     }
-  }, [open, onClose])
+  }, [open, isMounted, token, depth])
 
   if (!isMounted) return null
 
@@ -90,7 +139,10 @@ export function Modal({ open, onClose, title, children, className, style }: Moda
   // box rather than centering it on screen. Rendering outside the React tree
   // this way sidesteps that regardless of where <Modal> gets used from.
   return createPortal(
-    <div className={cx(styles.overlay, isAnimatingOut && styles.closing)}>
+    <div
+      className={cx(styles.overlay, isAnimatingOut && styles.closing)}
+      style={{ zIndex: 50 + depth }}
+    >
       <div className={styles.scrim} onClick={onClose} aria-hidden />
       <div
         ref={dialogRef}
@@ -109,7 +161,9 @@ export function Modal({ open, onClose, title, children, className, style }: Moda
             &times;
           </button>
         </div>
-        <div className={styles.body}>{children}</div>
+        <div className={styles.body}>
+          <ModalDepthContext.Provider value={depth}>{children}</ModalDepthContext.Provider>
+        </div>
       </div>
     </div>,
     document.body,

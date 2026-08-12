@@ -1,4 +1,5 @@
 import React, { memo } from 'react'
+import { scoreGuess } from '../lib/score'
 import styles from './Board.module.css'
 
 export const Board = memo(function Board({ guesses, currentGuess, word, status, invalidGuess }) {
@@ -33,26 +34,8 @@ export const Board = memo(function Board({ guesses, currentGuess, word, status, 
 function Row({ guess, word, isSubmitted, isInvalid, isWinningRow }) {
   const tiles = Array.from({ length: 5 })
   
-  // Scoring logic for Wordle
-  const statuses = Array(5).fill('absent')
-  const wordLetters = word ? word.split('') : []
-  
-  if (isSubmitted) {
-    // First pass: find greens
-    for (let i = 0; i < 5; i++) {
-      if (guess[i] === word[i]) {
-        statuses[i] = 'correct'
-        wordLetters[i] = null // Mark as used
-      }
-    }
-    // Second pass: find yellows
-    for (let i = 0; i < 5; i++) {
-      if (statuses[i] !== 'correct' && wordLetters.includes(guess[i])) {
-        statuses[i] = 'present'
-        wordLetters[wordLetters.indexOf(guess[i])] = null // Mark as used
-      }
-    }
-  }
+  // Shared with the keyboard and the share card — see lib/score.js.
+  const statuses = isSubmitted ? scoreGuess(guess, word) : Array(5).fill('absent')
 
   return (
     <div className={`${styles.row} ${isInvalid ? styles.shake : ''} ${isWinningRow ? styles.dance : ''}`}>

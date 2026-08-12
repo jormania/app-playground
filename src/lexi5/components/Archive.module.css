@@ -33,12 +33,14 @@
   font-size: 0.85rem;
   font-family: inherit;
   cursor: pointer;
-  outline: none;
   transition: border-color 0.2s;
 }
 
-.dropdown:focus {
+/* See Settings.module.css — `outline: none` left this control with no visible focus state. */
+.dropdown:focus-visible {
   border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .selectWrapper::after {

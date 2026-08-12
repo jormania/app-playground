@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useId } from 'react'
 import { SettingsToggle } from '../../ds'
 import { Button } from '../../ds/components/Button'
 import { Modal } from '../../ds/components/Modal'
@@ -11,6 +11,8 @@ import {
   getCustomDictionarySize,
   markCustomDictionaryCurated,
   removeCustomDictionary,
+  saveCustomDictionary,
+  getCustomDictionaryWords,
   getCustomDictionaryTheme,
   isValidGuess,
   BUILTIN_DICTIONARY_ORDER,
@@ -42,6 +44,7 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [showRecurateConfirm, setShowRecurateConfirm] = useState(false)
   const [pendingThemeOverride, setPendingThemeOverride] = useState(null)
+  const dictionarySelectId = useId()
 
   // The Modal delays its own mount by an animation frame or two, so a plain
   // useState(initialShowCurate) can miss the value if it arrives right as the
@@ -67,15 +70,15 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
     try {
       let exclusions = ''
       if (hasCustomDict) {
-        try {
-          const existing = JSON.parse(localStorage.getItem('lexi5_custom_dict'))
+        {
+          const existing = getCustomDictionaryWords()
           if (existing && existing.length > 0) {
             const sample = existing.length > MAX_EXCLUSION_SAMPLE
               ? existing.slice(0, MAX_EXCLUSION_SAMPLE)
               : existing
             exclusions = ` Avoid reusing these words: ${sample.join(', ')}.`
           }
-        } catch (_e) {}
+        }
       }
 
       // ~6 tokens/word covers the quotes, comma, and occasional multi-token word with
@@ -136,7 +139,9 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
         [words[i], words[j]] = [words[j], words[i]]
       }
 
-      localStorage.setItem('lexi5_custom_dict', JSON.stringify(words))
+      if (!saveCustomDictionary(words)) {
+        throw new Error("Couldn't save the word list — this browser's storage is full or unavailable.")
+      }
       markCustomDictionaryCurated(themeToUse)
       setCustomTheme(themeToUse)
       onDictionaryChange('custom')
@@ -172,12 +177,14 @@ export function Settings({ open, onClose, config, updateConfig, onDictionaryChan
     <Modal open={open} onClose={onClose} title="Settings">
       <div className={styles.settingsList}>
         <div className={styles.dictionarySection}>
-          <label className={styles.dictionaryLabel}>Word Dictionary</label>
-          <p className={styles.dictionaryDesc}>
+          <label className={styles.dictionaryLabel} htmlFor={dictionarySelectId}>Word Dictionary</label>
+          <p className={styles.dictionaryDesc} id={`${dictionarySelectId}-desc`}>
             Easiest to hardest, left to right. Switching deals a fresh word immediately, no penalty.
           </p>
           <div className={styles.selectWrapper}>
             <select
+              id={dictionarySelectId}
+              aria-describedby={`${dictionarySelectId}-desc`}
               value={config.dictionary}
               onChange={e => onDictionaryChange(e.target.value)}
               className={styles.dropdown}

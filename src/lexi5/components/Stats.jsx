@@ -1,12 +1,18 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { Modal, Button } from '../../ds'
 import { Share2 } from 'lucide-react'
-import html2canvas from 'html2canvas'
+import { scoreGuess } from '../lib/score'
+import { DICTIONARY_LABELS } from '../lib/gameState'
 import styles from './Stats.module.css'
 
 export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onToast }) {
   const [copied, setCopied] = useState(false)
-  const [definition, setDefinition] = useState(null)
+  // Keyed by the word it describes, not a bare string. <Stats> never unmounts (only its
+  // inner Modal returns null), so a plain `!definition` guard meant the first word's
+  // definition stuck for the whole session — every later game showed the wrong one, and
+  // baked it into the share image as the HINT line.
+  const [def, setDef] = useState({ word: null, text: null })
+  const definition = def.text
   const isFinished = gameState.status !== 'playing'
   const isCrown = gameState.iteration === 0
   const dictStats = stats[gameState.dictionary] || stats.standard
@@ -14,27 +20,35 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
   const [statsCopied, setStatsCopied] = useState(false)
 
   useEffect(() => {
-    if (open) {
-      setCopied(false)
-      if (isFinished && !definition) {
-        fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data && data[0] && data[0].meanings) {
-              const def = data[0].meanings[0].definitions[0].definition
-              setDefinition(def)
-            } else {
-              setDefinition('Definition not found.')
-            }
-          })
-          .catch(() => setDefinition('Failed to load definition.'))
-      }
-    }
-  }, [open, isFinished, word, definition])
+    if (open) setCopied(false)
+  }, [open])
+
+  useEffect(() => {
+    if (!open || !isFinished || def.word === word) return undefined
+
+    // Aborted on cleanup so a slow response can't resolve against a word the player
+    // has already moved on from (Play Again is one tap away).
+    const controller = new AbortController()
+    fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`, { signal: controller.signal })
+      .then(res => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+      .then(data => {
+        const found = data && data[0] && data[0].meanings && data[0].meanings[0].definitions[0].definition
+        setDef({ word, text: found || 'Definition not found.' })
+      })
+      .catch(err => {
+        if (err.name === 'AbortError') return
+        setDef({ word, text: 'Failed to load definition.' })
+      })
+
+    return () => controller.abort()
+  }, [open, isFinished, word, def.word])
 
   const handleShare = async () => {
     if (shareRef.current) {
       try {
+        // Loaded on demand: html2canvas is only needed once a game has ended and the
+        // player actually taps Share, so it stays off the initial bundle.
+        const { default: html2canvas } = await import('html2canvas')
         const canvas = await html2canvas(shareRef.current, { backgroundColor: '#121213', scale: 2 })
         canvas.toBlob(async (blob) => {
           if (!blob) return
@@ -99,7 +113,7 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
   const avgGuesses = dictStats.gamesWon > 0 ? (totalGuesses / dictStats.gamesWon).toFixed(1) : '-'
 
   return (
-    <Modal open={open} onClose={onClose} title={`Statistics (${gameState.dictionary})`}>
+    <Modal open={open} onClose={onClose} title={`Statistics (${DICTIONARY_LABELS[gameState.dictionary] || gameState.dictionary})`}>
       <div className={styles.statsContainer}>
         <div className={styles.statBox}>
           <div className={styles.statNum}>{dictStats.gamesPlayed}</div>
@@ -180,9 +194,11 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
         </div>
       )}
 
-      {/* Hidden element for html2canvas generation */}
+      {/* Off-screen source for html2canvas. Positioned out of view rather than display:none
+          (which html2canvas can't rasterise), so it needs aria-hidden/inert to stay out of
+          the accessibility tree — otherwise a screen reader reads the whole result twice. */}
       {isFinished && (
-        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }} aria-hidden="true" inert="">
           <div ref={shareRef} className={styles.shareCard}>
             <div className={styles.shareHeader}>
               <div className={styles.shareTitle}>
@@ -195,17 +211,19 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
               </div>
             </div>
             <div className={styles.shareGrid}>
-              {gameState.guesses.map((guess, r) => (
-                <div key={r} className={styles.shareRow}>
-                  {guess.split('').map((letter, i) => {
-                    const l = letter.toUpperCase()
-                    const isCorrect = word[i].toUpperCase() === l
-                    const isPresent = word.toUpperCase().includes(l)
-                    const statusClass = isCorrect ? styles.shareCorrect : (isPresent ? styles.sharePresent : styles.shareAbsent)
-                    return <div key={i} className={`${styles.shareTile} ${statusClass}`}></div>
-                  })}
-                </div>
-              ))}
+              {gameState.guesses.map((guess, r) => {
+                // Same scorer as the board (lib/score.js). This grid used to re-implement
+                // scoring naively and painted yellows the board never showed.
+                const statuses = scoreGuess(guess, word)
+                const statusClass = { correct: styles.shareCorrect, present: styles.sharePresent, absent: styles.shareAbsent }
+                return (
+                  <div key={r} className={styles.shareRow}>
+                    {statuses.map((status, i) => (
+                      <div key={i} className={`${styles.shareTile} ${statusClass[status]}`}></div>
+                    ))}
+                  </div>
+                )
+              })}
             </div>
             {definition && (
               <div className={styles.shareDef}>

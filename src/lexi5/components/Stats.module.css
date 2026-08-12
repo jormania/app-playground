@@ -92,7 +92,7 @@
 .distBar.hasData {
   background-color: var(--tile-correct);
   border-color: var(--tile-correct);
-  color: #fff;
+  color: var(--tile-correct-ink);
 }
 
 .footer {
@@ -205,4 +205,16 @@
   border-top: 1px solid #3a3a3c;
   padding-top: 16px;
   width: 100%;
+}
+
+/* Respects the OS "reduce motion" setting. Lexi5's animations use literal durations
+   rather than the DS --duration token, so the design system's own reduced-motion rule
+   can't reach them — each stylesheet opts out explicitly. Final states are preserved
+   (animation-fill-mode: forwards on the tile flip), so tiles still end up coloured. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useConfig } from './lib/config'
 import { useGameState, getWord, getWordProgress, isValidGuess, hasCustomDictionary, DICTIONARY_LABELS } from './lib/gameState'
 import { hapticTap, hapticError, hapticWin } from './lib/haptics'
+import { validateHardMode } from './lib/hardMode'
+import { useToastQueue } from './lib/useToastQueue'
 import { useWakeLock } from '../shared/useWakeLock'
 import { Board } from './components/Board'
 import { Keyboard } from './components/Keyboard'
@@ -10,8 +12,12 @@ import { Stats } from './components/Stats'
 import { Archive } from './components/Archive'
 import { IconButton, Modal, Button } from '../ds'
 import { HelpCircle, Flag, BarChart2, Settings as SettingsIcon, Share2, Calendar } from 'lucide-react'
-import confetti from 'canvas-confetti'
 import styles from './App.module.css'
+
+// A full-board bounce followed by a particle burst is close to a worst case for anyone
+// sensitive to motion, so the celebration is skipped entirely when the OS asks for less.
+const prefersReducedMotion = () =>
+  typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export function App() {
   const { config, updateConfig } = useConfig()
@@ -33,12 +39,11 @@ export function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [showStats, setShowStats] = useState(false)
   const [showForfeitModal, setShowForfeitModal] = useState(false)
-  const [toast, setToast] = useState(null)
-  const [toastQueue, setToastQueue] = useState([])
   const [openSettingsToCurate, setOpenSettingsToCurate] = useState(false)
   const [showArchive, setShowArchive] = useState(false)
 
   const shakeTimeoutRef = useRef(null)
+  const { toast, showToast } = useToastQueue()
 
   // Keep the screen awake only while an active game is actually on screen — drop
   // back to default behavior the moment any menu/modal covers it, or the game ends.
@@ -59,8 +64,12 @@ export function App() {
     if (gameState.status === 'won') {
       const timer = setTimeout(() => {
         hapticWin()
-        if (gameState.iteration === 0) {
-          confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } })
+        if (gameState.iteration === 0 && !prefersReducedMotion()) {
+          // Loaded on demand so the confetti library stays off the initial bundle —
+          // it can't be needed until a Crown game has actually been won.
+          import('canvas-confetti').then(({ default: confetti }) => {
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } })
+          }).catch(() => {})
         }
       }, 1500)
       return () => clearTimeout(timer)
@@ -80,37 +89,6 @@ export function App() {
     }
   }, [gameState.status])
 
-  // A queue rather than a single overwritten string, so an unrelated toast fired while
-  // one's already showing (e.g. a "switched dictionary" toast right before a "curated N
-  // words" toast) gets its own turn on screen instead of silently clobbering the other.
-  // Rapid repeats of the *same* message (e.g. mashing Enter on an invalid guess) don't
-  // pile up — they're deduped against what's showing and what's already queued.
-  const showToast = (msg) => {
-    setToast(prevToast => {
-      if (prevToast === null) return msg
-      setToastQueue(prevQueue => {
-        if (msg === prevToast || msg === prevQueue[prevQueue.length - 1]) return prevQueue
-        return [...prevQueue, msg]
-      })
-      return prevToast
-    })
-  }
-
-  // Split in two so queuing a new message behind an already-showing toast (which changes
-  // toastQueue but not toast) can't restart this timer — it depends only on `toast`, which
-  // only changes when the *displayed* message actually changes.
-  useEffect(() => {
-    if (!toast) return
-    const timer = setTimeout(() => setToast(null), 2000)
-    return () => clearTimeout(timer)
-  }, [toast])
-
-  useEffect(() => {
-    if (toast || toastQueue.length === 0) return
-    setToast(toastQueue[0])
-    setToastQueue(prev => prev.slice(1))
-  }, [toast, toastQueue])
-
   const triggerShake = () => {
     setInvalidGuess(true)
     if (shakeTimeoutRef.current) clearTimeout(shakeTimeoutRef.current)
@@ -129,7 +107,7 @@ export function App() {
         showToast(`Only ${remaining} word${remaining === 1 ? '' : 's'} remaining in your custom list!`)
       }
     }
-  }, [gameState.dictionary, gameState.date, gameState.iteration])
+  }, [gameState.dictionary, gameState.date, gameState.iteration, showToast])
 
   // Defensive backstop: a game can end up pointed at 'custom' with no curated list behind
   // it (storage cleared mid-session, or a shared seed link from someone else's custom list).
@@ -205,69 +183,35 @@ export function App() {
       return
     }
 
-    // Hard Mode validation
     if (gameState.difficulty === 'hard' && gameState.guesses.length > 0) {
-      const lastGuess = gameState.guesses[gameState.guesses.length - 1].toLowerCase()
-      const currentGuessLower = currentGuess.toLowerCase()
-      const targetWord = word.toLowerCase()
-      
-      // Calculate exact hints for the last guess to enforce rules
-      const wordLetters = targetWord.split('')
-
-      const greens = Array(5).fill(false)
-      const targetCounts = {}
-      for (const char of wordLetters) {
-        targetCounts[char] = (targetCounts[char] || 0) + 1
-      }
-      
-      // Step 1: Enforce greens
-      for (let i = 0; i < 5; i++) {
-        if (lastGuess[i] === targetWord[i]) {
-          if (currentGuessLower[i] !== lastGuess[i]) {
-            showToast(`Must use ${lastGuess[i].toUpperCase()} in position ${i + 1}`)
-            hapticError()
-            triggerShake()
-            return
-          }
-          greens[i] = true
-          targetCounts[lastGuess[i]] -= 1
-        }
-      }
-      
-      // Step 2: Calculate yellows required
-      const requiredYellows = {}
-      for (let i = 0; i < 5; i++) {
-        if (!greens[i] && targetCounts[lastGuess[i]] > 0) {
-          requiredYellows[lastGuess[i]] = (requiredYellows[lastGuess[i]] || 0) + 1
-          targetCounts[lastGuess[i]] -= 1
-        }
-      }
-      
-      // Step 3: Enforce yellows
-      const currentCounts = {}
-      for (let i = 0; i < 5; i++) {
-        if (lastGuess[i] !== targetWord[i]) { // only non-green positions from lastGuess can satisfy its yellows
-          currentCounts[currentGuessLower[i]] = (currentCounts[currentGuessLower[i]] || 0) + 1
-        }
-      }
-      
-      for (const [char, count] of Object.entries(requiredYellows)) {
-        if ((currentCounts[char] || 0) < count) {
-          showToast(`Guess must contain ${char.toUpperCase()}`)
-          hapticError()
-          triggerShake()
-          return
-        }
+      const violation = validateHardMode(currentGuess, gameState.guesses[gameState.guesses.length - 1], word)
+      if (violation) {
+        showToast(violation)
+        hapticError()
+        triggerShake()
+        return
       }
     }
 
     addGuess(currentGuess, word)
     setCurrentGuess('')
-  }, [currentGuess, gameState, word, addGuess])
+  }, [currentGuess, gameState, word, addGuess, showToast])
+
+  // The board only owns the keyboard when it's actually the surface in front of the
+  // player. Without this, typing into any Settings/curation field also typed onto the
+  // board behind the modal — and Enter there submitted a real guess, burning an attempt
+  // (and potentially losing the Crown game) while the player was just naming a theme.
+  const anyModalOpen = showSettings || showStats || showArchive || showForfeitModal
 
   useEffect(() => {
+    if (anyModalOpen) return undefined
+
     const handleKeyDown = (e) => {
       if (e.ctrlKey || e.altKey || e.metaKey) return
+      // Second, independent guard: never steal keystrokes aimed at a form control,
+      // even one rendered outside a modal.
+      const t = e.target
+      if (t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return
       if (e.key === 'Enter') onEnter()
       else if (e.key === 'Backspace') onDelete()
       else if (/^[a-zA-Z]$/.test(e.key)) onChar(e.key)
@@ -275,7 +219,7 @@ export function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onEnter, onDelete, onChar])
+  }, [onEnter, onDelete, onChar, anyModalOpen])
 
   return (
     <div className={styles.app} data-high-contrast={config.highContrast ? "true" : undefined}>
@@ -316,13 +260,15 @@ export function App() {
 
       <main className={styles.main}>
         <div className={styles.boardContainer}>
-          <Board 
-            guesses={gameState.guesses} 
-            currentGuess={currentGuess} 
-            word={word}
-            status={gameState.status}
-            invalidGuess={invalidGuess}
-          />
+          <div className={styles.boardSizer}>
+            <Board
+              guesses={gameState.guesses}
+              currentGuess={currentGuess}
+              word={word}
+              status={gameState.status}
+              invalidGuess={invalidGuess}
+            />
+          </div>
         </div>
         
         <div className={styles.keyboardContainer}>
@@ -381,10 +327,12 @@ export function App() {
           <span className={styles.forfeitSubtext}>This counts as a loss.</span>
         </p>
         <div className={styles.forfeitActions}>
-          <Button variant="ghost" onClick={() => setShowForfeitModal(false)}>
+          <Button variant="secondary" onClick={() => setShowForfeitModal(false)}>
             Nevermind
           </Button>
-          <Button variant="primary" onClick={() => {
+          {/* The destructive choice carries the destructive styling — it used to be
+              `primary`, i.e. the recommended-looking button was the irreversible one. */}
+          <Button variant="danger" onClick={() => {
             forfeitGame()
             setShowForfeitModal(false)
           }}>

@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react'
+// Can't throw — an unguarded setItem here (Safari private mode, quota) would have
+// escaped from a React effect and taken the whole app down.
+import { readJson, writeJson } from '../../shared/storage'
 
 const CONFIG_KEY = 'lexi5_config'
 
@@ -7,20 +10,20 @@ const DEFAULT_CONFIG = {
   difficulty: 'normal', // 'normal', 'hard'
   dictionary: 'standard', // 'lite', 'standard', 'expanded', 'expert', 'custom'
   smartKeyboard: false, // true to show dots on yellow keys
+  // Must be declared here even though it defaults to off: the Settings toggle binds
+  // `checked` straight to it, and an undefined `checked` makes that input uncontrolled
+  // until first use, which React warns about the moment it becomes controlled.
+  highContrast: false, // true for the blue/orange colour-vision-friendly palette
 }
 
 export function useConfig() {
   const [config, setConfig] = useState(() => {
-    try {
-      const stored = localStorage.getItem(CONFIG_KEY)
-      return stored ? { ...DEFAULT_CONFIG, ...JSON.parse(stored) } : DEFAULT_CONFIG
-    } catch {
-      return DEFAULT_CONFIG
-    }
+    const stored = readJson(CONFIG_KEY, null)
+    return stored ? { ...DEFAULT_CONFIG, ...stored } : DEFAULT_CONFIG
   })
 
   useEffect(() => {
-    localStorage.setItem(CONFIG_KEY, JSON.stringify(config))
+    writeJson(CONFIG_KEY, config)
     
     // Apply theme to document
     const dark = config.theme 

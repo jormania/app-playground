@@ -1,9 +1,17 @@
+/* Sized from the box the flex layout actually gives it, not from viewport arithmetic.
+   This used to be `max-width: min(350px, calc((100dvh - 320px) * 5 / 6))`, where 320px
+   was a hard-coded guess at the height of everything else on screen. That guess broke
+   in two ways: in landscape or split-screen the expression collapsed toward zero (tiles
+   measured 4-8px), and it took no account of the conditional "list exhausted" banner, so
+   the board sized itself as though the banner weren't there and overflowed upward into
+   it. `min-height: 0` on the flex parent lets this shrink honestly instead. */
 .board {
   display: grid;
   grid-template-rows: repeat(6, 1fr);
   gap: 5px;
   width: 100%;
-  max-width: min(350px, calc((100dvh - 320px) * 5 / 6));
+  max-width: 350px;
+  max-height: 100%;
   aspect-ratio: 5/6;
   margin: 0 auto;
 }
@@ -72,7 +80,7 @@
 
 .correct {
   background-color: var(--tile-correct);
-  color: #fff;
+  color: var(--tile-correct-ink);
   border-color: var(--tile-correct);
   box-shadow: inset 0 2px 4px rgba(255,255,255,0.15), 0 2px 6px rgba(0,0,0,0.15);
   animation: flip 0.6s ease-in forwards;
@@ -80,7 +88,7 @@
 
 .present {
   background-color: var(--tile-present);
-  color: #fff;
+  color: var(--tile-present-ink);
   border-color: var(--tile-present);
   box-shadow: inset 0 2px 4px rgba(255,255,255,0.15), 0 2px 6px rgba(0,0,0,0.15);
   animation: flip 0.6s ease-in forwards;
@@ -88,7 +96,7 @@
 
 .absent {
   background-color: var(--tile-absent);
-  color: #fff;
+  color: var(--tile-absent-ink);
   border-color: var(--tile-absent);
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 2px 6px rgba(0,0,0,0.15);
   animation: flip 0.6s ease-in forwards;
@@ -125,4 +133,16 @@
   40% { transform: translateY(5px); }
   60% { transform: translateY(-10px); }
   80% { transform: translateY(2px); }
+}
+
+/* Respects the OS "reduce motion" setting. Lexi5's animations use literal durations
+   rather than the DS --duration token, so the design system's own reduced-motion rule
+   can't reach them — each stylesheet opts out explicitly. Final states are preserved
+   (animation-fill-mode: forwards on the tile flip), so tiles still end up coloured. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

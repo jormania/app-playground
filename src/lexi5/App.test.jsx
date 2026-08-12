@@ -183,6 +183,27 @@ describe('App component (Hard Mode Validation)', () => {
     }
   })
 
+  it('does not play the game while a modal is covering the board', async () => {
+    // Regression: the keydown listener was on `window` with no modal or form-target
+    // guard, so typing a curation theme into Settings typed onto the board behind it —
+    // and Enter there submitted a real guess, spending one of six attempts (and the
+    // Crown game) while the player was only naming a theme.
+    render(<App />)
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'r' }))
+    })
+    expect(screen.getAllByText('R').length).toBeGreaterThan(0)
+
+    act(() => {
+      screen.getByTitle('Settings').click()
+    })
+
+    const before = screen.queryAllByText('O').length
+    await typeWord('robot')
+    expect(screen.queryAllByText('O').length).toBe(before)
+  })
+
   it('accepts guess if duplicate letter rules are followed', async () => {
     render(<App />)
     

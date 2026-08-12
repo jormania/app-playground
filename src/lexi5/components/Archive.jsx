@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useId } from 'react'
 import { Modal } from '../../ds'
 import {
   getWord,
@@ -13,6 +13,7 @@ import styles from './Archive.module.css'
 
 export function Archive({ open, onClose, currentDictionary }) {
   const [dict, setDict] = useState(currentDictionary)
+  const archiveSelectId = useId()
 
   // Sync dictionary selection when modal opens or currentDictionary changes externally
   useEffect(() => {
@@ -37,9 +38,10 @@ export function Archive({ open, onClose, currentDictionary }) {
     <Modal open={open} onClose={onClose} title="Daily Word Archive">
       <div className={styles.archiveList}>
         <div className={styles.dictionarySection}>
-          <label className={styles.dictionaryLabel}>Select Dictionary</label>
+          <label className={styles.dictionaryLabel} htmlFor={archiveSelectId}>Select Dictionary</label>
           <div className={styles.selectWrapper}>
             <select
+              id={archiveSelectId}
               value={dict}
               onChange={e => setDict(e.target.value)}
               className={styles.dropdown}

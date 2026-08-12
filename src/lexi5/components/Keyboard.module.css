@@ -36,6 +36,25 @@
   touch-action: manipulation;
 }
 
+/* Ten keys plus gaps drive the rendered width down to ~31px on a 375px phone. Growing
+   the key itself would break the layout, so the touch target is widened past the visual
+   key with a pseudo-element instead — the row gap is 6px, so ±5px stays inside it and
+   neighbouring targets never overlap. Height is already 58px. */
+.key::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -5px;
+  right: -5px;
+}
+
+.key:focus-visible {
+  outline: 2px solid var(--text-base);
+  outline-offset: 2px;
+  z-index: 1;
+}
+
 .key:active {
   transform: scale(0.95);
   opacity: 0.8;
@@ -50,17 +69,17 @@
 /* Base key states */
 .correct {
   background-color: var(--tile-correct);
-  color: #fff;
+  color: var(--tile-correct-ink);
 }
 
 .present {
   background-color: var(--tile-present);
-  color: #fff;
+  color: var(--tile-present-ink);
 }
 
 .absent {
   background-color: var(--tile-absent);
-  color: #fff;
+  color: var(--tile-absent-ink);
 }
 
 :global([data-theme="light"]) .absent {
@@ -88,4 +107,16 @@
 .dotCorrect {
   background-color: #fff;
   box-shadow: 0 0 2px rgba(0,0,0,0.3);
+}
+
+/* Respects the OS "reduce motion" setting. Lexi5's animations use literal durations
+   rather than the DS --duration token, so the design system's own reduced-motion rule
+   can't reach them — each stylesheet opts out explicitly. Final states are preserved
+   (animation-fill-mode: forwards on the tile flip), so tiles still end up coloured. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

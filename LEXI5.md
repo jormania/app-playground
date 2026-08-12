@@ -76,6 +76,27 @@ wrapped at least once *since it was curated*, a persistent banner stays up on th
 just the one-off toast, which is easy to miss) until you tap **Refresh Now**, which jumps straight
 into Settings with the curation panel already open.
 
+## Code layout
+Game logic lives in focused modules under `src/lexi5/lib/`, with `gameState.js` kept as a
+thin re-export barrel so every existing import path (and the whole test suite) works
+unchanged — the same promotion pattern used for `useWakeLock`:
+- `score.js` — **the** tile scorer (`scoreGuess`, `keyStatuses`). Board, the keyboard and
+  the share card all call it. There used to be three separate implementations; the share
+  card's skipped the letter-consumption step and painted yellows the board never showed.
+- `hardMode.js` — `validateHardMode`, extracted from a 55-line block inlined in `App.jsx`.
+- `words.js` — PRNG, shuffle cache, `getWord`/`getWordProgress`, `parseSeed`.
+- `dictionaries.js` — built-in lists and the whole Custom-list lifecycle.
+- `stats.js` — statistics schema, migrations, Crown-win history.
+- `useGameState.js` — the React hook.
+- `useToastQueue.js` — the queued toast (see Toast notifications below).
+
+**All storage goes through [`src/shared/storage.ts`](src/shared/storage.ts)**, whose helpers
+can't throw. An unguarded `setItem` inside an effect is an uncaught render error — in Safari
+private mode or at quota it unmounted the app to a blank page. `lib/storageBoundary.test.js`
+fails the suite if a direct `localStorage` write reappears, the same way
+`src/ds/boundary.test.js` guards the design-system boundary. `components/ErrorBoundary.jsx`
+catches whatever still gets through and offers to clear Lexi5's keys.
+
 ## Game State
 State is entirely local to the device and tracked via `localStorage` keys:
 - `lexi5_stats`: Lifetime statistics (played, won, streaks, guess distribution), one bucket per
@@ -103,7 +124,7 @@ The app surfaces state changes/errors via a lightweight in-app toast (not blocki
 - Copying/sharing the board (link copy, image share, and their failure paths).
 - Resetting statistics.
 
-Toasts queue rather than overwrite: if one fires while another's still showing, it waits its
+Implemented by `lib/useToastQueue.js`. Toasts queue rather than overwrite: if one fires while another's still showing, it waits its
 turn instead of silently clobbering the first (immediate repeats of the *same* message are
 deduped against what's showing/queued, so e.g. mashing Enter on an invalid guess doesn't pile
 up a run of identical toasts). The toast itself renders with `role="status" aria-live="polite"
@@ -140,6 +161,12 @@ Two things to watch if you touch this:
 - **High-Fidelity Social Sharing**: Instead of simple text emojis, the "Share" button utilizes `html2canvas` and the Web Share API to generate and share a clean, beautiful image of your game board. Sharing replaces the target word with a spoiler-free definition hint, and dynamically brands AI-curated custom games.
 - **Animations & Haptics**: Full NYT-style animations including tile pops, invalid word shake, and a staggered victory dance. Includes mobile `navigator.vibrate` haptics and a confetti celebration upon beating the Crown word. The layout features `overscroll-behavior-y: none` to prevent native browser pull-to-refresh from squishing viewport elements.
 - **Hard Mode**: Revealed hints must be used in subsequent guesses (and green letters must remain in their exact positions).
+- **Accessibility**: keyboard keys expose their Wordle status via `aria-label` (colour is
+  otherwise the only signal); the toast is a `role="status"` live region; every animation
+  and the confetti burst are skipped under `prefers-reduced-motion`; tile fills are paired
+  with explicit `--tile-*-ink` tokens so text contrast follows the palette — High Contrast
+  Mode previously kept white ink on its light fills and measured *worse* (1.93:1) than the
+  default palette it replaces.
 - **Screen Wake Lock**: The screen stays awake only while an active game is actually on screen
   (`gameState.status === 'playing'` and no Settings/Stats/Archive/forfeit modal is open) — moving
   to any menu, winning, or forfeiting drops back to default OS sleep behavior. Uses

@@ -1,4 +1,5 @@
 import React, { memo } from 'react'
+import { scoreGuess, keyStatuses as computeKeyStatuses } from '../lib/score'
 import styles from './Keyboard.module.css'
 
 const ROWS = [
@@ -17,31 +18,27 @@ const STATUS_LABEL = {
 }
 
 export const Keyboard = memo(function Keyboard({ guesses, word, onChar, onDelete, onEnter, smartKeyboard }) {
-  // Determine letter status based on guesses
-  const keyStatuses = {}
-  const triedPositions = {} // letter -> set of indices where it was guessed and was 'present' (not correct)
-  const correctPositions = {} // letter -> set of indices where it was guessed and was 'correct'
+  // Per-letter key colour, folded from the same scoring the board uses (lib/score.js)
+  // so a key can never claim a status the board disagrees with.
+  const keyStatuses = computeKeyStatuses(guesses, word)
+
+  // Positional memory for the Smart Keyboard dots, which needs per-tile detail rather
+  // than the per-letter fold above.
+  const triedPositions = {} // letter -> indices where it scored 'present'
+  const correctPositions = {} // letter -> indices where it scored 'correct'
   const allCorrectPositions = new Set()
-  
+
   guesses.forEach(guess => {
+    const statuses = scoreGuess(guess, word)
     for (let i = 0; i < guess.length; i++) {
       const letter = guess[i].toUpperCase()
-      const isCorrect = word[i].toUpperCase() === letter
-      const isPresent = word.toUpperCase().includes(letter)
-      
-      if (isCorrect) {
-        keyStatuses[letter] = 'correct'
+      if (statuses[i] === 'correct') {
         if (!correctPositions[letter]) correctPositions[letter] = new Set()
         correctPositions[letter].add(i)
         allCorrectPositions.add(i)
-      } else if (isPresent) {
-        if (keyStatuses[letter] !== 'correct') {
-          keyStatuses[letter] = 'present'
-        }
+      } else if (statuses[i] === 'present') {
         if (!triedPositions[letter]) triedPositions[letter] = new Set()
         triedPositions[letter].add(i)
-      } else if (!isPresent && !keyStatuses[letter]) {
-        keyStatuses[letter] = 'absent'
       }
     }
   })

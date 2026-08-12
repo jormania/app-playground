@@ -1,0 +1,75 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 100dvh;
+  padding: 24px;
+  max-width: 420px;
+  margin: 0 auto;
+  text-align: center;
+  background: var(--surface-bg, #121213);
+  color: var(--text-base, #ffffff);
+  font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+}
+
+.title {
+  font-family: "Cinzel", serif;
+  font-size: 1.6rem;
+  margin: 0;
+}
+
+.body {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--text-subtle, #818384);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.primary,
+.danger {
+  font: inherit;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.primary {
+  background: var(--tile-correct, #3f7a3a);
+  color: var(--tile-correct-ink, #ffffff);
+}
+
+.danger {
+  background: transparent;
+  border-color: var(--border-base, #565758);
+  color: var(--color-danger, #ef5266);
+}
+
+.primary:focus-visible,
+.danger:focus-visible {
+  outline: 2px solid var(--tile-correct, #3f7a3a);
+  outline-offset: 2px;
+}
+
+.detail {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.7rem;
+  color: var(--text-subtle, #818384);
+  background: rgba(127, 127, 127, 0.12);
+  padding: 8px 10px;
+  border-radius: 6px;
+  max-width: 100%;
+  overflow-x: auto;
+  text-align: left;
+  margin: 0;
+}

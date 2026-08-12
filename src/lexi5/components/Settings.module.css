@@ -30,19 +30,6 @@
   line-height: 1.25;
 }
 
-.dictionaryDesc p {
-  margin: 0 0 3px 0;
-}
-
-.dictionaryDesc ul {
-  margin: 0;
-  padding-left: 16px;
-}
-
-.dictionaryDesc li {
-  margin-bottom: 1px;
-}
-
 /* Locally tightens shared DS components (SettingsToggle) that read --space-sm
    for their own padding — narrower here without touching the shared token. */
 .tightToggle {
@@ -65,12 +52,15 @@
   font-size: 0.85rem;
   font-family: inherit;
   cursor: pointer;
-  outline: none;
   transition: border-color 0.2s;
 }
 
-.dropdown:focus {
+/* A 1px border-colour change was the only focus signal here, with `outline: none`
+   suppressing the real one — close to invisible against the existing border. */
+.dropdown:focus-visible {
   border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .dropdown:disabled option:disabled,
@@ -89,24 +79,6 @@
   color: var(--text-subtle);
 }
 
-.guideLink {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  margin: 16px 0;
-  background-color: var(--surface-float);
-  border-radius: 8px;
-  text-decoration: none;
-  color: var(--text-base);
-  font-weight: 500;
-  transition: opacity 0.2s;
-}
-
-.guideLink:hover {
-  opacity: 0.8;
-}
-
 .advanced {
   margin-top: 10px;
   border-top: 1px solid var(--border-subtle);
@@ -121,7 +93,7 @@
   display: inline-block;
   padding: 2px 8px;
   background-color: var(--accent);
-  color: white;
+  color: var(--tile-correct-ink);
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;

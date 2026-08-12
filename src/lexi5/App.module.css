@@ -8,13 +8,22 @@
 
   /* Wordle-style tile/key colors — the single source of truth other Lexi5
      stylesheets (Board, Keyboard, Stats, Settings) reference instead of
-     repeating these hex values. */
-  --tile-correct: #538d4e;
-  --tile-present: #b59f3b;
+     repeating these hex values.
+
+     Each fill is paired with an explicit ink token. Tile and key rules used to
+     hard-code `color: #fff`, which was already marginal on these fills and became
+     unreadable under High Contrast Mode, where the palette swaps to *light* fills
+     (white on #85c0f9 measured 1.93:1 — an accessibility mode that reduced contrast).
+     Anything painting text on a tile fill must use the matching -ink token. */
+  --tile-correct: #3f7a3a;
+  --tile-correct-ink: #ffffff;
+  --tile-present: #8a7526;
+  --tile-present-ink: #ffffff;
   --tile-absent: #3a3a3c;
-  --tile-absent-light: #787c7e;
+  --tile-absent-ink: #ffffff;
+  --tile-absent-light: #6b6f71;
   --accent: var(--tile-correct);
-  --danger: #f44336;
+  --danger: var(--color-danger);
 
   /* Map to DS tokens for Modals. --color-surface-2 is its OWN value, not an alias
      for --surface-float: DS pairs --color-surface-2 with --color-muted as a
@@ -32,6 +41,14 @@
   --color-accent-hover: color-mix(in srgb, var(--tile-correct) 85%, black);
   --color-glow: color-mix(in srgb, var(--tile-correct) 15%, transparent);
   --color-ring: color-mix(in srgb, var(--tile-correct) 35%, transparent);
+  /* These four were previously left at DS defaults, so DS components rendered
+     off-palette inside Lexi5 — most visibly the reset-statistics confirm button in
+     Solarized red next to Lexi5's own red, and a Tokyo Night modal scrim. */
+  --color-danger: #c0182f;
+  --color-faint: var(--text-subtle);
+  --color-border-2: var(--border-base);
+  --color-bg-sunken: var(--surface-bg);
+  --color-scrim: rgba(18, 18, 19, 0.55);
 }
 
 :global(:root[data-theme="dark"]) {
@@ -57,6 +74,11 @@
   --color-accent-hover: color-mix(in srgb, var(--tile-correct) 85%, black);
   --color-glow: color-mix(in srgb, var(--tile-correct) 15%, transparent);
   --color-ring: color-mix(in srgb, var(--tile-correct) 35%, transparent);
+  --color-danger: #ef5266;
+  --color-faint: var(--text-subtle);
+  --color-border-2: var(--border-base);
+  --color-bg-sunken: var(--surface-bg);
+  --color-scrim: rgba(0, 0, 0, 0.65);
 }
 
 :global(html), :global(body) {
@@ -82,13 +104,19 @@
   overflow: hidden;
 }
 
+/* The colour-vision-friendly palette swaps to light fills, so its ink has to flip with
+   it. While the ink stayed hard-coded white this mode measured *worse* than the default
+   palette (1.93:1 on the blue); dark ink on the same fills measures 9.8:1 and 6.9:1. */
 .app[data-high-contrast="true"] {
   --tile-correct: #f5793a;
+  --tile-correct-ink: #121213;
   --tile-present: #85c0f9;
+  --tile-present-ink: #121213;
   --color-accent: var(--tile-correct);
   --color-accent-hover: color-mix(in srgb, var(--tile-correct) 85%, black);
   --color-glow: color-mix(in srgb, var(--tile-correct) 15%, transparent);
   --color-ring: color-mix(in srgb, var(--tile-correct) 35%, transparent);
+  --color-on-accent: #121213;
 }
 
 .header {
@@ -128,13 +156,31 @@
   min-height: 0;
 }
 
+/* min-height: 0 lets this actually shrink below its content size, so the board inside
+   can honour `max-height: 100%` instead of overflowing the flex box (and, when the
+   stale-list banner is up, spilling upward over it). The floor keeps the grid legible:
+   below it the container scrolls rather than crushing the tiles to a few pixels. */
 .boardContainer {
   flex: 1;
   display: flex;
-  justify-content: center;
-  align-items: center;
+  /* `safe` centring: once the board is taller than the space available, alignment falls
+     back to flex-start instead of centring. Plain `center` overflows equally in both
+     directions, which pushed the top of the grid up underneath the stale-list banner
+     (and out of reach, since overflow can't scroll to content above the start edge). */
+  justify-content: safe center;
+  align-items: safe center;
   padding: 16px;
   min-height: 0;
+  overflow: auto;
+}
+
+.boardSizer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
 }
 
 .keyboardContainer {
@@ -161,6 +207,9 @@
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 
+/* Was white on the saturated --tile-present fill: 2.63:1 at 13.6px bold, the least
+   legible text in the app and it carries an action. A tinted surface with normal ink
+   keeps the same "attention" read at a contrast that actually passes. */
 .staleBanner {
   display: flex;
   align-items: center;
@@ -168,8 +217,9 @@
   flex-wrap: wrap;
   gap: 8px 12px;
   padding: 10px 16px;
-  background: var(--tile-present);
-  color: #fff;
+  background: color-mix(in srgb, var(--tile-present) 22%, var(--surface-bg));
+  color: var(--text-base);
+  border-bottom: 1px solid color-mix(in srgb, var(--tile-present) 55%, var(--surface-bg));
   font-size: 0.85rem;
   font-weight: 600;
   text-align: center;
@@ -190,4 +240,16 @@
   display: flex;
   gap: 12px;
   justify-content: center;
+}
+
+/* Respects the OS "reduce motion" setting. Lexi5's animations use literal durations
+   rather than the DS --duration token, so the design system's own reduced-motion rule
+   can't reach them — each stylesheet opts out explicitly. Final states are preserved
+   (animation-fill-mode: forwards on the tile flip), so tiles still end up coloured. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

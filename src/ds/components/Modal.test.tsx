@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { useState } from 'react'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Modal } from './Modal'
 
@@ -99,5 +99,75 @@ describe('Modal', () => {
       expect(screen.queryByRole('dialog')).toBeNull()
     })
     expect(document.activeElement).toBe(opener)
+  })
+
+  it('Escape closes only the topmost modal when dialogs are nested', async () => {
+    // Dialogs.tsx ships nested dialogs as a first-class pattern (a ConfirmModal rendered
+    // inside an open Modal), but every Modal listened for Escape on `document` with no
+    // notion of which was on top — so one Escape fired every listener and tore down the
+    // whole stack, discarding the panel the user was working in along with the
+    // confirmation they were dismissing.
+    const user = userEvent.setup()
+
+    function Harness() {
+      const [outer, setOuter] = useState(true)
+      const [inner, setInner] = useState(true)
+      return (
+        <>
+          <Modal open={outer} onClose={() => setOuter(false)} title="Outer">
+            <button>outer body</button>
+            <Modal open={inner} onClose={() => setInner(false)} title="Inner">
+              <button>inner body</button>
+            </Modal>
+          </Modal>
+        </>
+      )
+    }
+
+    render(<Harness />)
+    expect(screen.getAllByRole('dialog')).toHaveLength(2)
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(screen.queryByText('Inner')).toBeNull()
+    })
+    // The outer modal survives the first Escape...
+    expect(screen.getByText('Outer')).toBeTruthy()
+
+    // ...and closes on the second, now that it is topmost.
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull()
+    })
+  })
+
+  it('does not re-grab focus when the parent re-renders with a new onClose identity', async () => {
+    // Consumers pass inline arrows, so onClose changes identity on every parent render.
+    // With onClose in the focus effect's dependency array, each of those re-ran the
+    // effect — restoring and re-taking focus — which yanked the caret out of whatever
+    // field the user was typing in.
+    function Harness() {
+      const [, setTick] = useState(0)
+      return (
+        <>
+          <button onClick={() => setTick(t => t + 1)}>re-render</button>
+          <Modal open onClose={() => {}} title="X">
+            <input aria-label="field" />
+          </Modal>
+        </>
+      )
+    }
+
+    render(<Harness />)
+    const field = screen.getByLabelText('field')
+    field.focus()
+    expect(document.activeElement).toBe(field)
+
+    // Re-render the parent without closing the modal.
+    act(() => {
+      screen.getByRole('button', { name: 're-render' }).click()
+    })
+
+    expect(document.activeElement).toBe(field)
   })
 })
