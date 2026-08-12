@@ -55,6 +55,13 @@ export function Archive({ open, onClose, currentDictionary, gameState }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
+  // Now that days are playable, the list is a set of things to do rather than a flat
+  // record — so it should say how far through them you are.
+  const solvedCount = useMemo(
+    () => pastDays.filter(d => wasGameWon(dict, d)).length,
+    [pastDays, dict]
+  )
+
   // Starting an archived day replaces the single stored game, so a game with guesses in it
   // is worth protecting behind a confirmation rather than silently discarding.
   const gameInProgress = !!(gameState && gameState.status === 'playing' && gameState.guesses.length > 0)
@@ -92,6 +99,22 @@ export function Archive({ open, onClose, currentDictionary, gameState }) {
                 {DICTIONARY_LABELS.custom}{hasCustomDict ? ` (${getCustomDictionarySize().toLocaleString()} words)` : ' — curate one in Settings first'}
               </option>
             </select>
+          </div>
+        </div>
+
+        <div className={styles.progress}>
+          <div className={styles.progressText}>
+            <b>{solvedCount}</b> of {pastDays.length} solved
+          </div>
+          <div
+            className={styles.progressTrack}
+            role="progressbar"
+            aria-label={`${solvedCount} of ${pastDays.length} past days solved`}
+            aria-valuemin={0}
+            aria-valuemax={pastDays.length}
+            aria-valuenow={solvedCount}
+          >
+            <span style={{ width: `${(solvedCount / pastDays.length) * 100}%` }} />
           </div>
         </div>
 

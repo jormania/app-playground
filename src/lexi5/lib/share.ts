@@ -64,6 +64,34 @@ export function buildShareText(options: ShareTextOptions): string {
   return lines.join('\n')
 }
 
+export type ShareOutcome = 'shared' | 'copied' | 'failed'
+
+/**
+ * Hands text to the native share sheet, falling back to the clipboard.
+ *
+ * Both the result bar and the Statistics panel offer the same grid, so they go through
+ * one function rather than each re-deriving what counts as success — a dismissed share
+ * sheet is not a failure, and must not fall through to a silent clipboard write the
+ * player didn't ask for.
+ */
+export async function shareOrCopy(text: string): Promise<ShareOutcome> {
+  if (navigator.share && navigator.canShare && navigator.canShare({ text })) {
+    try {
+      await navigator.share({ text })
+      return 'shared'
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return 'shared'
+      // A real share failure still deserves the clipboard fallback below.
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(text)
+    return 'copied'
+  } catch {
+    return 'failed'
+  }
+}
+
 /** Legend for the marks appended to a score, for the UI to explain them. */
 export const SHARE_MARKS = {
   hardMode: '* Hard Mode',

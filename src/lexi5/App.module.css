@@ -394,3 +394,11 @@
   color: var(--text-subtle);
   max-width: 340px;
 }
+
+.staleActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}

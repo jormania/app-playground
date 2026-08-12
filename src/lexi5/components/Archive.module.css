@@ -157,3 +157,36 @@
   letter-spacing: 0.15em;
   color: var(--text-subtle);
 }
+
+/* The 14-day list is a set of puzzles to play now, not just a record to read, so it
+   carries its own completion state. */
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+
+.progressText {
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+}
+
+.progressText b {
+  color: var(--text-base);
+  font-variant-numeric: tabular-nums;
+}
+
+.progressTrack {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border-subtle);
+  overflow: hidden;
+}
+
+.progressTrack span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease-out;
+}

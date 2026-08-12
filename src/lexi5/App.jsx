@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useConfig } from './lib/config'
-import { useGameState, getWord, getWordProgress, isValidGuess, hasCustomDictionary, recordServedWord, loadDictionary, isDictionaryLoaded, DICTIONARY_LABELS } from './lib/gameState'
+import { useGameState, getWord, getWordProgress, isValidGuess, hasCustomDictionary, recordServedWord, loadDictionary, isDictionaryLoaded, getDayRecord, describeDay, DICTIONARY_LABELS } from './lib/gameState'
 import { hapticTap, hapticError, hapticWin } from './lib/haptics'
 import { validateHardMode } from './lib/hardMode'
 import { useToastQueue } from './lib/useToastQueue'
 import { applyUndo } from './lib/undo'
 import { msUntilNextWord, formatCountdown } from './lib/dailyCountdown'
+import { buildShareText, shareOrCopy } from './lib/share'
 import { readJson, writeJson } from '../shared/storage'
 import { useWakeLock } from '../shared/useWakeLock'
 import { Board } from './components/Board'
@@ -63,6 +64,12 @@ export function App() {
   const [hintUsed, setHintUsed] = useState(false)
   const [hint, setHint] = useState(null)
   const [countdown, setCountdown] = useState(() => formatCountdown(msUntilNextWord()))
+  // Re-read rather than held: useGameState writes it when a game ends, so the value is
+  // only meaningful once the result is in.
+  const dayRecord = showResultBar ? getDayRecord(gameState.dictionary, gameState.date) : null
+  const daySummary = dayRecord ? describeDay(dayRecord) : null
+  // Read on every new round so the header reflects the run you carried into it.
+  const todayRun = getDayRecord(gameState.dictionary, gameState.date).run
 
   const shakeTimeoutRef = useRef(null)
   const { toast, showToast } = useToastQueue()
@@ -234,6 +241,25 @@ export function App() {
     window.location.reload()
   }
 
+  // The same grid the Statistics panel offers, one tap from where the game actually ends.
+  const handleShareResult = async () => {
+    const seedStr = encodeURIComponent(btoa(`${gameState.date}|${gameState.iteration}|${gameState.dictionary}`))
+    const text = buildShareText({
+      guesses: gameState.guesses,
+      word,
+      highContrast: config.highContrast,
+      dictionaryLabel: DICTIONARY_LABELS[gameState.dictionary] || gameState.dictionary,
+      won: gameState.status === 'won',
+      iteration: gameState.iteration,
+      hardMode: gameState.difficulty === 'hard',
+      hintUsed,
+      url: `${window.location.origin}${window.location.pathname}?seed=${seedStr}`,
+    })
+    const outcome = await shareOrCopy(text)
+    if (outcome === 'copied') showToast('Result copied to clipboard!')
+    else if (outcome === 'failed') showToast('Could not share or copy — try again.')
+  }
+
   const handleShareBoard = () => {
     const seedStr = encodeURIComponent(btoa(`${gameState.date}|${gameState.iteration}|${gameState.dictionary}`))
     const shareUrl = `${window.location.origin}${window.location.pathname}?seed=${seedStr}`
@@ -331,7 +357,10 @@ export function App() {
         <div className={styles.titleBlock}>
           <h1 className={styles.title}>Lexi5</h1>
           {gameState.iteration > 0 && (
-            <span className={styles.roundBadge}>Endless #{gameState.iteration}</span>
+            <span className={styles.roundBadge}>
+              Endless #{gameState.iteration}
+              {todayRun >= 2 && <> · {todayRun} in a row</>}
+            </span>
           )}
         </div>
         <div className={styles.rightActions}>
@@ -350,7 +379,14 @@ export function App() {
       {customCycleStale && (
         <div className={styles.staleBanner}>
           <span>You've used every word in your Custom list — it's repeating now.</span>
-          <Button size="sm" onClick={handleOpenCurate}>Refresh Now</Button>
+          <div className={styles.staleActions}>
+            <Button size="sm" onClick={handleOpenCurate}>Refresh Now</Button>
+            {/* The only ways out used to be re-curating (needs an API key) or hunting
+                through Settings. A player without a key was stuck with repeats. */}
+            <Button size="sm" variant="secondary" onClick={() => handleDictionaryChange('standard')}>
+              Use Standard
+            </Button>
+          </div>
         </div>
       )}
 
@@ -362,9 +398,16 @@ export function App() {
               : `Out of guesses — the word was ${word.toUpperCase()}.`}
             {gameState.iteration === 0
               ? <span className={styles.resultSub}>Next daily word in {countdown}. Play Again for unlimited practice rounds.</span>
-              : <span className={styles.resultSub}>Endless round — only the first game each day counts toward your daily streak.</span>}
+              : <span className={styles.resultSub}>
+                  {daySummary ? `${daySummary}. ` : ''}Only the first game each day counts toward your daily streak.
+                </span>}
           </span>
           <div className={styles.resultActions}>
+            {gameState.guesses.length > 0 && (
+              <Button size="sm" variant="secondary" onClick={handleShareResult} title="Share your result grid">
+                <Share2 size={14} style={{ marginRight: 4 }} />Share
+              </Button>
+            )}
             <Button size="sm" onClick={() => setShowStats(true)}>Stats</Button>
             <IconButton size="sm" onClick={() => setShowResultBar(false)} title="Dismiss">
               <X size={16} />

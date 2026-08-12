@@ -33,4 +33,6 @@ export { getWordProgress, getWord, parseSeed } from './words'
 
 export { wasGameWon, recordServedWord, getServedWord } from './stats'
 
+export { getDayRecord, describeDay } from './sessionRun'
+
 export { useGameState } from './useGameState'

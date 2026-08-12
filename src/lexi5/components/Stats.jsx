@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useId } from 'react'
 import { Modal, Button } from '../../ds'
 import { Share2 } from 'lucide-react'
 import { scoreGuess } from '../lib/score'
-import { buildShareText } from '../lib/share'
+import { buildShareText, shareOrCopy } from '../lib/share'
 import { BUILTIN_DICTIONARY_ORDER, DICTIONARY_LABELS, hasCustomDictionary } from '../lib/gameState'
 import styles from './Stats.module.css'
 
@@ -120,19 +120,9 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
       url: `${window.location.origin}${window.location.pathname}?seed=${seedStr}`,
     })
 
-    if (navigator.share && navigator.canShare && navigator.canShare({ text })) {
-      try {
-        await navigator.share({ text })
-        return
-      } catch (err) {
-        // A dismissed share sheet is not a failure; fall through to the clipboard only
-        // for real errors.
-        if (err.name === 'AbortError') return
-      }
-    }
-    navigator.clipboard.writeText(text)
-      .then(() => setGridCopied(true))
-      .catch(() => onToast?.('Could not copy to clipboard — try again.'))
+    const outcome = await shareOrCopy(text)
+    if (outcome === 'copied') setGridCopied(true)
+    else if (outcome === 'failed') onToast?.('Could not share or copy — try again.')
   }
 
   const handleShareStats = () => {
