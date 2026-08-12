@@ -68,11 +68,16 @@
 }
 
 .dayRow {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
   align-items: center;
   padding: 8px;
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.dayWord {
+  text-align: right;
 }
 
 .dayRow:last-child {
@@ -108,4 +113,47 @@
   font-style: italic;
   text-transform: none;
   letter-spacing: 0;
+}
+
+.dayActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* Small, quiet controls — the list is scanned, and a row of full buttons would compete
+   with the dates and words that are the actual content. */
+.iconAction {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-subtle);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.iconAction:hover {
+  background: var(--color-surface-2);
+  color: var(--text-base);
+}
+
+.iconAction:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  color: var(--text-base);
+}
+
+/* Masked answers. The Archive used to print every past word in plain sight, spoiling
+   puzzles the player hadn't reached yet — days you've already won stay visible, the rest
+   need an explicit tap. */
+.hidden {
+  letter-spacing: 0.15em;
+  color: var(--text-subtle);
 }

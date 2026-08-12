@@ -218,3 +218,49 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Read-only record picker. Stats have always been stored per dictionary, but the only way
+   to see another one's was to switch dictionaries in Settings — which deals a fresh word
+   and abandons the game in progress. */
+.dictPicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.dictPickerLabel {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-subtle);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.dictPickerSelect {
+  flex: 1;
+  min-width: 0;
+  background-color: var(--surface-bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-base);
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.dictPickerSelect:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.viewingNote {
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+  line-height: 1.4;
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}

@@ -1,12 +1,14 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useId } from 'react'
 import { Modal, Button } from '../../ds'
 import { Share2 } from 'lucide-react'
 import { scoreGuess } from '../lib/score'
-import { DICTIONARY_LABELS } from '../lib/gameState'
+import { buildShareText } from '../lib/share'
+import { BUILTIN_DICTIONARY_ORDER, DICTIONARY_LABELS, hasCustomDictionary } from '../lib/gameState'
 import styles from './Stats.module.css'
 
-export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onToast }) {
+export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onToast, highContrast, hintUsed }) {
   const [copied, setCopied] = useState(false)
+  const [gridCopied, setGridCopied] = useState(false)
   // Keyed by the word it describes, not a bare string. <Stats> never unmounts (only its
   // inner Modal returns null), so a plain `!definition` guard meant the first word's
   // definition stuck for the whole session — every later game showed the wrong one, and
@@ -15,8 +17,20 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
   const definition = def.text
   const isFinished = gameState.status !== 'playing'
   const isCrown = gameState.iteration === 0
-  const dictStats = stats[gameState.dictionary] || stats.standard
+
+  // Which dictionary's record is on screen. Every dictionary's stats have always been
+  // stored separately, but the only way to see another one's was to *switch* dictionaries
+  // — which deals a fresh word and abandons the game in progress. This is a read-only
+  // view and never touches what's being played.
+  const [viewDict, setViewDict] = useState(gameState.dictionary)
+  useEffect(() => {
+    if (open) setViewDict(gameState.dictionary)
+  }, [open, gameState.dictionary])
+
+  const viewingCurrent = viewDict === gameState.dictionary
+  const dictStats = stats[viewDict] || stats.standard
   const shareRef = useRef(null)
+  const dictPickerId = useId()
   const [statsCopied, setStatsCopied] = useState(false)
 
   useEffect(() => {
@@ -92,6 +106,35 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
     }
   }
 
+  const handleShareGrid = async () => {
+    const seedStr = encodeURIComponent(btoa(`${gameState.date}|${gameState.iteration}|${gameState.dictionary}`))
+    const text = buildShareText({
+      guesses: gameState.guesses,
+      word,
+      highContrast,
+      dictionaryLabel: DICTIONARY_LABELS[gameState.dictionary] || gameState.dictionary,
+      won: gameState.status === 'won',
+      iteration: gameState.iteration,
+      hardMode: gameState.difficulty === 'hard',
+      hintUsed,
+      url: `${window.location.origin}${window.location.pathname}?seed=${seedStr}`,
+    })
+
+    if (navigator.share && navigator.canShare && navigator.canShare({ text })) {
+      try {
+        await navigator.share({ text })
+        return
+      } catch (err) {
+        // A dismissed share sheet is not a failure; fall through to the clipboard only
+        // for real errors.
+        if (err.name === 'AbortError') return
+      }
+    }
+    navigator.clipboard.writeText(text)
+      .then(() => setGridCopied(true))
+      .catch(() => onToast?.('Could not copy to clipboard — try again.'))
+  }
+
   const handleShareStats = () => {
     const dictLabel = gameState.dictionary === 'custom' ? 'custom, AI curated' : gameState.dictionary
     const winPct = dictStats.gamesPlayed > 0 ? Math.round((dictStats.gamesWon / dictStats.gamesPlayed) * 100) : 0
@@ -113,7 +156,22 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
   const avgGuesses = dictStats.gamesWon > 0 ? (totalGuesses / dictStats.gamesWon).toFixed(1) : '-'
 
   return (
-    <Modal open={open} onClose={onClose} title={`Statistics (${DICTIONARY_LABELS[gameState.dictionary] || gameState.dictionary})`}>
+    <Modal open={open} onClose={onClose} title="Statistics">
+      <div className={styles.dictPicker}>
+        <label className={styles.dictPickerLabel} htmlFor={dictPickerId}>Showing</label>
+        <select
+          id={dictPickerId}
+          className={styles.dictPickerSelect}
+          value={viewDict}
+          onChange={e => setViewDict(e.target.value)}
+        >
+          {BUILTIN_DICTIONARY_ORDER.map(key => (
+            <option key={key} value={key}>{DICTIONARY_LABELS[key]}</option>
+          ))}
+          <option value="custom" disabled={!hasCustomDictionary()}>{DICTIONARY_LABELS.custom}</option>
+        </select>
+      </div>
+
       <div className={styles.statsContainer}>
         <div className={styles.statBox}>
           <div className={styles.statNum}>{dictStats.gamesPlayed}</div>
@@ -162,7 +220,14 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
         })}
       </div>
 
-      {isFinished && (
+      {!viewingCurrent && (
+        <p className={styles.viewingNote}>
+          Viewing your {DICTIONARY_LABELS[viewDict]} record. You&rsquo;re currently playing{' '}
+          {DICTIONARY_LABELS[gameState.dictionary]} — switching here changes nothing.
+        </p>
+      )}
+
+      {isFinished && viewingCurrent && (
         <div className={styles.footer}>
           <div className={styles.wordReveal}>
             The word was: <a href={`https://en.wiktionary.org/wiki/${word.toLowerCase()}`} target="_blank" rel="noreferrer" style={{color: 'inherit', textDecoration: 'underline', textUnderlineOffset: '4px'}}><strong className={styles.wordRevealWord}>{word.toLowerCase()}</strong></a>
@@ -179,6 +244,14 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
                 <span>{copied ? 'Copied!' : 'Image'}</span>
               </div>
             </Button>
+            {gameState.guesses.length > 0 && (
+            <Button size="sm" variant="secondary" onClick={handleShareGrid} style={{ flex: 1, padding: '0 2px', minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <Share2 size={14} style={{ marginRight: '4px', flexShrink: 0 }} />
+                <span>{gridCopied ? 'Copied!' : 'Grid'}</span>
+              </div>
+            </Button>
+            )}
             <Button size="sm" variant="secondary" onClick={handleShareStats} style={{ flex: 1, padding: '0 2px', minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 <Share2 size={14} style={{ marginRight: '4px', flexShrink: 0 }} />
@@ -197,7 +270,7 @@ export function Stats({ open, onClose, stats, gameState, word, onPlayAgain, onTo
       {/* Off-screen source for html2canvas. Positioned out of view rather than display:none
           (which html2canvas can't rasterise), so it needs aria-hidden/inert to stay out of
           the accessibility tree — otherwise a screen reader reads the whole result twice. */}
-      {isFinished && (
+      {isFinished && viewingCurrent && (
         <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }} aria-hidden="true" inert="">
           <div ref={shareRef} className={styles.shareCard}>
             <div className={styles.shareHeader}>

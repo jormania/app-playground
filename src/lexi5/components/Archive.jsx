@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useId } from 'react'
 import { Modal } from '../../ds'
+import { ConfirmModal } from '../../ds/components/Dialogs'
+import { Play, Eye } from 'lucide-react'
 import {
   getWord,
   hasCustomDictionary,
@@ -14,14 +16,18 @@ import {
 } from '../lib/gameState'
 import styles from './Archive.module.css'
 
-export function Archive({ open, onClose, currentDictionary }) {
+export function Archive({ open, onClose, currentDictionary, gameState }) {
   const [dict, setDict] = useState(currentDictionary)
+  const [revealed, setRevealed] = useState(() => new Set())
+  const [pendingPlay, setPendingPlay] = useState(null)
   const archiveSelectId = useId()
 
   // Sync dictionary selection when modal opens or currentDictionary changes externally
   useEffect(() => {
     if (open) {
       setDict(currentDictionary)
+      // Yesterday's answer shouldn't still be on screen next time this opens.
+      setRevealed(new Set())
     }
   }, [open, currentDictionary])
 
@@ -48,6 +54,22 @@ export function Archive({ open, onClose, currentDictionary }) {
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
+
+  // Starting an archived day replaces the single stored game, so a game with guesses in it
+  // is worth protecting behind a confirmation rather than silently discarding.
+  const gameInProgress = !!(gameState && gameState.status === 'playing' && gameState.guesses.length > 0)
+
+  const startArchivedGame = (dateString) => {
+    // Reuses the existing seed mechanism — the same encoding a shared link uses, so
+    // "play this day" and "play the link someone sent me" are one code path.
+    const seed = encodeURIComponent(btoa(`${dateString}|0|${dict}`))
+    window.location.href = `${window.location.origin}${window.location.pathname}?seed=${seed}`
+  }
+
+  const requestPlay = (dateString) => {
+    if (gameInProgress) setPendingPlay(dateString)
+    else startArchivedGame(dateString)
+  }
 
   return (
     <Modal open={open} onClose={onClose} title="Daily Word Archive">
@@ -76,7 +98,7 @@ export function Archive({ open, onClose, currentDictionary }) {
         {dict === 'custom' && (
           <p className={styles.archiveNote}>
             Curated lists only have history from the days you actually played them — re-curating
-            replaces the list, so earlier days can't be reconstructed.
+            replaces the list, so earlier days can&rsquo;t be reconstructed.
           </p>
         )}
 
@@ -95,18 +117,67 @@ export function Archive({ open, onClose, currentDictionary }) {
               month: 'short',
               day: 'numeric'
             })
-            
+
+            // Words you've already beaten are yours to see. Everything else stays hidden
+            // until asked for — this list used to hand out the answer to every puzzle you
+            // hadn't played yet, which is the opposite of what an archive should do.
+            const showWord = !word || isWon || revealed.has(dateString)
+
             return (
               <div key={dateString} className={styles.dayRow}>
                 <div className={styles.dayDate}>{formattedDate}</div>
+
                 <div className={`${styles.dayWord} ${isWon ? styles.dayWordWon : ''}`.trim()}>
-                  {word ? word.toUpperCase() : <span className={styles.dayWordUnknown}>not recorded</span>}
+                  {!word
+                    ? <span className={styles.dayWordUnknown}>not recorded</span>
+                    : showWord
+                      ? word.toUpperCase()
+                      : <span className={styles.hidden} aria-hidden="true">•••••</span>}
+                </div>
+
+                <div className={styles.dayActions}>
+                  {word && !showWord && (
+                    <button
+                      type="button"
+                      className={styles.iconAction}
+                      onClick={() => setRevealed(prev => new Set(prev).add(dateString))}
+                      title={`Reveal the word for ${formattedDate}`}
+                      aria-label={`Reveal the word for ${formattedDate}`}
+                    >
+                      <Eye size={15} />
+                    </button>
+                  )}
+                  {word && (
+                    <button
+                      type="button"
+                      className={styles.iconAction}
+                      onClick={() => requestPlay(dateString)}
+                      title={isWon ? `Replay ${formattedDate}` : `Play ${formattedDate}`}
+                      aria-label={isWon ? `Replay ${formattedDate}` : `Play ${formattedDate}`}
+                    >
+                      <Play size={15} />
+                    </button>
+                  )}
                 </div>
               </div>
             )
           })}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={!!pendingPlay}
+        onCancel={() => setPendingPlay(null)}
+        title="Leave your current game?"
+        message="You have a game in progress. Playing an earlier day replaces it — your current guesses won't be kept."
+        confirmText="Play earlier day"
+        variant="danger"
+        onConfirm={() => {
+          const target = pendingPlay
+          setPendingPlay(null)
+          startArchivedGame(target)
+        }}
+      />
     </Modal>
   )
 }

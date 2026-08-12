@@ -6,15 +6,20 @@ import { hapticTap, hapticError, hapticWin } from './lib/haptics'
 import { validateHardMode } from './lib/hardMode'
 import { useToastQueue } from './lib/useToastQueue'
 import { applyUndo } from './lib/undo'
+import { msUntilNextWord, formatCountdown } from './lib/dailyCountdown'
+import { readJson, writeJson } from '../shared/storage'
 import { useWakeLock } from '../shared/useWakeLock'
 import { Board } from './components/Board'
 import { Keyboard } from './components/Keyboard'
 import { Settings } from './components/Settings'
 import { Stats } from './components/Stats'
 import { Archive } from './components/Archive'
+import { HowToPlay } from './components/HowToPlay'
 import { IconButton, Modal, Button } from '../ds'
 import { HelpCircle, Flag, BarChart2, Settings as SettingsIcon, Share2, Calendar, X } from 'lucide-react'
 import styles from './App.module.css'
+
+const SEEN_GUIDE_KEY = 'lexi5_seen_guide'
 
 // A full-board bounce followed by a particle burst is close to a worst case for anyone
 // sensitive to motion, so the celebration is skipped entirely when the OS asks for less.
@@ -51,6 +56,13 @@ export function App() {
   const [openSettingsToCurate, setOpenSettingsToCurate] = useState(false)
   const [showArchive, setShowArchive] = useState(false)
   const [showResultBar, setShowResultBar] = useState(false)
+  // First run shows the guide unprompted. Lexi5 has four dictionaries, Hard Mode, Crown vs
+  // Endless and AI curation — none of it discoverable from an empty grid.
+  const [showHowTo, setShowHowTo] = useState(() => !readJson(SEEN_GUIDE_KEY, false))
+  const [isFirstRun] = useState(() => !readJson(SEEN_GUIDE_KEY, false))
+  const [hintUsed, setHintUsed] = useState(false)
+  const [hint, setHint] = useState(null)
+  const [countdown, setCountdown] = useState(() => formatCountdown(msUntilNextWord()))
 
   const shakeTimeoutRef = useRef(null)
   const { toast, showToast } = useToastQueue()
@@ -103,6 +115,48 @@ export function App() {
       }
     }
   }, [gameState.status])
+
+  // Only ticks while there's something to show it on. A minute's resolution is plenty for
+  // "come back tomorrow" and avoids re-rendering the app every second.
+  useEffect(() => {
+    if (!showResultBar || gameState.iteration !== 0) return undefined
+    setCountdown(formatCountdown(msUntilNextWord()))
+    const id = setInterval(() => setCountdown(formatCountdown(msUntilNextWord())), 30000)
+    return () => clearInterval(id)
+  }, [showResultBar, gameState.iteration])
+
+  // A new game means a fresh chance to solve it unaided.
+  useEffect(() => {
+    setHintUsed(false)
+    setHint(null)
+  }, [gameState.date, gameState.iteration, gameState.dictionary])
+
+  /**
+   * Reveals the answer's dictionary definition.
+   *
+   * The definition was already being fetched for the post-game reveal, so offering it as a
+   * deliberate lifeline costs nothing new. Held back until the fourth guess so it can't
+   * replace playing, and recorded so the shared result says a hint was used — the score
+   * shouldn't quietly claim to be unaided.
+   */
+  const handleHint = async () => {
+    setHintUsed(true)
+    try {
+      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+      if (!res.ok) throw new Error(String(res.status))
+      const data = await res.json()
+      const found = data?.[0]?.meanings?.[0]?.definitions?.[0]?.definition
+      if (found) setHint(found)
+      else showToast("No definition found for this word — you're on your own!")
+    } catch {
+      showToast("Couldn't fetch a definition — check your connection.")
+    }
+  }
+
+  const dismissHowTo = () => {
+    setShowHowTo(false)
+    writeJson(SEEN_GUIDE_KEY, true)
+  }
 
   const triggerShake = () => {
     setInvalidGuess(true)
@@ -262,7 +316,7 @@ export function App() {
     <div className={styles.app} data-high-contrast={config.highContrast ? "true" : undefined}>
       <header className={styles.header}>
         <div className={styles.leftActions}>
-          <IconButton size="sm" onClick={() => window.open('/lexi5-guide.html', '_blank')} title="How to play">
+          <IconButton size="sm" onClick={() => setShowHowTo(true)} title="How to play">
             <HelpCircle size={18} />
           </IconButton>
           {gameState.status === 'playing' && (
@@ -274,7 +328,12 @@ export function App() {
             <Calendar size={18} />
           </IconButton>
         </div>
-        <h1 className={styles.title}>Lexi5</h1>
+        <div className={styles.titleBlock}>
+          <h1 className={styles.title}>Lexi5</h1>
+          {gameState.iteration > 0 && (
+            <span className={styles.roundBadge}>Endless #{gameState.iteration}</span>
+          )}
+        </div>
         <div className={styles.rightActions}>
           <IconButton size="sm" onClick={handleShareBoard} title="Share game link">
             <Share2 size={18} />
@@ -301,6 +360,9 @@ export function App() {
             {gameState.status === 'won'
               ? `Solved in ${gameState.guesses.length} of 6 — the word was ${word.toUpperCase()}.`
               : `Out of guesses — the word was ${word.toUpperCase()}.`}
+            {gameState.iteration === 0
+              ? <span className={styles.resultSub}>Next daily word in {countdown}. Play Again for unlimited practice rounds.</span>
+              : <span className={styles.resultSub}>Endless round — only the first game each day counts toward your daily streak.</span>}
           </span>
           <div className={styles.resultActions}>
             <Button size="sm" onClick={() => setShowStats(true)}>Stats</Button>
@@ -324,6 +386,19 @@ export function App() {
           </div>
         </div>
         
+        {gameState.status === 'playing' && gameState.guesses.length >= 4 && !hintUsed && (
+          <div className={styles.hintRow}>
+            <button type="button" className={styles.hintButton} onClick={handleHint}>
+              Stuck? Reveal a definition
+            </button>
+          </div>
+        )}
+        {hintUsed && hint && (
+          <div className={styles.hintRow}>
+            <p className={styles.hintText}><b>Hint:</b> <i>{hint}</i></p>
+          </div>
+        )}
+
         <div className={styles.keyboardContainer}>
           <Keyboard 
             guesses={gameState.guesses}
@@ -389,13 +464,18 @@ export function App() {
           setShowStats(false)
         }}
         onToast={showToast}
+        highContrast={config.highContrast}
+        hintUsed={hintUsed}
       />
 
       <Archive
         open={showArchive}
         onClose={() => setShowArchive(false)}
         currentDictionary={gameState.dictionary}
+        gameState={gameState}
       />
+
+      <HowToPlay open={showHowTo} onClose={dismissHowTo} firstRun={isFirstRun} />
 
       <Modal open={showForfeitModal} onClose={() => setShowForfeitModal(false)} title="Give Up?">
         <p className={styles.forfeitText}>
