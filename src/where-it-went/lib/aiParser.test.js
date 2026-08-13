@@ -382,13 +382,57 @@ describe('hardenTransaction', () => {
 describe('hardenTransactions', () => {
   it('keeps valid non-Transfer transactions and drops unresolvable Transfers', async () => {
     const txs = [
-      { action: 'create', type: 'Expense', accountId: 'acc-revolut', categoryId: 'cat-food' },
-      { action: 'create', type: 'Transfer', accountId: 'acc-revolut', toAccountId: 'acc-cash' },
-      { action: 'create', type: 'Transfer', accountId: 'acc-revolut', toAccountId: 'acc-revolut' },
+      { action: 'create', type: 'Expense', amount: 15, accountId: 'acc-revolut', categoryId: 'cat-food' },
+      { action: 'create', type: 'Transfer', amount: 100, accountId: 'acc-revolut', toAccountId: 'acc-cash' },
+      { action: 'create', type: 'Transfer', amount: 100, accountId: 'acc-revolut', toAccountId: 'acc-revolut' },
     ];
     const result = await hardenTransactions(txs, { categories: mockCategories, accounts: mockAccounts, trips: mockTrips });
     expect(result).toHaveLength(2);
     expect(result.map(t => t.type)).toEqual(['Expense', 'Transfer']);
+  });
+
+  it('drops a create with no usable amount rather than storing it as zero', async () => {
+    // `Number(tx.amount) || 0` in notionClient turned each of these into a row
+    // reading 0 L that every total then counted.
+    const txs = [
+      { action: 'create', type: 'Expense', amount: '73 zł', accountId: 'acc-revolut' },
+      { action: 'create', type: 'Expense', amount: 0, accountId: 'acc-revolut' },
+      { action: 'create', type: 'Expense', amount: null, accountId: 'acc-revolut' },
+      { action: 'create', type: 'Expense', amount: 15, accountId: 'acc-revolut' },
+    ];
+    const result = await hardenTransactions(txs, { categories: mockCategories, accounts: mockAccounts, trips: [] });
+    expect(result).toHaveLength(1);
+    expect(result[0].amount).toBe(15);
+  });
+
+  it('coerces a numeric string amount rather than dropping it', async () => {
+    const result = await hardenTransactions(
+      [{ action: 'create', type: 'Expense', amount: '42', accountId: 'acc-revolut' }],
+      { categories: mockCategories, accounts: mockAccounts, trips: [] },
+    );
+    expect(result[0].amount).toBe(42);
+  });
+
+  it('leaves the stored amount alone on an update it cannot parse', async () => {
+    // An update carrying a bad amount used to zero the row: the `!!t.amount`
+    // guard in parseTextWithAI only ever applied to creates.
+    const result = await hardenTransactions(
+      [{ action: 'update', id: 'tx-1', type: 'Expense', amount: 'about 50', categoryId: 'cat-food' }],
+      { categories: mockCategories, accounts: mockAccounts, trips: [] },
+    );
+    expect(result).toHaveLength(1);
+    expect('amount' in result[0]).toBe(false);
+    expect(result[0].categoryId).toBe('cat-food');
+  });
+
+  it('drops a malformed originalAmount instead of writing it as zero', async () => {
+    const result = await hardenTransactions(
+      [{ action: 'create', type: 'Expense', amount: 89, originalAmount: 'seventy three', originalCurrency: 'PLN', accountId: 'acc-revolut' }],
+      { categories: mockCategories, accounts: mockAccounts, trips: [] },
+    );
+    expect(result[0].originalAmount).toBeNull();
+    expect(result[0].originalCurrency).toBe('');
+    expect(result[0].amount).toBe(89);
   });
 });
 

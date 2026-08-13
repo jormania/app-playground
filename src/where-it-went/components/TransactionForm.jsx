@@ -230,13 +230,22 @@ export default function TransactionForm({ transactions = [], categories, account
   // Keep the RON total in step with the typed amount — until it's edited by hand.
   useEffect(() => {
     if (!isForeign || baseTouched.current || rate == null) return;
+    const currentBase = parseFloat(baseAmount);
+    const baseUsable = Number.isFinite(currentBase) && currentBase > 0;
+    // Reopening a saved transaction keeps the RON figure that was saved rather
+    // than restating it at today's rate — but only when there *is* one. A row
+    // stored with 0 (or nothing) is a broken row, not a decision worth
+    // preserving, and refusing to restate it left the form permanently
+    // unsaveable: the amount failed validation while a perfectly good rate sat
+    // displayed right beside it.
+    //
     // Comparing against the amount the form opened with (rather than using a
     // "first run" flag) keeps this correct however the async rate lookup races
     // with typing.
-    if (String(amount) === String(initialAmount.current)) return;
+    if (baseUsable && String(amount) === String(initialAmount.current)) return;
     const converted = convert(amount, rate);
-    if (converted != null) setBaseAmount(String(converted));
-  }, [amount, rate, isForeign]);
+    if (converted != null && String(converted) !== baseAmount) setBaseAmount(String(converted));
+  }, [amount, rate, isForeign, baseAmount]);
 
   const parsedAmount = parseFloat(amount);
   const amountValid = Number.isFinite(parsedAmount) && parsedAmount > 0;
@@ -265,7 +274,12 @@ export default function TransactionForm({ transactions = [], categories, account
       if (!amountValid) setFormError('Enter an amount greater than zero.');
       else if (isTransfer && !toAccountId) setFormError('Choose the account the money went to.');
       else if (isTransfer && toAccountId === accountId) setFormError('A transfer needs two different accounts.');
-      else if (isForeign && !baseValid) setFormError(`Enter the ${BASE_CURRENCY} amount — no exchange rate was available to work it out automatically.`);
+      // Only blame the rate when the rate is actually the problem. Saying "no
+      // exchange rate was available" while one is displayed two lines above
+      // sends you looking for a network fault that isn't there.
+      else if (isForeign && !baseValid) setFormError(rate == null
+        ? `Enter the ${BASE_CURRENCY} amount — no exchange rate was available to work it out automatically.`
+        : `Enter the ${BASE_CURRENCY} amount — it must be greater than zero.`);
       else setFormError('Fill in every required field.');
       return;
     }

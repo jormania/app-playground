@@ -1462,3 +1462,66 @@ PLN, and the trip notice card renders and opens the row. The ECB conversion
 could not be exercised live (outbound calls to `api.frankfurter.dev` are
 blocked in that sandbox, which is exactly the "keep the figure" fallback) and
 is covered by unit test instead.
+
+## Zero-amount foreign rows, and a modal that scrolled under scaled text (2026-08-13)
+
+Two problems reported from a real phone, from one screenshot each. They look
+unrelated and one turned out to be a consequence of the trip-aware parser
+shipping earlier the same day.
+
+### "No exchange rate was available" — while a rate was on screen
+
+The edit form showed `73 PLN`, `0 RON`, the rate line `1 PLN = 1.22 RON
+(12 Aug)`, and refused to save with *"Enter the RON amount — no exchange rate
+was available to work it out automatically."* Both halves of that were wrong:
+a rate was available, and the real fault was that the row had been **stored
+with a RON amount of 0**.
+
+- **How a zero gets stored.** Both write paths did `Number(tx.amount) || 0`, so
+  any unparseable amount — a malformed figure from the model, an undefined
+  field from a caller — became a transaction saved as 0. Nothing surfaced: the
+  write succeeded and the row joined the ledger reading 0 L, counted in every
+  total. `requireAmount` in [`notionClient.js`](src/where-it-went/lib/notionClient.js)
+  now throws instead. Failing loudly beats a silently wrong ledger.
+- **Why the parser could produce one.** `hardenTransaction` re-derives the RON
+  figure from a live ECB rate, but a *failed* rate lookup falls back to the
+  model's own number by design — and that number is only sanity-checked for
+  creates (`!!t.amount`), never for updates. It now coerces the amount at the
+  end of hardening: a create with nothing usable is dropped, an **update** has
+  the field removed so the stored figure survives untouched rather than being
+  zeroed, and a malformed `originalAmount` is cleared along with its currency.
+- **Why the form couldn't recover.** Reopening a foreign transaction
+  deliberately keeps the saved RON figure rather than restating it at today's
+  rate — correct, except that 0 isn't a figure worth keeping. The rule now
+  applies only to a usable one, so a broken row repairs itself from the live
+  rate the moment it opens, and the message only blames the rate when the rate
+  is actually missing.
+
+**Why it appeared "suddenly":** nothing here is new. What changed is exposure —
+the trip-aware parser now records trip spending in the destination's currency,
+so the FX path that used to be occasional runs on every transaction logged
+abroad, and a latent weakness became a daily one.
+
+### The modal scrolled before there was anything to scroll to
+
+Reported as "a bit of vertical scroll" *before* the error appears (scrolling
+once it does is fine and expected). It didn't reproduce at the documented
+375/412px measurements — because the cause isn't width. Two things:
+
+- **The binding constraint was `max-height: min(90vh, 720px)`**, not the
+  viewport. A tall handset has 780–870 CSS px of height, so the hard 720px cap
+  was cutting the dialog short on exactly the devices with room to spare.
+- **Android text scaling.** At a 18px root font (the common "Large" setting)
+  the same content needs ~10% more height — measured 653px against 622px of
+  body, an overflow of 31px; at 19px, 62px.
+
+Fixed in [`ds/components/Modal.module.css`](src/ds/components/Modal.module.css)
+for every app on the design system: below 480px the dialog is bounded by the
+viewport (`92vh`) rather than the 720px cap, and the dialog padding, overlay
+padding and header margin tighten by a row's worth. The cap still applies on
+desktop, where a 900px-tall dialog looks absurd. Measured on the reproduced
+worst case (edit modal, Travel category, trip picker, FX line, Delete button)
+at a 786px viewport: **fits with no scroll at 16, 18 and 19px root font**,
+where before it overflowed at 18px and above. A 700px viewport at 18px still
+overflows by 35px — that much content genuinely doesn't fit, and it scrolls
+rather than clipping.
