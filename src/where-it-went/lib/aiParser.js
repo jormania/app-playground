@@ -4,6 +4,8 @@
 import { toDateString, parseTxDate } from './period';
 import { CURRENCIES, canConvert, fetchRate, convert, BASE_CURRENCY } from './fx';
 import { pickDefaultAccount } from './accountPicker';
+import { buildVendorMemory, lookupVendor, preferredAccountForTrip } from './vendorMemory';
+import { formatTripDates, isTripOngoing } from '../domain/Trip';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 /** Generous, but bounded — without this a hung connection left isParsing true
@@ -82,6 +84,48 @@ function isValidId(id, validIds) {
 }
 
 /**
+ * Pulls the JSON object out of a model reply, however it chose to wrap it.
+ *
+ * The old version only handled a fenced block that *ended* the reply, which
+ * measurement showed is not what happens on the input that matters most: ask
+ * the parser a question ("how much did I spend on food last month?") and it
+ * answers `\`\`\`json\\n{"transactions":[]}\\n\`\`\`` followed by a paragraph
+ * explaining it can't see your data. The trailing prose left the fence
+ * unmatched, the parse threw, and a greeting or a mistyped question surfaced
+ * as "the AI response may have been cut off. Try a shorter description" —
+ * advice that makes no sense for a two-word message.
+ *
+ * Returns null only when there is genuinely no parseable object, which is what
+ * a real truncation looks like.
+ */
+export function extractJsonObject(rawText) {
+  const text = String(rawText || '').trim();
+  if (!text) return null;
+
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const candidates = fenced ? [fenced[1].trim(), text] : [text];
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // Fall through to the brace scan: prose on either side of the object.
+      const start = candidate.indexOf('{');
+      const end = candidate.lastIndexOf('}');
+      if (start >= 0 && end > start) {
+        try {
+          return JSON.parse(candidate.slice(start, end + 1));
+        } catch {
+          /* try the next candidate */
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Validates and repairs the ids and currency one parsed transaction came back
  * with, and re-derives the RON amount from a live ECB rate rather than
  * trusting the model's own conversion guess (the prompt only ever asks it for
@@ -103,37 +147,34 @@ function isValidId(id, validIds) {
  *     fabricated (or identical) accounts isn't "mostly right" the way a wrong
  *     category is — it *is* the transaction, so an unresolvable one is
  *     dropped by `hardenTransactions` below instead of guessed at.
+ *
+ * Trip linking, the currency and the category are deliberately *not* decided
+ * here. They were, briefly, and the rule ("an expense dated inside a trip's
+ * window is that trip's") is right often enough to be tempting — but it turns
+ * a judgment into a route, and the exceptions are real: a trip whose currency
+ * isn't one of the sixteen registered codes records as RON while still being a
+ * trip, and plenty of spending inside a trip window isn't trip spending. The
+ * prompt now carries every fact needed to make that call (dates, status,
+ * destination, currency) and the model makes it.
+ *
+ * The one thing this layer still contributes beyond validation is a *gap*
+ * filler: when the model returns no category at all, the category you usually
+ * file that vendor under (`lib/vendorMemory`) beats leaving the row unknown.
+ * It never overrides a choice the model actually made.
  */
-export async function hardenTransaction(tx, { categories = [], accounts = [], trips = [] } = {}) {
+export async function hardenTransaction(tx, { categories = [], accounts = [], trips = [], transactions = [], vendorMemory = null } = {}) {
   if (tx.action === 'delete') return tx;
 
   const categoriesById = new Map(categories.map(c => [c.id, c]));
   const validCategoryIds = new Set(categories.map(c => c.id));
   const validAccountIds = new Set(accounts.map(a => a.id));
   const validTripIds = new Set(trips.map(t => t.id));
+  const memory = vendorMemory || buildVendorMemory(transactions);
 
-  const next = { ...tx };
+  let next = { ...tx };
 
   if (next.categoryId && !isValidId(next.categoryId, validCategoryIds)) {
     next.categoryId = '';
-  }
-
-  if (!isValidId(next.accountId, validAccountIds)) {
-    const category = categoriesById.get(next.categoryId) || null;
-    const fallback = pickDefaultAccount(category, accounts);
-    next.accountId = fallback ? fallback.id : '';
-  }
-
-  if (next.type === 'Transfer') {
-    if (!isValidId(next.toAccountId, validAccountIds) || next.toAccountId === next.accountId) {
-      next.toAccountId = '';
-    }
-  } else {
-    // Meaningless outside a Transfer — Income/Expense must stay empty here per
-    // the schema, regardless of whether the AI happened to hand back a real
-    // account id. Keeping a "valid" one would still wrongly write a To Account
-    // relation onto a row that isn't a transfer.
-    next.toAccountId = '';
   }
 
   if (next.tripId && !isValidId(next.tripId, validTripIds)) {
@@ -148,6 +189,69 @@ export async function hardenTransaction(tx, { categories = [], accounts = [], tr
     } else {
       next.originalCurrency = normalized;
     }
+  }
+
+  // Your own filing history beats the prompt's static merchant list — but it
+  // only fills a gap. A category the model did pick stands: it read the words,
+  // and this didn't.
+  if (!next.categoryId && next.action !== 'update') {
+    const remembered = lookupVendor(memory, next.description);
+    if (remembered && isValidId(remembered.categoryId, validCategoryIds)) {
+      next.categoryId = remembered.categoryId;
+    }
+  }
+
+  if (!isValidId(next.accountId, validAccountIds)) {
+    // Abroad, whatever card you've actually been using on this trip beats the
+    // category-based default, which only knows how you spend at home.
+    const tripAccount = preferredAccountForTrip(transactions, next.tripId);
+    const remembered = lookupVendor(memory, next.description);
+    const learned = [tripAccount, remembered && remembered.accountId]
+      .find(id => isValidId(id, validAccountIds));
+    if (learned) {
+      next.accountId = learned;
+    } else {
+      const category = categoriesById.get(next.categoryId) || null;
+      const fallback = pickDefaultAccount(category, accounts);
+      next.accountId = fallback ? fallback.id : '';
+    }
+  }
+
+  // A trip on a non-Travel row is not a thing this app can store: the manual
+  // form drops `tripId` unless the category is Travel, so the link would
+  // silently vanish the next time the row was saved, and the travel analytics
+  // would never see it. The model is told this (rule 15) and mostly complies —
+  // measured at roughly one reply in three going the other way on an ambiguous
+  // vendor. This is not second-guessing its judgment about whether the trip
+  // belongs: it already said it does. It only resolves an answer the schema
+  // can't hold, in favour of the field the model went out of its way to set.
+  if (next.tripId && next.type === 'Expense') {
+    const travel = categories.find(c =>
+      c && c.id && c.active !== false && c.type !== 'Income'
+      && String(c.name || '').toLowerCase().includes('travel'));
+    if (travel && next.categoryId !== travel.id) next.categoryId = travel.id;
+  }
+
+  if (next.type === 'Transfer') {
+    if (!isValidId(next.toAccountId, validAccountIds) || next.toAccountId === next.accountId) {
+      next.toAccountId = '';
+    }
+  } else {
+    // Meaningless outside a Transfer — Income/Expense must stay empty here per
+    // the schema, regardless of whether the AI happened to hand back a real
+    // account id. Keeping a "valid" one would still wrongly write a To Account
+    // relation onto a row that isn't a transfer.
+    next.toAccountId = '';
+  }
+
+  // Recording "50 RON" against a RON amount is a redundant second figure
+  // everywhere it's displayed — the base currency is what an unmarked amount
+  // already means. Rule 16 ("a currency the user did name always wins") makes
+  // an explicit RON a plausible reply, so it's normalized away here rather
+  // than written through.
+  if (next.originalCurrency === BASE_CURRENCY) {
+    next.originalCurrency = '';
+    next.originalAmount = null;
   }
 
   if (next.originalCurrency && next.originalAmount != null && canConvert(next.originalCurrency)) {
@@ -169,8 +273,14 @@ export async function hardenTransaction(tx, { categories = [], accounts = [], tr
  * resolve to two distinct real accounts — the one case above that's a reason
  * to discard the transaction rather than repair a field on it.
  */
-export async function hardenTransactions(txs, context) {
-  const resolved = await Promise.all(txs.map(tx => hardenTransaction(tx, context)));
+export async function hardenTransactions(txs, context = {}) {
+  // Built once for the batch: it's a full pass over the ledger, and every
+  // transaction in one message resolves against the same history.
+  const withMemory = {
+    ...context,
+    vendorMemory: context.vendorMemory || buildVendorMemory(context.transactions || []),
+  };
+  const resolved = await Promise.all(txs.map(tx => hardenTransaction(tx, withMemory)));
   return resolved.filter(t => {
     if (t.type !== 'Transfer') return true;
     if (t.action === 'delete') return true;
@@ -178,7 +288,31 @@ export async function hardenTransactions(txs, context) {
   });
 }
 
-export async function parseTextWithAI(text, accounts, categories, trips, apiKey, recentTransactions = []) {
+/**
+ * One line of trip context for the prompt.
+ *
+ * The model used to get `- Name (ID: x)` and a rule saying to link a trip if
+ * the transaction "is associated with" one — with no way to tell which trip is
+ * running, where it is, or what it spends. Every fact needed to make that call
+ * was already on the Trips database and simply wasn't being passed.
+ */
+function formatTripLine(trip, todayStr) {
+  const facts = [];
+  if (trip.destination) facts.push(trip.destination);
+
+  const window = formatTripDates(trip.startDate, trip.endDate);
+  if (window && window !== 'No dates set') facts.push(window);
+
+  if (isTripOngoing(trip, todayStr)) facts.push('ONGOING NOW');
+  else if (trip.startDate && String(trip.startDate).slice(0, 10) > todayStr) facts.push('upcoming');
+  else facts.push('finished');
+
+  if (trip.currency) facts.push(`spends ${trip.currency}`);
+
+  return `- ${trip.name} — ${facts.join(', ')} (ID: ${trip.id})`;
+}
+
+export async function parseTextWithAI(text, accounts, categories, trips, apiKey, recentTransactions = [], transactions = []) {
   if (!apiKey) {
     throw new Error('Claude API Key is missing. Please add it in Settings.');
   }
@@ -208,11 +342,53 @@ export async function parseTextWithAI(text, accounts, categories, trips, apiKey,
       if (end && end < sixtyDaysAgo) return false;
       return true;
     })
-    .map(t => `- ${t.name} (ID: ${t.id})`)
+    // An ongoing trip is the one most likely to be relevant, so it goes first
+    // rather than wherever Notion happened to return it.
+    .sort((a, b) => {
+      const rank = t => (isTripOngoing(t, todayStr) ? 0 : 1);
+      return rank(a) - rank(b) || String(a.startDate || '').localeCompare(String(b.startDate || ''));
+    })
+    .map(t => formatTripLine(t, todayStr))
     .join('\n');
+
+  // Measured against the real model: with the trip guidance living only in the
+  // rules, twelve rules below the trip list, currency ended up doing all the
+  // work — a bare "25 for coffee" mid-trip linked nothing, and a trip whose
+  // currency isn't one of the registered sixteen (so it carries none at all)
+  // never linked anything. Stating the situation where the trips themselves
+  // are listed, rather than as a rule to apply, is what closed that gap.
+  const ongoing = (trips || []).filter(t => t && t.id && t.name && isTripOngoing(t, todayStr));
+  const ongoingCurrency = ongoing.length === 1
+    ? String(ongoing[0].currency || '').trim().toUpperCase()
+    : '';
+  const ongoingNote = ongoing.length === 1
+    ? `\n>>> THE USER IS ON A TRIP RIGHT NOW: ${ongoing[0].name}${ongoing[0].destination ? ` (${ongoing[0].destination})` : ''}, ID ${ongoing[0].id}.
+Everyday spending logged today — meals, coffee, taxis, tickets, shops, anything bought while away — is part of this trip. Set "tripId" to ${ongoing[0].id} and "categoryId" to the Travel category for it, mentioned currency or not. Leave the trip off only when the transaction clearly is not trip spending: a subscription renewing on its own schedule, a household bill, an online order shipped home.${
+  ongoingCurrency && ongoingCurrency !== BASE_CURRENCY
+    ? `\nThis trip spends ${ongoingCurrency}. An amount with NO currency named is therefore in ${ongoingCurrency}, not RON: set "originalAmount" to the figure the user said and "originalCurrency" to "${ongoingCurrency}". A currency the user does name wins instead ("50 lei" is 50 RON).`
+    : `\nThis trip has no currency recorded, so amounts stay plain RON unless the user names a currency. That does not make it any less of a trip.`}`
+    : ongoing.length > 1
+      ? `\n>>> THE USER IS ON ${ongoing.length} OVERLAPPING TRIPS RIGHT NOW: ${ongoing.map(t => `${t.name} (ID ${t.id})`).join(', ')}.
+Everyday spending logged today is trip spending and belongs to one of them, filed under Travel. Use the currency or anything else in the message to tell which; if genuinely nothing distinguishes them, omit "tripId" rather than guessing.`
+      : '';
 
   const recentList = recentTransactions
     .map(t => `- [ID: ${t.id}] ${t.date}: ${t.description} (${t.amount} ${t.currency || 'RON'})`)
+    .join('\n');
+
+  // What the ledger already knows about how this person files each vendor.
+  // Beats the static merchant list in rule 11 for anywhere they actually shop.
+  const categoryNames = new Map((categories || []).map(c => [c.id, c.name]));
+  const accountNames = new Map((accounts || []).map(a => [a.id, a.name]));
+  const vendorMemory = buildVendorMemory(transactions);
+  const vendorList = vendorMemory
+    .map(v => {
+      const category = categoryNames.get(v.categoryId);
+      if (!category) return null;
+      const account = v.accountId ? accountNames.get(v.accountId) : null;
+      return `- "${v.vendor}" → ${category}${account ? `, paid from ${account}` : ''} (${v.count}x)`;
+    })
+    .filter(Boolean)
     .join('\n');
 
   const systemPrompt = `You are a financial transaction parser. The user will provide a natural language string describing one or more expenses, incomes, or transfers.
@@ -244,6 +420,8 @@ Examples:
   Output JSON: {"transactions": [{"action": "create", "amount": 50, "description": "Lunch at Japanos", "date": "${todayStr}", "type": "Expense", "categoryId": "<ID for Dining>"}]}
 - Input: "bought milk, eggs, and bread at e-mag for 200"
   Output JSON: {"transactions": [{"action": "create", "amount": 200, "description": "Groceries at eMAG", "notes": "milk, eggs, and bread", "date": "${todayStr}", "type": "Expense", "categoryId": "<ID for Groceries>"}]}
+- Input: "30 PLN for lunch at a restaurant" (with a Poland trip marked ONGOING NOW that spends PLN)
+  Output JSON: {"transactions": [{"action": "create", "amount": 25, "originalAmount": 30, "originalCurrency": "PLN", "description": "Lunch at Restaurant", "date": "${todayStr}", "type": "Expense", "categoryId": "<ID for Travel>", "tripId": "<ID for the Poland trip>"}]}
 
 Available Categories:
 ${categoryList}
@@ -253,17 +431,21 @@ ${accountList}
 
 Available Trips:
 ${tripList || 'None'}
+${ongoingNote}
+
+How this user has filed these vendors before (their own history — trust it over general knowledge):
+${vendorList || 'None yet'}
 
 Recent Transactions (for context/updates):
 ${recentList || 'None'}
 
 Rules:
-1. ONLY return the raw JSON object. Do not wrap in markdown or backticks. No conversational filler.
-2. The user might describe multiple transactions in one message. Create a discrete object for each one in the "transactions" array.
-3. If the user mentions a SPLIT expense (e.g., "Paid 100 for dinner but John owes me 50"), return TWO transactions: one Expense for 100 on "Dining" (or similar), and one Income/Transfer for 50 representing the debt to be received.
-4. "action" defaults to "create". If the user wants to edit or delete a past transaction (e.g., "change that to 20", "delete the lunch expense"), use "update" or "delete" and provide the "id" from Recent Transactions. ONLY use an "id" that appears verbatim in Recent Transactions above — never invent one. If you cannot find a confident match for what the user wants to edit or delete, prefer "create" instead of guessing at an id.
+1. Your ENTIRE reply is one raw JSON object, in every situation without exception. No markdown, no backticks, no sentence before or after it, no helpful aside. You are a parser wired directly into an application, not a chat partner: nobody reads prose you emit, so a reply that is not JSON is simply lost and the user sees an error. Never ask a question, request confirmation, or say what you cannot do — express all of that as the JSON below.
+2. The user might describe multiple transactions in one message. Create a discrete object for each one in the "transactions" array. If — and only if — the message describes no transaction at all (a greeting, a question about past spending, small talk), return exactly {"transactions": []}. That empty array is how you say "nothing to record"; it is never an excuse to add an explanation alongside it.
+3. If the user mentions a SPLIT expense (e.g., "Paid 100 for dinner but John owes me 50"), return TWO transactions: one Expense for 100 on "Dining" (or similar), and one Income for 50 representing the debt to be received. Give that second one an Income-type category if a suitable one exists, and OMIT "categoryId" entirely if none does — never file an Income against an expense category, which would corrupt that category's spending totals.
+4. "action" defaults to "create". If the user wants to edit or delete a past transaction (e.g., "change that to 20", "delete the lunch expense"), use "update" or "delete" and provide the "id" from Recent Transactions. ONLY use an "id" that appears verbatim in Recent Transactions above — never invent one. If you cannot find a confident match for what the user wants to edit or delete, create the transaction instead — "change the gym membership to 200" with no gym membership in the list is a new 200 expense, not a question to ask back. Guessing at an id and asking for clarification are both wrong; creating is right.
 5. "categoryId" and "accountId" MUST be an ID copied verbatim from the Available Categories / Available Accounts lists above — never invent, abbreviate, or guess at one. If nothing in the list is a good fit, omit the field rather than picking an unrelated one.
-6. "amount" MUST be a positive Number (e.g. 15). By default, all values are in RON unless stated otherwise. If the user mentions a foreign currency (e.g., "paid 20 EUR"), set "amount" to your best estimate in RON, but you MUST also provide "originalAmount" (Number, the foreign figure) and "originalCurrency" as one of exactly these codes: ${CURRENCIES.join(', ')}. Your RON estimate is a placeholder only — it is replaced with a live exchange rate after parsing, so accuracy there matters less than getting originalAmount/originalCurrency right.
+6. "amount" MUST be a positive Number (e.g. 15). Values are in RON unless something says otherwise. When the amount is in a foreign currency, set "amount" to your best estimate in RON and ALSO provide "originalAmount" (Number, the foreign figure) and "originalCurrency" as one of exactly these codes: ${CURRENCIES.join(', ')}. Your RON estimate is a placeholder only — it is replaced with a live exchange rate after parsing, so accuracy there matters far less than getting originalAmount/originalCurrency right. Recognise currencies written as words or symbols, not just codes: lei/RON, €/eur/euro/euros, $/usd/dollars/bucks, £/gbp/pounds/quid, zł/zl/zloty/złoty/PLN, Ft/forint/HUF, Kč/kc/koruna/CZK, kr (SEK/NOK/DKK by context), CHF/franc/francs, ¥/yen/JPY, lev/leva/BGN, lira/TRY. If the user names a currency that is NOT in the list above (Serbian dinar, Moroccan dirham, anything else), leave "originalCurrency" and "originalAmount" out — an unlisted code cannot be saved and would be rejected — put your best RON estimate in "amount", and you MUST record what they actually said verbatim in "notes" (e.g. "300 RSD"), because that is the only place the real figure survives.
 7. "description" should be clean and concise. Always format it in Title Case. Standardize merchant names to their official brand names (e.g., convert 'McD' to 'McDonald's', 'Mega' to 'Mega Image'). Strip out filler verbs ('spent', 'paid', 'bought') and payment methods ('on card', 'in cash'). Extract only the core essence of the transaction.
 8. "description" format: Whenever possible, format it as "<action/item> at/from <venue>" (e.g., "Dinner at McDonald's"). If the user lists multiple items from a single store (e.g., 'milk and eggs at Mega Image'), summarize the description as '[Category] at [Venue]' (e.g., 'Groceries at Mega Image') and move the detailed list of items into the "notes" field. If the expense is for Nora and categorized as such, DO NOT include phrases like "for Nora" or "with Nora" in the description.
 9. "date" MUST be a string in "YYYY-MM-DD" format. Today is ${todayStr}. Interpret words like "yesterday" relative to today. If no date is given, use today's date (${todayStr}).
@@ -276,9 +458,12 @@ Rules:
    - Entertainment/Dining (e.g., Cinema City, local restaurants, museums, Glovo, Tazz)
    - Transport (e.g., Uber, Bolt, CFR)
    This mapping is required unless type is Transfer.
-12. "accountId": Find the ID of the most appropriate account from the list. By default, use the plain "Revolut" account (NOT Revolut EUR). Only use a different account if the user explicitly asks for it (e.g. "cash", "BCR", "Revolut EUR").
+   The "how this user has filed these vendors before" list above OVERRIDES this general knowledge: if the venue appears there, use that category, because it is what they actually do.
+12. "accountId": Find the ID of the most appropriate account from the list. By default, use the plain "Revolut" account (NOT Revolut EUR). Only use a different account if the user explicitly asks for it (e.g. "cash", "BCR", "Revolut EUR"), or the vendor history above records a specific account for this venue.
 13. "toAccountId": ONLY provide this if type is "Transfer", and it MUST be a different account ID than "accountId" — a transfer needs two distinct real accounts, not the same one twice.
-14. "tripId": ONLY provide this if the transaction is associated with one of the Available Trips, using its ID verbatim.`;
+14. "tripId": use your judgement about whether this is trip spending, and set the ID verbatim when it is. The date is the strongest signal — an expense dated inside a trip's range is usually that trip's, and a trip marked ONGOING NOW is the obvious candidate for anything logged today. A matching currency corroborates (30 PLN during the Poland trip) and is the usual tie-breaker when two trips overlap, but it is never required: a trip that spends RON, or one with no currency listed at all, is just as much a trip. Think about the exceptions rather than applying the date rule mechanically — a domestic subscription renewing mid-trip, or an unrelated online order, is not trip spending. If two trips overlap and nothing distinguishes them, omit the field rather than guessing.
+15. When a transaction has a "tripId", its "categoryId" MUST be the Travel category. This is a constraint of the app rather than a preference: it only stores a trip on Travel-category transactions, and the travel analytics read the same category — a trip on a Dining row is silently lost. Put the detail in "description" instead ("Lunch at Restaurant").
+16. Amounts on a trip: if you link a trip whose currency is something other than RON and the user did NOT name a currency, the amount is almost certainly in that trip's currency — set "originalAmount" and "originalCurrency" accordingly, per rule 6. A currency the user did name always wins ("30 lei" on a Poland trip is 30 RON). If the trip spends RON or lists no currency, leave the amount as plain RON.`;
 
   const rawText = await callClaude(apiKey, {
     system: systemPrompt,
@@ -287,17 +472,8 @@ Rules:
     temperature: 0.1,
   });
 
-  let responseText = rawText.trim();
-
-  // Strip potential markdown wrappers just in case
-  if (responseText.startsWith('```')) {
-    responseText = responseText.replace(/^```(json)?\n/, '').replace(/\n```$/, '');
-  }
-
-  let parsed;
-  try {
-    parsed = JSON.parse(responseText);
-  } catch {
+  const parsed = extractJsonObject(rawText);
+  if (!parsed) {
     // A max_tokens truncation (batch mode emits one object per transaction) or
     // any other malformed reply must read as a normal, retryable failure — not
     // an uncaught SyntaxError.
@@ -334,7 +510,7 @@ Rules:
     return !!t.amount;
   });
 
-  return hardenTransactions(mapped, { categories, accounts, trips });
+  return hardenTransactions(mapped, { categories, accounts, trips, transactions, vendorMemory });
 }
 
 

@@ -463,6 +463,14 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
         categories={data.categories || []}
         trips={data.trips || []}
         recentTransactions={(data.transactions || []).slice(0, 15)}
+        // The whole ledger, not just the recent slice: vendor memory and the
+        // per-trip account preference are only as good as the history they
+        // are derived from.
+        transactions={data.transactions || []}
+        onEditTransaction={(id) => {
+          const tx = (data.transactions || []).find(t => t.id === id);
+          if (tx) setEditingTx(tx);
+        }}
         onAdd={async (tx) => {
           const txs = applyNoraSplit(tx, data.categories || []);
           const ids = [];

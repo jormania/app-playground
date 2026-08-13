@@ -2,10 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Wand2, Loader2, Mic, MicOff } from 'lucide-react';
 import { ConfirmModal } from '../../ds';
 import { parseSmartText } from '../lib/smartParser';
-import { parseTextWithAI } from '../lib/aiParser';
+import { parseTextWithAI, hardenTransactions } from '../lib/aiParser';
 import { parseNoraSplitGroup, stripNoraGroup } from '../lib/noraSplit';
 
-export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscription, onSuccess, accounts, categories, trips, config, recentTransactions }) {
+export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscription, onSuccess, onEditTransaction, accounts, categories, trips, config, recentTransactions, transactions = [] }) {
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -18,6 +18,11 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
   // that gets a checkpoint, matching how the rest of the app treats delete
   // (single and bulk delete both confirm; adding never has).
   const [pendingDeleteBatch, setPendingDeleteBatch] = useState(null);
+  // Shown when a saved transaction came out attached to a trip. Filing
+  // something under Travel on a trip is a judgement the parser made from
+  // context rather than from your words, and a judgement you can't see is one
+  // you can't correct — so it's stated, with one tap to open the row.
+  const [tripNotice, setTripNotice] = useState(null);
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
 
@@ -91,6 +96,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
    */
   const executeBatch = async (txs, { withNora, withNoraCount }) => {
     const addedIds = [];
+    const onTrip = [];
     let subToPrompt = null;
     let added = 0, updated = 0, deleted = 0;
     let failure = null;
@@ -115,6 +121,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
           const saved = await onAdd(tWithFlag);
           if (saved && saved.id) addedIds.push(saved.id);
           added++;
+          if (t.tripId) onTrip.push({ id: saved && saved.id ? saved.id : null, tx: t });
         }
       } catch (err) {
         failure = err;
@@ -146,6 +153,10 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
       setText('');
     }
 
+    if (onTrip.length > 0) {
+      setTripNotice({ ...onTrip[0], others: onTrip.length - 1 });
+    }
+
     // Refresh on any partial progress too, not only a clean run — otherwise a
     // batch that half-succeeded before failing shows nothing for it until the
     // next unrelated reload.
@@ -157,6 +168,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
     e.preventDefault();
     if (!text.trim() || isParsing) return;
     setDetectedSubscription(null);
+    setTripNotice(null);
 
     // Detect and strip the full "with Nora [and ...]" group BEFORE AI parsing.
     // If the AI sees names it maps them as categories, swallowing the split signal.
@@ -174,10 +186,14 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
           return;
         }
         setIsParsing(true);
-        txs = await parseTextWithAI(cleanedText, accounts, categories, trips, config.claudeApiKey, recentTransactions);
+        txs = await parseTextWithAI(cleanedText, accounts, categories, trips, config.claudeApiKey, recentTransactions, transactions);
       } else {
         const tx = parseSmartText(cleanedText, accounts, categories);
-        if (tx) txs = [tx];
+        // The keyword parser knows nothing about trips, vendor history or
+        // exchange rates. Running its result through the same hardening the
+        // AI path uses gives it all three, and keeps the two paths from
+        // filing the same sentence differently.
+        if (tx) txs = await hardenTransactions([tx], { categories, accounts, trips, transactions });
       }
     } catch (err) {
       setError(err.message || "Failed to parse text.");
@@ -353,6 +369,69 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
           </div>
         </div>
       )}
+
+      {tripNotice && !detectedSubscription && (() => {
+        const { tx, id, others } = tripNotice;
+        const trip = (trips || []).find(t => t.id === tx.tripId);
+        const category = (categories || []).find(c => c.id === tx.categoryId);
+        const parts = [`on ✈️ ${trip ? trip.name : 'your trip'}`];
+        if (category) parts.push(`under ${category.name}`);
+        if (tx.originalCurrency && tx.originalAmount != null) {
+          parts.push(`as ${tx.originalAmount} ${tx.originalCurrency}`);
+        }
+
+        return (
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            marginTop: '8px',
+            padding: '12px',
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-accent)',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'var(--shadow-md)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '12px',
+            animation: 'fadeIn 0.3s',
+            zIndex: 10
+          }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-bold)', color: 'var(--color-accent)' }}>
+                {tx.description || 'Transaction added'}
+              </div>
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
+                {`Logged ${parts.join(', ')}.`}
+                {others > 0 ? ` Same for ${others} more.` : ''}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+              {id && onEditTransaction && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTripNotice(null);
+                    onEditTransaction(id);
+                  }}
+                  style={{ padding: '6px 12px', border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-ink)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}
+                >
+                  Change
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setTripNotice(null)}
+                style={{ padding: '6px 12px', border: 'none', background: 'var(--color-accent)', color: 'var(--color-on-accent)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-bold)' }}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {pendingDeleteBatch && (() => {
         const deletes = pendingDeleteBatch.txs.filter(t => t.action === 'delete' && t.id);

@@ -1285,3 +1285,180 @@ split both got flagged as possible duplicates.
   the suffix was reported as redundant. Safe now that identical-description
   cross-category pairs are never flagged regardless. Existing rows with the
   old suffix are unaffected; nothing rewrites past data.
+
+## Trip-aware transaction entry (2026-08-13)
+
+"30 PLN for lunch at restaurant" during a Poland trip should not need the trip,
+the category and the currency corrected by hand afterwards — the PLN alone says
+where you are. It didn't work, and the guide had claimed it did since the
+feature was written: `lib/aiParser.js` passed the model `- Name (ID: x)` and
+nothing else. No dates, no status, no destination, no currency — every one of
+which `fetchTrips()` already read off Notion — plus a rule saying only to link a
+trip when the transaction "is associated with" one, with no definition of that.
+The model could pattern-match your literal words against a trip name and
+nothing more.
+
+### The fix is prompt context, not a rule engine
+
+The first attempt also added a deterministic layer that linked any expense
+dated inside a trip's window, defaulted its currency to the trip's and forced
+the Travel category. It was **removed before merge**, and the reasoning is
+worth keeping: the date rule is right often enough to be tempting, but it turns
+a judgment into a route, and the exceptions are real. A trip to somewhere whose
+currency isn't one of the sixteen registered codes records as RON while still
+being a trip. Plenty of spending inside a trip window isn't trip spending. The
+model is better placed to weigh that than a date comparison — provided it is
+actually told what the trips are, which is the part that was missing.
+
+So the parser is given the facts and left to judge:
+
+- **Trip lines carry everything.** `- Poland Autumn 2026 — Kraków, 10–17 Aug
+  2026, ONGOING NOW, spends PLN (ID: …)`, sorted ongoing-first rather than in
+  whatever order Notion returned. `isTripOngoing` (now in
+  [`domain/Trip.js`](src/where-it-went/domain/Trip.js)) computes that label; it
+  is used to *describe* trips to the model, never to decide what belongs to one.
+- **Rule 14 frames trip linking as a judgment.** The date is named as the
+  strongest signal and an ONGOING NOW trip as the obvious candidate for
+  anything logged today, currency as corroboration and the usual tie-breaker
+  between overlapping trips — explicitly *not* a requirement, since a trip that
+  spends RON or lists no currency is just as much a trip. It asks for the
+  exceptions to be thought about rather than the date rule applied
+  mechanically, and for the field to be omitted when two trips overlap with
+  nothing to tell them apart.
+- **Rule 15 (trip ⇒ Travel) is stated as the app constraint it is.**
+  `TransactionForm` only stores `tripId` on Travel-category transactions, so a
+  trip on a Dining row is silently lost on the next save, and Travel Insights
+  reads the same category. Detail goes in the description instead.
+- **Rule 16 covers bare amounts.** On a trip whose currency isn't RON, an
+  amount with no currency named is almost certainly the trip's currency; a
+  currency the user did name always wins ("30 lei" on a Poland trip is 30 RON).
+- **Rule 6 recognises currencies as words and symbols**, not just codes — zł,
+  €, Ft, Kč, kr, ¥ and the rest — and says what to do with a currency outside
+  the registered sixteen (record RON, put what was said in the notes) rather
+  than letting an unregistered select value reject the whole atomic write.
+
+### `lib/vendorMemory.js` — your ledger beats the hardcoded merchant list
+
+Prompt rule 11 carries a static list of Romanian chains. It can't know that
+*you* file Glovo under Groceries, or which card you actually put it on. A
+vendor → (category, account) index is now derived from the whole ledger on
+every parse — never stored, so there's no second source of truth and correcting
+a mis-filed row re-teaches it immediately — and injected as "how this user has
+filed these vendors before", which rule 11 defers to. A vendor needs 2+
+sightings and a majority category to qualify, so a genuinely ambiguous venue
+teaches nothing rather than being resolved by a coin toss.
+
+It is also the one place `hardenTransaction` still contributes a *decision*
+rather than validation, and only as a gap filler: when the model returns no
+category at all, the vendor's usual category beats leaving the row "⚠️
+Unknown". A category the model did pick always stands. The same module supplies
+`preferredAccountForTrip` — when the model names no account on a trip, the card
+you've actually been using there beats the "always the RON Revolut" default.
+
+### The trip is stated, and one tap from being changed
+
+Filing something under Travel on a trip is a judgment made from context rather
+than from your words, and a judgment you can't see is one you can't correct. A
+single add that came out attached to a trip now shows a card under the input —
+*"Logged on ✈️ Poland Autumn 2026, under Travel, as 30 PLN"* — with **Change**,
+which opens the saved transaction in the edit form. It reports what was saved,
+not what a rule decided; an add with no trip keeps the plain toast.
+
+### The keyword parser is on the same path
+
+`parseSmartText` now detects currency words and symbols itself, and its result
+runs through the same `hardenTransactions` the AI path uses — so it gains
+vendor memory and live FX conversion, and the two parsers can no longer file
+the same sentence differently. It still doesn't know about trips; that's the
+AI path's job.
+
+### Measured against the real model, three times over
+
+The prompt was run against `claude-haiku-4-5` on eleven synthetic scenarios —
+an ongoing PLN trip, an ongoing trip with **no currency recorded**, two
+overlapping trips, and no trip at all — because a prompt nobody has run is a
+guess. Two findings changed the code:
+
+- **Guidance buried in the rules didn't survive contact.** With trip linking
+  described only in rule 14, twelve rules below the trip list, currency ended
+  up doing all the work: `30 PLN for lunch` linked correctly, but a bare
+  `25 for coffee` mid-trip linked nothing, and the blank-currency trip never
+  linked anything at all — the exact case the deterministic layer was removed
+  to serve. Stating the situation **where the trips are listed** (`>>> THE USER
+  IS ON A TRIP RIGHT NOW: …`) rather than as a rule to apply fixed all three.
+  The callout is generated per request: one ongoing trip gets a definite
+  instruction naming its id; several get "one of these, use the currency to
+  tell which, omit if you can't"; a trip with no currency is told in so many
+  words that this doesn't make it any less of a trip.
+- **The model occasionally returns a state the schema can't hold.** Roughly one
+  reply in three on an ambiguous vendor set a `tripId` while keeping a
+  non-Travel category — a row the manual form would silently strip the trip
+  from on its next save. `hardenTransaction` now pairs the two. This is not
+  second-guessing the trip judgment (the model already made it); it resolves an
+  internally inconsistent answer in favour of the field the model went out of
+  its way to set.
+
+Final measured behaviour, stable across three consecutive runs: `30 PLN`,
+`30 zl` and a bare `25` during a PLN trip all land on the trip as Travel with
+the right currency; a bare amount on the no-currency trip links the trip and
+stays RON; `netflix 25` and an out-of-country supermarket stay off the trip;
+overlapping trips with no distinguishing currency link nothing; `50 lei` on a
+PLN trip stays domestic. The two judgment calls (`50 lei for a book`, a
+Romanian chain mid-trip) go the way the model reads them, which is the point of
+leaving them to it.
+
+### A wider sweep, beyond trips
+
+Thirty-four scenarios across the parser's whole surface — multi-transaction
+messages, splits, edits and deletes against recent rows, relative dates,
+income, transfers, account routing, merchant knowledge, subscriptions, notes
+extraction, decimals, European thousands separators, foreign and *unregistered*
+currencies, Romanian-language input, typos, and messages that aren't
+transactions at all. Most of it already worked: `am cumparat paine si lapte de
+la mega 45 lei` comes back as "Groceries at Mega Image", Food, with the items
+in the notes; `1.500 lei` reads as 1500; `cofee 15` is Coffee; and a vendor the
+ledger files under Food beats the general knowledge that would call it Dining.
+
+Three defects surfaced, all now fixed:
+
+- **A question or a greeting produced "the AI response may have been cut off.
+  Try a shorter description."** The reply to "how much did I spend on food last
+  month?" is `\`\`\`json\n{"transactions":[]}\n\`\`\`` *followed by a paragraph*
+  explaining it can't see your data. The old fence-stripping required the fence
+  to end the reply, so the trailing prose broke the parse and produced advice
+  that makes no sense for a five-word message. `extractJsonObject` now tries the
+  fenced block, then the raw text, then the span between the first `{` and last
+  `}`, and only reports a truncation when there is genuinely no object to find.
+  Rule 1 was also made categorical — the entire reply is JSON, in every
+  situation, never a question back.
+- **A split filed its repayment against an expense category.** "Paid 200 for
+  dinner but Alex owes me 100" returned the 100 as Income *on Dining*, which
+  would quietly distort that category's spending totals. Rule 3 now says to use
+  an Income category or omit the field.
+- **An unregistered currency silently lost the original figure.** "300 rsd for
+  dinner" recorded a RON estimate with nothing recording that dinar was ever
+  involved. Rule 6 now requires the original wording in the notes.
+
+One regression was caught by re-running the sweep rather than assuming: making
+rule 2 explicit about empty results *also* made the model likelier to answer in
+prose when it couldn't match an edit ("change the gym membership to 200" → "I
+cannot find a gym membership… please confirm"). Rules 1 and 4 were tightened
+until "create it" beat "ask about it". Final state verified over two
+consecutive full sweeps.
+
+**Known weak spot:** for a currency outside the registered sixteen there is no
+rate source, so the RON figure is the model's unaided guess — measured at 15
+and 250 on two runs of the same "300 rsd" input, against a true value near 13.
+The notes preserve what was said, but the amount can't be trusted. If a
+destination becomes a regular one, the fix is to register its currency in the
+Notion `Original Currency` select and in `CURRENCIES` (see §1.5), which puts it
+back on live ECB rates.
+
+39 new tests (17 vendor memory, 9 on the hardening pipeline, 6 on JSON
+extraction, 5 on `isTripOngoing`, 2 on the notice card); repo suite
+2,528 → 2,567, typecheck and eslint green. Verified in a browser against demo data with a PLN trip running
+today, using the keyword parser: "30 zl for lunch at restaurant" recorded 30
+PLN, and the trip notice card renders and opens the row. The ECB conversion
+could not be exercised live (outbound calls to `api.frankfurter.dev` are
+blocked in that sandbox, which is exactly the "keep the figure" fallback) and
+is covered by unit test instead.

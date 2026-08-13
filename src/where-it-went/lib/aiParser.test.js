@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { parseTextWithAI, askInsightsAI, hardenTransaction, hardenTransactions, normalizeCurrency } from './aiParser';
+import { parseTextWithAI, askInsightsAI, hardenTransaction, hardenTransactions, normalizeCurrency, extractJsonObject } from './aiParser';
 import { clearRateCache } from './fx';
 
 const mockCategories = [
@@ -304,6 +304,41 @@ describe('parseTextWithAI', () => {
   });
 });
 
+describe('extractJsonObject', () => {
+  it('parses a bare JSON object', () => {
+    expect(extractJsonObject('{"transactions": []}')).toEqual({ transactions: [] });
+  });
+
+  it('parses a fenced block', () => {
+    expect(extractJsonObject('```json\n{"transactions": []}\n```')).toEqual({ transactions: [] });
+    expect(extractJsonObject('```\n{"transactions": []}\n```')).toEqual({ transactions: [] });
+  });
+
+  it('parses a fenced block followed by prose', () => {
+    // Measured: asking the parser a question returns exactly this shape — the
+    // empty result, then a paragraph explaining it cannot see your data. The
+    // old fence-stripping needed the fence to end the reply, so this threw
+    // "the response may have been cut off" at anyone who typed a question.
+    const reply = '```json\n{"transactions": []}\n```\n\nI don\'t have access to your financial data.';
+    expect(extractJsonObject(reply)).toEqual({ transactions: [] });
+  });
+
+  it('parses an object with prose in front of it', () => {
+    expect(extractJsonObject('Sure! Here you go:\n{"transactions": [{"amount": 5}]}'))
+      .toEqual({ transactions: [{ amount: 5 }] });
+  });
+
+  it('returns null for a genuinely truncated reply', () => {
+    expect(extractJsonObject('{"transactions": [{"amount": 15, "desc')).toBeNull();
+  });
+
+  it('returns null for empty or prose-only replies', () => {
+    expect(extractJsonObject('')).toBeNull();
+    expect(extractJsonObject('   ')).toBeNull();
+    expect(extractJsonObject('I cannot help with that.')).toBeNull();
+  });
+});
+
 describe('normalizeCurrency', () => {
   it('accepts a registered code regardless of case', () => {
     expect(normalizeCurrency('eur')).toBe('EUR');
@@ -354,6 +389,126 @@ describe('hardenTransactions', () => {
     const result = await hardenTransactions(txs, { categories: mockCategories, accounts: mockAccounts, trips: mockTrips });
     expect(result).toHaveLength(2);
     expect(result.map(t => t.type)).toEqual(['Expense', 'Transfer']);
+  });
+});
+
+describe('hardenTransaction — vendor memory and currency normalisation', () => {
+  const travelCategories = [...mockCategories, { id: 'cat-travel', name: 'Travel', type: 'Expense' }];
+  const ongoingTrip = {
+    id: 'trip-poland',
+    name: 'Poland Autumn',
+    startDate: '2026-10-05',
+    endDate: '2026-10-15',
+    status: 'Active',
+    currency: 'PLN',
+  };
+
+  it('converts a foreign amount at a live rate rather than the model guess', async () => {
+    global.fetch = vi.fn(() => Promise.resolve(mockFrankfurterResponse(1.2)));
+
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 99, originalAmount: 30, originalCurrency: 'PLN', date: '2026-10-06', tripId: 'trip-poland', categoryId: 'cat-travel' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [ongoingTrip] },
+    );
+
+    expect(result.amount).toBe(36);
+    expect(result.tripId).toBe('trip-poland');
+  });
+
+  it('drops a redundant RON original currency', async () => {
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 50, originalAmount: 50, originalCurrency: 'RON', date: '2026-10-06' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [ongoingTrip] },
+    );
+
+    expect(result.amount).toBe(50);
+    expect(result.originalCurrency).toBe('');
+    expect(result.originalAmount).toBeNull();
+  });
+
+  it('leaves trip, category and currency exactly as the model returned them', async () => {
+    // The date falls inside the trip window and the trip spends PLN — neither
+    // is a reason for this layer to change anything. That judgment is the
+    // model's, made from the trip context in the prompt.
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 30, date: '2026-10-06', description: 'Netflix', categoryId: 'cat-food' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [ongoingTrip] },
+    );
+
+    expect(result.tripId).toBeUndefined();
+    expect(result.categoryId).toBe('cat-food');
+    expect(result.originalCurrency).toBeUndefined();
+  });
+
+  it('fills an empty category from how the vendor was filed before', async () => {
+    const transactions = [
+      { description: 'Groceries at Mega Image', categoryId: 'cat-food', accountId: 'acc-cash', type: 'Expense' },
+      { description: 'Snacks at Mega Image', categoryId: 'cat-food', accountId: 'acc-cash', type: 'Expense' },
+    ];
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 40, date: '2026-09-01', description: 'Bread at Mega Image' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [], transactions },
+    );
+
+    expect(result.categoryId).toBe('cat-food');
+    expect(result.accountId).toBe('acc-cash');
+  });
+
+  it('leaves a category the model did pick alone', async () => {
+    const transactions = [
+      { description: 'Groceries at Mega Image', categoryId: 'cat-food', accountId: 'acc-cash', type: 'Expense' },
+      { description: 'Snacks at Mega Image', categoryId: 'cat-food', accountId: 'acc-cash', type: 'Expense' },
+    ];
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 40, date: '2026-09-01', description: 'Flowers at Mega Image', categoryId: 'cat-salary' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [], transactions },
+    );
+
+    expect(result.categoryId).toBe('cat-salary');
+  });
+
+  it('pairs a trip with the Travel category, since the schema cannot hold any other combination', async () => {
+    // Measured against the real model: on an ambiguous vendor it sometimes
+    // sets a tripId while keeping a non-Travel category — a row the manual
+    // form would silently strip the trip from on its next save.
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 80, date: '2026-10-06', description: 'Groceries at Mega Image', categoryId: 'cat-food', tripId: 'trip-poland' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [ongoingTrip] },
+    );
+
+    expect(result.tripId).toBe('trip-poland');
+    expect(result.categoryId).toBe('cat-travel');
+  });
+
+  it('leaves the category alone when no trip is attached', async () => {
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 80, date: '2026-10-06', description: 'Groceries at Mega Image', categoryId: 'cat-food' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [ongoingTrip] },
+    );
+
+    expect(result.categoryId).toBe('cat-food');
+  });
+
+  it('does not force Travel onto trip-tagged income', async () => {
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Income', amount: 200, date: '2026-10-06', description: 'Refund', categoryId: 'cat-salary', tripId: 'trip-poland' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [ongoingTrip] },
+    );
+
+    expect(result.categoryId).toBe('cat-salary');
+  });
+
+  it('prefers the account actually used on this trip when the model gave none', async () => {
+    const transactions = [
+      { description: 'Taxi', categoryId: 'cat-travel', accountId: 'acc-cash', tripId: 'trip-poland', type: 'Expense' },
+      { description: 'Museum', categoryId: 'cat-travel', accountId: 'acc-cash', tripId: 'trip-poland', type: 'Expense' },
+    ];
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 30, date: '2026-10-06', description: 'Lunch at Restaurant', tripId: 'trip-poland' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [ongoingTrip], transactions },
+    );
+
+    expect(result.accountId).toBe('acc-cash');
   });
 });
 

@@ -7,6 +7,9 @@ import { parseTextWithAI } from '../lib/aiParser';
 
 vi.mock('../lib/aiParser', () => ({
   parseTextWithAI: vi.fn(),
+  // The keyword path runs its result through the same hardening as the AI
+  // path; mocked as a pass-through so these tests stay about the component.
+  hardenTransactions: vi.fn(async (txs) => txs),
 }));
 
 /** A minimal fake SpeechRecognition — jsdom has no real one. Captures the
@@ -204,6 +207,59 @@ describe('SmartTextEntry', () => {
     });
     // The one that did succeed is still reported so the ledger refreshes.
     expect(onSuccess).toHaveBeenCalledWith(['tx-1']);
+  });
+
+  it('says when a transaction landed on a trip, and offers to change it', async () => {
+    const onAdd = vi.fn().mockResolvedValue({ id: 'tx-9' });
+    const onEditTransaction = vi.fn();
+
+    parseTextWithAI.mockResolvedValue([{
+      action: 'create',
+      amount: 36,
+      originalAmount: 30,
+      originalCurrency: 'PLN',
+      description: 'Lunch at Restaurant',
+      categoryId: 'cat-travel',
+      tripId: 'trip-poland',
+    }]);
+
+    render(
+      <SmartTextEntry
+        config={{ features: { aiParser: true }, claudeApiKey: 'key' }}
+        trips={[{ id: 'trip-poland', name: 'Poland Autumn' }]}
+        categories={[{ id: 'cat-travel', name: 'Travel', type: 'Expense' }]}
+        onAdd={onAdd}
+        onEditTransaction={onEditTransaction}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '30 zl for lunch' } });
+    fireEvent.submit(screen.getByRole('textbox'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Logged on/)).toBeDefined();
+    });
+    expect(screen.getByText(/Poland Autumn/)).toBeDefined();
+    expect(screen.getByText(/under Travel/)).toBeDefined();
+    expect(screen.getByText(/as 30 PLN/)).toBeDefined();
+
+    fireEvent.click(screen.getByText('Change'));
+    expect(onEditTransaction).toHaveBeenCalledWith('tx-9');
+  });
+
+  it('stays quiet for a transaction with no trip', async () => {
+    const onAdd = vi.fn().mockResolvedValue({ id: 'tx-10' });
+    parseTextWithAI.mockResolvedValue([
+      { action: 'create', amount: 15, description: 'Lunch', categoryId: 'cat-food' },
+    ]);
+
+    render(<SmartTextEntry config={{ features: { aiParser: true }, claudeApiKey: 'key' }} onAdd={onAdd} />);
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '15 for lunch' } });
+    fireEvent.submit(screen.getByRole('textbox'));
+
+    await waitFor(() => expect(onAdd).toHaveBeenCalled());
+    expect(screen.queryByText('Change')).toBeNull();
   });
 
   it('sets the recognizer language from the browser locale', () => {
