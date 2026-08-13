@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import {
-  Check, Loader2, Repeat2, X,
+  Check, Loader2, Repeat2, Shuffle, X,
   Sun, CloudSun, Cloud, CloudFog, CloudRain, Snowflake, CloudLightning,
 } from 'lucide-react'
 import type { CurrentWeather } from '../../shared/weather.ts'
 import { Button } from '../../ds'
 import {
-  recommend, alternativesFor, swapPiece,
+  recommend, alternativesFor, swapPiece, outfitKey, weatherKey,
   type OutfitSuggestion, type RecommendContext,
 } from '../lib/recommend.ts'
 import { MOODS, type Mood, type Verdict } from '../lib/vocabulary.ts'
@@ -15,12 +15,15 @@ import { useGarmentPhoto } from '../lib/useGarmentPhoto.ts'
 import { thumbStyle } from './WardrobeGrid.tsx'
 import { weatherVisual, temperatureWord, type WeatherIconName } from '../lib/weatherVisual.ts'
 import { todayIso } from '../lib/today.ts'
-import type { Garment } from '../lib/types.ts'
+import type { Garment, Outfit } from '../lib/types.ts'
 
 interface Props {
   garments: Garment[]
   wardrobes: Wardrobe[]
   filterId: string | null
+  /** Every outfit ever logged. Today only reads the rows dated today: what has
+   *  already been answered shouldn't be offered a second time. */
+  history: Outfit[]
   weather: CurrentWeather | null
   weatherLoading: boolean
   mood: Mood | null
@@ -35,7 +38,7 @@ interface Props {
 }
 
 export default function Today({
-  garments, wardrobes, filterId, weather, weatherLoading, mood, onMoodChange,
+  garments, wardrobes, filterId, history, weather, weatherLoading, mood, onMoodChange,
   verdicts, recordingIds, onRecordVerdict,
 }: Props) {
   // The "Retired" wardrobe filter is a Wardrobe-tab concept — Today shares the
@@ -48,18 +51,45 @@ export default function Today({
     [garments, wardrobes, filterId],
   )
 
+  const today = todayIso()
+
+  // Bumped by "Show me something else". Feeds the shuffle seed, so the whole
+  // set is re-drawn on different tie-breaks rather than nudged.
+  const [variety, setVariety] = useState(0)
+  // Combinations already put in front of her — answered today, or shown and
+  // rerolled past. Suggesting one of these again is precisely what "I keep
+  // getting the same thing" means.
+  const [passed, setPassed] = useState<string[]>([])
+
+  const answeredToday = useMemo(
+    () => history.filter((o) => o.date === today && o.verdict).map((o) => outfitKey(o.garmentIds)),
+    [history, today],
+  )
+
   const ctx: RecommendContext = {
     temp: weather?.temp ?? null,
     condition: weather?.condition ?? 'clear',
     wind: weather?.wind ?? 0,
     mood,
-    today: todayIso(),
+    today,
+    variety,
+    avoidIds: [...answeredToday, ...passed],
   }
 
   function buildOutfits(): OutfitSuggestion[] {
     // Reads the CURRENT garments/wardrobes/filterId at call time — see the
     // effect below for why that's fine even though they're not in its deps.
-    return recommend(visibleGarments(garments, wardrobes, filterId), ctx)
+    // `available` rather than a fresh `visibleGarments(…, filterId)`: the two
+    // differ exactly when Retired is selected, and building suggestions out of
+    // retired clothes (which recommend() then filters away, leaving nothing)
+    // is how this screen used to claim an empty wardrobe.
+    return recommend(available, ctx)
+  }
+
+  /** "Show me something else": same weather, same mood, different clothes. */
+  function reroll() {
+    setPassed((prev) => [...prev, ...outfits.map((o) => o.id)])
+    setVariety((v) => v + 1)
   }
 
   /**
@@ -94,16 +124,35 @@ export default function Today({
   const [outfits, setOutfits] = useState<OutfitSuggestion[]>(buildOutfits)
   useEffect(() => {
     setOutfits(buildOutfits())
+    // Keyed on the weather's MEANING, not its reading: `weatherKey` collapses
+    // the temperature and wind to the thresholds the scorer actually tests, so
+    // a periodic refresh drifting 20.1°C → 20.3°C leaves the screen alone
+    // instead of silently replacing three cards (and any "Worn today"
+    // confirmation sitting on one of them).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mood, weather?.temp, weather?.condition, weather?.wind])
+  }, [mood, variety, weatherKey(ctx)])
+
+  // Outfits already worn today that aren't on screen any more. The ones still
+  // showing carry their own "Wearing today" label, so repeating them up here
+  // would just say the same thing twice. Not memoised: it's a filter over one
+  // day's history, and `outfits` carries mutable `slot` values the React
+  // Compiler (rightly) won't treat as a stable dependency.
+  const onScreen = new Set(outfits.map((o) => o.id))
+  const wornToday = history
+    .filter((o) => o.date === today && o.verdict === 'Worn')
+    .filter((o) => !onScreen.has(outfitKey(o.garmentIds)))
+    .map((o) => o.name)
 
   return (
     <>
       <WeatherCard weather={weather} loading={weatherLoading} />
 
       <section className="fc-mood">
-        <h2 className="fc-mood-question">How do you want to feel today?</h2>
-        <div className="fc-chips fc-mood-chips">
+        <h2 className="fc-mood-question" id="fc-mood-question">How do you want to feel today?</h2>
+        {/* radiogroup, not a bare div: `role="radio"` children outside one are
+            invalid ARIA, and a screen reader announces them as loose buttons
+            with no sense of the set they belong to. */}
+        <div className="fc-chips fc-mood-chips" role="radiogroup" aria-labelledby="fc-mood-question">
           {MOODS.map((m) => (
             <button
               key={m}
@@ -122,6 +171,19 @@ export default function Today({
         </div>
       </section>
 
+      {/* What today already knows. Suggestions she has answered are no longer
+          re-offered, so without this an outfit worn this morning would simply
+          vanish from the screen when she came back to it — which reads as the
+          app having forgotten, not as it having listened. */}
+      {wornToday.length > 0 && (
+        <p className="fc-notice fc-worn-today" role="status">
+          <Check size={14} aria-hidden="true" />
+          {wornToday.length === 1
+            ? `Already on today: ${wornToday[0]}.`
+            : `Already on today: ${wornToday.join('; ')}.`}
+        </p>
+      )}
+
       {outfits.length === 0 ? (
         <p className="fc-empty">
           {available.length === 0
@@ -129,21 +191,32 @@ export default function Today({
             : 'Almost there — one top and something to wear with it, and I can start putting outfits together.'}
         </p>
       ) : (
-        <div className="fc-outfits">
-          {outfits.map((outfit) => (
-            <OutfitCard
-              // Keyed on slot, not id: swapping a piece changes the id, and
-              // keying on that would remount the card and flash every photo.
-              key={outfit.slot}
-              outfit={outfit}
-              verdict={verdicts[outfit.id]}
-              recording={recordingIds.has(outfit.id)}
-              onRecord={(v) => onRecordVerdict(outfit, v)}
-              swappable={swappable}
-              onSwap={(garmentId) => handleSwap(outfit.slot, garmentId)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="fc-outfits">
+            {outfits.map((outfit) => (
+              <OutfitCard
+                // Keyed on slot, not id: swapping a piece changes the id, and
+                // keying on that would remount the card and flash every photo.
+                key={outfit.slot}
+                outfit={outfit}
+                verdict={verdicts[outfit.id]}
+                recording={recordingIds.has(outfit.id)}
+                onRecord={(v) => onRecordVerdict(outfit, v)}
+                swappable={swappable}
+                onSwap={(garmentId) => handleSwap(outfit.slot, garmentId)}
+              />
+            ))}
+          </div>
+
+          {/* Quick Swap answers "these shoes, not those". This answers "none of
+              these, try again" — the other half of the same complaint, and the
+              one that has no other route out except changing the mood. */}
+          <div className="fc-reroll">
+            <Button size="sm" variant="ghost" onClick={reroll}>
+              <Shuffle size={14} aria-hidden="true" /> Show me something else
+            </Button>
+          </div>
+        </>
       )}
     </>
   )

@@ -112,6 +112,20 @@ export function resolveFilter(filterId: string | null, wardrobes: Wardrobe[]): s
 }
 
 /**
+ * The filter expressed as a real wardrobe page id, or null.
+ *
+ * `'retired'` is a *view* sentinel, not a page id, and the difference matters
+ * the moment one is written rather than read: recording a verdict stamps the
+ * current filter onto the Outfit row's Wardrobes relation, and Notion answers a
+ * relation containing `"retired"` with a 400 that takes the whole write down.
+ * Every place that turns the filter into data goes through this.
+ */
+export function wardrobeIdOf(filterId: string | null): string | null {
+  if (!filterId || filterId === 'retired') return null
+  return filterId
+}
+
+/**
  * The garments to show, given the wardrobe filter.
  *
  * `null` filter means "All": everything except what inactive wardrobes hide.

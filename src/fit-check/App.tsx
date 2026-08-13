@@ -12,7 +12,7 @@ import UndoToast from './components/UndoToast.tsx'
 import { NotionClient } from './lib/notionClient.ts'
 import { pruneCache } from './lib/imageCache.ts'
 import { loadConfig, saveConfig, isConfigured, type FitCheckConfig } from './lib/config.ts'
-import { resolveFilter, type Wardrobe } from './lib/wardrobes.ts'
+import { resolveFilter, wardrobeIdOf, type Wardrobe } from './lib/wardrobes.ts'
 import { useWeather } from './lib/useWeather.ts'
 import { weatherSnapshot } from './lib/weatherText.ts'
 import { todayIso } from './lib/today.ts'
@@ -50,12 +50,22 @@ export default function App() {
   // as the fallback when viewing "All" — adding five things in a row while
   // browsing everywhere shouldn't mean re-tapping the same wardrobe chip five
   // times. Session-only on purpose: it's a small convenience, not a setting.
-  // times. Session-only on purpose: it's a small convenience, not a setting.
   const [lastWardrobeIds, setLastWardrobeIds] = useState<string[] | null>(null)
   const [undoToast, setUndoToast] = useState<{ id: string, message: string, onUndo: () => void } | null>(null)
 
-  // Asked for once per session, and a refusal is fine — Bucharest stands in.
-  const { weather, loading: weatherLoading } = useWeather(config.coords)
+  // Asked for once, and a refusal is fine — Bucharest stands in. The resolved
+  // position is remembered so later visits skip the permission round-trip and
+  // paint the weather immediately.
+  const { weather, loading: weatherLoading } = useWeather(
+    config.coords,
+    useCallback((coords: { lat: number; lon: number }) => {
+      setConfig((prev) => (
+        prev.coords?.lat === coords.lat && prev.coords?.lon === coords.lon
+          ? prev
+          : { ...prev, coords }
+      ))
+    }, []),
+  )
 
   // Screens are swapped, not routed to — nothing about switching tabs implies
   // a scroll reset on its own. Scroll to the bottom of Wardrobe, tap History,
@@ -241,7 +251,9 @@ export default function App() {
         weather: weatherSnapshot(weather),
         verdict,
         favourite: false,
-        wardrobeIds: resolvedFilterId ? [resolvedFilterId] : [],
+        // Never the raw filter: with "Retired" selected this wrote the string
+        // "retired" into a Notion relation, which 400s and loses the whole row.
+        wardrobeIds: wardrobeIdOf(resolvedFilterId) ? [wardrobeIdOf(resolvedFilterId)!] : [],
       }
 
       let saved: Outfit = { id: `local_o_${Date.now()}`, ...record } as Outfit
@@ -376,6 +388,7 @@ export default function App() {
               garments={garments}
               wardrobes={wardrobes}
               filterId={resolvedFilterId}
+              history={outfits}
               weather={weather}
               weatherLoading={weatherLoading}
               mood={mood}

@@ -24,7 +24,13 @@ export function useGarmentPhoto(garment: Garment | null): string | null {
     // photoUrl is a signed URL that changes on every page read; keying the
     // effect on it would refetch the whole grid on each refresh even though the
     // cache would answer instantly. The garment id is the stable identity.
-  }, [garment?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+    //
+    // `thumb` is in here for one reason: it is regenerated from the new bytes
+    // whenever a photo is REPLACED, and it's the only field on the row that
+    // reliably changes when that happens. Without it the effect never re-runs
+    // after a retake and the tile keeps its old picture. It's stable across
+    // ordinary reads, so this costs nothing in the common case.
+  }, [garment?.id, garment?.thumb]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return url
 }

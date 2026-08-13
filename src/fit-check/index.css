@@ -478,6 +478,70 @@ body {
 .fc-outfit-status[data-verdict='Worn'] { color: var(--color-success); }
 .fc-outfit-status[data-verdict='Skipped'] { color: var(--color-muted); }
 
+/* What's already settled for today, above the suggestions rather than among
+   them — it's a statement, not another card to act on. */
+.fc-worn-today {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: var(--color-success);
+}
+
+/* Centred and quiet: "none of these" is a real answer, but it shouldn't
+   compete with Wear/Skip for attention. */
+.fc-reroll {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+/* ── Undo toast ──────────────────────────────────────────────────────────── */
+/* Sits above the fixed nav, not over it, and inside the safe area on a phone
+   with a home indicator. */
+.fc-undo-toast {
+  position: fixed;
+  bottom: calc(var(--fc-nav-height) + env(safe-area-inset-bottom, 0px) + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--color-ink);
+  color: var(--color-bg);
+  font-size: 0.9375rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: fc-fade-in 220ms ease-out;
+}
+
+.fc-undo-message {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.fc-undo-action {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fc-undo-toast { animation: none; }
+}
+
 /* ── History ─────────────────────────────────────────────────────────────── */
 .fc-history-list {
   display: flex;
