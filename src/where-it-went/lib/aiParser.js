@@ -84,6 +84,48 @@ function isValidId(id, validIds) {
 }
 
 /**
+ * Pulls the JSON object out of a model reply, however it chose to wrap it.
+ *
+ * The old version only handled a fenced block that *ended* the reply, which
+ * measurement showed is not what happens on the input that matters most: ask
+ * the parser a question ("how much did I spend on food last month?") and it
+ * answers `\`\`\`json\\n{"transactions":[]}\\n\`\`\`` followed by a paragraph
+ * explaining it can't see your data. The trailing prose left the fence
+ * unmatched, the parse threw, and a greeting or a mistyped question surfaced
+ * as "the AI response may have been cut off. Try a shorter description" —
+ * advice that makes no sense for a two-word message.
+ *
+ * Returns null only when there is genuinely no parseable object, which is what
+ * a real truncation looks like.
+ */
+export function extractJsonObject(rawText) {
+  const text = String(rawText || '').trim();
+  if (!text) return null;
+
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const candidates = fenced ? [fenced[1].trim(), text] : [text];
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // Fall through to the brace scan: prose on either side of the object.
+      const start = candidate.indexOf('{');
+      const end = candidate.lastIndexOf('}');
+      if (start >= 0 && end > start) {
+        try {
+          return JSON.parse(candidate.slice(start, end + 1));
+        } catch {
+          /* try the next candidate */
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Validates and repairs the ids and currency one parsed transaction came back
  * with, and re-derives the RON amount from a live ECB rate rather than
  * trusting the model's own conversion guess (the prompt only ever asks it for
@@ -398,12 +440,12 @@ Recent Transactions (for context/updates):
 ${recentList || 'None'}
 
 Rules:
-1. ONLY return the raw JSON object. Do not wrap in markdown or backticks. No conversational filler.
-2. The user might describe multiple transactions in one message. Create a discrete object for each one in the "transactions" array.
-3. If the user mentions a SPLIT expense (e.g., "Paid 100 for dinner but John owes me 50"), return TWO transactions: one Expense for 100 on "Dining" (or similar), and one Income/Transfer for 50 representing the debt to be received.
-4. "action" defaults to "create". If the user wants to edit or delete a past transaction (e.g., "change that to 20", "delete the lunch expense"), use "update" or "delete" and provide the "id" from Recent Transactions. ONLY use an "id" that appears verbatim in Recent Transactions above — never invent one. If you cannot find a confident match for what the user wants to edit or delete, prefer "create" instead of guessing at an id.
+1. Your ENTIRE reply is one raw JSON object, in every situation without exception. No markdown, no backticks, no sentence before or after it, no helpful aside. You are a parser wired directly into an application, not a chat partner: nobody reads prose you emit, so a reply that is not JSON is simply lost and the user sees an error. Never ask a question, request confirmation, or say what you cannot do — express all of that as the JSON below.
+2. The user might describe multiple transactions in one message. Create a discrete object for each one in the "transactions" array. If — and only if — the message describes no transaction at all (a greeting, a question about past spending, small talk), return exactly {"transactions": []}. That empty array is how you say "nothing to record"; it is never an excuse to add an explanation alongside it.
+3. If the user mentions a SPLIT expense (e.g., "Paid 100 for dinner but John owes me 50"), return TWO transactions: one Expense for 100 on "Dining" (or similar), and one Income for 50 representing the debt to be received. Give that second one an Income-type category if a suitable one exists, and OMIT "categoryId" entirely if none does — never file an Income against an expense category, which would corrupt that category's spending totals.
+4. "action" defaults to "create". If the user wants to edit or delete a past transaction (e.g., "change that to 20", "delete the lunch expense"), use "update" or "delete" and provide the "id" from Recent Transactions. ONLY use an "id" that appears verbatim in Recent Transactions above — never invent one. If you cannot find a confident match for what the user wants to edit or delete, create the transaction instead — "change the gym membership to 200" with no gym membership in the list is a new 200 expense, not a question to ask back. Guessing at an id and asking for clarification are both wrong; creating is right.
 5. "categoryId" and "accountId" MUST be an ID copied verbatim from the Available Categories / Available Accounts lists above — never invent, abbreviate, or guess at one. If nothing in the list is a good fit, omit the field rather than picking an unrelated one.
-6. "amount" MUST be a positive Number (e.g. 15). Values are in RON unless something says otherwise. When the amount is in a foreign currency, set "amount" to your best estimate in RON and ALSO provide "originalAmount" (Number, the foreign figure) and "originalCurrency" as one of exactly these codes: ${CURRENCIES.join(', ')}. Your RON estimate is a placeholder only — it is replaced with a live exchange rate after parsing, so accuracy there matters far less than getting originalAmount/originalCurrency right. Recognise currencies written as words or symbols, not just codes: lei/RON, €/eur/euro/euros, $/usd/dollars/bucks, £/gbp/pounds/quid, zł/zl/zloty/złoty/PLN, Ft/forint/HUF, Kč/kc/koruna/CZK, kr (SEK/NOK/DKK by context), CHF/franc/francs, ¥/yen/JPY, lev/leva/BGN, lira/TRY. If the user names a currency that is NOT in the list above, record the transaction in RON and put what they said in "notes" — an unlisted code cannot be saved.
+6. "amount" MUST be a positive Number (e.g. 15). Values are in RON unless something says otherwise. When the amount is in a foreign currency, set "amount" to your best estimate in RON and ALSO provide "originalAmount" (Number, the foreign figure) and "originalCurrency" as one of exactly these codes: ${CURRENCIES.join(', ')}. Your RON estimate is a placeholder only — it is replaced with a live exchange rate after parsing, so accuracy there matters far less than getting originalAmount/originalCurrency right. Recognise currencies written as words or symbols, not just codes: lei/RON, €/eur/euro/euros, $/usd/dollars/bucks, £/gbp/pounds/quid, zł/zl/zloty/złoty/PLN, Ft/forint/HUF, Kč/kc/koruna/CZK, kr (SEK/NOK/DKK by context), CHF/franc/francs, ¥/yen/JPY, lev/leva/BGN, lira/TRY. If the user names a currency that is NOT in the list above (Serbian dinar, Moroccan dirham, anything else), leave "originalCurrency" and "originalAmount" out — an unlisted code cannot be saved and would be rejected — put your best RON estimate in "amount", and you MUST record what they actually said verbatim in "notes" (e.g. "300 RSD"), because that is the only place the real figure survives.
 7. "description" should be clean and concise. Always format it in Title Case. Standardize merchant names to their official brand names (e.g., convert 'McD' to 'McDonald's', 'Mega' to 'Mega Image'). Strip out filler verbs ('spent', 'paid', 'bought') and payment methods ('on card', 'in cash'). Extract only the core essence of the transaction.
 8. "description" format: Whenever possible, format it as "<action/item> at/from <venue>" (e.g., "Dinner at McDonald's"). If the user lists multiple items from a single store (e.g., 'milk and eggs at Mega Image'), summarize the description as '[Category] at [Venue]' (e.g., 'Groceries at Mega Image') and move the detailed list of items into the "notes" field. If the expense is for Nora and categorized as such, DO NOT include phrases like "for Nora" or "with Nora" in the description.
 9. "date" MUST be a string in "YYYY-MM-DD" format. Today is ${todayStr}. Interpret words like "yesterday" relative to today. If no date is given, use today's date (${todayStr}).
@@ -430,17 +472,8 @@ Rules:
     temperature: 0.1,
   });
 
-  let responseText = rawText.trim();
-
-  // Strip potential markdown wrappers just in case
-  if (responseText.startsWith('```')) {
-    responseText = responseText.replace(/^```(json)?\n/, '').replace(/\n```$/, '');
-  }
-
-  let parsed;
-  try {
-    parsed = JSON.parse(responseText);
-  } catch {
+  const parsed = extractJsonObject(rawText);
+  if (!parsed) {
     // A max_tokens truncation (batch mode emits one object per transaction) or
     // any other malformed reply must read as a normal, retryable failure — not
     // an uncaught SyntaxError.

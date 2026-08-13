@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { parseTextWithAI, askInsightsAI, hardenTransaction, hardenTransactions, normalizeCurrency } from './aiParser';
+import { parseTextWithAI, askInsightsAI, hardenTransaction, hardenTransactions, normalizeCurrency, extractJsonObject } from './aiParser';
 import { clearRateCache } from './fx';
 
 const mockCategories = [
@@ -301,6 +301,41 @@ describe('parseTextWithAI', () => {
     const assertion = expect(promise).rejects.toThrow('took too long to respond');
     await vi.advanceTimersByTimeAsync(20000);
     await assertion;
+  });
+});
+
+describe('extractJsonObject', () => {
+  it('parses a bare JSON object', () => {
+    expect(extractJsonObject('{"transactions": []}')).toEqual({ transactions: [] });
+  });
+
+  it('parses a fenced block', () => {
+    expect(extractJsonObject('```json\n{"transactions": []}\n```')).toEqual({ transactions: [] });
+    expect(extractJsonObject('```\n{"transactions": []}\n```')).toEqual({ transactions: [] });
+  });
+
+  it('parses a fenced block followed by prose', () => {
+    // Measured: asking the parser a question returns exactly this shape — the
+    // empty result, then a paragraph explaining it cannot see your data. The
+    // old fence-stripping needed the fence to end the reply, so this threw
+    // "the response may have been cut off" at anyone who typed a question.
+    const reply = '```json\n{"transactions": []}\n```\n\nI don\'t have access to your financial data.';
+    expect(extractJsonObject(reply)).toEqual({ transactions: [] });
+  });
+
+  it('parses an object with prose in front of it', () => {
+    expect(extractJsonObject('Sure! Here you go:\n{"transactions": [{"amount": 5}]}'))
+      .toEqual({ transactions: [{ amount: 5 }] });
+  });
+
+  it('returns null for a genuinely truncated reply', () => {
+    expect(extractJsonObject('{"transactions": [{"amount": 15, "desc')).toBeNull();
+  });
+
+  it('returns null for empty or prose-only replies', () => {
+    expect(extractJsonObject('')).toBeNull();
+    expect(extractJsonObject('   ')).toBeNull();
+    expect(extractJsonObject('I cannot help with that.')).toBeNull();
   });
 });
 

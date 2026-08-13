@@ -1407,9 +1407,56 @@ PLN trip stays domestic. The two judgment calls (`50 lei for a book`, a
 Romanian chain mid-trip) go the way the model reads them, which is the point of
 leaving them to it.
 
-33 new tests (17 vendor memory, 9 on the hardening pipeline, 5 on
-`isTripOngoing`, 2 on the notice card); repo suite 2,528 → 2,561, typecheck and
-eslint green. Verified in a browser against demo data with a PLN trip running
+### A wider sweep, beyond trips
+
+Thirty-four scenarios across the parser's whole surface — multi-transaction
+messages, splits, edits and deletes against recent rows, relative dates,
+income, transfers, account routing, merchant knowledge, subscriptions, notes
+extraction, decimals, European thousands separators, foreign and *unregistered*
+currencies, Romanian-language input, typos, and messages that aren't
+transactions at all. Most of it already worked: `am cumparat paine si lapte de
+la mega 45 lei` comes back as "Groceries at Mega Image", Food, with the items
+in the notes; `1.500 lei` reads as 1500; `cofee 15` is Coffee; and a vendor the
+ledger files under Food beats the general knowledge that would call it Dining.
+
+Three defects surfaced, all now fixed:
+
+- **A question or a greeting produced "the AI response may have been cut off.
+  Try a shorter description."** The reply to "how much did I spend on food last
+  month?" is `\`\`\`json\n{"transactions":[]}\n\`\`\`` *followed by a paragraph*
+  explaining it can't see your data. The old fence-stripping required the fence
+  to end the reply, so the trailing prose broke the parse and produced advice
+  that makes no sense for a five-word message. `extractJsonObject` now tries the
+  fenced block, then the raw text, then the span between the first `{` and last
+  `}`, and only reports a truncation when there is genuinely no object to find.
+  Rule 1 was also made categorical — the entire reply is JSON, in every
+  situation, never a question back.
+- **A split filed its repayment against an expense category.** "Paid 200 for
+  dinner but Alex owes me 100" returned the 100 as Income *on Dining*, which
+  would quietly distort that category's spending totals. Rule 3 now says to use
+  an Income category or omit the field.
+- **An unregistered currency silently lost the original figure.** "300 rsd for
+  dinner" recorded a RON estimate with nothing recording that dinar was ever
+  involved. Rule 6 now requires the original wording in the notes.
+
+One regression was caught by re-running the sweep rather than assuming: making
+rule 2 explicit about empty results *also* made the model likelier to answer in
+prose when it couldn't match an edit ("change the gym membership to 200" → "I
+cannot find a gym membership… please confirm"). Rules 1 and 4 were tightened
+until "create it" beat "ask about it". Final state verified over two
+consecutive full sweeps.
+
+**Known weak spot:** for a currency outside the registered sixteen there is no
+rate source, so the RON figure is the model's unaided guess — measured at 15
+and 250 on two runs of the same "300 rsd" input, against a true value near 13.
+The notes preserve what was said, but the amount can't be trusted. If a
+destination becomes a regular one, the fix is to register its currency in the
+Notion `Original Currency` select and in `CURRENCIES` (see §1.5), which puts it
+back on live ECB rates.
+
+39 new tests (17 vendor memory, 9 on the hardening pipeline, 6 on JSON
+extraction, 5 on `isTripOngoing`, 2 on the notice card); repo suite
+2,528 → 2,567, typecheck and eslint green. Verified in a browser against demo data with a PLN trip running
 today, using the keyword parser: "30 zl for lunch at restaurant" recorded 30
 PLN, and the trip notice card renders and opens the row. The ECB conversion
 could not be exercised live (outbound calls to `api.frankfurter.dev` are
