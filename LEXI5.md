@@ -203,6 +203,11 @@ Two things to watch if you touch this:
   emoji grid, and a plain stats-text summary, each telling a friend a slightly different thing for
   the same game. The header's link-only "Share game link" is deliberately separate — it invites
   someone to *today's* word before you've necessarily finished, which a result share can't do.
+- **Getting back to a new game**: A "Play Again" button sits below the board itself whenever
+  `gameState.status !== 'playing'`, independent of the dismissible result bar above it. The
+  result bar's own path back to a new game was through its "Stats" button; dismissing the bar
+  (its `X` only hides the summary text, not the game-over state) used to leave the board frozen
+  with no visible next step short of remembering to reopen Stats.
 - **Animations & Haptics**: Full NYT-style animations including tile pops, invalid word shake, and a staggered victory dance. Includes mobile `navigator.vibrate` haptics and a confetti celebration upon beating the Crown word. The layout features `overscroll-behavior-y: none` to prevent native browser pull-to-refresh from squishing viewport elements.
 - **Hard Mode**: Revealed hints must be used in subsequent guesses (and green letters must remain in their exact positions).
 - **Accessibility**: keyboard keys expose their Wordle status via `aria-label` (colour is

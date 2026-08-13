@@ -255,6 +255,15 @@ export function App() {
   const customCycleStale = gameState.dictionary === 'custom'
     && getWordProgress('custom', gameState.date, gameState.iteration).cycleNumber >= 1
 
+  // Shared by the Statistics panel's own button and the persistent one on the main screen
+  // below — the result bar's only path back to a new game was through "Stats", so dismissing
+  // that bar (its X button doesn't end the game, just hides the summary) left the board
+  // frozen with no visible next step until you thought to reopen Stats yourself.
+  const handlePlayAgain = () => {
+    startNextGame(config.difficulty, config.dictionary)
+    setShowStats(false)
+  }
+
   const handleOpenCurate = () => {
     setOpenSettingsToCurate(true)
     setShowSettings(true)
@@ -469,6 +478,16 @@ export function App() {
           </div>
         )}
 
+        {/* Stays up regardless of the result bar above — dismissing that bar only hides
+            the summary text, not the game-over state, and its own path back to a new game
+            went through the "Stats" button. Without this, dismissing it left the board
+            frozen with nothing on screen to do next. */}
+        {gameState.status !== 'playing' && (
+          <div className={styles.hintRow}>
+            <Button size="sm" onClick={handlePlayAgain}>Play Again</Button>
+          </div>
+        )}
+
         <div className={styles.keyboardContainer}>
           <Keyboard 
             guesses={gameState.guesses}
@@ -529,10 +548,7 @@ export function App() {
         stats={stats}
         gameState={gameState}
         word={word}
-        onPlayAgain={() => {
-          startNextGame(config.difficulty, config.dictionary)
-          setShowStats(false)
-        }}
+        onPlayAgain={handlePlayAgain}
         onToast={showToast}
         highContrast={config.highContrast}
         hintUsed={hintUsed}
