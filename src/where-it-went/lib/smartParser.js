@@ -88,14 +88,13 @@ export function parseSmartText(text, accounts = [], categories = []) {
     return null;
   }
 
-  if (namedCurrency) {
+  // A foreign amount is recorded as such so the shared hardening step can
+  // convert it at the day's real rate. RON needs no second figure — it is what
+  // an unmarked amount already means.
+  if (namedCurrency && namedCurrency !== 'RON') {
     tx.currency = namedCurrency;
-    // RON is carried as a currency the user *named* rather than dropped: trip
-    // inference reads an absent currency as "use the trip's", so "50 lei" on a
-    // Poland trip has to be able to say no. `hardenTransaction` clears it
-    // again before saving, so nothing redundant reaches Notion.
     tx.originalCurrency = namedCurrency;
-    if (namedCurrency !== 'RON') tx.originalAmount = tx.amount;
+    tx.originalAmount = tx.amount;
   }
 
   // 2. Parse Type

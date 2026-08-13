@@ -357,7 +357,7 @@ describe('hardenTransactions', () => {
   });
 });
 
-describe('hardenTransaction — trip context and vendor memory', () => {
+describe('hardenTransaction — vendor memory and currency normalisation', () => {
   const travelCategories = [...mockCategories, { id: 'cat-travel', name: 'Travel', type: 'Expense' }];
   const ongoingTrip = {
     id: 'trip-poland',
@@ -367,49 +367,42 @@ describe('hardenTransaction — trip context and vendor memory', () => {
     status: 'Active',
     currency: 'PLN',
   };
-  const context = { categories: travelCategories, accounts: mockAccounts, trips: [ongoingTrip] };
 
-  it('links the trip, converts at a live rate and files it as Travel', async () => {
+  it('converts a foreign amount at a live rate rather than the model guess', async () => {
     global.fetch = vi.fn(() => Promise.resolve(mockFrankfurterResponse(1.2)));
 
     const result = await hardenTransaction(
-      { action: 'create', type: 'Expense', amount: 30, date: '2026-10-06', description: 'Lunch at Restaurant', categoryId: 'cat-food' },
-      context,
+      { action: 'create', type: 'Expense', amount: 99, originalAmount: 30, originalCurrency: 'PLN', date: '2026-10-06', tripId: 'trip-poland', categoryId: 'cat-travel' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [ongoingTrip] },
     );
 
+    expect(result.amount).toBe(36);
     expect(result.tripId).toBe('trip-poland');
-    expect(result.originalCurrency).toBe('PLN');
-    expect(result.originalAmount).toBe(30);
-    expect(result.amount).toBe(36); // 30 PLN at the ECB rate, not the model's guess
-    expect(result.categoryId).toBe('cat-travel');
-    expect(result._inferred.trip.id).toBe('trip-poland');
   });
 
-  it('does not re-read an explicitly named RON amount as the trip currency', async () => {
-    global.fetch = vi.fn(() => Promise.resolve({ ok: false }));
-
+  it('drops a redundant RON original currency', async () => {
     const result = await hardenTransaction(
-      { action: 'create', type: 'Expense', amount: 50, date: '2026-10-06', originalCurrency: 'RON', description: 'Netflix' },
-      context,
+      { action: 'create', type: 'Expense', amount: 50, originalAmount: 50, originalCurrency: 'RON', date: '2026-10-06' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [ongoingTrip] },
     );
 
     expect(result.amount).toBe(50);
-    // RON has done its job by blocking the trip default; it isn't worth
-    // recording as a second figure against a RON amount.
     expect(result.originalCurrency).toBe('');
     expect(result.originalAmount).toBeNull();
   });
 
-  it('does not treat a hallucinated tripId as a deliberate choice', async () => {
-    global.fetch = vi.fn(() => Promise.resolve(mockFrankfurterResponse(1.2)));
-
+  it('leaves trip, category and currency exactly as the model returned them', async () => {
+    // The date falls inside the trip window and the trip spends PLN — neither
+    // is a reason for this layer to change anything. That judgment is the
+    // model's, made from the trip context in the prompt.
     const result = await hardenTransaction(
-      { action: 'create', type: 'Expense', amount: 30, date: '2026-10-06', tripId: 'trip-invented' },
-      context,
+      { action: 'create', type: 'Expense', amount: 30, date: '2026-10-06', description: 'Netflix', categoryId: 'cat-food' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [ongoingTrip] },
     );
 
-    expect(result.tripId).toBe('trip-poland');
-    expect(result._inferred.trip.id).toBe('trip-poland');
+    expect(result.tripId).toBeUndefined();
+    expect(result.categoryId).toBe('cat-food');
+    expect(result.originalCurrency).toBeUndefined();
   });
 
   it('fills an empty category from how the vendor was filed before', async () => {
@@ -439,26 +432,17 @@ describe('hardenTransaction — trip context and vendor memory', () => {
     expect(result.categoryId).toBe('cat-salary');
   });
 
-  it('prefers the account actually used on this trip over the default', async () => {
-    global.fetch = vi.fn(() => Promise.resolve(mockFrankfurterResponse(1.2)));
+  it('prefers the account actually used on this trip when the model gave none', async () => {
     const transactions = [
       { description: 'Taxi', categoryId: 'cat-travel', accountId: 'acc-cash', tripId: 'trip-poland', type: 'Expense' },
       { description: 'Museum', categoryId: 'cat-travel', accountId: 'acc-cash', tripId: 'trip-poland', type: 'Expense' },
     ];
     const result = await hardenTransaction(
-      { action: 'create', type: 'Expense', amount: 30, date: '2026-10-06', description: 'Lunch at Restaurant' },
-      { ...context, transactions },
+      { action: 'create', type: 'Expense', amount: 30, date: '2026-10-06', description: 'Lunch at Restaurant', tripId: 'trip-poland' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [ongoingTrip], transactions },
     );
 
     expect(result.accountId).toBe('acc-cash');
-  });
-
-  it('reports nothing on _inferred when it decided nothing', async () => {
-    const result = await hardenTransaction(
-      { action: 'create', type: 'Expense', amount: 30, date: '2026-09-01', categoryId: 'cat-food', accountId: 'acc-revolut' },
-      context,
-    );
-    expect(result._inferred).toBeUndefined();
   });
 });
 

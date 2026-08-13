@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatTripDates, getTripStatusBadge, belongsToTrip, formatTripLabel, validateTrip } from './Trip';
+import { formatTripDates, getTripStatusBadge, belongsToTrip, formatTripLabel, validateTrip, isTripOngoing } from './Trip';
 
 describe('Trip Domain Entity', () => {
   it('formats trip dates correctly', () => {
@@ -37,5 +37,34 @@ describe('Trip Domain Entity', () => {
     expect(validateTrip({ name: 'Poland 2026' }).valid).toBe(true);
     expect(validateTrip({ name: '' }).valid).toBe(false);
     expect(validateTrip({ name: 'Test', startDate: '2026-06-01', endDate: '2026-05-01' }).valid).toBe(false);
+  });
+
+  describe('isTripOngoing', () => {
+    const trip = { startDate: '2026-10-05', endDate: '2026-10-15' };
+
+    it('includes both endpoints of the window', () => {
+      expect(isTripOngoing(trip, '2026-10-05')).toBe(true);
+      expect(isTripOngoing(trip, '2026-10-15')).toBe(true);
+    });
+
+    it('excludes dates outside the window', () => {
+      expect(isTripOngoing(trip, '2026-10-04')).toBe(false);
+      expect(isTripOngoing(trip, '2026-10-16')).toBe(false);
+    });
+
+    it('treats a one-sided window as still running', () => {
+      expect(isTripOngoing({ startDate: '2026-10-05' }, '2027-01-01')).toBe(true);
+      expect(isTripOngoing({ endDate: '2026-10-15' }, '2020-01-01')).toBe(true);
+    });
+
+    it('is false for a trip with no dates, and for missing arguments', () => {
+      expect(isTripOngoing({ status: 'Active' }, '2026-10-06')).toBe(false);
+      expect(isTripOngoing(null, '2026-10-06')).toBe(false);
+      expect(isTripOngoing(trip, '')).toBe(false);
+    });
+
+    it('tolerates a full timestamp in the date field', () => {
+      expect(isTripOngoing({ startDate: '2026-10-05T00:00:00.000Z', endDate: '2026-10-15' }, '2026-10-06')).toBe(true);
+    });
   });
 });

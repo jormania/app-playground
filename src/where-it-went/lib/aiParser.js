@@ -4,9 +4,8 @@
 import { toDateString, parseTxDate } from './period';
 import { CURRENCIES, canConvert, fetchRate, convert, BASE_CURRENCY } from './fx';
 import { pickDefaultAccount } from './accountPicker';
-import { applyTripContext, isTripOngoing } from './tripInference';
 import { buildVendorMemory, lookupVendor, preferredAccountForTrip } from './vendorMemory';
-import { formatTripDates } from '../domain/Trip';
+import { formatTripDates, isTripOngoing } from '../domain/Trip';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 /** Generous, but bounded — without this a hung connection left isParsing true
@@ -107,12 +106,19 @@ function isValidId(id, validIds) {
  *     category is — it *is* the transaction, so an unresolvable one is
  *     dropped by `hardenTransactions` below instead of guessed at.
  *
- * It also fills in what the data can answer without the model: the trip whose
- * window the date falls inside (`lib/tripInference`), and the category and
- * account you usually file this vendor under (`lib/vendorMemory`). Anything
- * decided here rather than read off the model's reply is reported back on
- * `_inferred`, so the entry form can say what it chose; `SmartTextEntry`
- * strips that key before saving.
+ * Trip linking, the currency and the category are deliberately *not* decided
+ * here. They were, briefly, and the rule ("an expense dated inside a trip's
+ * window is that trip's") is right often enough to be tempting — but it turns
+ * a judgment into a route, and the exceptions are real: a trip whose currency
+ * isn't one of the sixteen registered codes records as RON while still being a
+ * trip, and plenty of spending inside a trip window isn't trip spending. The
+ * prompt now carries every fact needed to make that call (dates, status,
+ * destination, currency) and the model makes it.
+ *
+ * The one thing this layer still contributes beyond validation is a *gap*
+ * filler: when the model returns no category at all, the category you usually
+ * file that vendor under (`lib/vendorMemory`) beats leaving the row unknown.
+ * It never overrides a choice the model actually made.
  */
 export async function hardenTransaction(tx, { categories = [], accounts = [], trips = [], transactions = [], vendorMemory = null } = {}) {
   if (tx.action === 'delete') return tx;
@@ -129,9 +135,6 @@ export async function hardenTransaction(tx, { categories = [], accounts = [], tr
     next.categoryId = '';
   }
 
-  // Cleared here rather than further down: a hallucinated trip id left in
-  // place reads to `applyTripContext` as a trip the model resolved
-  // deliberately, which suppresses its own (correct) inference.
   if (next.tripId && !isValidId(next.tripId, validTripIds)) {
     next.tripId = '';
   }
@@ -155,10 +158,6 @@ export async function hardenTransaction(tx, { categories = [], accounts = [], tr
       next.categoryId = remembered.categoryId;
     }
   }
-
-  const { tx: inTrip, inferred } = applyTripContext(next, { trips, categories });
-  next = inTrip;
-  if (Object.keys(inferred).length > 0) next._inferred = inferred;
 
   if (!isValidId(next.accountId, validAccountIds)) {
     // Abroad, whatever card you've actually been using on this trip beats the
@@ -188,9 +187,10 @@ export async function hardenTransaction(tx, { categories = [], accounts = [], tr
     next.toAccountId = '';
   }
 
-  // A currency the user named as RON has done its job by this point — it kept
-  // the trip's currency from being applied. Recording "50 RON" against a RON
-  // amount is a redundant second figure everywhere it's displayed.
+  // Recording "50 RON" against a RON amount is a redundant second figure
+  // everywhere it's displayed — the base currency is what an unmarked amount
+  // already means. The prompt asks for RON explicitly in one case (see rule
+  // 6), so this normalizes it away rather than writing it through.
   if (next.originalCurrency === BASE_CURRENCY) {
     next.originalCurrency = '';
     next.originalAmount = null;
@@ -365,7 +365,7 @@ Rules:
 3. If the user mentions a SPLIT expense (e.g., "Paid 100 for dinner but John owes me 50"), return TWO transactions: one Expense for 100 on "Dining" (or similar), and one Income/Transfer for 50 representing the debt to be received.
 4. "action" defaults to "create". If the user wants to edit or delete a past transaction (e.g., "change that to 20", "delete the lunch expense"), use "update" or "delete" and provide the "id" from Recent Transactions. ONLY use an "id" that appears verbatim in Recent Transactions above — never invent one. If you cannot find a confident match for what the user wants to edit or delete, prefer "create" instead of guessing at an id.
 5. "categoryId" and "accountId" MUST be an ID copied verbatim from the Available Categories / Available Accounts lists above — never invent, abbreviate, or guess at one. If nothing in the list is a good fit, omit the field rather than picking an unrelated one.
-6. "amount" MUST be a positive Number (e.g. 15). Whenever the user names a currency — in ANY form — set "originalAmount" (Number, the figure they said) and "originalCurrency" to one of exactly these codes: ${CURRENCIES.join(', ')}. This includes the local currency: "50 lei", "50 RON" and "50 ron" all mean originalCurrency "RON". Recognise words and symbols as well as codes — lei/RON, €/eur/euro/euros, $/usd/dollars/bucks, £/gbp/pounds/quid, zł/zl/zloty/złoty/PLN, Ft/forint/HUF, Kč/kc/koruna/CZK, kr (SEK/NOK/DKK by context), CHF/franc/francs, ¥/yen/JPY, lev/leva/BGN, lira/TRY. Set "amount" to your best RON estimate for a foreign figure — it is a placeholder that is replaced with a live exchange rate after parsing, so getting originalAmount/originalCurrency right matters far more than that estimate. If the user names NO currency at all, omit both fields entirely and leave "amount" as the number they said — do not assume RON, because a later step reads an omitted currency as "on a trip, the trip's currency".
+6. "amount" MUST be a positive Number (e.g. 15). Values are in RON unless something says otherwise. When the amount is in a foreign currency, set "amount" to your best estimate in RON and ALSO provide "originalAmount" (Number, the foreign figure) and "originalCurrency" as one of exactly these codes: ${CURRENCIES.join(', ')}. Your RON estimate is a placeholder only — it is replaced with a live exchange rate after parsing, so accuracy there matters far less than getting originalAmount/originalCurrency right. Recognise currencies written as words or symbols, not just codes: lei/RON, €/eur/euro/euros, $/usd/dollars/bucks, £/gbp/pounds/quid, zł/zl/zloty/złoty/PLN, Ft/forint/HUF, Kč/kc/koruna/CZK, kr (SEK/NOK/DKK by context), CHF/franc/francs, ¥/yen/JPY, lev/leva/BGN, lira/TRY. If the user names a currency that is NOT in the list above, record the transaction in RON and put what they said in "notes" — an unlisted code cannot be saved.
 7. "description" should be clean and concise. Always format it in Title Case. Standardize merchant names to their official brand names (e.g., convert 'McD' to 'McDonald's', 'Mega' to 'Mega Image'). Strip out filler verbs ('spent', 'paid', 'bought') and payment methods ('on card', 'in cash'). Extract only the core essence of the transaction.
 8. "description" format: Whenever possible, format it as "<action/item> at/from <venue>" (e.g., "Dinner at McDonald's"). If the user lists multiple items from a single store (e.g., 'milk and eggs at Mega Image'), summarize the description as '[Category] at [Venue]' (e.g., 'Groceries at Mega Image') and move the detailed list of items into the "notes" field. If the expense is for Nora and categorized as such, DO NOT include phrases like "for Nora" or "with Nora" in the description.
 9. "date" MUST be a string in "YYYY-MM-DD" format. Today is ${todayStr}. Interpret words like "yesterday" relative to today. If no date is given, use today's date (${todayStr}).
@@ -381,8 +381,9 @@ Rules:
    The "how this user has filed these vendors before" list above OVERRIDES this general knowledge: if the venue appears there, use that category, because it is what they actually do.
 12. "accountId": Find the ID of the most appropriate account from the list. By default, use the plain "Revolut" account (NOT Revolut EUR). Only use a different account if the user explicitly asks for it (e.g. "cash", "BCR", "Revolut EUR"), or the vendor history above records a specific account for this venue.
 13. "toAccountId": ONLY provide this if type is "Transfer", and it MUST be a different account ID than "accountId" — a transfer needs two distinct real accounts, not the same one twice.
-14. "tripId": set this whenever the transaction belongs to a trip, using the ID verbatim. A transaction whose "date" falls inside a trip's date range belongs to that trip — this is the normal case and needs no other evidence, so an expense dated today while a trip is marked ONGOING NOW gets that trip's ID. A currency matching a trip's own currency is corroborating evidence (30 PLN during the Poland trip is that trip's spending) and settles which one is meant when two trips overlap. Do NOT link a trip for a recurring bill that merely happens to renew during it. If a transaction genuinely can't be placed, omit the field — a later step re-checks the dates and will fill it in.
-15. When a transaction has a "tripId", its "categoryId" MUST be the Travel category. Travel is where trip spending lives in this app, and the detail belongs in "description" instead ("Lunch at Restaurant", not a Dining category). This applies to lunches, taxis, museum tickets and everything else bought while away.`;
+14. "tripId": use your judgement about whether this is trip spending, and set the ID verbatim when it is. The date is the strongest signal — an expense dated inside a trip's range is usually that trip's, and a trip marked ONGOING NOW is the obvious candidate for anything logged today. A matching currency corroborates (30 PLN during the Poland trip) and is the usual tie-breaker when two trips overlap, but it is never required: a trip that spends RON, or one with no currency listed at all, is just as much a trip. Think about the exceptions rather than applying the date rule mechanically — a domestic subscription renewing mid-trip, or an unrelated online order, is not trip spending. If two trips overlap and nothing distinguishes them, omit the field rather than guessing.
+15. When a transaction has a "tripId", its "categoryId" MUST be the Travel category. This is a constraint of the app rather than a preference: it only stores a trip on Travel-category transactions, and the travel analytics read the same category — a trip on a Dining row is silently lost. Put the detail in "description" instead ("Lunch at Restaurant").
+16. Amounts on a trip: if you link a trip whose currency is something other than RON and the user did NOT name a currency, the amount is almost certainly in that trip's currency — set "originalAmount" and "originalCurrency" accordingly, per rule 6. A currency the user did name always wins ("30 lei" on a Poland trip is 30 RON). If the trip spends RON or lists no currency, leave the amount as plain RON.`;
 
   const rawText = await callClaude(apiKey, {
     system: systemPrompt,

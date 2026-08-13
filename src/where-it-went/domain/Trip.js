@@ -62,6 +62,26 @@ export function getTripStatusBadge(status) {
   }
 }
 
+/**
+ * Is this date inside the trip's window?
+ *
+ * Comparison is lexicographic on `YYYY-MM-DD`, the same way `lib/period` does
+ * it. A one-sided window counts — a trip with a start and no end is still
+ * running — and a trip with no dates at all can only speak through `Status`.
+ *
+ * Used to tell the AI parser which trip is running right now; it is deliberately
+ * *not* used to decide what a transaction belongs to. See `lib/aiParser.js`.
+ */
+export function isTripOngoing(trip, dateStr) {
+  if (!trip || !dateStr) return false;
+  const start = String(trip.startDate || '').slice(0, 10);
+  const end = String(trip.endDate || '').slice(0, 10);
+  if (!start && !end) return false;
+  if (start && dateStr < start) return false;
+  if (end && dateStr > end) return false;
+  return true;
+}
+
 export function belongsToTrip(tx, tripId) {
   if (!tripId || tripId === 'all') return true;
   if (tripId === 'unassigned') {

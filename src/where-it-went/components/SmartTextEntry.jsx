@@ -18,11 +18,11 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
   // that gets a checkpoint, matching how the rest of the app treats delete
   // (single and bulk delete both confirm; adding never has).
   const [pendingDeleteBatch, setPendingDeleteBatch] = useState(null);
-  // What the parser decided for you rather than read off your words — the
-  // trip, the currency, the category. Shown because three silent corrections
-  // at once is the kind of help that becomes mistrust the first time it's
-  // wrong; the card carries a one-tap way to fix it.
-  const [inferenceNotice, setInferenceNotice] = useState(null);
+  // Shown when a saved transaction came out attached to a trip. Filing
+  // something under Travel on a trip is a judgement the parser made from
+  // context rather than from your words, and a judgement you can't see is one
+  // you can't correct — so it's stated, with one tap to open the row.
+  const [tripNotice, setTripNotice] = useState(null);
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
 
@@ -96,7 +96,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
    */
   const executeBatch = async (txs, { withNora, withNoraCount }) => {
     const addedIds = [];
-    const inferences = [];
+    const onTrip = [];
     let subToPrompt = null;
     let added = 0, updated = 0, deleted = 0;
     let failure = null;
@@ -104,30 +104,24 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
     for (const t of txs) {
       if (t.isSubscription) subToPrompt = t;
 
-      // `_inferred` is annotation for the UI, not part of the record — it must
-      // never reach a write (demo mode stores whatever it is handed verbatim).
-      const { _inferred, ...tx } = t;
-
       // Stamp the group count so applyNoraSplit calculates the correct fraction.
       // withNoraCount=2 → 50/50, withNoraCount=3 → 1/3 Nora / 2/3 you, etc.
-      const tWithFlag = withNora ? { ...tx, withNoraCount } : tx;
+      const tWithFlag = withNora ? { ...t, withNoraCount } : t;
 
       try {
-        if (tx.action === 'update' && tx.id) {
-          await onUpdate(tx.id, tx);
+        if (t.action === 'update' && t.id) {
+          await onUpdate(t.id, t);
           updated++;
-        } else if (tx.action === 'delete' && tx.id) {
+        } else if (t.action === 'delete' && t.id) {
           if (onDelete) {
-            await onDelete(tx.id);
+            await onDelete(t.id);
             deleted++;
           }
         } else {
           const saved = await onAdd(tWithFlag);
           if (saved && saved.id) addedIds.push(saved.id);
           added++;
-          if (_inferred && Object.keys(_inferred).length > 0) {
-            inferences.push({ id: saved && saved.id ? saved.id : null, tx, inferred: _inferred });
-          }
+          if (t.tripId) onTrip.push({ id: saved && saved.id ? saved.id : null, tx: t });
         }
       } catch (err) {
         failure = err;
@@ -159,8 +153,8 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
       setText('');
     }
 
-    if (inferences.length > 0) {
-      setInferenceNotice({ ...inferences[0], others: inferences.length - 1 });
+    if (onTrip.length > 0) {
+      setTripNotice({ ...onTrip[0], others: onTrip.length - 1 });
     }
 
     // Refresh on any partial progress too, not only a clean run — otherwise a
@@ -174,7 +168,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
     e.preventDefault();
     if (!text.trim() || isParsing) return;
     setDetectedSubscription(null);
-    setInferenceNotice(null);
+    setTripNotice(null);
 
     // Detect and strip the full "with Nora [and ...]" group BEFORE AI parsing.
     // If the AI sees names it maps them as categories, swallowing the split signal.
@@ -376,17 +370,15 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
         </div>
       )}
 
-      {inferenceNotice && !detectedSubscription && (() => {
-        const { tx, inferred, id, others } = inferenceNotice;
-        const parts = [];
-        if (inferred.trip) parts.push(`linked it to ✈️ ${inferred.trip.name}`);
-        if (inferred.currency) parts.push(`read the amount as ${inferred.currency}`);
-        if (inferred.category) parts.push(`filed it under ${inferred.category.name}`);
-        // "and" before the last clause — three comma-separated fragments read
-        // as a list of fields rather than a sentence about one transaction.
-        const sentence = parts.length > 1
-          ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
-          : parts[0];
+      {tripNotice && !detectedSubscription && (() => {
+        const { tx, id, others } = tripNotice;
+        const trip = (trips || []).find(t => t.id === tx.tripId);
+        const category = (categories || []).find(c => c.id === tx.categoryId);
+        const parts = [`on ✈️ ${trip ? trip.name : 'your trip'}`];
+        if (category) parts.push(`under ${category.name}`);
+        if (tx.originalCurrency && tx.originalAmount != null) {
+          parts.push(`as ${tx.originalAmount} ${tx.originalCurrency}`);
+        }
 
         return (
           <div style={{
@@ -412,7 +404,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
                 {tx.description || 'Transaction added'}
               </div>
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
-                {`Because you're on a trip, I ${sentence}.`}
+                {`Logged ${parts.join(', ')}.`}
                 {others > 0 ? ` Same for ${others} more.` : ''}
               </div>
             </div>
@@ -421,7 +413,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
                 <button
                   type="button"
                   onClick={() => {
-                    setInferenceNotice(null);
+                    setTripNotice(null);
                     onEditTransaction(id);
                   }}
                   style={{ padding: '6px 12px', border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-ink)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}
@@ -431,7 +423,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
               )}
               <button
                 type="button"
-                onClick={() => setInferenceNotice(null)}
+                onClick={() => setTripNotice(null)}
                 style={{ padding: '6px 12px', border: 'none', background: 'var(--color-accent)', color: 'var(--color-on-accent)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-bold)' }}
               >
                 Got it

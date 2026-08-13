@@ -209,7 +209,7 @@ describe('SmartTextEntry', () => {
     expect(onSuccess).toHaveBeenCalledWith(['tx-1']);
   });
 
-  it('says what it worked out from the trip, and offers to change it', async () => {
+  it('says when a transaction landed on a trip, and offers to change it', async () => {
     const onAdd = vi.fn().mockResolvedValue({ id: 'tx-9' });
     const onEditTransaction = vi.fn();
 
@@ -221,39 +221,33 @@ describe('SmartTextEntry', () => {
       description: 'Lunch at Restaurant',
       categoryId: 'cat-travel',
       tripId: 'trip-poland',
-      _inferred: {
-        trip: { id: 'trip-poland', name: 'Poland Autumn' },
-        currency: 'PLN',
-        category: { id: 'cat-travel', name: 'Travel' },
-      },
     }]);
 
     render(
       <SmartTextEntry
         config={{ features: { aiParser: true }, claudeApiKey: 'key' }}
+        trips={[{ id: 'trip-poland', name: 'Poland Autumn' }]}
+        categories={[{ id: 'cat-travel', name: 'Travel', type: 'Expense' }]}
         onAdd={onAdd}
         onEditTransaction={onEditTransaction}
       />,
     );
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '30 for lunch' } });
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '30 zl for lunch' } });
     fireEvent.submit(screen.getByRole('textbox'));
 
     await waitFor(() => {
-      expect(screen.getByText(/linked it to/)).toBeDefined();
+      expect(screen.getByText(/Logged on/)).toBeDefined();
     });
     expect(screen.getByText(/Poland Autumn/)).toBeDefined();
-    expect(screen.getByText(/read the amount as PLN/)).toBeDefined();
-    expect(screen.getByText(/filed it under Travel/)).toBeDefined();
-
-    // The annotation is for the reader, never for the record.
-    expect(onAdd).toHaveBeenCalledWith(expect.not.objectContaining({ _inferred: expect.anything() }));
+    expect(screen.getByText(/under Travel/)).toBeDefined();
+    expect(screen.getByText(/as 30 PLN/)).toBeDefined();
 
     fireEvent.click(screen.getByText('Change'));
     expect(onEditTransaction).toHaveBeenCalledWith('tx-9');
   });
 
-  it('stays quiet when nothing was inferred', async () => {
+  it('stays quiet for a transaction with no trip', async () => {
     const onAdd = vi.fn().mockResolvedValue({ id: 'tx-10' });
     parseTextWithAI.mockResolvedValue([
       { action: 'create', amount: 15, description: 'Lunch', categoryId: 'cat-food' },
