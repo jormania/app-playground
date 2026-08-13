@@ -53,10 +53,18 @@ export function buildShareText(options: ShareTextOptions): string {
 
   const round = iteration === 0 ? 'Daily' : `Endless #${iteration}`
   const score = won ? `${guesses.length}/6` : 'X/6'
-  const marks = `${hardMode ? '*' : ''}${hintUsed ? '?' : ''}`
+
+  // Spelled out rather than the `*`/`?` shorthand this used to append straight onto the
+  // score (e.g. "3/6*?") — that read as a typo to anyone who hadn't memorized what each
+  // symbol meant, including the player who just sent it. A legend for the symbols existed
+  // in code but was never actually shown anywhere, to the sender or the recipient.
+  const notes: string[] = []
+  if (hardMode) notes.push('Hard Mode')
+  if (hintUsed) notes.push('used a hint')
+  const noteSuffix = notes.length > 0 ? ` (${notes.join(', ')})` : ''
 
   const lines = [
-    `Lexi5 ${round} · ${dictionaryLabel} · ${score}${marks}`,
+    `Lexi5 ${round} · ${dictionaryLabel} · ${score}${noteSuffix}`,
     '',
     buildEmojiGrid(options),
   ]
@@ -90,10 +98,4 @@ export async function shareOrCopy(text: string): Promise<ShareOutcome> {
   } catch {
     return 'failed'
   }
-}
-
-/** Legend for the marks appended to a score, for the UI to explain them. */
-export const SHARE_MARKS = {
-  hardMode: '* Hard Mode',
-  hintUsed: '? used a hint',
 }

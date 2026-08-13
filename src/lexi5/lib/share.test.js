@@ -56,10 +56,13 @@ describe('buildShareText', () => {
     expect(buildShareText({ ...base, won: false }).split('\n')[0]).toContain('X/6')
   })
 
-  it('marks hard mode and hints so a score never claims to be unaided', () => {
-    expect(buildShareText({ ...base, hardMode: true }).split('\n')[0]).toContain('2/6*')
-    expect(buildShareText({ ...base, hintUsed: true }).split('\n')[0]).toContain('2/6?')
-    expect(buildShareText({ ...base, hardMode: true, hintUsed: true }).split('\n')[0]).toContain('2/6*?')
+  it('spells out hard mode and hint use so a score never claims to be unaided', () => {
+    // Plain words rather than the old `*`/`?` shorthand, which read as a typo to anyone
+    // who hadn't memorized what the symbols meant — including the player sending it.
+    expect(buildShareText({ ...base, hardMode: true }).split('\n')[0]).toContain('2/6 (Hard Mode)')
+    expect(buildShareText({ ...base, hintUsed: true }).split('\n')[0]).toContain('2/6 (used a hint)')
+    expect(buildShareText({ ...base, hardMode: true, hintUsed: true }).split('\n')[0])
+      .toContain('2/6 (Hard Mode, used a hint)')
   })
 
   it('appends the link only when one is given', () => {
