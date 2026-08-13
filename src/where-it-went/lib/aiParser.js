@@ -189,8 +189,9 @@ export async function hardenTransaction(tx, { categories = [], accounts = [], tr
 
   // Recording "50 RON" against a RON amount is a redundant second figure
   // everywhere it's displayed — the base currency is what an unmarked amount
-  // already means. The prompt asks for RON explicitly in one case (see rule
-  // 6), so this normalizes it away rather than writing it through.
+  // already means. Rule 16 ("a currency the user did name always wins") makes
+  // an explicit RON a plausible reply, so it's normalized away here rather
+  // than written through.
   if (next.originalCurrency === BASE_CURRENCY) {
     next.originalCurrency = '';
     next.originalAmount = null;
