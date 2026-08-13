@@ -254,6 +254,18 @@ export async function hardenTransaction(tx, { categories = [], accounts = [], tr
     next.originalAmount = null;
   }
 
+  // An `originalAmount` that isn't a number can't be converted from, and would
+  // reach Notion as a `Number(...) || 0` zero in the Original Amount column.
+  if (next.originalAmount != null) {
+    const originalNumeric = Number(next.originalAmount);
+    if (!Number.isFinite(originalNumeric) || originalNumeric <= 0) {
+      next.originalAmount = null;
+      next.originalCurrency = '';
+    } else {
+      next.originalAmount = originalNumeric;
+    }
+  }
+
   if (next.originalCurrency && next.originalAmount != null && canConvert(next.originalCurrency)) {
     try {
       const result = await fetchRate(next.originalCurrency, BASE_CURRENCY, next.date || new Date());
@@ -265,13 +277,35 @@ export async function hardenTransaction(tx, { categories = [], accounts = [], tr
     }
   }
 
+  // Last gate before this reaches Notion, where `Number(tx.amount) || 0` turns
+  // anything unparseable into a silent zero — a row that then reads as 0 L in
+  // every total and, if it carries a foreign currency, can't be repaired in
+  // the edit form either. Reached when the model returns a malformed amount
+  // ("73 zł", null, 0) *and* the live-rate lookup that would have replaced it
+  // didn't land.
+  const numericAmount = Number(next.amount);
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+    if (next.action === 'update') {
+      // Leave the stored figure alone rather than zeroing it. Every other
+      // field in the update still applies.
+      delete next.amount;
+    } else {
+      // Nothing usable to record. `hardenTransactions` drops it, and the entry
+      // box says it couldn't find an amount — which is the truth.
+      next.amount = null;
+    }
+  } else {
+    next.amount = numericAmount;
+  }
+
   return next;
 }
 
 /**
- * Hardens a whole parsed batch, then drops any Transfer that still doesn't
- * resolve to two distinct real accounts — the one case above that's a reason
- * to discard the transaction rather than repair a field on it.
+ * Hardens a whole parsed batch, then drops the two shapes that are a reason to
+ * discard a transaction rather than repair a field on it: a Transfer that
+ * doesn't resolve to two distinct real accounts, and a create with no usable
+ * amount.
  */
 export async function hardenTransactions(txs, context = {}) {
   // Built once for the batch: it's a full pass over the ledger, and every
@@ -282,8 +316,9 @@ export async function hardenTransactions(txs, context = {}) {
   };
   const resolved = await Promise.all(txs.map(tx => hardenTransaction(tx, withMemory)));
   return resolved.filter(t => {
-    if (t.type !== 'Transfer') return true;
     if (t.action === 'delete') return true;
+    if (t.action !== 'update' && t.amount == null) return false;
+    if (t.type !== 'Transfer') return true;
     return !!t.toAccountId && t.toAccountId !== t.accountId;
   });
 }

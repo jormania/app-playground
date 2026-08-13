@@ -280,3 +280,28 @@ describe('NotionClient — reads', () => {
     expect(tx.categoryId).toBe('');
   });
 });
+
+describe('amount validation', () => {
+  it('refuses to create a transaction with an unusable amount rather than storing zero', async () => {
+    const client = new NotionClient('tok', { transactions: 'db-tx' });
+    for (const amount of [undefined, null, 0, -5, '73 zł', NaN]) {
+      await expect(client.addTransaction({ description: 'x', date: '2026-08-13', amount }))
+        .rejects.toThrow(/amount greater than zero/);
+    }
+  });
+
+  it('refuses to update a transaction to an unusable amount', async () => {
+    const client = new NotionClient('tok', { transactions: 'db-tx' });
+    await expect(client.updateTransaction('tx-1', { amount: 0 }))
+      .rejects.toThrow(/amount greater than zero/);
+  });
+
+  it('accepts a numeric string', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(jsonResponse({ id: 'new' })));
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NotionClient('tok', { transactions: 'db-tx' });
+    await client.addTransaction({ description: 'x', date: '2026-08-13', amount: '42' });
+    const sentBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sentBody.body.properties['Amount (RON)']).toEqual({ number: 42 });
+  });
+});

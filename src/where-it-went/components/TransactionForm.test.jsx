@@ -419,5 +419,39 @@ describe('TransactionForm', () => {
       fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '20' } });
       await waitFor(() => expect(screen.getByLabelText('Amount in RON').value).toBe('100'));
     });
+
+    it('repairs a foreign row stored with a zero RON amount instead of preserving it', async () => {
+      // "Keep the saved figure" protects a real one. A row stored as 0 — which
+      // `Number(tx.amount) || 0` in notionClient used to produce silently —
+      // isn't a decision to preserve, and refusing to restate it left the form
+      // permanently unsaveable while a good rate sat displayed beside it.
+      fetchRate.mockResolvedValue({ rate: 1.22, date: '2026-08-12' });
+      const initialTx = {
+        id: 'tx1', description: "Meal at McDonald's", amount: 0, originalAmount: 73,
+        originalCurrency: 'PLN', date: '2026-08-13', type: 'Expense',
+        categoryId: 'c1', accountId: 'a2', tags: []
+      };
+      render(<TransactionForm categories={categories} accounts={multiCurrencyAccounts} initialTx={initialTx} onSave={vi.fn()} onCancel={vi.fn()} onDelete={vi.fn()} />);
+
+      await waitFor(() => expect(screen.getByLabelText('Amount in RON').value).toBe('89'));
+    });
+
+    it('does not blame the exchange rate when a rate is available', async () => {
+      fetchRate.mockResolvedValue({ rate: 1.22, date: '2026-08-12' });
+      const initialTx = {
+        id: 'tx1', description: "Meal at McDonald's", amount: 89, originalAmount: 73,
+        originalCurrency: 'PLN', date: '2026-08-13', type: 'Expense',
+        categoryId: 'c1', accountId: 'a2', tags: []
+      };
+      render(<TransactionForm categories={categories} accounts={multiCurrencyAccounts} initialTx={initialTx} onSave={vi.fn()} onCancel={vi.fn()} onDelete={vi.fn()} />);
+
+      await waitFor(() => expect(screen.getByLabelText('Amount in RON').value).toBe('89'));
+      // Clearing it by hand marks it touched, so nothing refills it.
+      fireEvent.change(screen.getByLabelText('Amount in RON'), { target: { value: '0' } });
+      fireEvent.submit(document.querySelector('form'));
+
+      expect(await screen.findByText(/must be greater than zero/i)).toBeDefined();
+      expect(screen.queryByText(/no exchange rate was available/i)).toBeNull();
+    });
   });
 });

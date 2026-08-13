@@ -41,6 +41,26 @@
   animation: dialogScaleOut 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* On a phone the 720px cap is the binding constraint, not the viewport: a tall
+   handset has 780-870px of it, so a form measured to fit was still scrolling —
+   and scrolling *more* for anyone using Android's larger text sizes, where the
+   same content needs ~10% more height. The cap earns its keep on desktop,
+   where a 900px-tall dialog looks absurd; here the viewport is the sensible
+   bound. Trimming the padding and header margin buys back another 20px, which
+   is roughly one form row. */
+@media (max-width: 480px) {
+  .overlay {
+    padding: var(--space-sm, 12px);
+  }
+  .dialog {
+    max-height: 92vh;
+    padding: var(--space-md, 16px);
+  }
+  .header {
+    margin-bottom: var(--space-sm, 12px);
+  }
+}
+
 @keyframes overlayFadeIn {
   from { opacity: 0; }
   to { opacity: 1; }

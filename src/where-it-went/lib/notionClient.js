@@ -19,6 +19,26 @@ export class NotionError extends Error {
 
 const relation = (id) => ({ relation: id ? [{ id }] : [] });
 /**
+ * The RON amount, or a refusal to write the row.
+ *
+ * This was `Number(tx.amount) || 0`, which turned anything unparseable — a
+ * malformed figure from the AI parser, an undefined field from a caller that
+ * forgot one — into a transaction stored as **0**. Nothing surfaced: the write
+ * succeeded, the row joined the ledger reading 0 L, and every total quietly
+ * counted it. Worse for a foreign-currency row, where the edit form treats a
+ * saved RON figure as authoritative and so had no way to repair it.
+ *
+ * Failing loudly is strictly better: the entry surfaces the error, and nothing
+ * is written at all.
+ */
+const requireAmount = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    throw new NotionError(`A transaction needs an amount greater than zero (got ${JSON.stringify(value)}).`, 0);
+  }
+  return numeric;
+};
+/**
  * Notion splits any styled text into several runs, so a note typed in Notion with
  * one bold word or a link arrives as `[{...}, {...}, ...]`. Reading `[0].plain_text`
  * truncated it at the first run — join them instead.
@@ -234,7 +254,7 @@ export class NotionClient {
         properties: {
           'Description': title(tx.description),
           'Date': { date: { start: String(tx.date).slice(0, 10) } },
-          'Amount (RON)': { number: Number(tx.amount) || 0 },
+          'Amount (RON)': { number: requireAmount(tx.amount) },
           'Type': { select: { name: tx.type || 'Expense' } },
           // Empty relations must be `[]`, not `[{ id: '' }]` — Notion 400s on the latter.
           'Category': relation(tx.categoryId),
@@ -261,7 +281,7 @@ export class NotionClient {
     const properties = {};
     if (updates.description !== undefined) properties['Description'] = title(updates.description);
     if (updates.date !== undefined) properties['Date'] = { date: { start: String(updates.date).slice(0, 10) } };
-    if (updates.amount !== undefined) properties['Amount (RON)'] = { number: Number(updates.amount) || 0 };
+    if (updates.amount !== undefined) properties['Amount (RON)'] = { number: requireAmount(updates.amount) };
     if (updates.type !== undefined) properties['Type'] = { select: { name: updates.type } };
     if (updates.categoryId !== undefined) properties['Category'] = relation(updates.categoryId);
     if (updates.accountId !== undefined) properties['Account'] = relation(updates.accountId);
