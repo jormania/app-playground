@@ -432,6 +432,37 @@ describe('hardenTransaction — vendor memory and currency normalisation', () =>
     expect(result.categoryId).toBe('cat-salary');
   });
 
+  it('pairs a trip with the Travel category, since the schema cannot hold any other combination', async () => {
+    // Measured against the real model: on an ambiguous vendor it sometimes
+    // sets a tripId while keeping a non-Travel category — a row the manual
+    // form would silently strip the trip from on its next save.
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 80, date: '2026-10-06', description: 'Groceries at Mega Image', categoryId: 'cat-food', tripId: 'trip-poland' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [ongoingTrip] },
+    );
+
+    expect(result.tripId).toBe('trip-poland');
+    expect(result.categoryId).toBe('cat-travel');
+  });
+
+  it('leaves the category alone when no trip is attached', async () => {
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 80, date: '2026-10-06', description: 'Groceries at Mega Image', categoryId: 'cat-food' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [ongoingTrip] },
+    );
+
+    expect(result.categoryId).toBe('cat-food');
+  });
+
+  it('does not force Travel onto trip-tagged income', async () => {
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Income', amount: 200, date: '2026-10-06', description: 'Refund', categoryId: 'cat-salary', tripId: 'trip-poland' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [ongoingTrip] },
+    );
+
+    expect(result.categoryId).toBe('cat-salary');
+  });
+
   it('prefers the account actually used on this trip when the model gave none', async () => {
     const transactions = [
       { description: 'Taxi', categoryId: 'cat-travel', accountId: 'acc-cash', tripId: 'trip-poland', type: 'Expense' },

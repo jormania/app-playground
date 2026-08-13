@@ -1372,8 +1372,43 @@ vendor memory and live FX conversion, and the two parsers can no longer file
 the same sentence differently. It still doesn't know about trips; that's the
 AI path's job.
 
-30 new tests (17 vendor memory, 6 on the hardening pipeline, 5 on
-`isTripOngoing`, 2 on the notice card); repo suite 2,528 → 2,558, typecheck and
+### Measured against the real model, three times over
+
+The prompt was run against `claude-haiku-4-5` on eleven synthetic scenarios —
+an ongoing PLN trip, an ongoing trip with **no currency recorded**, two
+overlapping trips, and no trip at all — because a prompt nobody has run is a
+guess. Two findings changed the code:
+
+- **Guidance buried in the rules didn't survive contact.** With trip linking
+  described only in rule 14, twelve rules below the trip list, currency ended
+  up doing all the work: `30 PLN for lunch` linked correctly, but a bare
+  `25 for coffee` mid-trip linked nothing, and the blank-currency trip never
+  linked anything at all — the exact case the deterministic layer was removed
+  to serve. Stating the situation **where the trips are listed** (`>>> THE USER
+  IS ON A TRIP RIGHT NOW: …`) rather than as a rule to apply fixed all three.
+  The callout is generated per request: one ongoing trip gets a definite
+  instruction naming its id; several get "one of these, use the currency to
+  tell which, omit if you can't"; a trip with no currency is told in so many
+  words that this doesn't make it any less of a trip.
+- **The model occasionally returns a state the schema can't hold.** Roughly one
+  reply in three on an ambiguous vendor set a `tripId` while keeping a
+  non-Travel category — a row the manual form would silently strip the trip
+  from on its next save. `hardenTransaction` now pairs the two. This is not
+  second-guessing the trip judgment (the model already made it); it resolves an
+  internally inconsistent answer in favour of the field the model went out of
+  its way to set.
+
+Final measured behaviour, stable across three consecutive runs: `30 PLN`,
+`30 zl` and a bare `25` during a PLN trip all land on the trip as Travel with
+the right currency; a bare amount on the no-currency trip links the trip and
+stays RON; `netflix 25` and an out-of-country supermarket stay off the trip;
+overlapping trips with no distinguishing currency link nothing; `50 lei` on a
+PLN trip stays domestic. The two judgment calls (`50 lei for a book`, a
+Romanian chain mid-trip) go the way the model reads them, which is the point of
+leaving them to it.
+
+33 new tests (17 vendor memory, 9 on the hardening pipeline, 5 on
+`isTripOngoing`, 2 on the notice card); repo suite 2,528 → 2,561, typecheck and
 eslint green. Verified in a browser against demo data with a PLN trip running
 today, using the keyword parser: "30 zl for lunch at restaurant" recorded 30
 PLN, and the trip notice card renders and opens the row. The ECB conversion

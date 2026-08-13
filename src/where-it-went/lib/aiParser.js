@@ -175,6 +175,21 @@ export async function hardenTransaction(tx, { categories = [], accounts = [], tr
     }
   }
 
+  // A trip on a non-Travel row is not a thing this app can store: the manual
+  // form drops `tripId` unless the category is Travel, so the link would
+  // silently vanish the next time the row was saved, and the travel analytics
+  // would never see it. The model is told this (rule 15) and mostly complies —
+  // measured at roughly one reply in three going the other way on an ambiguous
+  // vendor. This is not second-guessing its judgment about whether the trip
+  // belongs: it already said it does. It only resolves an answer the schema
+  // can't hold, in favour of the field the model went out of its way to set.
+  if (next.tripId && next.type === 'Expense') {
+    const travel = categories.find(c =>
+      c && c.id && c.active !== false && c.type !== 'Income'
+      && String(c.name || '').toLowerCase().includes('travel'));
+    if (travel && next.categoryId !== travel.id) next.categoryId = travel.id;
+  }
+
   if (next.type === 'Transfer') {
     if (!isValidId(next.toAccountId, validAccountIds) || next.toAccountId === next.accountId) {
       next.toAccountId = '';
@@ -294,6 +309,27 @@ export async function parseTextWithAI(text, accounts, categories, trips, apiKey,
     .map(t => formatTripLine(t, todayStr))
     .join('\n');
 
+  // Measured against the real model: with the trip guidance living only in the
+  // rules, twelve rules below the trip list, currency ended up doing all the
+  // work — a bare "25 for coffee" mid-trip linked nothing, and a trip whose
+  // currency isn't one of the registered sixteen (so it carries none at all)
+  // never linked anything. Stating the situation where the trips themselves
+  // are listed, rather than as a rule to apply, is what closed that gap.
+  const ongoing = (trips || []).filter(t => t && t.id && t.name && isTripOngoing(t, todayStr));
+  const ongoingCurrency = ongoing.length === 1
+    ? String(ongoing[0].currency || '').trim().toUpperCase()
+    : '';
+  const ongoingNote = ongoing.length === 1
+    ? `\n>>> THE USER IS ON A TRIP RIGHT NOW: ${ongoing[0].name}${ongoing[0].destination ? ` (${ongoing[0].destination})` : ''}, ID ${ongoing[0].id}.
+Everyday spending logged today — meals, coffee, taxis, tickets, shops, anything bought while away — is part of this trip. Set "tripId" to ${ongoing[0].id} and "categoryId" to the Travel category for it, mentioned currency or not. Leave the trip off only when the transaction clearly is not trip spending: a subscription renewing on its own schedule, a household bill, an online order shipped home.${
+  ongoingCurrency && ongoingCurrency !== BASE_CURRENCY
+    ? `\nThis trip spends ${ongoingCurrency}. An amount with NO currency named is therefore in ${ongoingCurrency}, not RON: set "originalAmount" to the figure the user said and "originalCurrency" to "${ongoingCurrency}". A currency the user does name wins instead ("50 lei" is 50 RON).`
+    : `\nThis trip has no currency recorded, so amounts stay plain RON unless the user names a currency. That does not make it any less of a trip.`}`
+    : ongoing.length > 1
+      ? `\n>>> THE USER IS ON ${ongoing.length} OVERLAPPING TRIPS RIGHT NOW: ${ongoing.map(t => `${t.name} (ID ${t.id})`).join(', ')}.
+Everyday spending logged today is trip spending and belongs to one of them, filed under Travel. Use the currency or anything else in the message to tell which; if genuinely nothing distinguishes them, omit "tripId" rather than guessing.`
+      : '';
+
   const recentList = recentTransactions
     .map(t => `- [ID: ${t.id}] ${t.date}: ${t.description} (${t.amount} ${t.currency || 'RON'})`)
     .join('\n');
@@ -353,6 +389,7 @@ ${accountList}
 
 Available Trips:
 ${tripList || 'None'}
+${ongoingNote}
 
 How this user has filed these vendors before (their own history — trust it over general knowledge):
 ${vendorList || 'None yet'}
