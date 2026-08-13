@@ -394,7 +394,7 @@ export function App() {
           <h1 className={styles.title}>Lexi5</h1>
           {gameState.iteration > 0 && (
             <span className={styles.roundBadge}>
-              Endless #{gameState.iteration}
+              Endless
               {dayRecord.run >= 2 && <> · {dayRecord.run} in a row</>}
             </span>
           )}

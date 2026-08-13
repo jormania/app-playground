@@ -324,7 +324,7 @@
   border-radius: 3px;
 }
 
-/* Title block, so the Endless round number can sit under the wordmark without
+/* Title block, so the Endless mode badge can sit under the wordmark without
    disturbing the header's three-column balance. */
 .titleBlock {
   flex: 2;

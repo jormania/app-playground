@@ -51,7 +51,10 @@ export interface ShareTextOptions extends ShareGridOptions {
 export function buildShareText(options: ShareTextOptions): string {
   const { dictionaryLabel, won, iteration, guesses, hardMode, hintUsed, url } = options
 
-  const round = iteration === 0 ? 'Daily' : `Endless #${iteration}`
+  // The number behind an Endless round is an internal, all-time-per-dictionary counter
+  // (how many Endless rounds you've ever started), not anything about this specific game —
+  // showing it here read as a meaningful round count to anyone receiving the message.
+  const round = iteration === 0 ? 'Daily' : 'Endless'
   const score = won ? `${guesses.length}/6` : 'X/6'
 
   // Spelled out rather than the `*`/`?` shorthand this used to append straight onto the

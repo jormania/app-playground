@@ -48,8 +48,11 @@ describe('buildShareText', () => {
     expect(buildShareText(base).split('\n')[0]).toBe('Lexi5 Daily · Standard · 2/6')
   })
 
-  it('names the endless round number', () => {
-    expect(buildShareText({ ...base, iteration: 3 }).split('\n')[0]).toContain('Endless #3')
+  it('labels an Endless round without its internal, all-time-per-dictionary round number', () => {
+    // That count is meaningless to whoever receives the message (and confusing to the
+    // player themselves — it doesn't reset daily and isn't "this is your Nth game today").
+    expect(buildShareText({ ...base, iteration: 3 }).split('\n')[0]).toContain('Endless')
+    expect(buildShareText({ ...base, iteration: 3 }).split('\n')[0]).not.toContain('#')
   })
 
   it('reports a loss as X/6', () => {
