@@ -55,6 +55,17 @@ export async function putPhoto(garmentId: string, blob: Blob): Promise<string> {
     // A full or unavailable IndexedDB shouldn't break adding a garment; the
     // photo just gets re-fetched later.
   }
+  // Forget any existing URL first. `toObjectUrl` deliberately REUSES one when
+  // it can, which is exactly right on a cache read and exactly wrong here:
+  // retaking a garment's photo wrote the new bytes to IndexedDB and then handed
+  // back a URL still pointing at the old ones, so the tile carried on showing
+  // the previous photo until a full page reload.
+  //
+  // Dropped rather than revoked, following the note above: a tile mounted right
+  // now may still be rendering the old URL, and revoking under it turns a
+  // visible photo into a broken image. One orphaned URL per retake is bounded
+  // by how often anyone retakes a photo.
+  objectUrls.delete(garmentId)
   return toObjectUrl(garmentId, blob)
 }
 

@@ -53,10 +53,18 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
   const garmentPhotoUrl = useGarmentPhoto(garment)
   const currentPhotoUrl = previewUrl || garmentPhotoUrl
   
+  // Keyed on the garment's ID, not the garment OBJECT. App hands down a fresh
+  // object whenever anything about it changes — and one of those changes is
+  // Favourite, from this modal's own menu — so depending on identity meant
+  // tapping Favourite mid-edit silently reset the name, tags and wardrobes back
+  // to what was stored. `saving` is reset here too: `setRetiredStatus` closed
+  // the modal without clearing it, and since the modal returns null rather than
+  // unmounting, that left every later open stuck in a disabled "Saving…" state.
   useEffect(() => {
     if (open && garment) {
       setFile(null)
       setError('')
+      setSaving(false)
       setMenuOpen(false)
       setRetireConfirm(false)
       setDeleteConfirm(false)
@@ -70,14 +78,40 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
       })
       setWardrobeIds(garment.wardrobeIds)
     }
-  }, [open, garment])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, garment?.id])
 
+  // Same trap as AddGarment's: without clearing the state when the file goes,
+  // `previewUrl` kept a revoked URL from the *previous* garment, and opening
+  // the next one showed the last one's photo until its own loaded over it.
   useEffect(() => {
-    if (!file) return
+    if (!file) {
+      setPreviewUrl(null)
+      return
+    }
     const url = URL.createObjectURL(file)
     setPreviewUrl(url)
     return () => URL.revokeObjectURL(url)
   }, [file])
+
+  // A dropdown you can only dismiss by picking something from it is a trap on
+  // a phone, where "tap somewhere else" is the reflex.
+  useEffect(() => {
+    if (!menuOpen) return
+    const close = () => setMenuOpen(false)
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false) }
+    // Deferred to the next frame so the click that OPENED it doesn't
+    // immediately close it again.
+    const id = setTimeout(() => {
+      document.addEventListener('click', close)
+      document.addEventListener('keydown', onKey)
+    }, 0)
+    return () => {
+      clearTimeout(id)
+      document.removeEventListener('click', close)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [menuOpen])
 
   if (!garment) return null
 
@@ -165,6 +199,7 @@ export default function GarmentDetailsModal({ garment, config, wardrobes, open, 
       onClose()
     } catch (err) {
       setError((err as Error).message)
+    } finally {
       setSaving(false)
     }
   }

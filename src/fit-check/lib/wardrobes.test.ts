@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   sortWardrobes, activeWardrobes, nextOrder, isGarmentHidden, unassignedGarments,
-  resolveFilter, visibleGarments, wardrobesForGarment, garmentCount,
+  resolveFilter, wardrobeIdOf, visibleGarments, wardrobesForGarment, garmentCount,
   checkWardrobeName, describeDeletion, isLastActive, type Wardrobe,
 } from './wardrobes.ts'
 import type { Garment } from './types.ts'
@@ -103,6 +103,25 @@ describe('resolveFilter', () => {
     // permanently unreachable, with no way to open it and Unretire).
     expect(resolveFilter('retired', [mum, dad])).toBe('retired')
     expect(resolveFilter('retired', [])).toBe('retired')
+  })
+})
+
+describe('wardrobeIdOf', () => {
+  it('passes a real wardrobe id through', () => {
+    expect(wardrobeIdOf('mum')).toBe('mum')
+  })
+
+  it('refuses to hand back the retired sentinel as an id', () => {
+    // The other half of the sentinel's story. Passing it through is right when
+    // it selects a VIEW and wrong the moment it becomes DATA: recording a
+    // verdict stamps the current filter onto the Outfit row's Wardrobes
+    // relation, and Notion rejects a relation containing "retired" with a 400
+    // that fails the entire write, not just that field.
+    expect(wardrobeIdOf('retired')).toBe(null)
+  })
+
+  it('treats All as no wardrobe', () => {
+    expect(wardrobeIdOf(null)).toBe(null)
   })
 })
 

@@ -749,3 +749,143 @@ left as-is — it runs once per generation, before any swap, so it doesn't
 violate it.
 
 Regression suite: 2363 tests / 196 files, typecheck and lint clean.
+
+### R2 — "It keeps saying the same thing" (2026-08-13)
+
+Nora's report: the outfit ideas repeat. A full audit followed, on Gabriel's
+call — the recommender first, then every screen around it.
+
+**The engine wasn't broken. It was too deterministic.**
+
+Worth stating precisely, because the obvious fix is the wrong one. `recommend()`
+is a pure function of (wardrobe, weather, mood, date), and M4 committed to that
+for four reasons still worth keeping: instant, offline, testable, explicable.
+Randomness would buy variety and cost all four.
+
+The actual fault was narrower. Every rule in the file scores in **whole
+numbers**, so a real wardrobe throws up ties constantly — three Mid casual tops
+in October score identically — and ties broke on `id.localeCompare`. The
+alphabetically-first garment therefore won every tie, **every day, forever**.
+The date was already an input and simply wasn't being used.
+
+So: a per-garment offset hashed from `id + date + variety`, deliberately in
+`[0, 1)` — strictly smaller than the smallest real signal. It reorders garments
+the scorer considers **equal** and can do nothing else; a puffer coat still
+can't win in July, and there's a test running the whole of February to say so.
+Determinism is untouched: same day, same inputs, same answer.
+
+Four more things fed the same complaint, all fixed:
+
+- **Nothing ever remembered being turned down.** A suggestion skipped this
+  morning came back verbatim this afternoon. `ctx.avoidIds` now carries what
+  today already answered (from the history rows, keyed the same way a
+  suggestion is — one exported `outfitKey`, not two joins that could drift)
+  plus anything rerolled past this session. With a hard rule behind it: if
+  honouring the list would leave **nothing**, it's ignored and the outfits come
+  back. Same call this file already made about a single pair of shoes.
+- **The recency window was three days**, so Monday's shirt was back in the
+  running on Thursday and the same handful of clothes circled all week. Now
+  −4 today, −3 for two days, −1 for a week. A `lastWorn` in the *future* (clock
+  change, hand-edited Notion row) produced a negative day count that fell
+  through every branch untouched; it now counts as worn today.
+- **No route to "none of these"** except changing the mood. Today gained
+  **Show me something else** — bumps `variety`, and pushes the current three
+  onto the avoid list, so the next set is genuinely different rather than
+  reshuffled.
+- **Accessories were dead weight.** `Accessory` has been in the vocabulary since
+  M1, is in the demo fixtures, renders in the grid — and no outfit had ever
+  included one. They now join when they earn it: something warm when it's
+  actually cold or windy, or anything matching a mood she deliberately picked.
+  Never two, and — unlike shoes — *excluded* after one use rather than merely
+  discouraged. Repeating the only pair of shoes beats going barefoot; an outfit
+  with no scarf is already a complete outfit, and three cards wearing the same
+  scarf just look copy-pasted.
+
+**Two real bugs in the same file, both from M8:**
+
+- **The cards were in the wrong order.** M8's "prioritise the most complete
+  outfit" sorted purely on garment count, which let a four-piece mediocre outfit
+  lead over a three-piece excellent one — the best suggestion routinely wasn't
+  first. Now sorted on coverage (is there anything on your feet) *then* score,
+  which keeps the intent and restores the meaning of "best".
+- **A top with nothing to wear it with stopped the whole loop.** `if (!bottom)
+  break` meant a wardrobe of dresses plus one lonely top returned **nothing at
+  all** whenever the top happened to outscore the dresses. The top is simply not
+  a viable anchor; the loop now falls through to the dress.
+
+**Bugs found auditing the rest of the app** — every one of these was reachable
+by hand, none was covered by a test:
+
+- **Retake was a dead end.** `AddGarment` set `file` to null, the effect's
+  cleanup revoked the object URL, and nothing cleared `previewUrl` — so the
+  screen kept rendering a now-broken `<img>` and the "Take a photo" button never
+  came back. The identical bug in `GarmentDetailsModal` showed the *previous*
+  garment's photo when you opened the next one.
+- **Retiring a garment left the modal permanently disabled.** `setRetiredStatus`
+  cleared `saving` only on the error path, and the modal returns `null` rather
+  than unmounting — so its state survived, and every later open was stuck in a
+  greyed-out "Saving…".
+- **Favouriting from the modal's menu wiped whatever you were editing.** Its
+  reset effect depended on the garment *object*, and App hands down a fresh one
+  on every change — including the favourite flip the menu itself triggers. Keyed
+  on `garment.id` now.
+- **A replaced photo never appeared.** `putPhoto` wrote the new bytes to
+  IndexedDB and then handed back the *existing* object URL (`toObjectUrl` reuses
+  one on purpose, which is right on a read and wrong here), and `useGarmentPhoto`
+  had no reason to re-run anyway. Fixed at both ends — the mapping is dropped on
+  write, and the hook also keys on `thumb`, which is the one field that always
+  changes when a photo is replaced.
+- **The `'retired'` filter could reach Notion as data.** Recording a verdict
+  stamps the current filter onto the Outfit row's Wardrobes relation, and
+  `"retired"` is a view sentinel, not a page id — Notion answers a relation
+  containing it with a 400 that fails the entire write. Routed through a new
+  `wardrobeIdOf()`, with the test spelling out why the sentinel is passed through
+  in one direction and refused in the other.
+- **Today claimed an empty wardrobe under the Retired filter.** `buildOutfits`
+  used the raw `filterId` while everything else on the screen used the
+  retired-corrected pool — so it built from retired clothes, which `recommend()`
+  then filtered away, leaving "your wardrobe is empty". The `available` memo
+  three lines above already handled it; it just wasn't the one being used.
+- **`config.coords` was never written by anything.** The "use a previously
+  granted position so the page isn't blocked behind a permission prompt" branch
+  in `useWeather` was unreachable — the value was always null, so every single
+  visit went back through `getCurrentPosition`. The hook now reports a resolved
+  position back for App to persist, and keys on lat/lon rather than object
+  identity (the config object is replaced wholesale on any settings edit, so
+  renaming a wardrobe refetched the weather).
+- **The weather never refreshed.** Installed on a home screen and left there,
+  the morning's reading was still driving suggestions at 4pm. Now every 30
+  minutes and on returning to the tab, rate-limited to one fetch per 10 minutes.
+  Safe only because of the change below.
+
+**One change that isn't a bug fix, and is the load-bearing one:** Today used to
+rebuild its cards on the raw `weather.temp`, so adding a refresh would have
+reshuffled the screen every time the temperature drifted 0.1° — reintroducing
+exactly the M5 bug where a confirmation gets orphaned on a card that vanishes.
+It now rebuilds on `weatherKey()`, which collapses the reading to the
+thresholds the scorer actually tests. 20.1° → 20.3° means nothing to the
+engine, and now means nothing to the screen either.
+
+**Polish:** an "Already on today" line above the cards (worn outfits are no
+longer re-offered, so without it something worn this morning simply vanished —
+which reads as the app having forgotten, not having listened); Cancel restored
+to `AddGarment` after a photo is taken; the details modal's menu closes on an
+outside tap or Escape; the Retired view's empty state stopped saying
+"photograph a few things and they'll turn up" (nothing arrives retired); the
+mood chips got the `radiogroup` their `role="radio"` children require; and
+`UndoToast`'s ~30 lines of inline `style={{…}}` moved to `index.css`, the same
+inconsistency R1 cleaned out of the details modal.
+
+**Not done, deliberately:** wear-count-weighted scoring. It's the obvious next
+lever and it is precisely `FIT_CHECK_ROADMAP.md` §1, which is waiting on ~4
+weeks of real history for a reason. Recency is a fact about a garment; an
+accept/reject ratio over five outfits is a guess wearing the costume of one.
+
+**Verified in the browser** at 384×854, driven end to end: three distinct
+outfits, "Show me something else" giving genuinely different sets twice running
+with no repeats, a mood change rerolling, wearing an outfit and returning to
+Today showing the "Already on today" line with that combination *not* re-offered,
+and the Retired filter no longer emptying the screen. No horizontal scroll on
+any tab. `npm test` 2528 passing / 215 files (+34 tests, and `useWeather` has a
+test file at all now that it does more than fetch once), typecheck and lint
+clean, build clean, `api/*.js` still at 12.

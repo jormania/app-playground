@@ -141,7 +141,14 @@ export default function WardrobeGrid({
       )}
 
       {visible.length === 0 ? (
-        nothingActive ? (
+        filterId === 'retired' ? (
+          // "Photograph a few things and they'll turn up" is nonsense here —
+          // nothing you photograph arrives retired.
+          <p className="fc-empty fc-stagger-item">
+            Nothing retired. Things you put away with “Retire” end up here,
+            out of your suggestions but not gone.
+          </p>
+        ) : nothingActive ? (
           // Distinguishing "you own nothing" from "you switched everything off"
           // matters: the second looks identical and is trivially fixable.
           <p className="fc-empty fc-stagger-item">

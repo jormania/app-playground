@@ -67,8 +67,17 @@ export default function AddGarment({ config, wardrobes, lastWardrobeIds, onAdded
 
   // The preview is an object URL over the resized blob; revoke it when it's
   // replaced or the screen closes, or every retake leaks one.
+  //
+  // Clearing `previewUrl` when the file goes away is load-bearing, not tidiness:
+  // Retake sets `file` to null, the cleanup below revoked the URL, and without
+  // this line the state still held that dead string — so the screen kept
+  // rendering a now-broken <img> and the "Take a photo" button never came back.
+  // Retake was effectively a dead end.
   useEffect(() => {
-    if (!file) return
+    if (!file) {
+      setPreviewUrl(null)
+      return
+    }
     const url = URL.createObjectURL(file)
     setPreviewUrl(url)
     return () => URL.revokeObjectURL(url)
@@ -295,11 +304,15 @@ export default function AddGarment({ config, wardrobes, lastWardrobeIds, onAdded
             </Button>
             <Button
               variant="ghost"
-              onClick={() => { setFile(null); setTags(emptyTags()); setTagNote('') }}
+              onClick={() => { setFile(null); setTags(emptyTags()); setTagNote(''); setError('') }}
               disabled={saving}
             >
               <RotateCcw size={16} aria-hidden="true" /> Retake
             </Button>
+            {/* Cancel used to disappear the moment a photo was taken, so
+                backing out of a garment you'd changed your mind about meant
+                retaking first. */}
+            <Button variant="ghost" onClick={onCancel} disabled={saving}>Cancel</Button>
           </div>
         </>
       )}
