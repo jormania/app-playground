@@ -16,6 +16,40 @@ const CATEGORY_HEURISTICS = {
   'nora': ['nora'],
 };
 
+/**
+ * Currency written as a word, a code or a symbol.
+ *
+ * Order matters: the first match wins, so anything that can appear inside
+ * another token is listed after it. RON is here alongside the rest rather than
+ * treated as "no currency" — `lib/tripInference` reads an *absent* currency as
+ * "use the trip's", so "50 lei" spent abroad has to say RON explicitly or it
+ * would be re-read as 50 złoty.
+ */
+const CURRENCY_TOKENS = [
+  ['RON', /(?:\blei\b|\bron\b)/i],
+  ['EUR', /(?:€|\beur\b|\beuros?\b)/i],
+  ['USD', /(?:\$|\busd\b|\bdollars?\b|\bbucks\b)/i],
+  ['GBP', /(?:£|\bgbp\b|\bpounds?\b|\bquid\b)/i],
+  ['PLN', /(?:zł|\bzl\b|\bpln\b|\bz[łl]oty\b)/i],
+  ['HUF', /(?:\bft\b|\bhuf\b|\bforints?\b)/i],
+  ['CZK', /(?:kč|\bczk\b|\bkoruna\b)/i],
+  ['CHF', /(?:\bchf\b|\bfrancs?\b)/i],
+  ['JPY', /(?:¥|\bjpy\b|\byen\b)/i],
+  ['TRY', /(?:\btry\b|\blira\b)/i],
+  ['BGN', /(?:\bbgn\b|\bleva?\b)/i],
+  ['SEK', /\bsek\b/i],
+  ['NOK', /\bnok\b/i],
+  ['DKK', /\bdkk\b/i],
+];
+
+/** The currency a string names, or null when it names none. */
+export function detectCurrency(text) {
+  for (const [code, pattern] of CURRENCY_TOKENS) {
+    if (pattern.test(text)) return code;
+  }
+  return null;
+}
+
 export function parseSmartText(text, accounts = [], categories = []) {
   if (!text || typeof text !== 'string') return null;
 
@@ -36,9 +70,14 @@ export function parseSmartText(text, accounts = [], categories = []) {
     remainingText = remainingText.replace(regex, ' ');
   };
   
-  // 0. Pre-clean structural action words and explicit currency
+  // 0. Pre-clean structural action words and explicit currency. The currency
+  // is read off the raw text first — stripping it here is what stops it
+  // landing in the description.
+  const namedCurrency = detectCurrency(text);
   stripRegex(/\b(bought a|bought|paid for|paid|spent|cost|charged|sent to|sent|transferred to|transferred|gave)\b/gi);
-  stripRegex(/\b(lei|ron|bucks|dollars|euro|euros)\b/gi);
+  for (const [, pattern] of CURRENCY_TOKENS) {
+    stripRegex(new RegExp(pattern.source, 'gi'));
+  }
 
   // 1. Parse Amount (swallow optional decimals so they don't linger, e.g. 25.50)
   const amountMatch = text.match(/\b(\d+)(?:[.,]\d+)?\b/);
@@ -47,6 +86,16 @@ export function parseSmartText(text, accounts = [], categories = []) {
     remainingText = remainingText.replace(amountMatch[0], ' ');
   } else {
     return null;
+  }
+
+  if (namedCurrency) {
+    tx.currency = namedCurrency;
+    // RON is carried as a currency the user *named* rather than dropped: trip
+    // inference reads an absent currency as "use the trip's", so "50 lei" on a
+    // Poland trip has to be able to say no. `hardenTransaction` clears it
+    // again before saving, so nothing redundant reaches Notion.
+    tx.originalCurrency = namedCurrency;
+    if (namedCurrency !== 'RON') tx.originalAmount = tx.amount;
   }
 
   // 2. Parse Type

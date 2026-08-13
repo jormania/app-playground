@@ -1285,3 +1285,100 @@ split both got flagged as possible duplicates.
   the suffix was reported as redundant. Safe now that identical-description
   cross-category pairs are never flagged regardless. Existing rows with the
   old suffix are unaffected; nothing rewrites past data.
+
+## Trip-aware transaction entry (2026-08-13)
+
+"30 PLN for lunch at restaurant" during a Poland trip should not need the trip,
+the category and the currency corrected by hand afterwards — the PLN alone says
+where you are. It didn't work, and the guide had claimed it did since the
+feature was written: `lib/aiParser.js` passed the model `- Name (ID: x)` and
+nothing else. No dates, no status, no destination, no currency — every one of
+which `fetchTrips()` already read off Notion — plus a rule saying only to link a
+trip when the transaction "is associated with" one, with no definition of that.
+The model could pattern-match your literal words against a trip name and
+nothing more.
+
+Fixed in two layers, on the principle `hardenTransaction` already followed for
+currencies and ids: tell the model what it needs, then don't depend on it for
+anything the data can answer.
+
+### Layer 1 — the prompt got the facts it was missing
+
+Trip lines now read `- Poland Autumn 2026 — Kraków & Warsaw, 5–15 Oct 2026,
+ONGOING NOW, spends PLN (ID: …)`, sorted ongoing-first rather than in whatever
+order Notion returned. Rule 14 says plainly that a transaction dated inside a
+trip's range belongs to that trip and needs no other evidence; rule 15 that a
+trip-linked transaction is filed under Travel; rule 6 now lists currency words
+and symbols (zł, €, Ft, Kč, lei…) and requires the model to state
+`originalCurrency` **explicitly whenever the user names one, including RON** —
+which is what makes "the user named no currency" a usable signal downstream.
+
+### Layer 2 — `lib/tripInference.js`, deterministic and testable
+
+A pure module, applied inside `hardenTransaction`, that re-derives the same
+answer without the model — so the keyword parser (which has never known trips
+existed) gets it too, and so the behaviour is testable without mocking Claude.
+An expense whose date falls in exactly one trip's window is linked to it; three
+things follow.
+
+- **The currency defaults to the trip's.** On a trip you spend the
+  destination's money, so a bare "30 for lunch" in Kraków is 30 PLN, converted
+  to RON at the day's ECB rate like any other foreign amount. Naming a currency
+  yourself always wins — and RON named explicitly is carried through inference
+  purely to block this, then cleared before saving so no redundant "50 RON"
+  sits against a RON amount.
+- **The category becomes Travel.** Not a preference: `TransactionForm` only
+  writes `tripId` when the category is Travel, so a trip on a Dining row is
+  silently dropped the next time that row is saved, and the Travel Insights
+  engine keys on the same category. Trip-linked ⇒ Travel keeps the three in
+  step. Detail lives in the description ("Lunch at Restaurant").
+- **Overlapping trips are settled by currency, or not at all.** PLN picks
+  Poland over the Germany trip it overlaps; with no distinguishing currency it
+  links nothing, because a wrong trip is invisible in a way a missing one isn't.
+
+Two carve-outs: a **recurring bill** that merely renews mid-trip is not trip
+spending (Netflix in Kraków is still a domestic subscription), and **income**
+never infers a trip or becomes Travel.
+
+### `lib/vendorMemory.js` — your ledger beats the hardcoded merchant list
+
+Prompt rule 11 carries a static list of Romanian chains. It can't know that
+*you* file Glovo under Groceries, or which card you actually put it on. A
+vendor → (category, account) index is now derived from the whole ledger on
+every parse — never stored, so there's no second source of truth and correcting
+a mis-filed row re-teaches it immediately — and injected into the prompt as
+"how this user has filed these vendors before", which rule 11 defers to. It's
+also the fallback when the model returns no category at all; a category the
+model *did* pick always stands, since it read the words and the index didn't. A
+vendor needs 2+ sightings and a majority category to qualify, so a genuinely
+ambiguous venue teaches nothing rather than being resolved by coin toss. The
+same module supplies `preferredAccountForTrip` — abroad, the card you've
+actually been using on this trip beats the "always the RON Revolut" default.
+
+### The inference is visible, and one tap from being wrong
+
+Three silent corrections at once is the kind of help that becomes mistrust the
+first time it's wrong. A single add whose fields were inferred now shows a card
+under the input — *"Because you're on a trip, I linked it to ✈️ Poland Autumn
+2026, read the amount as PLN and filed it under Travel"* — with **Change**,
+which opens the saved transaction in the edit form. Nothing is inferred
+silently; an add with nothing to report keeps the plain toast. The annotation
+rides on a `_inferred` key that `SmartTextEntry` strips before any write, so it
+can never reach Notion (or the demo fixture, which stores whatever it's handed).
+
+### The keyword parser is on the same path
+
+`parseSmartText` now detects currency words and symbols itself, and its result
+runs through the same `hardenTransactions` the AI path uses. It gains trip
+linking, vendor memory and live FX for free, and the two parsers can no longer
+file the same sentence differently.
+
+53 new tests (27 trip inference, 17 vendor memory, 7 on the hardening
+pipeline, 2 on the notice card); repo suite 2,528 → 2,581, typecheck and
+eslint green. Verified in
+a browser against demo data with a PLN trip running today: "30 zl for lunch at
+restaurant" and a bare "25 for coffee at Cafe Camelot" both landed as Travel,
+linked to the trip, recorded at 30 PLN and 25 PLN, with the notice card naming
+each inference. The ECB conversion could not be exercised live (outbound calls
+to `api.frankfurter.dev` are blocked in that sandbox, which is exactly the
+"keep the figure" fallback) and is covered by unit test instead.

@@ -357,6 +357,111 @@ describe('hardenTransactions', () => {
   });
 });
 
+describe('hardenTransaction — trip context and vendor memory', () => {
+  const travelCategories = [...mockCategories, { id: 'cat-travel', name: 'Travel', type: 'Expense' }];
+  const ongoingTrip = {
+    id: 'trip-poland',
+    name: 'Poland Autumn',
+    startDate: '2026-10-05',
+    endDate: '2026-10-15',
+    status: 'Active',
+    currency: 'PLN',
+  };
+  const context = { categories: travelCategories, accounts: mockAccounts, trips: [ongoingTrip] };
+
+  it('links the trip, converts at a live rate and files it as Travel', async () => {
+    global.fetch = vi.fn(() => Promise.resolve(mockFrankfurterResponse(1.2)));
+
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 30, date: '2026-10-06', description: 'Lunch at Restaurant', categoryId: 'cat-food' },
+      context,
+    );
+
+    expect(result.tripId).toBe('trip-poland');
+    expect(result.originalCurrency).toBe('PLN');
+    expect(result.originalAmount).toBe(30);
+    expect(result.amount).toBe(36); // 30 PLN at the ECB rate, not the model's guess
+    expect(result.categoryId).toBe('cat-travel');
+    expect(result._inferred.trip.id).toBe('trip-poland');
+  });
+
+  it('does not re-read an explicitly named RON amount as the trip currency', async () => {
+    global.fetch = vi.fn(() => Promise.resolve({ ok: false }));
+
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 50, date: '2026-10-06', originalCurrency: 'RON', description: 'Netflix' },
+      context,
+    );
+
+    expect(result.amount).toBe(50);
+    // RON has done its job by blocking the trip default; it isn't worth
+    // recording as a second figure against a RON amount.
+    expect(result.originalCurrency).toBe('');
+    expect(result.originalAmount).toBeNull();
+  });
+
+  it('does not treat a hallucinated tripId as a deliberate choice', async () => {
+    global.fetch = vi.fn(() => Promise.resolve(mockFrankfurterResponse(1.2)));
+
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 30, date: '2026-10-06', tripId: 'trip-invented' },
+      context,
+    );
+
+    expect(result.tripId).toBe('trip-poland');
+    expect(result._inferred.trip.id).toBe('trip-poland');
+  });
+
+  it('fills an empty category from how the vendor was filed before', async () => {
+    const transactions = [
+      { description: 'Groceries at Mega Image', categoryId: 'cat-food', accountId: 'acc-cash', type: 'Expense' },
+      { description: 'Snacks at Mega Image', categoryId: 'cat-food', accountId: 'acc-cash', type: 'Expense' },
+    ];
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 40, date: '2026-09-01', description: 'Bread at Mega Image' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [], transactions },
+    );
+
+    expect(result.categoryId).toBe('cat-food');
+    expect(result.accountId).toBe('acc-cash');
+  });
+
+  it('leaves a category the model did pick alone', async () => {
+    const transactions = [
+      { description: 'Groceries at Mega Image', categoryId: 'cat-food', accountId: 'acc-cash', type: 'Expense' },
+      { description: 'Snacks at Mega Image', categoryId: 'cat-food', accountId: 'acc-cash', type: 'Expense' },
+    ];
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 40, date: '2026-09-01', description: 'Flowers at Mega Image', categoryId: 'cat-salary' },
+      { categories: travelCategories, accounts: mockAccounts, trips: [], transactions },
+    );
+
+    expect(result.categoryId).toBe('cat-salary');
+  });
+
+  it('prefers the account actually used on this trip over the default', async () => {
+    global.fetch = vi.fn(() => Promise.resolve(mockFrankfurterResponse(1.2)));
+    const transactions = [
+      { description: 'Taxi', categoryId: 'cat-travel', accountId: 'acc-cash', tripId: 'trip-poland', type: 'Expense' },
+      { description: 'Museum', categoryId: 'cat-travel', accountId: 'acc-cash', tripId: 'trip-poland', type: 'Expense' },
+    ];
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 30, date: '2026-10-06', description: 'Lunch at Restaurant' },
+      { ...context, transactions },
+    );
+
+    expect(result.accountId).toBe('acc-cash');
+  });
+
+  it('reports nothing on _inferred when it decided nothing', async () => {
+    const result = await hardenTransaction(
+      { action: 'create', type: 'Expense', amount: 30, date: '2026-09-01', categoryId: 'cat-food', accountId: 'acc-revolut' },
+      context,
+    );
+    expect(result._inferred).toBeUndefined();
+  });
+});
+
 describe('askInsightsAI', () => {
   it('throws when the apiKey is missing', async () => {
     await expect(askInsightsAI('what did I spend?', [], mockCategories, ''))

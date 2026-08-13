@@ -2,10 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Wand2, Loader2, Mic, MicOff } from 'lucide-react';
 import { ConfirmModal } from '../../ds';
 import { parseSmartText } from '../lib/smartParser';
-import { parseTextWithAI } from '../lib/aiParser';
+import { parseTextWithAI, hardenTransactions } from '../lib/aiParser';
 import { parseNoraSplitGroup, stripNoraGroup } from '../lib/noraSplit';
 
-export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscription, onSuccess, accounts, categories, trips, config, recentTransactions }) {
+export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscription, onSuccess, onEditTransaction, accounts, categories, trips, config, recentTransactions, transactions = [] }) {
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -18,6 +18,11 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
   // that gets a checkpoint, matching how the rest of the app treats delete
   // (single and bulk delete both confirm; adding never has).
   const [pendingDeleteBatch, setPendingDeleteBatch] = useState(null);
+  // What the parser decided for you rather than read off your words — the
+  // trip, the currency, the category. Shown because three silent corrections
+  // at once is the kind of help that becomes mistrust the first time it's
+  // wrong; the card carries a one-tap way to fix it.
+  const [inferenceNotice, setInferenceNotice] = useState(null);
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
 
@@ -91,6 +96,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
    */
   const executeBatch = async (txs, { withNora, withNoraCount }) => {
     const addedIds = [];
+    const inferences = [];
     let subToPrompt = null;
     let added = 0, updated = 0, deleted = 0;
     let failure = null;
@@ -98,23 +104,30 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
     for (const t of txs) {
       if (t.isSubscription) subToPrompt = t;
 
+      // `_inferred` is annotation for the UI, not part of the record — it must
+      // never reach a write (demo mode stores whatever it is handed verbatim).
+      const { _inferred, ...tx } = t;
+
       // Stamp the group count so applyNoraSplit calculates the correct fraction.
       // withNoraCount=2 → 50/50, withNoraCount=3 → 1/3 Nora / 2/3 you, etc.
-      const tWithFlag = withNora ? { ...t, withNoraCount } : t;
+      const tWithFlag = withNora ? { ...tx, withNoraCount } : tx;
 
       try {
-        if (t.action === 'update' && t.id) {
-          await onUpdate(t.id, t);
+        if (tx.action === 'update' && tx.id) {
+          await onUpdate(tx.id, tx);
           updated++;
-        } else if (t.action === 'delete' && t.id) {
+        } else if (tx.action === 'delete' && tx.id) {
           if (onDelete) {
-            await onDelete(t.id);
+            await onDelete(tx.id);
             deleted++;
           }
         } else {
           const saved = await onAdd(tWithFlag);
           if (saved && saved.id) addedIds.push(saved.id);
           added++;
+          if (_inferred && Object.keys(_inferred).length > 0) {
+            inferences.push({ id: saved && saved.id ? saved.id : null, tx, inferred: _inferred });
+          }
         }
       } catch (err) {
         failure = err;
@@ -146,6 +159,10 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
       setText('');
     }
 
+    if (inferences.length > 0) {
+      setInferenceNotice({ ...inferences[0], others: inferences.length - 1 });
+    }
+
     // Refresh on any partial progress too, not only a clean run — otherwise a
     // batch that half-succeeded before failing shows nothing for it until the
     // next unrelated reload.
@@ -157,6 +174,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
     e.preventDefault();
     if (!text.trim() || isParsing) return;
     setDetectedSubscription(null);
+    setInferenceNotice(null);
 
     // Detect and strip the full "with Nora [and ...]" group BEFORE AI parsing.
     // If the AI sees names it maps them as categories, swallowing the split signal.
@@ -174,10 +192,14 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
           return;
         }
         setIsParsing(true);
-        txs = await parseTextWithAI(cleanedText, accounts, categories, trips, config.claudeApiKey, recentTransactions);
+        txs = await parseTextWithAI(cleanedText, accounts, categories, trips, config.claudeApiKey, recentTransactions, transactions);
       } else {
         const tx = parseSmartText(cleanedText, accounts, categories);
-        if (tx) txs = [tx];
+        // The keyword parser knows nothing about trips, vendor history or
+        // exchange rates. Running its result through the same hardening the
+        // AI path uses gives it all three, and keeps the two paths from
+        // filing the same sentence differently.
+        if (tx) txs = await hardenTransactions([tx], { categories, accounts, trips, transactions });
       }
     } catch (err) {
       setError(err.message || "Failed to parse text.");
@@ -353,6 +375,71 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
           </div>
         </div>
       )}
+
+      {inferenceNotice && !detectedSubscription && (() => {
+        const { tx, inferred, id, others } = inferenceNotice;
+        const parts = [];
+        if (inferred.trip) parts.push(`linked it to ✈️ ${inferred.trip.name}`);
+        if (inferred.currency) parts.push(`read the amount as ${inferred.currency}`);
+        if (inferred.category) parts.push(`filed it under ${inferred.category.name}`);
+        // "and" before the last clause — three comma-separated fragments read
+        // as a list of fields rather than a sentence about one transaction.
+        const sentence = parts.length > 1
+          ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+          : parts[0];
+
+        return (
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            marginTop: '8px',
+            padding: '12px',
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-accent)',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'var(--shadow-md)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '12px',
+            animation: 'fadeIn 0.3s',
+            zIndex: 10
+          }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-bold)', color: 'var(--color-accent)' }}>
+                {tx.description || 'Transaction added'}
+              </div>
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
+                {`Because you're on a trip, I ${sentence}.`}
+                {others > 0 ? ` Same for ${others} more.` : ''}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+              {id && onEditTransaction && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInferenceNotice(null);
+                    onEditTransaction(id);
+                  }}
+                  style={{ padding: '6px 12px', border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-ink)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}
+                >
+                  Change
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setInferenceNotice(null)}
+                style={{ padding: '6px 12px', border: 'none', background: 'var(--color-accent)', color: 'var(--color-on-accent)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-bold)' }}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {pendingDeleteBatch && (() => {
         const deletes = pendingDeleteBatch.txs.filter(t => t.action === 'delete' && t.id);

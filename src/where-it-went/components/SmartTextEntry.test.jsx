@@ -7,6 +7,9 @@ import { parseTextWithAI } from '../lib/aiParser';
 
 vi.mock('../lib/aiParser', () => ({
   parseTextWithAI: vi.fn(),
+  // The keyword path runs its result through the same hardening as the AI
+  // path; mocked as a pass-through so these tests stay about the component.
+  hardenTransactions: vi.fn(async (txs) => txs),
 }));
 
 /** A minimal fake SpeechRecognition — jsdom has no real one. Captures the
@@ -204,6 +207,65 @@ describe('SmartTextEntry', () => {
     });
     // The one that did succeed is still reported so the ledger refreshes.
     expect(onSuccess).toHaveBeenCalledWith(['tx-1']);
+  });
+
+  it('says what it worked out from the trip, and offers to change it', async () => {
+    const onAdd = vi.fn().mockResolvedValue({ id: 'tx-9' });
+    const onEditTransaction = vi.fn();
+
+    parseTextWithAI.mockResolvedValue([{
+      action: 'create',
+      amount: 36,
+      originalAmount: 30,
+      originalCurrency: 'PLN',
+      description: 'Lunch at Restaurant',
+      categoryId: 'cat-travel',
+      tripId: 'trip-poland',
+      _inferred: {
+        trip: { id: 'trip-poland', name: 'Poland Autumn' },
+        currency: 'PLN',
+        category: { id: 'cat-travel', name: 'Travel' },
+      },
+    }]);
+
+    render(
+      <SmartTextEntry
+        config={{ features: { aiParser: true }, claudeApiKey: 'key' }}
+        onAdd={onAdd}
+        onEditTransaction={onEditTransaction}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '30 for lunch' } });
+    fireEvent.submit(screen.getByRole('textbox'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/linked it to/)).toBeDefined();
+    });
+    expect(screen.getByText(/Poland Autumn/)).toBeDefined();
+    expect(screen.getByText(/read the amount as PLN/)).toBeDefined();
+    expect(screen.getByText(/filed it under Travel/)).toBeDefined();
+
+    // The annotation is for the reader, never for the record.
+    expect(onAdd).toHaveBeenCalledWith(expect.not.objectContaining({ _inferred: expect.anything() }));
+
+    fireEvent.click(screen.getByText('Change'));
+    expect(onEditTransaction).toHaveBeenCalledWith('tx-9');
+  });
+
+  it('stays quiet when nothing was inferred', async () => {
+    const onAdd = vi.fn().mockResolvedValue({ id: 'tx-10' });
+    parseTextWithAI.mockResolvedValue([
+      { action: 'create', amount: 15, description: 'Lunch', categoryId: 'cat-food' },
+    ]);
+
+    render(<SmartTextEntry config={{ features: { aiParser: true }, claudeApiKey: 'key' }} onAdd={onAdd} />);
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '15 for lunch' } });
+    fireEvent.submit(screen.getByRole('textbox'));
+
+    await waitFor(() => expect(onAdd).toHaveBeenCalled());
+    expect(screen.queryByText('Change')).toBeNull();
   });
 
   it('sets the recognizer language from the browser locale', () => {
