@@ -171,8 +171,14 @@
 }
 
 .dictPickerSelect:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  /* A native <select> renders its own OS chrome that doesn't always line up with the
+     element's CSS border box, so an outline-offset gap around it can paint as a broken
+     rectangle instead of a clean ring (visible here since this is the first focusable
+     control in the dialog and grabs focus the moment Stats opens). box-shadow draws flush
+     against the actual border instead, which is why DS's own text inputs use it too. */
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
 .viewingNote {
