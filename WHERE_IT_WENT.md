@@ -1525,3 +1525,30 @@ at a 786px viewport: **fits with no scroll at 16, 18 and 19px root font**,
 where before it overflowed at 18px and above. A 700px viewport at 18px still
 overflows by 35px — that much content genuinely doesn't fit, and it scrolls
 rather than clipping.
+
+## Confirmation messages: a wrong figure, an overlap, and an unsaid word (2026-08-13)
+
+Three things from one screenshot of a real trip entry.
+
+- **The toast announced the wrong number.** `Added: ${tx.amount} ${tx.originalCurrency}`
+  paired the **RON** figure with the **foreign** currency code, so a 67 PLN shop
+  that converts to 82 RON was confirmed as "Added: 82 PLN" — while the ledger
+  row directly below it read `−82 L (67 PLN)`. Both numbers are real, which is
+  what made the mismatch read as the app disagreeing with itself. It now
+  reports the figure actually spent (`Added 67 PLN · Shopping at Żabka`).
+- **The toast was printed on top of the placeholder.** It's absolutely
+  positioned inside the pill with no background, right-aligned, and the input
+  keeps showing "✨ Describe a transaction…" underneath — fine on a wide screen
+  where they sit apart, unreadable on a phone where they collide. It now starts
+  after the wand icon, carries the pill's own background so it *replaces*
+  rather than floats over, and ellipsises instead of colliding with the edge.
+- **The trip card never said "trip".** *"Logged on ✈️ 2026 – Poland, under
+  Travel"* names the trip without ever saying one was attached, leaving it
+  ambiguous whether anything beyond the category had been decided — and the
+  trip link is precisely the part not visible anywhere else on the row. Now:
+  *"Saved — added to your ✈️ 2026 – Poland trip, filed under Travel, recorded
+  as 67 PLN."*
+
+Also: a single add that produces a trip card no longer *also* fires the toast.
+The card says everything the toast did and more, and stacking them put two
+overlapping messages in the same 40px of screen.
