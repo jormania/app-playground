@@ -1,59 +1,11 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Wand2, Loader2, Mic, MicOff } from 'lucide-react';
 import { ConfirmModal } from '../../ds';
 import { parseSmartText } from '../lib/smartParser';
 import { parseTextWithAI, hardenTransactions } from '../lib/aiParser';
 import { parseNoraSplitGroup, stripNoraGroup } from '../lib/noraSplit';
-import { readSessionJson, writeSessionJson, removeSessionJson } from '../lib/storage';
 
-/**
- * Where the trip notice lives between renders — deliberately not just React
- * state.
- *
- * Saving a transaction kicks off a ledger refresh, and a refresh that can't
- * paint the mirrored copy (no snapshot yet, or a ledger too big for
- * localStorage to hold one) flips the whole screen to the skeleton for as long
- * as Notion takes to answer. That unmounts the Dashboard, and with it this
- * component — so the notice vanished a few seconds after appearing, looking
- * exactly like an auto-dismiss nobody wrote. Same for anything else that
- * remounts the subtree.
- *
- * Holding it outside the mount makes the promise the card makes true: it is
- * there until *you* answer it. Session-scoped, so it never outlives the tab,
- * and time-bounded so a reload half an hour later doesn't resurrect a
- * confirmation for a transaction you've long since forgotten saving.
- */
-const TRIP_NOTICE_KEY = 'whereItWent_trip_notice';
-const TRIP_NOTICE_MAX_AGE_MS = 5 * 60 * 1000;
-
-function readStoredTripNotice() {
-  const stored = readSessionJson(TRIP_NOTICE_KEY, null);
-  if (!stored || !stored.notice || !stored.savedAt) return null;
-  if (Date.now() - stored.savedAt > TRIP_NOTICE_MAX_AGE_MS) {
-    removeSessionJson(TRIP_NOTICE_KEY);
-    return null;
-  }
-  return stored.notice;
-}
-
-/**
- * How much a saved transaction was for, in the currency the person actually
- * spent.
- *
- * The confirmation used to print `${tx.amount} ${tx.originalCurrency}`, pairing
- * the *RON* figure with the *foreign* currency code: a 67 PLN shop that
- * converts to 82 RON was announced as "82 PLN". Both numbers are real and both
- * appear in the ledger, so the mismatch read as the app disagreeing with
- * itself.
- */
-function formatAmount(tx) {
-  if (tx.originalCurrency && tx.originalAmount != null) {
-    return `${tx.originalAmount} ${tx.originalCurrency}`;
-  }
-  return `${tx.amount} RON`;
-}
-
-export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscription, onSuccess, onEditTransaction, accounts, categories, trips, config, recentTransactions, transactions = [] }) {
+export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscription, onSuccess, onSaved, accounts, categories, trips, config, recentTransactions, transactions = [] }) {
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -66,16 +18,6 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
   // that gets a checkpoint, matching how the rest of the app treats delete
   // (single and bulk delete both confirm; adding never has).
   const [pendingDeleteBatch, setPendingDeleteBatch] = useState(null);
-  // Shown when a saved transaction came out attached to a trip. Filing
-  // something under Travel on a trip is a judgement the parser made from
-  // context rather than from your words, and a judgement you can't see is one
-  // you can't correct — so it's stated, with one tap to open the row.
-  const [tripNotice, setTripNoticeState] = useState(readStoredTripNotice);
-  const setTripNotice = useCallback((notice) => {
-    setTripNoticeState(notice);
-    if (notice) writeSessionJson(TRIP_NOTICE_KEY, { savedAt: Date.now(), notice });
-    else removeSessionJson(TRIP_NOTICE_KEY);
-  }, []);
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
 
@@ -149,7 +91,9 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
    */
   const executeBatch = async (txs, { withNora, withNoraCount }) => {
     const addedIds = [];
-    const onTrip = [];
+    // Every row that landed and can still be opened, in the order they were
+    // written — the save notice reports the first and counts the rest.
+    const landed = [];
     let subToPrompt = null;
     let added = 0, updated = 0, deleted = 0;
     let failure = null;
@@ -165,6 +109,11 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
         if (t.action === 'update' && t.id) {
           await onUpdate(t.id, t);
           updated++;
+          // An update carries only the fields that changed. Laid over the row
+          // as it stands, that's the row as it now is — which is what the
+          // notice has to describe, not the patch on its own.
+          const existing = (transactions || []).find(x => x.id === t.id);
+          landed.push({ id: t.id, tx: { ...(existing || {}), ...t }, action: 'update' });
         } else if (t.action === 'delete' && t.id) {
           if (onDelete) {
             await onDelete(t.id);
@@ -174,7 +123,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
           const saved = await onAdd(tWithFlag);
           if (saved && saved.id) addedIds.push(saved.id);
           added++;
-          if (t.tripId) onTrip.push({ id: saved && saved.id ? saved.id : null, tx: t });
+          landed.push({ id: saved && saved.id ? saved.id : null, tx: t, action: 'create' });
         }
       } catch (err) {
         failure = err;
@@ -192,24 +141,18 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
       setError(settled > 0
         ? `${parts.join(', ')} before this failed: ${failure.message || 'could not save the rest.'}`
         : (failure.message || 'Failed to save changes.'));
-    } else if (settled === 1) {
-      if (updated) setSuccess('Updated transaction.');
-      else if (deleted) setSuccess('Deleted transaction.');
-      // When the trip card is about to say all of this and more, a toast
-      // repeating it is noise stacked on top of the same information.
-      else if (onTrip.length === 0) setSuccess(`Added ${formatAmount(txs[0])} · ${txs[0].description}`);
-      setText('');
     } else {
-      const parts = [];
-      if (added) parts.push(`${added} added`);
-      if (updated) parts.push(`${updated} updated`);
-      if (deleted) parts.push(`${deleted} deleted`);
-      setSuccess(parts.length > 0 ? `${parts.join(', ')}.` : `Processed ${txs.length} items.`);
+      // The save notice spells out what landed and where, so a toast saying a
+      // thinner version of the same thing is noise stacked on the same event.
+      // A delete is the exception: it gets no notice, because there's no row
+      // left to open — so it still says so here.
+      if (deleted > 0) setSuccess(deleted === 1 ? 'Deleted transaction.' : `${deleted} deleted.`);
+      else if (landed.length === 0) setSuccess(`Processed ${txs.length} items.`);
       setText('');
     }
 
-    if (onTrip.length > 0) {
-      setTripNotice({ ...onTrip[0], others: onTrip.length - 1 });
+    if (landed.length > 0 && onSaved) {
+      onSaved({ ...landed[0], others: landed.length - 1 });
     }
 
     // Refresh on any partial progress too, not only a clean run — otherwise a
@@ -223,7 +166,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
     e.preventDefault();
     if (!text.trim() || isParsing) return;
     setDetectedSubscription(null);
-    setTripNotice(null);
+    if (onSaved) onSaved(null);
 
     // Detect and strip the full "with Nora [and ...]" group BEFORE AI parsing.
     // If the AI sees names it maps them as categories, swallowing the split signal.
@@ -427,74 +370,6 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
           </div>
         </div>
       )}
-
-      {tripNotice && !detectedSubscription && (() => {
-        const { tx, id, others } = tripNotice;
-        const trip = (trips || []).find(t => t.id === tx.tripId);
-        const category = (categories || []).find(c => c.id === tx.categoryId);
-        // Naming the trip is not the same as saying a trip was *used*. "Logged
-        // on ✈️ 2026 – Poland, under Travel" left it ambiguous whether
-        // anything beyond the category had been decided — the word "trip" has
-        // to be in the sentence, because attaching one is the part that isn't
-        // visible anywhere else in the row.
-        const parts = [`added to your ✈️ ${trip ? trip.name : 'ongoing'} trip`];
-        if (category) parts.push(`filed under ${category.name}`);
-        if (tx.originalCurrency && tx.originalAmount != null) {
-          parts.push(`recorded as ${tx.originalAmount} ${tx.originalCurrency}`);
-        }
-
-        return (
-          <div style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            marginTop: '8px',
-            padding: '12px',
-            backgroundColor: 'var(--color-surface)',
-            border: '1px solid var(--color-accent)',
-            borderRadius: 'var(--radius-lg)',
-            boxShadow: 'var(--shadow-md)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '12px',
-            animation: 'fadeIn 0.3s',
-            zIndex: 10
-          }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-bold)', color: 'var(--color-accent)' }}>
-                {tx.description || 'Transaction added'}
-              </div>
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
-                {`Saved — ${parts.join(', ')}.`}
-                {others > 0 ? ` Same for ${others} more.` : ''}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-              {id && onEditTransaction && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTripNotice(null);
-                    onEditTransaction(id);
-                  }}
-                  style={{ padding: '6px 12px', border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-ink)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)' }}
-                >
-                  Change
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setTripNotice(null)}
-                style={{ padding: '6px 12px', border: 'none', background: 'var(--color-accent)', color: 'var(--color-on-accent)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-bold)' }}
-              >
-                Got it
-              </button>
-            </div>
-          </div>
-        );
-      })()}
 
       {pendingDeleteBatch && (() => {
         const deletes = pendingDeleteBatch.txs.filter(t => t.action === 'delete' && t.id);

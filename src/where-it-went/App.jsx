@@ -18,6 +18,7 @@ import Navigation from './components/Navigation';
 import UpcomingBanner from './components/UpcomingBanner';
 import OfflineBanner from './components/OfflineBanner';
 import SkeletonState from './components/SkeletonState';
+import SaveNotice, { SAVE_NOTICE_MS } from './components/SaveNotice';
 import { getUpcomingBills, billsWithinLeadTime, DEFAULT_LEAD_DAYS } from './lib/upcoming';
 import { writeReminderState } from './lib/reminders';
 import {
@@ -47,6 +48,14 @@ export default function App() {
 
   const [splittingTx, setSplittingTx] = useState(null);
   const [splitClearSelectionCb, setSplitClearSelectionCb] = useState(null);
+
+  // What the last save turned into, and the row it opens. Lives up here rather
+  // than in the text box because every route into the ledger reports through
+  // it — the text box, dictation, and the + Add form — and because a ledger
+  // refresh remounts everything under <main>, which would take a notice owned
+  // down there with it.
+  const [saveNotice, setSaveNotice] = useState(null);
+  const [noticeEditTx, setNoticeEditTx] = useState(null);
 
   // Lifted (not owned by DuplicateReview) so the Transactions nav-tab dot
   // updates the instant a group is dismissed, not just on the next reload.
@@ -280,6 +289,15 @@ export default function App() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // The notice states an outcome and leaves. Anchored on the notice object
+  // itself, so a second save while one is still up restarts the clock on the
+  // new one rather than inheriting the old one's remaining time.
+  useEffect(() => {
+    if (!saveNotice) return;
+    const timer = setTimeout(() => setSaveNotice(null), SAVE_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [saveNotice]);
+
   useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', config.theme || defaultTheme());
   }, [config.theme]);
@@ -381,12 +399,18 @@ export default function App() {
   const handleAddTransaction = async (_id, tx) => {
     try {
       const txs = applyNoraSplit(tx, data?.categories || []);
+      const landed = [];
       for (const t of txs) {
-        await client.addTransaction(t);
+        const saved = await client.addTransaction(t);
+        landed.push({ id: saved && saved.id ? saved.id : null, tx: t, action: 'create' });
       }
       await loadData();
       setShowAddForm(false);
       setRepeatDraft(null);
+      // Typed by hand, but the form still decides things on your behalf — the
+      // RON figure behind a foreign amount above all — and the modal closes
+      // before you can check any of it.
+      if (landed.length > 0) setSaveNotice({ ...landed[0], others: landed.length - 1 });
     } catch (e) {
       console.error('Failed to add transaction:', e);
       setSaveError(e.message || 'Could not save the transaction to Notion.');
@@ -598,11 +622,64 @@ export default function App() {
           onSave={submitSplitTransaction}
         />
 
+      {noticeEditTx && (
+        <Modal open={true} title="Edit Transaction" onClose={() => setNoticeEditTx(null)}>
+          <TransactionForm
+            transactions={data.transactions}
+            categories={data.categories}
+            accounts={data.accounts}
+            trips={data.trips}
+            allowTransfer={allowTransfer}
+            initialTx={noticeEditTx}
+            onSave={async (id, txData) => {
+              try {
+                await client.updateTransaction(id, txData);
+                await loadData();
+                setNoticeEditTx(null);
+              } catch (e) {
+                console.error('Failed to update transaction', e);
+                setSaveError(e.message || 'Failed to update transaction.');
+                throw e;
+              }
+            }}
+            onDelete={async (id) => {
+              try {
+                await client.deleteTransaction(id);
+                await loadData();
+                setNoticeEditTx(null);
+              } catch (e) {
+                console.error('Failed to delete transaction', e);
+                setSaveError(e.message || 'Failed to delete transaction.');
+                throw e;
+              }
+            }}
+            onCancel={() => setNoticeEditTx(null)}
+          />
+        </Modal>
+      )}
+
       <AlertModal
         isOpen={!!saveError}
         title="Could not save"
         message={saveError || ''}
         onClose={() => setSaveError(null)}
+      />
+
+      {/* Outside <main> on purpose: the loading gate under it swaps the whole
+          tab for a skeleton mid-refresh, and a notice rendered in there would
+          be torn down with it a second after appearing. */}
+      <SaveNotice
+        notice={saveNotice}
+        categories={data.categories}
+        accounts={data.accounts}
+        trips={data.trips}
+        onChange={(id) => {
+          const row = (data.transactions || []).find(t => t.id === id);
+          setSaveNotice(null);
+          // Straight from the ledger when it's already refreshed in; otherwise
+          // from what was just written, so Change works even on a slow reload.
+          setNoticeEditTx(row || (saveNotice ? { ...saveNotice.tx, id } : null));
+        }}
       />
 
       <main>
@@ -626,6 +703,7 @@ export default function App() {
               <Dashboard
                 data={data} client={client} onDataChange={loadData} onNavigate={handleTabChange}
                 config={config} period={period} filterProps={filterProps}
+                onSaved={setSaveNotice}
                 onViewTripInInsights={handleViewTripInInsights}
                 scrollToUpcoming={scrollToUpcoming}
                 onConsumeScrollToUpcoming={() => setScrollToUpcoming(false)}

@@ -36,7 +36,7 @@ const CARD = {
   boxShadow: 'var(--shadow-sm)'
 };
 
-function DashboardInner({ data, client, onDataChange, onNavigate, config, period = 'this_month', filterProps, onViewTripInInsights, scrollToUpcoming, onConsumeScrollToUpcoming, onPrefillTransaction }) {
+function DashboardInner({ data, client, onDataChange, onNavigate, config, period = 'this_month', filterProps, onViewTripInInsights, scrollToUpcoming, onConsumeScrollToUpcoming, onPrefillTransaction, onSaved }) {
   const activePeriod = period || 'this_month';
   const allowTransfer = config?.features?.transfers === true;
   const { filterType: filter = 'All' } = filterProps || {};
@@ -467,10 +467,7 @@ function DashboardInner({ data, client, onDataChange, onNavigate, config, period
         // per-trip account preference are only as good as the history they
         // are derived from.
         transactions={data.transactions || []}
-        onEditTransaction={(id) => {
-          const tx = (data.transactions || []).find(t => t.id === id);
-          if (tx) setEditingTx(tx);
-        }}
+        onSaved={onSaved}
         onAdd={async (tx) => {
           const txs = applyNoraSplit(tx, data.categories || []);
           const ids = [];
