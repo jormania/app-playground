@@ -54,7 +54,7 @@ describe('SmartTextEntry', () => {
       expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ amount: 15 }));
     });
     expect(onSuccess).toHaveBeenCalledWith(['tx-1']);
-    expect(screen.getByText('Added: 15 RON for Lunch')).toBeDefined();
+    expect(screen.getByText('Added 15 RON · Lunch')).toBeDefined();
   });
 
   it('handles updates via AI', async () => {
@@ -237,14 +237,58 @@ describe('SmartTextEntry', () => {
     fireEvent.submit(screen.getByRole('textbox'));
 
     await waitFor(() => {
-      expect(screen.getByText(/Logged on/)).toBeDefined();
+      expect(screen.getByText(/added to your/)).toBeDefined();
     });
-    expect(screen.getByText(/Poland Autumn/)).toBeDefined();
-    expect(screen.getByText(/under Travel/)).toBeDefined();
-    expect(screen.getByText(/as 30 PLN/)).toBeDefined();
+    // The word "trip" has to be present: naming the trip isn't the same as
+    // saying one was attached.
+    expect(screen.getByText(/Poland Autumn.*trip/)).toBeDefined();
+    expect(screen.getByText(/filed under Travel/)).toBeDefined();
+    expect(screen.getByText(/recorded as 30 PLN/)).toBeDefined();
 
     fireEvent.click(screen.getByText('Change'));
     expect(onEditTransaction).toHaveBeenCalledWith('tx-9');
+  });
+
+  it('reports the foreign figure, not the RON one wearing its currency code', async () => {
+    // "Added 82 PLN" for a 67 PLN shop that converts to 82 RON: both numbers
+    // are real and both show in the ledger, so the mismatch read as the app
+    // disagreeing with itself.
+    const onAdd = vi.fn().mockResolvedValue({ id: 'tx-8' });
+    parseTextWithAI.mockResolvedValue([{
+      action: 'create', amount: 82, originalAmount: 67, originalCurrency: 'PLN',
+      description: 'Shopping at Żabka', categoryId: 'cat-food',
+    }]);
+
+    render(<SmartTextEntry config={{ features: { aiParser: true }, claudeApiKey: 'key' }} onAdd={onAdd} />);
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '67 zl at zabka' } });
+    fireEvent.submit(screen.getByRole('textbox'));
+
+    await waitFor(() => expect(screen.getByText(/Added 67 PLN/)).toBeDefined());
+    expect(screen.queryByText(/82 PLN/)).toBeNull();
+  });
+
+  it('does not stack a toast on top of the trip card saying the same thing', async () => {
+    const onAdd = vi.fn().mockResolvedValue({ id: 'tx-7' });
+    parseTextWithAI.mockResolvedValue([{
+      action: 'create', amount: 82, originalAmount: 67, originalCurrency: 'PLN',
+      description: 'Shopping at Żabka', categoryId: 'cat-travel', tripId: 'trip-poland',
+    }]);
+
+    render(
+      <SmartTextEntry
+        config={{ features: { aiParser: true }, claudeApiKey: 'key' }}
+        trips={[{ id: 'trip-poland', name: '2026 - Poland' }]}
+        categories={[{ id: 'cat-travel', name: 'Travel', type: 'Expense' }]}
+        onAdd={onAdd}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '67 zl at zabka' } });
+    fireEvent.submit(screen.getByRole('textbox'));
+
+    await waitFor(() => expect(screen.getByText(/added to your/)).toBeDefined());
+    expect(screen.queryByText(/^Added /)).toBeNull();
   });
 
   it('stays quiet for a transaction with no trip', async () => {

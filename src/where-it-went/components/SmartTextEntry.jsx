@@ -5,6 +5,23 @@ import { parseSmartText } from '../lib/smartParser';
 import { parseTextWithAI, hardenTransactions } from '../lib/aiParser';
 import { parseNoraSplitGroup, stripNoraGroup } from '../lib/noraSplit';
 
+/**
+ * How much a saved transaction was for, in the currency the person actually
+ * spent.
+ *
+ * The confirmation used to print `${tx.amount} ${tx.originalCurrency}`, pairing
+ * the *RON* figure with the *foreign* currency code: a 67 PLN shop that
+ * converts to 82 RON was announced as "82 PLN". Both numbers are real and both
+ * appear in the ledger, so the mismatch read as the app disagreeing with
+ * itself.
+ */
+function formatAmount(tx) {
+  if (tx.originalCurrency && tx.originalAmount != null) {
+    return `${tx.originalAmount} ${tx.originalCurrency}`;
+  }
+  return `${tx.amount} RON`;
+}
+
 export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscription, onSuccess, onEditTransaction, accounts, categories, trips, config, recentTransactions, transactions = [] }) {
   const [text, setText] = useState('');
   const [error, setError] = useState('');
@@ -142,7 +159,9 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
     } else if (settled === 1) {
       if (updated) setSuccess('Updated transaction.');
       else if (deleted) setSuccess('Deleted transaction.');
-      else setSuccess(`Added: ${txs[0].amount} ${txs[0].originalCurrency || 'RON'} for ${txs[0].description}`);
+      // When the trip card is about to say all of this and more, a toast
+      // repeating it is noise stacked on top of the same information.
+      else if (onTrip.length === 0) setSuccess(`Added ${formatAmount(txs[0])} · ${txs[0].description}`);
       setText('');
     } else {
       const parts = [];
@@ -266,28 +285,31 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
           minWidth: 0,
         }}
       />
-      {success && (
+      {/* A message *replaces* what's in the pill rather than floating over it.
+          Right-aligned and transparent, it used to land on top of the
+          placeholder — "✨ Describe a transaction…" and "Added 67 PLN ·
+          Shopping at Żabka" printed over each other, both unreadable, on any
+          screen too narrow to keep them apart. It starts after the wand icon
+          (16px padding + 20px icon + 12px margin), carries the pill's own
+          background so whatever is underneath is covered, and ellipsises
+          rather than colliding with the edge. */}
+      {(success || error) && (
         <div style={{
           position: 'absolute',
+          left: '48px',
           right: '16px',
+          backgroundColor: 'var(--color-surface)',
           fontSize: 'var(--text-sm)',
-          color: 'var(--color-success)',
+          color: success ? 'var(--color-success)' : 'var(--color-danger)',
           fontWeight: 'var(--weight-medium)',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
           animation: 'fadeIn 0.3s'
-        }}>
-          {success}
-        </div>
-      )}
-      {error && !success && (
-        <div style={{
-          position: 'absolute',
-          right: '16px',
-          fontSize: 'var(--text-sm)',
-          color: 'var(--color-danger)',
-          fontWeight: 'var(--weight-medium)',
-          animation: 'fadeIn 0.3s'
-        }}>
-          {error}
+        }}
+        title={success || error}
+        >
+          {success || error}
         </div>
       )}
       
@@ -374,10 +396,15 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
         const { tx, id, others } = tripNotice;
         const trip = (trips || []).find(t => t.id === tx.tripId);
         const category = (categories || []).find(c => c.id === tx.categoryId);
-        const parts = [`on ✈️ ${trip ? trip.name : 'your trip'}`];
-        if (category) parts.push(`under ${category.name}`);
+        // Naming the trip is not the same as saying a trip was *used*. "Logged
+        // on ✈️ 2026 – Poland, under Travel" left it ambiguous whether
+        // anything beyond the category had been decided — the word "trip" has
+        // to be in the sentence, because attaching one is the part that isn't
+        // visible anywhere else in the row.
+        const parts = [`added to your ✈️ ${trip ? trip.name : 'ongoing'} trip`];
+        if (category) parts.push(`filed under ${category.name}`);
         if (tx.originalCurrency && tx.originalAmount != null) {
-          parts.push(`as ${tx.originalAmount} ${tx.originalCurrency}`);
+          parts.push(`recorded as ${tx.originalAmount} ${tx.originalCurrency}`);
         }
 
         return (
@@ -404,7 +431,7 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
                 {tx.description || 'Transaction added'}
               </div>
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)' }}>
-                {`Logged ${parts.join(', ')}.`}
+                {`Saved — ${parts.join(', ')}.`}
                 {others > 0 ? ` Same for ${others} more.` : ''}
               </div>
             </div>
