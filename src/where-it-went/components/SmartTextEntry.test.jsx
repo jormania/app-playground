@@ -35,6 +35,9 @@ describe('SmartTextEntry', () => {
   });
   afterEach(() => {
     cleanup();
+    // The trip notice outlives its component on purpose — so it has to be
+    // cleared between tests, or one test's card shows up in the next.
+    sessionStorage.clear();
   });
 
   it('handles regular AI transaction addition', async () => {
@@ -247,6 +250,80 @@ describe('SmartTextEntry', () => {
 
     fireEvent.click(screen.getByText('Change'));
     expect(onEditTransaction).toHaveBeenCalledWith('tx-9');
+  });
+
+  it('survives the ledger refresh tearing the screen down and back up', async () => {
+    // Saving kicks off a refresh, and a refresh with no mirrored copy to paint
+    // flips the whole tab to the skeleton until Notion answers — unmounting
+    // this component a few seconds after the card appeared. That read as an
+    // auto-dismiss; the card is supposed to wait for an answer.
+    const onAdd = vi.fn().mockResolvedValue({ id: 'tx-11' });
+    parseTextWithAI.mockResolvedValue([{
+      action: 'create', amount: 36, originalAmount: 30, originalCurrency: 'PLN',
+      description: 'Lunch at Restaurant', categoryId: 'cat-travel', tripId: 'trip-poland',
+    }]);
+
+    const props = {
+      config: { features: { aiParser: true }, claudeApiKey: 'key' },
+      trips: [{ id: 'trip-poland', name: 'Poland Autumn' }],
+      categories: [{ id: 'cat-travel', name: 'Travel', type: 'Expense' }],
+      onAdd,
+    };
+
+    const { unmount } = render(<SmartTextEntry {...props} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '30 zl for lunch' } });
+    fireEvent.submit(screen.getByRole('textbox'));
+    await waitFor(() => expect(screen.getByText(/added to your/)).toBeDefined());
+
+    unmount();
+    render(<SmartTextEntry {...props} />);
+    expect(screen.getByText(/Poland Autumn.*trip/)).toBeDefined();
+  });
+
+  it('is gone for good once you say Got it', async () => {
+    const onAdd = vi.fn().mockResolvedValue({ id: 'tx-12' });
+    parseTextWithAI.mockResolvedValue([{
+      action: 'create', amount: 36, description: 'Lunch at Restaurant',
+      categoryId: 'cat-travel', tripId: 'trip-poland',
+    }]);
+
+    const props = {
+      config: { features: { aiParser: true }, claudeApiKey: 'key' },
+      trips: [{ id: 'trip-poland', name: 'Poland Autumn' }],
+      categories: [{ id: 'cat-travel', name: 'Travel', type: 'Expense' }],
+      onAdd,
+    };
+
+    const { unmount } = render(<SmartTextEntry {...props} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '30 zl for lunch' } });
+    fireEvent.submit(screen.getByRole('textbox'));
+    await waitFor(() => expect(screen.getByText(/added to your/)).toBeDefined());
+
+    fireEvent.click(screen.getByText('Got it'));
+    expect(screen.queryByText(/added to your/)).toBeNull();
+
+    // And it doesn't come back on the next refresh, either.
+    unmount();
+    render(<SmartTextEntry {...props} />);
+    expect(screen.queryByText(/added to your/)).toBeNull();
+  });
+
+  it('does not resurrect a confirmation for a save long since forgotten', () => {
+    sessionStorage.setItem('whereItWent_trip_notice', JSON.stringify({
+      savedAt: Date.now() - 6 * 60 * 1000,
+      notice: { id: 'tx-old', others: 0, tx: { description: 'Lunch', tripId: 'trip-poland' } },
+    }));
+
+    render(
+      <SmartTextEntry
+        config={{ features: { aiParser: true }, claudeApiKey: 'key' }}
+        trips={[{ id: 'trip-poland', name: 'Poland Autumn' }]}
+        categories={[]}
+        onAdd={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(/added to your/)).toBeNull();
   });
 
   it('reports the foreign figure, not the RON one wearing its currency code', async () => {
