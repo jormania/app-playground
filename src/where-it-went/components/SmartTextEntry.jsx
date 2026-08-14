@@ -1,9 +1,40 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Wand2, Loader2, Mic, MicOff } from 'lucide-react';
 import { ConfirmModal } from '../../ds';
 import { parseSmartText } from '../lib/smartParser';
 import { parseTextWithAI, hardenTransactions } from '../lib/aiParser';
 import { parseNoraSplitGroup, stripNoraGroup } from '../lib/noraSplit';
+import { readSessionJson, writeSessionJson, removeSessionJson } from '../lib/storage';
+
+/**
+ * Where the trip notice lives between renders — deliberately not just React
+ * state.
+ *
+ * Saving a transaction kicks off a ledger refresh, and a refresh that can't
+ * paint the mirrored copy (no snapshot yet, or a ledger too big for
+ * localStorage to hold one) flips the whole screen to the skeleton for as long
+ * as Notion takes to answer. That unmounts the Dashboard, and with it this
+ * component — so the notice vanished a few seconds after appearing, looking
+ * exactly like an auto-dismiss nobody wrote. Same for anything else that
+ * remounts the subtree.
+ *
+ * Holding it outside the mount makes the promise the card makes true: it is
+ * there until *you* answer it. Session-scoped, so it never outlives the tab,
+ * and time-bounded so a reload half an hour later doesn't resurrect a
+ * confirmation for a transaction you've long since forgotten saving.
+ */
+const TRIP_NOTICE_KEY = 'whereItWent_trip_notice';
+const TRIP_NOTICE_MAX_AGE_MS = 5 * 60 * 1000;
+
+function readStoredTripNotice() {
+  const stored = readSessionJson(TRIP_NOTICE_KEY, null);
+  if (!stored || !stored.notice || !stored.savedAt) return null;
+  if (Date.now() - stored.savedAt > TRIP_NOTICE_MAX_AGE_MS) {
+    removeSessionJson(TRIP_NOTICE_KEY);
+    return null;
+  }
+  return stored.notice;
+}
 
 /**
  * How much a saved transaction was for, in the currency the person actually
@@ -39,7 +70,12 @@ export default function SmartTextEntry({ onAdd, onUpdate, onDelete, onAddSubscri
   // something under Travel on a trip is a judgement the parser made from
   // context rather than from your words, and a judgement you can't see is one
   // you can't correct — so it's stated, with one tap to open the row.
-  const [tripNotice, setTripNotice] = useState(null);
+  const [tripNotice, setTripNoticeState] = useState(readStoredTripNotice);
+  const setTripNotice = useCallback((notice) => {
+    setTripNoticeState(notice);
+    if (notice) writeSessionJson(TRIP_NOTICE_KEY, { savedAt: Date.now(), notice });
+    else removeSessionJson(TRIP_NOTICE_KEY);
+  }, []);
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
 

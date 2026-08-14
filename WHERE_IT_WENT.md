@@ -1552,3 +1552,36 @@ Three things from one screenshot of a real trip entry.
 Also: a single add that produces a trip card no longer *also* fires the toast.
 The card says everything the toast did and more, and stacking them put two
 overlapping messages in the same 40px of screen.
+
+## The trip card that dismissed itself (2026-08-14)
+
+Reported from a phone: *"If I don't interact with this for 4s, it goes away,
+dismissed."* There is no timer on the trip card and there never was — the
+toasts self-clear (5s success, 3.5s error), the card is supposed to wait for
+**Got it** or **Change**. What was clearing it was a *remount*.
+
+Saving kicks off `loadData`, and `loadData` opens with `setLoading(true)`.
+`App` renders `{loading ? <SkeletonState/> : … <Dashboard/>}`, so any moment
+`loading` is genuinely true the Dashboard — and `SmartTextEntry` inside it,
+and the card's `useState` with it — is destroyed and rebuilt from scratch.
+Normally the flip is invisible: `loadData` reads the mirrored snapshot and
+sets `loading` back to false in the same synchronous block, so React batches
+the pair and never paints the skeleton. The card only outlives its own save
+because that batching happens to hold. Anything that breaks it — no snapshot
+yet, a ledger too big for `localStorage` to mirror, any other remount of the
+subtree — takes the card with it, and from the outside that is
+indistinguishable from an auto-dismiss.
+
+Verified in Chromium against the real app with the mirror disabled: before,
+the card never survived the refresh; after, it comes back with the Dashboard
+and stays. The fix is to stop the notice depending on the mount at all — it's
+held in `sessionStorage` (`whereItWent_trip_notice`) and rehydrated on mount,
+so it is there until *you* answer it. Cleared on **Got it**, on **Change**, and
+at the start of the next submit; scoped to the session so it never outlives the
+tab, and ignored after 5 minutes so a reload doesn't resurrect a confirmation
+for a save you've long since forgotten.
+
+Worth knowing, still standing: a refresh behind a populated screen can tear
+that screen down. Only the snapshot keeps the skeleton away, and it isn't
+guaranteed — the whole dataset has to fit in `localStorage`. Anything stateful
+living under `<main>` is exposed to the same thing.
