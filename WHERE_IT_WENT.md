@@ -1601,3 +1601,26 @@ Which is why the notice is owned by `App` and rendered outside `<main>`: not
 to make it persist (it doesn't), but so its four seconds are its own rather
 than however long the refresh happens to take. Anything else stateful under
 `<main>` is still exposed to the same teardown.
+
+## The footer that rearranged itself as you pressed Save (2026-08-15)
+
+Reported from the Edit modal mid-save: the three buttons don't line up. Two
+causes, both in the shared [`ModalFooter`](src/ds/components/ModalFooter.tsx),
+so the fix lands for every modal that uses it — Transaction, Split, Trip,
+Subscription, Template.
+
+- **The button grew as you pressed it.** "Saving..." is wider than "Save", and
+  the label was swapped outright. Both labels now sit stacked in one grid cell
+  with the inactive one hidden, so the button is sized for its widest state
+  from the start and nothing reflows. Written as a DS-wide rule in
+  [`src/ds/README.md`](src/ds/README.md).
+- **Three buttons never fit one row on a phone.** Measured at a 390px viewport:
+  they need ~346px of a 327px row at the default text size, and Android's
+  larger text sizes push that to ~392px. So the row wrapped — Delete stranded
+  on its own line, Cancel and Save shoved right beneath it, all three different
+  widths. Under 480px the footer now stacks deliberately: Cancel and Save side
+  by side and equal, Delete full-width on its own row underneath, which also
+  puts the destructive action somewhere other than a thumb's width from Save.
+
+Measured before and after in Chromium at root sizes 16/18/19/20px: Cancel and
+Save come out identical at every one, and idle and saving lay out the same.

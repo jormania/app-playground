@@ -16,3 +16,43 @@
   gap: var(--space-sm, 12px);
   margin-left: auto;
 }
+
+/* Three buttons don't share a line on a phone — at 390px they need ~346px of a
+   327px row, and Android's larger text sizes push that past 390px — so the row
+   wrapped into a ragged Delete-on-its-own above a right-shoved Cancel/Save,
+   every one of them a different width. Stack it on purpose instead: the two
+   you choose between sit side by side and equal, and Delete gets its own row
+   underneath, which also stops the destructive action sitting a thumb's width
+   from Save. */
+@media (max-width: 480px) {
+  .footer {
+    flex-wrap: nowrap;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .right {
+    margin-left: 0;
+  }
+  .right > *,
+  .left > * {
+    flex: 1;
+  }
+  .left {
+    order: 1;
+  }
+}
+
+/* Save and "Saving..." share one grid cell, so the button is always as wide as
+   the longer of the two and pressing it can't reflow the footer. */
+.saveLabel {
+  display: grid;
+  align-items: center;
+  justify-items: center;
+}
+.saveLabel > * {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+}
+.hidden {
+  visibility: hidden;
+}

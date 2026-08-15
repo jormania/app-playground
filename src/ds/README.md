@@ -23,6 +23,11 @@ src/ds/
 - **App-agnostic.** A DS component knows nothing about any specific app. The test:
   could it drop into a totally different app unchanged? If not, it's an app
   screen, not a DS component.
+- **A control that changes its label must not change its size.** Swapping
+  "Save" for "Saving..." on press made `ModalFooter`'s button grow, which on a
+  phone was enough to wrap the whole footer onto a second line mid-save. Render
+  both labels stacked in one grid cell and hide the inactive one, so the
+  element is laid out for its widest state from the start.
 - **Add new components to the showcase.** `/ds-showcase.html` (`npm run dev`,
   then open that path) renders every component in every state with a
   light/dark toggle — it's both the live workbench and the proof a new
