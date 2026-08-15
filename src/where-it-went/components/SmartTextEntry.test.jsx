@@ -35,9 +35,6 @@ describe('SmartTextEntry', () => {
   });
   afterEach(() => {
     cleanup();
-    // The trip notice outlives its component on purpose — so it has to be
-    // cleared between tests, or one test's card shows up in the next.
-    sessionStorage.clear();
   });
 
   it('handles regular AI transaction addition', async () => {
@@ -57,7 +54,93 @@ describe('SmartTextEntry', () => {
       expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ amount: 15 }));
     });
     expect(onSuccess).toHaveBeenCalledWith(['tx-1']);
-    expect(screen.getByText('Added 15 RON · Lunch')).toBeDefined();
+  });
+
+  it('reports every save to the notice, not only the ones on a trip', async () => {
+    const onAdd = vi.fn().mockResolvedValue({ id: 'tx-1' });
+    const onSaved = vi.fn();
+
+    parseTextWithAI.mockResolvedValue([
+      { action: 'create', amount: 15, description: 'Lunch', categoryId: 'cat-food' },
+    ]);
+
+    render(<SmartTextEntry config={{ features: { aiParser: true }, claudeApiKey: 'key' }} onAdd={onAdd} onSaved={onSaved} />);
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '15 for lunch' } });
+    fireEvent.submit(screen.getByRole('textbox'));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'tx-1', action: 'create', others: 0,
+    })));
+    // And no toast underneath it saying a thinner version of the same thing.
+    expect(screen.queryByText(/^Added /)).toBeNull();
+  });
+
+  it('counts the rest of a batch rather than reporting each one', async () => {
+    const onAdd = vi.fn()
+      .mockResolvedValueOnce({ id: 'tx-a' })
+      .mockResolvedValueOnce({ id: 'tx-b' })
+      .mockResolvedValueOnce({ id: 'tx-c' });
+    const onSaved = vi.fn();
+
+    parseTextWithAI.mockResolvedValue([
+      { action: 'create', amount: 15, description: 'Lunch' },
+      { action: 'create', amount: 25, description: 'Groceries' },
+      { action: 'create', amount: 8, description: 'Coffee' },
+    ]);
+
+    render(<SmartTextEntry config={{ features: { aiParser: true }, claudeApiKey: 'key' }} onAdd={onAdd} onSaved={onSaved} />);
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '15 lunch, 25 groceries, 8 coffee' } });
+    fireEvent.submit(screen.getByRole('textbox'));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'tx-a', others: 2,
+    })));
+  });
+
+  it('describes an update as the row now stands, not as the patch alone', async () => {
+    // The parser sends only what changed. On its own that would report a
+    // transaction with no category, no account and no trip — none of which
+    // the update touched.
+    const onUpdate = vi.fn().mockResolvedValue({});
+    const onSaved = vi.fn();
+
+    parseTextWithAI.mockResolvedValue([{ action: 'update', id: 'tx-2', amount: 200 }]);
+
+    render(
+      <SmartTextEntry
+        config={{ features: { aiParser: true }, claudeApiKey: 'key' }}
+        transactions={[{ id: 'tx-2', amount: 150, description: 'Gym membership', categoryId: 'cat-health', accountId: 'acc-1' }]}
+        onUpdate={onUpdate}
+        onSaved={onSaved}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'change the gym membership to 200' } });
+    fireEvent.submit(screen.getByRole('textbox'));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'tx-2',
+      action: 'update',
+      tx: expect.objectContaining({
+        amount: 200, description: 'Gym membership', categoryId: 'cat-health', accountId: 'acc-1',
+      }),
+    })));
+  });
+
+  it('clears the previous notice the moment a new message is submitted', async () => {
+    const onAdd = vi.fn().mockResolvedValue({ id: 'tx-1' });
+    const onSaved = vi.fn();
+    parseTextWithAI.mockResolvedValue([{ action: 'create', amount: 15, description: 'Lunch' }]);
+
+    render(<SmartTextEntry config={{ features: { aiParser: true }, claudeApiKey: 'key' }} onAdd={onAdd} onSaved={onSaved} />);
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '15 for lunch' } });
+    fireEvent.submit(screen.getByRole('textbox'));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ id: 'tx-1' })));
+    expect(onSaved).toHaveBeenNthCalledWith(1, null);
   });
 
   it('handles updates via AI', async () => {
@@ -75,7 +158,6 @@ describe('SmartTextEntry', () => {
     await waitFor(() => {
       expect(onUpdate).toHaveBeenCalledWith('tx-2', expect.objectContaining({ amount: 20 }));
     });
-    expect(screen.getByText('Updated transaction.')).toBeDefined();
   });
 
   it('shows subscription prompt when detected', async () => {
@@ -210,177 +292,6 @@ describe('SmartTextEntry', () => {
     });
     // The one that did succeed is still reported so the ledger refreshes.
     expect(onSuccess).toHaveBeenCalledWith(['tx-1']);
-  });
-
-  it('says when a transaction landed on a trip, and offers to change it', async () => {
-    const onAdd = vi.fn().mockResolvedValue({ id: 'tx-9' });
-    const onEditTransaction = vi.fn();
-
-    parseTextWithAI.mockResolvedValue([{
-      action: 'create',
-      amount: 36,
-      originalAmount: 30,
-      originalCurrency: 'PLN',
-      description: 'Lunch at Restaurant',
-      categoryId: 'cat-travel',
-      tripId: 'trip-poland',
-    }]);
-
-    render(
-      <SmartTextEntry
-        config={{ features: { aiParser: true }, claudeApiKey: 'key' }}
-        trips={[{ id: 'trip-poland', name: 'Poland Autumn' }]}
-        categories={[{ id: 'cat-travel', name: 'Travel', type: 'Expense' }]}
-        onAdd={onAdd}
-        onEditTransaction={onEditTransaction}
-      />,
-    );
-
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '30 zl for lunch' } });
-    fireEvent.submit(screen.getByRole('textbox'));
-
-    await waitFor(() => {
-      expect(screen.getByText(/added to your/)).toBeDefined();
-    });
-    // The word "trip" has to be present: naming the trip isn't the same as
-    // saying one was attached.
-    expect(screen.getByText(/Poland Autumn.*trip/)).toBeDefined();
-    expect(screen.getByText(/filed under Travel/)).toBeDefined();
-    expect(screen.getByText(/recorded as 30 PLN/)).toBeDefined();
-
-    fireEvent.click(screen.getByText('Change'));
-    expect(onEditTransaction).toHaveBeenCalledWith('tx-9');
-  });
-
-  it('survives the ledger refresh tearing the screen down and back up', async () => {
-    // Saving kicks off a refresh, and a refresh with no mirrored copy to paint
-    // flips the whole tab to the skeleton until Notion answers — unmounting
-    // this component a few seconds after the card appeared. That read as an
-    // auto-dismiss; the card is supposed to wait for an answer.
-    const onAdd = vi.fn().mockResolvedValue({ id: 'tx-11' });
-    parseTextWithAI.mockResolvedValue([{
-      action: 'create', amount: 36, originalAmount: 30, originalCurrency: 'PLN',
-      description: 'Lunch at Restaurant', categoryId: 'cat-travel', tripId: 'trip-poland',
-    }]);
-
-    const props = {
-      config: { features: { aiParser: true }, claudeApiKey: 'key' },
-      trips: [{ id: 'trip-poland', name: 'Poland Autumn' }],
-      categories: [{ id: 'cat-travel', name: 'Travel', type: 'Expense' }],
-      onAdd,
-    };
-
-    const { unmount } = render(<SmartTextEntry {...props} />);
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '30 zl for lunch' } });
-    fireEvent.submit(screen.getByRole('textbox'));
-    await waitFor(() => expect(screen.getByText(/added to your/)).toBeDefined());
-
-    unmount();
-    render(<SmartTextEntry {...props} />);
-    expect(screen.getByText(/Poland Autumn.*trip/)).toBeDefined();
-  });
-
-  it('is gone for good once you say Got it', async () => {
-    const onAdd = vi.fn().mockResolvedValue({ id: 'tx-12' });
-    parseTextWithAI.mockResolvedValue([{
-      action: 'create', amount: 36, description: 'Lunch at Restaurant',
-      categoryId: 'cat-travel', tripId: 'trip-poland',
-    }]);
-
-    const props = {
-      config: { features: { aiParser: true }, claudeApiKey: 'key' },
-      trips: [{ id: 'trip-poland', name: 'Poland Autumn' }],
-      categories: [{ id: 'cat-travel', name: 'Travel', type: 'Expense' }],
-      onAdd,
-    };
-
-    const { unmount } = render(<SmartTextEntry {...props} />);
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '30 zl for lunch' } });
-    fireEvent.submit(screen.getByRole('textbox'));
-    await waitFor(() => expect(screen.getByText(/added to your/)).toBeDefined());
-
-    fireEvent.click(screen.getByText('Got it'));
-    expect(screen.queryByText(/added to your/)).toBeNull();
-
-    // And it doesn't come back on the next refresh, either.
-    unmount();
-    render(<SmartTextEntry {...props} />);
-    expect(screen.queryByText(/added to your/)).toBeNull();
-  });
-
-  it('does not resurrect a confirmation for a save long since forgotten', () => {
-    sessionStorage.setItem('whereItWent_trip_notice', JSON.stringify({
-      savedAt: Date.now() - 6 * 60 * 1000,
-      notice: { id: 'tx-old', others: 0, tx: { description: 'Lunch', tripId: 'trip-poland' } },
-    }));
-
-    render(
-      <SmartTextEntry
-        config={{ features: { aiParser: true }, claudeApiKey: 'key' }}
-        trips={[{ id: 'trip-poland', name: 'Poland Autumn' }]}
-        categories={[]}
-        onAdd={vi.fn()}
-      />,
-    );
-
-    expect(screen.queryByText(/added to your/)).toBeNull();
-  });
-
-  it('reports the foreign figure, not the RON one wearing its currency code', async () => {
-    // "Added 82 PLN" for a 67 PLN shop that converts to 82 RON: both numbers
-    // are real and both show in the ledger, so the mismatch read as the app
-    // disagreeing with itself.
-    const onAdd = vi.fn().mockResolvedValue({ id: 'tx-8' });
-    parseTextWithAI.mockResolvedValue([{
-      action: 'create', amount: 82, originalAmount: 67, originalCurrency: 'PLN',
-      description: 'Shopping at Żabka', categoryId: 'cat-food',
-    }]);
-
-    render(<SmartTextEntry config={{ features: { aiParser: true }, claudeApiKey: 'key' }} onAdd={onAdd} />);
-
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '67 zl at zabka' } });
-    fireEvent.submit(screen.getByRole('textbox'));
-
-    await waitFor(() => expect(screen.getByText(/Added 67 PLN/)).toBeDefined());
-    expect(screen.queryByText(/82 PLN/)).toBeNull();
-  });
-
-  it('does not stack a toast on top of the trip card saying the same thing', async () => {
-    const onAdd = vi.fn().mockResolvedValue({ id: 'tx-7' });
-    parseTextWithAI.mockResolvedValue([{
-      action: 'create', amount: 82, originalAmount: 67, originalCurrency: 'PLN',
-      description: 'Shopping at Żabka', categoryId: 'cat-travel', tripId: 'trip-poland',
-    }]);
-
-    render(
-      <SmartTextEntry
-        config={{ features: { aiParser: true }, claudeApiKey: 'key' }}
-        trips={[{ id: 'trip-poland', name: '2026 - Poland' }]}
-        categories={[{ id: 'cat-travel', name: 'Travel', type: 'Expense' }]}
-        onAdd={onAdd}
-      />,
-    );
-
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '67 zl at zabka' } });
-    fireEvent.submit(screen.getByRole('textbox'));
-
-    await waitFor(() => expect(screen.getByText(/added to your/)).toBeDefined());
-    expect(screen.queryByText(/^Added /)).toBeNull();
-  });
-
-  it('stays quiet for a transaction with no trip', async () => {
-    const onAdd = vi.fn().mockResolvedValue({ id: 'tx-10' });
-    parseTextWithAI.mockResolvedValue([
-      { action: 'create', amount: 15, description: 'Lunch', categoryId: 'cat-food' },
-    ]);
-
-    render(<SmartTextEntry config={{ features: { aiParser: true }, claudeApiKey: 'key' }} onAdd={onAdd} />);
-
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '15 for lunch' } });
-    fireEvent.submit(screen.getByRole('textbox'));
-
-    await waitFor(() => expect(onAdd).toHaveBeenCalled());
-    expect(screen.queryByText('Change')).toBeNull();
   });
 
   it('sets the recognizer language from the browser locale', () => {

@@ -1553,35 +1553,51 @@ Also: a single add that produces a trip card no longer *also* fires the toast.
 The card says everything the toast did and more, and stacking them put two
 overlapping messages in the same 40px of screen.
 
-## The trip card that dismissed itself (2026-08-14)
+## The trip card, turned into a save notice (2026-08-14)
 
-Reported from a phone: *"If I don't interact with this for 4s, it goes away,
-dismissed."* There is no timer on the trip card and there never was — the
-toasts self-clear (5s success, 3.5s error), the card is supposed to wait for
-**Got it** or **Change**. What was clearing it was a *remount*.
+Two rounds on the same card, in opposite directions, and the second one is the
+one that stands.
 
-Saving kicks off `loadData`, and `loadData` opens with `setLoading(true)`.
-`App` renders `{loading ? <SkeletonState/> : … <Dashboard/>}`, so any moment
-`loading` is genuinely true the Dashboard — and `SmartTextEntry` inside it,
-and the card's `useState` with it — is destroyed and rebuilt from scratch.
-Normally the flip is invisible: `loadData` reads the mirrored snapshot and
-sets `loading` back to false in the same synchronous block, so React batches
-the pair and never paints the skeleton. The card only outlives its own save
-because that batching happens to hold. Anything that breaks it — no snapshot
-yet, a ledger too big for `localStorage` to mirror, any other remount of the
-subtree — takes the card with it, and from the outside that is
-indistinguishable from an auto-dismiss.
+**Round one, wrong.** Reported from a phone: *"if I don't interact with this
+for 4s, it goes away, dismissed."* Read as a bug, root-caused as one, and
+fixed — the card really was being destroyed by a remount rather than by any
+timer, and the mechanism is worth keeping on the record (below). But the
+report was a *feature request*: the card **should** go, and going after four
+seconds was the desired behaviour it didn't yet have.
 
-Verified in Chromium against the real app with the mirror disabled: before,
-the card never survived the refresh; after, it comes back with the Dashboard
-and stays. The fix is to stop the notice depending on the mount at all — it's
-held in `sessionStorage` (`whereItWent_trip_notice`) and rehydrated on mount,
-so it is there until *you* answer it. Cleared on **Got it**, on **Change**, and
-at the start of the next submit; scoped to the session so it never outlives the
-tab, and ignored after 5 minutes so a reload doesn't resurrect a confirmation
-for a save you've long since forgotten.
+**Round two, the actual design.** Three changes:
 
-Worth knowing, still standing: a refresh behind a populated screen can tear
-that screen down. Only the snapshot keeps the skeleton away, and it isn't
-guaranteed — the whole dataset has to fit in `localStorage`. Anything stateful
-living under `<main>` is exposed to the same thing.
+- **It shows for every save**, not only trip-linked ones. Every route into the
+  ledger decides things you can't see from the row — category, account, trip,
+  and what a foreign amount converted to — so restricting the confirmation to
+  trips meant the one time the app said what it had decided was the one time
+  you were abroad. Now the text box, dictation and the **+ Add** form all
+  report: `Saved 30 PLN (25 L) — filed under Travel, on your ✈️ 2026 – Poland
+  trip, from Revolut.`
+- **It leaves by itself after `SAVE_NOTICE_MS` (4s).** A confirmation you have
+  to dismiss is a chore attached to every single save — the opposite trade to
+  the bill reminders, which persist because they're about something *not yet
+  handled*. This one is about something already done.
+- **Only Change survives as a control.** Dismissal isn't a decision worth a
+  button when waiting four seconds does the same thing; being wrong about the
+  figure or the filing is.
+
+It lives in [`SaveNotice.jsx`](src/where-it-went/components/SaveNotice.jsx),
+owned by `App` and rendered outside `<main>` — see below for why that matters.
+
+### The remount, still worth knowing
+
+`loadData` opens with `setLoading(true)`, and `App` renders
+`{loading ? <SkeletonState/> : … <Dashboard/>}`, so any moment `loading` is
+genuinely true the whole tab — and everything stateful inside it — is destroyed
+and rebuilt. Normally the flip is invisible: `loadData` reads the mirrored
+snapshot and clears `loading` in the same synchronous block, so React batches
+the pair and the skeleton never paints. That only holds while a snapshot
+exists, and the whole dataset has to fit in `localStorage` for one to. With
+the mirror disabled in Chromium, the notice was destroyed the instant it was
+set — it never even rendered.
+
+Which is why the notice is owned by `App` and rendered outside `<main>`: not
+to make it persist (it doesn't), but so its four seconds are its own rather
+than however long the refresh happens to take. Anything else stateful under
+`<main>` is still exposed to the same teardown.
