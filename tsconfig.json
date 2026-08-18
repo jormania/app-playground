@@ -21,7 +21,7 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
-    /* Governs the TypeScript code: the Sol Odyssey, Daily Stoic and Fit Check apps, the
+    /* Governs the TypeScript code: the Sol Odyssey, Daily Stoic, Fit Check and Silva apps, the
        design system (src/ds), and the cross-app shared logic (src/shared). The other apps are
        plain JS/JSX and are intentionally left out of `include` — they still import
        from src/shared, but only the shared code itself gets typechecked.
@@ -34,5 +34,5 @@
        so the JS modules alongside them are unaffected. */
     "types": ["vitest/globals", "node"]
   },
-  "include": ["src/sol-odyssey", "src/daily-stoic", "src/ds", "src/shared", "src/fit-check", "src/lexi5/lib"]
+  "include": ["src/sol-odyssey", "src/daily-stoic", "src/ds", "src/shared", "src/fit-check", "src/lexi5/lib", "src/silva"]
 }
