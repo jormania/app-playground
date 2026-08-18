@@ -5,14 +5,15 @@
  * store's promise resolve/reject in the background (SILVA.md "Data and
  * architecture").
  *
- * Only Loci/Paths/embeddings/provocations are out of scope for this session
- * — this store grows a `Loci`/`Paths` counterpart when those build-order
- * steps land, not speculatively now.
+ * Only Paths/embeddings/provocations are out of scope for this session —
+ * this store grows a `Paths` counterpart when that build-order step lands,
+ * not speculatively now.
  */
 
 import { toThing, toNotionThingProps, patchProps, deriveHandle, type Thing } from './notion'
 import { toSource, toNotionSourceProps, patchSourceProps, type Source } from './sources'
-import { DEMO_THINGS, DEMO_SOURCES } from './fixtures'
+import { toLocus, toNotionLocusProps, patchLocusProps, type Locus } from './loci'
+import { DEMO_THINGS, DEMO_SOURCES, DEMO_LOCI } from './fixtures'
 
 const PROXY_URL = '/api/notion'
 
@@ -53,11 +54,17 @@ export interface NewSourceInput {
   notes?: string
 }
 
+export interface NewLocusInput {
+  name: string
+  meaning?: string
+}
+
 /** A private, session-only copy — demo writes must never mutate the shared
  *  fixture export itself (a second store instance, or a hot reload, would
  *  otherwise see another instance's edits). */
 let demoThings: Thing[] = [...DEMO_THINGS]
 let demoSources: Source[] = [...DEMO_SOURCES]
+let demoLoci: Locus[] = [...DEMO_LOCI]
 
 // Date.now() alone collides when several demo rows are created in the same
 // tick — exactly what a Kobo import's per-highlight loop does, caught live
@@ -73,21 +80,25 @@ function demoId(prefix: string): string {
 export function resetDemoThings(): void {
   demoThings = [...DEMO_THINGS]
   demoSources = [...DEMO_SOURCES]
+  demoLoci = [...DEMO_LOCI]
 }
 
 export class SilvaStore {
   private token: string
   private thingsDbId: string | null
   private sourcesDbId: string | null
+  private lociDbId: string | null
 
   constructor(
     token: string,
     thingsDbId: string | null = DEFAULT_THINGS_DATABASE_ID,
     sourcesDbId: string | null = DEFAULT_SOURCES_DATABASE_ID,
+    lociDbId: string | null = DEFAULT_LOCI_DATABASE_ID,
   ) {
     this.token = token
     this.thingsDbId = thingsDbId
     this.sourcesDbId = sourcesDbId
+    this.lociDbId = lociDbId
   }
 
   /** No token → demo. Token but no database id → empty, never a silent mix
@@ -233,5 +244,74 @@ export class SilvaStore {
     const properties = patchSourceProps(patch)
     const page = await this.request(`pages/${id}`, 'PATCH', { properties })
     return toSource(page as { id: string; properties: Record<string, unknown> })
+  }
+
+  async listLoci(): Promise<Locus[]> {
+    if (this.useDemo()) return [...demoLoci]
+    if (!this.lociDbId) return []
+    const pages = await this.fetchAllPages(this.lociDbId)
+    return pages.map((page) => toLocus(page as { id: string; properties: Record<string, unknown> }))
+  }
+
+  /** Coining is always retrospective — `coined` defaults to today and isn't
+   *  a caller-supplied field (SILVA.md: "named after the things, never
+   *  before them"). */
+  async createLocus(input: NewLocusInput): Promise<Locus> {
+    const draft: Omit<Locus, 'id'> = {
+      name: input.name,
+      meaning: input.meaning ?? '',
+      coined: new Date().toISOString().slice(0, 10),
+    }
+
+    if (this.useDemo()) {
+      const locus: Locus = { ...draft, id: demoId('demo-locus') }
+      demoLoci = [locus, ...demoLoci]
+      return locus
+    }
+
+    if (!this.lociDbId) {
+      throw new SilvaStoreError('No Loci database configured.', 0)
+    }
+
+    const page = await this.request('pages', 'POST', {
+      parent: { database_id: this.lociDbId },
+      properties: toNotionLocusProps(draft),
+    })
+    return toLocus(page as { id: string; properties: Record<string, unknown> })
+  }
+
+  async updateLocus(id: string, patch: Partial<Locus>): Promise<Locus> {
+    if (this.useDemo()) {
+      let updated: Locus | undefined
+      demoLoci = demoLoci.map((locus) => {
+        if (locus.id !== id) return locus
+        updated = { ...locus, ...patch }
+        return updated
+      })
+      if (!updated) throw new SilvaStoreError(`No such locus: ${id}`, 404)
+      return updated
+    }
+
+    const properties = patchLocusProps(patch)
+    const page = await this.request(`pages/${id}`, 'PATCH', { properties })
+    return toLocus(page as { id: string; properties: Record<string, unknown> })
+  }
+
+  /** Notion's reversible "delete" (archived: true, same convention every
+   *  app in this repo uses — see e.g. WhereItWent's notionClient.js).
+   *  Callers must strip the id from any Thing's `lociIds` themselves first
+   *  (lib/loci.ts's `withoutLocus` helper) — this only removes the locus
+   *  record, since membership lives on the Things side. */
+  async archiveLocus(id: string): Promise<void> {
+    if (this.useDemo()) {
+      demoLoci = demoLoci.filter((locus) => locus.id !== id)
+      return
+    }
+
+    if (!this.lociDbId) {
+      throw new SilvaStoreError('No Loci database configured.', 0)
+    }
+
+    await this.request(`pages/${id}`, 'PATCH', { archived: true })
   }
 }

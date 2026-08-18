@@ -4,13 +4,16 @@ import { SilvaStore } from './lib/store'
 import { isExpired } from './lib/understory'
 import type { Thing } from './lib/notion'
 import type { Source } from './lib/sources'
+import type { Locus } from './lib/loci'
+import { withoutLocus, withLocusReplaced } from './lib/loci'
 import { ForestView } from './components/ForestView'
 import { UnderstoryView } from './components/UnderstoryView'
 import { IntakeField } from './components/IntakeField'
 import { KoboImportPanel } from './components/KoboImportPanel'
+import { ClearingsView } from './components/ClearingsView'
 import styles from './App.module.css'
 
-type View = 'forest' | 'understory'
+type View = 'forest' | 'understory' | 'clearings'
 
 export default function App() {
   // No Settings/token entry yet (deferred — see plan) — demo mode is what
@@ -19,6 +22,7 @@ export default function App() {
   const store = useMemo(() => new SilvaStore(''), [])
   const [things, setThings] = useState<Thing[]>([])
   const [sources, setSources] = useState<Source[]>([])
+  const [loci, setLoci] = useState<Locus[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [view, setView] = useState<View>('understory')
@@ -29,8 +33,13 @@ export default function App() {
 
     async function load() {
       try {
-        const [loaded, loadedSources] = await Promise.all([store.listThings(), store.listSources()])
+        const [loaded, loadedSources, loadedLoci] = await Promise.all([
+          store.listThings(),
+          store.listSources(),
+          store.listLoci(),
+        ])
         if (!cancelled) setSources(loadedSources)
+        if (!cancelled) setLoci(loadedLoci)
 
         // Season expiry: quietly release anything that's fully aged out of
         // the understory. No badge, no counter — it just isn't there next
@@ -88,6 +97,68 @@ export default function App() {
     setSources(await store.listSources())
   }
 
+  // Locus membership lives entirely on the Things side (Thing.lociIds) —
+  // every clearing action below is really "patch some things, then maybe
+  // touch the locus record itself." This applies a batch of patches and
+  // folds the results back into `things` state in one pass.
+  async function applyThingUpdates(updates: { id: string; patch: Partial<Thing> }[]) {
+    const updated = await Promise.all(updates.map((u) => store.updateThing(u.id, u.patch)))
+    const byId = new Map(updated.map((t) => [t.id, t]))
+    setThings((prev) => prev.map((t) => byId.get(t.id) ?? t))
+  }
+
+  async function handleCoin(name: string, meaning: string, seedThingIds: string[]) {
+    const locus = await store.createLocus({ name, meaning })
+    setLoci((prev) => [locus, ...prev])
+    if (seedThingIds.length === 0) return
+    await applyThingUpdates(
+      seedThingIds
+        .map((id) => things.find((t) => t.id === id))
+        .filter((t): t is Thing => Boolean(t))
+        .map((t) => ({ id: t.id, patch: { lociIds: [...t.lociIds, locus.id] } })),
+    )
+  }
+
+  async function handleRename(locusId: string, name: string, meaning: string) {
+    const updated = await store.updateLocus(locusId, { name, meaning })
+    setLoci((prev) => prev.map((l) => (l.id === locusId ? updated : l)))
+  }
+
+  async function handleAddThings(locusId: string, thingIds: string[]) {
+    await applyThingUpdates(
+      thingIds
+        .map((id) => things.find((t) => t.id === id))
+        .filter((t): t is Thing => Boolean(t))
+        .map((t) => ({ id: t.id, patch: { lociIds: [...t.lociIds, locusId] } })),
+    )
+  }
+
+  async function handleRemoveThing(locusId: string, thingId: string) {
+    const thing = things.find((t) => t.id === thingId)
+    if (!thing) return
+    await applyThingUpdates([{ id: thing.id, patch: { lociIds: withoutLocus(thing.lociIds, locusId) } }])
+  }
+
+  async function handleMerge(survivorId: string, mergeAwayId: string) {
+    const affected = things.filter((t) => t.lociIds.includes(mergeAwayId))
+    if (affected.length > 0) {
+      await applyThingUpdates(
+        affected.map((t) => ({ id: t.id, patch: { lociIds: withLocusReplaced(t.lociIds, mergeAwayId, survivorId) } })),
+      )
+    }
+    await store.archiveLocus(mergeAwayId)
+    setLoci((prev) => prev.filter((l) => l.id !== mergeAwayId))
+  }
+
+  async function handleDissolve(locusId: string) {
+    const affected = things.filter((t) => t.lociIds.includes(locusId))
+    if (affected.length > 0) {
+      await applyThingUpdates(affected.map((t) => ({ id: t.id, patch: { lociIds: withoutLocus(t.lociIds, locusId) } })))
+    }
+    await store.archiveLocus(locusId)
+    setLoci((prev) => prev.filter((l) => l.id !== locusId))
+  }
+
   return (
     <div className={styles.app}>
       <header className={styles.header}>
@@ -98,6 +169,7 @@ export default function App() {
           options={[
             { value: 'understory', label: 'Understory' },
             { value: 'forest', label: 'Forest' },
+            { value: 'clearings', label: 'Clearings' },
           ]}
         />
       </header>
@@ -128,8 +200,19 @@ export default function App() {
               onRelease={handleRelease}
             />
           </>
-        ) : (
+        ) : view === 'forest' ? (
           <ForestView things={things} sources={sources} />
+        ) : (
+          <ClearingsView
+            things={things}
+            loci={loci}
+            onCoin={handleCoin}
+            onRename={handleRename}
+            onAddThings={handleAddThings}
+            onRemoveThing={handleRemoveThing}
+            onMerge={handleMerge}
+            onDissolve={handleDissolve}
+          />
         )}
       </main>
     </div>

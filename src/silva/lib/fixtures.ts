@@ -12,6 +12,7 @@
 
 import type { Thing } from './notion'
 import type { Source } from './sources'
+import type { Locus } from './loci'
 
 function daysAgo(n: number): string {
   const d = new Date()
@@ -50,6 +51,20 @@ export const DEMO_SOURCES: Source[] = [
   },
 ]
 
+/** One already-coined clearing, so the Clearings view isn't empty on first
+ *  load (SILVA.md: every view populated by the demo fixtures) — gathers
+ *  demo-thing-2 and demo-thing-3 below, both small moments of noticing
+ *  someone else. Loci are coined retrospectively, never at capture, so this
+ *  is deliberately the only place `lociIds` gets set outside the app itself. */
+export const DEMO_LOCI: Locus[] = [
+  {
+    id: 'demo-locus-small-attentions',
+    name: 'Small attentions',
+    meaning: 'Moments where noticing someone else, briefly, said more than expected.',
+    coined: daysAgo(40),
+  },
+]
+
 export const DEMO_THINGS: Thing[] = [
   {
     id: 'demo-thing-1',
@@ -78,7 +93,7 @@ export const DEMO_THINGS: Thing[] = [
     encountered: daysAgo(120),
     kept: daysAgo(110),
     note: '',
-    lociIds: [],
+    lociIds: ['demo-locus-small-attentions'],
     image: null,
     link: null,
     koboBookmarkId: null,
@@ -94,7 +109,7 @@ export const DEMO_THINGS: Thing[] = [
     encountered: daysAgo(60),
     kept: daysAgo(58),
     note: 'A friend said the second line without thinking. It stopped me.',
-    lociIds: [],
+    lociIds: ['demo-locus-small-attentions'],
     image: null,
     link: null,
     koboBookmarkId: null,
