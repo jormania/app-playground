@@ -51,5 +51,20 @@
   margin: var(--space-sm) 0 0;
   color: var(--color-faint);
   font-size: var(--text-xs);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+}
+
+.labelSep {
+  color: var(--color-border-2);
+}
+
+/* The field word ("encountered"/"kept") gets a low-key colour shift and
+   tighter small-caps treatment so the two dates read as labelled — not a
+   pill, just enough contrast to separate field from value at a glance. */
+.labelField {
+  color: var(--color-accent);
+  font-weight: var(--weight-medium);
+  text-transform: uppercase;
+  font-size: 0.9em;
+  letter-spacing: 0.06em;
 }

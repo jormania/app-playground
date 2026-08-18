@@ -3,6 +3,7 @@ import { Button, SegmentedControl } from '../ds'
 import { SilvaStore } from './lib/store'
 import { isExpired } from './lib/understory'
 import type { Thing } from './lib/notion'
+import type { Source } from './lib/sources'
 import { ForestView } from './components/ForestView'
 import { UnderstoryView } from './components/UnderstoryView'
 import { IntakeField } from './components/IntakeField'
@@ -17,6 +18,7 @@ export default function App() {
   // ready for whichever later session adds the UI to enter one.
   const store = useMemo(() => new SilvaStore(''), [])
   const [things, setThings] = useState<Thing[]>([])
+  const [sources, setSources] = useState<Source[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [view, setView] = useState<View>('understory')
@@ -27,7 +29,8 @@ export default function App() {
 
     async function load() {
       try {
-        const loaded = await store.listThings()
+        const [loaded, loadedSources] = await Promise.all([store.listThings(), store.listSources()])
+        if (!cancelled) setSources(loadedSources)
 
         // Season expiry: quietly release anything that's fully aged out of
         // the understory. No badge, no counter — it just isn't there next
@@ -78,6 +81,13 @@ export default function App() {
     [things],
   )
 
+  async function handleImported(created: Thing[]) {
+    setThings((prev) => [...created, ...prev])
+    // A Kobo import may have created new Sources (or backfilled an existing
+    // one's koboVolumeId) — refresh so the forest can resolve their titles.
+    setSources(await store.listSources())
+  }
+
   return (
     <div className={styles.app}>
       <header className={styles.header}>
@@ -104,7 +114,7 @@ export default function App() {
               <KoboImportPanel
                 store={store}
                 existingKoboBookmarkIds={existingKoboBookmarkIds}
-                onImported={(created) => setThings((prev) => [...created, ...prev])}
+                onImported={handleImported}
                 onClose={() => setImportOpen(false)}
               />
             ) : (
@@ -119,7 +129,7 @@ export default function App() {
             />
           </>
         ) : (
-          <ForestView things={things} />
+          <ForestView things={things} sources={sources} />
         )}
       </main>
     </div>
