@@ -101,7 +101,7 @@ describe('Journal — draft hydration when Notion is configured but has no recor
     await waitFor(() => expect(NotionService.fetchReflectionForDay).toHaveBeenCalled());
     await user.click(screen.getByRole('button', { name: 'Reflect' }));
 
-    expect((screen.getByPlaceholderText('I stopped complaining about...') as HTMLTextAreaElement).value).toBe(
+    expect((screen.getByPlaceholderText('A reaction, habit, judgment, or moment that surprised me...') as HTMLTextAreaElement).value).toBe(
       'Caught myself complaining about traffic.'
     );
     // Nothing has actually reached Notion for this day yet, so the draft
@@ -131,7 +131,7 @@ describe('Journal — draft hydration when Notion is configured but has no recor
     await waitFor(() => expect(NotionService.fetchReflectionForDay).toHaveBeenCalled());
     await user.click(screen.getByRole('button', { name: 'Reflect' }));
 
-    expect((screen.getByPlaceholderText('I stopped complaining about...') as HTMLTextAreaElement).value).toBe('');
+    expect((screen.getByPlaceholderText('A reaction, habit, judgment, or moment that surprised me...') as HTMLTextAreaElement).value).toBe('');
   });
 });
 

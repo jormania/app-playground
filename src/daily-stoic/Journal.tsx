@@ -60,12 +60,12 @@ const CARDINAL_VIRTUES = [
 // (pre-3-question format) have no headers at all; the whole text is treated
 // as the first answer, matching the app's original single-question shape.
 function parseSenecaQuestions(text: string): [string, string, string] {
-  if (!text.includes('### What ailment') && !text.includes('### Which of my bad habits')) {
+  if (!text.includes('### What ailment') && !text.includes('### Which of my bad habits') && !text.includes('### What caught my attention')) {
     return [text, '', ''];
   }
-  const q1 = text.match(/### (?:What ailment or bad habit did I cure today|Which of my bad habits did I catch and correct today)\?\n([\s\S]*?)(?=###|$)/);
-  const q2 = text.match(/### (?:What failing did I resist|What negative impulse or distraction did I successfully resist)\?\n([\s\S]*?)(?=###|$)/);
-  const q3 = text.match(/### (?:In what matter can I show improvement tomorrow|Where did I stumble today, and what could I do better tomorrow|Where did I stumble today, and how will I handle it better tomorrow)\?\n([\s\S]*?)(?=###|$)/);
+  const q1 = text.match(/### (?:What ailment or bad habit did I cure today|Which of my bad habits did I catch and correct today|What caught my attention about myself today)\?\n([\s\S]*?)(?=###|$)/);
+  const q2 = text.match(/### (?:What failing did I resist|What negative impulse or distraction did I successfully resist|What impulse or distraction did I successfully resist)\?\n([\s\S]*?)(?=###|$)/);
+  const q3 = text.match(/### (?:In what matter can I show improvement tomorrow|Where did I stumble today, and what could I do better tomorrow|Where did I stumble today, and how will I handle it better tomorrow|Where did I stumble today, and what will I try differently next time)\?\n([\s\S]*?)(?=###|$)/);
   return [q1 ? q1[1].trim() : '', q2 ? q2[1].trim() : '', q3 ? q3[1].trim() : ''];
 }
 
@@ -282,9 +282,9 @@ export default function Journal({
   // Update reflection string when Qs change
   useEffect(() => {
     const combined = [
-      senecaQ1.trim() ? `### Which of my bad habits did I catch and correct today?\n${senecaQ1.trim()}` : '',
-      senecaQ2.trim() ? `### What negative impulse or distraction did I successfully resist?\n${senecaQ2.trim()}` : '',
-      senecaQ3.trim() ? `### Where did I stumble today, and how will I handle it better tomorrow?\n${senecaQ3.trim()}` : ''
+      senecaQ1.trim() ? `### What caught my attention about myself today?\n${senecaQ1.trim()}` : '',
+      senecaQ2.trim() ? `### What impulse or distraction did I successfully resist?\n${senecaQ2.trim()}` : '',
+      senecaQ3.trim() ? `### Where did I stumble today, and what will I try differently next time?\n${senecaQ3.trim()}` : ''
     ].filter(Boolean).join('\n\n');
     
     if (combined !== reflection) {
@@ -1299,10 +1299,10 @@ export default function Journal({
               {/* Seneca Questions */}
               <section className="rounded-xl border border-secondary bg-background-secondary p-4 sm:p-6 shadow-md hover:shadow-lg transition-all duration-300">
                 <h3 className="font-display text-xl text-text-primary mb-3 border-b border-tertiary pb-3 flex items-center gap-2">
-                  <HelpCircle size={20} className="text-text-secondary" /> Seneca's Evening Interrogation
+                  <HelpCircle size={20} className="text-text-secondary" /> Seneca's Evening Field Notes
                 </h3>
                 <p className="text-sm text-text-secondary mb-4">
-                  Audit your day through self-examination, reviewing bad habits caught, impulse control, and tomorrow's improvements.
+                  Record what you noticed today: your reactions, judgments, choices, and moments of composure.
                 </p>
                 
                 <div className="space-y-6">
@@ -1312,7 +1312,7 @@ export default function Journal({
                     </h4>
                     <div className="flex flex-col gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Which of my bad habits did I catch and correct today?</label>
+                        <label className="block text-sm font-medium text-text-secondary mb-1.5">What caught my attention about myself today?</label>
                         <AutoExpandingTextarea
                           value={senecaQ1}
                           onValueChange={(val) => {
@@ -1320,12 +1320,12 @@ export default function Journal({
                             setIsSaved(false);
                           }}
                           onCtrlEnter={handleSave}
-                          placeholder="I stopped complaining about..."
+                          placeholder="A reaction, habit, judgment, or moment that surprised me..."
                           disabled={isLoading || isSaving}
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-1.5">What negative impulse or distraction did I successfully resist?</label>
+                        <label className="block text-sm font-medium text-text-secondary mb-1.5">What impulse or distraction did I successfully resist?</label>
                         <AutoExpandingTextarea
                           value={senecaQ2}
                           onValueChange={(val) => {
@@ -1333,12 +1333,12 @@ export default function Journal({
                             setIsSaved(false);
                           }}
                           onCtrlEnter={handleSave}
-                          placeholder="Resisted doomscrolling or anger..."
+                          placeholder="Resisted doomscrolling, irritation, or the urge to..."
                           disabled={isLoading || isSaving}
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Where did I stumble today, and how will I handle it better tomorrow?</label>
+                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Where did I stumble today, and what will I try differently next time?</label>
                         <AutoExpandingTextarea
                           value={senecaQ3}
                           onValueChange={(val) => {
@@ -1346,7 +1346,7 @@ export default function Journal({
                             setIsSaved(false);
                           }}
                           onCtrlEnter={handleSave}
-                          placeholder="I will prepare my morning more calmly..."
+                          placeholder="Next time, I'll try..."
                           disabled={isLoading || isSaving}
                         />
                       </div>
