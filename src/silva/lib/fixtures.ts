@@ -11,12 +11,44 @@
  */
 
 import type { Thing } from './notion'
+import type { Source } from './sources'
 
 function daysAgo(n: number): string {
   const d = new Date()
   d.setDate(d.getDate() - n)
   return d.toISOString().slice(0, 10)
 }
+
+/** The Sources the demo Things above already reference by id. */
+export const DEMO_SOURCES: Source[] = [
+  {
+    id: 'demo-source-meditations',
+    title: 'Meditations',
+    author: 'Marcus Aurelius',
+    kind: 'Book',
+    cover: null,
+    koboVolumeId: null,
+    notes: '',
+  },
+  {
+    id: 'demo-source-aristotle',
+    title: 'Nicomachean Ethics',
+    author: 'Aristotle',
+    kind: 'Book',
+    cover: null,
+    koboVolumeId: null,
+    notes: '',
+  },
+  {
+    id: 'demo-source-conversation',
+    title: 'A friend, on a walk',
+    author: '',
+    kind: 'Conversation',
+    cover: null,
+    koboVolumeId: null,
+    notes: '',
+  },
+]
 
 export const DEMO_THINGS: Thing[] = [
   {

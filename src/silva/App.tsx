@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { SegmentedControl } from '../ds'
+import { Button, SegmentedControl } from '../ds'
 import { SilvaStore } from './lib/store'
 import { isExpired } from './lib/understory'
 import type { Thing } from './lib/notion'
 import { ForestView } from './components/ForestView'
 import { UnderstoryView } from './components/UnderstoryView'
 import { IntakeField } from './components/IntakeField'
+import { KoboImportPanel } from './components/KoboImportPanel'
 import styles from './App.module.css'
 
 type View = 'forest' | 'understory'
@@ -19,6 +20,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [view, setView] = useState<View>('understory')
+  const [importOpen, setImportOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -71,6 +73,10 @@ export default function App() {
   }
 
   const understoryThings = things.filter((thing) => thing.state === 'Understory')
+  const existingKoboBookmarkIds = useMemo(
+    () => new Set(things.map((t) => t.koboBookmarkId).filter((id): id is string => Boolean(id))),
+    [things],
+  )
 
   return (
     <div className={styles.app}>
@@ -94,6 +100,18 @@ export default function App() {
         ) : view === 'understory' ? (
           <>
             <IntakeField onSubmit={handleIntake} />
+            {importOpen ? (
+              <KoboImportPanel
+                store={store}
+                existingKoboBookmarkIds={existingKoboBookmarkIds}
+                onImported={(created) => setThings((prev) => [...created, ...prev])}
+                onClose={() => setImportOpen(false)}
+              />
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
+                Import from Kobo
+              </Button>
+            )}
             <UnderstoryView
               things={understoryThings}
               onKeep={handleKeep}

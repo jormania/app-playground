@@ -11,7 +11,8 @@
  */
 
 import { toThing, toNotionThingProps, patchProps, deriveHandle, type Thing } from './notion'
-import { DEMO_THINGS } from './fixtures'
+import { toSource, toNotionSourceProps, patchSourceProps, type Source } from './sources'
+import { DEMO_THINGS, DEMO_SOURCES } from './fixtures'
 
 const PROXY_URL = '/api/notion'
 
@@ -37,25 +38,56 @@ export interface NewThingInput {
   locator?: string
   note?: string
   link?: string | null
+  sourceId?: string | null
+  /** Overrides "today" — Kobo import back-dates this to the highlight's own
+   *  DateCreated rather than the moment it was imported. */
+  encountered?: string
+  koboBookmarkId?: string | null
+}
+
+export interface NewSourceInput {
+  title: string
+  author?: string
+  kind?: Source['kind']
+  koboVolumeId?: string | null
+  notes?: string
 }
 
 /** A private, session-only copy — demo writes must never mutate the shared
  *  fixture export itself (a second store instance, or a hot reload, would
  *  otherwise see another instance's edits). */
 let demoThings: Thing[] = [...DEMO_THINGS]
+let demoSources: Source[] = [...DEMO_SOURCES]
+
+// Date.now() alone collides when several demo rows are created in the same
+// tick — exactly what a Kobo import's per-highlight loop does, caught live
+// (React "two children with the same key") rather than by a unit test, since
+// no single-item test creates two things fast enough to collide.
+let demoIdCounter = 0
+function demoId(prefix: string): string {
+  demoIdCounter += 1
+  return `${prefix}-${Date.now()}-${demoIdCounter}`
+}
 
 /** Test-only: reset the in-memory demo store back to the fixtures. */
 export function resetDemoThings(): void {
   demoThings = [...DEMO_THINGS]
+  demoSources = [...DEMO_SOURCES]
 }
 
 export class SilvaStore {
   private token: string
   private thingsDbId: string | null
+  private sourcesDbId: string | null
 
-  constructor(token: string, thingsDbId: string | null = DEFAULT_THINGS_DATABASE_ID) {
+  constructor(
+    token: string,
+    thingsDbId: string | null = DEFAULT_THINGS_DATABASE_ID,
+    sourcesDbId: string | null = DEFAULT_SOURCES_DATABASE_ID,
+  ) {
     this.token = token
     this.thingsDbId = thingsDbId
+    this.sourcesDbId = sourcesDbId
   }
 
   /** No token → demo. Token but no database id → empty, never a silent mix
@@ -104,19 +136,19 @@ export class SilvaStore {
       body: input.body,
       kind: input.kind ?? null,
       state: 'Understory',
-      sourceId: null,
+      sourceId: input.sourceId ?? null,
       locator: input.locator ?? '',
-      encountered: now,
+      encountered: input.encountered ?? now,
       kept: null,
       note: input.note ?? '',
       lociIds: [],
       image: null,
       link: input.link ?? null,
-      koboBookmarkId: null,
+      koboBookmarkId: input.koboBookmarkId ?? null,
     }
 
     if (this.useDemo()) {
-      const thing: Thing = { ...draft, id: `demo-thing-${Date.now()}` }
+      const thing: Thing = { ...draft, id: demoId('demo-thing') }
       demoThings = [thing, ...demoThings]
       return thing
     }
@@ -147,5 +179,59 @@ export class SilvaStore {
     const properties = patchProps(patch)
     const page = await this.request(`pages/${id}`, 'PATCH', { properties })
     return toThing(page as { id: string; properties: Record<string, unknown> })
+  }
+
+  async listSources(): Promise<Source[]> {
+    if (this.useDemo()) return [...demoSources]
+    if (!this.sourcesDbId) return []
+    const pages = await this.fetchAllPages(this.sourcesDbId)
+    return pages.map((page) => toSource(page as { id: string; properties: Record<string, unknown> }))
+  }
+
+  async createSource(input: NewSourceInput): Promise<Source> {
+    const draft: Omit<Source, 'id'> = {
+      title: input.title,
+      author: input.author ?? '',
+      kind: input.kind ?? null,
+      cover: null,
+      koboVolumeId: input.koboVolumeId ?? null,
+      notes: input.notes ?? '',
+    }
+
+    if (this.useDemo()) {
+      const source: Source = { ...draft, id: demoId('demo-source') }
+      demoSources = [source, ...demoSources]
+      return source
+    }
+
+    if (!this.sourcesDbId) {
+      throw new SilvaStoreError('No Sources database configured.', 0)
+    }
+
+    const page = await this.request('pages', 'POST', {
+      parent: { database_id: this.sourcesDbId },
+      properties: toNotionSourceProps(draft),
+    })
+    return toSource(page as { id: string; properties: Record<string, unknown> })
+  }
+
+  /** Used to backfill `koboVolumeId` onto a Source matched by fuzzy title
+   *  similarity, so a later re-import of the same book hits the exact-match
+   *  tier instead (see lib/bookMatch.ts). */
+  async updateSource(id: string, patch: Partial<Source>): Promise<Source> {
+    if (this.useDemo()) {
+      let updated: Source | undefined
+      demoSources = demoSources.map((source) => {
+        if (source.id !== id) return source
+        updated = { ...source, ...patch }
+        return updated
+      })
+      if (!updated) throw new SilvaStoreError(`No such source: ${id}`, 404)
+      return updated
+    }
+
+    const properties = patchSourceProps(patch)
+    const page = await this.request(`pages/${id}`, 'PATCH', { properties })
+    return toSource(page as { id: string; properties: Record<string, unknown> })
   }
 }

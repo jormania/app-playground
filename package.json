@@ -18,7 +18,8 @@
     "gen:yoru-icons": "node scripts/generate-yoru-icons.mjs",
     "gen:daily-stoic-icons": "node scripts/generate-daily-stoic-icons.mjs",
     "gen:loom-icons": "node scripts/generate-loom-icons.mjs",
-    "gen:fit-check-icons": "node scripts/generate-fit-check-icons.mjs"
+    "gen:fit-check-icons": "node scripts/generate-fit-check-icons.mjs",
+    "gen:kobo-fixture": "node scripts/generate-kobo-sample-db.mjs"
   },
   "repository": {
     "type": "git",
@@ -62,6 +63,7 @@
     "react-dom": "^18.3.1",
     "react-markdown": "^10.1.0",
     "recharts": "^2.12.7",
+    "sql.js": "^1.14.2",
     "suncalc": "^2.0.0",
     "tailwind-merge": "^2.5.4"
   },
@@ -74,6 +76,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/sql.js": "^1.4.11",
     "@vitejs/plugin-react": "^6.0.2",
     "autoprefixer": "^10.4.20",
     "cross-env": "^10.1.0",
