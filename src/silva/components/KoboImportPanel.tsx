@@ -19,13 +19,21 @@ interface BookGroup {
   volumeId: string
   bookTitle: string
   author: string
-  highlights: KoboHighlight[]
-  newCount: number
+  /** Only the highlights not already imported — nothing actionable exists
+   *  for one that's already here, so it's not shown as a selectable row. */
+  newHighlights: KoboHighlight[]
+  alreadyImportedCount: number
   match: SourceMatch | null
   /** 'existing' when a match was proposed and not overridden; 'new' either
    *  when nothing matched or the user chose to create a Source anyway. */
   decision: 'existing' | 'new'
   newTitle: string
+  /** Skip the whole book this round — nothing in it is imported, its
+   *  Source decision is moot while this is set. */
+  skipped: boolean
+  /** Which of `newHighlights` (by bookmarkId) are checked for import.
+   *  All new highlights start selected. */
+  selectedIds: Set<string>
 }
 
 type Phase = 'idle' | 'parsing' | 'reviewing' | 'importing' | 'done' | 'error'
@@ -44,25 +52,33 @@ function groupByBook(
 
   return [...byVolume.entries()].map(([volumeId, groupHighlights]) => {
     const { bookTitle, author } = groupHighlights[0]
-    const newCount = groupHighlights.filter((h) => !existingKoboBookmarkIds.has(h.bookmarkId)).length
+    const newHighlights = groupHighlights.filter((h) => !existingKoboBookmarkIds.has(h.bookmarkId))
     const match = matchSource(bookTitle, volumeId, existingSources)
     return {
       volumeId,
       bookTitle,
       author,
-      highlights: groupHighlights,
-      newCount,
+      newHighlights,
+      alreadyImportedCount: groupHighlights.length - newHighlights.length,
       match,
       decision: match ? 'existing' : 'new',
       newTitle: bookTitle,
+      skipped: false,
+      selectedIds: new Set(newHighlights.map((h) => h.bookmarkId)),
     }
   })
+}
+
+function truncate(text: string, max = 90): string {
+  return text.length > max ? `${text.slice(0, max)}…` : text
 }
 
 /** Drop `KoboReader.sqlite` onto the page — parses entirely in the browser,
  *  proposes a Source match per book (SILVA.md "Kobo import" and "Book
  *  matching is a step, not an inference"), and imports new highlights into
- *  the understory. Re-dropping the same file is a no-op (BookmarkID dedupe). */
+ *  the understory. Re-dropping the same file is a no-op (BookmarkID dedupe).
+ *  Whole books and individual highlights can be left out of a given import
+ *  round — nothing here is all-or-nothing. */
 export function KoboImportPanel({ store, existingKoboBookmarkIds, onImported, onClose }: KoboImportPanelProps) {
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState('')
@@ -91,19 +107,35 @@ export function KoboImportPanel({ store, existingKoboBookmarkIds, onImported, on
     }
   }
 
-  function setDecision(volumeId: string, decision: BookGroup['decision']) {
-    setGroups((prev) => prev.map((g) => (g.volumeId === volumeId ? { ...g, decision } : g)))
+  function updateGroup(volumeId: string, patch: Partial<BookGroup>) {
+    setGroups((prev) => prev.map((g) => (g.volumeId === volumeId ? { ...g, ...patch } : g)))
   }
 
-  function setNewTitle(volumeId: string, title: string) {
-    setGroups((prev) => prev.map((g) => (g.volumeId === volumeId ? { ...g, newTitle: title } : g)))
+  function toggleHighlight(volumeId: string, bookmarkId: string) {
+    setGroups((prev) => prev.map((g) => {
+      if (g.volumeId !== volumeId) return g
+      const selectedIds = new Set(g.selectedIds)
+      if (selectedIds.has(bookmarkId)) selectedIds.delete(bookmarkId)
+      else selectedIds.add(bookmarkId)
+      return { ...g, selectedIds }
+    }))
   }
+
+  function setAllSelected(volumeId: string, selected: boolean) {
+    setGroups((prev) => prev.map((g) => (
+      g.volumeId === volumeId
+        ? { ...g, selectedIds: selected ? new Set(g.newHighlights.map((h) => h.bookmarkId)) : new Set() }
+        : g
+    )))
+  }
+
+  const importableGroups = groups.filter((g) => !g.skipped && g.selectedIds.size > 0)
 
   async function handleImport() {
     setPhase('importing')
     const created: Thing[] = []
 
-    for (const group of groups) {
+    for (const group of importableGroups) {
       let sourceId: string
       if (group.decision === 'existing' && group.match) {
         sourceId = group.match.source.id
@@ -122,8 +154,8 @@ export function KoboImportPanel({ store, existingKoboBookmarkIds, onImported, on
         sourceId = source.id
       }
 
-      for (const highlight of group.highlights) {
-        if (existingKoboBookmarkIds.has(highlight.bookmarkId)) continue
+      for (const highlight of group.newHighlights) {
+        if (!group.selectedIds.has(highlight.bookmarkId)) continue
         const thing = await store.createThing({
           body: highlight.text,
           note: highlight.annotation,
@@ -183,47 +215,84 @@ export function KoboImportPanel({ store, existingKoboBookmarkIds, onImported, on
         <>
           <ul className={styles.groups}>
             {groups.map((group) => (
-              <li key={group.volumeId} className={styles.group}>
+              <li key={group.volumeId} className={`${styles.group} ${group.skipped ? styles.groupSkipped : ''}`}>
                 <div className={styles.groupHeader}>
                   <strong>{group.bookTitle}</strong>
-                  <span className={styles.groupMeta}>
-                    {group.newCount} of {group.highlights.length} highlight{group.highlights.length === 1 ? '' : 's'} new
-                  </span>
+                  <label className={styles.skipToggle}>
+                    <input
+                      type="checkbox"
+                      checked={group.skipped}
+                      onChange={(e) => updateGroup(group.volumeId, { skipped: e.target.checked })}
+                    />
+                    Skip this book
+                  </label>
                 </div>
 
-                {group.match ? (
-                  <label className={styles.choice}>
-                    <input
-                      type="radio"
-                      name={`decision-${group.volumeId}`}
-                      checked={group.decision === 'existing'}
-                      onChange={() => setDecision(group.volumeId, 'existing')}
-                    />
-                    Use existing source "{group.match.source.title}" ({group.match.confidence} match)
-                  </label>
-                ) : null}
+                {group.alreadyImportedCount > 0 && (
+                  <p className={styles.groupMeta}>
+                    {group.alreadyImportedCount} highlight{group.alreadyImportedCount === 1 ? '' : 's'} already imported
+                  </p>
+                )}
 
-                <label className={styles.choice}>
-                  <input
-                    type="radio"
-                    name={`decision-${group.volumeId}`}
-                    checked={group.decision === 'new'}
-                    onChange={() => setDecision(group.volumeId, 'new')}
-                  />
-                  Create a new source
-                  {group.decision === 'new' && (
-                    <input
-                      className={styles.titleInput}
-                      value={group.newTitle}
-                      onChange={(e) => setNewTitle(group.volumeId, e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  )}
-                </label>
+                {!group.skipped && group.newHighlights.length > 0 && (
+                  <>
+                    {group.match ? (
+                      <label className={styles.choice}>
+                        <input
+                          type="radio"
+                          name={`decision-${group.volumeId}`}
+                          checked={group.decision === 'existing'}
+                          onChange={() => updateGroup(group.volumeId, { decision: 'existing' })}
+                        />
+                        Use existing source "{group.match.source.title}" ({group.match.confidence} match)
+                      </label>
+                    ) : null}
+
+                    <label className={styles.choice}>
+                      <input
+                        type="radio"
+                        name={`decision-${group.volumeId}`}
+                        checked={group.decision === 'new'}
+                        onChange={() => updateGroup(group.volumeId, { decision: 'new' })}
+                      />
+                      Create a new source
+                      {group.decision === 'new' && (
+                        <input
+                          className={styles.titleInput}
+                          value={group.newTitle}
+                          onChange={(e) => updateGroup(group.volumeId, { newTitle: e.target.value })}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      )}
+                    </label>
+
+                    <div className={styles.highlightsHeader}>
+                      <span className={styles.groupMeta}>
+                        {group.selectedIds.size} of {group.newHighlights.length} selected
+                      </span>
+                      <button type="button" className={styles.linkButton} onClick={() => setAllSelected(group.volumeId, true)}>All</button>
+                      <button type="button" className={styles.linkButton} onClick={() => setAllSelected(group.volumeId, false)}>None</button>
+                    </div>
+                    <ul className={styles.highlightList}>
+                      {group.newHighlights.map((highlight) => (
+                        <li key={highlight.bookmarkId} className={styles.highlightRow}>
+                          <label className={styles.choice}>
+                            <input
+                              type="checkbox"
+                              checked={group.selectedIds.has(highlight.bookmarkId)}
+                              onChange={() => toggleHighlight(group.volumeId, highlight.bookmarkId)}
+                            />
+                            {truncate(highlight.text)}
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
               </li>
             ))}
           </ul>
-          <Button onClick={handleImport} disabled={groups.every((g) => g.newCount === 0)}>
+          <Button onClick={handleImport} disabled={importableGroups.length === 0}>
             Import into the understory
           </Button>
         </>
@@ -235,7 +304,7 @@ export function KoboImportPanel({ store, existingKoboBookmarkIds, onImported, on
         <p className={styles.status}>
           {importedCount > 0
             ? `Imported ${importedCount} thing${importedCount === 1 ? '' : 's'} into the understory.`
-            : 'Nothing new to import — every highlight in this file is already here.'}
+            : 'Nothing selected to import.'}
         </p>
       )}
     </div>
