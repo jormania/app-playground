@@ -31,6 +31,7 @@ import { peekVectors } from './lib/vectorCache'
 import { readSeen, writeSeen, withSeen, prunedSeen, type SeenMap } from './lib/seen'
 import { parseSharedIntake, urlWithoutShare, type SharedIntake } from './lib/sharedIntake'
 import { putLocalPhoto, localImageRef } from './lib/photoStore'
+import { ocrPhoto } from './lib/ocr'
 import { resizePhoto, photoFilename, isImageFile } from '../shared/photo'
 import { indexThings, indexableThings } from './lib/indexer'
 import { loadSilvaConfig, saveSilvaConfig, type SilvaConfig } from './lib/settingsConfig'
@@ -256,6 +257,7 @@ export default function App() {
       seenHistory: SeenMap,
       isCancelled: () => boolean,
     ) {
+      if (!config.provocationsEnabled) return
       if (hasShownThisSession()) return
       const fingerprint = collectionFingerprint(allThings, allLoci, allPaths)
       if (!thresholdCrossed(fingerprint, readThresholdState())) return
@@ -287,7 +289,7 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [store, config.anthropicKey, config.mycorrhizaEnabled, notify])
+  }, [store, config.anthropicKey, config.mycorrhizaEnabled, config.provocationsEnabled, notify])
 
   /**
    * Records that a thing was genuinely looked at. Fired by the plate's dwell
@@ -413,23 +415,48 @@ export default function App() {
       const blob = await resizePhoto(file)
       const filename = photoFilename(file.name)
 
+      let createdId: string
       if (!config.notionToken) {
         const id = `local-${Date.now()}`
         const created = await store.createThing({ body: '', kind: 'Image', image: localImageRef(id) })
         await putLocalPhoto(id, blob)
         setThings((prev) => [created, ...prev])
+        createdId = created.id
       } else {
         const created = await store.createThing({ body: '', kind: 'Image' })
         setThings((prev) => [created, ...prev])
         const photo = await store.uploadPhoto(blob, filename)
         const withImage = await store.attachPhoto(created.id, photo)
         setThings((prev) => prev.map((t) => (t.id === created.id ? withImage : t)))
+        createdId = created.id
       }
       notify('Photograph added to the understory.')
+      if (config.autoTranscribe && config.anthropicKey) void transcribePhoto(createdId, blob)
     } catch (e) {
       notify(`That photo could not be added${errorText(e)}`, { tone: 'alarm' })
     } finally {
       setPhotoBusy(false)
+    }
+  }
+
+  /**
+   * OCR, run once, in the background, after the photo itself is already safe
+   * (lib/ocr.ts). Deliberately not awaited by handlePhoto — a vision round
+   * trip takes several seconds, and blocking "Photograph added" on it would
+   * make an optional, off-by-default feature stall the one thing everyone
+   * gets: the photo landing in the understory. A failed or empty OCR just
+   * leaves the thing exactly as it would have been without this feature.
+   */
+  async function transcribePhoto(id: string, blob: Blob) {
+    const text = await ocrPhoto(config.anthropicKey, blob)
+    if (!text) return
+    try {
+      const updated = await store.updateThing(id, { body: text })
+      setThings((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      notify('Text found on the page — added as its passage.')
+    } catch {
+      // Best-effort: the photo is already saved either way; losing the
+      // auto-transcription only means typing it in later, same as always.
     }
   }
 
@@ -731,6 +758,7 @@ export default function App() {
             onEdit={handleEditThing}
             onSeen={markSeen}
             onMakePath={handleMakePath}
+            showWalk={config.showWalk}
           />
         ) : view === 'clearings' ? (
           <ClearingsView
@@ -753,6 +781,7 @@ export default function App() {
             onMake={handleMakePath}
             onEditWhy={handleEditPathWhy}
             onRemove={handleRemovePath}
+            showGraph={config.showGraph}
           />
         ) : view === 'search' ? (
           <SearchView things={things} vectorsById={vectorsById} />

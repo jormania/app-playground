@@ -20,12 +20,37 @@ export interface SilvaConfig {
    * underground layer exist, not as an obscure toggle.
    */
   mycorrhizaEnabled: boolean
+  /** Show the whole-forest graph in Underground. On by default — the
+   *  toggle exists for the density it can reach at real scale, not because
+   *  it's wrong at the sizes most forests start at. The path list, the
+   *  make-a-path form, and paths themselves are unaffected either way. */
+  showGraph: boolean
+  /** Show "the walk" above the Forest's scroll. On by default; some people
+   *  would rather the Forest just be the list, with nothing above it
+   *  claiming their attention first. */
+  showWalk: boolean
+  /** Master switch for every provocation kind, deterministic and
+   *  mycorrhizal alike — distinct from `mycorrhizaEnabled`, which only
+   *  gates the three kinds that need embeddings. Off means what SILVA.md
+   *  calls the default state anyway: silence. On by default, since a
+   *  provocation only ever appears at most once a session already. */
+  provocationsEnabled: boolean
+  /** Auto-transcribe a photographed page's text into its Body the moment
+   *  it's added — see lib/ocr.ts. Off by default, and gated separately from
+   *  merely having an Anthropic key set: sending a photograph to a third
+   *  party is a different privacy trade than sending text for Tension, and
+   *  deserves its own explicit opt-in rather than riding along on the key. */
+  autoTranscribe: boolean
 }
 
 export const DEFAULT_CONFIG: SilvaConfig = {
   notionToken: '',
   anthropicKey: '',
   mycorrhizaEnabled: false,
+  showGraph: true,
+  showWalk: true,
+  provocationsEnabled: true,
+  autoTranscribe: false,
 }
 
 export function loadSilvaConfig(): SilvaConfig {

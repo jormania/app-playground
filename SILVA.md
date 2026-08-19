@@ -70,6 +70,17 @@ Every thing carries:
 `encountered` and `kept` being separate is the whole ethic in two columns. A
 thing that was encountered but never kept never became yours.
 
+**A thing worth protecting: `Mine` gets no special treatment.** It sits in the
+same select, the same forest, the same walk, typeset on the identical plate as
+a Marcus Aurelius passage — no separate tab, no distinct colour, no "your
+writing" section. The forest starts full of other people's things; over time
+your own begin appearing among them, undistinguished, until the line between
+what you read and what you thought blurs. That is the actual promise of a
+commonplace book, and it only works because Mine is never elevated. Any future
+feature that would surface, badge, or segregate Mine things — however
+reasonable it looks in isolation — trades away the one effect that makes this
+more than a quotation database.
+
 ## The understory (and why the backlog isn't debt)
 
 Everything arrives **unkept**, in the understory. A Kobo import of 300
@@ -116,6 +127,10 @@ Two kinds of connection, and the distinction is the heart of the app.
 
 **Paths** are connections *you* made. Deliberate, annotated with *why*, durable.
 A path is a record of your thinking, and it is the most valuable data in Silva.
+The why is not optional advice — it is a hard gate in the UI. `MakeForm` and
+the edit form on an existing path both refuse to save with an empty why
+(`UndergroundView.tsx`'s `canMake`/`disabled` checks). A path without its
+reason is precisely the artefact this whole distinction exists to avoid.
 
 **Mycorrhiza** is the latent affinity between things, computed by the embedding
 layer. It is real but underground: things that grew near each other without
@@ -175,6 +190,17 @@ collection having actually changed or aged, not by you having opened the app.
 
 The human action is the collection. The machine action is the provocation.
 
+**The one narrow exception is OCR** (`lib/ocr.ts`) — transcribing the text
+visible in a photographed page into that thing's `body`. This is mechanical,
+not interpretive: it reproduces what's on the page verbatim, the same act as
+if you'd typed it yourself, and never touches Kind (still never auto-assigned
+— see "Suggest a kind" above). The boundary holds because the prompt is
+scoped to transcription only and refuses to describe or summarise a
+non-text photo (a scene, an object) — it returns nothing rather than telling
+you what the picture shows. Anything that asks the model to describe,
+caption, or characterise an image instead of transcribing text on it would
+cross this line and does not belong here.
+
 ## Views
 
 Four surfaces over one dataset — the pattern Loom (three views over one set of
@@ -183,7 +209,7 @@ threads) and Journal of Delights (three ways to read) already establish here.
 - **The forest** — the default. One thing at a time, typeset to be read, not a
   row in a table. Scroll is a walk, not a list.
 
-  Today's walk sits at its head: a short, finite stretch — `WALK_SIZE` things —
+  The walk sits at its head: a short, finite stretch — `WALK_SIZE` things —
   weighted by what you have gone longest without actually looking at
   (`lib/walk.ts`), with the full scroll below it unchanged. It is not a feed,
   and the three properties that keep it from becoming one are structural rather

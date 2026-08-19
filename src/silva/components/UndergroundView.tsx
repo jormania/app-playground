@@ -17,6 +17,11 @@ export interface UndergroundViewProps {
   onMake: (fromId: string, toId: string, why: string) => void
   onEditWhy: (pathId: string, why: string) => void
   onRemove: (pathId: string) => void
+  /** Settings' "Show the graph" — on by default. Off leaves the path list,
+   *  the make-a-path form and paths themselves untouched; only the
+   *  whole-forest visualisation is hidden, for the density it can reach at
+   *  real scale rather than because it's wrong at smaller ones. */
+  showGraph?: boolean
 }
 
 function summarize(thing: Thing | undefined, max = 60): string {
@@ -33,14 +38,23 @@ const CONNECTION_PREVIEW_LENGTH = 160
  *  (solid Paths, faint unclickable mycorrhiza, clustered by locus) is the
  *  primary view; the make/edit/remove tools below it are unchanged from
  *  Session 6. */
-export function UndergroundView({ things, loci, paths, vectorsById, onMake, onEditWhy, onRemove }: UndergroundViewProps) {
+export function UndergroundView({
+  things,
+  loci,
+  paths,
+  vectorsById,
+  onMake,
+  onEditWhy,
+  onRemove,
+  showGraph = true,
+}: UndergroundViewProps) {
   const [making, setMaking] = useState(false)
   const kept = things.filter((t) => t.state === 'Kept')
   const byId = new Map(things.map((t) => [t.id, t]))
 
   return (
     <div className={styles.wrap}>
-      <UndergroundGraph things={things} loci={loci} paths={paths} vectorsById={vectorsById} />
+      {showGraph && <UndergroundGraph things={things} loci={loci} paths={paths} vectorsById={vectorsById} />}
 
       {making ? (
         <MakeForm

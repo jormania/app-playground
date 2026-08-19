@@ -3,6 +3,7 @@ import { Button, Field, TextAreaField } from '../../ds'
 import type { Thing, ThingKind } from '../lib/notion'
 import { inferKind } from '../lib/kindInference'
 import { isLocalImage, localPhotoUrl } from '../lib/photoStore'
+import { readImageViewMode, writeImageViewMode, type ImageViewMode } from '../lib/imageViewPref'
 import { useDwell } from './useDwell'
 import styles from './SpecimenPlate.module.css'
 
@@ -42,6 +43,11 @@ export function SpecimenPlate({
 }: SpecimenPlateProps) {
   const [editing, setEditing] = useState(false)
   const [copied, setCopied] = useState(false)
+  // Which view — photo or transcribed text — this thing last showed. Only
+  // meaningful once both exist; defaults to text (a passage, set to be
+  // read) the first time, since the image is supporting evidence for it,
+  // not the other way round — but stays remembered per-thing after that.
+  const [viewMode, setViewMode] = useState<ImageViewMode>(() => readImageViewMode(thing.id) ?? 'text')
   const [body, setBody] = useState(thing.body)
   const [kind, setKind] = useState<ThingKind | ''>(thing.kind ?? '')
   const [locator, setLocator] = useState(thing.locator)
@@ -144,8 +150,36 @@ export function SpecimenPlate({
   return (
     <article className={styles.plate} ref={plateRef as React.Ref<HTMLElement>}>
       {thing.kind && <p className={styles.kind}>{thing.kind}</p>}
-      {thing.image && <PlateImage image={thing.image} alt={thing.handle || 'A photographed page'} />}
-      {thing.body && <p className={styles.body}>{thing.body}</p>}
+      {thing.image && thing.body && (
+        <div className={styles.viewToggle} role="group" aria-label="Show photograph or transcribed text">
+          <button
+            type="button"
+            className={styles.viewToggleBtn}
+            data-active={viewMode === 'image'}
+            onClick={() => {
+              setViewMode('image')
+              writeImageViewMode(thing.id, 'image')
+            }}
+          >
+            Photograph
+          </button>
+          <button
+            type="button"
+            className={styles.viewToggleBtn}
+            data-active={viewMode === 'text'}
+            onClick={() => {
+              setViewMode('text')
+              writeImageViewMode(thing.id, 'text')
+            }}
+          >
+            Text
+          </button>
+        </div>
+      )}
+      {thing.image && (!thing.body || viewMode === 'image') && (
+        <PlateImage image={thing.image} alt={thing.handle || 'A photographed page'} />
+      )}
+      {thing.body && (!thing.image || viewMode === 'text') && <p className={styles.body}>{thing.body}</p>}
       {thing.note && <p className={styles.note}>{thing.note}</p>}
       <ThingLabel thing={thing} sourceTitle={sourceTitle} />
       {locusNames.length > 0 && (
