@@ -49,6 +49,12 @@
   --font-body-serif: 'Fraunces Variable', 'Fraunces', Georgia, serif;
 }
 
+/* The page's own ground, so an overscroll bounce or the area behind a short
+   view shows the forest floor rather than the browser's default white. */
+html, body {
+  background: var(--color-bg);
+}
+
 :root[data-theme="dark"] {
   /* ── Ground: "a herbarium at night" — deep bark/umber, not black ──────── */
   --color-bg:        #241b12;
@@ -75,4 +81,6 @@
      ground — bumped toward a warm terracotta-red for dark-mode contrast,
      while staying clearly a *red*, not the green general accent. */
   --silva-oxblood: #c1594a;
+
+  color-scheme: dark;
 }

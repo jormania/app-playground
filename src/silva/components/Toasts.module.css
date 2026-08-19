@@ -1,0 +1,80 @@
+/* Pinned above the safe area so an installed PWA on a phone doesn't tuck the
+   message under the home indicator. */
+.stack {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  width: min(560px, calc(100vw - var(--space-lg) * 2));
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border-2);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 18%);
+  font-size: var(--text-sm);
+  /* The one animation here is the arrival: everything else in Silva is
+     still, but a message that appears with no motion at all reads as if it
+     had always been there. */
+  animation: toast-in 200ms var(--ease, ease-out) both;
+}
+
+.toast[data-tone='alarm'] {
+  border-color: var(--color-danger);
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}
+
+.message {
+  flex: 1;
+  min-width: 0;
+  line-height: var(--leading-body);
+}
+
+.action {
+  flex: none;
+  border: 1px solid var(--color-border-2);
+  background: transparent;
+  color: var(--color-accent);
+  font: inherit;
+  font-weight: var(--weight-medium);
+  padding: var(--space-2xs) var(--space-sm);
+  cursor: pointer;
+}
+
+.action:hover {
+  border-color: var(--color-accent);
+}
+
+.close {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: var(--color-faint);
+  font-size: var(--text-lg);
+  line-height: 1;
+  padding: 0 var(--space-2xs);
+  cursor: pointer;
+}
+
+.close:hover {
+  color: var(--color-ink);
+}

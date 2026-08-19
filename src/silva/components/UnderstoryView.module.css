@@ -60,3 +60,21 @@
   gap: var(--space-2xs);
   flex-shrink: 0;
 }
+
+/* The season, as a fade rather than a number (SILVA.md). A hairline that
+   shortens as the season runs down — the whole row is already fading with it,
+   so this is the quiet confirmation of what the fade means, not a progress
+   bar competing with it. No colour change on the way down: an expiring thing
+   is composting, not failing. */
+.season {
+  display: block;
+  height: 1px;
+  width: 64px;
+  margin-top: var(--space-xs);
+  background: linear-gradient(
+    to right,
+    var(--color-border-2) 0,
+    var(--color-border-2) var(--season-left, 100%),
+    transparent var(--season-left, 100%)
+  );
+}

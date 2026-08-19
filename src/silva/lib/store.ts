@@ -14,6 +14,7 @@ import { toSource, toNotionSourceProps, patchSourceProps, type Source } from './
 import { toLocus, toNotionLocusProps, patchLocusProps, type Locus } from './loci'
 import { toPath, toNotionPathProps, patchPathProps, deriveLabel, type Path } from './paths'
 import { DEMO_THINGS, DEMO_SOURCES, DEMO_LOCI, DEMO_PATHS } from './fixtures'
+import { readJson, writeJson, removeJson } from '../../shared/storage'
 
 const PROXY_URL = '/api/notion'
 
@@ -71,13 +72,61 @@ export interface NewPathInput {
   origin?: Path['origin']
 }
 
-/** A private, session-only copy — demo writes must never mutate the shared
- *  fixture export itself (a second store instance, or a hot reload, would
- *  otherwise see another instance's edits). */
+/**
+ * The demo forest lives in localStorage, not just in memory — SILVA.md:
+ * "No token -> the demo store — a full offline forest in `localStorage`,
+ * seeded once from `lib/fixtures.js`". Seeded once, then owned by the user:
+ * something typed into the demo forest survives a reload, which is the whole
+ * point of "the whole app is usable before you create a single database."
+ *
+ * The module-level copies below stay the read path (demo reads must not
+ * re-parse JSON on every call); `persistDemo` mirrors each write out to
+ * localStorage, and `hydrateDemo` runs once at module load. Storage is via
+ * shared/storage, which can't throw — a browser that refuses to persist
+ * simply falls back to the old in-memory behaviour rather than crashing.
+ */
+const DEMO_KEY = 'silva:demo-forest'
+const DEMO_SEED_VERSION = 1
+
+interface DemoSnapshot {
+  version: number
+  things: Thing[]
+  sources: Source[]
+  loci: Locus[]
+  paths: Path[]
+}
+
 let demoThings: Thing[] = [...DEMO_THINGS]
 let demoSources: Source[] = [...DEMO_SOURCES]
 let demoLoci: Locus[] = [...DEMO_LOCI]
 let demoPaths: Path[] = [...DEMO_PATHS]
+
+function persistDemo(): void {
+  writeJson(DEMO_KEY, {
+    version: DEMO_SEED_VERSION,
+    things: demoThings,
+    sources: demoSources,
+    loci: demoLoci,
+    paths: demoPaths,
+  } satisfies DemoSnapshot)
+}
+
+function hydrateDemo(): void {
+  const stored = readJson<DemoSnapshot | null>(DEMO_KEY, null)
+  // A snapshot from an older seed version is discarded rather than migrated —
+  // it's a demo, and re-seeding it is strictly better than showing a forest
+  // half of whose fixtures no longer exist.
+  if (!stored || stored.version !== DEMO_SEED_VERSION || !Array.isArray(stored.things)) {
+    persistDemo()
+    return
+  }
+  demoThings = stored.things
+  demoSources = stored.sources ?? []
+  demoLoci = stored.loci ?? []
+  demoPaths = stored.paths ?? []
+}
+
+hydrateDemo()
 
 // Date.now() alone collides when several demo rows are created in the same
 // tick — exactly what a Kobo import's per-highlight loop does, caught live
@@ -89,12 +138,16 @@ function demoId(prefix: string): string {
   return `${prefix}-${Date.now()}-${demoIdCounter}`
 }
 
-/** Test-only: reset the in-memory demo store back to the fixtures. */
+/** Resets the demo store back to the fixtures — used by tests, and by
+ *  Settings' "Reset the demo forest" so a demo someone has scribbled all
+ *  over can be put back without clearing the whole origin's storage. */
 export function resetDemoThings(): void {
   demoThings = [...DEMO_THINGS]
   demoSources = [...DEMO_SOURCES]
   demoLoci = [...DEMO_LOCI]
   demoPaths = [...DEMO_PATHS]
+  removeJson(DEMO_KEY)
+  persistDemo()
 }
 
 export class SilvaStore {
@@ -191,6 +244,7 @@ export class SilvaStore {
     if (this.useDemo()) {
       const thing: Thing = { ...draft, id: demoId('demo-thing') }
       demoThings = [thing, ...demoThings]
+      persistDemo()
       return thing
     }
 
@@ -214,6 +268,7 @@ export class SilvaStore {
         return updated
       })
       if (!updated) throw new SilvaStoreError(`No such thing: ${id}`, 404)
+      persistDemo()
       return updated
     }
 
@@ -242,6 +297,7 @@ export class SilvaStore {
     if (this.useDemo()) {
       const source: Source = { ...draft, id: demoId('demo-source') }
       demoSources = [source, ...demoSources]
+      persistDemo()
       return source
     }
 
@@ -268,6 +324,7 @@ export class SilvaStore {
         return updated
       })
       if (!updated) throw new SilvaStoreError(`No such source: ${id}`, 404)
+      persistDemo()
       return updated
     }
 
@@ -296,6 +353,7 @@ export class SilvaStore {
     if (this.useDemo()) {
       const locus: Locus = { ...draft, id: demoId('demo-locus') }
       demoLoci = [locus, ...demoLoci]
+      persistDemo()
       return locus
     }
 
@@ -319,6 +377,7 @@ export class SilvaStore {
         return updated
       })
       if (!updated) throw new SilvaStoreError(`No such locus: ${id}`, 404)
+      persistDemo()
       return updated
     }
 
@@ -335,6 +394,7 @@ export class SilvaStore {
   async archiveLocus(id: string): Promise<void> {
     if (this.useDemo()) {
       demoLoci = demoLoci.filter((locus) => locus.id !== id)
+      persistDemo()
       return
     }
 
@@ -367,6 +427,7 @@ export class SilvaStore {
     if (this.useDemo()) {
       const path: Path = { ...draft, id: demoId('demo-path') }
       demoPaths = [path, ...demoPaths]
+      persistDemo()
       return path
     }
 
@@ -392,6 +453,7 @@ export class SilvaStore {
         return updated
       })
       if (!updated) throw new SilvaStoreError(`No such path: ${id}`, 404)
+      persistDemo()
       return updated
     }
 
@@ -404,6 +466,7 @@ export class SilvaStore {
   async archivePath(id: string): Promise<void> {
     if (this.useDemo()) {
       demoPaths = demoPaths.filter((path) => path.id !== id)
+      persistDemo()
       return
     }
 

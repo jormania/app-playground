@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Thing, ThingKind } from '../lib/notion'
-import { embed, contentHash } from '../lib/embeddings'
-import { getVector, setVector } from '../lib/vectorCache'
+import { embed } from '../lib/embeddings'
+import { indexThings } from '../lib/indexer'
 import { combineResults, filterByKind, type SearchResult } from '../lib/search'
 import styles from './SearchView.module.css'
 
@@ -12,6 +12,10 @@ const ALL_KINDS: ThingKind[] = ['Passage', 'Observation', 'Dialogue', 'Question'
 
 export interface SearchViewProps {
   things: Thing[]
+  /** Whatever App already has cached or indexed. Search starts from these
+   *  rather than from an empty map, so with the indexer on it is ready the
+   *  moment the view opens instead of re-walking the whole collection. */
+  vectorsById: Map<string, Float32Array>
 }
 
 type IndexPhase = 'loading-model' | 'indexing' | 'ready'
@@ -25,63 +29,54 @@ function summarize(thing: Thing, max = 140): string {
  *  time this view mounts (i.e. the first time Search is opened), not on
  *  every app load. Lexical results appear immediately; semantic results
  *  fill in once the model and index are ready. */
-export function SearchView({ things }: SearchViewProps) {
+export function SearchView({ things, vectorsById }: SearchViewProps) {
   const [phase, setPhase] = useState<IndexPhase>('loading-model')
   const [progress, setProgress] = useState({ done: 0, total: things.length })
-  const [vectors, setVectors] = useState<Map<string, Float32Array>>(new Map())
+  const [vectors, setVectors] = useState<Map<string, Float32Array>>(vectorsById)
   const [query, setQuery] = useState('')
   const [kindFilter, setKindFilter] = useState<ThingKind | null>(null)
   const [queryVector, setQueryVector] = useState<Float32Array | null>(null)
   const [modelError, setModelError] = useState('')
   const cancelledRef = useRef(false)
 
-  // Index once per mount — i.e. once per visit to this tab. Re-running this
-  // on every keystroke would be absurd; it only depends on `things` at the
-  // moment Search was opened.
+  // Indexing now runs whenever the searchable set changes, not once per mount.
+  // Mount-only meant anything captured or edited after Search was first opened
+  // stayed unsearchable-by-meaning until the tab was reloaded. Everything
+  // already indexed is a cache hit, so re-running is cheap: the pass costs one
+  // embed per genuinely new or edited body (lib/indexer.ts).
+  const signature = things.map((t) => `${t.id}:${t.body.length}`).join('|')
   useEffect(() => {
     cancelledRef.current = false
 
-    async function indexAll() {
-      const map = new Map<string, Float32Array>()
-      try {
-        for (let i = 0; i < things.length; i++) {
-          if (cancelledRef.current) return
-          const thing = things[i]
-          const hash = contentHash(thing.body)
-          let vector = await getVector(thing.id, hash)
-          if (!vector) {
-            vector = await embed(thing.body)
-            await setVector(thing.id, hash, vector)
-          }
-          if (i === 0) setPhase('indexing')
-          map.set(thing.id, vector)
-          setProgress({ done: i + 1, total: things.length })
-          // Yield to the event loop periodically so indexing a few hundred
-          // things doesn't freeze typing or scrolling elsewhere in the tab.
-          if (i % 5 === 4) await new Promise((r) => setTimeout(r, 0))
-        }
-        if (!cancelledRef.current) {
-          setVectors(map)
-          setPhase('ready')
-        }
-      } catch (e) {
+    if (things.length === 0) {
+      setPhase('ready')
+      return
+    }
+
+    indexThings(things, {
+      isCancelled: () => cancelledRef.current,
+      onProgress: (p) => {
+        if (cancelledRef.current) return
+        setProgress({ done: p.done, total: p.total })
+        if (p.done > 0) setPhase('indexing')
+      },
+    })
+      .then((map) => {
+        if (cancelledRef.current) return
+        setVectors(map)
+        setPhase('ready')
+      })
+      .catch((e: unknown) => {
         if (!cancelledRef.current) {
           setModelError((e as Error).message || 'Could not load the search model.')
         }
-      }
-    }
-
-    if (things.length === 0) {
-      setPhase('ready')
-    } else {
-      indexAll()
-    }
+      })
 
     return () => {
       cancelledRef.current = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately once per mount, not per `things` change
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `signature` is the stable identity of `things` for indexing purposes
+  }, [signature])
 
   // Debounced: embed the query itself once the index is ready, so semantic
   // results fill in without blocking lexical ones (which need no vector).

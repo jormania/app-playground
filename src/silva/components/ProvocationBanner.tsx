@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Field } from '../../ds'
+import { Button, Field, TextAreaField } from '../../ds'
 import type { Thing } from '../lib/notion'
 import type { Provocation } from '../lib/provocations'
 import styles from './ProvocationBanner.module.css'
@@ -72,11 +72,12 @@ export function ProvocationBanner({ provocation, onDismiss, onAcceptPair, onAcce
 
       {respondingWhy && (provocation.kind === 'blind-pairing' || provocation.kind === 'near-neighbours' || provocation.kind === 'tension') ? (
         <div className={styles.respond}>
-          <Field
+          <TextAreaField
             label="What did you see between them?"
             hint="Required — this becomes the path's record."
             value={why}
             onChange={(e) => setWhy(e.target.value)}
+            rows={3}
           />
           <div className={styles.actions}>
             <Button size="sm" variant="ghost" onClick={() => setRespondingWhy(false)}>Back</Button>

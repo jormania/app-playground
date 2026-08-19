@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Button, Field, ConfirmModal } from '../../ds'
+import { useEffect, useState } from 'react'
+import { Button, Field, TextAreaField, ConfirmModal } from '../../ds'
 import type { Thing } from '../lib/notion'
 import type { Locus } from '../lib/loci'
 import { ThingPicker } from './ThingPicker'
@@ -34,6 +34,15 @@ const MEMBER_PREVIEW_LENGTH = 80
 export function ClearingsView({ things, loci, onCoin, onRename, onAddThings, onRemoveThing, onMerge, onDissolve, onSplit }: ClearingsViewProps) {
   const [screen, setScreen] = useState<Screen>({ kind: 'list' })
   const kept = things.filter((thing) => thing.state === 'Kept')
+
+  // A clearing can disappear from under the detail screen (dissolved, or
+  // merged away). Falling back to the list belongs in an effect — doing it
+  // inline during render was a state update mid-render, which React only
+  // tolerates by accident.
+  const missingLocus = screen.kind === 'detail' && !loci.some((l) => l.id === screen.locusId)
+  useEffect(() => {
+    if (missingLocus) setScreen({ kind: 'list' })
+  }, [missingLocus])
 
   if (screen.kind === 'list') {
     return (
@@ -88,10 +97,8 @@ export function ClearingsView({ things, loci, onCoin, onRename, onAddThings, onR
   }
 
   const locus = loci.find((l) => l.id === screen.locusId)
-  if (!locus) {
-    setScreen({ kind: 'list' })
-    return null
-  }
+
+  if (!locus) return null
 
   return (
     <LocusDetail
@@ -154,12 +161,13 @@ function CoinForm({
         onChange={(e) => setName(e.target.value)}
         placeholder="e.g. Small attentions"
       />
-      <Field
+      <TextAreaField
         label="What you meant by it"
         hint="Shown at the top of the clearing whenever you open it."
         value={meaning}
         onChange={(e) => setMeaning(e.target.value)}
         placeholder="Why these belong together"
+        rows={3}
       />
       <div>
         <p className={styles.pickerLabel}>
@@ -249,7 +257,7 @@ function LocusDetail({
       {editing ? (
         <div className={styles.editBlock}>
           <Field label="What do you call this clearing?" value={editName} onChange={(e) => setEditName(e.target.value)} />
-          <Field label="What you meant by it" value={editMeaning} onChange={(e) => setEditMeaning(e.target.value)} />
+          <TextAreaField label="What you meant by it" value={editMeaning} onChange={(e) => setEditMeaning(e.target.value)} rows={3} />
           <div className={styles.actions}>
             <Button variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
             <Button

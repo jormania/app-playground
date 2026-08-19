@@ -10,13 +10,49 @@
   font-family: var(--font-sans);
 }
 
+/* Silva is phone-first, and it has six views. Side by side with the title on a
+   430px screen the nav was squeezed to ~316px against ~658px of content: the
+   track does scroll, but with the scrollbar hidden and no edge affordance,
+   Underground / Search / Settings were simply invisible and read as missing.
+   The nav gets its own full-width row until there's room for one line. */
 .header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-md);
+  display: grid;
+  gap: var(--space-sm);
   padding: var(--space-md);
   border-bottom: 1px solid var(--color-border);
+}
+
+@media (min-width: 720px) {
+  .header {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: var(--space-md);
+  }
+}
+
+/* Six top-level views do not fit one phone-width line even with the whole row
+   to themselves (~657px of options into ~398px), and the DS track hides its
+   scrollbar — so without this the last views read as missing rather than as
+   off-screen. A fade at the trailing edge says "there is more this way". It
+   sits over the track and must never eat a tap.
+
+   This is a legibility patch, not the answer: SILVA.md gives Silva four views
+   plus a search field, and Search and Settings became peers of them here. See
+   the audit report — the navigation wants restructuring, not more scroll. */
+.nav {
+  position: relative;
+  min-width: 0;
+}
+
+.nav::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--space-lg);
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--color-bg));
 }
 
 .title {

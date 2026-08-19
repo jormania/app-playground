@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../ds'
 import { SilvaStore } from './lib/store'
 import { isExpired } from './lib/understory'
@@ -7,6 +7,7 @@ import type { Source } from './lib/sources'
 import type { Locus } from './lib/loci'
 import { withoutLocus, withLocusReplaced } from './lib/loci'
 import type { Path } from './lib/paths'
+import { deriveLabel } from './lib/paths'
 import { ForestView } from './components/ForestView'
 import { UnderstoryView } from './components/UnderstoryView'
 import { IntakeField } from './components/IntakeField'
@@ -16,9 +17,17 @@ import { UndergroundView } from './components/UndergroundView'
 import { SearchView } from './components/SearchView'
 import { ProvocationBanner } from './components/ProvocationBanner'
 import { SettingsView } from './components/SettingsView'
+import { Toasts, useToasts } from './components/Toasts'
 import { pickProvocation, provocationKey, type Provocation } from './lib/provocations'
 import { readDismissed, addDismissed, hasShownThisSession, markShownThisSession } from './lib/provocationDismissals'
+import {
+  collectionFingerprint,
+  readThresholdState,
+  recordProvocationOffered,
+  thresholdCrossed,
+} from './lib/provocationThreshold'
 import { peekVectors } from './lib/vectorCache'
+import { indexThings, indexableThings } from './lib/indexer'
 import { loadSilvaConfig, saveSilvaConfig, type SilvaConfig } from './lib/settingsConfig'
 import { confirmTension } from './lib/tension'
 import { syncSystemTheme } from './lib/theme'
@@ -26,20 +35,34 @@ import styles from './App.module.css'
 
 type View = 'forest' | 'understory' | 'clearings' | 'underground' | 'search' | 'settings'
 
+/** A collection snapshot, so a failed live write can put back exactly what
+ *  was on screen before the optimistic change. */
+interface Forest {
+  things: Thing[]
+  sources: Source[]
+  loci: Locus[]
+  paths: Path[]
+}
+
+/** Optimistic rows carry a temporary id until Notion hands back the real one;
+ *  this prefix is how the reconcile step finds them again. */
+const DRAFT_PREFIX = 'silva-draft-'
+let draftCounter = 0
+const draftId = () => `${DRAFT_PREFIX}${(draftCounter += 1)}`
+
+function errorText(e: unknown): string {
+  const message = (e as Error)?.message
+  return message ? ` (${message})` : ''
+}
+
 export default function App() {
   // SILVA.md: "Light and dark, syncing to the device" — no manual toggle,
-  // purely OS `prefers-color-scheme`. Runs once; the returned cleanup
-  // detaches the listener on unmount (App never unmounts in practice, but
-  // matches every other effect's own cleanup discipline in this file).
+  // purely OS `prefers-color-scheme`.
   useEffect(() => syncSystemTheme(), [])
 
-  // Settings holds the Notion token (and Anthropic key) on this device —
-  // store.ts already supported a live token since Session 3, this just
-  // wires it to a real UI. Re-deriving `store` when the token changes
-  // re-triggers the load effect below for free (it already depends on
-  // [store]) — a fresh SilvaStore instance is a new effect dependency.
   const [config, setConfig] = useState<SilvaConfig>(() => loadSilvaConfig())
   const store = useMemo(() => new SilvaStore(config.notionToken), [config.notionToken])
+  const { toasts, notify, dismiss } = useToasts()
 
   function handleConfigChange(patch: Partial<SilvaConfig>) {
     setConfig((prev) => {
@@ -48,20 +71,67 @@ export default function App() {
       return next
     })
   }
+
   const [things, setThings] = useState<Thing[]>([])
   const [sources, setSources] = useState<Source[]>([])
   const [loci, setLoci] = useState<Locus[]>([])
   const [paths, setPaths] = useState<Path[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [view, setView] = useState<View>('understory')
+  const [view, setView] = useState<View>('forest')
   const [importOpen, setImportOpen] = useState(false)
   const [provocation, setProvocation] = useState<Provocation | null>(null)
+  const [vectorsById, setVectorsById] = useState<Map<string, Float32Array>>(new Map())
+  const [indexing, setIndexing] = useState<{ done: number; total: number; loadingModel: boolean } | null>(null)
+
+  // The live collection, readable from inside an async callback without
+  // capturing a stale closure — what `write` reverts to on failure.
+  const forestRef = useRef<Forest>({ things: [], sources: [], loci: [], paths: [] })
+  useEffect(() => {
+    forestRef.current = { things, sources, loci, paths }
+  }, [things, sources, loci, paths])
+
+  function restore(snapshot: Forest) {
+    setThings(snapshot.things)
+    setSources(snapshot.sources)
+    setLoci(snapshot.loci)
+    setPaths(snapshot.paths)
+  }
+
+  /**
+   * Local-first, as SILVA.md specifies it: "the forest in React state is what
+   * the UI renders and mutates instantly (keeping, releasing, coining a locus,
+   * accepting a provocation never wait on the network); the active client is
+   * the backing store, written through in the background. A failed live write
+   * reverts the optimistic change and surfaces a short toast — nothing is
+   * silently lost."
+   *
+   * Before this, every handler awaited the network *before* touching state and
+   * caught nothing, so on live Notion a tap did nothing for the length of a
+   * round trip and a failure was an unhandled rejection with no UI change at
+   * all. `apply` now runs first and `commit` runs behind it; a rejection puts
+   * the whole snapshot back rather than leaving a half-applied batch.
+   */
+  const write = useCallback(
+    async (apply: () => void, commit: () => Promise<void>, failure: string) => {
+      const snapshot = forestRef.current
+      apply()
+      try {
+        await commit()
+      } catch (e) {
+        restore(snapshot)
+        notify(`${failure}${errorText(e)}`, { tone: 'alarm' })
+      }
+    },
+    [notify],
+  )
 
   useEffect(() => {
     let cancelled = false
 
     async function load() {
+      setLoading(true)
+      setError('')
       try {
         const [loaded, loadedSources, loadedLoci, loadedPaths] = await Promise.all([
           store.listThings(),
@@ -69,89 +139,193 @@ export default function App() {
           store.listLoci(),
           store.listPaths(),
         ])
-        if (!cancelled) setSources(loadedSources)
-        if (!cancelled) setLoci(loadedLoci)
-        if (!cancelled) setPaths(loadedPaths)
+        if (cancelled) return
+        setSources(loadedSources)
+        setLoci(loadedLoci)
+        setPaths(loadedPaths)
 
-        // Season expiry: quietly release anything that's fully aged out of
-        // the understory. No badge, no counter — it just isn't there next
-        // time (SILVA.md "The understory").
+        // Season expiry: quietly release anything fully aged out of the
+        // understory. No badge, no counter (SILVA.md "The understory").
+        // Best-effort per item — one row Notion refuses must not turn the
+        // whole load into "Could not load the forest", which is what an
+        // unguarded Promise.all did here before.
         const expired = loaded.filter((thing) => isExpired(thing))
-        const released = await Promise.all(
-          expired.map((thing) => store.updateThing(thing.id, { state: 'Released' })),
-        )
-        const releasedIds = new Set(released.map((thing) => thing.id))
-        const settled = loaded.map((thing) => {
-          const replacement = released.find((r) => r.id === thing.id)
-          return releasedIds.has(thing.id) && replacement ? replacement : thing
-        })
-
-        if (!cancelled) setThings(settled)
-
-        // At most one provocation per session (SILVA.md's anti-feed rule) —
-        // computed once here, never reconsidered even if vectors become
-        // available later (e.g. a visit to Search). Only *peeks* whatever's
-        // already cached in IndexedDB — never calls embed(), so this never
-        // triggers the ~25 MB model to load on its own.
-        if (!cancelled && !hasShownThisSession()) {
-          const keptThings = settled.filter((t) => t.state === 'Kept')
-          const vectorsById = await peekVectors(keptThings)
-          const picked = pickProvocation({
-            things: settled,
-            loci: loadedLoci,
-            paths: loadedPaths,
-            vectorsById,
-            dismissed: readDismissed(),
-            tensionEnabled: Boolean(config.anthropicKey),
-          })
-          if (!cancelled && picked) {
-            markShownThisSession()
-            // Tension is the one kind gatherTension only pre-filters by
-            // similarity band — a real contradiction still needs the model
-            // to confirm it, once, only for this single chosen pair (see
-            // lib/provocations.ts's header comment). A "no" or any failure
-            // just means nothing is shown this session, same as if no
-            // provocation had been eligible at all — never a wrong nudge.
-            if (picked.kind === 'tension') {
-              const confirmed = await confirmTension(config.anthropicKey, picked.a, picked.b)
-              if (!cancelled && confirmed) setProvocation(picked)
-            } else {
-              setProvocation(picked)
+        const releasedById = new Map<string, Thing>()
+        await Promise.all(
+          expired.map(async (thing) => {
+            try {
+              releasedById.set(thing.id, await store.updateThing(thing.id, { state: 'Released' }))
+            } catch {
+              // Left in the understory; it expires again on the next load.
             }
+          }),
+        )
+        const settled = loaded.map((thing) => releasedById.get(thing.id) ?? thing)
+        if (cancelled) return
+        setThings(settled)
+        setLoading(false)
+
+        // Whatever's already cached, so the graph and the picker have
+        // something even when the indexer is switched off.
+        const kept = indexableThings(settled)
+        let vectors = await peekVectors(kept)
+        if (cancelled) return
+        setVectorsById(vectors)
+
+        // The background pass that keeps the mycorrhiza layer alive. Opt-in,
+        // because its first run fetches ~25 MB — see lib/indexer.ts.
+        if (config.mycorrhizaEnabled && kept.length > 0) {
+          try {
+            vectors = await indexThings(kept, {
+              isCancelled: () => cancelled,
+              onProgress: (p) => {
+                if (!cancelled) setIndexing(p.done >= p.total ? null : p)
+              },
+            })
+            if (cancelled) return
+            setVectorsById(vectors)
+          } catch (e) {
+            if (!cancelled) {
+              notify(`Silva could not load its noticing model${errorText(e)}. Everything else still works.`)
+            }
+          } finally {
+            if (!cancelled) setIndexing(null)
           }
         }
+
+        if (cancelled) return
+        await maybeProvoke(settled, loadedLoci, loadedPaths, vectors, () => cancelled)
       } catch (e) {
-        if (!cancelled) setError((e as Error).message || 'Could not load the forest.')
-      } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {
+          setError((e as Error).message || 'Could not load the forest.')
+          setLoading(false)
+        }
       }
+    }
+
+    /**
+     * At most one provocation per session (SILVA.md's anti-feed rule) — and
+     * only when a real threshold has been crossed, which is the half of that
+     * rule lib/provocationThreshold.ts now enforces. Silence is a valid state.
+     */
+    async function maybeProvoke(
+      allThings: Thing[],
+      allLoci: Locus[],
+      allPaths: Path[],
+      vectors: Map<string, Float32Array>,
+      isCancelled: () => boolean,
+    ) {
+      if (hasShownThisSession()) return
+      const fingerprint = collectionFingerprint(allThings, allLoci, allPaths)
+      if (!thresholdCrossed(fingerprint, readThresholdState())) return
+
+      const picked = pickProvocation({
+        things: allThings,
+        loci: allLoci,
+        paths: allPaths,
+        vectorsById: vectors,
+        dismissed: readDismissed(),
+        tensionEnabled: Boolean(config.anthropicKey),
+      })
+      if (!picked || isCancelled()) return
+
+      // Tension is the one kind gatherTension only pre-filters by similarity
+      // band — a real contradiction still needs the model to confirm it, once,
+      // for this single chosen pair. A "no" or any failure just means nothing
+      // is shown, same as if no provocation had been eligible at all.
+      if (picked.kind === 'tension' && !(await confirmTension(config.anthropicKey, picked.a, picked.b))) return
+      if (isCancelled()) return
+
+      markShownThisSession()
+      recordProvocationOffered(fingerprint)
+      setProvocation(picked)
     }
 
     load()
     return () => {
       cancelled = true
     }
-  }, [store, config.anthropicKey])
+  }, [store, config.anthropicKey, config.mycorrhizaEnabled, notify])
 
-  async function handleKeep(id: string) {
+  function handleKeep(id: string) {
     const today = new Date().toISOString().slice(0, 10)
-    const updated = await store.updateThing(id, { state: 'Kept', kept: today })
-    setThings((prev) => prev.map((thing) => (thing.id === id ? updated : thing)))
+    const patch: Partial<Thing> = { state: 'Kept', kept: today }
+    write(
+      () => setThings((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t))),
+      async () => {
+        const updated = await store.updateThing(id, patch)
+        setThings((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      },
+      'That could not be kept',
+    )
   }
 
-  async function handleRelease(id: string) {
-    const updated = await store.updateThing(id, { state: 'Released' })
-    setThings((prev) => prev.map((thing) => (thing.id === id ? updated : thing)))
+  function handleRelease(id: string) {
+    const released = things.find((t) => t.id === id)
+    write(
+      () => setThings((prev) => prev.map((t) => (t.id === id ? { ...t, state: 'Released' } : t))),
+      async () => {
+        const updated = await store.updateThing(id, { state: 'Released' })
+        setThings((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      },
+      'That could not be released',
+    )
+    // Releasing is the one action that takes something out of view without
+    // asking first — so it's the one action that offers a way back.
+    if (released) {
+      notify('Released.', { undo: () => handleReturnToUnderstory(id) })
+    }
   }
 
-  async function handleEditThing(id: string, patch: Partial<Thing>) {
-    const updated = await store.updateThing(id, patch)
-    setThings((prev) => prev.map((thing) => (thing.id === id ? updated : thing)))
+  function handleReturnToUnderstory(id: string) {
+    const patch: Partial<Thing> = { state: 'Understory', kept: null }
+    write(
+      () => setThings((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t))),
+      async () => {
+        const updated = await store.updateThing(id, patch)
+        setThings((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      },
+      'That could not be put back',
+    )
   }
 
-  async function handleIntake(body: string) {
-    const created = await store.createThing({ body })
-    setThings((prev) => [created, ...prev])
+  function handleEditThing(id: string, patch: Partial<Thing>) {
+    write(
+      () => setThings((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t))),
+      async () => {
+        const updated = await store.updateThing(id, patch)
+        setThings((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      },
+      'That edit could not be saved',
+    )
+  }
+
+  function handleIntake(body: string) {
+    const today = new Date().toISOString().slice(0, 10)
+    const draft: Thing = {
+      id: draftId(),
+      handle: body.slice(0, 60),
+      body,
+      kind: null,
+      state: 'Understory',
+      sourceId: null,
+      locator: '',
+      encountered: today,
+      kept: null,
+      note: '',
+      lociIds: [],
+      image: null,
+      link: null,
+      koboBookmarkId: null,
+    }
+    write(
+      () => setThings((prev) => [draft, ...prev]),
+      async () => {
+        const created = await store.createThing({ body })
+        setThings((prev) => prev.map((t) => (t.id === draft.id ? created : t)))
+      },
+      'That could not be added to the understory',
+    )
   }
 
   const understoryThings = things.filter((thing) => thing.state === 'Understory')
@@ -161,112 +335,206 @@ export default function App() {
   )
 
   async function handleImported(created: Thing[]) {
-    setThings((prev) => [...created, ...prev])
+    if (created.length > 0) setThings((prev) => [...created, ...prev])
     // A Kobo import may have created new Sources (or backfilled an existing
     // one's koboVolumeId) — refresh so the forest can resolve their titles.
-    setSources(await store.listSources())
+    try {
+      setSources(await store.listSources())
+    } catch {
+      // The things themselves are already in; the titles resolve next load.
+    }
   }
 
-  // Locus membership lives entirely on the Things side (Thing.lociIds) —
-  // every clearing action below is really "patch some things, then maybe
-  // touch the locus record itself." This applies a batch of patches and
-  // folds the results back into `things` state in one pass.
-  async function applyThingUpdates(updates: { id: string; patch: Partial<Thing> }[]) {
+  // Locus membership lives entirely on the Things side (Thing.lociIds) — every
+  // clearing action is really "patch some things, then maybe touch the locus
+  // record itself." This applies a batch of patches optimistically and folds
+  // the store's canonical rows back in as they land.
+  function applyLocally(updates: { id: string; patch: Partial<Thing> }[]) {
+    const patchById = new Map(updates.map((u) => [u.id, u.patch]))
+    setThings((prev) => prev.map((t) => {
+      const patch = patchById.get(t.id)
+      return patch ? { ...t, ...patch } : t
+    }))
+  }
+
+  async function commitThingUpdates(updates: { id: string; patch: Partial<Thing> }[]) {
     const updated = await Promise.all(updates.map((u) => store.updateThing(u.id, u.patch)))
     const byId = new Map(updated.map((t) => [t.id, t]))
     setThings((prev) => prev.map((t) => byId.get(t.id) ?? t))
   }
 
-  async function handleCoin(name: string, meaning: string, seedThingIds: string[]) {
-    const locus = await store.createLocus({ name, meaning })
-    setLoci((prev) => [locus, ...prev])
-    if (seedThingIds.length === 0) return
-    await applyThingUpdates(
-      seedThingIds
-        .map((id) => things.find((t) => t.id === id))
-        .filter((t): t is Thing => Boolean(t))
-        .map((t) => ({ id: t.id, patch: { lociIds: [...t.lociIds, locus.id] } })),
-    )
-  }
-
-  async function handleRename(locusId: string, name: string, meaning: string) {
-    const updated = await store.updateLocus(locusId, { name, meaning })
-    setLoci((prev) => prev.map((l) => (l.id === locusId ? updated : l)))
-  }
-
-  async function handleAddThings(locusId: string, thingIds: string[]) {
-    await applyThingUpdates(
-      thingIds
-        .map((id) => things.find((t) => t.id === id))
-        .filter((t): t is Thing => Boolean(t))
-        .map((t) => ({ id: t.id, patch: { lociIds: [...t.lociIds, locusId] } })),
-    )
-  }
-
-  async function handleRemoveThing(locusId: string, thingId: string) {
-    const thing = things.find((t) => t.id === thingId)
-    if (!thing) return
-    await applyThingUpdates([{ id: thing.id, patch: { lociIds: withoutLocus(thing.lociIds, locusId) } }])
-  }
-
-  async function handleMerge(survivorId: string, mergeAwayId: string) {
-    const affected = things.filter((t) => t.lociIds.includes(mergeAwayId))
-    if (affected.length > 0) {
-      await applyThingUpdates(
-        affected.map((t) => ({ id: t.id, patch: { lociIds: withLocusReplaced(t.lociIds, mergeAwayId, survivorId) } })),
-      )
-    }
-    await store.archiveLocus(mergeAwayId)
-    setLoci((prev) => prev.filter((l) => l.id !== mergeAwayId))
-  }
-
-  async function handleDissolve(locusId: string) {
-    const affected = things.filter((t) => t.lociIds.includes(locusId))
-    if (affected.length > 0) {
-      await applyThingUpdates(affected.map((t) => ({ id: t.id, patch: { lociIds: withoutLocus(t.lociIds, locusId) } })))
-    }
-    await store.archiveLocus(locusId)
-    setLoci((prev) => prev.filter((l) => l.id !== locusId))
-  }
-
-  // A split things's membership in the old locus is replaced with the new
-  // one — same withLocusReplaced helper handleMerge uses, just in the other
-  // direction. Other loci a thing already belongs to are untouched.
-  async function handleSplit(locusId: string, thingIds: string[], name: string, meaning: string) {
-    const newLocus = await store.createLocus({ name, meaning })
-    setLoci((prev) => [newLocus, ...prev])
-    const affected = thingIds
+  function membershipUpdates(thingIds: string[], toPatch: (thing: Thing) => Partial<Thing>) {
+    return thingIds
       .map((id) => things.find((t) => t.id === id))
       .filter((t): t is Thing => Boolean(t))
-    if (affected.length > 0) {
-      await applyThingUpdates(
-        affected.map((t) => ({ id: t.id, patch: { lociIds: withLocusReplaced(t.lociIds, locusId, newLocus.id) } })),
-      )
-    }
+      .map((t) => ({ id: t.id, patch: toPatch(t) }))
   }
 
-  async function handleMakePath(fromId: string, toId: string, why: string) {
+  function handleCoin(name: string, meaning: string, seedThingIds: string[]) {
+    const draft: Locus = { id: draftId(), name, meaning, coined: new Date().toISOString().slice(0, 10) }
+    const updates = membershipUpdates(seedThingIds, (t) => ({ lociIds: [...t.lociIds, draft.id] }))
+    write(
+      () => {
+        setLoci((prev) => [draft, ...prev])
+        applyLocally(updates)
+      },
+      async () => {
+        const locus = await store.createLocus({ name, meaning })
+        setLoci((prev) => prev.map((l) => (l.id === draft.id ? locus : l)))
+        // The seeds were pointed at the draft id; re-point them at the real
+        // one before the write-through, or Notion gets a relation to nothing.
+        const real = updates.map((u) => ({
+          id: u.id,
+          patch: { lociIds: (u.patch.lociIds ?? []).map((id) => (id === draft.id ? locus.id : id)) },
+        }))
+        setThings((prev) => prev.map((t) => ({
+          ...t,
+          lociIds: t.lociIds.map((id) => (id === draft.id ? locus.id : id)),
+        })))
+        if (real.length > 0) await commitThingUpdates(real)
+      },
+      'That clearing could not be coined',
+    )
+  }
+
+  function handleRename(locusId: string, name: string, meaning: string) {
+    write(
+      () => setLoci((prev) => prev.map((l) => (l.id === locusId ? { ...l, name, meaning } : l))),
+      async () => {
+        const updated = await store.updateLocus(locusId, { name, meaning })
+        setLoci((prev) => prev.map((l) => (l.id === locusId ? updated : l)))
+      },
+      'That clearing could not be renamed',
+    )
+  }
+
+  function handleAddThings(locusId: string, thingIds: string[]) {
+    const updates = membershipUpdates(thingIds, (t) => ({ lociIds: [...t.lociIds, locusId] }))
+    write(() => applyLocally(updates), () => commitThingUpdates(updates), 'Those could not be added to the clearing')
+  }
+
+  function handleRemoveThing(locusId: string, thingId: string) {
+    const updates = membershipUpdates([thingId], (t) => ({ lociIds: withoutLocus(t.lociIds, locusId) }))
+    if (updates.length === 0) return
+    write(() => applyLocally(updates), () => commitThingUpdates(updates), 'That could not be removed from the clearing')
+  }
+
+  function handleMerge(survivorId: string, mergeAwayId: string) {
+    const affected = things.filter((t) => t.lociIds.includes(mergeAwayId))
+    const updates = affected.map((t) => ({
+      id: t.id,
+      patch: { lociIds: withLocusReplaced(t.lociIds, mergeAwayId, survivorId) },
+    }))
+    write(
+      () => {
+        applyLocally(updates)
+        setLoci((prev) => prev.filter((l) => l.id !== mergeAwayId))
+      },
+      async () => {
+        if (updates.length > 0) await commitThingUpdates(updates)
+        await store.archiveLocus(mergeAwayId)
+      },
+      'Those clearings could not be combined',
+    )
+  }
+
+  function handleDissolve(locusId: string) {
+    const affected = things.filter((t) => t.lociIds.includes(locusId))
+    const updates = affected.map((t) => ({ id: t.id, patch: { lociIds: withoutLocus(t.lociIds, locusId) } }))
+    write(
+      () => {
+        applyLocally(updates)
+        setLoci((prev) => prev.filter((l) => l.id !== locusId))
+      },
+      async () => {
+        if (updates.length > 0) await commitThingUpdates(updates)
+        await store.archiveLocus(locusId)
+      },
+      'That clearing could not be dissolved',
+    )
+  }
+
+  // A split thing's membership in the old locus is replaced with the new one —
+  // the same withLocusReplaced helper handleMerge uses, in the other direction.
+  // Other loci a thing already belongs to are untouched.
+  function handleSplit(locusId: string, thingIds: string[], name: string, meaning: string) {
+    const draft: Locus = { id: draftId(), name, meaning, coined: new Date().toISOString().slice(0, 10) }
+    const updates = membershipUpdates(thingIds, (t) => ({
+      lociIds: withLocusReplaced(t.lociIds, locusId, draft.id),
+    }))
+    write(
+      () => {
+        setLoci((prev) => [draft, ...prev])
+        applyLocally(updates)
+      },
+      async () => {
+        const newLocus = await store.createLocus({ name, meaning })
+        setLoci((prev) => prev.map((l) => (l.id === draft.id ? newLocus : l)))
+        const real = updates.map((u) => ({
+          id: u.id,
+          patch: { lociIds: (u.patch.lociIds ?? []).map((id) => (id === draft.id ? newLocus.id : id)) },
+        }))
+        setThings((prev) => prev.map((t) => ({
+          ...t,
+          lociIds: t.lociIds.map((id) => (id === draft.id ? newLocus.id : id)),
+        })))
+        if (real.length > 0) await commitThingUpdates(real)
+      },
+      'That clearing could not be split',
+    )
+  }
+
+  function walkPath(fromThing: Thing, toThing: Thing, why: string, origin: Path['origin']) {
+    const draft: Path = {
+      id: draftId(),
+      label: deriveLabel(fromThing.handle, toThing.handle),
+      fromId: fromThing.id,
+      toId: toThing.id,
+      why,
+      made: new Date().toISOString().slice(0, 10),
+      origin,
+    }
+    write(
+      () => setPaths((prev) => [draft, ...prev]),
+      async () => {
+        const path = await store.createPath({
+          fromId: fromThing.id,
+          toId: toThing.id,
+          fromHandle: fromThing.handle,
+          toHandle: toThing.handle,
+          why,
+          origin: origin ?? 'Yours',
+        })
+        setPaths((prev) => prev.map((p) => (p.id === draft.id ? path : p)))
+      },
+      'That path could not be walked',
+    )
+  }
+
+  function handleMakePath(fromId: string, toId: string, why: string) {
     const fromThing = things.find((t) => t.id === fromId)
     const toThing = things.find((t) => t.id === toId)
     if (!fromThing || !toThing) return
-    const path = await store.createPath({
-      fromId,
-      toId,
-      fromHandle: fromThing.handle,
-      toHandle: toThing.handle,
-      why,
-    })
-    setPaths((prev) => [path, ...prev])
+    walkPath(fromThing, toThing, why, 'Yours')
   }
 
-  async function handleEditPathWhy(pathId: string, why: string) {
-    const updated = await store.updatePathWhy(pathId, why)
-    setPaths((prev) => prev.map((p) => (p.id === pathId ? updated : p)))
+  function handleEditPathWhy(pathId: string, why: string) {
+    write(
+      () => setPaths((prev) => prev.map((p) => (p.id === pathId ? { ...p, why } : p))),
+      async () => {
+        const updated = await store.updatePathWhy(pathId, why)
+        setPaths((prev) => prev.map((p) => (p.id === pathId ? updated : p)))
+      },
+      'That path could not be updated',
+    )
   }
 
-  async function handleRemovePath(pathId: string) {
-    await store.archivePath(pathId)
-    setPaths((prev) => prev.filter((p) => p.id !== pathId))
+  function handleRemovePath(pathId: string) {
+    write(
+      () => setPaths((prev) => prev.filter((p) => p.id !== pathId)),
+      () => store.archivePath(pathId),
+      'That path could not be removed',
+    )
   }
 
   function handleDismissProvocation() {
@@ -275,40 +543,38 @@ export default function App() {
     setProvocation(null)
   }
 
-  async function handleAcceptProvocationPair(a: Thing, b: Thing, why: string) {
-    const path = await store.createPath({
-      fromId: a.id,
-      toId: b.id,
-      fromHandle: a.handle,
-      toHandle: b.handle,
-      why,
-      origin: 'Accepted',
-    })
-    setPaths((prev) => [path, ...prev])
+  function handleAcceptProvocationPair(a: Thing, b: Thing, why: string) {
+    walkPath(a, b, why, 'Accepted')
     setProvocation(null)
+    setView('underground')
+    notify('Path walked — it is drawn in the Underground.')
   }
 
-  async function handleAcceptClearingForming(clusterThings: Thing[], name: string) {
-    await handleCoin(name, '', clusterThings.map((t) => t.id))
+  function handleAcceptClearingForming(clusterThings: Thing[], name: string) {
+    handleCoin(name, '', clusterThings.map((t) => t.id))
     setProvocation(null)
+    setView('clearings')
+    notify(`"${name}" coined.`)
   }
 
   return (
     <div className={styles.app}>
       <header className={styles.header}>
         <h1 className={styles.title}>Silva</h1>
-        <SegmentedControl
+        <div className={styles.nav}>
+          <SegmentedControl
           value={view}
           onChange={(v) => setView(v as View)}
           options={[
-            { value: 'understory', label: 'Understory' },
             { value: 'forest', label: 'Forest' },
+            { value: 'understory', label: 'Understory' },
             { value: 'clearings', label: 'Clearings' },
             { value: 'underground', label: 'Underground' },
             { value: 'search', label: 'Search' },
             { value: 'settings', label: 'Settings' },
           ]}
-        />
+          />
+        </div>
       </header>
 
       {error && <p className={styles.error}>{error}</p>}
@@ -347,7 +613,7 @@ export default function App() {
             />
           </>
         ) : view === 'forest' ? (
-          <ForestView things={things} sources={sources} onEdit={handleEditThing} />
+          <ForestView things={things} sources={sources} loci={loci} onEdit={handleEditThing} />
         ) : view === 'clearings' ? (
           <ClearingsView
             things={things}
@@ -365,16 +631,19 @@ export default function App() {
             things={things}
             loci={loci}
             paths={paths}
+            vectorsById={vectorsById}
             onMake={handleMakePath}
             onEditWhy={handleEditPathWhy}
             onRemove={handleRemovePath}
           />
         ) : view === 'search' ? (
-          <SearchView things={things} />
+          <SearchView things={things} vectorsById={vectorsById} />
         ) : (
-          <SettingsView config={config} onChange={handleConfigChange} />
+          <SettingsView config={config} onChange={handleConfigChange} indexing={indexing} />
         )}
       </main>
+
+      <Toasts toasts={toasts} dismiss={dismiss} />
     </div>
   )
 }
