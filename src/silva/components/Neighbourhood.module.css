@@ -1,0 +1,153 @@
+/* The underground layer, on the plate.
+ *
+ * Oxblood appears here and nowhere else on a plate — SILVA.md reserves it
+ * exclusively for mycorrhiza: "when you see oxblood, you are looking at
+ * something the app noticed and you haven't." Paths, which you asserted, wear
+ * the ordinary accent green.
+ */
+
+.wrap {
+  margin-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.toggle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: var(--space-sm) 0 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-muted);
+  font: inherit;
+}
+
+.toggleLabel {
+  font-size: var(--text-xs);
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+}
+
+.toggle:hover .toggleLabel { color: var(--color-ink); }
+
+.counts {
+  display: flex;
+  gap: var(--space-sm);
+  margin-left: auto;
+  font-size: var(--text-xs);
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+}
+
+.countPath { color: var(--color-accent); }
+.countNear { color: var(--silva-oxblood); }
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md) 0 var(--space-xs);
+}
+
+.graph {
+  display: block;
+  width: 100%;
+  max-width: 200px;
+  margin: 0 auto;
+  height: auto;
+}
+
+.edgePath {
+  stroke: var(--color-accent);
+  stroke-width: 1.5;
+  opacity: 0.8;
+}
+
+/* Faint and dashed, like the fibers in the Underground graph — the same
+   relationship, drawn the same way. */
+.edgeNear {
+  stroke: var(--silva-oxblood);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: 0.5;
+}
+
+.nodeSelf { fill: var(--color-ink); }
+.nodePath { fill: var(--color-accent); }
+.nodeNear { fill: var(--silva-oxblood); opacity: 0.75; }
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.groupTitle,
+.groupTitleNear {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+  font-weight: var(--weight-medium);
+}
+
+.groupTitle { color: var(--color-accent); }
+.groupTitleNear { color: var(--silva-oxblood); }
+
+.groupHint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+  line-height: var(--leading-body);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  align-items: flex-start;
+  padding-left: var(--space-sm);
+  border-left: 1px solid var(--color-border);
+}
+
+.rowBody {
+  margin: 0;
+  font-family: var(--font-body-serif);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--color-ink);
+}
+
+.rowWhy {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-style: italic;
+  color: var(--color-muted);
+  line-height: var(--leading-body);
+}
+
+.respond {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  width: 100%;
+  margin-top: var(--space-2xs);
+}
+
+.respondActions {
+  display: flex;
+  gap: var(--space-xs);
+  justify-content: flex-end;
+}

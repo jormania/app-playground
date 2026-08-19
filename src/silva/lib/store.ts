@@ -17,6 +17,11 @@ import { DEMO_THINGS, DEMO_SOURCES, DEMO_LOCI, DEMO_PATHS } from './fixtures'
 import { readJson, writeJson, removeJson } from '../../shared/storage'
 
 const PROXY_URL = '/api/notion'
+// Notion's file-upload endpoints postdate the classic 2022-06-28 version the
+// rest of Silva is pinned to. api/notion.js allows this one explicitly; only
+// the upload calls below pass it.
+const NOTION_FILES_VERSION = '2025-09-03'
+const UPLOAD_URL = '/api/notion-upload'
 
 // Recorded here per SILVA.md ("not secrets") — the owner's live databases,
 // created in Silva build Session 2. See project_silva-build-plan memory.
@@ -45,6 +50,10 @@ export interface NewThingInput {
    *  DateCreated rather than the moment it was imported. */
   encountered?: string
   koboBookmarkId?: string | null
+  /** A local photo reference (lib/photoStore.ts) for a demo-forest photograph.
+   *  Live things get their image from `uploadPhoto`/`attachPhoto` instead —
+   *  Notion's files property can't be written through `patchProps`. */
+  image?: string | null
 }
 
 export interface NewSourceInput {
@@ -190,11 +199,16 @@ export class SilvaStore {
     }
   }
 
-  private async request(path: string, method: string, body?: unknown): Promise<Record<string, unknown>> {
+  private async request(
+    path: string,
+    method: string,
+    body?: unknown,
+    version?: string,
+  ): Promise<Record<string, unknown>> {
     const res = await fetch(PROXY_URL, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({ path, method, body }),
+      body: JSON.stringify({ path, method, body, version }),
     })
     if (!res.ok) {
       const payload = await res.json().catch(() => ({}) as { message?: string })
@@ -236,7 +250,7 @@ export class SilvaStore {
       kept: null,
       note: input.note ?? '',
       lociIds: [],
-      image: null,
+      image: input.image ?? null,
       link: input.link ?? null,
       koboBookmarkId: input.koboBookmarkId ?? null,
     }
@@ -460,6 +474,64 @@ export class SilvaStore {
     const properties = patchPathProps({ why })
     const page = await this.request(`pages/${id}`, 'PATCH', { properties })
     return toPath(page as { id: string; properties: Record<string, unknown> })
+  }
+
+  /**
+   * Uploads a photograph and returns a ticket for `imageProperty` below.
+   *
+   * Two calls, mirroring Fit Check's `uploadPhoto` (src/fit-check/lib/
+   * notionClient.ts): register the upload with Notion, then send the bytes
+   * through the existing `api/notion-upload` multipart relay — the one Notion
+   * call that isn't JSON. **No new serverless function**, which matters: the
+   * budget is at 12 of 12 and SILVA.md commits Silva to adding none.
+   *
+   * It touches no page, so it works before a thing has an id.
+   */
+  async uploadPhoto(blob: Blob, filename: string): Promise<{ ref: string; name: string }> {
+    if (!this.token) throw new SilvaStoreError('No Notion token — photos stay on this device.', 0)
+
+    const created = await this.request(
+      'file_uploads',
+      'POST',
+      { mode: 'single_part', filename, content_type: blob.type || 'image/jpeg' },
+      NOTION_FILES_VERSION,
+    )
+
+    const res = await fetch(`${UPLOAD_URL}?id=${encodeURIComponent(String(created.id))}`, {
+      method: 'POST',
+      headers: {
+        'x-notion-token': this.token,
+        'content-type': blob.type || 'image/jpeg',
+        'x-filename': encodeURIComponent(filename),
+      },
+      body: blob,
+    })
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}) as { message?: string })
+      throw new SilvaStoreError(payload.message || `Photo upload failed (${res.status})`, res.status)
+    }
+
+    return { ref: String(created.id), name: filename }
+  }
+
+  /**
+   * Points a thing's `Image` property at an uploaded file. Separate from
+   * `updateThing` because a files property needs the newer Notion version and
+   * a shape `patchProps` deliberately doesn't model — `Image` is the one
+   * property Silva reads but never wrote until the photo lane existed.
+   */
+  async attachPhoto(thingId: string, photo: { ref: string; name: string }): Promise<Thing> {
+    const page = await this.request(
+      `pages/${thingId}`,
+      'PATCH',
+      {
+        properties: {
+          Image: { files: [{ type: 'file_upload', file_upload: { id: photo.ref }, name: photo.name }] },
+        },
+      },
+      NOTION_FILES_VERSION,
+    )
+    return toThing(page as { id: string; properties: Record<string, unknown> })
   }
 
   /** Same archived:true convention as archiveLocus. */

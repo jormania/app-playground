@@ -27,6 +27,34 @@
   box-shadow: 0 0 0 3px var(--color-ring);
 }
 
-.wrap > button {
-  align-self: flex-end;
+/* The locator only appears when a share brought one, so it reads as an
+   annotation on what arrived rather than as a second required field. */
+.locator {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-2xs) var(--space-sm);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  background: var(--color-bg);
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+}
+
+.locator:focus {
+  outline: none;
+  border-bottom-color: var(--color-accent);
+  color: var(--color-ink);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  justify-content: flex-end;
+}
+
+.fileInput {
+  display: none;
 }

@@ -1,24 +1,41 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Field, TextAreaField } from '../../ds'
-import type { Thing, ThingKind } from '../lib/notion'
+import { useMemo, useState } from 'react'
+import type { Thing } from '../lib/notion'
 import type { Source } from '../lib/sources'
 import type { Locus } from '../lib/loci'
-import { inferKind } from '../lib/kindInference'
+import type { Path } from '../lib/paths'
+import type { SeenMap } from '../lib/seen'
+import { SpecimenPlate } from './SpecimenPlate'
+import { Neighbourhood } from './Neighbourhood'
+import { TodaysWalk } from './TodaysWalk'
 import styles from './ForestView.module.css'
 
 export interface ForestViewProps {
   things: Thing[]
   sources: Source[]
   loci: Locus[]
+  paths: Path[]
+  vectorsById: Map<string, Float32Array>
+  seen: SeenMap
   onEdit: (id: string, patch: Partial<Thing>) => void
+  onSeen: (id: string) => void
+  onMakePath: (fromId: string, toId: string, why: string) => void
 }
 
-const ALL_KINDS: ThingKind[] = ['Passage', 'Observation', 'Dialogue', 'Question', 'Image', 'Link', 'Fragment', 'Mine']
-
-/** The kept collection, read one thing at a time — typeset to be read, not a
- *  row in a table (SILVA.md: "Scroll is a walk, not a list"). Sorted by most
- *  recently kept; ordering by affinity (loci, mycorrhiza) is a later session. */
-export function ForestView({ things, sources, loci, onEdit }: ForestViewProps) {
+/** The kept collection. Today's walk sits at the head — a short, finite stretch
+ *  weighted by what you haven't looked at (SILVA.md: "Scroll is a walk, not a
+ *  list") — with the full forest below it, unchanged, for when you want to
+ *  browse rather than be shown. */
+export function ForestView({
+  things,
+  sources,
+  loci,
+  paths,
+  vectorsById,
+  seen,
+  onEdit,
+  onSeen,
+  onMakePath,
+}: ForestViewProps) {
   const sourceById = useMemo(() => new Map(sources.map((s) => [s.id, s])), [sources])
   const locusById = useMemo(() => new Map(loci.map((l) => [l.id, l])), [loci])
   // A walk through the forest, not a query over it — so the only control here
@@ -39,6 +56,28 @@ export function ForestView({ things, sources, loci, onEdit }: ForestViewProps) {
     return kept.filter((t) => t.lociIds.includes(clearing))
   }, [kept, clearing])
 
+  // One plate, however it's reached — so the walk and the scroll are provably
+  // the same reading surface, including dwell tracking and the neighbourhood.
+  function renderThing(thing: Thing) {
+    return (
+      <SpecimenPlate
+        thing={thing}
+        sourceTitle={thing.sourceId ? sourceById.get(thing.sourceId)?.title : undefined}
+        locusNames={thing.lociIds.map((id) => locusById.get(id)?.name).filter((n): n is string => Boolean(n))}
+        onEdit={onEdit}
+        onSeen={onSeen}
+      >
+        <Neighbourhood
+          thing={thing}
+          things={things}
+          paths={paths}
+          vectorsById={vectorsById}
+          onMakePath={onMakePath}
+        />
+      </SpecimenPlate>
+    )
+  }
+
   if (kept.length === 0) {
     return (
       <p className={styles.empty}>
@@ -49,6 +88,8 @@ export function ForestView({ things, sources, loci, onEdit }: ForestViewProps) {
 
   return (
     <div className={styles.forest}>
+      <TodaysWalk things={things} seen={seen} renderThing={renderThing} />
+
       {loci.length > 0 && (
         <div className={styles.walkRow}>
           <label className={styles.walkLabel} htmlFor="silva-forest-walk">Walk</label>
@@ -71,178 +112,8 @@ export function ForestView({ things, sources, loci, onEdit }: ForestViewProps) {
       {walked.length === 0 ? (
         <p className={styles.empty}>Nothing along this stretch.</p>
       ) : (
-        walked.map((thing) => (
-          <SpecimenCard
-            key={thing.id}
-            thing={thing}
-            sourceTitle={thing.sourceId ? sourceById.get(thing.sourceId)?.title : undefined}
-            locusNames={thing.lociIds.map((id) => locusById.get(id)?.name).filter((n): n is string => Boolean(n))}
-            onEdit={onEdit}
-            hasSource={Boolean(thing.sourceId)}
-          />
-        ))
+        walked.map((thing) => <div key={thing.id}>{renderThing(thing)}</div>)
       )}
     </div>
-  )
-}
-
-function SpecimenCard({
-  thing,
-  sourceTitle,
-  locusNames,
-  hasSource,
-  onEdit,
-}: {
-  thing: Thing
-  sourceTitle?: string
-  locusNames: string[]
-  hasSource: boolean
-  onEdit: (id: string, patch: Partial<Thing>) => void
-}) {
-  const [editing, setEditing] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const editRef = useRef<HTMLDivElement>(null)
-  const [body, setBody] = useState(thing.body)
-  const [kind, setKind] = useState<ThingKind | ''>(thing.kind ?? '')
-  const [locator, setLocator] = useState(thing.locator)
-  const [note, setNote] = useState(thing.note)
-  const [link, setLink] = useState(thing.link ?? '')
-
-  function startEditing() {
-    setBody(thing.body)
-    setKind(thing.kind ?? '')
-    setLocator(thing.locator)
-    setNote(thing.note)
-    setLink(thing.link ?? '')
-    setEditing(true)
-  }
-
-  // Escape backs out of an edit — the same reflex as every other text field on
-  // the platform, and the only keyboard affordance this screen needs.
-  useEffect(() => {
-    if (!editing) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setEditing(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [editing])
-
-  async function copyBody() {
-    try {
-      await navigator.clipboard.writeText(thing.body)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1600)
-    } catch {
-      // No clipboard permission — the text is on screen and selectable anyway.
-    }
-  }
-
-  function save() {
-    onEdit(thing.id, {
-      body: body.trim(),
-      kind: kind || null,
-      locator: locator.trim(),
-      note: note.trim(),
-      link: link.trim() || null,
-    })
-    setEditing(false)
-  }
-
-  if (!editing) {
-    return (
-      <article className={styles.plate}>
-        {thing.kind && <p className={styles.kind}>{thing.kind}</p>}
-        <p className={styles.body}>{thing.body}</p>
-        {thing.note && <p className={styles.note}>{thing.note}</p>}
-        <ThingLabel thing={thing} sourceTitle={sourceTitle} />
-        {locusNames.length > 0 && (
-          <p className={styles.clearings}>
-            {locusNames.map((name) => (
-              <span key={name} className={styles.clearingTag}>{name}</span>
-            ))}
-          </p>
-        )}
-        <div className={styles.plateActions}>
-          <Button size="sm" variant="ghost" onClick={startEditing}>Edit</Button>
-          <Button size="sm" variant="ghost" onClick={copyBody}>{copied ? 'Copied' : 'Copy'}</Button>
-        </div>
-      </article>
-    )
-  }
-
-  return (
-    <article className={styles.plate}>
-      <div className={styles.editBlock} ref={editRef}>
-        {/* A passage is the whole object of this app and is very often several
-         *  lines long — editing it through a 44px single-line input meant
-         *  scrolling sideways through your own quotation. */}
-        <TextAreaField label="Body" value={body} onChange={(e) => setBody(e.target.value)} rows={6} />
-        <div className={styles.kindRow}>
-          <select className={styles.select} value={kind} onChange={(e) => setKind(e.target.value as ThingKind | '')}>
-            <option value="">No kind set</option>
-            {ALL_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
-          </select>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setKind(inferKind(body, hasSource) ?? '')}
-            disabled={!body.trim()}
-          >
-            Suggest a kind
-          </Button>
-        </div>
-        <Field
-          label="Locator"
-          hint="Where in the source — a page, a timestamp, where you were."
-          value={locator}
-          onChange={(e) => setLocator(e.target.value)}
-          placeholder="e.g. p. 142, or overheard on the 32 tram"
-        />
-        <TextAreaField
-          label="Note"
-          hint="Why this. What it rhymed with."
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          rows={3}
-        />
-        <Field label="Link" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…" />
-        <div className={styles.actions}>
-          <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
-          <Button size="sm" disabled={!body.trim()} onClick={save}>Save</Button>
-        </div>
-      </div>
-    </article>
-  )
-}
-
-/** Specimen-label order per SILVA.md: source · locator · encountered · kept.
- *  Source/locator read fine unlabelled (a title, a page reference); the two
- *  dates don't — "2025-10-05 · 2026-08-18" doesn't say which is which — so
- *  those get an explicit, low-key field word (a colour shift, not a pill:
- *  the herbarium label is engraved text, not a chip). Collapsed to one date
- *  when they're the same day, the common case for a thing kept straight
- *  from a fresh note. */
-function ThingLabel({ thing, sourceTitle }: { thing: Thing; sourceTitle?: string }) {
-  const values = [sourceTitle, thing.locator].filter(Boolean) as string[]
-  const dated = thing.kept && thing.kept !== thing.encountered
-    ? [{ field: 'encountered', value: thing.encountered }, { field: 'kept', value: thing.kept }]
-    : [{ field: 'kept', value: thing.kept ?? thing.encountered }]
-
-  return (
-    <p className={styles.label}>
-      {values.map((value, i) => (
-        <span key={value}>
-          {i > 0 && <span className={styles.labelSep}> · </span>}
-          {value}
-        </span>
-      ))}
-      {dated.map((d, i) => (
-        <span key={d.field}>
-          {(values.length > 0 || i > 0) && <span className={styles.labelSep}> · </span>}
-          <span className={styles.labelField}>{d.field}</span> {d.value}
-        </span>
-      ))}
-    </p>
   )
 }

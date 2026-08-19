@@ -23,7 +23,7 @@ import type { Thing } from './notion'
 import type { Locus } from './loci'
 import type { Path } from './paths'
 import { cosineSimilarity } from './embeddings'
-import { daysSince } from './understory'
+import { daysSinceSeen, type SeenMap } from './seen'
 
 export type ProvocationKind =
   | 'shuffle'
@@ -43,9 +43,11 @@ export type Provocation =
   | { kind: 'clearing-forming'; things: Thing[] }
   | { kind: 'tension'; a: Thing; b: Thing }
 
-// A thing kept this long ago without a real "last visited" signal (Silva
-// doesn't track viewing history) is treated as unvisited — an approximation
-// stated plainly, not assumed accurate.
+// Genuinely not looked at in this long. Silva now *does* track viewing history
+// (lib/seen.ts), so this is the real thing rather than the approximation it
+// used to be: this filtered on `daysSince(thing.kept)`, which could not tell a
+// thing you reread weekly from one you had never opened — and whose candidate
+// pool only ever grew, since nothing you did drained it.
 export const LONG_UNVISITED_DAYS = 180
 // Higher bar than Search's 0.35 — a provocation should be a confident
 // nudge, not the same net a search box casts.
@@ -105,9 +107,9 @@ function gatherRandomClearing(loci: Locus[], things: Thing[]): Provocation[] {
     .filter((p) => p.things.length > 0)
 }
 
-function gatherLongUnvisited(things: Thing[], today: Date): Provocation[] {
+function gatherLongUnvisited(things: Thing[], seen: SeenMap, today: Date): Provocation[] {
   return keptThings(things)
-    .filter((t) => t.kept && daysSince(t.kept, today) >= LONG_UNVISITED_DAYS)
+    .filter((t) => daysSinceSeen(t, seen, today) >= LONG_UNVISITED_DAYS)
     .map((thing) => ({ kind: 'long-unvisited', thing }))
 }
 
@@ -179,6 +181,9 @@ export interface PickProvocationInput {
   paths: Path[]
   vectorsById: Map<string, Float32Array>
   dismissed: Set<string>
+  /** Last-seen history (lib/seen.ts). Defaults to empty, which falls every
+   *  thing back to its `kept` date — the old, cruder behaviour. */
+  seen?: SeenMap
   today?: Date
   random?: () => number
   /** Only eligible once a real Anthropic key exists — see this module's
@@ -199,6 +204,7 @@ export function pickProvocation({
   paths,
   vectorsById,
   dismissed,
+  seen = {},
   today = new Date(),
   random = Math.random,
   tensionEnabled = false,
@@ -206,7 +212,7 @@ export function pickProvocation({
   const byKind = [
     gatherShuffle(things),
     gatherRandomClearing(loci, things),
-    gatherLongUnvisited(things, today),
+    gatherLongUnvisited(things, seen, today),
     gatherBlindPairing(things, paths),
     gatherNearNeighbours(things, paths, vectorsById),
     gatherClearingForming(things, vectorsById),
