@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { daysSince, daysRemaining, isExpired, fadeRatio, DEFAULT_SEASON_DAYS } from './understory'
+import { daysSince, daysRemaining, isExpired, fadeRatio, todayIso, DEFAULT_SEASON_DAYS } from './understory'
 
 const TODAY = new Date('2026-06-01T12:00:00')
 
@@ -60,5 +60,37 @@ describe('fadeRatio', () => {
     const ratio = fadeRatio({ encountered: '2026-05-01' }, 90, TODAY)
     expect(ratio).toBeGreaterThan(0)
     expect(ratio).toBeLessThan(1)
+  })
+})
+
+describe('todayIso', () => {
+  // The bug this exists to prevent: `new Date().toISOString().slice(0, 10)`
+  // returns the UTC date, so anyone east of UTC gets "yesterday" stamped
+  // until the offset has passed. Every date this app writes (kept, coined,
+  // made, the walk's daily seed, the seen-history bucket, the provocation
+  // gate's quiet-week clock) reasons in the LOCAL calendar day, so the
+  // write and the read were quietly a day apart.
+  it('returns the local calendar date, not the UTC one', () => {
+    // 00:30 local on the 20th, in a zone 3 hours ahead of UTC — UTC still
+    // says the 19th.
+    const justAfterLocalMidnight = new Date('2026-08-19T21:30:00Z')
+    const asUtc = justAfterLocalMidnight.toISOString().slice(0, 10)
+    const local = todayIso(justAfterLocalMidnight)
+
+    if (justAfterLocalMidnight.getTimezoneOffset() < 0) {
+      // Runner is east of UTC (e.g. Europe/Bucharest) — the case the bug bit.
+      expect(local).not.toBe(asUtc)
+      expect(local).toBe('2026-08-20')
+    }
+    // Whatever the runner's own zone, the answer always matches its clock.
+    const y = justAfterLocalMidnight.getFullYear()
+    const m = String(justAfterLocalMidnight.getMonth() + 1).padStart(2, '0')
+    const d = String(justAfterLocalMidnight.getDate()).padStart(2, '0')
+    expect(local).toBe(`${y}-${m}-${d}`)
+  })
+
+  it('round-trips through daysSince as zero days elapsed', () => {
+    const now = new Date()
+    expect(daysSince(todayIso(now), now)).toBe(0)
   })
 })

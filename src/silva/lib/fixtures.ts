@@ -14,11 +14,13 @@ import type { Thing } from './notion'
 import type { Source } from './sources'
 import type { Locus } from './loci'
 import type { Path } from './paths'
+import { todayIso } from './understory'
 
 function daysAgo(n: number): string {
   const d = new Date()
   d.setDate(d.getDate() - n)
-  return d.toISOString().slice(0, 10)
+  // Local calendar date, not UTC — see understory.ts's todayIso.
+  return todayIso(d)
 }
 
 /** The Sources the demo Things above already reference by id. */

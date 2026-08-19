@@ -48,6 +48,32 @@
   color: var(--color-ink);
 }
 
+/* Source, unlike the locator above, is always present — it's the one field
+   SILVA.md's low-friction intake makes a deliberate exception for (see
+   lib/sourceCapture.ts): unlike everything else deferred to curation, a
+   source is the kind of context that evaporates before curation happens. */
+.source {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-2xs) var(--space-sm);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  background: var(--color-bg);
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+}
+
+.source::placeholder {
+  color: var(--color-faint);
+}
+
+.source:focus {
+  outline: none;
+  border-bottom-color: var(--color-accent);
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;

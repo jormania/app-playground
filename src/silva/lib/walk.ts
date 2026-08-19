@@ -26,6 +26,7 @@
 
 import type { Thing } from './notion'
 import { daysSinceSeen, type SeenMap } from './seen'
+import { todayIso } from './understory'
 
 export const WALK_SIZE = 5
 
@@ -64,7 +65,7 @@ export function chooseWalk(
   seen: SeenMap,
   { size = WALK_SIZE, today = new Date() }: WalkOptions = {},
 ): Thing[] {
-  const dateKey = today.toISOString().slice(0, 10)
+  const dateKey = todayIso(today)
 
   return things
     .filter((thing) => thing.state === 'Kept')

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../ds'
 import { SilvaStore } from './lib/store'
-import { isExpired } from './lib/understory'
+import { isExpired, todayIso } from './lib/understory'
 import type { Thing } from './lib/notion'
 import type { Source } from './lib/sources'
 import type { Locus } from './lib/loci'
@@ -36,7 +36,8 @@ import { resizePhoto, photoFilename, isImageFile } from '../shared/photo'
 import { indexThings, indexableThings } from './lib/indexer'
 import { loadSilvaConfig, saveSilvaConfig, type SilvaConfig } from './lib/settingsConfig'
 import { confirmTension } from './lib/tension'
-import { syncSystemTheme } from './lib/theme'
+import { resolveSource } from './lib/sourceCapture'
+import { loadThemeChoice, saveThemeChoice, watchTheme, type ThemeChoice } from './lib/theme'
 import styles from './App.module.css'
 
 type View = 'forest' | 'understory' | 'clearings' | 'underground' | 'search' | 'settings'
@@ -74,9 +75,17 @@ function errorText(e: unknown): string {
 }
 
 export default function App() {
-  // SILVA.md: "Light and dark, syncing to the device" — no manual toggle,
-  // purely OS `prefers-color-scheme`.
-  useEffect(() => syncSystemTheme(), [])
+  // SILVA.md: "Light and dark, syncing to the device." Syncing is the
+  // *default* (choice === null), not the only option — a phone that flips
+  // dark at sunset shouldn't drag a reading app along with it when the
+  // reader would rather it stayed put (see lib/theme.ts).
+  const [themeChoice, setThemeChoice] = useState<ThemeChoice>(() => loadThemeChoice())
+  useEffect(() => watchTheme(themeChoice), [themeChoice])
+
+  function handleThemeChange(choice: ThemeChoice) {
+    saveThemeChoice(choice)
+    setThemeChoice(choice)
+  }
 
   const [config, setConfig] = useState<SilvaConfig>(() => loadSilvaConfig())
   const store = useMemo(() => new SilvaStore(config.notionToken), [config.notionToken])
@@ -312,7 +321,7 @@ export default function App() {
   }, [])
 
   function handleKeep(id: string) {
-    const today = new Date().toISOString().slice(0, 10)
+    const today = todayIso()
     const patch: Partial<Thing> = { state: 'Kept', kept: today }
     write(
       () => setThings((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t))),
@@ -353,26 +362,78 @@ export default function App() {
     )
   }
 
-  function handleEditThing(id: string, patch: Partial<Thing>) {
+  /**
+   * Turns a typed "where did you encounter this" line into something a Thing
+   * draft can point `sourceId` at right away, and a matching commit step that
+   * makes it real. Two shapes:
+   *
+   *   - Text that clearly names an existing Source (lib/sourceCapture.ts's
+   *     CAPTURE_MATCH_THRESHOLD) resolves to its real id synchronously — no
+   *     draft needed, no network call, since matching only reads `sources`,
+   *     already in memory.
+   *   - Anything else becomes a Source *draft*, using the same `draftId()` +
+   *     reconcile-on-commit pattern `handleCoin` already uses for a locus:
+   *     the optimistic apply can show it immediately, and the commit step
+   *     creates the real row and points the thing at the real id once it
+   *     exists.
+   *
+   * Returns `null, null` for empty input — most captures have no source, and
+   * that must stay free of both a draft and a resolved id.
+   */
+  function resolveSourceDraft(sourceInput: string): { sourceId: string | null; sourceDraft: Source | null } {
+    const resolution = resolveSource(sourceInput, sources)
+    if (resolution.kind === 'none') return { sourceId: null, sourceDraft: null }
+    if (resolution.kind === 'existing') return { sourceId: resolution.source.id, sourceDraft: null }
+    const sourceDraft: Source = {
+      id: draftId(),
+      title: resolution.title,
+      author: resolution.author,
+      kind: null,
+      cover: null,
+      koboVolumeId: null,
+      notes: '',
+    }
+    return { sourceId: sourceDraft.id, sourceDraft }
+  }
+
+  /** `sourceInput` is undefined when the edit form's Source field wasn't
+   *  touched at all — vs. an empty string, which means it was actively
+   *  cleared, and should blank `sourceId` rather than leave it stale. */
+  function handleEditThing(id: string, patch: Partial<Thing>, sourceInput?: string) {
+    const { sourceId, sourceDraft } = sourceInput !== undefined
+      ? resolveSourceDraft(sourceInput)
+      : { sourceId: undefined, sourceDraft: null }
+    const fullPatch: Partial<Thing> = sourceId !== undefined ? { ...patch, sourceId } : patch
+
     write(
-      () => setThings((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t))),
+      () => {
+        if (sourceDraft) setSources((prev) => [sourceDraft, ...prev])
+        setThings((prev) => prev.map((t) => (t.id === id ? { ...t, ...fullPatch } : t)))
+      },
       async () => {
-        const updated = await store.updateThing(id, patch)
+        let realPatch = fullPatch
+        if (sourceDraft) {
+          const createdSource = await store.createSource({ title: sourceDraft.title, author: sourceDraft.author })
+          setSources((prev) => prev.map((s) => (s.id === sourceDraft.id ? createdSource : s)))
+          realPatch = { ...fullPatch, sourceId: createdSource.id }
+        }
+        const updated = await store.updateThing(id, realPatch)
         setThings((prev) => prev.map((t) => (t.id === id ? updated : t)))
       },
       'That edit could not be saved',
     )
   }
 
-  function handleIntake(body: string, locator = '') {
-    const today = new Date().toISOString().slice(0, 10)
+  function handleIntake(body: string, locator = '', sourceInput = '') {
+    const today = todayIso()
+    const { sourceId, sourceDraft } = resolveSourceDraft(sourceInput)
     const draft: Thing = {
       id: draftId(),
       handle: body.slice(0, 60),
       body,
       kind: null,
       state: 'Understory',
-      sourceId: null,
+      sourceId,
       locator,
       encountered: today,
       kept: null,
@@ -383,9 +444,18 @@ export default function App() {
       koboBookmarkId: null,
     }
     write(
-      () => setThings((prev) => [draft, ...prev]),
+      () => {
+        if (sourceDraft) setSources((prev) => [sourceDraft, ...prev])
+        setThings((prev) => [draft, ...prev])
+      },
       async () => {
-        const created = await store.createThing({ body, locator })
+        let realSourceId = sourceId
+        if (sourceDraft) {
+          const createdSource = await store.createSource({ title: sourceDraft.title, author: sourceDraft.author })
+          setSources((prev) => prev.map((s) => (s.id === sourceDraft.id ? createdSource : s)))
+          realSourceId = createdSource.id
+        }
+        const created = await store.createThing({ body, locator, sourceId: realSourceId })
         setThings((prev) => prev.map((t) => (t.id === draft.id ? created : t)))
       },
       'That could not be added to the understory',
@@ -503,7 +573,7 @@ export default function App() {
   }
 
   function handleCoin(name: string, meaning: string, seedThingIds: string[]) {
-    const draft: Locus = { id: draftId(), name, meaning, coined: new Date().toISOString().slice(0, 10) }
+    const draft: Locus = { id: draftId(), name, meaning, coined: todayIso() }
     const updates = membershipUpdates(seedThingIds, (t) => ({ lociIds: [...t.lociIds, draft.id] }))
     write(
       () => {
@@ -590,7 +660,7 @@ export default function App() {
   // the same withLocusReplaced helper handleMerge uses, in the other direction.
   // Other loci a thing already belongs to are untouched.
   function handleSplit(locusId: string, thingIds: string[], name: string, meaning: string) {
-    const draft: Locus = { id: draftId(), name, meaning, coined: new Date().toISOString().slice(0, 10) }
+    const draft: Locus = { id: draftId(), name, meaning, coined: todayIso() }
     const updates = membershipUpdates(thingIds, (t) => ({
       lociIds: withLocusReplaced(t.lociIds, locusId, draft.id),
     }))
@@ -623,7 +693,7 @@ export default function App() {
       fromId: fromThing.id,
       toId: toThing.id,
       why,
-      made: new Date().toISOString().slice(0, 10),
+      made: todayIso(),
       origin,
     }
     write(
@@ -784,9 +854,15 @@ export default function App() {
             showGraph={config.showGraph}
           />
         ) : view === 'search' ? (
-          <SearchView things={things} vectorsById={vectorsById} />
+          <SearchView things={things} sources={sources} vectorsById={vectorsById} />
         ) : (
-          <SettingsView config={config} onChange={handleConfigChange} indexing={indexing} />
+          <SettingsView
+            config={config}
+            onChange={handleConfigChange}
+            indexing={indexing}
+            themeChoice={themeChoice}
+            onThemeChange={handleThemeChange}
+          />
         )}
       </main>
 

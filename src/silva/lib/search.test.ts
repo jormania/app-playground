@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { lexicalMatch, combineResults, filterByKind } from './search'
+import { lexicalMatch, combineResults, filterByKind, filterBySource } from './search'
 import type { Thing } from './notion'
 
 function thing(overrides: Partial<Thing>): Thing {
@@ -37,6 +37,15 @@ describe('lexicalMatch', () => {
 
   it('is false for an empty query', () => {
     expect(lexicalMatch('', thing({ body: 'A passage worth keeping.' }))).toBe(false)
+  })
+
+  // "I remember something Shelby Foote said" should find a passage even
+  // when the word "Shelby" never appears in the body itself.
+  it('matches on a source title or author when supplied', () => {
+    const t = thing({ body: 'A quotation with no matching words at all.' })
+    expect(lexicalMatch('civil war', t, 'The Civil War: A Narrative', '')).toBe(true)
+    expect(lexicalMatch('foote', t, 'The Civil War', 'Shelby Foote')).toBe(true)
+    expect(lexicalMatch('nothing here', t, 'The Civil War', 'Shelby Foote')).toBe(false)
   })
 })
 
@@ -86,6 +95,33 @@ describe('combineResults', () => {
     const queryVector = new Float32Array([1, 0])
     const results = combineResults('nothing lexical here', things, queryVector, new Map())
     expect(results).toEqual([])
+  })
+
+  it('finds a thing by its source, via the sourceById map', () => {
+    const sourced = [thing({ id: 't4', body: 'No matching words in the body.', sourceId: 'src-1' })]
+    const sourceById = new Map([['src-1', { title: 'The Civil War', author: 'Shelby Foote' }]])
+    const results = combineResults('foote', sourced, null, new Map(), sourceById)
+    expect(results.map((r) => r.thing.id)).toEqual(['t4'])
+  })
+})
+
+describe('filterBySource', () => {
+  const withSources = [
+    thing({ id: 'a', sourceId: 'src-1' }),
+    thing({ id: 'b', sourceId: 'src-2' }),
+    thing({ id: 'c', sourceId: null }),
+  ]
+
+  it('returns everything unchanged when sourceId is null', () => {
+    expect(filterBySource(withSources, null)).toEqual(withSources)
+  })
+
+  it('narrows to only things from the given source', () => {
+    expect(filterBySource(withSources, 'src-1').map((t) => t.id)).toEqual(['a'])
+  })
+
+  it('returns an empty array for a source nothing has', () => {
+    expect(filterBySource(withSources, 'src-9')).toEqual([])
   })
 })
 

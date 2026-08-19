@@ -5,6 +5,7 @@ import { matchSource, type SourceMatch } from '../lib/bookMatch'
 import { SilvaStore } from '../lib/store'
 import type { Source } from '../lib/sources'
 import type { Thing } from '../lib/notion'
+import { todayIso } from '../lib/understory'
 import styles from './KoboImportPanel.module.css'
 
 export interface KoboImportPanelProps {
@@ -178,7 +179,7 @@ export function KoboImportPanel({ store, existingKoboBookmarkIds, onImported, on
             note: highlight.annotation,
             kind: 'Passage',
             sourceId,
-            encountered: highlight.dateCreated || new Date().toISOString().slice(0, 10),
+            encountered: highlight.dateCreated || todayIso(),
             koboBookmarkId: highlight.bookmarkId,
           })
           created.push(thing)

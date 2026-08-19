@@ -52,9 +52,14 @@
   margin-bottom: var(--space-2xs);
 }
 
+/* Same transitional serif the Forest sets a kept passage in, one step down
+   the scale — a thing shouldn't change TYPEFACE the moment you keep it,
+   only size and mounting should, or the Understory and the Forest read as
+   two different apps rather than one object at two moments. */
 .text {
   margin: 0;
   color: var(--color-ink);
+  font-family: var(--font-body-serif);
   font-size: var(--text-base);
   line-height: var(--leading-body);
 }

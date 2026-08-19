@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Thing, ThingKind } from '../lib/notion'
+import type { Source } from '../lib/sources'
 import { embed } from '../lib/embeddings'
 import { indexThings } from '../lib/indexer'
-import { combineResults, filterByKind, type SearchResult } from '../lib/search'
+import { combineResults, filterByKind, filterBySource, type SearchResult } from '../lib/search'
 import styles from './SearchView.module.css'
 
 // Same order as notion.ts's ThingKind union — a fixed vocabulary, not
@@ -12,6 +13,7 @@ const ALL_KINDS: ThingKind[] = ['Passage', 'Observation', 'Dialogue', 'Question'
 
 export interface SearchViewProps {
   things: Thing[]
+  sources: Source[]
   /** Whatever App already has cached or indexed. Search starts from these
    *  rather than from an empty map, so with the indexer on it is ready the
    *  moment the view opens instead of re-walking the whole collection. */
@@ -29,12 +31,22 @@ function summarize(thing: Thing, max = 140): string {
  *  time this view mounts (i.e. the first time Search is opened), not on
  *  every app load. Lexical results appear immediately; semantic results
  *  fill in once the model and index are ready. */
-export function SearchView({ things, vectorsById }: SearchViewProps) {
+export function SearchView({ things, sources, vectorsById }: SearchViewProps) {
+  const sourceById = useMemo(() => new Map(sources.map((s) => [s.id, { title: s.title, author: s.author }])), [sources])
+  // Only sources actually in play — a book with nothing kept from it yet
+  // shouldn't clutter a facet meant for narrowing what's here.
+  const usedSourceIds = useMemo(() => new Set(things.map((t) => t.sourceId).filter((id): id is string => Boolean(id))), [things])
+  const usedSources = useMemo(
+    () => sources.filter((s) => usedSourceIds.has(s.id)).sort((a, b) => a.title.localeCompare(b.title)),
+    [sources, usedSourceIds],
+  )
+
   const [phase, setPhase] = useState<IndexPhase>('loading-model')
   const [progress, setProgress] = useState({ done: 0, total: things.length })
   const [vectors, setVectors] = useState<Map<string, Float32Array>>(vectorsById)
   const [query, setQuery] = useState('')
   const [kindFilter, setKindFilter] = useState<ThingKind | null>(null)
+  const [sourceFilter, setSourceFilter] = useState<string | null>(null)
   const [queryVector, setQueryVector] = useState<Float32Array | null>(null)
   const [modelError, setModelError] = useState('')
   const cancelledRef = useRef(false)
@@ -99,25 +111,28 @@ export function SearchView({ things, vectorsById }: SearchViewProps) {
     }
   }, [query, phase])
 
-  const kindFiltered = filterByKind(things, kindFilter)
+  const faceted = filterBySource(filterByKind(things, kindFilter), sourceFilter)
   const results: SearchResult[] = query.trim()
-    ? combineResults(query, kindFiltered, queryVector, vectors)
-    : kindFilter
-      ? kindFiltered.map((thing): SearchResult => ({ thing, matchType: 'lexical', score: 1 }))
+    ? combineResults(query, faceted, queryVector, vectors, sourceById)
+    : kindFilter || sourceFilter
+      ? faceted.map((thing): SearchResult => ({ thing, matchType: 'lexical', score: 1 }))
       : []
+
+  const sourceFilterName = sourceFilter ? sourceById.get(sourceFilter)?.title : null
 
   return (
     <div className={styles.wrap}>
       <input
         className={styles.input}
         type="text"
+        aria-label="Search the forest by words or by meaning"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="I remember something about…"
         disabled={things.length === 0}
       />
 
-      <div className={styles.kindFilters}>
+      <div className={styles.kindFilters} role="group" aria-label="Filter by kind">
         <button
           type="button"
           className={styles.kindChip}
@@ -139,6 +154,23 @@ export function SearchView({ things, vectorsById }: SearchViewProps) {
         ))}
       </div>
 
+      {/* A dropdown, not chips like Kind above — a forest can plausibly hold
+          dozens of sources, where it holds exactly eight kinds. Only shown
+          once there's a second source to actually narrow between. */}
+      {usedSources.length > 1 && (
+        <label className={styles.sourceFilter}>
+          <span className={styles.srOnly}>Filter by source</span>
+          <select
+            className={styles.select}
+            value={sourceFilter ?? ''}
+            onChange={(e) => setSourceFilter(e.target.value || null)}
+          >
+            <option value="">Every source</option>
+            {usedSources.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+          </select>
+        </label>
+      )}
+
       {phase !== 'ready' && (
         <p className={styles.status}>
           {progress.done === 0
@@ -153,22 +185,32 @@ export function SearchView({ things, vectorsById }: SearchViewProps) {
         </p>
       )}
 
-      {results.length === 0 && (query.trim() || kindFilter) && (
+      {results.length === 0 && (query.trim() || kindFilter || sourceFilter) && (
         <p className={styles.empty}>
-          {query.trim() ? `Nothing found for "${query.trim()}".` : `Nothing kept as ${kindFilter} yet.`}
+          {query.trim()
+            ? `Nothing found for "${query.trim()}".`
+            : kindFilter && sourceFilterName
+              ? `Nothing here is a ${kindFilter} from ${sourceFilterName}.`
+              : kindFilter
+                ? `Nothing kept as ${kindFilter} yet.`
+                : `Nothing here is from ${sourceFilterName} yet.`}
         </p>
       )}
 
       <ul className={styles.list}>
-        {results.map((result) => (
-          <li key={result.thing.id} className={styles.row}>
-            <p className={styles.body}>{summarize(result.thing)}</p>
-            <p className={styles.meta}>
-              <span className={styles.badge}>{result.matchType}</span>
-              <span className={styles.state}>{result.thing.state}</span>
-            </p>
-          </li>
-        ))}
+        {results.map((result) => {
+          const source = result.thing.sourceId ? sourceById.get(result.thing.sourceId) : undefined
+          return (
+            <li key={result.thing.id} className={styles.row}>
+              <p className={styles.body}>{summarize(result.thing)}</p>
+              <p className={styles.meta}>
+                <span className={styles.badge}>{result.matchType}</span>
+                <span className={styles.state}>{result.thing.state}</span>
+                {source && <span className={styles.source}>{source.title}</span>}
+              </p>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

@@ -24,7 +24,7 @@
 
 import { get, set } from 'idb-keyval'
 import type { Thing } from './notion'
-import { daysSince } from './understory'
+import { daysSince, todayIso } from './understory'
 
 const STORE_KEY = 'silva:seen'
 
@@ -56,7 +56,7 @@ export async function writeSeen(seen: SeenMap): Promise<void> {
  * pointless re-render).
  */
 export function withSeen(seen: SeenMap, ids: Iterable<string>, today: Date = new Date()): SeenMap {
-  const date = today.toISOString().slice(0, 10)
+  const date = todayIso(today)
   let changed = false
   const next: SeenMap = { ...seen }
   for (const id of ids) {

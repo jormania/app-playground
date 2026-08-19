@@ -3,7 +3,7 @@ import { Button } from '../../ds'
 import styles from './IntakeField.module.css'
 
 export interface IntakeFieldProps {
-  onSubmit: (body: string, locator: string) => void
+  onSubmit: (body: string, locator: string, sourceInput: string) => void
   onPhoto: (file: File) => void
   /** A share arriving from elsewhere on the device (lib/sharedIntake.ts) —
    *  pre-fills the field rather than landing silently, so the one moment when
@@ -13,12 +13,20 @@ export interface IntakeFieldProps {
   busy?: boolean
 }
 
-/** Type-or-paste intake — one field, no required metadata (SILVA.md
- *  "Intake"). Everything lands in the understory; kind/locus/source are
- *  assigned later, if ever. */
+/** Type-or-paste intake — one required field, no required metadata beyond it
+ *  (SILVA.md "Intake"). Kind and locus are still assigned later, if ever.
+ *
+ *  Source is the one deliberate exception, and still not required: it's the
+ *  piece of context most likely to evaporate before curation ever happens —
+ *  you'll remember *why* a line stopped you months from now, not which of
+ *  four books you were holding. Offered here as a plain typed line
+ *  ("Shelby Foote — The Civil War"), never a picker; resolving that text
+ *  into a real Source (reuse a match, create otherwise) happens in App.tsx
+ *  (lib/sourceCapture.ts), which is the only place that needs the store. */
 export function IntakeField({ onSubmit, onPhoto, prefill = null, busy = false }: IntakeFieldProps) {
   const [value, setValue] = useState('')
   const [locator, setLocator] = useState('')
+  const [source, setSource] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -38,9 +46,10 @@ export function IntakeField({ onSubmit, onPhoto, prefill = null, busy = false }:
   function submit() {
     const body = value.trim()
     if (!body && !locator.trim()) return
-    onSubmit(body, locator.trim())
+    onSubmit(body, locator.trim(), source.trim())
     setValue('')
     setLocator('')
+    setSource('')
   }
 
   return (
@@ -48,6 +57,7 @@ export function IntakeField({ onSubmit, onPhoto, prefill = null, busy = false }:
       <textarea
         ref={textareaRef}
         className={styles.textarea}
+        aria-label="Type or paste something worth keeping"
         placeholder="Type or paste something worth keeping…"
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -55,6 +65,17 @@ export function IntakeField({ onSubmit, onPhoto, prefill = null, busy = false }:
           if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit()
         }}
         rows={3}
+      />
+
+      <input
+        className={styles.source}
+        value={source}
+        onChange={(e) => setSource(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit()
+        }}
+        placeholder="Where did you encounter this? (optional — a book, a person, a place)"
+        aria-label="Where did you encounter this"
       />
 
       {/* Only shown once something arrived carrying one — an empty locator

@@ -31,7 +31,7 @@ import { readJson, writeJson } from '../../shared/storage'
 import type { Thing } from './notion'
 import type { Locus } from './loci'
 import type { Path } from './paths'
-import { daysSince } from './understory'
+import { daysSince, todayIso } from './understory'
 
 const STATE_KEY = 'silva:provocation-threshold'
 
@@ -71,7 +71,7 @@ export function readThresholdState(): ThresholdState | null {
 }
 
 export function recordProvocationOffered(fingerprint: string, today: Date = new Date()): void {
-  writeJson(STATE_KEY, { fingerprint, offered: today.toISOString().slice(0, 10) } satisfies ThresholdState)
+  writeJson(STATE_KEY, { fingerprint, offered: todayIso(today) } satisfies ThresholdState)
 }
 
 /**

@@ -22,6 +22,26 @@ function calendarDayNumber(date: Date): number {
   return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 12) / DAY_MS)
 }
 
+/**
+ * Today as a plain ISO date (YYYY-MM-DD), in the reader's OWN calendar.
+ *
+ * `new Date().toISOString().slice(0, 10)` — which every date-stamping call
+ * site in this app used, from `kept`/`coined`/`made` in store.ts through
+ * the walk's daily seed (walk.ts), the reading-history bucket (seen.ts) and
+ * the provocation gate's "quiet week" clock (provocationThreshold.ts) — is
+ * the *UTC* date. East of UTC that reads as yesterday until the offset has
+ * passed (00:30 in Bucharest stamps the day before); west of UTC it reads
+ * as tomorrow from the evening on. Every one of those call sites otherwise
+ * reasons in the reader's local calendar day (see `calendarDayNumber`
+ * above), so the write and the read were quietly a day apart depending on
+ * timezone and hour — including `walk.ts`'s own guarantee that the walk
+ * "refreshes on the calendar, not on your attention": the calendar it
+ * meant was the wrong one.
+ */
+export function todayIso(now: Date = new Date()): string {
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
+}
+
 /** Whole calendar days elapsed since an ISO (YYYY-MM-DD) date — DST-safe (see
  *  `calendarDayNumber`), so a season crossing a clock change never miscounts. */
 export function daysSince(isoDate: string, today: Date = new Date()): number {

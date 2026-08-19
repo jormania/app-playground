@@ -7,12 +7,17 @@
 <meta name="description" content="What Silva is, how the understory, forest, clearings and underground work, and how to connect your own Notion workspace." />
 <meta name="theme-color" content="#f2ecd9" />
 <script>
-  // Silva has no manual theme toggle — it only ever mirrors the OS
-  // preference (lib/theme.ts's syncSystemTheme), set before paint here so
-  // the guide never flashes the wrong theme.
+  // One stored choice drives both the app and this page (same origin):
+  // 'light', 'dark', or absent/null meaning "follow the OS". Applied before
+  // paint so the guide never flashes the wrong palette. Keep in step with
+  // src/silva/lib/theme.ts and the same script in silva-react.html.
   try {
-    var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var raw = localStorage.getItem('silva:theme');
+    var choice = raw ? JSON.parse(raw) : null;
+    var dark = choice === 'dark' || (choice !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    var m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.setAttribute('content', dark ? '#241b12' : '#f2ecd9');
   } catch (e) {}
 </script>
 <link rel="icon" type="image/svg+xml" href="/silva-logo.svg" />
@@ -202,18 +207,23 @@
   <p>
     <b>The walk</b> sits above the scroll: a short, finite stretch weighted toward
     what you haven't actually looked at in a while — not what's newest. Three things keep
-    it from becoming a feed: it <b>ends</b>, and the ending offers nothing further; it
-    holds <b>only your own kept things</b>, nothing from outside; and it
-    <b>refreshes on the calendar</b>, not on your attention — finishing it, or leaving it
-    half-done, doesn't change tomorrow's walk. The full forest, in the order you kept
-    things, is unchanged below it.
+    it from becoming a feed: it <b>ends</b>, and the ending offers nothing further, just a
+    line saying it's done for now; it holds <b>only your own kept things</b>, nothing from
+    outside; and it <b>refreshes on the calendar</b>, not on your attention — finishing it,
+    or leaving it half-done, doesn't change tomorrow's walk, and reading something in it
+    doesn't make it reshuffle out from under you. The full forest, in the order you kept
+    things, is unchanged below it — every kept thing, one at a time, nothing filtered out.
+    (Want just one clearing's things? That's what opening the clearing itself, from
+    <a href="#clearings">Clearings</a>, is for — its own screen, with your own note on what
+    you meant by it at the top, rather than a second version of this scroll.)
   </p>
   <p>
     Underneath a thing's own text, a collapsed <b>neighbourhood</b> panel — open it to see
     what's near this one: paths you've already walked from here (with your own why
     alongside them), and any quiet <span class="oxblood">oxblood</span> threads the app
     has noticed nearby that you haven't connected yet. It's the same underground the
-    graph shows, just centred on the one thing in front of you.
+    graph shows, just centred on the one thing in front of you — present on a thing
+    wherever it's read, whether that's in the walk or the plain scroll.
   </p>
 
   <h2 id="kinds">Kinds — what each one is for</h2>
@@ -417,6 +427,12 @@
     provocations entirely — off just means the silence that's already the app's default
     state the rest of the time.
   </div>
+  <p>
+    Silva is a herbarium sheet by daylight and the same cabinet at night — unbleached
+    rag paper and green-black ink, or deep bark and aged ivory. <b>Settings → Appearance</b>
+    follows your device by default; pick <b>Daylight</b> or <b>Night</b> there if you'd
+    rather it didn't change under you at sunset. The choice applies to this guide too.
+  </p>
   <p>Some shapes people use Silva for, none exclusive of the others:</p>
   <ul>
     <li><b>A reading commonplace book</b> — the original use: passages from what you're

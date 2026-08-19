@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import type { Thing } from '../lib/notion'
 import type { Source } from '../lib/sources'
 import type { Locus } from '../lib/loci'
@@ -16,7 +16,7 @@ export interface ForestViewProps {
   paths: Path[]
   vectorsById: Map<string, Float32Array>
   seen: SeenMap
-  onEdit: (id: string, patch: Partial<Thing>) => void
+  onEdit: (id: string, patch: Partial<Thing>, sourceInput?: string) => void
   onSeen: (id: string) => void
   onMakePath: (fromId: string, toId: string, why: string) => void
   /** Settings' "Show the walk" — on by default. Off just means the Forest is
@@ -25,10 +25,18 @@ export interface ForestViewProps {
   showWalk?: boolean
 }
 
-/** The kept collection. Today's walk sits at the head — a short, finite stretch
- *  weighted by what you haven't looked at (SILVA.md: "Scroll is a walk, not a
- *  list") — with the full forest below it, unchanged, for when you want to
- *  browse rather than be shown. */
+/** The kept collection. The walk sits at the head — a short, finite,
+ *  once-a-day stretch weighted by what you haven't looked at (SILVA.md:
+ *  "Scroll is a walk, not a list") — with the full forest below it,
+ *  unchanged: every kept thing, one at a time, in the order you kept them.
+ *
+ *  This used to also carry a "Show" dropdown narrowing that scroll to one
+ *  clearing — cut rather than kept, because it duplicated ClearingsView's
+ *  own locus detail screen (which already lists a clearing's members, with
+ *  the clearing's own name and meaning at the top — strictly more context
+ *  than a flat filtered list here could offer) and it worked against the
+ *  very rule that names this component: a filterable index is a library
+ *  move, and the Forest's whole reason for existing is not to be one. */
 export function ForestView({
   things,
   sources,
@@ -43,10 +51,6 @@ export function ForestView({
 }: ForestViewProps) {
   const sourceById = useMemo(() => new Map(sources.map((s) => [s.id, s])), [sources])
   const locusById = useMemo(() => new Map(loci.map((l) => [l.id, l])), [loci])
-  // A walk through the forest, not a query over it — so the only control here
-  // is which stretch of it you're walking, never a search box (that's Search,
-  // and SILVA.md is explicit that it isn't the point).
-  const [clearing, setClearing] = useState<string>('all')
 
   const kept = useMemo(
     () => [...things]
@@ -55,19 +59,13 @@ export function ForestView({
     [things],
   )
 
-  const walked = useMemo(() => {
-    if (clearing === 'all') return kept
-    if (clearing === 'none') return kept.filter((t) => t.lociIds.length === 0)
-    return kept.filter((t) => t.lociIds.includes(clearing))
-  }, [kept, clearing])
-
   // One plate, however it's reached — so the walk and the scroll are provably
   // the same reading surface, including dwell tracking and the neighbourhood.
   function renderThing(thing: Thing) {
     return (
       <SpecimenPlate
         thing={thing}
-        sourceTitle={thing.sourceId ? sourceById.get(thing.sourceId)?.title : undefined}
+        source={thing.sourceId ? sourceById.get(thing.sourceId) : undefined}
         locusNames={thing.lociIds.map((id) => locusById.get(id)?.name).filter((n): n is string => Boolean(n))}
         onEdit={onEdit}
         onSeen={onSeen}
@@ -94,31 +92,7 @@ export function ForestView({
   return (
     <div className={styles.forest}>
       {showWalk && <TodaysWalk things={things} seen={seen} renderThing={renderThing} />}
-
-      {loci.length > 0 && (
-        <div className={styles.walkRow}>
-          <label className={styles.walkLabel} htmlFor="silva-forest-walk">Walk</label>
-          <select
-            id="silva-forest-walk"
-            className={styles.walkSelect}
-            value={clearing}
-            onChange={(e) => setClearing(e.target.value)}
-          >
-            <option value="all">the whole forest</option>
-            <option value="none">what's in no clearing</option>
-            {loci.map((locus) => <option key={locus.id} value={locus.id}>{locus.name}</option>)}
-          </select>
-          <span className={styles.walkCount}>
-            {walked.length} of {kept.length}
-          </span>
-        </div>
-      )}
-
-      {walked.length === 0 ? (
-        <p className={styles.empty}>Nothing along this stretch.</p>
-      ) : (
-        walked.map((thing) => <div key={thing.id}>{renderThing(thing)}</div>)
-      )}
+      {kept.map((thing) => <div key={thing.id}>{renderThing(thing)}</div>)}
     </div>
   )
 }

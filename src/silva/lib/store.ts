@@ -10,6 +10,7 @@
  */
 
 import { toThing, toNotionThingProps, patchProps, deriveHandle, type Thing } from './notion'
+import { todayIso } from './understory'
 import { toSource, toNotionSourceProps, patchSourceProps, type Source } from './sources'
 import { toLocus, toNotionLocusProps, patchLocusProps, type Locus } from './loci'
 import { toPath, toNotionPathProps, patchPathProps, deriveLabel, type Path } from './paths'
@@ -246,7 +247,7 @@ export class SilvaStore {
   }
 
   async createThing(input: NewThingInput): Promise<Thing> {
-    const now = new Date().toISOString().slice(0, 10)
+    const now = todayIso()
     const draft: Omit<Thing, 'id'> = {
       handle: deriveHandle(input.body),
       body: input.body,
@@ -282,11 +283,21 @@ export class SilvaStore {
   }
 
   async updateThing(id: string, patch: Partial<Thing>): Promise<Thing> {
+    // `Handle` is the Notion row's TITLE, derived from `body` at create time
+    // (deriveHandle) — "so the row is legible in Notion itself" (SILVA.md).
+    // It was never re-derived on an edit, so changing a thing's body left
+    // its Notion row titled by the old opening words forever after: the one
+    // column actually visible in a Notion table view, silently stale.
+    const effectivePatch: Partial<Thing> =
+      patch.body !== undefined && patch.handle === undefined
+        ? { ...patch, handle: deriveHandle(patch.body) }
+        : patch
+
     if (this.useDemo()) {
       let updated: Thing | undefined
       demoThings = demoThings.map((thing) => {
         if (thing.id !== id) return thing
-        updated = { ...thing, ...patch }
+        updated = { ...thing, ...effectivePatch }
         return updated
       })
       if (!updated) throw new SilvaStoreError(`No such thing: ${id}`, 404)
@@ -294,7 +305,7 @@ export class SilvaStore {
       return updated
     }
 
-    const properties = patchProps(patch)
+    const properties = patchProps(effectivePatch)
     const page = await this.request(`pages/${id}`, 'PATCH', { properties })
     return toThing(page as { id: string; properties: Record<string, unknown> })
   }
@@ -369,7 +380,7 @@ export class SilvaStore {
     const draft: Omit<Locus, 'id'> = {
       name: input.name,
       meaning: input.meaning ?? '',
-      coined: new Date().toISOString().slice(0, 10),
+      coined: todayIso(),
     }
 
     if (this.useDemo()) {
@@ -442,7 +453,7 @@ export class SilvaStore {
       fromId: input.fromId,
       toId: input.toId,
       why: input.why,
-      made: new Date().toISOString().slice(0, 10),
+      made: todayIso(),
       origin: input.origin ?? 'Yours',
     }
 

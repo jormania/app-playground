@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Button, Field, TextAreaField } from '../../ds'
 import type { Thing, ThingKind } from '../lib/notion'
+import type { Source } from '../lib/sources'
 import { inferKind } from '../lib/kindInference'
 import { isLocalImage, localPhotoUrl } from '../lib/photoStore'
 import { readImageViewMode, writeImageViewMode, type ImageViewMode } from '../lib/imageViewPref'
+import { sourceInputValue } from '../lib/sourceCapture'
 import { useDwell } from './useDwell'
 import styles from './SpecimenPlate.module.css'
 
@@ -11,9 +13,14 @@ const ALL_KINDS: ThingKind[] = ['Passage', 'Observation', 'Dialogue', 'Question'
 
 export interface SpecimenPlateProps {
   thing: Thing
-  sourceTitle?: string
+  source?: Source
   locusNames?: string[]
-  onEdit: (id: string, patch: Partial<Thing>) => void
+  /** `sourceInput` is the raw text from the Source field — resolving it into
+   *  a real `sourceId` (reuse a match, create otherwise) needs the store, so
+   *  App.tsx does that, not this component. Present only when the save
+   *  actually touched the Source field, so a save that never opened it can't
+   *  accidentally clear an existing source. */
+  onEdit: (id: string, patch: Partial<Thing>, sourceInput?: string) => void
   /** Called once the plate has genuinely been looked at, not merely rendered
    *  (see useDwell). Both the walk and the scroll pass this, so the history
    *  accrues from all reading rather than only from the ritual. */
@@ -35,7 +42,7 @@ export interface SpecimenPlateProps {
  */
 export function SpecimenPlate({
   thing,
-  sourceTitle,
+  source,
   locusNames = [],
   onEdit,
   onSeen,
@@ -50,6 +57,7 @@ export function SpecimenPlate({
   const [viewMode, setViewMode] = useState<ImageViewMode>(() => readImageViewMode(thing.id) ?? 'text')
   const [body, setBody] = useState(thing.body)
   const [kind, setKind] = useState<ThingKind | ''>(thing.kind ?? '')
+  const [sourceInput, setSourceInput] = useState('')
   const [locator, setLocator] = useState(thing.locator)
   const [note, setNote] = useState(thing.note)
   const [link, setLink] = useState(thing.link ?? '')
@@ -63,6 +71,7 @@ export function SpecimenPlate({
   function startEditing() {
     setBody(thing.body)
     setKind(thing.kind ?? '')
+    setSourceInput(sourceInputValue(source))
     setLocator(thing.locator)
     setNote(thing.note)
     setLink(thing.link ?? '')
@@ -91,13 +100,17 @@ export function SpecimenPlate({
   }
 
   function save() {
-    onEdit(thing.id, {
-      body: body.trim(),
-      kind: kind || null,
-      locator: locator.trim(),
-      note: note.trim(),
-      link: link.trim() || null,
-    })
+    onEdit(
+      thing.id,
+      {
+        body: body.trim(),
+        kind: kind || null,
+        locator: locator.trim(),
+        note: note.trim(),
+        link: link.trim() || null,
+      },
+      sourceInput.trim(),
+    )
     setEditing(false)
   }
 
@@ -123,6 +136,17 @@ export function SpecimenPlate({
               Suggest a kind
             </Button>
           </div>
+          {/* Ahead of Locator, matching SILVA.md's own label order (source ·
+              locator · encountered · kept) — and because a source is the
+              thing most likely to be lost if this edit is the last chance to
+              record it. Plain typed text, same as at capture. */}
+          <Field
+            label="Source"
+            hint="A book, an article, a person, a place — whatever this came from."
+            value={sourceInput}
+            onChange={(e) => setSourceInput(e.target.value)}
+            placeholder="e.g. Shelby Foote — The Civil War"
+          />
           <Field
             label="Locator"
             hint="Where in the source — a page, a timestamp, where you were."
@@ -181,7 +205,7 @@ export function SpecimenPlate({
       )}
       {thing.body && (!thing.image || viewMode === 'text') && <p className={styles.body}>{thing.body}</p>}
       {thing.note && <p className={styles.note}>{thing.note}</p>}
-      <ThingLabel thing={thing} sourceTitle={sourceTitle} />
+      <ThingLabel thing={thing} sourceTitle={source?.title} />
       {locusNames.length > 0 && (
         <p className={styles.clearings}>
           {locusNames.map((name) => (

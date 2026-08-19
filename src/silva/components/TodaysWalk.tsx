@@ -3,6 +3,7 @@ import { Button } from '../../ds'
 import type { Thing } from '../lib/notion'
 import type { SeenMap } from '../lib/seen'
 import { chooseWalk, walkIsWorthwhile } from '../lib/walk'
+import { todayIso } from '../lib/understory'
 import { readJson, writeJson } from '../../shared/storage'
 import styles from './TodaysWalk.module.css'
 
@@ -15,7 +16,7 @@ interface StoredWalk {
 }
 
 function today(): string {
-  return new Date().toISOString().slice(0, 10)
+  return todayIso()
 }
 
 export interface TodaysWalkProps {

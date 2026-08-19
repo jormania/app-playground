@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { FocusEvent, KeyboardEvent } from 'react'
-import { Button, Field, SettingsToggle, ConfirmModal } from '../../ds'
+import { Button, Field, SegmentedControl, SettingsToggle, ConfirmModal } from '../../ds'
 import { SilvaStore, resetDemoThings } from '../lib/store'
 import type { SilvaConfig } from '../lib/settingsConfig'
+import type { ThemeChoice } from '../lib/theme'
 import styles from './SettingsView.module.css'
 
 export interface SettingsViewProps {
@@ -10,6 +11,8 @@ export interface SettingsViewProps {
   onChange: (patch: Partial<SilvaConfig>) => void
   /** Live progress of the background embedding pass, or null when idle. */
   indexing?: { done: number; total: number; loadingModel: boolean } | null
+  themeChoice: ThemeChoice
+  onThemeChange: (choice: ThemeChoice) => void
 }
 
 /**
@@ -33,7 +36,7 @@ function commitOnBlur(current: string, onCommit: (value: string) => void) {
  *  build plan deferred both; this is that session). Silva's four database
  *  ids are fixed to the owner's own live databases (see store.ts's
  *  DEFAULT_*_DATABASE_ID) — there's nothing else to configure per device. */
-export function SettingsView({ config, onChange, indexing = null }: SettingsViewProps) {
+export function SettingsView({ config, onChange, indexing = null, themeChoice, onThemeChange }: SettingsViewProps) {
   const [testing, setTesting] = useState(false)
   const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null)
   const [confirmingReset, setConfirmingReset] = useState(false)
@@ -54,6 +57,23 @@ export function SettingsView({ config, onChange, indexing = null }: SettingsView
       <a className={styles.guideLink} href="/silva-guide.html" target="_blank" rel="noopener noreferrer">
         How Silva works — a short guide
       </a>
+
+      <section className={styles.section}>
+        <h4 className={styles.sectionTitle}>Appearance</h4>
+        <p className={styles.sectionHint}>
+          A herbarium sheet by daylight, or the same cabinet at night. Follows your
+          device unless you pick one.
+        </p>
+        <SegmentedControl
+          value={themeChoice ?? 'system'}
+          onChange={(v) => onThemeChange(v === 'system' ? null : (v as 'light' | 'dark'))}
+          options={[
+            { value: 'system', label: 'System' },
+            { value: 'light', label: 'Daylight' },
+            { value: 'dark', label: 'Night' },
+          ]}
+        />
+      </section>
 
       <section className={styles.section}>
         <h4 className={styles.sectionTitle}>Notion</h4>
