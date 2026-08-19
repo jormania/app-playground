@@ -23,18 +23,31 @@ export function UnderstoryView({ things, onKeep, onRelease, seasonDays = DEFAULT
       {things.map((thing) => {
         const fade = fadeRatio(thing, seasonDays)
         const remaining = Math.max(0, Math.ceil(daysRemaining(thing, seasonDays)))
+        // SILVA.md: the remaining season is "shown as a fade rather than a
+        // number" — "No badge, no counter". The countdown that used to sit
+        // under every row was exactly the debt-clock the understory is
+        // designed not to be. The number survives only as a title/label, for
+        // anyone who deliberately asks (and for screen readers, which cannot
+        // read an opacity).
+        const seasonText = remaining > 0
+          ? `${remaining} day${remaining === 1 ? '' : 's'} of this season left`
+          : 'fading out of the understory'
         return (
           <li
             key={thing.id}
             className={styles.row}
             style={{ opacity: 0.4 + fade * 0.6 }}
+            title={seasonText}
           >
             <div className={styles.body}>
               {thing.kind && <span className={styles.kind}>{thing.kind}</span>}
               <p className={styles.text}>{thing.body}</p>
-              <p className={styles.meta}>
-                {remaining > 0 ? `${remaining} day${remaining === 1 ? '' : 's'} left` : 'fading'}
-              </p>
+              <span
+                className={styles.season}
+                role="img"
+                aria-label={seasonText}
+                style={{ ['--season-left' as string]: `${Math.round(fade * 100)}%` }}
+              />
             </div>
             <div className={styles.actions}>
               <Button size="sm" variant="primary" onClick={() => onKeep(thing.id)}>

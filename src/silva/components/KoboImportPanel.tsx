@@ -85,6 +85,7 @@ export function KoboImportPanel({ store, existingKoboBookmarkIds, onImported, on
   const [groups, setGroups] = useState<BookGroup[]>([])
   const [dragActive, setDragActive] = useState(false)
   const [importedCount, setImportedCount] = useState(0)
+  const [importProgress, setImportProgress] = useState({ done: 0, total: 0 })
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function handleFile(file: File) {
@@ -131,46 +132,71 @@ export function KoboImportPanel({ store, existingKoboBookmarkIds, onImported, on
 
   const importableGroups = groups.filter((g) => !g.skipped && g.selectedIds.size > 0)
 
+  /**
+   * A whole import used to run with no error handling at all: one refused
+   * Notion write left `phase` pinned on 'importing' forever *and* dropped
+   * every row already created, because `onImported` was only ever called
+   * after the last one succeeded. A book-by-book import of 300 highlights is
+   * exactly where a network hiccup is likely, so partial progress is now
+   * handed back whatever happens, and a failure says which book it stopped on
+   * rather than hanging.
+   *
+   * Re-dropping the same file afterwards resumes cleanly: the BookmarkID
+   * dedupe means everything already in is skipped.
+   */
   async function handleImport() {
     setPhase('importing')
+    setError('')
     const created: Thing[] = []
+    const total = importableGroups.reduce((sum, g) => sum + g.selectedIds.size, 0)
+    setImportProgress({ done: 0, total })
 
-    for (const group of importableGroups) {
-      let sourceId: string
-      if (group.decision === 'existing' && group.match) {
-        sourceId = group.match.source.id
-        // Confirming a fuzzy match backfills the Kobo id, so re-importing
-        // this same book later hits the exact-match tier (lib/bookMatch.ts).
-        if (group.match.confidence !== 'exact') {
-          await store.updateSource(sourceId, { koboVolumeId: group.volumeId })
+    try {
+      for (const group of importableGroups) {
+        let sourceId: string
+        if (group.decision === 'existing' && group.match) {
+          sourceId = group.match.source.id
+          // Confirming a fuzzy match backfills the Kobo id, so re-importing
+          // this same book later hits the exact-match tier (lib/bookMatch.ts).
+          if (group.match.confidence !== 'exact') {
+            await store.updateSource(sourceId, { koboVolumeId: group.volumeId })
+          }
+        } else {
+          const source = await store.createSource({
+            title: group.newTitle,
+            author: group.author,
+            kind: 'Book',
+            koboVolumeId: group.volumeId,
+          })
+          sourceId = source.id
         }
-      } else {
-        const source = await store.createSource({
-          title: group.newTitle,
-          author: group.author,
-          kind: 'Book',
-          koboVolumeId: group.volumeId,
-        })
-        sourceId = source.id
-      }
 
-      for (const highlight of group.newHighlights) {
-        if (!group.selectedIds.has(highlight.bookmarkId)) continue
-        const thing = await store.createThing({
-          body: highlight.text,
-          note: highlight.annotation,
-          kind: 'Passage',
-          sourceId,
-          encountered: highlight.dateCreated || new Date().toISOString().slice(0, 10),
-          koboBookmarkId: highlight.bookmarkId,
-        })
-        created.push(thing)
+        for (const highlight of group.newHighlights) {
+          if (!group.selectedIds.has(highlight.bookmarkId)) continue
+          const thing = await store.createThing({
+            body: highlight.text,
+            note: highlight.annotation,
+            kind: 'Passage',
+            sourceId,
+            encountered: highlight.dateCreated || new Date().toISOString().slice(0, 10),
+            koboBookmarkId: highlight.bookmarkId,
+          })
+          created.push(thing)
+          setImportProgress({ done: created.length, total })
+        }
       }
+      onImported(created)
+      setImportedCount(created.length)
+      setPhase('done')
+    } catch (e) {
+      // Whatever did land is still real — hand it over before reporting.
+      onImported(created)
+      setImportedCount(created.length)
+      setError(
+        `${(e as Error).message || 'The import stopped partway.'} ${created.length} highlight${created.length === 1 ? '' : 's'} made it in; drop the file again to pick up where this left off.`,
+      )
+      setPhase('error')
     }
-
-    onImported(created)
-    setImportedCount(created.length)
-    setPhase('done')
   }
 
   return (
@@ -298,7 +324,13 @@ export function KoboImportPanel({ store, existingKoboBookmarkIds, onImported, on
         </>
       )}
 
-      {phase === 'importing' && <p className={styles.status}>Importing…</p>}
+      {phase === 'importing' && (
+        <p className={styles.status}>
+          {importProgress.total > 0
+            ? `Importing ${importProgress.done} of ${importProgress.total}…`
+            : 'Importing…'}
+        </p>
+      )}
 
       {phase === 'done' && (
         <p className={styles.status}>

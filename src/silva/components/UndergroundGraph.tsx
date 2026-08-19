@@ -1,40 +1,59 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Thing } from '../lib/notion'
 import type { Locus } from '../lib/loci'
 import type { Path } from '../lib/paths'
-import { computeGraphLayout, pathsToEdges, computeMycorrhiza, computeViewBox } from '../lib/graph'
-import { peekVectors } from '../lib/vectorCache'
+import {
+  computeGraphLayout,
+  pathsToEdges,
+  computeMycorrhiza,
+  computeViewBox,
+  CLUSTER_LABEL_RISE,
+} from '../lib/graph'
 import styles from './UndergroundGraph.module.css'
 
 export interface UndergroundGraphProps {
   things: Thing[]
   loci: Locus[]
   paths: Path[]
+  /** Peeked/indexed by App — the graph never loads the model itself, so an
+   *  empty map simply means no mycorrhiza is drawn (see lib/indexer.ts). */
+  vectorsById: Map<string, Float32Array>
 }
 
 /** The Underground graph — solid Path edges, faint unclickable mycorrhiza
  *  fibers (SILVA.md: "unclickable until offered as a provocation" — the
  *  only way to act on one is still the existing Provocation flow), nodes
  *  clustered by locus. Static layout, click a node to see it in full. */
-export function UndergroundGraph({ things, loci, paths }: UndergroundGraphProps) {
-  const [vectorsById, setVectorsById] = useState<Map<string, Float32Array>>(new Map())
+export function UndergroundGraph({ things, loci, paths, vectorsById }: UndergroundGraphProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    const kept = things.filter((t) => t.state === 'Kept')
-    peekVectors(kept).then((vectors) => {
-      if (!cancelled) setVectorsById(vectors)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [things])
+  // SILVA.md allows exactly two motions in the app, and this is the second:
+  // "the drawing of a path when you accept a provocation." An edge that wasn't
+  // in the previous render draws itself; every edge already on screen is
+  // simply there, so opening the view never animates the whole graph.
+  const seenEdges = useRef<Set<string> | null>(null)
+  const [freshEdges, setFreshEdges] = useState<Set<string>>(new Set())
 
-  const layout = computeGraphLayout(things, loci)
-  const edges = pathsToEdges(paths)
-  const fibers = computeMycorrhiza(things, vectorsById, paths)
+  const layout = useMemo(() => computeGraphLayout(things, loci), [things, loci])
+  const edges = useMemo(() => pathsToEdges(paths), [paths])
+  // O(n^2) over kept things — cheap at personal scale, but not something to
+  // recompute on every unrelated render (selecting a node, for one).
+  const fibers = useMemo(() => computeMycorrhiza(things, vectorsById, paths), [things, vectorsById, paths])
   const positionById = new Map(layout.nodes.map((n) => [n.thing.id, n]))
+  const edgeKeys = useMemo(() => edges.map((e) => `${e.fromId}-${e.toId}`), [edges])
+
+  useEffect(() => {
+    const current = new Set(edgeKeys)
+    // First render establishes the baseline: nothing is "new" on arrival.
+    if (seenEdges.current === null) {
+      seenEdges.current = current
+      return
+    }
+    const previous = seenEdges.current
+    const added = edgeKeys.filter((key) => !previous.has(key))
+    seenEdges.current = current
+    if (added.length > 0) setFreshEdges(new Set(added))
+  }, [edgeKeys])
 
   const selectedThing = selectedId ? things.find((t) => t.id === selectedId) : null
   const highlightedIds = new Set<string>()
@@ -79,21 +98,26 @@ export function UndergroundGraph({ things, loci, paths }: UndergroundGraphProps)
         aria-label="A graph of kept things, clustered by clearing, connected by paths"
       >
         {layout.clusters.length > 1 && layout.clusters.map((c) => (
-          <text key={c.id} x={c.x} y={c.y - 70} className={styles.clusterLabel} textAnchor="middle">
+          <text key={c.id} x={c.x} y={c.y - CLUSTER_LABEL_RISE} className={styles.clusterLabel} textAnchor="middle">
             {c.label}
           </text>
         ))}
 
-        {fibers.map((f) => {
+        {fibers.map((f, index) => {
           const a = positionById.get(f.aId)
           const b = positionById.get(f.bId)
           if (!a || !b) return null
+          // SILVA.md: mycorrhiza is "only visible while you hold the view
+          // open, faint" — so fibers surface slowly rather than being there
+          // the instant the graph paints, staggered a little so the
+          // underground reads as something emerging, not a layer toggling.
           return (
             <line
               key={`${f.aId}-${f.bId}`}
               x1={a.x} y1={a.y} x2={b.x} y2={b.y}
               className={styles.mycorrhiza}
               pointerEvents="none"
+              style={{ animationDelay: `${Math.min(index * 60, 900)}ms` }}
             />
           )
         })}
@@ -102,12 +126,19 @@ export function UndergroundGraph({ things, loci, paths }: UndergroundGraphProps)
           const a = positionById.get(e.fromId)
           const b = positionById.get(e.toId)
           if (!a || !b) return null
-          const dim = selectedId && !highlightedIds.has(e.fromId)
+          // Lit only when the edge actually *touches* the selection — testing
+          // one end alone left an unrelated edge undimmed whenever its `from`
+          // happened to be a neighbour of the selected node.
+          const dim = selectedId !== null && e.fromId !== selectedId && e.toId !== selectedId
+          const key = `${e.fromId}-${e.toId}`
+          const drawing = freshEdges.has(key)
+          const length = Math.hypot(b.x - a.x, b.y - a.y)
           return (
             <line
-              key={`${e.fromId}-${e.toId}`}
+              key={key}
               x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-              className={dim ? styles.edgeDim : styles.edge}
+              className={`${dim ? styles.edgeDim : styles.edge} ${drawing ? styles.edgeDrawing : ''}`}
+              style={drawing ? { strokeDasharray: length, strokeDashoffset: length } : undefined}
             />
           )
         })}

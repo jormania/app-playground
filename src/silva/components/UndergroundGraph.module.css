@@ -74,11 +74,29 @@
   letter-spacing: 0.04em;
 }
 
+ /* SILVA.md: mycorrhiza is "never presented as fact... only visible while you
+   hold the view open, faint". So it surfaces rather than being painted with
+   everything else — a slow fade in, staggered per fiber by an inline
+   animation-delay. This and the path-draw below are the only motion in Silva
+   besides an expiring understory item, exactly as the spec allows. */
 .mycorrhiza {
   stroke: var(--silva-oxblood);
   stroke-width: 1;
   stroke-dasharray: 3 4;
-  opacity: 0.35;
+  opacity: 0;
+  animation: fiber-surface 1400ms var(--ease, ease-out) forwards;
+}
+
+@keyframes fiber-surface {
+  from { opacity: 0; }
+  to   { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mycorrhiza {
+    animation: none;
+    opacity: 0.35;
+  }
 }
 
 .edge {
@@ -146,4 +164,24 @@
   font-size: var(--text-sm);
   color: var(--color-ink);
   line-height: var(--leading-body);
+}
+
+/* The second of Silva's two permitted motions (SILVA.md "Motion"): a path
+   draws itself when you walk one. The dash length is set inline per edge from
+   its own measured length, so the stroke draws end to end at a consistent
+   speed regardless of how far apart the two things sit. */
+.edgeDrawing {
+  animation: path-draw 700ms var(--ease, ease-out) forwards;
+}
+
+@keyframes path-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edgeDrawing {
+    animation: none;
+    stroke-dasharray: none !important;
+    stroke-dashoffset: 0 !important;
+  }
 }

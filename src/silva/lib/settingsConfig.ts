@@ -13,11 +13,19 @@ const STORAGE_KEY = 'silva_config'
 export interface SilvaConfig {
   notionToken: string
   anthropicKey: string
+  /**
+   * Opt-in for the local embedding model (see lib/indexer.ts). Off by
+   * default because the first run fetches ~25 MB — but it is what powers
+   * the mycorrhiza, so Settings presents it as the thing that makes the
+   * underground layer exist, not as an obscure toggle.
+   */
+  mycorrhizaEnabled: boolean
 }
 
 export const DEFAULT_CONFIG: SilvaConfig = {
   notionToken: '',
   anthropicKey: '',
+  mycorrhizaEnabled: false,
 }
 
 export function loadSilvaConfig(): SilvaConfig {

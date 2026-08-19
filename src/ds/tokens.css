@@ -1,6 +1,30 @@
 /* ─────────────────────────────────────────────────────────────────────────
    Design System — design tokens.
 
+   ── Why every rule below sits in `@layer ds` ────────────────────────────
+   An app's own palette (src/silva/styles/palette.css, src/fit-check/index.css,
+   src/tempo's entry CSS, …) re-tints the system by redefining these same
+   `:root` variables. That only works if the app's block WINS, and with equal
+   specificity the winner is whichever CSS the browser sees last.
+
+   In production it wasn't the app. Vite splits `ds/tokens.css` into its own
+   CSS chunk, and that chunk's <link> is emitted AFTER the app's — so the
+   defaults here re-overrode every app palette, in every DS app, on every
+   deployed page. Silva shipped in the design system's stock solarized blue
+   rather than its herbarium palette; Fit Check's magenta rendered blue too.
+   (Yoru was accidentally immune: it hangs its palette off a
+   `[data-yoru-palette]` attribute, which out-specifies a bare `:root`.)
+
+   `@layer` fixes it at the root and independently of bundler ordering:
+   unlayered styles always beat layered ones, whatever order they load in. So
+   these are the defaults an app's plain `:root` block can simply state over,
+   which is what every app already assumed it was doing. Keep new token
+   defaults inside the layer; app palettes stay unlayered.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   The token set itself.
+
    This is the single source of truth for the new design system's look. Every
    component and every new app reads from these variables and NEVER hard-codes a
    colour, size, or font. Rebrand the whole system by editing this file alone.
@@ -12,136 +36,138 @@
    change.
    ───────────────────────────────────────────────────────────────────────── */
 
-/* Base reset — every new-DS app loads tokens.css once at its root, so this is
-   the one place it happens. Without it the browser's default 8px body margin
-   shows through as a stray border around a full-viewport shell, and the
-   extra margin pushes total height past 100vh, forcing a scrollbar that
-   isn't otherwise needed. (Tempo and Sol Odyssey duplicate an equivalent
-   reset in their own entry CSS from before this existed; harmless overlap.) */
-*, *::before, *::after {
-  box-sizing: border-box;
-}
+@layer ds {
+  /* Base reset — every new-DS app loads tokens.css once at its root, so this is
+     the one place it happens. Without it the browser's default 8px body margin
+     shows through as a stray border around a full-viewport shell, and the
+     extra margin pushes total height past 100vh, forcing a scrollbar that
+     isn't otherwise needed. (Tempo and Sol Odyssey duplicate an equivalent
+     reset in their own entry CSS from before this existed; harmless overlap.) */
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
 
-html, body, #root {
-  height: 100%;
-}
+  html, body, #root {
+    height: 100%;
+  }
 
-body {
-  margin: 0;
-}
+  body {
+    margin: 0;
+  }
 
-:root {
-  /* Tells the browser to draw its own native chrome — a <select>'s open
-     dropdown, a date input's calendar popup, scrollbars — in a matching
-     palette instead of always defaulting to light. Without this, opening a
-     plain <select> under the dark theme below popped a stark white listbox
-     with black text: correct per spec, but visually broken against the rest
-     of the app. */
-  color-scheme: light;
+  :root {
+    /* Tells the browser to draw its own native chrome — a <select>'s open
+       dropdown, a date input's calendar popup, scrollbars — in a matching
+       palette instead of always defaulting to light. Without this, opening a
+       plain <select> under the dark theme below popped a stark white listbox
+       with black text: correct per spec, but visually broken against the rest
+       of the app. */
+    color-scheme: light;
 
-  /* ── Colour: surfaces (back-to-front) ─────────────────────────────────── */
-  --color-bg:        #eee8d5; /* Solarized base2 */
-  --color-bg-sunken: #e6dfcb; 
-  --color-surface:   #fdf6e3; /* Solarized base3 */
-  --color-surface-2: #eee8d5; 
-  --color-border:    #d5ccb7; 
-  --color-border-2:  #93a1a1; /* Solarized base1 */
+    /* ── Colour: surfaces (back-to-front) ─────────────────────────────────── */
+    --color-bg:        #eee8d5; /* Solarized base2 */
+    --color-bg-sunken: #e6dfcb; 
+    --color-surface:   #fdf6e3; /* Solarized base3 */
+    --color-surface-2: #eee8d5; 
+    --color-border:    #d5ccb7; 
+    --color-border-2:  #93a1a1; /* Solarized base1 */
 
-  /* ── Colour: text (most → least prominent) ────────────────────────────── */
-  --color-ink:    #586e75; /* Solarized base01 */
-  --color-muted:  #657b83; /* Solarized base00 */
-  --color-faint:  #93a1a1; /* Solarized base1 */
+    /* ── Colour: text (most → least prominent) ────────────────────────────── */
+    --color-ink:    #586e75; /* Solarized base01 */
+    --color-muted:  #657b83; /* Solarized base00 */
+    --color-faint:  #93a1a1; /* Solarized base1 */
 
-  /* ── Colour: accents ──────────────────────────────────────────────────── */
-  --color-accent:        #268bd2; /* Solarized blue */
-  --color-accent-hover:  #2aa198; /* Solarized cyan */
-  --color-on-accent:     #fdf6e3; /* Solarized base3 */
-  --color-success:       #859900; /* Solarized green */
-  --color-warning:       #cb4b16; /* Solarized orange */
-  --color-danger:        #dc322f; /* Solarized red */
+    /* ── Colour: accents ──────────────────────────────────────────────────── */
+    --color-accent:        #268bd2; /* Solarized blue */
+    --color-accent-hover:  #2aa198; /* Solarized cyan */
+    --color-on-accent:     #fdf6e3; /* Solarized base3 */
+    --color-success:       #859900; /* Solarized green */
+    --color-warning:       #cb4b16; /* Solarized orange */
+    --color-danger:        #dc322f; /* Solarized red */
 
-  /* Derived translucent fills adapt automatically if accents change. */
-  --color-ring:  color-mix(in srgb, var(--color-accent) 35%, transparent);
-  --color-glow:  color-mix(in srgb, var(--color-accent) 10%, transparent);
-  --color-scrim: rgba(16, 20, 26, 0.50); /* modal backdrop */
+    /* Derived translucent fills adapt automatically if accents change. */
+    --color-ring:  color-mix(in srgb, var(--color-accent) 35%, transparent);
+    --color-glow:  color-mix(in srgb, var(--color-accent) 10%, transparent);
+    --color-scrim: rgba(16, 20, 26, 0.50); /* modal backdrop */
 
-  /* ── Type: roles (keep to these three; don't add one-off fonts) ───────── */
-  --font-display: 'Inter', system-ui, sans-serif;        /* headings, titles */
-  --font-sans:    'Inter', system-ui, sans-serif;        /* body / UI copy   */
-  --font-mono:    'JetBrains Mono', ui-monospace, monospace; /* labels, code */
+    /* ── Type: roles (keep to these three; don't add one-off fonts) ───────── */
+    --font-display: 'Inter', system-ui, sans-serif;        /* headings, titles */
+    --font-sans:    'Inter', system-ui, sans-serif;        /* body / UI copy   */
+    --font-mono:    'JetBrains Mono', ui-monospace, monospace; /* labels, code */
 
-  /* ── Type: scale (rem-based, 1rem = 16px). Inputs stay >=16px so mobile
-     Safari never auto-zooms on focus. ───────────────────────────────────── */
-  --text-xs:   0.75rem;   /* 12 */
-  --text-sm:   0.875rem;  /* 14 */
-  --text-base: 1rem;      /* 16 */
-  --text-lg:   1.125rem;  /* 18 */
-  --text-xl:   1.5rem;    /* 24 */
-  --text-2xl:  2rem;      /* 32 */
-  --text-display: clamp(2.25rem, 6vw, 3.5rem);
+    /* ── Type: scale (rem-based, 1rem = 16px). Inputs stay >=16px so mobile
+       Safari never auto-zooms on focus. ───────────────────────────────────── */
+    --text-xs:   0.75rem;   /* 12 */
+    --text-sm:   0.875rem;  /* 14 */
+    --text-base: 1rem;      /* 16 */
+    --text-lg:   1.125rem;  /* 18 */
+    --text-xl:   1.5rem;    /* 24 */
+    --text-2xl:  2rem;      /* 32 */
+    --text-display: clamp(2.25rem, 6vw, 3.5rem);
 
-  --leading-tight: 1.15;
-  --leading-body:  1.6;
+    --leading-tight: 1.15;
+    --leading-body:  1.6;
 
-  --weight-regular: 400;
-  --weight-medium:  500;
-  --weight-bold:    700;
+    --weight-regular: 400;
+    --weight-medium:  500;
+    --weight-bold:    700;
 
-  /* ── Spacing (4px base; use these instead of raw px) ──────────────────── */
-  --space-3xs: 2px;
-  --space-2xs: 4px;
-  --space-xs:  8px;
-  --space-sm:  12px;
-  --space-md:  16px;
-  --space-lg:  24px;
-  --space-xl:  32px;
-  --space-2xl: 48px;
+    /* ── Spacing (4px base; use these instead of raw px) ──────────────────── */
+    --space-3xs: 2px;
+    --space-2xs: 4px;
+    --space-xs:  8px;
+    --space-sm:  12px;
+    --space-md:  16px;
+    --space-lg:  24px;
+    --space-xl:  32px;
+    --space-2xl: 48px;
 
-  /* ── Radius ───────────────────────────────────────────────────────────── */
-  --radius-sm:   6px;
-  --radius-md:   10px;
-  --radius-lg:   16px;
-  --radius-pill: 999px;
+    /* ── Radius ───────────────────────────────────────────────────────────── */
+    --radius-sm:   6px;
+    --radius-md:   10px;
+    --radius-lg:   16px;
+    --radius-pill: 999px;
 
-  /* ── Elevation ────────────────────────────────────────────────────────── */
-  --shadow-sm: 0 1px 2px rgba(16, 20, 26, 0.08);
-  --shadow-md: 0 4px 12px rgba(16, 20, 26, 0.10);
-  --shadow-lg: 0 12px 32px rgba(16, 20, 26, 0.14);
+    /* ── Elevation ────────────────────────────────────────────────────────── */
+    --shadow-sm: 0 1px 2px rgba(16, 20, 26, 0.08);
+    --shadow-md: 0 4px 12px rgba(16, 20, 26, 0.10);
+    --shadow-lg: 0 12px 32px rgba(16, 20, 26, 0.14);
 
-  /* ── Motion ───────────────────────────────────────────────────────────── */
-  --ease:       cubic-bezier(0.4, 0, 0.2, 1);
-  --duration:   180ms;
-}
+    /* ── Motion ───────────────────────────────────────────────────────────── */
+    --ease:       cubic-bezier(0.4, 0, 0.2, 1);
+    --duration:   180ms;
+  }
 
-/* Dark theme — toggled via <html data-theme="dark">. Only the base tones swap;
-   accents and the type/space/radius scales are shared, so components don't
-   special-case the theme. Fill in / tune these as the system matures. */
-:root[data-theme="dark"] {
-  color-scheme: dark;
+  /* Dark theme — toggled via <html data-theme="dark">. Only the base tones swap;
+     accents and the type/space/radius scales are shared, so components don't
+     special-case the theme. Fill in / tune these as the system matures. */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
 
-  --color-bg:        #1a1b26;
-  --color-bg-sunken: #16161e;
-  --color-surface:   #24283b;
-  --color-surface-2: #292e42;
-  --color-border:    #414868;
-  --color-border-2:  #565f89;
+    --color-bg:        #1a1b26;
+    --color-bg-sunken: #16161e;
+    --color-surface:   #24283b;
+    --color-surface-2: #292e42;
+    --color-border:    #414868;
+    --color-border-2:  #565f89;
 
-  --color-ink:    #c0caf5;
-  --color-muted:  #9aa5ce;
-  --color-faint:  #565f89;
+    --color-ink:    #c0caf5;
+    --color-muted:  #9aa5ce;
+    --color-faint:  #565f89;
 
-  --color-accent:       #7aa2f7;
-  --color-accent-hover: #89b4fa;
-  --color-success:      #9ece6a;
-  --color-warning:      #e0af68;
-  --color-danger:       #f7768e;
+    --color-accent:       #7aa2f7;
+    --color-accent-hover: #89b4fa;
+    --color-success:      #9ece6a;
+    --color-warning:      #e0af68;
+    --color-danger:       #f7768e;
 
-  --color-scrim:  rgba(26, 27, 38, 0.70);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
-}
+    --color-scrim:  rgba(26, 27, 38, 0.70);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  :root { --duration: 0.001ms; }
+  @media (prefers-reduced-motion: reduce) {
+    :root { --duration: 0.001ms; }
+  }
 }

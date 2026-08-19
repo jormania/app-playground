@@ -100,7 +100,9 @@ export function computeGraphLayout(things: Thing[], loci: Locus[]): GraphLayout 
 }
 
 const VIEWBOX_PADDING = 40
-const CLUSTER_LABEL_RISE = 70
+/** How far above its cluster centre a cluster label sits. Exported so the SVG
+ *  and the view-box maths can't drift apart. */
+export const CLUSTER_LABEL_RISE = 70
 const MIN_VIEWBOX_SIZE = 220
 
 export interface ViewBox {

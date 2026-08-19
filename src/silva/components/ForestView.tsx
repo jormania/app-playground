@@ -1,13 +1,15 @@
-import { useMemo, useState } from 'react'
-import { Button, Field } from '../../ds'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Button, Field, TextAreaField } from '../../ds'
 import type { Thing, ThingKind } from '../lib/notion'
 import type { Source } from '../lib/sources'
+import type { Locus } from '../lib/loci'
 import { inferKind } from '../lib/kindInference'
 import styles from './ForestView.module.css'
 
 export interface ForestViewProps {
   things: Thing[]
   sources: Source[]
+  loci: Locus[]
   onEdit: (id: string, patch: Partial<Thing>) => void
 }
 
@@ -16,12 +18,26 @@ const ALL_KINDS: ThingKind[] = ['Passage', 'Observation', 'Dialogue', 'Question'
 /** The kept collection, read one thing at a time — typeset to be read, not a
  *  row in a table (SILVA.md: "Scroll is a walk, not a list"). Sorted by most
  *  recently kept; ordering by affinity (loci, mycorrhiza) is a later session. */
-export function ForestView({ things, sources, onEdit }: ForestViewProps) {
+export function ForestView({ things, sources, loci, onEdit }: ForestViewProps) {
   const sourceById = useMemo(() => new Map(sources.map((s) => [s.id, s])), [sources])
+  const locusById = useMemo(() => new Map(loci.map((l) => [l.id, l])), [loci])
+  // A walk through the forest, not a query over it — so the only control here
+  // is which stretch of it you're walking, never a search box (that's Search,
+  // and SILVA.md is explicit that it isn't the point).
+  const [clearing, setClearing] = useState<string>('all')
 
-  const kept = [...things]
-    .filter((thing) => thing.state === 'Kept')
-    .sort((a, b) => (b.kept || '').localeCompare(a.kept || ''))
+  const kept = useMemo(
+    () => [...things]
+      .filter((thing) => thing.state === 'Kept')
+      .sort((a, b) => (b.kept || '').localeCompare(a.kept || '')),
+    [things],
+  )
+
+  const walked = useMemo(() => {
+    if (clearing === 'all') return kept
+    if (clearing === 'none') return kept.filter((t) => t.lociIds.length === 0)
+    return kept.filter((t) => t.lociIds.includes(clearing))
+  }, [kept, clearing])
 
   if (kept.length === 0) {
     return (
@@ -33,12 +49,39 @@ export function ForestView({ things, sources, onEdit }: ForestViewProps) {
 
   return (
     <div className={styles.forest}>
-      {kept.map((thing) => {
-        const sourceTitle = thing.sourceId ? sourceById.get(thing.sourceId)?.title : undefined
-        return (
-          <SpecimenCard key={thing.id} thing={thing} sourceTitle={sourceTitle} onEdit={onEdit} hasSource={Boolean(thing.sourceId)} />
-        )
-      })}
+      {loci.length > 0 && (
+        <div className={styles.walkRow}>
+          <label className={styles.walkLabel} htmlFor="silva-forest-walk">Walk</label>
+          <select
+            id="silva-forest-walk"
+            className={styles.walkSelect}
+            value={clearing}
+            onChange={(e) => setClearing(e.target.value)}
+          >
+            <option value="all">the whole forest</option>
+            <option value="none">what's in no clearing</option>
+            {loci.map((locus) => <option key={locus.id} value={locus.id}>{locus.name}</option>)}
+          </select>
+          <span className={styles.walkCount}>
+            {walked.length} of {kept.length}
+          </span>
+        </div>
+      )}
+
+      {walked.length === 0 ? (
+        <p className={styles.empty}>Nothing along this stretch.</p>
+      ) : (
+        walked.map((thing) => (
+          <SpecimenCard
+            key={thing.id}
+            thing={thing}
+            sourceTitle={thing.sourceId ? sourceById.get(thing.sourceId)?.title : undefined}
+            locusNames={thing.lociIds.map((id) => locusById.get(id)?.name).filter((n): n is string => Boolean(n))}
+            onEdit={onEdit}
+            hasSource={Boolean(thing.sourceId)}
+          />
+        ))
+      )}
     </div>
   )
 }
@@ -46,15 +89,19 @@ export function ForestView({ things, sources, onEdit }: ForestViewProps) {
 function SpecimenCard({
   thing,
   sourceTitle,
+  locusNames,
   hasSource,
   onEdit,
 }: {
   thing: Thing
   sourceTitle?: string
+  locusNames: string[]
   hasSource: boolean
   onEdit: (id: string, patch: Partial<Thing>) => void
 }) {
   const [editing, setEditing] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const editRef = useRef<HTMLDivElement>(null)
   const [body, setBody] = useState(thing.body)
   const [kind, setKind] = useState<ThingKind | ''>(thing.kind ?? '')
   const [locator, setLocator] = useState(thing.locator)
@@ -68,6 +115,27 @@ function SpecimenCard({
     setNote(thing.note)
     setLink(thing.link ?? '')
     setEditing(true)
+  }
+
+  // Escape backs out of an edit — the same reflex as every other text field on
+  // the platform, and the only keyboard affordance this screen needs.
+  useEffect(() => {
+    if (!editing) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setEditing(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [editing])
+
+  async function copyBody() {
+    try {
+      await navigator.clipboard.writeText(thing.body)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1600)
+    } catch {
+      // No clipboard permission — the text is on screen and selectable anyway.
+    }
   }
 
   function save() {
@@ -88,15 +156,28 @@ function SpecimenCard({
         <p className={styles.body}>{thing.body}</p>
         {thing.note && <p className={styles.note}>{thing.note}</p>}
         <ThingLabel thing={thing} sourceTitle={sourceTitle} />
-        <Button size="sm" variant="ghost" onClick={startEditing}>Edit</Button>
+        {locusNames.length > 0 && (
+          <p className={styles.clearings}>
+            {locusNames.map((name) => (
+              <span key={name} className={styles.clearingTag}>{name}</span>
+            ))}
+          </p>
+        )}
+        <div className={styles.plateActions}>
+          <Button size="sm" variant="ghost" onClick={startEditing}>Edit</Button>
+          <Button size="sm" variant="ghost" onClick={copyBody}>{copied ? 'Copied' : 'Copy'}</Button>
+        </div>
       </article>
     )
   }
 
   return (
     <article className={styles.plate}>
-      <div className={styles.editBlock}>
-        <Field label="Body" value={body} onChange={(e) => setBody(e.target.value)} />
+      <div className={styles.editBlock} ref={editRef}>
+        {/* A passage is the whole object of this app and is very often several
+         *  lines long — editing it through a 44px single-line input meant
+         *  scrolling sideways through your own quotation. */}
+        <TextAreaField label="Body" value={body} onChange={(e) => setBody(e.target.value)} rows={6} />
         <div className={styles.kindRow}>
           <select className={styles.select} value={kind} onChange={(e) => setKind(e.target.value as ThingKind | '')}>
             <option value="">No kind set</option>
@@ -118,7 +199,13 @@ function SpecimenCard({
           onChange={(e) => setLocator(e.target.value)}
           placeholder="e.g. p. 142, or overheard on the 32 tram"
         />
-        <Field label="Note" value={note} onChange={(e) => setNote(e.target.value)} />
+        <TextAreaField
+          label="Note"
+          hint="Why this. What it rhymed with."
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={3}
+        />
         <Field label="Link" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…" />
         <div className={styles.actions}>
           <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>

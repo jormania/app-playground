@@ -81,3 +81,14 @@
   font-size: var(--text-sm, 0.875rem);
   color: var(--color-danger, #d23f3f);
 }
+
+/* The multi-line variant (TextAreaField). Everything else is inherited from
+   `.input` — only the fixed 44px control height and the vertical centring it
+   implies have to be undone, since a textarea grows with its rows. */
+.textarea {
+  height: auto;
+  min-height: 88px;
+  padding: var(--space-sm, 12px);
+  line-height: var(--leading-body, 1.6);
+  resize: vertical;
+}

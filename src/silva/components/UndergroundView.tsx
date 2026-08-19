@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Field, ConfirmModal } from '../../ds'
+import { Button, TextAreaField, ConfirmModal } from '../../ds'
 import type { Thing } from '../lib/notion'
 import type { Locus } from '../lib/loci'
 import type { Path } from '../lib/paths'
@@ -11,6 +11,9 @@ export interface UndergroundViewProps {
   things: Thing[]
   loci: Locus[]
   paths: Path[]
+  /** Cached/indexed embedding vectors, owned by App — the graph draws its
+   *  mycorrhiza from these and never loads the model itself. */
+  vectorsById: Map<string, Float32Array>
   onMake: (fromId: string, toId: string, why: string) => void
   onEditWhy: (pathId: string, why: string) => void
   onRemove: (pathId: string) => void
@@ -30,14 +33,14 @@ const CONNECTION_PREVIEW_LENGTH = 160
  *  (solid Paths, faint unclickable mycorrhiza, clustered by locus) is the
  *  primary view; the make/edit/remove tools below it are unchanged from
  *  Session 6. */
-export function UndergroundView({ things, loci, paths, onMake, onEditWhy, onRemove }: UndergroundViewProps) {
+export function UndergroundView({ things, loci, paths, vectorsById, onMake, onEditWhy, onRemove }: UndergroundViewProps) {
   const [making, setMaking] = useState(false)
   const kept = things.filter((t) => t.state === 'Kept')
   const byId = new Map(things.map((t) => [t.id, t]))
 
   return (
     <div className={styles.wrap}>
-      <UndergroundGraph things={things} loci={loci} paths={paths} />
+      <UndergroundGraph things={things} loci={loci} paths={paths} vectorsById={vectorsById} />
 
       {making ? (
         <MakeForm
@@ -109,12 +112,13 @@ function MakeForm({
           ))}
         </select>
       </div>
-      <Field
+      <TextAreaField
         label="What did you see between them?"
         hint="Required — a path is a record of this, not just the connection itself."
         value={why}
         onChange={(e) => setWhy(e.target.value)}
         placeholder="Why these belong together"
+        rows={3}
       />
       <div className={styles.actions}>
         <Button variant="ghost" onClick={onCancel}>Cancel</Button>
@@ -168,7 +172,7 @@ function PathRow({
 
       {editing ? (
         <div className={styles.editBlock}>
-          <Field label="What did you see between them?" value={why} onChange={(e) => setWhy(e.target.value)} />
+          <TextAreaField label="What did you see between them?" value={why} onChange={(e) => setWhy(e.target.value)} rows={3} />
           <div className={styles.actions}>
             <Button size="sm" variant="ghost" onClick={() => { setWhy(path.why); setEditing(false) }}>Cancel</Button>
             <Button
