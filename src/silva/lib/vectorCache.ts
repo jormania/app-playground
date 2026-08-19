@@ -10,6 +10,8 @@
  * error.
  */
 import { get, set, del, keys } from 'idb-keyval'
+import { contentHash } from './embeddings'
+import type { Thing } from './notion'
 
 const PREFIX = 'silva:vector:'
 
@@ -39,6 +41,23 @@ export async function setVector(thingId: string, hash: string, vector: Float32Ar
     // A full or unavailable IndexedDB shouldn't break search — the thing is
     // simply re-embedded next time (or search falls back to lexical-only).
   }
+}
+
+/**
+ * Peeks whatever's already cached for a set of things — never calls
+ * `embed()`. Shared by App.tsx's provocation picker and
+ * UndergroundGraph.tsx's mycorrhiza fibers so neither one duplicates the
+ * per-thing lookup loop, and neither one ever triggers the ~25 MB model to
+ * load on its own (only a visit to Search does that).
+ */
+export async function peekVectors(things: Thing[]): Promise<Map<string, Float32Array>> {
+  const entries = await Promise.all(
+    things.map(async (t): Promise<readonly [string, Float32Array] | null> => {
+      const vector = await getVector(t.id, contentHash(t.body))
+      return vector ? ([t.id, vector] as const) : null
+    }),
+  )
+  return new Map(entries.filter((e): e is readonly [string, Float32Array] => e !== null))
 }
 
 /** Removes cached vectors for things that no longer exist — cheap

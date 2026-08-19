@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { Button, Field, ConfirmModal } from '../../ds'
 import type { Thing } from '../lib/notion'
+import type { Locus } from '../lib/loci'
 import type { Path } from '../lib/paths'
+import { UndergroundGraph } from './UndergroundGraph'
+import { ExpandableText } from './ExpandableText'
 import styles from './UndergroundView.module.css'
 
 export interface UndergroundViewProps {
   things: Thing[]
+  loci: Locus[]
   paths: Path[]
   onMake: (fromId: string, toId: string, why: string) => void
   onEditWhy: (pathId: string, why: string) => void
@@ -17,17 +21,24 @@ function summarize(thing: Thing | undefined, max = 60): string {
   return thing.body.length > max ? `${thing.body.slice(0, max)}…` : thing.body
 }
 
-/** Underground — the connections you've made (SILVA.md "Views"). Paths
- *  only this session: no mycorrhiza, no embeddings yet (build-order steps
- *  8–9), so this is a plain list of solid connections, not the eventual
- *  graph layer. */
-export function UndergroundView({ things, paths, onMake, onEditWhy, onRemove }: UndergroundViewProps) {
+// A path's From/To can be a full passage, not just a line — preview a
+// reasonable chunk and let the reader expand rather than dumping the whole
+// body into the list by default.
+const CONNECTION_PREVIEW_LENGTH = 160
+
+/** Underground — the connections you've made (SILVA.md "Views"). The graph
+ *  (solid Paths, faint unclickable mycorrhiza, clustered by locus) is the
+ *  primary view; the make/edit/remove tools below it are unchanged from
+ *  Session 6. */
+export function UndergroundView({ things, loci, paths, onMake, onEditWhy, onRemove }: UndergroundViewProps) {
   const [making, setMaking] = useState(false)
   const kept = things.filter((t) => t.state === 'Kept')
   const byId = new Map(things.map((t) => [t.id, t]))
 
   return (
     <div className={styles.wrap}>
+      <UndergroundGraph things={things} loci={loci} paths={paths} />
+
       {making ? (
         <MakeForm
           kept={kept}
@@ -115,6 +126,22 @@ function MakeForm({
   )
 }
 
+function ConnectionEnd({ label, thing }: { label: string; thing: Thing | undefined }) {
+  const body = thing?.body ?? '(no longer here)'
+
+  return (
+    <div className={styles.connectionEnd}>
+      <span className={styles.connectionLabel}>{label}</span>
+      <ExpandableText
+        text={body}
+        max={CONNECTION_PREVIEW_LENGTH}
+        textClassName={styles.connectionBody}
+        toggleClassName={styles.expandToggle}
+      />
+    </div>
+  )
+}
+
 function PathRow({
   path,
   fromThing,
@@ -134,9 +161,10 @@ function PathRow({
 
   return (
     <li className={styles.row}>
-      <p className={styles.connection}>
-        {summarize(fromThing)} <span className={styles.arrow}>→</span> {summarize(toThing)}
-      </p>
+      <div className={styles.connection}>
+        <ConnectionEnd label="From" thing={fromThing} />
+        <ConnectionEnd label="To" thing={toThing} />
+      </div>
 
       {editing ? (
         <div className={styles.editBlock}>

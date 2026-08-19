@@ -17,8 +17,7 @@ import { SearchView } from './components/SearchView'
 import { ProvocationBanner } from './components/ProvocationBanner'
 import { pickProvocation, provocationKey, type Provocation } from './lib/provocations'
 import { readDismissed, addDismissed, hasShownThisSession, markShownThisSession } from './lib/provocationDismissals'
-import { getVector } from './lib/vectorCache'
-import { contentHash } from './lib/embeddings'
+import { peekVectors } from './lib/vectorCache'
 import styles from './App.module.css'
 
 type View = 'forest' | 'understory' | 'clearings' | 'underground' | 'search'
@@ -75,15 +74,7 @@ export default function App() {
         // triggers the ~25 MB model to load on its own.
         if (!cancelled && !hasShownThisSession()) {
           const keptThings = settled.filter((t) => t.state === 'Kept')
-          const vectorEntries = await Promise.all(
-            keptThings.map(async (t) => {
-              const vector = await getVector(t.id, contentHash(t.body))
-              return vector ? ([t.id, vector] as const) : null
-            }),
-          )
-          const vectorsById = new Map(
-            vectorEntries.filter((e): e is readonly [string, Float32Array] => e !== null),
-          )
+          const vectorsById = await peekVectors(keptThings)
           const picked = pickProvocation({
             things: settled,
             loci: loadedLoci,
@@ -316,6 +307,7 @@ export default function App() {
         ) : view === 'underground' ? (
           <UndergroundView
             things={things}
+            loci={loci}
             paths={paths}
             onMake={handleMakePath}
             onEditWhy={handleEditPathWhy}

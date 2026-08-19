@@ -140,7 +140,7 @@
 
 .memberRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-sm);
   padding: var(--space-xs) 0;
@@ -151,6 +151,30 @@
 
 .memberRow:first-child {
   border-top: none;
+}
+
+.memberBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.memberText {
+  margin: 0;
+  line-height: var(--leading-body);
+}
+
+.expandToggle {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: var(--space-3xs);
+  font-size: var(--text-xs);
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.expandToggle:hover {
+  text-decoration: underline;
 }
 
 .mergeRow {

@@ -3,6 +3,7 @@ import { Button, Field, ConfirmModal } from '../../ds'
 import type { Thing } from '../lib/notion'
 import type { Locus } from '../lib/loci'
 import { ThingPicker } from './ThingPicker'
+import { ExpandableText } from './ExpandableText'
 import styles from './ClearingsView.module.css'
 
 export interface ClearingsViewProps {
@@ -17,6 +18,10 @@ export interface ClearingsViewProps {
 }
 
 type Screen = { kind: 'list' } | { kind: 'coin' } | { kind: 'detail'; locusId: string }
+
+// A member's body can be a full passage — preview it and let the reader
+// expand rather than filling the member list with pages of text.
+const MEMBER_PREVIEW_LENGTH = 80
 
 /** Clearings — the loci you've coined (SILVA.md "Views"). A locus can never
  *  be assigned at capture time, so every membership action (coin, rename,
@@ -258,7 +263,14 @@ function LocusDetail({
         <ul className={styles.memberList}>
           {members.map((thing) => (
             <li key={thing.id} className={styles.memberRow}>
-              <span>{thing.body.length > 80 ? `${thing.body.slice(0, 80)}…` : thing.body}</span>
+              <div className={styles.memberBody}>
+                <ExpandableText
+                  text={thing.body}
+                  max={MEMBER_PREVIEW_LENGTH}
+                  textClassName={styles.memberText}
+                  toggleClassName={styles.expandToggle}
+                />
+              </div>
               <Button size="sm" variant="ghost" onClick={() => onRemoveThing(locus.id, thing.id)}>Remove</Button>
             </li>
           ))}

@@ -12,11 +12,20 @@ vi.mock('idb-keyval', () => ({
   keys: async () => [...store.keys()],
 }))
 
-const { getVector, setVector, pruneVectors } = await import('./vectorCache.ts')
+const { getVector, setVector, pruneVectors, peekVectors } = await import('./vectorCache.ts')
+const { contentHash } = await import('./embeddings.ts')
 
 beforeEach(() => {
   store.clear()
 })
+
+function fakeThing(id: string, body: string) {
+  return {
+    id, handle: body, body, kind: null, state: 'Kept' as const, sourceId: null,
+    locator: '', encountered: '2026-01-01', kept: '2026-01-01', note: '',
+    lociIds: [], image: null, link: null, koboBookmarkId: null,
+  }
+}
 
 describe('getVector / setVector', () => {
   it('returns null for a thing never cached', async () => {
@@ -39,6 +48,30 @@ describe('getVector / setVector', () => {
     await setVector('thing-2', 'hash-a', new Float32Array([2]))
     expect(await getVector('thing-1', 'hash-a')).toEqual(new Float32Array([1]))
     expect(await getVector('thing-2', 'hash-a')).toEqual(new Float32Array([2]))
+  })
+})
+
+describe('peekVectors', () => {
+  it('returns cached vectors keyed by thing id, skipping anything uncached', async () => {
+    const a = fakeThing('a', 'Body A')
+    const b = fakeThing('b', 'Body B')
+    await setVector('a', contentHash(a.body), new Float32Array([1]))
+    // b is never cached.
+    const result = await peekVectors([a, b])
+    expect(result.size).toBe(1)
+    expect(result.get('a')).toEqual(new Float32Array([1]))
+    expect(result.has('b')).toBe(false)
+  })
+
+  it('skips a stale cache entry (hash no longer matches the thing\'s current body)', async () => {
+    const a = fakeThing('a', 'Original body')
+    await setVector('a', contentHash('A different body entirely'), new Float32Array([1]))
+    const result = await peekVectors([a])
+    expect(result.has('a')).toBe(false)
+  })
+
+  it('returns an empty map for an empty list, without error', async () => {
+    expect((await peekVectors([])).size).toBe(0)
   })
 })
 
