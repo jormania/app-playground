@@ -1,9 +1,10 @@
-/* Pinned above the safe area so an installed PWA on a phone doesn't tuck the
-   message under the home indicator. */
+/* Pinned above the bottom navigation — and above the safe area beneath it, so
+   an installed PWA on a phone doesn't tuck the message under the home
+   indicator or behind the tab bar. */
 .stack {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--space-md) + 64px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   z-index: 60;
   display: flex;
@@ -77,4 +78,11 @@
 
 .close:hover {
   color: var(--color-ink);
+}
+
+/* No bottom bar from 720px up, so the toast comes back down to the edge. */
+@media (min-width: 720px) {
+  .stack {
+    bottom: calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
+  }
 }

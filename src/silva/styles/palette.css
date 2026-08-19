@@ -55,6 +55,20 @@ html, body {
   background: var(--color-bg);
 }
 
+/* Reserve the scrollbar's gutter whether or not this view needs one.
+ *
+ * Silva's views differ in height — the Forest scrolls, Clearings often
+ * doesn't — so switching between them added and removed a classic scrollbar,
+ * changing the viewport width by its thickness and relaying out the header
+ * mid-tap. On a laptop that reads as the toolbar snapping sideways when you
+ * change view, and only "in some places": exactly the views whose content
+ * crosses the scrollable threshold. Overlay-scrollbar systems (default macOS,
+ * and headless Chromium) never show it, which is why it survived review.
+ */
+html {
+  scrollbar-gutter: stable;
+}
+
 :root[data-theme="dark"] {
   /* ── Ground: "a herbarium at night" — deep bark/umber, not black ──────── */
   --color-bg:        #241b12;

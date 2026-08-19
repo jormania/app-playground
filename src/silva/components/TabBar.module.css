@@ -1,0 +1,123 @@
+/* The phone-sized navigation.
+ *
+ * Follows Fit Check's `.fc-nav` — fixed to the bottom, translucent over a
+ * backdrop blur, padded past the home indicator, targets comfortably over
+ * 44px — but on a six-column grid rather than a flex row, so six views can
+ * never become a sideways scroll however narrow the phone.
+ *
+ * Hidden from 720px up, where the header's segmented control takes over.
+ */
+
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+
+  /* Translucent so the forest floor shows through as you scroll under it —
+     the one glassy surface in an otherwise flat, printed app, and only
+     because it genuinely floats above the page. */
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  backdrop-filter: blur(14px) saturate(1.1);
+  border-top: 1px solid var(--color-border);
+
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Where the browser can't blur, fall back to an opaque ground rather than
+   leaving text over a half-transparent bar. */
+@supports not (backdrop-filter: blur(1px)) {
+  .bar {
+    background: var(--color-surface);
+  }
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+
+  min-width: 0;
+  min-height: 52px;
+  padding: 7px 2px calc(7px + env(safe-area-inset-bottom, 0px) * 0);
+
+  border: none;
+  background: none;
+  color: var(--color-faint);
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  transition: color var(--duration, 180ms) var(--ease, ease);
+}
+
+.icon {
+  width: 21px;
+  height: 21px;
+  flex: none;
+}
+
+/* Small caps at a whisper — the same treatment every other piece of metadata
+   in the herbarium gets, sized so the longest names ("Understory",
+   "Underground") fit a 60px column on a 360px phone rather than truncating. */
+.label {
+  font-size: 9px;
+  line-height: 1.1;
+  font-variant: small-caps;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* Below 360px six labels cannot be set at a legible size, and a row of
+   ellipsed words is worse than none — so the icons stand alone and the header
+   names the current view instead. The accessible name is on the button, so
+   nothing is lost to a screen reader either way. */
+@media (max-width: 359px) {
+  .label { display: none; }
+  .tab { min-height: 48px; }
+  .icon { width: 22px; height: 22px; }
+}
+
+.tab[aria-current='page'] {
+  color: var(--color-accent);
+}
+
+.tab[aria-current='page'] .label {
+  font-weight: var(--weight-medium);
+}
+
+/* The active mark: a short rule above the icon, drawn like a keyline rather
+   than a filled pill — the plate motif, not a chip. */
+.tab[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 26px;
+  height: 2px;
+  background: var(--color-accent);
+}
+
+.tab {
+  position: relative;
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab { transition: none; }
+}
+
+@media (min-width: 720px) {
+  .bar { display: none; }
+}

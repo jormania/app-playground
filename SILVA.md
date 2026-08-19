@@ -182,12 +182,29 @@ threads) and Journal of Delights (three ways to read) already establish here.
 
 - **The forest** — the default. One thing at a time, typeset to be read, not a
   row in a table. Scroll is a walk, not a list.
+
+  Today's walk sits at its head: a short, finite stretch — `WALK_SIZE` things —
+  weighted by what you have gone longest without actually looking at
+  (`lib/walk.ts`), with the full scroll below it unchanged. It is not a feed,
+  and the three properties that keep it from becoming one are structural rather
+  than intentions: **it ends** (and the ending offers nothing further),
+  **it holds only your own kept things**, and **it refreshes on the calendar,
+  not on your attention** — the chosen ids are persisted for the day, so
+  reading something cannot reshuffle what is left.
 - **Clearings** — the loci you've coined, each a small collection with your note
   on what you meant by it. Empty clearings are allowed and meaningful.
 - **Underground** — the connection view. Paths drawn solid; mycorrhiza only
   visible while you hold the view open, faint, unclickable until offered as a
   provocation. This is the graph layer, and it exists from v1 because loci give
   it a stable node set.
+
+  The whole-forest graph is an overview and stays one. The question people
+  actually have — *what is this near?* — is answered on the plate instead, by a
+  per-thing neighbourhood (`lib/neighbourhood.ts`): paths you walked with their
+  why, and oxblood threads that grew near this and are not yet anything, each
+  with one route onward to writing why. Bounded by construction, so it needs no
+  layout algorithm and does not care how large the forest gets — which the
+  global ring layout very much does.
 - **The understory** — unkept arrivals, with their remaining season shown as a
   fade rather than a number.
 
@@ -200,10 +217,26 @@ Four lanes into the understory:
 
 1. **Type or paste** — the everyday case. One field, no required metadata.
 2. **Kobo import** — see below.
-3. **Share target** — the PWA registers as a Web Share Target so a link or a
-   selection from anywhere on Android lands in the understory.
+3. **Share target** — a link or a selection shared from anywhere on the device
+   opens Silva with the intake field already filled in.
+
+   Declared `method: "GET"`, so the OS launches the app at a URL with query
+   parameters rather than POSTing anywhere: the whole handler is
+   `lib/sharedIntake.ts` reading `location.search`, and it costs **no
+   serverless function**. That also makes it not Android-only — iOS has no Web
+   Share Target API, but a Shortcut in the share sheet opening
+   `silva-react.html?text=…` lands in the same code.
+
+   It opens the field rather than landing silently: the moment a note is
+   easiest to write is while you still remember why you shared it.
 4. **Photograph a page** — a picture of a physical book's page, kept as an
    Image thing. Deliberately *not* OCR'd in v1: an image is a legitimate thing.
+
+   Downscaled by `shared/photo.ts`, then through the existing
+   `api/notion-upload` relay — no new function. Without a token the blob goes
+   to IndexedDB and `Thing.image` holds a reference (`lib/photoStore.ts`),
+   because a ~300 KB data URL inside the localStorage demo snapshot would take
+   the whole demo forest down within a handful of photographs.
 
 ### Kobo import
 
@@ -247,6 +280,27 @@ Embeddings run **in the browser**, locally.
 
 Why this and not a hosted embedding API: it works offline, needs no key, sends
 nothing anywhere, and — decisively — **costs zero serverless functions.**
+
+## What you have looked at
+
+A third piece of derived, on-device state, alongside the vectors: when each
+thing was last actually read (`lib/seen.ts`, IndexedDB, never Notion).
+
+It exists because `long-unvisited` was filtering on `daysSince(thing.kept)` —
+so "long unvisited" literally meant "kept more than 180 days ago", could not
+tell a thing reread weekly from one never opened since the day it was saved,
+and had a candidate pool that only ever grew because nothing drained it.
+
+"Seen" means seen: a plate half on screen for a beat and a half
+(`components/useDwell.ts`), recorded from the walk and the scroll alike.
+Scrolling past records nothing, which is correct — and the threshold matters
+because history accumulates and a signal corrupted by scroll-past cannot be
+repaired retroactively.
+
+> **It never becomes a number.** SILVA.md forbids scoring anything in the
+> collection; this measures *you*, not the things, and stays invisible — never
+> a count, never a visible ordering that reads as a leaderboard of your own
+> attention. It only ever chooses what to put in front of you.
 
 ## Data and architecture
 
@@ -403,7 +457,7 @@ thin re-export, so the existing tests prove the move was behaviour-preserving.
 
 Silva also reuses without copying: `shared/notionId` (paste a database URL),
 `shared/storage`, `shared/photo` (downscale before upload), `shared/installFlag`
-(`watchInstalled('silva.html')`), `shared/haptics`.
+(`watchInstalled('silva-react.html')`), `shared/haptics`.
 
 **Promotion candidate out of Silva:** `shared/embeddings.ts` — the
 transformers.js wrapper, cosine helper and IndexedDB vector cache. Per the same
@@ -468,9 +522,9 @@ device.
 - [ ] Registry entry at the **top** of `src/apps-registry.js` (`ds: true`,
       `kind: "react-vite"`, `manifest: "/silva.webmanifest"`) — APPS[0] is
       "Latest" automatically
-- [ ] Build entry in `vite.config.js`; app at `silva.html`
+- [x] Build entry in `vite.config.js`; app at `silva-react.html`
 - [ ] Service worker registration gated on `import.meta.env.PROD`
-- [ ] `watchInstalled('silva.html')` once at startup
+- [x] `watchInstalled('silva-react.html')` once at startup
 - [ ] Imports from `src/ds/` only — no legacy-app imports
 - [ ] `npm test`, `npm run typecheck`, `npx eslint <changed paths>` all green
 - [ ] Guide page `silva-guide.html` documenting the Notion schema once

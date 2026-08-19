@@ -1,0 +1,165 @@
+import { useState } from 'react'
+import { Button, TextAreaField } from '../../ds'
+import type { Thing } from '../lib/notion'
+import type { Path } from '../lib/paths'
+import { computeNeighbourhood, layoutEgoGraph, egoViewBox } from '../lib/neighbourhood'
+import styles from './Neighbourhood.module.css'
+
+export interface NeighbourhoodProps {
+  thing: Thing
+  things: Thing[]
+  paths: Path[]
+  vectorsById: Map<string, Float32Array>
+  onMakePath: (fromId: string, toId: string, why: string) => void
+}
+
+function summarize(thing: Thing, max = 110): string {
+  const text = thing.body || thing.handle
+  return text.length > max ? `${text.slice(0, max)}…` : text
+}
+
+/**
+ * What this thing is near — the underground layer, delivered at the moment it
+ * is useful rather than as a separate map you have to go and consult.
+ *
+ * Two kinds of connection, held strictly apart, because the distinction is the
+ * heart of SILVA.md: **paths** are yours and carry the why you wrote;
+ * **mycorrhiza** is latent, oxblood, and never a connection until you say it
+ * is. So a near thing is offered with one route onward — write why — and the
+ * conversion from fiber to path is the human act the spec insists on.
+ *
+ * Collapsed by default. The plate's job is to be read; this waits under it
+ * until asked.
+ */
+export function Neighbourhood({ thing, things, paths, vectorsById, onMakePath }: NeighbourhoodProps) {
+  const [open, setOpen] = useState(false)
+  const [respondingTo, setRespondingTo] = useState<string | null>(null)
+  const [why, setWhy] = useState('')
+
+  const neighbourhood = computeNeighbourhood(thing, things, vectorsById, paths)
+  const { near, connected } = neighbourhood
+  if (near.length === 0 && connected.length === 0) return null
+
+  const nodes = layoutEgoGraph(neighbourhood)
+  const self = nodes[0]
+  const box = egoViewBox(nodes)
+
+  function startResponding(id: string) {
+    setRespondingTo(id)
+    setWhy('')
+  }
+
+  return (
+    <section className={styles.wrap}>
+      <button
+        type="button"
+        className={styles.toggle}
+        aria-expanded={open}
+        onClick={() => setOpen((wasOpen) => !wasOpen)}
+      >
+        <span className={styles.toggleLabel}>Near this</span>
+        <span className={styles.counts}>
+          {connected.length > 0 && (
+            <span className={styles.countPath}>{connected.length} path{connected.length === 1 ? '' : 's'}</span>
+          )}
+          {near.length > 0 && (
+            <span className={styles.countNear}>{near.length} unspoken</span>
+          )}
+        </span>
+      </button>
+
+      {open && (
+        <div className={styles.panel}>
+          {/* Centre plus one ring — the whole layout. There is nothing to
+           *  simulate when the neighbourhood is bounded by construction, which
+           *  is exactly why this scales where the global graph does not. */}
+          <svg
+            className={styles.graph}
+            viewBox={`${box.minX} ${box.minY} ${box.width} ${box.height}`}
+            role="img"
+            aria-label={`This thing, with ${connected.length} path${connected.length === 1 ? '' : 's'} and ${near.length} unspoken thread${near.length === 1 ? '' : 's'}`}
+          >
+            {nodes.slice(1).map((node) => (
+              <line
+                key={`edge-${node.id}`}
+                x1={self.x} y1={self.y} x2={node.x} y2={node.y}
+                className={node.role === 'connected' ? styles.edgePath : styles.edgeNear}
+              />
+            ))}
+            {nodes.map((node) => (
+              <circle
+                key={node.id}
+                cx={node.x} cy={node.y}
+                r={node.role === 'self' ? 7 : 5}
+                className={
+                  node.role === 'self' ? styles.nodeSelf
+                    : node.role === 'connected' ? styles.nodePath
+                      : styles.nodeNear
+                }
+              />
+            ))}
+          </svg>
+
+          {connected.length > 0 && (
+            <div className={styles.group}>
+              <h4 className={styles.groupTitle}>Paths you walked</h4>
+              <ul className={styles.list}>
+                {connected.map(({ thing: other, path }) => (
+                  <li key={path.id} className={styles.row}>
+                    <p className={styles.rowBody}>{summarize(other)}</p>
+                    <p className={styles.rowWhy}>{path.why}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {near.length > 0 && (
+            <div className={styles.group}>
+              <h4 className={styles.groupTitleNear}>Grew near this</h4>
+              {/* Never states what the connection is — SILVA.md: the model may
+               *  propose adjacency, only you may assert meaning. */}
+              <p className={styles.groupHint}>
+                Noticed, not asserted. Say what you see and it becomes a path.
+              </p>
+              <ul className={styles.list}>
+                {near.map(({ thing: other }) => (
+                  <li key={other.id} className={styles.row}>
+                    <p className={styles.rowBody}>{summarize(other)}</p>
+                    {respondingTo === other.id ? (
+                      <div className={styles.respond}>
+                        <TextAreaField
+                          label="What did you see between them?"
+                          value={why}
+                          onChange={(e) => setWhy(e.target.value)}
+                          rows={2}
+                        />
+                        <div className={styles.respondActions}>
+                          <Button size="sm" variant="ghost" onClick={() => setRespondingTo(null)}>Back</Button>
+                          <Button
+                            size="sm"
+                            disabled={!why.trim()}
+                            onClick={() => {
+                              onMakePath(thing.id, other.id, why.trim())
+                              setRespondingTo(null)
+                            }}
+                          >
+                            Walk this path
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="ghost" onClick={() => startResponding(other.id)}>
+                        Walk a path
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}

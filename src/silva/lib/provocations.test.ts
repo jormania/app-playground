@@ -133,6 +133,31 @@ describe('pickProvocation — long-unvisited', () => {
     if (result?.kind === 'long-unvisited') expect(result.thing.id).toBe('t1')
     expect(LONG_UNVISITED_DAYS).toBe(180)
   })
+
+  // Before lib/seen.ts existed this filtered on `daysSince(thing.kept)`, so a
+  // thing you reread every week became "long unvisited" on day 181 regardless,
+  // and stayed eligible forever after. These two cover the fix.
+  it('is NOT eligible for an old thing you actually looked at recently', () => {
+    const t = thing({ id: 't1', kept: '2026-01-01' })
+    const result = pickProvocation({
+      things: [t], loci: [], paths: [], vectorsById: new Map(), dismissed: new Set(),
+      seen: { t1: '2026-08-15' },
+      today: TODAY, random: () => 0.99,
+    })
+    expect(result?.kind).not.toBe('long-unvisited')
+  })
+
+  it('IS eligible for a recently-kept thing you have not opened since', () => {
+    // Kept inside the threshold, but last actually seen well outside it —
+    // impossible to express before the history existed.
+    const t = thing({ id: 't1', kept: '2026-08-01' })
+    const result = pickProvocation({
+      things: [t], loci: [], paths: [], vectorsById: new Map(), dismissed: new Set(),
+      seen: { t1: '2025-06-01' },
+      today: TODAY, random: () => 0.99,
+    })
+    expect(result?.kind).toBe('long-unvisited')
+  })
 })
 
 describe('pickProvocation — blind-pairing', () => {

@@ -18,6 +18,7 @@ import { SearchView } from './components/SearchView'
 import { ProvocationBanner } from './components/ProvocationBanner'
 import { SettingsView } from './components/SettingsView'
 import { Toasts, useToasts } from './components/Toasts'
+import { TabBar } from './components/TabBar'
 import { pickProvocation, provocationKey, type Provocation } from './lib/provocations'
 import { readDismissed, addDismissed, hasShownThisSession, markShownThisSession } from './lib/provocationDismissals'
 import {
@@ -27,6 +28,10 @@ import {
   thresholdCrossed,
 } from './lib/provocationThreshold'
 import { peekVectors } from './lib/vectorCache'
+import { readSeen, writeSeen, withSeen, prunedSeen, type SeenMap } from './lib/seen'
+import { parseSharedIntake, urlWithoutShare, type SharedIntake } from './lib/sharedIntake'
+import { putLocalPhoto, localImageRef } from './lib/photoStore'
+import { resizePhoto, photoFilename, isImageFile } from '../shared/photo'
 import { indexThings, indexableThings } from './lib/indexer'
 import { loadSilvaConfig, saveSilvaConfig, type SilvaConfig } from './lib/settingsConfig'
 import { confirmTension } from './lib/tension'
@@ -34,6 +39,18 @@ import { syncSystemTheme } from './lib/theme'
 import styles from './App.module.css'
 
 type View = 'forest' | 'understory' | 'clearings' | 'underground' | 'search' | 'settings'
+
+/** One list, two presentations: the segmented control on a desktop header and
+ *  the bottom TabBar on a phone. The `value`s double as icon names in
+ *  components/TabBar.tsx. */
+const VIEWS: { value: View; label: string }[] = [
+  { value: 'forest', label: 'Forest' },
+  { value: 'understory', label: 'Understory' },
+  { value: 'clearings', label: 'Clearings' },
+  { value: 'underground', label: 'Underground' },
+  { value: 'search', label: 'Search' },
+  { value: 'settings', label: 'Settings' },
+]
 
 /** A collection snapshot, so a failed live write can put back exactly what
  *  was on screen before the optimistic change. */
@@ -78,11 +95,29 @@ export default function App() {
   const [paths, setPaths] = useState<Path[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [view, setView] = useState<View>('forest')
+  // A share opens on the understory, because that is where what you just
+  // shared has landed — arriving on the Forest would hide it.
+  const [view, setView] = useState<View>(() =>
+    typeof window !== 'undefined' && parseSharedIntake(window.location.search) ? 'understory' : 'forest',
+  )
   const [importOpen, setImportOpen] = useState(false)
   const [provocation, setProvocation] = useState<Provocation | null>(null)
   const [vectorsById, setVectorsById] = useState<Map<string, Float32Array>>(new Map())
   const [indexing, setIndexing] = useState<{ done: number; total: number; loadingModel: boolean } | null>(null)
+  const [seen, setSeen] = useState<SeenMap>({})
+  const [photoBusy, setPhotoBusy] = useState(false)
+
+  // A share arriving from elsewhere on the device. Read once, synchronously, so
+  // the very first render already has it — then the query string is cleared so
+  // a refresh can't re-add what you already captured.
+  const [shared, setShared] = useState<SharedIntake | null>(() => {
+    if (typeof window === 'undefined') return null
+    const parsed = parseSharedIntake(window.location.search)
+    if (parsed) {
+      window.history.replaceState(null, '', urlWithoutShare(window.location.href))
+    }
+    return parsed
+  })
 
   // The live collection, readable from inside an async callback without
   // capturing a stale closure — what `write` reverts to on failure.
@@ -165,6 +200,11 @@ export default function App() {
         setThings(settled)
         setLoading(false)
 
+        // Reading history (lib/seen.ts) — local, derived, never in Notion.
+        const loadedSeen = prunedSeen(await readSeen(), settled.map((t) => t.id))
+        if (cancelled) return
+        setSeen(loadedSeen)
+
         // Whatever's already cached, so the graph and the picker have
         // something even when the indexer is switched off.
         const kept = indexableThings(settled)
@@ -194,7 +234,7 @@ export default function App() {
         }
 
         if (cancelled) return
-        await maybeProvoke(settled, loadedLoci, loadedPaths, vectors, () => cancelled)
+        await maybeProvoke(settled, loadedLoci, loadedPaths, vectors, loadedSeen, () => cancelled)
       } catch (e) {
         if (!cancelled) {
           setError((e as Error).message || 'Could not load the forest.')
@@ -213,6 +253,7 @@ export default function App() {
       allLoci: Locus[],
       allPaths: Path[],
       vectors: Map<string, Float32Array>,
+      seenHistory: SeenMap,
       isCancelled: () => boolean,
     ) {
       if (hasShownThisSession()) return
@@ -225,6 +266,7 @@ export default function App() {
         paths: allPaths,
         vectorsById: vectors,
         dismissed: readDismissed(),
+        seen: seenHistory,
         tensionEnabled: Boolean(config.anthropicKey),
       })
       if (!picked || isCancelled()) return
@@ -246,6 +288,26 @@ export default function App() {
       cancelled = true
     }
   }, [store, config.anthropicKey, config.mycorrhizaEnabled, notify])
+
+  /**
+   * Records that a thing was genuinely looked at. Fired by the plate's dwell
+   * observer (components/useDwell.ts), from the walk and the scroll alike — so
+   * the history accrues from all reading, not only from the ritual.
+   *
+   * Local and derived, exactly like the embedding vectors: never written to
+   * Notion, and deleting it costs nothing but the signal. It stays invisible
+   * by design — SILVA.md forbids scoring anything in the collection, and the
+   * defence is that this measures *you*, not the things.
+   */
+  const markSeen = useCallback((id: string) => {
+    setSeen((prev) => {
+      const next = withSeen(prev, [id])
+      // withSeen returns the same object when nothing changed, so an already-
+      // recorded thing costs neither a write nor a re-render.
+      if (next !== prev) void writeSeen(next)
+      return next
+    })
+  }, [])
 
   function handleKeep(id: string) {
     const today = new Date().toISOString().slice(0, 10)
@@ -300,7 +362,7 @@ export default function App() {
     )
   }
 
-  function handleIntake(body: string) {
+  function handleIntake(body: string, locator = '') {
     const today = new Date().toISOString().slice(0, 10)
     const draft: Thing = {
       id: draftId(),
@@ -309,7 +371,7 @@ export default function App() {
       kind: null,
       state: 'Understory',
       sourceId: null,
-      locator: '',
+      locator,
       encountered: today,
       kept: null,
       note: '',
@@ -321,11 +383,54 @@ export default function App() {
     write(
       () => setThings((prev) => [draft, ...prev]),
       async () => {
-        const created = await store.createThing({ body })
+        const created = await store.createThing({ body, locator })
         setThings((prev) => prev.map((t) => (t.id === draft.id ? created : t)))
       },
       'That could not be added to the understory',
     )
+    setShared(null)
+  }
+
+  /**
+   * The photograph lane. A picture of a page is a legitimate thing and is
+   * deliberately not OCR'd (SILVA.md "Intake") — until now `Image` was a Kind
+   * in the vocabulary with no way to create one, and `Thing.image` was read by
+   * `toThing` and written by nothing.
+   *
+   * Live: downscale, then Notion's two-call upload through the *existing*
+   * `api/notion-upload` relay — no new serverless function, the budget is full.
+   * Demo: the blob goes to IndexedDB and the thing holds a reference, because a
+   * ~300 KB data URL inside the localStorage demo snapshot would take the whole
+   * demo forest down within a handful of photos (see lib/photoStore.ts).
+   */
+  async function handlePhoto(file: File) {
+    if (!isImageFile(file)) {
+      notify('That file is not an image.', { tone: 'alarm' })
+      return
+    }
+    setPhotoBusy(true)
+    try {
+      const blob = await resizePhoto(file)
+      const filename = photoFilename(file.name)
+
+      if (!config.notionToken) {
+        const id = `local-${Date.now()}`
+        const created = await store.createThing({ body: '', kind: 'Image', image: localImageRef(id) })
+        await putLocalPhoto(id, blob)
+        setThings((prev) => [created, ...prev])
+      } else {
+        const created = await store.createThing({ body: '', kind: 'Image' })
+        setThings((prev) => [created, ...prev])
+        const photo = await store.uploadPhoto(blob, filename)
+        const withImage = await store.attachPhoto(created.id, photo)
+        setThings((prev) => prev.map((t) => (t.id === created.id ? withImage : t)))
+      }
+      notify('Photograph added to the understory.')
+    } catch (e) {
+      notify(`That photo could not be added${errorText(e)}`, { tone: 'alarm' })
+    } finally {
+      setPhotoBusy(false)
+    }
   }
 
   const understoryThings = things.filter((thing) => thing.state === 'Understory')
@@ -560,19 +665,17 @@ export default function App() {
   return (
     <div className={styles.app}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Silva</h1>
+        <div className={styles.headerRow}>
+          <h1 className={styles.title}>Silva</h1>
+          {/* Names the view on a phone, where navigation lives at the far end
+           *  of the screen in 9.5px small caps. */}
+          <span className={styles.where}>{VIEWS.find((v) => v.value === view)?.label}</span>
+        </div>
         <div className={styles.nav}>
           <SegmentedControl
-          value={view}
-          onChange={(v) => setView(v as View)}
-          options={[
-            { value: 'forest', label: 'Forest' },
-            { value: 'understory', label: 'Understory' },
-            { value: 'clearings', label: 'Clearings' },
-            { value: 'underground', label: 'Underground' },
-            { value: 'search', label: 'Search' },
-            { value: 'settings', label: 'Settings' },
-          ]}
+            value={view}
+            onChange={(v) => setView(v as View)}
+            options={VIEWS}
           />
         </div>
       </header>
@@ -593,7 +696,12 @@ export default function App() {
           <p className={styles.loading}>Walking into the forest…</p>
         ) : view === 'understory' ? (
           <>
-            <IntakeField onSubmit={handleIntake} />
+            <IntakeField
+              onSubmit={handleIntake}
+              onPhoto={handlePhoto}
+              prefill={shared}
+              busy={photoBusy}
+            />
             {importOpen ? (
               <KoboImportPanel
                 store={store}
@@ -613,7 +721,17 @@ export default function App() {
             />
           </>
         ) : view === 'forest' ? (
-          <ForestView things={things} sources={sources} loci={loci} onEdit={handleEditThing} />
+          <ForestView
+            things={things}
+            sources={sources}
+            loci={loci}
+            paths={paths}
+            vectorsById={vectorsById}
+            seen={seen}
+            onEdit={handleEditThing}
+            onSeen={markSeen}
+            onMakePath={handleMakePath}
+          />
         ) : view === 'clearings' ? (
           <ClearingsView
             things={things}
@@ -642,6 +760,8 @@ export default function App() {
           <SettingsView config={config} onChange={handleConfigChange} indexing={indexing} />
         )}
       </main>
+
+      <TabBar value={view} options={VIEWS} onChange={(v) => setView(v as View)} />
 
       <Toasts toasts={toasts} dismiss={dismiss} />
     </div>
