@@ -12,16 +12,38 @@ describe('settingsConfig', () => {
   })
 
   it('round-trips a saved config', () => {
-    saveSilvaConfig({ notionToken: 'secret_abc', anthropicKey: 'sk-ant-xyz', mycorrhizaEnabled: true })
+    saveSilvaConfig({
+      notionToken: 'secret_abc',
+      anthropicKey: 'sk-ant-xyz',
+      mycorrhizaEnabled: true,
+      showGraph: false,
+      showWalk: false,
+      provocationsEnabled: false,
+      autoTranscribe: true,
+    })
     expect(loadSilvaConfig()).toEqual({
       notionToken: 'secret_abc',
       anthropicKey: 'sk-ant-xyz',
       mycorrhizaEnabled: true,
+      showGraph: false,
+      showWalk: false,
+      provocationsEnabled: false,
+      autoTranscribe: true,
     })
   })
 
   it('leaves the embedding model opt-in off by default — it costs a ~25 MB download', () => {
     expect(DEFAULT_CONFIG.mycorrhizaEnabled).toBe(false)
+  })
+
+  it('leaves auto-transcription off by default — sending photos to a third party is its own consent', () => {
+    expect(DEFAULT_CONFIG.autoTranscribe).toBe(false)
+  })
+
+  it('leaves the graph, the walk and provocations on by default — nothing new is hidden unasked', () => {
+    expect(DEFAULT_CONFIG.showGraph).toBe(true)
+    expect(DEFAULT_CONFIG.showWalk).toBe(true)
+    expect(DEFAULT_CONFIG.provocationsEnabled).toBe(true)
   })
 
   it('fills in missing fields from a partial stored blob', () => {
@@ -30,6 +52,10 @@ describe('settingsConfig', () => {
       notionToken: 'secret_abc',
       anthropicKey: '',
       mycorrhizaEnabled: false,
+      showGraph: true,
+      showWalk: true,
+      provocationsEnabled: true,
+      autoTranscribe: false,
     })
   })
 })

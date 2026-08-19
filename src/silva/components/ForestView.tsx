@@ -19,6 +19,10 @@ export interface ForestViewProps {
   onEdit: (id: string, patch: Partial<Thing>) => void
   onSeen: (id: string) => void
   onMakePath: (fromId: string, toId: string, why: string) => void
+  /** Settings' "Show the walk" — on by default. Off just means the Forest is
+   *  the scroll alone, for anyone who'd rather nothing above it claim their
+   *  attention first. */
+  showWalk?: boolean
 }
 
 /** The kept collection. Today's walk sits at the head — a short, finite stretch
@@ -35,6 +39,7 @@ export function ForestView({
   onEdit,
   onSeen,
   onMakePath,
+  showWalk = true,
 }: ForestViewProps) {
   const sourceById = useMemo(() => new Map(sources.map((s) => [s.id, s])), [sources])
   const locusById = useMemo(() => new Map(loci.map((l) => [l.id, l])), [loci])
@@ -88,7 +93,7 @@ export function ForestView({
 
   return (
     <div className={styles.forest}>
-      <TodaysWalk things={things} seen={seen} renderThing={renderThing} />
+      {showWalk && <TodaysWalk things={things} seen={seen} renderThing={renderThing} />}
 
       {loci.length > 0 && (
         <div className={styles.walkRow}>

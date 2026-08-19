@@ -100,7 +100,7 @@ export function TodaysWalk({ things, seen, renderThing }: TodaysWalkProps) {
     return (
       <section className={styles.doneWrap}>
         <p className={styles.doneText}>
-          Today's walk is done. The forest is below, and there's another walk tomorrow.
+          This walk is done for now. The forest is below, and there's more whenever you're ready.
         </p>
       </section>
     )
@@ -110,9 +110,9 @@ export function TodaysWalk({ things, seen, renderThing }: TodaysWalkProps) {
   const isLast = index === walk.length - 1
 
   return (
-    <section className={styles.wrap} aria-label="Today's walk">
+    <section className={styles.wrap} aria-label="The walk">
       <div className={styles.head}>
-        <span className={styles.eyebrow}>Today's walk</span>
+        <span className={styles.eyebrow}>The walk</span>
         <span className={styles.position}>{index + 1} of {walk.length}</span>
       </div>
 

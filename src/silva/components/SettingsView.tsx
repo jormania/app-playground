@@ -80,6 +80,32 @@ export function SettingsView({ config, onChange, indexing = null }: SettingsView
         )}
       </section>
 
+      {/* Display toggles — nothing here changes what's kept, only what's
+       *  shown. Everything defaults on; each toggle exists for someone who'd
+       *  rather one specific piece stay out of the way, not because any of
+       *  them are wrong at the sizes most forests start at. */}
+      <section className={styles.section}>
+        <h4 className={styles.sectionTitle}>What's shown</h4>
+        <SettingsToggle
+          label="Show the walk"
+          hint="The short stretch above the Forest's scroll, weighted toward what you haven't looked at. Off leaves just the scroll."
+          checked={config.showWalk}
+          onChange={(e) => onChange({ showWalk: e.target.checked })}
+        />
+        <SettingsToggle
+          label="Show the graph"
+          hint="The whole-forest visualisation in Underground. Off leaves the path list and the make-a-path form — paths themselves are unaffected."
+          checked={config.showGraph}
+          onChange={(e) => onChange({ showGraph: e.target.checked })}
+        />
+        <SettingsToggle
+          label="Let Silva offer provocations"
+          hint="Off means what's already the default state otherwise: silence. On, a provocation appears at most once a session, and only when something's actually changed."
+          checked={config.provocationsEnabled}
+          onChange={(e) => onChange({ provocationsEnabled: e.target.checked })}
+        />
+      </section>
+
       {/* The underground layer is the half of Silva that isn't a randomiser,
        *  so it gets its own section rather than living as a checkbox under
        *  "advanced" — but it stays opt-in, because turning it on downloads a
@@ -111,8 +137,9 @@ export function SettingsView({ config, onChange, indexing = null }: SettingsView
       <section className={styles.section}>
         <h4 className={styles.sectionTitle}>Anthropic</h4>
         <p className={styles.sectionHint}>
-          Only used for Tension — a provocation that needs a real judgment call, not just
-          a similarity score. Every other provocation works without this.
+          Used for Tension — a provocation that needs a real judgment call, not just a
+          similarity score — and, if you turn it on below, transcribing photographed
+          pages. Every other provocation works without this.
         </p>
         <Field
           label="Anthropic API key"
@@ -121,6 +148,16 @@ export function SettingsView({ config, onChange, indexing = null }: SettingsView
           defaultValue={config.anthropicKey}
           {...commitOnBlur(config.anthropicKey, (v) => onChange({ anthropicKey: v }))}
           hint="Without this, Tension is simply never offered."
+        />
+        {/* A separate opt-in from merely having the key set — sending a
+         *  photograph to a third party is a different privacy trade than
+         *  sending text for Tension, and gets its own explicit consent
+         *  rather than riding along on the key silently. */}
+        <SettingsToggle
+          label="Transcribe photographed pages automatically"
+          hint="The moment you photograph a page, its text is pulled out and added as the thing's passage — nothing to type. Needs the key above; verbatim only, never a description of the photo."
+          checked={config.autoTranscribe}
+          onChange={(e) => onChange({ autoTranscribe: e.target.checked })}
         />
       </section>
 
