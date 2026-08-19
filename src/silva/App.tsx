@@ -13,9 +13,10 @@ import { IntakeField } from './components/IntakeField'
 import { KoboImportPanel } from './components/KoboImportPanel'
 import { ClearingsView } from './components/ClearingsView'
 import { UndergroundView } from './components/UndergroundView'
+import { SearchView } from './components/SearchView'
 import styles from './App.module.css'
 
-type View = 'forest' | 'understory' | 'clearings' | 'underground'
+type View = 'forest' | 'understory' | 'clearings' | 'underground' | 'search'
 
 export default function App() {
   // No Settings/token entry yet (deferred — see plan) — demo mode is what
@@ -200,6 +201,7 @@ export default function App() {
             { value: 'forest', label: 'Forest' },
             { value: 'clearings', label: 'Clearings' },
             { value: 'underground', label: 'Underground' },
+            { value: 'search', label: 'Search' },
           ]}
         />
       </header>
@@ -243,7 +245,7 @@ export default function App() {
             onMerge={handleMerge}
             onDissolve={handleDissolve}
           />
-        ) : (
+        ) : view === 'underground' ? (
           <UndergroundView
             things={things}
             paths={paths}
@@ -251,6 +253,8 @@ export default function App() {
             onEditWhy={handleEditPathWhy}
             onRemove={handleRemovePath}
           />
+        ) : (
+          <SearchView things={things} />
         )}
       </main>
     </div>
