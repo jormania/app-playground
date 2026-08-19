@@ -45,6 +45,13 @@ export function SettingsView({ config, onChange }: SettingsViewProps) {
 
   return (
     <div className={styles.wrap}>
+      {/* A PWA installed from the home screen never passes index.html's app
+       *  card, so this is the only route back to the guide once installed —
+       *  same reasoning as Fit Check's Settings. */}
+      <a className={styles.guideLink} href="/silva-guide.html" target="_blank" rel="noopener noreferrer">
+        How Silva works — a short guide
+      </a>
+
       <section className={styles.section}>
         <h4 className={styles.sectionTitle}>Notion</h4>
         <p className={styles.sectionHint}>

@@ -52,6 +52,7 @@ export const APPS = [
       "Built on the shared design system; a Notion-backed data model with demo mode fully playable today",
     ],
     file: "silva-react.html",
+    guide: "silva-guide.html",
   },
   {
     emoji: "🧩",
