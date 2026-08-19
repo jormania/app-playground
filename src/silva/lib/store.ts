@@ -124,6 +124,19 @@ export class SilvaStore {
     return !this.token
   }
 
+  /** A harmless read against the Things database — enough to tell a real
+   *  token/workspace from a typo without creating or changing anything. */
+  async testConnection(): Promise<{ ok: boolean; message: string }> {
+    if (!this.token) return { ok: false, message: 'Enter a Notion token first.' }
+    if (!this.thingsDbId) return { ok: false, message: 'No Things database configured.' }
+    try {
+      await this.request(`databases/${this.thingsDbId}`, 'GET')
+      return { ok: true, message: 'Connected — Silva can read and write your Notion databases.' }
+    } catch (e) {
+      return { ok: false, message: e instanceof SilvaStoreError ? e.message : 'Could not connect.' }
+    }
+  }
+
   private async request(path: string, method: string, body?: unknown): Promise<Record<string, unknown>> {
     const res = await fetch(PROXY_URL, {
       method: 'POST',

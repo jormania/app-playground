@@ -22,6 +22,7 @@ const KIND_LABEL: Record<Provocation['kind'], string> = {
   'blind-pairing': 'Two things, side by side',
   'near-neighbours': 'These grew near each other',
   'clearing-forming': 'A clearing may be forming',
+  tension: 'These may pull in different directions',
 }
 
 /** The app's only voice (SILVA.md "Provocations") — places things beside
@@ -56,7 +57,7 @@ export function ProvocationBanner({ provocation, onDismiss, onAcceptPair, onAcce
         </>
       )}
 
-      {(provocation.kind === 'blind-pairing' || provocation.kind === 'near-neighbours') && (
+      {(provocation.kind === 'blind-pairing' || provocation.kind === 'near-neighbours' || provocation.kind === 'tension') && (
         <div className={styles.pair}>
           <p className={styles.body}>{summarize(provocation.a)}</p>
           <p className={styles.body}>{summarize(provocation.b)}</p>
@@ -69,7 +70,7 @@ export function ProvocationBanner({ provocation, onDismiss, onAcceptPair, onAcce
         </ul>
       )}
 
-      {respondingWhy && (provocation.kind === 'blind-pairing' || provocation.kind === 'near-neighbours') ? (
+      {respondingWhy && (provocation.kind === 'blind-pairing' || provocation.kind === 'near-neighbours' || provocation.kind === 'tension') ? (
         <div className={styles.respond}>
           <Field
             label="What did you see between them?"
@@ -109,11 +110,11 @@ export function ProvocationBanner({ provocation, onDismiss, onAcceptPair, onAcce
       ) : (
         <div className={styles.actions}>
           <Button size="sm" variant="ghost" onClick={onDismiss}>
-            {provocation.kind === 'blind-pairing' || provocation.kind === 'near-neighbours' || provocation.kind === 'clearing-forming'
+            {provocation.kind === 'blind-pairing' || provocation.kind === 'near-neighbours' || provocation.kind === 'tension' || provocation.kind === 'clearing-forming'
               ? 'Not really'
               : 'Dismiss'}
           </Button>
-          {(provocation.kind === 'blind-pairing' || provocation.kind === 'near-neighbours') && (
+          {(provocation.kind === 'blind-pairing' || provocation.kind === 'near-neighbours' || provocation.kind === 'tension') && (
             <Button size="sm" onClick={() => setRespondingWhy(true)}>I see it too</Button>
           )}
           {provocation.kind === 'clearing-forming' && (

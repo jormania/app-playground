@@ -52,6 +52,14 @@ describe('provocationKey', () => {
       provocationKey({ kind: 'long-unvisited', thing: t }),
     )
   })
+
+  it('is order-independent for tension', () => {
+    const a = thing({ id: 'a' })
+    const b = thing({ id: 'b' })
+    expect(provocationKey({ kind: 'tension', a, b })).toBe(
+      provocationKey({ kind: 'tension', a: b, b: a }),
+    )
+  })
 })
 
 describe('pickProvocation — silence and basic eligibility', () => {
@@ -216,6 +224,69 @@ describe('pickProvocation — near-neighbours (embeddings-only, no model)', () =
         today: TODAY, random: () => i / 10,
       })
       expect(result?.kind).not.toBe('near-neighbours')
+    }
+  })
+})
+
+describe('pickProvocation — tension (only eligible with tensionEnabled)', () => {
+  // cosine ≈ 0.37 — inside the tension band, below the near-neighbours bar.
+  const bandVectors = new Map([
+    ['a', new Float32Array([1, 0])],
+    ['b', new Float32Array([0.4, 1])],
+  ])
+
+  it('is never proposed when tensionEnabled is left at its default (false)', () => {
+    const a = thing({ id: 'a' })
+    const b = thing({ id: 'b' })
+    for (let i = 0; i < 10; i++) {
+      const result = pickProvocation({
+        things: [a, b], loci: [], paths: [], vectorsById: bandVectors, dismissed: new Set(),
+        today: TODAY, random: () => i / 10,
+      })
+      expect(result?.kind).not.toBe('tension')
+    }
+  })
+
+  it('is eligible once tensionEnabled is true and similarity is in-band', () => {
+    const a = thing({ id: 'a' })
+    const b = thing({ id: 'b' })
+    const result = pickProvocation({
+      things: [a, b], loci: [], paths: [], vectorsById: bandVectors, dismissed: new Set(),
+      today: TODAY, random: () => 0.99, tensionEnabled: true,
+      // byKind = [shuffle, blind-pairing, tension] — last slot
+    })
+    expect(result?.kind).toBe('tension')
+    if (result?.kind === 'tension') {
+      expect([result.a.id, result.b.id].sort()).toEqual(['a', 'b'])
+    }
+  })
+
+  it('is never proposed above the near-neighbours bar even with tensionEnabled', () => {
+    const a = thing({ id: 'a' })
+    const b = thing({ id: 'b' })
+    const closeVectors = new Map([
+      ['a', new Float32Array([1, 0])],
+      ['b', new Float32Array([0.99, 0.14])],
+    ])
+    for (let i = 0; i < 10; i++) {
+      const result = pickProvocation({
+        things: [a, b], loci: [], paths: [], vectorsById: closeVectors, dismissed: new Set(),
+        today: TODAY, random: () => i / 10, tensionEnabled: true,
+      })
+      expect(result?.kind).not.toBe('tension')
+    }
+  })
+
+  it('is excluded once the pair is already connected by a real Path', () => {
+    const a = thing({ id: 'a' })
+    const b = thing({ id: 'b' })
+    const connectingPath = path({ fromId: 'a', toId: 'b' })
+    for (let i = 0; i < 10; i++) {
+      const result = pickProvocation({
+        things: [a, b], loci: [], paths: [connectingPath], vectorsById: bandVectors, dismissed: new Set(),
+        today: TODAY, random: () => i / 10, tensionEnabled: true,
+      })
+      expect(result?.kind).not.toBe('tension')
     }
   })
 })

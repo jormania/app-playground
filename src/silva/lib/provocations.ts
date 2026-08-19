@@ -5,12 +5,18 @@
  * data that already exists — there's no Notion database for a
  * provocation itself.
  *
- * Tension (the one kind needing a live Anthropic call) is deferred — see
- * project_silva-build-plan memory. This module covers the six kinds that
- * need no key and no network: four deterministic, two mycorrhizal
- * (embeddings-only, never triggering the model to load — see
- * lib/vectorCache.ts and App.tsx, which only ever *peek* an
- * already-cached vector here).
+ * Six kinds need no key and no network: four deterministic, two
+ * mycorrhizal (embeddings-only, never triggering the model to load — see
+ * lib/vectorCache.ts and App.tsx, which only ever *peek* an already-cached
+ * vector here). The seventh, Tension, is "embeddings + model" per
+ * SILVA.md: `gatherTension` below only narrows candidates to a similarity
+ * band (topically related, not near-identical) — confirming an actual
+ * contradiction is a live Anthropic call, made once, only on whichever
+ * single candidate this module ends up picking, by lib/tension.ts's
+ * `confirmTension` (called by the caller, never from inside this module,
+ * which stays fully synchronous and key-agnostic). Tension is only ever
+ * eligible when the caller passes `tensionEnabled: true` — i.e. only once
+ * a real Anthropic key exists (App.tsx gates this on Settings).
  */
 
 import type { Thing } from './notion'
@@ -26,6 +32,7 @@ export type ProvocationKind =
   | 'blind-pairing'
   | 'near-neighbours'
   | 'clearing-forming'
+  | 'tension'
 
 export type Provocation =
   | { kind: 'shuffle'; thing: Thing }
@@ -34,6 +41,7 @@ export type Provocation =
   | { kind: 'blind-pairing'; a: Thing; b: Thing }
   | { kind: 'near-neighbours'; a: Thing; b: Thing; similarity: number }
   | { kind: 'clearing-forming'; things: Thing[] }
+  | { kind: 'tension'; a: Thing; b: Thing }
 
 // A thing kept this long ago without a real "last visited" signal (Silva
 // doesn't track viewing history) is treated as unvisited — an approximation
@@ -44,6 +52,12 @@ export const LONG_UNVISITED_DAYS = 180
 export const NEAR_NEIGHBOUR_THRESHOLD = 0.55
 export const CLEARING_FORMING_THRESHOLD = 0.5
 export const CLEARING_FORMING_MIN_SIZE = 4
+// A candidate band below the near-neighbours bar: topically related enough
+// that a contradiction would mean something, not so similar they're just
+// agreeing (that's near-neighbours' territory). This alone is only a
+// candidate pool — see this module's header comment.
+export const TENSION_MIN_SIMILARITY = 0.3
+export const TENSION_MAX_SIMILARITY = NEAR_NEIGHBOUR_THRESHOLD
 
 function keptThings(things: Thing[]): Thing[] {
   return things.filter((t) => t.state === 'Kept')
@@ -76,6 +90,8 @@ export function provocationKey(p: Provocation): string {
       return `near-neighbours:${pairKey(p.a.id, p.b.id)}`
     case 'clearing-forming':
       return `clearing-forming:${p.things.map((t) => t.id).sort().join(',')}`
+    case 'tension':
+      return `tension:${pairKey(p.a.id, p.b.id)}`
   }
 }
 
@@ -143,6 +159,20 @@ function gatherClearingForming(things: Thing[], vectorsById: Map<string, Float32
   return out
 }
 
+function gatherTension(things: Thing[], paths: Path[], vectorsById: Map<string, Float32Array>): Provocation[] {
+  const kept = keptThings(things).filter((t) => vectorsById.has(t.id))
+  const out: Provocation[] = []
+  for (let i = 0; i < kept.length; i++) {
+    for (let j = i + 1; j < kept.length; j++) {
+      if (isConnected(kept[i].id, kept[j].id, paths)) continue
+      const similarity = cosineSimilarity(vectorsById.get(kept[i].id)!, vectorsById.get(kept[j].id)!)
+      if (similarity < TENSION_MIN_SIMILARITY || similarity >= TENSION_MAX_SIMILARITY) continue
+      out.push({ kind: 'tension', a: kept[i], b: kept[j] })
+    }
+  }
+  return out
+}
+
 export interface PickProvocationInput {
   things: Thing[]
   loci: Locus[]
@@ -151,6 +181,10 @@ export interface PickProvocationInput {
   dismissed: Set<string>
   today?: Date
   random?: () => number
+  /** Only eligible once a real Anthropic key exists — see this module's
+   *  header comment. Defaults to false so every existing caller/test
+   *  keeps working unchanged. */
+  tensionEnabled?: boolean
 }
 
 /**
@@ -167,6 +201,7 @@ export function pickProvocation({
   dismissed,
   today = new Date(),
   random = Math.random,
+  tensionEnabled = false,
 }: PickProvocationInput): Provocation | null {
   const byKind = [
     gatherShuffle(things),
@@ -175,6 +210,7 @@ export function pickProvocation({
     gatherBlindPairing(things, paths),
     gatherNearNeighbours(things, paths, vectorsById),
     gatherClearingForming(things, vectorsById),
+    ...(tensionEnabled ? [gatherTension(things, paths, vectorsById)] : []),
   ].map((candidates) => candidates.filter((p) => !dismissed.has(provocationKey(p))))
     .filter((candidates) => candidates.length > 0)
 

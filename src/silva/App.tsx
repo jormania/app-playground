@@ -15,18 +15,32 @@ import { ClearingsView } from './components/ClearingsView'
 import { UndergroundView } from './components/UndergroundView'
 import { SearchView } from './components/SearchView'
 import { ProvocationBanner } from './components/ProvocationBanner'
+import { SettingsView } from './components/SettingsView'
 import { pickProvocation, provocationKey, type Provocation } from './lib/provocations'
 import { readDismissed, addDismissed, hasShownThisSession, markShownThisSession } from './lib/provocationDismissals'
 import { peekVectors } from './lib/vectorCache'
+import { loadSilvaConfig, saveSilvaConfig, type SilvaConfig } from './lib/settingsConfig'
+import { confirmTension } from './lib/tension'
 import styles from './App.module.css'
 
-type View = 'forest' | 'understory' | 'clearings' | 'underground' | 'search'
+type View = 'forest' | 'understory' | 'clearings' | 'underground' | 'search' | 'settings'
 
 export default function App() {
-  // No Settings/token entry yet (deferred — see plan) — demo mode is what
-  // actually runs this session. lib/store.ts already supports a live token,
-  // ready for whichever later session adds the UI to enter one.
-  const store = useMemo(() => new SilvaStore(''), [])
+  // Settings holds the Notion token (and Anthropic key) on this device —
+  // store.ts already supported a live token since Session 3, this just
+  // wires it to a real UI. Re-deriving `store` when the token changes
+  // re-triggers the load effect below for free (it already depends on
+  // [store]) — a fresh SilvaStore instance is a new effect dependency.
+  const [config, setConfig] = useState<SilvaConfig>(() => loadSilvaConfig())
+  const store = useMemo(() => new SilvaStore(config.notionToken), [config.notionToken])
+
+  function handleConfigChange(patch: Partial<SilvaConfig>) {
+    setConfig((prev) => {
+      const next = { ...prev, ...patch }
+      saveSilvaConfig(next)
+      return next
+    })
+  }
   const [things, setThings] = useState<Thing[]>([])
   const [sources, setSources] = useState<Source[]>([])
   const [loci, setLoci] = useState<Locus[]>([])
@@ -81,10 +95,22 @@ export default function App() {
             paths: loadedPaths,
             vectorsById,
             dismissed: readDismissed(),
+            tensionEnabled: Boolean(config.anthropicKey),
           })
           if (!cancelled && picked) {
             markShownThisSession()
-            setProvocation(picked)
+            // Tension is the one kind gatherTension only pre-filters by
+            // similarity band — a real contradiction still needs the model
+            // to confirm it, once, only for this single chosen pair (see
+            // lib/provocations.ts's header comment). A "no" or any failure
+            // just means nothing is shown this session, same as if no
+            // provocation had been eligible at all — never a wrong nudge.
+            if (picked.kind === 'tension') {
+              const confirmed = await confirmTension(config.anthropicKey, picked.a, picked.b)
+              if (!cancelled && confirmed) setProvocation(picked)
+            } else {
+              setProvocation(picked)
+            }
           }
         }
       } catch (e) {
@@ -98,7 +124,7 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [store])
+  }, [store, config.anthropicKey])
 
   async function handleKeep(id: string) {
     const today = new Date().toISOString().slice(0, 10)
@@ -252,6 +278,7 @@ export default function App() {
             { value: 'clearings', label: 'Clearings' },
             { value: 'underground', label: 'Underground' },
             { value: 'search', label: 'Search' },
+            { value: 'settings', label: 'Settings' },
           ]}
         />
       </header>
@@ -313,8 +340,10 @@ export default function App() {
             onEditWhy={handleEditPathWhy}
             onRemove={handleRemovePath}
           />
-        ) : (
+        ) : view === 'search' ? (
           <SearchView things={things} />
+        ) : (
+          <SettingsView config={config} onChange={handleConfigChange} />
         )}
       </main>
     </div>
