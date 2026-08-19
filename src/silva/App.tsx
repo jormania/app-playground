@@ -14,6 +14,11 @@ import { KoboImportPanel } from './components/KoboImportPanel'
 import { ClearingsView } from './components/ClearingsView'
 import { UndergroundView } from './components/UndergroundView'
 import { SearchView } from './components/SearchView'
+import { ProvocationBanner } from './components/ProvocationBanner'
+import { pickProvocation, provocationKey, type Provocation } from './lib/provocations'
+import { readDismissed, addDismissed, hasShownThisSession, markShownThisSession } from './lib/provocationDismissals'
+import { getVector } from './lib/vectorCache'
+import { contentHash } from './lib/embeddings'
 import styles from './App.module.css'
 
 type View = 'forest' | 'understory' | 'clearings' | 'underground' | 'search'
@@ -31,6 +36,7 @@ export default function App() {
   const [error, setError] = useState('')
   const [view, setView] = useState<View>('understory')
   const [importOpen, setImportOpen] = useState(false)
+  const [provocation, setProvocation] = useState<Provocation | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -61,6 +67,35 @@ export default function App() {
         })
 
         if (!cancelled) setThings(settled)
+
+        // At most one provocation per session (SILVA.md's anti-feed rule) —
+        // computed once here, never reconsidered even if vectors become
+        // available later (e.g. a visit to Search). Only *peeks* whatever's
+        // already cached in IndexedDB — never calls embed(), so this never
+        // triggers the ~25 MB model to load on its own.
+        if (!cancelled && !hasShownThisSession()) {
+          const keptThings = settled.filter((t) => t.state === 'Kept')
+          const vectorEntries = await Promise.all(
+            keptThings.map(async (t) => {
+              const vector = await getVector(t.id, contentHash(t.body))
+              return vector ? ([t.id, vector] as const) : null
+            }),
+          )
+          const vectorsById = new Map(
+            vectorEntries.filter((e): e is readonly [string, Float32Array] => e !== null),
+          )
+          const picked = pickProvocation({
+            things: settled,
+            loci: loadedLoci,
+            paths: loadedPaths,
+            vectorsById,
+            dismissed: readDismissed(),
+          })
+          if (!cancelled && picked) {
+            markShownThisSession()
+            setProvocation(picked)
+          }
+        }
       } catch (e) {
         if (!cancelled) setError((e as Error).message || 'Could not load the forest.')
       } finally {
@@ -189,6 +224,30 @@ export default function App() {
     setPaths((prev) => prev.filter((p) => p.id !== pathId))
   }
 
+  function handleDismissProvocation() {
+    if (!provocation) return
+    addDismissed(provocationKey(provocation))
+    setProvocation(null)
+  }
+
+  async function handleAcceptProvocationPair(a: Thing, b: Thing, why: string) {
+    const path = await store.createPath({
+      fromId: a.id,
+      toId: b.id,
+      fromHandle: a.handle,
+      toHandle: b.handle,
+      why,
+      origin: 'Accepted',
+    })
+    setPaths((prev) => [path, ...prev])
+    setProvocation(null)
+  }
+
+  async function handleAcceptClearingForming(clusterThings: Thing[], name: string) {
+    await handleCoin(name, '', clusterThings.map((t) => t.id))
+    setProvocation(null)
+  }
+
   return (
     <div className={styles.app}>
       <header className={styles.header}>
@@ -207,6 +266,15 @@ export default function App() {
       </header>
 
       {error && <p className={styles.error}>{error}</p>}
+
+      {provocation && (
+        <ProvocationBanner
+          provocation={provocation}
+          onDismiss={handleDismissProvocation}
+          onAcceptPair={handleAcceptProvocationPair}
+          onAcceptClearingForming={handleAcceptClearingForming}
+        />
+      )}
 
       <main className={styles.main}>
         {loading ? (

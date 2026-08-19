@@ -65,6 +65,10 @@ export interface NewPathInput {
   fromHandle: string
   toHandle: string
   why: string
+  /** Defaults to 'Yours' — pass 'Accepted' only when this path is being
+   *  created from accepting a provocation (SILVA.md: "Accepted (you
+   *  accepted a provocation)" — never any other way). */
+  origin?: Path['origin']
 }
 
 /** A private, session-only copy — demo writes must never mutate the shared
@@ -335,9 +339,8 @@ export class SilvaStore {
     return pages.map((page) => toPath(page as { id: string; properties: Record<string, unknown> }))
   }
 
-  /** A path always carries its Why, and is always 'Yours' from this UI —
-   *  'Accepted' only ever comes from accepting a provocation (build-order
-   *  step 9), never from making a path by hand. */
+  /** A path always carries its Why. Defaults to `origin: 'Yours'` — pass
+   *  'Accepted' only when this is the result of accepting a provocation. */
   async createPath(input: NewPathInput): Promise<Path> {
     const draft: Omit<Path, 'id'> = {
       label: deriveLabel(input.fromHandle, input.toHandle),
@@ -345,7 +348,7 @@ export class SilvaStore {
       toId: input.toId,
       why: input.why,
       made: new Date().toISOString().slice(0, 10),
-      origin: 'Yours',
+      origin: input.origin ?? 'Yours',
     }
 
     if (this.useDemo()) {
