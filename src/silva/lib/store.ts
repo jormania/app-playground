@@ -25,10 +25,18 @@ const UPLOAD_URL = '/api/notion-upload'
 
 // Recorded here per SILVA.md ("not secrets") — the owner's live databases,
 // created in Silva build Session 2. See project_silva-build-plan memory.
-export const DEFAULT_SOURCES_DATABASE_ID = '2e675b30-d904-4c25-a62e-cd419b6a2132'
-export const DEFAULT_LOCI_DATABASE_ID = '75dd28ce-e739-497e-8bb7-fc212d211255'
-export const DEFAULT_THINGS_DATABASE_ID = '83e42291-bbd7-447d-a8e3-eb58221a9b5b'
-export const DEFAULT_PATHS_DATABASE_ID = '5d8fcd20-ad7d-4df4-a71a-7d9f29e605c3'
+//
+// These are the DATABASE ids (the container Notion object), not the DATA
+// SOURCE ids inside them — Notion split the two apart, and the classic API
+// version this app is pinned to (Notion-Version 2022-06-28,
+// `databases/{id}` and `databases/{id}/query`) needs the container id.
+// A data-source id looks identical (same UUID shape) but 404s here with
+// "Could not find database with ID" — that was a real bug, not a sharing
+// problem: these four constants originally held the data-source ids.
+export const DEFAULT_SOURCES_DATABASE_ID = '9b78aa55-b216-4565-b924-2bc68b2b083b'
+export const DEFAULT_LOCI_DATABASE_ID = '8483aa21-cf08-4203-b32d-8cc2ab8a87f3'
+export const DEFAULT_THINGS_DATABASE_ID = 'cf9d0865-e425-4928-ae8b-a7896e31dac1'
+export const DEFAULT_PATHS_DATABASE_ID = '4cda3453-8ca0-407b-aa70-f08410b4b79b'
 
 export class SilvaStoreError extends Error {
   status: number
