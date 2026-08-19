@@ -5,9 +5,9 @@ import type { Locus } from '../lib/loci'
 import type { Path } from '../lib/paths'
 import { UndergroundGraph } from './UndergroundGraph'
 import { ExpandableText } from './ExpandableText'
-import styles from './UndergroundView.module.css'
+import styles from './PathsView.module.css'
 
-export interface UndergroundViewProps {
+export interface PathsViewProps {
   things: Thing[]
   loci: Locus[]
   paths: Path[]
@@ -34,11 +34,21 @@ function summarize(thing: Thing | undefined, max = 60): string {
 // body into the list by default.
 const CONNECTION_PREVIEW_LENGTH = 160
 
-/** Underground — the connections you've made (SILVA.md "Views"). The graph
- *  (solid Paths, faint unclickable mycorrhiza, clustered by locus) is the
- *  primary view; the make/edit/remove tools below it are unchanged from
- *  Session 6. */
-export function UndergroundView({
+/** Paths — the connections you've made (SILVA.md calls this view "the
+ *  Underground"). The graph (solid paths, faint unclickable mycorrhiza,
+ *  clustered by locus) sits above the make/edit/remove tools.
+ *
+ *  ── On the name ─────────────────────────────────────────────────────────
+ *  SILVA.md names this view "Underground", and in prose that is the better
+ *  word — it is the layer beneath the forest floor, and it is where the
+ *  oxblood mycorrhiza lives. But as a *navigation label* it sat one tab away
+ *  from "Understory": same prefix, near-identical length, and at the tab
+ *  bar's 9.5px small caps the two were genuinely hard to tell apart. So the
+ *  view is labelled "Paths" — which is also exactly the Notion database it
+ *  reads — and "underground" survives throughout the code and the guide as
+ *  the name of the latent layer itself, which is the sense SILVA.md
+ *  actually needs it for. */
+export function PathsView({
   things,
   loci,
   paths,
@@ -47,7 +57,7 @@ export function UndergroundView({
   onEditWhy,
   onRemove,
   showGraph = true,
-}: UndergroundViewProps) {
+}: PathsViewProps) {
   const [making, setMaking] = useState(false)
   const kept = things.filter((t) => t.state === 'Kept')
   const byId = new Map(things.map((t) => [t.id, t]))

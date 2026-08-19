@@ -185,3 +185,14 @@
     stroke-dashoffset: 0 !important;
   }
 }
+
+/* Nodes are keyboard-reachable buttons, so they need a visible focus state —
+   a ring drawn in the stroke, since an outline on an SVG child is clipped
+   by the viewBox in several browsers. */
+.node:focus-visible,
+.nodeSelected:focus-visible,
+.nodeDim:focus-visible {
+  outline: none;
+  stroke: var(--color-accent);
+  stroke-width: 3;
+}

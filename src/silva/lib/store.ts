@@ -16,8 +16,14 @@ import { toLocus, toNotionLocusProps, patchLocusProps, type Locus } from './loci
 import { toPath, toNotionPathProps, patchPathProps, deriveLabel, type Path } from './paths'
 import { DEMO_THINGS, DEMO_SOURCES, DEMO_LOCI, DEMO_PATHS } from './fixtures'
 import { readJson, writeJson, removeJson } from '../../shared/storage'
+import { createRequestQueue, type Enqueue } from './requestQueue'
 
 const PROXY_URL = '/api/notion'
+
+/** One queue for the whole module, not one per store: the limits it exists
+ *  to respect are per-IP, so two SilvaStore instances (a live one and the
+ *  one Settings builds to test a connection) must share a single budget. */
+const notionQueue: Enqueue = createRequestQueue()
 // Notion's file-upload endpoints postdate the classic 2022-06-28 version the
 // rest of Silva is pinned to. api/notion.js allows this one explicitly; only
 // the upload calls below pass it.
@@ -41,10 +47,14 @@ export const DEFAULT_PATHS_DATABASE_ID = '4cda3453-8ca0-407b-aa70-f08410b4b79b'
 
 export class SilvaStoreError extends Error {
   status: number
-  constructor(message: string, status: number) {
+  /** From a 429's `Retry-After`, when the server named one — read by
+   *  lib/requestQueue.ts's backoff rather than guessing. */
+  retryAfterMs?: number
+  constructor(message: string, status: number, retryAfterMs?: number) {
     super(message)
     this.name = 'SilvaStoreError'
     this.status = status
+    this.retryAfterMs = retryAfterMs
   }
 }
 
@@ -214,16 +224,26 @@ export class SilvaStore {
     body?: unknown,
     version?: string,
   ): Promise<Record<string, unknown>> {
-    const res = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-notion-token': this.token },
-      body: JSON.stringify({ path, method, body, version }),
+    // Paced and retried — see lib/requestQueue.ts. A Kobo import, a clearing
+    // being dissolved and a season's expiry all issue writes in bursts that
+    // otherwise blow straight past the relay's 20-per-10s limit.
+    return notionQueue(async () => {
+      const res = await fetch(PROXY_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-notion-token': this.token },
+        body: JSON.stringify({ path, method, body, version }),
+      })
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}) as { message?: string })
+        const retryAfter = Number(res.headers.get('retry-after'))
+        throw new SilvaStoreError(
+          payload.message || `Notion API error ${res.status}`,
+          res.status,
+          Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : undefined,
+        )
+      }
+      return res.json().catch(() => ({}))
     })
-    if (!res.ok) {
-      const payload = await res.json().catch(() => ({}) as { message?: string })
-      throw new SilvaStoreError(payload.message || `Notion API error ${res.status}`, res.status)
-    }
-    return res.json().catch(() => ({}))
   }
 
   private async fetchAllPages(dbId: string): Promise<Record<string, unknown>[]> {

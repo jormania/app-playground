@@ -320,7 +320,7 @@ export function KoboImportPanel({ store, existingKoboBookmarkIds, onImported, on
             ))}
           </ul>
           <Button onClick={handleImport} disabled={importableGroups.length === 0}>
-            Import into the understory
+            Import into the nursery
           </Button>
         </>
       )}
@@ -336,7 +336,7 @@ export function KoboImportPanel({ store, existingKoboBookmarkIds, onImported, on
       {phase === 'done' && (
         <p className={styles.status}>
           {importedCount > 0
-            ? `Imported ${importedCount} thing${importedCount === 1 ? '' : 's'} into the understory.`
+            ? `Imported ${importedCount} thing${importedCount === 1 ? '' : 's'} into the nursery.`
             : 'Nothing selected to import.'}
         </p>
       )}

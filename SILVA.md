@@ -129,7 +129,7 @@ Two kinds of connection, and the distinction is the heart of the app.
 A path is a record of your thinking, and it is the most valuable data in Silva.
 The why is not optional advice — it is a hard gate in the UI. `MakeForm` and
 the edit form on an existing path both refuse to save with an empty why
-(`UndergroundView.tsx`'s `canMake`/`disabled` checks). A path without its
+(`PathsView.tsx`'s `canMake`/`disabled` checks). A path without its
 reason is precisely the artefact this whole distinction exists to avoid.
 
 **Mycorrhiza** is the latent affinity between things, computed by the embedding
@@ -219,7 +219,11 @@ threads) and Journal of Delights (three ways to read) already establish here.
   reading something cannot reshuffle what is left.
 - **Clearings** — the loci you've coined, each a small collection with your note
   on what you meant by it. Empty clearings are allowed and meaningful.
-- **Underground** — the connection view. Paths drawn solid; mycorrhiza only
+- **Underground** — the connection view, *labelled* **Paths** in the app
+  ("Underground" and "Understory" are near-indistinguishable as adjacent tab
+  labels; "Paths" is also exactly the database it reads). The word still
+  names the latent layer itself, throughout the code and the guide.
+  Paths drawn solid; mycorrhiza only
   visible while you hold the view open, faint, unclickable until offered as a
   provocation. This is the graph layer, and it exists from v1 because loci give
   it a stable node set.
@@ -231,10 +235,30 @@ threads) and Journal of Delights (three ways to read) already establish here.
   with one route onward to writing why. Bounded by construction, so it needs no
   layout algorithm and does not care how large the forest gets — which the
   global ring layout very much does.
-- **The understory** — unkept arrivals, with their remaining season shown as a
-  fade rather than a number.
+- **The understory** — unkept arrivals, *labelled* **Nursery** in the app,
+  with their remaining season shown as a fade rather than a number.
 
-Plus a search field that does lexical *and* semantic matching in one box
+### On the labels, and why they differ from these names
+
+Four surfaces carry a different word in the interface than in this document,
+and the reason is the same in each case: this document is prose, where the
+ecological metaphor can breathe, while a tab bar is six words at 9.5px that
+have to be told apart at a glance.
+
+| Here | In the app | Why |
+|---|---|---|
+| Understory | **Nursery** | "Understory" and "Underground" sat one tab apart: same prefix, near-identical length, indistinguishable in small caps. A forest nursery is also exactly what this is — where seedlings wait before being planted out, or not. |
+| Underground | **Paths** | The other half of that collision. It is also precisely the database it reads. "Underground" still names the latent mycorrhizal layer everywhere, which is the sense this document needs it for. |
+| Search | **Forage** | "Search" is the PKM word this app is defined against. Foraging is deliberate looking *within a place you already know* — which is what this surface is for, and why it isn't the point of the app. |
+| Settings | **Hearth** | The household centre of a *silva rerum*, which was a family book before it was anything else. |
+
+The **stored** vocabulary is untouched: `State` is still `Understory · Kept ·
+Released` in Notion, and the four databases keep their names. The mapping
+lives only at the labels.
+
+Plus **Forage** (labelled that rather than "Search", which is the PKM word
+this app is defined against — and the field's own placeholder is already "I
+remember something about…"): one box, lexical *and* semantic matching
 ("I remember something about people becoming what they repeatedly do").
 
 ## Intake
@@ -435,7 +459,7 @@ properties off `Things` and clutter every row in Notion for no gain, since Silva
 resolves paths by querying `Paths` directly.
 
 `Origin` is descriptive only — never scored, never used to rank. It exists so
-the Underground view can distinguish a path you drew unprompted from one the
+the Paths view can distinguish a path you drew unprompted from one the
 mycorrhiza suggested and you agreed with.
 
 The pure Notion↔app mapping lives in `lib/notion.js` (`toThing` / `toSource` /
@@ -537,7 +561,7 @@ device.
 4. Understory: intake, keep/release, season expiry.
 5. Kobo import: `sql.js` parse, fixtures, book matching, dedupe.
 6. Loci: coin, merge, dissolve. Clearings view.
-7. Paths: make, annotate. Underground view (paths only).
+7. Paths: make, annotate. The Paths view (paths only).
 8. Embeddings: local model, IndexedDB cache, semantic search.
 9. Provocations: deterministic kinds first, then mycorrhizal, then Tension.
 10. PWA, `watchInstalled`, apps-registry entry at the top, Cabinet checklist,

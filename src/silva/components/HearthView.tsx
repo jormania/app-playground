@@ -4,9 +4,9 @@ import { Button, Field, SegmentedControl, SettingsToggle, ConfirmModal } from '.
 import { SilvaStore, resetDemoThings } from '../lib/store'
 import type { SilvaConfig } from '../lib/settingsConfig'
 import type { ThemeChoice } from '../lib/theme'
-import styles from './SettingsView.module.css'
+import styles from './HearthView.module.css'
 
-export interface SettingsViewProps {
+export interface HearthViewProps {
   config: SilvaConfig
   onChange: (patch: Partial<SilvaConfig>) => void
   /** Live progress of the background embedding pass, or null when idle. */
@@ -36,7 +36,7 @@ function commitOnBlur(current: string, onCommit: (value: string) => void) {
  *  build plan deferred both; this is that session). Silva's four database
  *  ids are fixed to the owner's own live databases (see store.ts's
  *  DEFAULT_*_DATABASE_ID) — there's nothing else to configure per device. */
-export function SettingsView({ config, onChange, indexing = null, themeChoice, onThemeChange }: SettingsViewProps) {
+export function HearthView({ config, onChange, indexing = null, themeChoice, onThemeChange }: HearthViewProps) {
   const [testing, setTesting] = useState(false)
   const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null)
   const [confirmingReset, setConfirmingReset] = useState(false)
@@ -78,8 +78,9 @@ export function SettingsView({ config, onChange, indexing = null, themeChoice, o
       <section className={styles.section}>
         <h4 className={styles.sectionTitle}>Notion</h4>
         <p className={styles.sectionHint}>
-          Stored on this device only, sent straight to Notion with each request. Leave
-          empty to keep exploring the demo forest.
+          Where your forest is kept for good. The token stays on this device and goes
+          straight to Notion with each request. Leave it empty to keep walking the demo
+          forest instead.
         </p>
         <Field
           label="Notion token"
@@ -105,16 +106,16 @@ export function SettingsView({ config, onChange, indexing = null, themeChoice, o
        *  rather one specific piece stay out of the way, not because any of
        *  them are wrong at the sizes most forests start at. */}
       <section className={styles.section}>
-        <h4 className={styles.sectionTitle}>What's shown</h4>
+        <h4 className={styles.sectionTitle}>What you see</h4>
         <SettingsToggle
           label="Show the walk"
-          hint="The short stretch above the Forest's scroll, weighted toward what you haven't looked at. Off leaves just the scroll."
+          hint="The short stretch at the head of the Forest, weighted toward what you haven't looked at in a while. Off leaves the forest to be walked on your own."
           checked={config.showWalk}
           onChange={(e) => onChange({ showWalk: e.target.checked })}
         />
         <SettingsToggle
           label="Show the graph"
-          hint="The whole-forest visualisation in Underground. Off leaves the path list and the make-a-path form — paths themselves are unaffected."
+          hint="The whole forest drawn at once, at the head of Paths. Off leaves the list of paths you've walked and the form for walking a new one — the paths themselves are untouched."
           checked={config.showGraph}
           onChange={(e) => onChange({ showGraph: e.target.checked })}
         />
@@ -135,8 +136,8 @@ export function SettingsView({ config, onChange, indexing = null, themeChoice, o
         <h4 className={styles.sectionTitle}>The underground</h4>
         <p className={styles.sectionHint}>
           Lets Silva quietly notice which things grew near each other. This is what
-          draws the oxblood threads in the Underground, and what makes the provocations
-          that aren't just a coin flip — near neighbours, a clearing forming, a tension.
+          draws the oxblood threads through Paths, and what makes the provocations that
+          aren't just a coin flip — near neighbours, a clearing forming, a tension.
           Runs entirely on this device; nothing is ever sent anywhere.
         </p>
         <SettingsToggle
@@ -157,9 +158,9 @@ export function SettingsView({ config, onChange, indexing = null, themeChoice, o
       <section className={styles.section}>
         <h4 className={styles.sectionTitle}>Anthropic</h4>
         <p className={styles.sectionHint}>
-          Used for Tension — a provocation that needs a real judgment call, not just a
-          similarity score — and, if you turn it on below, transcribing photographed
-          pages. Every other provocation works without this.
+          Used for Tension — the one provocation that needs a real judgment call rather
+          than a similarity score — and, if you turn it on below, for reading the words
+          off a photographed page. Every other provocation works without this.
         </p>
         <Field
           label="Anthropic API key"

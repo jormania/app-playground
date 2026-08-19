@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, SegmentedControl } from '../ds'
+import { triggerHaptic } from '../shared/haptics'
 import { SilvaStore } from './lib/store'
 import { isExpired, todayIso } from './lib/understory'
 import type { Thing } from './lib/notion'
@@ -9,14 +10,14 @@ import { withoutLocus, withLocusReplaced } from './lib/loci'
 import type { Path } from './lib/paths'
 import { deriveLabel } from './lib/paths'
 import { ForestView } from './components/ForestView'
-import { UnderstoryView } from './components/UnderstoryView'
+import { NurseryView } from './components/NurseryView'
 import { IntakeField } from './components/IntakeField'
 import { KoboImportPanel } from './components/KoboImportPanel'
 import { ClearingsView } from './components/ClearingsView'
-import { UndergroundView } from './components/UndergroundView'
-import { SearchView } from './components/SearchView'
+import { PathsView } from './components/PathsView'
+import { ForageView } from './components/ForageView'
 import { ProvocationBanner } from './components/ProvocationBanner'
-import { SettingsView } from './components/SettingsView'
+import { HearthView } from './components/HearthView'
 import { Toasts, useToasts } from './components/Toasts'
 import { TabBar } from './components/TabBar'
 import { pickProvocation, provocationKey, type Provocation } from './lib/provocations'
@@ -27,7 +28,7 @@ import {
   recordProvocationOffered,
   thresholdCrossed,
 } from './lib/provocationThreshold'
-import { peekVectors } from './lib/vectorCache'
+import { peekVectors, pruneVectors } from './lib/vectorCache'
 import { readSeen, writeSeen, withSeen, prunedSeen, type SeenMap } from './lib/seen'
 import { parseSharedIntake, urlWithoutShare, type SharedIntake } from './lib/sharedIntake'
 import { putLocalPhoto, localImageRef } from './lib/photoStore'
@@ -40,18 +41,18 @@ import { resolveSource } from './lib/sourceCapture'
 import { loadThemeChoice, saveThemeChoice, watchTheme, type ThemeChoice } from './lib/theme'
 import styles from './App.module.css'
 
-type View = 'forest' | 'understory' | 'clearings' | 'underground' | 'search' | 'settings'
+type View = 'forest' | 'nursery' | 'clearings' | 'paths' | 'forage' | 'hearth'
 
 /** One list, two presentations: the segmented control on a desktop header and
  *  the bottom TabBar on a phone. The `value`s double as icon names in
  *  components/TabBar.tsx. */
 const VIEWS: { value: View; label: string }[] = [
   { value: 'forest', label: 'Forest' },
-  { value: 'understory', label: 'Understory' },
+  { value: 'nursery', label: 'Nursery' },
   { value: 'clearings', label: 'Clearings' },
-  { value: 'underground', label: 'Underground' },
-  { value: 'search', label: 'Search' },
-  { value: 'settings', label: 'Settings' },
+  { value: 'paths', label: 'Paths' },
+  { value: 'forage', label: 'Forage' },
+  { value: 'hearth', label: 'Hearth' },
 ]
 
 /** A collection snapshot, so a failed live write can put back exactly what
@@ -108,7 +109,7 @@ export default function App() {
   // A share opens on the understory, because that is where what you just
   // shared has landed — arriving on the Forest would hide it.
   const [view, setView] = useState<View>(() =>
-    typeof window !== 'undefined' && parseSharedIntake(window.location.search) ? 'understory' : 'forest',
+    typeof window !== 'undefined' && parseSharedIntake(window.location.search) ? 'nursery' : 'forest',
   )
   const [importOpen, setImportOpen] = useState(false)
   const [provocation, setProvocation] = useState<Provocation | null>(null)
@@ -191,29 +192,50 @@ export default function App() {
 
         // Season expiry: quietly release anything fully aged out of the
         // understory. No badge, no counter (SILVA.md "The understory").
-        // Best-effort per item — one row Notion refuses must not turn the
-        // whole load into "Could not load the forest", which is what an
-        // unguarded Promise.all did here before.
+        //
+        // Applied locally FIRST and written through afterwards, rather than
+        // awaited before the first paint. Expiry is a pure function of dates
+        // (`isExpired`), so the client already knows the answer and doesn't
+        // need the server to agree before rendering it — and waiting was
+        // costly in exactly the case that matters: coming back after months
+        // away, when a whole season has aged out at once. Those writes are
+        // now paced (lib/requestQueue.ts), so awaiting a few hundred of them
+        // would have held the app on "Walking into the forest…" for minutes.
         const expired = loaded.filter((thing) => isExpired(thing))
-        const releasedById = new Map<string, Thing>()
-        await Promise.all(
-          expired.map(async (thing) => {
-            try {
-              releasedById.set(thing.id, await store.updateThing(thing.id, { state: 'Released' }))
-            } catch {
-              // Left in the understory; it expires again on the next load.
-            }
-          }),
+        const expiredIds = new Set(expired.map((thing) => thing.id))
+        const settled = loaded.map((thing) =>
+          expiredIds.has(thing.id) ? { ...thing, state: 'Released' as const } : thing,
         )
-        const settled = loaded.map((thing) => releasedById.get(thing.id) ?? thing)
         if (cancelled) return
         setThings(settled)
         setLoading(false)
+
+        // Best-effort per item, in the background — one row Notion refuses
+        // must not turn the whole load into "Could not load the forest", and
+        // anything that fails simply expires again on the next load.
+        void Promise.all(
+          expired.map(async (thing) => {
+            try {
+              const released = await store.updateThing(thing.id, { state: 'Released' })
+              if (!cancelled) {
+                setThings((prev) => prev.map((t) => (t.id === released.id ? released : t)))
+              }
+            } catch {
+              // Stays Released locally for this session; retried next load.
+            }
+          }),
+        )
 
         // Reading history (lib/seen.ts) — local, derived, never in Notion.
         const loadedSeen = prunedSeen(await readSeen(), settled.map((t) => t.id))
         if (cancelled) return
         setSeen(loadedSeen)
+        // Cached vectors for things that no longer exist, dropped in the
+        // background. `pruneVectors` was written, tested and then never
+        // called from anywhere, so IndexedDB grew by ~1.5 KB per deleted
+        // thing forever. Deliberately not awaited — it is housekeeping, and
+        // nothing on screen depends on it.
+        void pruneVectors(settled.map((t) => t.id))
 
         // Whatever's already cached, so the graph and the picker have
         // something even when the indexer is switched off.
@@ -321,6 +343,10 @@ export default function App() {
   }, [])
 
   function handleKeep(id: string) {
+    // The one act SILVA.md calls "the field that means something" — it gets
+    // the affirmative pulse. Release gets the lighter one just below: both
+    // are decisions, but only one of them is a commitment.
+    triggerHaptic('success')
     const today = todayIso()
     const patch: Partial<Thing> = { state: 'Kept', kept: today }
     write(
@@ -334,6 +360,7 @@ export default function App() {
   }
 
   function handleRelease(id: string) {
+    triggerHaptic('light')
     const released = things.find((t) => t.id === id)
     write(
       () => setThings((prev) => prev.map((t) => (t.id === id ? { ...t, state: 'Released' } : t))),
@@ -346,11 +373,11 @@ export default function App() {
     // Releasing is the one action that takes something out of view without
     // asking first — so it's the one action that offers a way back.
     if (released) {
-      notify('Released.', { undo: () => handleReturnToUnderstory(id) })
+      notify('Released.', { undo: () => handleReturnToNursery(id) })
     }
   }
 
-  function handleReturnToUnderstory(id: string) {
+  function handleReturnToNursery(id: string) {
     const patch: Partial<Thing> = { state: 'Understory', kept: null }
     write(
       () => setThings((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t))),
@@ -458,7 +485,7 @@ export default function App() {
         const created = await store.createThing({ body, locator, sourceId: realSourceId })
         setThings((prev) => prev.map((t) => (t.id === draft.id ? created : t)))
       },
-      'That could not be added to the understory',
+      'That could not be added to the nursery',
     )
     setShared(null)
   }
@@ -500,7 +527,7 @@ export default function App() {
         setThings((prev) => prev.map((t) => (t.id === created.id ? withImage : t)))
         createdId = created.id
       }
-      notify('Photograph added to the understory.')
+      notify('Photograph added to the nursery.')
       if (config.autoTranscribe && config.anthropicKey) void transcribePhoto(createdId, blob)
     } catch (e) {
       notify(`That photo could not be added${errorText(e)}`, { tone: 'alarm' })
@@ -530,7 +557,7 @@ export default function App() {
     }
   }
 
-  const understoryThings = things.filter((thing) => thing.state === 'Understory')
+  const nurseryThings = things.filter((thing) => thing.state === 'Understory')
   const existingKoboBookmarkIds = useMemo(
     () => new Set(things.map((t) => t.koboBookmarkId).filter((id): id is string => Boolean(id))),
     [things],
@@ -573,6 +600,7 @@ export default function App() {
   }
 
   function handleCoin(name: string, meaning: string, seedThingIds: string[]) {
+    triggerHaptic('success')
     const draft: Locus = { id: draftId(), name, meaning, coined: todayIso() }
     const updates = membershipUpdates(seedThingIds, (t) => ({ lociIds: [...t.lociIds, draft.id] }))
     write(
@@ -660,6 +688,7 @@ export default function App() {
   // the same withLocusReplaced helper handleMerge uses, in the other direction.
   // Other loci a thing already belongs to are untouched.
   function handleSplit(locusId: string, thingIds: string[], name: string, meaning: string) {
+    triggerHaptic('success')
     const draft: Locus = { id: draftId(), name, meaning, coined: todayIso() }
     const updates = membershipUpdates(thingIds, (t) => ({
       lociIds: withLocusReplaced(t.lociIds, locusId, draft.id),
@@ -687,6 +716,7 @@ export default function App() {
   }
 
   function walkPath(fromThing: Thing, toThing: Thing, why: string, origin: Path['origin']) {
+    triggerHaptic('success')
     const draft: Path = {
       id: draftId(),
       label: deriveLabel(fromThing.handle, toThing.handle),
@@ -741,6 +771,7 @@ export default function App() {
 
   function handleDismissProvocation() {
     if (!provocation) return
+    triggerHaptic('light')
     addDismissed(provocationKey(provocation))
     setProvocation(null)
   }
@@ -748,8 +779,8 @@ export default function App() {
   function handleAcceptProvocationPair(a: Thing, b: Thing, why: string) {
     walkPath(a, b, why, 'Accepted')
     setProvocation(null)
-    setView('underground')
-    notify('Path walked — it is drawn in the Underground.')
+    setView('paths')
+    notify('Path walked — it is drawn in Paths.')
   }
 
   function handleAcceptClearingForming(clusterThings: Thing[], name: string) {
@@ -791,7 +822,7 @@ export default function App() {
       <main className={styles.main}>
         {loading ? (
           <p className={styles.loading}>Walking into the forest…</p>
-        ) : view === 'understory' ? (
+        ) : view === 'nursery' ? (
           <>
             <IntakeField
               onSubmit={handleIntake}
@@ -811,8 +842,8 @@ export default function App() {
                 Import from Kobo
               </Button>
             )}
-            <UnderstoryView
-              things={understoryThings}
+            <NurseryView
+              things={nurseryThings}
               onKeep={handleKeep}
               onRelease={handleRelease}
             />
@@ -842,8 +873,8 @@ export default function App() {
             onDissolve={handleDissolve}
             onSplit={handleSplit}
           />
-        ) : view === 'underground' ? (
-          <UndergroundView
+        ) : view === 'paths' ? (
+          <PathsView
             things={things}
             loci={loci}
             paths={paths}
@@ -853,10 +884,10 @@ export default function App() {
             onRemove={handleRemovePath}
             showGraph={config.showGraph}
           />
-        ) : view === 'search' ? (
-          <SearchView things={things} sources={sources} vectorsById={vectorsById} />
+        ) : view === 'forage' ? (
+          <ForageView things={things} sources={sources} vectorsById={vectorsById} />
         ) : (
-          <SettingsView
+          <HearthView
             config={config}
             onChange={handleConfigChange}
             indexing={indexing}

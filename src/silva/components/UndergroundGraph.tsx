@@ -94,7 +94,11 @@ export function UndergroundGraph({ things, loci, paths, vectorsById }: Undergrou
       <svg
         viewBox={`${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}`}
         className={styles.svg}
-        role="img"
+        // `role="img"` told assistive tech the contents were a single
+        // decorative picture, while the nodes inside are real controls —
+        // some screen readers resolve that by skipping them entirely. A
+        // group keeps the summary label without contradicting its children.
+        role="group"
         aria-label="A graph of kept things, clustered by clearing, connected by paths"
       >
         {layout.clusters.length > 1 && layout.clusters.map((c) => (
@@ -154,7 +158,20 @@ export function UndergroundGraph({ things, loci, paths, vectorsById }: Undergrou
               cy={node.y}
               r={isSelected ? 10 : 8}
               className={dim ? styles.nodeDim : isSelected ? styles.nodeSelected : styles.node}
+              // A bare <circle onClick> cannot be reached without a mouse.
+              // These four make each node a real button in the tab order, so
+              // the graph can be read end to end from the keyboard.
+              role="button"
+              tabIndex={0}
+              aria-pressed={isSelected}
+              aria-label={node.thing.handle || node.thing.body.slice(0, 60)}
               onClick={() => setSelectedId(isSelected ? null : node.thing.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setSelectedId(isSelected ? null : node.thing.id)
+                }
+              }}
             >
               <title>{node.thing.handle || node.thing.body}</title>
             </circle>

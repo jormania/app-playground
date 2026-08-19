@@ -4,14 +4,14 @@ import type { Source } from '../lib/sources'
 import { embed } from '../lib/embeddings'
 import { indexThings } from '../lib/indexer'
 import { combineResults, filterByKind, filterBySource, type SearchResult } from '../lib/search'
-import styles from './SearchView.module.css'
+import styles from './ForageView.module.css'
 
 // Same order as notion.ts's ThingKind union — a fixed vocabulary, not
 // derived from what's actually present, so a kind with zero things right
 // now still shows as a filter (consistent, not a moving target).
 const ALL_KINDS: ThingKind[] = ['Passage', 'Observation', 'Dialogue', 'Question', 'Image', 'Link', 'Fragment', 'Mine']
 
-export interface SearchViewProps {
+export interface ForageViewProps {
   things: Thing[]
   sources: Source[]
   /** Whatever App already has cached or indexed. Search starts from these
@@ -31,7 +31,7 @@ function summarize(thing: Thing, max = 140): string {
  *  time this view mounts (i.e. the first time Search is opened), not on
  *  every app load. Lexical results appear immediately; semantic results
  *  fill in once the model and index are ready. */
-export function SearchView({ things, sources, vectorsById }: SearchViewProps) {
+export function ForageView({ things, sources, vectorsById }: ForageViewProps) {
   const sourceById = useMemo(() => new Map(sources.map((s) => [s.id, { title: s.title, author: s.author }])), [sources])
   // Only sources actually in play — a book with nothing kept from it yet
   // shouldn't clutter a facet meant for narrowing what's here.
@@ -125,7 +125,7 @@ export function SearchView({ things, sources, vectorsById }: SearchViewProps) {
       <input
         className={styles.input}
         type="text"
-        aria-label="Search the forest by words or by meaning"
+        aria-label="Forage for something by its words or by its meaning"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="I remember something about…"

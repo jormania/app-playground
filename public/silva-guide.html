@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Silva — Guide</title>
-<meta name="description" content="What Silva is, how the understory, forest, clearings and underground work, and how to connect your own Notion workspace." />
+<meta name="description" content="What Silva is, how the nursery, forest, clearings and paths work, and how to connect your own Notion workspace." />
 <meta name="theme-color" content="#f2ecd9" />
 <script>
   // One stored choice drives both the app and this page (same origin):
@@ -143,25 +143,37 @@
   </p>
 
   <ul class="toc">
-    <li><a href="#understory">Understory</a></li>
+    <li><a href="#nursery">Nursery</a></li>
     <li><a href="#forest">Forest</a></li>
     <li><a href="#kinds">Kinds</a></li>
     <li><a href="#clearings">Clearings</a></li>
-    <li><a href="#underground">Underground</a></li>
-    <li><a href="#search">Search</a></li>
+    <li><a href="#paths">Paths</a></li>
+    <li><a href="#forage">Forage</a></li>
     <li><a href="#provocations">Provocations</a></li>
     <li><a href="#habit">Making it a habit</a></li>
     <li><a href="#setup">Connecting Notion</a></li>
   </ul>
 
-  <h2 id="understory">Understory — capture without commitment</h2>
+  <h2 id="nursery">Nursery — capture without commitment</h2>
   <p>
-    Type or paste something worth keeping — that's the whole intake form, on purpose.
-    Nothing else is required: no source, no category, no tags. It lands in the
-    <b>understory</b>, where it sits for a season (90 days by default). Each day, decide:
+    Type or paste something worth keeping — that's almost the whole intake form, on
+    purpose. No category, no tags, no kind, no clearing. It lands in the
+    <b>nursery</b>, where it sits for a season (90 days by default). Each day, decide:
     <b>Keep</b> it into the forest, or <b>Release</b> it. Ignore it entirely and it simply
     fades out on its own once its season ends — no badge, no counter, no "284 items to
     process." A backlog that ages out instead of piling up.
+  </p>
+  <p>
+    One line sits beside the passage, and it's the single exception worth explaining:
+    <b>where did you encounter this?</b> Unlike a clearing — which you can only recognise
+    long afterwards — a source is the kind of context that <em>evaporates</em>. Months
+    from now you'll still know why a line stopped you; you won't know which of four books
+    you were holding when it did. So Silva asks while you still know, as plain text —
+    <code>Shelby Foote — The Civil War</code>, or just <code>a friend, on a walk</code> —
+    never a form to fill in. It stays entirely optional and never blocks a fast capture:
+    leave it blank and nothing is lost that Silva could have kept for you. Behind the
+    scenes that line becomes a real source the first time you write it, and is reused
+    automatically whenever you name the same one again.
   </p>
   <p>
     This delay is deliberate, not a missing feature. Ryan Holiday's own commonplace-book
@@ -171,21 +183,26 @@
     lands, try leaving a batch alone for a few days first and see which of them you still
     reach for.
   </p>
-  <p><b>Four ways in</b>, all landing in the same understory:</p>
+  <p><b>Four ways in</b>, all landing in the same nursery:</p>
   <ol>
-    <li><b>Type or paste</b> — the everyday case, one field, nothing required.</li>
+    <li><b>Type or paste</b> — the everyday case: the words themselves, and optionally
+      where you met them.</li>
     <li><b>Import from a Kobo e-reader</b> — pick a <code>KoboReader.sqlite</code> file
       (copied off the device over USB) and Silva reads every highlight straight out of
-      it, matches it to a source, and skips anything already imported. Needs a computer
-      and a cable, so it's the one lane that isn't phone-first — do it in a batch after
-      finishing a book, not one highlight at a time.</li>
+      it. It <b>proposes</b> a source for each book and lets you confirm it, change it,
+      or create a new one — Kobo's metadata differs between editions and re-downloads, so
+      the match is a step you take rather than a guess Silva makes. Anything already
+      imported is skipped, so re-dropping the same file every few weeks is the intended
+      rhythm rather than a duplicate. Needs a computer and a cable, so it's the one lane
+      that isn't phone-first — do it in a batch after finishing a book, not one highlight
+      at a time.</li>
     <li><b>Share from anywhere</b> — select text or a link in another app, share it to
       Silva (or, on iPhone, run a Shortcut), and the intake field opens already filled
       in, while you still remember why you shared it.</li>
     <li><b>Photograph a page</b> — a picture of a physical book, kept as an
       <a href="#kinds">Image thing</a>. By default that's all it is: a photograph of a
       page is a legitimate thing to keep, not a stand-in for its text. Turn on
-      <b>Transcribe photographed pages automatically</b> in Settings (needs an Anthropic
+      <b>Transcribe photographed pages automatically</b> in the Hearth (needs an Anthropic
       key) and Silva pulls the text out for you the moment the photo lands — nothing to
       type. It's verbatim transcription only, never a description of the photo, and a
       plain photo with no legible text (a scene, an object) is simply left alone. Once a
@@ -197,9 +214,10 @@
   <p>
     Every kept thing, one at a time, typeset like a specimen on a plate rather than a row
     in a table — meant to be read, not scanned. Tap <b>Edit</b> on anything to set its
-    <b>locator</b> (a page, a timestamp, "overheard on the 32 tram"), its
-    <a href="#kinds">Kind</a>, a note, or a link — none of which you were ever asked for
-    at capture, all of which you can leave blank forever. A <b>Suggest a kind</b> button
+    <b>source</b> (same plain text as at capture — attach one now if you skipped it, or
+    correct one that's wrong), its <b>locator</b> (a page, a timestamp, "overheard on the
+    32 tram"), its <a href="#kinds">Kind</a>, a note, or a link — none of which you were
+    forced to give at capture, all of which you can leave blank forever. A <b>Suggest a kind</b> button
     offers a guess (a question mark → Question, quoted speech → Dialogue, and so on) —
     only ever a starting point you can accept, change, or ignore; Silva never assigns a
     kind on its own.
@@ -211,17 +229,30 @@
     line saying it's done for now; it holds <b>only your own kept things</b>, nothing from
     outside; and it <b>refreshes on the calendar</b>, not on your attention — finishing it,
     or leaving it half-done, doesn't change tomorrow's walk, and reading something in it
-    doesn't make it reshuffle out from under you. The full forest, in the order you kept
-    things, is unchanged below it — every kept thing, one at a time, nothing filtered out.
-    (Want just one clearing's things? That's what opening the clearing itself, from
-    <a href="#clearings">Clearings</a>, is for — its own screen, with your own note on what
-    you meant by it at the top, rather than a second version of this scroll.)
+    doesn't make it reshuffle out from under you.
+  </p>
+  <p>
+    It shows one thing at a time, with its position (<em>2 of 5</em>) beside it, and three
+    ways out: <b>Onward</b> to the next, <b>Back</b> to the one before, and <b>End the
+    walk</b> to stop wherever you are. On the last one Onward becomes <b>Finish</b>.
+    Ending early and finishing are the same thing as far as Silva is concerned — neither
+    is scored, neither is remembered as incomplete, and both leave you the same line
+    saying the walk is done for now. It returns tomorrow, not sooner.
+  </p>
+  <p>
+    The full forest, in the order you kept things, is unchanged below it — every kept
+    thing, one at a time, nothing filtered out. (Want just one clearing's things? That's
+    what opening the clearing itself, from <a href="#clearings">Clearings</a>, is for —
+    its own screen, with your own note on what you meant by it at the top, rather than a
+    second version of this scroll.) If the walk isn't for you at all, it has a switch in
+    <b>the Hearth → What you see</b>, and turning it off leaves the forest below
+    untouched.
   </p>
   <p>
     Underneath a thing's own text, a collapsed <b>neighbourhood</b> panel — open it to see
     what's near this one: paths you've already walked from here (with your own why
     alongside them), and any quiet <span class="oxblood">oxblood</span> threads the app
-    has noticed nearby that you haven't connected yet. It's the same underground the
+    has noticed nearby that you haven't connected yet. It's the same underground layer the
     graph shows, just centred on the one thing in front of you — present on a thing
     wherever it's read, whether that's in the walk or the plain scroll.
   </p>
@@ -273,7 +304,7 @@
     </tr>
     <tr>
       <td><b>Image</b></td>
-      <td>A photographed page — from the <a href="#understory">photo intake lane</a>, or
+      <td>A photographed page — from the <a href="#nursery">photo intake lane</a>, or
         set on an existing thing later.</td>
       <td class="kindEx">A photo of a marked-up page from a library book you can't highlight.</td>
     </tr>
@@ -308,7 +339,7 @@
     A forest with 200 named clearings has none that mean anything; keep them few.
   </p>
 
-  <h2 id="underground">Underground — the connections you've made</h2>
+  <h2 id="paths">Paths — the connections you've made</h2>
   <p>
     Walk a <b>path</b> between two kept things and say why — the <b>why is the point</b>
     of the record, not the connection itself, and it isn't optional: Silva won't let you
@@ -319,8 +350,9 @@
   </p>
   <p>
     Look closely and you may also see faint, dashed <span class="oxblood">oxblood</span>
-    threads — <b>mycorrhiza</b>. These are things Silva noticed are quietly similar but
-    you never explicitly connected — real, but underground. They're not clickable from
+    threads — <b>mycorrhiza</b>, the <b>underground</b> layer this view is really about.
+    These are things Silva noticed are quietly similar but
+    you never explicitly connected — real, but unasserted. They're not clickable from
     the graph; the only way to act on one is if it surfaces as a
     <a href="#provocations">provocation</a> and you accept it, which is the one and only
     way a mycorrhizal thread becomes a real path. Nothing in Silva promotes one on its
@@ -333,7 +365,7 @@
     (see <a href="#forest">Forest</a>) instead of hunting for a node in the graph.
   </p>
 
-  <h2 id="search">Search — by meaning, not just words</h2>
+  <h2 id="forage">Forage — by meaning, not just words</h2>
   <p>
     One box does both plain text matching and semantic search — find "a canine waiting
     patiently" and it can surface "a dog sat at the tram stop," even with no words in
@@ -366,7 +398,7 @@
   <p>
     The first four need nothing configured — Silva's serendipity works fully offline from
     the moment you open it. The last three need "Let Silva notice things" turned on in
-    Settings (a one-time ~25 MB model download, then fully offline); Tension additionally
+    the Hearth (a one-time ~25 MB model download, then fully offline); Tension additionally
     needs an Anthropic key, because deciding two things are in <em>tension</em> — not
     just similar — is a judgment call a similarity score alone can't make.
   </p>
@@ -385,7 +417,7 @@
   </div>
   <div class="practice">
     <b>Let the season do the deciding</b>
-    Don't triage the understory to zero. Things that were worth keeping resurface in your
+    Don't triage the nursery to zero. Things that were worth keeping resurface in your
     attention on their own; the ones that quietly expire were the ones you weren't going
     to keep anyway. Fighting the fade defeats its purpose.
   </div>
@@ -415,11 +447,11 @@
   <div class="practice">
     <b>Import Kobo highlights in batches, right after finishing a book</b>
     It's the one lane that needs a computer and a cable — do it once per book rather than
-    trying to make it a daily habit, and let the understory's own delay do the pre-editing
+    trying to make it a daily habit, and let the nursery's own delay do the pre-editing
     Ryan Holiday's practice relies on.
   </div>
   <div class="practice">
-    <b>Turn things off in Settings rather than working around them</b>
+    <b>Turn things off in the Hearth rather than working around them</b>
     The walk, the graph and provocations are each their own toggle under
     <b>What's shown</b> — nothing there changes what's kept, only what's visible. If the
     walk feels like one more thing to get through rather than an invitation, turn it off;
@@ -429,7 +461,7 @@
   </div>
   <p>
     Silva is a herbarium sheet by daylight and the same cabinet at night — unbleached
-    rag paper and green-black ink, or deep bark and aged ivory. <b>Settings → Appearance</b>
+    rag paper and green-black ink, or deep bark and aged ivory. <b>the Hearth → Appearance</b>
     follows your device by default; pick <b>Daylight</b> or <b>Night</b> there if you'd
     rather it didn't change under you at sunset. The choice applies to this guide too.
   </p>
@@ -455,7 +487,7 @@
   <p>
     Silva runs fully on a small set of sample things with no setup at all — everything
     above works the same way, just on data that resets if you clear your browser. To
-    keep things for real, connect your own Notion workspace from <b>Settings</b>.
+    keep things for real, connect your own Notion workspace from <b>the Hearth</b>.
   </p>
 
   <h3>1 · Create four databases</h3>
@@ -491,7 +523,7 @@
       <tr><td><code>Handle</code></td><td>title</td></tr>
       <tr><td><code>Body</code></td><td>rich text</td></tr>
       <tr><td><code>Kind</code></td><td>select — Passage · Observation · Dialogue · Question · Image · Link · Fragment · Mine</td></tr>
-      <tr><td><code>State</code></td><td>select — Understory · Kept · Released</td></tr>
+      <tr><td><code>State</code></td><td>select — Nursery · Kept · Released</td></tr>
       <tr><td><code>Source</code></td><td>relation → Sources</td></tr>
       <tr><td><code>Locator</code></td><td>rich text</td></tr>
       <tr><td><code>Encountered</code></td><td>date</td></tr>
@@ -526,7 +558,7 @@
     <li><b>Create it.</b> Go to <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener">notion.so/my-integrations</a> → <em>New integration</em>. Name it (e.g. <em>Silva</em>), pick the workspace your four databases live in, leave the type <em>Internal</em>, and save.</li>
     <li><b>Copy the token.</b> On the integration's page, open <em>Configuration</em>, find the <em>Internal Integration Secret</em>, <em>Show</em> then <em>Copy</em>. Treat it like a password.</li>
     <li><b>Share all four databases with it.</b> Open each one in Notion → top-right <code>•••</code> → <em>Connections</em> → search your integration → select it. Without this, Silva sees nothing for that database.</li>
-    <li><b>Paste the token into Silva.</b> Open Silva → <b>Settings</b> → paste it into <em>Notion token</em>, then <b>Test connection</b>.</li>
+    <li><b>Paste the token into Silva.</b> Open Silva → <b>the Hearth</b> → paste it into <em>Notion token</em>, then <b>Test connection</b>.</li>
   </ol>
   <p class="muted">Your token (and, if you set one, your Anthropic key) is kept only in
     this browser and relayed to Notion/Anthropic through this site's proxy — never

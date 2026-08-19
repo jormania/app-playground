@@ -9,7 +9,7 @@
  * once and held in Cache Storage"), not an oversight.
  *
  * Loaded lazily — only `loadEmbedder()` touches the network, and nothing
- * in this module calls it eagerly. See components/SearchView.tsx, the only
+ * in this module calls it eagerly. See components/ForageView.tsx, the only
  * caller.
  *
  * The `@huggingface/transformers` import itself is dynamic, not just the

@@ -112,17 +112,29 @@
   text-decoration: underline;
 }
 
+/* The why is your writing *about* the two passages above it, so it needs to
+   sit apart from them rather than reading as a third quotation — at margin 0
+   it butted straight against the second passage's last line. */
 .why {
-  margin: 0;
+  margin: var(--space-sm) 0 0;
   font-size: var(--text-sm);
   color: var(--color-muted);
   font-style: italic;
+  line-height: var(--leading-body);
 }
 
+/* Editing a path's why opens directly beneath the two passages it connects,
+   and at --space-xs the question sat right on top of the second one — the
+   reader's own words crowded against the thing they are about. The extra
+   space above separates "what you are looking at" from "what you are being
+   asked", which is the whole shape of this form. */
 .editBlock {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
 }
 
 .rowFooter {

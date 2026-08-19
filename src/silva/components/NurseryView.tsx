@@ -1,9 +1,9 @@
 import { Button } from '../../ds'
 import { fadeRatio, daysRemaining, DEFAULT_SEASON_DAYS } from '../lib/understory'
 import type { Thing } from '../lib/notion'
-import styles from './UnderstoryView.module.css'
+import styles from './NurseryView.module.css'
 
-export interface UnderstoryViewProps {
+export interface NurseryViewProps {
   things: Thing[]
   onKeep: (id: string) => void
   onRelease: (id: string) => void
@@ -13,9 +13,9 @@ export interface UnderstoryViewProps {
 /** Unkept arrivals, each shown with its remaining season as a fade rather
  *  than a countdown number (SILVA.md: "the understory... with their
  *  remaining season shown as a fade rather than a number"). */
-export function UnderstoryView({ things, onKeep, onRelease, seasonDays = DEFAULT_SEASON_DAYS }: UnderstoryViewProps) {
+export function NurseryView({ things, onKeep, onRelease, seasonDays = DEFAULT_SEASON_DAYS }: NurseryViewProps) {
   if (things.length === 0) {
-    return <p className={styles.empty}>The understory is empty. Type or paste something to begin.</p>
+    return <p className={styles.empty}>The nursery is empty. Type or paste something to begin.</p>
   }
 
   return (
@@ -31,7 +31,7 @@ export function UnderstoryView({ things, onKeep, onRelease, seasonDays = DEFAULT
         // read an opacity).
         const seasonText = remaining > 0
           ? `${remaining} day${remaining === 1 ? '' : 's'} of this season left`
-          : 'fading out of the understory'
+          : 'fading out of the nursery'
         return (
           <li
             key={thing.id}

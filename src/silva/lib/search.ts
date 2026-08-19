@@ -29,7 +29,7 @@ const MAX_RESULTS = 30
  *  but cheap to check directly too) — plus its source's title and author,
  *  when it has one. "I remember something Shelby Foote said" should find
  *  it even when "Shelby" never appears in the passage itself; the caller
- *  (SearchView) looks these up, since a Thing only carries a `sourceId`,
+ *  (ForageView) looks these up, since a Thing only carries a `sourceId`,
  *  not the Source record. */
 export function lexicalMatch(query: string, thing: Thing, sourceTitle = '', sourceAuthor = ''): boolean {
   const q = query.trim().toLowerCase()

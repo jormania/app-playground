@@ -92,7 +92,7 @@ export function IntakeField({ onSubmit, onPhoto, prefill = null, busy = false }:
 
       <div className={styles.actions}>
         <Button size="sm" onClick={submit} disabled={busy || (!value.trim() && !locator.trim())}>
-          Add to the understory
+          Add to the nursery
         </Button>
         {/* The photograph lane. `Image` has been a Kind in the vocabulary with
          *  no way to create one; a picture of a page is a legitimate thing,

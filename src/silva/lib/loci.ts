@@ -9,6 +9,8 @@
  * record itself: Name, Meaning, Coined.
  */
 
+import { richText, title } from './richText'
+
 export interface Locus {
   id: string
   name: string
@@ -32,14 +34,6 @@ function plainText(runs: unknown): string {
   return Array.isArray(runs)
     ? (runs as NotionRichTextRun[]).map((r) => r?.plain_text || '').join('')
     : ''
-}
-
-function richText(value: string | null | undefined) {
-  return { rich_text: value ? [{ text: { content: String(value) } }] : [] }
-}
-
-function title(value: string | null | undefined) {
-  return { title: [{ text: { content: String(value ?? '') } }] }
 }
 
 export function toLocus(page: NotionPage): Locus {

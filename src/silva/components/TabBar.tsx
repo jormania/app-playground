@@ -19,14 +19,14 @@ export interface TabBarProps {
  * set would be the one place in Silva speaking a different visual language.
  * These are drawn on the same 24-unit grid at hairline weight, in the app's
  * own vocabulary: a seedling for the understory, conifers for the forest, an
- * open ring for a clearing, roots for the underground.
+ * open ring for a clearing, a small node-link figure for Paths.
  *
  * `vector-effect: non-scaling-stroke` keeps the hairline hairline at every
  * rendered size, and `currentColor` lets one rule tint the whole set.
  */
 const ICONS: Record<string, React.ReactNode> = {
   // A seedling breaking the litter — something newly arrived, not yet kept.
-  understory: (
+  nursery: (
     <>
       <path d="M3.5 20.5h17" />
       <path d="M12 20.5v-9" />
@@ -49,10 +49,10 @@ const ICONS: Record<string, React.ReactNode> = {
   clearings: (
     <circle cx="12" cy="12" r="7.5" strokeDasharray="39 8" transform="rotate(-90 12 12)" />
   ),
-  // Three nodes, one solid thread and one dashed — the Underground view's own
+  // Three nodes, one solid thread and one dashed — the Paths view's own
   // contents in miniature: paths you asserted, mycorrhiza you haven't. Drawn
   // roots read as a stick figure at 21px; this reads as what it is.
-  underground: (
+  paths: (
     <>
       <path d="M12 7.6 7.4 14.6" />
       <path d="M12 7.6 16.6 14.6" strokeDasharray="2.5 2.5" />
@@ -62,13 +62,13 @@ const ICONS: Record<string, React.ReactNode> = {
       <circle cx="17.6" cy="16.4" r="2" />
     </>
   ),
-  search: (
+  forage: (
     <>
       <circle cx="10.5" cy="10.5" r="6.5" />
       <path d="M15.4 15.4 21 21" />
     </>
   ),
-  settings: (
+  hearth: (
     <>
       <path d="M4 9h16" />
       <circle cx="9" cy="9" r="2.2" />

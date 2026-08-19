@@ -121,7 +121,7 @@ export function SpecimenPlate({
           {/* A passage is the whole object of this app and is very often
            *  several lines long — editing it through a 44px single-line input
            *  meant scrolling sideways through your own quotation. */}
-          <TextAreaField label="Body" value={body} onChange={(e) => setBody(e.target.value)} rows={6} />
+          <TextAreaField label="The thing itself" value={body} onChange={(e) => setBody(e.target.value)} rows={6} />
           <div className={styles.kindRow}>
             <select className={styles.select} value={kind} onChange={(e) => setKind(e.target.value as ThingKind | '')}>
               <option value="">No kind set</option>
@@ -213,6 +213,16 @@ export function SpecimenPlate({
           ))}
         </p>
       )}
+      {/* A Link thing's link was editable and stored but never rendered
+       *  anywhere, so the one Kind whose whole point is an address made you
+       *  open Edit and select the text by hand to follow it. */}
+      {thing.link && (
+        <p className={styles.linkRow}>
+          <a className={styles.link} href={thing.link} target="_blank" rel="noopener noreferrer">
+            {displayUrl(thing.link)}
+          </a>
+        </p>
+      )}
       <div className={styles.plateActions}>
         <Button size="sm" variant="ghost" onClick={startEditing}>Edit</Button>
         <Button size="sm" variant="ghost" onClick={copyBody}>{copied ? 'Copied' : 'Copy'}</Button>
@@ -254,6 +264,18 @@ function PlateImage({ image, alt }: { image: string; alt: string }) {
 
   if (!src) return null
   return <img className={styles.image} src={src} alt={alt} loading="lazy" />
+}
+
+/** A link, shown the way a label would print it: host and path, without the
+ *  scheme's noise, truncated rather than wrapping across the plate. */
+function displayUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    const shown = `${parsed.host}${parsed.pathname === '/' ? '' : parsed.pathname}`
+    return shown.length > 48 ? `${shown.slice(0, 48)}…` : shown
+  } catch {
+    return url.length > 48 ? `${url.slice(0, 48)}…` : url
+  }
 }
 
 /** Specimen-label order per SILVA.md: source · locator · encountered · kept.

@@ -84,7 +84,7 @@ export function ForestView({
   if (kept.length === 0) {
     return (
       <p className={styles.empty}>
-        Nothing kept yet. Things you keep from the understory gather here.
+        Nothing kept yet. Things you keep from the nursery gather here.
       </p>
     )
   }

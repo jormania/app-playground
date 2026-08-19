@@ -4,6 +4,8 @@
  * `lib/notion.ts`'s Things mapping — see that file for the rationale.
  */
 
+import { richText, title } from './richText'
+
 export type SourceKind = 'Book' | 'Article' | 'Film' | 'Conversation' | 'Song' | 'Self' | 'Unknown'
 
 export interface Source {
@@ -31,14 +33,6 @@ function plainText(runs: unknown): string {
   return Array.isArray(runs)
     ? (runs as NotionRichTextRun[]).map((r) => r?.plain_text || '').join('')
     : ''
-}
-
-function richText(value: string | null | undefined) {
-  return { rich_text: value ? [{ text: { content: String(value) } }] : [] }
-}
-
-function title(value: string | null | undefined) {
-  return { title: [{ text: { content: String(value ?? '') } }] }
 }
 
 function firstFileUrl(value: unknown): string | null {
