@@ -14,6 +14,10 @@
   gap: var(--space-sm);
 }
 
+/* A hairline within a hairline — the same doubled-rule instinct as the
+   specimen plate (SpecimenPlate.module.css), scaled down for a list row
+   rather than a mounted thing. Depth read through an inset line, never a
+   drop shadow: nothing in Silva floats. */
 .row {
   display: flex;
   align-items: flex-start;
@@ -23,7 +27,14 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  transition: opacity var(--duration) var(--ease);
+  box-shadow: inset 0 0 0 1px var(--color-surface-2);
+  transition: opacity var(--duration) var(--ease), border-color var(--duration) var(--ease),
+    background-color var(--duration) var(--ease);
+}
+
+.row:hover {
+  border-color: var(--color-border-2);
+  background: var(--color-surface-2);
 }
 
 .body {

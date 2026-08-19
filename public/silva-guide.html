@@ -102,6 +102,24 @@
   .muted { color: var(--faint); font-size: 0.9rem; }
   footer { margin-top: 3rem; text-align: center; color: var(--faint); font-style: italic; }
   .backlink { display: block; text-align: center; margin-top: 2.5rem; }
+  .kindEx {
+    color: var(--faint); font-style: italic; font-size: 0.92em;
+  }
+  .practice {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 0.75rem 1rem;
+    margin: 0.75rem 0;
+  }
+  .practice b { display: block; margin-bottom: 0.2rem; }
+  .toc {
+    display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem;
+    margin: 1.1rem 0 0; padding: 0; list-style: none;
+    font-size: 0.88rem;
+  }
+  .toc a { color: var(--muted); }
+  .toc a:hover { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -119,55 +137,186 @@
     something.
   </p>
 
-  <h2>Understory — capture without commitment</h2>
+  <ul class="toc">
+    <li><a href="#understory">Understory</a></li>
+    <li><a href="#forest">Forest</a></li>
+    <li><a href="#kinds">Kinds</a></li>
+    <li><a href="#clearings">Clearings</a></li>
+    <li><a href="#underground">Underground</a></li>
+    <li><a href="#search">Search</a></li>
+    <li><a href="#provocations">Provocations</a></li>
+    <li><a href="#habit">Making it a habit</a></li>
+    <li><a href="#setup">Connecting Notion</a></li>
+  </ul>
+
+  <h2 id="understory">Understory — capture without commitment</h2>
   <p>
     Type or paste something worth keeping — that's the whole intake form, on purpose.
     Nothing else is required: no source, no category, no tags. It lands in the
-    <b>understory</b>, where it sits for a season. Each day, decide: <b>Keep</b> it into
-    the forest, or <b>Release</b> it. Ignore it entirely and it simply fades out on its
-    own once its season ends — a backlog that ages out instead of piling up.
+    <b>understory</b>, where it sits for a season (90 days by default). Each day, decide:
+    <b>Keep</b> it into the forest, or <b>Release</b> it. Ignore it entirely and it simply
+    fades out on its own once its season ends — no badge, no counter, no "284 items to
+    process." A backlog that ages out instead of piling up.
   </p>
-  <p>You can also <b>import highlights from a Kobo e-reader</b> — pick a
-    <code>KoboReader.sqlite</code> file (copied off the device over USB) and Silva reads
-    your highlights straight out of it, matching them to sources automatically and
-    skipping anything already imported.</p>
+  <p>
+    This delay is deliberate, not a missing feature. Ryan Holiday's own commonplace-book
+    practice is the model: he waits weeks after finishing a book before transcribing
+    highlights, because the wait pre-edits them — most of what felt urgent mid-read
+    doesn't survive it. If you find yourself keeping almost everything the moment it
+    lands, try leaving a batch alone for a few days first and see which of them you still
+    reach for.
+  </p>
+  <p><b>Four ways in</b>, all landing in the same understory:</p>
+  <ol>
+    <li><b>Type or paste</b> — the everyday case, one field, nothing required.</li>
+    <li><b>Import from a Kobo e-reader</b> — pick a <code>KoboReader.sqlite</code> file
+      (copied off the device over USB) and Silva reads every highlight straight out of
+      it, matches it to a source, and skips anything already imported. Needs a computer
+      and a cable, so it's the one lane that isn't phone-first — do it in a batch after
+      finishing a book, not one highlight at a time.</li>
+    <li><b>Share from anywhere</b> — select text or a link in another app, share it to
+      Silva (or, on iPhone, run a Shortcut), and the intake field opens already filled
+      in, while you still remember why you shared it.</li>
+    <li><b>Photograph a page</b> — a picture of a physical book, kept as an
+      <a href="#kinds">Image thing</a>. Not OCR'd on purpose: a photograph of a page is a
+      legitimate thing to keep, not a stand-in for its text.</li>
+  </ol>
 
-  <h2>Forest — the kept collection</h2>
+  <h2 id="forest">Forest — the kept collection</h2>
   <p>
     Every kept thing, one at a time, typeset like a specimen on a plate rather than a row
-    in a table. Tap <b>Edit</b> on anything to set its <b>locator</b> (a page, a
-    timestamp, "overheard on the 32 tram"), its <b>Kind</b>, a note, or a link — none of
-    which you were ever asked for at capture. A <b>Suggest a kind</b> button offers a
-    guess (a question mark → Question, quoted speech → Dialogue, and so on) — it's only
-    ever a starting point you can accept, change, or ignore; Silva never assigns a kind
-    on its own.
+    in a table — meant to be read, not scanned. Tap <b>Edit</b> on anything to set its
+    <b>locator</b> (a page, a timestamp, "overheard on the 32 tram"), its
+    <a href="#kinds">Kind</a>, a note, or a link — none of which you were ever asked for
+    at capture, all of which you can leave blank forever. A <b>Suggest a kind</b> button
+    offers a guess (a question mark → Question, quoted speech → Dialogue, and so on) —
+    only ever a starting point you can accept, change, or ignore; Silva never assigns a
+    kind on its own.
+  </p>
+  <p>
+    <b>Today's walk</b> sits above the scroll: a short, finite stretch weighted toward
+    what you haven't actually looked at in a while — not what's newest. Three things keep
+    it from becoming a feed: it <b>ends</b>, and the ending offers nothing further; it
+    holds <b>only your own kept things</b>, nothing from outside; and it
+    <b>refreshes on the calendar</b>, not on your attention — finishing it, or leaving it
+    half-done, doesn't change tomorrow's walk. The full forest, in the order you kept
+    things, is unchanged below it.
+  </p>
+  <p>
+    Underneath a thing's own text, a collapsed <b>neighbourhood</b> panel — open it to see
+    what's near this one: paths you've already walked from here (with your own why
+    alongside them), and any quiet <span class="oxblood">oxblood</span> threads the app
+    has noticed nearby that you haven't connected yet. It's the same underground the
+    graph shows, just centred on the one thing in front of you.
   </p>
 
-  <h2>Clearings — patterns you name</h2>
+  <h2 id="kinds">Kinds — what each one is for</h2>
+  <p>
+    A kind is a label you choose (or leave blank), never one Silva assigns. It exists so
+    you can filter and skim by shape later — a book quote reads differently from a
+    question you're still sitting with — not to classify anything for its own sake. When
+    in doubt, leave it unset; an honest blank beats a wrong guess.
+  </p>
+  <table>
+    <tr><th>Kind</th><th>For</th><th>Example</th></tr>
+    <tr>
+      <td><b>Passage</b></td>
+      <td>Someone else's words, verbatim, with a source behind them.</td>
+      <td class="kindEx">"The unexamined life is not worth living." — Plato, <i>Apology</i></td>
+    </tr>
+    <tr>
+      <td><b>Observation</b></td>
+      <td>Something you noticed, with no source to point to.</td>
+      <td class="kindEx">Everyone on the platform checked their phone the instant the train stopped moving.</td>
+    </tr>
+    <tr>
+      <td><b>Dialogue</b></td>
+      <td>Something someone said, quoted — overheard, remembered, or read.</td>
+      <td class="kindEx">"You don't have to attend every argument you're invited to."</td>
+    </tr>
+    <tr>
+      <td><b>Question</b></td>
+      <td>A question worth keeping unresolved, not one you're about to answer.</td>
+      <td class="kindEx">What would I do differently if I expected to fail?</td>
+    </tr>
+    <tr>
+      <td><b>Fragment</b></td>
+      <td>Too short to be a passage — a phrase, a title, a stray word that stopped you.</td>
+      <td class="kindEx">"a controlled ruin"</td>
+    </tr>
+    <tr>
+      <td><b>Mine</b></td>
+      <td>Something you wrote, not something you noticed — a composed thought, not a
+        fleeting one. The line against Observation is soft; it's your call.</td>
+      <td class="kindEx">A paragraph you drafted trying to work out why a decision felt wrong.</td>
+    </tr>
+    <tr>
+      <td><b>Link</b></td>
+      <td>A URL worth keeping for what's behind it.</td>
+      <td class="kindEx">A long-form piece you want to be able to find again by feel, not by search.</td>
+    </tr>
+    <tr>
+      <td><b>Image</b></td>
+      <td>A photographed page — from the <a href="#understory">photo intake lane</a>, or
+        set on an existing thing later.</td>
+      <td class="kindEx">A photo of a marked-up page from a library book you can't highlight.</td>
+    </tr>
+  </table>
+  <p class="muted">
+    Silva's own guess (<b>Suggest a kind</b>) uses simple, visible rules, not a model: a
+    bare URL becomes Link, text ending in "?" becomes Question, a long quoted run becomes
+    Dialogue, anything under 40 characters becomes Fragment, and everything else becomes
+    Passage if it has a source or Observation if it doesn't. It never guesses Mine or
+    Image — those are always your call.
+  </p>
+
+  <h2 id="clearings">Clearings — patterns you name</h2>
   <p>
     A <b>clearing</b> (Loci in Notion) is a pattern you noticed across a few kept
-    things — coined after the fact, never assigned automatically or at capture. From a
-    clearing: add or remove things, rename it, <b>combine</b> two clearings into one, or
-    <b>split</b> some of its members off into a new one when it turns out to be two
-    patterns wearing one name.
+    things — coined <em>after</em> the fact, never assigned automatically or offered at
+    capture. There is no "add to clearing" button on the intake form on purpose: a
+    clearing has to already exist as a pattern in your head before it can exist in Silva.
+  </p>
+  <p>
+    A clearing usually starts from a <a href="#provocations">provocation</a> ("you have
+    collected 11 things circling solitude") or from noticing it yourself while walking
+    the forest. Once named, a clearing is a small collection with your own note on what
+    you meant by it — write that note; it's what makes the clearing legible to you six
+    months later, when the pattern that was obvious in the moment isn't anymore.
+  </p>
+  <p>
+    Clearings stay loose on purpose: <b>combine</b> two into one when they turn out to be
+    the same idea under two names, or <b>split</b> a clearing's members into a new one
+    when it turns out to be two patterns wearing one. Most things live in no clearing at
+    all, permanently — that's not an unfinished state, it's most of the forest, always.
+    A forest with 200 named clearings has none that mean anything; keep them few.
   </p>
 
-  <h2>Underground — the connections you've made</h2>
+  <h2 id="underground">Underground — the connections you've made</h2>
   <p>
-    Walk a <b>path</b> between two kept things and say why — the "why" is the point of
-    the record, not the connection itself. Every path you've walked, plus every kept
-    thing, renders as an actual graph below the list: clustered by clearing, connected by
-    solid lines.
+    Walk a <b>path</b> between two kept things and say why — the <b>why is the point</b>
+    of the record, not the connection itself. A path with no reason attached is exactly
+    the kind of empty link-everything-to-everything graph this view is trying not to
+    become. Every path you've walked, plus every kept thing, renders as an actual graph:
+    clustered by clearing, connected by solid lines.
   </p>
   <p>
     Look closely and you may also see faint, dashed <span class="oxblood">oxblood</span>
     threads — <b>mycorrhiza</b>. These are things Silva noticed are quietly similar but
-    you never explicitly connected. They're not clickable from the graph; the only way to
-    act on one is if it surfaces as a provocation (below). When you see that colour,
-    you're looking at something the app noticed and you haven't.
+    you never explicitly connected — real, but underground. They're not clickable from
+    the graph; the only way to act on one is if it surfaces as a
+    <a href="#provocations">provocation</a> and you accept it, which is the one and only
+    way a mycorrhizal thread becomes a real path. Nothing in Silva promotes one on its
+    own. When you see that colour, you're looking at something the app noticed and you
+    haven't yet — an invitation, not a fact.
+  </p>
+  <p>
+    The whole-forest graph is an overview; for the question you actually have day to
+    day — <em>what is this near?</em> — use the neighbourhood panel on the thing itself
+    (see <a href="#forest">Forest</a>) instead of hunting for a node in the graph.
   </p>
 
-  <h2>Search — by meaning, not just words</h2>
+  <h2 id="search">Search — by meaning, not just words</h2>
   <p>
     One box does both plain text matching and semantic search — find "a canine waiting
     patiently" and it can surface "a dog sat at the tram stop," even with no words in
@@ -177,22 +326,100 @@
     without a query.
   </p>
 
-  <h2>Provocations — the app's only voice</h2>
+  <h2 id="provocations">Provocations — the app's only voice</h2>
   <p>
     At most once a session, Silva offers a small nudge: something forgotten, two things
     placed side by side, a clearing that might be quietly forming. It never explains why
     — you decide whether it's a real connection, and if you accept one, you write the
     Why yourself. Dismiss it and it won't come back; it stays quiet the rest of the
-    session either way.
+    session either way. It's also earned, not scheduled: the collection has to have
+    actually changed or aged for one to appear, so opening Silva ten times in a day
+    doesn't mean ten nudges.
   </p>
+  <table>
+    <tr><th>Kind</th><th>What it shows you</th><th>Needs</th></tr>
+    <tr><td>Shuffle</td><td>The forest in random order.</td><td>—</td></tr>
+    <tr><td>A random clearing</td><td>A wander into one clearing you've coined.</td><td>—</td></tr>
+    <tr><td>Long unvisited</td><td>Something you haven't actually looked at in months.</td><td>—</td></tr>
+    <tr><td>Blind pairing</td><td>Two things at random, connection unasserted.</td><td>—</td></tr>
+    <tr><td>Near neighbours</td><td>Two things the app thinks are close that you never connected.</td><td>the underground toggle</td></tr>
+    <tr><td>A clearing forming</td><td>"You have 11 things circling solitude."</td><td>the underground toggle</td></tr>
+    <tr><td>Tension</td><td>Two kept things that seem to pull in different directions.</td><td>the underground toggle + an Anthropic key</td></tr>
+  </table>
   <p>
-    One kind, <b>Tension</b> — two kept things that seem to pull in different directions
-    — needs a real judgment call a similarity score can't make on its own, so it only
-    appears once an Anthropic key is set in Settings. Every other kind works with
-    nothing configured at all.
+    The first four need nothing configured — Silva's serendipity works fully offline from
+    the moment you open it. The last three need "Let Silva notice things" turned on in
+    Settings (a one-time ~25 MB model download, then fully offline); Tension additionally
+    needs an Anthropic key, because deciding two things are in <em>tension</em> — not
+    just similar — is a judgment call a similarity score alone can't make.
   </p>
 
-  <h2>Demo mode, or your own Notion</h2>
+  <h2 id="habit">Making it a habit</h2>
+  <p>
+    Silva has no onboarding flow and no checklist — on purpose, the same as the rest of
+    the app. A few things that make it click faster, learned from how it's meant to be
+    used rather than enforced in the UI:
+  </p>
+  <div class="practice">
+    <b>Capture first, edit never (at first)</b>
+    Paste it and move on. Locator, kind, notes — all of that can wait until you're
+    actually keeping the thing, days or weeks later. Treating intake as a two-second act
+    is what makes it survive being interrupted mid-thought.
+  </div>
+  <div class="practice">
+    <b>Let the season do the deciding</b>
+    Don't triage the understory to zero. Things that were worth keeping resurface in your
+    attention on their own; the ones that quietly expire were the ones you weren't going
+    to keep anyway. Fighting the fade defeats its purpose.
+  </div>
+  <div class="practice">
+    <b>Take the walk when it's there</b>
+    It's short by design — a few things, not a queue. Skipping it occasionally is fine;
+    it isn't gone, it's just tomorrow's walk instead. But if you always skip it, it isn't
+    doing its job of putting old things back in front of you.
+  </div>
+  <div class="practice">
+    <b>Write the "why," even one line</b>
+    A path is only as useful later as its why is honest now. "Same idea, different
+    century" is a complete answer. The connection without the reason is the thing this
+    view exists to avoid becoming.
+  </div>
+  <div class="practice">
+    <b>Name a clearing only once you can say what it means</b>
+    If you can't finish "this is about ___" in one sentence, it isn't a clearing yet —
+    let a few more things land near it first.
+  </div>
+  <div class="practice">
+    <b>Turn on "let Silva notice things" early, even before you trust it</b>
+    The one-time model download and the background indexing pass both take a little
+    while on a fresh forest. Turning it on the day you set Silva up means it's already
+    caught up by the time you'd want a mycorrhizal provocation.
+  </div>
+  <div class="practice">
+    <b>Import Kobo highlights in batches, right after finishing a book</b>
+    It's the one lane that needs a computer and a cable — do it once per book rather than
+    trying to make it a daily habit, and let the understory's own delay do the pre-editing
+    Ryan Holiday's practice relies on.
+  </div>
+  <p>Some shapes people use Silva for, none exclusive of the others:</p>
+  <ul>
+    <li><b>A reading commonplace book</b> — the original use: passages from what you're
+      reading, annotated with what they rhymed with, revisited by the walk instead of
+      staying buried in the book you read them in.</li>
+    <li><b>A running observation log</b> — things noticed in the world, not from books at
+      all: what people said, what you overheard, small moments worth not losing. Mostly
+      Observation and Dialogue.</li>
+    <li><b>A question drawer</b> — genuine open questions you're not trying to resolve,
+      kept so they resurface instead of being answered too quickly out of discomfort.</li>
+    <li><b>Material for your own writing</b> — Mine things as drafted fragments and
+      paragraphs, connected by path into an underground that becomes the outline once
+      enough of it exists.</li>
+    <li><b>A slow-forming personal thesaurus of ideas</b> — lean on clearings and let
+      "near neighbours" provocations do the work of noticing repetition you wouldn't
+      have connected yourself.</li>
+  </ul>
+
+  <h2 id="setup">Demo mode, or your own Notion</h2>
   <p>
     Silva runs fully on a small set of sample things with no setup at all — everything
     above works the same way, just on data that resets if you clear your browser. To
