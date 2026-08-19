@@ -5,15 +5,15 @@
  * store's promise resolve/reject in the background (SILVA.md "Data and
  * architecture").
  *
- * Only Paths/embeddings/provocations are out of scope for this session —
- * this store grows a `Paths` counterpart when that build-order step lands,
- * not speculatively now.
+ * Only embeddings/provocations are out of scope for this session — this
+ * store grows whatever those build-order steps need, not speculatively now.
  */
 
 import { toThing, toNotionThingProps, patchProps, deriveHandle, type Thing } from './notion'
 import { toSource, toNotionSourceProps, patchSourceProps, type Source } from './sources'
 import { toLocus, toNotionLocusProps, patchLocusProps, type Locus } from './loci'
-import { DEMO_THINGS, DEMO_SOURCES, DEMO_LOCI } from './fixtures'
+import { toPath, toNotionPathProps, patchPathProps, deriveLabel, type Path } from './paths'
+import { DEMO_THINGS, DEMO_SOURCES, DEMO_LOCI, DEMO_PATHS } from './fixtures'
 
 const PROXY_URL = '/api/notion'
 
@@ -59,12 +59,21 @@ export interface NewLocusInput {
   meaning?: string
 }
 
+export interface NewPathInput {
+  fromId: string
+  toId: string
+  fromHandle: string
+  toHandle: string
+  why: string
+}
+
 /** A private, session-only copy — demo writes must never mutate the shared
  *  fixture export itself (a second store instance, or a hot reload, would
  *  otherwise see another instance's edits). */
 let demoThings: Thing[] = [...DEMO_THINGS]
 let demoSources: Source[] = [...DEMO_SOURCES]
 let demoLoci: Locus[] = [...DEMO_LOCI]
+let demoPaths: Path[] = [...DEMO_PATHS]
 
 // Date.now() alone collides when several demo rows are created in the same
 // tick — exactly what a Kobo import's per-highlight loop does, caught live
@@ -81,6 +90,7 @@ export function resetDemoThings(): void {
   demoThings = [...DEMO_THINGS]
   demoSources = [...DEMO_SOURCES]
   demoLoci = [...DEMO_LOCI]
+  demoPaths = [...DEMO_PATHS]
 }
 
 export class SilvaStore {
@@ -88,17 +98,20 @@ export class SilvaStore {
   private thingsDbId: string | null
   private sourcesDbId: string | null
   private lociDbId: string | null
+  private pathsDbId: string | null
 
   constructor(
     token: string,
     thingsDbId: string | null = DEFAULT_THINGS_DATABASE_ID,
     sourcesDbId: string | null = DEFAULT_SOURCES_DATABASE_ID,
     lociDbId: string | null = DEFAULT_LOCI_DATABASE_ID,
+    pathsDbId: string | null = DEFAULT_PATHS_DATABASE_ID,
   ) {
     this.token = token
     this.thingsDbId = thingsDbId
     this.sourcesDbId = sourcesDbId
     this.lociDbId = lociDbId
+    this.pathsDbId = pathsDbId
   }
 
   /** No token → demo. Token but no database id → empty, never a silent mix
@@ -310,6 +323,76 @@ export class SilvaStore {
 
     if (!this.lociDbId) {
       throw new SilvaStoreError('No Loci database configured.', 0)
+    }
+
+    await this.request(`pages/${id}`, 'PATCH', { archived: true })
+  }
+
+  async listPaths(): Promise<Path[]> {
+    if (this.useDemo()) return [...demoPaths]
+    if (!this.pathsDbId) return []
+    const pages = await this.fetchAllPages(this.pathsDbId)
+    return pages.map((page) => toPath(page as { id: string; properties: Record<string, unknown> }))
+  }
+
+  /** A path always carries its Why, and is always 'Yours' from this UI —
+   *  'Accepted' only ever comes from accepting a provocation (build-order
+   *  step 9), never from making a path by hand. */
+  async createPath(input: NewPathInput): Promise<Path> {
+    const draft: Omit<Path, 'id'> = {
+      label: deriveLabel(input.fromHandle, input.toHandle),
+      fromId: input.fromId,
+      toId: input.toId,
+      why: input.why,
+      made: new Date().toISOString().slice(0, 10),
+      origin: 'Yours',
+    }
+
+    if (this.useDemo()) {
+      const path: Path = { ...draft, id: demoId('demo-path') }
+      demoPaths = [path, ...demoPaths]
+      return path
+    }
+
+    if (!this.pathsDbId) {
+      throw new SilvaStoreError('No Paths database configured.', 0)
+    }
+
+    const page = await this.request('pages', 'POST', {
+      parent: { database_id: this.pathsDbId },
+      properties: toNotionPathProps(draft),
+    })
+    return toPath(page as { id: string; properties: Record<string, unknown> })
+  }
+
+  /** Only `why` is ever edited after the fact — changing what a path
+   *  connects is functionally a different path, not an edit to this one. */
+  async updatePathWhy(id: string, why: string): Promise<Path> {
+    if (this.useDemo()) {
+      let updated: Path | undefined
+      demoPaths = demoPaths.map((path) => {
+        if (path.id !== id) return path
+        updated = { ...path, why }
+        return updated
+      })
+      if (!updated) throw new SilvaStoreError(`No such path: ${id}`, 404)
+      return updated
+    }
+
+    const properties = patchPathProps({ why })
+    const page = await this.request(`pages/${id}`, 'PATCH', { properties })
+    return toPath(page as { id: string; properties: Record<string, unknown> })
+  }
+
+  /** Same archived:true convention as archiveLocus. */
+  async archivePath(id: string): Promise<void> {
+    if (this.useDemo()) {
+      demoPaths = demoPaths.filter((path) => path.id !== id)
+      return
+    }
+
+    if (!this.pathsDbId) {
+      throw new SilvaStoreError('No Paths database configured.', 0)
     }
 
     await this.request(`pages/${id}`, 'PATCH', { archived: true })

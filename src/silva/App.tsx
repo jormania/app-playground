@@ -6,14 +6,16 @@ import type { Thing } from './lib/notion'
 import type { Source } from './lib/sources'
 import type { Locus } from './lib/loci'
 import { withoutLocus, withLocusReplaced } from './lib/loci'
+import type { Path } from './lib/paths'
 import { ForestView } from './components/ForestView'
 import { UnderstoryView } from './components/UnderstoryView'
 import { IntakeField } from './components/IntakeField'
 import { KoboImportPanel } from './components/KoboImportPanel'
 import { ClearingsView } from './components/ClearingsView'
+import { UndergroundView } from './components/UndergroundView'
 import styles from './App.module.css'
 
-type View = 'forest' | 'understory' | 'clearings'
+type View = 'forest' | 'understory' | 'clearings' | 'underground'
 
 export default function App() {
   // No Settings/token entry yet (deferred — see plan) — demo mode is what
@@ -23,6 +25,7 @@ export default function App() {
   const [things, setThings] = useState<Thing[]>([])
   const [sources, setSources] = useState<Source[]>([])
   const [loci, setLoci] = useState<Locus[]>([])
+  const [paths, setPaths] = useState<Path[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [view, setView] = useState<View>('understory')
@@ -33,13 +36,15 @@ export default function App() {
 
     async function load() {
       try {
-        const [loaded, loadedSources, loadedLoci] = await Promise.all([
+        const [loaded, loadedSources, loadedLoci, loadedPaths] = await Promise.all([
           store.listThings(),
           store.listSources(),
           store.listLoci(),
+          store.listPaths(),
         ])
         if (!cancelled) setSources(loadedSources)
         if (!cancelled) setLoci(loadedLoci)
+        if (!cancelled) setPaths(loadedPaths)
 
         // Season expiry: quietly release anything that's fully aged out of
         // the understory. No badge, no counter — it just isn't there next
@@ -159,6 +164,30 @@ export default function App() {
     setLoci((prev) => prev.filter((l) => l.id !== locusId))
   }
 
+  async function handleMakePath(fromId: string, toId: string, why: string) {
+    const fromThing = things.find((t) => t.id === fromId)
+    const toThing = things.find((t) => t.id === toId)
+    if (!fromThing || !toThing) return
+    const path = await store.createPath({
+      fromId,
+      toId,
+      fromHandle: fromThing.handle,
+      toHandle: toThing.handle,
+      why,
+    })
+    setPaths((prev) => [path, ...prev])
+  }
+
+  async function handleEditPathWhy(pathId: string, why: string) {
+    const updated = await store.updatePathWhy(pathId, why)
+    setPaths((prev) => prev.map((p) => (p.id === pathId ? updated : p)))
+  }
+
+  async function handleRemovePath(pathId: string) {
+    await store.archivePath(pathId)
+    setPaths((prev) => prev.filter((p) => p.id !== pathId))
+  }
+
   return (
     <div className={styles.app}>
       <header className={styles.header}>
@@ -170,6 +199,7 @@ export default function App() {
             { value: 'understory', label: 'Understory' },
             { value: 'forest', label: 'Forest' },
             { value: 'clearings', label: 'Clearings' },
+            { value: 'underground', label: 'Underground' },
           ]}
         />
       </header>
@@ -202,7 +232,7 @@ export default function App() {
           </>
         ) : view === 'forest' ? (
           <ForestView things={things} sources={sources} />
-        ) : (
+        ) : view === 'clearings' ? (
           <ClearingsView
             things={things}
             loci={loci}
@@ -212,6 +242,14 @@ export default function App() {
             onRemoveThing={handleRemoveThing}
             onMerge={handleMerge}
             onDissolve={handleDissolve}
+          />
+        ) : (
+          <UndergroundView
+            things={things}
+            paths={paths}
+            onMake={handleMakePath}
+            onEditWhy={handleEditPathWhy}
+            onRemove={handleRemovePath}
           />
         )}
       </main>

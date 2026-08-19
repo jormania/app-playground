@@ -13,6 +13,7 @@
 import type { Thing } from './notion'
 import type { Source } from './sources'
 import type { Locus } from './loci'
+import type { Path } from './paths'
 
 function daysAgo(n: number): string {
   const d = new Date()
@@ -209,5 +210,22 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: 'https://example.com/an-essay-worth-keeping',
     koboBookmarkId: null,
+  },
+]
+
+/** One already-made path, so Underground isn't empty on first load —
+ *  connects demo-thing-1 (self-command over the mind) and demo-thing-5
+ *  (curating a forest instead of a library). Every path made outside a
+ *  provocation is `origin: 'Yours'` — 'Accepted' only exists once
+ *  provocations do (build-order step 9). */
+export const DEMO_PATHS: Path[] = [
+  {
+    id: 'demo-path-1',
+    label: 'You have power over your mind → draft — on keeping a forest instead of a library',
+    fromId: 'demo-thing-1',
+    toId: 'demo-thing-5',
+    why: 'Both are about where the self actually has control — over judgment and tending, not over what grows or what happens.',
+    made: daysAgo(2),
+    origin: 'Yours',
   },
 ]
