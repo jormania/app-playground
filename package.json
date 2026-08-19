@@ -19,6 +19,7 @@
     "gen:daily-stoic-icons": "node scripts/generate-daily-stoic-icons.mjs",
     "gen:loom-icons": "node scripts/generate-loom-icons.mjs",
     "gen:fit-check-icons": "node scripts/generate-fit-check-icons.mjs",
+    "gen:silva-icons": "node scripts/generate-silva-icons.mjs",
     "gen:kobo-fixture": "node scripts/generate-kobo-sample-db.mjs"
   },
   "repository": {

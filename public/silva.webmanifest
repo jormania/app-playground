@@ -1,0 +1,17 @@
+{
+  "name": "Silva",
+  "short_name": "Silva",
+  "description": "A forest of things — a private commonplace book arranged by affinity, not filing.",
+  "id": "/silva-react.html",
+  "start_url": "/silva-react.html",
+  "scope": "/silva-react.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#eee8d5",
+  "theme_color": "#268bd2",
+  "icons": [
+    { "src": "/silva-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/silva-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/silva-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -3,9 +3,17 @@ import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/inter'
 import '../ds/tokens.css'
 import App from './App.tsx'
+import { watchInstalled } from '../shared/installFlag'
 
-// No service worker / watchInstalled yet — PWA wiring is build-order step 10,
-// not this session (Things model, forest view, understory only).
+watchInstalled('silva-react.html')
+
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/silva-sw.js', { scope: '/silva-react.html' })
+      .catch(() => {})
+  })
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
