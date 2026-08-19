@@ -9,6 +9,7 @@
 .wrap {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   gap: var(--space-sm);
   padding: var(--space-md) 0 var(--space-lg);
   border-top: 1px solid var(--color-border-2);
@@ -39,6 +40,7 @@
 
 .foot {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-xs);
   align-items: center;
   justify-content: flex-end;

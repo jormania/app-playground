@@ -8,6 +8,7 @@
 .forest {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   gap: var(--space-2xl);
   padding: var(--space-lg) var(--space-md);
   max-width: 640px;

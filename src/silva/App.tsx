@@ -18,6 +18,7 @@ import { SearchView } from './components/SearchView'
 import { ProvocationBanner } from './components/ProvocationBanner'
 import { SettingsView } from './components/SettingsView'
 import { Toasts, useToasts } from './components/Toasts'
+import { TabBar } from './components/TabBar'
 import { pickProvocation, provocationKey, type Provocation } from './lib/provocations'
 import { readDismissed, addDismissed, hasShownThisSession, markShownThisSession } from './lib/provocationDismissals'
 import {
@@ -38,6 +39,18 @@ import { syncSystemTheme } from './lib/theme'
 import styles from './App.module.css'
 
 type View = 'forest' | 'understory' | 'clearings' | 'underground' | 'search' | 'settings'
+
+/** One list, two presentations: the segmented control on a desktop header and
+ *  the bottom TabBar on a phone. The `value`s double as icon names in
+ *  components/TabBar.tsx. */
+const VIEWS: { value: View; label: string }[] = [
+  { value: 'forest', label: 'Forest' },
+  { value: 'understory', label: 'Understory' },
+  { value: 'clearings', label: 'Clearings' },
+  { value: 'underground', label: 'Underground' },
+  { value: 'search', label: 'Search' },
+  { value: 'settings', label: 'Settings' },
+]
 
 /** A collection snapshot, so a failed live write can put back exactly what
  *  was on screen before the optimistic change. */
@@ -652,19 +665,17 @@ export default function App() {
   return (
     <div className={styles.app}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Silva</h1>
+        <div className={styles.headerRow}>
+          <h1 className={styles.title}>Silva</h1>
+          {/* Names the view on a phone, where navigation lives at the far end
+           *  of the screen in 9.5px small caps. */}
+          <span className={styles.where}>{VIEWS.find((v) => v.value === view)?.label}</span>
+        </div>
         <div className={styles.nav}>
           <SegmentedControl
-          value={view}
-          onChange={(v) => setView(v as View)}
-          options={[
-            { value: 'forest', label: 'Forest' },
-            { value: 'understory', label: 'Understory' },
-            { value: 'clearings', label: 'Clearings' },
-            { value: 'underground', label: 'Underground' },
-            { value: 'search', label: 'Search' },
-            { value: 'settings', label: 'Settings' },
-          ]}
+            value={view}
+            onChange={(v) => setView(v as View)}
+            options={VIEWS}
           />
         </div>
       </header>
@@ -749,6 +760,8 @@ export default function App() {
           <SettingsView config={config} onChange={handleConfigChange} indexing={indexing} />
         )}
       </main>
+
+      <TabBar value={view} options={VIEWS} onChange={(v) => setView(v as View)} />
 
       <Toasts toasts={toasts} dismiss={dismiss} />
     </div>
