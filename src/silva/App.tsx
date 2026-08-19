@@ -222,6 +222,22 @@ export default function App() {
     setLoci((prev) => prev.filter((l) => l.id !== locusId))
   }
 
+  // A split things's membership in the old locus is replaced with the new
+  // one — same withLocusReplaced helper handleMerge uses, just in the other
+  // direction. Other loci a thing already belongs to are untouched.
+  async function handleSplit(locusId: string, thingIds: string[], name: string, meaning: string) {
+    const newLocus = await store.createLocus({ name, meaning })
+    setLoci((prev) => [newLocus, ...prev])
+    const affected = thingIds
+      .map((id) => things.find((t) => t.id === id))
+      .filter((t): t is Thing => Boolean(t))
+    if (affected.length > 0) {
+      await applyThingUpdates(
+        affected.map((t) => ({ id: t.id, patch: { lociIds: withLocusReplaced(t.lociIds, locusId, newLocus.id) } })),
+      )
+    }
+  }
+
   async function handleMakePath(fromId: string, toId: string, why: string) {
     const fromThing = things.find((t) => t.id === fromId)
     const toThing = things.find((t) => t.id === toId)
@@ -335,6 +351,7 @@ export default function App() {
             onRemoveThing={handleRemoveThing}
             onMerge={handleMerge}
             onDissolve={handleDissolve}
+            onSplit={handleSplit}
           />
         ) : view === 'underground' ? (
           <UndergroundView

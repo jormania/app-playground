@@ -15,6 +15,7 @@ export interface ClearingsViewProps {
   onRemoveThing: (locusId: string, thingId: string) => void
   onMerge: (survivorId: string, mergeAwayId: string) => void
   onDissolve: (locusId: string) => void
+  onSplit: (locusId: string, thingIds: string[], name: string, meaning: string) => void
 }
 
 type Screen = { kind: 'list' } | { kind: 'coin' } | { kind: 'detail'; locusId: string }
@@ -30,7 +31,7 @@ const MEMBER_PREVIEW_LENGTH = 80
  *  on purpose — coining a clearing is a retrospective judgment call, not a
  *  quick daily action, so the copy here explains itself more than
  *  elsewhere in the app. */
-export function ClearingsView({ things, loci, onCoin, onRename, onAddThings, onRemoveThing, onMerge, onDissolve }: ClearingsViewProps) {
+export function ClearingsView({ things, loci, onCoin, onRename, onAddThings, onRemoveThing, onMerge, onDissolve, onSplit }: ClearingsViewProps) {
   const [screen, setScreen] = useState<Screen>({ kind: 'list' })
   const kept = things.filter((thing) => thing.state === 'Kept')
 
@@ -112,6 +113,7 @@ export function ClearingsView({ things, loci, onCoin, onRename, onAddThings, onR
         onDissolve(locus.id)
         setScreen({ kind: 'list' })
       }}
+      onSplit={(thingIds, name, meaning) => onSplit(locus.id, thingIds, name, meaning)}
     />
   )
 }
@@ -186,6 +188,7 @@ function LocusDetail({
   onRemoveThing,
   onMerge,
   onDissolve,
+  onSplit,
 }: {
   locus: Locus
   loci: Locus[]
@@ -197,6 +200,7 @@ function LocusDetail({
   onRemoveThing: (locusId: string, thingId: string) => void
   onMerge: (survivorId: string) => void
   onDissolve: () => void
+  onSplit: (thingIds: string[], name: string, meaning: string) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState(locus.name)
@@ -206,6 +210,9 @@ function LocusDetail({
   const [mergeTargetId, setMergeTargetId] = useState('')
   const [confirmingMerge, setConfirmingMerge] = useState(false)
   const [confirmingDissolve, setConfirmingDissolve] = useState(false)
+  const [splitting, setSplitting] = useState(false)
+  const [splitSelection, setSplitSelection] = useState<Set<string>>(new Set())
+  const [splitName, setSplitName] = useState('')
 
   const members = things.filter((t) => t.lociIds.includes(locus.id))
   const nonMembers = kept.filter((t) => !t.lociIds.includes(locus.id))
@@ -213,6 +220,15 @@ function LocusDetail({
 
   function toggleAdd(id: string) {
     setAddSelection((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSplit(id: string) {
+    setSplitSelection((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -298,6 +314,48 @@ function LocusDetail({
           <Button size="sm" variant="outline" onClick={() => setAdding(true)}>Add more things from the forest</Button>
         )}
       </section>
+
+      {members.length >= 2 && (
+        <section className={styles.section}>
+          <h4 className={styles.sectionTitle}>Split into a new clearing</h4>
+          <p className={styles.sectionHint}>
+            Pick which things belong to a different pattern — they move to the new
+            clearing, and stay exactly where they are here otherwise.
+          </p>
+          {splitting ? (
+            <>
+              <ThingPicker things={members} selectedIds={splitSelection} onToggle={toggleSplit} />
+              <Field
+                label="What do you call the new clearing?"
+                value={splitName}
+                onChange={(e) => setSplitName(e.target.value)}
+                placeholder="e.g. Small attentions"
+              />
+              <div className={styles.actions}>
+                <Button
+                  variant="ghost"
+                  onClick={() => { setSplitting(false); setSplitSelection(new Set()); setSplitName('') }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  disabled={splitSelection.size === 0 || !splitName.trim()}
+                  onClick={() => {
+                    onSplit([...splitSelection], splitName.trim(), '')
+                    setSplitting(false)
+                    setSplitSelection(new Set())
+                    setSplitName('')
+                  }}
+                >
+                  Split off {splitSelection.size} thing{splitSelection.size === 1 ? '' : 's'}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <Button size="sm" variant="outline" onClick={() => setSplitting(true)}>Split this clearing</Button>
+          )}
+        </section>
+      )}
 
       {otherLoci.length > 0 && (
         <section className={styles.section}>
