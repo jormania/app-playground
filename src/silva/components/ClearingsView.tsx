@@ -33,11 +33,6 @@ export function ClearingsView({ things, loci, onCoin, onRename, onAddThings, onR
     return (
       <div className={styles.wrap}>
         <div className={styles.intro}>
-          <p className={styles.introText}>
-            Clearings are places in the forest you've named after noticing several kept
-            things belong together — never assigned when you capture something, only
-            after a pattern is already there.
-          </p>
           <Button size="sm" onClick={() => setScreen({ kind: 'coin' })}>Coin a new clearing</Button>
         </div>
         {loci.length === 0 ? (
