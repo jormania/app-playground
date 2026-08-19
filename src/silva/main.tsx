@@ -1,7 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/inter'
+import '@fontsource-variable/fraunces'
 import '../ds/tokens.css'
+import './styles/palette.css'
 import App from './App.tsx'
 import { watchInstalled } from '../shared/installFlag'
 

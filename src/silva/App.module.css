@@ -1,6 +1,11 @@
+/* A faint fibre texture over the ground colour — "unbleached rag paper...
+   faint fibre texture" (SILVA.md). A single inline SVG noise filter, low
+   opacity, no network request and no motion — the mount is textured, not
+   the components on top of it (every component keeps a flat colour). */
 .app {
   min-height: 100%;
-  background: var(--color-bg);
+  background-color: var(--color-bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
   color: var(--color-ink);
   font-family: var(--font-sans);
 }

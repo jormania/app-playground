@@ -1,0 +1,78 @@
+/* Silva's own identity, layered on the design system — SILVA.md's "The look:
+ * a herbarium, not a library" (18th–19th century botanical specimen plate,
+ * not parchment/candlelight, not twilight, not painted illustration — those
+ * are already Codex Alchymicus/Loom/Yoru/Touch Grass). Only TOKEN VALUES are
+ * overridden here — every Silva component already reads these variables
+ * and never hard-codes a colour (checked: zero hex literals anywhere in
+ * src/silva's CSS before this file), so re-tinting the app is this block
+ * alone, same convention as Fit Check's index.css.
+ *
+ * `--silva-oxblood` is a NEW token, deliberately NOT `--color-danger` — SILVA.md:
+ * "the one accent is oxblood, reserved exclusively for the underground layer
+ * — mycorrhiza, and nothing else." `--color-danger` still drives ordinary
+ * destructive actions (Remove/Dissolve buttons, ConfirmModal) elsewhere in
+ * the app; conflating the two would mean a "Remove" button and an unnoticed
+ * mycorrhiza thread wear the same colour, diluting the one signal SILVA.md
+ * asks this colour to carry.
+ */
+
+:root {
+  /* ── Ground: unbleached rag paper, warm off-white ─────────────────────── */
+  --color-bg:        #f2ecd9;
+  --color-bg-sunken: #e9e0c8;
+  --color-surface:   #faf5e6;
+  --color-surface-2: #efe7d0;
+  --color-border:    #d6c9a8;
+  --color-border-2:  #b6a179;
+
+  /* ── Ink: near-black with a green cast; sepia for metadata ────────────── */
+  --color-ink:    #26301f;
+  --color-muted:  #6b5a3a;
+  --color-faint:  #9c8a63;
+
+  /* ── The general accent is a muted botanical green — NOT oxblood, which
+     stays reserved for mycorrhiza alone (see --silva-oxblood below). ────── */
+  --color-accent:       #52633c;
+  --color-accent-hover: #435030;
+  --color-on-accent:    #f7f1e0;
+
+  --color-success: #5f8a4a;
+  --color-warning: #a8702c;
+  --color-danger:  #8a3b2b;
+
+  --silva-oxblood: #6b1f1a;
+
+  /* SILVA.md: "a transitional serif for bodies... passages must feel set,
+     like type on a plate, never like a text field." Fraunces is already a
+     repo dependency (Daily Stoic/Sol Odyssey/Wanderlist); no new one added. */
+  --font-display: 'Fraunces Variable', 'Fraunces', Georgia, serif;
+  --font-body-serif: 'Fraunces Variable', 'Fraunces', Georgia, serif;
+}
+
+:root[data-theme="dark"] {
+  /* ── Ground: "a herbarium at night" — deep bark/umber, not black ──────── */
+  --color-bg:        #241b12;
+  --color-bg-sunken: #1c150e;
+  --color-surface:   #302418;
+  --color-surface-2: #392b1c;
+  --color-border:    #4a3a26;
+  --color-border-2:  #6b5539;
+
+  /* ── Ink: aged ivory ───────────────────────────────────────────────────── */
+  --color-ink:    #ece0c4;
+  --color-muted:  #c2ad82;
+  --color-faint:  #8f7c58;
+
+  --color-accent:       #8aa06a;
+  --color-accent-hover: #9db47d;
+  --color-on-accent:    #1c2013;
+
+  --color-success: #82a862;
+  --color-warning: #c98a4a;
+  --color-danger:  #b1594a;
+
+  /* Real oxblood (#6b1f1a) would nearly vanish against this dark bark
+     ground — bumped toward a warm terracotta-red for dark-mode contrast,
+     while staying clearly a *red*, not the green general accent. */
+  --silva-oxblood: #c1594a;
+}

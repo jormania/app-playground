@@ -21,11 +21,18 @@ import { readDismissed, addDismissed, hasShownThisSession, markShownThisSession 
 import { peekVectors } from './lib/vectorCache'
 import { loadSilvaConfig, saveSilvaConfig, type SilvaConfig } from './lib/settingsConfig'
 import { confirmTension } from './lib/tension'
+import { syncSystemTheme } from './lib/theme'
 import styles from './App.module.css'
 
 type View = 'forest' | 'understory' | 'clearings' | 'underground' | 'search' | 'settings'
 
 export default function App() {
+  // SILVA.md: "Light and dark, syncing to the device" — no manual toggle,
+  // purely OS `prefers-color-scheme`. Runs once; the returned cleanup
+  // detaches the listener on unmount (App never unmounts in practice, but
+  // matches every other effect's own cleanup discipline in this file).
+  useEffect(() => syncSystemTheme(), [])
+
   // Settings holds the Notion token (and Anthropic key) on this device —
   // store.ts already supported a live token since Session 3, this just
   // wires it to a real UI. Re-deriving `store` when the token changes

@@ -120,7 +120,7 @@
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   color: var(--color-ink);
-  text-transform: uppercase;
+  font-variant: small-caps;
   letter-spacing: 0.04em;
 }
 
