@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { lexicalMatch, combineResults } from './search'
+import { lexicalMatch, combineResults, filterByKind } from './search'
 import type { Thing } from './notion'
 
 function thing(overrides: Partial<Thing>): Thing {
@@ -86,5 +86,26 @@ describe('combineResults', () => {
     const queryVector = new Float32Array([1, 0])
     const results = combineResults('nothing lexical here', things, queryVector, new Map())
     expect(results).toEqual([])
+  })
+})
+
+describe('filterByKind', () => {
+  const withKinds = [
+    thing({ id: 'q1', kind: 'Question' }),
+    thing({ id: 'p1', kind: 'Passage' }),
+    thing({ id: 'p2', kind: 'Passage' }),
+    thing({ id: 'n1', kind: null }),
+  ]
+
+  it('returns everything unchanged when kind is null', () => {
+    expect(filterByKind(withKinds, null)).toEqual(withKinds)
+  })
+
+  it('narrows to only things with the given kind', () => {
+    expect(filterByKind(withKinds, 'Passage').map((t) => t.id)).toEqual(['p1', 'p2'])
+  })
+
+  it('returns an empty array when nothing matches', () => {
+    expect(filterByKind(withKinds, 'Dialogue')).toEqual([])
   })
 })

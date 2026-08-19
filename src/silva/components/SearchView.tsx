@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Thing } from '../lib/notion'
+import type { Thing, ThingKind } from '../lib/notion'
 import { embed, contentHash } from '../lib/embeddings'
 import { getVector, setVector } from '../lib/vectorCache'
-import { combineResults, type SearchResult } from '../lib/search'
+import { combineResults, filterByKind, type SearchResult } from '../lib/search'
 import styles from './SearchView.module.css'
+
+// Same order as notion.ts's ThingKind union — a fixed vocabulary, not
+// derived from what's actually present, so a kind with zero things right
+// now still shows as a filter (consistent, not a moving target).
+const ALL_KINDS: ThingKind[] = ['Passage', 'Observation', 'Dialogue', 'Question', 'Image', 'Link', 'Fragment', 'Mine']
 
 export interface SearchViewProps {
   things: Thing[]
@@ -25,6 +30,7 @@ export function SearchView({ things }: SearchViewProps) {
   const [progress, setProgress] = useState({ done: 0, total: things.length })
   const [vectors, setVectors] = useState<Map<string, Float32Array>>(new Map())
   const [query, setQuery] = useState('')
+  const [kindFilter, setKindFilter] = useState<ThingKind | null>(null)
   const [queryVector, setQueryVector] = useState<Float32Array | null>(null)
   const [modelError, setModelError] = useState('')
   const cancelledRef = useRef(false)
@@ -98,7 +104,12 @@ export function SearchView({ things }: SearchViewProps) {
     }
   }, [query, phase])
 
-  const results: SearchResult[] = combineResults(query, things, queryVector, vectors)
+  const kindFiltered = filterByKind(things, kindFilter)
+  const results: SearchResult[] = query.trim()
+    ? combineResults(query, kindFiltered, queryVector, vectors)
+    : kindFilter
+      ? kindFiltered.map((thing): SearchResult => ({ thing, matchType: 'lexical', score: 1 }))
+      : []
 
   return (
     <div className={styles.wrap}>
@@ -110,6 +121,28 @@ export function SearchView({ things }: SearchViewProps) {
         placeholder="I remember something about…"
         disabled={things.length === 0}
       />
+
+      <div className={styles.kindFilters}>
+        <button
+          type="button"
+          className={styles.kindChip}
+          data-active={kindFilter === null}
+          onClick={() => setKindFilter(null)}
+        >
+          All
+        </button>
+        {ALL_KINDS.map((kind) => (
+          <button
+            key={kind}
+            type="button"
+            className={styles.kindChip}
+            data-active={kindFilter === kind}
+            onClick={() => setKindFilter(kindFilter === kind ? null : kind)}
+          >
+            {kind}
+          </button>
+        ))}
+      </div>
 
       {phase !== 'ready' && (
         <p className={styles.status}>
@@ -125,8 +158,10 @@ export function SearchView({ things }: SearchViewProps) {
         </p>
       )}
 
-      {query.trim() && results.length === 0 && (
-        <p className={styles.empty}>Nothing found for "{query.trim()}".</p>
+      {results.length === 0 && (query.trim() || kindFilter) && (
+        <p className={styles.empty}>
+          {query.trim() ? `Nothing found for "${query.trim()}".` : `Nothing kept as ${kindFilter} yet.`}
+        </p>
       )}
 
       <ul className={styles.list}>

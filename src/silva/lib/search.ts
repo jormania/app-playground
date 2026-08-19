@@ -7,7 +7,7 @@
  * IndexedDB itself.
  */
 
-import type { Thing } from './notion'
+import type { Thing, ThingKind } from './notion'
 import { cosineSimilarity } from './embeddings'
 
 export type MatchType = 'lexical' | 'semantic' | 'both'
@@ -79,4 +79,10 @@ export function combineResults(
   }
 
   return [...results.values()].sort((a, b) => b.score - a.score).slice(0, MAX_RESULTS)
+}
+
+/** A facet, not a second query — narrows the candidate set before lexical/
+ *  semantic matching runs. `null` (no filter) returns `things` unchanged. */
+export function filterByKind(things: Thing[], kind: ThingKind | null): Thing[] {
+  return kind ? things.filter((t) => t.kind === kind) : things
 }

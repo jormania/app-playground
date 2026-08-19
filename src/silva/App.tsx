@@ -137,6 +137,11 @@ export default function App() {
     setThings((prev) => prev.map((thing) => (thing.id === id ? updated : thing)))
   }
 
+  async function handleEditThing(id: string, patch: Partial<Thing>) {
+    const updated = await store.updateThing(id, patch)
+    setThings((prev) => prev.map((thing) => (thing.id === id ? updated : thing)))
+  }
+
   async function handleIntake(body: string) {
     const created = await store.createThing({ body })
     setThings((prev) => [created, ...prev])
@@ -319,7 +324,7 @@ export default function App() {
             />
           </>
         ) : view === 'forest' ? (
-          <ForestView things={things} sources={sources} />
+          <ForestView things={things} sources={sources} onEdit={handleEditThing} />
         ) : view === 'clearings' ? (
           <ClearingsView
             things={things}

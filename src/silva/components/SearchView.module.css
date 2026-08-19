@@ -21,6 +21,35 @@
   box-shadow: 0 0 0 3px var(--color-ring);
 }
 
+.kindFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+
+.kindChip {
+  padding: var(--space-3xs) var(--space-xs);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.kindChip:hover {
+  border-color: var(--color-accent);
+}
+
+.kindChip[data-active="true"] {
+  color: var(--color-bg);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
 .status {
   margin: 0;
   font-size: var(--text-sm);

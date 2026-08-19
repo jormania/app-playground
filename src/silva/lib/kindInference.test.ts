@@ -1,0 +1,42 @@
+import { describe, it, expect } from 'vitest'
+import { inferKind } from './kindInference'
+
+describe('inferKind', () => {
+  it('returns null for empty text', () => {
+    expect(inferKind('', true)).toBeNull()
+    expect(inferKind('   ', false)).toBeNull()
+  })
+
+  it('detects a bare URL as Link', () => {
+    expect(inferKind('https://example.com/some/article', false)).toBe('Link')
+    expect(inferKind('http://example.com', true)).toBe('Link')
+  })
+
+  it('detects a question by its trailing "?"', () => {
+    expect(inferKind('What would you do if you weren\'t afraid?', false)).toBe('Question')
+  })
+
+  it('detects quoted dialogue', () => {
+    expect(inferKind('She said, "I have never once regretted staying."', false)).toBe('Dialogue')
+    expect(inferKind('“Probably the same thing, honestly.”', false)).toBe('Dialogue')
+  })
+
+  it('does not mistake a short quoted phrase for dialogue', () => {
+    // Under the 8-char quoted-run floor — a quoted word, not speech.
+    expect(inferKind('The word "delight" keeps coming up.', true)).not.toBe('Dialogue')
+  })
+
+  it('falls back to Fragment for very short text', () => {
+    expect(inferKind('Worth remembering.', true)).toBe('Fragment')
+  })
+
+  it('falls back to Passage when a source is set', () => {
+    const body = 'A library is organized so you can find what you already know you want. A forest is organized so you can find what you did not know you were looking for.'
+    expect(inferKind(body, true)).toBe('Passage')
+  })
+
+  it('falls back to Observation when no source is set', () => {
+    const body = 'A dog sat at the tram stop for twenty minutes, watching every door open and close, waiting for someone who never came.'
+    expect(inferKind(body, false)).toBe('Observation')
+  })
+})
