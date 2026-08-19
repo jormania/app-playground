@@ -11,9 +11,19 @@
  * Loaded lazily — only `loadEmbedder()` touches the network, and nothing
  * in this module calls it eagerly. See components/SearchView.tsx, the only
  * caller.
+ *
+ * The `@huggingface/transformers` import itself is dynamic, not just the
+ * call to it — `cosineSimilarity`/`contentHash` below are plain, dependency-
+ * free functions used widely (provocations.ts, graph.ts, search.ts,
+ * vectorCache.ts), and a static top-level import would have pulled the
+ * whole library into every one of those call sites' bundle chunk even
+ * though most of them never touch the model. Confirmed via `npm run
+ * build`: this dropped Silva's main chunk from 622 kB to well under half
+ * that, with `@huggingface/transformers` split into its own chunk that
+ * only loads once `embed()` is actually first called.
  */
 
-import { pipeline, type FeatureExtractionPipeline } from '@huggingface/transformers'
+import type { FeatureExtractionPipeline } from '@huggingface/transformers'
 
 // MiniLM-class, 384-dim, quantised by default — matches SILVA.md's "~25 MB,
 // MiniLM-class, 384-dim" exactly.
@@ -29,7 +39,9 @@ let pipelinePromise: Promise<FeatureExtractionPipeline> | null = null
 
 function loadEmbedder(): Promise<FeatureExtractionPipeline> {
   if (!pipelinePromise) {
-    pipelinePromise = pipeline('feature-extraction', MODEL_ID) as Promise<FeatureExtractionPipeline>
+    pipelinePromise = import('@huggingface/transformers').then(
+      ({ pipeline }) => pipeline('feature-extraction', MODEL_ID) as Promise<FeatureExtractionPipeline>,
+    )
   }
   return pipelinePromise
 }
