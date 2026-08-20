@@ -810,7 +810,15 @@ export default function App() {
 
       {error && <p className={styles.error}>{error}</p>}
 
-      {provocation && (
+      {/* The Forest, and only the Forest. Rendered outside <main>, this sat
+          on top of all six surfaces at once — a pair of passages placed over
+          a token field in the Hearth, or over a Kobo import mid-review, is an
+          interruption rather than the app's voice. The Forest is the kept
+          collection, which is what every provocation is *about*, and it is
+          the view Silva opens on, so nothing is missed by confining it here.
+          Switching away never dismisses it: it is still waiting on the way
+          back. */}
+      {provocation && view === 'forest' && (
         <ProvocationBanner
           provocation={provocation}
           onDismiss={handleDismissProvocation}

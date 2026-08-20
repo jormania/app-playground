@@ -36,7 +36,7 @@ export function ProvocationBanner({ provocation, onDismiss, onAcceptPair, onAcce
   const [name, setName] = useState('')
 
   return (
-    <div className={styles.banner}>
+    <aside className={styles.banner} aria-label="A provocation">
       <p className={styles.kindLabel}>{KIND_LABEL[provocation.kind]}</p>
 
       {provocation.kind === 'shuffle' && (
@@ -123,6 +123,6 @@ export function ProvocationBanner({ provocation, onDismiss, onAcceptPair, onAcce
           )}
         </div>
       )}
-    </div>
+    </aside>
   )
 }

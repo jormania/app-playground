@@ -172,12 +172,21 @@ export interface MycorrhizaFiber {
  *  for a pair already connected by a real Path (that's not latent, it's
  *  already asserted). Only ever computed from vectors the caller already
  *  has in hand (peeked from cache) — this module never touches the model. */
+/** Same reasoning and same number as provocations.ts's MAX_PAIRWISE_THINGS:
+ *  this is an O(n²) cosine sweep that runs inside a render, so it works over
+ *  the most recently kept slice rather than the whole forest. The graph is a
+ *  picture of the live collection, not an audit of it. */
+export const MAX_MYCORRHIZA_THINGS = 300
+
 export function computeMycorrhiza(
   things: Thing[],
   vectorsById: Map<string, Float32Array>,
   paths: Path[],
 ): MycorrhizaFiber[] {
-  const kept = things.filter((t) => t.state === 'Kept' && vectorsById.has(t.id))
+  const eligible = things.filter((t) => t.state === 'Kept' && vectorsById.has(t.id))
+  const kept = eligible.length <= MAX_MYCORRHIZA_THINGS
+    ? eligible
+    : [...eligible].sort((a, b) => (b.kept || '').localeCompare(a.kept || '')).slice(0, MAX_MYCORRHIZA_THINGS)
   const connected = new Set(
     paths.filter((p) => p.fromId && p.toId).map((p) => pairKey(p.fromId!, p.toId!)),
   )

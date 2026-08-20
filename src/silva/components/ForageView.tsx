@@ -32,17 +32,22 @@ function summarize(thing: Thing, max = 140): string {
  *  every app load. Lexical results appear immediately; semantic results
  *  fill in once the model and index are ready. */
 export function ForageView({ things, sources, vectorsById }: ForageViewProps) {
+  // Released things are out of scope entirely: SILVA.md's "compost, not debt"
+  // means something you let go has left the collection, and a box that keeps
+  // digging it back up is the opposite of that. They are neither indexed (so
+  // nothing is spent embedding them) nor matched.
+  const forageable = useMemo(() => things.filter((t) => t.state !== 'Released'), [things])
   const sourceById = useMemo(() => new Map(sources.map((s) => [s.id, { title: s.title, author: s.author }])), [sources])
   // Only sources actually in play — a book with nothing kept from it yet
   // shouldn't clutter a facet meant for narrowing what's here.
-  const usedSourceIds = useMemo(() => new Set(things.map((t) => t.sourceId).filter((id): id is string => Boolean(id))), [things])
+  const usedSourceIds = useMemo(() => new Set(forageable.map((t) => t.sourceId).filter((id): id is string => Boolean(id))), [forageable])
   const usedSources = useMemo(
     () => sources.filter((s) => usedSourceIds.has(s.id)).sort((a, b) => a.title.localeCompare(b.title)),
     [sources, usedSourceIds],
   )
 
   const [phase, setPhase] = useState<IndexPhase>('loading-model')
-  const [progress, setProgress] = useState({ done: 0, total: things.length })
+  const [progress, setProgress] = useState({ done: 0, total: forageable.length })
   const [vectors, setVectors] = useState<Map<string, Float32Array>>(vectorsById)
   const [query, setQuery] = useState('')
   const [kindFilter, setKindFilter] = useState<ThingKind | null>(null)
@@ -56,16 +61,16 @@ export function ForageView({ things, sources, vectorsById }: ForageViewProps) {
   // stayed unsearchable-by-meaning until the tab was reloaded. Everything
   // already indexed is a cache hit, so re-running is cheap: the pass costs one
   // embed per genuinely new or edited body (lib/indexer.ts).
-  const signature = things.map((t) => `${t.id}:${t.body.length}`).join('|')
+  const signature = forageable.map((t) => `${t.id}:${t.body.length}`).join('|')
   useEffect(() => {
     cancelledRef.current = false
 
-    if (things.length === 0) {
+    if (forageable.length === 0) {
       setPhase('ready')
       return
     }
 
-    indexThings(things, {
+    indexThings(forageable, {
       isCancelled: () => cancelledRef.current,
       onProgress: (p) => {
         if (cancelledRef.current) return
@@ -111,7 +116,7 @@ export function ForageView({ things, sources, vectorsById }: ForageViewProps) {
     }
   }, [query, phase])
 
-  const faceted = filterBySource(filterByKind(things, kindFilter), sourceFilter)
+  const faceted = filterBySource(filterByKind(forageable, kindFilter), sourceFilter)
   const results: SearchResult[] = query.trim()
     ? combineResults(query, faceted, queryVector, vectors, sourceById)
     : kindFilter || sourceFilter
@@ -129,7 +134,7 @@ export function ForageView({ things, sources, vectorsById }: ForageViewProps) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="I remember something about…"
-        disabled={things.length === 0}
+        disabled={forageable.length === 0}
       />
 
       <div className={styles.kindFilters} role="group" aria-label="Filter by kind">
@@ -137,6 +142,7 @@ export function ForageView({ things, sources, vectorsById }: ForageViewProps) {
           type="button"
           className={styles.kindChip}
           data-active={kindFilter === null}
+          aria-pressed={kindFilter === null}
           onClick={() => setKindFilter(null)}
         >
           All
@@ -147,6 +153,7 @@ export function ForageView({ things, sources, vectorsById }: ForageViewProps) {
             type="button"
             className={styles.kindChip}
             data-active={kindFilter === kind}
+            aria-pressed={kindFilter === kind}
             onClick={() => setKindFilter(kindFilter === kind ? null : kind)}
           >
             {kind}

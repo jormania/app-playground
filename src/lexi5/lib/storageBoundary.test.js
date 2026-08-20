@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 /**
  * Lexi5 must reach web storage only through src/shared/storage, whose helpers can't
@@ -11,7 +12,12 @@ import { join } from 'node:path'
  * Same technique as src/ds/boundary.test.js, which enforces the design-system boundary.
  */
 
-const ROOT = new URL('../', import.meta.url).pathname
+// `new URL(...).pathname` yields "/C:/Users/..." on Windows -- a leading
+// slash before the drive letter -- so `join` built a doubled "C:\C:\Users"
+// path and the whole suite failed to collect here. `fileURLToPath` is what
+// turns a file URL into a real path on every platform; src/ds/boundary.test.js,
+// which this file says it copies, already did it that way.
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 // getCustomList reads a raw string purely to use as a cache key, inside its own
 // try/catch — it can't throw and has no equivalent in the shared helpers.

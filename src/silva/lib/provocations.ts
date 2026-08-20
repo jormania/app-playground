@@ -97,6 +97,28 @@ export function provocationKey(p: Provocation): string {
   }
 }
 
+/**
+ * Every pairwise kind below is O(n²) by nature, and SILVA.md sizes the
+ * collection at "5 000 things" — where that is 12.5 million pairs, enough to
+ * hang the tab building the candidate array before a single cosine is
+ * computed. So the pairwise kinds consider only the most recently kept slice.
+ *
+ * This is a real limit, stated rather than hidden: a provocation is a nudge
+ * drawn from what is live in the collection, not a proof that no better pair
+ * exists anywhere in it. The single-thing kinds (Shuffle, Long unvisited, A
+ * random clearing) are O(n) and still see everything.
+ */
+export const MAX_PAIRWISE_THINGS = 300
+
+/** The most recently kept `limit` things — the slice the pairwise kinds work
+ *  over. Sorted by `kept` descending; something with no date sorts last
+ *  rather than being dropped. */
+function recentKept(things: Thing[], limit = MAX_PAIRWISE_THINGS): Thing[] {
+  const kept = keptThings(things)
+  if (kept.length <= limit) return kept
+  return [...kept].sort((a, b) => (b.kept || '').localeCompare(a.kept || '')).slice(0, limit)
+}
+
 function gatherShuffle(things: Thing[]): Provocation[] {
   return keptThings(things).map((thing) => ({ kind: 'shuffle', thing }))
 }
@@ -114,7 +136,7 @@ function gatherLongUnvisited(things: Thing[], seen: SeenMap, today: Date): Provo
 }
 
 function gatherBlindPairing(things: Thing[], paths: Path[]): Provocation[] {
-  const kept = keptThings(things)
+  const kept = recentKept(things)
   const out: Provocation[] = []
   for (let i = 0; i < kept.length; i++) {
     for (let j = i + 1; j < kept.length; j++) {
@@ -126,7 +148,7 @@ function gatherBlindPairing(things: Thing[], paths: Path[]): Provocation[] {
 }
 
 function gatherNearNeighbours(things: Thing[], paths: Path[], vectorsById: Map<string, Float32Array>): Provocation[] {
-  const kept = keptThings(things).filter((t) => vectorsById.has(t.id))
+  const kept = recentKept(things).filter((t) => vectorsById.has(t.id))
   const out: Provocation[] = []
   for (let i = 0; i < kept.length; i++) {
     for (let j = i + 1; j < kept.length; j++) {
@@ -142,7 +164,7 @@ function gatherNearNeighbours(things: Thing[], paths: Path[], vectorsById: Map<s
 /** A simple greedy cluster, not real k-means — good enough for a
  *  provocation, which is a nudge, not an authoritative grouping. */
 function gatherClearingForming(things: Thing[], vectorsById: Map<string, Float32Array>): Provocation[] {
-  const kept = keptThings(things).filter((t) => vectorsById.has(t.id))
+  const kept = recentKept(things).filter((t) => vectorsById.has(t.id))
   const out: Provocation[] = []
   for (const seed of kept) {
     const seedVector = vectorsById.get(seed.id)!
@@ -162,7 +184,7 @@ function gatherClearingForming(things: Thing[], vectorsById: Map<string, Float32
 }
 
 function gatherTension(things: Thing[], paths: Path[], vectorsById: Map<string, Float32Array>): Provocation[] {
-  const kept = keptThings(things).filter((t) => vectorsById.has(t.id))
+  const kept = recentKept(things).filter((t) => vectorsById.has(t.id))
   const out: Provocation[] = []
   for (let i = 0; i < kept.length; i++) {
     for (let j = i + 1; j < kept.length; j++) {
