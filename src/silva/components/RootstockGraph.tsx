@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { Thing } from '../lib/notion'
 import type { Source } from '../lib/sources'
-import { computeRootstockLayout, computeViewBox, clusterLabelY, clusterLabelText } from '../lib/graph'
+import { computeRootstockLayout, computeViewBox, clusterLabelY, clusterLabelText, clusterLabelFontSize } from '../lib/graph'
 import styles from './graphs.module.css'
 
 export interface RootstockGraphProps {
@@ -72,7 +72,7 @@ export function RootstockGraph({ things, sources }: RootstockGraphProps) {
         aria-label="The rootstock — kept things gathered under the source each came from"
       >
         {layout.clusters.length > 1 && layout.clusters.map((c) => (
-          <text key={c.id} x={c.x} y={clusterLabelY(c)} className={styles.clusterLabel} textAnchor="middle">
+          <text key={c.id} x={c.x} y={clusterLabelY(c)} className={styles.clusterLabel} textAnchor="middle" fontSize={clusterLabelFontSize(viewBox.width)}>
             {clusterLabelText(c)}
             {/* Only when the caption was actually elided — otherwise this is
               * the same string twice, and SVG <title> is what a reader

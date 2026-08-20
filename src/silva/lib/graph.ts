@@ -190,11 +190,32 @@ const MIN_VIEWBOX_SIZE = 220
  *  subtitled book name; past this it stops being a label and starts being a
  *  sentence lying across the drawing. */
 const CLUSTER_LABEL_MAX_CHARS = 24
-/** Rough advance width per character at the caption's 13px small-caps (see
- *  graphs.module.css). An estimate is the right tool here: the exact width
- *  needs a laid-out DOM, the layout is pure and runs before any of that,
- *  and erring wide only ever adds a little slack at the edge. */
-const CLUSTER_LABEL_CHAR_WIDTH = 7.2
+/** Rough advance width per character, as a fraction of the caption's font
+ *  size, for the small-caps face in graphs.module.css. An estimate is the
+ *  right tool here: the exact width needs a laid-out DOM, the layout is
+ *  pure and runs before any of that, and erring wide only ever adds a
+ *  little slack at the edge. */
+const CLUSTER_LABEL_CHAR_RATIO = 0.55
+
+/**
+ * Caption size, in user units, for a given drawing.
+ *
+ * ── Why this isn't just a CSS font-size ──────────────────────────────────
+ * An SVG font-size is in *user units*, so what reaches the screen is that
+ * size times the viewBox scale — and the two drawings fit their boxes to
+ * their own content, so their scales differ. A flat 13px in the stylesheet
+ * therefore rendered the crossing's captions at ~17px and the rootstock's
+ * at ~15px: the same declaration, two visibly different sizes, and it would
+ * drift again with any forest whose layout happened to be a different
+ * shape. Scaling the size *with* the box cancels the viewBox scale out, so
+ * captions land at one apparent size everywhere. The constant is chosen to
+ * keep the crossing looking exactly as it did — it is the baseline here.
+ */
+const CLUSTER_LABEL_BASE = 15
+
+export function clusterLabelFontSize(viewBoxWidth: number): number {
+  return (CLUSTER_LABEL_BASE * viewBoxWidth) / CANVAS_SIZE
+}
 
 /** The caption as drawn — elided rather than allowed to run off. */
 export function clusterLabelText(cluster: GraphCluster): string {
@@ -219,8 +240,8 @@ export function clusterLabelY(cluster: GraphCluster): number {
  * about, having only ever been told the label's height. A long title on an
  * edge cluster was simply sliced off by the SVG boundary.
  */
-export function clusterLabelHalfWidth(cluster: GraphCluster): number {
-  return (clusterLabelText(cluster).length * CLUSTER_LABEL_CHAR_WIDTH) / 2
+export function clusterLabelHalfWidth(cluster: GraphCluster, fontSize: number): number {
+  return (clusterLabelText(cluster).length * fontSize * CLUSTER_LABEL_CHAR_RATIO) / 2
 }
 
 export interface ViewBox {
@@ -244,12 +265,18 @@ export function computeViewBox(layout: GraphLayout): ViewBox {
   const xs = layout.nodes.map((n) => n.x)
   const ys = layout.nodes.map((n) => n.y)
   if (layout.clusters.length > 1) {
+    // The caption size depends on the box, and the box depends on how wide
+    // the captions are — so size them against the nodes-only extent first.
+    // One pass, deterministic, and the box only ever grows from here, so
+    // the estimate errs generous rather than tight.
+    const provisionalWidth = Math.max(...xs) - Math.min(...xs) + VIEWBOX_PADDING * 2
+    const fontSize = clusterLabelFontSize(Math.max(MIN_VIEWBOX_SIZE, provisionalWidth))
     for (const c of layout.clusters) {
       // Both ends of the caption, not just its centre — a centred label on
       // an edge cluster reaches sideways well past the node ring, and
       // measuring only `c.x` is what let a long title get sliced off by the
       // SVG boundary.
-      const half = clusterLabelHalfWidth(c)
+      const half = clusterLabelHalfWidth(c, fontSize)
       xs.push(c.x - half, c.x + half)
       ys.push(clusterLabelY(c))
     }

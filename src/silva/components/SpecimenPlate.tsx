@@ -217,10 +217,13 @@ export function SpecimenPlate({
       {thing.body && (!thing.image || viewMode === 'text') && <p className={styles.body}>{thing.body}</p>}
       {thing.note && <p className={styles.note}>{thing.note}</p>}
       <ThingLabel thing={thing} sourceTitle={source?.title} />
+      {/* Named as clearings for anyone meeting a bare "What outlasts" on a
+       *  plate with no idea what it refers to — the word appears nowhere
+       *  else on this screen. */}
       {locusNames.length > 0 && (
-        <p className={styles.clearings}>
+        <p className={styles.clearings} aria-label={`In ${locusNames.length === 1 ? 'the clearing' : 'the clearings'} ${locusNames.join(', ')}`}>
           {locusNames.map((name) => (
-            <span key={name} className={styles.clearingTag}>{name}</span>
+            <span key={name} className={styles.clearingTag} title="A clearing this belongs to">{name}</span>
           ))}
         </p>
       )}

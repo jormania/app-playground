@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { lexicalMatch, combineResults, filterByKind, filterBySource } from './search'
+import { lexicalMatch, combineResults, filterByKind, filterBySource, queryTerms } from './search'
 import type { Thing } from './notion'
 
 function thing(overrides: Partial<Thing>): Thing {
@@ -143,5 +143,75 @@ describe('filterByKind', () => {
 
   it('returns an empty array when nothing matches', () => {
     expect(filterByKind(withKinds, 'Dialogue')).toEqual([])
+  })
+})
+
+describe('queryTerms', () => {
+  it('splits on whitespace', () => {
+    expect(queryTerms('dog tram')).toEqual(['dog', 'tram'])
+  })
+
+  it('keeps a quoted phrase intact', () => {
+    expect(queryTerms('"a dog sat" stop')).toEqual(['a dog sat', 'stop'])
+  })
+
+  it('is empty for nothing but whitespace', () => {
+    expect(queryTerms('   ')).toEqual([])
+    expect(queryTerms('')).toEqual([])
+  })
+
+  it('lowercases so matching never has to care about case', () => {
+    expect(queryTerms('Marcus AURELIUS')).toEqual(['marcus', 'aurelius'])
+  })
+})
+
+describe('lexicalMatch — search patterns', () => {
+  const dog = thing({
+    id: 'dog',
+    body: 'A dog sat at the tram stop for twenty minutes, waiting for someone who never came.',
+    note: 'Still think about this one.',
+    locator: 'overheard on the 32 tram',
+  })
+
+  // The ordinary way anyone searches something half-remembered: two words
+  // from different parts of it. As one contiguous substring this failed.
+  it('matches several remembered words from anywhere in the thing', () => {
+    expect(lexicalMatch('dog stop', dog)).toBe(true)
+    expect(lexicalMatch('waiting dog', dog)).toBe(true)
+  })
+
+  it('requires every term, not just one of them', () => {
+    expect(lexicalMatch('dog bicycle', dog)).toBe(false)
+  })
+
+  it('honours quotes as an exact phrase', () => {
+    expect(lexicalMatch('"dog sat"', dog)).toBe(true)
+    expect(lexicalMatch('"sat dog"', dog)).toBe(false)
+  })
+
+  // The locator holds your own words about where you were, and was the one
+  // field a thing carries that searching could not reach.
+  it('searches the locator', () => {
+    expect(lexicalMatch('32 tram', dog)).toBe(true)
+    expect(lexicalMatch('overheard', dog)).toBe(true)
+  })
+
+  it('still searches the note and the source', () => {
+    expect(lexicalMatch('still think', dog)).toBe(true)
+    expect(lexicalMatch('foote', thing({ id: 'a' }), 'The Civil War', 'Shelby Foote')).toBe(true)
+  })
+
+  it('matches across fields — a word from the body and one from the source', () => {
+    expect(lexicalMatch('dog overheard', dog)).toBe(true)
+  })
+
+  // Joined with a separator so two fields can't accidentally form a term
+  // that neither of them contains.
+  it('does not match a phrase straddling the join between two fields', () => {
+    expect(lexicalMatch('"came Still"', dog)).toBe(false)
+  })
+
+  it('is false for an empty query', () => {
+    expect(lexicalMatch('   ', dog)).toBe(false)
   })
 })

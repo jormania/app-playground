@@ -22,12 +22,26 @@
   background: color-mix(in srgb, var(--color-accent) 8%, var(--color-glow));
 }
 
+/* One reading measure for the whole screen.
+ *
+ * Explanatory text here arrives from three places — this module's own
+ * `.sectionHint`, and the hints inside the design system's SettingsToggle
+ * and Field — and each had its own idea of how wide to be. Inside a 720px
+ * column that came out as 336px, 624px and 688px for prose that is all
+ * doing the same job, so the page read as three different layouts stacked
+ * on top of each other.
+ *
+ * Capping the *section* rather than each paragraph fixes it in one place,
+ * without reaching into shared DS components that other apps also use. It
+ * also shortens the walk from a toggle's label to its switch, which at the
+ * full 720px sat most of a screen away from the thing it labelled. */
 .section {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
   padding-bottom: var(--space-lg);
   border-bottom: 1px solid var(--color-border);
+  max-width: 58ch;
 }
 
 .section:last-child {
@@ -44,11 +58,14 @@
   letter-spacing: 0.04em;
 }
 
+/* No max-width of its own any more — the section above sets the measure for
+   everything in it. `52ch` here was computed against this rule's own 12px
+   font, which made it 336px: about half the width of the DS hints sitting
+   directly beneath it, for prose doing exactly the same job. */
 .sectionHint {
   margin: 0;
   font-size: var(--text-xs);
   color: var(--color-muted);
-  max-width: 52ch;
 }
 
 .actions {

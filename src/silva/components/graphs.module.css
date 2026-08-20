@@ -68,7 +68,9 @@
 }
 
 .clusterLabel {
-  font-size: 13px;
+  /* Size is set per drawing in the JSX — an SVG font-size is in user
+     units, so a flat value here rendered at a different apparent size in
+     each graph (see lib/graph.ts's clusterLabelFontSize). */
   fill: var(--color-muted);
   font-variant: small-caps;
   letter-spacing: 0.04em;

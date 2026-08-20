@@ -56,12 +56,23 @@
   gap: var(--space-xs);
 }
 
+/* A clearing this thing sits in.
+ *
+ * The underline had to go: accent-coloured underlined text is a hyperlink
+ * everywhere else on the web, and these are plain spans that do nothing —
+ * an affordance promising behaviour that was never there. A leading mark
+ * does the distinguishing instead, and reads as a place rather than a
+ * link. */
 .clearingTag {
   font-size: var(--text-xs);
   font-variant: small-caps;
   letter-spacing: 0.06em;
   color: var(--color-accent);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+
+.clearingTag::before {
+  content: '◦ ';
+  color: var(--color-faint);
 }
 
 .plateActions {

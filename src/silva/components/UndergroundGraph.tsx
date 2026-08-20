@@ -7,7 +7,7 @@ import {
   pathsToEdges,
   computeMycorrhiza,
   computeViewBox,
-  clusterLabelY, clusterLabelText,
+  clusterLabelY, clusterLabelText, clusterLabelFontSize,
 } from '../lib/graph'
 import styles from './graphs.module.css'
 
@@ -109,7 +109,7 @@ export function UndergroundGraph({ things, loci, paths, vectorsById }: Undergrou
         aria-label="The crossing — kept things clustered by clearing, connected by the paths you have walked"
       >
         {layout.clusters.length > 1 && layout.clusters.map((c) => (
-          <text key={c.id} x={c.x} y={clusterLabelY(c)} className={styles.clusterLabel} textAnchor="middle">
+          <text key={c.id} x={c.x} y={clusterLabelY(c)} className={styles.clusterLabel} textAnchor="middle" fontSize={clusterLabelFontSize(viewBox.width)}>
             {clusterLabelText(c)}
             {/* Only when the caption was actually elided — otherwise this is
               * the same string twice, and SVG <title> is what a reader

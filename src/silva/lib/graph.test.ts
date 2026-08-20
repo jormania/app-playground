@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeGraphLayout, computeRootstockLayout, clusterLabelY, clusterLabelText, clusterLabelHalfWidth, pathsToEdges, computeMycorrhiza, computeViewBox, MYCORRHIZA_THRESHOLD, CANVAS_SIZE } from './graph'
+import { computeGraphLayout, computeRootstockLayout, clusterLabelY, clusterLabelText, clusterLabelHalfWidth, clusterLabelFontSize, pathsToEdges, computeMycorrhiza, computeViewBox, MYCORRHIZA_THRESHOLD, CANVAS_SIZE } from './graph'
 import type { Thing } from './notion'
 import type { Locus } from './loci'
 import type { Path } from './paths'
@@ -298,7 +298,7 @@ describe('cluster captions and the view box', () => {
     const viewBox = computeViewBox(layout)
 
     for (const c of layout.clusters) {
-      const half = clusterLabelHalfWidth(c)
+      const half = clusterLabelHalfWidth(c, clusterLabelFontSize(viewBox.width))
       expect(c.x - half).toBeGreaterThanOrEqual(viewBox.minX)
       expect(c.x + half).toBeLessThanOrEqual(viewBox.minX + viewBox.width)
     }
@@ -312,7 +312,7 @@ describe('cluster captions and the view box', () => {
     const viewBox = computeViewBox(layout)
 
     for (const c of layout.clusters) {
-      const half = clusterLabelHalfWidth(c)
+      const half = clusterLabelHalfWidth(c, clusterLabelFontSize(viewBox.width))
       expect(c.x - half).toBeGreaterThanOrEqual(viewBox.minX)
       expect(c.x + half).toBeLessThanOrEqual(viewBox.minX + viewBox.width)
     }
