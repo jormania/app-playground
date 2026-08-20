@@ -4,6 +4,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NurseryView } from './NurseryView'
 import type { Thing } from '../lib/notion'
+import type { Source } from '../lib/sources'
 import { todayIso } from '../lib/understory'
 import { getLinkPreview } from '../lib/linkPreviewCache'
 
@@ -36,6 +37,7 @@ function arrival(id: string, encounteredDaysAgo: number, over: Partial<Thing> = 
     image: null,
     link: null,
     koboBookmarkId: null,
+    arrived: null,
     ...over,
   }
 }
@@ -217,5 +219,80 @@ describe('NurseryView', () => {
   it('never shows a negative season for something already past its date', () => {
     render(<NurseryView things={[arrival('a', 200)]} onKeep={vi.fn()} onRelease={vi.fn()} onDelete={vi.fn()} seasonDays={90} />)
     expect(screen.getByLabelText(/fading out of the nursery/i)).toBeTruthy()
+  })
+})
+
+/**
+ * A Kobo import lands a whole season's reading in the nursery at once. Three
+ * hundred rows in one flat, fading list is not something anyone decides
+ * about — which book am I even in? Grouping is presentation only: no field
+ * is set, no source assigned, nothing reordered inside a section.
+ */
+describe('NurseryView — gathered by book', () => {
+  const meditations: Source = {
+    id: 's1', title: 'Meditations', author: 'Marcus Aurelius', kind: 'Book',
+    cover: null, koboVolumeId: null, notes: '',
+  }
+  const odyssey: Source = {
+    id: 's2', title: 'The Odyssey', author: 'Homer', kind: 'Book',
+    cover: null, koboVolumeId: null, notes: '',
+  }
+
+  it('heads each book with its title, author and count', () => {
+    render(
+      <NurseryView
+        things={[arrival('a', 1, { sourceId: 's1' }), arrival('b', 1, { sourceId: 's1' }), arrival('c', 1, { sourceId: 's2' })]}
+        sources={[meditations, odyssey]}
+        onKeep={vi.fn()}
+        onRelease={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('heading', { name: /Meditations/ }).textContent).toContain('Marcus Aurelius')
+    expect(screen.getByRole('heading', { name: /Meditations/ }).textContent).toContain('2 things')
+    expect(screen.getByRole('heading', { name: /Odyssey/ }).textContent).toContain('1 thing')
+  })
+
+  // A heading over a single untitled section is noise, so a nursery of typed
+  // captures stays exactly the list it always was.
+  it('adds no headings at all when nothing here has a source', () => {
+    render(<NurseryView things={[arrival('a', 1), arrival('b', 2)]} onKeep={vi.fn()} onRelease={vi.fn()} onDelete={vi.fn()} />)
+    expect(screen.queryByRole('heading')).toBeNull()
+  })
+
+  // Your own captures are why you opened the nursery — they don't get pushed
+  // below an import of somebody else's book.
+  it('leaves your own unsourced captures unheaded, and first', () => {
+    render(
+      <NurseryView
+        things={[arrival('imported', 1, { sourceId: 's1' }), arrival('mine', 1)]}
+        sources={[meditations]}
+        onKeep={vi.fn()}
+        onRelease={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+    const headings = screen.getAllByRole('heading')
+    expect(headings).toHaveLength(1)
+    const rendered = screen.getByText('body of mine')
+    const firstHeading = headings[0]
+    // The unsourced row comes before the first book heading in document order.
+    expect(rendered.compareDocumentPosition(firstHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('still keeps every row\'s actions working inside a section', async () => {
+    const user = userEvent.setup()
+    const onKeep = vi.fn()
+    render(
+      <NurseryView
+        things={[arrival('a', 1, { sourceId: 's1' })]}
+        sources={[meditations]}
+        onKeep={onKeep}
+        onRelease={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Keep' }))
+    expect(onKeep).toHaveBeenCalledWith('a', undefined)
   })
 })

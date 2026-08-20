@@ -5,6 +5,8 @@ import { matchSource, type SourceMatch } from '../lib/bookMatch'
 import { SilvaStore } from '../lib/store'
 import type { Source } from '../lib/sources'
 import type { Thing } from '../lib/notion'
+import { inferKind } from '../lib/kindInference'
+import { findBookCover } from '../lib/bookCover'
 import { todayIso } from '../lib/understory'
 import styles from './KoboImportPanel.module.css'
 
@@ -20,6 +22,9 @@ interface BookGroup {
   volumeId: string
   bookTitle: string
   author: string
+  /** The book's ISBN, when Kobo's file records one — the key a cover is
+   *  looked up by (lib/bookCover.ts). */
+  isbn: string | null
   /** Only the highlights not already imported — nothing actionable exists
    *  for one that's already here, so it's not shown as a selectable row. */
   newHighlights: KoboHighlight[]
@@ -53,12 +58,17 @@ function groupByBook(
 
   return [...byVolume.entries()].map(([volumeId, groupHighlights]) => {
     const { bookTitle, author } = groupHighlights[0]
+    // Kobo repeats the volume's metadata on every bookmark row; take the
+    // first one that actually carries an ISBN rather than assuming the
+    // first row does.
+    const isbn = groupHighlights.find((h) => h.isbn)?.isbn ?? null
     const newHighlights = groupHighlights.filter((h) => !existingKoboBookmarkIds.has(h.bookmarkId))
     const match = matchSource(bookTitle, volumeId, existingSources)
     return {
       volumeId,
       bookTitle,
       author,
+      isbn,
       newHighlights,
       alreadyImportedCount: groupHighlights.length - newHighlights.length,
       match,
@@ -155,18 +165,30 @@ export function KoboImportPanel({ store, existingKoboBookmarkIds, onImported, on
     try {
       for (const group of importableGroups) {
         let sourceId: string
+        // `Cover` was the one field in the Sources schema nothing ever
+        // filled. Looked up by ISBN, so it is the right edition or nothing
+        // (lib/bookCover.ts), and probed before it is stored so a book with
+        // no cover on Open Library keeps an empty field rather than a
+        // permanently broken image. Never fatal: a failed lookup returns
+        // null and the import carries on.
+        const cover = await findBookCover(group.isbn)
         if (group.decision === 'existing' && group.match) {
           sourceId = group.match.source.id
           // Confirming a fuzzy match backfills the Kobo id, so re-importing
           // this same book later hits the exact-match tier (lib/bookMatch.ts).
-          if (group.match.confidence !== 'exact') {
-            await store.updateSource(sourceId, { koboVolumeId: group.volumeId })
+          const backfill: Partial<Source> = {}
+          if (group.match.confidence !== 'exact') backfill.koboVolumeId = group.volumeId
+          // Only ever *fills* a cover — never replaces one already chosen.
+          if (cover && !group.match.source.cover) backfill.cover = cover
+          if (Object.keys(backfill).length > 0) {
+            await store.updateSource(sourceId, backfill)
           }
         } else {
           const source = await store.createSource({
             title: group.newTitle,
             author: group.author,
             kind: 'Book',
+            cover,
             koboVolumeId: group.volumeId,
           })
           sourceId = source.id
@@ -177,8 +199,17 @@ export function KoboImportPanel({ store, existingKoboBookmarkIds, onImported, on
           const thing = await store.createThing({
             body: highlight.text,
             note: highlight.annotation,
-            kind: 'Passage',
+            // A highlight was `Passage` whatever it said — which is already
+            // an inference, just a fixed one, and wrong for the question a
+            // book asks you or the line of dialogue you marked. `inferKind`
+            // is the same rule Edit's Suggest offers, and still only a
+            // starting point you can change (SILVA.md: a thing's
+            // classification is the human's judgment).
+            kind: inferKind(highlight.text, true) ?? 'Passage',
             sourceId,
+            // Where in the book it sat — the chapter Kobo's own file names,
+            // or a percentage through it (lib/kobo.ts `koboLocator`).
+            locator: highlight.locator,
             encountered: highlight.dateCreated || todayIso(),
             koboBookmarkId: highlight.bookmarkId,
           })

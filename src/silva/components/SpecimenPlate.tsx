@@ -141,7 +141,7 @@ export function SpecimenPlate({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setKind(inferKind(body, hasSource) ?? '')}
+              onClick={() => setKind(inferKind(body, hasSource, Boolean(link.trim())) ?? '')}
               disabled={!body.trim()}
             >
               Suggest a kind

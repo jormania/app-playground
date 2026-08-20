@@ -18,7 +18,8 @@ describe('isPrivateHost', () => {
 describe('emptyPreview', () => {
   test('carries the hostname and href with everything else null', () => {
     expect(emptyPreview(new URL('https://example.com/a/b'))).toEqual({
-      title: null, description: null, image: null, siteName: 'example.com', url: 'https://example.com/a/b',
+      title: null, description: null, image: null, siteName: 'example.com',
+      author: null, publishedYear: null, url: 'https://example.com/a/b',
     })
   })
 })
@@ -76,12 +77,51 @@ describe('parsePreview', () => {
 
   test('a page with no metadata at all still returns a well-formed shape', () => {
     expect(parsePreview('<html><body>Nothing here.</body></html>', url)).toEqual({
-      title: null, description: null, image: null, siteName: 'example.com', url: 'https://example.com/article',
+      title: null, description: null, image: null, siteName: 'example.com',
+      author: null, publishedYear: null, url: 'https://example.com/article',
     })
   })
 
   test('decodes entities in the title', () => {
     const html = `<meta property="og:title" content="Rock &amp; Roll">`
     expect(parsePreview(html, url).title).toBe('Rock & Roll')
+  })
+})
+
+// Silva puts these on a Link thing's specimen label ("Anne-Laure Le Cunff ·
+// 2021") when it has no locator of its own — facts printed on the page, not
+// a guess about what the piece meant.
+describe('parsePreview — byline and year', () => {
+  const url = new URL('https://example.com/article')
+
+  test('reads a byline and the publication year', () => {
+    const html = `
+      <meta property="article:author" content="Anne-Laure Le Cunff">
+      <meta property="article:published_time" content="2021-03-14T09:00:00.000Z">`
+    expect(parsePreview(html, url)).toMatchObject({ author: 'Anne-Laure Le Cunff', publishedYear: '2021' })
+  })
+
+  test('falls back to author and twitter:creator, dropping the @', () => {
+    expect(parsePreview('<meta name="author" content="Maria Popova">', url).author).toBe('Maria Popova')
+    expect(parsePreview('<meta name="twitter:creator" content="@brainpicker">', url).author).toBe('brainpicker')
+  })
+
+  // Several CMSs put a Facebook profile in article:author. A URL is not a
+  // name, and has no business on a printed label.
+  test('refuses a byline that is a URL, or absurdly long', () => {
+    expect(parsePreview('<meta property="article:author" content="https://facebook.com/someone">', url).author).toBeNull()
+    expect(parsePreview(`<meta name="author" content="${'a'.repeat(81)}">`, url).author).toBeNull()
+  })
+
+  test('refuses an implausible year, so a stray number cannot date a thing', () => {
+    expect(parsePreview('<meta property="article:published_time" content="3021-01-01">', url).publishedYear).toBeNull()
+    expect(parsePreview('<meta property="article:published_time" content="not a date">', url).publishedYear).toBeNull()
+  })
+
+  test('leaves both null on a page that says nothing', () => {
+    expect(parsePreview('<html><head><title>A page</title></head></html>', url)).toMatchObject({
+      author: null,
+      publishedYear: null,
+    })
   })
 })

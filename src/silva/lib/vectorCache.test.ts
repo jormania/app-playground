@@ -23,7 +23,7 @@ function fakeThing(id: string, body: string) {
   return {
     id, handle: body, body, kind: null, state: 'Kept' as const, sourceId: null,
     locator: '', encountered: '2026-01-01', kept: '2026-01-01', note: '',
-    lociIds: [], image: null, link: null, koboBookmarkId: null,
+    lociIds: [], image: null, link: null, koboBookmarkId: null, arrived: null,
   }
 }
 

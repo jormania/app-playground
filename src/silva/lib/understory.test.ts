@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { daysSince, daysRemaining, isExpired, fadeRatio, todayIso, DEFAULT_SEASON_DAYS } from './understory'
+import { daysSince, daysRemaining, isExpired, fadeRatio, seasonStart, todayIso, DEFAULT_SEASON_DAYS } from './understory'
 
 const TODAY = new Date('2026-06-01T12:00:00')
 
@@ -92,5 +92,57 @@ describe('todayIso', () => {
   it('round-trips through daysSince as zero days elapsed', () => {
     const now = new Date()
     expect(daysSince(todayIso(now), now)).toBe(0)
+  })
+})
+
+/**
+ * The Kobo bug this exists for: an import back-dates `encountered` to the
+ * highlight's own date, so a year of reading arrived already past its
+ * season and was released — silently, into compost — on the very next load,
+ * before it could be looked at once. A thing gets its full season in the
+ * understory however old it is, exactly like anything typed by hand.
+ */
+describe('seasonStart', () => {
+  it('is the encountered date for anything captured the day it was met', () => {
+    expect(seasonStart({ encountered: '2026-08-20', arrived: '2026-08-20' })).toBe('2026-08-20')
+  })
+
+  it('is the arrival for a back-dated import', () => {
+    expect(seasonStart({ encountered: '2024-03-02', arrived: '2026-08-20' })).toBe('2026-08-20')
+  })
+
+  // A clock skew, or a hand-edited future date in Notion, must never hand
+  // something a *shorter* season than it should have.
+  it('takes the later of the two, never blindly the arrival', () => {
+    expect(seasonStart({ encountered: '2026-09-01', arrived: '2026-08-20' })).toBe('2026-09-01')
+  })
+
+  it('falls back to whichever it has', () => {
+    expect(seasonStart({ encountered: '2026-01-01' })).toBe('2026-01-01')
+    expect(seasonStart({ encountered: '2026-01-01', arrived: null })).toBe('2026-01-01')
+    expect(seasonStart({ encountered: '', arrived: '2026-08-20' })).toBe('2026-08-20')
+  })
+})
+
+describe('the season counts from arrival, not from the thing\'s own date', () => {
+  const TODAY_ = new Date('2026-08-20T12:00:00')
+
+  it('does not expire a two-year-old highlight imported today', () => {
+    const imported = { encountered: '2024-03-02', arrived: '2026-08-20', state: 'Understory' as const }
+    expect(isExpired(imported, 90, TODAY_)).toBe(false)
+    expect(daysRemaining(imported, 90, TODAY_)).toBe(90)
+    // And it reads as freshly arrived in the nursery, rather than as a row
+    // faded to nothing the moment it lands.
+    expect(fadeRatio(imported, 90, TODAY_)).toBe(1)
+  })
+
+  it('still expires an import that has sat in the nursery for a whole season', () => {
+    const stale = { encountered: '2024-03-02', arrived: '2026-04-01', state: 'Understory' as const }
+    expect(isExpired(stale, 90, TODAY_)).toBe(true)
+  })
+
+  // The behaviour before `arrived` existed, for anything that has none.
+  it('falls back to the encountered date when there is no arrival', () => {
+    expect(isExpired({ encountered: '2024-03-02', state: 'Understory' }, 90, TODAY_)).toBe(true)
   })
 })

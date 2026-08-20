@@ -30,7 +30,7 @@ import {
   thresholdCrossed,
 } from './lib/provocationThreshold'
 import { peekVectors, pruneVectors } from './lib/vectorCache'
-import { pruneLinkPreviews } from './lib/linkPreviewCache'
+import { pruneLinkPreviews, getLinkPreview } from './lib/linkPreviewCache'
 import { readSeen, writeSeen, withSeen, prunedSeen, type SeenMap } from './lib/seen'
 import { parseSharedIntake, urlWithoutShare, type SharedIntake } from './lib/sharedIntake'
 import { putLocalPhoto, localImageRef, pruneLocalPhotos } from './lib/photoStore'
@@ -40,7 +40,8 @@ import { indexThings, indexableThings } from './lib/indexer'
 import { loadSilvaConfig, saveSilvaConfig, type SilvaConfig } from './lib/settingsConfig'
 import { confirmTension } from './lib/tension'
 import { resolveSource } from './lib/sourceCapture'
-import { isBareUrl } from './lib/kindInference'
+import { intakeFields } from './lib/intakeFields'
+import { linkFactsPatch, linkSourceTitle } from './lib/linkFacts'
 import { loadThemeChoice, saveThemeChoice, watchTheme, type ThemeChoice } from './lib/theme'
 import styles from './App.module.css'
 
@@ -403,14 +404,84 @@ export default function App() {
     // it. Omitted entirely when blank, so it never clobbers a note already
     // on the thing.
     const patch: Partial<Thing> = { state: 'Kept', kept: today, ...(note ? { note } : {}) }
-    write(
+    void write(
       () => setThings((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t))),
       async () => {
         const updated = await store.updateThing(liveId(id), patch)
         setThings((prev) => prev.map((t) => (t.id === updated.id || t.id === id ? updated : t)))
       },
       'That could not be kept',
-    )
+    ).then(() => fillLinkFacts(id, things.find((t) => t.id === id)))
+  }
+
+  /**
+   * What a kept link reads off its own page: the article's title, the byline
+   * and year for its specimen label, and the publication to file it under —
+   * so it lands in the forest as "The joy of missing out · Ness Labs · 2021"
+   * rather than `https://nesslabs.com/jomo` with every other field blank,
+   * leaving the note underneath it as the only thing still worth typing.
+   *
+   * Everything sharp lives in `lib/linkFacts.ts`, and none of it overrides
+   * you: only a body that is nothing but a URL, only an empty locator, only
+   * a thing with no source. Runs *after* the keep has been written through —
+   * the thing has a live id by then — and never blocks it: the preview is
+   * usually already in the device cache (the Nursery row fetched it for its
+   * thumbnail), and when it isn't, a slow or failed fetch simply leaves the
+   * link exactly as it was.
+   */
+  async function fillLinkFacts(id: string, kept: Thing | undefined) {
+    // The freshest copy if one is in state, and otherwise the one that was
+    // just kept — `forestRef` trails a render behind a write-through, so
+    // reading it alone would skip the fill about as often as not.
+    const thing = forestRef.current.things.find((t) => t.id === id || t.id === liveId(id)) ?? kept
+    if (!thing || !thing.link) return
+
+    const preview = await getLinkPreview(thing.link)
+    if (!preview) return
+
+    // The publication, resolved against the sources already in the forest —
+    // one "Ness Labs" however many pieces of theirs you keep. Created as an
+    // `Article`, which is what a link with a site name is; the Kobo lane
+    // sets `Book` on its own sources for exactly the same reason.
+    const siteName = linkSourceTitle(thing, preview)
+    const { sourceId, sourceDraft } = siteName
+      ? resolveSourceDraft(siteName)
+      : { sourceId: null, sourceDraft: null }
+
+    const patch: Partial<Thing> = {
+      ...linkFactsPatch(thing, preview),
+      ...(sourceId ? { sourceId } : {}),
+    }
+    if (Object.keys(patch).length === 0) return
+
+    const previous: Partial<Thing> = {
+      body: thing.body,
+      handle: thing.handle,
+      locator: thing.locator,
+      sourceId: thing.sourceId,
+    }
+    // The keep may have swapped a draft id for the real Notion one by now,
+    // so match on either — the same thing under two names.
+    const isThis = (t: Thing) => t.id === thing.id || t.id === liveId(thing.id)
+    if (sourceDraft) setSources((prev) => [sourceDraft, ...prev])
+    setThings((prev) => prev.map((t) => (isThis(t) ? { ...t, ...patch } : t)))
+    try {
+      if (sourceDraft) {
+        const createdSource = await store.createSource({ title: sourceDraft.title, author: sourceDraft.author, kind: 'Article' })
+        realIdByDraft.current.set(sourceDraft.id, createdSource.id)
+        setSources((prev) => prev.map((sc) => (sc.id === sourceDraft.id ? createdSource : sc)))
+        patch.sourceId = createdSource.id
+      }
+      const updated = await store.updateThing(liveId(thing.id), patch)
+      setThings((prev) => prev.map((t) => (t.id === updated.id || isThis(t) ? updated : t)))
+    } catch {
+      // Reverts this one thing rather than the whole forest (`write`'s
+      // snapshot rollback would undo unrelated edits made in the meantime),
+      // and stays quiet: facts nobody asked for failing to land is not worth
+      // a toast — the link is intact and reads exactly as before.
+      setThings((prev) => prev.map((t) => (isThis(t) ? { ...t, ...previous } : t)))
+      if (sourceDraft) setSources((prev) => prev.filter((sc) => sc.id !== sourceDraft.id))
+    }
   }
 
   function handleRelease(id: string) {
@@ -644,19 +715,18 @@ export default function App() {
   function handleIntake(body: string, locator = '', sourceInput = '') {
     const today = todayIso()
     const { sourceId, sourceDraft } = resolveSourceDraft(sourceInput)
-    // A pasted body that's nothing but a URL already *is* the link — reading
-    // it into the field a Link thing's preview card actually needs, rather
-    // than requiring a trip to Edit before the thumbnail in the Nursery (or
-    // the card in the Forest) can show anything at all.
-    const link = isBareUrl(body) ? body.trim() : null
+    // What the capture already knows about itself: the URL it *is* (pasted,
+    // or arriving in the locator from the share sheet) and the one Kind that
+    // reads out of it. Nothing inferred — see lib/intakeFields.ts.
+    const { locator: fieldLocator, link, kind } = intakeFields(body, locator)
     const draft: Thing = {
       id: draftId(),
       handle: body.slice(0, 60),
       body,
-      kind: null,
+      kind,
       state: 'Understory',
       sourceId,
-      locator,
+      locator: fieldLocator,
       encountered: today,
       kept: null,
       note: '',
@@ -664,6 +734,10 @@ export default function App() {
       image: null,
       link,
       koboBookmarkId: null,
+      // An optimistic draft has not reached Notion yet, so it has no
+      // `created_time` to read back — the season falls back to `encountered`
+      // until the real row lands, which for a typed capture is the same day.
+      arrived: null,
     }
     write(
       () => {
@@ -678,7 +752,7 @@ export default function App() {
           setSources((prev) => prev.map((s) => (s.id === sourceDraft.id ? createdSource : s)))
           realSourceId = createdSource.id
         }
-        const created = await store.createThing({ body, locator, sourceId: realSourceId, link })
+        const created = await store.createThing({ body, locator: fieldLocator, sourceId: realSourceId, link, kind })
         realIdByDraft.current.set(draft.id, created.id)
         setThings((prev) => prev.map((t) => (t.id === draft.id ? created : t)))
       },
@@ -1053,6 +1127,7 @@ export default function App() {
             )}
             <NurseryView
               things={nurseryThings}
+              sources={sources}
               onKeep={handleKeep}
               onRelease={handleRelease}
               onDelete={handleDeleteThing}

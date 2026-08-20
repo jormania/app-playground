@@ -26,7 +26,15 @@ export function isPrivateHost(hostname) {
 }
 
 export function emptyPreview(url) {
-  return { title: null, description: null, image: null, siteName: url.hostname, url: url.href }
+  return {
+    title: null,
+    description: null,
+    image: null,
+    siteName: url.hostname,
+    author: null,
+    publishedYear: null,
+    url: url.href,
+  }
 }
 
 export function decodeEntities(s) {
@@ -54,6 +62,29 @@ export function metaTags(html) {
   return tags
 }
 
+// `article:author` is as often a Facebook profile URL as a byline — several
+// CMSs emit nothing else — and a URL is not a person's name. Anything that
+// reads as a link is dropped rather than printed on a specimen label.
+function byline(tags) {
+  const raw = tags.get('article:author') || tags.get('author') || tags.get('twitter:creator') || ''
+  const name = raw.trim().replace(/^@/, '')
+  if (!name || /^https?:\/\//i.test(name) || name.length > 80) return null
+  return name
+}
+
+// Only the year. A full ISO timestamp is precision nobody reading a
+// specimen label wants, and `Locator` is a human-legible line ("chapter,
+// page, timestamp"), not a date column.
+function publishedYear(tags) {
+  const raw = tags.get('article:published_time') || tags.get('article:modified_time') || tags.get('date') || ''
+  const year = /(\d{4})/.exec(raw.trim())?.[1]
+  if (!year) return null
+  const n = Number(year)
+  // A plausible publication year, so a stray four-digit number in some other
+  // field can't put "3021" on a label.
+  return n >= 1400 && n <= new Date().getFullYear() + 1 ? year : null
+}
+
 export function parsePreview(html, pageUrl) {
   const tags = metaTags(html)
   const titleTag = /<title[^>]*>([^<]*)<\/title>/i.exec(html)?.[1]
@@ -71,5 +102,13 @@ export function parsePreview(html, pageUrl) {
     }
   }
 
-  return { title: title || null, description: description || null, image, siteName, url: pageUrl.href }
+  return {
+    title: title || null,
+    description: description || null,
+    image,
+    siteName,
+    author: byline(tags),
+    publishedYear: publishedYear(tags),
+    url: pageUrl.href,
+  }
 }

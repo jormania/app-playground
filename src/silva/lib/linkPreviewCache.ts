@@ -41,6 +41,14 @@ export interface LinkPreview {
   description: string | null
   image: string | null
   siteName: string
+  /** The byline, when the page prints one and it reads as a name rather
+   *  than a profile URL (see `api/_lib/linkPreview.js`). Optional because a
+   *  preview cached before these two fields existed has neither — a month
+   *  of TTL outlives a deploy. */
+  author?: string | null
+  /** Publication year only — a full ISO timestamp is precision no specimen
+   *  label wants. Optional for the same reason as `author`. */
+  publishedYear?: string | null
   url: string
 }
 

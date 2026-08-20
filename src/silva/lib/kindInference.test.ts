@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { inferKind, isBareUrl } from './kindInference'
+import { inferKind, isBareUrl, intakeKind } from './kindInference'
 
 describe('inferKind', () => {
   it('returns null for empty text', () => {
@@ -55,5 +55,33 @@ describe('isBareUrl', () => {
   it('is false for ordinary text', () => {
     expect(isBareUrl('Worth remembering.')).toBe(false)
     expect(isBareUrl('')).toBe(false)
+  })
+})
+
+describe('inferKind — a thing that carries a link', () => {
+  // A kept link's body becomes the article's title (lib/linkTitle.ts), so
+  // the URL is no longer in the text — the `link` field is what still says
+  // "Link", and Suggest has to read it or it starts proposing Observation
+  // for every link in the forest.
+  it('suggests Link from the link field alone', () => {
+    expect(inferKind('The joy of missing out', false, true)).toBe('Link')
+    expect(inferKind('The joy of missing out', false, false)).not.toBe('Link')
+  })
+})
+
+describe('intakeKind', () => {
+  // The one Kind set at capture. A pasted link arrives labelled `Link`
+  // rather than waiting on a trip to Edit and a tap of Suggest.
+  it('labels a pasted bare URL as Link', () => {
+    expect(intakeKind('https://nesslabs.com/jomo')).toBe('Link')
+    expect(intakeKind('  http://example.com  ')).toBe('Link')
+  })
+
+  // Everything else stays a judgment made later, or never — intake still
+  // captures no metadata it has to guess at.
+  it('leaves every other capture unlabelled', () => {
+    expect(intakeKind('Worth reading: https://nesslabs.com/jomo')).toBeNull()
+    expect(intakeKind('What would you do if you weren\'t afraid?')).toBeNull()
+    expect(intakeKind('')).toBeNull()
   })
 })

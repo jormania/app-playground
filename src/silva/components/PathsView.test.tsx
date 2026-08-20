@@ -24,6 +24,7 @@ function thing(id: string, over: Partial<Thing> = {}): Thing {
     image: null,
     link: null,
     koboBookmarkId: null,
+    arrived: null,
     ...over,
   }
 }

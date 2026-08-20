@@ -11,6 +11,7 @@
  */
 
 import initSqlJs, { type Database, type SqlJsStatic } from 'sql.js'
+import { normalizeIsbn } from './bookCover'
 // The wasm loading strategy differs by environment: a real browser needs an
 // explicit servable URL, since Vite rewrites the module's on-disk location —
 // sql.js's own "look next to me" default breaks after bundling. But under
@@ -48,6 +49,15 @@ export interface KoboHighlight {
   /** ISO date (YYYY-MM-DD), or null if Kobo's DateCreated column is absent
    *  or unparseable. */
   dateCreated: string | null
+  /** The book's ISBN as Kobo records it, or null when the column is absent
+   *  or holds something else — an exact key for a cover lookup
+   *  (lib/bookCover.ts), where a title match would happily return the wrong
+   *  edition of the wrong "Meditations". */
+  isbn: string | null
+  /** Where in the book the highlight sits — the chapter's own title, or
+   *  failing that a percentage through it. Empty when Kobo's file says
+   *  neither (older firmware, or a bookmark with no chapter row). */
+  locator: string
 }
 
 function tableColumns(db: Database, table: string): Set<string> {
@@ -71,6 +81,28 @@ function normalizeKoboDate(value: unknown): string | null {
 }
 
 const REQUIRED_BOOKMARK_COLUMNS = ['BookmarkID', 'VolumeID', 'Text']
+
+/**
+ * `Locator` is documented as "chapter, page, timestamp" and was empty on
+ * every imported highlight, because the importer read `VolumeID` (the book)
+ * and never `ContentID` (the chapter it actually points into).
+ *
+ * The chapter's own title is the good answer. `ChapterProgress` — a 0..1
+ * float — is the fallback for the many EPUBs whose chapter rows are titled
+ * "index_split_014.html" or nothing at all: "63% in" is vague but true,
+ * which is the whole bar for a locator.
+ */
+export function koboLocator(chapterTitle: unknown, bookTitle: string, chapterProgress: unknown): string {
+  const chapter = String(chapterTitle ?? '').trim()
+  // A chapter row that merely repeats the book's title locates nothing, and
+  // a file name is machinery, not a chapter.
+  const usable = chapter && chapter !== bookTitle.trim() && !/\.x?html?$/i.test(chapter) && !/^index_split/i.test(chapter)
+  if (usable) return chapter
+
+  const progress = typeof chapterProgress === 'number' ? chapterProgress : Number(chapterProgress)
+  if (Number.isFinite(progress) && progress > 0 && progress <= 1) return `${Math.round(progress * 100)}% in`
+  return ''
+}
 
 /**
  * Parses a `KoboReader.sqlite` byte array into highlights. Filters out
@@ -103,6 +135,9 @@ export async function parseKoboDatabase(bytes: Uint8Array): Promise<KoboHighligh
     const hasBookTitle = contentColumns.has('BookTitle')
     const hasTitle = contentColumns.has('Title')
     const hasAttribution = contentColumns.has('Attribution')
+    const hasIsbn = contentColumns.has('ISBN')
+    const hasContentId = bookmarkColumns.has('ContentID')
+    const hasChapterProgress = bookmarkColumns.has('ChapterProgress')
 
     // A chapter row's BookTitle names its parent book; a bare book row only
     // has Title. Prefer BookTitle when non-empty, fall back to Title.
@@ -116,11 +151,15 @@ export async function parseKoboDatabase(bytes: Uint8Array): Promise<KoboHighligh
         b.VolumeID as volumeId,
         ${titleExpr} as bookTitle,
         ${hasAttribution ? 'c.Attribution' : '\'\''} as author,
+        ${hasIsbn ? 'c.ISBN' : '\'\''} as isbn,
         b.Text as text,
         ${hasAnnotation ? 'b.Annotation' : '\'\''} as annotation,
-        ${hasDateCreated ? 'b.DateCreated' : 'NULL'} as dateCreated
+        ${hasDateCreated ? 'b.DateCreated' : 'NULL'} as dateCreated,
+        ${hasContentId && hasTitle ? 'ch.Title' : '\'\''} as chapterTitle,
+        ${hasChapterProgress ? 'b.ChapterProgress' : 'NULL'} as chapterProgress
       FROM Bookmark b
       LEFT JOIN content c ON c.ContentID = b.VolumeID
+      ${hasContentId ? 'LEFT JOIN content ch ON ch.ContentID = b.ContentID' : ''}
       WHERE b.Text IS NOT NULL AND TRIM(b.Text) != ''
     `
 
@@ -132,14 +171,17 @@ export async function parseKoboDatabase(bytes: Uint8Array): Promise<KoboHighligh
       .map((row) => {
         const record: Record<string, unknown> = {}
         columns.forEach((col, i) => { record[col] = row[i] })
+        const bookTitle = String(record.bookTitle ?? '').trim() || 'Untitled'
         return {
           bookmarkId: String(record.bookmarkId ?? ''),
           volumeId: String(record.volumeId ?? ''),
-          bookTitle: String(record.bookTitle ?? '').trim() || 'Untitled',
+          bookTitle,
           author: String(record.author ?? ''),
+          isbn: normalizeIsbn(record.isbn),
           text: String(record.text ?? ''),
           annotation: String(record.annotation ?? ''),
           dateCreated: normalizeKoboDate(record.dateCreated),
+          locator: koboLocator(record.chapterTitle, bookTitle, record.chapterProgress),
         }
       })
       .filter((h) => h.bookmarkId && h.text)

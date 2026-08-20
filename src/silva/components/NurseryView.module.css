@@ -140,3 +140,52 @@
     transparent var(--season-left, 100%)
   );
 }
+
+/* ── Sections, one per book ───────────────────────────────────────────────
+   A Kobo import lands a whole season's reading at once; a flat list of three
+   hundred rows is not something anyone decides about. The heading is the
+   specimen label's own voice — small caps, sepia, a hairline under it —
+   never a chip or a filter pill: this is a drawer of cuttings, not a facet. */
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.groupHeading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin: 0;
+  padding-bottom: var(--space-2xs);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+
+.groupTitle {
+  color: var(--color-ink);
+}
+
+.groupAuthor::before {
+  content: '·';
+  margin-right: var(--space-xs);
+}
+
+/* Pushed to the far end and quieter still: a count is orientation, not a
+   score. Nothing in Silva is measured. */
+.groupCount {
+  margin-left: auto;
+  font-variant: small-caps;
+  opacity: 0.75;
+}

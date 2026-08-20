@@ -56,12 +56,22 @@ export function toSource(page: NotionPage): Source {
   }
 }
 
+/** A files property written as an *external* file — a URL Notion links to
+ *  rather than a blob it stores. Unlike `Thing.image` (which needs a real
+ *  upload, and so a newer API version than this app is pinned to), a cover
+ *  is somebody else's hosted image and needs nothing but the link. Empty
+ *  array clears it, same convention as a relation. */
+function externalFile(url: string | null | undefined, name: string) {
+  return { files: url ? [{ type: 'external', name, external: { url } }] : [] }
+}
+
 export function toNotionSourceProps(source: Partial<Source>) {
   const s = source
   return {
     Title: title(s.title),
     Author: richText(s.author),
     Kind: { select: s.kind ? { name: s.kind } : null },
+    Cover: externalFile(s.cover, 'cover.jpg'),
     'Kobo Volume ID': richText(s.koboVolumeId),
     Notes: richText(s.notes),
   }
@@ -71,6 +81,7 @@ const FIELD_TO_PROP: Record<string, string> = {
   title: 'Title',
   author: 'Author',
   kind: 'Kind',
+  cover: 'Cover',
   koboVolumeId: 'Kobo Volume ID',
   notes: 'Notes',
 }

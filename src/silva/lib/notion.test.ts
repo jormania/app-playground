@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { toThing, toNotionThingProps, patchProps, deriveHandle } from './notion'
 
-function fakePage(properties: Record<string, unknown>, id = 'thing-1') {
-  return { id, properties }
+function fakePage(properties: Record<string, unknown>, id = 'thing-1', createdTime?: string) {
+  return { id, properties, ...(createdTime ? { created_time: createdTime } : {}) }
 }
 
 /** A real Notion page fetched back after a write always carries BOTH
@@ -55,7 +55,7 @@ describe('toThing', () => {
       Loci: { relation: [{ id: 'locus-1' }, { id: 'locus-2' }] },
       Link: { url: 'https://example.com' },
       'Kobo Bookmark ID': { rich_text: [{ plain_text: 'bm-1' }] },
-    }))
+    }, 'thing-1', '2026-05-09T08:15:00.000Z'))
 
     expect(thing).toEqual({
       id: 'thing-1',
@@ -72,6 +72,7 @@ describe('toThing', () => {
       image: null,
       link: 'https://example.com',
       koboBookmarkId: 'bm-1',
+      arrived: '2026-05-09',
     })
   })
 
@@ -122,6 +123,11 @@ describe('toNotionThingProps', () => {
       image: null,
       link: 'https://example.com/x',
       koboBookmarkId: null,
+      // Notion's own stamp, not a property — so it does not round-trip
+      // through `toNotionThingProps` and reads back null from a page
+      // without one. That it *can't* be written is the point: nothing in
+      // Silva can forge a thing's arrival.
+      arrived: null,
     }
     const notionProps = echoPlainText(toNotionThingProps(original))
     const roundtripped = toThing(fakePage(notionProps, original.id))
@@ -142,5 +148,20 @@ describe('patchProps', () => {
 
   it('an empty patch writes nothing', () => {
     expect(patchProps({})).toEqual({})
+  })
+})
+
+// The season counts from when a thing reached Silva, not from the date it
+// carries — see lib/understory.ts `seasonStart`. Notion stamps every page
+// with `created_time`, so this needs no schema property and is already
+// right for every row created before it existed.
+describe('toThing — arrival', () => {
+  it('reads the arrival out of Notion\'s own created_time', () => {
+    const thing = toThing(fakePage({}, 'thing-2', '2026-08-20T09:00:00.000Z'))
+    expect(thing.arrived).toBe('2026-08-20')
+  })
+
+  it('is null for a page with no stamp at all', () => {
+    expect(toThing(fakePage({}, 'thing-3')).arrived).toBeNull()
   })
 })

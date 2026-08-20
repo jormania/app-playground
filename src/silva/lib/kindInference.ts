@@ -27,15 +27,31 @@ export function isBareUrl(body: string): boolean {
 }
 
 /**
+ * The one Kind Silva sets at capture, and the only one it can: a pasted body
+ * that is nothing but a URL is a Link, which is recognising literal data
+ * rather than classifying what the thing means to you (the same reading
+ * `isBareUrl` already does for the `link` field itself). Null for everything
+ * else — every other Kind stays a judgment made later through Suggest, or
+ * never made at all.
+ */
+export function intakeKind(body: string): ThingKind | null {
+  return isBareUrl(body) ? 'Link' : null
+}
+
+/**
  * Leaves the guess unset (null) rather than force a pick when nothing
  * about the text is distinctive — an unset Kind is honest; a wrong one
  * looks authoritative it isn't.
  */
-export function inferKind(body: string, hasSource: boolean): ThingKind | null {
+export function inferKind(body: string, hasSource: boolean, hasLink = false): ThingKind | null {
   const trimmed = body.trim()
   if (!trimmed) return null
 
-  if (URL_ONLY.test(trimmed)) return 'Link'
+  // A thing carrying a URL in its own `link` field is a Link whatever its
+  // body now reads as — which matters since a kept link's body is replaced
+  // by the article's title (lib/linkTitle.ts), so the URL that used to be
+  // the whole giveaway is no longer in the text at all.
+  if (hasLink || URL_ONLY.test(trimmed)) return 'Link'
   if (trimmed.endsWith('?')) return 'Question'
   if (QUOTED_DIALOGUE.test(trimmed)) return 'Dialogue'
   if (trimmed.length < 40) return 'Fragment'

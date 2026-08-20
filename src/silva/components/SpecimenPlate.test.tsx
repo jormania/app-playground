@@ -26,6 +26,7 @@ function thing(over: Partial<Thing> = {}): Thing {
     image: null,
     link: null,
     koboBookmarkId: null,
+    arrived: null,
     ...over,
   }
 }

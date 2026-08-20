@@ -106,3 +106,34 @@ describe('orderWithinSource', () => {
     expect(input).toEqual(copy)
   })
 })
+
+/**
+ * `Cover` was read by Roots and written by nothing — the one field in the
+ * Sources schema with no way in. The Kobo import fills it from the book's
+ * ISBN, which means this payload shape has to be right: a files property
+ * Notion rejects fails the whole import, not just the picture.
+ */
+describe('toNotionSourceProps — Cover', () => {
+  it('writes a cover as an external file, which needs no upload', () => {
+    expect(toNotionSourceProps({ cover: 'https://covers.openlibrary.org/b/isbn/9780140449334-L.jpg' })).toMatchObject({
+      Cover: {
+        files: [{
+          type: 'external',
+          name: 'cover.jpg',
+          external: { url: 'https://covers.openlibrary.org/b/isbn/9780140449334-L.jpg' },
+        }],
+      },
+    })
+  })
+
+  it('clears a cover with an empty list rather than a null', () => {
+    expect(toNotionSourceProps({ cover: null })).toMatchObject({ Cover: { files: [] } })
+  })
+
+  // The whole point of the pruning: backfilling a cover onto a matched book
+  // must not re-send — and so must not clobber — its title or notes.
+  it('is only sent when the patch actually names it', () => {
+    expect(Object.keys(patchSourceProps({ cover: 'https://example.com/c.jpg' }))).toEqual(['Cover'])
+    expect(patchSourceProps({ koboVolumeId: 'vol-1' })).not.toHaveProperty('Cover')
+  })
+})

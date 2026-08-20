@@ -36,6 +36,22 @@ export interface Thing {
   image: string | null
   link: string | null
   koboBookmarkId: string | null
+  /**
+   * When the thing arrived *in Silva* — Notion's own `created_time`, never a
+   * property, so this costs no schema change and is right retroactively for
+   * every row already in the database.
+   *
+   * Distinct from `encountered`, which is when it reached *you*: the Kobo
+   * lane back-dates that to the highlight's own date, and a passage
+   * highlighted two years ago is honestly two years old. But the season is
+   * about how long something has sat unkept in the understory, so it counts
+   * from here (lib/understory.ts) — otherwise an import of old reading was
+   * composted on the very next load, before it could be looked at once.
+   *
+   * Null for a thing the store made without one (an optimistic draft, or an
+   * older demo snapshot); `seasonStart` falls back to `encountered` then.
+   */
+  arrived: string | null
 }
 
 interface NotionRichTextRun {
@@ -45,6 +61,8 @@ interface NotionRichTextRun {
 interface NotionPage {
   id: string
   properties: Record<string, unknown>
+  /** Notion stamps this on every page; it is not a schema property. */
+  created_time?: string
 }
 
 /** Notion splits styled text into runs; join them rather than reading run 0,
@@ -106,6 +124,7 @@ export function toThing(page: NotionPage): Thing {
     image: firstFileUrl(get('Image')?.files),
     link: (get('Link')?.url as string | null) || null,
     koboBookmarkId: plainText(get('Kobo Bookmark ID')?.rich_text) || null,
+    arrived: (page?.created_time || '').slice(0, 10) || null,
   }
 }
 

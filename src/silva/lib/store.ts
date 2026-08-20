@@ -79,6 +79,9 @@ export interface NewSourceInput {
   title: string
   author?: string
   kind?: Source['kind']
+  /** An external image URL — the Kobo import fills this from the book's
+   *  own ISBN (lib/bookCover.ts). */
+  cover?: string | null
   koboVolumeId?: string | null
   notes?: string
 }
@@ -282,6 +285,12 @@ export class SilvaStore {
       image: input.image ?? null,
       link: input.link ?? null,
       koboBookmarkId: input.koboBookmarkId ?? null,
+      // When it reached Silva, as against `encountered` — when it reached
+      // you. Live things read this back from Notion's own `created_time`;
+      // the demo forest has to stamp it itself. It is what the season
+      // counts from (lib/understory.ts `seasonStart`), so a Kobo import of
+      // old reading gets its full season here too.
+      arrived: now,
     }
 
     if (this.useDemo()) {
@@ -342,7 +351,7 @@ export class SilvaStore {
       title: input.title,
       author: input.author ?? '',
       kind: input.kind ?? null,
-      cover: null,
+      cover: input.cover ?? null,
       koboVolumeId: input.koboVolumeId ?? null,
       notes: input.notes ?? '',
     }

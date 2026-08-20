@@ -90,6 +90,7 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: null,
     koboBookmarkId: 'kobo-demo-1',
+    arrived: null,
   },
   {
     id: 'demo-thing-2',
@@ -106,6 +107,7 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: null,
     koboBookmarkId: null,
+    arrived: null,
   },
   {
     id: 'demo-thing-3',
@@ -122,6 +124,7 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: null,
     koboBookmarkId: null,
+    arrived: null,
   },
   {
     id: 'demo-thing-4',
@@ -138,6 +141,7 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: null,
     koboBookmarkId: null,
+    arrived: null,
   },
   {
     id: 'demo-thing-5',
@@ -154,6 +158,7 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: null,
     koboBookmarkId: null,
+    arrived: null,
   },
   {
     id: 'demo-thing-6',
@@ -170,6 +175,7 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: null,
     koboBookmarkId: 'kobo-demo-6',
+    arrived: null,
   },
   {
     id: 'demo-thing-7',
@@ -186,6 +192,7 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: null,
     koboBookmarkId: null,
+    arrived: null,
   },
   {
     id: 'demo-thing-8',
@@ -202,6 +209,7 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: null,
     koboBookmarkId: null,
+    arrived: null,
   },
   {
     id: 'demo-thing-9',
@@ -218,6 +226,7 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: 'https://example.com/an-essay-worth-keeping',
     koboBookmarkId: null,
+    arrived: null,
   },
   {
     id: 'demo-thing-10',
@@ -234,6 +243,7 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: null,
     koboBookmarkId: null,
+    arrived: null,
   },
   {
     id: 'demo-thing-11',
@@ -250,6 +260,7 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: null,
     koboBookmarkId: 'kobo-demo-11',
+    arrived: null,
   },
   {
     id: 'demo-thing-12',
@@ -266,6 +277,7 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: null,
     koboBookmarkId: null,
+    arrived: null,
   },
   {
     id: 'demo-thing-13',
@@ -282,6 +294,7 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: null,
     koboBookmarkId: null,
+    arrived: null,
   },
   {
     id: 'demo-thing-14',
@@ -298,6 +311,7 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: null,
     koboBookmarkId: null,
+    arrived: null,
   },
   {
     id: 'demo-thing-15',
@@ -314,6 +328,7 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: null,
     koboBookmarkId: null,
+    arrived: null,
   },
   {
     id: 'demo-thing-16',
@@ -330,6 +345,7 @@ export const DEMO_THINGS: Thing[] = [
     image: null,
     link: null,
     koboBookmarkId: null,
+    arrived: null,
   },
 ]
 
