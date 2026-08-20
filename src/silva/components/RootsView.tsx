@@ -5,9 +5,9 @@ import type { Locus } from '../lib/loci'
 import type { Source, SourceKind } from '../lib/sources'
 import { orderWithinSource } from '../lib/sources'
 import { SpecimenPlate } from './SpecimenPlate'
-import styles from './SourcesView.module.css'
+import styles from './RootsView.module.css'
 
-export interface SourcesViewProps {
+export interface RootsViewProps {
   things: Thing[]
   sources: Source[]
   loci: Locus[]
@@ -29,9 +29,13 @@ const KIND_OPTIONS: { value: SourceKind; label: string }[] = [
 type Screen = { kind: 'list' } | { kind: 'detail'; sourceId: string }
 
 /**
- * Sources — what a kept thing came from, as a place you can actually stand
- * in rather than a filter dropdown (SILVA.md gives Sources their own
- * database with a Notes field; until now nothing in the app read it).
+ * Roots — what a kept thing came from, as a place you can actually stand in
+ * rather than a filter dropdown (SILVA.md gives a Source its own database,
+ * with a Notes field; until now nothing in the app read it). Labelled
+ * "Roots" rather than "Sources" in the app — a source is what feeds a kept
+ * thing, the same relation a root has to what grows from it — while the
+ * underlying Notion database keeps its own name, `Sources`, same as every
+ * other label-layer rename in this app (see SILVA.md's naming-map table).
  *
  * Deliberately not a shelf: SILVA.md's own line in the Forest's demo forest
  * is "a library is organized so you can find what you already know you
@@ -44,7 +48,7 @@ type Screen = { kind: 'list' } | { kind: 'detail'; sourceId: string }
  * rather than by thing, same as Clearings is "what else belongs here"
  * reached by locus.
  */
-export function SourcesView({ things, sources, loci, onEditThing, onSeen, onEditSource }: SourcesViewProps) {
+export function RootsView({ things, sources, loci, onEditThing, onSeen, onEditSource }: RootsViewProps) {
   const [screen, setScreen] = useState<Screen>({ kind: 'list' })
   const locusById = useMemo(() => new Map(loci.map((l) => [l.id, l])), [loci])
 
@@ -138,11 +142,13 @@ function SourceDetail({
   onEditSource: (id: string, patch: Partial<Source>) => void
 }) {
   const [editing, setEditing] = useState(false)
+  const [title, setTitle] = useState(source.title)
   const [author, setAuthor] = useState(source.author)
   const [kind, setKind] = useState<SourceKind | ''>(source.kind ?? '')
   const [notes, setNotes] = useState(source.notes)
 
   function startEditing() {
+    setTitle(source.title)
     setAuthor(source.author)
     setKind(source.kind ?? '')
     setNotes(source.notes)
@@ -151,11 +157,11 @@ function SourceDetail({
 
   return (
     <div className={styles.wrap}>
-      <Button size="sm" variant="ghost" onClick={onBack}>← Sources</Button>
+      <Button size="sm" variant="ghost" onClick={onBack}>← Roots</Button>
 
       {editing ? (
         <div className={styles.editBlock}>
-          <Field label="Title" value={source.title} disabled hint="Set at capture — not editable here." />
+          <Field label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
           <Field label="Author" value={author} onChange={(e) => setAuthor(e.target.value)} />
           <div className={styles.kindRow}>
             <span className={styles.kindLabel}>Kind</span>
@@ -180,8 +186,9 @@ function SourceDetail({
           <div className={styles.actions}>
             <Button variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
             <Button
+              disabled={!title.trim()}
               onClick={() => {
-                onEditSource(source.id, { author: author.trim(), kind: kind || null, notes: notes.trim() })
+                onEditSource(source.id, { title: title.trim(), author: author.trim(), kind: kind || null, notes: notes.trim() })
                 setEditing(false)
               }}
             >

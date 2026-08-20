@@ -20,7 +20,7 @@
   gap: var(--space-sm);
 }
 
-/* Same card as ClearingsView's .locusCard — Sources and Clearings are the
+/* Same card as ClearingsView's .locusCard — Roots and Clearings are the
    same shape of screen (a list of places, each opening to its members), so
    they read as one grammar rather than two. */
 .sourceCard {

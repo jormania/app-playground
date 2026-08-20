@@ -15,7 +15,7 @@ import { IntakeField } from './components/IntakeField'
 import { KoboImportPanel } from './components/KoboImportPanel'
 import { ClearingsView } from './components/ClearingsView'
 import { PathsView } from './components/PathsView'
-import { SourcesView } from './components/SourcesView'
+import { RootsView } from './components/RootsView'
 import { ForageView } from './components/ForageView'
 import { ProvocationBanner } from './components/ProvocationBanner'
 import { HearthView } from './components/HearthView'
@@ -43,7 +43,7 @@ import { isBareUrl } from './lib/kindInference'
 import { loadThemeChoice, saveThemeChoice, watchTheme, type ThemeChoice } from './lib/theme'
 import styles from './App.module.css'
 
-type View = 'forest' | 'nursery' | 'clearings' | 'paths' | 'sources' | 'forage' | 'hearth'
+type View = 'forest' | 'nursery' | 'clearings' | 'paths' | 'roots' | 'forage' | 'hearth'
 
 /** One list, two presentations: the segmented control on a desktop header and
  *  the bottom TabBar on a phone. The `value`s double as icon names in
@@ -53,7 +53,7 @@ const VIEWS: { value: View; label: string }[] = [
   { value: 'nursery', label: 'Nursery' },
   { value: 'clearings', label: 'Clearings' },
   { value: 'paths', label: 'Paths' },
-  { value: 'sources', label: 'Sources' },
+  { value: 'roots', label: 'Roots' },
   { value: 'forage', label: 'Forage' },
   { value: 'hearth', label: 'Hearth' },
 ]
@@ -916,8 +916,8 @@ export default function App() {
             onRemove={handleRemovePath}
             showGraph={config.showGraph}
           />
-        ) : view === 'sources' ? (
-          <SourcesView
+        ) : view === 'roots' ? (
+          <RootsView
             things={things}
             sources={sources}
             loci={loci}

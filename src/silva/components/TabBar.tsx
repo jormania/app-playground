@@ -62,13 +62,18 @@ const ICONS: Record<string, React.ReactNode> = {
       <circle cx="17.6" cy="16.4" r="2" />
     </>
   ),
-  // An open book — the one place a source is a place you stand in rather
-  // than a filter, so it gets the plainest possible mark for "a book".
-  sources: (
+  // A stem branching into root tendrils — the forest icon's own trunk, read
+  // the other way. Roots is where a kept thing's source lives, the thing
+  // that fed it, so this reads as "forest" upside down rather than as a
+  // book (which fit the old label, "Sources", but not this one).
+  roots: (
     <>
-      <path d="M12 6.5c-1.8-1.3-4-2-6.5-2v13c2.5 0 4.7.7 6.5 2" />
-      <path d="M12 6.5c1.8-1.3 4-2 6.5-2v13c-2.5 0-4.7.7-6.5 2" />
-      <path d="M12 6.5v13" />
+      <path d="M12 4v7" />
+      <path d="M12 11c-2.2 1.8-3.4 4-4 8.5" />
+      <path d="M12 11v9.5" />
+      <path d="M12 11c2.2 1.8 3.4 4 4 8.5" />
+      <path d="M12 14.5c-1.3 1-2 2.3-2.4 5" />
+      <path d="M12 14.5c1.3 1 2 2.3 2.4 5" />
     </>
   ),
   forage: (

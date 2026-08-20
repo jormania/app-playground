@@ -2,7 +2,7 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { SourcesView } from './SourcesView'
+import { RootsView } from './RootsView'
 import type { Thing } from '../lib/notion'
 import type { Source } from '../lib/sources'
 
@@ -49,11 +49,11 @@ const handlers = {
 
 function renderView(things: Thing[], sources: Source[], over: Partial<typeof handlers> = {}) {
   const props = { ...handlers, ...over }
-  render(<SourcesView things={things} sources={sources} loci={[]} {...props} />)
+  render(<RootsView things={things} sources={sources} loci={[]} {...props} />)
   return props
 }
 
-describe('SourcesView', () => {
+describe('RootsView', () => {
   it('names what fills it when nothing kept has a source yet', () => {
     renderView([thing('a')], [source('s1')])
     expect(screen.getByText(/nothing kept has a source yet/i)).toBeTruthy()
@@ -95,7 +95,7 @@ describe('SourcesView', () => {
     expect(bodies).toEqual(['the early passage', 'the late passage'])
   })
 
-  it('saves an edited source without touching its title', async () => {
+  it('saves an edited source, author included', async () => {
     const user = userEvent.setup()
     const onEditSource = vi.fn()
     renderView(
@@ -109,6 +109,35 @@ describe('SourcesView', () => {
     await user.type(screen.getByLabelText('Author'), 'M. Aurelius')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(onEditSource).toHaveBeenCalledWith('s1', { author: 'M. Aurelius', kind: null, notes: '' })
+    expect(onEditSource).toHaveBeenCalledWith('s1', { title: 'Meditations', author: 'M. Aurelius', kind: null, notes: '' })
+  })
+
+  // The title used to be locked at creation time — fixed, since it's as
+  // correctable as anything else about a source (a typo, a translation's
+  // subtitle, a title Kobo got wrong).
+  it('lets the title itself be corrected', async () => {
+    const user = userEvent.setup()
+    const onEditSource = vi.fn()
+    renderView(
+      [thing('a', { sourceId: 's1' })],
+      [source('s1', { title: 'Meditaitons' })],
+      { onEditSource },
+    )
+    await user.click(screen.getByRole('button', { name: /Meditaitons/ }))
+    await user.click(screen.getByRole('button', { name: 'Edit source' }))
+    await user.clear(screen.getByLabelText('Title'))
+    await user.type(screen.getByLabelText('Title'), 'Meditations')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(onEditSource).toHaveBeenCalledWith('s1', { title: 'Meditations', author: '', kind: null, notes: '' })
+  })
+
+  it('will not save a blanked-out title', async () => {
+    const user = userEvent.setup()
+    renderView([thing('a', { sourceId: 's1' })], [source('s1', { title: 'Meditations' })])
+    await user.click(screen.getByRole('button', { name: /Meditations/ }))
+    await user.click(screen.getByRole('button', { name: 'Edit source' }))
+    await user.clear(screen.getByLabelText('Title'))
+    expect(screen.getByRole('button', { name: 'Save' }).hasAttribute('disabled')).toBe(true)
   })
 })

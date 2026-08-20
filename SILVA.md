@@ -241,20 +241,22 @@ threads) and Journal of Delights (three ways to read) already establish here.
   global ring layout very much does.
 - **The understory** — unkept arrivals, *labelled* **Nursery** in the app,
   with their remaining season shown as a fade rather than a number.
-- **Sources** — where a kept thing came from, given a real screen rather than
-  only a filter in Forage. Only a source with something actually kept from it
-  appears; its passages render in the order they sit in it, from `locator`
-  when that reads as a page number, falling back to the order they were kept.
-  Same master-detail grammar as Clearings — a list of places, each opening to
-  what belongs in it — so this reads as the same kind of screen, not a new
-  one. Deliberately not a shelf: nothing here sorts, rates, or ranks a
-  source, and there is no way to browse one you haven't drawn from yet.
+- **Sources** — where a kept thing came from, *labelled* **Roots** in the
+  app, given a real screen rather than only a filter in Forage. Only a
+  source with something actually kept from it appears; its passages render
+  in the order they sit in it, from `locator` when that reads as a page
+  number, falling back to the order they were kept. Same master-detail
+  grammar as Clearings — a list of places, each opening to what belongs in
+  it — so this reads as the same kind of screen, not a new one. Deliberately
+  not a shelf: nothing here sorts, rates, or ranks a source, and there is no
+  way to browse one you haven't drawn from yet. Title, author and kind are
+  all editable here, not locked at creation.
 
 ### On the labels, and why they differ from these names
 
-Four surfaces carry a different word in the interface than in this document,
+Five surfaces carry a different word in the interface than in this document,
 and the reason is the same in each case: this document is prose, where the
-ecological metaphor can breathe, while a tab bar is six words at 9.5px that
+ecological metaphor can breathe, while a tab bar is seven words at 9.5px that
 have to be told apart at a glance.
 
 | Here | In the app | Why |
@@ -262,6 +264,7 @@ have to be told apart at a glance.
 | Understory | **Nursery** | "Understory" and "Underground" sat one tab apart: same prefix, near-identical length, indistinguishable in small caps. A forest nursery is also exactly what this is — where seedlings wait before being planted out, or not. |
 | Underground | **Paths** | The other half of that collision. It is also precisely the database it reads. "Underground" still names the latent mycorrhizal layer everywhere, which is the sense this document needs it for. |
 | Search | **Forage** | "Search" is the PKM word this app is defined against. Foraging is deliberate looking *within a place you already know* — which is what this surface is for, and why it isn't the point of the app. |
+| Sources | **Roots** | A source is what feeds a kept thing, the same relation a root has to what grows from it — and "Sources" reads like a bibliography tab, the library move this view exists not to be. |
 | Settings | **Hearth** | The household centre of a *silva rerum*, which was a family book before it was anything else. |
 
 The **stored** vocabulary is untouched: `State` is still `Understory · Kept ·
