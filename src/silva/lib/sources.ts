@@ -100,14 +100,45 @@ export function patchSourceProps(patch: Partial<Source>): Record<string, unknown
   return out
 }
 
-/** The first run of digits in a locator — "p. 142" reads as page 142,
- *  "overheard on the 32 tram" reads as no page at all (a bus number isn't a
- *  place in the book). Anything without one sorts after everything that has
- *  one, so a source that mixes a few page numbers with a few non-numeric
- *  locators still puts what it can order first. */
-function pageNumber(locator: string): number {
-  const match = locator.match(/\d+/)
-  return match ? parseInt(match[0], 10) : Number.POSITIVE_INFINITY
+/** Ordered so a lower rank sorts first: pages, then positions, then things
+ *  with no place in the source at all. Two locators only compare by value
+ *  when they are the same kind — a page and a percentage measure different
+ *  things and there is no honest way to interleave them. */
+const LOCATOR_PAGE = 0
+const LOCATOR_PERCENT = 1
+const LOCATOR_UNPLACED = 2
+
+interface LocatorPosition {
+  kind: typeof LOCATOR_PAGE | typeof LOCATOR_PERCENT | typeof LOCATOR_UNPLACED
+  value: number
+}
+
+/**
+ * Where in a source a locator points, if anywhere.
+ *
+ * This used to be "the first run of digits", which claimed in its own
+ * comment to read "overheard on the 32 tram" as no page at all — and then
+ * read it as page 32, because a bare `\d+` matches digits anywhere in the
+ * sentence. The Kobo import made that misreading visible: it writes "63% in"
+ * when a chapter has no usable title (lib/kobo.ts `koboLocator`), which
+ * scanned as *page 63* and sorted ahead of page 100 of the same book.
+ *
+ * So the digits have to earn their meaning from context:
+ *
+ * - **A percentage** — "63% in" — is a position through the work.
+ * - **A page** is a number the locator *opens* with, optionally behind the
+ *   usual abbreviations: "p. 142", "pp. 12-15", "page 7", "142".
+ * - **Anything else** is prose that happens to contain a number, and points
+ *   nowhere: a tram, a chapter name, a timestamp.
+ */
+function locatorPosition(locator: string): LocatorPosition {
+  const percent = locator.match(/(\d+(?:\.\d+)?)\s*%/)
+  if (percent) return { kind: LOCATOR_PERCENT, value: parseFloat(percent[1]) }
+
+  const page = locator.match(/^\s*(?:p{1,2}\.?|pages?)?\s*(\d+)/i)
+  if (page) return { kind: LOCATOR_PAGE, value: parseInt(page[1], 10) }
+
+  return { kind: LOCATOR_UNPLACED, value: Number.POSITIVE_INFINITY }
 }
 
 /** Things from one source, in the order they sit in it — SILVA.md's Locator
@@ -117,12 +148,15 @@ function pageNumber(locator: string): number {
  *  locator wasn't consulted at all. */
 export function orderWithinSource<T extends { locator: string; kept: string | null }>(things: T[]): T[] {
   return [...things].sort((a, b) => {
-    const pa = pageNumber(a.locator)
-    const pb = pageNumber(b.locator)
-    // Two locator-less things are both Infinity, and Infinity - Infinity is
+    const pa = locatorPosition(a.locator)
+    const pb = locatorPosition(b.locator)
+    // Kind first: a page and a percentage are different scales, so they
+    // group rather than interleave. Within a kind, by position.
+    if (pa.kind !== pb.kind) return pa.kind - pb.kind
+    // Two unplaced things are both Infinity, and Infinity - Infinity is
     // NaN — an invalid comparator result that silently disables sorting
     // rather than throwing, so the kept-order fallback below never ran.
-    if (pa !== pb) return pa - pb
+    if (pa.value !== pb.value) return pa.value - pb.value
     return (a.kept || '').localeCompare(b.kept || '')
   })
 }

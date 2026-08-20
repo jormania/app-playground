@@ -159,6 +159,32 @@ export async function writeCollectionCache(
 }
 
 /**
+ * Whether this page load was a *reload* rather than an ordinary launch.
+ *
+ * Pulling down from the top of an installed PWA reloads the page, and that
+ * gesture means one thing: "fetch everything again, I think what I'm looking
+ * at is wrong." It is the one moment a reader explicitly asks for
+ * correctness over speed, so it earns a full reconcile — the only kind of
+ * read that can notice a row deleted directly in Notion, which otherwise
+ * waits out `FULL_SYNC_INTERVAL_MS`.
+ *
+ * Launching the app from the homescreen is a `navigate`, not a `reload`, so
+ * the everyday open stays incremental and cheap. Anything unreadable — an
+ * older browser, a missing Navigation Timing entry — answers false and
+ * falls back to the interval, which is the safe direction: at worst the
+ * refresh is as good as it was before this existed.
+ */
+export function wasPageReloaded(): boolean {
+  try {
+    if (typeof performance === 'undefined') return false
+    const [entry] = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]
+    return entry?.type === 'reload'
+  } catch {
+    return false
+  }
+}
+
+/**
  * Whether a complete re-read is due — no cache, no record of a full sync, or
  * one older than `FULL_SYNC_INTERVAL_MS`. Also true for a nonsense timestamp,
  * so a corrupted date fails safe toward correctness rather than toward speed.

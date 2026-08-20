@@ -137,3 +137,52 @@ describe('toNotionSourceProps — Cover', () => {
     expect(patchSourceProps({ koboVolumeId: 'vol-1' })).not.toHaveProperty('Cover')
   })
 })
+
+/**
+ * Today's Kobo import writes a chapter title when the file names one and a
+ * position — "63% in" — when it doesn't (lib/kobo.ts `koboLocator`). Read
+ * as "the first run of digits", that position masquerades as *page 63* and
+ * sorts ahead of page 100 of the same book. A percentage and a page number
+ * are different scales, so they have to be compared as different kinds.
+ */
+describe('orderWithinSource — a position is not a page', () => {
+  const t = (locator: string, kept: string) => ({ locator, kept })
+
+  it('orders percentage positions among themselves, in reading order', () => {
+    const ordered = orderWithinSource([
+      t('90% in', '2026-01-01'),
+      t('12% in', '2026-01-01'),
+      t('63% in', '2026-01-01'),
+    ])
+    expect(ordered.map((x) => x.locator)).toEqual(['12% in', '63% in', '90% in'])
+  })
+
+  it('orders page numbers among themselves', () => {
+    const ordered = orderWithinSource([t('p. 142', '2026-01-01'), t('p. 7', '2026-01-01')])
+    expect(ordered.map((x) => x.locator)).toEqual(['p. 7', 'p. 142'])
+  })
+
+  // The actual defect: 63 is not a page, and must not outrank page 100.
+  it('never lets a percentage outrank a real page number', () => {
+    const ordered = orderWithinSource([t('63% in', '2026-01-01'), t('p. 100', '2026-01-01')])
+    expect(ordered.map((x) => x.locator)).toEqual(['p. 100', '63% in'])
+  })
+
+  // A chapter title carries no number at all, so it falls back to kept order
+  // rather than being pushed around by one it doesn't have.
+  it('falls back to kept order for locators with no position in them', () => {
+    const ordered = orderWithinSource([
+      t('Book II', '2026-01-02'),
+      t('Book I', '2026-01-01'),
+    ])
+    expect(ordered.map((x) => x.locator)).toEqual(['Book I', 'Book II'])
+  })
+
+  it('still reads a bus number as no page at all', () => {
+    const ordered = orderWithinSource([
+      t('overheard on the 32 tram', '2026-01-02'),
+      t('p. 200', '2026-01-01'),
+    ])
+    expect(ordered[0].locator).toBe('p. 200')
+  })
+})

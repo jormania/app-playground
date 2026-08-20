@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Same in-memory idb-keyval stand-in as vectorCache.test.ts — happy-dom has
 // no IndexedDB, and the cache's whole contract is about what survives a
@@ -17,6 +17,7 @@ const {
   needsFullSync,
   mergeById,
   fingerprintToken,
+  wasPageReloaded,
   FULL_SYNC_INTERVAL_MS,
 } = await import('./collectionCache')
 
@@ -145,5 +146,51 @@ describe('mergeById', () => {
   it('replaces the whole row rather than merging its fields', () => {
     const merged = mergeById([{ id: 'a', note: 'old', body: 'kept' }], [{ id: 'a', body: 'kept' } as never])
     expect(merged[0]).toEqual({ id: 'a', body: 'kept' })
+  })
+})
+
+/**
+ * Pulling down from the top of an installed PWA reloads the page, and that
+ * gesture means "fetch everything again". It is the one moment a reader
+ * asks for correctness over speed — and short of waiting out the day-long
+ * interval, the only way to notice a row deleted directly in Notion.
+ */
+describe('wasPageReloaded', () => {
+  const withNavigationType = (type: string | undefined) => {
+    vi.stubGlobal('performance', {
+      getEntriesByType: () => (type === undefined ? [] : [{ type }]),
+    })
+  }
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('is true for a reload — the pull-to-refresh gesture', () => {
+    withNavigationType('reload')
+    expect(wasPageReloaded()).toBe(true)
+  })
+
+  // Opening the app from the homescreen must stay incremental and cheap.
+  it('is false for an ordinary launch', () => {
+    withNavigationType('navigate')
+    expect(wasPageReloaded()).toBe(false)
+  })
+
+  it('is false for a back/forward restore', () => {
+    withNavigationType('back_forward')
+    expect(wasPageReloaded()).toBe(false)
+  })
+
+  // Falling back to the interval is the safe direction: at worst the
+  // refresh is exactly as good as it was before this existed.
+  it('is false when there is no navigation entry to read', () => {
+    withNavigationType(undefined)
+    expect(wasPageReloaded()).toBe(false)
+  })
+
+  it('never throws when the timing API is unavailable', () => {
+    vi.stubGlobal('performance', {
+      getEntriesByType: () => { throw new Error('unsupported') },
+    })
+    expect(wasPageReloaded()).toBe(false)
   })
 })

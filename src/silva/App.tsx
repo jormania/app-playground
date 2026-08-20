@@ -46,6 +46,7 @@ import {
   readCollectionCache,
   writeCollectionCache,
   needsFullSync,
+  wasPageReloaded,
   mergeById,
 } from './lib/collectionCache'
 import { linkFactsPatch, linkSourceTitle } from './lib/linkFacts'
@@ -321,7 +322,11 @@ export default function App() {
         // to notice a row deleted directly in Notion, which an incremental
         // read cannot see (it stops appearing rather than coming back
         // marked). Otherwise just what changed. See lib/collectionCache.ts.
-        const fullSync = needsFullSync(cached)
+        // A pull-to-refresh reloads the page, and that gesture means "fetch
+        // everything again" — the one moment a reader asks for correctness
+        // over speed. It is also the only way, short of waiting out the
+        // day-long interval, to notice a row deleted directly in Notion.
+        const fullSync = wasPageReloaded() || needsFullSync(cached)
         const since = fullSync ? undefined : cached?.syncedAt
         // Stamped *before* the request goes out, so an edit made while it is
         // in flight is caught next time rather than skipped. Fetching one row
