@@ -6,6 +6,7 @@ import { SilvaStore } from '../lib/store'
 import type { Source } from '../lib/sources'
 import type { Thing } from '../lib/notion'
 import { inferKind } from '../lib/kindInference'
+import { normalizeCapturedText } from '../lib/textNormalize'
 import { findBookCover } from '../lib/bookCover'
 import { todayIso } from '../lib/understory'
 import styles from './KoboImportPanel.module.css'
@@ -196,8 +197,12 @@ export function KoboImportPanel({ store, existingKoboBookmarkIds, onImported, on
 
         for (const highlight of group.newHighlights) {
           if (!group.selectedIds.has(highlight.bookmarkId)) continue
+          // Whitespace hygiene only, same as any other lane (lib/textNormalize.ts)
+          // — a defensive pass here rather than a needed one, since Kobo's own
+          // export is already clean, but idempotent and cheap either way.
+          const text = normalizeCapturedText(highlight.text)
           const thing = await store.createThing({
-            body: highlight.text,
+            body: text,
             note: highlight.annotation,
             // A highlight was `Passage` whatever it said — which is already
             // an inference, just a fixed one, and wrong for the question a
@@ -205,7 +210,7 @@ export function KoboImportPanel({ store, existingKoboBookmarkIds, onImported, on
             // is the same rule Edit's Suggest offers, and still only a
             // starting point you can change (SILVA.md: a thing's
             // classification is the human's judgment).
-            kind: inferKind(highlight.text, true) ?? 'Passage',
+            kind: inferKind(text, true) ?? 'Passage',
             sourceId,
             // Where in the book it sat — the chapter Kobo's own file names,
             // or a percentage through it (lib/kobo.ts `koboLocator`).

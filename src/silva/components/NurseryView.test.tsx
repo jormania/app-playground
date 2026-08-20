@@ -374,3 +374,42 @@ describe('NurseryView — a bare-URL body with no link field', () => {
     expect(screen.queryByRole('link')).toBeNull()
   })
 })
+
+/**
+ * A nursery row is a decide-fast, scan-many screen — unlike the Forest's
+ * plate, which stays full length on purpose. A long capture here pushed
+ * every action for that row (and every row after it) off screen, so it
+ * previews behind the same ExpandableText Clearings/Forage/Paths already use.
+ */
+describe('NurseryView — long bodies collapse', () => {
+  it('shows a short body in full, with no Show more toggle', () => {
+    render(<NurseryView things={[arrival('a', 1, { body: 'A short passage.' })]} onKeep={vi.fn()} onRelease={vi.fn()} onDelete={vi.fn()} />)
+    expect(screen.getByText('A short passage.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /show more/i })).toBeNull()
+  })
+
+  it('previews a long body behind Show more, expanding on tap', async () => {
+    const user = userEvent.setup()
+    const long = 'A'.repeat(300)
+    render(<NurseryView things={[arrival('a', 1, { body: long })]} onKeep={vi.fn()} onRelease={vi.fn()} onDelete={vi.fn()} />)
+
+    expect(screen.queryByText(long)).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Show more' }))
+    expect(screen.getByText(long)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Show less' })).toBeTruthy()
+  })
+
+  // A Link thing's body is short (a title, or a URL before Keep) and never
+  // goes through this path — it renders as the clickable anchor instead.
+  it('never wraps a link body in the expand/collapse treatment', () => {
+    render(
+      <NurseryView
+        things={[arrival('a', 1, { link: 'https://example.com', body: 'https://example.com' })]}
+        onKeep={vi.fn()}
+        onRelease={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: /show more/i })).toBeNull()
+  })
+})

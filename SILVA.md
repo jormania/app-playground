@@ -264,7 +264,11 @@ threads) and Journal of Delights (three ways to read) already establish here.
 - **The understory** — unkept arrivals, *labelled* **Nursery** in the app,
   with their remaining season shown as a fade rather than a number. Sectioned
   by book once anything in it has a source (a Kobo import lands hundreds of
-  rows at once); a nursery of your own typed captures stays one flat list.
+  rows at once); a nursery of your own typed captures stays one flat list. A
+  long body previews behind **Show more** — the nursery is a decide-fast, scan-
+  many screen, unlike the plate a kept thing is read on, which stays full
+  length always (that's `ExpandableText`, same component Clearings, Forage and
+  Paths already use for the identical reason).
 - **Sources** — where a kept thing came from, *labelled* **Roots** in the
   app, given a real screen rather than only a filter in Forage. Only a
   source with something actually kept from it appears; its passages render
@@ -313,6 +317,21 @@ Four lanes into the understory:
    text field when there's nothing yet to suggest) — retyping "Meditations"
    a fourth time completes it rather than risking a slightly different
    string that reads as a new book to `resolveSource`'s similarity check.
+
+   Whatever the body's own source, capture cleans up its whitespace before
+   it's stored — `lib/textNormalize.ts`, run uniformly on a typed body, a
+   share, a Kobo highlight and an OCR transcription alike. CRLF line endings,
+   trailing space at a line's end, a non-breaking space, three-or-more blank
+   lines squashed to one: all artifacts of the copy mechanism, none of them
+   the passage. It never touches a word, a single line break, or an
+   intra-line run of spaces (a poem's own shape survives exactly) — the same
+   read-not-infer discipline `isBareUrl`/`intakeKind` already hold to
+   elsewhere in intake. It exists alongside a second fix: a passage's own
+   paragraph breaks used to render as one collapsed wall of text on both the
+   plate and the nursery row, because a plain `<p>`'s default whitespace
+   handling silently swallows a stored `\n` — both now render with
+   `white-space: pre-wrap`, so what was actually pasted is what's actually
+   shown.
 2. **Kobo import** — see below.
 3. **Share target** — a link or a selection shared from anywhere on the device
    opens Silva with the intake field already filled in.

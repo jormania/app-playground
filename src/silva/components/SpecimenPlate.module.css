@@ -139,6 +139,14 @@
      Understory's own text (see that module's .text), not as a headline. */
   font-size: var(--text-lg);
   line-height: var(--leading-body);
+  /* A paste keeps its own paragraph breaks in `body` — a plain <p>'s
+     default whitespace handling silently collapsed them into one run-on
+     wall of text, which is exactly wrong for the surface SILVA.md insists
+     must feel "set... never like a text field": a passage's own paragraph
+     structure IS part of how it was set. `pre-wrap` renders the newlines
+     that are actually there while still wrapping normally at the plate's
+     width. */
+  white-space: pre-wrap;
 }
 
 .note {

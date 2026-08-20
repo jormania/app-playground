@@ -41,6 +41,7 @@ import { loadSilvaConfig, saveSilvaConfig, type SilvaConfig } from './lib/settin
 import { confirmTension } from './lib/tension'
 import { resolveSource } from './lib/sourceCapture'
 import { intakeFields } from './lib/intakeFields'
+import { normalizeCapturedText } from './lib/textNormalize'
 import { linkFactsPatch, linkSourceTitle } from './lib/linkFacts'
 import { loadThemeChoice, saveThemeChoice, watchTheme, type ThemeChoice } from './lib/theme'
 import styles from './App.module.css'
@@ -712,7 +713,13 @@ export default function App() {
     )
   }
 
-  function handleIntake(body: string, locator = '', sourceInput = '') {
+  function handleIntake(rawBody: string, locator = '', sourceInput = '') {
+    // Whitespace hygiene only — never a rewrite. Fixes the CRLF, trailing
+    // spaces and padded-out blank lines a badly-formatted source (or the
+    // paste mechanism itself) adds, uniformly across typed, pasted and
+    // shared-in text (lib/textNormalize.ts). Every word stays exactly as
+    // written.
+    const body = normalizeCapturedText(rawBody)
     const today = todayIso()
     const { sourceId, sourceDraft } = resolveSourceDraft(sourceInput)
     // What the capture already knows about itself: the URL it *is* (pasted,
@@ -819,7 +826,11 @@ export default function App() {
     const text = await ocrPhoto(config.anthropicKey, blob)
     if (!text) return
     try {
-      const updated = await store.updateThing(liveId(id), { body: text })
+      // Same whitespace hygiene as any other lane (lib/textNormalize.ts) —
+      // an OCR transcription is exactly the kind of text that can carry a
+      // stray trailing space per line or an odd run of blank lines from
+      // the page's own layout.
+      const updated = await store.updateThing(liveId(id), { body: normalizeCapturedText(text) })
       setThings((prev) => prev.map((t) => (t.id === updated.id || t.id === id ? updated : t)))
       notify('Text found on the page — added as its passage.')
     } catch {

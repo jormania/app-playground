@@ -88,6 +88,30 @@
      Same rule SpecimenPlate.module.css's `.link` already uses for the same
      reason. */
   overflow-wrap: anywhere;
+  /* A paste keeps its own paragraph breaks in `body` — a plain <p>'s
+     default whitespace handling silently collapsed them into one run-on
+     wall of text, which read nothing like the multi-paragraph note it was
+     copied from. `pre-wrap` renders the newlines that are actually there
+     while still wrapping normally at the row's width. */
+  white-space: pre-wrap;
+}
+
+/* Same treatment as ForageView's/ClearingsView's/PathsView's own expand
+   toggles — a nursery row can be a full passage, and deciding on it
+   shouldn't require Keeping it first just to read the rest. */
+.expandToggle {
+  display: inline-block;
+  margin-top: var(--space-xs);
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.expandToggle:hover {
+  text-decoration: underline;
 }
 
 /* A Link thing's body, made clickable — a nursery row is often nothing but

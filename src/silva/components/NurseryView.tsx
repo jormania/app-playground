@@ -7,7 +7,12 @@ import type { Source } from '../lib/sources'
 import { groupNurseryBySource } from '../lib/nurseryGroups'
 import { usePhotoUrl } from './usePhotoUrl'
 import { useLinkPreview } from './useLinkPreview'
+import { ExpandableText } from './ExpandableText'
 import styles from './NurseryView.module.css'
+
+// A little more generous than Forage's 140 — a nursery row is still meant
+// to be readable enough to decide on, not just a fragment to search by.
+const NURSERY_PREVIEW_LENGTH = 240
 
 export interface NurseryViewProps {
   things: Thing[]
@@ -175,7 +180,19 @@ function NurseryRow({
             {thing.body}
           </a>
         ) : (
-          <p className={styles.text}>{thing.body}</p>
+          // The nursery is a decide-fast, scan-many-rows screen — unlike
+          // the Forest's own plate, which stays full length on purpose
+          // (SILVA.md: a passage there must "feel set... never like a text
+          // field"). A long capture here pushed Keep/Release/Delete for
+          // every row after it off screen, which is a worse trade on a
+          // screen built for scanning. Same ExpandableText Clearings,
+          // Forage and Paths already use for the identical reason.
+          <ExpandableText
+            text={thing.body}
+            max={NURSERY_PREVIEW_LENGTH}
+            textClassName={styles.text}
+            toggleClassName={styles.expandToggle}
+          />
         )}
         <span
           className={styles.season}
