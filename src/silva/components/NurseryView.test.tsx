@@ -296,3 +296,51 @@ describe('NurseryView — gathered by book', () => {
     expect(onKeep).toHaveBeenCalledWith('a', undefined)
   })
 })
+
+/**
+ * A Link thing's row is often the bare pasted URL right up until Keep gives
+ * it the article's title — exactly the moment "what even is this" is a real
+ * question the text alone can't answer. Made clickable here so it doesn't
+ * have to stay one.
+ */
+describe('NurseryView — a Link thing is clickable', () => {
+  it('renders the body as a real link to thing.link', () => {
+    render(
+      <NurseryView
+        things={[arrival('a', 1, { link: 'https://nesslabs.com/jomo', body: 'https://nesslabs.com/jomo' })]}
+        onKeep={vi.fn()}
+        onRelease={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+    const link = screen.getByRole('link', { name: 'https://nesslabs.com/jomo' })
+    expect(link.getAttribute('href')).toBe('https://nesslabs.com/jomo')
+    expect(link.getAttribute('target')).toBe('_blank')
+    expect(link.getAttribute('rel')).toContain('noopener')
+  })
+
+  // Everything that isn't a Link thing renders exactly as before — plain
+  // text, no anchor.
+  it('leaves a thing with no link as plain text', () => {
+    render(<NurseryView things={[arrival('a', 1)]} onKeep={vi.fn()} onRelease={vi.fn()} onDelete={vi.fn()} />)
+    expect(screen.queryByRole('link')).toBeNull()
+    expect(screen.getByText('body of a')).toBeTruthy()
+  })
+
+  // Keep/Release/Delete sit right beside the link text in the same row —
+  // a tap on the link must never also register as a tap on the row.
+  it('does not fire Keep when the link itself is clicked', async () => {
+    const user = userEvent.setup()
+    const onKeep = vi.fn()
+    render(
+      <NurseryView
+        things={[arrival('a', 1, { link: 'https://example.com', body: 'https://example.com' })]}
+        onKeep={onKeep}
+        onRelease={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+    await user.click(screen.getByRole('link'))
+    expect(onKeep).not.toHaveBeenCalled()
+  })
+})

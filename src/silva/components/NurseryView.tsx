@@ -148,7 +148,29 @@ function NurseryRow({
       {thumbSrc && <img className={styles.thumb} src={thumbSrc} alt={thumbAlt} loading="lazy" />}
       <div className={styles.body}>
         {thing.kind && <span className={styles.kind}>{thing.kind}</span>}
-        <p className={styles.text}>{thing.body}</p>
+        {/* A Link thing sits here as its bare URL until Keep gives it the
+         *  article's title (lib/linkFacts.ts) — so "what even is this" is a
+         *  live question in exactly the state where the text alone can't
+         *  answer it. Made clickable here only: the Forest already answers
+         *  it with the full preview card (SpecimenPlate's LinkCard), so
+         *  this stays the row's plain reading everywhere else. */}
+        {thing.link ? (
+          <a
+            className={`${styles.text} ${styles.link}`}
+            href={thing.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            // The row itself carries no click handler, but Keep/Release/
+            // Delete sit right beside this text — stopping propagation
+            // keeps a tap on the link from ever being read as a tap on
+            // the row.
+            onClick={(e) => e.stopPropagation()}
+          >
+            {thing.body}
+          </a>
+        ) : (
+          <p className={styles.text}>{thing.body}</p>
+        )}
         <span
           className={styles.season}
           role="img"

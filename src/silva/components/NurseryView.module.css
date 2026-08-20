@@ -71,8 +71,11 @@
 /* Same transitional serif the Forest sets a kept passage in, one step down
    the scale — a thing shouldn't change TYPEFACE the moment you keep it,
    only size and mounting should, or the Understory and the Forest read as
-   two different apps rather than one object at two moments. */
+   two different apps rather than one object at two moments. Shared with the
+   <a> a Link thing renders as (see `.link` below) — same box either way, so
+   a clickable row still reads as the same shape as a plain one. */
 .text {
+  display: block;
   margin: 0;
   color: var(--color-ink);
   font-family: var(--font-body-serif);
@@ -85,6 +88,26 @@
      Same rule SpecimenPlate.module.css's `.link` already uses for the same
      reason. */
   overflow-wrap: anywhere;
+}
+
+/* A Link thing's body, made clickable — a nursery row is often nothing but
+   the pasted URL until it's Kept, and that's exactly when you can't tell
+   what it was from the text alone. Same accent-underline treatment as
+   SpecimenPlate.module.css's `.link`, so this reads as the one convention
+   for "this text goes somewhere" rather than a second one. */
+.link {
+  color: var(--color-accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--color-border-2);
+}
+
+.link:hover {
+  border-bottom-color: var(--color-accent);
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
 }
 
 .meta {
