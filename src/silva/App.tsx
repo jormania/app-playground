@@ -40,7 +40,7 @@ import { indexThings, indexableThings } from './lib/indexer'
 import { loadSilvaConfig, saveSilvaConfig, type SilvaConfig } from './lib/settingsConfig'
 import { confirmTension } from './lib/tension'
 import { resolveSource } from './lib/sourceCapture'
-import { isBareUrl } from './lib/kindInference'
+import { isBareUrl, intakeKind } from './lib/kindInference'
 import { linkTitlePatch } from './lib/linkTitle'
 import { loadThemeChoice, saveThemeChoice, watchTheme, type ThemeChoice } from './lib/theme'
 import styles from './App.module.css'
@@ -694,11 +694,15 @@ export default function App() {
     // than requiring a trip to Edit before the thumbnail in the Nursery (or
     // the card in the Forest) can show anything at all.
     const link = isBareUrl(body) ? body.trim() : null
+    // ...and a body that is nothing but a URL is a Link, the one Kind set at
+    // capture (see `intakeKind`) — so a pasted link arrives already labelled
+    // rather than waiting on a trip to Edit and a tap of Suggest.
+    const kind = intakeKind(body)
     const draft: Thing = {
       id: draftId(),
       handle: body.slice(0, 60),
       body,
-      kind: null,
+      kind,
       state: 'Understory',
       sourceId,
       locator,
@@ -723,7 +727,7 @@ export default function App() {
           setSources((prev) => prev.map((s) => (s.id === sourceDraft.id ? createdSource : s)))
           realSourceId = createdSource.id
         }
-        const created = await store.createThing({ body, locator, sourceId: realSourceId, link })
+        const created = await store.createThing({ body, locator, sourceId: realSourceId, link, kind })
         realIdByDraft.current.set(draft.id, created.id)
         setThings((prev) => prev.map((t) => (t.id === draft.id ? created : t)))
       },

@@ -340,9 +340,15 @@ that keep it safe:
   leaves the URL standing with no toast — a cosmetic title is never worth an
   alarm.
 
-Because the URL then leaves the text, `inferKind` reads `Thing.link` too, so
-Edit's **Suggest** still proposes `Link` for a thing that no longer looks like
-one.
+A pasted link is also the one capture that arrives with a **Kind** already set
+(`intakeKind`): `Link`, read out of the pasted text the same way the `link`
+field itself is. That is the only Kind Silva ever sets for you — every other
+one stays a judgment made later through Edit's **Suggest**, or never made at
+all.
+
+And because the URL leaves the body text once the title lands, `inferKind`
+reads `Thing.link` too, so **Suggest** still proposes `Link` for a thing that
+no longer looks like one.
 
 ### Kobo import
 
