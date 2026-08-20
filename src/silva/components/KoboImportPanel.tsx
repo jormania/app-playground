@@ -179,6 +179,9 @@ export function KoboImportPanel({ store, existingKoboBookmarkIds, onImported, on
             note: highlight.annotation,
             kind: 'Passage',
             sourceId,
+            // Where in the book it sat — the chapter Kobo's own file names,
+            // or a percentage through it (lib/kobo.ts `koboLocator`).
+            locator: highlight.locator,
             encountered: highlight.dateCreated || todayIso(),
             koboBookmarkId: highlight.bookmarkId,
           })

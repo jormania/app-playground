@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { linkTitlePatch } from './linkTitle'
+import { linkTitlePatch, linkLocatorPatch, linkFactsPatch, linkSourceTitle } from './linkFacts'
 import type { Thing } from './notion'
 import type { LinkPreview } from './linkPreviewCache'
 
@@ -80,5 +80,67 @@ describe('linkTitlePatch', () => {
   it('refuses a standfirst-length title — that is a page dump, not a headline', () => {
     expect(linkTitlePatch(thing(), preview({ title: 'A'.repeat(201) }))).toBeNull()
     expect(linkTitlePatch(thing(), preview({ title: 'A'.repeat(200) }))).toEqual({ body: 'A'.repeat(200) })
+  })
+})
+
+describe('linkLocatorPatch', () => {
+  it('prints the byline and year on the label', () => {
+    expect(linkLocatorPatch(thing(), preview({ author: 'Anne-Laure Le Cunff', publishedYear: '2021' }))).toEqual({
+      locator: 'Anne-Laure Le Cunff · 2021',
+    })
+  })
+
+  it('prints whichever of the two the page actually declares', () => {
+    expect(linkLocatorPatch(thing(), preview({ author: 'Maria Popova' }))).toEqual({ locator: 'Maria Popova' })
+    expect(linkLocatorPatch(thing(), preview({ publishedYear: '2019' }))).toEqual({ locator: '2019' })
+  })
+
+  // "overheard on the 32 tram" outranks anything a meta tag has to say.
+  it('never touches a locator you wrote', () => {
+    const mine = thing({ locator: 'sent by R.' })
+    expect(linkLocatorPatch(mine, preview({ author: 'Maria Popova' }))).toBeNull()
+  })
+
+  it('does nothing when the page declares neither', () => {
+    expect(linkLocatorPatch(thing(), preview())).toBeNull()
+    // A preview cached before these fields existed carries neither.
+    expect(linkLocatorPatch(thing(), preview({ author: undefined, publishedYear: undefined }))).toBeNull()
+  })
+})
+
+describe('linkFactsPatch', () => {
+  it('folds the title and the label into one patch', () => {
+    expect(linkFactsPatch(thing(), preview({ author: 'Anne-Laure Le Cunff', publishedYear: '2021' }))).toEqual({
+      body: 'The joy of missing out',
+      locator: 'Anne-Laure Le Cunff · 2021',
+    })
+  })
+
+  it('carries whichever half applies', () => {
+    expect(linkFactsPatch(thing({ locator: 'sent by R.' }), preview())).toEqual({ body: 'The joy of missing out' })
+    expect(linkFactsPatch(thing({ body: 'My own words.' }), preview({ author: 'Maria Popova' }))).toEqual({
+      locator: 'Maria Popova',
+    })
+  })
+
+  it('is null when the page had nothing this thing lacked', () => {
+    expect(linkFactsPatch(thing({ body: 'My own words.', locator: 'sent by R.' }), preview())).toBeNull()
+  })
+})
+
+describe('linkSourceTitle', () => {
+  it('files a link under the publication that ran it', () => {
+    expect(linkSourceTitle(thing(), preview())).toBe('Ness Labs')
+  })
+
+  // A piece you found through someone else, filed under them, stays theirs.
+  it('never overrides a source you set', () => {
+    expect(linkSourceTitle(thing({ sourceId: 'src-1' }), preview())).toBeNull()
+  })
+
+  it('does nothing without a preview or a link', () => {
+    expect(linkSourceTitle(thing(), null)).toBeNull()
+    expect(linkSourceTitle(thing({ link: null }), preview())).toBeNull()
+    expect(linkSourceTitle(thing(), preview({ siteName: '  ' }))).toBeNull()
   })
 })

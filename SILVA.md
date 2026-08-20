@@ -298,6 +298,13 @@ Four lanes into the understory:
 3. **Share target** — a link or a selection shared from anywhere on the device
    opens Silva with the intake field already filled in.
 
+   A shared URL arrives in the *locator* (the share sheet sends the page title
+   as the text), and a locator that is nothing but a URL is **promoted into
+   `link`** at capture — `lib/intakeFields.ts`. Left in the locator it earned
+   no preview card, no `Link` kind and no article title, on the one lane most
+   likely to be used at all. A locator that merely *contains* a URL is prose
+   you wrote, and stays put.
+
    Declared `method: "GET"`, so the OS launches the app at a URL with query
    parameters rather than POSTing anywhere: the whole handler is
    `lib/sharedIntake.ts` reading `location.search`, and it costs **no
@@ -340,6 +347,19 @@ that keep it safe:
   leaves the URL standing with no toast — a cosmetic title is never worth an
   alarm.
 
+It also fills the two fields around it, under the same rule — only where you
+left nothing:
+
+- **`locator`** takes the byline and year the page prints on itself
+  ("Anne-Laure Le Cunff · 2021"). A locator *you* wrote ("sent by R.")
+  outranks any meta tag. A byline that is really a Facebook profile URL, or a
+  year outside the plausible range, is dropped rather than printed on a
+  label.
+- **`source`** takes the publication — the preview's site name — resolved
+  through the same `resolveSource` the typed lane uses (threshold 0.9), so a
+  forest ends up with one "Ness Labs" and not four, created with Source kind
+  `Article`. A link you already filed under someone stays filed under them.
+
 A pasted link is also the one capture that arrives with a **Kind** already set
 (`intakeKind`): `Link`, read out of the pasted text the same way the `link`
 field itself is. That is the only Kind Silva ever sets for you — every other
@@ -363,6 +383,12 @@ drag the file onto the page, nothing is uploaded, no desktop tool, no account.
   `body`, your annotation as `note`. It was one act of attention.
 - Dedupes on Kobo's own `BookmarkID`, so re-importing the same file is a no-op
   and importing every few weeks is the intended rhythm.
+- **A highlight knows where in the book it sat.** `Bookmark.ContentID` names
+  the chapter (as against `VolumeID`, the book), so the import fills `locator`
+  with the chapter's own title — or, for the many EPUBs whose chapters are
+  titled `index_split_014.html`, with `ChapterProgress` as "63% in". Vague but
+  true, which is the whole bar for a locator. Both columns are feature-detected
+  like everything else in that parser.
 - **Book matching is a step, not an inference.** Kobo's EPUB metadata gives
   different strings for different editions and re-downloads, so the importer
   proposes a match against existing Sources and lets you confirm, merge or
