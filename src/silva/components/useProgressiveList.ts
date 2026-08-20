@@ -33,7 +33,8 @@ export const FOREST_PAGE_SIZE = 20
  * decide anything. An observer fires once, when a sentinel element below
  * the last plate actually comes into view, and costs nothing while it
  * doesn't. It also degrades honestly: where there is no observer (an older
- * browser, a test environment) `showAll` below is the escape hatch.
+ * browser, a test environment) the whole list is shown at once rather than
+ * stranding the reader at a boundary they cannot scroll past.
  */
 export function useProgressiveList<T>(
   items: T[],
@@ -47,14 +48,21 @@ export function useProgressiveList<T>(
   const [count, setCount] = useState(pageSize)
   const observerRef = useRef<IntersectionObserver | null>(null)
 
-  // A changed collection starts the window over — keeping a grown count
-  // across a switch to a much shorter list would mount everything at once,
-  // which is the situation this exists to avoid.
-  useEffect(() => {
-    setCount(pageSize)
-  }, [items, pageSize])
-
-  const hasMore = count < items.length
+  /**
+   * Clamped to the list, never reset by it.
+   *
+   * ForestView's `kept` is a `useMemo` over `things`, so it hands back a
+   * fresh array identity every time anything in the collection changes — a
+   * background sync landing, an edit saved, a thing kept or released.
+   * Resetting the window on that (which an effect keyed on `items` does)
+   * would unmount everything the reader had scrolled past and collapse the
+   * page under them mid-read, which is worse than any amount of extra
+   * mounting. Clamping handles the only case a reset was protecting
+   * against — a list that got shorter than the window — without touching
+   * the case that actually happens.
+   */
+  const visibleCount = Math.min(count, items.length)
+  const hasMore = visibleCount < items.length
 
   const sentinelRef = useCallback(
     (node: HTMLElement | null) => {
@@ -83,5 +91,5 @@ export function useProgressiveList<T>(
 
   useEffect(() => () => observerRef.current?.disconnect(), [])
 
-  return { visible: items.slice(0, count), hasMore, sentinelRef }
+  return { visible: items.slice(0, visibleCount), hasMore, sentinelRef }
 }

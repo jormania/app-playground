@@ -155,6 +155,11 @@
   font-size: var(--text-sm);
   font-style: italic;
   line-height: var(--leading-body);
+  /* A note is written in a textarea, so it can hold real paragraph breaks —
+     and it sits directly under `.body`, which respects them. Without this
+     the passage above kept its shape while your own note below it silently
+     collapsed into one run, on the same plate. */
+  white-space: pre-wrap;
 }
 
 .label {

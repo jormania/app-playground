@@ -87,3 +87,54 @@ describe('useProgressiveList', () => {
     expect(screen.getByTestId('count').textContent).toBe('100')
   })
 })
+
+/**
+ * The window has to survive a data change. `kept` in ForestView is a
+ * `useMemo` over `things`, so it gets a fresh array identity every time
+ * anything in the collection changes — a background sync landing, an edit
+ * saved, a thing kept or released. Resetting the window on that would
+ * unmount everything the reader had scrolled past and collapse the page
+ * under them, mid-read.
+ */
+describe('useProgressiveList — the window survives a data change', () => {
+  function observed() {
+    let trigger: ((entries: { isIntersecting: boolean }[]) => void) | null = null
+    vi.stubGlobal('IntersectionObserver', class {
+      constructor(cb: (entries: { isIntersecting: boolean }[]) => void) { trigger = cb }
+      observe() {}
+      disconnect() {}
+    })
+    return () => act(() => trigger?.([{ isIntersecting: true }]))
+  }
+
+  it('keeps what is already mounted when the list is rebuilt with the same content', () => {
+    const grow = observed()
+    const { rerender } = render(<Harness items={items(100)} />)
+    grow()
+    expect(screen.getByTestId('count').textContent).toBe(String(FOREST_PAGE_SIZE * 2))
+
+    // A new array with identical content — exactly what a re-render of
+    // ForestView's `kept` memo produces after any change to `things`.
+    rerender(<Harness items={items(100)} />)
+    expect(screen.getByTestId('count').textContent).toBe(String(FOREST_PAGE_SIZE * 2))
+  })
+
+  it('keeps the window when one item is removed, as a delete does', () => {
+    const grow = observed()
+    const { rerender } = render(<Harness items={items(100)} />)
+    grow()
+    rerender(<Harness items={items(99)} />)
+    expect(screen.getByTestId('count').textContent).toBe(String(FOREST_PAGE_SIZE * 2))
+  })
+
+  // Clamped rather than reset: a collection that shrinks below the window
+  // shows what there is, and stops claiming there is more.
+  it('clamps to a list that has become shorter than the window', () => {
+    const grow = observed()
+    const { rerender } = render(<Harness items={items(100)} />)
+    grow()
+    rerender(<Harness items={items(5)} />)
+    expect(screen.getByTestId('count').textContent).toBe('5')
+    expect(screen.getByTestId('more').textContent).toBe('false')
+  })
+})

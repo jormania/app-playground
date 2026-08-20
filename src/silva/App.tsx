@@ -164,12 +164,86 @@ export default function App() {
   const liveId = useCallback((id: string) => realIdByDraft.current.get(id) ?? id, [])
   const isDraft = useCallback((id: string) => liveId(id).startsWith(DRAFT_PREFIX), [liveId])
 
+  /**
+   * When the collection last agreed with Notion. Set by `load` once a sync
+   * succeeds, and read by the mirroring effect below — which must never
+   * write a cache before there is a real sync to stamp it with, or a later
+   * open would treat a half-built collection as the last known good one.
+   */
+  const syncStampsRef = useRef<{ syncedAt: string; fullSyncedAt: string } | null>(null)
+
   // The live collection, readable from inside an async callback without
   // capturing a stale closure — what `write` reverts to on failure.
   const forestRef = useRef<Forest>({ things: [], sources: [], loci: [], paths: [] })
   useEffect(() => {
     forestRef.current = { things, sources, loci, paths }
   }, [things, sources, loci, paths])
+
+  /**
+   * Keep the on-device mirror agreeing with what is on screen.
+   *
+   * The cache used to be written once, at the end of a load, which quietly
+   * broke the one guarantee it makes. Deleting a thing removes it from
+   * state and archives it in Notion — and an archived row does not come
+   * back from a query marked deleted, it simply stops appearing. So an
+   * incremental sync had no way to say "this is gone", the cache kept its
+   * copy, and reopening inside the full-sync window put the deleted thing
+   * back on screen. Mirroring state instead closes that: the delete is in
+   * the cache the moment it is on screen.
+   *
+   * Debounced, because a load or a batch clearing action can move all four
+   * lists in quick succession and only the settled result is worth storing.
+   *
+   * Drafts are filtered out on purpose. An optimistic row carries a
+   * temporary `silva-draft-N` id until Notion hands back the real one;
+   * caching one would reopen the app holding a row whose id nothing can act
+   * on, *and* fetch the real row alongside it — the same thing twice.
+   */
+  const persistCollection = useCallback(() => {
+    if (!config.notionToken) return
+    const stamps = syncStampsRef.current
+    if (!stamps) return
+    // Read through the ref rather than closing over state, so the
+    // flush-on-hide path below writes what is on screen at that moment
+    // rather than whatever was current when its listener was attached.
+    const { things: t, sources: s, loci: l, paths: pa } = forestRef.current
+    const live = <T extends { id: string }>(rows: T[]) =>
+      rows.filter((row) => !row.id.startsWith(DRAFT_PREFIX))
+    void writeCollectionCache(config.notionToken, {
+      things: live(t),
+      sources: live(s),
+      loci: live(l),
+      paths: live(pa),
+      ...stamps,
+    })
+  }, [config.notionToken])
+
+  useEffect(() => {
+    const timer = setTimeout(persistCollection, 400)
+    return () => clearTimeout(timer)
+  }, [things, sources, loci, paths, persistCollection])
+
+  /**
+   * The debounce above is a 400ms window in which a change is on screen but
+   * not yet mirrored — and closing the app inside it drops the pending
+   * write, which for a *delete* means the row comes back on the next open.
+   * `pagehide` and the hidden half of `visibilitychange` are the two
+   * events a phone actually fires when an app is swiped away or
+   * backgrounded, so flushing on both closes that window. Writing the same
+   * collection twice costs nothing.
+   */
+  useEffect(() => {
+    const flush = () => persistCollection()
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flush()
+    }
+    window.addEventListener('pagehide', flush)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [persistCollection])
 
   function restore(snapshot: Forest) {
     setThings(snapshot.things)
@@ -221,6 +295,14 @@ export default function App() {
       const cached = usingNotion ? await readCollectionCache(config.notionToken) : null
       if (cancelled) return
       if (cached) {
+        // Seed the stamps from the cache itself, so the mirroring effect can
+        // keep working even if *this* session's refresh never lands. Without
+        // it, a delete made while offline would not reach the cache and the
+        // row would be back on the next open.
+        syncStampsRef.current = {
+          syncedAt: cached.syncedAt,
+          fullSyncedAt: cached.fullSyncedAt,
+        }
         setSources(cached.sources)
         setLoci(cached.loci)
         setPaths(cached.paths)
@@ -283,19 +365,15 @@ export default function App() {
         setThings(settled)
         setLoading(false)
 
-        // Mirror exactly what is on screen, so the next open starts here.
-        // `settled` rather than `loaded`: the expiry sweep above is applied
-        // locally first and written through afterwards, and the cache should
-        // agree with the screen, not with the request that preceded it.
-        if (usingNotion) {
-          void writeCollectionCache(config.notionToken, {
-            things: settled,
-            sources: loadedSources,
-            loci: loadedLoci,
-            paths: loadedPaths,
-            syncedAt: syncStartedAt,
-            fullSyncedAt: fullSync ? syncStartedAt : (cached?.fullSyncedAt ?? syncStartedAt),
-          })
+        // Hand the sync stamps to the mirroring effect below, which writes
+        // the cache from React state from here on. Writing it *here* was a
+        // real bug: a delete removes a row from state and archives it in
+        // Notion, but an archived row simply stops appearing in a query —
+        // so an incremental sync could never tell the cache it was gone,
+        // and reopening within the day resurrected it on screen.
+        syncStampsRef.current = {
+          syncedAt: syncStartedAt,
+          fullSyncedAt: fullSync ? syncStartedAt : (cached?.fullSyncedAt ?? syncStartedAt),
         }
 
         // Best-effort per item, in the background — one row Notion refuses
@@ -747,7 +825,17 @@ export default function App() {
     const { sourceId, sourceDraft } = sourceInput !== undefined
       ? resolveSourceDraft(sourceInput)
       : { sourceId: undefined, sourceDraft: null }
-    const fullPatch: Partial<Thing> = sourceId !== undefined ? { ...patch, sourceId } : patch
+    // The same whitespace hygiene every other write path applies
+    // (lib/textNormalize.ts). Text pasted into the edit form arrives with
+    // exactly the artifacts text pasted into intake does, and it would be
+    // strange for the identical paste to be cleaned in one field and left
+    // alone in the other. `note` is deliberately untouched here, as it is
+    // at capture: it is the one field that is yours rather than the
+    // source's.
+    const normalized: Partial<Thing> = patch.body !== undefined
+      ? { ...patch, body: normalizeCapturedText(patch.body) }
+      : patch
+    const fullPatch: Partial<Thing> = sourceId !== undefined ? { ...normalized, sourceId } : normalized
 
     write(
       () => {
