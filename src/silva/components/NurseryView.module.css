@@ -92,17 +92,27 @@
 
 /* A Link thing's body, made clickable — a nursery row is often nothing but
    the pasted URL until it's Kept, and that's exactly when you can't tell
-   what it was from the text alone. Same accent-underline treatment as
-   SpecimenPlate.module.css's `.link`, so this reads as the one convention
-   for "this text goes somewhere" rather than a second one. */
+   what it was from the text alone.
+   
+   `text-decoration`, not SpecimenPlate.module.css's `border-bottom`: that
+   works there because its link is always one line (truncated to 48 chars
+   with an ellipsis — see `displayUrl`). This one is the thing's full,
+   unshortened body, which wraps across the row at any real URL length. A
+   `border-bottom` on a wrapped block only draws under the box's bottom
+   edge — under the *last* line alone, sitting right on top of the season
+   hairline just below it and leaving every earlier line unmarked, which is
+   the doubled-line-then-headless-first-line look this was showing.
+   `text-decoration` underlines every wrapped line on its own baseline,
+   which is what a multi-line link needs. */
 .link {
   color: var(--color-accent);
-  text-decoration: none;
-  border-bottom: 1px solid var(--color-border-2);
+  text-decoration-line: underline;
+  text-decoration-color: var(--color-border-2);
+  text-underline-offset: 3px;
 }
 
 .link:hover {
-  border-bottom-color: var(--color-accent);
+  text-decoration-color: var(--color-accent);
 }
 
 .link:focus-visible {
