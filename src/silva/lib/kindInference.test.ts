@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { inferKind, isBareUrl, intakeKind } from './kindInference'
+import { inferKind, isBareUrl, intakeKind, effectiveLink } from './kindInference'
 
 describe('inferKind', () => {
   it('returns null for empty text', () => {
@@ -83,5 +83,27 @@ describe('intakeKind', () => {
     expect(intakeKind('Worth reading: https://nesslabs.com/jomo')).toBeNull()
     expect(intakeKind('What would you do if you weren\'t afraid?')).toBeNull()
     expect(intakeKind('')).toBeNull()
+  })
+})
+
+describe('effectiveLink', () => {
+  it('prefers the thing\'s own link field', () => {
+    expect(effectiveLink('The joy of missing out', 'https://nesslabs.com/jomo')).toBe('https://nesslabs.com/jomo')
+  })
+
+  // A row created or edited straight in Notion, or one kept before Silva
+  // started filling `link` at intake — either way it must not sit there as
+  // inert text with no card to show for it.
+  it('falls back to a bare-URL body when the link field is empty', () => {
+    expect(effectiveLink('https://nesslabs.com/jomo', null)).toBe('https://nesslabs.com/jomo')
+    expect(effectiveLink('  https://nesslabs.com/jomo  ', null)).toBe('https://nesslabs.com/jomo')
+  })
+
+  it('never mistakes prose containing a URL for the link itself', () => {
+    expect(effectiveLink('Worth reading: https://nesslabs.com/jomo', null)).toBeNull()
+  })
+
+  it('is null for an ordinary thing with neither', () => {
+    expect(effectiveLink('Just a passage.', null)).toBeNull()
   })
 })

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button, Field, TextAreaField, ConfirmModal } from '../../ds'
 import type { Thing, ThingKind } from '../lib/notion'
 import type { Source } from '../lib/sources'
-import { inferKind } from '../lib/kindInference'
+import { inferKind, effectiveLink } from '../lib/kindInference'
 import { readImageViewMode, writeImageViewMode, type ImageViewMode } from '../lib/imageViewPref'
 import { sourceInputValue } from '../lib/sourceCapture'
 import { useDwell } from './useDwell'
@@ -73,6 +73,16 @@ export function SpecimenPlate({
   const [note, setNote] = useState(thing.note)
   const [link, setLink] = useState(thing.link ?? '')
   const hasSource = Boolean(thing.sourceId)
+  // A Link-kind thing whose own `link` field is empty — a row created or
+  // edited straight in Notion, or one kept before Silva started filling
+  // `link` at intake — otherwise sat here as an inert wall of text with no
+  // card at all. See lib/kindInference.ts's `effectiveLink`.
+  const readLink = effectiveLink(thing.body, thing.link)
+  // The plain body paragraph and the link card would otherwise both print
+  // the same bare URL when there's nothing else to the thing — the card
+  // already carries it (as its title, if nothing better), so the paragraph
+  // is redundant precisely in the case this exists to fix.
+  const bodyIsJustTheLink = Boolean(readLink) && thing.body.trim() === readLink
 
   const plateRef = useDwell({
     onSeen: () => onSeen?.(thing.id),
@@ -214,7 +224,7 @@ export function SpecimenPlate({
       {thing.image && (!thing.body || viewMode === 'image') && (
         <PlateImage image={thing.image} alt={thing.handle || 'A photographed page'} />
       )}
-      {thing.body && (!thing.image || viewMode === 'text') && <p className={styles.body}>{thing.body}</p>}
+      {thing.body && !bodyIsJustTheLink && (!thing.image || viewMode === 'text') && <p className={styles.body}>{thing.body}</p>}
       {thing.note && <p className={styles.note}>{thing.note}</p>}
       <ThingLabel thing={thing} sourceTitle={source?.title} />
       {/* Named as clearings for anyone meeting a bare "What outlasts" on a
@@ -227,7 +237,7 @@ export function SpecimenPlate({
           ))}
         </p>
       )}
-      {thing.link && <LinkCard url={thing.link} />}
+      {readLink && <LinkCard url={readLink} />}
       <div className={styles.plateActions}>
         <Button size="sm" variant="ghost" onClick={startEditing}>Edit</Button>
         <Button size="sm" variant="ghost" onClick={copyBody}>{copied ? 'Copied' : 'Copy'}</Button>

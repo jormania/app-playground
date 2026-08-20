@@ -344,3 +344,33 @@ describe('NurseryView — a Link thing is clickable', () => {
     expect(onKeep).not.toHaveBeenCalled()
   })
 })
+
+// The same fallback SpecimenPlate leans on: a bare-URL body with the link
+// field itself empty (hand-edited in Notion, or predating Silva's own
+// intake fill) must not sit in the nursery as inert, unclickable text.
+describe('NurseryView — a bare-URL body with no link field', () => {
+  it('is still clickable', () => {
+    render(
+      <NurseryView
+        things={[arrival('a', 1, { body: 'https://example.com/a', link: null })]}
+        onKeep={vi.fn()}
+        onRelease={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+    const link = screen.getByRole('link', { name: 'https://example.com/a' })
+    expect(link.getAttribute('href')).toBe('https://example.com/a')
+  })
+
+  it('never turns a URL mentioned in prose into a link', () => {
+    render(
+      <NurseryView
+        things={[arrival('a', 1, { body: 'Worth reading: https://example.com/a', link: null })]}
+        onKeep={vi.fn()}
+        onRelease={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+    expect(screen.queryByRole('link')).toBeNull()
+  })
+})

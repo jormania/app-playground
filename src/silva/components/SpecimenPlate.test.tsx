@@ -86,6 +86,32 @@ describe('SpecimenPlate — a link', () => {
     render(<SpecimenPlate thing={thing()} {...handlers} />)
     expect(screen.queryByRole('link')).toBeNull()
   })
+
+  // A row created or edited straight in Notion, or one kept before Silva
+  // started filling `link` at intake, could carry a bare-URL body with the
+  // `link` field itself empty — the plate used to show that as inert text
+  // with no card at all.
+  it('reads the link out of a bare-URL body when the link field is empty', () => {
+    vi.mocked(getLinkPreview).mockReturnValue(new Promise(() => {}))
+    render(<SpecimenPlate thing={thing({ body: 'https://example.com/a/article', link: null })} {...handlers} />)
+    expect(screen.getByRole('link', { name: /example\.com\/a\/article/ })).toBeTruthy()
+  })
+
+  // With nothing but the URL to the thing, the plain body paragraph would
+  // otherwise repeat exactly what the card already shows.
+  it('does not also print the bare URL as a second, plain paragraph', () => {
+    vi.mocked(getLinkPreview).mockReturnValue(new Promise(() => {}))
+    render(<SpecimenPlate thing={thing({ body: 'https://example.com/a/article', link: null })} {...handlers} />)
+    expect(screen.getAllByText(/example\.com\/a\/article/)).toHaveLength(1)
+  })
+
+  // A URL merely mentioned in prose is not the thing's link — that stays
+  // exactly the plain paragraph it always was.
+  it('never turns a URL mentioned in prose into the plate\'s link', () => {
+    render(<SpecimenPlate thing={thing({ body: 'Worth reading: https://example.com/a', link: null })} {...handlers} />)
+    expect(screen.queryByRole('link')).toBeNull()
+    expect(screen.getByText('Worth reading: https://example.com/a')).toBeTruthy()
+  })
 })
 
 describe('SpecimenPlate — letting go of a kept thing', () => {

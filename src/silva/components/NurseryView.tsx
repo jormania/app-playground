@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button, ConfirmModal } from '../../ds'
 import { fadeRatio, daysRemaining, DEFAULT_SEASON_DAYS } from '../lib/understory'
 import type { Thing } from '../lib/notion'
+import { effectiveLink } from '../lib/kindInference'
 import type { Source } from '../lib/sources'
 import { groupNurseryBySource } from '../lib/nurseryGroups'
 import { usePhotoUrl } from './usePhotoUrl'
@@ -127,7 +128,12 @@ function NurseryRow({
   // longer have to Keep an Image thing blind just to see what you
   // photographed.
   const photoSrc = usePhotoUrl(thing.image)
-  const linkPreview = useLinkPreview(thing.link)
+  // Same fallback SpecimenPlate leans on: a Link-kind thing whose own
+  // `link` is empty (hand-edited in Notion, or predating Silva's own
+  // auto-fill at intake) still reads its URL straight out of a bare-URL
+  // body, so the row isn't left showing inert text with nothing to tap.
+  const readLink = effectiveLink(thing.body, thing.link)
+  const linkPreview = useLinkPreview(readLink)
   const thumbSrc = photoSrc || linkPreview?.image || null
   // A photographed page whose transcription hasn't landed (or was skipped)
   // has an empty body — so with a decorative alt="" its row carried *no*
@@ -154,10 +160,10 @@ function NurseryRow({
          *  answer it. Made clickable here only: the Forest already answers
          *  it with the full preview card (SpecimenPlate's LinkCard), so
          *  this stays the row's plain reading everywhere else. */}
-        {thing.link ? (
+        {readLink ? (
           <a
             className={`${styles.text} ${styles.link}`}
-            href={thing.link}
+            href={readLink}
             target="_blank"
             rel="noopener noreferrer"
             // The row itself carries no click handler, but Keep/Release/

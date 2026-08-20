@@ -27,6 +27,23 @@ export function isBareUrl(body: string): boolean {
 }
 
 /**
+ * The URL a thing actually points at: its own `link` field, or — when that's
+ * empty and the body is nothing but a URL — the body itself.
+ *
+ * `link` is meant to always carry this, but two paths can still leave it
+ * empty on a Link-kind thing with a URL body: a row created or edited
+ * straight in Notion (nothing stops that there), or one kept before Silva
+ * started filling `link` from a pasted URL at intake. Either way the plate
+ * rendered a bare URL as inert text with no card at all — reading it out of
+ * the body here is the same non-inference `isBareUrl` already relies on,
+ * applied once more at render time so a thing is never left looking like a
+ * link and behaving like a wall of text.
+ */
+export function effectiveLink(body: string, link: string | null): string | null {
+  return link || (isBareUrl(body) ? body.trim() : null)
+}
+
+/**
  * The one Kind Silva sets at capture, and the only one it can: a pasted body
  * that is nothing but a URL is a Link, which is recognising literal data
  * rather than classifying what the thing means to you (the same reading
