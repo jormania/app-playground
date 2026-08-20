@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, it, expect, vi } from 'vitest'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Modal } from './Modal'
@@ -27,6 +27,60 @@ describe('Modal', () => {
     expect(dialog.getAttribute('aria-modal')).toBe('true')
     const title = screen.getByRole('heading', { name: 'Confirm' })
     expect(dialog.getAttribute('aria-labelledby')).toBe(title.id)
+  })
+
+  // The contract the two-pass mount used to break. A parent that opens the
+  // dialog and then reaches into its content from an effect keyed on the same
+  // flag runs on this commit — if the children aren't here yet it finds
+  // nothing, and (as Cabinet's QR canvas proved) can fail without a sound.
+  describe('mounts its children on the commit `open` flips true', () => {
+    it('has run a child callback ref by the time the opening click settles', async () => {
+      const attached: (HTMLElement | null)[] = []
+
+      function Harness() {
+        const [open, setOpen] = useState(false)
+        return (
+          <>
+            <button type="button" onClick={() => setOpen(true)}>open</button>
+            <Modal open={open} onClose={() => setOpen(false)} title="Late">
+              <span ref={(el) => { attached.push(el) }}>body</span>
+            </Modal>
+          </>
+        )
+      }
+
+      render(<Harness />)
+      expect(attached).toHaveLength(0)
+
+      await userEvent.click(screen.getByRole('button', { name: 'open' }))
+      expect(attached.filter(Boolean)).toHaveLength(1)
+      expect(document.body.contains(attached.find(Boolean)!)).toBe(true)
+    })
+
+    it('exposes the dialog to an effect keyed on the same flag that opened it', async () => {
+      const seen: (Element | null)[] = []
+
+      function Harness() {
+        const [open, setOpen] = useState(false)
+        useEffect(() => {
+          if (!open) return
+          seen.push(document.querySelector('[role="dialog"] .probe'))
+        }, [open])
+        return (
+          <>
+            <button type="button" onClick={() => setOpen(true)}>open</button>
+            <Modal open={open} onClose={() => setOpen(false)} title="Late">
+              <span className="probe">body</span>
+            </Modal>
+          </>
+        )
+      }
+
+      render(<Harness />)
+      await userEvent.click(screen.getByRole('button', { name: 'open' }))
+      expect(seen).toHaveLength(1)
+      expect(seen[0]).not.toBeNull()
+    })
   })
 
   it('closes on Escape, the × button, and a backdrop click', async () => {

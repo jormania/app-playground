@@ -54,18 +54,33 @@ export function Modal({ open, onClose, title, children, className, style }: Moda
   const [isMounted, setIsMounted] = useState(open)
   const [isAnimatingOut, setIsAnimatingOut] = useState(false)
 
+  // Opening is handled during render, not from an effect. Done in an effect it
+  // left one commit where `open` was true but this still returned null — so a
+  // parent that opens the dialog and then reaches into its content from an
+  // effect keyed on that same flag ran in exactly that window and found
+  // nothing there. It cost the focus trap below (dynamically opened dialogs
+  // never received focus) and later Cabinet's QR canvas, which drew into a
+  // still-null ref and failed silently. Adjusting state during render is
+  // React's supported answer: it re-runs this component immediately, before
+  // committing anything, so the children exist on the very commit `open` flips
+  // true. The condition converges on the next pass, which is what makes it
+  // legal — and isAnimatingOut is caught too, so reopening mid-close-animation
+  // cancels the fade rather than fading out from under itself.
+  if (open && (!isMounted || isAnimatingOut)) {
+    setIsMounted(true)
+    setIsAnimatingOut(false)
+  }
+
+  // Closing still has to wait: the node must outlive `open` for the length of
+  // the close animation, which is the reason isMounted exists at all.
   useEffect(() => {
-    if (open) {
-      setIsMounted(true)
+    if (open || !isMounted) return
+    setIsAnimatingOut(true)
+    const timer = setTimeout(() => {
+      setIsMounted(false)
       setIsAnimatingOut(false)
-    } else if (isMounted) {
-      setIsAnimatingOut(true)
-      const timer = setTimeout(() => {
-        setIsMounted(false)
-        setIsAnimatingOut(false)
-      }, 250) // Match CSS animation duration
-      return () => clearTimeout(timer)
-    }
+    }, 250) // Match CSS animation duration
+    return () => clearTimeout(timer)
   }, [open, isMounted])
 
   // Held in a ref so the focus effect below can depend on `open` alone. Consumers
@@ -78,10 +93,10 @@ export function Modal({ open, onClose, title, children, className, style }: Moda
     onCloseRef.current = onClose
   })
 
-  // Depends on isMounted as well as open: a modal opened dynamically renders nothing on
-  // the pass where `open` flips true (isMounted is still false), so the portal — and
-  // dialogRef — only exist on the following commit. Watching open alone meant focus was
-  // never actually moved into such a dialog.
+  // isMounted stays in the deps alongside open: the portal — and so dialogRef — exists
+  // only while it's true, and it outlives `open` for the close animation. Since opening
+  // now happens during render (above), both are true on the same commit, so this runs
+  // once per open rather than missing the first pass as it used to.
   useEffect(() => {
     if (!open || !isMounted) return
     const dialog = dialogRef.current
