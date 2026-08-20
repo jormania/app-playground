@@ -4,6 +4,7 @@ import type { Source } from '../lib/sources'
 import { embed } from '../lib/embeddings'
 import { indexThings } from '../lib/indexer'
 import { combineResults, filterByKind, filterBySource, type SearchResult } from '../lib/search'
+import { ExpandableText } from './ExpandableText'
 import styles from './ForageView.module.css'
 
 // Same order as notion.ts's ThingKind union — a fixed vocabulary, not
@@ -22,9 +23,15 @@ export interface ForageViewProps {
 
 type IndexPhase = 'loading-model' | 'indexing' | 'ready'
 
-function summarize(thing: Thing, max = 140): string {
-  return thing.body.length > max ? `${thing.body.slice(0, max)}…` : thing.body
-}
+/**
+ * A result used to be truncated at 140 characters with nothing to click —
+ * you could find the thing you were looking for and still not be able to
+ * read it, which made foraging a dead end and sent you off to scroll the
+ * Forest by hand. Expanding in place is what Clearings and Paths already do
+ * with a long body; opening a full plate here would quietly turn Forage
+ * into a second Forest, which it is deliberately not.
+ */
+const RESULT_PREVIEW_LENGTH = 140
 
 /** Search — lexical and semantic matching in one box (SILVA.md "Views").
  *  Only starts loading the embedding model and indexing things the first
@@ -209,7 +216,12 @@ export function ForageView({ things, sources, vectorsById }: ForageViewProps) {
           const source = result.thing.sourceId ? sourceById.get(result.thing.sourceId) : undefined
           return (
             <li key={result.thing.id} className={styles.row}>
-              <p className={styles.body}>{summarize(result.thing)}</p>
+              <ExpandableText
+                text={result.thing.body}
+                max={RESULT_PREVIEW_LENGTH}
+                textClassName={styles.body}
+                toggleClassName={styles.expandToggle}
+              />
               <p className={styles.meta}>
                 <span className={styles.badge}>{result.matchType}</span>
                 <span className={styles.state}>{result.thing.state}</span>

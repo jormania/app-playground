@@ -111,6 +111,31 @@ describe('computeNeighbourhood — connected (paths)', () => {
     const { connected } = computeNeighbourhood(me, [me], new Map(), [path('p', 'me', 'gone')])
     expect(connected).toEqual([])
   })
+
+  // Released must read exactly like actually-gone, the same way it now does
+  // in the Paths list and the whole-forest graph. Showing a released
+  // passage here while every other surface treats it as gone is the same
+  // contradiction one level deeper.
+  it('treats a released end as no longer here', () => {
+    const me = thing('me')
+    const released = thing('released', { state: 'Released' })
+    const { connected } = computeNeighbourhood(me, [me, released], new Map(), [path('p', 'me', 'released')])
+    expect(connected).toEqual([])
+  })
+
+  // ...but it still counts as *connected*, so no mycorrhiza fiber proposes a
+  // pair you have already joined just because one end was released.
+  it('still suppresses a mycorrhiza fiber to a released thing it is pathed to', () => {
+    const me = thing('me')
+    const released = thing('released', { state: 'Released' })
+    const vectors = new Map([
+      ['me', new Float32Array([1, 0])],
+      ['released', new Float32Array([1, 0])],
+    ])
+    const { near, connected } = computeNeighbourhood(me, [me, released], vectors, [path('p', 'me', 'released')])
+    expect(connected).toEqual([])
+    expect(near).toEqual([])
+  })
 })
 
 describe('layoutEgoGraph', () => {

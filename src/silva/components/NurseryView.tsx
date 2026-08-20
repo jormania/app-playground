@@ -91,6 +91,15 @@ function NurseryRow({
   const photoSrc = usePhotoUrl(thing.image)
   const linkPreview = useLinkPreview(thing.link)
   const thumbSrc = photoSrc || linkPreview?.image || null
+  // A photographed page whose transcription hasn't landed (or was skipped)
+  // has an empty body — so with a decorative alt="" its row carried *no*
+  // accessible content at all, just two unexplained buttons. SpecimenPlate
+  // already names its photo this way; the nursery has to as well.
+  const thumbAlt = thing.body
+    ? ''
+    : photoSrc
+      ? 'A photographed page, not yet transcribed'
+      : linkPreview?.title || ''
 
   return (
     <li
@@ -98,7 +107,7 @@ function NurseryRow({
       style={{ opacity: 0.4 + fade * 0.6 }}
       title={seasonText}
     >
-      {thumbSrc && <img className={styles.thumb} src={thumbSrc} alt="" loading="lazy" />}
+      {thumbSrc && <img className={styles.thumb} src={thumbSrc} alt={thumbAlt} loading="lazy" />}
       <div className={styles.body}>
         {thing.kind && <span className={styles.kind}>{thing.kind}</span>}
         <p className={styles.text}>{thing.body}</p>

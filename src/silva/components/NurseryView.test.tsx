@@ -105,6 +105,31 @@ describe('NurseryView', () => {
     expect((container.querySelector('img') as HTMLImageElement).src).toBe('https://example.com/og.png')
   })
 
+  // A photographed page whose transcription hasn't landed has an empty
+  // body, so with a decorative alt the whole row carried no accessible
+  // content at all — just two unexplained buttons.
+  it('names a photographed page that has no transcription yet', () => {
+    render(
+      <NurseryView
+        things={[arrival('a', 1, { kind: 'Image', body: '', image: 'https://files.notion.so/photo.jpg' })]}
+        onKeep={vi.fn()}
+        onRelease={vi.fn()}
+      />,
+    )
+    expect(screen.getByAltText(/photographed page, not yet transcribed/i)).toBeTruthy()
+  })
+
+  it('leaves the thumbnail decorative once there are words to read', () => {
+    const { container } = render(
+      <NurseryView
+        things={[arrival('a', 1, { kind: 'Image', image: 'https://files.notion.so/photo.jpg' })]}
+        onKeep={vi.fn()}
+        onRelease={vi.fn()}
+      />,
+    )
+    expect((container.querySelector('img') as HTMLImageElement).alt).toBe('')
+  })
+
   it('shows no thumbnail for an arrival with neither a photo nor a link', () => {
     const { container } = render(
       <NurseryView things={[arrival('a', 1)]} onKeep={vi.fn()} onRelease={vi.fn()} />,

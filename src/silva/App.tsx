@@ -30,9 +30,10 @@ import {
   thresholdCrossed,
 } from './lib/provocationThreshold'
 import { peekVectors, pruneVectors } from './lib/vectorCache'
+import { pruneLinkPreviews } from './lib/linkPreviewCache'
 import { readSeen, writeSeen, withSeen, prunedSeen, type SeenMap } from './lib/seen'
 import { parseSharedIntake, urlWithoutShare, type SharedIntake } from './lib/sharedIntake'
-import { putLocalPhoto, localImageRef } from './lib/photoStore'
+import { putLocalPhoto, localImageRef, pruneLocalPhotos } from './lib/photoStore'
 import { ocrPhoto } from './lib/ocr'
 import { resizePhoto, photoFilename, isImageFile } from '../shared/photo'
 import { indexThings, indexableThings } from './lib/indexer'
@@ -239,6 +240,26 @@ export default function App() {
         // thing forever. Deliberately not awaited — it is housekeeping, and
         // nothing on screen depends on it.
         void pruneVectors(settled.map((t) => t.id))
+        // Same housekeeping for cached Open Graph previews, keyed by URL —
+        // and the same trap: `pruneLinkPreviews` shipped written and tested
+        // but uncalled, which is exactly how `pruneVectors` grew IndexedDB
+        // forever before it.
+        void pruneLinkPreviews(
+          settled.map((t) => t.link).filter((link): link is string => Boolean(link)),
+        )
+        // And the costliest of the three: a page photograph is 200–400 KB
+        // against a vector's ~1.5 KB, and nothing has ever reclaimed one.
+        //
+        // Demo mode only, and the guard is load-bearing rather than an
+        // optimisation: local blobs belong exclusively to the demo forest
+        // (a live thing's `image` is a Notion URL — see photoStore.ts), so
+        // running this against a live collection would find *nothing* live
+        // and delete every demo photo. Someone who connects Notion and
+        // later opens the demo again would find its photographs silently
+        // gone.
+        if (!config.notionToken) {
+          void pruneLocalPhotos(settled.map((t) => t.image))
+        }
 
         // Whatever's already cached, so the graph and the picker have
         // something even when the indexer is switched off.
@@ -323,7 +344,11 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [store, config.anthropicKey, config.mycorrhizaEnabled, config.provocationsEnabled, notify])
+    // `config.notionToken` adds no extra runs — `store` is already memoised
+    // on exactly that value — but the photo prune above reads it directly,
+    // so listing it keeps the dependency honest rather than leaning on that
+    // coupling holding.
+  }, [store, config.notionToken, config.anthropicKey, config.mycorrhizaEnabled, config.provocationsEnabled, notify])
 
   /**
    * Records that a thing was genuinely looked at. Fired by the plate's dwell

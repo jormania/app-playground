@@ -79,7 +79,13 @@ export function computeNeighbourhood(
     if (!otherId) continue
     connectedIds.add(otherId)
     const other = byId.get(otherId)
-    if (other) connected.push({ thing: other, path })
+    // Kept-only, matching `near` below and the Paths view's own list — a
+    // released thing has left the collection, and surfacing its passage
+    // here (while the graph and every other view treat it as gone) is the
+    // same contradiction, one level deeper. It still counts as *connected*
+    // so no mycorrhiza fiber is proposed to re-suggest a pair you already
+    // joined; it simply isn't shown.
+    if (other && other.state === 'Kept') connected.push({ thing: other, path })
   }
 
   const self = vectorsById.get(thing.id)

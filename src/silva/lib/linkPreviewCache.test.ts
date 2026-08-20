@@ -86,6 +86,55 @@ describe('getLinkPreview', () => {
     expect(a?.title).toBe('A')
     expect(b?.title).toBe('B')
   })
+
+  // The Forest renders every kept thing at once, so the same article kept
+  // twice — or one plate re-mounting mid-flight — must not cost two
+  // requests against a relay that allows twenty per ten seconds.
+  it('collapses concurrent requests for the same URL into one fetch', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => fakePreview({ title: 'Once' }) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const [a, b, c] = await Promise.all([
+      getLinkPreview('https://example.com/same'),
+      getLinkPreview('https://example.com/same'),
+      getLinkPreview('https://example.com/same'),
+    ])
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(a?.title).toBe('Once')
+    expect(b?.title).toBe('Once')
+    expect(c?.title).toBe('Once')
+  })
+
+  // The bug this exists for: a rate-limited preview used to return null and
+  // go uncached, so it re-failed identically on every later load — a
+  // permanently preview-less forest rather than a transient glitch.
+  it('retries a rate-limited preview instead of failing it permanently', async () => {
+    vi.useFakeTimers()
+    let attempts = 0
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => {
+      attempts++
+      if (attempts < 3) return { ok: false, status: 429 }
+      return { ok: true, json: async () => fakePreview({ title: 'Landed' }) }
+    }))
+
+    const pending = getLinkPreview('https://example.com/rate-limited')
+    await vi.runAllTimersAsync()
+
+    expect((await pending)?.title).toBe('Landed')
+    expect(attempts).toBe(3)
+    vi.useRealTimers()
+  })
+
+  // A 404 is the caller's answer, not a transient failure — retrying it only
+  // burns the shared budget a real preview needs.
+  it('does not retry a link that simply is not there', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 404 })
+    vi.stubGlobal('fetch', fetchMock)
+
+    expect(await getLinkPreview('https://example.com/gone')).toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('pruneLinkPreviews', () => {

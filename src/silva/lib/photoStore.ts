@@ -14,7 +14,7 @@
  * URL and never touches this module.
  */
 
-import { get, set, del } from 'idb-keyval'
+import { get, set, del, keys } from 'idb-keyval'
 
 const PREFIX = 'silva:photo:'
 
@@ -65,4 +65,37 @@ export async function deleteLocalPhoto(ref: string): Promise<void> {
   } catch {
     // Worst case the bytes linger; never worth surfacing.
   }
+}
+
+/**
+ * Drops photo blobs no live thing points at any more — the same
+ * housekeeping `vectorCache.ts` and `linkPreviewCache.ts` do for their own
+ * caches, and by far the most expensive of the three to skip: a vector is
+ * ~1.5 KB and a preview a few hundred bytes, but a downscaled page
+ * photograph is 200–400 KB.
+ *
+ * It was skipped. `deleteLocalPhoto` above shipped written and never
+ * called from anywhere, and "Reset the demo forest" (store.ts's
+ * `resetDemoThings`) clears localStorage and the in-memory arrays while
+ * leaving every blob behind — so photographing pages in the demo grew
+ * IndexedDB by megabytes that nothing could ever reclaim.
+ */
+export async function pruneLocalPhotos(liveImageRefs: Iterable<string | null>): Promise<number> {
+  const live = new Set<string>()
+  for (const ref of liveImageRefs) {
+    if (isLocalImage(ref)) live.add(keyFor(ref as string))
+  }
+
+  let removed = 0
+  try {
+    for (const key of await keys()) {
+      if (typeof key !== 'string' || !key.startsWith(PREFIX)) continue
+      if (live.has(key)) continue
+      await del(key)
+      removed++
+    }
+  } catch {
+    // Best-effort housekeeping — never worth surfacing.
+  }
+  return removed
 }
