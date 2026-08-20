@@ -7,6 +7,7 @@ import type { SeenMap } from '../lib/seen'
 import { SpecimenPlate } from './SpecimenPlate'
 import { Neighbourhood } from './Neighbourhood'
 import { TodaysWalk } from './TodaysWalk'
+import { useProgressiveList } from './useProgressiveList'
 import styles from './ForestView.module.css'
 
 export interface ForestViewProps {
@@ -97,6 +98,9 @@ export function ForestView({
     )
   }
 
+  // Only the DOM is paged; `kept` itself stays whole for everything else.
+  const { visible, hasMore, sentinelRef } = useProgressiveList(kept)
+
   if (kept.length === 0) {
     return (
       <p className={styles.empty}>
@@ -108,7 +112,13 @@ export function ForestView({
   return (
     <div className={styles.forest}>
       {showWalk && <TodaysWalk things={things} seen={seen} renderThing={renderThing} vectorsById={vectorsById} />}
-      {kept.map((thing) => <div key={thing.id}>{renderThing(thing)}</div>)}
+      {visible.map((thing) => <div key={thing.id}>{renderThing(thing)}</div>)}
+      {/* The scroll grows as it is walked. Nothing is hidden from the app —
+       *  the walk, Forage, the crossing and every provocation still see the
+       *  whole collection; only the DOM is paged, because a plate is an
+       *  expensive thing to mount and there is no reason to mount one for a
+       *  passage ten thousand pixels below the fold. See useProgressiveList. */}
+      {hasMore && <div ref={sentinelRef} aria-hidden="true" className={styles.sentinel} />}
     </div>
   )
 }

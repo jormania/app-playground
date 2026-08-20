@@ -306,6 +306,59 @@ this app is defined against — and the field's own placeholder is already "I
 remember something about…"): one box, lexical *and* semantic matching
 ("I remember something about people becoming what they repeatedly do").
 
+## Opening the app
+
+Silva mirrors the whole collection to the device (`lib/collectionCache.ts`,
+IndexedDB) and renders from that mirror immediately, then reconciles with
+Notion in the background. "Walking into the forest…" is now only ever the
+*first* open — after that the forest is on screen in milliseconds.
+
+The wait it replaces was not a fixed cost. `fetchAllPages` walks a database
+100 rows at a time and each request needs the previous one's cursor, so the
+old load grew with everything ever kept: roughly one sequential round trip per
+100 things, every morning, before anything at all was painted.
+
+**Reads are incremental.** Every list method takes an optional `since`, which
+becomes a Notion `last_edited_time` filter — so a reopen asks for what changed
+since yesterday (almost always nothing) rather than for the collection again.
+
+**The one thing incremental sync cannot see is a deletion**: a row deleted in
+Notion stops appearing rather than coming back marked, and nothing
+incremental can tell that apart from "unchanged". So a full reconcile runs
+whenever the last one is over `FULL_SYNC_INTERVAL_MS` (a day) old, which
+bounds how long a row deleted *directly in Notion* can linger. Deleting from
+Silva itself is immediate, because the cache is written from the same state
+the UI already updated optimistically.
+
+A failed refresh with a cache present is **not** a failed load: the forest
+stays on screen and a toast says it could not reach Notion. Offline means
+yesterday's forest, never a blank error page over a collection this device
+is holding.
+
+### Why the data is never paged, and the rendering is
+
+The obvious way to make a big collection open fast — fetch twenty things and
+ask for more on scroll — would break Silva outright, and it's worth naming so
+nobody tries it later. Silva's features are *whole-collection* features: the
+walk weights every kept thing by neglect, a neighbourhood compares one thing
+against all of them, Forage searches everything, provocations look for tension
+anywhere, and the crossing draws the entire graph. A thing you haven't
+scrolled to must still be one the walk can offer you tomorrow.
+
+So the collection stays whole in memory and only the **DOM** is paged
+(`components/useProgressiveList.ts`): the Forest mounts a window of plates and
+grows it as the scroll is walked. That is where the cost actually was — a
+`SpecimenPlate` carries a neighbourhood scan, a dwell observer and a link
+preview, and there is no reason to mount all of that for a passage ten
+thousand pixels below the fold.
+
+The same rule closed a scaling bug worth remembering: `computeNeighbourhood`
+ran unmemoised in every plate's component body, so the scroll performed
+**O(n²) cosine similarities on every render** — a million of them at a
+thousand kept things — and threw the answer away, because the panel is
+collapsed. It is memoised now, and only a window of plates is mounted to
+begin with.
+
 ## Intake
 
 Four lanes into the understory:

@@ -249,11 +249,27 @@ export class SilvaStore {
     })
   }
 
-  private async fetchAllPages(dbId: string): Promise<Record<string, unknown>[]> {
+  /**
+   * Every row of a database, or — given `since` — only those edited after
+   * that moment.
+   *
+   * The filter is what makes reopening Silva cheap as a collection grows.
+   * A full read costs one sequential round trip per 100 rows (each needs the
+   * previous cursor), so it scales with everything you have ever kept; an
+   * incremental read costs one round trip for everything you have changed
+   * since yesterday, which is almost always nothing. See
+   * `lib/collectionCache.ts` for why that is safe, and for the one thing it
+   * cannot see: a row deleted in Notion stops appearing rather than coming
+   * back marked, so only a full read can notice it is gone.
+   */
+  private async fetchAllPages(dbId: string, since?: string): Promise<Record<string, unknown>[]> {
     const all: Record<string, unknown>[] = []
     let cursor: string | undefined
     do {
       const body: Record<string, unknown> = { page_size: 100 }
+      if (since) {
+        body.filter = { timestamp: 'last_edited_time', last_edited_time: { after: since } }
+      }
       if (cursor) body.start_cursor = cursor
       const data = await this.request(`databases/${dbId}/query`, 'POST', body)
       all.push(...((data.results as Record<string, unknown>[]) || []))
@@ -262,10 +278,12 @@ export class SilvaStore {
     return all
   }
 
-  async listThings(): Promise<Thing[]> {
+  /** Pass `since` (ISO 8601) for only what changed after that moment —
+   *  the incremental half of the cached load (lib/collectionCache.ts). */
+  async listThings(since?: string): Promise<Thing[]> {
     if (this.useDemo()) return [...demoThings]
     if (!this.thingsDbId) return []
-    const pages = await this.fetchAllPages(this.thingsDbId)
+    const pages = await this.fetchAllPages(this.thingsDbId, since)
     return pages.map((page) => toThing(page as { id: string; properties: Record<string, unknown> }))
   }
 
@@ -339,10 +357,12 @@ export class SilvaStore {
     return toThing(page as { id: string; properties: Record<string, unknown> })
   }
 
-  async listSources(): Promise<Source[]> {
+  /** Pass `since` (ISO 8601) for only what changed after that moment —
+   *  the incremental half of the cached load (lib/collectionCache.ts). */
+  async listSources(since?: string): Promise<Source[]> {
     if (this.useDemo()) return [...demoSources]
     if (!this.sourcesDbId) return []
-    const pages = await this.fetchAllPages(this.sourcesDbId)
+    const pages = await this.fetchAllPages(this.sourcesDbId, since)
     return pages.map((page) => toSource(page as { id: string; properties: Record<string, unknown> }))
   }
 
@@ -395,10 +415,12 @@ export class SilvaStore {
     return toSource(page as { id: string; properties: Record<string, unknown> })
   }
 
-  async listLoci(): Promise<Locus[]> {
+  /** Pass `since` (ISO 8601) for only what changed after that moment —
+   *  the incremental half of the cached load (lib/collectionCache.ts). */
+  async listLoci(since?: string): Promise<Locus[]> {
     if (this.useDemo()) return [...demoLoci]
     if (!this.lociDbId) return []
-    const pages = await this.fetchAllPages(this.lociDbId)
+    const pages = await this.fetchAllPages(this.lociDbId, since)
     return pages.map((page) => toLocus(page as { id: string; properties: Record<string, unknown> }))
   }
 
@@ -539,10 +561,12 @@ export class SilvaStore {
     await this.request(`pages/${id}`, 'PATCH', { archived: true })
   }
 
-  async listPaths(): Promise<Path[]> {
+  /** Pass `since` (ISO 8601) for only what changed after that moment —
+   *  the incremental half of the cached load (lib/collectionCache.ts). */
+  async listPaths(since?: string): Promise<Path[]> {
     if (this.useDemo()) return [...demoPaths]
     if (!this.pathsDbId) return []
-    const pages = await this.fetchAllPages(this.pathsDbId)
+    const pages = await this.fetchAllPages(this.pathsDbId, since)
     return pages.map((page) => toPath(page as { id: string; properties: Record<string, unknown> }))
   }
 

@@ -15,3 +15,11 @@
   margin: 0 auto;
 }
 
+
+/* The mount point for the next page of plates (useProgressiveList). Has to
+   occupy a little height: a zero-height element can sit exactly on a
+   scroll boundary and never register as intersecting, which would strand
+   the scroll at the end of the first page. */
+.sentinel {
+  height: 1px;
+}

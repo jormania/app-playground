@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Button, TextAreaField } from '../../ds'
 import type { Thing } from '../lib/notion'
 import type { Path } from '../lib/paths'
@@ -45,13 +45,37 @@ export function Neighbourhood({ thing, things, paths, vectorsById, onMakePath, s
   const [respondingTo, setRespondingTo] = useState<string | null>(null)
   const [why, setWhy] = useState('')
 
-  const neighbourhood = computeNeighbourhood(thing, things, vectorsById, paths)
+  /**
+   * Memoised, and that is not a micro-optimisation — it is the difference
+   * between a forest that scales and one that does not.
+   *
+   * `computeNeighbourhood` scans every kept thing and takes a cosine
+   * similarity against each one. The Forest renders one of these panels per
+   * kept thing, so running it unmemoised in the component body made the
+   * whole scroll **O(n²) similarities on every single render** — 10,000
+   * at a hundred things, a million at a thousand, each over a 384-dimension
+   * vector, all of it recomputed when anything at all in App's state
+   * changed, and all of it thrown away because the panel is collapsed.
+   *
+   * It cannot simply be skipped while collapsed: the toggle shows the two
+   * counts, so the numbers have to exist before it opens. Memoising is what
+   * makes that affordable — the work now happens once per data change
+   * rather than once per render. (The other half of the fix is that the
+   * Forest only mounts a window of plates at a time; see ForestView.)
+   */
+  const neighbourhood = useMemo(
+    () => computeNeighbourhood(thing, things, vectorsById, paths),
+    [thing, things, vectorsById, paths],
+  )
   const { near, connected } = neighbourhood
-  if (near.length === 0 && connected.length === 0) return null
 
-  const nodes = layoutEgoGraph(neighbourhood)
+  const nodes = useMemo(() => layoutEgoGraph(neighbourhood), [neighbourhood])
+  const box = useMemo(() => egoViewBox(nodes), [nodes])
+
+  // After the hooks, never before: an early return above a `useMemo` changes
+  // the hook order between renders, which React forbids outright.
+  if (near.length === 0 && connected.length === 0) return null
   const self = nodes[0]
-  const box = egoViewBox(nodes)
 
   function startResponding(id: string) {
     setRespondingTo(id)

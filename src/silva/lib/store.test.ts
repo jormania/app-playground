@@ -64,3 +64,60 @@ describe('SilvaStore.updateThing — Handle', () => {
     expect(updated.handle).toBe('My own title')
   })
 })
+
+/**
+ * The incremental half of the cached load (lib/collectionCache.ts). A full
+ * read costs one sequential round trip per 100 rows, so it grows with
+ * everything ever kept; an incremental read costs one round trip for
+ * everything changed since yesterday, which is almost always nothing.
+ */
+describe('SilvaStore — incremental reads', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  function stubQuery() {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ results: [], has_more: false }), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
+  }
+
+  /** The Notion query body the relay was asked to forward. The relay takes
+   *  `{ path, method, body }`, so the query itself is one level in. */
+  function queryBody(fetchMock: ReturnType<typeof vi.fn>): Record<string, unknown> {
+    const relayPayload = JSON.parse(fetchMock.mock.calls[0][1].body as string)
+    return (relayPayload.body ?? {}) as Record<string, unknown>
+  }
+
+  it('sends no filter at all without a `since`', async () => {
+    const fetchMock = stubQuery()
+    await new SilvaStore('a-token').listThings()
+    expect(queryBody(fetchMock).filter).toBeUndefined()
+  })
+
+  it('filters on last_edited_time when given a `since`', async () => {
+    const fetchMock = stubQuery()
+    await new SilvaStore('a-token').listThings('2026-08-20T10:00:00.000Z')
+    expect(queryBody(fetchMock).filter).toEqual({
+      timestamp: 'last_edited_time',
+      last_edited_time: { after: '2026-08-20T10:00:00.000Z' },
+    })
+  })
+
+  it('applies the same filter to every database, not just Things', async () => {
+    for (const call of ['listSources', 'listLoci', 'listPaths'] as const) {
+      const fetchMock = stubQuery()
+      await new SilvaStore('a-token')[call]('2026-08-20T10:00:00.000Z')
+      expect(queryBody(fetchMock).filter).toMatchObject({ timestamp: 'last_edited_time' })
+      vi.unstubAllGlobals()
+    }
+  })
+
+  // Demo mode never touches the network, so `since` is simply irrelevant
+  // there — it must not start making requests just because one was passed.
+  it('ignores `since` in demo mode without any request', async () => {
+    const fetchMock = stubQuery()
+    await new SilvaStore('').listThings('2026-08-20T10:00:00.000Z')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})

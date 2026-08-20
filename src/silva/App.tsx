@@ -42,6 +42,12 @@ import { confirmTension } from './lib/tension'
 import { resolveSource } from './lib/sourceCapture'
 import { intakeFields } from './lib/intakeFields'
 import { normalizeCapturedText } from './lib/textNormalize'
+import {
+  readCollectionCache,
+  writeCollectionCache,
+  needsFullSync,
+  mergeById,
+} from './lib/collectionCache'
 import { linkFactsPatch, linkSourceTitle } from './lib/linkFacts'
 import { loadThemeChoice, saveThemeChoice, watchTheme, type ThemeChoice } from './lib/theme'
 import styles from './App.module.css'
@@ -204,16 +210,55 @@ export default function App() {
     let cancelled = false
 
     async function load() {
-      setLoading(true)
       setError('')
+
+      // ── The head start ─────────────────────────────────────────────────
+      // What this device already knows, on screen before Notion is asked
+      // anything at all. Live collections only: the demo forest persists to
+      // localStorage inside the store itself, so it has never waited on a
+      // network and has nothing to gain here.
+      const usingNotion = Boolean(config.notionToken)
+      const cached = usingNotion ? await readCollectionCache(config.notionToken) : null
+      if (cancelled) return
+      if (cached) {
+        setSources(cached.sources)
+        setLoci(cached.loci)
+        setPaths(cached.paths)
+        setThings(cached.things)
+        // The line this whole change exists for: with a cache there is
+        // nothing to wait for, so "Walking into the forest…" never appears
+        // on a return visit — only on the very first one, and after a
+        // schema change or a switch of token.
+        setLoading(false)
+      } else {
+        setLoading(true)
+      }
+
       try {
-        const [loaded, loadedSources, loadedLoci, loadedPaths] = await Promise.all([
-          store.listThings(),
-          store.listSources(),
-          store.listLoci(),
-          store.listPaths(),
+        // Everything, on a first open and periodically after — the only way
+        // to notice a row deleted directly in Notion, which an incremental
+        // read cannot see (it stops appearing rather than coming back
+        // marked). Otherwise just what changed. See lib/collectionCache.ts.
+        const fullSync = needsFullSync(cached)
+        const since = fullSync ? undefined : cached?.syncedAt
+        // Stamped *before* the request goes out, so an edit made while it is
+        // in flight is caught next time rather than skipped. Fetching one row
+        // twice costs nothing; missing one costs correctness.
+        const syncStartedAt = new Date().toISOString()
+
+        const [freshThings, freshSources, freshLoci, freshPaths] = await Promise.all([
+          store.listThings(since),
+          store.listSources(since),
+          store.listLoci(since),
+          store.listPaths(since),
         ])
         if (cancelled) return
+
+        const loaded = fullSync ? freshThings : mergeById(cached?.things ?? [], freshThings)
+        const loadedSources = fullSync ? freshSources : mergeById(cached?.sources ?? [], freshSources)
+        const loadedLoci = fullSync ? freshLoci : mergeById(cached?.loci ?? [], freshLoci)
+        const loadedPaths = fullSync ? freshPaths : mergeById(cached?.paths ?? [], freshPaths)
+
         setSources(loadedSources)
         setLoci(loadedLoci)
         setPaths(loadedPaths)
@@ -237,6 +282,21 @@ export default function App() {
         if (cancelled) return
         setThings(settled)
         setLoading(false)
+
+        // Mirror exactly what is on screen, so the next open starts here.
+        // `settled` rather than `loaded`: the expiry sweep above is applied
+        // locally first and written through afterwards, and the cache should
+        // agree with the screen, not with the request that preceded it.
+        if (usingNotion) {
+          void writeCollectionCache(config.notionToken, {
+            things: settled,
+            sources: loadedSources,
+            loci: loadedLoci,
+            paths: loadedPaths,
+            syncedAt: syncStartedAt,
+            fullSyncedAt: fullSync ? syncStartedAt : (cached?.fullSyncedAt ?? syncStartedAt),
+          })
+        }
 
         // Best-effort per item, in the background — one row Notion refuses
         // must not turn the whole load into "Could not load the forest", and
@@ -316,10 +376,17 @@ export default function App() {
         if (cancelled) return
         await maybeProvoke(settled, loadedLoci, loadedPaths, vectors, loadedSeen, () => cancelled)
       } catch (e) {
-        if (!cancelled) {
+        if (cancelled) return
+        // With a cache already on screen, a failed refresh is not a failed
+        // load. The forest being read is real — it is simply a little
+        // behind. Going offline should mean "yesterday's forest", never a
+        // blank error page over a collection this device is holding.
+        if (cached) {
+          notify(`Could not reach Notion${errorText(e)}. Showing what this device already had.`)
+        } else {
           setError((e as Error).message || 'Could not load the forest.')
-          setLoading(false)
         }
+        setLoading(false)
       }
     }
 
