@@ -134,6 +134,28 @@ export default function App() {
     return parsed
   })
 
+  /**
+   * Draft id -> the real Notion id it became.
+   *
+   * ── The bug this closes ─────────────────────────────────────────────────
+   * An optimistic create shows the row instantly under a `silva-draft-N`
+   * id, so anything you do to it in the next moment — Keep, Release, Edit —
+   * captured *that* id and eventually handed it to Notion, which of course
+   * has no such page. The write failed and `write` rolled back to a
+   * snapshot taken before the create had reconciled, so the local forest
+   * kept a phantom draft row that could never be saved again while the real
+   * row sat orphaned in Notion, invisible until a reload.
+   *
+   * Every request is serialised through lib/requestQueue.ts, so a commit
+   * enqueued after a create always runs after that create has resolved —
+   * which means this map is already populated by the time anything needs to
+   * look an id up. Resolving at *commit* time rather than at call time is
+   * what makes that true.
+   */
+  const realIdByDraft = useRef(new Map<string, string>())
+  const liveId = useCallback((id: string) => realIdByDraft.current.get(id) ?? id, [])
+  const isDraft = useCallback((id: string) => liveId(id).startsWith(DRAFT_PREFIX), [liveId])
+
   // The live collection, readable from inside an async callback without
   // capturing a stale closure — what `write` reverts to on failure.
   const forestRef = useRef<Forest>({ things: [], sources: [], loci: [], paths: [] })
@@ -384,8 +406,8 @@ export default function App() {
     write(
       () => setThings((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t))),
       async () => {
-        const updated = await store.updateThing(id, patch)
-        setThings((prev) => prev.map((t) => (t.id === id ? updated : t)))
+        const updated = await store.updateThing(liveId(id), patch)
+        setThings((prev) => prev.map((t) => (t.id === updated.id || t.id === id ? updated : t)))
       },
       'That could not be kept',
     )
@@ -397,8 +419,8 @@ export default function App() {
     write(
       () => setThings((prev) => prev.map((t) => (t.id === id ? { ...t, state: 'Released' } : t))),
       async () => {
-        const updated = await store.updateThing(id, { state: 'Released' })
-        setThings((prev) => prev.map((t) => (t.id === id ? updated : t)))
+        const updated = await store.updateThing(liveId(id), { state: 'Released' })
+        setThings((prev) => prev.map((t) => (t.id === updated.id || t.id === id ? updated : t)))
       },
       'That could not be released',
     )
@@ -463,9 +485,9 @@ export default function App() {
         // Paths first: a path whose end is already gone is the exact orphan
         // this is here to prevent, so it must not survive a partial failure.
         for (const path of doomedPaths) {
-          if (!path.id.startsWith(DRAFT_PREFIX)) await store.archivePath(path.id)
+          if (!isDraft(path.id)) await store.archivePath(liveId(path.id))
         }
-        if (!id.startsWith(DRAFT_PREFIX)) await store.archiveThing(id)
+        if (!isDraft(id)) await store.archiveThing(liveId(id))
       },
       'That could not be deleted',
     )
@@ -498,9 +520,9 @@ export default function App() {
         if (restoredPaths.length > 0) setPaths((prev) => [...restoredPaths, ...prev])
       },
       async () => {
-        if (!thing.id.startsWith(DRAFT_PREFIX)) await store.unarchiveThing(thing)
+        if (!isDraft(thing.id)) await store.unarchiveThing({ ...thing, id: liveId(thing.id) })
         for (const path of restoredPaths) {
-          if (!path.id.startsWith(DRAFT_PREFIX)) await store.unarchivePath(path)
+          if (!isDraft(path.id)) await store.unarchivePath({ ...path, id: liveId(path.id) })
         }
       },
       'That could not be put back',
@@ -524,9 +546,9 @@ export default function App() {
       },
       async () => {
         for (const thing of attached) {
-          if (!thing.id.startsWith(DRAFT_PREFIX)) await store.updateThing(thing.id, { sourceId: null })
+          if (!isDraft(thing.id)) await store.updateThing(liveId(thing.id), { sourceId: null })
         }
-        if (!id.startsWith(DRAFT_PREFIX)) await store.archiveSource(id)
+        if (!isDraft(id)) await store.archiveSource(liveId(id))
       },
       'That source could not be deleted',
     )
@@ -538,8 +560,8 @@ export default function App() {
     write(
       () => setThings((prev) => prev.map((t) => (t.id === id ? { ...t, ...previous } : t))),
       async () => {
-        const updated = await store.updateThing(id, previous)
-        setThings((prev) => prev.map((t) => (t.id === id ? updated : t)))
+        const updated = await store.updateThing(liveId(id), previous)
+        setThings((prev) => prev.map((t) => (t.id === updated.id || t.id === id ? updated : t)))
       },
       'That could not be put back',
     )
@@ -597,11 +619,12 @@ export default function App() {
         let realPatch = fullPatch
         if (sourceDraft) {
           const createdSource = await store.createSource({ title: sourceDraft.title, author: sourceDraft.author })
+          realIdByDraft.current.set(sourceDraft.id, createdSource.id)
           setSources((prev) => prev.map((s) => (s.id === sourceDraft.id ? createdSource : s)))
           realPatch = { ...fullPatch, sourceId: createdSource.id }
         }
-        const updated = await store.updateThing(id, realPatch)
-        setThings((prev) => prev.map((t) => (t.id === id ? updated : t)))
+        const updated = await store.updateThing(liveId(id), realPatch)
+        setThings((prev) => prev.map((t) => (t.id === updated.id || t.id === id ? updated : t)))
       },
       'That edit could not be saved',
     )
@@ -651,10 +674,12 @@ export default function App() {
         let realSourceId = sourceId
         if (sourceDraft) {
           const createdSource = await store.createSource({ title: sourceDraft.title, author: sourceDraft.author })
+          realIdByDraft.current.set(sourceDraft.id, createdSource.id)
           setSources((prev) => prev.map((s) => (s.id === sourceDraft.id ? createdSource : s)))
           realSourceId = createdSource.id
         }
         const created = await store.createThing({ body, locator, sourceId: realSourceId, link })
+        realIdByDraft.current.set(draft.id, created.id)
         setThings((prev) => prev.map((t) => (t.id === draft.id ? created : t)))
       },
       'That could not be added to the nursery',
@@ -720,8 +745,8 @@ export default function App() {
     const text = await ocrPhoto(config.anthropicKey, blob)
     if (!text) return
     try {
-      const updated = await store.updateThing(id, { body: text })
-      setThings((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      const updated = await store.updateThing(liveId(id), { body: text })
+      setThings((prev) => prev.map((t) => (t.id === updated.id || t.id === id ? updated : t)))
       notify('Text found on the page — added as its passage.')
     } catch {
       // Best-effort: the photo is already saved either way; losing the
@@ -759,7 +784,7 @@ export default function App() {
   }
 
   async function commitThingUpdates(updates: { id: string; patch: Partial<Thing> }[]) {
-    const updated = await Promise.all(updates.map((u) => store.updateThing(u.id, u.patch)))
+    const updated = await Promise.all(updates.map((u) => store.updateThing(liveId(u.id), u.patch)))
     const byId = new Map(updated.map((t) => [t.id, t]))
     setThings((prev) => prev.map((t) => byId.get(t.id) ?? t))
   }
@@ -782,6 +807,7 @@ export default function App() {
       },
       async () => {
         const locus = await store.createLocus({ name, meaning })
+        realIdByDraft.current.set(draft.id, locus.id)
         setLoci((prev) => prev.map((l) => (l.id === draft.id ? locus : l)))
         // The seeds were pointed at the draft id; re-point them at the real
         // one before the write-through, or Notion gets a relation to nothing.
@@ -872,6 +898,7 @@ export default function App() {
       },
       async () => {
         const newLocus = await store.createLocus({ name, meaning })
+        realIdByDraft.current.set(draft.id, newLocus.id)
         setLoci((prev) => prev.map((l) => (l.id === draft.id ? newLocus : l)))
         const real = updates.map((u) => ({
           id: u.id,
@@ -909,6 +936,7 @@ export default function App() {
           why,
           origin: origin ?? 'Yours',
         })
+        realIdByDraft.current.set(draft.id, path.id)
         setPaths((prev) => prev.map((p) => (p.id === draft.id ? path : p)))
       },
       'That path could not be walked',
