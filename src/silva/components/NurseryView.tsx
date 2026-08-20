@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Button } from '../../ds'
 import { fadeRatio, daysRemaining, DEFAULT_SEASON_DAYS } from '../lib/understory'
 import type { Thing } from '../lib/notion'
+import { usePhotoUrl } from './usePhotoUrl'
+import { useLinkPreview } from './useLinkPreview'
 import styles from './NurseryView.module.css'
 
 export interface NurseryViewProps {
@@ -26,69 +28,109 @@ export function NurseryView({ things, onKeep, onRelease, seasonDays = DEFAULT_SE
     return <p className={styles.empty}>The nursery is empty. Type or paste something to begin.</p>
   }
 
-  function keep(id: string) {
-    const note = drafts[id]?.trim()
-    onKeep(id, note || undefined)
-    setOpenId(null)
-  }
-
   return (
     <ul className={styles.list}>
-      {things.map((thing) => {
-        const fade = fadeRatio(thing, seasonDays)
-        const remaining = Math.max(0, Math.ceil(daysRemaining(thing, seasonDays)))
-        // SILVA.md: the remaining season is "shown as a fade rather than a
-        // number" — "No badge, no counter". The countdown that used to sit
-        // under every row was exactly the debt-clock the understory is
-        // designed not to be. The number survives only as a title/label, for
-        // anyone who deliberately asks (and for screen readers, which cannot
-        // read an opacity).
-        const seasonText = remaining > 0
-          ? `${remaining} day${remaining === 1 ? '' : 's'} of this season left`
-          : 'fading out of the nursery'
-        const isOpen = openId === thing.id
-        return (
-          <li
-            key={thing.id}
-            className={styles.row}
-            style={{ opacity: 0.4 + fade * 0.6 }}
-            title={seasonText}
-          >
-            <div className={styles.body}>
-              {thing.kind && <span className={styles.kind}>{thing.kind}</span>}
-              <p className={styles.text}>{thing.body}</p>
-              <span
-                className={styles.season}
-                role="img"
-                aria-label={seasonText}
-                style={{ ['--season-left' as string]: `${Math.round(fade * 100)}%` }}
-              />
-              {isOpen ? (
-                <textarea
-                  className={styles.whyInput}
-                  autoFocus
-                  rows={2}
-                  placeholder="Why this. What it rhymed with."
-                  value={drafts[thing.id] ?? ''}
-                  onChange={(e) => setDrafts((prev) => ({ ...prev, [thing.id]: e.target.value }))}
-                />
-              ) : (
-                <button type="button" className={styles.whyToggle} onClick={() => setOpenId(thing.id)}>
-                  + Why
-                </button>
-              )}
-            </div>
-            <div className={styles.actions}>
-              <Button size="sm" variant="primary" onClick={() => keep(thing.id)}>
-                Keep
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => onRelease(thing.id)}>
-                Release
-              </Button>
-            </div>
-          </li>
-        )
-      })}
+      {things.map((thing) => (
+        <NurseryRow
+          key={thing.id}
+          thing={thing}
+          seasonDays={seasonDays}
+          isOpen={openId === thing.id}
+          draft={drafts[thing.id] ?? ''}
+          onOpen={() => setOpenId(thing.id)}
+          onDraftChange={(value) => setDrafts((prev) => ({ ...prev, [thing.id]: value }))}
+          onKeep={() => {
+            const note = drafts[thing.id]?.trim()
+            onKeep(thing.id, note || undefined)
+            setOpenId(null)
+          }}
+          onRelease={() => onRelease(thing.id)}
+        />
+      ))}
     </ul>
+  )
+}
+
+function NurseryRow({
+  thing,
+  seasonDays,
+  isOpen,
+  draft,
+  onOpen,
+  onDraftChange,
+  onKeep,
+  onRelease,
+}: {
+  thing: Thing
+  seasonDays: number
+  isOpen: boolean
+  draft: string
+  onOpen: () => void
+  onDraftChange: (value: string) => void
+  onKeep: () => void
+  onRelease: () => void
+}) {
+  const fade = fadeRatio(thing, seasonDays)
+  const remaining = Math.max(0, Math.ceil(daysRemaining(thing, seasonDays)))
+  // SILVA.md: the remaining season is "shown as a fade rather than a
+  // number" — "No badge, no counter". The countdown that used to sit
+  // under every row was exactly the debt-clock the understory is
+  // designed not to be. The number survives only as a title/label, for
+  // anyone who deliberately asks (and for screen readers, which cannot
+  // read an opacity).
+  const seasonText = remaining > 0
+    ? `${remaining} day${remaining === 1 ? '' : 's'} of this season left`
+    : 'fading out of the nursery'
+
+  // A photographed page's own thumbnail, or a link's Open Graph image —
+  // whichever this thing actually has. Same small framed swatch either way
+  // (see NurseryView.module.css's .thumb), so a photo and a link read as
+  // the same *kind* of thing here, well before either is kept — you no
+  // longer have to Keep an Image thing blind just to see what you
+  // photographed.
+  const photoSrc = usePhotoUrl(thing.image)
+  const linkPreview = useLinkPreview(thing.link)
+  const thumbSrc = photoSrc || linkPreview?.image || null
+
+  return (
+    <li
+      className={styles.row}
+      style={{ opacity: 0.4 + fade * 0.6 }}
+      title={seasonText}
+    >
+      {thumbSrc && <img className={styles.thumb} src={thumbSrc} alt="" loading="lazy" />}
+      <div className={styles.body}>
+        {thing.kind && <span className={styles.kind}>{thing.kind}</span>}
+        <p className={styles.text}>{thing.body}</p>
+        <span
+          className={styles.season}
+          role="img"
+          aria-label={seasonText}
+          style={{ ['--season-left' as string]: `${Math.round(fade * 100)}%` }}
+        />
+        {isOpen ? (
+          <textarea
+            className={styles.whyInput}
+            autoFocus
+            rows={2}
+            placeholder="Why this. What it rhymed with."
+            value={draft}
+            onChange={(e) => onDraftChange(e.target.value)}
+          />
+        ) : (
+          <button type="button" className={styles.whyToggle} onClick={onOpen}>
+            + Why
+          </button>
+        )}
+      </div>
+      <div className={styles.actions}>
+        <Button size="sm" variant="primary" onClick={onKeep}>
+          Keep
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onRelease}>
+          Release
+        </Button>
+      </div>
+    </li>
   )
 }

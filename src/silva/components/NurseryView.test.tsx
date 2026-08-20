@@ -1,10 +1,13 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, it, expect, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NurseryView } from './NurseryView'
 import type { Thing } from '../lib/notion'
 import { todayIso } from '../lib/understory'
+import { getLinkPreview } from '../lib/linkPreviewCache'
+
+vi.mock('../lib/linkPreviewCache', () => ({ getLinkPreview: vi.fn() }))
 
 afterEach(cleanup)
 
@@ -77,6 +80,36 @@ describe('NurseryView', () => {
     await user.type(screen.getByPlaceholderText(/why this/i), 'Rhymes with the tram passage')
     await user.click(screen.getByRole('button', { name: 'Keep' }))
     expect(onKeep).toHaveBeenCalledWith('a', 'Rhymes with the tram passage')
+  })
+
+  it('shows a photo\'s own thumbnail without needing to Keep it first', () => {
+    const { container } = render(
+      <NurseryView
+        things={[arrival('a', 1, { kind: 'Image', image: 'https://files.notion.so/photo.jpg' })]}
+        onKeep={vi.fn()}
+        onRelease={vi.fn()}
+      />,
+    )
+    const img = container.querySelector('img') as HTMLImageElement
+    expect(img.src).toBe('https://files.notion.so/photo.jpg')
+  })
+
+  it('shows a link\'s Open Graph image as the same kind of thumbnail', async () => {
+    vi.mocked(getLinkPreview).mockResolvedValue({
+      title: 'A Great Article', description: null, image: 'https://example.com/og.png', siteName: 'example.com', url: 'https://example.com/a',
+    })
+    const { container } = render(
+      <NurseryView things={[arrival('a', 1, { kind: 'Link', link: 'https://example.com/a' })]} onKeep={vi.fn()} onRelease={vi.fn()} />,
+    )
+    await waitFor(() => expect(container.querySelector('img')).toBeTruthy())
+    expect((container.querySelector('img') as HTMLImageElement).src).toBe('https://example.com/og.png')
+  })
+
+  it('shows no thumbnail for an arrival with neither a photo nor a link', () => {
+    const { container } = render(
+      <NurseryView things={[arrival('a', 1)]} onKeep={vi.fn()} onRelease={vi.fn()} />,
+    )
+    expect(container.querySelector('img')).toBeNull()
   })
 
   it('never sends a blank why', async () => {

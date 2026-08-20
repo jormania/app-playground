@@ -192,6 +192,12 @@
 
 /* A photographed page. Framed like the plate itself rather than bled to the
    edges — a specimen is mounted, not printed. */
+/* Framed, low-key, no drop shadow — depth reads through the doubled hairline
+   (border plus an inset line), the same motif every other card in the app
+   uses, rather than a shadow that would make the photo look like it's
+   floating above the plate. LinkCard's own image shares this exact
+   treatment (rounded corners, hairline border, inset shadow) so a photo and
+   a link read as the same *kind* of visual object. */
 .image {
   display: block;
   width: 100%;
@@ -200,6 +206,8 @@
   object-fit: contain;
   margin: 0 0 var(--space-md);
   border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 0 0 1px var(--color-surface-2);
   background: var(--color-bg-sunken);
 }
 
@@ -225,4 +233,73 @@
 .link:focus-visible {
   outline: 2px solid var(--color-ring);
   outline-offset: 2px;
+}
+
+/* A link's Open Graph card. Same doubled-hairline frame as .image above —
+   border plus inset line, no drop shadow, no vignette, no colour fade — so
+   this reads as the photo's visual cousin rather than a different design
+   language grafted on. Deliberately not journal.css's sepia/rotate/grain
+   listing thumbnail: Silva's whole plate motif is flat, printed matter, and
+   a card that tilted or vignetted would be the one thing on it that moved. */
+.linkCard {
+  display: block;
+  margin: 0 0 var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 0 0 1px var(--color-surface-2);
+  background: var(--color-surface);
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  transition: border-color var(--duration) var(--ease), background-color var(--duration) var(--ease);
+}
+
+.linkCard:hover {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 4%, var(--color-surface));
+}
+
+.linkCard:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.linkCardImage {
+  display: block;
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  background: var(--color-bg-sunken);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.linkCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  padding: var(--space-sm);
+}
+
+.linkCardTitle {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-ink);
+  line-height: var(--leading-body);
+}
+
+.linkCardDesc {
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  line-height: var(--leading-body);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.linkCardSite {
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
 }

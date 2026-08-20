@@ -3,10 +3,11 @@ import { Button, Field, TextAreaField } from '../../ds'
 import type { Thing, ThingKind } from '../lib/notion'
 import type { Source } from '../lib/sources'
 import { inferKind } from '../lib/kindInference'
-import { isLocalImage, localPhotoUrl } from '../lib/photoStore'
 import { readImageViewMode, writeImageViewMode, type ImageViewMode } from '../lib/imageViewPref'
 import { sourceInputValue } from '../lib/sourceCapture'
 import { useDwell } from './useDwell'
+import { usePhotoUrl } from './usePhotoUrl'
+import { useLinkPreview } from './useLinkPreview'
 import styles from './SpecimenPlate.module.css'
 
 const ALL_KINDS: ThingKind[] = ['Passage', 'Observation', 'Dialogue', 'Question', 'Image', 'Link', 'Fragment', 'Mine']
@@ -213,16 +214,7 @@ export function SpecimenPlate({
           ))}
         </p>
       )}
-      {/* A Link thing's link was editable and stored but never rendered
-       *  anywhere, so the one Kind whose whole point is an address made you
-       *  open Edit and select the text by hand to follow it. */}
-      {thing.link && (
-        <p className={styles.linkRow}>
-          <a className={styles.link} href={thing.link} target="_blank" rel="noopener noreferrer">
-            {displayUrl(thing.link)}
-          </a>
-        </p>
-      )}
+      {thing.link && <LinkCard url={thing.link} />}
       <div className={styles.plateActions}>
         <Button size="sm" variant="ghost" onClick={startEditing}>Edit</Button>
         <Button size="sm" variant="ghost" onClick={copyBody}>{copied ? 'Copied' : 'Copy'}</Button>
@@ -232,36 +224,12 @@ export function SpecimenPlate({
   )
 }
 
-/**
- * A photographed page. A demo-forest photo lives in this device's IndexedDB
- * rather than at a URL (see lib/photoStore.ts), so it has to be resolved to an
- * object URL — and revoked again, or every plate you scroll past pins its
- * blob in memory for the life of the document.
- */
+/** A photographed page, in the same framed, low-key treatment as a link
+ *  card's own image (see LinkCard below) — a border and rounded corners,
+ *  never a drop shadow: SILVA.md's "depth read through an inset line" rule
+ *  applies as much to a photograph as to a plate. */
 function PlateImage({ image, alt }: { image: string; alt: string }) {
-  const [src, setSrc] = useState<string | null>(isLocalImage(image) ? null : image)
-
-  useEffect(() => {
-    if (!isLocalImage(image)) {
-      setSrc(image)
-      return
-    }
-    let objectUrl: string | null = null
-    let cancelled = false
-    localPhotoUrl(image).then((url) => {
-      if (cancelled) {
-        if (url) URL.revokeObjectURL(url)
-        return
-      }
-      objectUrl = url
-      setSrc(url)
-    })
-    return () => {
-      cancelled = true
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
-  }, [image])
-
+  const src = usePhotoUrl(image)
   if (!src) return null
   return <img className={styles.image} src={src} alt={alt} loading="lazy" />
 }
@@ -276,6 +244,40 @@ function displayUrl(url: string): string {
   } catch {
     return url.length > 48 ? `${url.slice(0, 48)}…` : url
   }
+}
+
+/**
+ * A link's Open Graph card — image, title, description, site — the same
+ * framed, low-key treatment as a photographed page's `.image` (a border and
+ * rounded corners, no drop shadow, no vignette or colour fade), so a Link
+ * and an Image thing read as visual cousins rather than two unrelated
+ * kinds. Degrades gracefully at every stage: no fetch yet, a fetch with no
+ * image, or a fetch that failed all fall back to the plain host/path line
+ * this used to be unconditionally — nothing here ever blocks reading.
+ */
+function LinkCard({ url }: { url: string }) {
+  const preview = useLinkPreview(url)
+
+  if (!preview || (!preview.title && !preview.image)) {
+    return (
+      <p className={styles.linkRow}>
+        <a className={styles.link} href={url} target="_blank" rel="noopener noreferrer">
+          {displayUrl(url)}
+        </a>
+      </p>
+    )
+  }
+
+  return (
+    <a className={styles.linkCard} href={url} target="_blank" rel="noopener noreferrer">
+      {preview.image && <img className={styles.linkCardImage} src={preview.image} alt="" loading="lazy" />}
+      <span className={styles.linkCardBody}>
+        <span className={styles.linkCardTitle}>{preview.title || displayUrl(url)}</span>
+        {preview.description && <span className={styles.linkCardDesc}>{preview.description}</span>}
+        <span className={styles.linkCardSite}>{preview.siteName}</span>
+      </span>
+    </a>
+  )
 }
 
 /** Specimen-label order per SILVA.md: source · locator · encountered · kept.

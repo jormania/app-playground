@@ -16,6 +16,16 @@ const URL_ONLY = /^https?:\/\/\S+$/i
 // quoted word or phrase inside an otherwise ordinary sentence.
 const QUOTED_DIALOGUE = /["“][^"”]{8,}["”]/
 
+/** A body that's nothing but a URL — reading it back out isn't a judgment
+ *  call the way Kind is (SILVA.md's "never at capture" rule below is about
+ *  classification, not about recognising literal data that's already
+ *  there), so App.tsx uses this at intake to set `link` from the pasted
+ *  text itself — the one field a Link thing needs to render its preview
+ *  card, which nothing in the capture form asks for separately. */
+export function isBareUrl(body: string): boolean {
+  return URL_ONLY.test(body.trim())
+}
+
 /**
  * Leaves the guess unset (null) rather than force a pick when nothing
  * about the text is distinctive — an unset Kind is honest; a wrong one

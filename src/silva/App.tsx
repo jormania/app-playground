@@ -39,6 +39,7 @@ import { indexThings, indexableThings } from './lib/indexer'
 import { loadSilvaConfig, saveSilvaConfig, type SilvaConfig } from './lib/settingsConfig'
 import { confirmTension } from './lib/tension'
 import { resolveSource } from './lib/sourceCapture'
+import { isBareUrl } from './lib/kindInference'
 import { loadThemeChoice, saveThemeChoice, watchTheme, type ThemeChoice } from './lib/theme'
 import styles from './App.module.css'
 
@@ -471,6 +472,11 @@ export default function App() {
   function handleIntake(body: string, locator = '', sourceInput = '') {
     const today = todayIso()
     const { sourceId, sourceDraft } = resolveSourceDraft(sourceInput)
+    // A pasted body that's nothing but a URL already *is* the link — reading
+    // it into the field a Link thing's preview card actually needs, rather
+    // than requiring a trip to Edit before the thumbnail in the Nursery (or
+    // the card in the Forest) can show anything at all.
+    const link = isBareUrl(body) ? body.trim() : null
     const draft: Thing = {
       id: draftId(),
       handle: body.slice(0, 60),
@@ -484,7 +490,7 @@ export default function App() {
       note: '',
       lociIds: [],
       image: null,
-      link: null,
+      link,
       koboBookmarkId: null,
     }
     write(
@@ -499,7 +505,7 @@ export default function App() {
           setSources((prev) => prev.map((s) => (s.id === sourceDraft.id ? createdSource : s)))
           realSourceId = createdSource.id
         }
-        const created = await store.createThing({ body, locator, sourceId: realSourceId })
+        const created = await store.createThing({ body, locator, sourceId: realSourceId, link })
         setThings((prev) => prev.map((t) => (t.id === draft.id ? created : t)))
       },
       'That could not be added to the nursery',

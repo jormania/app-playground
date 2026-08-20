@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { inferKind } from './kindInference'
+import { inferKind, isBareUrl } from './kindInference'
 
 describe('inferKind', () => {
   it('returns null for empty text', () => {
@@ -38,5 +38,22 @@ describe('inferKind', () => {
   it('falls back to Observation when no source is set', () => {
     const body = 'A dog sat at the tram stop for twenty minutes, watching every door open and close, waiting for someone who never came.'
     expect(inferKind(body, false)).toBe('Observation')
+  })
+})
+
+describe('isBareUrl', () => {
+  it('is true for a body that is nothing but a URL', () => {
+    expect(isBareUrl('https://example.com/some/article')).toBe(true)
+    expect(isBareUrl('  http://example.com  ')).toBe(true)
+  })
+
+  it('is false for a URL with any surrounding words', () => {
+    expect(isBareUrl('See https://example.com for more')).toBe(false)
+    expect(isBareUrl('https://example.com — worth a read')).toBe(false)
+  })
+
+  it('is false for ordinary text', () => {
+    expect(isBareUrl('Worth remembering.')).toBe(false)
+    expect(isBareUrl('')).toBe(false)
   })
 })

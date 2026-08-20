@@ -11,6 +11,7 @@ import wanderlistRemindHandler from './api/wanderlist-remind.js'
 import steamSearchHandler from './api/steam-search.js'
 import clickDeckStudioSearchHandler from './api/clickdeck-studio-search.js'
 import clickDeckHltbHandler from './api/clickdeck-hltb.js'
+import notionPhotoProxyHandler from './api/notion-photo-proxy.js'
 
 // Stamps the real build/deploy time into every HTML entry as a <meta> tag.
 // On Vercel a fresh build runs on each deploy, so this equals the deploy date.
@@ -233,6 +234,7 @@ export default defineConfig({
     devApiRelay('/api/steam-search', steamSearchHandler, 'dev-steam-search-relay'),
     devBodyRelay('/api/clickdeck-studio-search', clickDeckStudioSearchHandler, 'dev-clickdeck-studio-search-relay'),
     devApiRelay('/api/clickdeck-hltb', clickDeckHltbHandler, 'dev-clickdeck-hltb-relay'),
+    devApiRelay('/api/notion-photo-proxy', notionPhotoProxyHandler, 'dev-notion-photo-proxy-relay'),
   ],
   server: {
     proxy: {
