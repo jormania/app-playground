@@ -57,3 +57,14 @@ describe('isBareUrl', () => {
     expect(isBareUrl('')).toBe(false)
   })
 })
+
+describe('inferKind — a thing that carries a link', () => {
+  // A kept link's body becomes the article's title (lib/linkTitle.ts), so
+  // the URL is no longer in the text — the `link` field is what still says
+  // "Link", and Suggest has to read it or it starts proposing Observation
+  // for every link in the forest.
+  it('suggests Link from the link field alone', () => {
+    expect(inferKind('The joy of missing out', false, true)).toBe('Link')
+    expect(inferKind('The joy of missing out', false, false)).not.toBe('Link')
+  })
+})

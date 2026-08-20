@@ -30,7 +30,7 @@ import {
   thresholdCrossed,
 } from './lib/provocationThreshold'
 import { peekVectors, pruneVectors } from './lib/vectorCache'
-import { pruneLinkPreviews } from './lib/linkPreviewCache'
+import { pruneLinkPreviews, getLinkPreview } from './lib/linkPreviewCache'
 import { readSeen, writeSeen, withSeen, prunedSeen, type SeenMap } from './lib/seen'
 import { parseSharedIntake, urlWithoutShare, type SharedIntake } from './lib/sharedIntake'
 import { putLocalPhoto, localImageRef, pruneLocalPhotos } from './lib/photoStore'
@@ -41,6 +41,7 @@ import { loadSilvaConfig, saveSilvaConfig, type SilvaConfig } from './lib/settin
 import { confirmTension } from './lib/tension'
 import { resolveSource } from './lib/sourceCapture'
 import { isBareUrl } from './lib/kindInference'
+import { linkTitlePatch } from './lib/linkTitle'
 import { loadThemeChoice, saveThemeChoice, watchTheme, type ThemeChoice } from './lib/theme'
 import styles from './App.module.css'
 
@@ -403,14 +404,58 @@ export default function App() {
     // it. Omitted entirely when blank, so it never clobbers a note already
     // on the thing.
     const patch: Partial<Thing> = { state: 'Kept', kept: today, ...(note ? { note } : {}) }
-    write(
+    void write(
       () => setThings((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t))),
       async () => {
         const updated = await store.updateThing(liveId(id), patch)
         setThings((prev) => prev.map((t) => (t.id === updated.id || t.id === id ? updated : t)))
       },
       'That could not be kept',
-    )
+    ).then(() => fillLinkTitle(id, things.find((t) => t.id === id)))
+  }
+
+  /**
+   * A link kept as a bare pasted URL takes the title of the article it points
+   * at, so it lands in the forest reading "The joy of missing out" rather
+   * than "https://nesslabs.com/jomo" — leaving the note underneath it as the
+   * only thing still worth typing.
+   *
+   * Everything sharp lives in `lib/linkTitle.ts`: it only ever replaces a
+   * body that is nothing but a URL, so your own words are never overwritten.
+   * Runs *after* the keep has been written through — the thing has a live id
+   * by then — and never blocks it: the preview is usually already in the
+   * device cache (the Nursery row fetched it for its thumbnail), and when it
+   * isn't, a slow or failed fetch simply leaves the URL standing.
+   */
+  async function fillLinkTitle(id: string, kept: Thing | undefined) {
+    // The freshest copy if one is in state, and otherwise the one that was
+    // just kept — `forestRef` trails a render behind a write-through, so
+    // reading it alone would skip the fill about as often as not.
+    const thing = forestRef.current.things.find((t) => t.id === id || t.id === liveId(id)) ?? kept
+    // Gone, or nothing a title could improve.
+    if (!thing || !thing.link || !isBareUrl(thing.body)) return
+
+    const patch = linkTitlePatch(thing, await getLinkPreview(thing.link))
+    if (!patch) return
+
+    const previousBody = thing.body
+    const previousHandle = thing.handle
+    // The keep may have swapped a draft id for the real Notion one by now,
+    // so match on either — the same thing under two names.
+    const isThis = (t: Thing) => t.id === thing.id || t.id === liveId(thing.id)
+    setThings((prev) => prev.map((t) => (isThis(t) ? { ...t, ...patch } : t)))
+    try {
+      const updated = await store.updateThing(liveId(thing.id), patch)
+      setThings((prev) => prev.map((t) => (t.id === updated.id || isThis(t) ? updated : t)))
+    } catch {
+      // Reverts this one thing rather than the whole forest (`write`'s
+      // snapshot rollback would undo unrelated edits made in the meantime),
+      // and stays quiet: a title nobody asked for failing to land is not
+      // worth a toast — the link is intact and reads exactly as before.
+      setThings((prev) =>
+        prev.map((t) => (isThis(t) ? { ...t, body: previousBody, handle: previousHandle } : t)),
+      )
+    }
   }
 
   function handleRelease(id: string) {

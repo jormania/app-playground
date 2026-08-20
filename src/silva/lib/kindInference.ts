@@ -31,11 +31,15 @@ export function isBareUrl(body: string): boolean {
  * about the text is distinctive — an unset Kind is honest; a wrong one
  * looks authoritative it isn't.
  */
-export function inferKind(body: string, hasSource: boolean): ThingKind | null {
+export function inferKind(body: string, hasSource: boolean, hasLink = false): ThingKind | null {
   const trimmed = body.trim()
   if (!trimmed) return null
 
-  if (URL_ONLY.test(trimmed)) return 'Link'
+  // A thing carrying a URL in its own `link` field is a Link whatever its
+  // body now reads as — which matters since a kept link's body is replaced
+  // by the article's title (lib/linkTitle.ts), so the URL that used to be
+  // the whole giveaway is no longer in the text at all.
+  if (hasLink || URL_ONLY.test(trimmed)) return 'Link'
   if (trimmed.endsWith('?')) return 'Question'
   if (QUOTED_DIALOGUE.test(trimmed)) return 'Dialogue'
   if (trimmed.length < 40) return 'Fragment'

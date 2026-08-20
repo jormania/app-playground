@@ -316,6 +316,34 @@ Four lanes into the understory:
    because a ~300 KB data URL inside the localStorage demo snapshot would take
    the whole demo forest down within a handful of photographs.
 
+### A kept link takes the article's title
+
+A pasted URL is its own body, so a Link thing used to sit in the forest titled
+`https://nesslabs.com/jomo` — the one thing on the plate set at reading size
+being the one thing on it not worth reading. At **Keep**, a link whose body is
+*nothing but* that URL takes the title from its own Open Graph preview
+(`lib/linkTitle.ts`, the preview already cached for the Nursery thumbnail), so
+it lands in the forest as "The joy of missing out" and the only thing left to
+type is your note.
+
+Not a violation of "never classify at capture": nothing is being inferred about
+what the thing *means*. The page's `og:title` is a fact printed on the page,
+read out the same way `isBareUrl` reads a URL out of a pasted body. The rules
+that keep it safe:
+
+- only a body that is nothing but a bare URL is ever replaced — a passage you
+  typed, or a link you retitled by hand, is untouchable however often the
+  preview refreshes;
+- a title that is only the URL again, or long enough to be a standfirst rather
+  than a headline, is refused;
+- it runs *behind* the keep and never blocks it, and a failed fetch or write
+  leaves the URL standing with no toast — a cosmetic title is never worth an
+  alarm.
+
+Because the URL then leaves the text, `inferKind` reads `Thing.link` too, so
+Edit's **Suggest** still proposes `Link` for a thing that no longer looks like
+one.
+
 ### Kobo import
 
 Kobo highlights are not cloud-synced anywhere reachable — they live in
