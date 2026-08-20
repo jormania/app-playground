@@ -85,17 +85,20 @@ export function RootsView({ things, sources, loci, onEditThing, onSeen, onEditSo
                     className={styles.sourceCard}
                     onClick={() => setScreen({ kind: 'detail', sourceId: source.id })}
                   >
-                    <div className={styles.sourceCardHeader}>
-                      <strong>{source.title || 'Untitled'}</strong>
-                      <span className={styles.meta}>
-                        {count} thing{count === 1 ? '' : 's'} →
-                      </span>
+                    {source.cover && <img className={styles.cover} src={source.cover} alt="" loading="lazy" />}
+                    <div className={styles.sourceCardBody}>
+                      <div className={styles.sourceCardHeader}>
+                        <strong>{source.title || 'Untitled'}</strong>
+                        <span className={styles.meta}>
+                          {count} thing{count === 1 ? '' : 's'} →
+                        </span>
+                      </div>
+                      {(source.author || source.kind) && (
+                        <p className={styles.byline}>
+                          {[source.author, source.kind].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
                     </div>
-                    {(source.author || source.kind) && (
-                      <p className={styles.byline}>
-                        {[source.author, source.kind].filter(Boolean).join(' · ')}
-                      </p>
-                    )}
                   </button>
                 </li>
               )
@@ -198,7 +201,8 @@ function SourceDetail({
         </div>
       ) : (
         <div className={styles.detailHeader}>
-          <div>
+          {source.cover && <img className={styles.detailCover} src={source.cover} alt="" loading="lazy" />}
+          <div className={styles.detailHeaderBody}>
             <h3 className={styles.screenTitle}>{source.title || 'Untitled'}</h3>
             {(source.author || source.kind) && (
               <p className={styles.byline}>{[source.author, source.kind].filter(Boolean).join(' · ')}</p>

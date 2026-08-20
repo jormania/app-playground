@@ -49,8 +49,8 @@ const handlers = {
 
 function renderView(things: Thing[], sources: Source[], over: Partial<typeof handlers> = {}) {
   const props = { ...handlers, ...over }
-  render(<RootsView things={things} sources={sources} loci={[]} {...props} />)
-  return props
+  const result = render(<RootsView things={things} sources={sources} loci={[]} {...props} />)
+  return { ...props, container: result.container }
 }
 
 describe('RootsView', () => {
@@ -76,6 +76,24 @@ describe('RootsView', () => {
       [source('s1', { title: 'Meditations' })],
     )
     expect(screen.getByText(/2 things →/)).toBeTruthy()
+  })
+
+  it('shows a source\'s own cover, when one exists, on the list card and the detail header', async () => {
+    const user = userEvent.setup()
+    const { container } = renderView(
+      [thing('a', { sourceId: 's1' })],
+      [source('s1', { title: 'Meditations', cover: 'https://files.notion.so/cover.jpg' })],
+    )
+    expect((container.querySelector('img') as HTMLImageElement).src).toBe('https://files.notion.so/cover.jpg')
+
+    await user.click(screen.getByRole('button', { name: /Meditations/ }))
+    const images = [...container.querySelectorAll('img')] as HTMLImageElement[]
+    expect(images.some((img) => img.src === 'https://files.notion.so/cover.jpg')).toBe(true)
+  })
+
+  it('renders no image at all for a source with no cover', () => {
+    const { container } = renderView([thing('a', { sourceId: 's1' })], [source('s1', { title: 'Meditations' })])
+    expect(container.querySelector('img')).toBeNull()
   })
 
   it('opens a source and reads its passages in locator order', async () => {

@@ -58,7 +58,10 @@ export function ClearingsView({ things, loci, onCoin, onRename, onAddThings, onR
         ) : (
           <ul className={styles.list}>
             {loci.map((locus) => {
-              const memberCount = things.filter((t) => t.lociIds.includes(locus.id)).length
+              // Kept-only: a released (or returned-to-nursery) thing has left
+              // the collection, and a clearing that still counts it is
+              // exactly the debt SILVA.md's "compost, not debt" rules out.
+              const memberCount = kept.filter((t) => t.lociIds.includes(locus.id)).length
               return (
                 <li key={locus.id}>
                   <button
@@ -104,7 +107,6 @@ export function ClearingsView({ things, loci, onCoin, onRename, onAddThings, onR
     <LocusDetail
       locus={locus}
       loci={loci}
-      things={things}
       kept={kept}
       onBack={() => setScreen({ kind: 'list' })}
       onRename={onRename}
@@ -188,7 +190,6 @@ function CoinForm({
 function LocusDetail({
   locus,
   loci,
-  things,
   kept,
   onBack,
   onRename,
@@ -200,7 +201,6 @@ function LocusDetail({
 }: {
   locus: Locus
   loci: Locus[]
-  things: Thing[]
   kept: Thing[]
   onBack: () => void
   onRename: (locusId: string, name: string, meaning: string) => void
@@ -222,7 +222,9 @@ function LocusDetail({
   const [splitSelection, setSplitSelection] = useState<Set<string>>(new Set())
   const [splitName, setSplitName] = useState('')
 
-  const members = things.filter((t) => t.lociIds.includes(locus.id))
+  // Kept-only, same reasoning as the list screen's memberCount above — a
+  // released member should disappear from its clearing, not linger in it.
+  const members = kept.filter((t) => t.lociIds.includes(locus.id))
   const nonMembers = kept.filter((t) => !t.lociIds.includes(locus.id))
   const otherLoci = loci.filter((l) => l.id !== locus.id)
 

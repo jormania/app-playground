@@ -58,6 +58,30 @@ describe('ClearingsView', () => {
     expect(screen.getByText(/1 thing →/)).toBeTruthy()
   })
 
+  // "compost, not debt" (SILVA.md): once a member is released — or sent
+  // back to the nursery — it has left the collection, and a clearing that
+  // still counts or lists it is exactly the debt that rule exists to avoid.
+  it('drops a released member from the count and the member list', async () => {
+    const user = userEvent.setup()
+    renderView(
+      [thing('a', { lociIds: ['l1'] }), thing('b', { lociIds: ['l1'], state: 'Released' })],
+      [solitude],
+    )
+    expect(screen.getByText(/1 thing →/)).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: /Solitude/ }))
+    expect(screen.getByText(/body of a/)).toBeTruthy()
+    expect(screen.queryByText(/body of b/)).toBeNull()
+  })
+
+  it('drops a member returned to the nursery the same way', () => {
+    renderView(
+      [thing('a', { lociIds: ['l1'] }), thing('b', { lociIds: ['l1'], state: 'Understory', kept: null })],
+      [solitude],
+    )
+    expect(screen.getByText(/1 thing →/)).toBeTruthy()
+  })
+
   // SILVA.md's hard rule: "A locus can never be assigned at capture time.
   // The UI must not offer it." Coining is therefore always retrospective and
   // always here — and its seeds can only be things already kept.

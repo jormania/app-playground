@@ -60,7 +60,11 @@ export function PathsView({
 }: PathsViewProps) {
   const [making, setMaking] = useState(false)
   const kept = things.filter((t) => t.state === 'Kept')
-  const byId = new Map(things.map((t) => [t.id, t]))
+  // Kept-only, same as the graph above it (lib/graph.ts) — a released end
+  // used to still render its full passage here while vanishing from the
+  // graph's own node set, one view giving two different answers about
+  // whether the same thing is still part of the collection.
+  const byId = new Map(kept.map((t) => [t.id, t]))
 
   return (
     <div className={styles.wrap}>

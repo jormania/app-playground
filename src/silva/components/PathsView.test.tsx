@@ -106,6 +106,25 @@ describe('PathsView', () => {
     expect(screen.getAllByText('(no longer here)')).toHaveLength(2)
   })
 
+  // The bug this exists for: a released end used to still render its full
+  // passage here, even though the graph right above it (Kept-only) had
+  // already made that same thing's node vanish — one view giving two
+  // different answers about whether the thing was still part of the
+  // collection. Released must read exactly like actually-gone.
+  it('treats a released end the same as one no longer in the collection', () => {
+    render(
+      <PathsView
+        {...base}
+        things={[thing('a', { state: 'Released' }), thing('b')]}
+        paths={[path]}
+        {...handlers}
+      />,
+    )
+    expect(screen.getByText('(no longer here)')).toBeTruthy()
+    expect(screen.queryByText('body of a')).toBeNull()
+    expect(screen.getByText('body of b')).toBeTruthy()
+  })
+
   it('edits a why and can be cancelled without saving', async () => {
     const user = userEvent.setup()
     const onEditWhy = vi.fn()

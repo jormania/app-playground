@@ -24,6 +24,9 @@
    same shape of screen (a list of places, each opening to its members), so
    they read as one grammar rather than two. */
 .sourceCard {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
   width: 100%;
   text-align: left;
   padding: var(--space-sm);
@@ -49,11 +52,34 @@
   .sourceCard:active { transform: none; }
 }
 
+.sourceCardBody {
+  flex: 1;
+  min-width: 0;
+}
+
 .sourceCardHeader {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-sm);
+}
+
+/* Same low-key framed treatment as a photo or a link card's own image
+   (SpecimenPlate.module.css's .image / .linkCardImage) — a border and
+   rounded corners, no drop shadow — so a book's cover reads as one more
+   member of that same visual family rather than a different kind of
+   picture. Undersized on purpose here: the list is a set of places to
+   choose between, not a shelf to browse, and a large cover would tip it
+   toward the shelf this view deliberately isn't. */
+.cover {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 1px var(--color-surface-2);
+  background: var(--color-bg-sunken);
 }
 
 .meta {
@@ -81,8 +107,26 @@
 .detailHeader {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: var(--space-sm);
+}
+
+.detailHeaderBody {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The larger cousin of .cover above, sized like a specimen plate's own
+   .image at its smaller end — this is the one place in Roots a source gets
+   to be a picture rather than a row of text. */
+.detailCover {
+  flex-shrink: 0;
+  width: 72px;
+  height: 96px;
+  object-fit: cover;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 0 0 1px var(--color-surface-2);
+  background: var(--color-bg-sunken);
 }
 
 .screenTitle {
