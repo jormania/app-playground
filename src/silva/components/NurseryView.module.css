@@ -78,6 +78,13 @@
   font-family: var(--font-body-serif);
   font-size: var(--text-base);
   line-height: var(--leading-body);
+  /* A Link thing's body is the bare URL until it's Kept and takes the
+     article's title (lib/linkFacts.ts) — one long unbroken token, which
+     `.row`'s flex box won't wrap on its own. Without this it overflows
+     `.body` and renders on top of `.actions` instead of pushing it aside.
+     Same rule SpecimenPlate.module.css's `.link` already uses for the same
+     reason. */
+  overflow-wrap: anywhere;
 }
 
 .meta {
