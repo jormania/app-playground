@@ -307,6 +307,12 @@ remember something about…"): one box, lexical *and* semantic matching
 Four lanes into the understory:
 
 1. **Type or paste** — the everyday case. One field, no required metadata.
+
+   The Source field offers existing sources back as you type (a native
+   `<datalist>`, so it needs no styling of its own and degrades to a plain
+   text field when there's nothing yet to suggest) — retyping "Meditations"
+   a fourth time completes it rather than risking a slightly different
+   string that reads as a new book to `resolveSource`'s similarity check.
 2. **Kobo import** — see below.
 3. **Share target** — a link or a selection shared from anywhere on the device
    opens Silva with the intake field already filled in.

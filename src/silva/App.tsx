@@ -1112,6 +1112,7 @@ export default function App() {
               onPhoto={handlePhoto}
               prefill={shared}
               busy={photoBusy}
+              sources={sources}
             />
             {importOpen ? (
               <KoboImportPanel

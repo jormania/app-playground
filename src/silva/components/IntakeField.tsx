@@ -1,6 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '../../ds'
+import type { Source } from '../lib/sources'
+import { sourceInputValue } from '../lib/sourceCapture'
 import styles from './IntakeField.module.css'
+
+const SOURCE_LIST_ID = 'silva-source-suggestions'
 
 export interface IntakeFieldProps {
   onSubmit: (body: string, locator: string, sourceInput: string) => void
@@ -11,6 +15,12 @@ export interface IntakeFieldProps {
   prefill?: { body: string; locator: string } | null
   /** Set while a photograph is being processed and uploaded. */
   busy?: boolean
+  /** Sources already in the collection, offered back as the source field is
+   *  typed — so retyping "Meditations" a fourth time completes it rather
+   *  than risking a slightly different string that reads as a new book to
+   *  `resolveSource`'s similarity check. Absent, the field is exactly the
+   *  plain text input it always was. */
+  sources?: Source[]
 }
 
 /** Type-or-paste intake — one required field, no required metadata beyond it
@@ -23,12 +33,23 @@ export interface IntakeFieldProps {
  *  ("Shelby Foote — The Civil War"), never a picker; resolving that text
  *  into a real Source (reuse a match, create otherwise) happens in App.tsx
  *  (lib/sourceCapture.ts), which is the only place that needs the store. */
-export function IntakeField({ onSubmit, onPhoto, prefill = null, busy = false }: IntakeFieldProps) {
+export function IntakeField({ onSubmit, onPhoto, prefill = null, busy = false, sources = [] }: IntakeFieldProps) {
   const [value, setValue] = useState('')
   const [locator, setLocator] = useState('')
   const [source, setSource] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // The same "Title by Author" string SpecimenPlate's own edit screen
+  // reads a source back into (sourceInputValue) — so an option picked here
+  // round-trips through `resolveSource` as the exact-match tier rather than
+  // merely a close one. De-duplicated: two sources can legitimately share a
+  // title (different editions), and a repeated <option> is otherwise just
+  // visual noise in the suggestion list.
+  const sourceOptions = useMemo(
+    () => [...new Set(sources.map(sourceInputValue).filter(Boolean))],
+    [sources],
+  )
 
   // A share opens the app straight here, filled in and focused, with the
   // cursor at the end so a note can be added without repositioning first.
@@ -74,9 +95,25 @@ export function IntakeField({ onSubmit, onPhoto, prefill = null, busy = false }:
         onKeyDown={(e) => {
           if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit()
         }}
-        placeholder="Where did you encounter this? (optional — a book, a person, a place)"
+        // Trimmed from the longer "…(optional — a book, a person, a place)"
+        // — with the datalist now doing the job of showing what this field
+        // is for (existing sources appear as you type), the parenthetical
+        // was mostly just what got clipped first in the narrow field.
+        placeholder="Where did you encounter this?"
         aria-label="Where did you encounter this"
+        // A native datalist rather than a custom dropdown: it needs no
+        // styling of its own to work correctly with a mobile keyboard, and
+        // degrades to nothing (a plain text field, exactly as before) if
+        // `sources` is ever empty.
+        list={sourceOptions.length > 0 ? SOURCE_LIST_ID : undefined}
       />
+      {sourceOptions.length > 0 && (
+        <datalist id={SOURCE_LIST_ID}>
+          {sourceOptions.map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </datalist>
+      )}
 
       {/* Only shown once something arrived carrying one — an empty locator
        *  field on every capture would be exactly the required metadata this

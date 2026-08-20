@@ -1,11 +1,16 @@
+/* No card of its own — a plain flex column, same as every other screen's
+   top-level `.wrap` (ForageView, RootsView): each field below is its own
+   single `--color-surface` box floating directly on the page, matching
+   Forage's own `.input` and the DS `Field` component. This used to also
+   carry a `--color-surface` background, border and padding, wrapping the
+   textarea a second time — which itself sat on `--color-bg`, a *different*
+   fill from the card around it. Two stacked boxes of two different tones
+   was the actual bug (not just "feels cramped"): nothing else in the app
+   nests a field inside a second background of its own. */
 .wrap {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
-  padding: var(--space-md);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
 }
 
 .textarea {
@@ -14,9 +19,9 @@
   font-family: var(--font-sans);
   font-size: var(--text-base);
   color: var(--color-ink);
-  background: var(--color-bg);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   padding: var(--space-sm);
   box-sizing: border-box;
 }
@@ -28,10 +33,7 @@
 }
 
 /* The locator only appears when a share brought one, so it reads as an
-   annotation on what arrived rather than as a second required field. Full
-   border rather than the bare underline this used to be — on a dark
-   background `--color-border` alone read as barely there at all, closer to
-   no field than a quiet one. */
+   annotation on what arrived rather than as a second required field. */
 .locator {
   width: 100%;
   box-sizing: border-box;
@@ -39,13 +41,12 @@
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   color: var(--color-muted);
-  background: var(--color-bg);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  /* The placeholder is a full sentence ("Where did you encounter this?
-     (optional — a book, a person, a place)") that never fits a phone-width
-     field — left to the input's own default clipping it cut off mid-glyph
-     with nothing to say more was there. */
+  border-radius: var(--radius-md);
+  /* A share can hand this field a URL or a longer locator that overruns a
+     phone-width input — left to the browser's own default clipping, that
+     cut off mid-glyph with nothing to say more was there. */
   text-overflow: ellipsis;
 }
 
@@ -60,8 +61,7 @@
    SILVA.md's low-friction intake makes a deliberate exception for (see
    lib/sourceCapture.ts): unlike everything else deferred to curation, a
    source is the kind of context that evaporates before curation happens.
-   Same full-border, ellipsis-on-overflow treatment as `.locator` above and
-   for the identical two reasons. */
+   Same treatment as `.locator` above, for the identical two reasons. */
 .source {
   width: 100%;
   box-sizing: border-box;
@@ -69,9 +69,9 @@
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   color: var(--color-ink);
-  background: var(--color-bg);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   text-overflow: ellipsis;
 }
 
