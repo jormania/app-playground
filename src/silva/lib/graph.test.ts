@@ -164,6 +164,21 @@ describe('computeViewBox', () => {
     expect(viewBox.height).toBeLessThan(CANVAS_SIZE)
   })
 
+  /**
+   * The crossing is the one view whose input grows without bound — every
+   * kept thing is a node. Bounding it with `Math.min(...xs)` passes one
+   * *argument* per node, and a long-lived forest eventually passes the
+   * engine's argument limit and throws a RangeError instead of drawing.
+   */
+  it('bounds a forest far larger than the engine\'s argument limit', () => {
+    const nodes = Array.from({ length: 200_000 }, (_, i) => ({
+      id: `n${i}`, x: i, y: -i, clusterId: null, thing: thing({ id: `n${i}` }),
+    }))
+    expect(() => computeViewBox({ clusters: [], nodes } as never)).not.toThrow()
+    const viewBox = computeViewBox({ clusters: [], nodes } as never)
+    expect(viewBox.width).toBeGreaterThan(199_000)
+  })
+
   it('centers the box on the content', () => {
     const layout = computeGraphLayout([thing({ id: 'a' })], [])
     const viewBox = computeViewBox(layout)

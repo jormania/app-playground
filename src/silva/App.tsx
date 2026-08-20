@@ -47,6 +47,7 @@ import {
   writeCollectionCache,
   needsFullSync,
   wasPageReloaded,
+  incrementalSince,
   mergeById,
 } from './lib/collectionCache'
 import { linkFactsPatch, linkSourceTitle } from './lib/linkFacts'
@@ -267,14 +268,47 @@ export default function App() {
    * all. `apply` now runs first and `commit` runs behind it; a rejection puts
    * the whole snapshot back rather than leaving a half-applied batch.
    */
+  /**
+   * Counts optimistic changes, so a rollback can tell whether it is still
+   * the most recent one. See `write`.
+   */
+  const writeGeneration = useRef(0)
+
   const write = useCallback(
     async (apply: () => void, commit: () => Promise<void>, failure: string) => {
       const snapshot = forestRef.current
+      const generation = ++writeGeneration.current
       apply()
       try {
         await commit()
       } catch (e) {
-        restore(snapshot)
+        /**
+         * Roll back only if nothing else has been applied since.
+         *
+         * The snapshot is the whole forest, taken before this change — so
+         * restoring it unconditionally also reverts every *other* optimistic
+         * change made while this request was in flight. Two taps in quick
+         * succession (keep one thing, then another) and a failure on the
+         * first would silently undo the second on screen while its own
+         * write succeeded in Notion, leaving the two permanently
+         * disagreeing. Requests are serialised through lib/requestQueue.ts,
+         * so the commits are ordered; the *applies* are not, which is what
+         * makes this reachable at all.
+         */
+        if (writeGeneration.current === generation) {
+          restore(snapshot)
+        }
+        /**
+         * Either way the device may now disagree with Notion: rolled back
+         * locally when the request actually landed, or left in place when it
+         * didn't. Only a full read can tell, so mark the mirror for one on
+         * the next open rather than waiting out the day-long interval
+         * (lib/collectionCache.ts). The stamp reaches the cache through the
+         * mirroring effect, or through its flush when the app is closed.
+         */
+        if (syncStampsRef.current) {
+          syncStampsRef.current = { ...syncStampsRef.current, fullSyncedAt: new Date(0).toISOString() }
+        }
         notify(`${failure}${errorText(e)}`, { tone: 'alarm' })
       }
     },
@@ -327,7 +361,11 @@ export default function App() {
         // over speed. It is also the only way, short of waiting out the
         // day-long interval, to notice a row deleted directly in Notion.
         const fullSync = wasPageReloaded() || needsFullSync(cached)
-        const since = fullSync ? undefined : cached?.syncedAt
+        // Started an hour before the last sync rather than exactly at it —
+        // the mark is device time and Notion's `last_edited_time` is not, so
+        // a fast clock would otherwise ask for a moment that has not happened
+        // server-side and silently receive nothing (lib/collectionCache.ts).
+        const since = !fullSync && cached ? incrementalSince(cached.syncedAt) : undefined
         // Stamped *before* the request goes out, so an edit made while it is
         // in flight is caught next time rather than skipped. Fetching one row
         // twice costs nothing; missing one costs correctness.

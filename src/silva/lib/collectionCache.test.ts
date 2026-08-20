@@ -18,6 +18,7 @@ const {
   mergeById,
   fingerprintToken,
   wasPageReloaded,
+  incrementalSince,
   FULL_SYNC_INTERVAL_MS,
 } = await import('./collectionCache')
 
@@ -192,5 +193,29 @@ describe('wasPageReloaded', () => {
       getEntriesByType: () => { throw new Error('unsupported') },
     })
     expect(wasPageReloaded()).toBe(false)
+  })
+})
+
+/**
+ * The high-water mark is stamped from the device clock but compared against
+ * Notion's `last_edited_time`. A device running fast would ask for a moment
+ * that has not happened server-side and receive nothing — silently missing
+ * every change until the daily full reconcile.
+ */
+describe('incrementalSince', () => {
+  it('starts an hour before the mark, to absorb clock skew', () => {
+    expect(incrementalSince('2026-08-20T12:00:00.000Z')).toBe('2026-08-20T11:00:00.000Z')
+  })
+
+  // An unparseable mark is not evidence that nothing changed, so the caller
+  // must read everything rather than guess.
+  it('is undefined for a mark it cannot read, forcing a full read', () => {
+    expect(incrementalSince('not a date')).toBeUndefined()
+    expect(incrementalSince('')).toBeUndefined()
+  })
+
+  it('is always earlier than the mark it was given', () => {
+    const mark = '2026-01-01T00:00:00.000Z'
+    expect(Date.parse(incrementalSince(mark) as string)).toBeLessThan(Date.parse(mark))
   })
 })

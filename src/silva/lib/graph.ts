@@ -257,6 +257,26 @@ export interface ViewBox {
  * so a handful of things doesn't render as a few dots lost in a fixed
  * 600×600 canvas. Falls back to the full canvas when the layout is empty.
  */
+/**
+ * The extent of a list of coordinates.
+ *
+ * `Math.min(...xs)` reads better and is what this used to do, but spreading
+ * an array into a call passes one *argument* per element — and a forest with
+ * enough kept things to draw eventually passes the engine's argument limit
+ * and throws a RangeError rather than drawing anything. The crossing is the
+ * one view whose input grows without bound, so it is the one place that has
+ * to fold instead of spread.
+ */
+function extent(values: number[]): { min: number; max: number } {
+  let min = Number.POSITIVE_INFINITY
+  let max = Number.NEGATIVE_INFINITY
+  for (const value of values) {
+    if (value < min) min = value
+    if (value > max) max = value
+  }
+  return { min, max }
+}
+
 export function computeViewBox(layout: GraphLayout): ViewBox {
   if (layout.nodes.length === 0) {
     return { minX: 0, minY: 0, width: CANVAS_SIZE, height: CANVAS_SIZE }
@@ -269,7 +289,8 @@ export function computeViewBox(layout: GraphLayout): ViewBox {
     // the captions are — so size them against the nodes-only extent first.
     // One pass, deterministic, and the box only ever grows from here, so
     // the estimate errs generous rather than tight.
-    const provisionalWidth = Math.max(...xs) - Math.min(...xs) + VIEWBOX_PADDING * 2
+    const nodesExtent = extent(xs)
+    const provisionalWidth = nodesExtent.max - nodesExtent.min + VIEWBOX_PADDING * 2
     const fontSize = clusterLabelFontSize(Math.max(MIN_VIEWBOX_SIZE, provisionalWidth))
     for (const c of layout.clusters) {
       // Both ends of the caption, not just its centre — a centred label on
@@ -282,10 +303,12 @@ export function computeViewBox(layout: GraphLayout): ViewBox {
     }
   }
 
-  const minX = Math.min(...xs) - VIEWBOX_PADDING
-  const maxX = Math.max(...xs) + VIEWBOX_PADDING
-  const minY = Math.min(...ys) - VIEWBOX_PADDING
-  const maxY = Math.max(...ys) + VIEWBOX_PADDING
+  const xExtent = extent(xs)
+  const yExtent = extent(ys)
+  const minX = xExtent.min - VIEWBOX_PADDING
+  const maxX = xExtent.max + VIEWBOX_PADDING
+  const minY = yExtent.min - VIEWBOX_PADDING
+  const maxY = yExtent.max + VIEWBOX_PADDING
 
   const width = Math.max(MIN_VIEWBOX_SIZE, maxX - minX)
   const height = Math.max(MIN_VIEWBOX_SIZE, maxY - minY)

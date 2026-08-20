@@ -48,7 +48,19 @@
  * distinguish "deleted" from "unchanged". So a full reconcile runs whenever
  * the last one is older than `FULL_SYNC_INTERVAL_MS`, bounding how long a
  * row deleted from the Notion side can linger in a device that hasn't been
- * told. Deleting from Silva itself is immediate, as rule 2 says.
+ * told. Deleting from Silva itself is immediate, as rule 2 says. A
+ * pull-to-refresh forces one on demand (`wasPageReloaded`), so the bound is
+ * never something anyone has to wait out.
+ *
+ * ── Known limit: two tabs of the same collection ────────────────────────
+ * Both mirror to the same key, and neither knows about the other. Delete
+ * something in one tab and the other — still holding the row in its own
+ * state — writes it back to the cache on its next change, so the next open
+ * can show it again until a full reconcile. Coordinating that properly
+ * needs a BroadcastChannel and a shared notion of which state is newer,
+ * which is a large amount of machinery for a personal app that is almost
+ * always open in one place. The repairs above (the daily reconcile, and a
+ * pull-to-refresh) both fix it, so this is recorded rather than solved.
  */
 import { get, set } from 'idb-keyval'
 import type { Thing } from './notion'
@@ -156,6 +168,40 @@ export async function writeCollectionCache(
   } catch {
     // Nothing on screen depends on this.
   }
+}
+
+/**
+ * How far *before* the last sync an incremental read starts.
+ *
+ * The high-water mark is stamped from the device's clock, but it is compared
+ * against `last_edited_time`, which is Notion's. Those are not the same
+ * clock. A device running even slightly fast asks for changes after a moment
+ * that, server-side, has not happened yet — and silently receives nothing,
+ * every open, until the daily full reconcile finally notices. Missing
+ * changes quietly is the worst failure this module has, so the read starts
+ * an hour early and simply re-sees anything it already had.
+ *
+ * That costs nothing in practice: the query returns *rows changed in the
+ * last hour*, which for one person's commonplace book is almost always none,
+ * and `mergeById` replaces by id so a row seen twice is a no-op. It also
+ * closes a second, subtler gap — a row edited *while* a sync is paginating
+ * could previously fall between the stamp and the read.
+ *
+ * Skew beyond an hour still degrades to "corrected at the next full sync",
+ * which a pull-to-refresh triggers on demand (`wasPageReloaded`).
+ */
+export const SYNC_OVERLAP_MS = 60 * 60 * 1000
+
+/**
+ * Where an incremental read should start given the last sync, or undefined
+ * when there is no usable mark — in which case the caller must read
+ * everything rather than guess, since an unparseable date is not evidence
+ * that nothing changed.
+ */
+export function incrementalSince(syncedAt: string): string | undefined {
+  const at = Date.parse(syncedAt)
+  if (!Number.isFinite(at)) return undefined
+  return new Date(at - SYNC_OVERLAP_MS).toISOString()
 }
 
 /**
