@@ -169,17 +169,17 @@ export function ForageView({ things, sources, vectorsById }: ForageViewProps) {
       </div>
 
       {/* A dropdown, not chips like Kind above — a forest can plausibly hold
-          dozens of sources, where it holds exactly eight kinds. Only shown
+          dozens of roots, where it holds exactly eight kinds. Only shown
           once there's a second source to actually narrow between. */}
       {usedSources.length > 1 && (
         <label className={styles.sourceFilter}>
-          <span className={styles.srOnly}>Filter by source</span>
+          <span className={styles.srOnly}>Narrow to one root</span>
           <select
             className={styles.select}
             value={sourceFilter ?? ''}
             onChange={(e) => setSourceFilter(e.target.value || null)}
           >
-            <option value="">Every source</option>
+            <option value="">Every root</option>
             {usedSources.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
           </select>
         </label>

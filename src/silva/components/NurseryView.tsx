@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button } from '../../ds'
+import { Button, ConfirmModal } from '../../ds'
 import { fadeRatio, daysRemaining, DEFAULT_SEASON_DAYS } from '../lib/understory'
 import type { Thing } from '../lib/notion'
 import { usePhotoUrl } from './usePhotoUrl'
@@ -10,13 +10,14 @@ export interface NurseryViewProps {
   things: Thing[]
   onKeep: (id: string, note?: string) => void
   onRelease: (id: string) => void
+  onDelete: (id: string) => void
   seasonDays?: number
 }
 
 /** Unkept arrivals, each shown with its remaining season as a fade rather
  *  than a countdown number (SILVA.md: "the understory... with their
  *  remaining season shown as a fade rather than a number"). */
-export function NurseryView({ things, onKeep, onRelease, seasonDays = DEFAULT_SEASON_DAYS }: NurseryViewProps) {
+export function NurseryView({ things, onKeep, onRelease, onDelete, seasonDays = DEFAULT_SEASON_DAYS }: NurseryViewProps) {
   // Why this, right when you decide it matters — SILVA.md's Keep → Annotate
   // step, without making Keep itself wait on it. Collapsed by default so the
   // one-tap keep nobody wants to slow down stays one tap; only a row you
@@ -45,6 +46,7 @@ export function NurseryView({ things, onKeep, onRelease, seasonDays = DEFAULT_SE
             setOpenId(null)
           }}
           onRelease={() => onRelease(thing.id)}
+          onDelete={() => onDelete(thing.id)}
         />
       ))}
     </ul>
@@ -60,6 +62,7 @@ function NurseryRow({
   onDraftChange,
   onKeep,
   onRelease,
+  onDelete,
 }: {
   thing: Thing
   seasonDays: number
@@ -69,6 +72,7 @@ function NurseryRow({
   onDraftChange: (value: string) => void
   onKeep: () => void
   onRelease: () => void
+  onDelete: () => void
 }) {
   const fade = fadeRatio(thing, seasonDays)
   const remaining = Math.max(0, Math.ceil(daysRemaining(thing, seasonDays)))
@@ -81,6 +85,8 @@ function NurseryRow({
   const seasonText = remaining > 0
     ? `${remaining} day${remaining === 1 ? '' : 's'} of this season left`
     : 'fading out of the nursery'
+
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   // A photographed page's own thumbnail, or a link's Open Graph image —
   // whichever this thing actually has. Same small framed swatch either way
@@ -139,7 +145,24 @@ function NurseryRow({
         <Button size="sm" variant="ghost" onClick={onRelease}>
           Release
         </Button>
+        {/* Below Release, and the only one that asks first — the column runs
+         *  from the affirmative act down to the irreversible one. */}
+        <Button size="sm" variant="ghost" onClick={() => setConfirmingDelete(true)}>
+          Delete
+        </Button>
       </div>
+      <ConfirmModal
+        isOpen={confirmingDelete}
+        title="Delete this thing"
+        message="This never enters the collection at all. Notion keeps it in its own trash for 30 days if you need it back. To let its season simply run out instead, use Release."
+        confirmText="Delete"
+        variant="danger"
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={() => {
+          setConfirmingDelete(false)
+          onDelete()
+        }}
+      />
     </li>
   )
 }

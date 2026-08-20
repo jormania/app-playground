@@ -169,6 +169,35 @@
     this, before you move on and the reason is gone. It's collapsed by default and never
     holds up the tap: leave it closed and Keep works exactly as fast as it always did.
   </p>
+
+  <h3>Release, delete, and where things go</h3>
+  <p>
+    <b>Release</b> is available on anything, kept or not — on a nursery arrival, and on
+    any plate in the <a href="#forest">Forest</a> or <a href="#roots">Roots</a>. It's
+    the ordinary way to let something go, and it's <em>not</em> a return to the nursery:
+    a released thing leaves both views for good and is not searched, counted, or drawn
+    anywhere in Silva. That's the point — <b>compost, not debt</b>. A toast offers a
+    single <b>Undo</b> right afterwards, which puts it back exactly as it was, kept date
+    and all.
+  </p>
+  <p>
+    <b>There is deliberately no compost pile to browse.</b> An archive of everything
+    you've let go is a list of second thoughts, and keeping one would undo the whole
+    reason for letting go. The things aren't destroyed, though: every release just sets
+    <code>State</code> to <code>Released</code> in your own Notion database, so if you
+    ever genuinely need one back, filter the Things database by that value and set it to
+    <code>Kept</code>. Silva will show it again on the next load. That's the escape
+    hatch, and it lives one deliberate step outside the app.
+  </p>
+  <p>
+    <b>Delete</b> is different and rarer — for what should never have been captured at
+    all: a mis-paste, a duplicate, a photograph of the wrong page. It asks first, then
+    removes the thing <em>and</em> every path drawn to it, so nothing is left pointing at
+    a gap. It also offers an <b>Undo</b>, and Notion keeps the page in its own trash for
+    30 days beyond that. Do your deleting here rather than in Notion: deleting a page
+    directly there strands any path that referenced it, and Silva is the only side that
+    knows what to tidy up.
+  </p>
   <p>
     One line sits beside the passage, and it's the single exception worth explaining:
     <b>where did you encounter this?</b> Unlike a clearing — which you can only recognise
@@ -360,24 +389,28 @@
     of the record, not the connection itself, and it isn't optional: Silva won't let you
     save a path, or edit one down, to an empty why. A path with no reason attached is
     exactly the kind of empty link-everything-to-everything graph this view exists to
-    avoid. Every path you've walked, plus every kept thing, renders as an actual graph:
+    avoid. Every path you have walked, plus every kept thing, renders as <b>the crossing</b> — the one place they all meet:
     clustered by clearing, connected by solid lines.
   </p>
   <p>
     Look closely and you may also see faint, dashed <span class="oxblood">oxblood</span>
-    threads — <b>mycorrhiza</b>, the <b>underground</b> layer this view is really about.
+    threads — labelled <b>unspoken thread</b> in the key, and called <b>mycorrhiza</b>
+    below the surface: the <b>underground</b> layer this view is really about.
     These are things Silva noticed are quietly similar but
-    you never explicitly connected — real, but unasserted. They're not clickable from
-    the graph; the only way to act on one is if it surfaces as a
+    you never explicitly connected — real, but unasserted. They only exist once
+    <b>Let Silva notice things</b> is on in the Hearth (that's the one-time ~25 MB model
+    download), so until then the key won't mention them and the drawing won't have any —
+    solid green paths are the whole picture. They're not clickable from
+    the crossing; the only way to act on one is if it surfaces as a
     <a href="#provocations">provocation</a> and you accept it, which is the one and only
     way a mycorrhizal thread becomes a real path. Nothing in Silva promotes one on its
     own. When you see that colour, you're looking at something the app noticed and you
     haven't yet — an invitation, not a fact.
   </p>
   <p>
-    The whole-forest graph is an overview; for the question you actually have day to
+    The crossing is an overview of the whole forest; for the question you actually have day to
     day — <em>what is this near?</em> — use the neighbourhood panel on the thing itself
-    (see <a href="#forest">Forest</a>) instead of hunting for a node in the graph.
+    (see <a href="#forest">Forest</a>) instead of hunting for a node in the crossing.
   </p>
 
   <h2 id="roots">Roots — what a kept thing came from</h2>
@@ -388,6 +421,16 @@
     itself here too — not a note on any one passage, but on the book, the person, the
     film as a whole. Its title, author and kind are all editable here too, corrected as
     easily as anything else in the collection.
+  </p>
+  <p>
+    At the head of the list sits <b>the rootstock</b> — the same drawing as
+    <a href="#paths">the crossing</a>, and deliberately so: one picture of the forest
+    under two different groupings. Where the crossing gathers things by the clearings
+    you coined and joins them with the paths you walked, the rootstock gathers them
+    under the source each came from, with a spoke back to the root it grew out of.
+    Things with <em>no</em> source aren't drawn at all — most things never get one, and
+    a "no source" hub would be the biggest thing on screen while being the one thing the
+    view isn't about. Turn it off under <b>What's shown</b> in the Hearth.
   </p>
   <p>
     If a source has a <b>cover</b>, it's shown here — small beside its name in the list,
@@ -491,10 +534,10 @@
   </div>
   <div class="practice">
     <b>Turn things off in the Hearth rather than working around them</b>
-    The walk, the graph and provocations are each their own toggle under
+    The walk, the crossing, the rootstock and provocations are each their own toggle under
     <b>What's shown</b> — nothing there changes what's kept, only what's visible. If the
     walk feels like one more thing to get through rather than an invitation, turn it off;
-    the forest below it is unaffected either way. Same for the graph, and for
+    the forest below it is unaffected either way. Same for the crossing, and for
     provocations entirely — off just means the silence that's already the app's default
     state the rest of the time.
   </div>

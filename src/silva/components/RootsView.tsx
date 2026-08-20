@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Button, Field, TextAreaField } from '../../ds'
+import { Button, Field, TextAreaField, ConfirmModal } from '../../ds'
 import type { Thing } from '../lib/notion'
 import type { Locus } from '../lib/loci'
 import type { Source, SourceKind } from '../lib/sources'
 import { orderWithinSource } from '../lib/sources'
 import { SpecimenPlate } from './SpecimenPlate'
+import { RootstockGraph } from './RootstockGraph'
 import styles from './RootsView.module.css'
 
 export interface RootsViewProps {
@@ -12,6 +13,12 @@ export interface RootsViewProps {
   sources: Source[]
   loci: Locus[]
   onEditThing: (id: string, patch: Partial<Thing>, sourceInput?: string) => void
+  onReleaseThing: (id: string) => void
+  onDeleteThing: (id: string) => void
+  onDeleteSource: (id: string) => void
+  /** Hearth's "Show the rootstock" — on by default, exactly like the
+   *  crossing at the head of Paths. */
+  showRootstock?: boolean
   onSeen: (id: string) => void
   onEditSource: (id: string, patch: Partial<Source>) => void
 }
@@ -48,7 +55,7 @@ type Screen = { kind: 'list' } | { kind: 'detail'; sourceId: string }
  * rather than by thing, same as Clearings is "what else belongs here"
  * reached by locus.
  */
-export function RootsView({ things, sources, loci, onEditThing, onSeen, onEditSource }: RootsViewProps) {
+export function RootsView({ things, sources, loci, onEditThing, onReleaseThing, onDeleteThing, onDeleteSource, onSeen, onEditSource, showRootstock = true }: RootsViewProps) {
   const [screen, setScreen] = useState<Screen>({ kind: 'list' })
   const locusById = useMemo(() => new Map(loci.map((l) => [l.id, l])), [loci])
 
@@ -69,6 +76,7 @@ export function RootsView({ things, sources, loci, onEditThing, onSeen, onEditSo
   if (screen.kind === 'list') {
     return (
       <div className={styles.wrap}>
+        {showRootstock && <RootstockGraph things={things} sources={sources} />}
         {usedSources.length === 0 ? (
           <p className={styles.empty}>
             Nothing kept has a source yet. Name where something came from when you keep
@@ -121,6 +129,9 @@ export function RootsView({ things, sources, loci, onEditThing, onSeen, onEditSo
       locusById={locusById}
       onBack={() => setScreen({ kind: 'list' })}
       onEditThing={onEditThing}
+      onReleaseThing={onReleaseThing}
+      onDeleteThing={onDeleteThing}
+      onDeleteSource={onDeleteSource}
       onSeen={onSeen}
       onEditSource={onEditSource}
     />
@@ -133,6 +144,9 @@ function SourceDetail({
   locusById,
   onBack,
   onEditThing,
+  onReleaseThing,
+  onDeleteThing,
+  onDeleteSource,
   onSeen,
   onEditSource,
 }: {
@@ -141,6 +155,9 @@ function SourceDetail({
   locusById: Map<string, Locus>
   onBack: () => void
   onEditThing: (id: string, patch: Partial<Thing>, sourceInput?: string) => void
+  onReleaseThing: (id: string) => void
+  onDeleteThing: (id: string) => void
+  onDeleteSource: (id: string) => void
   onSeen: (id: string) => void
   onEditSource: (id: string, patch: Partial<Source>) => void
 }) {
@@ -149,6 +166,7 @@ function SourceDetail({
   const [author, setAuthor] = useState(source.author)
   const [kind, setKind] = useState<SourceKind | ''>(source.kind ?? '')
   const [notes, setNotes] = useState(source.notes)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   function startEditing() {
     setTitle(source.title)
@@ -186,7 +204,13 @@ function SourceDetail({
             onChange={(e) => setNotes(e.target.value)}
             rows={3}
           />
+          {/* Delete sits apart on the left, away from the Cancel/Save pair a
+           *  thumb travels to — destructive first in the source order so a
+           *  screen reader meets it before the ordinary way out, but never
+           *  adjacent to the button you press to finish an edit. */}
           <div className={styles.actions}>
+            <Button variant="ghost" onClick={() => setConfirmingDelete(true)}>Delete this source</Button>
+            <span className={styles.actionsSpacer} />
             <Button variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
             <Button
               disabled={!title.trim()}
@@ -225,11 +249,30 @@ function SourceDetail({
               source={source}
               locusNames={thing.lociIds.map((id) => locusById.get(id)?.name).filter((n): n is string => Boolean(n))}
               onEdit={onEditThing}
+              onRelease={onReleaseThing}
+              onDelete={onDeleteThing}
               onSeen={onSeen}
             />
           ))}
         </div>
       </section>
+
+      <ConfirmModal
+        isOpen={confirmingDelete}
+        title="Delete this source"
+        message={
+          passages.length > 0
+            ? `"${source.title || 'Untitled'}" will be deleted. The ${passages.length} thing${passages.length === 1 ? '' : 's'} from it stay exactly where they are — they simply stop saying where they came from.`
+            : `"${source.title || 'Untitled'}" will be deleted. Nothing came from it, so nothing else changes.`
+        }
+        confirmText="Delete"
+        variant="danger"
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={() => {
+          setConfirmingDelete(false)
+          onDeleteSource(source.id)
+        }}
+      />
     </div>
   )
 }

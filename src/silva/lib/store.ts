@@ -439,6 +439,78 @@ export class SilvaStore {
     return toLocus(page as { id: string; properties: Record<string, unknown> })
   }
 
+  /**
+   * Deletes a thing outright — Notion's reversible `archived: true`, so it
+   * lands in Notion's own trash and can be restored there for 30 days.
+   *
+   * Distinct from releasing, and deliberately so: releasing is *compost*,
+   * the thing stays in the collection with `State = Released`. This is for
+   * what should never have been kept at all — a mis-paste, a duplicate, a
+   * photograph of the wrong page.
+   *
+   * Callers must archive any Path that referenced it first (App.tsx's
+   * `handleDeleteThing`); a path's ends live on the Paths side, so nothing
+   * here can reach them, and leaving them behind is what strands a path
+   * with a dangling end.
+   */
+  async archiveThing(id: string): Promise<void> {
+    if (this.useDemo()) {
+      demoThings = demoThings.filter((thing) => thing.id !== id)
+      persistDemo()
+      return
+    }
+
+    if (!this.thingsDbId) {
+      throw new SilvaStoreError('No Things database configured.', 0)
+    }
+
+    await this.request(`pages/${id}`, 'PATCH', { archived: true })
+  }
+
+  /**
+   * Puts an archived thing back — the undo behind the delete toast.
+   *
+   * Takes the whole Thing rather than an id because the two backing stores
+   * need different halves of it: live Notion only needs the id (the row is
+   * still there, just archived), while the demo store removed the row
+   * outright and has to be handed it back. One call, honest in both modes.
+   */
+  async unarchiveThing(thing: Thing): Promise<void> {
+    if (this.useDemo()) {
+      if (!demoThings.some((t) => t.id === thing.id)) demoThings = [thing, ...demoThings]
+      persistDemo()
+      return
+    }
+    await this.request(`pages/${thing.id}`, 'PATCH', { archived: false })
+  }
+
+  /** Same, for a path archived alongside the thing it connected. */
+  async unarchivePath(path: Path): Promise<void> {
+    if (this.useDemo()) {
+      if (!demoPaths.some((p) => p.id === path.id)) demoPaths = [path, ...demoPaths]
+      persistDemo()
+      return
+    }
+    await this.request(`pages/${path.id}`, 'PATCH', { archived: false })
+  }
+
+  /** Same `archived: true` convention. Callers must clear `sourceId` from
+   *  any Thing pointing at it first (App.tsx's `handleDeleteSource`) —
+   *  the relation lives on the Things side, exactly like a locus. */
+  async archiveSource(id: string): Promise<void> {
+    if (this.useDemo()) {
+      demoSources = demoSources.filter((source) => source.id !== id)
+      persistDemo()
+      return
+    }
+
+    if (!this.sourcesDbId) {
+      throw new SilvaStoreError('No Sources database configured.', 0)
+    }
+
+    await this.request(`pages/${id}`, 'PATCH', { archived: true })
+  }
+
   /** Notion's reversible "delete" (archived: true, same convention every
    *  app in this repo uses — see e.g. WhereItWent's notionClient.js).
    *  Callers must strip the id from any Thing's `lociIds` themselves first

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Field, TextAreaField } from '../../ds'
+import { Button, Field, TextAreaField, ConfirmModal } from '../../ds'
 import type { Thing, ThingKind } from '../lib/notion'
 import type { Source } from '../lib/sources'
 import { inferKind } from '../lib/kindInference'
@@ -22,6 +22,13 @@ export interface SpecimenPlateProps {
    *  actually touched the Source field, so a save that never opened it can't
    *  accidentally clear an existing source. */
   onEdit: (id: string, patch: Partial<Thing>, sourceInput?: string) => void
+  /** Lets go of a kept thing from wherever it is being read. Optional so a
+   *  surface can present a plate as read-only; every surface that shows a
+   *  kept thing currently passes it. */
+  onRelease?: (id: string) => void
+  /** Deletes the thing outright, with the cleanup Notion cannot do on its
+   *  own (App.tsx's `handleDeleteThing`). Optional, same as onRelease. */
+  onDelete?: (id: string) => void
   /** Called once the plate has genuinely been looked at, not merely rendered
    *  (see useDwell). Both the walk and the scroll pass this, so the history
    *  accrues from all reading rather than only from the ritual. */
@@ -46,11 +53,14 @@ export function SpecimenPlate({
   source,
   locusNames = [],
   onEdit,
+  onRelease,
+  onDelete,
   onSeen,
   children,
 }: SpecimenPlateProps) {
   const [editing, setEditing] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   // Which view — photo or transcribed text — this thing last showed. Only
   // meaningful once both exist; defaults to text (a passage, set to be
   // read) the first time, since the image is supporting evidence for it,
@@ -218,7 +228,36 @@ export function SpecimenPlate({
       <div className={styles.plateActions}>
         <Button size="sm" variant="ghost" onClick={startEditing}>Edit</Button>
         <Button size="sm" variant="ghost" onClick={copyBody}>{copied ? 'Copied' : 'Copy'}</Button>
+        {/* The way out of the forest. Without it, "compost, not debt" only
+         *  applied before a thing was kept — after that the sole way to
+         *  remove anything was deleting it in Notion, which is the one route
+         *  that strands a path with a dangling end. No confirm, because
+         *  release is the one action here that already offers a real way
+         *  back (App.tsx's undo toast restores the exact prior state). */}
+        {onRelease && (
+          <Button size="sm" variant="ghost" onClick={() => onRelease(thing.id)}>Release</Button>
+        )}
+        {/* Last, and the only one that asks first — the order runs from
+         *  harmless to irreversible, so the sharp edge is never where a
+         *  thumb lands by accident. */}
+        {onDelete && (
+          <Button size="sm" variant="ghost" onClick={() => setConfirmingDelete(true)}>Delete</Button>
+        )}
       </div>
+      {onDelete && (
+        <ConfirmModal
+          isOpen={confirmingDelete}
+          title="Delete this thing"
+          message="This leaves the collection for good, along with any path drawn to it. Notion keeps it in its own trash for 30 days if you need it back. To simply let it go instead, use Release — it stays in the collection as compost."
+          confirmText="Delete"
+          variant="danger"
+          onCancel={() => setConfirmingDelete(false)}
+          onConfirm={() => {
+            setConfirmingDelete(false)
+            onDelete(thing.id)
+          }}
+        />
+      )}
       {children}
     </article>
   )

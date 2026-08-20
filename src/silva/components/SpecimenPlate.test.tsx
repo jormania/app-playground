@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { SpecimenPlate } from './SpecimenPlate'
 import type { Thing } from '../lib/notion'
 import { getLinkPreview } from '../lib/linkPreviewCache'
@@ -83,5 +84,37 @@ describe('SpecimenPlate — a link', () => {
   it('renders nothing link-related for a thing with no link', () => {
     render(<SpecimenPlate thing={thing()} {...handlers} />)
     expect(screen.queryByRole('link')).toBeNull()
+  })
+})
+
+describe('SpecimenPlate — letting go of a kept thing', () => {
+  // Until this existed, a kept thing could only be removed by deleting it
+  // in Notion — the one route that strands a path with a dangling end.
+  it('releases straight away, since the undo toast is the way back', async () => {
+    const user = userEvent.setup()
+    const onRelease = vi.fn()
+    render(<SpecimenPlate thing={thing()} {...handlers} onRelease={onRelease} />)
+
+    await user.click(screen.getByRole('button', { name: 'Release' }))
+    expect(onRelease).toHaveBeenCalledWith('a')
+  })
+
+  it('confirms before deleting, and says what else goes with it', async () => {
+    const user = userEvent.setup()
+    const onDelete = vi.fn()
+    render(<SpecimenPlate thing={thing()} {...handlers} onDelete={onDelete} />)
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(onDelete).not.toHaveBeenCalled()
+    expect(screen.getByText(/along with any path drawn to it/i)).toBeTruthy()
+
+    await user.click(screen.getAllByRole('button', { name: 'Delete' }).pop()!)
+    expect(onDelete).toHaveBeenCalledWith('a')
+  })
+
+  it('offers neither action on a surface that passes no handler', () => {
+    render(<SpecimenPlate thing={thing()} {...handlers} />)
+    expect(screen.queryByRole('button', { name: 'Release' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
   })
 })

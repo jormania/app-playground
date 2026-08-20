@@ -404,17 +404,141 @@ export default function App() {
     )
     // Releasing is the one action that takes something out of view without
     // asking first — so it's the one action that offers a way back.
+    //
+    // The way back restores exactly what the thing was, rather than always
+    // sending it to the understory. That was harmless while only nursery
+    // arrivals could be released, and a trap the moment the Forest could:
+    // undoing on something kept a year ago would have dropped its `kept`
+    // date and put it in the understory, where `isExpired` counts from
+    // `encountered` — so it would have silently expired again on the very
+    // next load. Undo has to be an undo.
     if (released) {
-      notify('Released.', { undo: () => handleReturnToNursery(id) })
+      const previous: Partial<Thing> = { state: released.state, kept: released.kept }
+      // Says where it went, because "Released" alone invites the wrong
+      // guess. Releasing a *kept* thing does not return it to the nursery
+      // to wait again — it is compost, out of both views for good. That
+      // reading is easy to make once Release exists in the Forest as well,
+      // so the toast names the destination rather than just the act.
+      notify(
+        released.state === 'Kept' ? 'Released — it has left the forest.' : 'Released.',
+        { undo: () => handleRestore(id, previous) },
+      )
     }
   }
 
-  function handleReturnToNursery(id: string) {
-    const patch: Partial<Thing> = { state: 'Understory', kept: null }
+  /**
+   * Deletes a thing for good, and cleans up everything that pointed at it.
+   *
+   * The reason this lives in the app at all: deleting the page straight out
+   * of Notion leaves every Path that referenced it stranded with a dangling
+   * end, and leaves this device's caches holding bytes for something that no
+   * longer exists. Nothing in Notion can know to tidy either. Doing it here
+   * means one act covers all four:
+   *
+   *   1. the thing itself (archived — recoverable from Notion's trash)
+   *   2. every path with this thing at either end, archived too
+   *   3. the local caches keyed by it — vector, link preview, photograph
+   *   4. its reading history
+   *
+   * Deleting is the sharp edge, so unlike Release it asks first (each
+   * caller puts it behind a confirm) and offers no undo toast: Notion's own
+   * trash is the real safety net, and pretending to a local undo that
+   * couldn't restore the archived paths would be a worse promise.
+   */
+  function handleDeleteThing(id: string) {
+    const doomed = things.find((t) => t.id === id)
+    if (!doomed) return
+    const doomedIndex = things.findIndex((t) => t.id === id)
+    const doomedPaths = paths.filter((p) => p.fromId === id || p.toId === id)
+
     write(
-      () => setThings((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t))),
+      () => {
+        setThings((prev) => prev.filter((t) => t.id !== id))
+        if (doomedPaths.length > 0) {
+          const doomedIds = new Set(doomedPaths.map((p) => p.id))
+          setPaths((prev) => prev.filter((p) => !doomedIds.has(p.id)))
+        }
+      },
       async () => {
-        const updated = await store.updateThing(id, patch)
+        // Paths first: a path whose end is already gone is the exact orphan
+        // this is here to prevent, so it must not survive a partial failure.
+        for (const path of doomedPaths) {
+          if (!path.id.startsWith(DRAFT_PREFIX)) await store.archivePath(path.id)
+        }
+        if (!id.startsWith(DRAFT_PREFIX)) await store.archiveThing(id)
+      },
+      'That could not be deleted',
+    )
+
+    // Notably *not* pruning the local caches here, which is what makes this
+    // undo honest rather than half of one. A deleted thing's photograph
+    // lives only in this device's IndexedDB (photoStore.ts) — reclaiming it
+    // now would make the bytes unrecoverable while the toast still offered
+    // to bring the thing back. The load-time prunes reclaim it on the next
+    // start instead, which is exactly the housekeeping they exist for.
+    notify(
+      doomedPaths.length > 0
+        ? `Deleted, with ${doomedPaths.length} path${doomedPaths.length === 1 ? '' : 's'}.`
+        : 'Deleted.',
+      { undo: () => handleUndelete(doomed, doomedIndex, doomedPaths) },
+    )
+  }
+
+  /** Puts a deleted thing back where it was, with every path that went with
+   *  it. The thing is restored before its paths, so no path is ever live
+   *  again while the end it points at is still archived. */
+  function handleUndelete(thing: Thing, index: number, restoredPaths: Path[]) {
+    write(
+      () => {
+        setThings((prev) => {
+          const next = [...prev]
+          next.splice(Math.min(index, next.length), 0, thing)
+          return next
+        })
+        if (restoredPaths.length > 0) setPaths((prev) => [...restoredPaths, ...prev])
+      },
+      async () => {
+        if (!thing.id.startsWith(DRAFT_PREFIX)) await store.unarchiveThing(thing)
+        for (const path of restoredPaths) {
+          if (!path.id.startsWith(DRAFT_PREFIX)) await store.unarchivePath(path)
+        }
+      },
+      'That could not be put back',
+    )
+  }
+
+  /**
+   * Deletes a source, detaching it from anything that came from it.
+   *
+   * The things themselves are never touched beyond losing their `sourceId` —
+   * a source is where something came from, not what it is, so removing the
+   * provenance must not remove the passage.
+   */
+  function handleDeleteSource(id: string) {
+    const attached = things.filter((t) => t.sourceId === id)
+
+    write(
+      () => {
+        setSources((prev) => prev.filter((s) => s.id !== id))
+        setThings((prev) => prev.map((t) => (t.sourceId === id ? { ...t, sourceId: null } : t)))
+      },
+      async () => {
+        for (const thing of attached) {
+          if (!thing.id.startsWith(DRAFT_PREFIX)) await store.updateThing(thing.id, { sourceId: null })
+        }
+        if (!id.startsWith(DRAFT_PREFIX)) await store.archiveSource(id)
+      },
+      'That source could not be deleted',
+    )
+  }
+
+  /** Puts a released thing back exactly as it was — the undo behind the
+   *  release toast, for a nursery arrival and a kept thing alike. */
+  function handleRestore(id: string, previous: Partial<Thing>) {
+    write(
+      () => setThings((prev) => prev.map((t) => (t.id === id ? { ...t, ...previous } : t))),
+      async () => {
+        const updated = await store.updateThing(id, previous)
         setThings((prev) => prev.map((t) => (t.id === id ? updated : t)))
       },
       'That could not be put back',
@@ -903,6 +1027,7 @@ export default function App() {
               things={nurseryThings}
               onKeep={handleKeep}
               onRelease={handleRelease}
+              onDelete={handleDeleteThing}
             />
           </>
         ) : view === 'forest' ? (
@@ -914,6 +1039,8 @@ export default function App() {
             vectorsById={vectorsById}
             seen={seen}
             onEdit={handleEditThing}
+            onRelease={handleRelease}
+            onDelete={handleDeleteThing}
             onSeen={markSeen}
             onMakePath={handleMakePath}
             showWalk={config.showWalk}
@@ -947,8 +1074,12 @@ export default function App() {
             sources={sources}
             loci={loci}
             onEditThing={handleEditThing}
+            onReleaseThing={handleRelease}
+            onDeleteThing={handleDeleteThing}
+            onDeleteSource={handleDeleteSource}
             onSeen={markSeen}
             onEditSource={handleEditSource}
+            showRootstock={config.showRootstock}
           />
         ) : view === 'forage' ? (
           <ForageView things={things} sources={sources} vectorsById={vectorsById} />

@@ -17,6 +17,8 @@ export interface ForestViewProps {
   vectorsById: Map<string, Float32Array>
   seen: SeenMap
   onEdit: (id: string, patch: Partial<Thing>, sourceInput?: string) => void
+  onRelease: (id: string) => void
+  onDelete: (id: string) => void
   onSeen: (id: string) => void
   onMakePath: (fromId: string, toId: string, why: string) => void
   /** Settings' "Show the walk" — on by default. Off just means the Forest is
@@ -45,6 +47,8 @@ export function ForestView({
   vectorsById,
   seen,
   onEdit,
+  onRelease,
+  onDelete,
   onSeen,
   onMakePath,
   showWalk = true,
@@ -68,6 +72,8 @@ export function ForestView({
         source={thing.sourceId ? sourceById.get(thing.sourceId) : undefined}
         locusNames={thing.lociIds.map((id) => locusById.get(id)?.name).filter((n): n is string => Boolean(n))}
         onEdit={onEdit}
+        onRelease={onRelease}
+        onDelete={onDelete}
         onSeen={onSeen}
       >
         <Neighbourhood

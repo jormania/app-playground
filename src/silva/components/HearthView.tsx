@@ -114,10 +114,16 @@ export function HearthView({ config, onChange, indexing = null, themeChoice, onT
           onChange={(e) => onChange({ showWalk: e.target.checked })}
         />
         <SettingsToggle
-          label="Show the graph"
-          hint="The whole forest drawn at once, at the head of Paths. Off leaves the list of paths you've walked and the form for walking a new one — the paths themselves are untouched."
+          label="Show the crossing"
+          hint="Where every path you have walked crosses — the whole forest drawn at once, at the head of Paths. Off leaves the list of paths you've walked and the form for walking a new one — the paths themselves are untouched."
           checked={config.showGraph}
           onChange={(e) => onChange({ showGraph: e.target.checked })}
+        />
+        <SettingsToggle
+          label="Show the rootstock"
+          hint="The crossing's twin, at the head of Roots — the same drawing, gathering what you've kept under the source each thing came from. Off leaves the list of sources and everything in them untouched."
+          checked={config.showRootstock}
+          onChange={(e) => onChange({ showRootstock: e.target.checked })}
         />
         <SettingsToggle
           label="Let Silva offer provocations"

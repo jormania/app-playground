@@ -85,17 +85,29 @@ export function TodaysWalk({ things, seen, renderThing }: TodaysWalkProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fixed for the day, deliberately not reactive to `seen`
   }, [])
 
+  // Resolved against the *live* collection on every render, not just at
+  // mount. The memo above is deliberately non-reactive so the walk stays the
+  // same set all day — but that also froze the Thing objects, so something
+  // deleted or released mid-session went on being walked through, and a
+  // deleted one rendered a plate for a thing that no longer existed. Keeping
+  // the chosen *ids* fixed while re-resolving them each render preserves
+  // "the same walk all day" without preserving things that have gone.
+  const liveById = new Map(things.map((t) => [t.id, t]))
+  const walkNow = walk
+    .map((t) => liveById.get(t.id))
+    .filter((t): t is Thing => Boolean(t) && t!.state === 'Kept')
+
   const finished = doneOn === today()
 
   useEffect(() => {
-    if (index >= walk.length && walk.length > 0 && !finished) {
+    if (index >= walkNow.length && walkNow.length > 0 && !finished) {
       const date = today()
       writeJson(DONE_KEY, date)
       setDoneOn(date)
     }
-  }, [index, walk.length, finished])
+  }, [index, walkNow.length, finished])
 
-  if (!walkIsWorthwhile(things) || walk.length === 0) return null
+  if (!walkIsWorthwhile(things) || walkNow.length === 0) return null
 
   if (finished) {
     return (
@@ -107,14 +119,14 @@ export function TodaysWalk({ things, seen, renderThing }: TodaysWalkProps) {
     )
   }
 
-  const current = walk[Math.min(index, walk.length - 1)]
-  const isLast = index === walk.length - 1
+  const current = walkNow[Math.min(index, walkNow.length - 1)]
+  const isLast = index === walkNow.length - 1
 
   return (
     <section className={styles.wrap} aria-label="The walk">
       <div className={styles.head}>
         <span className={styles.eyebrow}>The walk</span>
-        <span className={styles.position}>{index + 1} of {walk.length}</span>
+        <span className={styles.position}>{index + 1} of {walkNow.length}</span>
       </div>
 
       {renderThing(current)}
@@ -128,7 +140,7 @@ export function TodaysWalk({ things, seen, renderThing }: TodaysWalkProps) {
         >
           Back
         </Button>
-        <Button size="sm" variant="outline" onClick={() => setIndex(walk.length)}>
+        <Button size="sm" variant="outline" onClick={() => setIndex(walkNow.length)}>
           End the walk
         </Button>
         <Button size="sm" onClick={() => setIndex((i) => i + 1)}>

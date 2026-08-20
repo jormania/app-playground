@@ -7,9 +7,9 @@ import {
   pathsToEdges,
   computeMycorrhiza,
   computeViewBox,
-  CLUSTER_LABEL_RISE,
+  clusterLabelY, clusterLabelText,
 } from '../lib/graph'
-import styles from './UndergroundGraph.module.css'
+import styles from './graphs.module.css'
 
 export interface UndergroundGraphProps {
   things: Thing[]
@@ -68,8 +68,8 @@ export function UndergroundGraph({ things, loci, paths, vectorsById }: Undergrou
   if (layout.nodes.length === 0) {
     return (
       <div className={styles.wrap}>
-        <h3 className={styles.heading}>The graph</h3>
-        <p className={styles.empty}>Nothing kept yet — the graph fills in as you keep things.</p>
+        <h3 className={styles.heading}>The crossing</h3>
+        <p className={styles.empty}>Nothing kept yet — the crossing fills in as you keep things.</p>
       </div>
     )
   }
@@ -79,16 +79,23 @@ export function UndergroundGraph({ things, loci, paths, vectorsById }: Undergrou
   return (
     <div className={styles.wrap}>
       <div className={styles.headingRow}>
-        <h3 className={styles.heading}>The graph</h3>
+        <h3 className={styles.heading}>The crossing</h3>
         <div className={styles.legend}>
           <span className={styles.legendItem}>
             <svg width="28" height="8" aria-hidden="true"><line x1="1" y1="4" x2="27" y2="4" className={styles.legendEdge} /></svg>
             path you walked
           </span>
-          <span className={styles.legendItem}>
-            <svg width="28" height="8" aria-hidden="true"><line x1="1" y1="4" x2="27" y2="4" className={styles.legendMycorrhiza} /></svg>
-            unspoken thread
-          </span>
+          {/* Only when there is actually one to see. Mycorrhiza needs the
+           *  embedding model, which is opt-in ("Let Silva notice things" in
+           *  the Hearth, a ~25 MB download) — so with it off, this key
+           *  described a line the drawing never contained, which is worse
+           *  than no key at all. */}
+          {fibers.length > 0 && (
+            <span className={styles.legendItem}>
+              <svg width="28" height="8" aria-hidden="true"><line x1="1" y1="4" x2="27" y2="4" className={styles.legendMycorrhiza} /></svg>
+              unspoken thread
+            </span>
+          )}
         </div>
       </div>
       <svg
@@ -99,11 +106,15 @@ export function UndergroundGraph({ things, loci, paths, vectorsById }: Undergrou
         // some screen readers resolve that by skipping them entirely. A
         // group keeps the summary label without contradicting its children.
         role="group"
-        aria-label="A graph of kept things, clustered by clearing, connected by paths"
+        aria-label="The crossing — kept things clustered by clearing, connected by the paths you have walked"
       >
         {layout.clusters.length > 1 && layout.clusters.map((c) => (
-          <text key={c.id} x={c.x} y={c.y - CLUSTER_LABEL_RISE} className={styles.clusterLabel} textAnchor="middle">
-            {c.label}
+          <text key={c.id} x={c.x} y={clusterLabelY(c)} className={styles.clusterLabel} textAnchor="middle">
+            {clusterLabelText(c)}
+            {/* Only when the caption was actually elided — otherwise this is
+              * the same string twice, and SVG <title> is what a reader
+              * hovers to recover the full name. */}
+            {clusterLabelText(c) !== c.label && <title>{c.label}</title>}
           </text>
         ))}
 

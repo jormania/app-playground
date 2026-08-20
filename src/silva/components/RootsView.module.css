@@ -193,3 +193,10 @@
   flex-direction: column;
   gap: var(--space-md);
 }
+
+/* Pushes the Cancel/Save pair to the right, leaving the destructive action
+   alone on the left rather than adjacent to the button you press to finish
+   an ordinary edit. */
+.actionsSpacer {
+  flex: 1;
+}

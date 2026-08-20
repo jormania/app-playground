@@ -42,7 +42,7 @@ function arrival(id: string, encounteredDaysAgo: number, over: Partial<Thing> = 
 
 describe('NurseryView', () => {
   it('names what lives here and the act that fills it when empty', () => {
-    render(<NurseryView things={[]} onKeep={vi.fn()} onRelease={vi.fn()} />)
+    render(<NurseryView things={[]} onKeep={vi.fn()} onRelease={vi.fn()} onDelete={vi.fn()} />)
     expect(screen.getByText(/nursery is empty/i)).toBeTruthy()
   })
 
@@ -50,7 +50,7 @@ describe('NurseryView', () => {
     const user = userEvent.setup()
     const onKeep = vi.fn()
     const onRelease = vi.fn()
-    render(<NurseryView things={[arrival('a', 1)]} onKeep={onKeep} onRelease={onRelease} />)
+    render(<NurseryView things={[arrival('a', 1)]} onKeep={onKeep} onRelease={onRelease} onDelete={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'Keep' }))
     expect(onKeep).toHaveBeenCalledWith('a', undefined)
@@ -64,7 +64,7 @@ describe('NurseryView', () => {
   it('keeps the one-tap Keep unless "+ Why" is opened', async () => {
     const user = userEvent.setup()
     const onKeep = vi.fn()
-    render(<NurseryView things={[arrival('a', 1)]} onKeep={onKeep} onRelease={vi.fn()} />)
+    render(<NurseryView things={[arrival('a', 1)]} onKeep={onKeep} onRelease={vi.fn()} onDelete={vi.fn()} />)
 
     expect(screen.queryByPlaceholderText(/why this/i)).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Keep' }))
@@ -74,7 +74,7 @@ describe('NurseryView', () => {
   it('carries a why typed before Keep into the keep itself', async () => {
     const user = userEvent.setup()
     const onKeep = vi.fn()
-    render(<NurseryView things={[arrival('a', 1)]} onKeep={onKeep} onRelease={vi.fn()} />)
+    render(<NurseryView things={[arrival('a', 1)]} onKeep={onKeep} onRelease={vi.fn()} onDelete={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: '+ Why' }))
     await user.type(screen.getByPlaceholderText(/why this/i), 'Rhymes with the tram passage')
@@ -87,7 +87,7 @@ describe('NurseryView', () => {
       <NurseryView
         things={[arrival('a', 1, { kind: 'Image', image: 'https://files.notion.so/photo.jpg' })]}
         onKeep={vi.fn()}
-        onRelease={vi.fn()}
+        onRelease={vi.fn()} onDelete={vi.fn()}
       />,
     )
     const img = container.querySelector('img') as HTMLImageElement
@@ -99,7 +99,7 @@ describe('NurseryView', () => {
       title: 'A Great Article', description: null, image: 'https://example.com/og.png', siteName: 'example.com', url: 'https://example.com/a',
     })
     const { container } = render(
-      <NurseryView things={[arrival('a', 1, { kind: 'Link', link: 'https://example.com/a' })]} onKeep={vi.fn()} onRelease={vi.fn()} />,
+      <NurseryView things={[arrival('a', 1, { kind: 'Link', link: 'https://example.com/a' })]} onKeep={vi.fn()} onRelease={vi.fn()} onDelete={vi.fn()} />,
     )
     await waitFor(() => expect(container.querySelector('img')).toBeTruthy())
     expect((container.querySelector('img') as HTMLImageElement).src).toBe('https://example.com/og.png')
@@ -113,7 +113,7 @@ describe('NurseryView', () => {
       <NurseryView
         things={[arrival('a', 1, { kind: 'Image', body: '', image: 'https://files.notion.so/photo.jpg' })]}
         onKeep={vi.fn()}
-        onRelease={vi.fn()}
+        onRelease={vi.fn()} onDelete={vi.fn()}
       />,
     )
     expect(screen.getByAltText(/photographed page, not yet transcribed/i)).toBeTruthy()
@@ -124,15 +124,42 @@ describe('NurseryView', () => {
       <NurseryView
         things={[arrival('a', 1, { kind: 'Image', image: 'https://files.notion.so/photo.jpg' })]}
         onKeep={vi.fn()}
-        onRelease={vi.fn()}
+        onRelease={vi.fn()} onDelete={vi.fn()}
       />,
     )
     expect((container.querySelector('img') as HTMLImageElement).alt).toBe('')
   })
 
+  // Release is compost and needs no ceremony; delete is the sharp edge and
+  // is the one action here that asks first.
+  it('confirms before deleting, and distinguishes it from releasing', async () => {
+    const user = userEvent.setup()
+    const onDelete = vi.fn()
+    const onRelease = vi.fn()
+    render(<NurseryView things={[arrival('a', 1)]} onKeep={vi.fn()} onRelease={onRelease} onDelete={onDelete} />)
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(onDelete).not.toHaveBeenCalled()
+    expect(screen.getByText(/never enters the collection at all/i)).toBeTruthy()
+
+    await user.click(screen.getAllByRole('button', { name: 'Delete' }).pop()!)
+    expect(onDelete).toHaveBeenCalledWith('a')
+    expect(onRelease).not.toHaveBeenCalled()
+  })
+
+  it('backs out of a delete without touching anything', async () => {
+    const user = userEvent.setup()
+    const onDelete = vi.fn()
+    render(<NurseryView things={[arrival('a', 1)]} onKeep={vi.fn()} onRelease={vi.fn()} onDelete={onDelete} />)
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(onDelete).not.toHaveBeenCalled()
+  })
+
   it('shows no thumbnail for an arrival with neither a photo nor a link', () => {
     const { container } = render(
-      <NurseryView things={[arrival('a', 1)]} onKeep={vi.fn()} onRelease={vi.fn()} />,
+      <NurseryView things={[arrival('a', 1)]} onKeep={vi.fn()} onRelease={vi.fn()} onDelete={vi.fn()} />,
     )
     expect(container.querySelector('img')).toBeNull()
   })
@@ -140,7 +167,7 @@ describe('NurseryView', () => {
   it('never sends a blank why', async () => {
     const user = userEvent.setup()
     const onKeep = vi.fn()
-    render(<NurseryView things={[arrival('a', 1)]} onKeep={onKeep} onRelease={vi.fn()} />)
+    render(<NurseryView things={[arrival('a', 1)]} onKeep={onKeep} onRelease={vi.fn()} onDelete={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: '+ Why' }))
     await user.type(screen.getByPlaceholderText(/why this/i), '   ')
@@ -152,7 +179,7 @@ describe('NurseryView', () => {
   // items to process'", and the season is "shown as a fade rather than a
   // number." A countdown rendered into the row was a direct contradiction.
   it('shows the season as opacity, never as visible text', () => {
-    render(<NurseryView things={[arrival('a', 45)]} onKeep={vi.fn()} onRelease={vi.fn()} seasonDays={90} />)
+    render(<NurseryView things={[arrival('a', 45)]} onKeep={vi.fn()} onRelease={vi.fn()} onDelete={vi.fn()} seasonDays={90} />)
     const row = screen.getByRole('listitem')
     // Halfway through a 90-day season: 0.4 + 0.5 * 0.6 = 0.7
     expect(Number(row.style.opacity)).toBeCloseTo(0.7, 1)
@@ -167,10 +194,10 @@ describe('NurseryView', () => {
 
   it('fades further as the season runs down', () => {
     const { rerender } = render(
-      <NurseryView things={[arrival('a', 1)]} onKeep={vi.fn()} onRelease={vi.fn()} seasonDays={90} />,
+      <NurseryView things={[arrival('a', 1)]} onKeep={vi.fn()} onRelease={vi.fn()} onDelete={vi.fn()} seasonDays={90} />,
     )
     const fresh = Number(screen.getByRole('listitem').style.opacity)
-    rerender(<NurseryView things={[arrival('a', 85)]} onKeep={vi.fn()} onRelease={vi.fn()} seasonDays={90} />)
+    rerender(<NurseryView things={[arrival('a', 85)]} onKeep={vi.fn()} onRelease={vi.fn()} onDelete={vi.fn()} seasonDays={90} />)
     expect(Number(screen.getByRole('listitem').style.opacity)).toBeLessThan(fresh)
   })
 
@@ -178,17 +205,17 @@ describe('NurseryView', () => {
   // opacity. Withholding it from a screen reader would be an accessibility
   // bug wearing a design principle's clothes.
   it('still exposes the remaining season to assistive tech', () => {
-    render(<NurseryView things={[arrival('a', 80)]} onKeep={vi.fn()} onRelease={vi.fn()} seasonDays={90} />)
+    render(<NurseryView things={[arrival('a', 80)]} onKeep={vi.fn()} onRelease={vi.fn()} onDelete={vi.fn()} seasonDays={90} />)
     expect(screen.getByLabelText(/10 days of this season left/i)).toBeTruthy()
   })
 
   it('honours a shorter configured season', () => {
-    render(<NurseryView things={[arrival('a', 20)]} onKeep={vi.fn()} onRelease={vi.fn()} seasonDays={30} />)
+    render(<NurseryView things={[arrival('a', 20)]} onKeep={vi.fn()} onRelease={vi.fn()} onDelete={vi.fn()} seasonDays={30} />)
     expect(screen.getByLabelText(/10 days of this season left/i)).toBeTruthy()
   })
 
   it('never shows a negative season for something already past its date', () => {
-    render(<NurseryView things={[arrival('a', 200)]} onKeep={vi.fn()} onRelease={vi.fn()} seasonDays={90} />)
+    render(<NurseryView things={[arrival('a', 200)]} onKeep={vi.fn()} onRelease={vi.fn()} onDelete={vi.fn()} seasonDays={90} />)
     expect(screen.getByLabelText(/fading out of the nursery/i)).toBeTruthy()
   })
 })

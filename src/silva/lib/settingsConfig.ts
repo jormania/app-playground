@@ -25,6 +25,11 @@ export interface SilvaConfig {
    *  it's wrong at the sizes most forests start at. The path list, the
    *  make-a-path form, and paths themselves are unaffected either way. */
   showGraph: boolean
+  /** Show "the rootstock" at the head of Roots — the crossing's twin,
+   *  grouping kept things by the source they came from. Its own toggle
+   *  rather than sharing the crossing's: they answer different questions,
+   *  and someone may well want one drawing and not the other. */
+  showRootstock: boolean
   /** Show "the walk" above the Forest's scroll. On by default; some people
    *  would rather the Forest just be the list, with nothing above it
    *  claiming their attention first. */
@@ -48,6 +53,7 @@ export const DEFAULT_CONFIG: SilvaConfig = {
   anthropicKey: '',
   mycorrhizaEnabled: false,
   showGraph: true,
+  showRootstock: true,
   showWalk: true,
   provocationsEnabled: true,
   autoTranscribe: false,

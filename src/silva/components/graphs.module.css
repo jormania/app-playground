@@ -196,3 +196,31 @@
   stroke: var(--color-accent);
   stroke-width: 3;
 }
+
+/* ── The rootstock ────────────────────────────────────────────────────────
+   Shares this stylesheet with the crossing on purpose: the two drawings are
+   the same picture under a different grouping (lib/graph.ts's `ringLayout`),
+   and giving them separate stylesheets is how they would quietly stop
+   looking alike. Only the spoke below is unique to the rootstock — the
+   crossing draws edges *between* nodes, this draws each thing back to the
+   root it grew from. */
+.spoke {
+  stroke: var(--color-border-2);
+  stroke-width: 1;
+  fill: none;
+}
+
+.spokeDim {
+  stroke: var(--color-border);
+  stroke-width: 1;
+  fill: none;
+  opacity: 0.35;
+}
+
+/* The root itself — a small open ring, so a source reads as a place the
+   things hang from rather than as one more thing. */
+.hub {
+  fill: var(--color-bg);
+  stroke: var(--color-accent);
+  stroke-width: 1.5;
+}

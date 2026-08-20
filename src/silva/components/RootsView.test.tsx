@@ -43,6 +43,9 @@ function source(id: string, over: Partial<Source> = {}): Source {
 
 const handlers = {
   onEditThing: vi.fn(),
+  onReleaseThing: vi.fn(),
+  onDeleteThing: vi.fn(),
+  onDeleteSource: vi.fn(),
   onSeen: vi.fn(),
   onEditSource: vi.fn(),
 }
@@ -148,6 +151,29 @@ describe('RootsView', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(onEditSource).toHaveBeenCalledWith('s1', { title: 'Meditations', author: '', kind: null, notes: '' })
+  })
+
+  // Deleting a source must never take the passages with it — a source is
+  // where something came from, not what it is.
+  it('confirms before deleting a source, and promises its things are safe', async () => {
+    const user = userEvent.setup()
+    const onDeleteSource = vi.fn()
+    renderView(
+      [thing('a', { sourceId: 's1' }), thing('b', { sourceId: 's1' })],
+      [source('s1', { title: 'Meditations' })],
+      { onDeleteSource },
+    )
+    await user.click(screen.getByRole('button', { name: /Meditations/ }))
+    await user.click(screen.getByRole('button', { name: 'Edit source' }))
+    await user.click(screen.getByRole('button', { name: 'Delete this source' }))
+
+    expect(onDeleteSource).not.toHaveBeenCalled()
+    expect(screen.getByText(/2 things from it stay exactly where they are/i)).toBeTruthy()
+
+    // Each plate below carries its own Delete; the dialog's is the last in
+    // the document.
+    await user.click(screen.getAllByRole('button', { name: 'Delete' }).pop()!)
+    expect(onDeleteSource).toHaveBeenCalledWith('s1')
   })
 
   it('will not save a blanked-out title', async () => {

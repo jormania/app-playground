@@ -254,7 +254,7 @@ threads) and Journal of Delights (three ways to read) already establish here.
 
 ### On the labels, and why they differ from these names
 
-Five surfaces carry a different word in the interface than in this document,
+Six labels carry a different word in the interface than in this document,
 and the reason is the same in each case: this document is prose, where the
 ecological metaphor can breathe, while a tab bar is seven words at 9.5px that
 have to be told apart at a glance.
@@ -265,6 +265,7 @@ have to be told apart at a glance.
 | Underground | **Paths** | The other half of that collision. It is also precisely the database it reads. "Underground" still names the latent mycorrhizal layer everywhere, which is the sense this document needs it for. |
 | Search | **Forage** | "Search" is the PKM word this app is defined against. Foraging is deliberate looking *within a place you already know* — which is what this surface is for, and why it isn't the point of the app. |
 | Sources | **Roots** | A source is what feeds a kept thing, the same relation a root has to what grows from it — and "Sources" reads like a bibliography tab, the library move this view exists not to be. |
+| The graph | **The crossing** | "Graph" is the one word in the app borrowed from the tooling rather than the forest, and it sat at the head of Paths naming the very thing paths *make*. A crossing is where paths meet, which is exactly what the drawing shows. |
 | Settings | **Hearth** | The household centre of a *silva rerum*, which was a family book before it was anything else. |
 
 The **stored** vocabulary is untouched: `State` is still `Understory · Kept ·
