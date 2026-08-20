@@ -24,6 +24,7 @@ function thing(id: string, body: string): Thing {
     image: null,
     link: null,
     koboBookmarkId: null,
+    arrived: null,
   }
 }
 

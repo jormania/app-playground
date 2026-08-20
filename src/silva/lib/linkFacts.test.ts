@@ -21,6 +21,7 @@ function thing(overrides: Partial<Thing> = {}): Thing {
     image: null,
     link: URL,
     koboBookmarkId: null,
+    arrived: null,
     ...overrides,
   }
 }

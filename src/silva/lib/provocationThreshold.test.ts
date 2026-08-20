@@ -13,7 +13,7 @@ function thing(patch: Partial<Thing>): Thing {
   return {
     id: 'x', handle: 'x', body: 'x', kind: null, state: 'Kept', sourceId: null,
     locator: '', encountered: '2026-01-01', kept: '2026-01-01', note: '',
-    lociIds: [], image: null, link: null, koboBookmarkId: null, ...patch,
+    lociIds: [], image: null, link: null, koboBookmarkId: null, arrived: null, ...patch,
   }
 }
 

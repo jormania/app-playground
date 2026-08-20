@@ -11,6 +11,7 @@
  */
 
 import initSqlJs, { type Database, type SqlJsStatic } from 'sql.js'
+import { normalizeIsbn } from './bookCover'
 // The wasm loading strategy differs by environment: a real browser needs an
 // explicit servable URL, since Vite rewrites the module's on-disk location —
 // sql.js's own "look next to me" default breaks after bundling. But under
@@ -48,6 +49,11 @@ export interface KoboHighlight {
   /** ISO date (YYYY-MM-DD), or null if Kobo's DateCreated column is absent
    *  or unparseable. */
   dateCreated: string | null
+  /** The book's ISBN as Kobo records it, or null when the column is absent
+   *  or holds something else — an exact key for a cover lookup
+   *  (lib/bookCover.ts), where a title match would happily return the wrong
+   *  edition of the wrong "Meditations". */
+  isbn: string | null
   /** Where in the book the highlight sits — the chapter's own title, or
    *  failing that a percentage through it. Empty when Kobo's file says
    *  neither (older firmware, or a bookmark with no chapter row). */
@@ -129,6 +135,7 @@ export async function parseKoboDatabase(bytes: Uint8Array): Promise<KoboHighligh
     const hasBookTitle = contentColumns.has('BookTitle')
     const hasTitle = contentColumns.has('Title')
     const hasAttribution = contentColumns.has('Attribution')
+    const hasIsbn = contentColumns.has('ISBN')
     const hasContentId = bookmarkColumns.has('ContentID')
     const hasChapterProgress = bookmarkColumns.has('ChapterProgress')
 
@@ -144,6 +151,7 @@ export async function parseKoboDatabase(bytes: Uint8Array): Promise<KoboHighligh
         b.VolumeID as volumeId,
         ${titleExpr} as bookTitle,
         ${hasAttribution ? 'c.Attribution' : '\'\''} as author,
+        ${hasIsbn ? 'c.ISBN' : '\'\''} as isbn,
         b.Text as text,
         ${hasAnnotation ? 'b.Annotation' : '\'\''} as annotation,
         ${hasDateCreated ? 'b.DateCreated' : 'NULL'} as dateCreated,
@@ -169,6 +177,7 @@ export async function parseKoboDatabase(bytes: Uint8Array): Promise<KoboHighligh
           volumeId: String(record.volumeId ?? ''),
           bookTitle,
           author: String(record.author ?? ''),
+          isbn: normalizeIsbn(record.isbn),
           text: String(record.text ?? ''),
           annotation: String(record.annotation ?? ''),
           dateCreated: normalizeKoboDate(record.dateCreated),

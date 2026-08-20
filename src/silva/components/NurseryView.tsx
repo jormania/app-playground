@@ -2,12 +2,17 @@ import { useState } from 'react'
 import { Button, ConfirmModal } from '../../ds'
 import { fadeRatio, daysRemaining, DEFAULT_SEASON_DAYS } from '../lib/understory'
 import type { Thing } from '../lib/notion'
+import type { Source } from '../lib/sources'
+import { groupNurseryBySource } from '../lib/nurseryGroups'
 import { usePhotoUrl } from './usePhotoUrl'
 import { useLinkPreview } from './useLinkPreview'
 import styles from './NurseryView.module.css'
 
 export interface NurseryViewProps {
   things: Thing[]
+  /** Only for the section headings — the nursery never *sets* a source.
+   *  Absent, it renders the flat list it always did. */
+  sources?: Source[]
   onKeep: (id: string, note?: string) => void
   onRelease: (id: string) => void
   onDelete: (id: string) => void
@@ -17,7 +22,7 @@ export interface NurseryViewProps {
 /** Unkept arrivals, each shown with its remaining season as a fade rather
  *  than a countdown number (SILVA.md: "the understory... with their
  *  remaining season shown as a fade rather than a number"). */
-export function NurseryView({ things, onKeep, onRelease, onDelete, seasonDays = DEFAULT_SEASON_DAYS }: NurseryViewProps) {
+export function NurseryView({ things, sources = [], onKeep, onRelease, onDelete, seasonDays = DEFAULT_SEASON_DAYS }: NurseryViewProps) {
   // Why this, right when you decide it matters — SILVA.md's Keep → Annotate
   // step, without making Keep itself wait on it. Collapsed by default so the
   // one-tap keep nobody wants to slow down stays one tap; only a row you
@@ -29,27 +34,54 @@ export function NurseryView({ things, onKeep, onRelease, onDelete, seasonDays = 
     return <p className={styles.empty}>The nursery is empty. Type or paste something to begin.</p>
   }
 
+  // A Kobo import lands a whole season's reading at once, and a flat list of
+  // three hundred rows is not something anyone decides about. Grouping is
+  // presentation only — nothing here sets or changes a source, and a nursery
+  // of typed captures renders exactly the list it always did.
+  const groups = groupNurseryBySource(things, sources)
+
+  const rowFor = (thing: Thing) => (
+    <NurseryRow
+      key={thing.id}
+      thing={thing}
+      seasonDays={seasonDays}
+      isOpen={openId === thing.id}
+      draft={drafts[thing.id] ?? ''}
+      onOpen={() => setOpenId(thing.id)}
+      onDraftChange={(value) => setDrafts((prev) => ({ ...prev, [thing.id]: value }))}
+      onKeep={() => {
+        const note = drafts[thing.id]?.trim()
+        onKeep(thing.id, note || undefined)
+        setOpenId(null)
+      }}
+      onRelease={() => onRelease(thing.id)}
+      onDelete={() => onDelete(thing.id)}
+    />
+  )
+
+  if (groups.length === 1 && !groups[0].source) {
+    return <ul className={styles.list}>{groups[0].things.map(rowFor)}</ul>
+  }
+
   return (
-    <ul className={styles.list}>
-      {things.map((thing) => (
-        <NurseryRow
-          key={thing.id}
-          thing={thing}
-          seasonDays={seasonDays}
-          isOpen={openId === thing.id}
-          draft={drafts[thing.id] ?? ''}
-          onOpen={() => setOpenId(thing.id)}
-          onDraftChange={(value) => setDrafts((prev) => ({ ...prev, [thing.id]: value }))}
-          onKeep={() => {
-            const note = drafts[thing.id]?.trim()
-            onKeep(thing.id, note || undefined)
-            setOpenId(null)
-          }}
-          onRelease={() => onRelease(thing.id)}
-          onDelete={() => onDelete(thing.id)}
-        />
+    <div className={styles.groups}>
+      {groups.map((group) => (
+        <section key={group.source?.id ?? 'unsourced'} className={styles.group}>
+          {group.source && (
+            // The specimen label's own voice — small caps, sepia, no chip:
+            // a heading over a drawer of cuttings, not a filter pill.
+            <h3 className={styles.groupHeading}>
+              <span className={styles.groupTitle}>{group.source.title}</span>
+              {group.source.author && <span className={styles.groupAuthor}>{group.source.author}</span>}
+              <span className={styles.groupCount}>
+                {group.things.length} {group.things.length === 1 ? 'thing' : 'things'}
+              </span>
+            </h3>
+          )}
+          <ul className={styles.list}>{group.things.map(rowFor)}</ul>
+        </section>
       ))}
-    </ul>
+    </div>
   )
 }
 

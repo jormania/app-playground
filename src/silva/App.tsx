@@ -734,6 +734,10 @@ export default function App() {
       image: null,
       link,
       koboBookmarkId: null,
+      // An optimistic draft has not reached Notion yet, so it has no
+      // `created_time` to read back — the season falls back to `encountered`
+      // until the real row lands, which for a typed capture is the same day.
+      arrived: null,
     }
     write(
       () => {
@@ -1123,6 +1127,7 @@ export default function App() {
             )}
             <NurseryView
               things={nurseryThings}
+              sources={sources}
               onKeep={handleKeep}
               onRelease={handleRelease}
               onDelete={handleDeleteThing}

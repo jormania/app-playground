@@ -50,21 +50,53 @@ export function daysSince(isoDate: string, today: Date = new Date()): number {
   return now - then
 }
 
+/**
+ * A thing's own date fields, as far as the season is concerned. `arrived` is
+ * optional so every existing caller — and every test fixture — still type-
+ * checks; absent, the season simply counts from `encountered` as it always
+ * did.
+ */
+export type SeasonDates = Pick<Thing, 'encountered'> & { arrived?: string | null }
+
+/**
+ * The day a thing's season starts: when it arrived in Silva, or failing that
+ * when it was encountered.
+ *
+ * These are the same day for anything typed, pasted or shared — you capture
+ * what you just met. They are years apart for a Kobo import, which
+ * back-dates `encountered` to the highlight's own date, and counting from
+ * *that* meant a season had already elapsed before the import finished: a
+ * year of reading was composted on the next load, unseen. A thing gets its
+ * full season in the understory no matter how old it is, exactly like
+ * anything typed in by hand — no special treatment either way.
+ *
+ * The later of the two, rather than always `arrived`, so a clock skew or a
+ * hand-edited future `encountered` can't hand something a shorter season
+ * than it should have.
+ */
+export function seasonStart(thing: SeasonDates): string {
+  const encountered = thing.encountered || ''
+  const arrived = thing.arrived || ''
+  if (!arrived) return encountered
+  if (!encountered) return arrived
+  return arrived > encountered ? arrived : encountered
+}
+
 /** Days left in the season before an understory thing expires. Can go
  *  negative once past the season — callers should clamp for display. */
 export function daysRemaining(
-  thing: Pick<Thing, 'encountered'>,
+  thing: SeasonDates,
   seasonDays: number = DEFAULT_SEASON_DAYS,
   today: Date = new Date(),
 ): number {
-  return seasonDays - daysSince(thing.encountered, today)
+  return seasonDays - daysSince(seasonStart(thing), today)
 }
 
 /** A thing is expired once its season has fully elapsed AND it's still
  *  sitting in the understory — a thing already Kept or Released is never
  *  "expired", the field is meaningless once it's left the understory. */
 export function isExpired(
-  thing: Pick<Thing, 'encountered' | 'state'>,
+  thing: SeasonDates & Pick<Thing, 'state'>,
   seasonDays: number = DEFAULT_SEASON_DAYS,
   today: Date = new Date(),
 ): boolean {
@@ -75,7 +107,7 @@ export function isExpired(
  *  understory view uses this to fade a row rather than show a countdown
  *  number, per SILVA.md's "shown as a fade rather than a number." */
 export function fadeRatio(
-  thing: Pick<Thing, 'encountered'>,
+  thing: SeasonDates,
   seasonDays: number = DEFAULT_SEASON_DAYS,
   today: Date = new Date(),
 ): number {

@@ -70,9 +70,20 @@ Every thing carries:
 | `note` | your annotation. Why this. What it rhymed with |
 | `loci` | relation → Loci, many, **never set at capture** |
 | `state` | Understory · Kept · Released |
+| *arrival* | not a property — Notion's own `created_time`, read back as the day it reached Silva |
 
 `encountered` and `kept` being separate is the whole ethic in two columns. A
 thing that was encountered but never kept never became yours.
+
+**The season counts from arrival, not from `encountered`.** They are the same
+day for anything typed, pasted or shared. They are years apart for a Kobo
+import, which back-dates `encountered` to the highlight's own date — and
+counting the season from *that* meant an import of old reading was already
+past its season the moment it landed, and was quietly composted on the next
+load, unseen. Silva reads Notion's own `created_time` (no schema property, and
+correct retroactively for every row) and counts from the later of the two, so
+anything imported gets the same full season in the understory as anything
+typed by hand. No special treatment in either direction.
 
 **A thing worth protecting: `Mine` gets no special treatment.** It sits in the
 same select, the same forest, the same walk, typeset on the identical plate as
@@ -251,7 +262,9 @@ threads) and Journal of Delights (three ways to read) already establish here.
   layout algorithm and does not care how large the forest gets — which the
   global ring layout very much does.
 - **The understory** — unkept arrivals, *labelled* **Nursery** in the app,
-  with their remaining season shown as a fade rather than a number.
+  with their remaining season shown as a fade rather than a number. Sectioned
+  by book once anything in it has a source (a Kobo import lands hundreds of
+  rows at once); a nursery of your own typed captures stays one flat list.
 - **Sources** — where a kept thing came from, *labelled* **Roots** in the
   app, given a real screen rather than only a filter in Forage. Only a
   source with something actually kept from it appears; its passages render
@@ -383,6 +396,26 @@ drag the file onto the page, nothing is uploaded, no desktop tool, no account.
   `body`, your annotation as `note`. It was one act of attention.
 - Dedupes on Kobo's own `BookmarkID`, so re-importing the same file is a no-op
   and importing every few weeks is the intended rhythm.
+- **Highlights arrive gathered by book.** A season's reading is hundreds of
+  rows, and a flat fading list of them is not something anyone decides about.
+  The nursery sections them under the book's title, author and count
+  (`lib/nurseryGroups.ts`) — presentation only: no field is set, no source
+  assigned, nothing reordered within a section. Your own unsourced captures
+  stay unheaded and first, and a nursery with no sourced things at all renders
+  the same flat list it always did.
+- **`Kind` is read from the highlight, not fixed.** Every import used to be a
+  `Passage`, which is already an inference — just a wrong one for a question
+  the book asks or a line of dialogue. `inferKind` gives the same starting
+  point Edit's **Suggest** offers, and is just as editable.
+- **Covers come from the ISBN.** `Cover` was the one field in the Sources
+  schema nothing ever filled. Kobo's `content` table carries the book's ISBN,
+  which makes it an exact lookup rather than a fuzzy title guess — a title
+  match on "Meditations" would cheerfully return the wrong edition of the
+  wrong book. Open Library serves covers at a URL derived from the ISBN, so
+  there is nothing to query and **no serverless function**: the URL is the
+  answer, and the browser probes it with a plain `<img>` before storing it, so
+  a book with no cover keeps an empty field rather than a permanently broken
+  image. Only ever *fills* a cover; never replaces one you chose.
 - **A highlight knows where in the book it sat.** `Bookmark.ContentID` names
   the chapter (as against `VolumeID`, the book), so the import fills `locator`
   with the chapter's own title — or, for the many EPUBs whose chapters are
@@ -494,7 +527,7 @@ Property names are exact. Four databases.
 | `Title` | title | the work's title |
 | `Author` | rich text | author, speaker, or empty |
 | `Kind` | select | `Book` · `Article` · `Film` · `Conversation` · `Song` · `Self` · `Unknown` |
-| `Cover` | files | optional cover image |
+| `Cover` | files | cover image — filled from the book's ISBN on import (external file, no upload), or by hand |
 | `Kobo Volume ID` | rich text | Kobo's `VolumeID`, the key the importer matches on |
 | `Notes` | rich text | your note on the source itself |
 
