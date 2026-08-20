@@ -76,9 +76,11 @@ export function PathsView({
           }}
         />
       ) : (
-        <Button size="sm" onClick={() => setMaking(true)} disabled={kept.length < 2}>
-          Walk a new path
-        </Button>
+        <div className={styles.intro}>
+          <Button size="sm" onClick={() => setMaking(true)} disabled={kept.length < 2}>
+            Walk a new path
+          </Button>
+        </div>
       )}
 
       {paths.length === 0 ? (

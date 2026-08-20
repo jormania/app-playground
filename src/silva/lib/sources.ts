@@ -88,3 +88,30 @@ export function patchSourceProps(patch: Partial<Source>): Record<string, unknown
   }
   return out
 }
+
+/** The first run of digits in a locator — "p. 142" reads as page 142,
+ *  "overheard on the 32 tram" reads as no page at all (a bus number isn't a
+ *  place in the book). Anything without one sorts after everything that has
+ *  one, so a source that mixes a few page numbers with a few non-numeric
+ *  locators still puts what it can order first. */
+function pageNumber(locator: string): number {
+  const match = locator.match(/\d+/)
+  return match ? parseInt(match[0], 10) : Number.POSITIVE_INFINITY
+}
+
+/** Things from one source, in the order they sit in it — SILVA.md's Locator
+ *  ("where in the source") used for the one thing it was always for, rather
+ *  than sitting on the specimen label as decoration. Falls back to the order
+ *  they were kept, which is the same fallback the app already used when
+ *  locator wasn't consulted at all. */
+export function orderWithinSource<T extends { locator: string; kept: string | null }>(things: T[]): T[] {
+  return [...things].sort((a, b) => {
+    const pa = pageNumber(a.locator)
+    const pb = pageNumber(b.locator)
+    // Two locator-less things are both Infinity, and Infinity - Infinity is
+    // NaN — an invalid comparator result that silently disables sorting
+    // rather than throwing, so the kept-order fallback below never ran.
+    if (pa !== pb) return pa - pb
+    return (a.kept || '').localeCompare(b.kept || '')
+  })
+}

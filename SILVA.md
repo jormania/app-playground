@@ -42,6 +42,10 @@ differences that matter:
 
 - **Keep** is a separate, later act from **Encounter**. Highlighting something
   on a Kobo is not keeping it (see *The understory*).
+- **Annotate** can happen right at the Keep tap, not only later in the forest:
+  the understory's Keep carries an optional, collapsed **+ Why** beside it —
+  say why this now, while it's still available, or say nothing and Keep stays
+  exactly as fast as it always was. Never a required step.
 - **Place** happens long after keeping, if ever, and is never required.
 - **Revisit** and **Connect** are where the app does its only real work.
 
@@ -203,7 +207,7 @@ cross this line and does not belong here.
 
 ## Views
 
-Four surfaces over one dataset — the pattern Loom (three views over one set of
+Five surfaces over one dataset — the pattern Loom (three views over one set of
 threads) and Journal of Delights (three ways to read) already establish here.
 
 - **The forest** — the default. One thing at a time, typeset to be read, not a
@@ -237,6 +241,14 @@ threads) and Journal of Delights (three ways to read) already establish here.
   global ring layout very much does.
 - **The understory** — unkept arrivals, *labelled* **Nursery** in the app,
   with their remaining season shown as a fade rather than a number.
+- **Sources** — where a kept thing came from, given a real screen rather than
+  only a filter in Forage. Only a source with something actually kept from it
+  appears; its passages render in the order they sit in it, from `locator`
+  when that reads as a page number, falling back to the order they were kept.
+  Same master-detail grammar as Clearings — a list of places, each opening to
+  what belongs in it — so this reads as the same kind of screen, not a new
+  one. Deliberately not a shelf: nothing here sorts, rates, or ranks a
+  source, and there is no way to browse one you haven't drawn from yet.
 
 ### On the labels, and why they differ from these names
 

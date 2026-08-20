@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { toSource, toNotionSourceProps, patchSourceProps } from './sources'
+import { toSource, toNotionSourceProps, patchSourceProps, orderWithinSource } from './sources'
 
 function fakePage(properties: Record<string, unknown>, id = 'source-1') {
   return { id, properties }
@@ -64,5 +64,45 @@ describe('patchSourceProps', () => {
   it('a koboVolumeId backfill writes ONLY Kobo Volume ID — never touches Title', () => {
     const props = patchSourceProps({ koboVolumeId: 'vol-456' })
     expect(Object.keys(props)).toEqual(['Kobo Volume ID'])
+  })
+})
+
+describe('orderWithinSource', () => {
+  function passage(id: string, locator: string, kept: string) {
+    return { id, locator, kept }
+  }
+
+  it('orders by the page number in the locator, not by when it was kept', () => {
+    const ordered = orderWithinSource([
+      passage('late-page', 'p. 200', '2026-01-01'),
+      passage('early-page', 'p. 12', '2026-06-01'),
+      passage('mid-page', 'p. 88', '2026-03-01'),
+    ])
+    expect(ordered.map((t) => t.id)).toEqual(['early-page', 'mid-page', 'late-page'])
+  })
+
+  it('falls back to kept order when nothing has a number', () => {
+    const ordered = orderWithinSource([
+      passage('second', 'overheard on the way out', '2026-02-01'),
+      passage('first', 'overheard at the door', '2026-01-01'),
+    ])
+    expect(ordered.map((t) => t.id)).toEqual(['first', 'second'])
+  })
+
+  // A source with a mix of paged and unplaced things still orders what it
+  // can — the paged ones lead, the rest trail in kept order.
+  it('puts locator-less things after every numbered one', () => {
+    const ordered = orderWithinSource([
+      passage('no-locator', '', '2026-01-01'),
+      passage('page-9', 'p. 9', '2026-05-01'),
+    ])
+    expect(ordered.map((t) => t.id)).toEqual(['page-9', 'no-locator'])
+  })
+
+  it('does not mutate the input array', () => {
+    const input = [passage('b', 'p. 2', '2026-01-01'), passage('a', 'p. 1', '2026-01-01')]
+    const copy = [...input]
+    orderWithinSource(input)
+    expect(input).toEqual(copy)
   })
 })

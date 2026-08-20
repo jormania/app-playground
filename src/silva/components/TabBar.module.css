@@ -16,7 +16,7 @@
   z-index: 20;
 
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(7, 1fr);
 
   /* Translucent so the forest floor shows through as you scroll under it —
      the one glassy surface in an otherwise flat, printed app, and only

@@ -15,6 +15,7 @@ import { IntakeField } from './components/IntakeField'
 import { KoboImportPanel } from './components/KoboImportPanel'
 import { ClearingsView } from './components/ClearingsView'
 import { PathsView } from './components/PathsView'
+import { SourcesView } from './components/SourcesView'
 import { ForageView } from './components/ForageView'
 import { ProvocationBanner } from './components/ProvocationBanner'
 import { HearthView } from './components/HearthView'
@@ -41,7 +42,7 @@ import { resolveSource } from './lib/sourceCapture'
 import { loadThemeChoice, saveThemeChoice, watchTheme, type ThemeChoice } from './lib/theme'
 import styles from './App.module.css'
 
-type View = 'forest' | 'nursery' | 'clearings' | 'paths' | 'forage' | 'hearth'
+type View = 'forest' | 'nursery' | 'clearings' | 'paths' | 'sources' | 'forage' | 'hearth'
 
 /** One list, two presentations: the segmented control on a desktop header and
  *  the bottom TabBar on a phone. The `value`s double as icon names in
@@ -51,6 +52,7 @@ const VIEWS: { value: View; label: string }[] = [
   { value: 'nursery', label: 'Nursery' },
   { value: 'clearings', label: 'Clearings' },
   { value: 'paths', label: 'Paths' },
+  { value: 'sources', label: 'Sources' },
   { value: 'forage', label: 'Forage' },
   { value: 'hearth', label: 'Hearth' },
 ]
@@ -342,13 +344,17 @@ export default function App() {
     })
   }, [])
 
-  function handleKeep(id: string) {
+  function handleKeep(id: string, note?: string) {
     // The one act SILVA.md calls "the field that means something" — it gets
     // the affirmative pulse. Release gets the lighter one just below: both
     // are decisions, but only one of them is a commitment.
     triggerHaptic('success')
     const today = todayIso()
-    const patch: Partial<Thing> = { state: 'Kept', kept: today }
+    // An optional why, offered right at the moment of deciding (the
+    // Nursery's "+ Why" toggle) rather than making the one-tap Keep wait on
+    // it. Omitted entirely when blank, so it never clobbers a note already
+    // on the thing.
+    const patch: Partial<Thing> = { state: 'Kept', kept: today, ...(note ? { note } : {}) }
     write(
       () => setThings((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t))),
       async () => {
@@ -448,6 +454,17 @@ export default function App() {
         setThings((prev) => prev.map((t) => (t.id === id ? updated : t)))
       },
       'That edit could not be saved',
+    )
+  }
+
+  function handleEditSource(id: string, patch: Partial<Source>) {
+    write(
+      () => setSources((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s))),
+      async () => {
+        const updated = await store.updateSource(id, patch)
+        setSources((prev) => prev.map((s) => (s.id === id ? updated : s)))
+      },
+      'That could not be saved',
     )
   }
 
@@ -804,6 +821,7 @@ export default function App() {
             value={view}
             onChange={(v) => setView(v as View)}
             options={VIEWS}
+            size="sm"
           />
         </div>
       </header>
@@ -891,6 +909,15 @@ export default function App() {
             onEditWhy={handleEditPathWhy}
             onRemove={handleRemovePath}
             showGraph={config.showGraph}
+          />
+        ) : view === 'sources' ? (
+          <SourcesView
+            things={things}
+            sources={sources}
+            loci={loci}
+            onEditThing={handleEditThing}
+            onSeen={markSeen}
+            onEditSource={handleEditSource}
           />
         ) : view === 'forage' ? (
           <ForageView things={things} sources={sources} vectorsById={vectorsById} />

@@ -62,6 +62,15 @@ const ICONS: Record<string, React.ReactNode> = {
       <circle cx="17.6" cy="16.4" r="2" />
     </>
   ),
+  // An open book — the one place a source is a place you stand in rather
+  // than a filter, so it gets the plainest possible mark for "a book".
+  sources: (
+    <>
+      <path d="M12 6.5c-1.8-1.3-4-2-6.5-2v13c2.5 0 4.7.7 6.5 2" />
+      <path d="M12 6.5c1.8-1.3 4-2 6.5-2v13c-2.5 0-4.7.7-6.5 2" />
+      <path d="M12 6.5v13" />
+    </>
+  ),
   forage: (
     <>
       <circle cx="10.5" cy="10.5" r="6.5" />

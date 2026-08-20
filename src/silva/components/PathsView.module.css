@@ -11,6 +11,14 @@
   max-width: 46ch;
 }
 
+/* .wrap is a flex column, which stretches children full-width by default —
+   fine for the graph and the row cards, wrong for a button that should hug
+   its own label. Same fix ClearingsView's .intro already applies. */
+.intro {
+  display: flex;
+  align-items: flex-start;
+}
+
 .form {
   display: flex;
   flex-direction: column;

@@ -50,9 +50,44 @@ describe('NurseryView', () => {
     render(<NurseryView things={[arrival('a', 1)]} onKeep={onKeep} onRelease={onRelease} />)
 
     await user.click(screen.getByRole('button', { name: 'Keep' }))
-    expect(onKeep).toHaveBeenCalledWith('a')
+    expect(onKeep).toHaveBeenCalledWith('a', undefined)
     await user.click(screen.getByRole('button', { name: 'Release' }))
     expect(onRelease).toHaveBeenCalledWith('a')
+  })
+
+  // SILVA.md's loop is Keep → Annotate — this is the annotate step arriving
+  // early, at the moment of deciding, without making the one-tap Keep wait
+  // on it. Collapsed by default so nothing changes for anyone who ignores it.
+  it('keeps the one-tap Keep unless "+ Why" is opened', async () => {
+    const user = userEvent.setup()
+    const onKeep = vi.fn()
+    render(<NurseryView things={[arrival('a', 1)]} onKeep={onKeep} onRelease={vi.fn()} />)
+
+    expect(screen.queryByPlaceholderText(/why this/i)).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Keep' }))
+    expect(onKeep).toHaveBeenCalledWith('a', undefined)
+  })
+
+  it('carries a why typed before Keep into the keep itself', async () => {
+    const user = userEvent.setup()
+    const onKeep = vi.fn()
+    render(<NurseryView things={[arrival('a', 1)]} onKeep={onKeep} onRelease={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: '+ Why' }))
+    await user.type(screen.getByPlaceholderText(/why this/i), 'Rhymes with the tram passage')
+    await user.click(screen.getByRole('button', { name: 'Keep' }))
+    expect(onKeep).toHaveBeenCalledWith('a', 'Rhymes with the tram passage')
+  })
+
+  it('never sends a blank why', async () => {
+    const user = userEvent.setup()
+    const onKeep = vi.fn()
+    render(<NurseryView things={[arrival('a', 1)]} onKeep={onKeep} onRelease={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: '+ Why' }))
+    await user.type(screen.getByPlaceholderText(/why this/i), '   ')
+    await user.click(screen.getByRole('button', { name: 'Keep' }))
+    expect(onKeep).toHaveBeenCalledWith('a', undefined)
   })
 
   // SILVA.md is explicit twice over: "No badge, no counter, no 'you have 284
