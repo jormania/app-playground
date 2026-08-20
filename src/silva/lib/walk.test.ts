@@ -95,3 +95,70 @@ describe('walkIsWorthwhile', () => {
     expect(walkIsWorthwhile(things)).toBe(false)
   })
 })
+
+describe('chooseWalk — routing between neighbours', () => {
+  // `a` and `similar` point almost the same way; the others point elsewhere.
+  const vectors = new Map<string, Float32Array>([
+    ['a', new Float32Array([1, 0])],
+    ['similar', new Float32Array([0.99, 0.14])],
+    ['unrelated1', new Float32Array([0, 1])],
+    ['unrelated2', new Float32Array([0, 1])],
+  ])
+
+  it('opens on the most neglected thing, exactly as before', () => {
+    const things = [thing('a'), thing('unrelated1'), thing('similar')]
+    const seen = { a: '2025-01-01', unrelated1: '2026-08-10', similar: '2026-08-15' }
+    expect(chooseWalk(things, seen, { size: 3, today, vectorsById: vectors })[0].id).toBe('a')
+  })
+
+  // The improvement: step two is what sits nearest step one, so the walk
+  // drifts through a region rather than counting down a ranking.
+  it('follows the opening thing with its nearest neighbour, not the next in rank', () => {
+    const things = [thing('a'), thing('unrelated1'), thing('similar')]
+    // unrelated1 is MORE neglected than similar, yet `a` is near `similar`.
+    const seen = { a: '2025-01-01', unrelated1: '2025-06-01', similar: '2026-01-01' }
+
+    expect(chooseWalk(things, seen, { size: 3, today }).map((t) => t.id))
+      .toEqual(['a', 'unrelated1', 'similar'])
+    expect(chooseWalk(things, seen, { size: 3, today, vectorsById: vectors }).map((t) => t.id))
+      .toEqual(['a', 'similar', 'unrelated1'])
+  })
+
+  // Neglect is the gate, not a tie-break — affinity may reorder the walk but
+  // must never drag back something you have just read.
+  it('never reaches outside the neglected pool for a close neighbour', () => {
+    const things = [
+      thing('a'),
+      thing('similar'),
+      ...Array.from({ length: 12 }, (_, i) => thing(`filler${i}`)),
+    ]
+    const seen: Record<string, string> = { a: '2025-01-01', similar: today.toISOString().slice(0, 10) }
+    for (let i = 0; i < 12; i++) seen[`filler${i}`] = '2025-02-01'
+
+    // size 1 → a pool of 4, which something seen today is nowhere near.
+    const walk = chooseWalk(things, seen, { size: 1, today, vectorsById: vectors })
+    expect(walk.map((t) => t.id)).not.toContain('similar')
+  })
+
+  it('never stalls on a thing that has no vector yet', () => {
+    const things = [thing('a'), thing('no-vector'), thing('unrelated1')]
+    const seen = { a: '2025-01-01', 'no-vector': '2025-06-01', unrelated1: '2026-01-01' }
+    const walk = chooseWalk(things, seen, { size: 3, today, vectorsById: vectors })
+    expect(walk).toHaveLength(3)
+    expect(new Set(walk.map((t) => t.id)).size).toBe(3)
+  })
+
+  it('still ends at its size, and never repeats a thing', () => {
+    const things = Array.from({ length: 60 }, (_, i) => thing(`t${i}`))
+    const walk = chooseWalk(things, {}, { size: 5, today, vectorsById: vectors })
+    expect(walk).toHaveLength(5)
+    expect(new Set(walk.map((t) => t.id)).size).toBe(5)
+  })
+
+  it('is still the same walk all day once routing is on', () => {
+    const things = Array.from({ length: 20 }, (_, i) => thing(`t${i}`))
+    const morning = chooseWalk(things, {}, { today: new Date('2026-08-19T08:00:00'), vectorsById: vectors })
+    const evening = chooseWalk(things, {}, { today: new Date('2026-08-19T21:30:00'), vectorsById: vectors })
+    expect(morning.map((t) => t.id)).toEqual(evening.map((t) => t.id))
+  })
+})

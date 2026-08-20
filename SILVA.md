@@ -215,7 +215,18 @@ threads) and Journal of Delights (three ways to read) already establish here.
 
   The walk sits at its head: a short, finite stretch — `WALK_SIZE` things —
   weighted by what you have gone longest without actually looking at
-  (`lib/walk.ts`), with the full scroll below it unchanged. It is not a feed,
+  (`lib/walk.ts`), with the full scroll below it unchanged.
+
+  It *routes* rather than ranks. Neglect chooses who is eligible — only the
+  most-neglected `WALK_SIZE * WALK_POOL_FACTOR` things — and then the walk
+  opens on the most neglected of those and steps each time to whichever
+  remaining candidate is nearest what you just read. Ranked by neglect
+  alone it was five unrelated things in a queue: systematic coverage, a
+  reading schedule, with the app's actual thesis ("next to each other")
+  left entirely to the provocations. Keeping neglect as the *gate* is what
+  stops affinity dragging back something you read yesterday, and with the
+  underground off there are no vectors, so it degrades precisely to the
+  ordering it had before. It is not a feed,
   and the three properties that keep it from becoming one are structural rather
   than intentions: **it ends** (and the ending offers nothing further),
   **it holds only your own kept things**, and **it refreshes on the calendar,
@@ -254,7 +265,7 @@ threads) and Journal of Delights (three ways to read) already establish here.
 
 ### On the labels, and why they differ from these names
 
-Six labels carry a different word in the interface than in this document,
+Seven labels carry a different word in the interface than in this document,
 and the reason is the same in each case: this document is prose, where the
 ecological metaphor can breathe, while a tab bar is seven words at 9.5px that
 have to be told apart at a glance.
@@ -266,6 +277,7 @@ have to be told apart at a glance.
 | Search | **Forage** | "Search" is the PKM word this app is defined against. Foraging is deliberate looking *within a place you already know* — which is what this surface is for, and why it isn't the point of the app. |
 | Sources | **Roots** | A source is what feeds a kept thing, the same relation a root has to what grows from it — and "Sources" reads like a bibliography tab, the library move this view exists not to be. |
 | The graph | **The crossing** | "Graph" is the one word in the app borrowed from the tooling rather than the forest, and it sat at the head of Paths naming the very thing paths *make*. A crossing is where paths meet, which is exactly what the drawing shows. |
+| `encountered` / `kept` (as plate labels) | **sown** / **grown** | The two dates are the two ends of one life, and the nursery already casts an arrival as a seedling waiting to be planted out or not. Only the *labels* move: the properties are still `Encountered` and `Kept`, and the act is still **Keep** — a verb and a timestamp, not two names for the same thing. You keep it; from that day it grows. |
 | Settings | **Hearth** | The household centre of a *silva rerum*, which was a family book before it was anything else. |
 
 The **stored** vocabulary is untouched: `State` is still `Understory · Kept ·

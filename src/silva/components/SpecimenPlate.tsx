@@ -331,9 +331,15 @@ function LinkCard({ url }: { url: string }) {
  *  from a fresh note. */
 function ThingLabel({ thing, sourceTitle }: { thing: Thing; sourceTitle?: string }) {
   const values = [sourceTitle, thing.locator].filter(Boolean) as string[]
+  // "sown" and "grown" rather than "encountered" and "kept" — the two dates
+  // are the two ends of the same life, and the nursery already casts an
+  // arrival as a seedling waiting to be planted out or not. Label layer
+  // only: the Notion properties are still `Encountered` and `Kept`, and
+  // the *act* is still Keep. Verb and timestamp, not two names for one
+  // thing — you keep it, and from that day it grows.
   const dated = thing.kept && thing.kept !== thing.encountered
-    ? [{ field: 'encountered', value: thing.encountered }, { field: 'kept', value: thing.kept }]
-    : [{ field: 'kept', value: thing.kept ?? thing.encountered }]
+    ? [{ field: 'sown', value: thing.encountered }, { field: 'grown', value: thing.kept }]
+    : [{ field: 'grown', value: thing.kept ?? thing.encountered }]
 
   return (
     <p className={styles.label}>

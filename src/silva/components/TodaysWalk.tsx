@@ -26,6 +26,9 @@ export interface TodaysWalkProps {
    *  walk and the scroll are provably the same plate, including its dwell
    *  tracking and its neighbourhood. */
   renderThing: (thing: Thing) => React.ReactNode
+  /** Cached vectors, so the walk can route between neighbours rather than
+   *  count down a ranking. Empty is fine — it falls back to neglect order. */
+  vectorsById?: Map<string, Float32Array>
 }
 
 /**
@@ -49,7 +52,7 @@ export interface TodaysWalkProps {
  *      seeded by the date (lib/walk.ts), so reopening Silva shows the same
  *      walk, and finishing it stays finished for the rest of the day.
  */
-export function TodaysWalk({ things, seen, renderThing }: TodaysWalkProps) {
+export function TodaysWalk({ things, seen, renderThing, vectorsById }: TodaysWalkProps) {
   const [index, setIndex] = useState(0)
   // Finishing is remembered for the day, so the walk doesn't reappear every
   // time you come back to the Forest — that alone would make it a feed.
@@ -79,7 +82,7 @@ export function TodaysWalk({ things, seen, renderThing }: TodaysWalkProps) {
       if (restored.length > 0) return restored
     }
 
-    const fresh = chooseWalk(things, seen)
+    const fresh = chooseWalk(things, seen, { vectorsById })
     writeJson(WALK_KEY, { date, ids: fresh.map((t) => t.id) } satisfies StoredWalk)
     return fresh
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fixed for the day, deliberately not reactive to `seen`

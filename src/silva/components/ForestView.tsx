@@ -97,7 +97,7 @@ export function ForestView({
 
   return (
     <div className={styles.forest}>
-      {showWalk && <TodaysWalk things={things} seen={seen} renderThing={renderThing} />}
+      {showWalk && <TodaysWalk things={things} seen={seen} renderThing={renderThing} vectorsById={vectorsById} />}
       {kept.map((thing) => <div key={thing.id}>{renderThing(thing)}</div>)}
     </div>
   )
