@@ -91,13 +91,13 @@ export function IntakeField({ onSubmit, onPhoto, prefill = null, busy = false }:
       )}
 
       <div className={styles.actions}>
-        <Button size="sm" onClick={submit} disabled={busy || (!value.trim() && !locator.trim())}>
+        <Button className={styles.actionButton} size="sm" onClick={submit} disabled={busy || (!value.trim() && !locator.trim())}>
           Add to the nursery
         </Button>
         {/* The photograph lane. `Image` has been a Kind in the vocabulary with
          *  no way to create one; a picture of a page is a legitimate thing,
          *  deliberately not OCR'd (SILVA.md "Intake"). */}
-        <Button size="sm" variant="outline" disabled={busy} onClick={() => fileRef.current?.click()}>
+        <Button className={styles.actionButton} size="sm" variant="outline" disabled={busy} onClick={() => fileRef.current?.click()}>
           {busy ? 'Adding the photo…' : 'Photograph a page'}
         </Button>
         <input

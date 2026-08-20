@@ -1,7 +1,7 @@
 .wrap {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
   padding: var(--space-md);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -28,41 +28,51 @@
 }
 
 /* The locator only appears when a share brought one, so it reads as an
-   annotation on what arrived rather than as a second required field. */
+   annotation on what arrived rather than as a second required field. Full
+   border rather than the bare underline this used to be — on a dark
+   background `--color-border` alone read as barely there at all, closer to
+   no field than a quiet one. */
 .locator {
   width: 100%;
   box-sizing: border-box;
-  padding: var(--space-2xs) var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   color: var(--color-muted);
   background: var(--color-bg);
-  border: none;
-  border-bottom: 1px solid var(--color-border);
-  border-radius: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  /* The placeholder is a full sentence ("Where did you encounter this?
+     (optional — a book, a person, a place)") that never fits a phone-width
+     field — left to the input's own default clipping it cut off mid-glyph
+     with nothing to say more was there. */
+  text-overflow: ellipsis;
 }
 
 .locator:focus {
   outline: none;
-  border-bottom-color: var(--color-accent);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-ring);
   color: var(--color-ink);
 }
 
 /* Source, unlike the locator above, is always present — it's the one field
    SILVA.md's low-friction intake makes a deliberate exception for (see
    lib/sourceCapture.ts): unlike everything else deferred to curation, a
-   source is the kind of context that evaporates before curation happens. */
+   source is the kind of context that evaporates before curation happens.
+   Same full-border, ellipsis-on-overflow treatment as `.locator` above and
+   for the identical two reasons. */
 .source {
   width: 100%;
   box-sizing: border-box;
-  padding: var(--space-2xs) var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   color: var(--color-ink);
   background: var(--color-bg);
-  border: none;
-  border-bottom: 1px solid var(--color-border);
-  border-radius: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  text-overflow: ellipsis;
 }
 
 .source::placeholder {
@@ -71,14 +81,24 @@
 
 .source:focus {
   outline: none;
-  border-bottom-color: var(--color-accent);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-ring);
 }
 
+/* Equal-width rather than the old right-aligned pair, which left the whole
+   left half of the card empty and stacked two lopsided pills against the
+   right edge. `flex-wrap` keeps this safe on the very narrowest phones: if
+   "Add to the nursery" and "Photograph a page" can't both fit on one line
+   at their minimum width, each takes its own full-width row instead of
+   either one being crushed. */
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-xs);
-  justify-content: flex-end;
+}
+
+.actionButton {
+  flex: 1 1 140px;
 }
 
 .fileInput {
