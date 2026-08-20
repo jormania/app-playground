@@ -4,6 +4,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SpecimenPlate } from './SpecimenPlate'
 import type { Thing } from '../lib/notion'
+import type { Source } from '../lib/sources'
 import { getLinkPreview } from '../lib/linkPreviewCache'
 
 vi.mock('../lib/linkPreviewCache', () => ({ getLinkPreview: vi.fn() }))
@@ -143,5 +144,62 @@ describe('SpecimenPlate — letting go of a kept thing', () => {
     render(<SpecimenPlate thing={thing()} {...handlers} />)
     expect(screen.queryByRole('button', { name: 'Release' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
+  })
+})
+
+/**
+ * The Source field on a plate chooses *which* source a thing points at — it
+ * does not rename the source it is pre-filled with. Typing a variant of the
+ * current name resolves straight back to the same source, so the save looks
+ * like it did nothing at all. Offering the existing sources makes the field
+ * legibly a chooser, and makes picking one exact rather than approximate.
+ */
+describe('SpecimenPlate — the Source field is a chooser', () => {
+  const sources: Source[] = [
+    { id: 's1', title: 'Nautilus', author: '', kind: 'Article', cover: null, koboVolumeId: null, notes: '' },
+    { id: 's2', title: 'Meditations', author: 'Marcus Aurelius', kind: 'Book', cover: null, koboVolumeId: null, notes: '' },
+  ]
+
+  it('offers every existing source as a suggestion', async () => {
+    const user = userEvent.setup()
+    render(<SpecimenPlate thing={thing()} allSources={sources} {...handlers} />)
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+
+    const input = screen.getByLabelText('Source') as HTMLInputElement
+    const list = document.getElementById(input.getAttribute('list') || '')
+    expect(Array.from(list?.querySelectorAll('option') ?? []).map((o) => o.getAttribute('value'))).toEqual([
+      'Nautilus',
+      'Meditations by Marcus Aurelius',
+    ])
+  })
+
+  it('says where renaming a source actually happens', async () => {
+    const user = userEvent.setup()
+    render(<SpecimenPlate thing={thing()} allSources={sources} {...handlers} />)
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(screen.getByText(/rename a source itself, edit it in Roots/i)).toBeTruthy()
+  })
+
+  // Nothing to suggest is nothing to wire up.
+  it('has no list attribute when there are no sources yet', async () => {
+    const user = userEvent.setup()
+    render(<SpecimenPlate thing={thing()} {...handlers} />)
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(screen.getByLabelText('Source').hasAttribute('list')).toBe(false)
+  })
+
+  // Two plates can be open at once; a repeated datalist id would be
+  // duplicate ids in one document.
+  it('gives each plate its own datalist id', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <SpecimenPlate thing={thing({ id: 'a' })} allSources={sources} {...handlers} />
+        <SpecimenPlate thing={thing({ id: 'b' })} allSources={sources} {...handlers} />
+      </>,
+    )
+    for (const button of screen.getAllByRole('button', { name: 'Edit' })) await user.click(button)
+    const ids = screen.getAllByLabelText('Source').map((i) => i.getAttribute('list'))
+    expect(new Set(ids).size).toBe(2)
   })
 })

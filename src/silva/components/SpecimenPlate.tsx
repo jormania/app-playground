@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { Button, Field, TextAreaField, ConfirmModal } from '../../ds'
 import type { Thing, ThingKind } from '../lib/notion'
 import type { Source } from '../lib/sources'
@@ -22,6 +22,9 @@ export interface SpecimenPlateProps {
    *  actually touched the Source field, so a save that never opened it can't
    *  accidentally clear an existing source. */
   onEdit: (id: string, patch: Partial<Thing>, sourceInput?: string) => void
+  /** Every source in the collection, offered back as the Source field is
+   *  typed. Absent, the field is exactly the plain text input it was. */
+  allSources?: Source[]
   /** Lets go of a kept thing from wherever it is being read. Optional so a
    *  surface can present a plate as read-only; every surface that shows a
    *  kept thing currently passes it. */
@@ -56,8 +59,20 @@ export function SpecimenPlate({
   onRelease,
   onDelete,
   onSeen,
+  allSources = [],
   children,
 }: SpecimenPlateProps) {
+  // Unique per plate: the Forest mounts a window of these at once, and a
+  // datalist id repeated across them would be duplicate ids in one document.
+  const sourceListId = useId()
+  // The same "Title by Author" string `sourceInputValue` reads a source back
+  // into, so picking a suggestion resolves as an exact match rather than a
+  // near one. De-duplicated — two sources can share a display string.
+  const sourceOptions = useMemo(
+    () => [...new Set(allSources.map(sourceInputValue).filter(Boolean))],
+    [allSources],
+  )
+
   const [editing, setEditing] = useState(false)
   const [copied, setCopied] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -163,11 +178,25 @@ export function SpecimenPlate({
               record it. Plain typed text, same as at capture. */}
           <Field
             label="Source"
-            hint="A book, an article, a person, a place — whatever this came from."
+            /* Says what the field actually does. It chooses *which* source
+             * this thing points at — typing a new name creates a new source
+             * and re-points the thing; typing a variant of the current one
+             * resolves back to the same source and so looks like nothing
+             * happened at all. Renaming the source itself is an edit to the
+             * source, and lives in Roots. */
+            hint="Which source this came from — pick one you already have, or type a new name to create it. To rename a source itself, edit it in Roots."
             value={sourceInput}
             onChange={(e) => setSourceInput(e.target.value)}
             placeholder="e.g. Shelby Foote — The Civil War"
+            list={sourceOptions.length > 0 ? sourceListId : undefined}
           />
+          {sourceOptions.length > 0 && (
+            <datalist id={sourceListId}>
+              {sourceOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </datalist>
+          )}
           <Field
             label="Locator"
             hint="Where in the source — a page, a timestamp, where you were."

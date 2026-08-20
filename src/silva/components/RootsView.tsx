@@ -134,6 +134,7 @@ export function RootsView({ things, sources, loci, onEditThing, onReleaseThing, 
       onDeleteSource={onDeleteSource}
       onSeen={onSeen}
       onEditSource={onEditSource}
+      allSources={sources}
     />
   )
 }
@@ -149,6 +150,7 @@ function SourceDetail({
   onDeleteSource,
   onSeen,
   onEditSource,
+  allSources,
 }: {
   source: Source
   passages: Thing[]
@@ -160,6 +162,9 @@ function SourceDetail({
   onDeleteSource: (id: string) => void
   onSeen: (id: string) => void
   onEditSource: (id: string, patch: Partial<Source>) => void
+  /** Offered back as the Source field on a plate is typed — the same
+   *  autocomplete intake has, for the same duplicate-source reason. */
+  allSources: Source[]
 }) {
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(source.title)
@@ -257,6 +262,7 @@ function SourceDetail({
               thing={thing}
               source={source}
               locusNames={thing.lociIds.map((id) => locusById.get(id)?.name).filter((n): n is string => Boolean(n))}
+              allSources={allSources}
               onEdit={onEditThing}
               onRelease={onReleaseThing}
               onDelete={onDeleteThing}

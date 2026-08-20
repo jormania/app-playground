@@ -85,6 +85,7 @@ export function ForestView({
         onRelease={onRelease}
         onDelete={onDelete}
         onSeen={onSeen}
+        allSources={sources}
       >
         <Neighbourhood
           thing={thing}
