@@ -207,20 +207,29 @@ function SourceDetail({
           {/* Delete sits apart on the left, away from the Cancel/Save pair a
            *  thumb travels to — destructive first in the source order so a
            *  screen reader meets it before the ordinary way out, but never
-           *  adjacent to the button you press to finish an edit. */}
+           *  adjacent to the button you press to finish an edit.
+           *
+           *  Cancel and Save are grouped in their own flex box rather than
+           *  split from Delete by a stretchy spacer: a spacer has no width
+           *  of its own to give up, so on a narrow phone the row didn't wrap
+           *  — it simply overflowed past the left edge of the screen, taking
+           *  the leading half of "Delete this source" with it. Two groups
+           *  with `flex-wrap` lets Delete drop to its own line above Cancel
+           *  and Save when there isn't room for all three. */}
           <div className={styles.actions}>
             <Button variant="ghost" onClick={() => setConfirmingDelete(true)}>Delete this source</Button>
-            <span className={styles.actionsSpacer} />
-            <Button variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
-            <Button
-              disabled={!title.trim()}
-              onClick={() => {
-                onEditSource(source.id, { title: title.trim(), author: author.trim(), kind: kind || null, notes: notes.trim() })
-                setEditing(false)
-              }}
-            >
-              Save
-            </Button>
+            <div className={styles.actionsRight}>
+              <Button variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+              <Button
+                disabled={!title.trim()}
+                onClick={() => {
+                  onEditSource(source.id, { title: title.trim(), author: author.trim(), kind: kind || null, notes: notes.trim() })
+                  setEditing(false)
+                }}
+              >
+                Save
+              </Button>
+            </div>
           </div>
         </div>
       ) : (

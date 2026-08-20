@@ -165,10 +165,24 @@
   font-size: var(--text-sm);
 }
 
+/* Two groups — Delete alone, Cancel+Save together — rather than one flex
+   row split by a stretchy spacer. A spacer has no width of its own to
+   give up when the row is too narrow, so the old layout didn't wrap on a
+   narrow phone; it overflowed past the screen's left edge instead, taking
+   part of "Delete this source" with it. `flex-wrap` here lets Delete drop
+   to its own line above Cancel/Save when there isn't room for all three;
+   `.actionsRight`'s own `margin-left: auto` keeps that second group
+   pinned to the right whichever line it lands on. */
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-sm);
-  justify-content: flex-end;
+}
+
+.actionsRight {
+  display: flex;
+  gap: var(--space-sm);
+  margin-left: auto;
 }
 
 .section {
@@ -192,11 +206,4 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-}
-
-/* Pushes the Cancel/Save pair to the right, leaving the destructive action
-   alone on the left rather than adjacent to the button you press to finish
-   an ordinary edit. */
-.actionsSpacer {
-  flex: 1;
 }
