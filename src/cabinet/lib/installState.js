@@ -39,6 +39,38 @@ export function checkInstalledFlags(apps) {
   return result
 }
 
+// Clears install flags for apps that are provably no longer installed, and
+// reports whether `detected` was an answer worth trusting in the negative.
+//
+// A flag is otherwise write-once: nothing in installFlag.ts ever removes one,
+// so uninstalling an app left its tile reading "Launch →" forever, sending a
+// tap to a browser tab instead of an app.
+//
+// The one safe way to downgrade: Chrome's throttling of
+// getInstalledRelatedApps() degrades it into returning an EMPTY list, never a
+// partial one. So an answer that names at least one installed app cannot be a
+// throttled answer — and in that single case the apps it doesn't name really
+// aren't installed, and their stale flags can go. An empty answer stays
+// ambiguous (throttled, or genuinely nothing installed) and is left alone.
+export function reconcileInstallFlags(apps, detected) {
+  if (!detected) return false
+  let conclusive = false
+  for (const isInstalled of detected.values()) {
+    if (isInstalled) { conclusive = true; break }
+  }
+  if (!conclusive) return false
+
+  for (const app of apps) {
+    if (detected.get(app.manifest)) continue
+    try {
+      localStorage.removeItem(INSTALL_FLAG_PREFIX + app.file)
+    } catch {
+      // private browsing / unavailable — nothing to clear
+    }
+  }
+  return true
+}
+
 export function installDetectionSupported() {
   return typeof navigator !== 'undefined' && 'getInstalledRelatedApps' in navigator
 }

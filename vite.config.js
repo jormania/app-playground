@@ -30,7 +30,7 @@ function deployDatePlugin() {
 }
 
 // PWA for Sol Odyssey only. Distinct service-worker + manifest filenames keep it from
-// colliding with Touch Grass's hand-written sw.js / manifest.json. We register the SW
+// colliding with Touch Grass's hand-written sw.js. We register the SW
 // ourselves from the Sol Odyssey entry (injectRegister: null), scoped to its page.
 function solOdysseyPWA() {
   return VitePWA({

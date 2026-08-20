@@ -14,6 +14,20 @@ export function isAndroid() {
   return ANDROID_UA.test(navigator.userAgent)
 }
 
+// iOS has no install API at all — no beforeinstallprompt, no
+// getInstalledRelatedApps, and no URL a link can point at to trigger one. The
+// only route is Safari's own Share → Add to Home Screen, which the page can't
+// open. So the Cabinet must not offer "Install" here: the tap would just open
+// the page, which is what "Open" honestly promises. iPadOS reports itself as a
+// Mac, hence the touch-point check — a real Mac has no touch points.
+const IOS_UA = /iPad|iPhone|iPod/
+
+export function isIos() {
+  if (typeof navigator === 'undefined') return false
+  if (IOS_UA.test(navigator.userAgent)) return true
+  return navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1
+}
+
 export function canInstallPwaHere() {
   if (!isAndroid()) return true
   const ua = navigator.userAgent

@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { IconButton, Modal } from '../../ds'
 import { IconArrowUp, IconArrowDown, IconQrCode } from './icons'
-import { canInstallPwaHere, chromeIntentUrl, isAndroid, pwaLaunchIntentUrl } from '../lib/browserSupport'
+import { canInstallPwaHere, chromeIntentUrl, isAndroid, isIos, pwaLaunchIntentUrl } from '../lib/browserSupport'
 import { recordOpened } from '../lib/storage'
 import { formatRelativeTime } from '../lib/relativeTime'
 import { appQrUrl, renderAppQr } from '../../shared/qrCode'
@@ -47,17 +47,31 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
     : !isStatic && isAndroid()
       ? pwaLaunchIntentUrl(window.location.origin + path)
       : path
-  const actionLabel = isStatic ? 'Open' : installed ? 'Launch' : 'Install'
+  // "Install" is only ever offered where a tap can actually lead to one. On
+  // iOS nothing can (see isIos), so an uninstalled app there reads "Open" —
+  // which is exactly what the tap does. An app already confirmed installed
+  // still says "Launch" on iOS, since that flag comes from the app itself
+  // having run standalone, which is real proof it was added to the home
+  // screen.
+  const canOfferInstall = !isStatic && !isIos()
+  const actionLabel = installed ? 'Launch' : canOfferInstall ? 'Install' : 'Open'
 
   // QR dialog: rendered lazily — the canvas only exists in the DOM once the
-  // Modal actually opens (it returns null while closed), so the effect below
-  // never fires, and never draws, until then.
+  // Modal actually opens (it returns null while closed).
+  //
+  // Drawn from a *callback ref*, not an effect keyed on `qrOpen`. Modal mounts
+  // in two passes: on the commit where `open` flips true its own isMounted is
+  // still false, so it returns null and the canvas isn't in the tree yet — an
+  // effect keyed on qrOpen fires on exactly that commit, sees a null ref, and
+  // never re-runs once the portal lands on the following one. (Modal documents
+  // the same two-pass trap for its focus effect.) A callback ref instead fires
+  // when the node genuinely attaches, whichever commit that turns out to be.
   const [qrOpen, setQrOpen] = useState(false)
-  const qrCanvasRef = useRef(null)
-  useEffect(() => {
-    if (!qrOpen) return
-    renderAppQr(qrCanvasRef.current, app.file)
-  }, [qrOpen, app.file])
+  const drawQr = useCallback((canvas) => {
+    // Ref callbacks must not return a value (React 19 reads a return as a
+    // cleanup function), so the promise is deliberately not returned.
+    if (canvas) renderAppQr(canvas, app.file)
+  }, [app.file])
 
   return (
     <article className={styles.tile}>
@@ -116,7 +130,7 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
             </IconButton>
             <span className={styles.action} aria-hidden="true">
               <span className={styles.actionLabel}>{actionLabel}</span>
-              <span className={styles.arrow}>{isStatic || installed ? '→' : '⤓'}</span>
+              <span className={styles.arrow}>{canOfferInstall && !installed ? '⤓' : '→'}</span>
             </span>
           </>
         )}
@@ -131,7 +145,7 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
 
       <Modal open={qrOpen} onClose={() => setQrOpen(false)} title={`Scan to open ${app.title}`}>
         <div className={styles.qrCanvasWrap}>
-          <canvas ref={qrCanvasRef} width={240} height={240} />
+          <canvas ref={drawQr} width={240} height={240} />
         </div>
         <p className={styles.qrHint}>Scan to open on your phone</p>
         <p className={styles.qrUrl}>{appQrUrl(app.file)}</p>

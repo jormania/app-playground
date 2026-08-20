@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { installDetectionSupported, absoluteManifestUrl, checkInstalledApps, checkInstalledFlags } from './installState'
+import { installDetectionSupported, absoluteManifestUrl, checkInstalledApps, checkInstalledFlags, reconcileInstallFlags } from './installState'
 
 // `navigator` is a read-only getter on globalThis in Node — vi.stubGlobal
 // swaps it out safely (and vi.unstubAllGlobals restores it after each test).
@@ -79,5 +79,89 @@ describe('checkInstalledFlags', () => {
     vi.stubGlobal('localStorage', undefined)
     const result = checkInstalledFlags(apps)
     expect(result.get('/tempo.webmanifest')).toBe(false)
+  })
+})
+
+// getInstalledRelatedApps() only ever reports apps this page's own manifest
+// declares in related_applications, so an app missing from that list can never
+// be detected as installed however many times it's been installed — its tile
+// just reads "Install" forever. The list is hand-maintained in
+// public/cabinet.webmanifest and has silently drifted from the registry twice
+// (Fit Check and Wanderlist shipped without an entry), which is invisible until
+// someone notices a wrong label on a phone. Pin it here instead.
+describe('cabinet.webmanifest related_applications', () => {
+  it('declares exactly the react-vite apps in the registry', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { APPS } = await import('../../apps-registry.js')
+
+    const manifest = JSON.parse(readFileSync('public/cabinet.webmanifest', 'utf8'))
+    const declared = manifest.related_applications
+      .map((entry) => new URL(entry.url).pathname)
+      .sort()
+    const expected = APPS.filter((app) => app.kind === 'react-vite')
+      .map((app) => app.manifest)
+      .sort()
+
+    expect(declared).toEqual(expected)
+  })
+
+  it('points every entry at the same production origin absoluteManifestUrl builds', async () => {
+    const { readFileSync } = await import('node:fs')
+    const manifest = JSON.parse(readFileSync('public/cabinet.webmanifest', 'utf8'))
+    for (const entry of manifest.related_applications) {
+      expect(entry.url).toBe(absoluteManifestUrl(new URL(entry.url).pathname))
+    }
+  })
+})
+
+describe('reconcileInstallFlags', () => {
+  const apps = [
+    { file: 'tempo-react.html', manifest: '/tempo.webmanifest' },
+    { file: 'loom-react.html', manifest: '/loom.webmanifest' },
+  ]
+
+  // Node has no localStorage; stand in a Map-backed one so removals are visible.
+  function stubStorage(initial) {
+    const store = new Map(Object.entries(initial))
+    vi.stubGlobal('localStorage', {
+      getItem: (k) => (store.has(k) ? store.get(k) : null),
+      setItem: (k, v) => store.set(k, v),
+      removeItem: (k) => store.delete(k),
+    })
+    return store
+  }
+
+  it('does nothing when detection is unsupported', () => {
+    const store = stubStorage({ 'installed:tempo-react.html': '1' })
+    expect(reconcileInstallFlags(apps, null)).toBe(false)
+    expect(store.get('installed:tempo-react.html')).toBe('1')
+  })
+
+  // An all-false answer is exactly what Chrome's throttling produces, so it
+  // proves nothing and must never clear a flag.
+  it('leaves flags alone when nothing at all came back installed', () => {
+    const store = stubStorage({ 'installed:tempo-react.html': '1' })
+    const detected = new Map([['/tempo.webmanifest', false], ['/loom.webmanifest', false]])
+    expect(reconcileInstallFlags(apps, detected)).toBe(false)
+    expect(store.get('installed:tempo-react.html')).toBe('1')
+  })
+
+  // But an answer naming a real install can't have been a throttled one — so
+  // the apps it doesn't name really are gone, and their flags go with them.
+  it('clears the flag of an app missing from an otherwise conclusive answer', () => {
+    const store = stubStorage({
+      'installed:tempo-react.html': '1',
+      'installed:loom-react.html': '1',
+    })
+    const detected = new Map([['/tempo.webmanifest', false], ['/loom.webmanifest', true]])
+    expect(reconcileInstallFlags(apps, detected)).toBe(true)
+    expect(store.has('installed:tempo-react.html')).toBe(false)
+    expect(store.get('installed:loom-react.html')).toBe('1')
+  })
+
+  it('survives localStorage being unavailable', () => {
+    const detected = new Map([['/tempo.webmanifest', false], ['/loom.webmanifest', true]])
+    vi.stubGlobal('localStorage', undefined)
+    expect(() => reconcileInstallFlags(apps, detected)).not.toThrow()
   })
 })

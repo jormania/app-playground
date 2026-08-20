@@ -48,3 +48,35 @@ export function IconQrCode(props) {
     </svg>
   )
 }
+
+// ── Sort-mode marks ─────────────────────────────────────────────────────────
+// Shown instead of the words below 560px, where four labels can't share a row
+// with search (see App.module.css). Deliberately NOT arrows for Manual: the
+// reorder button sits immediately to the right already wearing ↑↓, and two
+// adjacent arrow glyphs meaning different things is worse than no icon at all.
+// A–Z keeps its word — it's already as short as a mark.
+
+export function IconManual(props) {
+  return (
+    <svg {...base} {...props} aria-hidden>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  )
+}
+
+export function IconRecent(props) {
+  return (
+    <svg {...base} {...props} aria-hidden>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  )
+}
+
+export function IconPopular(props) {
+  return (
+    <svg {...base} {...props} aria-hidden>
+      <path d="M12 3.8l2.5 5.1 5.6.8-4 4 .9 5.6-5-2.6-5 2.6.9-5.6-4-4 5.6-.8z" />
+    </svg>
+  )
+}

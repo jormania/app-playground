@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { canInstallPwaHere, chromeIntentUrl, isAndroid, pwaLaunchIntentUrl } from './browserSupport'
+import { canInstallPwaHere, chromeIntentUrl, isAndroid, pwaLaunchIntentUrl, isIos } from './browserSupport'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -70,5 +70,35 @@ describe('pwaLaunchIntentUrl', () => {
       'intent://coneofcold.vercel.app/touch-grass-react.html#Intent;scheme=https;action=android.intent.action.VIEW;' +
         'S.browser_fallback_url=https%3A%2F%2Fconeofcold.vercel.app%2Ftouch-grass-react.html;end;',
     )
+  })
+})
+
+describe('isIos', () => {
+  it('is true on iPhone', () => {
+    vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Safari', platform: 'iPhone' })
+    expect(isIos()).toBe(true)
+  })
+
+  it('is true on an iPad reporting itself as a Mac', () => {
+    vi.stubGlobal('navigator', {
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Version/17.0 Safari/605.1.15',
+      platform: 'MacIntel',
+      maxTouchPoints: 5,
+    })
+    expect(isIos()).toBe(true)
+  })
+
+  it('is false on a real Mac, which has no touch points', () => {
+    vi.stubGlobal('navigator', {
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Version/17.0 Safari/605.1.15',
+      platform: 'MacIntel',
+      maxTouchPoints: 0,
+    })
+    expect(isIos()).toBe(false)
+  })
+
+  it('is false on Android', () => {
+    vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (Linux; Android 14) Chrome/120.0.0.0 Mobile Safari/537.36', platform: 'Linux armv8l' })
+    expect(isIos()).toBe(false)
   })
 })

@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { APPS } from '../apps-registry'
 import { IconButton, SegmentedControl } from '../ds'
 import { useTheme } from './lib/themeContext'
-import { checkInstalledApps, checkInstalledFlags } from './lib/installState'
+import { checkInstalledApps, checkInstalledFlags, reconcileInstallFlags } from './lib/installState'
 import { newlyDeployedFiles } from './lib/deployed'
 import { loadOrder, saveOrder, loadLastOpened, clearLastOpened, loadSort, saveSort } from './lib/storage'
 import { matchesSearch } from './lib/search'
+import { isIos } from './lib/browserSupport'
 import { AppTile } from './components/AppTile'
-import { IconReorder } from './components/icons'
+import { IconManual, IconPopular, IconRecent, IconReorder } from './components/icons'
 import styles from './App.module.css'
 
 // The Cabinet lists every app that has a `kind` — the Vite+React PWAs
@@ -23,16 +24,23 @@ const CABINET_APPS = APPS.filter((app) => app.kind === 'react-vite' || app.kind 
 // HTML page reusing an old deploy date shouldn't read as freshly shipped.
 const NEW_APP_FILES = newlyDeployedFiles(REACT_VITE_APPS)
 
-// Built, wired up, and ready — just switched off in the UI for now (asked
-// for later, once there are enough apps that it's worth the row it takes).
-// Flip to true to bring it back; matchesSearch/visibleApps below already do
-// the filtering, this only controls whether the input renders.
-const SEARCH_ENABLED = false
+// Below 560px the four words can't share a row with the search box, so each
+// option shows its mark there instead. The word stays in the DOM either way —
+// visually hidden, never `display: none`, so the radio keeps its accessible
+// name at every width. A–Z is already as short as a mark and keeps its word.
+function SortOption({ icon, children }) {
+  return (
+    <>
+      <span className={styles.sortIcon} aria-hidden="true">{icon}</span>
+      <span className={styles.sortWord}>{children}</span>
+    </>
+  )
+}
 
 const SORT_OPTIONS = [
-  { value: 'manual', label: 'Manual' },
-  { value: 'recent', label: 'Recent' },
-  { value: 'popular', label: 'Popular' },
+  { value: 'manual', label: <SortOption icon={<IconManual />}>Manual</SortOption> },
+  { value: 'recent', label: <SortOption icon={<IconRecent />}>Recent</SortOption> },
+  { value: 'popular', label: <SortOption icon={<IconPopular />}>Popular</SortOption> },
   { value: 'az', label: 'A–Z' },
 ]
 
@@ -52,8 +60,9 @@ export default function App() {
   // so this Map only ever gets trusted for its `true` values. Everything
   // else renders identically to "unknown". Seeded synchronously from each
   // app's own install flag (src/shared/installFlag.ts — set from standalone
-  // display-mode or `appinstalled`), then only ever upgraded (never
-  // downgraded) by the async, less-reliable getInstalledRelatedApps() check.
+  // display-mode or `appinstalled`), then upgraded by the async, less-reliable
+  // getInstalledRelatedApps() check — which can also downgrade an app, but
+  // only on a conclusive answer (see reconcileInstallFlags).
   const [installedByManifest, setInstalledByManifest] = useState(() => checkInstalledFlags(REACT_VITE_APPS))
   const [order, setOrder] = useState(() => reconcileOrder(loadOrder()))
   const [sort, setSort] = useState(() => loadSort())
@@ -78,6 +87,8 @@ export default function App() {
   })
 
   function refreshInstalledByManifest() {
+    // Synchronous pass: an install flag only ever adds confidence here, so
+    // this merges upward and never takes an app back out of "installed".
     setInstalledByManifest((prev) => {
       const flags = checkInstalledFlags(REACT_VITE_APPS)
       const merged = new Map(prev)
@@ -88,8 +99,13 @@ export default function App() {
     })
     checkInstalledApps(REACT_VITE_APPS).then((detected) => {
       if (!detected) return
+      // The only thing allowed to downgrade an app is a *conclusive* answer —
+      // see reconcileInstallFlags, which also prunes the now-disproven flags.
+      // After one, rebuild from the pruned flags rather than merging onto a
+      // map still carrying the app we just established isn't installed.
+      const conclusive = reconcileInstallFlags(REACT_VITE_APPS, detected)
       setInstalledByManifest((prev) => {
-        const merged = new Map(prev)
+        const merged = conclusive ? checkInstalledFlags(REACT_VITE_APPS) : new Map(prev)
         for (const [manifest, isInstalled] of detected) {
           if (isInstalled) merged.set(manifest, true)
         }
@@ -204,7 +220,7 @@ export default function App() {
           >
             <IconReorder />
           </IconButton>
-          {SEARCH_ENABLED && !editing && (
+          {!editing && (
             <input
               type="search"
               className={styles.searchInput}
@@ -215,6 +231,16 @@ export default function App() {
             />
           )}
         </div>
+
+        {/* Tiles say "Open" rather than "Install" on iOS, because a tap there
+            genuinely can't install anything (see AppTile). This is the one
+            place that says how it's actually done, once, instead of repeating
+            it on all nineteen tiles. */}
+        {isIos() && (
+          <p className={styles.iosHint}>
+            To keep an app on your home screen: open it, then <strong>Share</strong> → <strong>Add to Home Screen</strong>.
+          </p>
+        )}
 
         <div className={styles.grid}>
           {visibleApps.map((app, index) => (

@@ -104,15 +104,27 @@
    overrides the flex-item default of min-width: auto so it can actually
    shrink below its content's natural width on narrow phones. */
 .sortControl {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
 }
 
-/* Deliberately narrow, not a full-width bar — sits in the same row as sort
-   and reorder rather than claiming a row of its own. Grows a little on
-   wider viewports where .controlsRow has the space, but stays compact. */
+/* Above the breakpoint the words are back and the track should take up the
+   slack in the row; on a phone it stays at its icons' natural width so the
+   search box gets everything left over instead. */
+@media (min-width: 560px) {
+  .sortControl {
+    flex: 1 1 auto;
+  }
+}
+
+/* Grows into whatever the row has left. On a phone the sort control is icons
+   only (see .sortIcon), which frees just enough for search to share the row;
+   on a screen too narrow even for that, this wraps to its own line and the
+   same `flex-grow: 1` makes it full-width there instead of an orphaned stub.
+   Above the breakpoint it stops growing and stays deliberately compact rather
+   than a full-width bar. */
 .searchInput {
-  flex: 0 1 120px;
+  flex: 1 1 80px;
   min-width: 0;
   height: 36px;
   padding: 0 var(--space-sm);
@@ -127,9 +139,58 @@
   transition: border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease);
 }
 
-@media (min-width: 480px) {
+@media (min-width: 560px) {
   .searchInput {
-    flex-basis: 160px;
+    flex: 0 1 160px;
+  }
+}
+
+/* ── Sort control: marks on phones, words above 560px ────────────────────── */
+
+/* Tighter than the DS default (12px) — the row only fits with icons if the
+   padding comes in too. Restored to the DS padding at the breakpoint. */
+.sortControl button {
+  padding: 0 var(--space-xs);
+}
+
+.sortIcon {
+  display: inline-flex;
+}
+
+.sortIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Visually hidden rather than removed: `display: none` would strip the radio's
+   accessible name, leaving screen-reader users four unlabelled buttons. */
+.sortWord {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (min-width: 560px) {
+  .sortControl button {
+    padding: 0 var(--space-sm);
+  }
+
+  .sortIcon {
+    display: none;
+  }
+
+  .sortWord {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
   }
 }
 
@@ -141,6 +202,21 @@
   outline: none;
   border-color: var(--color-accent);
   box-shadow: 0 0 0 3px var(--color-ring);
+}
+
+/* iOS only, and only once per page — quiet enough to skip past on every visit
+   after the first, since it's the same instruction every time. */
+.iosHint {
+  margin: 0 0 var(--space-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--color-faint);
+}
+
+.iosHint strong {
+  font-weight: 600;
+  color: var(--color-muted);
 }
 
 /* One column below 640px (phones — untouched, was already the effective

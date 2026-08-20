@@ -19,7 +19,13 @@ export function appQrUrl(file: string): string {
 // 'H' is overkill here since nothing sits on top of the code. Kept a plain
 // wrapper — the caller decides when to render (see index.html and
 // AppTile.jsx, both of which render lazily, only once their dialog opens).
-export async function renderAppQr(canvas: HTMLCanvasElement, file: string): Promise<void> {
+export async function renderAppQr(canvas: HTMLCanvasElement | null, file: string): Promise<void> {
+  // Handed a null/absent element, qrcode does NOT fail — it quietly falls back
+  // to document.createElement('canvas') and draws into that detached node, so
+  // the dialog on screen stays an empty square and nothing reaches the console.
+  // That silent mode cost a real debugging session (Cabinet's tile dialog, see
+  // AppTile.jsx), so refuse it loudly instead.
+  if (!canvas) throw new Error(`renderAppQr("${file}"): no canvas element`)
   await QRCode.toCanvas(canvas, appQrUrl(file), {
     errorCorrectionLevel: 'M',
     width: 240,
