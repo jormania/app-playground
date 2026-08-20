@@ -67,16 +67,22 @@
 }
 
 /* Faint and dashed, like the fibers in the Underground graph — the same
-   relationship, drawn the same way. */
+   relationship, drawn the same way, at the same opacity (graphs.module.css's
+   `.mycorrhiza`) rather than the slightly stronger 0.5 this carried before —
+   SILVA.md is specific that a fiber reads as "faint" everywhere, not just
+   in the crossing. */
 .edgeNear {
   stroke: var(--silva-oxblood);
   stroke-width: 1;
   stroke-dasharray: 3 4;
-  opacity: 0.5;
+  opacity: 0.35;
 }
 
-.nodeSelf { fill: var(--color-ink); }
-.nodePath { fill: var(--color-accent); }
+/* fill-opacity 0.85, matching graphs.module.css's `.node` — these were
+   fully opaque before, the one place a node on this plate read heavier
+   than its counterpart in the crossing or the rootstock. */
+.nodeSelf { fill: var(--color-ink); fill-opacity: 0.85; }
+.nodePath { fill: var(--color-accent); fill-opacity: 0.85; }
 .nodeNear { fill: var(--silva-oxblood); opacity: 0.75; }
 
 .group {

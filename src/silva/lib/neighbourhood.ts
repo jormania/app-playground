@@ -155,21 +155,44 @@ export interface EgoViewBox {
   height: number
 }
 
+/** The floor under a crop, so a one- or two-neighbour drawing can't shrink
+ *  small enough to make its nodes read as heavy — the same problem
+ *  `lib/graph.ts`'s `MIN_VIEWBOX_SIZE` (220, for the crossing and the
+ *  rootstock) already solved once for exactly this reason. Smaller here on
+ *  purpose: this is a compact inline element on a plate, not a full-screen
+ *  drawing, and node radius is already smaller in absolute terms (5/7 vs.
+ *  the crossing's 8/10) — the floor only has to keep that *proportion*
+ *  from inverting itself the way an uncropped ~44-unit box did. */
+const EGO_MIN_VIEWBOX = 120
+
 /**
- * A box drawn tight around the nodes rather than the notional canvas. With one
- * or two neighbours the fixed 200×200 square is mostly empty, and the graph
- * reads as though something failed to load; cropping to the content makes a
- * small neighbourhood look deliberate, which it is.
+ * A box drawn tight around the nodes rather than the notional canvas, down
+ * to `EGO_MIN_VIEWBOX`. With one or two neighbours the fixed 200×200 square
+ * is mostly empty, and the graph reads as though something failed to load;
+ * cropping to the content makes a small neighbourhood look deliberate,
+ * which it is. But cropping *without a floor* went too far the other way —
+ * a single neighbour left a box as small as ~44×114 units, where even the
+ * smaller of the two node sizes filled a sixth of the width. The floor
+ * keeps a sparse neighbourhood looking like a smaller version of the same
+ * drawing, not a denser one squeezed into less room.
  */
 export function egoViewBox(nodes: EgoNode[]): EgoViewBox {
   if (nodes.length === 0) return { minX: 0, minY: 0, width: EGO_SIZE, height: EGO_SIZE }
 
   const xs = nodes.map((n) => n.x)
   const ys = nodes.map((n) => n.y)
-  const minX = Math.min(...xs) - EGO_PADDING
-  const maxX = Math.max(...xs) + EGO_PADDING
-  const minY = Math.min(...ys) - EGO_PADDING
-  const maxY = Math.max(...ys) + EGO_PADDING
+  const contentMinX = Math.min(...xs) - EGO_PADDING
+  const contentMaxX = Math.max(...xs) + EGO_PADDING
+  const contentMinY = Math.min(...ys) - EGO_PADDING
+  const contentMaxY = Math.max(...ys) + EGO_PADDING
 
-  return { minX, minY, width: maxX - minX, height: maxY - minY }
+  const width = Math.max(EGO_MIN_VIEWBOX, contentMaxX - contentMinX)
+  const height = Math.max(EGO_MIN_VIEWBOX, contentMaxY - contentMinY)
+  // Grown evenly around the content's own centre rather than anchored at
+  // its top-left corner, so a floored box still centres what it's showing
+  // instead of pushing it into a corner.
+  const minX = contentMinX - (width - (contentMaxX - contentMinX)) / 2
+  const minY = contentMinY - (height - (contentMaxY - contentMinY)) / 2
+
+  return { minX, minY, width, height }
 }

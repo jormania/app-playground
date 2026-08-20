@@ -20,10 +20,13 @@ export interface SilvaConfig {
    * underground layer exist, not as an obscure toggle.
    */
   mycorrhizaEnabled: boolean
-  /** Show the whole-forest graph in Underground. On by default — the
-   *  toggle exists for the density it can reach at real scale, not because
-   *  it's wrong at the sizes most forests start at. The path list, the
-   *  make-a-path form, and paths themselves are unaffected either way. */
+  /** Show the crossing (the whole-forest graph in Underground) *and* the
+   *  small node-link drawing inside a plate's own Neighbourhood panel — the
+   *  same picture at two scales, one setting for both. On by default; the
+   *  toggle exists for the density the crossing can reach at real scale,
+   *  not because either drawing is wrong at the sizes most forests start
+   *  at. The path list, the make-a-path form, and paths themselves are
+   *  unaffected either way — this hides the drawings, not the paths. */
   showGraph: boolean
   /** Show "the rootstock" at the head of Roots — the crossing's twin,
    *  grouping kept things by the source they came from. Its own toggle

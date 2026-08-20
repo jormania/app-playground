@@ -115,7 +115,7 @@ export function HearthView({ config, onChange, indexing = null, themeChoice, onT
         />
         <SettingsToggle
           label="Show the crossing"
-          hint="Where every path you have walked crosses — the whole forest drawn at once, at the head of Paths. Off leaves the list of paths you've walked and the form for walking a new one — the paths themselves are untouched."
+          hint="Where every path you have walked crosses — the whole forest drawn at once, at the head of Paths, and the same small drawing on a thing's own plate under “Near this”. Off leaves the lists, and the form for walking a new path, untouched — only the drawings go."
           checked={config.showGraph}
           onChange={(e) => onChange({ showGraph: e.target.checked })}
         />

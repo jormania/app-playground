@@ -4,6 +4,15 @@ import { MYCORRHIZA_THRESHOLD } from './graph'
 import type { Thing } from './notion'
 import type { Path } from './paths'
 
+// The floor below fixes: a single-neighbour crop shrank to ~44×114 units
+// with no floor, so a 5px/7px node radius (already smaller in absolute
+// terms than the crossing's own 8/10) ended up occupying a much bigger
+// share of the drawing than it does there — the "heavy nodes, long line"
+// a one- or two-neighbour plate showed. `lib/graph.ts`'s MIN_VIEWBOX_SIZE
+// (220, for the crossing and rootstock) solved the identical problem once
+// already; this is the same fix scaled down for a compact inline drawing.
+const EGO_MIN_VIEWBOX = 120
+
 function thing(id: string, patch: Partial<Thing> = {}): Thing {
   return {
     id, handle: id, body: `body ${id}`, kind: null, state: 'Kept', sourceId: null,
@@ -195,5 +204,31 @@ describe('egoViewBox', () => {
 
   it('falls back to the full canvas when there is nothing to draw', () => {
     expect(egoViewBox([])).toEqual({ minX: 0, minY: 0, width: EGO_SIZE, height: EGO_SIZE })
+  })
+
+  it('never crops a single neighbour smaller than the floor', () => {
+    const nodes = layoutEgoGraph({ near: [{ thing: thing('n'), similarity: 0.9 }], connected: [] })
+    const box = egoViewBox(nodes)
+    expect(box.width).toBeGreaterThanOrEqual(EGO_MIN_VIEWBOX)
+    expect(box.height).toBeGreaterThanOrEqual(EGO_MIN_VIEWBOX)
+  })
+
+  it('grows the floor evenly around the content rather than from a corner', () => {
+    const nodes = layoutEgoGraph({ near: [{ thing: thing('n'), similarity: 0.9 }], connected: [] })
+    const box = egoViewBox(nodes)
+    const centerX = box.minX + box.width / 2
+    const centerY = box.minY + box.height / 2
+    const contentCenterX = nodes.reduce((sum, n) => sum + n.x, 0) / nodes.length
+    const contentCenterY = nodes.reduce((sum, n) => sum + n.y, 0) / nodes.length
+    expect(centerX).toBeCloseTo(contentCenterX, 0)
+    expect(centerY).toBeCloseTo(contentCenterY, 0)
+  })
+
+  it('lets a genuinely dense neighbourhood grow past the floor, unaffected by it', () => {
+    const near = Array.from({ length: 4 }, (_, i) => ({ thing: thing(`n${i}`), similarity: 0.9 }))
+    const connected = Array.from({ length: 6 }, (_, i) => ({ thing: thing(`c${i}`), path: path(`p${i}`, 'me', `c${i}`) }))
+    const box = egoViewBox(layoutEgoGraph({ near, connected }))
+    expect(box.width).toBeGreaterThan(EGO_MIN_VIEWBOX)
+    expect(box.height).toBeGreaterThan(EGO_MIN_VIEWBOX)
   })
 })

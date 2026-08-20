@@ -25,6 +25,14 @@ export interface ForestViewProps {
    *  the scroll alone, for anyone who'd rather nothing above it claim their
    *  attention first. */
   showWalk?: boolean
+  /** Settings' "Show the graph" — on by default. Off hides the crossing in
+   *  Underground *and* the small node-link drawing inside a plate's own
+   *  Neighbourhood panel: both are the same kind of picture, so turning off
+   *  "the graph" turns off graphs, full stop. The rest of Neighbourhood
+   *  (the "Near this" toggle, the path lists, "Walk a path") is untouched —
+   *  that's the make-a-path form, not the drawing, and SILVA.md is explicit
+   *  paths themselves are unaffected by this setting either way. */
+  showGraph?: boolean
 }
 
 /** The kept collection. The walk sits at the head — a short, finite,
@@ -52,6 +60,7 @@ export function ForestView({
   onSeen,
   onMakePath,
   showWalk = true,
+  showGraph = true,
 }: ForestViewProps) {
   const sourceById = useMemo(() => new Map(sources.map((s) => [s.id, s])), [sources])
   const locusById = useMemo(() => new Map(loci.map((l) => [l.id, l])), [loci])
@@ -82,6 +91,7 @@ export function ForestView({
           paths={paths}
           vectorsById={vectorsById}
           onMakePath={onMakePath}
+          showGraph={showGraph}
         />
       </SpecimenPlate>
     )

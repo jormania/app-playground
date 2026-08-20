@@ -11,6 +11,15 @@ export interface NeighbourhoodProps {
   paths: Path[]
   vectorsById: Map<string, Float32Array>
   onMakePath: (fromId: string, toId: string, why: string) => void
+  /** Settings' "Show the graph" — on by default. Off hides only the small
+   *  node-link drawing below; the toggle, counts, and both list groups
+   *  ("Paths you walked", "Grew near this", "Walk a path") stay exactly as
+   *  they are. This is the same picture as the crossing and the rootstock,
+   *  just of one thing instead of the whole forest — so the setting that
+   *  turns those off turns this off too, while the *functionality* of
+   *  making a path from here is untouched (SILVA.md: "the make-a-path
+   *  form... [is] unaffected either way" by this setting). */
+  showGraph?: boolean
 }
 
 function summarize(thing: Thing, max = 110): string {
@@ -31,7 +40,7 @@ function summarize(thing: Thing, max = 110): string {
  * Collapsed by default. The plate's job is to be read; this waits under it
  * until asked.
  */
-export function Neighbourhood({ thing, things, paths, vectorsById, onMakePath }: NeighbourhoodProps) {
+export function Neighbourhood({ thing, things, paths, vectorsById, onMakePath, showGraph = true }: NeighbourhoodProps) {
   const [open, setOpen] = useState(false)
   const [respondingTo, setRespondingTo] = useState<string | null>(null)
   const [why, setWhy] = useState('')
@@ -72,33 +81,40 @@ export function Neighbourhood({ thing, things, paths, vectorsById, onMakePath }:
         <div className={styles.panel}>
           {/* Centre plus one ring — the whole layout. There is nothing to
            *  simulate when the neighbourhood is bounded by construction, which
-           *  is exactly why this scales where the global graph does not. */}
-          <svg
-            className={styles.graph}
-            viewBox={`${box.minX} ${box.minY} ${box.width} ${box.height}`}
-            role="img"
-            aria-label={`This thing, with ${connected.length} path${connected.length === 1 ? '' : 's'} and ${near.length} unspoken thread${near.length === 1 ? '' : 's'}`}
-          >
-            {nodes.slice(1).map((node) => (
-              <line
-                key={`edge-${node.id}`}
-                x1={self.x} y1={self.y} x2={node.x} y2={node.y}
-                className={node.role === 'connected' ? styles.edgePath : styles.edgeNear}
-              />
-            ))}
-            {nodes.map((node) => (
-              <circle
-                key={node.id}
-                cx={node.x} cy={node.y}
-                r={node.role === 'self' ? 7 : 5}
-                className={
-                  node.role === 'self' ? styles.nodeSelf
-                    : node.role === 'connected' ? styles.nodePath
-                      : styles.nodeNear
-                }
-              />
-            ))}
-          </svg>
+           *  is exactly why this scales where the global graph does not.
+           *  Gated on `showGraph` alone — this is the same picture as the
+           *  crossing and the rootstock, just of one thing rather than the
+           *  whole forest, so the setting that hides those hides this too.
+           *  Everything below it (the lists, "Walk a path") is the
+           *  make-a-path form, not the drawing, and stays regardless. */}
+          {showGraph && (
+            <svg
+              className={styles.graph}
+              viewBox={`${box.minX} ${box.minY} ${box.width} ${box.height}`}
+              role="img"
+              aria-label={`This thing, with ${connected.length} path${connected.length === 1 ? '' : 's'} and ${near.length} unspoken thread${near.length === 1 ? '' : 's'}`}
+            >
+              {nodes.slice(1).map((node) => (
+                <line
+                  key={`edge-${node.id}`}
+                  x1={self.x} y1={self.y} x2={node.x} y2={node.y}
+                  className={node.role === 'connected' ? styles.edgePath : styles.edgeNear}
+                />
+              ))}
+              {nodes.map((node) => (
+                <circle
+                  key={node.id}
+                  cx={node.x} cy={node.y}
+                  r={node.role === 'self' ? 7 : 5}
+                  className={
+                    node.role === 'self' ? styles.nodeSelf
+                      : node.role === 'connected' ? styles.nodePath
+                        : styles.nodeNear
+                  }
+                />
+              ))}
+            </svg>
+          )}
 
           {connected.length > 0 && (
             <div className={styles.group}>

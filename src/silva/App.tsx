@@ -1148,6 +1148,7 @@ export default function App() {
             onSeen={markSeen}
             onMakePath={handleMakePath}
             showWalk={config.showWalk}
+            showGraph={config.showGraph}
           />
         ) : view === 'clearings' ? (
           <ClearingsView
