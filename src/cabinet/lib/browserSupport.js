@@ -54,9 +54,19 @@ export function chromeIntentUrl(absoluteUrl) {
 // OS-level lookup a tap from *outside* the browser (a notification, another
 // app) would get for free. If a WebAPK is installed for the URL, Android
 // launches it in its own window; if not, S.browser_fallback_url reopens the
-// same page in the browser exactly like a plain link would have. That
-// makes it safe to use even when install status is unknown or false —
-// see installState.js on why that detection can't be trusted either way.
+// same page in the browser exactly like a plain link would have.
+//
+// Reserved for apps confirmed installed (see AppTile). Because this resolves
+// at the OS level, Android offers every app that claims the URL — with two
+// browsers on the phone that's an "Open with" sheet — so it's only worth
+// paying when there's actually a WebAPK to win it. Even then Android asks,
+// unless the WebAPK is a *verified* link handler: its intent filter sets
+// android:autoVerify, which makes Android look for
+// /.well-known/assetlinks.json naming the app's package and signing
+// fingerprint. WebAPKs are minted and signed by Google's server, so those
+// values aren't ours to publish and no file we host can verify them. The
+// per-app "Open by default → Open supported links" toggle in Android
+// Settings is the only fix, which is what the Cabinet's hint points at.
 export function pwaLaunchIntentUrl(absoluteUrl) {
   const withoutScheme = absoluteUrl.replace(/^https?:\/\//, '')
   const fallback = encodeURIComponent(absoluteUrl)

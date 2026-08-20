@@ -17,6 +17,7 @@ const STATIC_APPS = APPS.filter((a) => a.kind === 'static')
 
 const DESKTOP_NAV = { userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/120', platform: 'Win32', maxTouchPoints: 0 }
 const IPHONE_NAV = { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Safari', platform: 'iPhone', maxTouchPoints: 5 }
+const ANDROID_NAV = { userAgent: 'Mozilla/5.0 (Linux; Android 14) Chrome/120.0.0.0 Mobile Safari/537.36', platform: 'Linux armv8l', maxTouchPoints: 5 }
 
 function renderApp() {
   return render(
@@ -116,6 +117,88 @@ describe('what a tile promises', () => {
     renderApp()
     await settle()
     expect(screen.getAllByText(/Add to Home Screen/i)).toHaveLength(1)
+  })
+})
+
+// The OS-level intent is what makes Android offer an installed WebAPK at all,
+// but it also makes Android offer every *other* app claiming the URL — with a
+// second browser on the phone that's an "Open with" chooser. Paying that for
+// an app with no WebAPK to win it is pure cost, so the intent is reserved for
+// confirmed installs.
+describe('Android launch routing', () => {
+  function hrefFor(title) {
+    return screen.getByRole('link', { name: new RegExp(`${title}$`) }).getAttribute('href')
+  }
+
+  it('uses an OS intent for an app confirmed installed', async () => {
+    const app = REACT_VITE_APPS[0]
+    localStorage.setItem(`installed:${app.file}`, '1')
+    vi.stubGlobal('navigator', ANDROID_NAV)
+    renderApp()
+    await settle()
+    expect(hrefFor(app.title)).toContain('intent://')
+    expect(hrefFor(app.title)).toContain(app.file)
+  })
+
+  it('uses a plain link for an app that is not installed', async () => {
+    vi.stubGlobal('navigator', ANDROID_NAV)
+    renderApp()
+    await settle()
+    expect(hrefFor(REACT_VITE_APPS[0].title)).toBe(`/${REACT_VITE_APPS[0].file}`)
+  })
+
+  it('never uses an intent for a static app, installed flag or not', async () => {
+    vi.stubGlobal('navigator', ANDROID_NAV)
+    renderApp()
+    await settle()
+    expect(hrefFor(STATIC_APPS[0].title)).toBe(`/${STATIC_APPS[0].file}`)
+  })
+
+  it('leaves non-Android platforms on plain links', async () => {
+    const app = REACT_VITE_APPS[0]
+    localStorage.setItem(`installed:${app.file}`, '1')
+    renderApp()
+    await settle()
+    expect(hrefFor(app.title)).toBe(`/${app.file}`)
+  })
+})
+
+describe('the Android "Open by default" hint', () => {
+  it('is shown once something is actually installed', async () => {
+    localStorage.setItem(`installed:${REACT_VITE_APPS[0].file}`, '1')
+    vi.stubGlobal('navigator', ANDROID_NAV)
+    renderApp()
+    await settle()
+    expect(screen.getByText(/Open by default/)).toBeTruthy()
+  })
+
+  // Useless advice to someone with nothing installed to set it on.
+  it('stays hidden when nothing is installed', async () => {
+    vi.stubGlobal('navigator', ANDROID_NAV)
+    renderApp()
+    await settle()
+    expect(screen.queryByText(/Open by default/)).toBeNull()
+  })
+
+  it('stays hidden off Android', async () => {
+    localStorage.setItem(`installed:${REACT_VITE_APPS[0].file}`, '1')
+    renderApp()
+    await settle()
+    expect(screen.queryByText(/Open by default/)).toBeNull()
+  })
+
+  it('stays dismissed across a reload', async () => {
+    localStorage.setItem(`installed:${REACT_VITE_APPS[0].file}`, '1')
+    vi.stubGlobal('navigator', ANDROID_NAV)
+    renderApp()
+    await settle()
+    await userEvent.click(screen.getByRole('button', { name: /got it/i }))
+    expect(screen.queryByText(/Open by default/)).toBeNull()
+
+    cleanup()
+    renderApp()
+    await settle()
+    expect(screen.queryByText(/Open by default/)).toBeNull()
   })
 })
 

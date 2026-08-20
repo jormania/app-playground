@@ -34,17 +34,24 @@ import styles from './AppTile.module.css'
 // On Android, a react-vite tap goes through pwaLaunchIntentUrl rather than a
 // plain relative href — see the comment on that function in
 // browserSupport.js for why a same-origin <a> can't hand off to an installed
-// WebAPK on its own. Applied unconditionally (not just when `installed` is
-// confirmed true), since Android's own answer at tap time is authoritative
-// and a false/unknown detection here shouldn't block a real installed app
-// from being found.
+// WebAPK on its own.
+//
+// Only when `installed` is confirmed true, though. That intent is an OS-level
+// ACTION_VIEW, so Android resolves it against everything that claims the URL —
+// which on a phone with two browsers means an "Open with" chooser listing
+// Chrome and Edge. Firing it for an app that isn't installed buys nothing (no
+// WebAPK exists to hand off to) and costs a chooser on every single tap. The
+// earlier unconditional version reasoned that a false negative shouldn't block
+// a real install from being found; the flags are far more reliable now (each
+// app sets its own, and installState prunes stale ones), so the trade has
+// flipped — an occasional browser tab beats a guaranteed chooser.
 export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, onMoveDown, disableUp, disableDown }) {
   const isStatic = app.kind === 'static'
   const path = `/${app.file}`
   const needsChromeRedirect = !isStatic && !installed && !canInstallPwaHere()
   const href = needsChromeRedirect
     ? chromeIntentUrl(window.location.origin + path)
-    : !isStatic && isAndroid()
+    : !isStatic && installed && isAndroid()
       ? pwaLaunchIntentUrl(window.location.origin + path)
       : path
   // "Install" is only ever offered where a tap can actually lead to one. On

@@ -219,6 +219,27 @@
   color: var(--color-muted);
 }
 
+/* Inline with the hint's last sentence rather than a block below it — the
+   hint is one line and a full-width button under it would outweigh it. */
+.hintDismiss {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.hintDismiss:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 /* One column below 640px (phones — untouched, was already the effective
    result of the old auto-fill at that width). At 640px+, a fixed 2-column
    grid: auto-fill with a 260px minimum let three columns cram into the

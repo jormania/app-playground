@@ -58,3 +58,14 @@ export function loadSort() {
 export function saveSort(sort) {
   write('sort', sort)
 }
+
+// ── One-time Android "Open by default" hint ────────────────────────────────
+// Dismissed for good once read — it's the same sentence every visit, and the
+// setting it describes only has to be changed once per app.
+export function loadLinkHintDismissed() {
+  return read('linkHintDismissed', false) === true
+}
+
+export function dismissLinkHint() {
+  write('linkHintDismissed', true)
+}

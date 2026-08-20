@@ -4,9 +4,9 @@ import { IconButton, SegmentedControl } from '../ds'
 import { useTheme } from './lib/themeContext'
 import { checkInstalledApps, checkInstalledFlags, reconcileInstallFlags } from './lib/installState'
 import { newlyDeployedFiles } from './lib/deployed'
-import { loadOrder, saveOrder, loadLastOpened, clearLastOpened, loadSort, saveSort } from './lib/storage'
+import { loadOrder, saveOrder, loadLastOpened, clearLastOpened, loadSort, saveSort, loadLinkHintDismissed, dismissLinkHint } from './lib/storage'
 import { matchesSearch } from './lib/search'
-import { isIos } from './lib/browserSupport'
+import { isAndroid, isIos } from './lib/browserSupport'
 import { AppTile } from './components/AppTile'
 import { IconManual, IconPopular, IconRecent, IconReorder } from './components/icons'
 import styles from './App.module.css'
@@ -67,6 +67,7 @@ export default function App() {
   const [order, setOrder] = useState(() => reconcileOrder(loadOrder()))
   const [sort, setSort] = useState(() => loadSort())
   const [editing, setEditing] = useState(false)
+  const [linkHintDismissed, setLinkHintDismissed] = useState(() => loadLinkHintDismissed())
   const [query, setQuery] = useState('')
   // `?resetStats=1` wipes the open-count/last-opened map only (order and
   // sort untouched) before the first read — a one-off escape hatch for
@@ -189,6 +190,10 @@ export default function App() {
   // from what's actually on screen.
   const visibleApps = editing ? orderedApps : orderedApps.filter((app) => matchesSearch(app, query))
 
+  // Only true once something is genuinely known to be installed — the hint
+  // below is useless advice to someone with nothing installed to set it on.
+  const anyInstalled = REACT_VITE_APPS.some((app) => installedByManifest?.get(app.manifest) === true)
+
   return (
     <div className={styles.shell}>
       <div className={styles.content}>
@@ -231,6 +236,29 @@ export default function App() {
             />
           )}
         </div>
+
+        {/* Launching an installed app goes through an OS-level intent, and
+            Android offers every app that claims the URL — so with a second
+            browser on the phone you get an "Open with" sheet listing Chrome,
+            Edge and the app itself. Nothing here can suppress it: that needs
+            the WebAPK to be a verified link handler, and its package and
+            signing key belong to Google's minting server, not to us (see
+            browserSupport.js). The per-app toggle is the real fix, so say so
+            once — and only to someone who has an installed app to say it
+            about. Dismissed for good on read. */}
+        {isAndroid() && anyInstalled && !linkHintDismissed && (
+          <p className={styles.iosHint}>
+            Android asking which app to open? <strong>Settings → Apps →</strong> the app{' '}
+            <strong>→ Open by default → Open supported links</strong> stops it asking.{' '}
+            <button
+              type="button"
+              className={styles.hintDismiss}
+              onClick={() => { dismissLinkHint(); setLinkHintDismissed(true) }}
+            >
+              Got it
+            </button>
+          </p>
+        )}
 
         {/* Tiles say "Open" rather than "Install" on iOS, because a tap there
             genuinely can't install anything (see AppTile). This is the one
