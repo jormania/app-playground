@@ -178,16 +178,15 @@ export function SpecimenPlate({
               record it. Plain typed text, same as at capture. */}
           <Field
             label="Source"
-            /* Says what the field actually does. It chooses *which* source
-             * this thing points at — typing a new name creates a new source
-             * and re-points the thing; typing a variant of the current one
-             * resolves back to the same source and so looks like nothing
-             * happened at all. Renaming the source itself is an edit to the
-             * source, and lives in Roots. */
-            hint="Which source this came from — pick one you already have, or type a new name to create it. To rename a source itself, edit it in Roots."
+            /* Both facts, in one line each: the field picks a source (or
+             * makes one), and renaming a source is an edit to the source,
+             * which lives in Roots. The longer version of this explained the
+             * mechanism and cost four lines on a phone. */
+            hint="Pick one, or type a new name. Rename a source in Roots."
             value={sourceInput}
             onChange={(e) => setSourceInput(e.target.value)}
             placeholder="e.g. Shelby Foote — The Civil War"
+            className={styles.sourceInput}
             list={sourceOptions.length > 0 ? sourceListId : undefined}
           />
           {sourceOptions.length > 0 && (

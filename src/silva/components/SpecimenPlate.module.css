@@ -335,3 +335,21 @@
   font-variant: small-caps;
   letter-spacing: 0.04em;
 }
+
+/* The Source field's datalist.
+ *
+ * A browser draws its own dropdown triangle inside any `input[list]`. On a
+ * desktop that triangle works — click it, the whole list drops down. On a
+ * touch keyboard it does nothing at all: suggestions only ever surface in
+ * the keyboard's own strip, and only once you have typed something. So the
+ * control sat there promising a list it could not open.
+ *
+ * Hidden exactly where it lies and kept where it works: `hover: none` is
+ * true for touch input and false for a mouse. Typing to filter is the right
+ * interaction for a collection that grows anyway — a dropdown of four
+ * hundred sources would be worse than two letters and a tap. */
+@media (hover: none) {
+  .sourceInput::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+}

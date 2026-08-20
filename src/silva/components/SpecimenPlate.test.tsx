@@ -177,7 +177,7 @@ describe('SpecimenPlate — the Source field is a chooser', () => {
     const user = userEvent.setup()
     render(<SpecimenPlate thing={thing()} allSources={sources} {...handlers} />)
     await user.click(screen.getByRole('button', { name: 'Edit' }))
-    expect(screen.getByText(/rename a source itself, edit it in Roots/i)).toBeTruthy()
+    expect(screen.getByText(/Rename a source in Roots/i)).toBeTruthy()
   })
 
   // Nothing to suggest is nothing to wire up.

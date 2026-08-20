@@ -104,3 +104,12 @@
 .fileInput {
   display: none;
 }
+
+/* The same native dropdown triangle `input[list]` draws, hidden on touch for
+   the same reason as SpecimenPlate's Source field: it opens nothing there.
+   See that module for the full note. */
+@media (hover: none) {
+  .source::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+}
