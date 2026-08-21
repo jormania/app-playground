@@ -2,7 +2,20 @@
 // No network, no React — the part that gets the heaviest test coverage, mirroring
 // Journal of Delights' notion.js. Wanderlist reads/writes the "Findings" database
 // (see WANDERLIST.md): a backlog of city things-to-do you triage and check off.
-import { localOffsetString } from './dates.js'
+//
+// PROMOTED: the Findings schema itself (property names, the rich-text chunking,
+// the Category/Tags casing rule, the Planned Date offset handling) now lives in
+// src/shared/findings.js, because Semnal became a second writer to this same
+// database and two independent copies of those property names would eventually
+// drift. Re-exported here so every import path in this app — and the tests below
+// that cover them — is unchanged.
+import {
+  RICH_TEXT_LIMIT, richTextToPlain, plainToRichText,
+  normalizeTag, normalizeCategory, splitPlannedStart,
+  toFindingsProps,
+} from '../shared/findings.js'
+
+export { RICH_TEXT_LIMIT, richTextToPlain, plainToRichText }
 //
 // App model for one item:
 //   { id, name, description, link, category, place, placeUrl, tags[], attended, going,
@@ -31,58 +44,11 @@ import { localOffsetString } from './dates.js'
 // every day-key comparison elsewhere in the app (sort, calendar grid, search) keeps
 // working against plain plannedDate, untouched by this.
 
-// Notion caps a single rich_text object's `content` at 2000 characters, so any long
-// text we WRITE (Description) is split into a sequence of <=2000-char chunks; reading
-// is the reverse (concatenate). Identical to JoD — kept here so the app is standalone.
-export const RICH_TEXT_LIMIT = 2000
 
-// Join an array of Notion rich_text objects back into one plain string.
-export function richTextToPlain(richText) {
-  if (!Array.isArray(richText)) return ''
-  return richText.map(rt => (rt && rt.plain_text != null ? rt.plain_text : (rt?.text?.content ?? ''))).join('')
-}
 
-// Split a plain string into Notion rich_text objects, none exceeding RICH_TEXT_LIMIT.
-// Empty string -> [] (Notion clears the property).
-export function plainToRichText(text, limit = RICH_TEXT_LIMIT) {
-  const str = text == null ? '' : String(text)
-  if (str.length === 0) return []
-  const chunks = []
-  for (let i = 0; i < str.length; i += limit) {
-    chunks.push({ text: { content: str.slice(i, i + limit) } })
-  }
-  return chunks
-}
 
-// Casing convention for the two select-y fields, enforced on both read and write so a
-// mixed-case value from before this rule (or typed straight into Notion) still displays and
-// re-saves normalized: both always lowercase, for consistency (and so Tags/Category never
-// fork "Free" from "free" as separate filter keys).
-function normalizeTag(name) {
-  return String(name || '').trim().toLowerCase()
-}
-const normalizeCategory = normalizeTag
 
-// Split a Notion date property's `start` into a plain day key + an optional 'HH:MM' time.
-// A bare date ('2026-07-12') has no time component; a datetime ('2026-07-12T19:30:00.000+03:00')
-// does — we only need the wall-clock hour:minute as typed, not the offset itself (it's only
-// there so Notion stores the correct absolute instant; round-tripping through the same
-// browser's local time reads it back out unchanged).
-function splitPlannedDate(start) {
-  if (!start) return { date: null, time: null }
-  const m = /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?/.exec(start)
-  if (!m) return { date: null, time: null }
-  return { date: m[1], time: m[2] || null }
-}
 
-// The inverse: combine a day key + optional time back into what Notion's date property
-// expects — a bare day key with no time, or a full ISO datetime (this browser's offset
-// appended) when a start time was set.
-function combinePlannedDate(date, time) {
-  if (!date) return null
-  if (!time) return date
-  return `${date}T${time}:00${localOffsetString()}`
-}
 
 // Read a Notion page object into our app model. Defensive throughout: a property can
 // be missing or a different type if the schema drifts, and we'd rather render a
@@ -90,7 +56,7 @@ function combinePlannedDate(date, time) {
 export function toEntry(page) {
   const props = (page && page.properties) || {}
   const titleProp = props.Name || props.Title || {}
-  const planned = splitPlannedDate(props['Planned Date']?.date?.start ?? null)
+  const planned = splitPlannedStart(props['Planned Date']?.date?.start ?? null)
   return {
     id: page?.id ?? null,
     name: richTextToPlain(titleProp.title),
@@ -151,29 +117,9 @@ export function ticketWriteEntry(ticket) {
   return { type: 'external', name, external: { url: ticket.url } }
 }
 
-// Build the `properties` payload for a create/update call. We never write formula or
-// read-only props. A null clears the property in Notion; empty string / empty array
-// do too, for their respective types.
-export function toNotionProps(entry) {
-  const e = entry || {}
-  return {
-    Name: { title: plainToRichText(e.name) },
-    Description: { rich_text: plainToRichText(e.description) },
-    Link: { url: e.link ? String(e.link) : null },
-    Category: { select: e.category ? { name: normalizeCategory(e.category) } : null },
-    Place: { rich_text: plainToRichText(e.place) },
-    Map: { url: e.placeUrl ? String(e.placeUrl) : null },
-    Tags: { multi_select: [...new Set((e.tags ?? []).map(normalizeTag).filter(Boolean))].map(name => ({ name })) },
-    Attended: { checkbox: Boolean(e.attended) },
-    Going: { checkbox: Boolean(e.going) },
-    // Cost is an optional number (Romanian lei). A blank/absent cost clears the property;
-    // never write NaN (a non-numeric string slipping through) — treat that as "no cost".
-    Cost: { number: e.cost === '' || e.cost == null || Number.isNaN(Number(e.cost)) ? null : Number(e.cost) },
-    'Date Added': { date: e.dateAdded ? { start: e.dateAdded } : null },
-    'Date Expiring': { date: e.dateExpiring ? { start: e.dateExpiring } : null },
-    'Planned Date': { date: e.plannedDate ? { start: combinePlannedDate(e.plannedDate, e.plannedTime) } : null },
-  }
-}
+// Build the `properties` payload for a create/update call. The mapping itself is
+// the shared Findings schema (src/shared/findings.js) — this is the app's name for it.
+export const toNotionProps = toFindingsProps
 
 // Pull a Notion database/page id out of whatever a user pastes: a full URL, a bare
 // 32-char id, or a dashed UUID. Returns the compact 32-char id, or '' if nothing

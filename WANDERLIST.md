@@ -90,6 +90,15 @@ indicator glyph) and needed splitting so the focus-triggered half stays always-a
 
 ## Notion database schema
 
+**The write mapping now lives in [`src/shared/findings.js`](src/shared/findings.js)**, not
+in `src/wanderlist/notion.js` — promoted there when **Semnal** (`src/semnal/`, the
+Bucharest event radar) became a second writer to this same database, so the two apps
+can't drift into writing `"Free"` where the other writes `"free"`. `notion.js` re-exports
+every symbol (`toNotionProps` is `toFindingsProps` under its old name), so nothing in
+this app's import paths changed and `notion.test.js` still covers it. The table below
+stays the human-readable schema; change it here, in `src/shared/findings.js`, and in the
+`wanderlist` skill together.
+
 App model: `{ id, name, description, link, category, place, placeUrl, tags[], attended, going,
 cost, dateAdded, dateExpiring, plannedDate, plannedTime, photo, tickets[] }`. Notion properties:
 

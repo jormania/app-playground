@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Semnal launcher tile: a radar sweep over warm paper. The single amber
+       return is the whole idea of the app — one thing worth your evening,
+       picked out of the noise. -->
+  <rect width="512" height="512" fill="#1e1b18"/>
+  <g fill="none" stroke="#6f6355" stroke-width="10">
+    <circle cx="256" cy="256" r="172"/>
+    <circle cx="256" cy="256" r="112"/>
+    <circle cx="256" cy="256" r="52"/>
+  </g>
+  <path d="M256 256 L 378 170" stroke="#d98b4a" stroke-width="14" stroke-linecap="round" fill="none"/>
+  <circle cx="256" cy="256" r="14" fill="#d98b4a"/>
+  <circle cx="378" cy="170" r="26" fill="#d98b4a"/>
+  <circle cx="378" cy="170" r="46" fill="none" stroke="#d98b4a" stroke-width="8" opacity="0.45"/>
+</svg>

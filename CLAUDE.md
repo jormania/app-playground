@@ -36,6 +36,7 @@ before working in that app. Don't hold app internals here; this table is a route
 
 | App | Location | Notes |
 |-----|----------|-------|
+| Semnal | `src/semnal/` | JSX, DS — Bucharest event radar; reads the Notion **📡 Radar** DB written by the `/recommend in Bucharest` skill, saves into Wanderlist's Findings. Read [`SEMNAL.md`](SEMNAL.md) — especially "the app does not scrape" and the two-pass dedupe — before touching it |
 | Sol Odyssey | `src/sol-odyssey/` | strict TS — has its own [`CLAUDE.md`](src/sol-odyssey/CLAUDE.md) + `DESIGN.md`; **defer to those** in that dir |
 | Daily Stoic | `src/daily-stoic/` | strict TS, DS — [`DAILY_STOIC.md`](DAILY_STOIC.md) |
 | Tempo | `src/tempo/` | JSX, DS |
@@ -85,9 +86,18 @@ can't throw; WhereItWent re-exports it),
 dashed UUID or bare id — Loom re-exports it; Wanderlist and Journal still carry
 their own older copies), and [`useWakeLock.ts`](src/shared/useWakeLock.ts)
 (screen-awake hook wrapping the Wake Lock API, degrading silently where
-unsupported; Tempo and Yoru re-export it, Lexi5 imports it directly). Each
+unsupported; Tempo and Yoru re-export it, Lexi5 imports it directly),
+[`findings.js`](src/shared/findings.js) (**the Findings/Wanderlist Notion schema** —
+property names, rich-text chunking, the Category/Tags lowercase rule, the Planned-Date
+offset, `toFindingsProps`; promoted when Semnal became a second writer to that database,
+Wanderlist re-exports it all — **change the schema here, in WANDERLIST.md, and in the
+`wanderlist` skill, or in none of them**), and [`share.js`](src/shared/share.js) (OS
+share sheet with a clipboard fallback; Wanderlist re-exports it). Each
 promotion left the original path working as a thin re-export, so the old
 app's tests prove the move was behaviour-preserving.
+
+Still **not** promoted: the `/api/notion` fetch wrapper, copied in twelve app clients.
+A worthwhile future promotion; nobody has needed it badly enough to convert them all.
 
 ## Service workers & dev
 
