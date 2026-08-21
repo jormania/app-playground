@@ -1,0 +1,172 @@
+// Notion ⇄ Radar-B model mapping, for both databases Radar-B reads.
+//
+// Radar-B is a READER of Notion, with one exception: saving to Wanderlist's
+// Findings (see wanderlist.js). It never writes Radar rows — those are the
+// /recommend in Bucharest skill's output, and having two writers to one table is
+// how the "don't destroy the value of the existing Notion workflow" rule gets
+// broken by accident.
+
+import { normalizeEvent } from './model.js'
+
+export const NOTION_VERSION = '2022-06-28'
+
+function plain(prop) {
+  if (!prop) return null
+  const parts = prop.rich_text ?? prop.title ?? []
+  const text = parts.map((p) => p.plain_text ?? '').join('').trim()
+  return text || null
+}
+
+function select(prop) {
+  const name = prop?.select?.name
+  return name ? name.trim().toLowerCase() : null
+}
+
+function multi(prop) {
+  return (prop?.multi_select ?? []).map((o) => o.name.trim().toLowerCase())
+}
+
+function url(prop) {
+  return prop?.url?.trim() || null
+}
+
+function number(prop) {
+  return typeof prop?.number === 'number' ? prop.number : null
+}
+
+function checkbox(prop) {
+  return prop?.checkbox === true
+}
+
+function dateStart(prop) {
+  return prop?.date?.start ?? null
+}
+
+/** Notion writes a bare `YYYY-MM-DD` when no time is set and a full ISO datetime
+ *  when one is. That single character difference is the whole "do we know the
+ *  time" question — never infer a time from a bare date. */
+export function hasTimeOf(start) {
+  return Boolean(start && String(start).length > 10)
+}
+
+/** `Sources` is stored as plain text, one mention per line:
+ *      Curatorial │ https://… │ 2026-07-31
+ *  Deliberately not a relation: it has to be writable by a skill in one property
+ *  patch, readable by a human editing the page directly, and tolerant of a
+ *  half-filled line. A `*` prefix marks a mention that is a RECOMMENDATION rather
+ *  than a passing reference. */
+export function parseSources(text) {
+  if (!text) return []
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const recommended = line.startsWith('*')
+      const parts = (recommended ? line.slice(1) : line).split(/\s*[│|]\s*/)
+      const [name, href, date] = parts
+      if (!name) return null
+      return {
+        name: name.trim(),
+        url: href && /^https?:\/\//i.test(href.trim()) ? href.trim() : null,
+        date: date && /^\d{4}-\d{2}-\d{2}/.test(date.trim()) ? date.trim().slice(0, 10) : null,
+        kind: recommended ? 'recommendation' : 'editorial',
+      }
+    })
+    .filter(Boolean)
+}
+
+export function fromRadarPage(page) {
+  const p = page.properties ?? {}
+  const start = dateStart(p.When)
+  const sources = parseSources(plain(p.Sources))
+  const signals = multi(p.Signals)
+  // A row whose Sources carry a recommendation IS recommended — the signal and the
+  // provenance can't be allowed to disagree just because one was filled in by hand.
+  if (sources.some((s) => s.kind === 'recommendation') && !signals.includes('recommended')) {
+    signals.push('recommended')
+  }
+  return normalizeEvent({
+    id: page.id,
+    key: plain(p.Key),
+    name: plain(p.Name) ?? '(fără titlu)',
+    start,
+    end: p.When?.date?.end ?? null,
+    hasTime: hasTimeOf(start),
+    venue: plain(p.Venue),
+    address: plain(p.Address),
+    area: select(p.Area),
+    category: select(p.Category),
+    summary: plain(p.Summary),
+    signals,
+    cost: number(p.Cost),
+    link: url(p.Link),
+    tickets: url(p.Tickets),
+    image: url(p.Image) ?? firstFileUrl(p.Image),
+    organizer: plain(p.Organizer),
+    sources,
+    confidence: select(p.Confidence) ?? 'reported',
+    checked: dateStart(p.Checked),
+    origin: 'radar',
+  })
+}
+
+function firstFileUrl(prop) {
+  const file = (prop?.files ?? [])[0]
+  return file?.external?.url ?? file?.file?.url ?? null
+}
+
+/** Wanderlist's Findings rows, read so Radar-B can tell what's already saved and
+ *  never offer the same thing twice. Mapped into the SAME event shape, so a saved
+ *  item takes part in dedupe as just another mention of an event. */
+export function fromFindingsPage(page) {
+  const p = page.properties ?? {}
+  const planned = dateStart(p['Planned Date'])
+  const expiring = dateStart(p['Date Expiring'])
+  const start = planned ?? expiring
+  return normalizeEvent({
+    id: page.id,
+    name: plain(p.Name) ?? '(fără titlu)',
+    start,
+    hasTime: hasTimeOf(start),
+    venue: plain(p.Place),
+    address: plain(p.Place),
+    category: select(p.Category),
+    summary: plain(p.Description),
+    signals: multi(p.Tags).filter((t) => ['free', 'ticketed', 'outdoor'].includes(t)),
+    cost: number(p.Cost),
+    link: url(p.Link),
+    sources: [{ name: 'Wanderlist', url: page.url ?? null, date: dateStart(p['Date Added']), kind: 'saved' }],
+    confidence: 'reported',
+    checked: dateStart(p['Date Added']),
+    origin: 'wanderlist',
+    saved: true,
+    attended: checkbox(p.Attended),
+  })
+}
+
+/** The 🗓️ Suggested events page, kept in place and read for what it uniquely has:
+ *  which SOURCE ARTICLES fed the current refresh. Radar-B shows these as the
+ *  "where this week came from" line — the article-level provenance that the
+ *  event-level Radar rows point back to. */
+export function parseSuggestedPage(blocks) {
+  const links = []
+  let refreshedAt = null
+  for (const block of blocks) {
+    if (block.type === 'heading_2') {
+      const text = (block.heading_2?.rich_text ?? []).map((t) => t.plain_text).join('').trim()
+      if (text && !refreshedAt) refreshedAt = text // e.g. "31 iulie 2026"
+    }
+    const rows = block.type === 'table_row' ? [block.table_row] : []
+    for (const row of rows) {
+      const cells = (row.cells ?? []).map((cell) => cell.map((t) => t.plain_text).join('').trim())
+      const href = (row.cells ?? []).flat().map((t) => t.href).find(Boolean)
+      const [source, title] = cells
+      if (!source || source.toLowerCase() === 'sursă') continue
+      const pending = /nepublicat/i.test(title ?? '')
+      links.push({ source: source.replace(/\*/g, '').trim(), title: title ?? '', url: href ?? null, pending })
+    }
+  }
+  return { refreshedAt, links }
+}
+

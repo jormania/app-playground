@@ -1,0 +1,17 @@
+{
+  "name": "Radar-B",
+  "short_name": "Radar-B",
+  "description": "Radar cultural pentru București — ce merită văzut, din mai multe surse, într-un singur flux.",
+  "id": "/radar-b-react.html",
+  "start_url": "/radar-b-react.html",
+  "scope": "/radar-b-react.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3efe7",
+  "theme_color": "#b4632a",
+  "icons": [
+    { "src": "/radar-b-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/radar-b-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/radar-b-icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

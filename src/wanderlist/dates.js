@@ -56,18 +56,10 @@ export function formatTime(time) {
 }
 
 // This browser's current UTC offset as "+03:00" / "-05:00" — appended to a Planned Date +
-// time when writing it to Notion, so the stored instant matches the wall-clock time you
-// actually picked (Notion's date property accepts a full ISO datetime with offset, not a
-// bare local time). getTimezoneOffset() returns minutes WEST of UTC (positive west); we
-// want the conventional east-positive ISO sign, hence the negation.
-export function localOffsetString(date = new Date()) {
-  const totalMin = -date.getTimezoneOffset()
-  const sign = totalMin >= 0 ? '+' : '-'
-  const abs = Math.abs(totalMin)
-  const hh = String(Math.floor(abs / 60)).padStart(2, '0')
-  const mm = String(abs % 60).padStart(2, '0')
-  return `${sign}${hh}:${mm}`
-}
+// time when writing it to Notion. PROMOTED to src/shared/findings.js alongside the rest of
+// the Findings write mapping (Radar-B writes the same database); re-exported here so this
+// app's import paths and its dates.test.js coverage are unchanged.
+export { localOffsetString } from '../shared/findings.js'
 
 // Whole days from `today` until `key` (negative = already past). Both are floored to
 // local midnight so the count is a clean number of calendar days, not hours.
