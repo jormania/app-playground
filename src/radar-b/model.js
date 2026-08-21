@@ -17,7 +17,7 @@ export const CONFIDENCE_RANK = { confirmed: 3, reported: 2, uncertain: 1 }
 export const CATEGORIES = ['art', 'concert', 'play', 'movie', 'culture', 'event', 'venue', 'discovery', 'idea']
 
 /** The closed signal vocabulary. Small on purpose — see RADAR_B.md §7. */
-export const SIGNALS = ['recommended', 'free', 'ticketed', 'family', 'outdoor', 'new-venue', 'recurring', 'long-run', 'sold-out']
+export const SIGNALS = ['recommended', 'free', 'ticketed', 'family', 'outdoor', 'new-venue', 'recurring', 'long-run', 'sold-out', 'mainstream']
 
 /** Where an event record came from, as a store (not as an editorial source). */
 export const ORIGINS = ['radar', 'suggested', 'wanderlist']

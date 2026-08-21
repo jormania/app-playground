@@ -412,3 +412,46 @@ hybrid event (in-person **and** streamed) stays included as normal.
 
 15 new/updated render tests cover all of the above end to end in demo mode; **3410 tests total**,
 typecheck and eslint clean.
+
+---
+
+## 13. "De știut" gets a real signal; Facebook search becomes active (2026-08-21)
+
+Two more gaps surfaced from the first real skill run (Radar-B still at 0 rows despite a
+full digest — see §12's fix, which addressed *why* the write got skipped; this addresses
+two things the write itself was still missing).
+
+- **`mainstream` signal added** — the `Signals` closed vocabulary (model.js, the skill,
+  and the live Notion database) gained a tenth value. The digest's "De știut" grouping
+  (safe, broad-appeal, easy-to-skip) previously had no representation in Radar at all —
+  it became an ordinary row, ranked identically to everything else, which defeated the
+  entire point of the grouping. `mainstream` is `recommended`'s mirror: `recommended`
+  floats an event to the top of its day (`rank()`'s `-100`, roughly), `mainstream` sinks
+  it toward the bottom of the *same* day (`+15` — a light push, well short of `uncertain`'s
+  `+40`). It renders with the default, unstyled badge — no special treatment is exactly
+  the right treatment for "not an editorial pick." The two are mutually exclusive by
+  construction; the skill's Step 4 property table says so explicitly now.
+- **Facebook went from passive to active.** The original wording — "pick it up the same
+  way any other source's mention gets picked up" — only ever triggered if one of the 7
+  named article sources happened to link a Facebook event. A live run showed exactly that:
+  a full 13-event digest, built entirely from article sources, with nothing from Facebook
+  at all. Step 2 now instructs a real, dedicated search pass every run (`site:facebook.com
+  /events` style queries plus venue-specific searches for the venues already in Step 3's
+  "always include" list), extracting from search-result metadata even where the page fetch
+  itself fails — and it says so explicitly when that search turns up nothing, rather than
+  silently having nothing to show.
+
+Also confirmed directly (not assumed) that the Radar write really was at zero: `SELECT
+count(*)` against the live data source returned `{"n": 0}` immediately before this fix,
+despite a same-day Suggested-events refresh. That's the evidence the reordering in §12 was
+solving a real, reproduced failure — not a hypothetical one.
+
+**A live backfill attempt was not completed from this session** — every one of the seven
+source domains (b365.ro, zilesinopti.ro, hartamuzeelor.ro, curatorial.ro, buletin.de,
+hotnews.ro, recomandata9.substack.com) is blocked by this coding environment's egress
+policy, which only allowlists Notion/GitHub/Vercel. Radar-B's own principle — never seed
+invented events, an honestly empty database beats a fabricated one — ruled out working
+around that with search-snippet fragments. The next real `/recommend in Bucharest` run,
+in an environment with actual web access, is what populates it.
+
+14 new/updated tests. 3414 total, typecheck and eslint clean.

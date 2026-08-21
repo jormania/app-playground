@@ -8,7 +8,7 @@ import { isLongRun, isRunningNow, stalenessDays } from './dates.js'
 
 /** Display order = priority order. The first two a card qualifies for are the two
  *  it shows, so this list is the entire "which badge matters more" policy. */
-export const SIGNAL_ORDER = ['recommended', 'free', 'family', 'new-venue', 'outdoor', 'long-run', 'recurring', 'ticketed', 'sold-out']
+export const SIGNAL_ORDER = ['recommended', 'free', 'family', 'new-venue', 'outdoor', 'long-run', 'recurring', 'ticketed', 'sold-out', 'mainstream']
 
 export const SIGNAL_LABELS = {
   recommended: 'recomandat',
@@ -20,6 +20,7 @@ export const SIGNAL_LABELS = {
   'long-run': 'se vede oricând',
   ticketed: 'bilet',
   'sold-out': 'sold out',
+  mainstream: 'mainstream',
 }
 
 const CARD_BADGE_LIMIT = 2
@@ -64,6 +65,13 @@ export function rank(event, now = new Date()) {
   const sigs = new Set(signalsFor(event))
   let score = 0
   if (!sigs.has('recommended')) score += 100
+  // The digest's own "De știut" grouping — safe, broad-appeal, easy to skip.
+  // `recommended` floats an event to the top of its day; this is the mirror
+  // of that, sinking it toward the bottom of the SAME day rather than out of
+  // the stream — it's still a real event happening, just not an editorial
+  // pick, and the two signals are mutually exclusive by construction (the
+  // skill never marks a "De știut" item recommended).
+  if (sigs.has('mainstream')) score += 15
   if (event.confidence === 'uncertain') score += 40
   if (freshness(event, now).state === 'stale') score += 20
   if (isRunningNow(event, now)) score += 10 // an always-on exhibition yields to a one-night thing

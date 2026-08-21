@@ -91,6 +91,13 @@ describe('toDraft', () => {
   })
 })
 
+describe('the mainstream signal never leaks into Wanderlist tags', () => {
+  test('a "De știut" event carries no matching Findings tag', () => {
+    const d = toDraft(ev({ signals: ['mainstream'] }), NOW)
+    expect(d.tags).toEqual([])
+  })
+})
+
 describe('toFindingsPage', () => {
   test('writes the Findings schema through the SHARED mapping, not a local copy', () => {
     const draft = toDraft(ev({ start: '2026-08-21T21:00:00+03:00', hasTime: true, venue: 'Control Club', category: 'concert', summary: 'Jazz.' }), NOW)

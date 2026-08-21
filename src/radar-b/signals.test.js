@@ -73,6 +73,24 @@ describe('rank / sortForStream', () => {
   })
 })
 
+describe('the mainstream signal ("De știut")', () => {
+  test('sinks within its own day rather than dropping out of the stream', () => {
+    const mainstream = ev({ id: 'a', name: 'Mainstream', start: '2026-08-19T20:00:00', hasTime: true, signals: ['mainstream'] })
+    const ordinary = ev({ id: 'b', name: 'Ordinary', start: '2026-08-19T20:00:00', hasTime: true })
+    expect(sortForStream([mainstream, ordinary], WED).map((e) => e.id)).toEqual(['b', 'a'])
+  })
+
+  test('is a quieter demotion than uncertain or stale', () => {
+    const mainstream = ev({ id: 'a', start: '2026-08-19T20:00:00', hasTime: true, signals: ['mainstream'] })
+    const uncertain = ev({ id: 'b', start: '2026-08-19T20:00:00', hasTime: true, confidence: 'uncertain' })
+    expect(sortForStream([uncertain, mainstream], WED).map((e) => e.id)).toEqual(['a', 'b'])
+  })
+
+  test('renders with the default badge styling, not a special treatment', () => {
+    expect(cardBadges(ev({ signals: ['mainstream'] }))).toEqual(['mainstream'])
+  })
+})
+
 describe('recommenders', () => {
   test('names only the sources that actually recommended, not every mention', () => {
     const e = ev({
