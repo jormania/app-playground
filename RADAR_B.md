@@ -455,3 +455,83 @@ around that with search-snippet fragments. The next real `/recommend in Buchares
 in an environment with actual web access, is what populates it.
 
 14 new/updated tests. 3414 total, typecheck and eslint clean.
+
+
+---
+
+## 14. The skill edits never applied (2026-08-21) — and where the skill now lives
+
+Three rounds of "fixed the skill" in this session were **wrong**, and the app stayed empty
+because of it. Recording the trap so it isn't repeated.
+
+`~/.claude/skills/synced/<name>/SKILL.md` is a **read-only mirror** of an account-level
+skill, synced *down* into the ephemeral session container. There is no sync *up*. Editing
+it looks completely successful — the bytes are on disk, `grep` confirms them, the mtime
+updates — but the skill that actually runs anywhere else is the untouched server copy.
+Three separate "fixes" (Facebook rules, the online-only exclusion, the Step 4 reorder, the
+`mainstream` mapping) were written into that mirror and none of them ever ran.
+
+**Two independent signals should have caught it on the first round, not the third:**
+- `manifest.json` still read `"updatedAt": "2026-07-23T09:19:28Z"` for
+  `recommend-in-bucharest` — weeks before the supposed edits.
+- The live run's own output was missing the mandatory `📡 N evenimente scrise/actualizate
+  în Radar` line entirely. That line was added specifically so a skipped write couldn't
+  hide; its *absence* meant the skill being executed didn't contain the instruction at
+  all — a different failure from the one being debugged.
+
+A third, decisive tell: the user's run successfully fetched `b365.ro`, `zilesinopti.ro`
+and `hartamuzeelor.ro`, every one of which is egress-blocked inside the coding container.
+The run was obviously happening on another machine, against another copy of the skill.
+
+**The fix:** [`.claude/skills/recommend-in-bucharest/SKILL.md`](.claude/skills/recommend-in-bucharest/SKILL.md)
+is now the version-controlled source of truth — a **project-level skill**, which any
+Claude Code session opened in this repo loads directly. That sidesteps the mirror
+entirely for the Claude Code path: it's in git, and it's what actually runs. The
+claude.ai/Chat copy is a separate consumer and still needs a manual upload (Settings →
+Capabilities → Skills); [`.claude/skills/README.md`](.claude/skills/README.md) documents
+both, plus the two signals that should have caught the trap sooner.
+
+### Radar backfilled from the run that already happened
+
+Rather than making the user re-run everything, this weekend's 13 events (21–23 August)
+were written into 📡 Radar directly from the digest their run had already produced —
+transcription of their own verified output, not fabrication. Confidence is `reported`
+throughout (these came from editorial roundups, not the events' own pages), `Checked` is
+2026-08-21, and Harta Muzeelor mentions carry the `*` recommendation prefix since its page
+is literally a recommendations list. Fields the digest didn't state — MARe's address, the
+CNDB and Cinema Europa neighbourhoods — were left **blank rather than inferred**, which is
+the same "never false precision" rule the app renders by.
+
+`SELECT count(*)` now returns 13 where it returned 0.
+
+
+---
+
+## 15. Radar re-emptied; the Claude Code path (2026-08-21)
+
+The manual backfill from §14 was **removed at the owner's request** — the point is for the
+real flow to prove itself end to end, not for the database to look populated. `SELECT
+count(*)` is back to 0.
+
+Worth recording how, because the obvious route doesn't exist: **the Notion MCP integration
+has no page-delete verb.** `notion-update-page` accepts both `in_trash: true` and
+`archived: true` — returning a success payload — and silently ignores them; the row count
+stayed at 13 after each. The working route was `notion-move-pages`, moving all 13 out of
+the data source onto a single scratch page ("Radar cleanup — 13 manually-added rows"),
+which empties the database and reduces cleanup to deleting one page by hand.
+
+### Running the flow from Claude Code
+
+Two things gate it, and only one of them was fixable from here:
+
+- **The skill** — fixed. It's now a project-level skill (§14), so a Claude Code session in
+  this repo loads the corrected version straight from git. No upload needed for this path.
+- **Network egress** — not fixable from here, and must not be routed around. All seven
+  source domains are denied at the environment's egress proxy:
+  `connect_rejected — gateway answered 403 to CONNECT (policy denial)`, confirmed for
+  `b365.ro`, `zilesinopti.ro`, `hartamuzeelor.ro` and `curatorial.ro`. `/root/.ccr/README.md`
+  is explicit that a 403/407 from the proxy is an organization policy denial to report, not
+  retry. Widening the environment's network policy to allow those hosts is an owner action
+  (see the Claude Code on the web docs). Web *search* is unaffected — only direct page
+  fetches are blocked, which is why earlier runs could find article titles but never read
+  the articles.
