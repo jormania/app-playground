@@ -39,6 +39,7 @@ export const APPS = [
     ds: true,
     kind: "react-vite",
     manifest: "/radar-b.webmanifest",
+    guide: "radar-b-guide.html",
     description: "A personal cultural radar for Bucharest. Events gathered from B365, Curatorial, Buletin, HotNews, Zile și Nopți, Harta Muzeelor, Recomandata and Facebook by the /recommend in Bucharest skill, normalized into one Notion database, then deduplicated here into a single calm stream — one event with many sources, never four copies of the same exhibition. Browse by tonight, the weekend, or what's running now; see exactly where every fact came from and how fresh it is; save the ones worth doing straight into Wanderlist.",
     features: [
       "One stream, many sources: the same exhibition mentioned by four publications collapses into one event that shows all four, with the richest description winning and every mention still visible",

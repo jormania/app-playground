@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Radar-B — Guide</title>
+<meta name="description" content="What Radar-B is, how it works with the /recommend in Bucharest skill and Wanderlist, how events are deduplicated across sources, and how to connect your own Notion in a few minutes." />
+<meta name="theme-color" content="#f3efe7" />
+<script>
+  // Follow the app's theme (shared localStorage key), applied before first paint
+  // so the guide never flashes the wrong palette on the way in from the app.
+  try {
+    var p = JSON.parse(localStorage.getItem('radarb_prefs') || '{}');
+    if (p.theme === 'dark' || p.theme === 'light') {
+      document.documentElement.setAttribute('data-theme', p.theme);
+      var m = document.querySelector('meta[name="theme-color"]');
+      if (m) m.setAttribute('content', p.theme === 'dark' ? '#16161a' : '#f3efe7');
+    }
+  } catch (e) {}
+</script>
+<link rel="icon" type="image/svg+xml" href="/radar-b-logo.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* Light (warm paper) is the default; dark mirrors the app's ink palette. Both
+     are stated explicitly — a system-only definition would leave the page
+     borrowing whatever the host painted behind it. */
+  :root {
+    --bg: #f3efe7;
+    --bg2: #eae4d8;
+    --surface: #fbf8f2;
+    --surface2: #f3efe7;
+    --border: #ded5c5;
+    --border2: #bfb4a0;
+    --ink: #2b2723;
+    --muted: #6b625a;
+    --faint: #9c9187;
+    --accent: #b4632a;
+    --accent2: #9a5322;
+    --good: #4a7a4e;
+    --warn: #b07d1e;
+    --maxw: 48rem;
+    --display: 'Alegreya', Georgia, serif;
+    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  html[data-theme='dark'] {
+    --bg: #16161a;
+    --bg2: #101013;
+    --surface: #1e1e23;
+    --surface2: #26262c;
+    --border: #34343c;
+    --border2: #4a4a55;
+    --ink: #e7e2d9;
+    --muted: #a49c92;
+    --faint: #6f6960;
+    --accent: #d98b4a;
+    --accent2: #e8a065;
+    --good: #7fae7c;
+    --warn: #d6ab55;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --bg: #16161a; --bg2: #101013; --surface: #1e1e23; --surface2: #26262c;
+      --border: #34343c; --border2: #4a4a55;
+      --ink: #e7e2d9; --muted: #a49c92; --faint: #6f6960;
+      --accent: #d98b4a; --accent2: #e8a065; --good: #7fae7c; --warn: #d6ab55;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 1rem;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 5rem;
+  }
+
+  header.masthead { border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+  .wordmark {
+    font-family: var(--display);
+    font-size: 2.25rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 .25rem;
+    line-height: 1;
+  }
+  .wordmark .b { color: var(--accent); }
+  .tagline { color: var(--muted); margin: 0; font-size: 1.05rem; }
+  .kicker {
+    font-family: var(--mono); font-size: .7rem; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--faint); margin: 0 0 .5rem;
+  }
+
+  h2 {
+    font-family: var(--display); font-size: 1.6rem; font-weight: 700;
+    margin: 3rem 0 .25rem; line-height: 1.2; scroll-margin-top: 1rem;
+  }
+  h2 .num { color: var(--accent); font-family: var(--mono); font-size: 1rem; margin-right: .5rem; }
+  h3 { font-family: var(--display); font-size: 1.2rem; font-weight: 700; margin: 1.75rem 0 .25rem; }
+  h4 { font-size: .95rem; font-weight: 600; margin: 1.25rem 0 .25rem; }
+  p { margin: .75rem 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  code {
+    font-family: var(--mono); font-size: .85em;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; padding: .1em .35em;
+  }
+  pre {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1rem; overflow-x: auto;
+    font-family: var(--mono); font-size: .8rem; line-height: 1.55;
+  }
+  pre code { background: none; border: 0; padding: 0; font-size: inherit; }
+
+  ul, ol { padding-left: 1.25rem; }
+  li { margin: .35rem 0; }
+
+  .lede {
+    font-family: var(--display); font-size: 1.25rem; line-height: 1.5;
+    color: var(--ink); margin: 1.5rem 0;
+  }
+
+  .note, .warnbox {
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px; padding: .85rem 1rem; margin: 1.25rem 0;
+    font-size: .95rem;
+  }
+  .warnbox { border-left-color: var(--warn); }
+  .note p:first-child, .warnbox p:first-child { margin-top: 0; }
+  .note p:last-child, .warnbox p:last-child { margin-bottom: 0; }
+  .note strong, .warnbox strong { color: var(--ink); }
+
+  .tablewrap { overflow-x: auto; margin: 1.25rem 0; border: 1px solid var(--border); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; min-width: 32rem; }
+  th, td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th {
+    font-family: var(--mono); font-size: .7rem; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--faint); background: var(--surface2);
+    font-weight: 500;
+  }
+  tr:last-child td { border-bottom: 0; }
+
+  .pipeline {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 1rem; overflow-x: auto; margin: 1.5rem 0;
+    font-family: var(--mono); font-size: .72rem; line-height: 1.7; white-space: pre;
+    color: var(--muted);
+  }
+
+  .toc {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1rem 1.25rem; margin: 2rem 0;
+  }
+  .toc ol { margin: .5rem 0 0; columns: 2; column-gap: 2rem; }
+  @media (max-width: 34rem) { .toc ol { columns: 1; } }
+  .toc li { margin: .2rem 0; font-size: .92rem; }
+
+  .badge {
+    display: inline-block; font-family: var(--mono); font-size: .65rem;
+    text-transform: uppercase; letter-spacing: .06em;
+    padding: .15em .45em; border-radius: 4px;
+    border: 1px solid var(--border2); color: var(--muted); background: var(--surface2);
+    white-space: nowrap;
+  }
+  .badge.rec { color: var(--accent); border-color: var(--accent); }
+  .badge.free { color: var(--good); border-color: var(--good); }
+
+  footer {
+    margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--border);
+    color: var(--faint); font-size: .85rem;
+  }
+  .backlinks { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .backlinks a { font-family: var(--mono); font-size: .8rem; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker">📡 Guide</p>
+  <h1 class="wordmark">Radar<span class="b">-B</span></h1>
+  <p class="tagline">A personal cultural radar for Bucharest.</p>
+</header>
+
+<p class="lede">
+  Radar-B answers one question: <em>what interesting things are happening in Bucharest
+  that I might want to go to?</em>
+</p>
+
+<p>
+  Today that answer is scattered across Facebook, local publications, newsletters,
+  cultural websites, museum pages and Notion. Radar-B brings them together into a single
+  calm stream — one event with many sources, never four copies of the same exhibition —
+  and hands anything worth doing to <strong>Wanderlist</strong>.
+</p>
+
+<div class="toc">
+  <strong>In this guide</strong>
+  <ol>
+    <li><a href="#how">How the whole thing fits together</a></li>
+    <li><a href="#skill">The <code>/recommend in Bucharest</code> skill</a></li>
+    <li><a href="#using">Using Radar-B day to day</a></li>
+    <li><a href="#detail">The event page</a></li>
+    <li><a href="#dedupe">Dedupe, provenance and trust</a></li>
+    <li><a href="#wanderlist">Saving to Wanderlist</a></li>
+    <li><a href="#sources">Sources, and Facebook specifically</a></li>
+    <li><a href="#setup">Setup</a></li>
+    <li><a href="#schema">The Radar database schema</a></li>
+    <li><a href="#scope">What it deliberately doesn't do</a></li>
+    <li><a href="#trouble">Troubleshooting</a></li>
+  </ol>
+</div>
+
+<hr />
+
+<h2 id="how"><span class="num">1</span>How the whole thing fits together</h2>
+
+<p>
+  Radar-B is one piece of a chain that already existed. It doesn't replace any of it —
+  it's the part where all that gathered information finally becomes usable on a phone.
+</p>
+
+<div class="pipeline">sources                    event intelligence          discovery        decision
+──────────────────────     ─────────────────────      ───────────      ──────────────
+B365, Curatorial,          /recommend in Bucharest    ┌─────────┐      ┌────────────┐
+Buletin, HotNews,     ──►  fetch · parse · dedupe ──► │ RADAR-B │ ──►  │ WANDERLIST │
+Zile și Nopți,             taste-filter               │ browse  │ save │ plan · go  │
+Harta Muzeelor,                    │                  │ evaluate│      │            │
+Recomandata,                       │ writes           └─────────┘      └────────────┘
+venues, Facebook                   ▼
+                           Notion
+                            🗓️ Suggested events  ← the articles (unchanged)
+                            📡 Radar             ← the events themselves</div>
+
+<p>The important part, in one sentence:</p>
+
+<div class="note">
+  <p>
+    <strong>Radar-B does not scrape anything.</strong> Claude is the parser, Notion is
+    the wire format, Radar-B is the client. The app reads events that
+    <code>/recommend in Bucharest</code> has already fetched, parsed, deduplicated and
+    filtered to your taste.
+  </p>
+</div>
+
+<h3>Why it's built that way</h3>
+<ol>
+  <li>
+    <strong>A scraper would duplicate the skill.</strong> The skill already reads seven
+    Romanian publications every week and applies real editorial judgement. A parallel set
+    of HTML parsers would be a worse second copy of that, with none of the judgement.
+  </li>
+  <li>
+    <strong>It wouldn't survive.</strong> Seven publications' markup, each free to change
+    any week. Every source that broke would break silently, and you'd only notice by the
+    events that quietly stopped appearing.
+  </li>
+  <li>
+    <strong>It couldn't deploy.</strong> Vercel's Hobby plan caps this whole repo at 12
+    serverless functions, and it was already at exactly 12. Radar-B ships with
+    <strong>zero new functions</strong> — everything goes through the existing
+    <code>/api/notion</code> relay.
+  </li>
+</ol>
+
+<p>
+  The practical consequence is worth stating plainly: <strong>Radar-B is only as fresh as
+  your last skill run.</strong> That's a real trade-off, and the app is honest about it —
+  every event shows when it was last checked, and the masthead shows when the week was
+  last refreshed.
+</p>
+
+<hr />
+
+<h2 id="skill"><span class="num">2</span>The <code>/recommend in Bucharest</code> skill</h2>
+
+<p>
+  This is the engine. You run it in a Claude conversation by typing
+  <code>/recommend in Bucharest</code>. It does two things now: it prints the curated
+  Romanian digest it always did, <em>and</em> it leaves behind structured event rows that
+  Radar-B reads all week.
+</p>
+
+<h3>What it reads</h3>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Source</th><th>Kind</th><th>Rhythm</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Buletin de București</strong> — <em>Agenda Urbană cu Cosmin</em></td><td>Article</td><td>Publishes Thu/Fri, covers the whole week (Mon–Sun)</td></tr>
+    <tr><td><strong>HotNews</strong> — <em>Weekend trending în București</em></td><td>Article</td><td>Thu/Fri</td></tr>
+    <tr><td><strong>B365</strong> — <em>București de weekend</em></td><td>Article</td><td>Thu or earlier</td></tr>
+    <tr><td><strong>Curatorial</strong> — <em>Recomandările Curatorial</em></td><td>Article</td><td>Thu/Fri — art-led, closest to your taste</td></tr>
+    <tr><td><strong>Recomandata</strong> (Scena9 / Fundația9)</td><td>Newsletter</td><td>Thu — curated, editorial, highly relevant</td></tr>
+    <tr><td><strong>Zile și Nopți</strong></td><td>Aggregator</td><td>Always current, fetched every run</td></tr>
+    <tr><td><strong>Harta Muzeelor</strong> / Weekend Sessions</td><td>Aggregator</td><td>Always current — museums, galleries, tours, workshops</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  Plus, per event, a real search for that event's <em>own</em> page — the venue, gallery,
+  or ticket platform (iaBilet, Eventbook, Bilet.ro). A roundup article is a fallback, not
+  the target.
+</p>
+
+<h3>Two modes, by day of week</h3>
+<ul>
+  <li>
+    <strong>Friday–Sunday (weekend mode).</strong> Notion is the source of truth. If the
+    🗓️ Suggested events page already covers this weekend it's used as-is; otherwise the
+    skill refreshes all sources first. On Friday and Saturday it also re-checks any
+    <code>⏳ nepublicat încă</code> placeholders, since Buletin and HotNews often post
+    late.
+  </li>
+  <li>
+    <strong>Monday–Thursday (weekday mode).</strong> Notion <em>and</em> live web search,
+    always combined — the articles already linked in Notion are parsed for weekday events
+    too, not just weekend ones.
+  </li>
+</ul>
+
+<h3>What it filters for</h3>
+<p>The skill knows your taste and applies it before anything reaches Radar-B.</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Always included</th><th>Always excluded</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>
+        Contemporary &amp; experimental art (the core) · arthouse cinema (Elvire Popesco,
+        Europa, Apollo, MȚR, Cinema Pro, open-air) · jazz &amp; improvisation ·
+        contemporary/chamber music · indie, alternative, folk · performance in hybrid
+        spaces (Control, Guesthouse, Cărturești, galleries) · book launches and literary
+        events · cultural &amp; social conferences (art, urbanism, design, philosophy) ·
+        street fairs with cultural character · guided tours and heritage walks ·
+        <strong>newly opened venues</strong> · everything at the Atheneum
+      </td>
+      <td>
+        Sala Palatului · Teatrul Nottara · MINA · Teatrul Bulandra · Opera Națională ·
+        Opereta · Tur Pietonal · FF Theatre · The Fool · corporate events, trade fairs and
+        business conferences · mainstream arena pop unless genuinely exceptional
+      </td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  <strong>Price is never a filter.</strong> Nothing is excluded for being expensive, and
+  cost is never flagged as a reason to skip something.
+</p>
+
+<p>
+  The governing instinct: <em>fringe, textural, non-obvious</em>. Given a safe mainstream
+  pick and a smaller interesting one, the skill takes the smaller interesting one.
+  Specificity over completeness. A handful of broad-appeal events still make it, grouped
+  at the bottom of the digest under <strong>„De știut"</strong> so they're easy to skip.
+</p>
+
+<h3>What you get back</h3>
+<p>
+  A day-by-day digest, 12–20 events, numbered sequentially, each with venue, full street
+  address, exact time where known, 2–3 sentences of context, a Wanderlist category, price
+  in lei if stated, and a source link. Flags: 💚 free · 📋 booking needed · 🔁 recurring ·
+  📍 new venue. There's a <strong>Pe radar 👁️</strong> section for things further out that
+  are worth saving now.
+</p>
+
+<h3>And then — Step 4b</h3>
+<p>
+  After the digest, the skill writes that same deduplicated pool into the
+  <strong>📡 Radar</strong> Notion database: one row per underlying event, one
+  <code>Sources</code> line per mention. That's what Radar-B reads. It updates rows in
+  place by their <code>Key</code> rather than duplicating them, and never deletes past
+  events.
+</p>
+
+<div class="note">
+  <p>
+    <strong>The two systems reinforce each other.</strong> The skill gives you judgement
+    on demand; Radar-B gives you the universe, browsable at a bus stop. From any view in
+    the app, <em>„Întreabă Recommend in Bucharest despre astea"</em> copies the current
+    list as a paste-ready brief — so questions like <em>"which of these would I enjoy
+    this weekend?"</em> or <em>"what should I do with Nora?"</em> start from the real
+    current pool instead of a fresh round of searching.
+  </p>
+</div>
+
+<hr />
+
+<h2 id="using"><span class="num">3</span>Using Radar-B day to day</h2>
+
+<p>
+  Open it, browse for two minutes, find something, save it, leave. That's the whole
+  intended shape. It's a PWA — install it from the Cabinet or straight from the page.
+</p>
+
+<h3>Lenses, not a calendar</h3>
+<p>The row across the top is how you move through time. Each one carries a count.</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Lens</th><th>What it shows</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Azi</strong></td><td>Everything happening today. The default.</td></tr>
+    <tr><td><strong>Mâine</strong></td><td>Tomorrow.</td></tr>
+    <tr><td><strong>Weekend</strong></td><td>Friday–Sunday. During the weekend this means <em>this</em> one, not next.</td></tr>
+    <tr><td><strong>Săptămâna asta</strong></td><td>The next seven days.</td></tr>
+    <tr><td><strong>Mai încolo</strong></td><td>Beyond that — things worth planning ahead for.</td></tr>
+    <tr><td><strong>În desfășurare</strong></td><td>Exhibitions and long runs open right now. A date-first view buries these; they appear on their opening day and never again. This is where they live.</td></tr>
+    <tr><td><strong>Noi pentru tine</strong></td><td>Events that arrived in the last refresh that you haven't opened yet. The answer to <em>"what haven't I heard about?"</em></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  An event can answer to several lenses at once — a festival running Friday to Sunday is
+  in <em>Azi</em> on Friday <em>and</em> in <em>Weekend</em>. Forcing one bucket is how
+  calendars lose things.
+</p>
+
+<h3>Reading a card</h3>
+<p>
+  When · name · where · two lines of why · at most two badges. That's deliberate: a card
+  with no badge is completely normal, not a failure. The signals, in priority order:
+</p>
+<p>
+  <span class="badge rec">recomandat</span>
+  <span class="badge free">gratuit</span>
+  <span class="badge">cu copii</span>
+  <span class="badge">loc nou</span>
+  <span class="badge">în aer liber</span>
+  <span class="badge">se vede oricând</span>
+  <span class="badge">recurent</span>
+  <span class="badge">bilet</span>
+  <span class="badge">sold out</span>
+</p>
+<p>
+  A <strong>recommended</strong> event also gets a single amber hairline down its left
+  edge, and floats to the top of <em>its own day</em> — never jumping days, so the stream
+  stays chronologically legible. <code>N surse</code> means several independent sources
+  mentioned it, which is itself a confidence signal. <code>în wanderlist</code> means
+  it's already saved.
+</p>
+
+<h3>Day groups and „Oricând"</h3>
+<p>
+  The stream groups by day. Long runs and undated things are lifted out into a separate
+  <strong>Oricând</strong> section at the bottom — an exhibition open for four months
+  doesn't belong under "Saturday".
+</p>
+
+<h3>Search and filters</h3>
+<p>
+  The magnifier searches title, venue, neighbourhood, address, organizer, summary,
+  category <em>and source name</em> — so <em>"what did Curatorial recommend?"</em> is a
+  real query, and only this app can answer it. Diacritics are ignored in both directions:
+  <code>improvizatie</code> finds <em>improvizație</em>. Every term must match, so
+  <code>jazz control</code> means both words, not either.
+</p>
+<p>
+  The filter sheet offers category, neighbourhood and signal chips — counted over what's
+  actually in the pool, so a filter that would return nothing is never offered.
+</p>
+
+<div class="note">
+  <p>
+    Search is for what you can name. The lenses are for what you can't — Google is good
+    at questions you already know how to ask; this is meant to be good at showing you
+    things you didn't know existed.
+  </p>
+</div>
+
+<hr />
+
+<h2 id="detail"><span class="num">4</span>The event page</h2>
+
+<p>Tapping a card answers, in this order:</p>
+<ol>
+  <li><strong>What is this?</strong> — poster, name, and a plain warning if the information is uncertain</li>
+  <li><strong>When?</strong> — in prose (<em>"azi, 21:00"</em>, <em>"până pe 14 septembrie"</em>). If the time isn't known it says <em>ora neconfirmată</em> rather than inventing one</li>
+  <li><strong>Where?</strong> — venue, street address, neighbourhood, and <strong>Deschide în Maps</strong></li>
+  <li><strong>How much?</strong> — <em>Gratuit</em>, a figure in lei, or an honest <em>Preț necunoscut</em></li>
+  <li><strong>Why might I care?</strong> — the editorial summary, plus who recommended it</li>
+  <li><strong>How do I go?</strong> — <strong>Bilete</strong> or <strong>Pagina evenimentului</strong></li>
+  <li><strong>Where did this come from?</strong> — <strong>De unde știm</strong>, every source with its date and link</li>
+  <li><strong>Can I save it?</strong> — <strong>Salvează în Wanderlist</strong></li>
+</ol>
+
+<h4>Google Maps</h4>
+<p>
+  The Maps link is built as <code>venue, street, București</code> — never a bare venue
+  name, which often doesn't drop a pin. The same URL is written into Wanderlist's
+  <code>Map</code> property when you save, so a saved event arrives already pinned.
+</p>
+
+<h4>Dismissing</h4>
+<p>
+  The <code>—</code> button in the top-right of an event page hides it from the stream.
+  It's local to your device and it doesn't delete anything from Notion.
+</p>
+
+<hr />
+
+<h2 id="dedupe"><span class="num">5</span>Dedupe, provenance and trust</h2>
+
+<p>
+  If the same exhibition appears in B365, Facebook, Curatorial and the Notion
+  recommendations, you should see <strong>one event with four sources</strong>, not four
+  events. That happens in two passes, on purpose.
+</p>
+
+<ul>
+  <li>
+    <strong>Upstream, in the skill</strong> — semantic. Claude can read two articles and
+    <em>know</em> they mean the same exhibition. It writes one row with a merged
+    <code>Sources</code> list.
+  </li>
+  <li>
+    <strong>Downstream, in the app</strong> — structural. The same event arriving across
+    different refresh runs, and from Radar and Wanderlist at once. Deterministic and
+    heavily tested.
+  </li>
+</ul>
+
+<h3>How the app decides two things are one</h3>
+<ol>
+  <li>An identical <code>Key</code> is always the same event.</li>
+  <li>Otherwise: normalised title similarity (diacritics folded in <em>both</em> encodings — <code>ș</code> and <code>ş</code> — Romanian filler words dropped), venue similarity, and date overlap.</li>
+  <li><strong>Title similarity is a necessary condition.</strong> Venue and date can only ever <em>confirm</em> a match, never create one — so "Jazz in the Park" and "Street Delivery" at the same venue on the same night stay two events.</li>
+  <li><strong>When in doubt, keep separate.</strong> Two cards for one event is a mild annoyance. One card that swallowed a different event hides something real.</li>
+</ol>
+
+<h3>Merging keeps provenance instead of flattening it</h3>
+<p>
+  Each field is taken from the highest-confidence source that has it
+  (<code>confirmed</code> &gt; <code>reported</code> &gt; <code>uncertain</code>, ties
+  broken by whichever was checked most recently), and the <strong>union</strong> of
+  sources and signals is kept. A merge can never lose <em>recommended</em>, and never
+  loses a mention.
+</p>
+<p>
+  One detail worth knowing: <strong>date and time move together.</strong> A precise time
+  is only ever taken from the same source that supplied the date, so a merge can't invent
+  a time on the wrong day.
+</p>
+
+<h3>Freshness and confidence</h3>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>State</th><th>What it means</th><th>How it looks</th></tr></thead>
+  <tbody>
+    <tr><td><code>confirmed</code></td><td>Read off the event's own page</td><td>Normal</td></tr>
+    <tr><td><code>reported</code></td><td>From an editorial roundup</td><td>Normal</td></tr>
+    <tr><td><code>uncertain</code></td><td>Just a title and a date inside an article</td><td>Dimmed, marked <em>aproximativ</em>, and a full sentence on the event page telling you to verify before leaving the house</td></tr>
+  </tbody>
+</table>
+</div>
+<p>
+  Anything not re-checked in 14 days is marked stale. <em>"Never checked"</em> is shown
+  as its own state — it never silently reads as "fresh".
+</p>
+
+<hr />
+
+<h2 id="wanderlist"><span class="num">6</span>Saving to Wanderlist</h2>
+
+<p class="lede">Discover → evaluate → <strong>save</strong> → do.</p>
+
+<p>
+  Radar-B handles the first two. Wanderlist handles the things you decide to keep. There
+  is <strong>no favourites list, no stars, no bookmarks</strong> in Radar-B — a parallel
+  store would just be a second place to lose things. <em>Salvează în Wanderlist</em>
+  writes one row into your <code>Findings</code> database, and from then on the event
+  lives there.
+</p>
+
+<h3>Nothing is written without you seeing it first</h3>
+<p>
+  Save opens an <strong>editable draft</strong>, pre-filled from the event. You can change
+  every field before anything is created.
+</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Findings field</th><th>Filled from</th></tr></thead>
+  <tbody>
+    <tr><td><code>Name</code></td><td>The event name, without the venue</td></tr>
+    <tr><td><code>Description</code></td><td>The editorial summary. <strong>Never blank</strong> — a thin source gets the shortest honest sentence plus <em>"de verificat"</em>, rather than an empty field</td></tr>
+    <tr><td><code>Link</code></td><td>Ticket link first, then the event's own page, then the article that mentioned it</td></tr>
+    <tr><td><code>Category</code></td><td>Wanderlist's own closed vocabulary, verbatim — falls back to <code>event</code> rather than inventing a value</td></tr>
+    <tr><td><code>Place</code></td><td>Venue + street + <em>București</em> — the full address, so the map pin lands first try</td></tr>
+    <tr><td><code>Map</code></td><td>The Google Maps search URL for that address</td></tr>
+    <tr><td><code>Cost</code></td><td>Price in lei, if stated. Never set alongside <code>free</code></td></tr>
+    <tr><td><code>Tags</code></td><td>Only signals that map to Wanderlist's tag vocabulary (<code>free</code>, <code>ticketed</code>, <code>outdoor</code>). Radar-B's own concepts never leak in</td></tr>
+    <tr><td><code>Date Expiring</code></td><td>The event's date for a one-off, the closing date for a run, <strong>blank</strong> for anything recurring or undated — no deadline is ever invented</td></tr>
+    <tr><td><code>Planned Date</code></td><td>The event's date, with a time only if a real one is known</td></tr>
+    <tr><td><code>Date Added</code></td><td>Today</td></tr>
+    <tr><td><code>Attended</code> / <code>Going</code></td><td><strong>Always false.</strong> A known date is not a commitment — you decide that in Wanderlist</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note">
+  <p>
+    <strong>One schema, two apps.</strong> Radar-B writes through
+    <em>literally the same function</em> Wanderlist writes with
+    (<code>src/shared/findings.js</code>). A row saved from Radar-B and one saved in
+    Wanderlist are identical by construction, not by careful copying — they can't drift
+    apart into one writing <code>"Free"</code> and the other <code>"free"</code>.
+  </p>
+</div>
+
+<h3>Already saved</h3>
+<p>
+  Radar-B reads your Findings database too, and folds it into the same dedupe pool. So
+  anything already on your Wanderlist shows as <span class="badge">în wanderlist</span>
+  and is never offered for saving twice — even when the Wanderlist entry is worded
+  differently from the Radar row.
+</p>
+
+<hr />
+
+<h2 id="sources"><span class="num">7</span>Sources, and Facebook specifically</h2>
+
+<p>
+  Every source arrives the same way — as a line in an event's <code>Sources</code> field.
+  None is privileged. On the event page each one is labelled: <em>recomandare</em> when
+  that source actively recommended it, <em>menționat</em> for a passing reference,
+  <em>wanderlist</em> for your own saved copy.
+</p>
+
+<h3>Facebook</h3>
+<p>
+  Facebook stays important — plenty of Bucharest events are hard to find anywhere else.
+  But <strong>you get the events, not Facebook.</strong>
+</p>
+<ul>
+  <li><strong>No scraper, no Graph API, no paid data vendor.</strong> As of 2026 the Graph API covers almost none of public Facebook, public event pages are served to logged-out browsers only as JSON buried in script tags behind aggressive anti-automation, and the third-party unified APIs are all paid and brittle.</li>
+  <li>Facebook events enter <strong>through the skill</strong>, like everything else — Claude reads a public event (or a screenshot, which is what actually works reliably) and writes a normal Radar row.</li>
+  <li>In the app a Facebook-origin event is rendered <strong>fully natively</strong>: title, time, venue, summary, poster. The Facebook URL appears exactly once, in the Sources list, as an escape hatch.</li>
+  <li>Radar-B never embeds Facebook, never links to a feed, and never asks you to log in.</li>
+</ul>
+
+<h3>Adding a source later</h3>
+<p>
+  Because sources are just named lines rather than code, adding one is a change to the
+  skill, not to the app. Radar-B needs no update to display a source it has never seen
+  before.
+</p>
+
+<hr />
+
+<h2 id="setup"><span class="num">8</span>Setup</h2>
+
+<h3>Try it with nothing at all</h3>
+<p>
+  With no Notion token, Radar-B runs in <strong>demo mode</strong> on a full plausible
+  Bucharest week — including a duplicate exhibition that visibly merges, an uncertain
+  event, a long run, a festival and an already-saved item. Nothing to configure.
+</p>
+
+<h3>Connecting your own Notion</h3>
+<ol>
+  <li>Open <strong>Setări</strong> (the gear in the masthead).</li>
+  <li>Paste your <strong>Notion integration token</strong>. It stays in this browser only — it's relayed per request through <code>/api/notion</code>, which stores nothing.</li>
+  <li>The three ids below it are already filled in with the right defaults. Each accepts a pasted Notion URL or a bare id.</li>
+  <li><strong>Testează</strong> checks reachability, then <strong>Salvează</strong>.</li>
+</ol>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Setting</th><th>What it's for</th><th>If it's missing</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Baza Radar</strong></td><td>The 📡 Radar database — the events themselves</td><td>The app still works off Wanderlist and the Suggested page</td></tr>
+    <tr><td><strong>Baza Findings</strong></td><td>Wanderlist. Where saving writes, and how "already saved" is detected</td><td>No save, no saved-state detection</td></tr>
+    <tr><td><strong>Pagina Suggested events</strong></td><td>Read <em>only</em> to show which articles this week was built from</td><td>That one section disappears</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="warnbox">
+  <p>
+    <strong>Your Notion integration must be shared with all three.</strong> In Notion, open
+    each database or page → <em>⋯</em> → <em>Connections</em> → add your integration.
+    A token alone isn't enough; Notion grants access per page.
+  </p>
+</div>
+
+<h3>Filling Radar with real events</h3>
+<p>
+  📡 Radar starts <strong>empty</strong>. It was deliberately not seeded — invented events
+  would have made the app look alive while lying about the city. Run
+  <code>/recommend in Bucharest</code> once and it fills.
+</p>
+
+<h3>Offline</h3>
+<p>
+  The last successful fetch is cached, so opening the app on the metro shows the last
+  known week rather than an empty screen. Saving to Wanderlist needs a connection and
+  says so rather than queueing silently.
+</p>
+
+<hr />
+
+<h2 id="schema"><span class="num">9</span>The Radar database schema</h2>
+
+<p>
+  You don't need this to use the app — it's here so the skill and the database can be
+  kept in step, and so you can edit a row by hand in Notion when you want to.
+</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Property</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>Name</code></td><td>Title</td><td>The event, without the venue</td></tr>
+    <tr><td><code>When</code></td><td>Date</td><td>Start, optional end (festival or exhibition run), optional time. A bare date genuinely means the time is unknown</td></tr>
+    <tr><td><code>Venue</code></td><td>Text</td><td>Human venue name</td></tr>
+    <tr><td><code>Address</code></td><td>Text</td><td>Full street address</td></tr>
+    <tr><td><code>Area</code></td><td>Select</td><td>Neighbourhood, lowercase</td></tr>
+    <tr><td><code>Category</code></td><td>Select</td><td>Wanderlist's vocabulary verbatim, so a save is lossless</td></tr>
+    <tr><td><code>Summary</code></td><td>Text</td><td>2–3 editorial sentences. Never blank</td></tr>
+    <tr><td><code>Signals</code></td><td>Multi-select</td><td><code>recommended</code>, <code>free</code>, <code>ticketed</code>, <code>family</code>, <code>outdoor</code>, <code>new-venue</code>, <code>recurring</code>, <code>long-run</code>, <code>sold-out</code></td></tr>
+    <tr><td><code>Cost</code></td><td>Number</td><td>Lei. Never guessed, never set alongside <code>free</code></td></tr>
+    <tr><td><code>Link</code></td><td>URL</td><td>The event's own page</td></tr>
+    <tr><td><code>Tickets</code></td><td>URL</td><td>Only when it differs from <code>Link</code></td></tr>
+    <tr><td><code>Image</code></td><td>URL</td><td>Poster or hero image</td></tr>
+    <tr><td><code>Organizer</code></td><td>Text</td><td></td></tr>
+    <tr><td><code>Sources</code></td><td>Text</td><td>One mention per line: <code>Name │ url │ YYYY-MM-DD</code>. Prefix a line with <code>*</code> when that source <em>recommended</em> the event</td></tr>
+    <tr><td><code>Confidence</code></td><td>Select</td><td><code>confirmed</code> · <code>reported</code> · <code>uncertain</code></td></tr>
+    <tr><td><code>Checked</code></td><td>Date</td><td>When the row was last verified</td></tr>
+    <tr><td><code>Key</code></td><td>Text</td><td><code>venue-slug:date:title-slug</code> — lets re-runs update rather than duplicate</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="warnbox">
+  <p>
+    <strong>Radar-B never writes to Radar.</strong> The skill owns that table. Two writers
+    to one table is how a working Notion setup gets damaged by accident. The app's only
+    write, anywhere, is one Findings row when you tap Save.
+  </p>
+</div>
+
+<hr />
+
+<h2 id="scope"><span class="num">10</span>What it deliberately doesn't do</h2>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Not built</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td>Scrapers / per-source fetchers</td><td>Section 1. The skill does this better, and the function budget is full</td></tr>
+    <tr><td>A map view</td><td>Neighbourhood chips and a Maps link do the work. Wanderlist learned this one the expensive way</td></tr>
+    <tr><td>Notifications</td><td>Wanderlist already emails you the evening before something expires. A second nagging channel is exactly the thing this app is meant not to be</td></tr>
+    <tr><td>A favourites / bookmarks store</td><td>Wanderlist is the home for saved things. Section 6</td></tr>
+    <tr><td>A venues database</td><td>Venue + address + area, grouped in-app, covers it. A relation would be schema for its own sake</td></tr>
+    <tr><td>A real taste model</td><td>The app records opens and dismissals locally and uses only the honest, non-inferential parts ("new to you", dismissed events sinking). No learned feed, no scoring. The raw signal is there for when a recommender genuinely earns its keep</td></tr>
+    <tr><td>Endless feed, streaks, counts, gamification</td><td>It should be possible to browse without the app trying to engage you</td></tr>
+  </tbody>
+</table>
+</div>
+
+<hr />
+
+<h2 id="trouble"><span class="num">11</span>Troubleshooting</h2>
+
+<h4>The stream is empty on every lens</h4>
+<p>
+  Most likely 📡 Radar hasn't been filled yet. Run <code>/recommend in Bucharest</code>.
+  If you've already run it, check Setări → <em>Testează</em>, and confirm your Notion
+  integration is shared with the Radar database.
+</p>
+
+<h4>"Liniște" on one lens but not others</h4>
+<p>
+  Normal. There genuinely may be nothing tonight. Try <strong>Weekend</strong> or
+  <strong>În desfășurare</strong> — the sources publish Thursday and Friday, so early in
+  the week is naturally thin.
+</p>
+
+<h4>Two cards for what's obviously one event</h4>
+<p>
+  The dedupe is deliberately cautious. Give the two rows the same <code>Key</code> in
+  Notion and they'll merge on the next load.
+</p>
+
+<h4>An event shows the wrong time</h4>
+<p>
+  Check the event page's <em>De unde știm</em> — it names which source supplied what and
+  when it was last checked. Fix it in the Radar row and set <code>Confidence</code> to
+  <code>confirmed</code>.
+</p>
+
+<h4>Saving fails</h4>
+<p>
+  Saving needs a live connection. If it's online, the error text comes straight from
+  Notion — usually the integration isn't shared with the Findings database, or a
+  <code>Category</code> value doesn't exist there yet.
+</p>
+
+<h4>An event I saved still isn't marked</h4>
+<p>
+  The app refetches on load and when you return to the tab. Pull up and reopen, or switch
+  away and back.
+</p>
+
+<footer>
+  <div class="backlinks">
+    <a href="/radar-b-react.html">← Open Radar-B</a>
+    <a href="/wanderlist-react.html">Wanderlist ↗</a>
+    <a href="/index.html">All apps ↗</a>
+  </div>
+  <p>
+    Radar-B is part of a small ecosystem: <strong>/recommend in Bucharest</strong> gathers
+    and judges, <strong>Notion</strong> remembers, <strong>Radar-B</strong> makes it
+    browsable, <strong>Wanderlist</strong> keeps what you choose. Each does one thing, and
+    none duplicates another.
+  </p>
+</footer>
+
+</div>
+</body>
+</html>

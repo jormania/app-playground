@@ -78,6 +78,12 @@ export function SettingsModal({ onClose, onSaved, theme, onTheme }) {
 
       {status && <p className={`notice${status.ok ? '' : ' warn'}`}>{status.message}</p>}
 
+      <p className="provenanceNote">
+        Ghidul complet — cum funcționează /recommend in Bucharest, dedublarea,
+        provenance-ul și legătura cu Wanderlist —{' '}
+        <a href="/radar-b-guide.html" target="_blank" rel="noopener">e aici</a>.
+      </p>
+
       <div className="actions">
         <Button variant="ghost" onClick={test} disabled={testing || !token.trim()}>
           {testing ? 'Se testează…' : 'Testează'}

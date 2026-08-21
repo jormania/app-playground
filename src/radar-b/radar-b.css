@@ -38,6 +38,42 @@
   --shadow-card: 0 1px 2px rgba(43, 39, 35, 0.05);
 }
 
+/* Dark tokens are defined TWICE, on purpose:
+   - the `prefers-color-scheme` block covers "system" (prefs.theme === 'system',
+     which clears the data-theme attribute entirely) — this is the block that
+     was MISSING before, so "system" never actually followed the OS/browser
+     dark-mode setting no matter what it was set to.
+   - `:root[data-theme="dark"]` covers the explicit in-app toggle, and wins
+     over the media query in both directions once the attribute is set,
+     because it's a plain (higher-specificity-behaving, later) selector match
+     rather than a media condition.
+   `:not([data-theme="light"])` on the media block stops an explicit light
+   choice from being dragged back to dark by a dark OS preference. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg:        #16161a;
+    --color-bg-sunken: #101013;
+    --color-surface:   #1e1e23;
+    --color-surface-2: #26262c;
+    --color-border:    #34343c;
+    --color-border-2:  #4a4a55;
+
+    --color-ink:   #e7e2d9;
+    --color-muted: #a49c92;
+    --color-faint: #6f6960;
+
+    --color-accent:       #d98b4a;
+    --color-accent-hover: #e8a065;
+    --color-on-accent:    #16161a;
+    --color-success:      #7fae7c;
+    --color-warning:      #d6ab55;
+    --color-danger:       #d4746a;
+
+    --signal: #d98b4a;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
+  }
+}
+
 :root[data-theme="dark"] {
   --color-bg:        #16161a;
   --color-bg-sunken: #101013;
@@ -112,6 +148,7 @@ body {
 
 .mastheadMeta {
   flex: 1;
+  font: inherit;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--color-faint);
@@ -120,32 +157,66 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Now a <button> (tap-to-refresh) rather than static text — strip the
+     native button chrome so it still reads as a plain label at rest. */
+  background: none;
+  border: 0;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}
+.mastheadMeta:disabled { cursor: default; opacity: 0.7; }
+@media (hover: hover) {
+  .mastheadMeta:not(:disabled):hover { color: var(--color-muted); }
 }
 
 .mastheadActions { display: flex; gap: var(--space-2xs); align-items: center; }
 
 /* ── Lens bar ──────────────────────────────────────────────────────────── */
 
+/* Seven lenses (plus counts) don't fit a phone width and were never meant
+   to — the fix isn't hiding one, it's making "there's more, swipe" legible
+   and the swipe itself feel intentional rather than accidental.
+
+   The fade is the classic CSS-only "scroll shadow" trick: two gradients
+   painted `background-attachment: local` (so they scroll WITH the content
+   and land flush against whichever end is actually reachable) sit under two
+   more painted `background-attachment: scroll` (so they stay pinned to the
+   viewport edges as a constant hint). No JS, and a fade only ever appears on
+   the side that still has content to reveal — it disappears on its own once
+   you've scrolled that edge into view. */
 .lenses {
   display: flex;
-  gap: var(--space-2xs);
+  gap: var(--space-3xs);
   overflow-x: auto;
   scrollbar-width: none;
   padding: var(--space-sm) 0;
   margin: 0 calc(-1 * var(--space-md));
   padding-left: var(--space-md);
   padding-right: var(--space-md);
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  background-image:
+    linear-gradient(to right, var(--color-bg) 0%, transparent 100%),
+    linear-gradient(to left,  var(--color-bg) 0%, transparent 100%),
+    linear-gradient(to right, color-mix(in srgb, var(--color-ink) 10%, transparent), transparent),
+    linear-gradient(to left,  color-mix(in srgb, var(--color-ink) 10%, transparent), transparent);
+  background-repeat: no-repeat;
+  background-size: 28px 100%, 28px 100%, 10px 100%, 10px 100%;
+  background-position: left top, right top, left top, right top;
+  background-attachment: local, local, scroll, scroll;
 }
 .lenses::-webkit-scrollbar { display: none; }
 
 .lens {
   flex: 0 0 auto;
+  scroll-snap-align: start;
   border: 1px solid transparent;
   background: transparent;
   color: var(--color-muted);
   font: inherit;
   font-size: var(--text-sm);
-  padding: var(--space-2xs) var(--space-sm);
+  padding: var(--space-3xs) var(--space-xs);
   border-radius: var(--radius-pill);
   cursor: pointer;
   white-space: nowrap;

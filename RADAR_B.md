@@ -355,3 +355,60 @@ old name.)
   real week in it and the screenshots would show something true.
 - **Deliberately still out:** scrapers, a map, notifications, a favourites store, a
   venues table, a taste model. §8 has the reasoning for each.
+
+---
+
+## 12. Guide, and a QoL pass (2026-08-21)
+
+**A full guide shipped**: [`public/radar-b-guide.html`](public/radar-b-guide.html), reachable
+three ways — a dedicated masthead icon (open-book glyph) that opens it directly, a link inside
+Settings, and the standard `guide ↗` badge on the app's card on `index.html` (via the registry's
+new `guide: "radar-b-guide.html"` field — no template change needed, every app's card already
+renders that field when present). It covers the whole chain end to end: what
+`/recommend in Bucharest` reads and filters for, Step 4b's write into Radar, the two-pass dedupe
+in plain language, the full Wanderlist field mapping, the Radar schema for hand-editing, and a
+troubleshooting section.
+
+Also fixed, from hands-on use of the shipped app rather than from the spec:
+
+- **System dark mode was silently broken.** `radar-b.css` defined dark tokens only under
+  `:root[data-theme="dark"]` — the explicit in-app toggle — with no
+  `@media (prefers-color-scheme: dark)` counterpart for `theme: 'system'` (the default). The app
+  never actually followed the OS/browser preference no matter what it was set to. Added the
+  missing media block, guarded with `:not([data-theme="light"])` so an explicit light choice
+  can't be dragged back to dark by the OS. Also fixed the pre-paint `<meta theme-color>` script in
+  `radar-b-react.html`, which had the same gap.
+- **The Settings icon read as a theme toggle, not "settings".** An 8-spoke gear at 20px
+  anti-aliases into something that looks exactly like a sun — the same shape a light/dark toggle
+  usually uses — so it read as "this button is about the theme" and nothing else. Replaced with a
+  sliders glyph (three lines, three offset thumbs), the standard fallback wherever a gear stops
+  being legible at icon size, and unambiguous against the app's actual sun-free theme control
+  (a `<select>` inside Settings itself).
+- **The price filter didn't exist.** The event model and `matchesFilters` already supported a
+  `maxCost` ceiling — the spec described it — but `FilterSheet` never rendered a control for it.
+  Added one: `orice preț · gratuit · până în 50 lei · până în 100 lei`, single-select, with a
+  caveat shown only when a real ceiling is active (`maxCost > 0`) — an unpriced event is *excluded*
+  by a ceiling, never assumed free, and that rule is stated in the sheet rather than left to
+  surprise someone later. (The category/area/signal chips were re-verified working end to end —
+  demo pool 8→1 cards on a real filter tap, aria-pressed toggling correctly — so that half of
+  "filters doesn't do anything" was a false read; the missing price control was the real gap.)
+- **The lens bar's horizontal scroll had no affordance.** Seven lenses plus counts don't fit a
+  phone width and were never going to — the fix is signalling "there's more" rather than fighting
+  the overflow. Added the standard CSS-only scroll-shadow (two `background-attachment: local`
+  gradients synced to content scroll, two `scroll`-attached ones pinned to the viewport edges) so
+  a fade only ever appears on the side that still has more to reveal, plus `scroll-snap-type: x
+  proximity` so the swipe itself settles on a lens rather than stopping mid-label.
+- **No way to force a refresh without leaving the tab.** The masthead's "actualizat …" line was
+  static text; the only refresh trigger was the `visibilitychange` listener firing on tab
+  return. It's now a tappable button (`disabled` while a load is in flight, so a double-tap can't
+  pile up requests) — same label at rest, "se actualizează…" while working.
+
+`/recommend in Bucharest` also gained an explicit **Facebook** subsection in Step 2 (fetch the
+event's own details when a Facebook link surfaces, prefer a direct source over it when one
+exists, don't fight the login-wall fetch) and an **online-only exclusion** in both Step 2 and
+Step 3's exclude list: a livestream, webinar, or virtual screening is never included regardless of
+source — the tell on Facebook specifically is the event's own location reading "Online Event" — a
+hybrid event (in-person **and** streamed) stays included as normal.
+
+15 new/updated render tests cover all of the above end to end in demo mode; **3410 tests total**,
+typecheck and eslint clean.

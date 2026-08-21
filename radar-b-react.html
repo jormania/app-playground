@@ -8,13 +8,17 @@
   <meta name="theme-color" content="#f3efe7" />
   <script>
     // Apply the saved theme before first paint to avoid a flash of the wrong palette.
+    // "system" sets no attribute (the CSS's own prefers-color-scheme block handles
+    // it), but the <meta theme-color> that colours the browser chrome still needs a
+    // one-time read of the OS/browser preference here, since CSS can't drive it.
     try {
       var p = JSON.parse(localStorage.getItem('radarb_prefs') || '{}');
+      var dark = p.theme === 'dark' || (p.theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
       if (p.theme === 'dark' || p.theme === 'light') {
         document.documentElement.setAttribute('data-theme', p.theme);
-        var m = document.querySelector('meta[name="theme-color"]');
-        if (m) m.setAttribute('content', p.theme === 'dark' ? '#16161a' : '#f3efe7');
       }
+      var m = document.querySelector('meta[name="theme-color"]');
+      if (m) m.setAttribute('content', dark ? '#16161a' : '#f3efe7');
     } catch (e) {}
   </script>
   <link rel="icon" type="image/svg+xml" href="/radar-b-logo.svg" />

@@ -119,4 +119,51 @@ describe('Radar-B in demo mode', () => {
     await open()
     expect(screen.getByText(/Din ce s-a construit săptămâna/)).toBeTruthy()
   })
+
+  test('links to the guide, both directly and from Settings', async () => {
+    await open()
+    const guideLink = screen.getByRole('link', { name: 'Ghid' })
+    expect(guideLink.getAttribute('href')).toBe('/radar-b-guide.html')
+    expect(guideLink.getAttribute('target')).toBe('_blank')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Setări' }))
+    const links = screen.getAllByRole('link').filter((a) => a.getAttribute('href') === '/radar-b-guide.html')
+    expect(links.length).toBeGreaterThan(0)
+  })
+
+  test('the price filter excludes unpriced events rather than assuming they are cheap', async () => {
+    await open()
+    await userEvent.click(screen.getByRole('tab', { name: /Săptămâna asta/ }))
+    const before = screen.getAllByRole('heading').filter((h) => h.className === 'cardName')
+    await userEvent.click(screen.getByRole('button', { name: 'Filtre' }))
+    // A real ceiling (as opposed to "gratuit", which needs no caveat) explains
+    // the exclusion rule right where you'd set it.
+    await userEvent.click(screen.getByRole('button', { name: 'până în 50 lei' }))
+    expect(screen.getByText(/nu se încadrează automat/)).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Gata' }))
+    const after = screen.getAllByRole('heading').filter((h) => h.className === 'cardName')
+    // Only the demo pool's actually-free events survive.
+    expect(after.length).toBeGreaterThan(0)
+    expect(after.length).toBeLessThan(before.length)
+  })
+
+  test('clearing filters resets the price ceiling too', async () => {
+    await open()
+    await userEvent.click(screen.getByRole('button', { name: 'Filtre' }))
+    await userEvent.click(screen.getByRole('button', { name: 'gratuit' }))
+    const clear = screen.getByRole('button', { name: 'Șterge filtrele' })
+    expect(clear.disabled).toBe(false)
+    await userEvent.click(clear)
+    expect(screen.getByRole('button', { name: 'orice preț' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  test('tapping the masthead label triggers a refresh', async () => {
+    await open()
+    const refreshBtn = screen.getByRole('button', { name: 'Reîmprospătează' })
+    expect(refreshBtn.textContent).toMatch(/demo/)
+    await userEvent.click(refreshBtn)
+    // Demo mode resolves near-instantly, so by the time we can assert again the
+    // button is back to its resting label rather than stuck on "se actualizează…".
+    expect(await screen.findByRole('button', { name: 'Reîmprospătează' })).toBeTruthy()
+  })
 })

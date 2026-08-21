@@ -8,7 +8,7 @@ import { EventDetail } from './EventDetail.jsx'
 import { FilterSheet } from './FilterSheet.jsx'
 import { SaveSheet } from './SaveSheet.jsx'
 import { SettingsModal } from './SettingsModal.jsx'
-import { SearchIcon, FilterIcon, SettingsIcon, CloseIcon, RadarIcon } from './icons.jsx'
+import { SearchIcon, FilterIcon, SettingsIcon, GuideIcon, CloseIcon, RadarIcon } from './icons.jsx'
 import {
   getClient, isLive, loadPrefs, savePrefs, loadLocal, saveLocal, stampFirstSeen,
   readCache, writeCache,
@@ -184,7 +184,20 @@ export default function App() {
       <header className="masthead">
         <div className="mastheadTop">
           <h1 className="wordmark">Radar<span className="dot">-B</span></h1>
-          <span className="mastheadMeta">{refreshedLine}</span>
+          {/* Tappable rather than a static label — the only other way to force a
+              refresh was leaving and returning to the tab. `disabled` while a
+              load is already in flight avoids piling up requests on a slow
+              connection from a double-tap. */}
+          <button
+            type="button"
+            className="mastheadMeta"
+            onClick={load}
+            disabled={loading}
+            aria-label="Reîmprospătează"
+            title="Reîmprospătează"
+          >
+            {loading ? 'se actualizează…' : refreshedLine}
+          </button>
           <div className="mastheadActions">
             <button type="button" className="iconBtn" aria-label="Caută" onClick={() => { setSearching((s) => !s); setTimeout(() => searchRef.current?.focus(), 0) }}>
               {searching ? <CloseIcon /> : <SearchIcon />}
@@ -192,6 +205,9 @@ export default function App() {
             <button type="button" className="iconBtn" aria-label="Filtre" onClick={() => setShowFilters(true)} style={hasActiveFilters(filters) ? { color: 'var(--signal)' } : undefined}>
               <FilterIcon />
             </button>
+            <a className="iconBtn" href="/radar-b-guide.html" target="_blank" rel="noopener" aria-label="Ghid" title="Cum funcționează Radar-B">
+              <GuideIcon />
+            </a>
             <button type="button" className="iconBtn" aria-label="Setări" onClick={() => setShowSettings(true)}>
               <SettingsIcon />
             </button>
