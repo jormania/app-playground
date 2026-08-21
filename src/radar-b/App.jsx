@@ -165,7 +165,7 @@ export default function App() {
 
   async function askRecommender() {
     const text = toBrief(stream, prefs.view)
-    const res = await shareNative({ name: 'Semnal', description: text }, 'Semnal')
+    const res = await shareNative({ name: 'Radar-B', description: text }, 'Radar-B')
     setToast(res.copied ? 'Copiat — lipește-l în conversația cu Claude.' : res.shared ? null : 'Nu s-a putut copia.')
   }
 
@@ -183,7 +183,7 @@ export default function App() {
     <div className="app">
       <header className="masthead">
         <div className="mastheadTop">
-          <h1 className="wordmark">Semnal<span className="dot">.</span></h1>
+          <h1 className="wordmark">Radar<span className="dot">-B</span></h1>
           <span className="mastheadMeta">{refreshedLine}</span>
           <div className="mastheadActions">
             <button type="button" className="iconBtn" aria-label="Caută" onClick={() => { setSearching((s) => !s); setTimeout(() => searchRef.current?.focus(), 0) }}>

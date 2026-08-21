@@ -1,11 +1,10 @@
-# Semnal — product & UX specification
+# Radar-B — product & UX specification
 
 📡 **A personal cultural radar for Bucharest.** One calm place that answers *"what
 interesting things are happening that I might want to go to?"* — built on top of the
 event intelligence the ecosystem already produces, not beside it.
 
-Lives at `src/semnal/`, entry `semnal-react.html`, guide `public/semnal-guide.html`.
-React + Vite + `src/ds/` + Notion.
+Lives at `src/radar-b/`, entry `radar-b-react.html`. React + Vite + `src/ds/` + Notion.
 
 > This file is the spec **and** the app doc. Sections 1–8 are the specification agreed
 > before implementation; sections 9+ describe what actually shipped.
@@ -14,11 +13,11 @@ React + Vite + `src/ds/` + Notion.
 
 ## 1. What was inspected first
 
-| Thing | What it actually is | What Semnal takes from it |
+| Thing | What it actually is | What Radar-B takes from it |
 |---|---|---|
-| **`/recommend in Bucharest` skill** | A weekly pipeline: fetch 7 named sources → extract events → dedupe → filter to Gabriel's taste → Romanian day-by-day digest → hand off to Wanderlist. Already does fetching, parsing, dedupe and provenance (`[via Buletin, Zile și Nopți]`). | Becomes Semnal's **ingest + intelligence layer**. Semnal does not re-implement any of it. |
-| **Wanderlist** (`src/wanderlist/`, Notion `Findings`) | A triaged personal backlog of things-to-do. Rich schema: Category (closed set), Place+Map, Cost, Tags, Attended/Going, Date Expiring, Planned Date, Photo, Tickets. | Stays the **only** home for saved things. Semnal writes into it, never alongside it. |
-| **Notion 🗓️ Suggested events** (`377d3e6d…`) | A page rebuilt weekly by the skill: a *table of article links* per source (+ ⏳ placeholders for sources that haven't published) and a Zile și Nopți highlights block. Article-level, not event-level. | Kept exactly as-is as the **research/provenance layer**. Semnal reads it for source attribution, and gains an event-level sibling next to it. |
+| **`/recommend in Bucharest` skill** | A weekly pipeline: fetch 7 named sources → extract events → dedupe → filter to Gabriel's taste → Romanian day-by-day digest → hand off to Wanderlist. Already does fetching, parsing, dedupe and provenance (`[via Buletin, Zile și Nopți]`). | Becomes Radar-B's **ingest + intelligence layer**. Radar-B does not re-implement any of it. |
+| **Wanderlist** (`src/wanderlist/`, Notion `Findings`) | A triaged personal backlog of things-to-do. Rich schema: Category (closed set), Place+Map, Cost, Tags, Attended/Going, Date Expiring, Planned Date, Photo, Tickets. | Stays the **only** home for saved things. Radar-B writes into it, never alongside it. |
+| **Notion 🗓️ Suggested events** (`377d3e6d…`) | A page rebuilt weekly by the skill: a *table of article links* per source (+ ⏳ placeholders for sources that haven't published) and a Zile și Nopți highlights block. Article-level, not event-level. | Kept exactly as-is as the **research/provenance layer**. Radar-B reads it for source attribution, and gains an event-level sibling next to it. |
 | **Repo conventions** | DS-based new apps, BYO-Notion-token + demo-mode fixtures, `/api/notion` stateless relay, pure-logic-plus-tests split, scoped SW gated on `import.meta.env.PROD`. | Followed throughout. |
 | **Facebook, practically, in 2026** | Graph API covers almost none of public Facebook; public event pages are served to logged-out browsers only as JSON buried in script tags, behind aggressive anti-automation. Third-party unified APIs (SocialCrawl, Bright Data, Apify, ScrapeCreators) are the only reliable programmatic route, all paid. The **wanderlist skill already records** "Facebook event pages reliably fail to fetch (login wall) even when public — don't retry, ask for a screenshot." | See §5. Facebook is a *human/AI-assisted* source, never a scraper. |
 
@@ -26,7 +25,7 @@ React + Vite + `src/ds/` + Notion.
 
 ## 2. The core product decision
 
-**Semnal does not scrape.**
+**Radar-B does not scrape.**
 
 The tempting architecture — a serverless function per source, parsing B365's and
 Curatorial's HTML — is the wrong one here, for three converging reasons:
@@ -40,14 +39,14 @@ Curatorial's HTML — is the wrong one here, for three converging reasons:
 3. **Vercel Hobby caps this repo at 12 serverless functions and it is already at 12.**
    A per-source fetcher literally cannot deploy.
 
-So the pipeline inverts. **Claude is the parser; Notion is the wire format; Semnal is
+So the pipeline inverts. **Claude is the parser; Notion is the wire format; Radar-B is
 the client.**
 
 ```
    Sources                      Event intelligence              Discovery         Decision
 ┌──────────────┐            ┌──────────────────────┐        ┌───────────┐    ┌────────────┐
 │ B365         │            │  /recommend in       │        │           │    │            │
-│ Curatorial   │            │   Bucharest          │        │  SEMNAL   │    │ WANDERLIST │
+│ Curatorial   │            │   Bucharest          │        │  RADAR_B   │    │ WANDERLIST │
 │ Buletin      │  ────────► │  (fetch · parse ·    │ ─────► │           │───►│  Findings  │
 │ HotNews      │            │   dedupe · filter)   │  Notion│  browse   │save│            │
 │ Zile și Nopți│            │                      │  read  │  evaluate │    │ plan · go  │
@@ -64,10 +63,10 @@ the client.**
 Everything the brief asks for — heterogeneous sources, normalization, dedupe,
 enrichment, provenance, editorial signals — happens *somewhere in that chain*. The
 decision is only about **where**, and putting the messy half in the layer that already
-has judgement (Claude) leaves Semnal free to be what it should be: fast, quiet, and
+has judgement (Claude) leaves Radar-B free to be what it should be: fast, quiet, and
 purely about discovery.
 
-**Consequence:** Semnal ships with **zero new serverless functions.** It reads Notion
+**Consequence:** Radar-B ships with **zero new serverless functions.** It reads Notion
 through the existing `/api/notion` relay with a BYO token, exactly like Wanderlist.
 
 ---
@@ -75,7 +74,7 @@ through the existing `/api/notion` relay with a BYO token, exactly like Wanderli
 ## 3. The event model
 
 Notion database **📡 Radar** — one row per *underlying event*, not per mention.
-Sits beside 🗓️ Suggested events, written by the skill, read by Semnal.
+Sits beside 🗓️ Suggested events, written by the skill, read by Radar-B.
 
 | Property | Type | Why |
 |---|---|---|
@@ -93,12 +92,12 @@ Sits beside 🗓️ Suggested events, written by the skill, read by Semnal.
 | `Image` | url | Poster/hero. |
 | `Organizer` | rich text | |
 | `Sources` | rich text | **Provenance, one line per mention**: `name │ url │ YYYY-MM-DD`. This is the field that makes "also mentioned by Curatorial" possible. |
-| `Confidence` | select | `confirmed` (from the event's own page) · `reported` (an editorial roundup) · `uncertain` (a title and a date in an article). Drives how precisely Semnal is willing to speak. |
+| `Confidence` | select | `confirmed` (from the event's own page) · `reported` (an editorial roundup) · `uncertain` (a title and a date in an article). Drives how precisely Radar-B is willing to speak. |
 | `Checked` | date | When this row was last verified. Drives staleness. |
 | `Key` | rich text | A stable dedupe slug the skill writes (`venue-slug:date:title-slug`), so re-runs update rather than duplicate. |
 
 **The model is deliberately tolerant.** Everything except `Name` may be missing.
-Semnal's job is to render an event that has only a title and a date *honestly* —
+Radar-B's job is to render an event that has only a title and a date *honestly* —
 not to pretend it is a full record.
 
 ### Four entities, one experience
@@ -123,7 +122,7 @@ Dedupe happens **twice**, on purpose.
 two articles and *know* they mean the same exhibition. That already exists (Step 3b).
 It writes one row with a merged `Sources` list.
 
-**Downstream (Semnal)** does structural dedupe across *runs and stores* — the same
+**Downstream (Radar-B)** does structural dedupe across *runs and stores* — the same
 event arriving from last week's Radar refresh, this week's, and a row Gabriel already
 saved to Wanderlist. This is pure, deterministic, and unit-tested (`dedupe.js`):
 
@@ -159,7 +158,7 @@ Facebook stays an important source and is treated exactly as its 2026 reality de
 - **In the app**, a Facebook-origin event is rendered fully natively: title, time,
   venue, summary, poster. The Facebook URL appears once, in the Sources section of the
   detail view, as *"Facebook event ↗"* — an escape hatch, never a destination.
-- Semnal never embeds Facebook, never links to a feed, never asks for a login.
+- Radar-B never embeds Facebook, never links to a feed, never asks for a login.
 
 The honest tradeoff, stated plainly: Facebook coverage is only as fresh as the last
 skill run. That is strictly better than a scraper that breaks quietly and pretends
@@ -169,23 +168,23 @@ otherwise — and freshness is *visible* in the app (§7) rather than assumed.
 
 ## 6. Relationship to Recommend in Bucharest and Wanderlist
 
-**Recommend in Bucharest = the intelligence. Semnal = the universe. Wanderlist = the
+**Recommend in Bucharest = the intelligence. Radar-B = the universe. Wanderlist = the
 commitment.**
 
-- The skill **writes** the universe Semnal browses (Radar rows).
+- The skill **writes** the universe Radar-B browses (Radar rows).
 - The skill's judgement **arrives as data**: the `recommended` signal and a
   `Recomandat de …` line, so a recommendation appears naturally in the browser instead
   of living only in a chat transcript.
-- Semnal **feeds questions back**: any filtered view can be copied as a compact,
+- Radar-B **feeds questions back**: any filtered view can be copied as a compact,
   paste-ready brief ("Ask about these"), so *"which of these would I enjoy with Nora?"*
   starts from the actual current event pool rather than a fresh round of searching.
-- **Wanderlist is the only save.** Semnal has no favourites, no bookmarks, no starred
+- **Wanderlist is the only save.** Radar-B has no favourites, no bookmarks, no starred
   list. "Save" opens a pre-filled draft and writes one `Findings` row using the exact
   documented schema (`"__NO__"` checkboxes, `date:<Name>:start` keys, lowercase
-  Category/Tags). Anything already in Findings shows in Semnal as **In your Wanderlist**
+  Category/Tags). Anything already in Findings shows in Radar-B as **In your Wanderlist**
   and is never offered for saving twice.
 
-Discover → evaluate → **save** → do. Semnal owns the first two and hands over cleanly.
+Discover → evaluate → **save** → do. Radar-B owns the first two and hands over cleanly.
 
 ---
 
@@ -269,7 +268,7 @@ zero new serverless functions (§2).
 
 ## 9. What shipped
 
-Everything in §8's "In" list. `src/semnal/`, entry `semnal-react.html`, DS-based, PWA,
+Everything in §8's "In" list. `src/radar-b/`, entry `radar-b-react.html`, DS-based, PWA,
 **zero new serverless functions** — reads and its one write both go through the existing
 `/api/notion` relay.
 
@@ -287,7 +286,7 @@ page** so the two are visibly one workflow rather than two:
 
 Radar starts **empty**. It fills on the next `/recommend in Bucharest` run — seeding it
 with invented events would have made the app look alive while lying about the city.
-Until then Semnal shows what's in Findings plus the article list off the Suggested page,
+Until then Radar-B shows what's in Findings plus the article list off the Suggested page,
 and demo mode (no token) is a full browsable week either way.
 
 ### The skill was extended, not replaced
@@ -305,13 +304,13 @@ neither.**
 
 ### Code reused and promoted, rather than copied
 
-The brief's flow runs *through* Wanderlist, so Semnal shares its code rather than
+The brief's flow runs *through* Wanderlist, so Radar-B shares its code rather than
 mirroring it:
 
 | Module | What happened |
 |---|---|
-| [`src/shared/findings.js`](src/shared/findings.js) | **Promoted** out of `src/wanderlist/notion.js`: the Findings schema itself — property names, the 2000-char rich-text chunking, the Category/Tags lowercase rule, the Planned-Date offset handling, and `toFindingsProps`. Wanderlist re-exports every symbol, so its import paths are unchanged and its own `notion.test.js` (104 tests, still green) is the proof the move was behaviour-preserving. **Semnal's save goes through this same function**, so a row saved from Semnal and one saved from Wanderlist are identical by construction, not by careful copying. |
-| [`src/shared/share.js`](src/shared/share.js) | **Promoted** out of `src/wanderlist/share.js` — OS share sheet with a clipboard fallback. Semnal uses it for "ask Recommend in Bucharest about these". Wanderlist re-exports it; its `share.test.js` proved the move. |
+| [`src/shared/findings.js`](src/shared/findings.js) | **Promoted** out of `src/wanderlist/notion.js`: the Findings schema itself — property names, the 2000-char rich-text chunking, the Category/Tags lowercase rule, the Planned-Date offset handling, and `toFindingsProps`. Wanderlist re-exports every symbol, so its import paths are unchanged and its own `notion.test.js` (104 tests, still green) is the proof the move was behaviour-preserving. **Radar-B's save goes through this same function**, so a row saved from Radar-B and one saved from Wanderlist are identical by construction, not by careful copying. |
+| [`src/shared/share.js`](src/shared/share.js) | **Promoted** out of `src/wanderlist/share.js` — OS share sheet with a clipboard fallback. Radar-B uses it for "ask Recommend in Bucharest about these". Wanderlist re-exports it; its `share.test.js` proved the move. |
 | `src/wanderlist/dates.js`'s `localOffsetString` | **Promoted** into `findings.js` alongside the rest of the write mapping; re-exported in place. |
 | `src/shared/storage.js`, `notionId.ts`, `installFlag.ts` | **Reused as-is.** No local copies. |
 | `/api/notion` | **Reused.** Same stateless BYO-token relay Wanderlist and Journal of Delights use. |
@@ -322,18 +321,26 @@ prove a point is not this change's job.
 
 ### Architecture
 
-- **Pure, tested logic** — [`model.js`](src/semnal/model.js) (the tolerant event shape),
-  [`dedupe.js`](src/semnal/dedupe.js) (fold/similarity/cluster/merge),
-  [`dates.js`](src/semnal/dates.js) (lenses, Romanian prose, staleness),
-  [`signals.js`](src/semnal/signals.js) (badges + the ranking thumb),
-  [`search.js`](src/semnal/search.js) (filters, facets, the stream, the brief),
-  [`notion.js`](src/semnal/notion.js) (Notion→model), [`wanderlist.js`](src/semnal/wanderlist.js)
+- **Pure, tested logic** — [`model.js`](src/radar-b/model.js) (the tolerant event shape),
+  [`dedupe.js`](src/radar-b/dedupe.js) (fold/similarity/cluster/merge),
+  [`dates.js`](src/radar-b/dates.js) (lenses, Romanian prose, staleness),
+  [`signals.js`](src/radar-b/signals.js) (badges + the ranking thumb),
+  [`search.js`](src/radar-b/search.js) (filters, facets, the stream, the brief),
+  [`notion.js`](src/radar-b/notion.js) (Notion→model), [`wanderlist.js`](src/radar-b/wanderlist.js)
   (model→Findings draft). **125 tests**, including 10 that render the whole app in demo
   mode and assert the duplicate exhibition really does collapse to one card.
 - **Clients** — `notionClient.js` (live), `fixtures.js` (demo + a deliberately messy
   fixture set), `store.js` (config, local state, offline read cache).
 - **UI** — `App.jsx` → masthead + lens bar → `EventCard` → `EventDetail` → `SaveSheet` /
   `FilterSheet` / `SettingsModal`.
+
+### Name
+
+Shipped as **Radar-B** — *radar, for Bucharest*. The masthead sets the `-B` in the
+accent colour; the Notion database it reads is the plain **📡 Radar**, one layer down.
+(It was called Semnal during development; the rename touched the directory, the entry
+HTML, the manifest, the icons and the `radarb_*` storage keys, so nothing carries the
+old name.)
 
 ### Notes for later
 
@@ -343,8 +350,8 @@ prove a point is not this change's job.
 - **`dedupe.js`'s `TITLE_FLOOR` is load-bearing.** Title similarity is a *necessary*
   condition: venue and date can only ever confirm a match, never create one. Without it,
   two different events at one venue on one night merge — there's a test for exactly that.
-- **No guide page yet.** Every other app has a `public/*-guide.html`; Semnal doesn't.
-  Worth adding once the Radar table has a real week in it and the screenshots would
-  show something true.
+- **No guide page yet.** Every other app has a `public/*-guide.html`; Radar-B doesn't
+  (the reference above is where it would go). Worth adding once the Radar table has a
+  real week in it and the screenshots would show something true.
 - **Deliberately still out:** scrapers, a map, notifications, a favourites store, a
   venues table, a taste model. §8 has the reasoning for each.

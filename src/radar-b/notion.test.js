@@ -113,7 +113,7 @@ describe('fromFindingsPage', () => {
     expect(fromFindingsPage(page).sources[0]).toMatchObject({ name: 'Wanderlist', kind: 'saved' })
   })
 
-  test('only tags that are also Semnal signals cross over — the rest stay Wanderlist\'s', () => {
+  test('only tags that are also Radar-B signals cross over — the rest stay Wanderlist\'s', () => {
     expect(fromFindingsPage(page).signals).toEqual(['ticketed'])
   })
 })

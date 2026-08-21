@@ -17,7 +17,7 @@ const REACT_VITE_TITLES = [
   'Fit Check',
   'Lexi5',
   'Silva',
-  'Semnal',
+  'Radar-B',
 ]
 
 // Codex Alchymicus dropped its "— KCD2" suffix when it grew to cover KCD1 too

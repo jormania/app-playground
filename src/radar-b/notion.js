@@ -1,6 +1,6 @@
-// Notion ⇄ Semnal model mapping, for both databases Semnal reads.
+// Notion ⇄ Radar-B model mapping, for both databases Radar-B reads.
 //
-// Semnal is a READER of Notion, with one exception: saving to Wanderlist's
+// Radar-B is a READER of Notion, with one exception: saving to Wanderlist's
 // Findings (see wanderlist.js). It never writes Radar rows — those are the
 // /recommend in Bucharest skill's output, and having two writers to one table is
 // how the "don't destroy the value of the existing Notion workflow" rule gets
@@ -116,7 +116,7 @@ function firstFileUrl(prop) {
   return file?.external?.url ?? file?.file?.url ?? null
 }
 
-/** Wanderlist's Findings rows, read so Semnal can tell what's already saved and
+/** Wanderlist's Findings rows, read so Radar-B can tell what's already saved and
  *  never offer the same thing twice. Mapped into the SAME event shape, so a saved
  *  item takes part in dedupe as just another mention of an event. */
 export function fromFindingsPage(page) {
@@ -146,7 +146,7 @@ export function fromFindingsPage(page) {
 }
 
 /** The 🗓️ Suggested events page, kept in place and read for what it uniquely has:
- *  which SOURCE ARTICLES fed the current refresh. Semnal shows these as the
+ *  which SOURCE ARTICLES fed the current refresh. Radar-B shows these as the
  *  "where this week came from" line — the article-level provenance that the
  *  event-level Radar rows point back to. */
 export function parseSuggestedPage(blocks) {
@@ -169,3 +169,4 @@ export function parseSuggestedPage(blocks) {
   }
   return { refreshedAt, links }
 }
+

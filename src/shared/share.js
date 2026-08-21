@@ -4,7 +4,7 @@
 // attachments and no app metadata (dates, category, tags, attended state are the
 // app's own bookkeeping, not part of the thing you're telling someone about).
 //
-// Promoted out of src/wanderlist/share.js when Semnal needed the same behaviour for
+// Promoted out of src/wanderlist/share.js when Radar-B needed the same behaviour for
 // sharing an event and for handing a filtered view to /recommend in Bucharest.
 // Wanderlist re-exports it (src/wanderlist/share.js), so its own share.test.js still
 // covers this code and proved the move was behaviour-preserving.

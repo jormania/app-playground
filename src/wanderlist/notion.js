@@ -5,7 +5,7 @@
 //
 // PROMOTED: the Findings schema itself (property names, the rich-text chunking,
 // the Category/Tags casing rule, the Planned Date offset handling) now lives in
-// src/shared/findings.js, because Semnal became a second writer to this same
+// src/shared/findings.js, because Radar-B became a second writer to this same
 // database and two independent copies of those property names would eventually
 // drift. Re-exported here so every import path in this app — and the tests below
 // that cover them — is unchanged.

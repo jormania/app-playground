@@ -5,7 +5,7 @@ import { toDraft, FINDINGS_CATEGORIES } from './wanderlist.js'
 /**
  * The save handoff, as an editable draft.
  *
- * Semnal never writes silently. "Never write on the first pass — always show a
+ * Radar-B never writes silently. "Never write on the first pass — always show a
  * draft and wait for go-ahead" is the wanderlist skill's own intake rule, and it
  * belongs here for the same reason it belongs there: the row you are about to
  * create is one you will read months later, and a wrong Category or a missing

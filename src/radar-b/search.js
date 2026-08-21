@@ -135,7 +135,7 @@ export function facets(events, now = new Date()) {
  *  /recommend in Bucharest. This is the app→skill direction of the loop: the
  *  question starts from the real current pool instead of a fresh round of search. */
 export function toBrief(stream, view) {
-  const lines = [`Evenimente în Semnal — ${VIEW_LABELS[view] ?? view}:`, '']
+  const lines = [`Evenimente în Radar-B — ${VIEW_LABELS[view] ?? view}:`, '']
   const all = [...stream.days.flatMap((d) => d.events), ...stream.standing]
   all.forEach((e, i) => {
     const bits = [e.venue, e.area].filter(Boolean).join(', ')

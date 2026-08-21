@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Semnal — radar cultural București</title>
+  <title>Radar-B — radar cultural București</title>
   <meta name="description" content="Ce merită văzut în București, adunat din mai multe surse într-un singur flux. Descoperă, evaluează, salvează în Wanderlist." />
   <meta name="theme-color" content="#f3efe7" />
   <script>
     // Apply the saved theme before first paint to avoid a flash of the wrong palette.
     try {
-      var p = JSON.parse(localStorage.getItem('semnal_prefs') || '{}');
+      var p = JSON.parse(localStorage.getItem('radarb_prefs') || '{}');
       if (p.theme === 'dark' || p.theme === 'light') {
         document.documentElement.setAttribute('data-theme', p.theme);
         var m = document.querySelector('meta[name="theme-color"]');
@@ -17,14 +17,14 @@
       }
     } catch (e) {}
   </script>
-  <link rel="icon" type="image/svg+xml" href="/semnal-logo.svg" />
-  <link rel="icon" type="image/png" sizes="32x32" href="/semnal-favicon-32.png" />
-  <link rel="apple-touch-icon" href="/semnal-icon-192.png" />
-  <link rel="manifest" href="/semnal.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="/radar-b-logo.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/radar-b-favicon-32.png" />
+  <link rel="apple-touch-icon" href="/radar-b-icon-192.png" />
+  <link rel="manifest" href="/radar-b.webmanifest" />
 <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
   <div id="root"></div>
-  <script type="module" src="/src/semnal/main.jsx"></script>
+  <script type="module" src="/src/radar-b/main.jsx"></script>
 </body>
 </html>

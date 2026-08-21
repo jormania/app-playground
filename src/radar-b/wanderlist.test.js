@@ -67,7 +67,7 @@ describe('toDraft', () => {
   })
 
   test('keeps only signals that map onto Wanderlist\'s own tag vocabulary', () => {
-    // `recommended` is a Semnal concept and must not leak into Findings' tags.
+    // `recommended` is a Radar-B concept and must not leak into Findings' tags.
     expect(toDraft(event, NOW).tags).toEqual(['ticketed'])
   })
 

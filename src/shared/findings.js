@@ -1,12 +1,12 @@
 // The Findings schema — the ONE definition of Wanderlist's Notion database,
 // shared by the two apps that write to it.
 //
-// Promoted out of src/wanderlist/notion.js when Semnal became the second writer.
+// Promoted out of src/wanderlist/notion.js when Radar-B became the second writer.
 // Wanderlist re-exports every symbol below from its own notion.js, so its import
 // paths and its existing notion.test.js coverage are unchanged — that test suite
 // is the proof this move was behaviour-preserving.
 //
-// Why share rather than copy: Semnal's whole "discover → save" handoff writes a
+// Why share rather than copy: Radar-B's whole "discover → save" handoff writes a
 // Findings row, and a second, independently-maintained copy of these property
 // names is a schema drift waiting to happen. One of the two apps would eventually
 // write `Tags: ["Free"]` where the other writes `["free"]` and the filter chips

@@ -14,7 +14,7 @@ const KIND_LABEL = {
 /**
  * The detail view answers, in this order: what is this · when · where · why might
  * I care · how much · how do I go · where did this come from · can I save it.
- * That order is the spec (SEMNAL.md §7) and the reason the layout looks like a
+ * That order is the spec (RADAR_B.md §7) and the reason the layout looks like a
  * record rather than a web page.
  */
 export function EventDetail({ event, now, onClose, onSave, onDismiss, saving }) {

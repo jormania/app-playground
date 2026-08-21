@@ -31,14 +31,14 @@ export const APPS = [
   {
     emoji: "📡",
     iconBg: "rgba(180,99,42,0.15)",
-    title: "Semnal",
+    title: "Radar-B",
     subtitle: "radar cultural · bucurești · notion",
     deployed: "Aug 2026",
     tech: "React + Vite",
     tags: ["culture", "events", "notion", "ai", "react"],
     ds: true,
     kind: "react-vite",
-    manifest: "/semnal.webmanifest",
+    manifest: "/radar-b.webmanifest",
     description: "A personal cultural radar for Bucharest. Events gathered from B365, Curatorial, Buletin, HotNews, Zile și Nopți, Harta Muzeelor, Recomandata and Facebook by the /recommend in Bucharest skill, normalized into one Notion database, then deduplicated here into a single calm stream — one event with many sources, never four copies of the same exhibition. Browse by tonight, the weekend, or what's running now; see exactly where every fact came from and how fresh it is; save the ones worth doing straight into Wanderlist.",
     features: [
       "One stream, many sources: the same exhibition mentioned by four publications collapses into one event that shows all four, with the richest description winning and every mention still visible",
@@ -51,7 +51,7 @@ export const APPS = [
       "Facebook events arrive as native events, not as Facebook — the original link is an escape hatch in the sources list, nothing more",
       "Bring your own Notion token, or browse a full demo week with zero setup",
     ],
-    file: "semnal-react.html",
+    file: "radar-b-react.html",
   },
   {
     emoji: "🌲",

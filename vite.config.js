@@ -267,7 +267,7 @@ export default defineConfig({
         fitCheck: resolve(__dirname, 'fit-check-react.html'),
         lexi5: resolve(__dirname, 'lexi5-react.html'),
         silva: resolve(__dirname, 'silva-react.html'),
-        semnal: resolve(__dirname, 'semnal-react.html'),
+        radarB: resolve(__dirname, 'radar-b-react.html'),
         dsShowcase: resolve(__dirname, 'ds-showcase.html'),
         cabinet: resolve(__dirname, 'cabinet.html'),
       }

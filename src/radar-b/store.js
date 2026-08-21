@@ -10,13 +10,13 @@ import { parseNotionId } from '../shared/notionId'
 import { createNotionClient, SUGGESTED_PAGE_ID, FINDINGS_DATABASE_ID, RADAR_DATABASE_ID } from './notionClient.js'
 import { createFixtureClient } from './fixtures.js'
 
-const TOKEN_KEY = 'semnal_token'
-const RADAR_DB_KEY = 'semnal_radar_db'
-const FINDINGS_DB_KEY = 'semnal_findings_db'
-const SUGGESTED_KEY = 'semnal_suggested_page'
-const PREFS_KEY = 'semnal_prefs'
-const LOCAL_KEY = 'semnal_local'
-const CACHE_KEY = 'semnal_cache'
+const TOKEN_KEY = 'radarb_token'
+const RADAR_DB_KEY = 'radarb_radar_db'
+const FINDINGS_DB_KEY = 'radarb_findings_db'
+const SUGGESTED_KEY = 'radarb_suggested_page'
+const PREFS_KEY = 'radarb_prefs'
+const LOCAL_KEY = 'radarb_local'
+const CACHE_KEY = 'radarb_cache'
 
 export function getToken() { return readJson(TOKEN_KEY, '') }
 export function setToken(token) { writeJson(TOKEN_KEY, String(token || '').trim()) }
@@ -50,7 +50,7 @@ export function savePrefs(prefs) { writeJson(PREFS_KEY, { ...DEFAULT_PREFS, ...p
 // The ONLY personalization in v1, and deliberately non-inferential: what you have
 // opened, what you have dismissed, and when each event first appeared. It powers
 // "new to you" and sinks dismissed events. It builds no taste model and leaves the
-// device — see SEMNAL.md §8. The raw signal is recorded now so that a real
+// device — see RADAR_B.md §8. The raw signal is recorded now so that a real
 // recommender, if it ever earns its keep, has history to work from.
 export const EMPTY_LOCAL = { seen: [], dismissed: [], firstSeen: {} }
 
@@ -76,7 +76,7 @@ export function stampFirstSeen(local, ids) {
 
 // ── Offline read cache ────────────────────────────────────────────────────────
 // One snapshot of the last successful fetch, so opening the app on the metro shows
-// the last known week instead of an empty screen. Read-only: Semnal's single write
+// the last known week instead of an empty screen. Read-only: Radar-B's single write
 // (save to Wanderlist) needs the network and says so rather than queueing.
 export function readCache() { return readJson(CACHE_KEY, null) }
 export function writeCache(snapshot) { writeJson(CACHE_KEY, { ...snapshot, cachedAt: Date.now() }) }

@@ -57,7 +57,7 @@ export function formatTime(time) {
 
 // This browser's current UTC offset as "+03:00" / "-05:00" — appended to a Planned Date +
 // time when writing it to Notion. PROMOTED to src/shared/findings.js alongside the rest of
-// the Findings write mapping (Semnal writes the same database); re-exported here so this
+// the Findings write mapping (Radar-B writes the same database); re-exported here so this
 // app's import paths and its dates.test.js coverage are unchanged.
 export { localOffsetString } from '../shared/findings.js'
 

@@ -1,6 +1,6 @@
-// Semnal service worker: stale-while-revalidate for same-origin GETs, scoped to the
-// Semnal page. Enables PWA installability and offline reading of the last fetch.
-const CACHE = 'semnal-cache-v1';
+// Radar-B service worker: stale-while-revalidate for same-origin GETs, scoped to the
+// Radar-B page. Enables PWA installability and offline reading of the last fetch.
+const CACHE = 'radar-b-cache-v1';
 
 self.addEventListener('install', function () {
   self.skipWaiting();

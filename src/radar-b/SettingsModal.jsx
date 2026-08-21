@@ -3,7 +3,7 @@ import { Modal, Button } from '../ds'
 import { getToken, setToken, clearToken, radarDb, findingsDb, suggestedPage, testConnection } from './store.js'
 
 /**
- * BYO Notion token + the three ids Semnal reads. Same contract as Wanderlist and
+ * BYO Notion token + the three ids Radar-B reads. Same contract as Wanderlist and
  * Journal of Delights: the token lives only in this browser and is relayed
  * per-request through /api/notion, which stores nothing.
  *
@@ -52,7 +52,7 @@ export function SettingsModal({ onClose, onSaved, theme, onTheme }) {
       <label className="field">
         <span>Baza Radar</span>
         <input value={radar} onChange={(e) => setRadar(e.target.value)} placeholder="Link sau ID Notion" />
-        <span className="hint">Evenimentele normalizate scrise de <code>/recommend in Bucharest</code>. Fără ea, Semnal arată doar ce e deja în Wanderlist.</span>
+        <span className="hint">Evenimentele normalizate scrise de <code>/recommend in Bucharest</code>. Fără ea, Radar-B arată doar ce e deja în Wanderlist.</span>
       </label>
 
       <label className="field">

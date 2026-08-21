@@ -1,4 +1,4 @@
-// The Semnal event model — one shape for the messy reality of real-world events.
+// The Radar-B event model — one shape for the messy reality of real-world events.
 //
 // Everything except `name` is allowed to be missing. An event scraped out of the
 // middle of a B365 paragraph (a title and a rough date) and an event read off a
@@ -16,7 +16,7 @@ export const CONFIDENCE_RANK = { confirmed: 3, reported: 2, uncertain: 1 }
  *  See the wanderlist skill / WANDERLIST.md — do not extend without extending there. */
 export const CATEGORIES = ['art', 'concert', 'play', 'movie', 'culture', 'event', 'venue', 'discovery', 'idea']
 
-/** The closed signal vocabulary. Small on purpose — see SEMNAL.md §7. */
+/** The closed signal vocabulary. Small on purpose — see RADAR_B.md §7. */
 export const SIGNALS = ['recommended', 'free', 'ticketed', 'family', 'outdoor', 'new-venue', 'recurring', 'long-run', 'sold-out']
 
 /** Where an event record came from, as a store (not as an editorial source). */

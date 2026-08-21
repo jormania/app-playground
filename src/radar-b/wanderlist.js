@@ -1,14 +1,14 @@
 // The Discover → evaluate → save → do handoff.
 //
-// Semnal has NO save store of its own — no favourites, no stars, no local
+// Radar-B has NO save store of its own — no favourites, no stars, no local
 // bookmarks. An event you decide to keep becomes a Wanderlist `Findings` row and
 // lives there from then on.
 //
-// Crucially, this module does NOT know the Findings schema. It converts a Semnal
+// Crucially, this module does NOT know the Findings schema. It converts a Radar-B
 // event into WANDERLIST'S OWN app-model entry shape, and the shared schema module
 // (src/shared/findings.js, promoted out of src/wanderlist/notion.js) turns that
 // into Notion properties. So there is exactly one definition of what a Findings
-// row looks like, used by both apps — a saved-from-Semnal row and a saved-in-
+// row looks like, used by both apps — a saved-from-Radar-B row and a saved-in-
 // Wanderlist row are byte-identical by construction, not by careful copying.
 
 import { toFindingsProps, FINDINGS_CATEGORIES, FINDINGS_TAGS } from '../shared/findings.js'
@@ -17,7 +17,7 @@ import { spanOf } from './dates.js'
 
 export { FINDINGS_CATEGORIES, FINDINGS_TAGS }
 
-/** Semnal signals that map onto a Findings tag. Anything else is Semnal-internal
+/** Radar-B signals that map onto a Findings tag. Anything else is Radar-B-internal
  *  and is not smuggled into Wanderlist's small, deliberate tag vocabulary. */
 const TAG_FROM_SIGNAL = {
   free: 'free',
@@ -44,7 +44,7 @@ export function isoDay(d) {
 
 /** `Place` must carry venue AND street AND city — a bare venue name doesn't
  *  geocode to a map pin in Wanderlist. That's a documented, previously-paid-for
- *  lesson (WANDERLIST.md, "Known quirks"), so Semnal pays the address forward. */
+ *  lesson (WANDERLIST.md, "Known quirks"), so Radar-B pays the address forward. */
 export function placeFor(event) {
   const bits = [...new Set([event.venue, event.address].filter(Boolean))]
   if (!bits.length) return null
@@ -59,7 +59,7 @@ export function mapUrlFor(event) {
 
 /**
  * The editable draft shown before anything is written — Wanderlist's app-model
- * entry shape, field for field. Semnal never writes silently: "never write on the
+ * entry shape, field for field. Radar-B never writes silently: "never write on the
  * first pass, always show a draft" is the wanderlist skill's intake rule, kept
  * here because it is a good rule and not merely a skill convention.
  *

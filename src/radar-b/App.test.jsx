@@ -4,7 +4,7 @@ import { render, screen, within, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App.jsx'
 
-// Demo mode (no token) runs on src/semnal/fixtures.js, which deliberately contains
+// Demo mode (no token) runs on src/radar-b/fixtures.js, which deliberately contains
 // the hard cases — so this suite doubles as the proof that the dedupe/merge engine
 // behaves once it's wired to real UI, not just in isolation.
 beforeEach(() => {
@@ -23,10 +23,10 @@ async function open() {
   return screen.findByRole('heading', { name: /Trio Nocturn/ })
 }
 
-describe('Semnal in demo mode', () => {
+describe('Radar-B in demo mode', () => {
   test('renders the stream with events on the default lens', async () => {
     await open()
-    expect(screen.getByRole('heading', { name: /Semnal/ })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /Radar\s*-B/ })).toBeTruthy()
   })
 
   test('the same exhibition from two sources appears exactly once', async () => {
@@ -101,6 +101,18 @@ describe('Semnal in demo mode', () => {
     await userEvent.click(screen.getByRole('heading', { name: /Lumin/ }).closest('button'))
     await userEvent.click(screen.getByRole('button', { name: 'Nu mă interesează' }))
     expect(screen.queryByRole('heading', { name: /Lumin/ })).toBeNull()
+  })
+
+  test('the detail view offers a Google Maps link built from venue and address', async () => {
+    await open()
+    await userEvent.click(screen.getByRole('heading', { name: /Lumin/ }).closest('button'))
+    const maps = within(screen.getByRole('dialog')).getByRole('link', { name: /Deschide în Maps/ })
+    const href = maps.getAttribute('href')
+    expect(href).toContain('google.com/maps/search/')
+    // Venue AND street AND city — a bare venue name doesn't drop a pin.
+    expect(decodeURIComponent(href)).toContain('Combinatul Fondului Plastic')
+    expect(decodeURIComponent(href)).toContain('Str. Băiculești 29')
+    expect(decodeURIComponent(href)).toContain('București')
   })
 
   test('shows which articles the current week was built from', async () => {

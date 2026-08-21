@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   Semnal — app palette and screens.
+   Radar-B — app palette and screens.
 
    Built on src/ds/ (tokens + components). This block is UNLAYERED on purpose:
    ds/tokens.css puts its defaults inside `@layer ds`, and unlayered styles beat
@@ -107,6 +107,7 @@ body {
   line-height: 1;
 }
 
+/* The -B carries the one accent in the masthead: Radar, for Bucharest. */
 .wordmark .dot { color: var(--signal); }
 
 .mastheadMeta {
@@ -225,7 +226,7 @@ body {
 .card:active { transform: scale(0.995); }
 
 /* One hairline of amber down the left edge is the whole "recommended"
-   treatment — no ribbon, no colour flood. Quiet by design (SEMNAL.md §7). */
+   treatment — no ribbon, no colour flood. Quiet by design (RADAR_B.md §7). */
 .card.recommended { border-left: 2px solid var(--signal); }
 
 .cardWhen {

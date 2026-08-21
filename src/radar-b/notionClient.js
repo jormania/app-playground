@@ -4,13 +4,13 @@
 // Delights, and deliberately NO new serverless function (Vercel Hobby caps this
 // repo at 12 across all apps, and it is already at 12 — see CLAUDE.md).
 //
-// Semnal reads three things and writes one:
+// Radar-B reads three things and writes one:
 //   READ  📡 Radar          — the normalized event rows /recommend in Bucharest writes
 //   READ  🗓️ Suggested events — the existing weekly page, for article-level provenance
 //   READ  Findings          — Wanderlist, so an already-saved event is never re-offered
 //   WRITE Findings          — the save handoff, and nothing else, ever
 //
-// Semnal never writes Radar rows. Two writers to one table is how the existing
+// Radar-B never writes Radar rows. Two writers to one table is how the existing
 // Notion workflow gets damaged by accident; the skill owns that table.
 
 import { fromRadarPage, fromFindingsPage, parseSuggestedPage } from './notion.js'
@@ -38,7 +38,12 @@ async function proxy(token, path, method, body) {
   return data
 }
 
-export function createNotionClient(token, { radarDatabaseId = RADAR_DATABASE_ID, findingsDatabaseId = FINDINGS_DATABASE_ID, suggestedPageId = SUGGESTED_PAGE_ID, fetchImpl } = {}) {
+export function createNotionClient(token, {
+  radarDatabaseId = RADAR_DATABASE_ID,
+  findingsDatabaseId = FINDINGS_DATABASE_ID,
+  suggestedPageId = SUGGESTED_PAGE_ID,
+  fetchImpl,
+} = {}) {
   const call = fetchImpl
     ? (path, method, body) => fetchImpl(token, path, method, body)
     : (path, method, body) => proxy(token, path, method, body)
@@ -100,7 +105,7 @@ export function createNotionClient(token, { radarDatabaseId = RADAR_DATABASE_ID,
       return parseSuggestedPage(blocks)
     },
 
-    /** The ONLY write Semnal makes. */
+    /** The ONLY write Radar-B makes. */
     async saveToWanderlist(draft) {
       const page = await call('pages', 'POST', toFindingsPage(draft, findingsDatabaseId))
       return fromFindingsPage(page)
