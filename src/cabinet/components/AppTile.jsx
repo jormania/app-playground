@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { IconButton, Modal } from '../../ds'
-import { IconArrowUp, IconArrowDown, IconQrCode } from './icons'
+import { IconArrowUp, IconArrowDown, IconMore } from './icons'
 import { canInstallPwaHere, chromeIntentUrl, isAndroid, isIos, pwaLaunchIntentUrl } from '../lib/browserSupport'
 import { recordOpened } from '../lib/storage'
 import { formatRelativeTime } from '../lib/relativeTime'
@@ -16,7 +16,8 @@ import styles from './AppTile.module.css'
 // enough to show as an error — see CABINET.md.
 //
 // editing: while reordering, the stretched link is dropped (a tap should
-// move a tile, not launch it) and the arrow is swapped for up/down controls.
+// move a tile, not launch it) and the corner "details" button is swapped for
+// up/down controls.
 //
 // Any non-`true` install status shows "Install" rather than "Launch" — same
 // "never assert a negative" stance as the aria-label always used. On Android,
@@ -45,6 +46,11 @@ import styles from './AppTile.module.css'
 // a real install from being found; the flags are far more reliable now (each
 // app sets its own, and installState prunes stale ones), so the trade has
 // flipped — an occasional browser tab beats a guaranteed chooser.
+//
+// Everything that isn't "icon + name + tap to launch" — description, last-
+// opened stats, the QR code, the New badge's word — lives behind the corner
+// "details" button instead of on the tile itself, so a screenful of tiles
+// stays a grid of icons rather than a list of cards.
 export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, onMoveDown, disableUp, disableDown }) {
   const isStatic = app.kind === 'static'
   const path = `/${app.file}`
@@ -63,17 +69,18 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
   const canOfferInstall = !isStatic && !isIos()
   const actionLabel = installed ? 'Launch' : canOfferInstall ? 'Install' : 'Open'
 
-  // QR dialog: rendered lazily — the canvas only exists in the DOM once the
-  // Modal actually opens (it returns null while closed).
+  // Detail sheet: rendered lazily — the QR canvas only exists in the DOM once
+  // the Modal actually opens (it returns null while closed).
   //
-  // Drawn from a *callback ref*, not an effect keyed on `qrOpen`. Modal mounts
-  // in two passes: on the commit where `open` flips true its own isMounted is
-  // still false, so it returns null and the canvas isn't in the tree yet — an
-  // effect keyed on qrOpen fires on exactly that commit, sees a null ref, and
-  // never re-runs once the portal lands on the following one. (Modal documents
-  // the same two-pass trap for its focus effect.) A callback ref instead fires
-  // when the node genuinely attaches, whichever commit that turns out to be.
-  const [qrOpen, setQrOpen] = useState(false)
+  // Drawn from a *callback ref*, not an effect keyed on `detailOpen`. Modal
+  // mounts in two passes: on the commit where `open` flips true its own
+  // isMounted is still false, so it returns null and the canvas isn't in the
+  // tree yet — an effect keyed on detailOpen fires on exactly that commit,
+  // sees a null ref, and never re-runs once the portal lands on the following
+  // one. (Modal documents the same two-pass trap for its focus effect.) A
+  // callback ref instead fires when the node genuinely attaches, whichever
+  // commit that turns out to be.
+  const [detailOpen, setDetailOpen] = useState(false)
   const drawQr = useCallback((canvas) => {
     // Ref callbacks must not return a value (React 19 reads a return as a
     // cleanup function), so the promise is deliberately not returned.
@@ -82,11 +89,11 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
 
   return (
     <article className={styles.tile}>
-      {/* Stretched-link pattern: makes the whole card tappable (easier on
+      {/* Stretched-link pattern: makes the whole tile tappable (easier on
           mobile than a small button) while staying a real <a> for keyboard/
           screen-reader users. Sits behind everything in z-order; only the
-          twistie below is raised above it so opening "More" doesn't also
-          navigate away. Dropped entirely while reordering. */}
+          corner button below is raised above it so opening details doesn't
+          also navigate away. Dropped entirely while reordering. */}
       {!editing && (
         <a
           className={styles.stretchedLink}
@@ -96,63 +103,68 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
         />
       )}
 
-      <div className={styles.top}>
-        <div className={styles.icon} style={{ background: app.iconBg || 'var(--color-glow)' }}>
-          {app.emoji}
-        </div>
-        <div className={styles.meta}>
-          <div className={styles.titleRow}>
-            <div className={styles.title}>{app.title}</div>
-            {isNew && <span className={styles.badge}>New</span>}
-          </div>
-          <div className={styles.subtitle}>{app.subtitle}</div>
-          {!editing && openStats?.last && (
-            <div className={styles.lastOpened}>
-              opened {openStats.count > 1 ? `${openStats.count}× · ` : ''}
-              {formatRelativeTime(openStats.last)}
-            </div>
-          )}
-        </div>
-        {editing ? (
-          <div className={styles.reorder}>
-            <IconButton size="sm" aria-label="Move up" disabled={disableUp} onClick={onMoveUp}>
-              <IconArrowUp />
-            </IconButton>
-            <IconButton size="sm" aria-label="Move down" disabled={disableDown} onClick={onMoveDown}>
-              <IconArrowDown />
-            </IconButton>
-          </div>
-        ) : (
-          <>
-            {/* Raised above the stretched link (see .qrButton) so tapping it
-                opens the QR dialog instead of also navigating — same trick
-                as .details below. */}
-            <IconButton
-              size="sm"
-              className={styles.qrButton}
-              aria-label={`Show QR code to open ${app.title} on your phone`}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQrOpen(true) }}
-            >
-              <IconQrCode />
-            </IconButton>
-            <span className={styles.action} aria-hidden="true">
-              <span className={styles.actionLabel}>{actionLabel}</span>
-              <span className={styles.arrow}>{canOfferInstall && !installed ? '⤓' : '→'}</span>
-            </span>
-          </>
-        )}
+      <div className={styles.icon} style={{ background: app.iconBg || 'var(--color-glow)' }}>
+        {app.emoji}
+        {isNew && <span className={styles.newDot} aria-hidden="true" />}
       </div>
+      <div className={styles.title}>{app.title}</div>
 
-      {!editing && app.description && (
-        <details className={styles.details}>
-          <summary>More</summary>
-          <p className={styles.description}>{app.description}</p>
-        </details>
+      {editing ? (
+        <div className={styles.reorder}>
+          <IconButton size="sm" aria-label="Move up" disabled={disableUp} onClick={onMoveUp}>
+            <IconArrowUp />
+          </IconButton>
+          <IconButton size="sm" aria-label="Move down" disabled={disableDown} onClick={onMoveDown}>
+            <IconArrowDown />
+          </IconButton>
+        </div>
+      ) : (
+        // Raised above the stretched link (see .moreButton) so tapping it
+        // opens the detail sheet instead of also navigating.
+        <IconButton
+          size="sm"
+          className={styles.moreButton}
+          aria-label={`Details for ${app.title}`}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDetailOpen(true) }}
+        >
+          <IconMore />
+        </IconButton>
       )}
 
-      <Modal open={qrOpen} onClose={() => setQrOpen(false)} title={`Scan to open ${app.title}`}>
+      <Modal open={detailOpen} onClose={() => setDetailOpen(false)} title={app.title}>
+        <div className={styles.detailHead}>
+          <div className={styles.detailIcon} style={{ background: app.iconBg || 'var(--color-glow)' }}>
+            {app.emoji}
+          </div>
+          <div className={styles.detailMeta}>
+            <div className={styles.detailTitleRow}>
+              <div className={styles.detailTitle}>{app.title}</div>
+              {isNew && <span className={styles.badge}>New</span>}
+            </div>
+            {app.subtitle && <div className={styles.detailSubtitle}>{app.subtitle}</div>}
+          </div>
+        </div>
+
+        {app.description && <p className={styles.description}>{app.description}</p>}
+
+        {openStats?.last && (
+          <p className={styles.lastOpened}>
+            opened {openStats.count > 1 ? `${openStats.count}× · ` : ''}
+            {formatRelativeTime(openStats.last)}
+          </p>
+        )}
+
+        <a
+          className={styles.detailAction}
+          href={href}
+          onClick={() => recordOpened(app.file)}
+        >
+          {actionLabel} {app.title}
+          <span aria-hidden="true">{canOfferInstall && !installed ? '⤓' : '→'}</span>
+        </a>
+
         <div className={styles.qrCanvasWrap}>
-          <canvas ref={drawQr} width={240} height={240} />
+          <canvas ref={drawQr} width={200} height={200} />
         </div>
         <p className={styles.qrHint}>Scan to open on your phone</p>
         <p className={styles.qrUrl}>{appQrUrl(app.file)}</p>

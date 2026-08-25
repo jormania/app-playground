@@ -66,10 +66,10 @@ describe('the grid', () => {
     }
   })
 
-  it('offers a QR code for every app', async () => {
+  it('offers a details sheet (with QR) for every app', async () => {
     renderApp()
     await settle()
-    expect(screen.getAllByRole('button', { name: /show qr code/i })).toHaveLength(CABINET_APPS.length)
+    expect(screen.getAllByRole('button', { name: /details for/i })).toHaveLength(CABINET_APPS.length)
   })
 })
 

@@ -30,11 +30,11 @@ afterEach(() => {
   cleanup()
 })
 
-describe('AppTile QR dialog', () => {
+describe('AppTile detail sheet (QR)', () => {
   it('draws into a canvas that is actually in the document', async () => {
     render(<AppTile app={APP} installed={false} isNew={false} editing={false} />)
 
-    await userEvent.click(screen.getByRole('button', { name: /show qr code/i }))
+    await userEvent.click(screen.getByRole('button', { name: /details for/i }))
 
     await waitFor(() => expect(drawnInto).toHaveLength(1))
     const canvas = drawnInto[0]
@@ -51,7 +51,7 @@ describe('AppTile QR dialog', () => {
 
   it('redraws when the dialog is closed and reopened', async () => {
     render(<AppTile app={APP} installed={false} isNew={false} editing={false} />)
-    const open = () => userEvent.click(screen.getByRole('button', { name: /show qr code/i }))
+    const open = () => userEvent.click(screen.getByRole('button', { name: /details for/i }))
 
     await open()
     await waitFor(() => expect(drawnInto).toHaveLength(1))

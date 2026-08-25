@@ -1,23 +1,21 @@
-/* Same shape as ds/Card (radius, tap target) but the whole card is a tap
-   target via a stretched <a> (see .stretchedLink), not the card itself — the
-   twistie needs to keep working independently, which a <button>-as-card
-   wrapper couldn't do.
-   A deliberate, solid panel — same recipe as Journal of Delights' .entry-row:
-   solid surface fill, a real 1px border, resting shadow, lift + stronger
-   shadow on hover. Translucent washes toward the gradient kept reading as a
-   faint hard-edged box anyway (small color deltas are highly perceptible in
-   near-black/near-white ranges), so this makes the separation a real design
-   choice instead of fighting for a border-less illusion. */
+/* A compact launcher tile: icon + name, nothing else. The whole tile is a
+   tap target via a stretched <a> (see .stretchedLink), not the tile itself —
+   the corner "details" button needs to keep working independently, which a
+   <button>-as-tile wrapper couldn't do. Same solid-panel recipe as the old
+   card (real border + resting shadow, lift on hover) scaled down to a much
+   smaller footprint so a screenful reads as a grid of objects, not a list. */
 .tile {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
-  padding: var(--space-lg);
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-sm) var(--space-2xs);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
+  text-align: center;
   transition: border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease), transform var(--duration) var(--ease);
 }
 .tile:hover {
@@ -25,9 +23,14 @@
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
+.tile:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: var(--shadow-sm);
+}
 
 /* Sits beneath everything (z-index 0, painted first) so a tap anywhere on
-   the card navigates; .details is raised above it so the twistie doesn't. */
+   the tile navigates; .moreButton and .reorder are raised above it so they
+   act instead of also launching. */
 .stretchedLink {
   position: absolute;
   inset: 0;
@@ -39,35 +42,116 @@
   outline-offset: 2px;
 }
 
-.top {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
 .icon {
+  position: relative;
   flex-shrink: 0;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-pill);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 20px;
 }
 
-.meta {
+@media (min-width: 480px) {
+  .icon {
+    width: 48px;
+    height: 48px;
+    font-size: 22px;
+  }
+}
+
+/* Decorative stand-in for the old "New" text pill — the word still exists,
+   just moved to the detail sheet's .badge, since a text pill can't shrink
+   below a few characters and this tile has no room to spare. */
+.newDot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: 2px solid var(--color-surface);
+}
+
+.title {
+  width: 100%;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink);
+  line-height: var(--leading-tight);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (min-width: 480px) {
+  .title {
+    font-size: var(--text-sm);
+  }
+}
+
+.reorder {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: var(--space-2xs);
+}
+
+/* Small, unobtrusive corner affordance rather than a persistent label — it
+   opens the detail sheet (description, stats, QR) without adding a pixel of
+   height to the tile itself. Raised above .stretchedLink (z-index 0) so
+   tapping it opens the sheet instead of also navigating. */
+.moreButton {
+  position: absolute;
+  z-index: 1;
+  top: 2px;
+  right: 2px;
+  opacity: 0.55;
+  transition: opacity var(--duration) var(--ease);
+}
+.tile:hover .moreButton,
+.tile:focus-within .moreButton {
+  opacity: 1;
+}
+
+/* ── Detail sheet (Modal content) ─────────────────────────────────────────
+   Everything that used to live on the card face — subtitle, description,
+   open stats, the QR code — lives here now, one tap away via .moreButton. */
+
+.detailHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.detailIcon {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+}
+
+.detailMeta {
   min-width: 0;
-  flex: 1;
 }
 
-.titleRow {
+.detailTitleRow {
   display: flex;
   align-items: center;
   gap: var(--space-2xs);
 }
 
-.title {
+.detailTitle {
   font-family: var(--font-display);
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
@@ -88,61 +172,51 @@
   border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
 }
 
-.subtitle {
+.detailSubtitle {
   font-size: var(--text-sm);
   color: var(--color-muted);
   margin-top: 2px;
 }
 
+.description {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  line-height: var(--leading-body);
+}
+
 .lastOpened {
+  margin: 0 0 var(--space-sm);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--color-faint);
-  margin-top: 4px;
 }
 
-.action {
-  flex-shrink: 0;
+.detailAction {
   display: flex;
   align-items: center;
-  gap: 4px;
-}
-
-.actionLabel {
+  justify-content: center;
+  gap: var(--space-2xs);
+  width: 100%;
+  padding: var(--space-sm);
+  margin-bottom: var(--space-md);
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--color-faint);
-  transition: color var(--duration) var(--ease);
-}
-.tile:hover .actionLabel {
   color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+  border-radius: var(--radius-md);
+  transition: background var(--duration) var(--ease), border-color var(--duration) var(--ease);
 }
-
-.arrow {
-  flex-shrink: 0;
-  font-size: var(--text-lg);
-  color: var(--color-border-2);
-  transition: color var(--duration) var(--ease), transform var(--duration) var(--ease);
+.detailAction:hover {
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  border-color: var(--color-accent);
 }
-.tile:hover .arrow {
-  color: var(--color-accent);
-  transform: translateX(2px);
-}
-
-.reorder {
-  flex-shrink: 0;
-  display: flex;
-  gap: var(--space-2xs);
-}
-
-/* Same reasoning as .details below: raised above .stretchedLink (z-index 0)
-   so tapping it opens the QR dialog instead of also navigating the tile. */
-.qrButton {
-  position: relative;
-  z-index: 1;
-  flex-shrink: 0;
+.detailAction:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
 }
 
 .qrCanvasWrap {
@@ -176,29 +250,4 @@
   word-break: break-all;
   -webkit-user-select: all;
   user-select: all;
-}
-
-.details {
-  position: relative;
-  z-index: 1;
-}
-.details summary {
-  list-style: none;
-  cursor: pointer;
-  user-select: none;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--color-faint);
-  transition: color var(--duration) var(--ease);
-}
-.details summary::-webkit-details-marker { display: none; }
-.details summary::before { content: '+ '; color: var(--color-accent); }
-.details[open] summary::before { content: '– '; }
-.details summary:hover { color: var(--color-muted); }
-
-.description {
-  margin-top: var(--space-xs);
-  font-size: var(--text-sm);
-  color: var(--color-muted);
-  line-height: var(--leading-body);
 }

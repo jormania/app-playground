@@ -240,22 +240,32 @@
   border-radius: var(--radius-sm);
 }
 
-/* One column below 640px (phones — untouched, was already the effective
-   result of the old auto-fill at that width). At 640px+, a fixed 2-column
-   grid: auto-fill with a 260px minimum let three columns cram into the
-   880px-capped .content on a laptop, squeezing each tile to ~270px — too
-   narrow for a title like "Law of the Day" to lay out on one line, which is
-   what was crushing the desktop view. Two columns inside that same 880px cap
-   gives each tile ~415px, plenty of room, while .content's cap keeps it from
-   sprawling edge-to-edge on very wide monitors. */
+/* A compact launcher grid, not a list of cards: 3 columns on a phone (tiles
+   are icon + name only now, so three fit with room to breathe), widening as
+   the viewport does so ~20 apps read as a handful of rows instead of a long
+   scroll. Capped at 6 — past that, tiles inside .content's 880px width get
+   too cramped for a two-line title. */
 .grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-md);
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
+}
+
+@media (min-width: 480px) {
+  .grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 @media (min-width: 640px) {
   .grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--space-md);
+  }
+}
+
+@media (min-width: 860px) {
+  .grid {
+    grid-template-columns: repeat(6, 1fr);
   }
 }

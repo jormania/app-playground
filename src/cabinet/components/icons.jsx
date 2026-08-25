@@ -38,6 +38,16 @@ export function IconArrowDown(props) {
   )
 }
 
+export function IconMore(props) {
+  return (
+    <svg {...base} strokeWidth={2.4} strokeLinecap="round" {...props} aria-hidden>
+      <circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 export function IconQrCode(props) {
   return (
     <svg {...base} {...props} aria-hidden>
