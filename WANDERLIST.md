@@ -288,6 +288,21 @@ serverless function was needed) plus one new piece for the multi-file case:
   compass rose that read too close to Sol Odyssey's. `public/wanderlist-icon.svg` (the manifest,
   favicon, and apple-touch-icon all point at this one SVG).
 
+## Deep links from other apps (shipped)
+
+`wanderlist-react.html#/entry/<notion-page-id>` opens that entry's detail view
+directly. Radar-B uses it for its "Deschide în Wanderlist" button — previously
+that pointed at the raw Notion page, which is both second-best and a duplicate of
+the link its own provenance list already shows.
+
+[`src/wanderlist/deeplink.js`](src/wanderlist/deeplink.js) is deliberately not a
+router: the hash is read once at startup, resolved after the list loads, then
+cleared with `replaceState` so a reload behaves like a normal visit. Ids are
+folded (Notion gives a dashed uuid in `page.id`, a bare 32-char id in `page.url`);
+anything that isn't a 32-hex id is ignored rather than guessed at. An id that is
+real but absent from the list — filtered out, unsynced, or demo mode — shows a
+note offering the Notion page, whose URL is reconstructed from the id alone.
+
 ## M5+ (parked)
 
 - **Recurring events** — a monthly market, a weekly class currently must be re-added each

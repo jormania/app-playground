@@ -356,6 +356,17 @@ main { padding: 26px 0 80px; }
   border-radius: 10px; padding: 10px 14px; margin-bottom: 18px;
 }
 
+/* The deep-link miss note carries two affordances (open in Notion / dismiss).
+   Both inherit the note's colour so they read as part of the sentence rather
+   than as a default-blue link dropped into a red box. */
+.error-note a,
+.error-note .linklike {
+  color: inherit; text-decoration: underline; text-underline-offset: 2px;
+}
+.error-note .linklike {
+  background: none; border: 0; padding: 0; font: inherit; cursor: pointer;
+}
+
 .pending-pill {
   font-family: var(--mono); font-size: 0.5625rem; letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--cyan); border: 1px solid color-mix(in srgb, var(--cyan) 40%, transparent);

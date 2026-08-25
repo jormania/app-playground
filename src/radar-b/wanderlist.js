@@ -57,6 +57,23 @@ export function mapUrlFor(event) {
   return place ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}` : null
 }
 
+/** A saved event's home in the Wanderlist APP, as opposed to its Notion page.
+ *
+ *  The provenance list already links the raw Notion page (that's what the
+ *  `saved` source is), so a second link to the same place earns nothing. This
+ *  one opens the entry inside Wanderlist itself, where the photos, tickets and
+ *  the edit affordances actually are. Wanderlist resolves the id against its own
+ *  loaded list and falls back to Notion by itself if it can't find it, so this
+ *  needs nothing but the id.
+ *
+ *  Dashes are stripped: Notion hands back a dashed uuid in `page.id` and a bare
+ *  32-char id inside `page.url`, and the two must not produce different links to
+ *  one entry. Wanderlist folds the same way when matching. */
+export function appUrlFor(event) {
+  const id = String(event.findingsId ?? '').replace(/-/g, '').trim()
+  return /^[0-9a-f]{32}$/i.test(id) ? `/wanderlist-react.html#/entry/${id}` : null
+}
+
 /**
  * The editable draft shown before anything is written — Wanderlist's app-model
  * entry shape, field for field. Radar-B never writes silently: "never write on the

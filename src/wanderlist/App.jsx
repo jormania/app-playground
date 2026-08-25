@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { entryIdFromHash, findById, notionUrlForId } from './deeplink.js'
 import './wanderlist.css'
 import { getClient, isLive, loadPreset, savePreset, applyPreset, nextPreset, presetById, modeOf, THEME_KEY, loadViewPrefs, saveViewPrefs } from './store.js'
 import { todayKey } from './dates.js'
@@ -30,6 +31,10 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [focus, setFocus] = useState(null)      // null | {kind:'view', entry} | {kind:'edit', initial}
+  // `wanderlist.html#/entry/<id>` — Radar-B's handoff back into this app. Read
+  // once at startup, held until the list has loaded, then consumed.
+  const [pendingEntryId, setPendingEntryId] = useState(() => entryIdFromHash(window.location.hash))
+  const [deepLinkMiss, setDeepLinkMiss] = useState(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [showSettings, setShowSettings] = useState(false)
@@ -88,6 +93,18 @@ export default function App() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  // Resolve the incoming deep link once the list is actually there. The hash is
+  // cleared either way — with the entry open, a reload should show that entry
+  // and then behave like a normal visit, not re-navigate forever.
+  useEffect(() => {
+    if (!pendingEntryId || loading) return
+    const entry = findById(entries, pendingEntryId)
+    if (entry) setFocus({ kind: 'view', entry })
+    else setDeepLinkMiss(pendingEntryId)
+    setPendingEntryId(null)
+    window.history.replaceState(null, '', window.location.pathname + window.location.search)
+  }, [pendingEntryId, loading, entries])
 
   // Reconnecting flushes the outbox and refreshes; losing the connection flips the banner.
   useEffect(() => {
@@ -253,6 +270,16 @@ export default function App() {
             </div>
           )}
           {loadError && <div className="error-note" aria-live="polite">{loadError}</div>}
+          {/* A real id that isn't in this list: filtered out, not yet synced, or
+              this browser is in demo mode. Notion is where it definitely is. */}
+          {deepLinkMiss && !focus && (
+            <div className="error-note" aria-live="polite">
+              Couldn’t find that item in your list.{' '}
+              <a href={notionUrlForId(deepLinkMiss)} target="_blank" rel="noreferrer">Open it in Notion</a>
+              {' · '}
+              <button type="button" className="linklike" onClick={() => setDeepLinkMiss(null)}>Dismiss</button>
+            </div>
+          )}
           {/* Save/toggle errors surface here whenever the editor (which shows its own
               copy) isn't open — otherwise a failed ✓-toggle from the list was silent. */}
           {saveError && focus?.kind !== 'edit' && <div className="error-note" aria-live="polite">{saveError}</div>}

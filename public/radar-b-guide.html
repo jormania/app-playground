@@ -498,10 +498,21 @@ venues, Facebook                   ▼
   <li><strong>Where?</strong> — venue, street address, neighbourhood, and <strong>Deschide în Maps</strong></li>
   <li><strong>How much?</strong> — <em>Gratuit</em>, a figure in lei, or an honest <em>Preț necunoscut</em></li>
   <li><strong>Why might I care?</strong> — the editorial summary, plus who recommended it</li>
-  <li><strong>How do I go?</strong> — <strong>Bilete</strong> or <strong>Pagina evenimentului</strong></li>
+  <li><strong>How do I go?</strong> — <strong>Bilete</strong>, or <strong>Pagina evenimentului</strong> when that link goes somewhere the source list doesn't already offer</li>
   <li><strong>Where did this come from?</strong> — <strong>De unde știm</strong>, every source with its date and link</li>
-  <li><strong>Can I save it?</strong> — <strong>Salvează în Wanderlist</strong></li>
+  <li><strong>Can I save it?</strong> — <strong>Salvează în Wanderlist</strong>, or, if it's already saved, <strong>Deschide în Wanderlist</strong></li>
 </ol>
+
+<h4>Deschide în Wanderlist</h4>
+<p>
+  For an event you've already saved, the last button opens that entry <em>inside
+  Wanderlist</em> — photos, tickets, editing — rather than its raw Notion row, which the
+  <em>De unde știm</em> list already links. It's a deep link
+  (<code>wanderlist-react.html#/entry/&lt;id&gt;</code>) that Wanderlist resolves against
+  its own list at startup. If it can't find the entry — filtered out, not yet synced, or
+  that browser is in demo mode — it says so and offers Notion instead, which is the one
+  place the item certainly exists.
+</p>
 
 <h4>Google Maps</h4>
 <p>

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { toDraft, toFindingsPage, expiryFor, placeFor, mapUrlFor } from './wanderlist.js'
+import { toDraft, toFindingsPage, expiryFor, placeFor, mapUrlFor, appUrlFor } from './wanderlist.js'
 import { normalizeEvent } from './model.js'
 
 const ev = (over) => normalizeEvent({ name: 'Trio Nocturn', ...over })
@@ -23,6 +23,27 @@ describe('placeFor', () => {
   test('no place at all stays null rather than inventing one', () => {
     expect(placeFor(ev({}))).toBeNull()
     expect(mapUrlFor(ev({}))).toBeNull()
+  })
+})
+
+describe('appUrlFor', () => {
+  const ID = 'de3705a1d9e94c0fb1a7c5e2d0846f31'
+
+  test('links into the Wanderlist app, not at the Notion page', () => {
+    // The Notion page is already listed as the `saved` source in provenance;
+    // a second link to it would be the same destination twice.
+    expect(appUrlFor(ev({ findingsId: ID }))).toBe(`/wanderlist-react.html#/entry/${ID}`)
+  })
+
+  test('folds Notion’s dashed id so both spellings give one link', () => {
+    const dashed = 'de3705a1-d9e9-4c0f-b1a7-c5e2d0846f31'
+    expect(appUrlFor(ev({ findingsId: dashed }))).toBe(appUrlFor(ev({ findingsId: ID })))
+  })
+
+  test('offers nothing rather than a broken link when the id is not a page id', () => {
+    expect(appUrlFor(ev({}))).toBeNull()
+    expect(appUrlFor(ev({ findingsId: 'demo-saved-1' }))).toBeNull()
+    expect(appUrlFor(ev({ findingsId: ID.slice(0, 20) }))).toBeNull()
   })
 })
 

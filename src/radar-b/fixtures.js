@@ -159,7 +159,10 @@ const DUPLICATE = {
 
 /** Already in Wanderlist — shows the "In your Wanderlist" state without a token. */
 const SAVED = {
-  id: 'demo-saved-1',
+  // A Notion-shaped id on purpose: `appUrlFor` only builds a Wanderlist deep
+  // link from something that actually looks like a page id, so a `demo-saved-1`
+  // here would silently hide the button the demo is meant to show.
+  id: 'de3705a1d9e94c0fb1a7c5e2d0846f31',
   name: 'Trio Nocturn',
   start: day(0, '21:00'), hasTime: true,
   venue: 'Control Club, Str. Constantin Mille 4, București',

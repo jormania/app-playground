@@ -105,6 +105,16 @@ body {
   overscroll-behavior-y: none;
 }
 
+/* Every link, not just the ones in the provenance list. Only `.source a` used to
+   be styled, so "Open in Maps" and "Open in Wanderlist" fell back to the UA's
+   default `-webkit-link` blue — which on the dark palette is near-invisible
+   against #16161a, and belongs to no palette this app defines. Anything that
+   deliberately isn't link-coloured (the masthead's icon links) sets its own
+   colour on a class, which outranks this. */
+a { color: var(--color-accent); text-decoration: none; }
+@media (hover: hover) { a:hover { text-decoration: underline; } }
+a:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; border-radius: var(--radius-xs, 3px); }
+
 /* ── Shell ─────────────────────────────────────────────────────────────── */
 
 .app {

@@ -682,3 +682,63 @@ The short labels stayed.
 
 23 new tests (`i18n.test.js` plus two App-level ones covering the toggle end to end,
 including that event names stay Romanian after switching).
+
+## 18. The handoff back into Wanderlist, and three dead controls (2026-08-25)
+
+Three things in the detail view, all reported off one screenshot of a saved event.
+
+### Links were invisible in dark mode
+
+Only `.source a` had ever been given a colour, so every other link — **Open in
+Maps**, **Open in Wanderlist** — fell through to the user agent's default
+`-webkit-link` blue. On the warm paper palette that reads as merely wrong; on
+`#16161a` it's close to unreadable, and it belongs to no palette this app defines.
+There is now a base `a` rule in `radar-b.css` using `--color-accent`, with the
+focus ring the rest of the app uses. Anything that deliberately isn't
+link-coloured (the masthead's icon links) sets its own colour on a class, which
+outranks a bare element selector. Verified in dark mode: `rgb(217, 139, 74)`.
+
+### "Open in Wanderlist" went to Notion — now it goes to Wanderlist
+
+It pointed at the Findings **Notion page**, which is the same URL the provenance
+list already offers as the `saved` source. So it was both second-best *and* a
+duplicate: a second link to a place already linked, showing a database row rather
+than the entry as Wanderlist presents it.
+
+Wanderlist now accepts a deep link — **`wanderlist-react.html#/entry/<id>`** — and
+Radar-B builds one from the Findings page id. The app has no router and doesn't
+want one: [`src/wanderlist/deeplink.js`](src/wanderlist/deeplink.js) is a single
+read of the hash at startup, resolved once the list has loaded, then erased from
+the URL with `replaceState` so a reload doesn't re-navigate forever.
+
+- Ids are **folded** on both sides — Notion returns a dashed uuid in `page.id` and
+  a bare 32-char id inside `page.url`, and the two must not produce different links
+  to one entry.
+- Anything that isn't a 32-hex id is ignored rather than guessed at, so a stray
+  `#photos` opens nothing — and `appUrlFor` returns `null` rather than a link it
+  knows is broken, in which case Radar-B falls back to the Notion page.
+- A **real id that isn't in the list** — filtered out, not yet synced, or this
+  browser is in demo mode — gets a notice offering Notion, which is the one place
+  it certainly exists. Wanderlist reconstructs that URL from the id alone, so the
+  fallback needs no extra parameters.
+
+One demo fixture id on each side is now Notion-shaped rather than `seed-1` /
+`demo-saved-1`: with the old ids, demo mode was the one place the handoff could
+never be tried, and the button would silently not render.
+
+### Two dead controls in the actions row
+
+- **"Already in Wanderlist"** was a *disabled* button restating the `IN
+  WANDERLIST` section immediately above it. Deleted. What a saved event should
+  offer there is the way **in** to Wanderlist, so the deep link took its place —
+  promoted out of a small grey `provenanceNote` into the row's primary button.
+- **"Event page"** is now suppressed when its URL is one the provenance list
+  already carries. A Radar row's `Link` is often the article it was found in, so
+  that was the common case, not the edge one — the button was a second, larger
+  copy of a link an inch above it. A **ticket** link always keeps its button:
+  that's the action the whole screen is building towards. The rule is
+  `goUrlFor()`, exported and unit-tested rather than left inline.
+
+19 new tests. Verified in a dark-mode browser: link colour, the actions row (two
+buttons, neither disabled), the deep link opening the entry, and the miss note
+with its Notion fallback.

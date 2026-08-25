@@ -45,7 +45,10 @@ describe('Radar-B in demo mode', () => {
     expect(within(card).getByText('în wanderlist')).toBeTruthy()
 
     await userEvent.click(card)
-    expect(screen.getByRole('button', { name: /Deja în Wanderlist/ })).toBeTruthy()
+    // What a saved event offers is the way IN to Wanderlist — not a disabled
+    // label restating the state section directly above it.
+    expect(screen.getByRole('button', { name: /Deschide în Wanderlist/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Salvează/ })).toBeNull()
   })
 
   test('the detail view shows every source that mentioned the event', async () => {
@@ -192,5 +195,30 @@ describe('Radar-B in demo mode', () => {
     // Names come from Romanian sources; machine-translating them in the client
     // would be inventing text nobody wrote.
     expect(screen.getByRole('heading', { name: /Trio Nocturn/ })).toBeTruthy()
+  })
+  test('the detail actions row holds nothing dead or duplicated', async () => {
+    await open()
+    await userEvent.click(screen.getByRole('heading', { name: /Lumin/ }).closest('button'))
+    const dialog = screen.getByRole('dialog')
+    // No disabled control: a saved event's row offers the way in to Wanderlist,
+    // an unsaved one offers Save. Neither offers a label you cannot press.
+    for (const b of within(dialog).getAllByRole('button')) expect(b.disabled).toBeFalsy()
+    expect(within(dialog).queryByRole('button', { name: /Deja în Wanderlist/ })).toBeNull()
+  })
+
+  test('a saved event links into Wanderlist itself, not back to Notion', async () => {
+    await open()
+    await userEvent.click(screen.getByRole('heading', { name: /Trio Nocturn/ }).closest('button'))
+    const opened = []
+    const realOpen = window.open
+    window.open = (url) => { opened.push(url); return null }
+    try {
+      await userEvent.click(screen.getByRole('button', { name: /Deschide în Wanderlist/ }))
+    } finally {
+      window.open = realOpen
+    }
+    expect(opened).toHaveLength(1)
+    expect(opened[0]).toMatch(/^\/wanderlist-react\.html#\/entry\/[0-9a-f]{32}$/)
+    expect(opened[0]).not.toMatch(/notion\.so/)
   })
 })

@@ -1,7 +1,7 @@
 import { Button } from '../ds'
 import { formatWhen, stalenessDays, relativeDays } from './dates.js'
 import { signalsFor, signalLabel, freshness, recommenders } from './signals.js'
-import { mapUrlFor } from './wanderlist.js'
+import { mapUrlFor, appUrlFor } from './wanderlist.js'
 import { fold } from './dedupe.js'
 import { BackIcon, ExternalIcon, HideIcon, CalendarIcon, CheckIcon } from './icons.jsx'
 import { formatWhen as formatWhenDate } from './dates.js'
@@ -18,6 +18,20 @@ const kindLabel = (kind, t) => t(`kind.${kind}`)
  */
 /** Two place strings are "the same place" when one contains the other once
  *  folded — `Palatul Suțu` vs `Palatul Suțu, Bd. I.C. Brătianu 2, București`. */
+/** Where the one prominent "go there" button should point, or null for no button.
+ *
+ *  Tickets always earn one — that's the action the whole screen is building to.
+ *  A plain event link earns one only when it's a destination the provenance list
+ *  doesn't already offer; when the event's link IS one of its sources (common,
+ *  since a Radar row's `Link` is often the article it was found in), the button
+ *  was just a second, larger copy of a link an inch above it. */
+export function goUrlFor(event) {
+  if (event.tickets) return event.tickets
+  if (!event.link) return null
+  const dup = (event.sources ?? []).some((s) => s.url === event.link)
+  return dup ? null : event.link
+}
+
 function sameplace(a, b) {
   const fa = fold(a)
   const fb = fold(b)
@@ -31,10 +45,12 @@ export function EventDetail({ event, now, onClose, onSave, onDismiss, saving }) 
   const fresh = freshness(event, now)
   const recs = recommenders(event)
   const findingsUrl = event.sources.find((s) => s.kind === 'saved')?.url ?? null
+  // Into the Wanderlist APP; the Notion page is already the `saved` source above.
+  const wanderlistUrl = appUrlFor(event) ?? findingsUrl
   const mapUrl = mapUrlFor(event)
   const free = sigs.includes('free')
   const showAddress = Boolean(event.address) && !sameplace(event.venue, event.address)
-  const goUrl = event.tickets || event.link
+  const goUrl = goUrlFor(event)
 
   return (
     <div className="detail" role="dialog" aria-modal="true" aria-label={event.name}>
@@ -143,14 +159,13 @@ export function EventDetail({ event, now, onClose, onSave, onDismiss, saving }) 
               {event.dateExpiring && <span className="wlChip">{t('wl.expires', { date: event.dateExpiring })}</span>}
               {!event.plannedDate && !event.going && <span className="wlChip muted">{t('wl.noPlannedDate')}</span>}
             </div>
-            {findingsUrl && (
-              <p className="provenanceNote">
-                <a href={findingsUrl} target="_blank" rel="noreferrer">{t('wl.open')} <ExternalIcon /></a>
-              </p>
-            )}
           </>
         )}
 
+        {/* One row, every entry in it something you can actually press. A saved
+            event used to end on a disabled "Already in Wanderlist" restating the
+            section directly above it; the useful thing to offer there is the way
+            IN to Wanderlist, not a label. */}
         <div className="actions">
           {goUrl && (
             <Button variant="outline" onClick={() => window.open(goUrl, '_blank', 'noopener')}>
@@ -158,7 +173,11 @@ export function EventDetail({ event, now, onClose, onSave, onDismiss, saving }) 
             </Button>
           )}
           {event.saved
-            ? <Button variant="ghost" disabled>{t('detail.alreadySaved')}</Button>
+            ? (wanderlistUrl && (
+              <Button onClick={() => window.open(wanderlistUrl, '_blank', 'noopener')}>
+                {t('wl.open')}
+              </Button>
+            ))
             : <Button onClick={() => onSave(event)} disabled={saving}>{saving ? t('detail.saving') : t('detail.save')}</Button>}
         </div>
       </div>

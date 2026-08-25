@@ -23,7 +23,10 @@ function daysFromToday(n) {
 export function seedEntries() {
   return [
     {
-      id: 'seed-1',
+      // Notion-shaped on purpose. `#/entry/<id>` deep links (Radar-B's handoff
+      // back into this app) only resolve a real page id, so a `seed-1` here
+      // would make the demo the one place the handoff can never be tried.
+      id: 'a41f7c02b8d4471e9c63f5ad20e18b77',
       name: 'Anim’est — closing night at Cinema Pro',
       description:
         'The international animation festival wraps with a shorts programme and an awards gala. Tickets go fast for the closing screening — grab one before the run ends.',
