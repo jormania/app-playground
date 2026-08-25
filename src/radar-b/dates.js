@@ -86,8 +86,20 @@ function touches(span, from, to) {
 
 /** A long run — an exhibition, a months-long installation. These are the events a
  *  date-first stream buries, so they get their own lens rather than appearing
- *  once on their opening day and never again. */
-export function isLongRun(event, minDays = 4) {
+ *  once on their opening day and never again.
+ *
+ *  The threshold has to make the label TRUE: `long-run` renders as "se vede
+ *  oricând" / "see it anytime", it pulls the event out of the day groups into
+ *  the `Oricând` section, and it sinks the event's rank — all three of which say
+ *  "no hurry". At the old four-day floor a film with a five-day cinema run
+ *  qualified, so Radar-B told you to take your time about something leaving in
+ *  four days, and buried it under the exhibitions while it did.
+ *
+ *  Eight days is the honest line, and it states a rule you can check: it is
+ *  still on in a week, so it spans another weekend and you really can go some
+ *  other day. A weekend festival or a short run stays in the day stream, where
+ *  each of its days is a date you might act on. */
+export function isLongRun(event, minDays = 8) {
   const span = spanOf(event)
   if (!span) return false
   return (span.to - span.from) / DAY_MS >= minDays - 1

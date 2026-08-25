@@ -31,7 +31,7 @@ The tempting architecture — a serverless function per source, parsing B365's a
 Curatorial's HTML — is the wrong one here, for three converging reasons:
 
 1. **It duplicates the skill.** `/recommend in Bucharest` already fetches, parses,
-   dedupes and *taste-filters* all seven sources every week. A scraper farm would be a
+   dedupes and *taste-filters* all eight sources every week. A scraper farm would be a
    worse second copy of that, with none of the judgement.
 2. **It is unmaintainable at this scale.** Seven Romanian publications' markup, each
    free to change any week, against one person's weekend. Every source that broke would
@@ -835,3 +835,57 @@ trusting either in isolation.
 40 new tests (216 in `src/radar-b/`, 3501 in the repo). Verified end to end in a
 browser at 375×812: the deep link opening the entry itself, save → draft → toast,
 dismiss → undo, and every action in the detail view carrying a real `href`.
+
+## 20. "Se vede oricând" was lying, and a row that wasn't real (2026-08-26)
+
+### The `long-run` threshold made the label untrue
+
+`long-run` renders as **"se vede oricând"** / "see it anytime". It is *derived*,
+not stored — `signalsFor` adds it whenever an event's `When` span is long enough —
+and it does three things at once, all of them saying *no hurry*: the label, being
+pulled out of the day groups into the **Oricând** section, and a rank penalty that
+sinks it below one-night events.
+
+The floor was **four days**, which is not "anytime" by any reading. A film with a
+five-day cinema run qualified, so Radar-B told you to take your time about
+something leaving on Sunday — and buried it under the three-month exhibitions
+while it did.
+
+It is now **eight days**, which states a rule you can check: *it is still on in a
+week*, so it spans another weekend and you genuinely can go some other day. A
+weekend festival and a short cinema run stay in the day stream, where each of
+their days is a date you might act on.
+
+### `Comatogen` — a `confirmed` row for a screening nobody lists
+
+Reported as an odd link; it turned out the link was the smaller half of it.
+
+- **`Link` was a programme page.** `cinemagia.ro/program-cinema/elvire-popesco-bucuresti/`
+  is a "what's on today" schedule that **rewrites itself daily**, so a row pointing
+  at one is guaranteed to stop matching — open it a day later and the film simply
+  isn't there, which is exactly what happened. The film's own page
+  (`cinemagia.ro/filme/comatogen-3323621/`) is the stable target; the programme
+  page belongs in `Sources`, where the `│ YYYY-MM-DD` field records *when* it was
+  read.
+- **The five-day run was invented.** Nothing stated 26–30 August. Seeing a title on
+  today's programme tells you it plays today and nothing about tomorrow. And the
+  fabricated span is what crossed the old four-day threshold, so the two halves of
+  this section are one bug: an invented range produced a false "se vede oricând".
+- **It was marked `confirmed`.** Neither Cinemagia's own Elvire Popesco programme
+  nor **Eventbook** — the cinema's actual box office — lists Comatogen at all for
+  those dates. The live row is now `uncertain`, so the app shows its "verifică
+  înainte să pleci de acasă" warning, and its `Summary` says what could not be
+  confirmed. The row was not deleted: that's Gabriel's call, not the app's.
+
+The skill gained the matching rules — never invent a date range (with *why*: it
+drives `long-run`), `confirmed` means the event's own page, and a venue programme
+page is never a `Link`.
+
+### Eventbook is now a first-class source
+
+`eventbook.ro` is the box office for the art-house cinemas actually in play
+(Elvire Popesco, Cinema Pro, Cinemateca), so for `movie` it beats every listing
+site: the real title, the real showtime and a bookable link in one fetch, rather
+than a schedule someone retyped. It's now a source row in Step 1, the first place
+to look for film links in Step 3b, and the cross-check that decides whether a film
+another source mentioned is actually playing. That check is what caught Comatogen.

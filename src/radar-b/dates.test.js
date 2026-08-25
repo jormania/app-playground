@@ -77,9 +77,17 @@ describe('lensesFor', () => {
 
 describe('long runs', () => {
   test('a four-day-plus span is a long run', () => {
-    expect(isLongRun(ev({ start: '2026-08-19', end: '2026-08-23' }))).toBe(true)
+    // Eight days — "still on in a week", so it spans another weekend.
+    expect(isLongRun(ev({ start: '2026-08-19', end: '2026-08-26' }))).toBe(true)
+    expect(isLongRun(ev({ start: '2026-08-01', end: '2026-11-01' }))).toBe(true)
     expect(isLongRun(ev({ start: '2026-08-19', end: '2026-08-20' }))).toBe(false)
     expect(isLongRun(ev({ start: '2026-08-19' }))).toBe(false)
+
+    // A five-day cinema run is NOT something you can see "oricând" — it leaves
+    // this week. It belongs in the day stream, not in the standing section.
+    expect(isLongRun(ev({ start: '2026-08-26', end: '2026-08-30' }))).toBe(false)
+    // Nor is a long weekend festival.
+    expect(isLongRun(ev({ start: '2026-08-28', end: '2026-08-30' }))).toBe(false)
   })
 
   test('running now means a long run whose span contains today', () => {

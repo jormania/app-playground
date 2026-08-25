@@ -24,7 +24,7 @@ Notion is the source of truth.
 4. **If current:** on Friday or Saturday, run Step 1b (placeholder re-check) before proceeding to Step 2. On Sunday, skip straight to Step 2 — by Sunday, a source that hasn't posted yet almost certainly won't before the weekend is over, so re-querying it isn't worth the round trip.
 
 #### Step 1a — Source refresh (replaces Notion content)
-Search and fetch all 5 sources for the current week. Verify each is current before including.
+Search and fetch all 8 sources for the current week. Verify each is current before including.
 
 | Source | Type | How to find |
 |---|---|---|
@@ -35,6 +35,7 @@ Search and fetch all 5 sources for the current week. Verify each is current befo
 | **Zile și Nopți** | Aggregator, always current | Fetch directly: `zilesinopti.ro/evenimente-bucuresti-weekend/` — no search needed |
 | **Recomandata** | Newsletter (Scena9/Fundația9), publishes Thu | Fetch `recomandata9.substack.com` to find the latest issue link, then fetch the article. Covers current week + upcoming events. Curated, editorial, highly relevant to Gabriel's taste. |
 | **Harta Muzeelor / Weekend Sessions** | Aggregator, always current | Fetch directly: `hartamuzeelor.ro/recomandari.html` — stable URL, no search needed. Focus: museums, galleries, guided tours, workshops, concerts in cultural venues. |
+| **Eventbook** | Box office, always current | Fetch `eventbook.ro/program/elvirepopesco` (and `eventbook.ro/program/cinema-pro` when relevant). **The authority for art-house film** — it's the actual box office for the cinemas Gabriel goes to, so it gives the real title, the real showtime and a bookable link rather than a listing someone retyped. Use it to CONFIRM or correct any film another source mentions, and as a discovery source in its own right for `movie`. Also carries concerts and theatre worth a look. |
 
 After retrieving all available sources:
 - Replace the entire content of the **Suggested events** Notion page with a `## DD luna YYYY` section containing a table of article links + a Zile și Nopți highlights block
@@ -56,7 +57,7 @@ Use **both** Notion and web search — always combine them:
 
 1. Fetch the **Suggested events** Notion page. If it contains article links (even just one), fetch each article and extract events from it — this is primary source material, not optional. **Important:** articles like Buletin's *Agenda Urbană cu Cosmin* cover the full week (Monday–Sunday), not just the weekend. A Friday-published article is still relevant on Tuesday or Wednesday of the following week — always parse it for weekday events, not just the weekend ones.
 2. Also fetch Zile și Nopți directly (`zilesinopti.ro/evenimente-bucuresti-weekend/`) — always.
-3. Additionally search online for events covering the current day, rest of the week, and the approaching weekend. Use the same 5 sources plus general cultural search (gallery openings, cinema listings, club nights, etc.).
+3. Additionally search online for events covering the current day, rest of the week, and the approaching weekend. Use the same 8 sources plus general cultural search (gallery openings, cinema listings, club nights, etc.).
 4. Merge all three streams — Notion articles + Zile și Nopți + web search — into a single event pool before filtering and producing the digest.
 5. Do not update Notion in weekday mode unless it is clearly empty or stale.
 
@@ -211,11 +212,31 @@ Before either output below (Radar, then the digest — both consume this same po
   reason not to.
   - If the Notion-linked article already names the direct link, use it — no need to
     re-search.
+  - **Eventbook (`eventbook.ro`) first for film, and worth checking for concerts.**
+    Gabriel knows the site and prefers it for movies. It is the box office for the
+    art-house cinemas he actually goes to — Elvire Popesco, Cinema Pro, Cinemateca —
+    so for anything with category `movie` search Eventbook before anything else:
+    `eventbook.ro/film/bilete-[titlu-slug]`, or the venue's programme at
+    `eventbook.ro/program/[venue-slug]` to find the film's own booking page. A
+    hit there gives the exact showtime AND the ticket link in one go, which is
+    two of Step 3b's other fields for free. Use `Tickets` for the Eventbook URL
+    when `Link` already holds the film's own page; when there is no better page,
+    Eventbook IS the `Link`. iaBilet and Bilet.ro remain fine for concerts and
+    theatre.
   - **A roundup or section page is never an acceptable `Link`.** `b365.ro/timp-liber/`,
     `zilesinopti.ro/evenimente-bucuresti-weekend/` and the like are pages listing
     forty other things; as an event's `Link` they answer no question you would ask
     of that row six months later. They belong in `Sources`, which is exactly what
     `Sources` is for, and nowhere else.
+  - **A venue's PROGRAMME page is the worst case of this and is never a `Link`.**
+    `cinemagia.ro/program-cinema/elvire-popesco-bucuresti/`,
+    `eventbook.ro/program/[venue]` and every "what's on at X" schedule **rewrite
+    themselves daily**, so a row pointing at one is guaranteed to stop matching —
+    Gabriel opens it a day later and the film simply isn't there. This has already
+    happened once (`Comatogen`, 2026-08-26). Use the FILM's or event's own page
+    (`cinemagia.ro/filme/[titlu]-[id]/`, the Eventbook booking page) and cite the
+    programme page in `Sources` with the date you read it, which is what the
+    `│ YYYY-MM-DD` field on a `Sources` line is for.
   - If a genuine search turns up nothing, **leave `Link` blank** rather than
     guessing, fabricating, or falling back to the article.
   - **Radar-B will not fill this in for you.** The app has no fetcher and does not
@@ -225,6 +246,22 @@ Before either output below (Radar, then the digest — both consume this same po
     ONLY place an event link can enter the system.
 - **Times:** include exact times when available. Never invent one — a bare date with no
   stated time stays a bare date.
+- **Date RANGES obey the same rule as times: never invent one.** A `When` end date
+  means a source stated a run ("până pe 30 august", an exhibition's closing date,
+  a festival's advertised span). Seeing a title on today's cinema programme tells
+  you it plays TODAY and nothing whatsoever about tomorrow — do not turn it into a
+  five-day run because a run seems likely. This is not cosmetic: Radar-B derives
+  `long-run` from the span, and a run of eight days or more is presented as "se
+  vede oricând" / "see it anytime", pulled out of the day stream and ranked down.
+  An invented range therefore tells Gabriel to take his time about something that
+  may be gone tomorrow. When only one date is attested, write that one date.
+- **`confirmed` means you read the event's OWN page.** A cinema programme, a
+  listings aggregator or a roundup is `reported` at best. If the only evidence is
+  a schedule page, and especially if the venue's own box office (Eventbook for the
+  art-house cinemas) does NOT list it, the row is `uncertain` — Radar-B renders
+  that as a visible "verifică înainte să pleci de acasă" warning, which is exactly
+  what it is for. `Comatogen` (2026-08-26) was written `confirmed` off a programme
+  page that no longer listed it and that Eventbook never did.
 - **Addresses:** always include the full street address — required for Wanderlist
   geocoding and for Radar-B's Maps link. If unknown, write the neighborhood or landmark
   instead and flag it as approximate.
