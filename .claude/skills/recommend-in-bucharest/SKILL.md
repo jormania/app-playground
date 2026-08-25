@@ -201,14 +201,28 @@ Before either output below (Radar, then the digest — both consume this same po
 
 **Enrich each surviving entry** — do this once, here, for the whole pool. Both Step 4
 (Radar) and Step 5 (the digest) read these results rather than re-deriving them:
-- **Links:** actively search for the event's own page for every event (e.g. `"[titlu
-  eveniment]" [venue]`) — official venue/museum/gallery page, ticket platform (iaBilet,
-  Eventbook, Bilet.ro), or organizer's event page. This is a real search step per event,
-  not something to only try when the source article happens to name one. If the
-  Notion-linked article already names that direct link, use it straight away — no need
-  to re-search. A generic roundup article is a fallback, not the target — use one only
-  when no direct event/venue/ticket page turns up. If genuinely nothing can be found,
-  leave the link blank rather than guessing or fabricating one.
+- **Links — MANDATORY, one web search per event, no exceptions.** For every single
+  surviving entry, run a real search for that event's OWN page (e.g. `"[titlu
+  eveniment]" [venue]`, or `[festival name] site oficial`) — official
+  venue/museum/gallery page, festival site, ticket platform (iaBilet, Eventbook,
+  Bilet.ro), or the organizer's event page. Skipping this for an event because the
+  roundup "didn't mention a link" is the single most common way this step gets
+  dropped: the absence of a link in the article is the REASON to search, not a
+  reason not to.
+  - If the Notion-linked article already names the direct link, use it — no need to
+    re-search.
+  - **A roundup or section page is never an acceptable `Link`.** `b365.ro/timp-liber/`,
+    `zilesinopti.ro/evenimente-bucuresti-weekend/` and the like are pages listing
+    forty other things; as an event's `Link` they answer no question you would ask
+    of that row six months later. They belong in `Sources`, which is exactly what
+    `Sources` is for, and nowhere else.
+  - If a genuine search turns up nothing, **leave `Link` blank** rather than
+    guessing, fabricating, or falling back to the article.
+  - **Radar-B will not fill this in for you.** The app has no fetcher and does not
+    scrape (RADAR_B.md §2), and as of 2026-08-26 its save-to-Wanderlist draft no
+    longer backfills `Link` from the first source URL — precisely because that
+    silently pushed roundup URLs into Wanderlist's `Findings`. This search is the
+    ONLY place an event link can enter the system.
 - **Times:** include exact times when available. Never invent one — a bare date with no
   stated time stays a bare date.
 - **Addresses:** always include the full street address — required for Wanderlist
@@ -290,6 +304,13 @@ the other.
 4. **Bulk writing is fine here** (unlike Wanderlist intake, which is one at a time on confirmation). Radar is a research surface Gabriel browses, not his personal list — nothing lands in his own world until he saves it in Radar-B.
 5. **Never delete rows** for events that have passed. Radar-B hides past events itself, and the history is worth keeping.
 6. **Keep a running count** of rows created and rows updated as you go — Step 5's closing line reports it.
+7. **Before finishing Step 4, check the `Link` column.** Every row you created or
+   updated in this run should either carry the event's own page or be knowingly
+   blank after a search that found nothing. If several rows are blank, the Step 3b
+   link search was skipped — go back and do it rather than writing the digest.
+   A run that wrote ten rows with eight empty `Link`s has not done this step. Do
+   the same for any row you TOUCHED that still holds a roundup URL in `Link`:
+   move it to `Sources` and put the real page in `Link`, or blank it.
 
 ---
 

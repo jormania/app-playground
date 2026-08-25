@@ -724,7 +724,8 @@ the URL with `replaceState` so a reload doesn't re-navigate forever.
 
 One demo fixture id on each side is now Notion-shaped rather than `seed-1` /
 `demo-saved-1`: with the old ids, demo mode was the one place the handoff could
-never be tried, and the button would silently not render.
+never be tried, and the button would silently not render. (Notion-shaped, but
+**not the same id** — so the demo handoff still never landed. Fixed in §19.)
 
 ### Two dead controls in the actions row
 
@@ -742,3 +743,95 @@ never be tried, and the button would silently not render.
 19 new tests. Verified in a dark-mode browser: link colour, the actions row (two
 buttons, neither disabled), the deep link opening the entry, and the miss note
 with its Notion fallback.
+
+## 19. The zoo, trimmed — and why two buttons did nothing on a phone (2026-08-26)
+
+§18 fixed the *destination* of the actions row and left the mechanism alone. The
+mechanism was the bug: on a phone, both of those buttons did nothing at all.
+
+### `window.open` is swallowed in a Custom Tab
+
+The Cabinet launches Radar-B into an **Android Chrome Custom Tab**, and a Custom
+Tab silently drops a scripted `window.open(url, '_blank')` — no error, no
+navigation, nothing to see. Both controls in the actions row were
+`<Button onClick={() => window.open(…)}>`; every link that *worked* on that same
+screen — "Deschide în Maps", every provenance row — was a plain `<a href>`. That
+was the whole tell, and it was visible in the screenshot before any code was read.
+
+Both are now anchors styled to match a `ds/Button` (`.actionBtn` in
+`radar-b.css`). A navigation the reader started by tapping a link is never
+blocked. The Wanderlist deep link is deliberately **in-tab** (no `target`): it's
+the next step of one errand and the back button returns here. External links keep
+`target="_blank" rel="noopener noreferrer"`.
+
+`no control in the app opens a scripted popup` is a standing guard, wider than the
+two buttons that were broken — nothing in the detail view may depend on
+`window.open` again.
+
+### The word "Wanderlist" appeared four times on one screen
+
+A saved event showed: the card's `în wanderlist` badge · a provenance row reading
+`Wanderlist … WANDERLIST` (source name and kind label being the same word) · an
+`ÎN WANDERLIST` heading · and `Deschide în Wanderlist`. Provenance is **who told
+you about this**. Your own Findings row didn't tell you anything — it's the
+*outcome* of having been told — so it no longer appears there (`provenanceSources`),
+which also removes the last link pointing at a raw Notion page. A Wanderlist-only
+event now has no provenance section at all rather than a section containing one
+tautology. The `ÎN WANDERLIST` heading went with it; the chips stand alone.
+
+### Rows that existed to report the absence of a fact
+
+Each of these filled a line to say nothing, and together they were most of what
+the screen said:
+
+| Was | Now |
+|---|---|
+| `CÂT · Preț necunoscut` | no cost row — a missing row *is* "we don't know" |
+| `ora neconfirmată` on a 3-day festival | only on a single dated day with no hour; a range has no start time to be unsure of |
+| `altundeva` under the address | dropped (`areaLabel`) — it's Area's "none of the above", a filter value, not a place |
+| `Încă nedecis` + `fără dată planificată` | nothing — two chips agreeing that nothing had happened yet |
+| `Verificat acum 3 zile.` | only when it's a *warning* (stale or never checked) |
+| `Recomandat de X.` above a list labelling X `RECOMANDARE` | dropped |
+| planned date repeating the `CÂND` row verbatim | shown only when it **differs** — i.e. when it's news (`wlChips`) |
+| `expiră 2026-08-26` | said like every other date on screen; and hidden when it's just the event's own last day |
+
+### Four data bugs, three of them visible in live Notion rows
+
+- **`placeFor` wrote the venue twice.** Live Findings rows said `Parcul Tei,
+  Parcul Tei, București` and `Strada Aviator Radu Beller (pietonală), Str. Aviator
+  Radu Beller, București` — both written by Radar-B. A `Set` of exact strings
+  never caught it because the two are not exactly *equal*. Containment handles the
+  park; the street needed token overlap, since `strada` and `str` share no
+  substring. Both live rows have been repaired, `Map` included.
+- **The fallback description repeated itself**: `Lansare de carte la Cărturești
+  Verona la Cărturești Verona. Semnalat via HotNews.` — above a provenance footer
+  already reading `menționat de HotNews`. The venue is appended only when the name
+  doesn't already carry it, and the source is named once, by the footer.
+- **A roundup URL was written as the event's `Link`.** `toDraft` fell through to
+  `sources.find(s => s.url)`, which is how the live Balkanik row got
+  `b365.ro/timp-liber/` — a section page listing forty other things. It now falls
+  back to nothing. This makes the draft agree with `goUrlFor`, which already
+  declined to *offer* a source URL as an "event page" button; the two were
+  disagreeing about the same event. Finding the real URL is the skill's
+  enrichment step, which is now a mandatory per-event search with a check before
+  Step 4 finishes — the app has no fetcher and does not scrape (§2), so a blank is
+  the honest answer rather than a wrong one.
+- **Times were read as a string slice.** Notion preserves whatever offset a value
+  was written with, so one 19:00 concert comes back as `…T19:00:00+03:00` or
+  `…T16:00:00Z` depending on who wrote the row — and `slice(11, 16)` turns the
+  second into a 16:00 concert. `splitStart` and `toDraft` now go through
+  `formatTime`, which is what the `CÂND` row already used, so the two times on
+  screen agree by construction rather than by both happening to be `+03:00`.
+
+### The demo handoff never landed
+
+§18 said one fixture id on each side was "now Notion-shaped". Both were — but they
+were **different ids**, so every demo tap landed on Wanderlist's "couldn't find
+that item" path. Each app's tests passed because each only ever checked its own
+id. Wanderlist's fixtures now carry the same entry Radar-B links to, and
+`the demo handoff actually lands` resolves the link across both apps rather than
+trusting either in isolation.
+
+40 new tests (216 in `src/radar-b/`, 3501 in the repo). Verified end to end in a
+browser at 375×812: the deep link opening the entry itself, save → draft → toast,
+dismiss → undo, and every action in the detail view carrying a real `href`.

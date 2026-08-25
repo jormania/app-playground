@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'vitest'
 import { toDraft, toFindingsPage, expiryFor, placeFor, mapUrlFor, appUrlFor } from './wanderlist.js'
 import { normalizeEvent } from './model.js'
+import { goUrlFor } from './EventDetail.jsx'
 
 const ev = (over) => normalizeEvent({ name: 'Trio Nocturn', ...over })
 const NOW = new Date(2026, 7, 19, 15, 0)
@@ -81,10 +82,12 @@ describe('toDraft', () => {
     expect(d.plannedDate).toBe('2026-08-21')
   })
 
-  test('prefers the ticket link, then the event page, then the article', () => {
+  test('prefers the ticket link, then the event page, then nothing at all', () => {
     expect(toDraft(event, NOW).link).toBe('https://iabilet.ro/y')
     expect(toDraft(ev({ ...event, tickets: null }), NOW).link).toBe('https://venue.example/x')
-    expect(toDraft(ev({ ...event, tickets: null, link: null }), NOW).link).toBe('https://curatorial.ro/z')
+    // NOT the article that mentioned it. A roundup is a place forty events are
+    // listed, so as an event's Link it answers nothing you would ask of the row.
+    expect(toDraft(ev({ ...event, tickets: null, link: null }), NOW).link).toBe('')
   })
 
   test('keeps only signals that map onto Wanderlist\'s own tag vocabulary', () => {
@@ -163,5 +166,109 @@ describe('provenance flows into Wanderlist (the return half of the two-way stree
     const d = toDraft(ev({ summary: 'Jazz.', sources: [] }), NOW)
     expect(d.description).toBe('Jazz.')
     expect(d.description).not.toContain('Radar-B')
+  })
+})
+
+describe('placeFor — venue and address overlap far more often than they differ', () => {
+  test('an address that merely restates the venue is not appended twice', () => {
+    // The live Findings row said `Parcul Tei, Parcul Tei, București` — written by
+    // Radar-B, from a Radar row whose Venue and Address name one park.
+    expect(placeFor({ venue: 'Parcul Tei', address: 'Parcul Tei, București' }))
+      .toBe('Parcul Tei, București')
+  })
+
+  test('the abbreviated-street case, which containment alone misses', () => {
+    // `strada` vs `str` share no substring, so only token overlap catches this.
+    expect(placeFor({
+      venue: 'Strada Aviator Radu Beller (pietonală)',
+      address: 'Str. Aviator Radu Beller, București',
+    })).toBe('Strada Aviator Radu Beller (pietonală), București')
+  })
+
+  test('a venue and its genuinely unrelated street both survive', () => {
+    // The whole point of carrying both: a bare venue name does not drop a pin.
+    expect(placeFor({ venue: 'Cinema Europa', address: 'Calea Moșilor 127, București' }))
+      .toBe('Cinema Europa, Calea Moșilor 127, București')
+  })
+
+  test('the longer of two overlapping strings wins, in either direction', () => {
+    expect(placeFor({ venue: 'Str. Aviator Radu Beller', address: 'Str. Aviator Radu Beller 5, București' }))
+      .toBe('Str. Aviator Radu Beller 5, București')
+    expect(placeFor({ venue: 'Palatul Suțu, Bd. I.C. Brătianu 2, București', address: 'Palatul Suțu' }))
+      .toBe('Palatul Suțu, Bd. I.C. Brătianu 2, București')
+  })
+
+  test('București is still appended when neither field mentions it', () => {
+    expect(placeFor({ venue: 'Control Club', address: null })).toBe('Control Club, București')
+  })
+
+  test('nothing known stays null rather than becoming a bare city', () => {
+    expect(placeFor({ venue: null, address: null })).toBeNull()
+  })
+})
+
+describe('the demo handoff actually lands', () => {
+  test('Radar-B\'s saved fixture is a real entry in Wanderlist\'s fixtures', async () => {
+    // Demo mode is the ONLY place this handoff can be exercised without a Notion
+    // token, so it has to resolve. Both fixtures being separately Notion-SHAPED
+    // is not enough and was the earlier bug: each app's tests passed on its own
+    // id while every demo tap landed on Wanderlist's "couldn't find that item".
+    const { DEMO_SAVED } = await import('./fixtures.js')
+    const { seedEntries } = await import('../wanderlist/fixtures.js')
+    const { entryIdFromHash, findById } = await import('../wanderlist/deeplink.js')
+
+    const url = appUrlFor({ findingsId: DEMO_SAVED[0].id })
+    expect(url).toBeTruthy()
+    const id = entryIdFromHash(url.slice(url.indexOf('#')))
+    expect(findById(seedEntries(), id)).toBeTruthy()
+  })
+})
+
+describe('the fallback description, for an event whose source gave nothing', () => {
+  const thin = (p) => normalizeEvent({ name: 'Lansare de carte la Cărturești Verona', summary: null, ...p })
+
+  test('the venue is not appended when the name already carries it', () => {
+    // `… la Cărturești Verona la Cărturești Verona.` reached a real draft.
+    const d = toDraft(thin({ venue: 'Cărturești Verona' }))
+    expect(d.description).toBe('Lansare de carte la Cărturești Verona. Sursă subțire — de verificat.')
+  })
+
+  test('a venue the name does not mention is still worth adding', () => {
+    const d = toDraft(normalizeEvent({ name: 'Lansare de carte', venue: 'Cărturești Verona' }))
+    expect(d.description).toBe('Lansare de carte la Cărturești Verona. Sursă subțire — de verificat.')
+  })
+
+  test('the source is named once, by the provenance footer, not twice', () => {
+    const d = toDraft(thin({
+      venue: 'Cărturești Verona',
+      sources: [{ name: 'HotNews', url: 'https://hotnews.ro/x', kind: 'editorial' }],
+    }))
+    expect(d.description).toContain('📡 Via Radar-B — menționat de HotNews.')
+    expect(d.description).not.toContain('Semnalat via')
+    expect(d.description.match(/HotNews/g)).toHaveLength(1)
+  })
+})
+
+describe('a roundup article is never written as the event\'s Link', () => {
+  const roundup = { name: 'B365', url: 'https://b365.ro/timp-liber/', kind: 'editorial' }
+
+  test('no event page means a blank Link, not the article that mentioned it', () => {
+    // The live Balkanik Findings row points at a B365 section listing forty other
+    // things, because this used to fall through to the first source with a URL.
+    expect(toDraft(normalizeEvent({ name: 'Balkanik Festival', sources: [roundup] })).link).toBe('')
+  })
+
+  test('the event\'s own page is still preferred, and tickets beat it', () => {
+    expect(toDraft(normalizeEvent({ name: 'X', link: 'https://balkanikfestival.ro', sources: [roundup] })).link)
+      .toBe('https://balkanikfestival.ro')
+    expect(toDraft(normalizeEvent({ name: 'X', link: 'https://balkanikfestival.ro', tickets: 'https://iabilet.ro/x' })).link)
+      .toBe('https://iabilet.ro/x')
+  })
+
+  test('the draft agrees with what the detail view is willing to offer', () => {
+    // `goUrlFor` already declined to show a source URL as an "event page"
+    // button; writing one anyway made the two disagree about the same event.
+    const e = normalizeEvent({ name: 'Balkanik Festival', sources: [roundup] })
+    expect(toDraft(e).link).toBe(goUrlFor(e) ?? '')
   })
 })

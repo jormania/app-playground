@@ -12,6 +12,7 @@
 // write the same columns.
 
 import { normalizeEvent } from './model.js'
+import { formatTime } from './dates.js'
 
 export const NOTION_VERSION = '2022-06-28'
 
@@ -51,13 +52,27 @@ function hasFiles(prop) {
   return (prop?.files ?? []).length > 0
 }
 
-/** Split a Notion date `start` into a bare day key + optional 'HH:MM'. Same split
- *  Wanderlist performs, so a Planned Date round-trips identically in both apps. */
+/** Split a Notion date `start` into a bare day key + optional 'HH:MM'.
+ *
+ *  The time is read as a LOCAL wall clock, not sliced out of the string. Notion
+ *  preserves whatever offset a value was written with, so the same 19:00 concert
+ *  can come back as `…T19:00:00.000+03:00` or as `…T16:00:00.000Z` depending on
+ *  who wrote the row — and slicing characters 11–16 turns the second one into a
+ *  16:00 concert. `formatTime` is what the WHEN row already uses for the event's
+ *  own start, so going through it also makes the two times on screen agree by
+ *  construction instead of by both happening to be +03:00. */
 export function splitStart(start) {
   if (!start) return { date: null, time: null }
-  const m = /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?/.exec(start)
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(String(start))
   if (!m) return { date: null, time: null }
-  return { date: m[1], time: m[2] || null }
+  if (!hasTimeOf(start)) return { date: m[1], time: null }
+  const d = new Date(start)
+  // A local render can cross midnight relative to the stored day — the day key
+  // has to come from the same instant as the time, or a 00:30 event lands on the
+  // wrong date.
+  if (Number.isNaN(d.getTime())) return { date: m[1], time: null }
+  const localDay = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return { date: localDay, time: formatTime(start) }
 }
 
 /** Notion writes a bare `YYYY-MM-DD` when no time is set and a full ISO datetime

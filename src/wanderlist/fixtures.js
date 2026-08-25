@@ -59,6 +59,27 @@ export function seedEntries() {
       plannedDate: daysFromToday(4),
     },
     {
+      // The other end of Radar-B's handoff: `#/entry/<id>` from its detail view
+      // resolves HERE, so this id is shared with src/radar-b/fixtures.js's
+      // `SAVED` and the two describe one event. A Notion-shaped id on each side
+      // that did not match left the demo handoff permanently on the miss path.
+      id: 'de3705a1d9e94c0fb1a7c5e2d0846f31',
+      name: 'Trio Nocturn — jazz de improvizație',
+      description:
+        'Free-improvisation set, no announced programme. The trio plays Bucharest rarely and never the same thing twice.',
+      link: 'https://example.org/control/trio-nocturn',
+      category: 'concert',
+      place: 'Control Club, Str. Constantin Mille 4, București',
+      placeUrl: 'https://www.google.com/maps/search/?api=1&query=Control%20Club%20Bucuresti',
+      tags: ['ticketed', 'music', 'nightlife'],
+      attended: false,
+      dateAdded: daysFromToday(-2),
+      dateExpiring: daysFromToday(0),
+      plannedDate: daysFromToday(0),
+      plannedTime: '21:00',
+      going: true,
+    },
+    {
       id: 'seed-3',
       name: 'Open-air jazz at Grădina Uranus',
       description:

@@ -13,7 +13,8 @@
 
 import { toFindingsProps, FINDINGS_CATEGORIES, FINDINGS_TAGS } from '../shared/findings.js'
 import { signalsFor } from './signals.js'
-import { spanOf } from './dates.js'
+import { fold, titleSimilarity } from './dedupe.js'
+import { spanOf, formatTime } from './dates.js'
 
 export { FINDINGS_CATEGORIES, FINDINGS_TAGS }
 
@@ -44,9 +45,37 @@ export function isoDay(d) {
 
 /** `Place` must carry venue AND street AND city — a bare venue name doesn't
  *  geocode to a map pin in Wanderlist. That's a documented, previously-paid-for
- *  lesson (WANDERLIST.md, "Known quirks"), so Radar-B pays the address forward. */
+ *  lesson (WANDERLIST.md, "Known quirks"), so Radar-B pays the address forward.
+ *
+ *  Venue and address OVERLAP far more often than they differ: a Radar row for a
+ *  park carries `Parcul Tei` and `Parcul Tei, București`, and naively joining the
+ *  two wrote `Parcul Tei, Parcul Tei, București` into Findings — which is what two
+ *  live rows still said before this was fixed. A set of exact strings never caught
+ *  it, because the two are not exactly equal; containment is the real test, and it
+ *  is the same `sameplace` question the detail view asks before printing both. */
 export function placeFor(event) {
-  const bits = [...new Set([event.venue, event.address].filter(Boolean))]
+  const bits = []
+  for (const bit of [event.venue, event.address]) {
+    if (!bit) continue
+    const f = fold(bit)
+    if (!f) continue
+    // Keep the longer of any two that contain one another: the address usually
+    // subsumes the venue, but a venue line carrying its own street subsumes a
+    // bare address, and neither direction may be assumed.
+    const clash = bits.findIndex((b) => {
+      const fb = fold(b)
+      if (fb === f || fb.includes(f) || f.includes(fb)) return true
+      // Containment alone misses the abbreviation case — `Strada Aviator Radu
+      // Beller (pietonală)` and `Str. Aviator Radu Beller, București` name one
+      // street and share no substring, because `strada` and `str` differ. Token
+      // overlap catches it; the floor is high enough that a venue and its
+      // genuinely unrelated street (`Cinema Europa` / `Calea Moșilor 127`) score
+      // zero and are both kept.
+      return titleSimilarity(b, bit) >= 0.6
+    })
+    if (clash === -1) bits.push(bit)
+    else if (fold(bits[clash]).length < f.length) bits[clash] = bit
+  }
   if (!bits.length) return null
   const joined = bits.join(', ')
   return /bucure/i.test(joined) ? joined : `${joined}, București`
@@ -89,9 +118,20 @@ export function toDraft(event, now = new Date()) {
   return {
     name: event.name,
     description: withProvenance(event.summary || descriptionFallback(event), event),
-    // Prefer the event's OWN page over the article that mentioned it — same
-    // preference order the skill applies at intake.
-    link: event.tickets || event.link || event.sources.find((s) => s.url)?.url || '',
+    // The event's OWN page, or nothing. A roundup article is NOT a fallback:
+    // `b365.ro/timp-liber/` is a page listing forty other things, and six months
+    // later a Findings row pointing there answers no question you'd ask of it.
+    // This used to fall through to `sources.find(s => s.url)`, which is how the
+    // live Balkanik row got a B365 section page as its Link.
+    //
+    // The same judgement the detail view already makes — `goUrlFor` declines to
+    // offer a source URL as an "event page" button — now applies to what gets
+    // WRITTEN, so the two can't disagree. Finding the real URL is the
+    // /recommend in Bucharest skill's enrichment step (it searches per event);
+    // the app has no fetcher and does not scrape (RADAR_B.md §2), so a blank
+    // here is the honest answer rather than a wrong one. Still editable in the
+    // draft before anything is written.
+    link: event.tickets || event.link || '',
     category: FINDINGS_CATEGORIES.includes(event.category) ? event.category : 'event',
     place: placeFor(event) ?? '',
     placeUrl: mapUrlFor(event) ?? '',
@@ -102,7 +142,9 @@ export function toDraft(event, now = new Date()) {
     dateAdded: isoDay(now),
     dateExpiring: expiryFor(event),
     plannedDate: span ? isoDay(span.from) : null,
-    plannedTime: event.hasTime && event.start ? String(event.start).slice(11, 16) : null,
+    // Local wall clock, not a string slice — see `splitStart` in notion.js for
+    // why the two differ whenever Notion hands the value back in UTC.
+    plannedTime: event.hasTime && event.start ? formatTime(event.start) : null,
   }
 }
 
@@ -131,12 +173,18 @@ export function withProvenance(description, event) {
 /** `Description` is treated as required, exactly as the wanderlist skill insists —
  *  a bare name with no context is far less useful at triage time. When the source
  *  genuinely gave nothing, write the shortest honest sentence and SAY it's thin,
- *  rather than leaving a blank that looks like an oversight. */
+ *  rather than leaving a blank that looks like an oversight.
+ *
+ *  Two things it must NOT do, both of which it used to and both of which reached
+ *  the draft a human then approved into Notion:
+ *    • repeat the venue when the name already carries it — `Lansare de carte la
+ *      Cărturești Verona la Cărturești Verona.`
+ *    • name the source, which `withProvenance` appends a line later anyway, so
+ *      the sentence read `Semnalat via HotNews` above `menționat de HotNews`. */
 function descriptionFallback(event) {
-  const where = event.venue ? ` la ${event.venue}` : ''
-  const via = event.sources[0]?.name
-  return [`${event.name}${where}.`, via ? `Semnalat via ${via}.` : null, 'Sursă subțire — de verificat.']
-    .filter(Boolean).join(' ')
+  const named = event.venue && fold(event.name).includes(fold(event.venue))
+  const where = event.venue && !named ? ` la ${event.venue}` : ''
+  return `${event.name}${where}. Sursă subțire — de verificat.`
 }
 
 /** The Notion create body. The properties come from the SHARED schema module —

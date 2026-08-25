@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { parseSources, hasTimeOf, fromRadarPage, fromFindingsPage, parseSuggestedPage } from './notion.js'
+import { parseSources, hasTimeOf, splitStart, fromRadarPage, fromFindingsPage, parseSuggestedPage } from './notion.js'
 
 describe('parseSources', () => {
   test('reads name │ url │ date, one mention per line', () => {
@@ -135,5 +135,33 @@ describe('parseSuggestedPage', () => {
 
   test('recognises the ⏳ placeholder the skill leaves for an unpublished source', () => {
     expect(parseSuggestedPage(blocks).links[1].pending).toBe(true)
+  })
+})
+
+describe('splitStart reads a local wall clock, not a string slice', () => {
+  test('a bare date has no time and is left exactly as stored', () => {
+    expect(splitStart('2026-09-02')).toEqual({ date: '2026-09-02', time: null })
+  })
+
+  test('null in, nulls out', () => {
+    expect(splitStart(null)).toEqual({ date: null, time: null })
+    expect(splitStart('not a date')).toEqual({ date: null, time: null })
+  })
+
+  test('the same instant in two spellings gives one answer', () => {
+    // Notion preserves whatever offset a row was written with, so one 19:00
+    // Bucharest concert comes back as either of these. Slicing characters 11–16
+    // turned the second into a 16:00 concert.
+    const withOffset = splitStart('2026-09-02T19:00:00.000+03:00')
+    const asUtc = splitStart('2026-09-02T16:00:00.000Z')
+    expect(asUtc).toEqual(withOffset)
+  })
+
+  test('the day key comes from the same instant as the time', () => {
+    // A late-night event stored in UTC belongs to the local day it is actually
+    // on, not to the one its UTC string starts with.
+    const late = splitStart('2026-09-02T21:30:00.000Z') // 00:30 on the 3rd, Bucharest
+    expect(late.date).toBe(splitStart('2026-09-03T00:30:00.000+03:00').date)
+    expect(late.time).toBe(splitStart('2026-09-03T00:30:00.000+03:00').time)
   })
 })

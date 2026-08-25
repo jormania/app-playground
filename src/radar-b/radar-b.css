@@ -481,6 +481,37 @@ a:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; bor
 .actions { display: flex; gap: var(--space-xs); margin-top: var(--space-lg); flex-wrap: wrap; }
 .actions > * { flex: 1 1 auto; }
 
+/* A link that has to look and size exactly like a ds/Button, because in the
+   actions row it sits beside one. It is an anchor rather than a `<button
+   onClick={window.open}>` on purpose: Radar-B is opened from The Cabinet inside
+   an Android Custom Tab, which silently swallows a scripted `window.open` — the
+   reason both actions here were dead on a phone. Mirrors Button.module.css's
+   `.button` + `.md`; `.actions a` beats the bare `a` colour rule on specificity,
+   so the accent-blue link colour doesn't leak onto the filled variant. */
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  height: 44px;
+  padding: 0 var(--space-lg);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  transition: background-color var(--duration) var(--ease), border-color var(--duration) var(--ease);
+}
+.actions .actionBtn.primary { background: var(--color-accent); color: var(--color-on-accent); }
+.actions .actionBtn.outline { background: transparent; color: var(--color-ink); border-color: var(--color-border); }
+@media (hover: hover) {
+  .actions .actionBtn.primary:hover { background: var(--color-accent-hover); }
+  .actions .actionBtn.outline:hover { background: var(--color-surface-2); border-color: var(--color-border-2); }
+}
+
 /* ── Notices, empties, sheets ──────────────────────────────────────────── */
 
 .notice {

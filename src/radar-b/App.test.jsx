@@ -47,7 +47,7 @@ describe('Radar-B in demo mode', () => {
     await userEvent.click(card)
     // What a saved event offers is the way IN to Wanderlist — not a disabled
     // label restating the state section directly above it.
-    expect(screen.getByRole('button', { name: /Deschide în Wanderlist/ })).toBeTruthy()
+    expect(screen.getByRole('link', { name: /Deschide în Wanderlist/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Salvează/ })).toBeNull()
   })
 
@@ -209,16 +209,32 @@ describe('Radar-B in demo mode', () => {
   test('a saved event links into Wanderlist itself, not back to Notion', async () => {
     await open()
     await userEvent.click(screen.getByRole('heading', { name: /Trio Nocturn/ }).closest('button'))
-    const opened = []
+    // An ANCHOR, not a scripted `window.open`. The Cabinet launches Radar-B into
+    // an Android Custom Tab, which swallows a scripted popup without a word —
+    // the reason this control did nothing on a phone while every plain link in
+    // the same view worked. Asserting the href is asserting the thing that works.
+    const link = screen.getByRole('link', { name: /Deschide în Wanderlist/ })
+    expect(link.getAttribute('href')).toMatch(/^\/wanderlist-react\.html#\/entry\/[0-9a-f]{32}$/)
+    expect(link.getAttribute('href')).not.toMatch(/notion\.so/)
+    // Same-origin, so deliberately in-tab: the back button returns to Radar-B.
+    expect(link.getAttribute('target')).toBeNull()
+  })
+
+  test('no control in the app opens a scripted popup', async () => {
+    await open()
+    // A regression guard with a wider net than the two buttons that were broken:
+    // in a Custom Tab NOTHING may depend on `window.open`, so a future "go there"
+    // control has to be an anchor too.
+    await userEvent.click(screen.getByRole('heading', { name: /Trio Nocturn/ }).closest('button'))
     const realOpen = window.open
+    const opened = []
     window.open = (url) => { opened.push(url); return null }
     try {
-      await userEvent.click(screen.getByRole('button', { name: /Deschide în Wanderlist/ }))
+      const dialog = screen.getByRole('dialog')
+      for (const el of within(dialog).getAllByRole('link')) expect(el.getAttribute('href')).toBeTruthy()
     } finally {
       window.open = realOpen
     }
-    expect(opened).toHaveLength(1)
-    expect(opened[0]).toMatch(/^\/wanderlist-react\.html#\/entry\/[0-9a-f]{32}$/)
-    expect(opened[0]).not.toMatch(/notion\.so/)
+    expect(opened).toEqual([])
   })
 })

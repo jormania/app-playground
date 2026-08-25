@@ -159,9 +159,12 @@ const DUPLICATE = {
 
 /** Already in Wanderlist — shows the "In your Wanderlist" state without a token. */
 const SAVED = {
-  // A Notion-shaped id on purpose: `appUrlFor` only builds a Wanderlist deep
-  // link from something that actually looks like a page id, so a `demo-saved-1`
-  // here would silently hide the button the demo is meant to show.
+  // The id of THE SAME entry in Wanderlist's own demo fixtures — not merely a
+  // Notion-SHAPED id. Both sides being separately Notion-shaped is what the first
+  // attempt at this did, and it made every demo handoff land on Wanderlist's
+  // "couldn't find that item" path; each app's tests passed because each only
+  // ever checked its own id. `the demo handoff actually lands` in
+  // wanderlist.test.js is the guard. Change this id and change it there too.
   id: 'de3705a1d9e94c0fb1a7c5e2d0846f31',
   name: 'Trio Nocturn',
   start: day(0, '21:00'), hasTime: true,
@@ -172,6 +175,9 @@ const SAVED = {
   sources: [{ name: 'Wanderlist', url: null, date: day(-2), kind: 'saved' }],
   confidence: 'reported', checked: day(-2),
   origin: 'wanderlist', saved: true,
+  // The decisions already made on the Wanderlist side, mirroring that entry so
+  // the "În Wanderlist" chips have something true to show in demo mode.
+  going: true, plannedDate: day(0), plannedTime: '21:00', dateExpiring: day(0),
 }
 
 export const DEMO_EVENTS = [...RAW, DUPLICATE].map(normalizeEvent)
