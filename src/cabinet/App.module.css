@@ -204,6 +204,14 @@
   box-shadow: 0 0 0 3px var(--color-ring);
 }
 
+.noResults {
+  margin: var(--space-xl) 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-faint);
+  text-align: center;
+}
+
 /* iOS only, and only once per page — quiet enough to skip past on every visit
    after the first, since it's the same instruction every time. */
 .iosHint {

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { IconButton, Modal } from '../../ds'
 import { IconArrowUp, IconArrowDown, IconMore } from './icons'
 import { canInstallPwaHere, chromeIntentUrl, isAndroid, isIos, pwaLaunchIntentUrl } from '../lib/browserSupport'
@@ -101,6 +101,31 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
     })
   }, [app.file])
 
+  // Warms the browser's HTTP cache with the target document before the tap
+  // even lands, so by the time it registers the page is often already
+  // there — the single highest-leverage thing left for perceived launch
+  // speed once the bundle itself is small. Fired at most once per tile:
+  // hovering (or focusing, for keyboard users) is the earliest signal on
+  // desktop, touchstart the earliest on mobile, both well before the actual
+  // click/tap event.
+  const prefetchedRef = useRef(false)
+  function prefetch() {
+    if (prefetchedRef.current || editing) return
+    prefetchedRef.current = true
+    const link = document.createElement('link')
+    link.rel = 'prefetch'
+    link.href = path
+    document.head.appendChild(link)
+  }
+
+  // A dot rather than the old "Launch"/"Install" text: the tile has no room
+  // for a word, but losing the distinction entirely meant a sighted user
+  // couldn't tell an installed app from an uninstalled one without opening
+  // its detail sheet. Only for apps that can be installed at all — a static
+  // app has no install state to show. `title` (not just the sr-only span
+  // below) so a mouse user gets a plain hover tooltip too.
+  const showInstalledMark = canOfferInstall && installed
+
   return (
     <article className={styles.tile}>
       {/* Stretched-link pattern: makes the whole tile tappable (easier on
@@ -113,6 +138,9 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
           className={styles.stretchedLink}
           href={href}
           onClick={() => recordOpened(app.file)}
+          onPointerEnter={prefetch}
+          onTouchStart={prefetch}
+          onFocus={prefetch}
           aria-label={`${actionLabel} ${app.title}${needsChromeRedirect ? ' (opens in Chrome)' : ''}`}
         />
       )}
@@ -120,15 +148,24 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
       <div className={styles.icon} style={{ background: app.iconBg || 'var(--color-glow)' }}>
         {app.emoji}
         {isNew && <span className={styles.newDot} aria-hidden="true" />}
+        {showInstalledMark && <span className={styles.installedDot} aria-hidden="true" title="Installed" />}
       </div>
-      <div className={styles.title}>{app.title}</div>
+      <div className={styles.title} title={app.title}>
+        {app.title}
+        {isNew && <span className={styles.srOnly}> (new)</span>}
+        {showInstalledMark && <span className={styles.srOnly}> (installed)</span>}
+      </div>
 
       {editing ? (
         <div className={styles.reorder}>
-          <IconButton size="sm" aria-label="Move up" disabled={disableUp} onClick={onMoveUp}>
+          {/* "earlier"/"later", not "up"/"down": in a multi-column grid a
+              move by one position in the saved order often lands the tile
+              sideways or on a different row, not literally above/below —
+              "up"/"down" promised a direction the grid couldn't keep. */}
+          <IconButton size="sm" aria-label="Move earlier" disabled={disableUp} onClick={onMoveUp}>
             <IconArrowUp />
           </IconButton>
-          <IconButton size="sm" aria-label="Move down" disabled={disableDown} onClick={onMoveDown}>
+          <IconButton size="sm" aria-label="Move later" disabled={disableDown} onClick={onMoveDown}>
             <IconArrowDown />
           </IconButton>
         </div>

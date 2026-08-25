@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { APPS } from '../apps-registry'
 import { IconButton, SegmentedControl } from '../ds'
 import { useTheme } from './lib/themeContext'
@@ -69,6 +69,7 @@ export default function App() {
   const [editing, setEditing] = useState(false)
   const [linkHintDismissed, setLinkHintDismissed] = useState(() => loadLinkHintDismissed())
   const [query, setQuery] = useState('')
+  const searchRef = useRef(null)
   // `?resetStats=1` wipes the open-count/last-opened map only (order and
   // sort untouched) before the first read — a one-off escape hatch for
   // clearing noise built up during testing, matching Touch Grass's own `?`
@@ -152,6 +153,23 @@ export default function App() {
 
 
 
+  // "/" jumps straight to search, the standard launcher/inbox convention —
+  // useful once there are enough tiles that scanning by eye isn't the
+  // fastest way to find one. Ignored while typing into any field (so a "/"
+  // meant for that field doesn't get hijacked) and while reordering, where
+  // the search box isn't even rendered.
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.key !== '/' || editing) return
+      const tag = document.activeElement?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      e.preventDefault()
+      searchRef.current?.focus()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [editing])
+
   function move(file, dir) {
     setOrder((prev) => {
       const idx = prev.indexOf(file)
@@ -227,10 +245,12 @@ export default function App() {
           </IconButton>
           {!editing && (
             <input
+              ref={searchRef}
               type="search"
               className={styles.searchInput}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape' && query) { e.stopPropagation(); setQuery('') } }}
               placeholder="Search"
               aria-label="Search apps by name or tag"
             />
@@ -270,22 +290,26 @@ export default function App() {
           </p>
         )}
 
-        <div className={styles.grid}>
-          {visibleApps.map((app, index) => (
-            <AppTile
-              key={app.file}
-              app={app}
-              installed={installedByManifest?.get(app.manifest) === true}
-              isNew={NEW_APP_FILES.has(app.file)}
-              openStats={lastOpened[app.file]}
-              editing={editing}
-              onMoveUp={() => move(app.file, -1)}
-              onMoveDown={() => move(app.file, 1)}
-              disableUp={index === 0}
-              disableDown={index === visibleApps.length - 1}
-            />
-          ))}
-        </div>
+        {!editing && query && visibleApps.length === 0 ? (
+          <p className={styles.noResults}>Nothing matches "{query}".</p>
+        ) : (
+          <div className={styles.grid}>
+            {visibleApps.map((app, index) => (
+              <AppTile
+                key={app.file}
+                app={app}
+                installed={installedByManifest?.get(app.manifest) === true}
+                isNew={NEW_APP_FILES.has(app.file)}
+                openStats={lastOpened[app.file]}
+                editing={editing}
+                onMoveUp={() => move(app.file, -1)}
+                onMoveDown={() => move(app.file, 1)}
+                disableUp={index === 0}
+                disableDown={index === visibleApps.length - 1}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

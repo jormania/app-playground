@@ -298,7 +298,7 @@ describe('manual order', () => {
     renderApp()
     await settle()
     await userEvent.click(screen.getByRole('button', { name: /reorder apps/i }))
-    await userEvent.click(screen.getAllByRole('button', { name: 'Move down' })[0])
+    await userEvent.click(screen.getAllByRole('button', { name: 'Move later' })[0])
 
     const saved = JSON.parse(localStorage.getItem('cabinet:order'))
     expect(saved[0]).toBe(CABINET_APPS[1].file)

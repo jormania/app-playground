@@ -28,6 +28,16 @@
   box-shadow: var(--shadow-sm);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .tile {
+    transition: border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease);
+  }
+  .tile:hover,
+  .tile:active {
+    transform: none;
+  }
+}
+
 /* Sits beneath everything (z-index 0, painted first) so a tap anywhere on
    the tile navigates; .moreButton and .reorder are raised above it so they
    act instead of also launching. */
@@ -81,6 +91,37 @@
   border-radius: 50%;
   background: var(--color-accent);
   border: 2px solid var(--color-surface);
+}
+
+/* Same treatment, opposite corner: the tile lost its "Launch"/"Install" text
+   in the redesign, so this is the only visual difference left between an
+   installed app and one that isn't — without it that state was legible only
+   from inside the detail sheet or a screen reader's announcement of the
+   link's accessible name. */
+.installedDot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-muted);
+  border: 2px solid var(--color-surface);
+}
+
+/* Visually hidden, never `display: none` — screen readers still need "new"/
+   "installed" as part of the tile's name even though nothing on screen
+   spells the word out (see .newDot/.installedDot above). Same pattern as
+   App.module.css's .sortWord. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .title {
