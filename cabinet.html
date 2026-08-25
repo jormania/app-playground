@@ -8,7 +8,15 @@
   <meta name="theme-color" content="#f4eeda" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <!-- Only the italic "strange" word in the hero uses this — not worth
+       blocking first paint on a cross-origin round trip for it. Loads with
+       print-media priority (so the browser doesn't treat it as
+       render-blocking) then swaps to all-media once it arrives; the
+       fallback serif shows immediately either way, and a <noscript> covers
+       browsers/crawlers that don't run the onload swap. -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"></noscript>
   <script>
     // Apply the saved theme before first paint to avoid a flash.
     try {

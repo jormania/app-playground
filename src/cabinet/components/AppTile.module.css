@@ -42,8 +42,15 @@
   outline-offset: 2px;
 }
 
+/* position: relative anchors .newDot below — but that also makes .icon a
+   positioned box, and a positioned box painted after .stretchedLink (it
+   comes later in the DOM) sits on top of it in the stacking order and
+   swallows the tap meant for the link. pointer-events: none lets every tap
+   here (including on .newDot) fall through to .stretchedLink underneath,
+   same as .title staying unpositioned does. */
 .icon {
   position: relative;
+  pointer-events: none;
   flex-shrink: 0;
   width: 44px;
   height: 44px;

@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
+import { readdirSync, readFileSync, writeFileSync } from 'fs'
 import notionHandler from './api/notion.js'
 import generateLawOfTheDayHandler from './api/generate-law-of-the-day.js'
 import lawOfTheDayContentHandler from './api/law-of-the-day-content.js'
@@ -130,6 +131,38 @@ function clickDeckPWA() {
   });
 }
 
+// vite-plugin-pwa has no notion of "this is a multi-page build, only wire the
+// manifest into one entry" — it injects Sol Odyssey's <link rel="manifest">
+// into every HTML file the build produces, not just sol-odysseys-react.html.
+// Harmless-looking (the manifest spec says the FIRST <link rel="manifest">
+// wins, and each page's own real one is emitted first), but every other app
+// still eagerly fetches sol-odyssey.webmanifest on every load for nothing —
+// pure wasted startup-time bandwidth on all ~19 other pages, Cabinet
+// included. `transformIndexHtml` (even with `order: 'post'`) runs *before*
+// this — vite-plugin-pwa's own injection happens later, straight into the
+// written files — so the only reliable point to strip it is `closeBundle`,
+// once every HTML file is actually on disk. Left alone on Sol Odyssey's own
+// page, the one entry the tag is meant for.
+function stripStraySolOdysseyManifestPlugin() {
+  let outDir = 'dist'
+  return {
+    name: 'strip-stray-sol-odyssey-manifest',
+    apply: 'build',
+    configResolved(config) {
+      outDir = config.build.outDir
+    },
+    closeBundle() {
+      for (const file of readdirSync(outDir)) {
+        if (!file.endsWith('.html') || file === 'sol-odysseys-react.html') continue
+        const path = resolve(outDir, file)
+        const html = readFileSync(path, 'utf8')
+        const stripped = html.replace(/\s*<link rel="manifest" href="\/sol-odyssey\.webmanifest">/, '')
+        if (stripped !== html) writeFileSync(path, stripped)
+      }
+    },
+  }
+}
+
 // Dev-only: mount the SAME stateless relay handler at /api/notion under `vite dev`, so
 // Settings → "Test connection" works on localhost without deploying. On Vercel the real
 // serverless function (api/notion.js) serves this route instead; this never runs in prod.
@@ -225,6 +258,7 @@ export default defineConfig({
     deployDatePlugin(),
     solOdysseyPWA(),
     clickDeckPWA(),
+    stripStraySolOdysseyManifestPlugin(),
     devNotionRelay(),
     devApiRelay('/api/generate-law-of-the-day', generateLawOfTheDayHandler, 'dev-generate-law-of-the-day-relay'),
     devApiRelay('/api/law-of-the-day-content', lawOfTheDayContentHandler, 'dev-law-of-the-day-content-relay'),

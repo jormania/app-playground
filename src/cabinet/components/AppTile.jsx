@@ -4,7 +4,6 @@ import { IconArrowUp, IconArrowDown, IconMore } from './icons'
 import { canInstallPwaHere, chromeIntentUrl, isAndroid, isIos, pwaLaunchIntentUrl } from '../lib/browserSupport'
 import { recordOpened } from '../lib/storage'
 import { formatRelativeTime } from '../lib/relativeTime'
-import { appQrUrl, renderAppQr } from '../../shared/qrCode'
 import styles from './AppTile.module.css'
 
 // installed: true when the browser has genuinely confirmed this app is
@@ -80,11 +79,21 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
   // one. (Modal documents the same two-pass trap for its focus effect.) A
   // callback ref instead fires when the node genuinely attaches, whichever
   // commit that turns out to be.
+  //
+  // The `qrcode` library is ~23KB gzipped — dead weight on every Cabinet
+  // load when the vast majority of taps just launch an app and never open a
+  // detail sheet. Dynamically imported here so it's fetched only once a
+  // sheet is actually opened, off Cabinet's critical startup path entirely.
   const [detailOpen, setDetailOpen] = useState(false)
+  const [qrUrl, setQrUrl] = useState(null)
   const drawQr = useCallback((canvas) => {
+    if (!canvas) return
     // Ref callbacks must not return a value (React 19 reads a return as a
     // cleanup function), so the promise is deliberately not returned.
-    if (canvas) renderAppQr(canvas, app.file)
+    import('../../shared/qrCode').then(({ appQrUrl, renderAppQr }) => {
+      setQrUrl(appQrUrl(app.file))
+      return renderAppQr(canvas, app.file)
+    })
   }, [app.file])
 
   return (
@@ -167,7 +176,7 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
           <canvas ref={drawQr} width={200} height={200} />
         </div>
         <p className={styles.qrHint}>Scan to open on your phone</p>
-        <p className={styles.qrUrl}>{appQrUrl(app.file)}</p>
+        <p className={styles.qrUrl}>{qrUrl}</p>
       </Modal>
     </article>
   )
