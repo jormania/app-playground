@@ -29,6 +29,20 @@ export function parseDay(iso) {
   return new Date(y, m - 1, d)
 }
 
+/** The last day of the CALENDAR week `now` falls in — Sunday, Monday-start.
+ *
+ *  "Săptămâna asta" used to mean a rolling seven days (`today + 7`), which on a
+ *  Friday swept in the *following* weekend: a festival on the 28th showed under
+ *  "this week" when today was the 21st. A calendar week is what the label
+ *  actually promises, so on Friday the lens ends on Sunday and next weekend
+ *  correctly falls to "Mai încolo". */
+export function endOfWeek(now = new Date()) {
+  const today = startOfDay(now)
+  const dow = today.getDay() // 0 Sun … 6 Sat
+  const daysToSunday = dow === 0 ? 0 : 7 - dow
+  return new Date(today.getTime() + daysToSunday * DAY_MS)
+}
+
 /** The Friday→Sunday window containing or following `now`. During Fri/Sat/Sun it
  *  is the CURRENT weekend, not the next one — asking "what's on this weekend" on
  *  a Saturday must not skip to next Friday. */
@@ -90,7 +104,7 @@ export function lensesFor(event, now = new Date()) {
   const today = startOfDay(now)
   const tomorrow = new Date(today.getTime() + DAY_MS)
   const weekend = weekendRange(now)
-  const weekEnd = new Date(today.getTime() + 7 * DAY_MS)
+  const weekEnd = endOfWeek(now)
 
   if (touches(span, today, today)) out.add('tonight')
   if (touches(span, tomorrow, tomorrow)) out.add('tomorrow')

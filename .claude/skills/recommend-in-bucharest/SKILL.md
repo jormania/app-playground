@@ -70,32 +70,39 @@ For each article linked in Notion (or found via search in weekday mode):
 
 Also always fetch Zile și Nopți directly and extract its structured event list by category.
 
-### Facebook
+### Facebook — a required, gated step
 
-Facebook is a real source, not an optional extra — plenty of Bucharest events (club
-nights, gallery openings, one-off pop-ups) surface there and nowhere else, and never
-get picked up by the 7 named article sources at all. Treat it as its own search step,
-every run — don't wait for an article to happen to mention one:
+Facebook is where a large share of Bucharest's **art scene** actually announces
+itself: gallery openings, artist talks, one-off pop-ups, club nights. Those events
+frequently appear on Facebook **and nowhere else**, so a digest without them isn't
+a thinner digest — it's a digest missing a whole category of the good stuff.
 
-1. **Actively search**, don't just wait for a link to surface. Run a handful of targeted
-   searches for the current weekend/week — e.g. `Bucharest events this weekend
-   site:facebook.com/events`, and venue-specific searches for the spots that reliably run
-   things worth knowing about (Control, Guesthouse, Quantic, Platforma Wolff, Expirat,
-   and any other venue already in this skill's "always include" list). Search engines
-   index public Facebook event pages' metadata (title, date, venue) even where a direct
-   *fetch* of the page fails — extract what the search result itself gives you.
-2. **Don't fight the fetch.** Public Facebook event pages reliably fail to load directly
-   (login wall) even when the event is public — this is a known quirk (see the
-   `wanderlist` skill), not something to retry. Use whatever the search result or a
-   linking article already gives you (title, date, venue, sometimes an image), or ask
-   Gabriel for a screenshot, rather than repeatedly trying to fetch the page.
-3. **Never treat a Facebook event as the primary source when the venue's own page or a
-   ticket platform names the same event** — Facebook is the source for events that exist
-   nowhere else, not the preferred read when a better one is available (same "direct link
-   over article" ordering Step 3b's enrichment pass already applies).
-4. If a genuine search for Facebook events turns up nothing usable this run, say so in
-   passing rather than silently omitting the step — same principle as Step 1b's
-   ⏳ placeholders: an empty result is reported, not hidden.
+This step has been skipped in practice, more than once, because it sat inside a
+wall of prose that read as advice. It is not advice. Treat it exactly like Step 4's
+Radar write: **a run is incomplete until this has actually been executed.**
+
+**Do this before writing anything, and do it every single run:**
+
+1. Run **at least four** distinct searches. Do not stop at one:
+   - `facebook.com/events Bucuresti [luna curenta]`
+   - `site:facebook.com/events Bucuresti expozitie OR vernisaj`
+   - `site:facebook.com/events Bucuresti concert OR party OR live`
+   - one search per venue for at least six of: Control, Guesthouse, Quantic,
+     Platforma Wolff, Expirat, Apollo111, Cinema Elvire Popesco, MNAC, Combinatul
+     Fondului Plastic, Rezidenta BRD Scena9, Eastwards Prospectus, Ivan Gallery,
+     Galeria Posibila, Suprainfinit, Anca Poterasu.
+2. **Extract from the search results themselves.** Public Facebook event pages
+   reliably fail to fetch (login wall) even when public — a known quirk (see the
+   `wanderlist` skill), not something to retry. Search snippets routinely carry the
+   title, date and venue, and that is enough for a `reported` row. Never retry a
+   failed Facebook fetch more than once.
+3. **Never** treat a Facebook page as the primary source when the venue's own site
+   or a ticket platform lists the same event — Facebook is where you *find* it, the
+   venue page is what you *link* to. Follow Step 3b's link ordering.
+4. **Report the outcome in the digest's closing block, always** — see Step 5's
+   book line. Zero Facebook events is a legitimate result on a dead week; the
+   *absence* of the line is not. If you are about to write the digest without
+   having run these searches, stop and run them.
 
 **Never include a Facebook event — or any event, from any source — that is online-only.**
 A livestream, a webinar, a virtual screening, a Zoom talk, an Instagram Live: none of
@@ -143,8 +150,36 @@ Build a unified event pool. Deduplicate — same event cited by multiple sources
 - **Newly opened venues — always flag with 📍 NEW VENUE**
 - **Atheneum:** include all programs
 
+### Also include — these were being under-collected
+- **Gallery openings and vernisaje of any size**, including one-evening ones
+- **Artist talks, portfolio nights, studio visits, open studios**
+- **Independent theatre and dance** outside the big houses (Apollo111, CNDB, Linotip, POINT)
+- **Film clubs, cinemateca screenings, embassy/institute programmes** (Institut Francais, Goethe, Cervantes, Institutul Polonez, British Council)
+- **University and institute public lectures** on art, architecture, urbanism, philosophy
+- **Record fairs, zine fairs, print sales, artist-book launches**
+- **Neighbourhood and community events with cultural character** — courtyard concerts, garden screenings
+- **Late openings / night-at-the-museum programmes**
+- **Anything at a venue already on the include list**, even if the event itself sounds small
+
 ### Include lightly (label clearly, max 1–2 per digest)
 - Mainstream events with broad appeal — group at the bottom under **„De știut"** so Gabriel can skip easily
+
+### No volume ceiling
+There is **no cap per source and no cap per article.** If Buletin's roundup names
+eighteen things worth going to, all eighteen are candidates. An earlier run returned
+only ~10 events in total, which is a collection failure rather than an accurate
+picture of the city — even a slow August week has more than that once galleries,
+institutes and Facebook are actually swept.
+
+**Aim for 20-35 events written to Radar per run.** The digest still shows the best
+12-20 (Step 5), but Radar gets everything that passed the taste filter — the app's
+lenses and filters are what make a larger pool browsable, so withholding events from
+Radar to keep the digest tidy is backwards.
+
+If a run yields fewer than 15, treat that as a signal you have not finished
+collecting: go back for the gallery / institute / Facebook sweeps before writing.
+Never pad with events you would otherwise exclude — quality is still the filter;
+**breadth of search** is what changes, not the bar.
 
 ### Price
 Not a filtering criterion — never exclude an event based on price, never flag price as a reason to skip.
@@ -221,10 +256,35 @@ the other.
 | `Confidence` | select | `confirmed` (read off the event's own page) · `reported` (an editorial roundup) · `uncertain` (just a title and a date inside an article). Be honest here — Radar-B dims uncertain events and says so in words. |
 | `Checked` | date | Today. Drives Radar-B's staleness notice. |
 | `Key` | rich text | `venue-slug:date:title-slug`, e.g. `control-club:2026-08-21:trio-nocturn`. Stable across runs, diacritics folded, lowercase. |
+| `Dismissed` · `Dismissed At` | checkbox · date | **Owned by the Radar-B app — never write these.** They carry Gabriel's own "hide this", synced across his devices. Writing them from here would resurrect things he deliberately hid. |
 
 ### Write rules
 
-1. **Update, don't duplicate.** Before writing, query Radar for the `Key` you're about to use. If a row exists, **patch** it — merge the new mention into `Sources`, upgrade `Confidence` if you now have the event's own page, refresh `Checked` — rather than creating a second row. Radar-B deduplicates defensively on its side, but a clean table is better than a clever merge.
+1. **Update and ENRICH, never skip and never duplicate.** Before writing, query
+   Radar for the `Key` you are about to use.
+   - **No match** → create the row.
+   - **Match** → do NOT skip it. Re-read what you just gathered against the stored
+     row, field by field, and **patch anything that is now better**:
+     - a `When` that gained a real time, or an end date you didn't have
+     - a fuller `Address` (a bare venue name upgraded to a street address)
+     - a `Link` that is now the event's own page rather than a roundup article
+     - a `Tickets` URL, an `Image`, an `Organizer` you didn't have
+     - a longer/clearer `Summary` — replace it only if genuinely more informative
+     - a `Cost` that is now stated
+     - new `Signals` (it turned out to be free, or sold out)
+     - **always** append the new mention to `Sources` and refresh `Checked`
+   - **Upgrade `Confidence`** when you now have the event's own page
+     (`reported` → `confirmed`). Never downgrade it.
+   - **Never overwrite a good value with a worse one.** A stored exact time is not
+     replaced by a vaguer one; a stored street address is not replaced by a bare
+     venue name; a stored direct link is not replaced by an article. When the new
+     value is merely *different* rather than better, keep what's there.
+   - **Never touch `Dismissed` or `Dismissed At`.** Those two columns belong to the
+     Radar-B app (they carry Gabriel's own "hide this", synced across his devices).
+     Patching them from here would resurrect things he deliberately hid.
+
+   A second article about an event you already know is an opportunity, not a
+   no-op — it is usually where the exact time and the ticket link finally appear.
 2. **One row per underlying event, not per mention.** Four sources covering one exhibition is one row with four `Sources` lines.
 3. **Write the whole deduped pool**, including what will become the "Pe radar" and "De știut" sections of the digest — Radar-B's lenses and filters are what let Gabriel ignore them, so they don't need to be withheld here.
 4. **Bulk writing is fine here** (unlike Wanderlist intake, which is one at a time on confirmation). Radar is a research surface Gabriel browses, not his personal list — nothing lands in his own world until he saves it in Radar-B.
@@ -258,15 +318,24 @@ Format: day-by-day, chronological within each day. **Number every event sequenti
 [Max 1–2 evenimente mainstream]
 
 ---
-📡 [N] evenimente scrise/actualizate în Radar.
+📡 [N] evenimente în Radar ([C] noi, [U] actualizate).
+📘 [F] evenimente de pe Facebook.
 💡 Spune numărul sau titlul prescurtat și adăugăm în Wanderlist.
 ```
 
-**The `📡 …` line is not decorative — it's the confirmation that Step 4 actually ran.**
-Fill `[N]` with the real count kept during Step 4 (created + updated). If Step 4 didn't
-run or Radar wasn't reachable, this line must say so plainly (e.g. `📡 Radar
-indisponibil — nu s-a scris nimic.`) rather than being dropped or guessed. A digest
-without this line, or with a suspiciously round/guessed number, is an incomplete run.
+**Neither closing line is decorative — they are the confirmation that the two
+skippable steps actually ran.**
+
+- `📡` — fill `[N]`, `[C]` and `[U]` with the real counts kept during Step 4. If
+  Step 4 didn't run or Radar wasn't reachable, say so plainly (`📡 Radar
+  indisponibil — nu s-a scris nimic.`) rather than dropping or guessing the line.
+- `📘` — fill `[F]` with how many events came from the Step 2 Facebook sweep.
+  **Zero is a legitimate answer; a missing line is not.** If you find yourself
+  writing this line and cannot remember running the searches, you didn't — go back
+  and run them before publishing the digest.
+
+A digest missing either line, or carrying a suspiciously round guessed number, is an
+incomplete run.
 
 **Flags:**
 - 💚 gratuit

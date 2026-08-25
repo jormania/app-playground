@@ -2,7 +2,9 @@ import { Button } from '../ds'
 import { formatWhen, stalenessDays, relativeDays } from './dates.js'
 import { signalsFor, SIGNAL_LABELS, freshness, recommenders } from './signals.js'
 import { mapUrlFor } from './wanderlist.js'
-import { BackIcon, ExternalIcon, DismissIcon } from './icons.jsx'
+import { fold } from './dedupe.js'
+import { BackIcon, ExternalIcon, HideIcon, CalendarIcon, CheckIcon } from './icons.jsx'
+import { formatWhen as formatWhenDate } from './dates.js'
 
 /** Which store a mention came through, said in words rather than in a code. */
 const KIND_LABEL = {
@@ -17,22 +19,37 @@ const KIND_LABEL = {
  * That order is the spec (RADAR_B.md §7) and the reason the layout looks like a
  * record rather than a web page.
  */
+/** Two place strings are "the same place" when one contains the other once
+ *  folded — `Palatul Suțu` vs `Palatul Suțu, Bd. I.C. Brătianu 2, București`. */
+function sameplace(a, b) {
+  const fa = fold(a)
+  const fb = fold(b)
+  if (!fa || !fb) return false
+  return fa === fb || fa.includes(fb) || fb.includes(fa)
+}
+
 export function EventDetail({ event, now, onClose, onSave, onDismiss, saving }) {
   const sigs = signalsFor(event)
   const fresh = freshness(event, now)
   const recs = recommenders(event)
+  const findingsUrl = event.sources.find((s) => s.kind === 'saved')?.url ?? null
   const mapUrl = mapUrlFor(event)
   const free = sigs.includes('free')
+  const showAddress = Boolean(event.address) && !sameplace(event.venue, event.address)
   const goUrl = event.tickets || event.link
 
   return (
     <div className="detail" role="dialog" aria-modal="true" aria-label={event.name}>
       <div className="detailInner">
+        {/* Two destructive-looking glyphs side by side told you nothing about
+            which was which. Both now carry a word: one navigates, one hides. */}
         <div className="detailBar">
-          <button type="button" className="iconBtn" onClick={onClose} aria-label="Înapoi"><BackIcon /></button>
+          <button type="button" className="barBtn" onClick={onClose}>
+            <BackIcon /> <span>Înapoi</span>
+          </button>
           {!event.saved && (
-            <button type="button" className="iconBtn" onClick={() => onDismiss(event)} aria-label="Nu mă interesează">
-              <DismissIcon />
+            <button type="button" className="barBtn danger" onClick={() => onDismiss(event)}>
+              <HideIcon /> <span>Ascunde</span>
             </button>
           )}
         </div>
@@ -59,7 +76,10 @@ export function EventDetail({ event, now, onClose, onSave, onDismiss, saving }) 
               <dt>Unde</dt>
               <dd>
                 {event.venue}
-                {event.address && <div style={{ color: 'var(--color-muted)' }}>{event.address}</div>}
+                {/* A Radar row often carries the full address in BOTH `Venue` and
+                    `Address`, and a Findings row has only one combined `Place`.
+                    Rendering both verbatim printed the same line twice. */}
+                {showAddress && <div style={{ color: 'var(--color-muted)' }}>{event.address}</div>}
                 {event.area && <div style={{ color: 'var(--color-faint)' }}>{event.area}</div>}
                 {mapUrl && <div><a href={mapUrl} target="_blank" rel="noreferrer">Deschide în Maps <ExternalIcon /></a></div>}
               </dd>
@@ -109,6 +129,32 @@ export function EventDetail({ event, now, onClose, onSave, onDismiss, saving }) 
           {fresh.state === 'stale' && ' Poate fi depășit — confirmă la sursă.'}
           {event.mergedFrom?.length > 1 && ` Reunit din ${event.mergedFrom.length} înregistrări.`}
         </p>
+
+        {/* What you already decided, so the basics don't require opening
+            Wanderlist. Deliberately one compact row, not a second event panel. */}
+        {event.saved && (
+          <>
+            <h2 className="sectionTitle">În Wanderlist</h2>
+            <div className="wlState">
+              <span className={`wlChip ${event.going ? 'on' : ''}`}>
+                <CheckIcon /> {event.going ? 'Mergi' : 'Încă nedecis'}
+              </span>
+              {event.plannedDate && (
+                <span className="wlChip">
+                  <CalendarIcon /> {formatWhenDate({ start: event.plannedTime ? `${event.plannedDate}T${event.plannedTime}` : event.plannedDate, hasTime: Boolean(event.plannedTime) }, now)}
+                </span>
+              )}
+              {event.hasTickets && <span className="wlChip gold">Bilete la tine</span>}
+              {event.dateExpiring && <span className="wlChip">expiră {event.dateExpiring}</span>}
+              {!event.plannedDate && !event.going && <span className="wlChip muted">fără dată planificată</span>}
+            </div>
+            {findingsUrl && (
+              <p className="provenanceNote">
+                <a href={findingsUrl} target="_blank" rel="noreferrer">Deschide în Wanderlist <ExternalIcon /></a>
+              </p>
+            )}
+          </>
+        )}
 
         <div className="actions">
           {goUrl && (

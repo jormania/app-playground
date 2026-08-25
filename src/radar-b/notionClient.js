@@ -8,12 +8,13 @@
 //   READ  📡 Radar          — the normalized event rows /recommend in Bucharest writes
 //   READ  🗓️ Suggested events — the existing weekly page, for article-level provenance
 //   READ  Findings          — Wanderlist, so an already-saved event is never re-offered
-//   WRITE Findings          — the save handoff, and nothing else, ever
+//   WRITE Findings          — the save handoff
+//   WRITE Radar             — ONLY `Dismissed` / `Dismissed At`, never content
 //
 // Radar-B never writes Radar rows. Two writers to one table is how the existing
 // Notion workflow gets damaged by accident; the skill owns that table.
 
-import { fromRadarPage, fromFindingsPage, parseSuggestedPage } from './notion.js'
+import { fromRadarPage, fromFindingsPage, parseSuggestedPage, dismissalProps } from './notion.js'
 import { toFindingsPage } from './wanderlist.js'
 import { FINDINGS_DATABASE_ID } from '../shared/findings.js'
 
@@ -105,7 +106,15 @@ export function createNotionClient(token, {
       return parseSuggestedPage(blocks)
     },
 
-    /** The ONLY write Radar-B makes. */
+    /** Dismiss (or un-dismiss) an event, on the Radar row so it syncs to every
+     *  device. Touches the two user-state columns and nothing else — see
+     *  notion.js's header for why that exception exists. */
+    async setDismissed(radarId, dismissed) {
+      if (!radarId) throw new Error('Evenimentul nu are un rând în Radar, deci nu poate fi ascuns pe toate dispozitivele.')
+      const page = await call(`pages/${radarId}`, 'PATCH', { properties: dismissalProps(dismissed) })
+      return fromRadarPage(page)
+    },
+
     async saveToWanderlist(draft) {
       const page = await call('pages', 'POST', toFindingsPage(draft, findingsDatabaseId))
       return fromFindingsPage(page)

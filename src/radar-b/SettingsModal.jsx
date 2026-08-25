@@ -3,20 +3,41 @@ import { Modal, Button } from '../ds'
 import { getToken, setToken, clearToken, radarDb, findingsDb, suggestedPage, testConnection } from './store.js'
 
 /**
- * BYO Notion token + the three ids Radar-B reads. Same contract as Wanderlist and
- * Journal of Delights: the token lives only in this browser and is relayed
- * per-request through /api/notion, which stores nothing.
+ * Settings, in four named sections rather than one undifferentiated list.
  *
- * With no token the app runs on fixtures (demo mode) — a real, browsable week, so
- * the product can be evaluated before any setup at all.
+ * The ordering is deliberate: what you'll actually revisit sits at the top
+ * (what's allowed into the stream), the one-time plumbing sits below it, and
+ * appearance and help are last. Previously every field — token, three database
+ * ids, and the theme picker — sat in a flat column with no headings, which made
+ * the gear read as a theme control (see the icon note in icons.jsx).
  */
-export function SettingsModal({ onClose, onSaved, theme, onTheme }) {
+
+/** A labelled switch row. Kept local rather than pulled from ds/ because the
+ *  "what this is hiding right now" count underneath is specific to this screen. */
+function Toggle({ label, hint, count, checked, onChange }) {
+  return (
+    <label className="toggleRow">
+      <span className="toggleText">
+        <span className="toggleLabel">{label}</span>
+        <span className="hint">
+          {hint}
+          {count > 0 && <> · <strong>{count}</strong> ascunse acum</>}
+        </span>
+      </span>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    </label>
+  )
+}
+
+export function SettingsModal({ onClose, onSaved, theme, onTheme, intake, onIntake, hiddenCounts = {} }) {
   const [token, setTokenValue] = useState(getToken())
   const [radar, setRadar] = useState(radarDb.get())
   const [findings, setFindings] = useState(findingsDb.get())
   const [suggested, setSuggested] = useState(suggestedPage.get())
   const [status, setStatus] = useState(null)
   const [testing, setTesting] = useState(false)
+
+  const setIntake = (patch) => onIntake({ ...intake, ...patch })
 
   async function test() {
     setTesting(true)
@@ -43,8 +64,47 @@ export function SettingsModal({ onClose, onSaved, theme, onTheme }) {
 
   return (
     <Modal open onClose={onClose} title="Setări">
+      {/* ── 1. What gets in ─────────────────────────────────────────────── */}
+      <h3 className="settingsSection">Ce intră în Radar</h3>
+      <p className="settingsIntro">
+        Radar-B citește și Wanderlist, care e mai larg decât „ce se întâmplă săptămâna asta".
+        Toate filtrele sunt pornite implicit — stinge unul și evenimentele revin.
+      </p>
+
+      <Toggle
+        label="Ascunde ce am bifat ca Attended"
+        hint="Ai fost deja — nu mai e ceva la care să mergi"
+        count={hiddenCounts.hideAttended}
+        checked={intake.hideAttended}
+        onChange={(v) => setIntake({ hideAttended: v })}
+      />
+      <Toggle
+        label="Ascunde Ideas"
+        hint={'F\u0103r\u0103 dat\u0103 planificat\u0103 \u0219i f\u0103r\u0103 termen \u2014 un \u201ec\u00e2ndva\u201d, nu un eveniment'}
+        count={hiddenCounts.hideIdeas}
+        checked={intake.hideIdeas}
+        onChange={(v) => setIntake({ hideIdeas: v })}
+      />
+      <Toggle
+        label="Ascunde locuri și descoperiri"
+        hint="Categoriile venue, idea și discovery — locuri și piste, nu evenimente cu oră"
+        count={hiddenCounts.hideNonEvents}
+        checked={intake.hideNonEvents}
+        onChange={(v) => setIntake({ hideNonEvents: v })}
+      />
+      <Toggle
+        label="Ascunde ce am ascuns eu"
+        hint="Se sincronizează prin Notion, deci e la fel pe telefon și pe laptop"
+        count={hiddenCounts.hideDismissed}
+        checked={intake.hideDismissed}
+        onChange={(v) => setIntake({ hideDismissed: v })}
+      />
+
+      {/* ── 2. Connection ───────────────────────────────────────────────── */}
+      <h3 className="settingsSection">Conexiune Notion</h3>
+
       <label className="field">
-        <span>Token Notion</span>
+        <span>Token</span>
         <input type="password" value={token} onChange={(e) => setTokenValue(e.target.value)} placeholder="ntn_…" autoComplete="off" />
         <span className="hint">Rămâne doar în acest browser. Gol = mod demo, pe date de exemplu.</span>
       </label>
@@ -52,21 +112,25 @@ export function SettingsModal({ onClose, onSaved, theme, onTheme }) {
       <label className="field">
         <span>Baza Radar</span>
         <input value={radar} onChange={(e) => setRadar(e.target.value)} placeholder="Link sau ID Notion" />
-        <span className="hint">Evenimentele normalizate scrise de <code>/recommend in Bucharest</code>. Fără ea, Radar-B arată doar ce e deja în Wanderlist.</span>
+        <span className="hint">Evenimentele scrise de <code>/recommend in Bucharest</code>.</span>
       </label>
 
       <label className="field">
         <span>Baza Findings (Wanderlist)</span>
         <input value={findings} onChange={(e) => setFindings(e.target.value)} />
-        <span className="hint">Unde se salvează. Aceeași bază pe care o folosește Wanderlist.</span>
+        <span className="hint">Unde se salvează și de unde se citește starea (Going, dată planificată).</span>
       </label>
 
       <label className="field">
         <span>Pagina „Suggested events"</span>
         <input value={suggested} onChange={(e) => setSuggested(e.target.value)} />
-        <span className="hint">Citită doar pentru a arăta din ce articole s-a construit săptămâna curentă.</span>
+        <span className="hint">Citită doar pentru lista de articole din care s-a construit săptămâna.</span>
       </label>
 
+      {status && <p className={`notice${status.ok ? '' : ' warn'}`}>{status.message}</p>}
+
+      {/* ── 3. Appearance ───────────────────────────────────────────────── */}
+      <h3 className="settingsSection">Aspect</h3>
       <label className="field">
         <span>Temă</span>
         <select value={theme} onChange={(e) => onTheme(e.target.value)}>
@@ -76,10 +140,10 @@ export function SettingsModal({ onClose, onSaved, theme, onTheme }) {
         </select>
       </label>
 
-      {status && <p className={`notice${status.ok ? '' : ' warn'}`}>{status.message}</p>}
-
-      <p className="provenanceNote">
-        Ghidul complet — cum funcționează /recommend in Bucharest, dedublarea,
+      {/* ── 4. Help ─────────────────────────────────────────────────────── */}
+      <h3 className="settingsSection">Ajutor</h3>
+      <p className="provenanceNote" style={{ marginTop: 0 }}>
+        Ghidul complet — cum funcționează <code>/recommend in Bucharest</code>, dedublarea,
         provenance-ul și legătura cu Wanderlist —{' '}
         <a href="/radar-b-guide.html" target="_blank" rel="noopener">e aici</a>.
       </p>

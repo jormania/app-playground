@@ -117,3 +117,30 @@ describe('toFindingsPage', () => {
     expect(toFindingsPage(draft, 'db-1').properties['Planned Date'].date.start).toBe('2026-08-21')
   })
 })
+
+describe('provenance flows into Wanderlist (the return half of the two-way street)', () => {
+  test('names recommenders and mentions separately — they are different signals', () => {
+    const d = toDraft(ev({
+      summary: 'Jazz de improvizație.',
+      sources: [
+        { name: 'Curatorial', kind: 'recommendation' },
+        { name: 'B365', kind: 'editorial' },
+        { name: 'Zile și Nopți', kind: 'editorial' },
+      ],
+    }), NOW)
+    expect(d.description).toContain('Jazz de improvizație.')
+    expect(d.description).toContain('recomandat de Curatorial')
+    expect(d.description).toContain('menționat de B365, Zile și Nopți')
+  })
+
+  test('deduplicates a source that mentioned it twice', () => {
+    const d = toDraft(ev({ summary: 'x', sources: [{ name: 'B365' }, { name: 'B365' }] }), NOW)
+    expect(d.description.match(/B365/g)).toHaveLength(1)
+  })
+
+  test('an event with no sources gets no empty footer', () => {
+    const d = toDraft(ev({ summary: 'Jazz.', sources: [] }), NOW)
+    expect(d.description).toBe('Jazz.')
+    expect(d.description).not.toContain('Radar-B')
+  })
+})

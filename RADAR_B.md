@@ -535,3 +535,100 @@ Two things gate it, and only one of them was fixable from here:
   (see the Claude Code on the web docs). Web *search* is unaffected — only direct page
   fetches are blocked, which is why earlier runs could find article titles but never read
   the articles.
+
+---
+
+## 16. Wanderlist two-way, synced dismissals, and a wider skill (2026-08-21)
+
+A batch of fixes and additions from real use of the deployed app.
+
+### Radar-B ⇄ Wanderlist is now genuinely two-way
+
+**Wanderlist → Radar-B.** `fromFindingsPage` now reads `Going`, `Planned Date`
+(split into date + time), `Date Expiring`, `Attended` and whether `Tickets` files
+exist. The event page shows them as one compact **În Wanderlist** chip row plus a
+link into the entry — the decisions you already made, answerable without opening
+the other app. `mergeCluster` takes these *only* from the Findings row: the Radar
+row has no opinion about whether you're going, and a merge must never invent one.
+
+**Radar-B → Wanderlist.** A save appends a provenance line to the description
+(`📡 Via Radar-B — recomandat de Curatorial; menționat de B365.`), naming
+recommendations separately from passing mentions. Findings has no `Sources` field,
+so without this the context that justified the save is dropped at the boundary.
+
+### Dismissals sync across devices (schema change)
+
+Dismissing was `localStorage`-only, so something hidden on the phone was still
+there on the laptop — exactly what was reported. The Radar database gained
+**`Dismissed` (checkbox)** and **`Dismissed At` (date)**, and the app writes them.
+
+That is a deliberate, narrow reversal of the old "Radar-B never writes Radar"
+rule, and the reasoning is worth keeping: **two writers to one table are only
+dangerous when they write the same columns.** Dismissal is *user state*, not event
+content. The app writes those two columns and nothing else; the skill is instructed
+never to touch them (otherwise a weekly refresh would resurrect everything
+deliberately hidden). The local list survives as an optimistic instant hide and as
+the fallback for a Wanderlist-only event, which has no Radar row to write to.
+
+Undo ships with it: the dismissal toast carries **Anulează**, and the Settings
+toggle can bring hidden events back wholesale.
+
+### Intake rules, as Settings toggles
+
+Radar-B reads Findings wholesale, and Findings is broader than "what's on this
+week". Four rules now gate the pool — `hideAttended`, `hideIdeas`, `hideNonEvents`
+(`venue`/`idea`/`discovery`), `hideDismissed` — **all on by default, none a hard
+exclusion**. Each toggle reports how many events it is currently hiding, so a thin
+week is explainable rather than mysterious. `isIdea` mirrors Wanderlist's own rule
+(unattended, no planned date, no expiry) — keep the two in step.
+
+Settings itself is now four named sections (Ce intră în Radar · Conexiune Notion ·
+Aspect · Ajutor) rather than one flat column of fields.
+
+### Bugs fixed
+
+- **Duplicated address.** `fromFindingsPage` was copying the single combined
+  `Place` string into *both* `venue` and `address`, so the detail view printed it
+  twice. `address` is now null for Findings rows, and the renderer additionally
+  suppresses an address that merely repeats the venue (Radar rows often carry the
+  full address in both columns).
+- **"Săptămâna asta" reached into next week.** The lens was a rolling `today + 7`,
+  which on a Friday swept in the *following* weekend. `endOfWeek()` makes it the
+  calendar week, ending Sunday.
+- **Toolbar clipped on mobile.** Horizontal scrolling was the wrong fix — it
+  scrolled correctly but still *looked* truncated, and a clipped word at the screen
+  edge reads as a bug rather than an invitation to swipe. The bar now **wraps**:
+  ~580px of lenses is one row inside the 640px shell and two tidy rows on a phone.
+  Verified 358/358 at 390px and 608/608 at 768px — no overflow at either.
+  Labels shortened too (`Săptămâna`, `În curs`, `Noi`).
+- **Back vs dismiss were indistinguishable** — a bare chevron beside a bare minus.
+  Both now carry a word (**Înapoi** / **Ascunde**), and the minus became an
+  eye-with-a-slash; the destructive one tints only on hover, since a permanently
+  red control in a calm app reads as an alarm.
+- **Toast wrapped to three lines** — it was shrinking as a flex item; `width:
+  max-content` under the cap fixes it.
+
+### Skill
+
+- **Facebook is now a gated step, not advice.** It had been skipped in practice
+  more than once because it sat in a wall of prose. It now mandates ≥4 concrete
+  searches (including per-venue sweeps of the gallery/club list), says to extract
+  from search-result metadata since the page fetch reliably login-walls, and — like
+  the Radar write — **reports itself in the digest's closing block** (`📘 [F]
+  evenimente de pe Facebook`). Zero is a legitimate answer; a missing line is not.
+- **Existing events are enriched, not skipped.** Write rule 1 was "update, don't
+  duplicate", which read as "skip if present". It now walks the stored row field by
+  field and patches anything genuinely better (a real time, a fuller address, the
+  event's own link over an article, tickets, image, cost, new signals), upgrades
+  `Confidence` on the event's own page, and explicitly **never replaces a good
+  value with a worse one**. A second article is usually where the exact time and
+  ticket link finally appear.
+- **Volume ceiling removed.** No cap per source or per article; target 20–35 rows
+  in Radar per run (the digest still shows the best 12–20). A run yielding under 15
+  is treated as incomplete collection, not an accurate picture of the city. Scope
+  widened to explicitly include gallery openings of any size, artist talks, open
+  studios, independent theatre/dance, institute and embassy programmes, public
+  lectures, zine/record fairs and late-opening museum nights. **The bar didn't
+  move — the breadth of the search did.**
+
+38 new/updated tests (`intake.test.js` plus additions across dates/wanderlist/App).

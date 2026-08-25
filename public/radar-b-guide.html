@@ -421,10 +421,10 @@ venues, Facebook                   ▼
     <tr><td><strong>Azi</strong></td><td>Everything happening today. The default.</td></tr>
     <tr><td><strong>Mâine</strong></td><td>Tomorrow.</td></tr>
     <tr><td><strong>Weekend</strong></td><td>Friday–Sunday. During the weekend this means <em>this</em> one, not next.</td></tr>
-    <tr><td><strong>Săptămâna asta</strong></td><td>The next seven days.</td></tr>
+    <tr><td><strong>Săptămâna</strong></td><td>The rest of <em>this calendar week</em>, ending Sunday — not a rolling seven days, so next weekend correctly falls under “Mai încolo”.</td></tr>
     <tr><td><strong>Mai încolo</strong></td><td>Beyond that — things worth planning ahead for.</td></tr>
-    <tr><td><strong>În desfășurare</strong></td><td>Exhibitions and long runs open right now. A date-first view buries these; they appear on their opening day and never again. This is where they live.</td></tr>
-    <tr><td><strong>Noi pentru tine</strong></td><td>Events that arrived in the last refresh that you haven't opened yet. The answer to <em>"what haven't I heard about?"</em></td></tr>
+    <tr><td><strong>În curs</strong></td><td>Exhibitions and long runs open right now. A date-first view buries these; they appear on their opening day and never again. This is where they live.</td></tr>
+    <tr><td><strong>Noi</strong></td><td>Events that arrived in the last refresh that you haven't opened yet. The answer to <em>"what haven't I heard about?"</em></td></tr>
   </tbody>
 </table>
 </div>
@@ -510,11 +510,28 @@ venues, Facebook                   ▼
   <code>Map</code> property when you save, so a saved event arrives already pinned.
 </p>
 
-<h4>Dismissing</h4>
+<h4>Ascunde (dismissing)</h4>
 <p>
-  The <code>—</code> button in the top-right of an event page hides it from the stream.
-  It's local to your device and it doesn't delete anything from Notion.
+  The event page's top bar has two labelled controls: <strong>Înapoi</strong> returns to
+  the list, <strong>Ascunde</strong> removes the event from the stream. They used to be a
+  bare chevron and a bare minus, which gave no clue which was which.
 </p>
+<p>
+  <strong>Hiding syncs across your devices.</strong> It writes a <code>Dismissed</code>
+  checkbox on the event's Radar row, so something hidden on your phone is hidden on your
+  laptop too — it isn't a per-browser note. A toast offers <strong>Anulează</strong>
+  immediately after, and Settings → <em>Ce intră în Radar</em> can show hidden events
+  again at any time. Nothing is deleted; the Radar row stays exactly where it was.
+</p>
+<div class="note">
+  <p>
+    <strong>Dismissal is the app's column, not the skill's.</strong>
+    <code>Dismissed</code> and <code>Dismissed At</code> are the only two fields Radar-B
+    ever writes on a Radar row, and <code>/recommend in Bucharest</code> is instructed
+    never to touch them — otherwise a weekly refresh would resurrect everything you'd
+    deliberately hidden.
+  </p>
+</div>
 
 <hr />
 
@@ -626,6 +643,42 @@ venues, Facebook                   ▼
     apart into one writing <code>"Free"</code> and the other <code>"free"</code>.
   </p>
 </div>
+
+<h3>What Wanderlist tells Radar-B back</h3>
+<p>
+  The link runs both ways. For anything already in Findings, the event page shows a
+  compact <strong>În Wanderlist</strong> row carrying the decisions you already made
+  there — <em>Mergi</em> / <em>Încă nedecis</em> (the <code>Going</code> checkbox), the
+  planned date and time, whether you're holding tickets, and the expiry — plus a direct
+  link into the Wanderlist entry. The basics are answerable without leaving Radar-B.
+</p>
+<p>
+  Three Findings states also control what appears at all, as toggles under
+  <strong>Settings → Ce intră în Radar</strong> (all on by default):
+</p>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Hidden by default</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td><code>Attended</code> = yes</td><td>You've been. It is not a thing to go to.</td></tr>
+    <tr><td><strong>Ideas</strong></td><td>Wanderlist's someday/maybe: no planned date <em>and</em> no deadline. A loose intention, not an event with a time.</td></tr>
+    <tr><td><code>venue</code> · <code>idea</code> · <code>discovery</code></td><td>Places and tips rather than happenings — a café worth visiting has no “when”.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>
+  Each toggle reports how many events it is currently hiding, so a thin-looking week is
+  never a mystery — and switching one off brings them straight back.
+</p>
+
+<h3>What Radar-B sends the other way</h3>
+<p>
+  A save carries its provenance with it. Because Findings has no <code>Sources</code>
+  field, Radar-B appends one line to the description —
+  <em>“📡 Via Radar-B — recomandat de Curatorial; menționat de B365.”</em> — so the
+  context that made the event worth saving survives the handoff instead of being dropped
+  at the boundary.
+</p>
 
 <h3>Already saved</h3>
 <p>

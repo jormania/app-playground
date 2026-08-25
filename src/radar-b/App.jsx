@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { shareNative } from '../shared/share.js'
 import { dedupe } from './dedupe.js'
+import { isIdea, isNonEvent } from './model.js'
 import { dayHeading } from './dates.js'
-import { buildStream, facets, emptyFilters, hasActiveFilters, toBrief, VIEWS, VIEW_LABELS, inView, matchesFilters } from './search.js'
+import { buildStream, facets, emptyFilters, hasActiveFilters, toBrief, VIEWS, VIEW_LABELS, inView, matchesFilters, passesIntake } from './search.js'
 import { EventCard } from './EventCard.jsx'
 import { EventDetail } from './EventDetail.jsx'
 import { FilterSheet } from './FilterSheet.jsx'
 import { SaveSheet } from './SaveSheet.jsx'
 import { SettingsModal } from './SettingsModal.jsx'
-import { SearchIcon, FilterIcon, SettingsIcon, GuideIcon, CloseIcon, RadarIcon } from './icons.jsx'
+import { SearchIcon, FilterIcon, SettingsIcon, GuideIcon, CloseIcon, RadarIcon, UndoIcon } from './icons.jsx'
 import {
   getClient, isLive, loadPrefs, savePrefs, loadLocal, saveLocal, stampFirstSeen,
   readCache, writeCache,
@@ -40,7 +41,7 @@ export default function App() {
   const [saving, setSaving] = useState(null) // the event being saved
   const [saveBusy, setSaveBusy] = useState(false)
   const [saveError, setSaveError] = useState(null)
-  const [toast, setToast] = useState(null)
+  const [toast, setToast] = useState(null)   // { text, undo?: () => void }
   const searchRef = useRef(null)
 
   // ── Theme ───────────────────────────────────────────────────────────────
@@ -115,24 +116,37 @@ export default function App() {
   const dismissed = useMemo(() => new Set(local.dismissed), [local.dismissed])
 
   const stream = useMemo(
-    () => buildStream(pool, { view: prefs.view, filters, now, dismissed, seenIds, firstSeen: local.firstSeen }),
-    [pool, prefs.view, filters, now, dismissed, seenIds, local.firstSeen],
+    () => buildStream(pool, { view: prefs.view, filters, now, intake: prefs.intake, dismissed, seenIds, firstSeen: local.firstSeen }),
+    [pool, prefs.view, filters, now, prefs.intake, dismissed, seenIds, local.firstSeen],
   )
 
-  const allFacets = useMemo(() => facets(pool, now), [pool, now])
+  const allFacets = useMemo(() => facets(pool, now, prefs.intake), [pool, now, prefs.intake])
+
+  // What each intake toggle is currently hiding, so Settings can state it rather
+  // than leaving you to guess why the stream looks thin.
+  const hiddenCounts = useMemo(() => {
+    const count = (fn) => pool.filter(fn).length
+    return {
+      hideAttended: count((e) => e.attended),
+      hideDismissed: count((e) => e.dismissed),
+      hideIdeas: count((e) => isIdea(e)),
+      hideNonEvents: count((e) => isNonEvent(e)),
+    }
+  }, [pool])
 
   // Per-lens counts, so the bar shows where things actually are before you tap.
   const counts = useMemo(() => {
     const out = {}
     for (const view of VIEWS) {
       out[view] = pool.filter((e) =>
-        !dismissed.has(e.id)
+        passesIntake(e, prefs.intake)
+        && !dismissed.has(e.id)
         && inView(e, view, now, { seenIds, firstSeen: local.firstSeen })
         && matchesFilters(e, filters),
       ).length
     }
     return out
-  }, [pool, now, dismissed, seenIds, local.firstSeen, filters])
+  }, [pool, now, prefs.intake, dismissed, seenIds, local.firstSeen, filters])
 
   // ── Actions ─────────────────────────────────────────────────────────────
   function openEvent(event) {
@@ -141,10 +155,43 @@ export default function App() {
     setLocal((l) => (l.seen.includes(event.id) ? l : { ...l, seen: [...l.seen, event.id] }))
   }
 
-  function dismiss(event) {
-    setLocal((l) => ({ ...l, dismissed: [...new Set([...l.dismissed, event.id])] }))
+  /** Dismissal writes to the event's Radar row so it syncs to every device —
+   *  localStorage could only ever hide it on the phone that tapped it, which is
+   *  exactly the bug this replaces. The local list stays as an instant optimistic
+   *  hide and as the fallback for an event that has no Radar row (a Wanderlist-
+   *  only entry), which can't be written to. */
+  async function setDismissedState(event, dismissed) {
+    const optimistic = (l) => ({
+      ...l,
+      dismissed: dismissed
+        ? [...new Set([...l.dismissed, event.id])]
+        : l.dismissed.filter((id) => id !== event.id),
+    })
+    setLocal(optimistic)
+    if (!event.radarId) return { synced: false }
+    try {
+      await getClient().setDismissed(event.radarId, dismissed)
+      setData((d) => ({
+        ...d,
+        events: d.events.map((e) => (e.id === event.radarId ? { ...e, dismissed } : e)),
+      }))
+      return { synced: true }
+    } catch (err) {
+      return { synced: false, error: err.message }
+    }
+  }
+
+  async function dismiss(event) {
     setOpen(null)
-    setToast('Ascuns.')
+    const res = await setDismissedState(event, true)
+    setToast({
+      text: res.synced
+        ? 'Ascuns peste tot.'
+        : res.error
+          ? `Ascuns doar aici — ${res.error}`
+          : 'Ascuns doar aici.',
+      undo: () => { setDismissedState(event, false); setToast({ text: 'Adus înapoi.' }) },
+    })
   }
 
   async function confirmSave(draft) {
@@ -155,7 +202,7 @@ export default function App() {
       setData((d) => ({ ...d, saved: [...d.saved, entry] }))
       setSaving(null)
       setOpen(null)
-      setToast('Salvat în Wanderlist.')
+      setToast({ text: 'Salvat în Wanderlist.' })
     } catch (err) {
       setSaveError(err.message)
     } finally {
@@ -166,7 +213,7 @@ export default function App() {
   async function askRecommender() {
     const text = toBrief(stream, prefs.view)
     const res = await shareNative({ name: 'Radar-B', description: text }, 'Radar-B')
-    setToast(res.copied ? 'Copiat — lipește-l în conversația cu Claude.' : res.shared ? null : 'Nu s-a putut copia.')
+    setToast(res.copied ? { text: 'Copiat — lipește-l în conversația cu Claude.' } : res.shared ? null : { text: 'Nu s-a putut copia.' })
   }
 
   useEffect(() => {
@@ -309,7 +356,16 @@ export default function App() {
         )}
       </main>
 
-      {toast && <p className="notice" style={{ position: 'fixed', bottom: 'calc(var(--space-lg) + env(safe-area-inset-bottom))', left: '50%', transform: 'translateX(-50%)', zIndex: 60 }}>{toast}</p>}
+      {toast && (
+        <div className="toast">
+          <span>{toast.text}</span>
+          {toast.undo && (
+            <button type="button" className="toastUndo" onClick={() => { const fn = toast.undo; setToast(null); fn() }}>
+              <UndoIcon /> Anulează
+            </button>
+          )}
+        </div>
+      )}
 
       {open && (
         <EventDetail
@@ -341,6 +397,9 @@ export default function App() {
         <SettingsModal
           theme={prefs.theme}
           onTheme={(theme) => setPrefs((p) => ({ ...p, theme }))}
+          intake={prefs.intake}
+          onIntake={(intake) => setPrefs((p) => ({ ...p, intake }))}
+          hiddenCounts={hiddenCounts}
           onClose={() => setShowSettings(false)}
           onSaved={() => { setShowSettings(false); load() }}
         />

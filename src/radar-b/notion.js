@@ -1,10 +1,15 @@
 // Notion ⇄ Radar-B model mapping, for both databases Radar-B reads.
 //
-// Radar-B is a READER of Notion, with one exception: saving to Wanderlist's
-// Findings (see wanderlist.js). It never writes Radar rows — those are the
-// /recommend in Bucharest skill's output, and having two writers to one table is
-// how the "don't destroy the value of the existing Notion workflow" rule gets
-// broken by accident.
+// Radar-B is overwhelmingly a READER of Notion. It writes exactly two things:
+//   1. A new Findings row, when you save an event (see wanderlist.js).
+//   2. `Dismissed` / `Dismissed At` on a Radar row — and NOTHING else on it.
+//
+// (2) is a deliberate, narrow exception to the old "Radar-B never writes Radar"
+// rule. Dismissal is *user state*, not event content: it has to survive a phone
+// being closed and reappear on the laptop, which localStorage can't do. Those two
+// columns are the app's alone — the skill never writes them, and the app never
+// touches a content column. Two writers to one table is only dangerous when they
+// write the same columns.
 
 import { normalizeEvent } from './model.js'
 
@@ -40,6 +45,19 @@ function checkbox(prop) {
 
 function dateStart(prop) {
   return prop?.date?.start ?? null
+}
+
+function hasFiles(prop) {
+  return (prop?.files ?? []).length > 0
+}
+
+/** Split a Notion date `start` into a bare day key + optional 'HH:MM'. Same split
+ *  Wanderlist performs, so a Planned Date round-trips identically in both apps. */
+export function splitStart(start) {
+  if (!start) return { date: null, time: null }
+  const m = /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?/.exec(start)
+  if (!m) return { date: null, time: null }
+  return { date: m[1], time: m[2] || null }
 }
 
 /** Notion writes a bare `YYYY-MM-DD` when no time is set and a full ISO datetime
@@ -108,6 +126,8 @@ export function fromRadarPage(page) {
     confidence: select(p.Confidence) ?? 'reported',
     checked: dateStart(p.Checked),
     origin: 'radar',
+    dismissed: checkbox(p.Dismissed),
+    dismissedAt: dateStart(p['Dismissed At']),
   })
 }
 
@@ -121,16 +141,19 @@ function firstFileUrl(prop) {
  *  item takes part in dedupe as just another mention of an event. */
 export function fromFindingsPage(page) {
   const p = page.properties ?? {}
-  const planned = dateStart(p['Planned Date'])
+  const planned = splitStart(dateStart(p['Planned Date']))
   const expiring = dateStart(p['Date Expiring'])
-  const start = planned ?? expiring
+  const start = dateStart(p['Planned Date']) ?? expiring
   return normalizeEvent({
     id: page.id,
     name: plain(p.Name) ?? '(fără titlu)',
     start,
     hasTime: hasTimeOf(start),
+    // `Place` in Findings is one field holding venue AND street AND city. It is
+    // NOT split here into venue + address: doing so would render the same string
+    // twice in the detail view. The venue is the whole of what we know.
     venue: plain(p.Place),
-    address: plain(p.Place),
+    address: null,
     category: select(p.Category),
     summary: plain(p.Description),
     signals: multi(p.Tags).filter((t) => ['free', 'ticketed', 'outdoor'].includes(t)),
@@ -141,8 +164,25 @@ export function fromFindingsPage(page) {
     checked: dateStart(p['Date Added']),
     origin: 'wanderlist',
     saved: true,
+    // The decisions already made in Wanderlist, carried so Radar-B can show them
+    // instead of sending you to another app for your own answer.
     attended: checkbox(p.Attended),
+    going: checkbox(p.Going),
+    plannedDate: planned.date,
+    plannedTime: planned.time,
+    dateExpiring: expiring,
+    hasTickets: hasFiles(p.Tickets),
   })
+}
+
+/** The two user-state columns Radar-B is allowed to write on a Radar row, and
+ *  nothing else — see this file's header. `null` clears the date when undoing. */
+export function dismissalProps(dismissed, today = new Date()) {
+  const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  return {
+    Dismissed: { checkbox: Boolean(dismissed) },
+    'Dismissed At': { date: dismissed ? { start: iso } : null },
+  }
 }
 
 /** The 🗓️ Suggested events page, kept in place and read for what it uniquely has:

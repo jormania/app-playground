@@ -4,21 +4,56 @@
 import { fold } from './dedupe.js'
 import { lensesFor, isRunningNow, isPast, dayKey, spanOf, startOfDay } from './dates.js'
 import { signalsFor, sortForStream } from './signals.js'
+import { isIdea, isNonEvent } from './model.js'
 
 export const VIEWS = ['tonight', 'tomorrow', 'weekend', 'week', 'later', 'running', 'new']
 
+// Short on purpose. Seven lenses at their full Romanian names overflowed a phone
+// width badly enough that the last one ("Noi pentru tine") was clipped mid-word
+// even with the scroll affordance. These fit; the long form lives in the guide.
 export const VIEW_LABELS = {
   tonight: 'Azi',
   tomorrow: 'Mâine',
   weekend: 'Weekend',
-  week: 'Săptămâna asta',
+  week: 'Săptămâna',
   later: 'Mai încolo',
-  running: 'În desfășurare',
-  new: 'Noi pentru tine',
+  running: 'În curs',
+  new: 'Noi',
 }
 
 export function emptyFilters() {
   return { query: '', categories: [], areas: [], signals: [], maxCost: null }
+}
+
+/**
+ * Intake rules — what is allowed into the pool at all, as opposed to `filters`,
+ * which narrow what's already in it. Every one defaults ON, and each is a
+ * Settings toggle rather than a hard exclusion, so nothing is silently
+ * unreachable: turn one off and the events come back.
+ *
+ * These exist because Radar-B reads Wanderlist's Findings wholesale, and
+ * Findings is a broader thing than "what's on in Bucharest this week" — it also
+ * holds places, loose tips, and everything already done.
+ */
+export const DEFAULT_INTAKE = {
+  hideAttended: true,   // already been — never a thing to go to
+  hideIdeas: true,      // someday/maybe with no date at either end
+  hideNonEvents: true,  // venue / idea / discovery: places and notions, not events
+  hideDismissed: true,  // your own "not this one", synced via the Radar row
+}
+
+/** Does this event survive the intake rules? Returns the FIRST reason it didn't,
+ *  so Settings can honestly report what a toggle is currently hiding. */
+export function intakeRejection(event, intake = DEFAULT_INTAKE) {
+  if (intake.hideAttended && event.attended) return 'attended'
+  if (intake.hideDismissed && event.dismissed) return 'dismissed'
+  if (intake.hideIdeas && isIdea(event)) return 'idea'
+  if (intake.hideNonEvents && isNonEvent(event)) return 'nonEvent'
+  return null
+}
+
+export function passesIntake(event, intake = DEFAULT_INTAKE) {
+  return intakeRejection(event, intake) === null
 }
 
 export function hasActiveFilters(filters) {
@@ -85,8 +120,8 @@ export function inView(event, view, now, ctx = {}) {
 /** The full home pipeline: dismissed out, view + filters applied, ranked, grouped
  *  by day. Long runs are pulled out of the day groups into their own section —
  *  an exhibition open for four months does not belong under "Saturday". */
-export function buildStream(events, { view, filters, now = new Date(), dismissed = new Set(), seenIds = new Set(), firstSeen = {} } = {}) {
-  const pool = events.filter((e) => !dismissed.has(e.id) && !isPast(e, now))
+export function buildStream(events, { view, filters, now = new Date(), intake = DEFAULT_INTAKE, dismissed = new Set(), seenIds = new Set(), firstSeen = {} } = {}) {
+  const pool = events.filter((e) => passesIntake(e, intake) && !dismissed.has(e.id) && !isPast(e, now))
   const visible = pool.filter((e) => inView(e, view, now, { seenIds, firstSeen }) && matchesFilters(e, filters))
 
   const dated = []
@@ -117,13 +152,13 @@ export function buildStream(events, { view, filters, now = new Date(), dismissed
 
 /** Facets for the filter sheet, counted over what's actually in the pool — an
  *  option that would return nothing is never offered. */
-export function facets(events, now = new Date()) {
+export function facets(events, now = new Date(), intake = DEFAULT_INTAKE) {
   const count = (values) => {
     const map = new Map()
     for (const v of values) if (v) map.set(v, (map.get(v) ?? 0) + 1)
     return [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ro'))
   }
-  const live = events.filter((e) => !isPast(e, now))
+  const live = events.filter((e) => passesIntake(e, intake) && !isPast(e, now))
   return {
     categories: count(live.map((e) => e.category)),
     areas: count(live.map((e) => e.area)),

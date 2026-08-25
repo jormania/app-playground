@@ -46,6 +46,23 @@ export function emptyEvent() {
     checked: null,
     origin: 'radar',
     saved: false,
+    // ── Identity through a merge ──────────────────────────────────────────
+    // A merged event can be built from a Radar row AND a Findings row. Both ids
+    // are kept because they're written to for different reasons: `radarId` is
+    // where a dismissal goes, `findingsId` is the Wanderlist entry to link to.
+    radarId: null,
+    findingsId: null,
+    // ── Wanderlist state, carried through so Radar-B can answer "what did I
+    // already decide about this?" without a trip to Wanderlist ──────────────
+    attended: false,
+    going: false,
+    plannedDate: null,
+    plannedTime: null,
+    dateExpiring: null,
+    hasTickets: false,
+    // Set by Radar-B itself, stored on the Radar row so it syncs across devices.
+    dismissed: false,
+    dismissedAt: null,
   }
 }
 
@@ -56,6 +73,12 @@ export function normalizeEvent(raw) {
   e.signals = uniq((e.signals ?? []).map((s) => String(s).trim().toLowerCase()).filter(Boolean))
   e.sources = (e.sources ?? []).filter((s) => s && s.name).map(normalizeSource)
   e.confidence = CONFIDENCE_RANK[e.confidence] ? e.confidence : 'reported'
+  e.attended = Boolean(e.attended)
+  e.going = Boolean(e.going)
+  e.dismissed = Boolean(e.dismissed)
+  e.hasTickets = Boolean(e.hasTickets)
+  if (e.origin === 'radar') e.radarId = e.radarId ?? e.id
+  if (e.origin === 'wanderlist') e.findingsId = e.findingsId ?? e.id
   e.cost = typeof e.cost === 'number' && Number.isFinite(e.cost) ? e.cost : null
   // A cost and a `free` signal are contradictory; the signal wins (Wanderlist's
   // own rule — a free thing never carries a price).
@@ -83,6 +106,26 @@ export function trustScore(event) {
   const rank = CONFIDENCE_RANK[event.confidence] ?? 1
   const checked = event.checked ? Date.parse(event.checked) : 0
   return rank * 1e13 + (Number.isFinite(checked) ? checked : 0)
+}
+
+/** A Wanderlist "Idea" — the loose someday thing: not attended, no planned date
+ *  and no deadline. Deliberately NOT an event, so Radar-B excludes it by default
+ *  (Settings → Ce intră în Radar). Mirrors Wanderlist's own `isIdea` rule, which
+ *  is the definition of record; keep the two in step. */
+export function isIdea(event) {
+  return event.origin === 'wanderlist'
+    && !event.attended
+    && !event.plannedDate
+    && !event.dateExpiring
+}
+
+/** Wanderlist categories that describe a PLACE or a NOTION rather than something
+ *  happening at a time — a café worth visiting, a loose tip. They're valuable in
+ *  Wanderlist and meaningless in a "what's on this week" stream. */
+export const NON_EVENT_CATEGORIES = ['venue', 'idea', 'discovery']
+
+export function isNonEvent(event) {
+  return NON_EVENT_CATEGORIES.includes(event.category)
 }
 
 /** True when an event carries so little that the UI should say so out loud

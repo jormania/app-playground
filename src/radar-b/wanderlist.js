@@ -71,7 +71,7 @@ export function toDraft(event, now = new Date()) {
   const span = spanOf(event)
   return {
     name: event.name,
-    description: event.summary || descriptionFallback(event),
+    description: withProvenance(event.summary || descriptionFallback(event), event),
     // Prefer the event's OWN page over the article that mentioned it — same
     // preference order the skill applies at intake.
     link: event.tickets || event.link || event.sources.find((s) => s.url)?.url || '',
@@ -87,6 +87,28 @@ export function toDraft(event, now = new Date()) {
     plannedDate: span ? isoDay(span.from) : null,
     plannedTime: event.hasTime && event.start ? String(event.start).slice(11, 16) : null,
   }
+}
+
+/**
+ * Append a one-line provenance footer to the description.
+ *
+ * The other half of the two-way street: Radar-B knows *which sources* vouched for
+ * an event, and that context is exactly what's missing six months later when a
+ * Findings row reads "some exhibition". Wanderlist has no `Sources` field of its
+ * own, so it rides along in the description as one short line rather than being
+ * dropped at the boundary.
+ *
+ * Recommendations are named separately from passing mentions, because "Curatorial
+ * recommended this" and "B365 listed it" are different strengths of signal.
+ */
+export function withProvenance(description, event) {
+  const recs = (event.sources ?? []).filter((s) => s.kind === 'recommendation').map((s) => s.name)
+  const mentions = (event.sources ?? []).filter((s) => s.kind === 'editorial').map((s) => s.name)
+  const bits = []
+  if (recs.length) bits.push(`recomandat de ${[...new Set(recs)].join(', ')}`)
+  if (mentions.length) bits.push(`menționat de ${[...new Set(mentions)].join(', ')}`)
+  if (!bits.length) return description
+  return `${description}\n\n📡 Via Radar-B — ${bits.join('; ')}.`
 }
 
 /** `Description` is treated as required, exactly as the wanderlist skill insists —

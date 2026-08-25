@@ -189,11 +189,21 @@ export const DEMO_SUGGESTED = {
 
 export function createFixtureClient() {
   const saved = [...DEMO_SAVED]
+  const dismissedDemo = new Set()
   return {
     mode: 'demo',
     radarDatabaseId: null,
     findingsDatabaseId: null,
-    async listEvents() { return DEMO_EVENTS },
+    async listEvents() { return dismissedDemo.size
+      ? DEMO_EVENTS.map((e) => (dismissedDemo.has(e.id) ? { ...e, dismissed: true } : e))
+      : DEMO_EVENTS },
+    async setDismissed(radarId, dismissed) {
+      // Demo mode round-trips the dismissal for the session, so Undo is a real
+      // interaction rather than a dead button before a token is configured.
+      if (dismissed) dismissedDemo.add(radarId)
+      else dismissedDemo.delete(radarId)
+      return { id: radarId, dismissed }
+    },
     async listSaved() { return saved },
     async getSuggested() { return DEMO_SUGGESTED },
     async saveToWanderlist(draft) {

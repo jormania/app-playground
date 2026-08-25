@@ -30,8 +30,24 @@ export const ExternalIcon = (p) => (
 export const BackIcon = (p) => (
   <svg {...base} {...p}><path d="M15 5l-7 7 7 7" /></svg>
 )
-export const DismissIcon = (p) => (
-  <svg {...base} {...p}><path d="M4 12h16" /></svg>
+// A bare minus read as "collapse" or "remove one", not "hide this event" — and
+// sat next to a bare chevron with no visual distinction between "go back" and
+// "make it disappear". An eye-with-a-slash is the standard, unmistakable "hide
+// this from my view", and it pairs with a text label rather than standing alone.
+export const HideIcon = (p) => (
+  <svg {...base} {...p}><path d="M3 3l18 18" /><path d="M10.6 5.2A9.6 9.6 0 0 1 12 5c5 0 9 4.5 9 7a11 11 0 0 1-2.4 3.5" /><path d="M6.5 7.1C3.9 8.6 3 10.9 3 12c0 2.5 4 7 9 7a9.4 9.4 0 0 0 3.9-.85" /><path d="M9.9 10.1a3 3 0 0 0 4.1 4.2" /></svg>
+)
+
+export const UndoIcon = (p) => (
+  <svg {...base} width="16" height="16" {...p}><path d="M4 8h10a5 5 0 0 1 0 10h-6" /><path d="M4 8l4-4M4 8l4 4" /></svg>
+)
+
+export const CalendarIcon = (p) => (
+  <svg {...base} width="14" height="14" {...p}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>
+)
+
+export const CheckIcon = (p) => (
+  <svg {...base} width="14" height="14" {...p}><path d="M4 12.5l5 5L20 6.5" /></svg>
 )
 export const GuideIcon = (p) => (
   <svg {...base} {...p}><path d="M4 5.5c2-1 5-1 8 0 3-1 6-1 8 0v13c-2-1-5-1-8 0-3-1-6-1-8 0z" /><path d="M12 5.5v13" /></svg>

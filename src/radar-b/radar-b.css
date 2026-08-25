@@ -174,43 +174,24 @@ body {
 
 /* ── Lens bar ──────────────────────────────────────────────────────────── */
 
-/* Seven lenses (plus counts) don't fit a phone width and were never meant
-   to — the fix isn't hiding one, it's making "there's more, swipe" legible
-   and the swipe itself feel intentional rather than accidental.
+/* Seven lenses don't fit one phone line, and horizontal scrolling was the wrong
+   answer to that: the earlier version scrolled correctly but still *looked*
+   truncated, because a clipped word at the screen edge reads as a layout bug
+   rather than as an invitation to swipe.
 
-   The fade is the classic CSS-only "scroll shadow" trick: two gradients
-   painted `background-attachment: local` (so they scroll WITH the content
-   and land flush against whichever end is actually reachable) sit under two
-   more painted `background-attachment: scroll` (so they stay pinned to the
-   viewport edges as a constant hint). No JS, and a fade only ever appears on
-   the side that still has content to reveal — it disappears on its own once
-   you've scrolled that edge into view. */
+   Wrapping removes the problem instead of signposting it. The full set measures
+   ~580px, so inside the 640px shell it stays a single row on a laptop and
+   becomes two tidy rows on a phone — nothing hidden, nothing to discover, no
+   scroll affordance to get right. */
 .lenses {
   display: flex;
-  gap: var(--space-3xs);
-  overflow-x: auto;
-  scrollbar-width: none;
+  flex-wrap: wrap;
+  gap: var(--space-3xs) var(--space-2xs);
   padding: var(--space-sm) 0;
-  margin: 0 calc(-1 * var(--space-md));
-  padding-left: var(--space-md);
-  padding-right: var(--space-md);
-  scroll-snap-type: x proximity;
-  -webkit-overflow-scrolling: touch;
-  background-image:
-    linear-gradient(to right, var(--color-bg) 0%, transparent 100%),
-    linear-gradient(to left,  var(--color-bg) 0%, transparent 100%),
-    linear-gradient(to right, color-mix(in srgb, var(--color-ink) 10%, transparent), transparent),
-    linear-gradient(to left,  color-mix(in srgb, var(--color-ink) 10%, transparent), transparent);
-  background-repeat: no-repeat;
-  background-size: 28px 100%, 28px 100%, 10px 100%, 10px 100%;
-  background-position: left top, right top, left top, right top;
-  background-attachment: local, local, scroll, scroll;
 }
-.lenses::-webkit-scrollbar { display: none; }
 
 .lens {
   flex: 0 0 auto;
-  scroll-snap-align: start;
   border: 1px solid transparent;
   background: transparent;
   color: var(--color-muted);
@@ -597,3 +578,144 @@ body {
 }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+/* ── Detail bar: back vs hide ──────────────────────────────────────────────
+   Two unlabelled glyphs (a chevron and a minus) gave no clue which navigated
+   and which removed the event. Both now carry a word, and the destructive one
+   is tinted only on interaction — a permanently red control in a calm app
+   reads as an alarm. */
+.barBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  padding: var(--space-2xs) var(--space-xs);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.barBtn svg { flex: 0 0 auto; }
+.barBtn:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 1px; }
+@media (hover: hover) {
+  .barBtn:hover { color: var(--color-ink); background: var(--color-surface-2); }
+  .barBtn.danger:hover { color: var(--color-danger); border-color: color-mix(in srgb, var(--color-danger) 35%, transparent); background: color-mix(in srgb, var(--color-danger) 8%, transparent); }
+}
+.barBtn:active { transform: scale(0.97); }
+
+/* ── Wanderlist state ─────────────────────────────────────────────────────
+   What you already decided, compressed to one chip row so the event page
+   doesn't turn into a second Wanderlist entry. */
+.wlState { display: flex; flex-wrap: wrap; gap: var(--space-2xs); margin-top: var(--space-2xs); }
+
+.wlChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+.wlChip.on { color: var(--color-success); border-color: color-mix(in srgb, var(--color-success) 45%, transparent); }
+.wlChip.gold { color: var(--color-warning); border-color: color-mix(in srgb, var(--color-warning) 45%, transparent); }
+.wlChip.muted { color: var(--color-faint); }
+
+/* ── Toast, now with Undo ─────────────────────────────────────────────────
+   Dismissal is the one destructive gesture in the app, so it gets the standard
+   undo affordance rather than being silently irreversible. */
+.toast {
+  position: fixed;
+  bottom: calc(var(--space-lg) + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  /* `width: max-content` so the message sizes to its own text and only wraps at
+     the cap — without it the flex item shrank to a ~120px column and a
+     one-sentence toast broke over three lines. */
+  width: max-content;
+  max-width: min(92vw, 34rem);
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-pill);
+  padding: var(--space-xs) var(--space-md);
+  box-shadow: var(--shadow-lg);
+  animation: rise var(--duration) var(--ease);
+}
+
+.toastUndo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-accent);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+@media (hover: hover) { .toastUndo:hover { text-decoration: underline; } }
+.toastUndo:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; border-radius: var(--radius-sm); }
+
+/* ── Settings: sections and toggles ───────────────────────────────────────── */
+.settingsSection {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-faint);
+  margin: var(--space-lg) 0 var(--space-xs);
+  padding-bottom: var(--space-2xs);
+  border-bottom: 1px solid var(--color-border);
+  font-weight: var(--weight-medium);
+}
+.settingsSection:first-of-type { margin-top: 0; }
+
+.settingsIntro {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  line-height: var(--leading-body);
+  margin: 0 0 var(--space-sm);
+}
+
+.toggleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+  cursor: pointer;
+}
+.toggleRow + .toggleRow { border-top: 1px solid var(--color-border); }
+.toggleText { flex: 1; min-width: 0; display: block; }
+.toggleLabel { display: block; font-size: var(--text-sm); color: var(--color-ink); }
+.toggleRow .hint {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-faint);
+  line-height: var(--leading-body);
+  margin-top: 2px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.toggleRow input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}

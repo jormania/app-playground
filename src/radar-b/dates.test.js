@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { weekendRange, lensesFor, isLongRun, isRunningNow, isPast, formatWhen, dayHeading, dayKey, stalenessDays, relativeDays } from './dates.js'
+import { weekendRange, endOfWeek, lensesFor, isLongRun, isRunningNow, isPast, formatWhen, dayHeading, dayKey, stalenessDays, relativeDays } from './dates.js'
 import { normalizeEvent } from './model.js'
 
 const ev = (over) => normalizeEvent({ name: 'x', ...over })
@@ -25,7 +25,28 @@ describe('weekendRange', () => {
   })
 })
 
+describe('endOfWeek', () => {
+  test('is the Sunday of the calendar week you are in, not today+7', () => {
+    // The bug this replaces: a rolling seven days from Friday 21st swept in the
+    // FOLLOWING weekend (a festival on the 28th showed under "this week").
+    expect(dayKey(endOfWeek(WED))).toBe('2026-08-23')
+    expect(dayKey(endOfWeek(new Date(2026, 7, 21)))).toBe('2026-08-23') // Friday
+    expect(dayKey(endOfWeek(new Date(2026, 7, 23)))).toBe('2026-08-23') // Sunday: itself
+    expect(dayKey(endOfWeek(new Date(2026, 7, 24)))).toBe('2026-08-30') // Monday: next Sunday
+  })
+})
+
 describe('lensesFor', () => {
+  test('"this week" stops at Sunday — next weekend is "later", not "this week"', () => {
+    const friday = new Date(2026, 7, 21, 12, 0)
+    const nextWeekend = ev({ start: '2026-08-28', end: '2026-08-30' })
+    expect(lensesFor(nextWeekend, friday).has('week')).toBe(false)
+    expect(lensesFor(nextWeekend, friday).has('later')).toBe(true)
+
+    const thisSunday = ev({ start: '2026-08-23' })
+    expect(lensesFor(thisSunday, friday).has('week')).toBe(true)
+  })
+
   test('an event tonight is in tonight and this week', () => {
     const l = lensesFor(ev({ start: '2026-08-19', hasTime: false }), WED)
     expect([...l].sort()).toEqual(['tonight', 'week'])

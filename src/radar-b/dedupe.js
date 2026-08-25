@@ -154,6 +154,29 @@ export function mergeCluster(cluster) {
 
   merged.sources = dedupeSources(ordered.flatMap((m) => m.sources ?? []))
   merged.saved = ordered.some((m) => m.saved)
+
+  // Both underlying rows stay addressable after a merge, because they're written
+  // to for different reasons: a dismissal goes to the Radar row, a Wanderlist
+  // link points at the Findings row. Losing either would make the merged event
+  // read-only in a way the un-merged ones aren't.
+  merged.radarId = ordered.find((m) => m.origin === 'radar')?.id ?? null
+  merged.findingsId = ordered.find((m) => m.origin === 'wanderlist')?.id ?? null
+
+  // Wanderlist's own decisions always come from the Findings row — the Radar row
+  // has no opinion about whether you're going, and a merge must not invent one.
+  const wl = ordered.find((m) => m.origin === 'wanderlist')
+  merged.attended = wl?.attended ?? false
+  merged.going = wl?.going ?? false
+  merged.plannedDate = wl?.plannedDate ?? null
+  merged.plannedTime = wl?.plannedTime ?? null
+  merged.dateExpiring = wl?.dateExpiring ?? null
+  merged.hasTickets = wl?.hasTickets ?? false
+
+  // Dismissal lives on the Radar row for the same reason: it's the only one the
+  // app writes. `some` rather than the base's value, so a merge can't resurrect
+  // something you dismissed.
+  merged.dismissed = ordered.some((m) => m.dismissed)
+  merged.dismissedAt = ordered.map((m) => m.dismissedAt).filter(Boolean).sort().pop() ?? null
   merged.confidence = ordered.reduce(
     (best, m) => ((CONFIDENCE_RANK[m.confidence] ?? 0) > (CONFIDENCE_RANK[best] ?? 0) ? m.confidence : best),
     'uncertain',
