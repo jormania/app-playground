@@ -8,17 +8,11 @@ import { isIdea, isNonEvent } from './model.js'
 
 export const VIEWS = ['tonight', 'tomorrow', 'weekend', 'week', 'later', 'running', 'new']
 
-// Short on purpose. Seven lenses at their full Romanian names overflowed a phone
-// width badly enough that the last one ("Noi pentru tine") was clipped mid-word
-// even with the scroll affordance. These fit; the long form lives in the guide.
-export const VIEW_LABELS = {
-  tonight: 'Azi',
-  tomorrow: 'Mâine',
-  weekend: 'Weekend',
-  week: 'Săptămâna',
-  later: 'Mai încolo',
-  running: 'În curs',
-  new: 'Noi',
+/** Lens labels are translated (`view.<id>` in i18n.js). Kept short in both
+ *  languages: seven of them share one horizontally-scrolling bar, and a long
+ *  label is what made the last one read as clipped rather than scrollable. */
+export function viewLabel(view, t) {
+  return t ? t(`view.${view}`) : view
 }
 
 export function emptyFilters() {
@@ -169,13 +163,14 @@ export function facets(events, now = new Date(), intake = DEFAULT_INTAKE) {
 /** A compact, paste-ready brief of what's on screen, for handing to
  *  /recommend in Bucharest. This is the app→skill direction of the loop: the
  *  question starts from the real current pool instead of a fresh round of search. */
-export function toBrief(stream, view) {
-  const lines = [`Evenimente în Radar-B — ${VIEW_LABELS[view] ?? view}:`, '']
+export function toBrief(stream, view, t = null) {
+  const tr = t ?? ((k, v) => (k === 'brief.heading' ? `Evenimente în Radar-B — ${v.view}:` : 'Care dintre ele mi s-ar potrivi?'))
+  const lines = [tr('brief.heading', { view: viewLabel(view, t) }), '']
   const all = [...stream.days.flatMap((d) => d.events), ...stream.standing]
   all.forEach((e, i) => {
     const bits = [e.venue, e.area].filter(Boolean).join(', ')
     lines.push(`${i + 1}. ${e.name}${bits ? ` — ${bits}` : ''}${e.link ? ` (${e.link})` : ''}`)
   })
-  lines.push('', 'Care dintre ele mi s-ar potrivi?')
+  lines.push('', tr('brief.question'))
   return lines.join('\n')
 }

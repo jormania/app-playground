@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Modal, Button } from '../ds'
 import { toDraft, FINDINGS_CATEGORIES } from './wanderlist.js'
+import { useT } from './i18n.js'
 
 /**
  * The save handoff, as an editable draft.
@@ -12,58 +13,58 @@ import { toDraft, FINDINGS_CATEGORIES } from './wanderlist.js'
  * address is expensive then and free to fix now.
  */
 export function SaveSheet({ event, now, onCancel, onConfirm, busy, error }) {
+  const t = useT()
   const [draft, setDraft] = useState(() => toDraft(event, now))
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
 
   return (
-    <Modal open onClose={onCancel} title="Salvează în Wanderlist">
+    <Modal open onClose={onCancel} title={t('save.title')}>
       <label className="field">
-        <span>Nume</span>
+        <span>{t('save.name')}</span>
         <input value={draft.name} onChange={(e) => set({ name: e.target.value })} />
       </label>
 
       <label className="field">
-        <span>Descriere</span>
+        <span>{t('save.description')}</span>
         <textarea value={draft.description} onChange={(e) => set({ description: e.target.value })} />
       </label>
 
       <label className="field">
-        <span>Categorie</span>
+        <span>{t('save.category')}</span>
         <select value={draft.category} onChange={(e) => set({ category: e.target.value })}>
           {FINDINGS_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
       </label>
 
       <label className="field">
-        <span>Loc</span>
-        <input value={draft.place} onChange={(e) => set({ place: e.target.value })} placeholder="Nume, stradă, București" />
-        <span className="hint">Adresa completă — Wanderlist pune pinul pe hartă din acest text.</span>
+        <span>{t('save.place')}</span>
+        <input value={draft.place} onChange={(e) => set({ place: e.target.value })} placeholder={t('save.placePlaceholder')} />
+        <span className="hint">{t('save.placeHint')}</span>
       </label>
 
       <label className="field">
-        <span>Link</span>
+        <span>{t('save.link')}</span>
         <input value={draft.link} onChange={(e) => set({ link: e.target.value })} />
       </label>
 
       <label className="field">
-        <span>Expiră</span>
+        <span>{t('save.expires')}</span>
         <input type="date" value={draft.dateExpiring ?? ''} onChange={(e) => set({ dateExpiring: e.target.value || null })} />
-        <span className="hint">Termenul până la care poți acționa. Gol dacă nu există unul real.</span>
+        <span className="hint">{t('save.expiresHint')}</span>
       </label>
 
       {/* Attended and Going are deliberately absent: a new row is never either,
           even with a date set — a known date is not a commitment. */}
       <p className="provenanceNote">
-        Se creează un rând nou în Findings, cu <code>Going</code> și <code>Attended</code> nebifate.
-        Restul (dată planificată, bilete, poză) se editează în Wanderlist.
+        {t('save.note')}
       </p>
 
       {error && <p className="notice warn">{error}</p>}
 
       <div className="actions">
-        <Button variant="ghost" onClick={onCancel}>Renunță</Button>
+        <Button variant="ghost" onClick={onCancel}>{t('save.cancel')}</Button>
         <Button onClick={() => onConfirm(draft)} disabled={busy || !draft.name.trim()}>
-          {busy ? 'Se salvează…' : 'Salvează'}
+          {busy ? t('detail.saving') : t('save.confirm')}
         </Button>
       </div>
     </Modal>

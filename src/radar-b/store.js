@@ -10,6 +10,7 @@ import { parseNotionId } from '../shared/notionId'
 import { createNotionClient, SUGGESTED_PAGE_ID, FINDINGS_DATABASE_ID, RADAR_DATABASE_ID } from './notionClient.js'
 import { createFixtureClient } from './fixtures.js'
 import { DEFAULT_INTAKE } from './search.js'
+import { DEFAULT_LANG, isLang } from './i18n.js'
 
 const TOKEN_KEY = 'radarb_token'
 const RADAR_DB_KEY = 'radarb_radar_db'
@@ -43,13 +44,20 @@ export const suggestedPage = idSetting(SUGGESTED_KEY, SUGGESTED_PAGE_ID)
 // ── View prefs ────────────────────────────────────────────────────────────────
 // The last lens persists so the app reopens where you left it. The search query
 // deliberately does NOT — a stale search on reload is more confusing than helpful.
-export const DEFAULT_PREFS = { view: 'tonight', theme: 'system', intake: { ...DEFAULT_INTAKE } }
+export const DEFAULT_PREFS = { view: 'tonight', theme: 'system', lang: DEFAULT_LANG, intake: { ...DEFAULT_INTAKE } }
 export function loadPrefs() {
   const raw = readJson(PREFS_KEY, {})
   // `intake` is merged key-by-key rather than replaced wholesale, so a toggle
   // added in a later version defaults ON for someone with saved prefs instead of
   // arriving as `undefined` (which reads as "off" and silently widens the pool).
-  return { ...DEFAULT_PREFS, ...raw, intake: { ...DEFAULT_INTAKE, ...(raw.intake ?? {}) } }
+  return {
+    ...DEFAULT_PREFS,
+    ...raw,
+    // Guard the language too: an unknown id (a hand-edited value, or one from a
+    // future version) must fall back rather than render every string as its key.
+    lang: isLang(raw.lang) ? raw.lang : DEFAULT_LANG,
+    intake: { ...DEFAULT_INTAKE, ...(raw.intake ?? {}) },
+  }
 }
 export function savePrefs(prefs) {
   writeJson(PREFS_KEY, { ...DEFAULT_PREFS, ...prefs, intake: { ...DEFAULT_INTAKE, ...(prefs.intake ?? {}) } })

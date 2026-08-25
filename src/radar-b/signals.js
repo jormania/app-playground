@@ -10,17 +10,10 @@ import { isLongRun, isRunningNow, stalenessDays } from './dates.js'
  *  it shows, so this list is the entire "which badge matters more" policy. */
 export const SIGNAL_ORDER = ['recommended', 'free', 'family', 'new-venue', 'outdoor', 'long-run', 'recurring', 'ticketed', 'sold-out', 'mainstream']
 
-export const SIGNAL_LABELS = {
-  recommended: 'recomandat',
-  free: 'gratuit',
-  family: 'cu copii',
-  outdoor: 'în aer liber',
-  'new-venue': 'loc nou',
-  recurring: 'recurent',
-  'long-run': 'se vede oricând',
-  ticketed: 'bilet',
-  'sold-out': 'sold out',
-  mainstream: 'mainstream',
+/** Signal labels are translated (`signal.<id>` in i18n.js). This helper keeps
+ *  the id→label lookup in one place so callers don't build the key by hand. */
+export function signalLabel(signal, t) {
+  return t ? t(`signal.${signal}`) : signal
 }
 
 const CARD_BADGE_LIMIT = 2

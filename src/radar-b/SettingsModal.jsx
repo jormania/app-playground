@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Modal, Button } from '../ds'
 import { getToken, setToken, clearToken, radarDb, findingsDb, suggestedPage, testConnection } from './store.js'
+import { useT, LANGS } from './i18n.js'
 
 /**
  * Settings, in four named sections rather than one undifferentiated list.
@@ -14,14 +15,14 @@ import { getToken, setToken, clearToken, radarDb, findingsDb, suggestedPage, tes
 
 /** A labelled switch row. Kept local rather than pulled from ds/ because the
  *  "what this is hiding right now" count underneath is specific to this screen. */
-function Toggle({ label, hint, count, checked, onChange }) {
+function Toggle({ label, hint, count, countLabel, checked, onChange }) {
   return (
     <label className="toggleRow">
       <span className="toggleText">
         <span className="toggleLabel">{label}</span>
         <span className="hint">
           {hint}
-          {count > 0 && <> · <strong>{count}</strong> ascunse acum</>}
+          {count > 0 && <> · {countLabel}</>}
         </span>
       </span>
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
@@ -29,7 +30,8 @@ function Toggle({ label, hint, count, checked, onChange }) {
   )
 }
 
-export function SettingsModal({ onClose, onSaved, theme, onTheme, intake, onIntake, hiddenCounts = {} }) {
+export function SettingsModal({ onClose, onSaved, theme, onTheme, lang, onLang, intake, onIntake, hiddenCounts = {} }) {
+  const t = useT()
   const [token, setTokenValue] = useState(getToken())
   const [radar, setRadar] = useState(radarDb.get())
   const [findings, setFindings] = useState(findingsDb.get())
@@ -44,7 +46,7 @@ export function SettingsModal({ onClose, onSaved, theme, onTheme, intake, onInta
     setStatus(null)
     try {
       await testConnection(token, radar, findings)
-      setStatus({ ok: true, message: 'Conexiune reușită.' })
+      setStatus({ ok: true, message: t('settings.testOk') })
     } catch (err) {
       setStatus({ ok: false, message: err.message })
     } finally {
@@ -63,96 +65,105 @@ export function SettingsModal({ onClose, onSaved, theme, onTheme, intake, onInta
   }
 
   return (
-    <Modal open onClose={onClose} title="Setări">
+    <Modal open onClose={onClose} title={t('settings.title')}>
       {/* ── 1. What gets in ─────────────────────────────────────────────── */}
-      <h3 className="settingsSection">Ce intră în Radar</h3>
+      <h3 className="settingsSection">{t('settings.intake')}</h3>
       <p className="settingsIntro">
-        Radar-B citește și Wanderlist, care e mai larg decât „ce se întâmplă săptămâna asta".
-        Toate filtrele sunt pornite implicit — stinge unul și evenimentele revin.
+        {t('settings.intakeIntro')}
       </p>
 
       <Toggle
-        label="Ascunde ce am bifat ca Attended"
-        hint="Ai fost deja — nu mai e ceva la care să mergi"
+        label={t('settings.hideAttended')}
+        hint={t('settings.hideAttendedHint')}
         count={hiddenCounts.hideAttended}
+        countLabel={t('settings.hiddenNow', { n: hiddenCounts.hideAttended })}
         checked={intake.hideAttended}
         onChange={(v) => setIntake({ hideAttended: v })}
       />
       <Toggle
-        label="Ascunde Ideas"
-        hint={'F\u0103r\u0103 dat\u0103 planificat\u0103 \u0219i f\u0103r\u0103 termen \u2014 un \u201ec\u00e2ndva\u201d, nu un eveniment'}
+        label={t('settings.hideIdeas')}
+        hint={t('settings.hideIdeasHint')}
         count={hiddenCounts.hideIdeas}
+        countLabel={t('settings.hiddenNow', { n: hiddenCounts.hideIdeas })}
         checked={intake.hideIdeas}
         onChange={(v) => setIntake({ hideIdeas: v })}
       />
       <Toggle
-        label="Ascunde locuri și descoperiri"
-        hint="Categoriile venue, idea și discovery — locuri și piste, nu evenimente cu oră"
+        label={t('settings.hideNonEvents')}
+        hint={t('settings.hideNonEventsHint')}
         count={hiddenCounts.hideNonEvents}
+        countLabel={t('settings.hiddenNow', { n: hiddenCounts.hideNonEvents })}
         checked={intake.hideNonEvents}
         onChange={(v) => setIntake({ hideNonEvents: v })}
       />
       <Toggle
-        label="Ascunde ce am ascuns eu"
-        hint="Se sincronizează prin Notion, deci e la fel pe telefon și pe laptop"
+        label={t('settings.hideDismissed')}
+        hint={t('settings.hideDismissedHint')}
         count={hiddenCounts.hideDismissed}
+        countLabel={t('settings.hiddenNow', { n: hiddenCounts.hideDismissed })}
         checked={intake.hideDismissed}
         onChange={(v) => setIntake({ hideDismissed: v })}
       />
 
       {/* ── 2. Connection ───────────────────────────────────────────────── */}
-      <h3 className="settingsSection">Conexiune Notion</h3>
+      <h3 className="settingsSection">{t('settings.connection')}</h3>
 
       <label className="field">
-        <span>Token</span>
+        <span>{t('settings.token')}</span>
         <input type="password" value={token} onChange={(e) => setTokenValue(e.target.value)} placeholder="ntn_…" autoComplete="off" />
-        <span className="hint">Rămâne doar în acest browser. Gol = mod demo, pe date de exemplu.</span>
+        <span className="hint">{t('settings.tokenHint')}</span>
       </label>
 
       <label className="field">
-        <span>Baza Radar</span>
-        <input value={radar} onChange={(e) => setRadar(e.target.value)} placeholder="Link sau ID Notion" />
-        <span className="hint">Evenimentele scrise de <code>/recommend in Bucharest</code>.</span>
+        <span>{t('settings.radarDb')}</span>
+        <input value={radar} onChange={(e) => setRadar(e.target.value)} placeholder={t('settings.idPlaceholder')} />
+        <span className="hint">{t('settings.radarDbHint')}</span>
       </label>
 
       <label className="field">
-        <span>Baza Findings (Wanderlist)</span>
+        <span>{t('settings.findingsDb')}</span>
         <input value={findings} onChange={(e) => setFindings(e.target.value)} />
-        <span className="hint">Unde se salvează și de unde se citește starea (Going, dată planificată).</span>
+        <span className="hint">{t('settings.findingsDbHint')}</span>
       </label>
 
       <label className="field">
-        <span>Pagina „Suggested events"</span>
+        <span>{t('settings.suggestedPage')}</span>
         <input value={suggested} onChange={(e) => setSuggested(e.target.value)} />
-        <span className="hint">Citită doar pentru lista de articole din care s-a construit săptămâna.</span>
+        <span className="hint">{t('settings.suggestedPageHint')}</span>
       </label>
 
       {status && <p className={`notice${status.ok ? '' : ' warn'}`}>{status.message}</p>}
 
       {/* ── 3. Appearance ───────────────────────────────────────────────── */}
-      <h3 className="settingsSection">Aspect</h3>
+      <h3 className="settingsSection">{t('settings.appearance')}</h3>
       <label className="field">
-        <span>Temă</span>
+        <span>{t('settings.theme')}</span>
         <select value={theme} onChange={(e) => onTheme(e.target.value)}>
-          <option value="system">ca sistemul</option>
-          <option value="light">luminos</option>
-          <option value="dark">întunecat</option>
+          <option value="system">{t('settings.themeSystem')}</option>
+          <option value="light">{t('settings.themeLight')}</option>
+          <option value="dark">{t('settings.themeDark')}</option>
         </select>
       </label>
 
-      {/* ── 4. Help ─────────────────────────────────────────────────────── */}
-      <h3 className="settingsSection">Ajutor</h3>
+      <label className="field">
+        <span>{t('settings.language')}</span>
+        <select value={lang} onChange={(e) => onLang(e.target.value)}>
+          {LANGS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+        </select>
+      </label>
+
+      {/* ── 4. Help ───────────────────────────────────── */}
+      <h3 className="settingsSection">{t('settings.help')}</h3>
       <p className="provenanceNote" style={{ marginTop: 0 }}>
-        Ghidul complet — cum funcționează <code>/recommend in Bucharest</code>, dedublarea,
-        provenance-ul și legătura cu Wanderlist —{' '}
-        <a href="/radar-b-guide.html" target="_blank" rel="noopener">e aici</a>.
+        {t('settings.guideNote', { link: '' })}{' '}
+        <a href="/radar-b-guide.html" target="_blank" rel="noopener">{t('settings.guideLink')}</a>.
       </p>
 
       <div className="actions">
         <Button variant="ghost" onClick={test} disabled={testing || !token.trim()}>
-          {testing ? 'Se testează…' : 'Testează'}
+          {testing ? t('settings.testing') : t('settings.test')}
         </Button>
-        <Button onClick={save}>Salvează</Button>
+        <Button onClick={save}>{t('settings.save')}</Button>
       </div>
     </Modal>
   )

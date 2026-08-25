@@ -600,7 +600,9 @@ Aspect · Ajutor) rather than one flat column of fields.
   edge reads as a bug rather than an invitation to swipe. The bar now **wraps**:
   ~580px of lenses is one row inside the 640px shell and two tidy rows on a phone.
   Verified 358/358 at 390px and 608/608 at 768px — no overflow at either.
-  Labels shortened too (`Săptămâna`, `În curs`, `Noi`).
+  Labels shortened too (`Săptămâna`, `În curs`, `Noi`). *(The wrap was reverted in
+  §17 — the shorter labels were the whole fix, and one scrolling row reads better
+  than two static ones.)*
 - **Back vs dismiss were indistinguishable** — a bare chevron beside a bare minus.
   Both now carry a word (**Înapoi** / **Ascunde**), and the minus became an
   eye-with-a-slash; the destructive one tints only on hover, since a permanently
@@ -632,3 +634,51 @@ Aspect · Ajutor) rather than one flat column of fields.
   move — the breadth of the search did.**
 
 38 new/updated tests (`intake.test.js` plus additions across dates/wanderlist/App).
+
+## 17. Two languages (2026-08-25)
+
+Radar-B is written in Romanian because the city is, and because every string it
+displays from Notion arrives in Romanian. But the *chrome* — lens names, buttons,
+settings, empty states — is the app's own voice, and there was no reason for it to
+be monolingual. **Settings → Aspect → Limbă** switches the entire interface between
+**Română** and **English**, instantly and persistently.
+
+### What translates, and what deliberately doesn't
+
+Every user-facing string lives in [`src/radar-b/i18n.js`](src/radar-b/i18n.js),
+keyed by a dotted name, with **Romanian as the source of truth and the fallback**: a
+key missing from `en` renders its Romanian text, so a half-finished translation
+degrades to "some Romanian" rather than to raw `detail.sources` debris. A parity
+test asserts the two tables have identical key sets *and* identical `{placeholder}`
+sets per key, so a translation can't silently lose an interpolated value.
+
+Three things stay in Romanian in both modes, on purpose:
+
+- **Event content** — names, summaries, venues, addresses. It's Bucharest data
+  written in Romanian by Romanian sources. Machine-translating it in the client
+  would be inventing text nobody wrote, and it would break the visual match between
+  a card and the article it came from.
+- **Category and area values** (`concert`, `centru vechi`). These are a closed
+  Notion vocabulary shared with Wanderlist and the skill. The words on the filter
+  chips *are* the stored values; renaming them in one app would make the chips stop
+  matching the database.
+- **Names** — `Radar-B`, `Wanderlist`, `Notion`, `/recommend in Bucharest`.
+
+### How it's wired
+
+`App` owns `prefs` and wraps the tree in `LangProvider`; `useT()` yields a
+translator memoised on the active language, so a switch re-renders everything at
+once rather than leaving the shell in one language and a modal in the other. The
+pure helpers — `dates.js`, `signals.js`, `search.js` — take the translator as an
+argument instead of reaching for context, and each defaults to Romanian when handed
+none, which keeps them callable from tests and from non-React code. Month and day
+names are per-language arrays (they're indexed by `getMonth()`/`getDay()`, not
+looked up by key). `document.documentElement.lang` follows the choice, so the
+browser's own hyphenation and reading tools agree with what's on screen.
+
+The lens bar **scrolls horizontally again** — §16 had made it wrap, but the short
+labels alone turned out to be the whole fix, and one row reads better than two.
+The short labels stayed.
+
+23 new tests (`i18n.test.js` plus two App-level ones covering the toggle end to end,
+including that event names stay Romanian after switching).

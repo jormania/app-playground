@@ -7,6 +7,21 @@ export const LENSES = ['tonight', 'tomorrow', 'weekend', 'week', 'later']
 
 const DAY_MS = 86400000
 
+/** These functions are pure and are called from tests and from non-React code
+ *  without a translator. Rather than making `t` required everywhere, they fall
+ *  back to Romanian — the app's source language — when none is passed. */
+const FALLBACK_RO = {
+  'date.noDate': 'fără dată',
+  'date.today': 'azi',
+  'date.tomorrow': 'mâine',
+  'date.yesterday': 'ieri',
+  'date.daysAgo': 'acum {n} zile',
+  'date.until': 'până pe {date}',
+  'date.todayHeading': 'Azi',
+  'date.tomorrowHeading': 'Mâine',
+  'date.noDateHeading': 'Fără dată',
+}
+
 export function startOfDay(d) {
   const x = new Date(d)
   x.setHours(0, 0, 0, 0)
@@ -114,9 +129,25 @@ export function lensesFor(event, now = new Date()) {
   return out
 }
 
-const RO_MONTHS = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie',
-  'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie']
-const RO_DAYS = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă']
+// Month and weekday names per language. Kept here rather than in i18n.js because
+// they're indexed by Date.getMonth()/getDay() — an ordered array, not a lookup of
+// named keys — and because `formatWhen` needs them synchronously in pure code
+// that has no React context to read from.
+const MONTHS = {
+  ro: ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie',
+    'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'],
+  en: ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'],
+}
+const DAYS = {
+  ro: ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă'],
+  en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+}
+
+/** English writes "3 September" the same way Romanian writes "3 septembrie", so
+ *  one day-then-month order serves both — no per-language date grammar needed. */
+function months(lang) { return MONTHS[lang] ?? MONTHS.ro }
+function days(lang) { return DAYS[lang] ?? DAYS.ro }
 
 export function formatTime(iso) {
   const d = new Date(iso)
@@ -126,9 +157,11 @@ export function formatTime(iso) {
 
 /** "When" as a human would say it, never as a database would print it. Precision
  *  is only ever as high as the underlying data: no time means no time shown. */
-export function formatWhen(event, now = new Date()) {
+export function formatWhen(event, now = new Date(), t = null) {
+  const tr = t ?? ((k, v) => (FALLBACK_RO[k] ?? k).replace('{date}', v?.date ?? ''))
+  const lang = tr('__lang__') === '__lang__' ? 'ro' : tr('__lang__')
   const span = spanOf(event)
-  if (!span) return 'fără dată'
+  if (!span) return tr('date.noDate')
 
   const today = startOfDay(now)
   const time = event.hasTime && event.start ? formatTime(event.start) : null
@@ -136,31 +169,33 @@ export function formatWhen(event, now = new Date()) {
 
   if (multiDay) {
     const running = span.from <= today && span.to >= today
-    if (running) return `până pe ${dayMonth(span.to)}`
-    return `${dayMonth(span.from)} – ${dayMonth(span.to)}`
+    if (running) return tr('date.until', { date: dayMonth(span.to, lang) })
+    return `${dayMonth(span.from, lang)} – ${dayMonth(span.to, lang)}`
   }
 
   const daysOut = Math.round((span.from - today) / DAY_MS)
   let label
-  if (daysOut === 0) label = 'azi'
-  else if (daysOut === 1) label = 'mâine'
-  else if (daysOut > 1 && daysOut < 7) label = RO_DAYS[span.from.getDay()]
-  else label = dayMonth(span.from)
+  if (daysOut === 0) label = tr('date.today')
+  else if (daysOut === 1) label = tr('date.tomorrow')
+  else if (daysOut > 1 && daysOut < 7) label = days(lang)[span.from.getDay()]
+  else label = dayMonth(span.from, lang)
   return time ? `${label}, ${time}` : label
 }
 
-export function dayMonth(d) {
-  return `${d.getDate()} ${RO_MONTHS[d.getMonth()]}`
+export function dayMonth(d, lang = 'ro') {
+  return `${d.getDate()} ${months(lang)[d.getMonth()]}`
 }
 
 /** Heading for a day group in the stream. */
-export function dayHeading(key, now = new Date()) {
+export function dayHeading(key, now = new Date(), t = null) {
+  const tr = t ?? ((k) => FALLBACK_RO[k] ?? k)
+  const lang = tr('__lang__') === '__lang__' ? 'ro' : tr('__lang__')
   const d = parseDay(key)
-  if (!d) return 'Fără dată'
+  if (!d) return tr('date.noDateHeading')
   const daysOut = Math.round((startOfDay(d) - startOfDay(now)) / DAY_MS)
-  if (daysOut === 0) return `Azi · ${dayMonth(d)}`
-  if (daysOut === 1) return `Mâine · ${dayMonth(d)}`
-  return `${cap(RO_DAYS[d.getDay()])} · ${dayMonth(d)}`
+  if (daysOut === 0) return `${tr('date.todayHeading')} · ${dayMonth(d, lang)}`
+  if (daysOut === 1) return `${tr('date.tomorrowHeading')} · ${dayMonth(d, lang)}`
+  return `${cap(days(lang)[d.getDay()])} · ${dayMonth(d, lang)}`
 }
 
 function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1) }
@@ -173,9 +208,10 @@ export function stalenessDays(event, now = new Date()) {
   return Math.max(0, Math.round((startOfDay(now) - checked) / DAY_MS))
 }
 
-export function relativeDays(days) {
-  if (days === null || days === undefined) return null
-  if (days === 0) return 'azi'
-  if (days === 1) return 'ieri'
-  return `acum ${days} zile`
+export function relativeDays(n, t = null) {
+  const tr = t ?? ((k, v) => (FALLBACK_RO[k] ?? k).replace('{n}', v?.n ?? ''))
+  if (n === null || n === undefined) return null
+  if (n === 0) return tr('date.today')
+  if (n === 1) return tr('date.yesterday')
+  return tr('date.daysAgo', { n })
 }

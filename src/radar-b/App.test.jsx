@@ -166,4 +166,31 @@ describe('Radar-B in demo mode', () => {
     // button is back to its resting label rather than stuck on "se actualizează…".
     expect(await screen.findByRole('button', { name: 'Reîmprospătează' })).toBeTruthy()
   })
+  test('the language toggle translates the whole shell, and sticks', async () => {
+    await open()
+    await userEvent.click(screen.getByRole('button', { name: 'Setări' }))
+    await userEvent.selectOptions(screen.getByDisplayValue('Română'), 'en')
+
+    // The change is immediate and reaches the shell behind the modal, not just
+    // the settings panel: lens bar, toolbar labels and section headings all move.
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: /^Today/ })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: /Azi/ })).toBeNull()
+    expect(document.documentElement.lang).toBe('en')
+
+    // And it survives a reload — the choice is a stored preference, not view state.
+    cleanup()
+    render(<App />)
+    expect(await screen.findByRole('tab', { name: /^Today/ })).toBeTruthy()
+  })
+
+  test('event content itself stays in Romanian — only the UI is translated', async () => {
+    await open()
+    await userEvent.click(screen.getByRole('button', { name: 'Setări' }))
+    await userEvent.selectOptions(screen.getByDisplayValue('Română'), 'en')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    // Names come from Romanian sources; machine-translating them in the client
+    // would be inventing text nobody wrote.
+    expect(screen.getByRole('heading', { name: /Trio Nocturn/ })).toBeTruthy()
+  })
 })

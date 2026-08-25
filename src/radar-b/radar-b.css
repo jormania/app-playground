@@ -174,21 +174,23 @@ body {
 
 /* ── Lens bar ──────────────────────────────────────────────────────────── */
 
-/* Seven lenses don't fit one phone line, and horizontal scrolling was the wrong
-   answer to that: the earlier version scrolled correctly but still *looked*
-   truncated, because a clipped word at the screen edge reads as a layout bug
-   rather than as an invitation to swipe.
-
-   Wrapping removes the problem instead of signposting it. The full set measures
-   ~580px, so inside the 640px shell it stays a single row on a laptop and
-   becomes two tidy rows on a phone — nothing hidden, nothing to discover, no
-   scroll affordance to get right. */
+/* Seven lenses don't fit one phone line, and that's fine — the bar scrolls
+   horizontally. Shortening the labels (Săptămâna / În curs / Noi) took it from
+   "clipped mid-word" to "obviously continues", which is all it needed; an
+   earlier attempt to wrap it into two rows solved a problem that wasn't worth
+   the extra vertical space in a sticky header. */
 .lenses {
   display: flex;
-  flex-wrap: wrap;
   gap: var(--space-3xs) var(--space-2xs);
+  overflow-x: auto;
+  scrollbar-width: none;
   padding: var(--space-sm) 0;
+  margin: 0 calc(-1 * var(--space-md));
+  padding-left: var(--space-md);
+  padding-right: var(--space-md);
+  -webkit-overflow-scrolling: touch;
 }
+.lenses::-webkit-scrollbar { display: none; }
 
 .lens {
   flex: 0 0 auto;

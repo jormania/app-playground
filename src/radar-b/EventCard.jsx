@@ -1,10 +1,11 @@
 import { formatWhen } from './dates.js'
-import { cardBadges } from './signals.js'
-import { SIGNAL_LABELS } from './signals.js'
+import { cardBadges, signalLabel } from './signals.js'
+import { useT } from './i18n.js'
 
 /** One event in the stream. Deliberately dense but quiet: when, name, where, two
  *  lines of why, and at most two badges. Everything else waits for the detail. */
 export function EventCard({ event, now, onOpen }) {
+  const t = useT()
   const badges = cardBadges(event)
   const recommended = badges.includes('recommended')
   const sourceCount = event.sources.length
@@ -16,7 +17,7 @@ export function EventCard({ event, now, onOpen }) {
       className={`card${recommended ? ' recommended' : ''}${event.confidence === 'uncertain' ? ' uncertain' : ''}`}
       onClick={() => onOpen(event)}
     >
-      <div className="cardWhen">{formatWhen(event, now)}</div>
+      <div className="cardWhen">{formatWhen(event, now, t)}</div>
       <h3 className="cardName">{event.name}</h3>
       {(event.venue || event.area) && (
         <div className="cardWhere">
@@ -26,14 +27,14 @@ export function EventCard({ event, now, onOpen }) {
       )}
       {event.summary && <p className="cardSummary">{event.summary}</p>}
       <div className="cardFoot">
-        {event.saved && <span className="badge saved">în wanderlist</span>}
+        {event.saved && <span className="badge saved">{t('card.inWanderlist')}</span>}
         {badges.map((s) => (
-          <span key={s} className={`badge ${s}`}>{SIGNAL_LABELS[s] ?? s}</span>
+          <span key={s} className={`badge ${s}`}>{signalLabel(s, t)}</span>
         ))}
         {/* Multiple independent mentions is itself a signal of confidence — the
             brief's "increase confidence and usefulness rather than create noise". */}
-        {sourceCount > 1 && <span className="sourceCount">{sourceCount} surse</span>}
-        {!free && typeof event.cost === 'number' && <span className="price">{event.cost} lei</span>}
+        {sourceCount > 1 && <span className="sourceCount">{t('card.sources', { n: sourceCount })}</span>}
+        {!free && typeof event.cost === 'number' && <span className="price">{t('card.lei', { n: event.cost })}</span>}
       </div>
     </button>
   )

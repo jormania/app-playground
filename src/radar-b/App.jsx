@@ -3,30 +3,21 @@ import { shareNative } from '../shared/share.js'
 import { dedupe } from './dedupe.js'
 import { isIdea, isNonEvent } from './model.js'
 import { dayHeading } from './dates.js'
-import { buildStream, facets, emptyFilters, hasActiveFilters, toBrief, VIEWS, VIEW_LABELS, inView, matchesFilters, passesIntake } from './search.js'
+import { buildStream, facets, emptyFilters, hasActiveFilters, toBrief, VIEWS, viewLabel, inView, matchesFilters, passesIntake } from './search.js'
 import { EventCard } from './EventCard.jsx'
 import { EventDetail } from './EventDetail.jsx'
 import { FilterSheet } from './FilterSheet.jsx'
 import { SaveSheet } from './SaveSheet.jsx'
 import { SettingsModal } from './SettingsModal.jsx'
 import { SearchIcon, FilterIcon, SettingsIcon, GuideIcon, CloseIcon, RadarIcon, UndoIcon } from './icons.jsx'
+import { useT, LangProvider } from './i18n.js'
 import {
   getClient, isLive, loadPrefs, savePrefs, loadLocal, saveLocal, stampFirstSeen,
   readCache, writeCache,
 } from './store.js'
 
-const EMPTY_LINES = {
-  tonight: 'Nimic în seara asta — încearcă weekendul sau ce e în desfășurare.',
-  tomorrow: 'Nimic mâine deocamdată.',
-  weekend: 'Weekendul nu s-a umplut încă. Sursele publică joi–vineri.',
-  week: 'Săptămâna e goală. Rulează /recommend in Bucharest ca să o populezi.',
-  later: 'Nimic programat mai încolo.',
-  running: 'Nicio expoziție deschisă acum.',
-  new: 'Ai văzut tot ce a apărut la ultima actualizare.',
-}
-
-export default function App() {
-  const [prefs, setPrefs] = useState(loadPrefs)
+function RadarB({ prefs, setPrefs }) {
+  const t = useT()
   const [local, setLocal] = useState(loadLocal)
   const [data, setData] = useState(() => readCache() ?? { events: [], saved: [], suggested: null })
   const [loading, setLoading] = useState(true)
@@ -52,6 +43,11 @@ export default function App() {
   }, [prefs.theme])
 
   useEffect(() => { savePrefs(prefs) }, [prefs])
+
+  // Keep the document's own language attribute in step, so assistive tech
+  // announces the UI in the right voice and the browser stops offering to
+  // translate a page that's already in the reader's language.
+  useEffect(() => { document.documentElement.lang = prefs.lang }, [prefs.lang])
   useEffect(() => { saveLocal(local) }, [local])
 
   // ── Load ────────────────────────────────────────────────────────────────
@@ -186,11 +182,11 @@ export default function App() {
     const res = await setDismissedState(event, true)
     setToast({
       text: res.synced
-        ? 'Ascuns peste tot.'
+        ? t('toast.hiddenEverywhere')
         : res.error
-          ? `Ascuns doar aici — ${res.error}`
-          : 'Ascuns doar aici.',
-      undo: () => { setDismissedState(event, false); setToast({ text: 'Adus înapoi.' }) },
+          ? t('toast.hiddenHereError', { error: res.error })
+          : t('toast.hiddenHere'),
+      undo: () => { setDismissedState(event, false); setToast({ text: t('toast.restored') }) },
     })
   }
 
@@ -202,7 +198,7 @@ export default function App() {
       setData((d) => ({ ...d, saved: [...d.saved, entry] }))
       setSaving(null)
       setOpen(null)
-      setToast({ text: 'Salvat în Wanderlist.' })
+      setToast({ text: t('toast.saved') })
     } catch (err) {
       setSaveError(err.message)
     } finally {
@@ -211,9 +207,9 @@ export default function App() {
   }
 
   async function askRecommender() {
-    const text = toBrief(stream, prefs.view)
+    const text = toBrief(stream, prefs.view, t)
     const res = await shareNative({ name: 'Radar-B', description: text }, 'Radar-B')
-    setToast(res.copied ? { text: 'Copiat — lipește-l în conversația cu Claude.' } : res.shared ? null : { text: 'Nu s-a putut copia.' })
+    setToast(res.copied ? { text: t('toast.copied') } : res.shared ? null : { text: t('toast.copyFailed') })
   }
 
   useEffect(() => {
@@ -223,8 +219,8 @@ export default function App() {
   }, [toast])
 
   const refreshedLine = data.suggested?.refreshedAt
-    ? `actualizat ${data.suggested.refreshedAt}`
-    : isLive() ? 'notion' : 'mod demo'
+    ? t('app.updated', { when: data.suggested.refreshedAt })
+    : isLive() ? t('app.notion') : t('app.demo')
 
   return (
     <div className="app">
@@ -240,22 +236,22 @@ export default function App() {
             className="mastheadMeta"
             onClick={load}
             disabled={loading}
-            aria-label="Reîmprospătează"
-            title="Reîmprospătează"
+            aria-label={t('app.refresh')}
+            title={t('app.refresh')}
           >
-            {loading ? 'se actualizează…' : refreshedLine}
+            {loading ? t('app.refreshing') : refreshedLine}
           </button>
           <div className="mastheadActions">
-            <button type="button" className="iconBtn" aria-label="Caută" onClick={() => { setSearching((s) => !s); setTimeout(() => searchRef.current?.focus(), 0) }}>
+            <button type="button" className="iconBtn" aria-label={t('app.search')} onClick={() => { setSearching((s) => !s); setTimeout(() => searchRef.current?.focus(), 0) }}>
               {searching ? <CloseIcon /> : <SearchIcon />}
             </button>
-            <button type="button" className="iconBtn" aria-label="Filtre" onClick={() => setShowFilters(true)} style={hasActiveFilters(filters) ? { color: 'var(--signal)' } : undefined}>
+            <button type="button" className="iconBtn" aria-label={t('app.filters')} onClick={() => setShowFilters(true)} style={hasActiveFilters(filters) ? { color: 'var(--signal)' } : undefined}>
               <FilterIcon />
             </button>
-            <a className="iconBtn" href="/radar-b-guide.html" target="_blank" rel="noopener" aria-label="Ghid" title="Cum funcționează Radar-B">
+            <a className="iconBtn" href="/radar-b-guide.html" target="_blank" rel="noopener" aria-label={t('app.guide')} title={t('app.guideTitle')}>
               <GuideIcon />
             </a>
-            <button type="button" className="iconBtn" aria-label="Setări" onClick={() => setShowSettings(true)}>
+            <button type="button" className="iconBtn" aria-label={t('app.settings')} onClick={() => setShowSettings(true)}>
               <SettingsIcon />
             </button>
           </div>
@@ -268,13 +264,13 @@ export default function App() {
               className="searchInput"
               value={filters.query}
               onChange={(e) => setFilters((f) => ({ ...f, query: e.target.value }))}
-              placeholder="titlu, loc, cartier, sursă…"
+              placeholder={t('app.searchPlaceholder')}
               enterKeyHint="search"
             />
           </div>
         )}
 
-        <div className="lenses" role="tablist" aria-label="Perspective">
+        <div className="lenses" role="tablist" aria-label={t('app.lenses')}>
           {VIEWS.map((view) => (
             <button
               key={view}
@@ -284,7 +280,7 @@ export default function App() {
               aria-selected={prefs.view === view}
               onClick={() => setPrefs((p) => ({ ...p, view }))}
             >
-              {VIEW_LABELS[view]}
+              {viewLabel(view, t)}
               {counts[view] > 0 && <span className="count">{counts[view]}</span>}
             </button>
           ))}
@@ -303,15 +299,15 @@ export default function App() {
         {!loading && stream.total === 0 && (
           <div className="empty">
             <RadarIcon style={{ color: 'var(--color-faint)' }} />
-            <h2>Liniște</h2>
-            <p>{EMPTY_LINES[prefs.view]}</p>
-            {hasActiveFilters(filters) && <p>Sau ai filtre active.</p>}
+            <h2>{t('empty.title')}</h2>
+            <p>{t(`empty.${prefs.view}`)}</p>
+            {hasActiveFilters(filters) && <p>{t('empty.filtersActive')}</p>}
           </div>
         )}
 
         {stream.days.map((day) => (
           <section key={day.key} className="dayGroup">
-            <h2 className="dayHeading">{dayHeading(day.key, now)}</h2>
+            <h2 className="dayHeading">{dayHeading(day.key, now, t)}</h2>
             <div className="cards">
               {day.events.map((event) => (
                 <EventCard key={event.id} event={event} now={now} onOpen={openEvent} />
@@ -324,7 +320,7 @@ export default function App() {
           <section className="dayGroup">
             {/* Long runs and undated things, kept out of the day groups — an
                 exhibition open for four months does not belong under "Saturday". */}
-            <h2 className="dayHeading">Oricând</h2>
+            <h2 className="dayHeading">{t('app.anytime')}</h2>
             <div className="cards">
               {stream.standing.map((event) => (
                 <EventCard key={event.id} event={event} now={now} onOpen={openEvent} />
@@ -335,19 +331,19 @@ export default function App() {
 
         {stream.total > 0 && (
           <button type="button" className="chip" style={{ alignSelf: 'center' }} onClick={askRecommender}>
-            Întreabă Recommend in Bucharest despre astea
+            {t('app.askSkill')}
           </button>
         )}
 
         {data.suggested?.links?.length > 0 && (
           <details>
-            <summary className="sectionTitle" style={{ cursor: 'pointer' }}>Din ce s-a construit săptămâna</summary>
+            <summary className="sectionTitle" style={{ cursor: 'pointer' }}>{t('app.weekSources')}</summary>
             <ul className="sources">
               {data.suggested.links.map((l, i) => (
                 <li key={i} className="source">
                   <span>
                     {l.url ? <a href={l.url} target="_blank" rel="noreferrer">{l.source}</a> : l.source}
-                    {l.pending && <span style={{ color: 'var(--color-faint)' }}> · încă nepublicat</span>}
+                    {l.pending && <span style={{ color: 'var(--color-faint)' }}> · {t('app.notPublished')}</span>}
                   </span>
                 </li>
               ))}
@@ -361,7 +357,7 @@ export default function App() {
           <span>{toast.text}</span>
           {toast.undo && (
             <button type="button" className="toastUndo" onClick={() => { const fn = toast.undo; setToast(null); fn() }}>
-              <UndoIcon /> Anulează
+              <UndoIcon /> {t('app.undo')}
             </button>
           )}
         </div>
@@ -397,6 +393,8 @@ export default function App() {
         <SettingsModal
           theme={prefs.theme}
           onTheme={(theme) => setPrefs((p) => ({ ...p, theme }))}
+          lang={prefs.lang}
+          onLang={(lang) => setPrefs((p) => ({ ...p, lang }))}
           intake={prefs.intake}
           onIntake={(intake) => setPrefs((p) => ({ ...p, intake }))}
           hiddenCounts={hiddenCounts}
@@ -405,5 +403,22 @@ export default function App() {
         />
       )}
     </div>
+  )
+}
+
+/**
+ * `App` owns `prefs` and only renders the UI beneath a `LangProvider`.
+ *
+ * The language has to be readable by `useT()` *above* every component that
+ * translates, so it can't live inside the translated tree. Holding all of prefs
+ * here keeps one source of truth — an earlier version kept language in App and
+ * everything else in RadarB, which needed a polling interval to stay in step.
+ */
+export default function App() {
+  const [prefs, setPrefs] = useState(loadPrefs)
+  return (
+    <LangProvider lang={prefs.lang}>
+      <RadarB prefs={prefs} setPrefs={setPrefs} />
+    </LangProvider>
   )
 }
