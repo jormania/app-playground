@@ -36,15 +36,20 @@ import styles from './AppTile.module.css'
 // browserSupport.js for why a same-origin <a> can't hand off to an installed
 // WebAPK on its own.
 //
-// Only when `installed` is confirmed true, though. That intent is an OS-level
-// ACTION_VIEW, so Android resolves it against everything that claims the URL —
-// which on a phone with two browsers means an "Open with" chooser listing
-// Chrome and Edge. Firing it for an app that isn't installed buys nothing (no
-// WebAPK exists to hand off to) and costs a chooser on every single tap. The
-// earlier unconditional version reasoned that a false negative shouldn't block
-// a real install from being found; the flags are far more reliable now (each
-// app sets its own, and installState prunes stale ones), so the trade has
-// flipped — an occasional browser tab beats a guaranteed chooser.
+// Unconditionally — regardless of `installed` status, per CABINET.md. That
+// intent is an OS-level ACTION_VIEW, so Android resolves it against
+// everything that claims the URL; if no WebAPK does, S.browser_fallback_url
+// just reopens the plain page, i.e. today's behaviour, so there's no real
+// downside to trying it even when install detection says false or unknown.
+// A prior revision gated this on installed === true instead, reasoning that
+// a false negative was rare enough that a guaranteed "Open with" chooser
+// (when nothing is actually installed) cost more than it was worth. In
+// practice that gate meant a genuinely-installed app whose flag hadn't been
+// set yet — e.g. added to the home screen but never opened standalone even
+// once, since the flag itself is only set from inside a standalone launch —
+// could never get that first standalone launch from the Cabinet at all: the
+// tap just reopened a browser tab, every time, with no way to break the
+// cycle. Reverted back to unconditional so a real install always gets found.
 //
 // Everything that isn't "icon + name + tap to launch" — description, last-
 // opened stats, the QR code, the New badge's word — lives behind the corner
@@ -56,7 +61,7 @@ export function AppTile({ app, installed, isNew, openStats, editing, onMoveUp, o
   const needsChromeRedirect = !isStatic && !installed && !canInstallPwaHere()
   const href = needsChromeRedirect
     ? chromeIntentUrl(window.location.origin + path)
-    : !isStatic && installed && isAndroid()
+    : !isStatic && isAndroid()
       ? pwaLaunchIntentUrl(window.location.origin + path)
       : path
   // "Install" is only ever offered where a tap can actually lead to one. On

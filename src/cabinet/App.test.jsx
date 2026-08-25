@@ -120,11 +120,16 @@ describe('what a tile promises', () => {
   })
 })
 
-// The OS-level intent is what makes Android offer an installed WebAPK at all,
-// but it also makes Android offer every *other* app claiming the URL — with a
-// second browser on the phone that's an "Open with" chooser. Paying that for
-// an app with no WebAPK to win it is pure cost, so the intent is reserved for
-// confirmed installs.
+// The OS-level intent is what makes Android offer an installed WebAPK at all
+// — a same-origin same-tab link tap never triggers that hand-off on its own
+// (see browserSupport.js). It's fired unconditionally, regardless of
+// `installed` status: gating it on a confirmed install used to mean a
+// genuinely-installed app whose flag hadn't been set yet (e.g. added to the
+// home screen but never opened standalone once) could never get that first
+// standalone launch from the Cabinet — the tap just reopened a browser tab,
+// with no way to break the cycle. If no WebAPK claims the URL,
+// S.browser_fallback_url just reopens the page, i.e. a plain link's behaviour,
+// so there's no real downside to always trying it.
 describe('Android launch routing', () => {
   function hrefFor(title) {
     return screen.getByRole('link', { name: new RegExp(`${title}$`) }).getAttribute('href')
@@ -140,11 +145,13 @@ describe('Android launch routing', () => {
     expect(hrefFor(app.title)).toContain(app.file)
   })
 
-  it('uses a plain link for an app that is not installed', async () => {
+  it('still uses an OS intent for an app not (yet) confirmed installed, so a real install always gets found', async () => {
     vi.stubGlobal('navigator', ANDROID_NAV)
     renderApp()
     await settle()
-    expect(hrefFor(REACT_VITE_APPS[0].title)).toBe(`/${REACT_VITE_APPS[0].file}`)
+    const app = REACT_VITE_APPS[0]
+    expect(hrefFor(app.title)).toContain('intent://')
+    expect(hrefFor(app.title)).toContain(app.file)
   })
 
   it('never uses an intent for a static app, installed flag or not', async () => {
