@@ -21,6 +21,8 @@
     "gen:fit-check-icons": "node scripts/generate-fit-check-icons.mjs",
     "gen:silva-icons": "node scripts/generate-silva-icons.mjs",
     "gen:radar-b-icons": "node scripts/generate-radar-b-icons.mjs",
+    "gen:journal-icons": "node scripts/generate-journal-icons.mjs",
+    "gen:wanderlist-icons": "node scripts/generate-wanderlist-icons.mjs",
     "gen:kobo-fixture": "node scripts/generate-kobo-sample-db.mjs"
   },
   "repository": {
