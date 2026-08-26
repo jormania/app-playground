@@ -185,7 +185,14 @@ export function makeEvent({ venue, title, date, time = null, hall = null, link =
   // location "Expirat Halele Carol", which rendered as "Expirat Halele Carol ·
   // Expirat Halele Carol" on every card. Containment, not equality — "Sala Mare"
   // at "Ateneul Român" is a real hall and must survive.
-  const cleanHall = hall ? textOf(hall) : null
+  //
+  // Oveit's own `location` field is free text someone typed per event, not a
+  // fixed value — "Ateneul Roman / sala mare" and "Ateneul Roman // sala
+  // mare" are the same hall, typed with a stray extra slash on some rows, and
+  // without this they filtered as two separate halls (hallsInUse groups by
+  // exact string). Collapsing runs of slashes to one, with consistent
+  // spacing, folds every spelling of the same separator into one hall.
+  const cleanHall = hall ? textOf(hall).replace(/\s*\/+\s*/g, ' / ').trim() : null
   const keptHall = cleanHall && !slug(venue ?? '').includes(slug(cleanHall)) ? cleanHall : null
   return {
     key: eventKey(venue, date, cleanTitle, time),

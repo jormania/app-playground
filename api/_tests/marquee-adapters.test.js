@@ -114,6 +114,16 @@ describe('shared helpers', () => {
     expect(none.description).toBeNull()
   })
 
+  it('makeEvent folds a doubled separator in a hall so it never reads as a second hall', () => {
+    // Real bug: Oveit's own `location` field is free text typed per event —
+    // "Ateneul Roman / sala mare" and "Ateneul Roman // sala mare" showed up
+    // as two separate hall chips for the same real hall.
+    const a = makeEvent({ venue: 'Filarmonica George Enescu', title: 'X', date: '2026-09-01', hall: 'Ateneul Roman / sala mare' })
+    const b = makeEvent({ venue: 'Filarmonica George Enescu', title: 'Y', date: '2026-09-02', hall: 'Ateneul Roman // sala mare' })
+    expect(a.hall).toBe(b.hall)
+    expect(a.hall).toBe('Ateneul Roman / sala mare')
+  })
+
   it('dedupe keeps the first of a repeated key', () => {
     const a = { key: 'x', title: 'first' }
     expect(dedupe([a, { key: 'x', title: 'second' }, { key: 'y' }])).toEqual([a, { key: 'y' }])

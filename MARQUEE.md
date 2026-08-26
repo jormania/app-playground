@@ -887,6 +887,33 @@ same colour "tickets"/"on sale" chips already use); Ignore stays quiet until hov
 toward the same danger tone Remove uses elsewhere — both are "take this away" actions, just at
 different levels of permanence.
 
+### 9.28 Search rejoins the tabs row at every width, and a doubled separator stopped being a second hall (2026-08-26)
+
+Two more real bugs, both caught on a phone:
+
+- **Search drifted back onto its own row.** §9.18's phone-only column stack (built to kill
+  the original "Venues" width-change dance) over-corrected — it also undid the later request
+  to share the row on desktop, and on a phone it just brought the drifting-away complaint
+  back in a different shape. The actual fix was never "give search its own row" — it's
+  **`.tabs` never shrinking or wrapping** (`flex-shrink: 0`), so its width is stable the
+  instant it renders regardless of what "Venues" grows to. `.search-row` is the only thing
+  that gives up width, down to a ~6.5rem pill on a phone; `.tabs-row` shares a row with
+  `flex-wrap: nowrap` at every width now, phone included. Verified stable (no jump across
+  three checks 300ms and 1200ms apart) at both 375px and a narrower 320px.
+- **A doubled separator in a hall name read as a second hall.** Oveit's own `location` field
+  is free text typed per event, not a fixed value — "Ateneul Roman / sala mare" and "Ateneul
+  Roman // sala mare" are the same real hall at Filarmonica, just typed with a stray extra
+  slash on some rows, and `hallsInUse` groups by exact string. `makeEvent`'s hall cleanup
+  (already the place that drops a hall repeating the venue name) now also collapses any run
+  of slashes to one, with consistent spacing — folding every spelling of the separator into
+  one hall, for any adapter, not just Oveit's.
+
+Also reconfirmed live: the Club Control link/time fixes from §9.26 were reported as still
+broken, but re-running the adapter against the CURRENT live page (not the fixture) shows every
+one of its 8 listings resolving a real link correctly. Marquee's programme is always the last
+check, not a live view — a code fix doesn't retroactively repair an already-stored scan, and a
+fresh **Check venues** press is what actually picks it up.
+
 ## Open
 
 - **Filarmonica's own Strapi feed still blocks this development machine** (403 to every
