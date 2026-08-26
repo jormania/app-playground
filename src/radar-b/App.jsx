@@ -9,7 +9,7 @@ import { EventDetail } from './EventDetail.jsx'
 import { FilterSheet } from './FilterSheet.jsx'
 import { SaveSheet } from './SaveSheet.jsx'
 import { SettingsModal } from './SettingsModal.jsx'
-import { SearchIcon, FilterIcon, SettingsIcon, GuideIcon, CloseIcon, RadarIcon, UndoIcon } from './icons.jsx'
+import { SearchIcon, FilterIcon, SettingsIcon, GuideIcon, CloseIcon, RadarIcon, UndoIcon, RefreshIcon, BeeMark } from './icons.jsx'
 import { useT, LangProvider } from './i18n.js'
 import {
   getClient, isLive, loadPrefs, savePrefs, loadLocal, saveLocal, stampFirstSeen,
@@ -218,15 +218,26 @@ function RadarB({ prefs, setPrefs }) {
     return () => clearTimeout(t)
   }, [toast])
 
+  // `notion` used to sit here whenever the app was live and the Suggested page
+  // carried no date — a label reporting the NORMAL state, which is the same
+  // thing the detail view's "Preț necunoscut" row was doing. Dropped. `demo` is
+  // kept because it is abnormal and worth knowing; a real refresh date is kept
+  // because it is news. When there is neither, the button shows its glyph and
+  // says nothing.
   const refreshedLine = data.suggested?.refreshedAt
     ? t('app.updated', { when: data.suggested.refreshedAt })
-    : isLive() ? t('app.notion') : t('app.demo')
+    : isLive() ? null : t('app.demo')
 
   return (
     <div className="app">
       <header className="masthead">
         <div className="mastheadTop">
-          <h1 className="wordmark">Radar<span className="dot">-B</span></h1>
+          {/* The B is a bee — the Eye-Bee-M rebus, played straight. The glyph
+              is decorative and `aria-hidden`; the heading's own label carries
+              the name, so assistive tech hears "Radar-B" and not a bee. */}
+          <h1 className="wordmark" aria-label="Radar-B">
+            <span aria-hidden="true">Radar-</span><BeeMark className="wordmarkBee" />
+          </h1>
           {/* Tappable rather than a static label — the only other way to force a
               refresh was leaving and returning to the tab. `disabled` while a
               load is already in flight avoids piling up requests on a slow
@@ -239,7 +250,7 @@ function RadarB({ prefs, setPrefs }) {
             aria-label={t('app.refresh')}
             title={t('app.refresh')}
           >
-            {loading ? t('app.refreshing') : refreshedLine}
+            {loading ? t('app.refreshing') : (refreshedLine ?? <RefreshIcon />)}
           </button>
           <div className="mastheadActions">
             <button type="button" className="iconBtn" aria-label={t('app.search')} onClick={() => { setSearching((s) => !s); setTimeout(() => searchRef.current?.focus(), 0) }}>

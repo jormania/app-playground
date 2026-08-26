@@ -1,15 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <!-- Semnal launcher tile: a radar sweep over warm paper. The single amber
-       return is the whole idea of the app — one thing worth your evening,
-       picked out of the noise. -->
-  <rect width="512" height="512" fill="#1e1b18"/>
-  <g fill="none" stroke="#6f6355" stroke-width="10">
-    <circle cx="256" cy="256" r="172"/>
-    <circle cx="256" cy="256" r="112"/>
-    <circle cx="256" cy="256" r="52"/>
+  <!-- Radar-Bee launcher tile.
+       Drawn in the flat-poster language of Paul Rand's 1981 Eye-Bee-M rebus —
+       saturated flats on black, no gradients, no outlines: green teardrop
+       wings, an amber banded body, two pink knobs. Original artwork; the rebus
+       is the idea being borrowed, not the drawing.
+       The radar survives inside the wings, where the venation is a set of
+       concentric rings struck from the thorax — the same lines read as wing
+       structure and as a sweep. They are a DARKER GREEN rather than black on
+       purpose: black rings cut visible notches out of the wing edge against a
+       black ground, and the bee looked chewed. A meld, weighted to the bee. -->
+  <rect width="512" height="512" fill="#000000"/>
+
+  <defs>
+    <path id="wingL" d="M232 234 Q160 240 112 288 Q74 328 122 350 Q182 368 216 300 Q236 262 232 234 Z"/>
+    <path id="wingR" d="M280 234 Q352 240 400 288 Q438 328 390 350 Q330 368 296 300 Q276 262 280 234 Z"/>
+    <clipPath id="clipL"><use href="#wingL"/></clipPath>
+    <clipPath id="clipR"><use href="#wingR"/></clipPath>
+    <clipPath id="abdomen"><ellipse cx="256" cy="288" rx="55" ry="112"/></clipPath>
+    <g id="rings" fill="none" stroke="#2f5a3a" stroke-width="9">
+      <circle cx="256" cy="244" r="72"/>
+      <circle cx="256" cy="244" r="120"/>
+      <circle cx="256" cy="244" r="168"/>
+    </g>
+  </defs>
+
+  <use href="#wingL" fill="#3b6b47"/>
+  <g clip-path="url(#clipL)"><use href="#rings"/></g>
+  <use href="#wingR" fill="#3b6b47"/>
+  <g clip-path="url(#clipR)"><use href="#rings"/></g>
+
+  <ellipse cx="256" cy="288" rx="55" ry="112" fill="#e8a33d"/>
+  <g clip-path="url(#abdomen)" fill="#000000">
+    <rect x="194" y="214" width="124" height="21"/>
+    <rect x="194" y="258" width="124" height="21"/>
+    <rect x="194" y="302" width="124" height="21"/>
+    <rect x="194" y="346" width="124" height="21"/>
   </g>
-  <path d="M256 256 L 378 170" stroke="#d98b4a" stroke-width="14" stroke-linecap="round" fill="none"/>
-  <circle cx="256" cy="256" r="14" fill="#d98b4a"/>
-  <circle cx="378" cy="170" r="26" fill="#d98b4a"/>
-  <circle cx="378" cy="170" r="46" fill="none" stroke="#d98b4a" stroke-width="8" opacity="0.45"/>
+
+  <circle cx="227" cy="146" r="31" fill="#efa3b1"/>
+  <circle cx="285" cy="146" r="31" fill="#efa3b1"/>
 </svg>

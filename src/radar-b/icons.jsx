@@ -53,7 +53,46 @@ export const GuideIcon = (p) => (
   <svg {...base} {...p}><path d="M4 5.5c2-1 5-1 8 0 3-1 6-1 8 0v13c-2-1-5-1-8 0-3-1-6-1-8 0z" /><path d="M12 5.5v13" /></svg>
 )
 
-/** The wordmark's radar sweep, used as the empty-state mark too. */
+/** Shown in the masthead when the status line has nothing to report — see
+ *  App.jsx's `refreshedLine`. The button has to stay tappable even with no
+ *  text in it, and a glyph is the honest alternative to a label reading
+ *  "everything is normal". */
+export const RefreshIcon = (p) => (
+  <svg {...base} width="15" height="15" {...p}><path d="M20 12a8 8 0 1 1-2.34-5.66" /><path d="M20 4v5h-5" /></svg>
+)
+
+/** The radar sweep, used as the empty-state mark. Stroked in `currentColor`,
+ *  unlike `BeeMark` — an empty state should recede into `--color-faint`, not
+ *  arrive in full poster colour. */
 export const RadarIcon = (p) => (
   <svg {...base} width="28" height="28" {...p}><circle cx="12" cy="12" r="9" opacity="0.35" /><circle cx="12" cy="12" r="5" opacity="0.6" /><path d="M12 12 18.5 7" /><circle cx="16.5" cy="9" r="1.4" fill="currentColor" stroke="none" /></svg>
+)
+
+/**
+ * The bee, at letterform scale — this is the `B` of Radar-B.
+ *
+ * Same five flats as `public/radar-b-logo.svg` and the launcher tile, and
+ * deliberately NOT `currentColor`: the bee is the identity, so it stays green /
+ * amber / pink wherever it lands, on either theme. It carries no ring venation
+ * — below about 40px those rings turn to mud and fray the wing edge, which is
+ * why the small mark and the tile are two drawings of one bee rather than one
+ * drawing at two sizes.
+ *
+ * Decorative here: the wordmark's own `aria-label` says "Radar-B", so this is
+ * `aria-hidden` and screen readers never meet a bee where a letter should be.
+ */
+export const BeeMark = ({ size = 22, ...p }) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" fill="none"
+       aria-hidden="true" focusable="false" {...p}>
+    <path d="M29 27 Q17 28 10 36 Q4 44 13 47 Q23 50 28 38 Q31 31 29 27 Z" fill="#3b6b47" />
+    <path d="M35 27 Q47 28 54 36 Q60 44 51 47 Q41 50 36 38 Q33 31 35 27 Z" fill="#3b6b47" />
+    <ellipse cx="32" cy="37" rx="8.5" ry="16.5" fill="#e8a33d" />
+    <g fill="var(--color-bg)">
+      <rect x="23.5" y="26" width="17" height="3.4" />
+      <rect x="23.5" y="33.5" width="17" height="3.4" />
+      <rect x="23.5" y="41" width="17" height="3.4" />
+    </g>
+    <circle cx="27.4" cy="17.5" r="5.6" fill="#efa3b1" />
+    <circle cx="36.6" cy="17.5" r="5.6" fill="#efa3b1" />
+  </svg>
 )

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Radar-B — Guide</title>
 <meta name="description" content="What Radar-B is, how it works with the /recommend in Bucharest skill and Wanderlist, how events are deduplicated across sources, and how to connect your own Notion in a few minutes." />
-<meta name="theme-color" content="#f3efe7" />
+<meta name="theme-color" content="#faf7f1" />
 <script>
   // Follow the app's theme (shared localStorage key), applied before first paint
   // so the guide never flashes the wrong palette on the way in from the app.
@@ -14,7 +14,7 @@
     if (p.theme === 'dark' || p.theme === 'light') {
       document.documentElement.setAttribute('data-theme', p.theme);
       var m = document.querySelector('meta[name="theme-color"]');
-      if (m) m.setAttribute('content', p.theme === 'dark' ? '#16161a' : '#f3efe7');
+      if (m) m.setAttribute('content', p.theme === 'dark' ? '#0b0b0d' : '#faf7f1');
     }
   } catch (e) {}
 </script>
@@ -27,45 +27,45 @@
      are stated explicitly — a system-only definition would leave the page
      borrowing whatever the host painted behind it. */
   :root {
-    --bg: #f3efe7;
-    --bg2: #eae4d8;
-    --surface: #fbf8f2;
-    --surface2: #f3efe7;
-    --border: #ded5c5;
-    --border2: #bfb4a0;
-    --ink: #2b2723;
-    --muted: #6b625a;
-    --faint: #9c9187;
-    --accent: #b4632a;
-    --accent2: #9a5322;
-    --good: #4a7a4e;
-    --warn: #b07d1e;
+    --bg: #faf7f1;
+    --bg2: #efeade;
+    --surface: #ffffff;
+    --surface2: #faf7f1;
+    --border: #e0d8c8;
+    --border2: #c3b8a2;
+    --ink: #141416;
+    --muted: #6f6355;
+    --faint: #9c8974;
+    --accent: #b8781c;
+    --accent2: #9c6413;
+    --good: #3b6b47;
+    --warn: #a8720f;
     --maxw: 48rem;
     --display: 'Alegreya', Georgia, serif;
     --sans: 'Inter', system-ui, -apple-system, sans-serif;
     --mono: 'JetBrains Mono', ui-monospace, monospace;
   }
   html[data-theme='dark'] {
-    --bg: #16161a;
-    --bg2: #101013;
-    --surface: #1e1e23;
-    --surface2: #26262c;
-    --border: #34343c;
-    --border2: #4a4a55;
-    --ink: #e7e2d9;
-    --muted: #a49c92;
-    --faint: #6f6960;
-    --accent: #d98b4a;
-    --accent2: #e8a065;
-    --good: #7fae7c;
-    --warn: #d6ab55;
+    --bg: #0b0b0d;
+    --bg2: #050506;
+    --surface: #151518;
+    --surface2: #1e1e22;
+    --border: #2c2c33;
+    --border2: #45454f;
+    --ink: #f4f0e8;
+    --muted: #9c8974;
+    --faint: #6d6459;
+    --accent: #e8a33d;
+    --accent2: #f2b75e;
+    --good: #5c9668;
+    --warn: #d99a2e;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme='light']) {
-      --bg: #16161a; --bg2: #101013; --surface: #1e1e23; --surface2: #26262c;
-      --border: #34343c; --border2: #4a4a55;
-      --ink: #e7e2d9; --muted: #a49c92; --faint: #6f6960;
-      --accent: #d98b4a; --accent2: #e8a065; --good: #7fae7c; --warn: #d6ab55;
+      --bg: #0b0b0d; --bg2: #050506; --surface: #151518; --surface2: #1e1e22;
+      --border: #2c2c33; --border2: #45454f;
+      --ink: #f4f0e8; --muted: #9c8974; --faint: #6d6459;
+      --accent: #e8a33d; --accent2: #f2b75e; --good: #5c9668; --warn: #d99a2e;
     }
   }
 
@@ -94,7 +94,8 @@
     margin: 0 0 .25rem;
     line-height: 1;
   }
-  .wordmark .b { color: var(--accent); }
+  .wordmark { display: inline-flex; align-items: center; gap: .02em; }
+  .beemark { width: 1.15em; height: 1.15em; display: block; margin-top: .06em; }
   .tagline { color: var(--muted); margin: 0; font-size: 1.05rem; }
   .kicker {
     font-family: var(--mono); font-size: .7rem; text-transform: uppercase;
@@ -192,7 +193,7 @@
 
 <header class="masthead">
   <p class="kicker">📡 Guide</p>
-  <h1 class="wordmark">Radar<span class="b">-B</span></h1>
+  <h1 class="wordmark" aria-label="Radar-B"><span aria-hidden="true">Radar-</span><svg class="beemark" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path d="M29 27 Q17 28 10 36 Q4 44 13 47 Q23 50 28 38 Q31 31 29 27 Z" fill="#3b6b47"/><path d="M35 27 Q47 28 54 36 Q60 44 51 47 Q41 50 36 38 Q33 31 35 27 Z" fill="#3b6b47"/><ellipse cx="32" cy="37" rx="8.5" ry="16.5" fill="#e8a33d"/><g fill="var(--bg)"><rect x="23.5" y="26" width="17" height="3.4"/><rect x="23.5" y="33.5" width="17" height="3.4"/><rect x="23.5" y="41" width="17" height="3.4"/></g><circle cx="27.4" cy="17.5" r="5.6" fill="#efa3b1"/><circle cx="36.6" cy="17.5" r="5.6" fill="#efa3b1"/></svg></h1>
   <p class="tagline">A personal cultural radar for Bucharest.</p>
 </header>
 

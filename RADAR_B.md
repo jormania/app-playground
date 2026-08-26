@@ -889,3 +889,81 @@ site: the real title, the real showtime and a bookable link in one fetch, rather
 than a schedule someone retyped. It's now a source row in Step 1, the first place
 to look for film links in Step 3b, and the cross-check that decides whether a film
 another source mentioned is actually playing. That check is what caught Comatogen.
+
+## 21. Radar-Bee — the identity, and a palette out of a 1981 poster (2026-08-26)
+
+Renaming the app to sit better beside Marquee was priced first: 284 occurrences
+across 40 files, of which the mechanical half was an afternoon and the other half —
+`radar-b-react.html`, the manifest `id`/`start_url`/`scope`, the service-worker
+scope, `watchInstalled`, and seven `radarb_*` localStorage keys — meant an orphaned
+PWA install and a lost Notion token unless every one was migrated.
+
+**So the name didn't move. The identity did.** The `-B` is now a bee: the Eye-Bee-M
+rebus, played straight. That buys the whole point of the rename — an identity that
+reads as an object in the world, like a marquee does, rather than a technical
+suffix — and touches nothing in the risky half. No reinstall, no redirect, no
+storage migration, no WebAPK exposure.
+
+It also survives its own metaphor test, which is the part that matters more than the
+pun: **a bee forages across the whole city, works many sources, and carries things
+back to the hive.** Eight publications in, Wanderlist out. Marquee stands still and
+shows one venue's own sign. The two marks now carry the architecture.
+
+### Two drawings of one bee
+
+- `radar-b-icon.svg` — the launcher tile. Green teardrop wings, amber banded body,
+  two pink knobs, on black. **The radar lives inside the wings**, where the venation
+  is a set of concentric rings struck from the thorax, so the same lines read as wing
+  structure and as a sweep. A meld, weighted to the bee.
+- `radar-b-logo.svg` — the small mark (favicon, and the `BeeMark` component's
+  geometry). Identical silhouette, **no venation**: below ~40px those rings collapse
+  into mud and fray the wing edge. Two drawings, not one drawing at two sizes.
+
+Three earlier passes are worth recording because each failed a different way. Loose
+radar arcs with no wing outline read as a **spider**. Filled cream wings read as a
+moth. Black ring venation on a black ground cut visible notches out of the wing edge
+and the bee looked **chewed** — the rings are a darker green for that reason.
+
+The artwork is original. The rebus is the idea being borrowed, not the drawing.
+
+### The palette is the poster
+
+Five flats, each doing exactly one job — which also fixed an existing problem, that
+amber was carrying three unrelated meanings at once:
+
+| Poster | Hex (dark) | Job |
+|---|---|---|
+| bee body | `#e8a33d` | accent · `--signal` · `recomandat` |
+| wings | `#5c9668` | success · `gratuit` |
+| brow | `#d2694b` | danger |
+| the M | `#8290ea` | **`--color-info`, and the `în wanderlist` badge** |
+| knobs | `#efa3b1` | **`--color-pink`, tickets held** — the one decorative colour |
+
+`în wanderlist` used to be amber, so a saved recommended event carried two amber
+badges meaning unrelated things. It gets the M's periwinkle now.
+
+Dark is the poster's native register: near-black ground (`#0b0b0d`), colour doing the
+speaking. Light inverts onto warm white with the same five hues darkened enough to
+hold contrast. **Dark tokens are still defined twice** — the `prefers-color-scheme`
+block and the `[data-theme="dark"]` block — and both were rewritten; see the comment
+above them for why that duplication exists.
+
+### `notion` is gone from the chrome
+
+The masthead read `Radar-B  notion` whenever the app was live and the Suggested page
+carried no date — a label reporting the **normal** state, which is what the detail
+view's `Preț necunoscut` row was doing before §19 removed it. Dropped, along with the
+`app.notion` key in both language tables. `demo` stays (abnormal, worth knowing) and a
+real refresh date stays (news). With neither, the button shows a refresh glyph and
+says nothing — it is the refresh affordance, so it could not simply render empty.
+
+The same redundancy was on every card in the launcher: six app subtitles ended in
+`· notion`, naming the backing store on a tile where it changes no decision. Removed
+across all of them. The `notion` **tag** stays — that one drives filtering.
+
+### What was deliberately left alone
+
+`src/marquee/` and `public/marquee-guide.html` reference Radar-B, but only in prose
+and comments, and the name has not changed — there is no visual identity of Radar-B's
+rendered inside Marquee to restyle. Those files were also mid-flight in another
+session (the TNB and MyStage adapters) while this landed, so they were not touched.

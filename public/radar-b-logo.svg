@@ -1,7 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"
-     fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-  <circle cx="12" cy="12" r="9" opacity="0.35"/>
-  <circle cx="12" cy="12" r="5" opacity="0.6"/>
-  <path d="M12 12 18.5 7"/>
-  <circle cx="16.5" cy="9" r="1.4" fill="currentColor" stroke="none"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Radar-Bee, small mark: favicon and anywhere the tile is too detailed.
+       Same family as radar-b-icon.svg, but the wing venation is dropped — at
+       32px and 16px those rings collapse into mud and the wing edge frays.
+       Two marks, one bee: the tile carries the radar, this one carries the
+       silhouette. Full colour on transparent, so it reads on light or dark
+       browser chrome without a background plate. -->
+  <path d="M29 27 Q17 28 10 36 Q4 44 13 47 Q23 50 28 38 Q31 31 29 27 Z" fill="#3b6b47"/>
+  <path d="M35 27 Q47 28 54 36 Q60 44 51 47 Q41 50 36 38 Q33 31 35 27 Z" fill="#3b6b47"/>
+
+  <defs>
+    <clipPath id="body"><ellipse cx="32" cy="37" rx="8.5" ry="16.5"/></clipPath>
+  </defs>
+  <ellipse cx="32" cy="37" rx="8.5" ry="16.5" fill="#e8a33d"/>
+  <g clip-path="url(#body)" fill="#141416">
+    <rect x="22" y="26" width="20" height="3.4"/>
+    <rect x="22" y="33.5" width="20" height="3.4"/>
+    <rect x="22" y="41" width="20" height="3.4"/>
+  </g>
+
+  <circle cx="27.4" cy="17.5" r="5.6" fill="#efa3b1"/>
+  <circle cx="36.6" cy="17.5" r="5.6" fill="#efa3b1"/>
 </svg>

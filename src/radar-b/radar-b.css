@@ -6,36 +6,50 @@
    layered ones whatever order the bundler emits them in. See tokens.css's own
    header for the deploy bug that rule exists to prevent.
 
-   The look the brief asked for: calm, intelligent, slightly editorial. Warm
-   paper by day, deep ink by night, one amber signal colour used sparingly —
-   it means "someone thinks this is worth your evening" and nothing else.
+   The palette is drawn from Paul Rand's 1981 Eye-Bee-M rebus poster, which is
+   also where the app's bee mark comes from: flat saturated colour on black, no
+   gradients, nothing halfway. Five colours do all the work —
+
+     amber      #e8a33d   the bee's body · accent, and the "worth your evening"
+                          signal, still used sparingly and for nothing else
+     green      #3b6b47   the wings · success, free
+     rust       #c0563a   the brow · danger
+     periwinkle #5e72de   the M · info, and the "in Wanderlist" badge, which
+                          wanted its own colour rather than a fourth amber
+     pink       #efa3b1   the knobs · the one decorative accent (tickets held)
+
+   Dark is the poster's native register — near-black ground, colour doing the
+   speaking. Light inverts it onto warm white and darkens each flat enough to
+   hold contrast against it; the hues are the same five.
    ───────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --color-bg:        #f3efe7;
-  --color-bg-sunken: #eae4d8;
-  --color-surface:   #fbf8f2;
-  --color-surface-2: #f3efe7;
-  --color-border:    #ded5c5;
-  --color-border-2:  #bfb4a0;
+  --color-bg:        #faf7f1;
+  --color-bg-sunken: #efeade;
+  --color-surface:   #ffffff;
+  --color-surface-2: #f5f1e8;
+  --color-border:    #e0d8c8;
+  --color-border-2:  #c3b8a2;
 
-  --color-ink:   #2b2723;
-  --color-muted: #6b625a;
-  --color-faint: #9c9187;
+  --color-ink:   #141416;
+  --color-muted: #6f6355;
+  --color-faint: #9c8974;
 
-  --color-accent:       #b4632a;
-  --color-accent-hover: #9a5322;
-  --color-on-accent:    #fbf8f2;
-  --color-success:      #4a7a4e;
-  --color-warning:      #b07d1e;
-  --color-danger:       #a33c32;
+  --color-accent:       #b8781c;
+  --color-accent-hover: #9c6413;
+  --color-on-accent:    #ffffff;
+  --color-success:      #3b6b47;
+  --color-warning:      #a8720f;
+  --color-danger:       #c0563a;
+  --color-info:         #4655c4;
+  --color-pink:         #c9647a;
 
   --font-display: 'Alegreya Variable', Georgia, serif;
   --font-sans:    'Inter Variable', 'Inter', system-ui, sans-serif;
   --font-mono:    'JetBrains Mono Variable', ui-monospace, monospace;
 
-  --signal: #b4632a;
-  --shadow-card: 0 1px 2px rgba(43, 39, 35, 0.05);
+  --signal: #b8781c;
+  --shadow-card: 0 1px 2px rgba(20, 20, 22, 0.06);
 }
 
 /* Dark tokens are defined TWICE, on purpose:
@@ -51,49 +65,53 @@
    choice from being dragged back to dark by a dark OS preference. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-bg:        #16161a;
-    --color-bg-sunken: #101013;
-    --color-surface:   #1e1e23;
-    --color-surface-2: #26262c;
-    --color-border:    #34343c;
-    --color-border-2:  #4a4a55;
+    --color-bg:        #0b0b0d;
+    --color-bg-sunken: #050506;
+    --color-surface:   #151518;
+    --color-surface-2: #1e1e22;
+    --color-border:    #2c2c33;
+    --color-border-2:  #45454f;
 
-    --color-ink:   #e7e2d9;
-    --color-muted: #a49c92;
-    --color-faint: #6f6960;
+    --color-ink:   #f4f0e8;
+    --color-muted: #9c8974;
+    --color-faint: #6d6459;
 
-    --color-accent:       #d98b4a;
-    --color-accent-hover: #e8a065;
-    --color-on-accent:    #16161a;
-    --color-success:      #7fae7c;
-    --color-warning:      #d6ab55;
-    --color-danger:       #d4746a;
+    --color-accent:       #e8a33d;
+    --color-accent-hover: #f2b75e;
+    --color-on-accent:    #0b0b0d;
+    --color-success:      #5c9668;
+    --color-warning:      #d99a2e;
+    --color-danger:       #d2694b;
+    --color-info:         #8290ea;
+    --color-pink:         #efa3b1;
 
-    --signal: #d98b4a;
+    --signal: #e8a33d;
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
   }
 }
 
 :root[data-theme="dark"] {
-  --color-bg:        #16161a;
-  --color-bg-sunken: #101013;
-  --color-surface:   #1e1e23;
-  --color-surface-2: #26262c;
-  --color-border:    #34343c;
-  --color-border-2:  #4a4a55;
+  --color-bg:        #0b0b0d;
+  --color-bg-sunken: #050506;
+  --color-surface:   #151518;
+  --color-surface-2: #1e1e22;
+  --color-border:    #2c2c33;
+  --color-border-2:  #45454f;
 
-  --color-ink:   #e7e2d9;
-  --color-muted: #a49c92;
-  --color-faint: #6f6960;
+  --color-ink:   #f4f0e8;
+  --color-muted: #9c8974;
+  --color-faint: #6d6459;
 
-  --color-accent:       #d98b4a;
-  --color-accent-hover: #e8a065;
-  --color-on-accent:    #16161a;
-  --color-success:      #7fae7c;
-  --color-warning:      #d6ab55;
-  --color-danger:       #d4746a;
+  --color-accent:       #e8a33d;
+  --color-accent-hover: #f2b75e;
+  --color-on-accent:    #0b0b0d;
+  --color-success:      #5c9668;
+  --color-warning:      #d99a2e;
+  --color-danger:       #d2694b;
+  --color-info:         #8290ea;
+  --color-pink:         #efa3b1;
 
-  --signal: #d98b4a;
+  --signal: #e8a33d;
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
@@ -154,7 +172,11 @@ a:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; bor
 }
 
 /* The -B carries the one accent in the masthead: Radar, for Bucharest. */
-.wordmark .dot { color: var(--signal); }
+/* The bee sits ON the baseline of "Radar-", so it has to be optically aligned
+   rather than dropped in as an inline image — an untuned SVG rides high and the
+   wordmark reads as two things instead of one word. */
+.wordmark { display: inline-flex; align-items: center; gap: 0.02em; }
+.wordmarkBee { width: 1.15em; height: 1.15em; display: block; margin-top: 0.06em; }
 
 .mastheadMeta {
   flex: 1;
@@ -352,7 +374,10 @@ a:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; bor
 
 .badge.recommended { color: var(--signal); border-color: color-mix(in srgb, var(--signal) 40%, transparent); background: color-mix(in srgb, var(--signal) 8%, transparent); }
 .badge.free { color: var(--color-success); border-color: color-mix(in srgb, var(--color-success) 40%, transparent); }
-.badge.saved { color: var(--color-accent); border-color: color-mix(in srgb, var(--color-accent) 45%, transparent); }
+/* Periwinkle, not amber: "in Wanderlist" is a different KIND of fact from
+   "recommended", and giving it the accent made a saved recommended event carry
+   two amber badges that meant unrelated things. It gets the poster's M colour. */
+.badge.saved { color: var(--color-info); border-color: color-mix(in srgb, var(--color-info) 45%, transparent); background: color-mix(in srgb, var(--color-info) 8%, transparent); }
 
 .price {
   font-family: var(--font-mono);
@@ -667,7 +692,8 @@ a:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; bor
   white-space: nowrap;
 }
 .wlChip.on { color: var(--color-success); border-color: color-mix(in srgb, var(--color-success) 45%, transparent); }
-.wlChip.gold { color: var(--color-warning); border-color: color-mix(in srgb, var(--color-warning) 45%, transparent); }
+/* The poster's pink — the one decorative colour, spent on the one nice fact. */
+.wlChip.gold { color: var(--color-pink); border-color: color-mix(in srgb, var(--color-pink) 45%, transparent); }
 .wlChip.muted { color: var(--color-faint); }
 
 /* ── Toast, now with Undo ─────────────────────────────────────────────────
