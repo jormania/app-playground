@@ -99,9 +99,17 @@ record bound to that URL on the production origin. A genuinely new path is the
 one identity change no stale record can span, so the entry shell was renamed and
 `start_url` / `scope` / `id` / the service-worker scope all follow it.
 
-`/cabinet.html` **308s to `/cabinet-app.html`** (`vercel.json`), so old links and
-bookmarks keep working. Don't move it back, and don't point the manifest at the
-old path — `installState.test.js` pins the new one.
+That still wasn't enough. Chrome answered "already installed" even on a URL it
+had never seen — because the thing it actually keys the record on is the
+**manifest URL**, and all three attempts so far had left `/cabinet.webmanifest`
+untouched. The preview origin worked precisely because a different origin means
+a different manifest URL. So the manifest was renamed too:
+**`public/cabinet-app.webmanifest`**.
+
+Both filenames are load-bearing. Don't rename either back, and don't
+re-point `cabinet-app.html`'s `<link rel="manifest">` at the old path —
+`installState.test.js` pins both. `/cabinet.html` **308s to
+`/cabinet-app.html`** (`vercel.json`), so old links and bookmarks keep working.
 
 ## Launching into the installed app, not a browser tab (Android)
 

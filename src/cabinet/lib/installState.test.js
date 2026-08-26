@@ -90,10 +90,10 @@ describe('checkInstalledFlags', () => {
 // installed"). See the comment atop installState.js. So the assertion flips —
 // pin the ABSENCE, so nobody re-adds the field and silently un-installs the
 // Cabinet again.
-describe('cabinet.webmanifest', () => {
+describe('cabinet-app.webmanifest', () => {
   async function readManifest() {
     const { readFileSync } = await import('node:fs')
-    return JSON.parse(readFileSync('public/cabinet.webmanifest', 'utf8'))
+    return JSON.parse(readFileSync('public/cabinet-app.webmanifest', 'utf8'))
   }
 
   it('declares no related_applications — it blocks WebAPK minting for the hub', async () => {
@@ -101,6 +101,14 @@ describe('cabinet.webmanifest', () => {
     expect(manifest.related_applications).toBeUndefined()
   })
 
+  // The manifest lives at /cabinet-app.webmanifest, NOT /cabinet.webmanifest —
+  // that filename is load-bearing. Chrome keys an installed web app by its
+  // MANIFEST URL, which is why three earlier attempts all failed: dropping
+  // related_applications, bumping the manifest `id`, and moving the page to
+  // /cabinet-app.html each left /cabinet.webmanifest untouched, and Chrome kept
+  // answering "already installed". Installing the identical manifest from a
+  // preview origin worked precisely because that changed the manifest URL.
+  //
   // The Cabinet is served from /cabinet-app.html, NOT /cabinet.html. Chrome had
   // a stale "shortcut app" record bound to the old URL — a real standalone
   // install registered only inside Chrome's own profile, so it showed up in
@@ -116,6 +124,13 @@ describe('cabinet.webmanifest', () => {
     expect(manifest.id).toBe('/cabinet-app.html')
     expect(manifest.start_url).toBe('/cabinet-app.html')
     expect(manifest.scope).toBe('/cabinet-app.html')
+  })
+
+  it("is the manifest cabinet-app.html actually links, and not the old URL", async () => {
+    const { readFileSync } = await import('node:fs')
+    const shell = readFileSync('cabinet-app.html', 'utf8')
+    expect(shell).toContain('href="/cabinet-app.webmanifest"')
+    expect(shell).not.toContain('/cabinet.webmanifest')
   })
 
   it('keeps the rest of the install-relevant manifest intact', async () => {
